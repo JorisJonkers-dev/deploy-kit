@@ -765,6 +765,25 @@ control. An exception with an empty or missing `reason` fails schema validation.
 There is no `hardening: privileged` shorthand: the exception list is the estate's
 inventory of what it cannot harden, and a shorthand would hide its length.
 
+### A privileged port needs the capability that binds it
+
+A `provides` port below 1024 cannot be bound by a non-root process without
+`CAP_NET_BIND_SERVICE`, and the `restricted` class drops all capabilities. A
+Workload declaring one without relaxing the control is
+`E_PRIVILEGED_PORT_UNDER_NONROOT`
+([0083](../../docs/adr/model/0083-privileged-port-needs-the-capability.md)).
+
+The escape is the vocabulary that already exists: `allow: capability:NET_BIND_SERVICE`
+with a reason, which puts the Workload in the exception inventory where every
+other relaxation is. Deriving the capability silently instead would re-add what
+the class dropped, for every Workload that happens to declare a low port, and
+the inventory would stop recording it.
+
+`auth-ui` is the live case and its answer is to listen on 8080. A route names a
+**surface**, not a number, so the container's port is invisible to every consumer
+and to the rendered IngressRoute; the Service object keeps whatever port the edge
+expects.
+
 ### The UID is a pinned input, and the volume needs a group
 
 "The UID from the image" was not a derivation: the images lock resolves an alias

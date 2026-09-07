@@ -11,6 +11,13 @@ Fifty rendered files across `auth/`, `knowledge/` and `data/`. All parse.
 Rows marked **closed** have since been decided; the row stays so the evidence
 that forced the decision stays with it.
 
+**Both blocking sections are discharged as of 2026-09-07.** R1–R11 are decided:
+nine closed outright, R1 and R11 reclassified as obligations that were never the
+render's, and R7 decided but blocked on R20 for a grant that can name
+`database/creds/<role>`. What is left in this document is the fifteen model holes
+below, each of which the compiler will force in turn, and the list of what the
+decisions owe the example set.
+
 ## Blocking — no producer exists
 
 | # | gap | seen in |
@@ -29,8 +36,8 @@ that forced the decision stays with it.
 |---|---|---|
 | R8 | **PVC capacity cannot be derived.** Capacity is platform-assigned and the author may not write it, yet no pinned input assigns a number. The node contract publishes `disks[].usable_gib` and no rule allocates from it. Rendered `storage: null` — parses, does not apply. **Closed** by [0081](../../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md): a volume authors `size` as a hard dimension, matched against the node contract's `usable_gib` (`E_STORAGE_UNSATISFIABLE`), and `placement.disk.size` becomes derived so the quantity has one declaring site. | data |
 | R9 | **`runAsNonRoot: true` with no UID and no `fsGroup`, against RWO volumes.** A freshly provisioned `local-path` directory is root-owned; without `fsGroup`, postgres cannot `initdb` into its own PV. The images lock carries digests, not UIDs. If the image's `USER` is a name rather than a number the kubelet cannot verify non-root and the pod fails `CreateContainerConfigError`. **Closed** by [0082](../../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md): the lock resolves `uid` and `gid` per alias, `runAsUser`/`runAsGroup`/`fsGroup` derive from them, a named `USER` is `E_IMAGE_USER_NOT_NUMERIC` at lock time, and `fsGroupChangePolicy: OnRootMismatch` keeps a large volume from being re-chowned on every start. | data |
-| R10 | **auth-ui cannot bind port 80** under `runAsNonRoot` + `drop ALL` with only a `writableRootFilesystem` exception. Either the port is wrong or the exception set is. | auth |
-| R11 | **Default-deny cannot ship non-enforcing.** `networking.k8s.io/v1` has no audit mode and k3s's embedded kube-router has none; a policy is enforced the moment it selects a pod. The audit stage the model sequences needs a CNI nobody has picked. Enforcing `data-system`'s policies on day one cuts five live consumers off the datastore. | data |
+| R10 | **auth-ui cannot bind port 80** under `runAsNonRoot` + `drop ALL` with only a `writableRootFilesystem` exception. Either the port is wrong or the exception set is. **Closed** by [0083](../../../docs/adr/model/0083-privileged-port-needs-the-capability.md): a port below 1024 under non-root is `E_PRIVILEGED_PORT_UNDER_NONROOT`, and the escape is the existing `allow: capability:NET_BIND_SERVICE` with a reason. auth-ui listens on 8080; a route names a surface, not a number. | auth |
+| R11 | **Default-deny cannot ship non-enforcing.** `networking.k8s.io/v1` has no audit mode and k3s's embedded kube-router has none; a policy is enforced the moment it selects a pod. The audit stage the model sequences needs a CNI nobody has picked. Enforcing `data-system`'s policies on day one cuts five live consumers off the datastore. **Reclassified** by [0084](../../../docs/adr/model/0084-render-only-is-the-v1-policy-stage.md): render-only is v1's stage, so the adapter emits the full set and nothing loads it until 0036 picks a CNI. The render is not waiting on the CNI; the promotion is. | data |
 
 ## Model holes the render exposed
 

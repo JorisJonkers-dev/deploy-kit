@@ -351,9 +351,17 @@ had picked a CNI. It becomes satisfiable only through a CNI carrying a
 non-enforcing policy stage ([chapter 60](60-setup.md#cni),
 [0036](../../docs/adr/model/0036-cni-selection.md)).
 
+**Render-only is the v1 stage**
+([0084](../../docs/adr/model/0084-render-only-is-the-v1-policy-stage.md)). The
+`networking` adapter emits the complete policy set and the tree is diffed in
+review; nothing loads it until [0036](../../docs/adr/model/0036-cni-selection.md)
+picks a CNI with a non-enforcing stage. What v1 owes is the policies, and
+promoting them is a rollout decision waiting on a premise nobody has settled —
+so an unpicked CNI does not block the render.
+
 | stage | what runs | exit criterion |
 |---|---|---|
-| render-only | the policy set is rendered and diffed in review; nothing is loaded | the CNI decision lands |
+| render-only — **v1** | the policy set is rendered and diffed in review; nothing is loaded | the CNI decision lands |
 | audit | the set is loaded into the non-enforcing stage; observed flows are diffed against the rendered allow set | **zero undeclared flows over 14 days** |
 | enforce | the set is enforced estate-wide | — |
 

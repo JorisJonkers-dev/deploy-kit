@@ -82,6 +82,7 @@ delivery work it underpins.
 | [0078](model/0078-engine-is-workload-vocabulary.md) | `engine` is layer-1 vocabulary: what the process is, not how it is instrumented | settled |
 | [0016](model/0016-pod-hardening.md) | Pod hardening is layer-1 vocabulary | open |
 | [0082](model/0082-images-lock-carries-uid-and-gid.md) | The images lock resolves each image's uid and gid, and fsGroup derives from the gid | settled |
+| [0083](model/0083-privileged-port-needs-the-capability.md) | A privileged port under non-root is refused, and the escape is the existing exception | settled |
 | [0017](model/0017-placement-by-capability.md) | Placement is declared as capabilities, never labels | superseded by [0061](model/0061-placement-is-hard-dimensions.md) |
 | [0061](model/0061-placement-is-hard-dimensions.md) | Placement is a set of hard dimensions matched against allocatable | open |
 
@@ -116,6 +117,7 @@ delivery work it underpins.
 | [0033](model/0033-assignments-published-back.md) | Assignments are published back to the owning repository | settled |
 | [0034](model/0034-cluster-state-pinned-input.md) | ClusterState is a pinned, digested input | settled |
 | [0035](model/0035-network-policy-default-deny.md) | Network policy is default-deny, derived from the edge set | settled |
+| [0084](model/0084-render-only-is-the-v1-policy-stage.md) | Render-only is v1's network-policy stage; promotion waits on the CNI | settled |
 | [0036](model/0036-cni-selection.md) | The CNI is chosen for a non-enforcing policy stage | open |
 
 ### Composition and versioning
