@@ -136,7 +136,6 @@ classDiagram
     class Asset {
         +Path from
         +Path mountAt
-        +ChangeResponse onChange
         +map substitute
     }
     class Volume {
@@ -576,12 +575,27 @@ placeholders env files use ([0012](../../docs/adr/model/0012-assets-not-code.md)
 assets:
   - from: config/postgresql.conf
     mountAt: /etc/postgresql/postgresql.conf
-    onChange: restart
 ```
 
-`onChange` defaults to `restart`, which renders a content-hashed object name so
-the change actually reaches the pod — 16 of the estate's 18 ConfigMaps are plain
-today, meaning an edit applies successfully and has no effect.
+**Change propagation is unconditional and there is no `onChange` field**
+([0094](../../docs/adr/model/0094-asset-change-restarts-unconditionally.md)).
+Every Asset renders a **content-hashed object name**, so an edit reaches the pod
+— 16 of the estate's 18 ConfigMaps are plain today, meaning an edit applies
+successfully and has no effect — and the resulting pod-template change restarts
+the Workload.
+
+There is no `reload`. Nothing in Kubernetes reloads a process, no image in this
+estate watches its own config file, and a reload would need an actor the model
+does not have. The consequence is stated rather than hidden: with `replicas: 1`
+and `Recreate` ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)),
+editing one line of `postgresql.conf` takes `platform-postgres` down for a
+restart. That is the true cost of an Asset edit on this substrate, and an author
+who needs it to be cheaper needs a different mechanism than a field.
+
+`rotation.tolerates: reload` on a **secret** is a different word for a different
+actor and stays: there the client library re-reads the value itself
+([Delivery](#delivery)), which is something that genuinely happens under
+`delivery: self`. An Asset has no such actor.
 
 The eighteen ConfigMaps were three unrelated things, and only two of them are
 Assets. **Six fixed files** with no derived values (`postgresql.conf`,

@@ -69,6 +69,7 @@ delivery work it underpins.
 | [0011](model/0011-configuration-env-files-per-workload.md) | Configuration is per-Workload env files with named placeholders | settled |
 | [0091](model/0091-identity-placeholders-not-framework-wiring.md) | The model derives no framework wiring; it exposes the Workload's own identity as placeholders | settled |
 | [0012](model/0012-assets-not-code.md) | File-shaped configuration is an Asset; code is not configuration | settled |
+| [0094](model/0094-asset-change-restarts-unconditionally.md) | An Asset change is content-hashed and restarts the Workload; there is no onChange field | settled |
 | [0013](model/0013-blueprint-packs-pinned-checkout.md) | Blueprint packs arrive by pinned checkout, not a registry | settled |
 | [0063](model/0063-intent-authored-per-domain.md) | Intent is authored one file per domain | settled |
 | [0064](model/0064-sidecars-are-workload-vocabulary.md) | A Workload may hold sidecars, and a sidecar carries what a container carries | settled |

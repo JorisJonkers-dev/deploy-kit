@@ -66,7 +66,9 @@ mechanism is derived ([0018](docs/adr/model/0018-exposure-by-audience.md)).
 **Probe** — a declared readiness or liveness check.
 
 **Asset** — a file mounted into a Workload. Declarative, never executable
-([0012](docs/adr/model/0012-assets-not-code.md)).
+([0012](docs/adr/model/0012-assets-not-code.md)). Its object name is
+content-hashed and a change restarts the Workload, unconditionally
+([0094](docs/adr/model/0094-asset-change-restarts-unconditionally.md)).
 
 **Volume** — a claim mounted at a path, carrying its Durability Class.
 
@@ -219,6 +221,11 @@ chapter 30.
 `deployment.jorisjonkers.dev` documents, which is the confusion
 [0003](docs/adr/model/0003-three-layer-meta-model.md) exists to end. Say
 Resolved Deployment, or say the Kubernetes kind.
+
+**Reload.** A secret's `rotation.tolerates: reload`, and nothing else: the
+client library re-reads the value itself, which happens under `delivery: self`.
+An Asset has no such actor, so an Asset change restarts
+([0094](docs/adr/model/0094-asset-change-restarts-unconditionally.md)).
 
 **Render.** Serialization only — layer 2 to layer 3. The act of deciding is
 *resolution* or *derivation*, never rendering.
