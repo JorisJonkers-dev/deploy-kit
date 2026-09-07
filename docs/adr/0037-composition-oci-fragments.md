@@ -25,7 +25,7 @@ estate-wide invariants, and records every resolved digest in the lock beside the
 render. Seven properties, spread across six earlier decisions, need that global view: estate-wide Service Id
 uniqueness ([0010](0010-flat-service-identity.md)), Secret Subtree union with
 prefix-collision rejection ([0023](0023-grant-unit-is-the-path.md)), reconcile
-DAG construction ([0032](0032-reconcile-unit-derived.md)), hostname assignment
+DAG construction ([0032](0032-reconcile-unit-derived.md)), hostname uniqueness
 and reachability completeness ([0018](0018-exposure-by-audience.md)), inbound
 edges for co-test sets ([0020](0020-dependency-edges-carry-surface.md)), and
 test project discovery ([0049](deferred/0049-aggregator-owned-tests.md)). None works
