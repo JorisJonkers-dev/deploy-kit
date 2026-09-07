@@ -534,7 +534,21 @@ already what `stalwart-provisioner` half-invented, its `production.env` and
 
 A literal is written literally. A derived value is a **named placeholder** —
 `${dependency:…}` for a coordinate, `${secret:…}` for a secret, `${exposure:…}`
-for a hostname the estate serves. Writing a derived value as a literal is a
+for a hostname the estate serves, and `${identity:…}` for what the platform
+derived about **this** Workload
+([0091](../../docs/adr/model/0091-identity-placeholders-not-framework-wiring.md)):
+
+| key | value |
+|---|---|
+| `${identity:vaultRole}` | the Workload's Vault role — its own name ([0024](../../docs/adr/model/0024-identity-per-workload.md)) |
+| `${identity:serviceAccount}` | the Workload's ServiceAccount name |
+| `${identity:namespace}` | `<domain>-system` |
+
+The key set is closed. It exists because a self-delivering Workload has to wire
+its own Vault client, and one of the values it wires — the role name — is
+derived: written as a literal it is the same staleness class as the
+`serviceAccountName()` defect, where a hand-maintained name and a derived one
+disagreed and nothing noticed. Writing a derived value as a literal is a
 build error, and so is writing a Runtime Profile key at all: `OTEL_*` and
 `PYROSCOPE_*` come from `runtime`, and an exceptional value goes in `overrides`,
 not here. Ten `OTEL_*` variables are byte-identical today across `auth-api`,
@@ -1535,15 +1549,19 @@ secret ([0026](../../docs/adr/model/0026-delivery-env-file-self.md)):
 |---|---|---|
 | `env` | a Vault Secrets Operator sync and a `Secret`; the env file's `${secret:…}` placeholders resolve to `envFrom` secretRef entries, never to literal values | yes |
 | `file` | a projected file at `mountAt` with `fileMode`, and nothing in the environment | yes |
-| `self` | a Vault policy, a Kubernetes auth role, and the application's own client wiring. No Secret, no env var, nothing injected | no |
+| `self` | a Vault policy and a Kubernetes auth role ([0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)). No Secret, no env var, nothing injected — the application's own client wiring stays in its env file ([0091](../../docs/adr/model/0091-identity-placeholders-not-framework-wiring.md)) | no |
 
 In all three the derived policy is granted per **path**: delivery decides how a
 value reaches a process, never what its token may read.
 
 `self` is not an edge case. `auth-api` runs it today — `SPRING_CONFIG_IMPORT:
-vault://`, `VAULT_AUTHENTICATION: KUBERNETES`, `VAULT_KUBERNETES_ROLE: auth-api` —
-and that role name is the Workload's own, which is what the identity rule now
-derives rather than renames. It is also the only delivery achieving zero-downtime
+vault://`, `VAULT_AUTHENTICATION: KUBERNETES`,
+`VAULT_KUBERNETES_ROLE: ${identity:vaultRole}` — and those lines stay in its own
+env file, because they are spring-cloud-vault's configuration surface and the
+model does not know what a framework is
+([0091](../../docs/adr/model/0091-identity-placeholders-not-framework-wiring.md)).
+The one value that must not drift is a placeholder, so the role a pod claims and
+the role the platform derived cannot disagree. It is also the only delivery achieving zero-downtime
 rotation, because a pod's environment is fixed for its lifetime. That same fact
 makes `delivery: env` with `rotation.tolerates: reload` a build error
 (`E_ENV_CANNOT_RELOAD`), not a slow path. `file` is not an edge case either: an SSH
