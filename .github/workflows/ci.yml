@@ -48,6 +48,19 @@
       - 'name': 'ADR contract'
         'run': 'npm run lint:adrs'
 
+      # Relative links and heading anchors across every tracked Markdown file.
+      # The ADR domain move rewrote about a hundred references outside the
+      # decision set, and nothing checked them.
+      - 'name': 'Link contract'
+        'run': 'npm run lint:links'
+
+      # The layer boundaries on the module graph: no layer reaching outward, no
+      # adapter reading another adapter, no cycle, nothing unreachable from an
+      # entry point. Skips loudly while src/ does not exist.
+      # See docs/adr/architecture/0069-boundaries-enforced-on-the-graph.md.
+      - 'name': 'Boundaries'
+        'run': 'npm run lint:boundaries'
+
       # Coverage gate is enforced inside the test script (c8 --check-coverage).
       - 'name': 'Test'
         'run': 'npm test'

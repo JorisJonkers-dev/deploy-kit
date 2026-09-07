@@ -14,8 +14,9 @@ Every rule that keeps the layering honest is expressible as a constraint on the
 import graph, and a violation is therefore machine-detectable before review.
 False if: a boundary the design depends on cannot be stated as a graph rule —
 one that needs to know what a function does rather than what it imports.
-Settled by: the fourteen boundary fixtures, each crossing exactly one boundary,
-each reported by the rule that names it.
+Settled by: one fixture per rule in the ruleset, each crossing exactly that
+boundary and reported by the rule that names it, plus the passing cases that
+prove the rules are not simply forbidding everything.
 
 ## Why
 This repository is maintained by one person, so review is not a control that

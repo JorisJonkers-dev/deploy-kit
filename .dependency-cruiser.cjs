@@ -19,6 +19,12 @@
 //                       serializer, the writer.
 //   src/cli/            argument parsing, diagnostic rendering, exit codes.
 
+/**
+ * The roots of the module graph: the library entry and the CLI entry. Add a
+ * second bin here and it becomes a root for reachability too.
+ */
+const ENTRY_POINTS = ["^src/index\\.ts$", "^src/cli/index\\.ts$"];
+
 /** Node builtins that perform IO or read ambient state. */
 const AMBIENT = [
   "fs",
@@ -54,14 +60,30 @@ module.exports = {
         "its own tests imported it. Entry points are exempt; nothing else is.",
       from: {
         orphan: true,
-        pathNot: [
-          "^src/index\\.ts$",
-          "^src/cli/",
-          "\\.d\\.ts$",
-          "^src/[^/]+/index\\.ts$",
-        ],
+        // Only the entry points themselves. A barrel or a cli/ module that
+        // nothing imports is caught here rather than exempted, and a dead
+        // subtree — which has internal edges and is therefore never an orphan
+        // — is caught by unreachable-from-an-entry-point below.
+        pathNot: ENTRY_POINTS.concat("\\.d\\.ts$"),
       },
       to: {},
+    },
+    {
+      name: "unreachable-from-an-entry-point",
+      severity: "error",
+      comment:
+        "Reachability, which is the half coverage cannot do and the half an " +
+        "orphan check misses: a dead subtree has internal edges, so it is never " +
+        "an orphan. 1,967 lines of dead renderer across 14 modules passed a " +
+        "--lines 90 gate because its own tests imported it.",
+      from: { path: ENTRY_POINTS },
+      to: {
+        path: "^src/",
+        // An entry point is a root: nothing imports it, so it is not reachable
+        // from anything, itself included. Everything else must be.
+        pathNot: ENTRY_POINTS.concat("\\.d\\.ts$"),
+        reachable: false,
+      },
     },
     {
       name: "domain-is-pure",
@@ -71,7 +93,7 @@ module.exports = {
         "arrives through a port it declares and the application supplies.",
       from: { path: "^src/domain/" },
       to: {
-        path: "^src/(infrastructure|adapters|application|cli|wire)/",
+        path: "^src/(?!domain/)",
       },
     },
     {
@@ -91,7 +113,10 @@ module.exports = {
         "Zod declares the authoring shape. The domain is not that shape: a " +
         "schemaVersion may change without the core moving.",
       from: { path: "^src/domain/" },
-      to: { dependencyTypes: ["npm"], path: "^zod" },
+      // The resolved path, not the specifier: dependency-cruiser matches
+      // to.path against what the module resolved to, which for an npm package
+      // is node_modules/zod/... and never the bare name.
+      to: { path: "^(node_modules/)?zod(/|$)" },
     },
     {
       name: "wire-maps-inward-only",
@@ -131,7 +156,9 @@ module.exports = {
         "Documents in, attributed Fragments out. No ambient reads inside an " +
         "adapter: reading manifests from disk is the caller's job.",
       from: { path: "^src/adapters/" },
-      to: { path: [ambientPattern, "^src/(application|cli|infrastructure)/"] },
+      to: {
+        path: [ambientPattern, "^src/(application|cli|infrastructure|wire)/"],
+      },
     },
     {
       name: "application-takes-ports-not-adapters",
@@ -141,6 +168,15 @@ module.exports = {
         "implementation is the CLI's job, so a test can supply another.",
       from: { path: "^src/application/" },
       to: { path: "^src/infrastructure/" },
+    },
+    {
+      name: "infrastructure-implements-ports-only",
+      severity: "error",
+      comment:
+        "A port implementation satisfies an interface the domain declares. It " +
+        "does not orchestrate, and it does not render.",
+      from: { path: "^src/infrastructure/" },
+      to: { path: "^src/(application|adapters|wire)/" },
     },
     {
       name: "nothing-depends-on-the-cli",

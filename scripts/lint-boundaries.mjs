@@ -32,4 +32,10 @@ const r = spawnSync(bin, [...targets, "--config", config], {
   cwd: root,
   stdio: "inherit",
 });
+// stdio is inherited, so a spawn failure prints nothing of its own: without
+// this the operator sees a bare non-zero exit on a fresh or pruned install.
+if (r.error) {
+  console.error(`boundary lint: could not run ${bin}: ${r.error.message}`);
+  process.exit(1);
+}
 process.exit(r.status ?? 1);

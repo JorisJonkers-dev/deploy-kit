@@ -36,19 +36,42 @@ const files = Object.keys(DOMAINS)
   )
   .sort((a, b) => a.rel.localeCompare(b.rel));
 if (files.length === 0) {
-  console.error("no ADR files found");
+  // Report the stray files first: a tree where every ADR sits at the docs/adr
+  // root is the migration mistake, and "no ADR files found" is the least
+  // useful of the two diagnoses.
+  console.error(
+    errors.length
+      ? `ADR lint: ${errors.length} error(s)\n` +
+          errors.map((e) => "  - " + e).join("\n")
+      : "no ADR files found",
+  );
   process.exit(1);
 }
 
 // One estate-wide number sequence: a citation resolves without knowing which
-// domain the decision lives in, which is only true while numbers are unique.
+// domain the decision lives in, which is only true while numbers are unique
+// across every domain — deferred/ included, since ADRs cite into it.
+const numbered = files.concat(
+  listing(join(adrDir, "deferred"))
+    .filter(isAdrName)
+    .map((name) => ({
+      domain: "deferred",
+      name,
+      rel: posix.join("deferred", name),
+    })),
+);
 const byNumber = new Map();
-for (const f of files) {
+for (const f of numbered.sort((a, b) => a.rel.localeCompare(b.rel))) {
   const n = f.name.slice(0, 4);
   const seen = byNumber.get(n);
-  if (seen && seen.domain !== f.domain)
-    err(f.rel, `number ${n} used in two domains, also ${seen.rel}`);
-  else if (!seen) byNumber.set(n, f);
+  if (seen)
+    err(
+      f.rel,
+      seen.domain === f.domain
+        ? `number ${n} used twice in ${f.domain}, also ${seen.rel}`
+        : `number ${n} used in two domains, also ${seen.rel}`,
+    );
+  else byNumber.set(n, f);
 }
 
 const SECTIONS = [

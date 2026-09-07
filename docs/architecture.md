@@ -193,6 +193,7 @@ cost something in the generation this compiler replaces.
 | boundaries | `npm run lint:boundaries` | a layer reaching outward, an adapter reading another adapter, a cycle, a module reachable from no entry point |
 | types | `npm run typecheck` | `strict` violations; `@ts-nocheck` is an ESLint error and `@ts-expect-error` needs a description |
 | decisions | `npm run lint:adrs` | frontmatter, register integrity, citations, normative anchors per domain |
+| links | `npm run lint:links` | relative links and heading anchors across every tracked Markdown file |
 | tests | `npm test` | behaviour, plus the coverage floor |
 
 The reachability half of the boundary gate is the one worth naming. Coverage
@@ -201,6 +202,6 @@ renderer that survived a `--lines 90` gate because its own test files imported
 it. Reachability asks a different question — does anything real call this —
 and the two together are what coverage was mistaken for.
 
-Both the boundary ruleset and the decision-record lint carry negative fixtures.
+Every gate here carries negative fixtures.
 A gate that has only ever run against a clean tree is untested: nothing proves
 it would fail.

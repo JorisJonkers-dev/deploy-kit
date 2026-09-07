@@ -5,7 +5,13 @@
 // proves it would fail. Each case builds a throwaway src/ tree that crosses
 // exactly one boundary and asserts the named rule reports it.
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import assert from "node:assert/strict";
@@ -25,6 +31,18 @@ const mod = (imports = []) =>
 function cruise(files) {
   const root = mkdtempSync(join(tmpdir(), "boundary-"));
   try {
+    // A manifest, so dependency-cruiser can tell a dependency from a
+    // devDependency: without one, npm-dev is unclassifiable and
+    // no-dev-dependency-in-src cannot fire.
+    writeFileSync(
+      join(root, "package.json"),
+      JSON.stringify({
+        name: "boundary-fixture",
+        type: "module",
+        dependencies: { zod: "*" },
+        devDependencies: { prettier: "*" },
+      }),
+    );
     writeFileSync(
       join(root, "tsconfig.json"),
       JSON.stringify({
@@ -36,6 +54,14 @@ function cruise(files) {
         },
         include: ["src/**/*"],
       }),
+    );
+    // The repository's own node_modules, so a fixture can import a real
+    // package: dependency-cruiser matches the resolved path, and an
+    // unresolvable specifier resolves to itself rather than to node_modules/.
+    symlinkSync(
+      join(import.meta.dirname, "..", "node_modules"),
+      join(root, "node_modules"),
+      "dir",
     );
     for (const [rel, content] of Object.entries(files)) {
       const target = join(root, rel);
@@ -83,7 +109,7 @@ test("the domain reaching the filesystem fails", () => {
     "src/domain/service.ts": mod(["node:fs"]),
     "src/cli/index.ts": mod(["../domain/service.js"]),
   });
-  assert.equal(code, 1);
+  assert.notEqual(code, 0);
   assert.match(output, /domain-reads-nothing-ambient/);
 });
 
@@ -92,7 +118,7 @@ test("the domain reaching crypto fails, because hashing arrives through a port",
     "src/domain/render-hash.ts": mod(["node:crypto"]),
     "src/cli/index.ts": mod(["../domain/render-hash.js"]),
   });
-  assert.equal(code, 1);
+  assert.notEqual(code, 0);
   assert.match(output, /domain-reads-nothing-ambient/);
 });
 
@@ -102,7 +128,7 @@ test("the domain importing an infrastructure module fails", () => {
     "src/domain/service.ts": mod(["../infrastructure/writer.js"]),
     "src/cli/index.ts": mod(["../domain/service.js"]),
   });
-  assert.equal(code, 1);
+  assert.notEqual(code, 0);
   assert.match(output, /domain-is-pure/);
 });
 
@@ -112,7 +138,7 @@ test("one adapter reading another fails", () => {
     "src/adapters/kubernetes/render.ts": mod(["../vso/render.js"]),
     "src/cli/index.ts": mod(["../adapters/kubernetes/render.js"]),
   });
-  assert.equal(code, 1);
+  assert.notEqual(code, 0);
   assert.match(output, /adapters-do-not-read-each-other/);
 });
 
@@ -134,7 +160,7 @@ test("an adapter reading the filesystem fails", () => {
     "src/adapters/kubernetes/render.ts": mod(["node:fs"]),
     "src/cli/index.ts": mod(["../adapters/kubernetes/render.js"]),
   });
-  assert.equal(code, 1);
+  assert.notEqual(code, 0);
   assert.match(output, /adapters-render-only/);
 });
 
@@ -144,7 +170,7 @@ test("a use-case wiring a concrete implementation fails", () => {
     "src/application/publish.ts": mod(["../infrastructure/oras.js"]),
     "src/cli/index.ts": mod(["../application/publish.js"]),
   });
-  assert.equal(code, 1);
+  assert.notEqual(code, 0);
   assert.match(output, /application-takes-ports-not-adapters/);
 });
 
@@ -154,7 +180,7 @@ test("anything reaching into the CLI fails", () => {
     "src/infrastructure/writer.ts": mod(["../cli/exit-codes.js"]),
     "src/cli/index.ts": mod(["../infrastructure/writer.js"]),
   });
-  assert.equal(code, 1);
+  assert.notEqual(code, 0);
   assert.match(output, /nothing-depends-on-the-cli/);
 });
 
@@ -164,7 +190,7 @@ test("the wire layer reaching an adapter fails", () => {
     "src/wire/intent.ts": mod(["../adapters/kubernetes/render.js"]),
     "src/cli/index.ts": mod(["../wire/intent.js"]),
   });
-  assert.equal(code, 1);
+  assert.notEqual(code, 0);
   assert.match(output, /wire-maps-inward-only/);
 });
 
@@ -174,7 +200,7 @@ test("the object model importing the domain fails", () => {
     "src/objects/deployment.ts": mod(["../domain/service.js"]),
     "src/cli/index.ts": mod(["../objects/deployment.js"]),
   });
-  assert.equal(code, 1);
+  assert.notEqual(code, 0);
   assert.match(output, /objects-are-data/);
 });
 
@@ -183,7 +209,7 @@ test("a module reachable from no entry point fails", () => {
     "src/domain/orphan.ts": "export const v = 1;\n",
     "src/cli/index.ts": mod(),
   });
-  assert.equal(code, 1);
+  assert.notEqual(code, 0);
   assert.match(output, /no-orphans/);
 });
 
@@ -195,6 +221,95 @@ test("a cycle fails", () => {
       'import { v as a } from "./a.js";\nexport const v = a;\n',
     "src/cli/index.ts": mod(["../domain/a.js"]),
   });
-  assert.equal(code, 1);
+  assert.notEqual(code, 0);
   assert.match(output, /no-circular/);
+});
+
+test("the domain importing zod fails", () => {
+  const { code, output } = cruise({
+    "src/domain/service.ts": mod(["zod"]),
+    "src/cli/index.ts": mod(["../domain/service.js"]),
+  });
+  assert.notEqual(code, 0);
+  assert.match(output, /domain-does-not-know-the-wire/);
+});
+
+test("the wire layer importing zod passes", () => {
+  const { code, output } = cruise({
+    "src/wire/intent.ts": mod(["zod"]),
+    "src/cli/index.ts": mod(["../wire/intent.js"]),
+  });
+  assert.equal(code, 0, output);
+});
+
+test("shipped code importing a devDependency fails", () => {
+  const { code, output } = cruise({
+    "src/infrastructure/serializer.ts": mod(["prettier"]),
+    "src/cli/index.ts": mod(["../infrastructure/serializer.js"]),
+  });
+  assert.notEqual(code, 0);
+  assert.match(output, /no-dev-dependency-in-src/);
+});
+
+test("a deprecated node builtin fails", () => {
+  const { code, output } = cruise({
+    "src/infrastructure/idna.ts": mod(["punycode"]),
+    "src/cli/index.ts": mod(["../infrastructure/idna.js"]),
+  });
+  assert.notEqual(code, 0);
+  assert.match(output, /not-to-deprecated-core/);
+});
+
+test("the domain importing the object model fails", () => {
+  const { code, output } = cruise({
+    "src/objects/deployment.ts": mod(),
+    "src/domain/service.ts": mod(["../objects/deployment.js"]),
+    "src/cli/index.ts": mod(["../domain/service.js"]),
+  });
+  assert.notEqual(code, 0);
+  assert.match(output, /domain-is-pure/);
+});
+
+test("an adapter importing the wire layer fails", () => {
+  const { code, output } = cruise({
+    "src/wire/intent.ts": mod(),
+    "src/adapters/kubernetes/render.ts": mod(["../../wire/intent.js"]),
+    "src/cli/index.ts": mod(["../adapters/kubernetes/render.js"]),
+  });
+  assert.notEqual(code, 0);
+  assert.match(output, /adapters-render-only/);
+});
+
+test("infrastructure importing a use-case fails", () => {
+  const { code, output } = cruise({
+    "src/application/compose.ts": mod(),
+    "src/infrastructure/writer.ts": mod(["../application/compose.js"]),
+    "src/cli/index.ts": mod(["../infrastructure/writer.js"]),
+  });
+  assert.notEqual(code, 0);
+  assert.match(output, /infrastructure-implements-ports-only/);
+});
+
+// -- reachability -------------------------------------------------------------
+// The case ADR 0069 cites is not an orphan: a dead subtree has internal edges,
+// so only a reachability rule anchored on the entry points catches it.
+
+test("a dead subtree reachable from no entry point fails", () => {
+  const { code, output } = cruise({
+    "src/domain/dead-a.ts": mod(["./dead-b.js"]),
+    "src/domain/dead-b.ts": mod(),
+    "src/domain/live.ts": mod(),
+    "src/cli/index.ts": mod(["../domain/live.js"]),
+  });
+  assert.notEqual(code, 0);
+  assert.match(output, /unreachable-from-an-entry-point/);
+});
+
+test("a module reached only through src/index.ts passes", () => {
+  const { code, output } = cruise({
+    "src/domain/service.ts": mod(),
+    "src/index.ts": mod(["./domain/service.js"]),
+    "src/cli/index.ts": mod(["../index.js"]),
+  });
+  assert.equal(code, 0, output);
 });

@@ -10,7 +10,7 @@
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, dirname } from "node:path";
+import { join, dirname, basename } from "node:path";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -94,7 +94,7 @@ function lintTree(files, { premise = true, register = true } = {}) {
     }
     if (register) {
       const rows = Object.keys(all)
-        .map((rel) => `| [${rel.slice(-7, -3)}](${rel}) | a row |`)
+        .map((rel) => `| [${basename(rel).slice(0, 4)}](${rel}) | a row |`)
         .join("\n");
       writeFileSync(
         join(adrDir, "README.md"),
@@ -306,4 +306,35 @@ test("a cross-domain link to a missing file fails", () => {
     output,
     /link to missing ADR file \.\.\/deferred\/0041-absent\.md/,
   );
+});
+
+test("a number already used in deferred fails", () => {
+  const { code, output } = lintTree({
+    "model/0002-a-decision.md": validAdr(),
+    "architecture/0041-a-code-decision.md": validAdr({
+      normative: "docs/architecture.md#layers",
+    }),
+    "deferred/0041-a-parked-decision.md": "# Parked, and not linted.\n",
+  });
+  assert.equal(code, 1);
+  assert.match(output, /number 0041 used in two domains/);
+});
+
+test("one number used twice inside a domain fails", () => {
+  const { code, output } = lintTree({
+    "model/0002-a-decision.md": validAdr(),
+    "model/0002-a-different-decision.md": validAdr(),
+  });
+  assert.equal(code, 1);
+  assert.match(output, /number 0002 used twice in model/);
+});
+
+test("a tree where every ADR was left at the root says so", () => {
+  const { code, output } = lintTree(
+    { "0002-a-decision.md": validAdr() },
+    { premise: false },
+  );
+  assert.equal(code, 1);
+  assert.match(output, /outside a domain directory/);
+  assert.doesNotMatch(output, /no ADR files found/);
 });
