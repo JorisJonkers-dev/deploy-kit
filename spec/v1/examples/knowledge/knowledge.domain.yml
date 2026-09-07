@@ -151,6 +151,11 @@ services:
         image: knowledge-api    # alias -> digest through the images lock
         runtime: jvm            # -> otel-jvm profile: 10 OTEL, 6 PYROSCOPE
 
+        # The JVM writes to /tmp. Declared, mounted as an emptyDir, and the
+        # read-only root control stays intact
+        # (docs/adr/model/0092-writable-paths-are-declared.md).
+        writablePaths: [/tmp]
+
         # Surfaces are a property of the process, so they sit on the Workload.
         # The rendered Kubernetes port name is the surface name, which is how
         # 'http' survives. A consumer names the Service and the surface, never
@@ -260,10 +265,17 @@ services:
                                 # pods at once, so the strategy derives to
                                 # Recreate
 
+        # A file-level copy is the backup method for a directory of files, and
+        # `irreplaceable` derives one -- so the engine is required here
+        # (docs/adr/model/0077-durability-derives-a-backup.md,
+        # docs/adr/model/0078-engine-is-workload-vocabulary.md).
+        engine: files
+
         stateful: true
         volumes:
           - claim: knowledge-vault-clone
             mountAt: /var/lib/knowledge-vault
+            size: 20Gi
             durability: irreplaceable
             # The one fact only the owning Service knows
             # (docs/adr/model/0015-durability-class-per-volume.md); schedule, sweep

@@ -136,7 +136,12 @@ services:
         # names are unique within a Service, and a consumer names the Service,
         # never a Workload.
         provides:
-          http: 8081
+          http: 8080            # not 80: a port below 1024 cannot be bound by a
+                                # non-root process without CAP_NET_BIND_SERVICE,
+                                # which `restricted` drops
+                                # (docs/adr/model/0083-privileged-port-needs-the-capability.md).
+                                # A route names a surface, not a number, so the
+                                # edge is unchanged.81
 
         # Placement is a set of HARD dimensions, every one of which must match
         # (docs/adr/model/0061-placement-is-hard-dimensions.md). A list is a SET of
@@ -189,11 +194,16 @@ services:
 
         # No `hardening` block. The class defaults to `restricted` --
         # runAsNonRoot, readOnlyRootFilesystem, all capabilities dropped,
-        # seccomp RuntimeDefault -- and this image meets it: the JVM writes only
-        # to /tmp, which the render supplies as an emptyDir. An image that
-        # cannot meet the default declares the specific control it relaxes, with
-        # a reason; auth-ui below does, and so does postgres in domains/data.yml
-        # (docs/adr/model/0016-pod-hardening.md).
+        # seccomp RuntimeDefault -- and this image meets it. The JVM writes to
+        # /tmp, which is declared below rather than assumed: a writable path is
+        # mounted as an emptyDir and the read-only root control stays intact, so
+        # it is not an exception and takes no inventory entry
+        # (docs/adr/model/0092-writable-paths-are-declared.md).
+
+        # The paths this process must write. Nothing is implicit: a mount nobody
+        # declared would appear in every image, including those that never
+        # write. sizeLimit is platform-assigned from one Cluster Context default.
+        writablePaths: [/tmp]
 
         dependsOn:
           - {service: platform-postgres, surface: postgres}
@@ -220,21 +230,20 @@ services:
         startupBudget: 600s
         zeroDowntime: true
 
-        # PROPOSED FIELD -- chapter 10, "Still to be graded". Two others were
-        # listed beside it and both are now graded: `size` was replaced by the
-        # `placement` block above
-        # (docs/adr/model/0061-placement-is-hard-dimensions.md), and `sidecars` by
-        # (docs/adr/model/0064-sidecars-are-workload-vocabulary.md). `minAvailable`
-        # is what remains.
-        #
-        # This states the AVAILABILITY requirement, which is 1. The replica
-        # count is not declared here and is not read from the live cluster: it
-        # is assigned in layer 2 from the pinned ClusterState snapshot and its
-        # digest (docs/adr/model/0034-cluster-state-pinned-input.md), so the same
-        # inputs always produce the same number. Live runs two, recorded as a
-        # capacity decision on freed Frankfurt budget rather than an
-        # availability requirement.
-        minAvailable: 1
+        # No `minAvailable`: the field is deleted
+        # (docs/adr/model/0089-replicas-derived-no-minavailable.md). Availability
+        # by replica count does not exist on this substrate -- local-path, RWO,
+        # one node per stateful volume -- so `replicas` derives as 1 and a
+        # second is a capacity decision stated as an override with its reason.
+        # auth-api's live pair was exactly that, on freed Frankfurt budget.
+        overrides:
+          - field: replicas
+            value: 2
+            reason: >-
+              Capacity, not availability: the pair was provisioned on freed
+              Frankfurt budget and both pods land on the one public-ingress
+              node. Retires when that budget is reclaimed or the capability
+              spreads to a second node.
 
         scrape:
           port: 8081            # resolves to port name 'http' via provides
@@ -305,9 +314,9 @@ services:
           # transit key is never materialised into an env var or a file, so
           # there is nothing for a ${secret:...} reference to carry. `keys:`
           # names the mount object.
-          - path: transit/keys/auth-api-jwt
-            keys: [auth-api-jwt]
-            access: self-roll
+          - engine: transit
+            key: auth-api-jwt
+            operations: [sign, rotate]
             delivery: self
             rotation: {tolerates: reload}
 
@@ -337,23 +346,14 @@ services:
                                 # above that, and request == limit
           cpu: 10m
 
-        # The one control this image cannot meet, named specifically and with a
-        # reason, in the shape derived-value overrides already use
-        # (docs/adr/model/0031-derived-overrides-with-reason.md). There is no
-        # `hardening: privileged` shorthand: the exception list is the estate's
-        # inventory of what it cannot harden, and a shorthand would hide its
-        # length (docs/adr/model/0016-pod-hardening.md).
-        hardening:
-          exceptions:
-            - allow: writableRootFilesystem
-              reason: >-
-                nginx writes its temporary bodies and cache under
-                /var/cache/nginx and its pid file under /var/run before it can
-                serve the first request, and upstream publishes no
-                read-only-root variant. The other three restricted controls
-                stand unchanged: the pod runs non-root, drops all capabilities
-                and takes seccomp RuntimeDefault. The exception retires when a
-                rebuilt image relocates both paths onto a mounted emptyDir.
+        # No `hardening` block, and no exception. nginx writes its temporary
+        # bodies and cache under /var/cache/nginx and its pid file under
+        # /var/run; both are declared writable paths, mounted as emptyDirs, and
+        # readOnlyRootFilesystem stays true
+        # (docs/adr/model/0092-writable-paths-are-declared.md). The exception
+        # this Workload used to carry retired with that decision, without the
+        # rebuilt image its own reason was waiting for.
+        writablePaths: [/var/cache/nginx, /var/run]
 
         # No `dependsOn`. The bundle is static and the API call is made by the
         # browser, not by this container, so there is no egress edge to declare
@@ -373,10 +373,10 @@ services:
         probes:
           readiness:
             path: /
-            port: 80
+            port: 8080
           liveness:
             path: /
-            port: 80
+            port: 8080
 
         startupBudget: 30s      # nginx serves within a second of starting; the
                                 # budget is the gate auth-api's 600s dominates
