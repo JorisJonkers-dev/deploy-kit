@@ -13,7 +13,7 @@ in isolation:
 |---|---|---|
 | Service Id uniqueness | every Service in the estate | [0010](../../docs/adr/0010-flat-service-identity.md) |
 | domain uniqueness, and exactly one publisher per domain | every fragment in the estate | [0063](../../docs/adr/0063-intent-authored-per-domain.md) |
-| exposure name and apex uniqueness | every exposure in the estate | [0018](../../docs/adr/0018-exposure-by-audience.md) |
+| hostname uniqueness | every exposure in the estate, plus the register of surfaces the model does not deploy | [0018](../../docs/adr/0018-exposure-by-audience.md) |
 | reachability completeness — derived ∪ registered | every exposure plus the unmanaged register | [0019](../../docs/adr/0019-registered-unmanaged-surfaces.md) |
 | the Reconcile Unit DAG | every required dependency edge | [0032](../../docs/adr/0032-reconcile-unit-derived.md) |
 | inbound derivations — CORS origins, one database per consumer | edges pointing *at* a Service | [0020](../../docs/adr/0020-dependency-edges-carry-surface.md) |
@@ -189,8 +189,10 @@ Normative. Composition fails on any of these, and produces no `ComposedIntent`.
 | Service Ids are unique across the union | `E_DUPLICATE_SERVICE_ID` |
 | a domain name is declared by exactly one fragment, so a domain sits in exactly one repository | `E_DUPLICATE_DOMAIN` |
 | Workload names are unique within their domain | `E_DUPLICATE_WORKLOAD_NAME` |
-| exposure names are unique across the union | `E_DUPLICATE_EXPOSURE_NAME` |
-| at most one Service claims the apex | `E_DUPLICATE_APEX` |
+| a `host` is unique across the composed union | `E_DUPLICATE_HOST` |
+| exposure names are unique within their Service | `E_DUPLICATE_EXPOSURE_NAME` |
+| two routes on one exposure do not share a `path` + `match` pair | `E_DUPLICATE_ROUTE_MATCH` |
+| at most one Service claims the apex host | `E_DUPLICATE_APEX` |
 | Secret Store path prefixes do not overlap between Subtrees | `E_SUBTREE_PREFIX_COLLISION` |
 
 **Service ids stay estate-unique even though they no longer determine the
@@ -212,12 +214,48 @@ while the same name may repeat freely across domains. Since a domain is exactly
 one fragment, the check reads one fragment at a time; it is asserted here because
 composition is the one step every fragment passes through.
 
+**`host` uniqueness is a composition check, not a structural guarantee.**
+Nothing in the model makes a hostname unique by construction: `host` is a full
+FQDN authored on a Service's `exposure` entry
+([0018](../../docs/adr/0018-exposure-by-audience.md)), and two domain files in
+two repositories can write the same string with neither able to read the other.
+`E_DUPLICATE_HOST` over the union is the only place the property holds at all —
+and it is evaluated over **derived hosts and Registered Unmanaged Surfaces
+together** ([Unmanaged surfaces](#unmanaged-surfaces)), because a hostname the
+model does not deploy occupies the name exactly as completely as one it does. An
+exposure claiming `samba.lan.jorisjonkers.dev` collides with the register entry
+that excuses it, which is the collision worth catching.
+
+Because the whole FQDN is authored, the apex is a host value rather than a
+marker. `home-portal` writes `host: jorisjonkers.dev`, and two Services writing
+it are the same collision as any other duplicated host; `E_DUPLICATE_APEX` names
+that pair specifically so the message can say which name was contested.
+
+**`E_DUPLICATE_EXPOSURE_NAME` has a definition at last: unique within the
+Service.** It checked a field nothing defined until `name` became required, and
+it is deliberately not estate-wide. The name is a local handle — the second half
+of `${exposure:<service>.<name>#url}`, already qualified by the Service id — so
+`public` may repeat in every domain in the estate, while a Service fronting
+several hosts, `jellyfin` public and lan, needs exactly this to tell its own
+apart. Being Service-scoped it is computable inside one fragment, and it is
+asserted here for the reason `E_DUPLICATE_WORKLOAD_NAME` is: composition is the
+one step every fragment passes through.
+
+`E_DUPLICATE_ROUTE_MATCH` covers the other half of that pair. Two routes on one
+exposure sharing a `path` and a `match` render two rules with identical
+matchers, and which of them serves a request is the router's tie-break rather
+than anything the author wrote. The live shape is already in the tree: `auth`'s
+two anonymous exposures render two IngressRoutes with an identical `match`,
+because the vocabulary they were written in had no path to declare — the
+`/api`-versus-`/` split that is now two routes was simply unexpressible.
+
 ### References
 
 | invariant | error |
 |---|---|
 | every `dependsOn.service` resolves to a Service in the union | `E_UNRESOLVED_SERVICE` |
 | every `dependsOn.surface` is provided by a Workload of that Service | `E_UNKNOWN_SURFACE` |
+| every route's `surface` is provided by the Workload that route names | `E_UNKNOWN_SURFACE` |
 | the graph of **required** edges is acyclic | `E_DEPENDENCY_CYCLE` |
 | every exposure's audience is carryable by some tier | `E_NO_TIER_FOR_AUDIENCE` |
 
@@ -228,6 +266,18 @@ resolving `E_UNKNOWN_SURFACE` is a lookup for the Service in the union and then
 for the Workload of that Service carrying the name — the edge itself never names
 a Workload, and a surface moving between Workloads of one Service breaks no
 reference.
+
+`E_UNKNOWN_SURFACE` carries two cases, and they resolve differently. A route
+inside an `exposure` names `{path, match, workload, surface}`, so it names the
+Workload outright: the check is that *that* Workload declares *that* surface in
+its own `provides`, with no search across the Service. A route is the one place
+a Workload is named from outside itself, and it is named from inside the same
+Service document — which is why `exposure` sits on the Service while `provides`
+stays on the Workload ([0018](../../docs/adr/0018-exposure-by-audience.md)).
+Moving a surface between two Workloads of one Service therefore breaks no
+`dependsOn` edge and does break a route still naming the old Workload, and that
+asymmetry is correct: the edge asked for a capability, the route asked for a
+process.
 
 Optional edges are excluded from the cycle check deliberately. `required: false`
 means a Workload starts without its peer, so a cycle through optional edges
@@ -579,7 +629,15 @@ plus the registered set, exactly.
 |---|---|
 | a reachable hostname is in neither set | `E_UNREGISTERED_SURFACE` |
 | a registered entry matches no reachable hostname | `E_LEDGER_ENTRY_STALE` |
+| a registered host is also authored as an exposure `host` | `E_DUPLICATE_HOST` |
 | an entry's `reviewBy` is in the past, or `owner`/`reason` is empty | `E_LEDGER_REVIEW_OVERDUE` |
+
+The third row is [Identity](#identity)'s `E_DUPLICATE_HOST` reaching across this
+boundary. The two sets do not merely cover the hostname space between them, they
+**partition** it, so the check is asserted over their union rather than over the
+derived half alone: `wolf.jorisjonkers.dev` is spoken for by a ledger
+entry, and a Service later authoring `host: wolf.jorisjonkers.dev` has to
+collide with it rather than quietly take the name back.
 
 Derived entries come from Audience declarations
 ([0018](../../docs/adr/0018-exposure-by-audience.md)); registered entries come

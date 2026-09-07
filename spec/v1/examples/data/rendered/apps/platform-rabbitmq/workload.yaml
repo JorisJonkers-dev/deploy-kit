@@ -8,7 +8,9 @@
 # label `part-of: data`, and neither is consumed by any controller.
 #
 # THREE surfaces from one Workload -- amqp, management, metrics -- of which one
-# is consumed by dependency edges, one by an exposure, and one by a scrape. Each
+# is consumed by dependency edges, one by a route on the Service's `exposure`,
+# and one by a scrape. Providing a port is not exposing it: the route names one
+# of the three and the other two stay off the edge entirely. Each
 # derives a different thing, and they are declared once, together, on the process
 # that opens them.
 apiVersion: apps/v1

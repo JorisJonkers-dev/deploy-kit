@@ -12,11 +12,14 @@
 # error. README, gap G-27.
 #
 # ONE endpoint, and it is INTERNAL. The health path /api/actuator/health/... is
-# matched by the `/` prefix rule, whose audience is `authenticated`, so an
+# matched by the `/` prefix route, whose audience is `authenticated`, so an
 # external probe of it is answered by forward-auth rather than by the Service.
-# Probing the edge would need an anonymous health path, and the model has no way
-# to declare one -- so nothing checks that kb.jorisjonkers.dev resolves, that
-# its certificate is valid, or that the IngressRoute matches. README, gap G-28.
+# The URL an external check would use is now fully derivable -- the exposure
+# authors the host and each route its path -- and it still cannot be probed:
+# that would need a route whose audience is anonymous over a health path, and
+# no such route is declared. So nothing checks that knowledge.jorisjonkers.dev
+# resolves, that its certificate is valid, or that the IngressRoutes match.
+# README, gap G-28.
 #
 # NO endpoint for knowledge-ingest-worker, correctly: `probes: none` and no
 # `provides` leave nothing to probe from anywhere.

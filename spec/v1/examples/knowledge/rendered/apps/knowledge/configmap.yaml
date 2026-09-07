@@ -46,7 +46,7 @@ data:
   RABBITMQ_PORT: "5672"
 
   # --- injected; a build error if the author had written them
-  SERVER_PORT: "8080"              # from the exposure port
+  SERVER_PORT: "8080"              # from `provides`, on the Workload
   DEPLOYMENT_ENVIRONMENT: production   # from the Cluster Target
   OTEL_SERVICE_NAME: knowledge-api     # from the Workload name
 
@@ -79,7 +79,8 @@ data:
   DB_PORT: "5432"
   DB_NAME: knowledge_db
 
-  # --- injected. No SERVER_PORT: this Workload has no exposure and no port.
+  # --- injected. No SERVER_PORT: this Workload declares no `provides`, so it
+  #     has no port, and no route can name it.
   DEPLOYMENT_ENVIRONMENT: production
   OTEL_SERVICE_NAME: knowledge-ingest-worker
 

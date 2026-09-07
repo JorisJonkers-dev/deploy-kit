@@ -5,7 +5,8 @@ What a renderer must produce from
 [`../env/auth-api.base.env`](../env/auth-api.base.env), rendered by hand against
 the model as decided: chapter 10 (intent), chapter 16 (identity, edges, policy),
 chapter 20 (the derivations), chapter 30 (adapters and attribution), and the
-placement amendment in `review/PLACEMENT-DOMAIN-MANIFEST.md`.
+two amendments in `review/PLACEMENT-DOMAIN-MANIFEST.md` and
+`review/EXPOSURE-MANIFEST.md`.
 
 It is the GOAL STATE, not today's output. Today's renderer emits no
 `securityContext`, no `resources` and pins nothing; everything below is what the
@@ -30,15 +31,15 @@ aid; the table below is the attribution.
 |---|---|---|---|
 | `namespace.yaml` | `kubernetes` | `domain: auth` → `auth-system` | Nothing. It is the one derivation with a single input. The adapter emits namespace.yaml *per Service directory*, so a second Service in this domain would emit a second identical object — [G-14](#g-14) |
 | `kustomization.yaml` | `kubernetes` | the Service list | Nothing it needs. It groups; it does not gate — [G-01](#g-01) |
-| `apps/auth/workload.yaml` | `kubernetes` | `lifecycle`, `image`, `provides`, `placement`, `hardening`, `probes`, `startupBudget`, `zeroDowntime`, `minAvailable`, env files, `runtime`, `dependsOn`, `exposure` | the hostname the AUTH_* URLs need ([G-03](#g-03)); the smtp coordinate ([G-04](#g-04)); `AUTH_CORS_ALLOWED_ORIGINS` ([G-05](#g-05)); the replica count ([G-06](#g-06)); the startup probe's endpoint and the unstated probe timings ([G-08](#g-08)); which paths need to be writable ([G-09](#g-09)); that this JVM is Spring ([G-10](#g-10)); 9 `OTEL_*`, 6 `PYROSCOPE_*`, `DEPLOYMENT_ENVIRONMENT`, `VAULT_ADDR` ([G-11](#g-11)); auth-ui's env entirely ([G-12](#g-12)); the label set ([G-13](#g-13)); a UID for `runAsNonRoot` ([G-26](#g-26)); the pod/container split of the hardening class ([G-28](#g-28)); which label carries `arch` ([G-29](#g-29)); the image digests ([G-32](#g-32)) |
+| `apps/auth/workload.yaml` | `kubernetes` | `lifecycle`, `image`, `provides`, `placement`, `hardening`, `probes`, `startupBudget`, `zeroDowntime`, `minAvailable`, env files, `runtime`, `dependsOn`, and the Service's `exposure` — the three `AUTH_*` URLs resolve from `${exposure:auth.public#url}`, whose host is authored on that block | the smtp coordinate ([G-04](#g-04)); `AUTH_CORS_ALLOWED_ORIGINS` ([G-05](#g-05)); the replica count ([G-06](#g-06)); the startup probe's endpoint and the unstated probe timings ([G-08](#g-08)); which paths need to be writable ([G-09](#g-09)); that this JVM is Spring ([G-10](#g-10)); 9 `OTEL_*`, 6 `PYROSCOPE_*`, `DEPLOYMENT_ENVIRONMENT`, `VAULT_ADDR` ([G-11](#g-11)); auth-ui's env entirely ([G-12](#g-12)); the label set ([G-13](#g-13)); a UID for `runAsNonRoot` ([G-26](#g-26)); the pod/container split of the hardening class ([G-28](#g-28)); which label carries `arch` ([G-29](#g-29)); the image digests ([G-32](#g-32)) |
 | `apps/auth/serviceaccount.yaml` | `kubernetes` | workload `name` (the identity is the Workload name alone), `domain` | `automountServiceAccountToken` ([G-15](#g-15)); any Role/RoleBinding the identity model implies ([G-31](#g-31)) |
 | `apps/auth/pdb.yaml` | `kubernetes` | `minAvailable: 1` on auth-api | auth-ui's default, which is ungraded; and nothing compares the budget against the derived replica count ([G-07](#g-07)) |
 | `apps/auth/servicemonitor.yaml` | `kubernetes` | `scrape {port, path}`, `provides` (8081 → port name `http`) | `interval` / `scrapeTimeout` ([G-17](#g-17)); the operator's `release` selector label ([G-11](#g-11)) |
-| `apps/auth/networkpolicy.yaml` | **none** — `networkpolicy` is not a registered adapter ([G-30](#g-30)) | `dependsOn` (egress), `exposure` (ingress), `scrape` (ingress), the effective grant set (egress to the Secret Store), plus the non-authorable baseline | the four platform-component selectors ([G-11](#g-11)); the stalwart rule ([G-04](#g-04)); an ingress rule for the forward-auth caller ([G-18](#g-18)) |
+| `apps/auth/networkpolicy.yaml` | **none** — `networkpolicy` is not a registered adapter ([G-30](#g-30)) | `dependsOn` (egress), the Service's `exposure` routes (ingress, per routed Workload), `scrape` (ingress), the effective grant set (egress to the Secret Store), plus the non-authorable baseline | the four platform-component selectors ([G-11](#g-11)); the stalwart rule ([G-04](#g-04)); an ingress rule for the forward-auth caller ([G-18](#g-18)) |
 | `apps/auth/vault.yaml` | **none** — no adapter writes Vault policies or auth roles ([G-02](#g-02)) | metadata paths ([G-19](#g-19)); the database engine path the wiring actually reads ([G-20](#g-20)); a capability that can roll or sign the transit key ([G-21](#g-21)); token TTLs ([G-22](#g-22)) |
 | `apps/auth/kustomization.yaml` | `kubernetes` | the file set of the Service | — |
-| `edge/ingressroutes.yaml` | `traefik-public` | `exposure {port, audience}` → no middleware for `anonymous` | the hostname, and the split between two identically-matching routes ([G-03](#g-03)); entryPoint and TLS policy ([G-11](#g-11)); the forward-auth `Middleware` object every other domain references ([G-23](#g-23)) |
-| `observability/gatus-endpoints.yaml` | `gatus` | `exposure` + `probes.readiness` per Workload | the hostname ([G-03](#g-03)); `interval`; the whole `alerts` block that `alertClass: page` demands ([G-16](#g-16)); it also lands in another domain's namespace ([G-24](#g-24)) |
+| `edge/ingressroutes.yaml` | `traefik-public` | the Service's `exposure`: `host` (authored, copied verbatim), each route's `path` + `match` → the rule, `workload` + `surface` → the backend, `audience: anonymous` → no forward-auth, `contentPolicy: strict` → the security-headers middleware reference | entryPoint and TLS policy ([G-11](#g-11)); the `Middleware` objects both references resolve to — forward-auth elsewhere and security-headers here ([G-23](#g-23)) |
+| `observability/gatus-endpoints.yaml` | `gatus` | one entry per route on the `public` exposure — authored `host` + the route's `path` + the named Workload's `probes.readiness` | `interval`; the whole `alerts` block that `alertClass: page` demands ([G-16](#g-16)); it also lands in another domain's namespace ([G-24](#g-24)) |
 
 ### Not emitted, with the reason
 
@@ -120,11 +121,17 @@ land apart and must still switch together.
 Every row is a thing the renderer work must decide or a field the model must
 grow. Ordered by how much they cost.
 
+**G-03 is retired.** The hostname is authored: `host: auth.jorisjonkers.dev` on
+Service `auth`'s `public` exposure, with two named routes under it. The
+IngressRoute host, the Gatus URLs and `AUTH_ISSUER` / `AUTH_LOGIN_URL` /
+`CONFIRMATION_URL` all trace to that one declaration, and the two identically
+matching routes are gone with it. The id is not reused and nothing is
+renumbered — every other reference in this file keeps pointing where it did.
+
 | id | gap |
 |---|---|
 | [G-01](#g-01) | **The atomic switch is not expressible in plain Kubernetes objects.** Two Deployments roll independently; nothing in the tree gates one on the other. Detailed above. The delivery definition must close it, and the model must derive a Service-scoped health-gate deadline it does not currently define |
 | <a id="g-02"></a>G-02 | **`delivery: self` renders zero objects, and its policy and role have no producer.** Chapter 10 says `self` renders "a Vault policy, a Kubernetes auth role, and the application's own client wiring". The wiring is rendered (the `VAULT_*` env block); the policy and the role are in `apps/auth/vault.yaml`, which is not a Kubernetes object and which no registered adapter emits — `vso` emits `VaultConnection`, `VaultAuth`, `VaultStaticSecret`, `VaultDynamicSecret` and an operator ServiceAccount, none of which is a policy or a role. Every one of auth's three grants is `delivery: self`, so the entire secret surface of this domain has no producer |
-| <a id="g-03"></a>G-03 | **No hostname label, and no name on an exposure entry.** `exposure` carries a port and an audience. Chapter 10 has no hostname field (its open item 3), chapter 20 places the label as Service-declared, chapter 40 checks `E_DUPLICATE_EXPOSURE_NAME` against a name none of them defines. Consequences here: the IngressRoute host, the Gatus URLs, and `AUTH_ISSUER` / `AUTH_LOGIN_URL` / `CONFIRMATION_URL` are all the live value rather than a derived one; and the Service's two anonymous exposures produce two IngressRoutes with an identical `match`, because neither declares `paths`. The live /api-vs-/ split is expressible and is not declared |
 | <a id="g-04"></a>G-04 | **An edge into a domain outside the fragment set silently narrows the allow set.** `{service: stalwart, surface: smtp}` does not resolve here — the mail domain publishes no fragment in this example set — so `MAIL_HOST` / `MAIL_PORT` and the corresponding egress rule are absent rather than wrong. Over the composed union it resolves; the failure mode to design against is chapter 16's: a typo'd surface renders a valid policy with a missing rule, and the on-call sees a timeout, not an error code |
 | <a id="g-05"></a>G-05 | **`AUTH_CORS_ALLOWED_ORIGINS` has no predicate.** Nine hostnames by hand today; chapter 16's open item 1 says the derivation is probably "inbound edges declaring a browser surface", which no field declares. Not rendered |
 | <a id="g-06"></a>G-06 | **`replicas` is bounded by the eligible node set, and that bound is 1 here.** auth-api's eligible set is `[frankfurt-contabo-1]` — the only `public-ingress` node. Live runs two replicas on that node as a capacity decision; the rule as written cannot reproduce it, and there is no anti-affinity vocabulary that would make a second replica mean anything. `minAvailable` is also still ungraded, and auth-ui declares none at all |
@@ -164,6 +171,11 @@ grow. Ordered by how much they cost.
   two shape rules (memory request == limit, cpu request with no limit) and
   produce no selector at all, because eligibility was checked at build time
   against node allocatable.
+- **One hostname fronting two Workloads** — the case that forced `exposure` up
+  to the Service. `/api` routes to auth-api and `/` to auth-ui from a single
+  authored `host`, which is unsayable while `exposure` sits on the Workload, and
+  three env values resolve from it through `${exposure:auth.public#url}` rather
+  than repeating the literal.
 - A hardening exception relaxing exactly one control: auth-ui's
   `readOnlyRootFilesystem: false` against auth-api's `true`, with the other
   three controls byte-identical.

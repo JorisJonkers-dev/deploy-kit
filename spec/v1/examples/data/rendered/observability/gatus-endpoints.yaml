@@ -23,10 +23,11 @@
 # 2. THE ONE ENTRY THAT EXISTS CANNOT BE COMPLETED. platform-rabbitmq exposes
 #    15672 and declares `probes.readiness: {tcp: 5672}`. The two halves of the
 #    derivation name different ports and different protocols: the readiness probe
-#    is a TCP accept on the AMQP listener, and the exposed surface is an HTTP
-#    management UI. There is no declared path, no declared HTTP status, and
-#    nothing that says what "healthy" means to a caller arriving through the
-#    edge. On top of that the exposure is `audience: authenticated`, so an
+#    is a TCP accept on the AMQP listener, and the routed surface is the HTTP
+#    management UI. The route now supplies the path -- `/` -- so the URL is
+#    complete; what is still undeclared is the HTTP status, and anything at all
+#    that says what "healthy" means to a caller arriving through the edge. On
+#    top of that the exposure is `audience: authenticated`, so an
 #    unauthenticated prober is answered by forward-auth with a redirect, never a
 #    200 -- so even a guessed `[STATUS] == 200` would be wrong by construction.
 #    README, gap G-34.
@@ -40,14 +41,17 @@ metadata:
 data:
   config.yaml: |
     endpoints:
-      # from exposure {port: 15672, audience: authenticated}
+      # from the `management` exposure -- authored host, plus its one route
+      #    {path: /, match: prefix, workload: rabbitmq, surface: management}
       #    + probes.readiness {tcp: 5672}   <- different port, different protocol
       - name: rabbitmq
         group: data                     # the domain
-        url: https://rabbitmq.jorisjonkers.dev/    # NOT DERIVABLE (G-30): no
-                                                   # hostname field, and no path
-                                                   # is declared for the exposed
-                                                   # surface
+        url: https://rabbitmq.jorisjonkers.dev/    # host + route path, both
+                                                   # authored on the exposure.
+                                                   # What is still missing is
+                                                   # not the URL but what a
+                                                   # healthy answer to it looks
+                                                   # like -- see below
         # NO `conditions:`. The readiness declaration this entry is supposed to
         # derive from is a TCP probe on a port the edge does not serve, and the
         # audience guarantees a non-200 for any prober without a session. A Gatus

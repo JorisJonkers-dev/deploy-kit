@@ -58,7 +58,9 @@ spec:
       app.kubernetes.io/name: knowledge-api
   policyTypes: [Ingress, Egress]
   ingress:
-    # from the route tier carrying the audience -- derived from `exposure`
+    # from the route tier carrying the audience -- derived from the routes on
+    # the Service's `public` exposure, all five of which name this Workload's
+    # `http` surface
     - from:
         - namespaceSelector:
             matchLabels:
@@ -139,8 +141,8 @@ spec:
       app.kubernetes.io/name: knowledge-ingest-worker
   # Ingress is in policyTypes with NO ingress rules: deny all inbound,
   # explicitly. That is the whole derivation for a Workload with no `provides`,
-  # no `exposure` and no `scrape` -- there is nothing to admit, and the absence
-  # is stated rather than left to a missing key.
+  # named by no route and carrying no `scrape` -- there is nothing to admit, and
+  # the absence is stated rather than left to a missing key.
   policyTypes: [Ingress, Egress]
   egress:
     - to:

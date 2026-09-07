@@ -7,10 +7,11 @@
 # Service today; the namespace derives from the header as knowledge-system,
 # which is the namespace it already runs in.
 #
-# Exercises: two Workloads on two runtimes and therefore two identities, five
-# path rules with mixed audiences, `probes: none` for a Workload with no
-# listener, grants at BOTH levels, a split Subtree path beside an unsplit one,
-# and an irreplaceable volume.
+# Exercises: two Workloads on two runtimes and therefore two identities, one
+# authored hostname whose five routes carry mixed audiences -- four anonymous
+# overrides inside an authenticated host -- `probes: none` for a Workload with
+# no listener, grants at BOTH levels, a split Subtree path beside an unsplit
+# one, and an irreplaceable volume.
 #
 # Companion env files, one per WORKLOAD
 # (docs/adr/0011-configuration-env-files-per-workload.md):
@@ -80,6 +81,66 @@ services:
         delivery: env
         rotation: {tolerates: restart}
 
+    # ONE hostname, ONE Workload behind it -- and it still belongs to the
+    # Service, because `exposure` says *this hostname routes here* while
+    # `provides` says *this process listens on this port*
+    # (review/EXPOSURE-MANIFEST.md). knowledge-ingest-worker declares no
+    # `provides`, so no route can name it and it appears in none below.
+    #
+    # `host` is the full FQDN, authored. Nothing derives it: the estate also
+    # answers on kb.jorisjonkers.dev, `platform-rabbitmq` serves rabbitmq, and
+    # `status` belongs to no Service -- a `<service>.<zone>` rule would be right
+    # here and silently wrong there, and the wrong ones are the ones nobody
+    # checks. This block replaces the six places the hostname used to be
+    # declared independently: both catalogs, both IngressRoutes, the
+    # reachability channel and the Gatus endpoint.
+    exposure:
+      - name: public              # unique within the Service, and what
+                                  # ${exposure:knowledge.public#url} addresses
+        host: knowledge.jorisjonkers.dev
+        audience: authenticated   # the exposure's audience is the default for
+                                  # every route under it
+        routes:
+          # PER-ROUTE `audience` IS AN OVERRIDE, and this is the case it exists
+          # for: anonymous paths inside an authenticated host. /mcp answers a
+          # workstation holding only a bearer token, and the two install
+          # scripts are fetched by curl before any session exists. The `/`
+          # catch-all keeps the Service's audience, so everything else is
+          # behind forward-auth -- derived from the audience, never named here
+          # (docs/adr/0018-exposure-by-audience.md).
+          #
+          # Written as block mappings rather than one-liners only because five
+          # fields do not fit a line; the shape is the same one auth's two
+          # routes use.
+          - path: /mcp
+            match: exact
+            workload: knowledge-api
+            surface: http
+            audience: anonymous     # override
+          - path: /mcp/
+            match: prefix
+            workload: knowledge-api
+            surface: http
+            audience: anonymous     # override
+          - path: /install.sh
+            match: exact
+            workload: knowledge-api
+            surface: http
+            audience: anonymous     # override
+          - path: /install-agents.sh
+            match: exact
+            workload: knowledge-api
+            surface: http
+            audience: anonymous     # override
+          - path: /
+            match: prefix
+            workload: knowledge-api
+            surface: http           # no `audience`: the Service's stands
+        # No `contentPolicy`: this Service picks no CSP profile, so it takes the
+        # baseline the tier derives. The field is optional and the vocabulary
+        # stops there -- `contentPolicy` and `redirectTo` are the whole of what
+        # an author may say about the proxy.
+
     workloads:
       # ------------------------------------------------------ knowledge-api
       - name: knowledge-api
@@ -122,17 +183,9 @@ services:
           - {service: platform-postgres, surface: postgres}
           - {service: platform-rabbitmq, surface: amqp}
 
-        exposure:
-          - port: 8080          # integer, at its point of use
-            audience: authenticated
-            paths:
-              - {path: /mcp,               match: exact,  audience: anonymous}
-              - {path: /mcp/,              match: prefix, audience: anonymous}
-              - {path: /install.sh,        match: exact,  audience: anonymous}
-              - {path: /install-agents.sh, match: exact,  audience: anonymous}
-              - {path: /, match: prefix, audience: authenticated}
-            # No hostname. kb.jorisjonkers.dev is assigned, and this block
-            # replaces the six places it used to be declared independently.
+        # No `exposure` here: the five routes and the hostname they hang off
+        # sit on the Service above, and each route names this Workload and its
+        # `http` surface. `provides` is what stays.
 
         probes:
           readiness:

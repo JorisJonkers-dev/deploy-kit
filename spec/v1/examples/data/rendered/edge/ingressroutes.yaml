@@ -12,17 +12,18 @@
 #
 # What IS derived, and it is the one thing this file adds to the example set that
 # auth's does not: `audience: authenticated` on a public tier derives a
-# forward-auth middleware REFERENCE. auth's two routes are `anonymous` and carry
-# no chain, so this is the first rendered route in the set that needs the
-# middleware to exist.
+# forward-auth middleware REFERENCE. auth's two routes are `anonymous`, so they
+# derive none -- their only chain member is the security-headers reference their
+# `contentPolicy` picked -- and this is the first rendered route in the set that
+# needs the forward-auth middleware to exist.
 #
-# What is NOT derived: the hostname. `exposure` carries a port and an audience
-# and no hostname label; chapter 10 defines no field (its open item 3), chapter
-# 20 places the label as Service-declared, and chapter 40 checks
-# E_DUPLICATE_EXPOSURE_NAME against a name none of them defines. The value below
-# is the LIVE one, read off the estate -- and note it is not derivable from the
-# Service id even naively: the Service is `platform-rabbitmq` and the host is
-# `rabbitmq`. README, gap G-30.
+# THE HOSTNAME IS AUTHORED, and this Service is why. `host:
+# rabbitmq.jorisjonkers.dev` is written on the `management` exposure of Service
+# `platform-rabbitmq` -- and the two do not match. Any `<service>.<zone>`
+# derivation would emit `platform-rabbitmq.jorisjonkers.dev`, which resolves to
+# nothing, while producing the right answer for auth: right for most, silently
+# wrong for the rest, and the wrong ones are the ones nobody would check. The
+# host below is copied from a declaration, not read off the estate.
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -38,7 +39,8 @@ spec:
     - websecure                        # CONTEXT: the tier's entryPoint
   routes:
     - kind: Rule
-      match: Host(`rabbitmq.jorisjonkers.dev`)   # NOT DERIVABLE (G-30)
+      # route {path: /, match: prefix, workload: rabbitmq, surface: management}
+      match: Host(`rabbitmq.jorisjonkers.dev`) && PathPrefix(`/`)
       middlewares:
         # derived: audience `authenticated` on a public tier -> forward-auth.
         # The author wrote one word; the chain, the tier and the middleware name
@@ -54,16 +56,25 @@ spec:
       services:
         - name: rabbitmq
           namespace: data-system
-          port: 15672                  # the exposed `provides` port
+          port: 15672                  # the `management` surface the route
+                                       # names, resolved through `provides`.
+                                       # `amqp` and `metrics` are provided and
+                                       # not routed: providing a port is not
+                                       # exposing it
   tls:
     # CONTEXT: the tier's certificate policy. Nothing in Service Intent names a
     # certificate, an issuer or a resolver.
     certResolver: letsencrypt
-# NO `paths` on the exposure entry, so this route claims the whole host. That is
-# correct here -- the management UI is the only thing behind this hostname -- and
-# it is the same shape that made auth's two routes collide. Nothing distinguishes
-# "one exposure, whole host, deliberate" from "two exposures, whole host,
-# forgot to split".
+# ONE route, `/` prefix, so this exposure claims the whole host -- and says so
+# rather than defaulting into it. That is the difference from the shape that
+# made auth's two routes collide: a whole-host claim is now a declared route,
+# and two routes claiming the same path + match pair are
+# E_DUPLICATE_ROUTE_MATCH instead of a tie Traefik resolves by name.
+#
+# NO `contentPolicy` on the exposure and no `redirectTo` on the route: the two
+# authored proxy fields are both absent, so this route takes the derived header
+# baseline and redirects nowhere. Everything else at this edge -- the chain, the
+# entryPoint, TLS, forward-auth -- was never authorable.
 #
 # THIS ROUTE IS ALSO AN INBOUND EDGE THE PROVIDER CANNOT SEE. It is what puts
 # `rabbitmq` among the nine hostnames auth-api's CORS list maintains by hand

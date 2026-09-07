@@ -69,8 +69,9 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # from the route tier carrying the audience -- derived from
-    # `exposure: [{port: 8081, audience: anonymous}]`
+    # from the route tier carrying the audience -- derived from the route
+    # {path: /api, workload: auth-api, surface: http} on Service auth's `public`
+    # exposure, whose audience is anonymous
     - from:
         - namespaceSelector:
             matchLabels:
@@ -188,7 +189,8 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # exposure: [{port: 80, audience: anonymous}]
+    # from the route {path: /, workload: auth-ui, surface: http} on the same
+    # exposure: the surface a route names is what the tier is admitted to
     - from:
         - namespaceSelector:
             matchLabels:

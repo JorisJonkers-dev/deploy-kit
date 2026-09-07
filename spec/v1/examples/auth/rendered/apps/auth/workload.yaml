@@ -132,20 +132,22 @@ spec:
             # so the port and the Workload name behind that surface are both
             # unknown. Over the composed union it resolves; inventing 25 would
             # be inventing the provider's declaration. README, gap G-04.
-            # --- derived from this Workload's own exposure --------------------
+            # --- derived from this Workload's own `provides` ------------------
             - name: SERVER_PORT
               value: "8081"
-            # AUTH_ISSUER / AUTH_LOGIN_URL / CONFIRMATION_URL derive from the
-            # ASSIGNED hostname. The hostname label has no field in layer 1 --
-            # chapter 10 open item 3 -- so the value below is the live one,
-            # taken from the estate and NOT derived from the intent. Every
-            # occurrence of it in this tree carries the same warning.
+            # --- resolved from ${exposure:auth.public#url} --------------------
+            # SOURCE: `host: auth.jorisjonkers.dev` on the `public` exposure of
+            # Service auth, plus the scheme the tier terminates. The env file
+            # writes the placeholder and never the literal; the substitution is
+            # a named source resolving to one value, and the two paths below are
+            # written OUTSIDE it, so nothing here is a template with arguments.
+            # The host moves in one line of intent and all three follow.
             - name: AUTH_ISSUER
-              value: https://auth.jorisjonkers.dev          # NOT DERIVABLE (G-03)
+              value: https://auth.jorisjonkers.dev
             - name: AUTH_LOGIN_URL
-              value: https://auth.jorisjonkers.dev/login    # NOT DERIVABLE (G-03)
+              value: https://auth.jorisjonkers.dev/login
             - name: CONFIRMATION_URL
-              value: https://auth.jorisjonkers.dev/confirm  # NOT DERIVABLE (G-03)
+              value: https://auth.jorisjonkers.dev/confirm
             # AUTH_CORS_ALLOWED_ORIGINS is NOT RENDERED. Its predicate over the
             # inbound edge set is open (chapter 16 open item 1): nine hostnames
             # are maintained by hand today and the derivation is probably

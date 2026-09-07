@@ -6,31 +6,35 @@
 # place. The objects themselves live in auth-system, beside the Services they
 # route to.
 #
-# Two things below are not derived, and both are the same missing field.
+# Everything below is traceable to one block of intent -- Service `auth`'s
+# `public` exposure -- and nothing in this file is a live value read off the
+# estate any more.
 #
-# 1. THE HOSTNAME. `exposure` declares a port and an audience and no hostname
-#    label; chapter 10 has no field for one (open item 3), while chapter 20
-#    places the label as Service-declared and chapter 40 checks
-#    E_DUPLICATE_EXPOSURE_NAME against a name none of the three agrees on.
-#    `auth.jorisjonkers.dev` below is the LIVE value, read off the estate. The
-#    Service id is `auth` and the cluster public domain is jorisjonkers.dev, so
-#    a naive derivation happens to produce it -- and does not generalise:
-#    `knowledge` serves kb, `home-portal` the apex, `headlamp` dashboard,
-#    `gatus` status. Not one live hostname is derivable from a Service id.
-#    README, gap G-03.
+# 1. THE HOSTNAME IS AUTHORED. `host: auth.jorisjonkers.dev` is written on the
+#    exposure as a full FQDN. No zone table, no `<service>.<zone>` rule and no
+#    apex flag stands behind it, so the renderer copies a declaration instead of
+#    guessing one -- which is what a hostname like `rabbitmq` on Service
+#    `platform-rabbitmq`, or `status` on no Service at all, makes necessary.
 #
-# 2. THE SPLIT BETWEEN THE TWO ROUTES. Service `auth` declares two exposure
-#    entries -- auth-api on 8081 and auth-ui on 80, both `audience: anonymous`
-#    -- and neither carries `paths`. So both claim the whole host, and the two
-#    routes below are IDENTICAL in their match. Live splits /api to the API and
-#    / to the UI; that split is expressible (`paths: [{path: /api, match:
-#    prefix, ...}]`) and is not declared, so the renderer may not invent it.
-#    As rendered, Traefik resolves the tie by rule length and then by name --
-#    an ordering nobody declared. README, gap G-03.
+# 2. THE TWO ROUTES HAVE DISTINCT MATCHES. The exposure declares two: `/api`
+#    prefix to auth-api's `http` surface, `/` prefix to auth-ui's. The
+#    identical-match defect this file used to record is gone -- the split is
+#    declared rather than resolved by Traefik ordering. The two prefixes still
+#    nest, and Traefik ranks the longer rule first, which is exactly the
+#    declared intent rather than a tie-break over two rules nobody could tell
+#    apart.
 #
-# What IS derived: the absence of a middleware chain. `audience: anonymous` on a
-# public tier derives no forward-auth. Both surfaces must be reachable
-# unauthenticated, because this Service is what performs authentication.
+# What is DERIVED, which is everything else at this edge:
+#
+#   - No forward-auth. `audience: anonymous` on a public tier derives no chain
+#     member; both surfaces must be reachable unauthenticated, because this
+#     Service is what performs authentication.
+#   - The security-headers middleware reference, from `contentPolicy: strict`.
+#     The author picked a profile; the baseline headers, the middleware's name
+#     and the namespace it lives in are the tier's. THE OBJECT IT NAMES HAS NO
+#     PRODUCER, exactly as the forward-auth Middleware has none. README, gap
+#     G-23.
+#   - entryPoint and TLS, from the tier. CONTEXT.
 ---
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
@@ -47,12 +51,18 @@ spec:
     - websecure                        # CONTEXT: the tier's entryPoint
   routes:
     - kind: Rule
-      match: Host(`auth.jorisjonkers.dev`)   # NOT DERIVABLE (G-03)
-      # no middlewares: audience anonymous
+      # route {path: /, match: prefix, workload: auth-ui, surface: http}
+      match: Host(`auth.jorisjonkers.dev`) && PathPrefix(`/`)
+      middlewares:
+        # derived from `contentPolicy: strict`. No forward-auth: the audience is
+        # anonymous. The chain is the tier's, and the profile name is the only
+        # half the author wrote.
+        - name: security-headers-strict
+          namespace: kube-system       # CONTEXT
       services:
         - name: auth-ui
           namespace: auth-system
-          port: 80                     # the exposed `provides` port
+          port: 80                     # the routed `provides` port
   tls:
     # CONTEXT: the tier's certificate policy. Nothing in Service Intent names a
     # certificate, an issuer or a resolver, and nothing in this tree derives
@@ -74,9 +84,15 @@ spec:
     - websecure                        # CONTEXT
   routes:
     - kind: Rule
-      # Identical to the route above, on purpose: this is what the intent as
-      # declared produces. See note 2 in the header.
-      match: Host(`auth.jorisjonkers.dev`)   # NOT DERIVABLE (G-03)
+      # route {path: /api, match: prefix, workload: auth-api, surface: http}.
+      # `match: prefix` renders PathPrefix and `match: exact` renders Path;
+      # those two are the whole vocabulary.
+      match: Host(`auth.jorisjonkers.dev`) && PathPrefix(`/api`)
+      middlewares:
+        # the same profile: `contentPolicy` sits on the exposure, so it applies
+        # to every route under that host.
+        - name: security-headers-strict
+          namespace: kube-system       # CONTEXT
       services:
         - name: auth-api
           namespace: auth-system
@@ -89,5 +105,7 @@ spec:
 # registry says traefik-public emits "IngressRoute per public route, WITH
 # MIDDLEWARE REFERENCES" -- references only. No registered adapter emits the
 # Middleware object those references resolve to, and it is the one object in
-# the estate that names auth-api without a dependsOn edge.
+# the estate that names auth-api without a dependsOn edge. The same hole
+# swallows the security-headers Middleware referenced above, which is now a
+# second object with a reference and no producer.
 # README, gap G-23.

@@ -4,8 +4,8 @@ What a renderer must produce from [`../data.domain.yml`](../data.domain.yml) and
 [`../env/platform-postgres.base.env`](../env/platform-postgres.base.env),
 rendered by hand against the model as decided: chapter 10 (intent), chapter 16
 (identity, edges, policy), chapter 20 (the derivations), chapter 30 (adapters and
-attribution), and the placement amendment in
-`review/PLACEMENT-DOMAIN-MANIFEST.md`.
+attribution), and the two amendments in `review/PLACEMENT-DOMAIN-MANIFEST.md`
+and `review/EXPOSURE-MANIFEST.md`.
 
 It is the **goal state**, not today's output. Today's renderer emits no
 `securityContext`, no `resources` and pins nothing. Every object below carries
@@ -63,8 +63,8 @@ aid; the table below is the attribution.
 | `apps/platform-valkey/pvc.yaml` | `kubernetes` | `volumes[].claim`, `.durability: reconstructible` | `storage` ([G-17](#g-17)); the annotation key ([G-18](#g-18)). **No backup job, and that is correct** |
 | `apps/platform-valkey/networkpolicy.yaml` | **none** ([G-35](#g-35)) | one inbound edge, the baseline | the same union problem, at its sharpest ([G-22](#g-22)) |
 | `apps/platform-valkey/kustomization.yaml` | `kubernetes` | the emitted file set | — |
-| `edge/ingressroutes.yaml` | `traefik-public` | `exposure {port: 15672, audience: authenticated}` → tier + forward-auth chain | the hostname ([G-30](#g-30)); the `Middleware` object the chain references ([G-31](#g-31)); entryPoint and TLS policy ([G-21](#g-21)); the CORS contribution this route makes to another domain ([G-32](#g-32)) |
-| `observability/gatus-endpoints.yaml` | `gatus` | `exposure` + `probes.readiness` on the one exposed Workload | the hostname ([G-30](#g-30)); **the conditions — the derivation does not compose here** ([G-34](#g-34)); `interval`; the `alerts` block three Alert Classes demand ([G-33](#g-33)); that it lands in another domain's namespace |
+| `edge/ingressroutes.yaml` | `traefik-public` | the `management` exposure: `host` (authored, and it does **not** follow the Service id), its one route → the rule and the backend surface, `audience: authenticated` → the forward-auth chain | the `Middleware` object the chain references ([G-31](#g-31)); entryPoint and TLS policy ([G-21](#g-21)); the CORS contribution this route makes to another domain ([G-32](#g-32)) |
+| `observability/gatus-endpoints.yaml` | `gatus` | the exposure's authored `host` + its route path, joined to `probes.readiness` on the Workload the route names | **the conditions — the derivation does not compose here** ([G-34](#g-34)); `interval`; the `alerts` block three Alert Classes demand ([G-33](#g-33)); that it lands in another domain's namespace |
 
 ### Not emitted, with the reason
 
@@ -243,6 +243,12 @@ timeout, not an error code.
 Every row is a thing the renderer work must decide or a field the model must
 grow. Ordered by how much they cost.
 
+**G-30 is retired.** The hostname is authored: `host: rabbitmq.jorisjonkers.dev`
+on `platform-rabbitmq`'s `management` exposure, with one named route under it.
+This domain is the estate's evidence for authoring rather than deriving — the
+host does not follow the Service id — and the IngressRoute and the Gatus URL now
+both trace to that declaration. The id is not reused and nothing is renumbered.
+
 | id | gap |
 |---|---|
 | [G-01](#g-01) | **Three Services release independently and reconcile as one unit.** Detailed above. Two derivations over one domain file disagree about what a unit is |
@@ -274,11 +280,10 @@ grow. Ordered by how much they cost.
 | <a id="g-27"></a>G-27 | **Architecture is never checked against the locked digest.** `platform-rabbitmq` and `platform-valkey` declare no `arch`, so all seven nodes are eligible — four amd64 and three arm64. The images lock resolves an alias to **one** digest, and a single-architecture digest scheduled onto a Pi is an `exec format error` at runtime. The model holds both facts and compares them nowhere. `platform-postgres` writes `arch: [amd64]` because pgvector publishes no arm64 pg17 build, and that too is an unverified assertion by the author rather than a fact read from the lock |
 | <a id="g-28"></a>G-28 | **Two of three Workloads have no env file in the example set.** The model requires one per Workload; only `platform-postgres.base.env` is reproduced, so `rabbitmq` and `valkey` render with no `env` at all. Inventing entries for files that exist would be worse than rendering none |
 | <a id="g-29"></a>G-29 | **Default-deny cannot ship non-enforcing, and this is the namespace to prove it on.** `networking.k8s.io/v1` has no audit, dry-run or log-only mode, and k3s's embedded kube-router has none either — a policy is enforced the moment it selects a pod. Chapter 16 sequences render-only → audit (zero undeclared flows over 14 days) → enforce, and the audit stage needs a CNI carrying a non-enforcing policy stage that no decision has picked. Enforcing the four policies in this domain on day one cuts five live consumers off the datastore ([G-22](#g-22)) |
-| <a id="g-30"></a>G-30 | **No hostname label, and no name on an exposure entry.** `exposure` carries a port and an audience. Chapter 10 defines no field (its open item 3), chapter 20 places the label as Service-declared, chapter 40 checks `E_DUPLICATE_EXPOSURE_NAME` against a name none of them defines. `rabbitmq.jorisjonkers.dev` in the IngressRoute and the Gatus entry is the live value, and note it is not derivable even naively here: the Service id is `platform-rabbitmq` and the host is `rabbitmq` |
 | <a id="g-31"></a>G-31 | **The forward-auth `Middleware` object has no producer.** This is the example set's first rendered route with `audience: authenticated`, so it is the first that needs one. The registry says `traefik-public` emits IngressRoutes "with middleware references" — references only — and nothing emits the Middleware those references resolve to |
 | <a id="g-32"></a>G-32 | **An exposure in this domain feeds an env value in another, and the predicate is undefined.** This route is what puts `rabbitmq` among the nine hostnames `auth-api`'s `AUTH_CORS_ALLOWED_ORIGINS` maintains by hand today. Chapter 16's open item 1 says the derivation is probably "inbound edges declaring a browser surface"; no field declares one, so the list stays hand-maintained and this route contributes to it invisibly |
 | <a id="g-33"></a>G-33 | **`alertClass` derives nothing, and this domain is where that is most visible.** Three Services in one file declare three different values — `page`, `urgent`, `business-hours`, the whole vocabulary except `none` — kept per Service precisely so the domain does not page as loudly as its loudest member. All three derive the same thing: nothing. No registered adapter renders a `PrometheusRule` (zero occurrences under `src/`, either generation); the Gatus `alerts` block has no mapping from an Alert Class to a receiver, threshold or send-on-resolved; the notifier route from `alertClass` + `owner` has no producer. Worse than inert: `platform-postgres` declares `page` and has **no monitoring object of any kind** in this tree, because Gatus derives from `exposure` and a datastore is correctly not exposed. The loudest class in the estate, on the Service eight others queue behind, produces zero objects |
-| <a id="g-34"></a>G-34 | **The Gatus derivation does not compose for this exposure.** The rule is `exposure` + `probes.readiness`. `platform-rabbitmq` exposes 15672 (an HTTP management UI) and declares `probes.readiness: {tcp: 5672}` (an AMQP accept). Different port, different protocol, no path, no status. And the exposure is `audience: authenticated`, so an unauthenticated prober is answered by forward-auth with a redirect — a guessed `[STATUS] == 200` would be wrong by construction. The entry is rendered with **no `conditions`**, which is not valid Gatus configuration and will not load. That is the finding, not a formatting choice |
+| <a id="g-34"></a>G-34 | **The Gatus derivation does not compose for this exposure.** The rule is `exposure` + `probes.readiness`. `platform-rabbitmq` routes its `management` surface, 15672, an HTTP UI, and declares `probes.readiness: {tcp: 5672}` (an AMQP accept). Different port, different protocol: the route supplies the path and nothing supplies a status. And the exposure is `audience: authenticated`, so an unauthenticated prober is answered by forward-auth with a redirect — a guessed `[STATUS] == 200` would be wrong by construction. The entry is rendered with **no `conditions`**, which is not valid Gatus configuration and will not load. That is the finding, not a formatting choice |
 | <a id="g-35"></a>G-35 | **No `rbac` adapter, and no `networking` adapter.** Chapter 30's two largest true gaps, and both land in this namespace. Every NetworkPolicy in this tree is what a future `networking` adapter must emit; the only implementation is in the generation being deleted, so coverage for the kind goes from unregistered to absent. RBAC matters more here than elsewhere: three Services' Secrets sit in one namespace, and the only thing keeping `valkey`'s ServiceAccount from reading `platform-postgres-exporter` is that **no Role grants `get secrets` in `data-system`** — an absence, not a boundary, and nothing renders a Role in either direction |
 
 ## What this example is meant to prove
@@ -308,3 +313,9 @@ grow. Ordered by how much they cost.
 - **Inbound derivation is a composition property** ([G-22](#g-22)): the provider
   declares nothing and receives five rules from two other domains, and would
   receive five more from domains not in this fragment set.
+- **A hostname that does not follow its Service id** — `platform-rabbitmq`
+  serving `rabbitmq.jorisjonkers.dev`, which is why `host` is authored and not
+  derived, and why the failure a derivation would produce is one nobody checks.
+- **Providing a port is not exposing it**: three surfaces on one Workload, one
+  named by a route and reachable from the edge, two reachable only by consumers
+  that named a surface.

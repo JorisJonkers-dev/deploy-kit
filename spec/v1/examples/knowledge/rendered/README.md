@@ -22,14 +22,14 @@ in the rendered YAML carries it machine-readably — see G-30.
 | `kustomization.yaml` | `kubernetes` | the Service set of the domain | — |
 | `apps/knowledge/workload.yaml` | `kubernetes` | `lifecycle`, `image`, `runtime`, `provides`, `placement`, `hardening`, `probes`, `startupBudget`, `zeroDowntime`, `stateful`, `volumes`, `secrets`, env files | `replicas` (`minAvailable` ungraded); the image's UID behind `runAsNonRoot`; a scratch volume for a read-only-root JVM (**G-04**); what `stateful` changes about the object kind (**G-05**); the PV-bound node (**G-06**); env-var renaming through `envFrom` (**G-03**); readable mode on the 0400 key (**G-08**) |
 | `apps/knowledge/serviceaccount.yaml` | `kubernetes` | workload `name` × 2, `domain` | — (the adapter names one account after the *Service*: **G-09**) |
-| `apps/knowledge/configmap.yaml` | `kubernetes` | env files, `dependsOn`, exposure port, Cluster Target, workload `name` | 15 of the 16 Runtime Profile keys (**G-13**); the database name spelling (**G-12**); change propagation on edit (**G-10**) |
+| `apps/knowledge/configmap.yaml` | `kubernetes` | env files, `dependsOn`, the `provides` port, Cluster Target, workload `name` | 15 of the 16 Runtime Profile keys (**G-13**); the database name spelling (**G-12**); change propagation on edit (**G-10**) |
 | `apps/knowledge/pvc.yaml` | `kubernetes` | `volumes[].claim`, `volumes[].durability`, `stateful` | `resources.requests.storage` — **the object does not apply without it** (**G-15**); the durability annotation key (**G-14**) |
 | `apps/knowledge/servicemonitor.yaml` | `kubernetes` | `scrape`, `provides` | `interval` (an adapter constant, not a derivation) |
 | `apps/knowledge/networkpolicy.yaml` | `networking` — **not registered** (**G-16**) | `dependsOn`, `provides`, `exposure`, `scrape`, effective grant set, baseline | egress to anything outside the estate — the worker's git remote (**G-20**); ingress from consumers absent from the union (**G-18**); whether a namespace catch-all is emitted (**G-17**) |
 | `apps/knowledge/vso.yaml` | `vso` | `secrets` at both levels, `delivery`, `rotation`, workload `name` | Secret/object naming (**G-21**); which identity reads a shared path (**G-23**); the Kubernetes auth mount name |
 | `apps/knowledge/kustomization.yaml` | `kubernetes` | the emitted file set | ownership of `vso.yaml` (**G-25**) |
-| `edge/ingressroutes.yaml` | `traefik-public` | `exposure` port, audience and five path rules | the hostname label — **no field in layer 1 declares it** (**G-26**) |
-| `observability/gatus-endpoints.yaml` | `gatus` | `exposure`, `probes.readiness`, `provides` | an externally probeable health path (**G-28**); anything at all from `alertClass` (**G-29**); which namespace the ConfigMap belongs in (**G-27**) |
+| `edge/ingressroutes.yaml` | `traefik-public` | the Service's `exposure`: authored `host`, the exposure `audience` and five routes — four overriding it to `anonymous` — each naming `knowledge-api` and its `http` surface | — |
+| `observability/gatus-endpoints.yaml` | `gatus` | `exposure` (host and routes), `probes.readiness`, `provides` | an externally probeable health path — the URL is derivable now, the anonymous route to it is not (**G-28**); anything at all from `alertClass` (**G-29**); which namespace the ConfigMap belongs in (**G-27**) |
 
 ## Deliberately absent, and correct
 
@@ -193,20 +193,26 @@ writes to `apps/vso-secrets/<name>.yaml` with its own kustomization. Three
 central adapters already declare the same `platform/cluster/flux/apps` prefix
 and `E_PATH_COLLISION` has zero occurrences under `src/`.
 
-**G-26** Rendering the IngressRoute needs `kb.jorisjonkers.dev`, and chapter 10's
-`exposure` entry has **no field for the hostname label**. The value is
-platform-assigned from a label the intent cannot write.
+**G-26 is retired.** The IngressRoutes need a hostname and the Service now
+authors one: `host: knowledge.jorisjonkers.dev` on its `public` exposure, a full
+FQDN with five named routes under it. Nothing assembles it from a label, a tier
+policy and a cluster domain — the estate also answers on `kb.jorisjonkers.dev`,
+and no rule could have picked between them. The id is not reused and the gaps
+below are not renumbered.
 
 **G-27** The `gatus` adapter's `defaultPath` places the ConfigMap under
 `apps/utility-system/gatus/`, while the observability pack runs gatus in
 namespace `observability` and mounts a ConfigMap named `gatus-endpoints`. A
 ConfigMap in the wrong namespace is not mounted and is not an error.
 
-**G-28** The only declared health path is matched by the `/` rule, whose audience
-is `authenticated`, so an external probe is answered by forward-auth. The
-endpoint must be internal, which means nothing checks that the hostname resolves,
-that the certificate is valid, or that the IngressRoute matches — the six
-artefacts the exposure block unified are still unverified end to end.
+**G-28** The only declared health path is matched by the `/` route, whose
+audience is `authenticated`, so an external probe is answered by forward-auth.
+The endpoint must be internal, which means nothing checks that
+`knowledge.jorisjonkers.dev` resolves, that the certificate is valid, or that the
+IngressRoutes match — the six artefacts the exposure block unified are still
+unverified end to end. What is missing is not the URL, which the authored host
+and the route path now give, but a route whose audience is anonymous over a
+health path.
 
 **G-29** `alertClass: business-hours` renders nothing. The gatus ConfigMap carries
 `endpoints` only, no adapter emits a receiver or a notifier route, and

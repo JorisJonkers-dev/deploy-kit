@@ -9,7 +9,7 @@
 #
 # THREE SURFACES, THREE DIFFERENT INGRESS DERIVATIONS, one per rule below:
 #   amqp 5672        <- inbound `dependsOn` edges, over the composed union
-#   management 15672 <- an `exposure` entry, from the route tier
+#   management 15672 <- a ROUTE on the Service's `exposure`, from the tier
 #   metrics 15692    <- `scrape`, from the metrics stack
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -72,7 +72,8 @@ spec:
     # set is larger, and the provider learns it only there. README, gap G-22.
     #
     # ---- from the route tier carrying the audience -------------------------
-    # derived from `exposure: [{port: 15672, audience: authenticated}]`. The peer
+    # derived from the route {path: /, workload: rabbitmq, surface: management}
+    # on the `management` exposure, whose audience is authenticated. The peer
     # is the edge, not the caller: forward-auth runs in the edge pod, so what
     # this rule admits is Traefik, and the user's identity is checked before the
     # request is proxied. Nothing at this layer knows who the user was.
