@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+superseded-by: 0061
 claim: settled
 date: 2026-08-31
 normative: spec/v1/10-service-intent.md#placement
@@ -8,6 +8,11 @@ rests-on: ["0005"]
 ---
 
 # Placement is declared as capabilities, never labels
+
+Superseded by [0061](0061-placement-is-hard-dimensions.md): placement is now a
+set of hard dimensions matched against node allocatable, so capabilities are one
+optional dimension among several and the soft `prefers` half this record defends
+is deleted rather than made loud.
 
 ## Rests on
 
