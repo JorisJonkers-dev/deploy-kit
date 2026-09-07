@@ -6,13 +6,24 @@ worth separating — it contains **no decisions**.
 ## The rule
 
 > A Fragment's content is a pure function of the Resolved Deployment, and its
-> path is a pure function of its adapter and the object it carries.
+> path is **assigned by** the Resolved Deployment
+> ([0070](../../docs/adr/model/0070-path-authority-is-layer-2.md), normative in
+> [chapter 20](20-resolved-deployment.md#the-path-plan)).
 
 Layer 2 decided everything (chapter 20). Layer 3 serialises. If a renderer has to
 choose, the choice belongs one layer up, and the choice being made here is the
 defect — because a decision taken during serialisation appears in no schema, is
 recorded in no lock, and is invisible in the published projection a Service owner
 reads back.
+
+An earlier form of this rule made the path a function of the adapter and the
+object it carries. That form could not answer which Service directory owns a
+per-domain object, and it put an estate-scoped Deliverable in whichever
+namespace the emitting adapter happened to key off; both are recorded in
+chapter 20's path plan as the reason authority moved up a layer. An Adapter
+still declares a `defaultPath` — that is how the registry states what an Adapter
+is for, and it is what the plan assigns from — but the path a Fragment carries
+comes from the plan.
 
 ## Adapters
 

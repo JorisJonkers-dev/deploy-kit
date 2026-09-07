@@ -153,7 +153,8 @@ its owning adapter and its destination, and an adapter serializes what it is
 handed rather than deciding where its output lands.
 
 This is a model rule, so it is normative in
-[chapter 20](../spec/v1/20-resolved-deployment.md), not here. The consequence
+[chapter 20](../spec/v1/20-resolved-deployment.md#the-path-plan) and decided in
+[0070](adr/model/0070-path-authority-is-layer-2.md), not here. The consequence
 for code is the part that belongs in this document: path collision is detected
 when the plan is built, before any adapter runs, and an adapter has no API with
 which to choose a path.

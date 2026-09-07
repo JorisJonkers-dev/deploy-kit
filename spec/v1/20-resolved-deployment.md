@@ -501,6 +501,36 @@ choice: moving the data requires a state-move-plan, not a re-render, and a
 declared `disk` dimension that contradicts the binding is
 `E_DISK_BINDING_CONFLICT` rather than a quiet move.
 
+## The path plan
+
+Layer 2 assigns **every output path**
+([0070](../../docs/adr/model/0070-path-authority-is-layer-2.md)). The Resolved
+Deployment carries, for each object to be rendered, the Adapter that owns it and
+the path it is written to. Layer 3 serialises what it is handed and chooses
+nothing.
+
+The rule follows from the layer rule rather than adding to it. A path is a
+decision: it says which directory owns an object, and therefore which
+kustomization includes it, which Reconcile Unit applies it, and who is
+answerable for the field. A decision taken while serialising appears in no
+schema, is recorded in no lock, and is invisible in the projection its owner
+reads back.
+
+Two live cases show that the alternative does not work. A per-domain object —
+`namespace.yaml`, and the namespace-wide default-deny — is one object per
+domain, while an Adapter keyed off the Service emits one directory per Service:
+`auth` has one Service and nothing collides, `data` has three and produces three
+identical Namespace objects at three paths. And an estate-scoped Deliverable,
+the Gatus endpoints ConfigMap, lands in `utility-system` rather than in the
+namespace of the Service that motivated it. Under an adapter-computed path both
+are accidents of who ran last; under a path plan both are assignments, with one
+owner and a recorded reason.
+
+The consequence for the build is a check that arrives earlier. `E_PATH_COLLISION`
+is decidable when the plan is assembled, before any Adapter runs, because the
+complete set of paths is known at that point. Two Adapters claiming one path is
+a defect in the plan.
+
 ## Overrides
 
 A derived value is **overridable with a reason**; an assignment is not

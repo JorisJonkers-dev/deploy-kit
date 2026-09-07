@@ -8,6 +8,9 @@ detail; this is the ordered list.
 
 Fifty rendered files across `auth/`, `knowledge/` and `data/`. All parse.
 
+Rows marked **closed** have since been decided; the row stays so the evidence
+that forced the decision stays with it.
+
 ## Blocking — no producer exists
 
 | # | gap | seen in |
@@ -33,7 +36,7 @@ Fifty rendered files across `auth/`, `knowledge/` and `data/`. All parse.
 
 | # | gap | seen in |
 |---|---|---|
-| R12 | **Which Service directory owns a per-domain object.** `namespace.yaml` and the namespace-wide default-deny are one object per domain; the adapter emits one directory per Service. auth has one Service so nothing collides; data has three — three identical Namespace objects at three paths, `E_PATH_COLLISION` waiting for a second writer. | data, auth |
+| R12 | **Which Service directory owns a per-domain object.** `namespace.yaml` and the namespace-wide default-deny are one object per domain; the adapter emits one directory per Service. auth has one Service so nothing collides; data has three — three identical Namespace objects at three paths, `E_PATH_COLLISION` waiting for a second writer. **Closed** by [0070](../../../docs/adr/model/0070-path-authority-is-layer-2.md): layer 2 assigns the path, so the object has one owner and the collision is decidable at plan assembly. | data, auth |
 | R13 | **`automountServiceAccountToken` is underivable, and the obvious rule is wrong.** "No grant → no token" gets postgres backwards: it holds a grant and needs no token, because under `delivery: env` the operator performs the read and the pod never authenticates. The derivation must read `delivery`; no chapter states it. | auth, data |
 | R14 | **Probe derivation is partial.** `startupBudget` gives period × threshold and a progress deadline, but which endpoint the startup probe uses is unstated — chosen during serialisation, which chapter 30 forbids — and readiness/liveness `periodSeconds`, `failureThreshold` and `initialDelaySeconds` have no derivation. | auth |
 | R15 | **No writable-path vocabulary.** A read-only root filesystem needs `/tmp` for the JVM; that is prose in the intent, not a field. No `sizeLimit` is derivable, and a second writable path can only be had by relaxing the whole control. | auth |
@@ -47,7 +50,7 @@ Fifty rendered files across `auth/`, `knowledge/` and `data/`. All parse.
 | R23 | **An Asset's change-propagation mechanism is unstated.** `onChange: restart` needs either a content-hashed ConfigMap name or a checksum annotation; no chapter picks one. `onChange` has two values and postgres supports `pg_ctl reload`, so under `Recreate` a one-line config edit is a full outage. | data |
 | R24 | **The label set is not fixed anywhere.** `name` + `instance` are the Deployment selector and therefore immutable — changing the convention later is delete-and-recreate on every workload in the estate. | auth |
 | R25 | **No scrape `interval` or `scrapeTimeout` is derivable**, so omitting them silently takes the metrics stack's global default, decided outside the model. | auth |
-| R26 | **Estate-scoped Deliverables land in another domain's namespace.** The Gatus endpoints ConfigMap is one object in `utility-system`; `E_FOREIGN_NAMESPACE` is satisfied only because the adapter owns the path rather than the Service. | auth |
+| R26 | **Estate-scoped Deliverables land in another domain's namespace.** The Gatus endpoints ConfigMap is one object in `utility-system`; `E_FOREIGN_NAMESPACE` is satisfied only because the adapter owns the path rather than the Service. **Closed** by [0070](../../../docs/adr/model/0070-path-authority-is-layer-2.md): an estate-scoped Deliverable is assigned its path and its owner rather than inheriting the emitting adapter's. | auth |
 
 ## Missing inputs, not missing derivations
 
