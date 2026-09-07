@@ -140,3 +140,18 @@ delivery work it underpins.
 | [0059](model/0059-v1-scope-stopping-rule.md) | v1 has a scope and a stopping rule | open |
 | [0060](model/0060-release-unit.md) | Several Services switch as one Release Unit | superseded by [0062](model/0062-service-is-the-release-unit.md) |
 | [0062](model/0062-service-is-the-release-unit.md) | A Service is the unit of atomic release | settled |
+
+## Architecture
+
+Decisions about the compiler's own structure, not about the model. Their
+`normative:` pointers name sections of
+[`docs/architecture.md`](../architecture.md); see
+[architecture/README.md](architecture/README.md) for what the domain covers.
+
+| # | title | claim |
+|---|---|---|
+| [0065](architecture/0065-one-hexagon-domain-mirrors-the-layers.md) | One hexagon, two use-cases, and a domain whose folders are the three layers | settled |
+| [0066](architecture/0066-wire-shape-is-not-the-domain.md) | Zod declares the authoring shape, and a mapper turns it into the domain | settled |
+| [0067](architecture/0067-adapters-build-objects-one-serializer.md) | Adapters build typed objects; one serializer owns the bytes | settled |
+| [0068](architecture/0068-failures-are-a-diagnostic-list.md) | A failure is a coded diagnostic in a list, not a thrown error | settled |
+| [0069](architecture/0069-boundaries-enforced-on-the-graph.md) | Layer boundaries and reachability are gates on the module graph | settled |
