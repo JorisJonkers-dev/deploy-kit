@@ -153,6 +153,35 @@ jobs:
             echo "gate failed, but not on E_DUPLICATE_SERVICE_ID"; exit 1; }
           echo "gate rejects a duplicate Service Id with E_DUPLICATE_SERVICE_ID"
 
+      - name: Prove the workload-name gate can fail, on the right error
+        if: ${{ !cancelled() }}
+        run: |
+          # One negative fixture per invariant. This one is a single domain
+          # file whose two Services both name a Workload `api`: Workload names
+          # are unique within a domain, because the ServiceAccount and the
+          # Vault role are the Workload name under the domain's namespace
+          # (docs/adr/0024-identity-per-workload.md,
+          # docs/adr/0063-intent-authored-per-domain.md). It needs no second
+          # fragment -- a domain never spans repositories, so one file holds
+          # every name that must be compared.
+          #
+          # Again the assertion is the ERROR CODE. The fixture is otherwise
+          # valid, so a non-zero exit could just as easily mean a schema slip.
+          set +e
+          out="$(npx --no-install deploy-config-schema compose union \
+            --fragments spec/v1/examples/negative/duplicate-workload-name/ \
+            --context-ref "${{ vars.CONTEXT_REF }}" \
+            --out /tmp/should-fail-workload 2>&1)"
+          status=$?
+          set -e
+          printf '%s\n' "$out"
+          if [ "$status" -eq 0 ]; then
+            echo "gate did not fail"; exit 1
+          fi
+          printf '%s' "$out" | grep -q 'E_DUPLICATE_WORKLOAD_NAME' || {
+            echo "gate failed, but not on E_DUPLICATE_WORKLOAD_NAME"; exit 1; }
+          echo "gate rejects a duplicate Workload name with E_DUPLICATE_WORKLOAD_NAME"
+
       - name: Publish ComposedIntent and its lock
         id: publish
         if: ${{ !cancelled() }}

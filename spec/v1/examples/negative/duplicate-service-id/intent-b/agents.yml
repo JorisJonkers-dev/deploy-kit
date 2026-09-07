@@ -1,0 +1,26 @@
+# Fixture B — a different domain, in a different repository, claiming the same
+# Service Id. Identity is flat and unique estate-wide
+# (docs/adr/0010-flat-service-identity.md), so the union of these two fragments
+# must fail with E_DUPLICATE_SERVICE_ID -- and with nothing else.
+#
+# The domain header does NOT namespace the id. Deriving the Kubernetes namespace
+# from `domain` (docs/adr/0063-intent-authored-per-domain.md) would place these
+# two in knowledge-system and agents-system, so nothing would collide at apply.
+# That is exactly why the check exists at composition: the id is what one
+# Service uses to reference another, and two Services answering to one string
+# makes every `dependsOn: {service: knowledge, ...}` edge ambiguous.
+schemaVersion: 1.0.0
+
+domain: agents
+owner: joris
+
+services:
+  - id: knowledge
+    alertClass: business-hours
+    workloads:
+      - name: other-knowledge
+        lifecycle: service
+        image: other-knowledge
+        runtime: jvm
+        placement: {memory: 256Mi, cpu: 50m}
+        probes: none
