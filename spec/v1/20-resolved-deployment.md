@@ -195,7 +195,8 @@ field's placement link to this anchor rather than copying rows.
 | `progressDeadlineSeconds` | derived | — | from `startupBudget` |
 | rollout strategy, surge, unavailability | derived | — | from `zeroDowntime` and `volumes` |
 | object kind | derived | — | from `lifecycle`, `stateful` and `volumes` |
-| Flux health timeout class | derived | — | from `stateful` and `lifecycle` |
+| the Service's release-gate deadline | derived | — | `max` over the Service's Workloads of `progressDeadlineSeconds` ([The release gate](#the-release-gate)) |
+| the object label set | derived | — | fixed, from Workload name, Service Id and the images lock ([chapter 10](10-service-intent.md#the-label-set)) |
 | Secret and VSO sync objects | derived | — | from grants with `delivery: env` or `file`, plus `rolloutRestartTargets` from `rotation` |
 | env entries and `envFrom` refs | derived | — | from env files, after placeholder resolution |
 | dependency coordinates | derived | — | from the edge set and the provider's surfaces, bound to the key the consumer chose |
@@ -449,10 +450,16 @@ Five rules carry most of the weight:
   as budget × 3, floored. The current renderer emits `600` against a 600-second
   budget, so a JVM still inside its legitimate startup window is marked
   `ProgressDeadlineExceeded`.
-- **The health timeout class is a table over declarations**, not a number:
-  `stateless: 5m`, `stateful: 10m`, `control-plane: 15m`, `job: 10m`
-  (`src/schemas/health-timeout-map.ts:1-6`), taking the strongest class across a
-  Service's Workloads.
+- **There is no health timeout class.** The generation being replaced carried a
+  table over declarations — `stateless: 5m`, `stateful: 10m`,
+  `control-plane: 15m`, `job: 10m`
+  (`src/schemas/health-timeout-map.ts:1-6`), strongest class across a Service —
+  and it is a second derivation over the same input as
+  `progressDeadlineSeconds`. The two already disagree: `auth-api` declares a
+  600-second `startupBudget`, derives an 1800-second deadline, and its class
+  gives up at 5 minutes on a Workload the model says may legitimately take ten.
+  One input has one derivation, and the Service-scoped number that a switchover
+  waits on is the release-gate deadline below.
 - **Hardening is a class.** It defaults to `restricted` — `runAsNonRoot`,
   `readOnlyRootFilesystem`, all capabilities dropped, seccomp `RuntimeDefault` —
   and each declared exception names itself and carries a reason
@@ -500,6 +507,43 @@ provenance of the digest it came from. What it is not is a re-schedulable
 choice: moving the data requires a state-move-plan, not a re-render, and a
 declared `disk` dimension that contradicts the binding is
 `E_DISK_BINDING_CONFLICT` rather than a quiet move.
+
+## The release gate
+
+A Service is the Release Unit, and no member's new version receives traffic
+until every member's new version is healthy
+([chapter 50](50-lifecycle.md#release-unit-switchover)). *Performing* the switch
+belongs to delivery, which is defined separately. What the model owes is the
+gate's **inputs**, and it owes them as a derivation rather than as an object
+([0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md)).
+
+Layer 2 therefore carries, per Service:
+
+| field | derived from |
+|---|---|
+| the member list | the Service's Workloads; membership is structural |
+| each member's readiness reference | that Workload's `probes.readiness` — its `path` + `port`, or its `tcp` port |
+| the gate deadline | `max` over the members of `progressDeadlineSeconds`, itself `startupBudget × 3` |
+
+`max` is the reading "held, not partial" requires: the unit waits for its
+slowest legitimate starter. `auth` declares a 600-second budget on `auth-api`
+and 30 seconds on `auth-ui`, so its gate deadline is 1800 seconds — the API's,
+because a UI that is ready in 30 seconds must still not receive traffic while
+the API it talks to is inside its own legitimate startup window.
+
+**Nothing is rendered for the gate.** The inputs live in the Resolved
+Deployment and in each Service's projection, which is where decisions live and
+where a delivery mechanism reading a pinned lock already looks
+([0006](../../docs/adr/model/0006-pinned-inputs.md)). Layer 3 emits the fixed
+label set ([chapter 10](10-service-intent.md#the-label-set)) and nothing else on
+the Service's behalf: an object no controller consumes is the defect
+`app.kubernetes.io/instance` already is, and rendering a second one would not
+make the gate real.
+
+A Service whose Workloads all declare `probes: none` publishes no readiness
+signal and cannot be gated — `E_RELEASE_UNIT_NO_READINESS`, checked at
+composition time ([chapter 40](40-composition.md#completeness)), not discovered
+by a delivery mechanism at apply time.
 
 ## The path plan
 

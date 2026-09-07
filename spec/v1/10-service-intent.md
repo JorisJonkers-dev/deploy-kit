@@ -355,6 +355,44 @@ whether a Service may name a namespace some other applier owns has lost its
 subject matter — see
 [Delivery and co-testing are defined separately](#delivery-and-co-testing-are-defined-separately).
 
+## The label set
+
+Labels are **derived and fixed**, and no authored field contributes to them
+([0072](../../docs/adr/model/0072-the-label-set-is-fixed.md)). The set is stated
+here rather than left to a renderer because two of these labels are a
+Deployment's `selector.matchLabels` and are therefore **immutable on a live
+object**: changing the convention later is delete-and-recreate on every workload
+in the estate.
+
+| label | value | mutable |
+|---|---|---|
+| `app.kubernetes.io/name` | the Workload `name` | **no** — selector |
+| `app.kubernetes.io/instance` | the Workload `name` | **no** — selector |
+| `app.kubernetes.io/part-of` | the Service Id | yes |
+| `app.kubernetes.io/managed-by` | `deploy-kit` | yes |
+| `app.kubernetes.io/component` | the Workload `runtime` | yes |
+
+`part-of` carries the Service, which is what makes the Release Unit selectable
+by whatever performs a switchover ([chapter
+20](20-resolved-deployment.md#the-release-gate)). It is deliberately not a
+selector: a Service gaining or losing a Workload must not require recreating
+the others.
+
+`name` and `instance` are both the Workload name rather than one naming the
+Service, because the selector must match exactly one controller's pods. A
+`name` of the Service and an `instance` of the Workload would read better and
+would make every Workload of a multi-Workload Service selector-ambiguous the
+moment anything selected on `name` alone.
+
+No `app.kubernetes.io/version`. A version label would have to come from the
+images lock, so it changes on every image bump — for a label that no selector
+may use and that the image digest already states exactly, on the object, where
+a reader looks anyway.
+
+An estate-scoped Deliverable carries `managed-by` and nothing else: it belongs
+to no Workload and to no Service, and `part-of` on such an object would name a
+Service that does not own it.
+
 ## Ports and surfaces
 
 There is no `ports` list. A port is an **integer**, written where it is used, and
