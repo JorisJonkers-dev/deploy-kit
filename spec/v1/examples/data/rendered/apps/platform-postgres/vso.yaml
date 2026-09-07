@@ -1,0 +1,112 @@
+# adapter: vso
+# real path: platform/cluster/flux/apps/vso-secrets/<name>.yaml
+#
+# The registered `vso` adapter writes ONE FILE PER OBJECT into a single
+# estate-wide directory, apps/vso-secrets/, with its own kustomization. Collected
+# here per the review layout; the adapter, not the directory, owns these objects,
+# and a second adapter claiming this path is E_PATH_COLLISION.
+#
+# ONE GRANT IN THE WHOLE DOMAIN. platform-rabbitmq and platform-valkey declare
+# `secrets` at neither level and get no file at all: their clients hold the
+# credentials, which is what makes them providers rather than holders. The
+# single grant here is declared on the WORKLOAD rather than the Service, because
+# it is consumed by the postgres-exporter sidecar.
+#
+# It is `delivery: env`, so it persists a Kubernetes Secret, so it may NOT render
+# until the pinned Cluster Context advertises secretsEncryption: true --
+# E_SECRETS_AT_REST_REQUIRED. Until that flag lands, platform-postgres cannot
+# ship. platform-rabbitmq and platform-valkey are unaffected and can ship today:
+# three Services in one file, one of them gated, is the release independence this
+# domain exists to show, arriving from a direction nobody planned.
+#
+# The Secret and VaultStaticSecret names are the granted path with the KV mount
+# and the `data/` segment removed and `/` replaced by `-`. Mechanical and
+# collision-free, because one path has one reader set. No chapter states the
+# rule. README, gap G-24.
+---
+# ONE VaultAuth, for the one Workload identity holding a grant. The role and the
+# ServiceAccount are both the Workload name alone.
+#
+# The registered adapter emits ONE VaultAuth per estate, in vso-system, on the
+# operator's own ServiceAccount and role -- under which the operator reads every
+# path for everyone and the derived per-Workload roles do nothing. README, gap
+# G-25.
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: postgres
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: platform-postgres
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  vaultConnectionRef: vso-system/default
+  method: kubernetes
+  mount: kubernetes        # the Kubernetes auth mount name, a Cluster Context
+                           # fact; this example set carries no context document
+  kubernetes:
+    role: postgres         # the Workload name ALONE
+    serviceAccount: postgres
+---
+# THE SPLIT PATH. `.../platform/postgres/exporter` is one of three siblings --
+# `.../auth` for auth's api Workload, `.../kb` for knowledge's two -- and the
+# split is the whole point. A KV-v2 read returns the entire document, so while
+# every consumer's credentials shared one `secret/data/platform/postgres`
+# document, holding `read` for the exporter meant holding `read` on auth's and
+# knowledge's database passwords too. `keys: [datasource]` narrows nothing and
+# appears nowhere below.
+#
+# The data domain owns this Subtree and lists the readers of each path, which is
+# what makes "who breaks if I rotate this" answerable without reading live Vault
+# contents. postgres does not read its consumers' credentials; each consumer
+# declares its own grant.
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: platform-postgres-exporter
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: platform-postgres
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  vaultAuthRef: postgres
+  type: kv-v2
+  mount: secret
+  path: platform/postgres/exporter     # the granted path, minus mount and data/
+  destination:
+    name: platform-postgres-exporter
+    create: true
+  refreshAfter: 1h                     # an adapter constant; no field declares
+                                       # a refresh period and no chapter names
+                                       # a default
+  rolloutRestartTargets:
+    # from `rotation: {tolerates: restart}` -- derived, never hand-declared.
+    #
+    # READ THIS AGAINST strategy: Recreate. The target is the Deployment, which
+    # is the whole pod, which is the database. So rotating the EXPORTER's
+    # read-only connection string takes the estate's datastore down with a
+    # zero-pod window, and eight Services with it. The declaration is correct at
+    # its own level -- the exporter cannot re-read its environment -- and the
+    # derivation has no way to know the pod it restarts is not the pod that
+    # holds the credential. A sidecar-scoped restart target is not expressible.
+    # README, gap G-02.
+    - {kind: Deployment, name: postgres}
+# The synced Secret carries EVERY key at the path, not a projection of
+# `keys: [datasource]`, and it is consumed as an `envFrom.secretRef` on BOTH
+# containers of the pod -- see workload.yaml, gap G-09.
+#
+# NOT EMITTED, because they are estate-scoped and this domain contributes nothing
+# to them: VaultConnection `default` in vso-system, and the operator's own
+# ServiceAccount per target namespace.
+#
+# NOT EMITTED, and with no producer anywhere: the Vault POLICY and the Kubernetes
+# auth ROLE the VaultAuth above refers to by name. `vso` emits VaultConnection,
+# VaultAuth, VaultStaticSecret, VaultDynamicSecret and a ServiceAccount; none of
+# those is a policy or a role, and no other registered adapter writes to Vault.
+# The `read` capability on `secret/data/platform/postgres/exporter` that this
+# whole file depends on is derived by the model and applied by nothing.
+# README, gap G-26.

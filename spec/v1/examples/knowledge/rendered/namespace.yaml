@@ -1,0 +1,21 @@
+# adapter: kubernetes
+# real path: platform/cluster/flux/apps/knowledge/namespace.yaml
+#
+# `knowledge-system` derives from `domain: knowledge` and from nothing else
+# (chapter 20, the namespace row). One Service lives here today; the derivation
+# does not know that and would not change if a second joined the file.
+#
+# It is NOT a trust boundary. Isolation for these two Workloads is
+# networkpolicy.yaml plus the two ServiceAccounts, and nothing else.
+#
+# The registered `kubernetes` adapter emits namespace.yaml *inside each Service
+# directory*. Hoisted to the domain root here, because the namespace is a
+# per-domain object and a second Service in this file would otherwise emit a
+# second identical copy. See README, gap G-02.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: knowledge-system
+  labels:
+    kubernetes.io/metadata.name: knowledge-system
+    app.kubernetes.io/part-of: knowledge

@@ -1,0 +1,93 @@
+# adapter: traefik-public
+# real path: platform/cluster/flux/apps/edge/traefik-ingressroutes.yaml
+#
+# ESTATE-WIDE FILE. One file holds every public IngressRoute in the estate; this
+# is the auth domain's slice of it, reproduced here so the domain reads in one
+# place. The objects themselves live in auth-system, beside the Services they
+# route to.
+#
+# Two things below are not derived, and both are the same missing field.
+#
+# 1. THE HOSTNAME. `exposure` declares a port and an audience and no hostname
+#    label; chapter 10 has no field for one (open item 3), while chapter 20
+#    places the label as Service-declared and chapter 40 checks
+#    E_DUPLICATE_EXPOSURE_NAME against a name none of the three agrees on.
+#    `auth.jorisjonkers.dev` below is the LIVE value, read off the estate. The
+#    Service id is `auth` and the cluster public domain is jorisjonkers.dev, so
+#    a naive derivation happens to produce it -- and does not generalise:
+#    `knowledge` serves kb, `home-portal` the apex, `headlamp` dashboard,
+#    `gatus` status. Not one live hostname is derivable from a Service id.
+#    README, gap G-03.
+#
+# 2. THE SPLIT BETWEEN THE TWO ROUTES. Service `auth` declares two exposure
+#    entries -- auth-api on 8081 and auth-ui on 80, both `audience: anonymous`
+#    -- and neither carries `paths`. So both claim the whole host, and the two
+#    routes below are IDENTICAL in their match. Live splits /api to the API and
+#    / to the UI; that split is expressible (`paths: [{path: /api, match:
+#    prefix, ...}]`) and is not declared, so the renderer may not invent it.
+#    As rendered, Traefik resolves the tie by rule length and then by name --
+#    an ordering nobody declared. README, gap G-03.
+#
+# What IS derived: the absence of a middleware chain. `audience: anonymous` on a
+# public tier derives no forward-auth. Both surfaces must be reachable
+# unauthenticated, because this Service is what performs authentication.
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: auth-ui
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-ui
+    app.kubernetes.io/instance: auth
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  entryPoints:
+    - websecure                        # CONTEXT: the tier's entryPoint
+  routes:
+    - kind: Rule
+      match: Host(`auth.jorisjonkers.dev`)   # NOT DERIVABLE (G-03)
+      # no middlewares: audience anonymous
+      services:
+        - name: auth-ui
+          namespace: auth-system
+          port: 80                     # the exposed `provides` port
+  tls:
+    # CONTEXT: the tier's certificate policy. Nothing in Service Intent names a
+    # certificate, an issuer or a resolver, and nothing in this tree derives
+    # one.
+    certResolver: letsencrypt
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: auth-api
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-api
+    app.kubernetes.io/instance: auth
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  entryPoints:
+    - websecure                        # CONTEXT
+  routes:
+    - kind: Rule
+      # Identical to the route above, on purpose: this is what the intent as
+      # declared produces. See note 2 in the header.
+      match: Host(`auth.jorisjonkers.dev`)   # NOT DERIVABLE (G-03)
+      services:
+        - name: auth-api
+          namespace: auth-system
+          port: 8081
+  tls:
+    certResolver: letsencrypt          # CONTEXT
+# NOT EMITTED, and it is the estate's most-referenced missing object: the
+# forward-auth Middleware. Every `audience: authenticated` route in every other
+# domain derives a middleware reference pointing at this Service, and the
+# registry says traefik-public emits "IngressRoute per public route, WITH
+# MIDDLEWARE REFERENCES" -- references only. No registered adapter emits the
+# Middleware object those references resolve to, and it is the one object in
+# the estate that names auth-api without a dependsOn edge.
+# README, gap G-23.

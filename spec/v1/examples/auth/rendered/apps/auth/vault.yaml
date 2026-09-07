@@ -1,0 +1,85 @@
+# adapter: (none) -- THESE ARE NOT KUBERNETES OBJECTS.
+# real path: none. No file in the rendered tree carries them today.
+#
+# All three of auth-api's grants are `delivery: self`: the application fetches
+# them at runtime through spring-cloud-vault. Chapter 10's delivery table says
+# `self` renders "a Vault policy, a Kubernetes auth role, and the application's
+# own client wiring. No Secret, no env var, nothing injected."
+#
+# The client wiring is rendered -- it is the VAULT_* block in workload.yaml. The
+# policy and the role are rendered NOWHERE. The `vso` adapter emits
+# VaultConnection, VaultAuth, the operator ServiceAccount, VaultStaticSecret,
+# VaultDynamicSecret and a kustomization; none of those is a policy or an auth
+# role, and no other registered adapter writes to Vault at all. So this file is
+# what the model demands and what nothing produces. It is written as a plain
+# document rather than as a Kubernetes object because it is applied to Vault,
+# not to the cluster, by a mechanism the model does not define.
+# README, gap G-02.
+#
+# NO VaultStaticSecret and NO Secret exist for this Service, and no `envFrom`
+# secretRef appears in workload.yaml. That is `delivery: self` working: the
+# secrets-at-rest gate does not apply, because nothing is persisted, and the
+# dead-grant check correctly does not fire on three grants with zero
+# ${secret:...} placeholders.
+---
+# The Vault-side configuration derived from the auth domain's grants.
+vaultConfiguration:
+  policies:
+    - name: auth-api                   # the Workload name, like every identity here
+      # Derived from `access:` per granted PATH. The grant unit is the path: a
+      # KV-v2 read returns the whole document, so `keys:` narrows nothing and
+      # appears nowhere below.
+      hcl: |
+        # grant 1 -- access: read, delivery: self
+        # Dynamic database credentials, re-read at runtime.
+        path "secret/data/platform/postgres/auth" {
+          capabilities = ["read"]
+        }
+
+        # grant 2 -- access: read, delivery: self
+        # auth-api's own document: four enumerated keys, one reader set.
+        path "secret/data/auth-api" {
+          capabilities = ["read"]
+        }
+
+        # grant 3 -- access: self-roll, delivery: self
+        # self-roll derives `patch`, never `update`, on the granted path.
+        path "transit/keys/auth-api-jwt" {
+          capabilities = ["patch"]
+        }
+      # Three things this policy does not cover, none of them inventable:
+      #
+      # 1. `secret/metadata/...`. The placeholder join is a BYTE MATCH against
+      #    the granted path with no transform, so the renderer may not derive a
+      #    sibling metadata path from `secret/data/...`. Version listing and
+      #    soft-delete are therefore denied. G-19.
+      # 2. `database/creds/<role>`. The intent calls grant 1 "dynamic database
+      #    credentials, minted per lease by the database engine", and the
+      #    rendered wiring sets VAULT_DB_ENABLED=true -- which reads the
+      #    database secrets engine, at a path no grant declares. The declared
+      #    path is a KV-v2 one. Whatever this Workload actually reads at
+      #    runtime, this policy does not permit it. G-20.
+      # 3. The transit key's real operations. `patch` on `transit/keys/<name>`
+      #    permits neither rotation (POST transit/keys/<name>/rotate, `update`)
+      #    nor signing (POST transit/sign/<name>, `update`). The tier derives
+      #    the smaller capability on the granted path, and on a non-KV engine
+      #    the granted path is not the path the operation uses. The grant that
+      #    exists to let this Workload roll its own JWT key derives a policy
+      #    that cannot roll it. G-21.
+  kubernetesAuthRoles:
+    - name: auth-api                   # == VAULT_KUBERNETES_ROLE in workload.yaml
+      bound_service_account_names: [auth-api]
+      bound_service_account_namespaces: [auth-system]
+      token_policies: [auth-api]
+      # No token_ttl, token_max_ttl or token_period: no field declares them and
+      # no chapter derives them. Vault's mount defaults apply, which is a
+      # decision made outside the model. G-22.
+      #
+      # The namespace half of this binding is shared by every Service of the
+      # domain, so the ServiceAccount NAME is the entire boundary. That is why
+      # its uniqueness is checked across the whole domain file
+      # (E_DUPLICATE_WORKLOAD_NAME) rather than within one Service.
+  # No role and no policy for auth-ui. It declares no `secrets`, so
+  # `auth-system.auth-ui` is a ServiceAccount with nothing bound to it -- which
+  # is exactly what folding the two Workloads into one Service and pushing the
+  # grants down a level bought.

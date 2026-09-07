@@ -1,0 +1,62 @@
+# adapter: networking -- NOT REGISTERED. See ../platform-postgres/networkpolicy.yaml.
+# real path: platform/cluster/flux/apps/data/platform-valkey/networkpolicy.yaml
+#
+# The smallest derived policy in the domain: one inbound edge, the DNS baseline,
+# and nothing else. No scrape ingress, because no `scrape` is declared. No edge
+# ingress, because no `exposure` is declared. No Secret Store egress, because no
+# grant is held.
+#
+# It still isolates valkey from postgres and rabbitmq, which are pods in the same
+# namespace six inches away in the file tree. That is the whole claim of this
+# domain restated in the smallest object that can carry it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: valkey
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: valkey
+    app.kubernetes.io/instance: platform-valkey
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: valkey
+      app.kubernetes.io/instance: platform-valkey
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # ONE consumer of surface `redis` (6379) resolves in this example set:
+    # {service: platform-valkey, surface: redis} declared by auth-api. The
+    # consumer named the SERVICE and the SURFACE; the Workload behind it
+    # (`valkey`) and the port (6379) are both this file's to know.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: auth-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: auth-api
+      ports:
+        - protocol: TCP
+          port: 6379
+    # A single inbound rule is also the sharpest version of the composition
+    # warning: if auth's fragment were missing from the union, this policy would
+    # render with NO ingress rules at all, be perfectly valid, apply cleanly, and
+    # silently black-hole every session lookup in the estate. README, gap G-22.
+  egress:
+    # baseline only.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system     # CONTEXT
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns                            # CONTEXT
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

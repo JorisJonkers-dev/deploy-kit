@@ -1,0 +1,50 @@
+# adapter: kubernetes
+# real path: platform/cluster/flux/apps/data/platform-postgres/kustomization.yaml
+#
+# ONE kustomization for ONE Service. This is the file that makes the domain's
+# three Services structurally independent: three directories, three of these,
+# three file sets over one namespace, and no object in any of them naming an
+# object in another.
+#
+# It is also where that independence stops. The Reconcile Unit is `apps-<domain>`
+# (chapter 20), so ONE Flux Kustomization named `apps-data` reconciles all three
+# directories and a valkey edit re-applies postgres. The Service boundary is the
+# atomic-release boundary; it is not the reconcile boundary, and nothing in the
+# rendered tree distinguishes them. See ../../README.md, gap G-01.
+#
+# What a Service being the release unit DOES buy here, and it is not nothing:
+# platform-postgres holds one Workload, so "every Workload switches together or
+# none switches" is satisfied by a single Deployment. The auth domain's two
+# Workloads are where that claim needs a mechanism the tree does not have.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: data-system
+resources:
+  - workload.yaml            # Deployment + Service (two surfaces, one object)
+  - serviceaccount.yaml      # one identity, the Workload name alone
+  - configmap.yaml           # the postgresql.conf Asset
+  - pvc.yaml                 # postgres-data, irreplaceable
+  - servicemonitor.yaml      # from `scrape`
+  - networkpolicy.yaml       # this Workload's derived allow set
+# Not listed, deliberately:
+#   ../../namespace.yaml      -- one object per DOMAIN, one level up
+#   ../../networkpolicy.yaml  -- the namespace-wide default-deny, also per domain
+#   vso.yaml                  -- owned by the `vso` adapter, which writes into
+#                                apps/vso-secrets/ with its own kustomization.
+#                                Listing it here would be a second claim on the
+#                                same objects. Which kustomization applies a
+#                                Service's VSO objects is stated nowhere.
+#
+# Not emitted at all, each for a stated reason:
+#   pdb.yaml        -- no `minAvailable` is declared anywhere in this domain, and
+#                      the field is ungraded, so a renderer inventing one would
+#                      be authoring an availability requirement. The estate's
+#                      datastore therefore has no disruption budget: a node drain
+#                      evicts it with nothing to object.
+#   podmonitor.yaml -- the scrape surface is fronted by a Service.
+#   hpa.yaml        -- autoscaling is not in this model.
+#   prometheusrule.yaml -- `alertClass: page` is declared and nothing renders a
+#                      rule from it.
+#   backup.yaml     -- `durability: irreplaceable` demands one; no adapter reads
+#                      `durability`.
+#   rbac.yaml       -- no `rbac` adapter exists.

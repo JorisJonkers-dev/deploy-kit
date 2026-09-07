@@ -1,0 +1,45 @@
+# adapter: kubernetes
+# real path: platform/cluster/flux/apps/auth/auth/servicemonitor.yaml
+#
+# From auth-api's `scrape` declaration alone. The declared port 8081 resolves
+# to the port NAME `http` through `provides`, which is why the endpoint below
+# names a port rather than repeating an integer.
+#
+# No PodMonitor: nothing in this domain declares a scrape surface that is not
+# fronted by a Service, so podmonitor.yaml has no content and is not emitted.
+#
+# No PrometheusRule either, and that one is a hole rather than an absence.
+# `alertClass: page` is declared on the Service and no registered adapter
+# renders a rule from it -- zero occurrences under src/ in either renderer
+# generation. The loudest alert class in the estate currently derives nothing.
+# README, gap G-16.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: auth-api
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-api
+    app.kubernetes.io/instance: auth
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    # CONTEXT: the operator selects on this label. A ServiceMonitor without it
+    # is accepted by the API server, its Kustomization goes Ready, the operator
+    # logs nothing, and the target is never scraped. The value is a Cluster
+    # Context fact (the metrics stack's HelmRelease name), not intent.
+    release: metrics-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: auth-api
+      app.kubernetes.io/instance: auth
+  namespaceSelector:
+    matchNames:
+      - auth-system
+  endpoints:
+    - port: http                       # resolved from `provides`, not restated
+      path: /api/actuator/prometheus
+      # No `interval` and no `scrapeTimeout`. Neither is derivable: no field
+      # declares a scrape interval and no chapter names a default. Omitting
+      # them takes the operator's global default, which is a decision made by
+      # whoever configured the metrics stack. README, gap G-17.

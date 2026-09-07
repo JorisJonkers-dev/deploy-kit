@@ -1,0 +1,73 @@
+# adapter: traefik-public
+# real path: platform/cluster/flux/apps/edge/traefik-ingressroutes.yaml
+#
+# ESTATE-WIDE FILE. One file holds every public IngressRoute in the estate; this
+# is the data domain's slice of it, reproduced here so the domain reads in one
+# place. The object itself lives in data-system, beside the Service it routes to.
+#
+# ONE route, for ONE of three Services. platform-postgres and platform-valkey
+# declare no `exposure` and get nothing here -- a datastore and a cache are
+# reached over the cluster network by consumers that named a surface, and the
+# absence of a route is the derivation working.
+#
+# What IS derived, and it is the one thing this file adds to the example set that
+# auth's does not: `audience: authenticated` on a public tier derives a
+# forward-auth middleware REFERENCE. auth's two routes are `anonymous` and carry
+# no chain, so this is the first rendered route in the set that needs the
+# middleware to exist.
+#
+# What is NOT derived: the hostname. `exposure` carries a port and an audience
+# and no hostname label; chapter 10 defines no field (its open item 3), chapter
+# 20 places the label as Service-declared, and chapter 40 checks
+# E_DUPLICATE_EXPOSURE_NAME against a name none of them defines. The value below
+# is the LIVE one, read off the estate -- and note it is not derivable from the
+# Service id even naively: the Service is `platform-rabbitmq` and the host is
+# `rabbitmq`. README, gap G-30.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: rabbitmq
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: rabbitmq
+    app.kubernetes.io/instance: platform-rabbitmq
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  entryPoints:
+    - websecure                        # CONTEXT: the tier's entryPoint
+  routes:
+    - kind: Rule
+      match: Host(`rabbitmq.jorisjonkers.dev`)   # NOT DERIVABLE (G-30)
+      middlewares:
+        # derived: audience `authenticated` on a public tier -> forward-auth.
+        # The author wrote one word; the chain, the tier and the middleware name
+        # are all platform-arbitrated and none of them appears in layer 1.
+        #
+        # THE OBJECT THIS REFERS TO HAS NO PRODUCER. The registry says
+        # traefik-public emits IngressRoutes "with middleware references" --
+        # references only -- and no registered adapter emits the Middleware that
+        # points at auth-api. This route is the data domain's instance of the
+        # estate's most-referenced missing object. README, gap G-31.
+        - name: forward-auth
+          namespace: kube-system       # CONTEXT
+      services:
+        - name: rabbitmq
+          namespace: data-system
+          port: 15672                  # the exposed `provides` port
+  tls:
+    # CONTEXT: the tier's certificate policy. Nothing in Service Intent names a
+    # certificate, an issuer or a resolver.
+    certResolver: letsencrypt
+# NO `paths` on the exposure entry, so this route claims the whole host. That is
+# correct here -- the management UI is the only thing behind this hostname -- and
+# it is the same shape that made auth's two routes collide. Nothing distinguishes
+# "one exposure, whole host, deliberate" from "two exposures, whole host,
+# forgot to split".
+#
+# THIS ROUTE IS ALSO AN INBOUND EDGE THE PROVIDER CANNOT SEE. It is what puts
+# `rabbitmq` among the nine hostnames auth-api's CORS list maintains by hand
+# today. Under this model that list derives from routes like this one -- an
+# `exposure` in the data domain producing an env value in the auth domain -- and
+# the predicate that selects which routes count is chapter 16's open item 1. Not
+# rendered anywhere. README, gap G-32.
