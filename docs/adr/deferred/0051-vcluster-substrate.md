@@ -44,7 +44,7 @@ composed estate` — the substrate's location is never named. If VC lands on the
 production control plane, six concurrent full-estate applies draw on the same
 7-node pool (node facts emit 110 labels for 7 nodes) and the same `local-path`
 storage the placement model exists to arbitrate, contending for exactly the CPU and
-memory [0016](../0016-pod-hardening-and-resource-class.md)'s size classes ration — a
+memory [0061](../0061-placement-is-hard-dimensions.md)'s dimensions ration — a
 test substrate on the production kernel defeats the control that protects
 production. Hence k3d on the CI runner: the same k3s binary as production, in a
 container namespace on the runner host, with no production API server, scheduler or
@@ -61,7 +61,7 @@ script above "already does" a layer-ordered apply against a vcluster today.
 
 | option | cost if taken | why rejected |
 |---|---|---|
-| vclusters on the production k3s cluster | six concurrent syncers × 405 objects on the 7-node pool and its `local-path` volumes; no isolation from the workloads [0016](../0016-pod-hardening-and-resource-class.md) rations | Test load evicting production is precisely the failure the placement model exists to prevent |
+| vclusters on the production k3s cluster | six concurrent syncers × 405 objects on the 7-node pool and its `local-path` volumes; no isolation from the workloads [0061](../0061-placement-is-hard-dimensions.md) rations | Test load evicting production is precisely the failure the placement model exists to prevent |
 | a dedicated always-on test cluster | second set of hardware plus its own k3s upgrade, CNI ([0036](../0036-cni-selection.md)) and restore ([0057](../0057-datastore-and-restore.md)) story, run by the same one person | Doubles the operational surface to serve a gate whose cost is not yet known |
 | `kind` on the runner instead of k3d | same isolation, but a different distribution from the k3s the gate is predicting for | Reintroduces substrate drift the gate exists to eliminate; k3d runs the production k3s binary |
 | no substrate — schema validation plus `--dry-run=server` against production | near-zero CI cost | Needs a production credential on every PR and still never runs a relationship suite ([0049](0049-aggregator-owned-tests.md)) |

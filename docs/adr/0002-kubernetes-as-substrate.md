@@ -46,9 +46,9 @@ the drift mechanism: a conflict "means a human edited a field this aggregator
 owns: it is reported, never resolved with `--force-conflicts`"
 (`spec/v1/50-lifecycle.md:151`). The review (`review/CONSOLIDATED.md` B9)
 verified both fail as currently designed. The boundary fails because the
-generated deployer Role is namespace-scoped with no `resourceNames` while
-`aliases.namespace` lets two Services share a namespace — so the ownership rule
-is a CI check, not an API-server control. The drift signal fails because the
+generated deployer Role is namespace-scoped with no `resourceNames` while the
+Services of one domain all share its namespace — so the ownership rule is a CI
+check, not an API-server control. The drift signal fails because the
 merge deploy and the hourly re-apply CronJob deliberately share the
 field-manager name `auth-federation`
 (`spec/v1/examples/workflows/aggregator-deploy.yml:103`,

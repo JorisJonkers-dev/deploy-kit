@@ -16,6 +16,12 @@ names — that is the follow-up spec rewrite, tracked in
 `review/REBUILD-MANIFEST.md`; `scripts/lint-adrs.mjs` stays non-blocking until
 it lands.
 
+The set was amended on 2026-09-07 for placement and domain-authored intent:
+`size` became a set of hard `placement` dimensions matched against node
+allocatable, Intent is authored one file per domain, and a Service is itself the
+unit of atomic release. 0017 and 0060 are superseded by that amendment and kept
+for the record; 0004, 0010, 0016, 0024, 0037 and 0056 were amended in place.
+
 Tier-0 **premises** carry one falsifiable claim each; tier-1 **decisions** name
 the premises they stand on in `rests-on`. A `claim: open` means decided in
 direction, untested — its owner and settling test are in the file.
@@ -46,18 +52,20 @@ delivery work it underpins.
 ### Identity and authorship
 | # | title | claim |
 |---|---|---|
-| [0010](0010-flat-service-identity.md) | One flat Service Id, with deliberate renames as data | settled |
+| [0010](0010-flat-service-identity.md) | One flat Service Id | settled |
 | [0011](0011-configuration-env-files-per-workload.md) | Configuration is per-Workload env files with named placeholders | settled |
 | [0012](0012-assets-not-code.md) | File-shaped configuration is an Asset; code is not configuration | settled |
 | [0013](0013-blueprint-packs-pinned-checkout.md) | Blueprint packs arrive by pinned checkout, not a registry | settled |
+| [0063](0063-intent-authored-per-domain.md) | Intent is authored one file per domain | settled |
 
 ### Workload-declared runtime intent
 | # | title | claim |
 |---|---|---|
 | [0014](0014-probes-are-siblings.md) | Probes are sibling declarations, each carrying its own path | settled |
 | [0015](0015-durability-class-per-volume.md) | Every volume declares a Durability Class | settled |
-| [0016](0016-pod-hardening-and-resource-class.md) | Pod hardening and resource class are layer-1 vocabulary | open |
-| [0017](0017-placement-by-capability.md) | Placement is declared as capabilities, never labels | settled |
+| [0016](0016-pod-hardening.md) | Pod hardening is layer-1 vocabulary | open |
+| [0017](0017-placement-by-capability.md) | Placement is declared as capabilities, never labels | superseded by [0061](0061-placement-is-hard-dimensions.md) |
+| [0061](0061-placement-is-hard-dimensions.md) | Placement is a set of hard dimensions matched against allocatable | open |
 
 ### Exposure, dependencies, observability
 | # | title | claim |
@@ -116,4 +124,5 @@ delivery work it underpins.
 | # | title | claim |
 |---|---|---|
 | [0059](0059-v1-scope-stopping-rule.md) | v1 has a scope and a stopping rule | open |
-| [0060](0060-release-unit.md) | Several Services switch as one Release Unit | open |
+| [0060](0060-release-unit.md) | Several Services switch as one Release Unit | superseded by [0062](0062-service-is-the-release-unit.md) |
+| [0062](0062-service-is-the-release-unit.md) | A Service is the unit of atomic release | settled |
