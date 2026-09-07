@@ -178,9 +178,14 @@ field's placement link to this anchor rather than copying rows.
 | `placement.disk` | Service | pool — stated | a `media` set and a `size`; it filters the first placement and the PV binding wins thereafter — `E_DISK_BINDING_CONFLICT` |
 | `placement.arch`, `.site`, `.capabilities` | Service | no contention | filters over facts the node contract publishes; a list is a set of equally acceptable values, never a ranking |
 | `observability.scrape` | Service | no contention | port and path of its own metrics surface |
+| `volumes[].durability` | Service | no contention | what losing the data costs; only the owner knows ([0015](../../docs/adr/model/0015-durability-class-per-volume.md)) |
+| `engine` | Service | no contention | what the process is, which the platform keys its backup method off ([0078](../../docs/adr/model/0078-engine-is-workload-vocabulary.md)) |
 | `overrides` | Service | no contention | a derived value restated with a recorded reason ([Overrides](#overrides)) |
 | route tier | platform | pool | the shared edge is finite; `E_NO_TIER_FOR_AUDIENCE` where no tier carries the audience |
 | middleware chain | platform | pool | tier + audience + `contentPolicy`; `forward-auth` for `authenticated` on a public tier, the security-headers baseline with the named content profile, and the redirect rule a route's `redirectTo` asks for |
+| backup window, retention count, off-cluster destination | platform | pool | one policy per Durability Class; the window is one node's IO and the destination is one remote target ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)) |
+| the backup method — image, command, arguments | platform | pool | keyed by `engine`, arriving with the blueprint packs |
+| the backup identity's grant on the destination | platform | pool | derived, never authored: the platform chose the destination, so it owns the credential |
 | Reconcile Unit and its ordering | platform | unique — arbitrated | one estate-wide DAG ([The Reconcile Unit](#the-reconcile-unit)) |
 | identity name, Vault role, Vault policy | platform | pool | named for the **Workload alone**; the auth role namespace is shared ([chapter 16](16-dependencies.md#workload-identity)) |
 | Secret Store path layout and grants | platform | pool | one path per reader set; `E_SUBTREE_PREFIX_COLLISION` across Subtrees ([chapter 40](40-composition.md#identity)) |
@@ -460,6 +465,14 @@ Five rules carry most of the weight:
   gives up at 5 minutes on a Workload the model says may legitimately take ten.
   One input has one derivation, and the Service-scoped number that a switchover
   waits on is the release-gate deadline below.
+- **Durability derives objects, not just a label.** A volume of class
+  `recoverable` derives a backup `CronJob` and a retention sweep; `irreplaceable`
+  derives both plus an off-cluster copy and a derived grant for the destination;
+  `reconstructible` derives nothing. The schedule, retention and destination come
+  from the platform's per-class policy and the method from the Workload's
+  `engine`, so two Services of the same class and engine derive the same objects
+  with different volumes — which is the property that makes a restore rehearsal
+  meaningful ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)).
 - **Hardening is a class.** It defaults to `restricted` — `runAsNonRoot`,
   `readOnlyRootFilesystem`, all capabilities dropped, seccomp `RuntimeDefault` —
   and each declared exception names itself and carries a reason

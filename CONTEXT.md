@@ -72,7 +72,18 @@ mechanism is derived ([0018](docs/adr/model/0018-exposure-by-audience.md)).
 
 **Durability Class** — what losing a volume costs: `reconstructible`,
 `recoverable`, `irreplaceable`. Gates every destructive operation
-([0015](docs/adr/model/0015-durability-class-per-volume.md)).
+([0015](docs/adr/model/0015-durability-class-per-volume.md)), and derives the
+backup objects that make the class mean something
+([0077](docs/adr/model/0077-durability-derives-a-backup.md)).
+
+**Engine** — what a Workload's process *is*, where the platform must treat it
+specially: `postgres`, `rabbitmq`, `valkey`, `files`. Not `runtime`, which says
+how a process is instrumented
+([0078](docs/adr/model/0078-engine-is-workload-vocabulary.md)).
+
+**Durability policy** — the platform's terms for one Durability Class: the
+backup window, the retention count, and the off-cluster destination. Carried by
+the Cluster Context, never authored per volume.
 
 **Placement** — the hard dimensions a Workload requires of a node: memory, cpu,
 architecture, site, capabilities, and optionally disk and GPU. Eligibility, not

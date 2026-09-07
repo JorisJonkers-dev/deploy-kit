@@ -89,6 +89,7 @@ classDiagram
         +Lifecycle lifecycle
         +ImageAlias image
         +Runtime runtime
+        +Engine engine
         +Duration startupBudget
         +bool zeroDowntime
         +bool stateful
@@ -465,6 +466,20 @@ and `volumes`.
 `runtime` selects the Runtime Profile: `jvm`, `python`, `node`, `static`, `none`.
 `none` is correct for a third-party image and injects no profile values at all.
 
+`engine` names **what the process is**, where that is something the platform
+has to treat specially: `postgres`, `rabbitmq`, `valkey`, `files`, or absent.
+It is a fact about the Workload rather than a mechanism, which is why it belongs
+here ([0078](../../docs/adr/model/0078-engine-is-workload-vocabulary.md)), and
+it is what the platform keys its backup method off
+([Storage and durability](#storage-and-durability)). It is required on a Workload
+holding a volume of a class that derives a backup, and refused on one that
+derives none — `E_ENGINE_WITHOUT_DURABILITY` and `E_DURABILITY_WITHOUT_ENGINE`.
+
+`engine` is not `runtime`. `runtime` says how the process is instrumented —
+`jvm`, `python`, `node` — and `engine` says what its data is. `platform-postgres`
+runs a third-party image, so its `runtime` is `none` and its `engine` is
+`postgres`.
+
 `provides` and `placement` are Workload fields, specified in
 [Ports and surfaces](#ports-and-surfaces) and [Placement](#placement). Every
 Workload declares a `placement` block, because two of its dimensions are
@@ -632,6 +647,32 @@ worth, which only the owning Service knows:
 | `reconstructible` | losing it costs a rebuild, not data | no backup job | `valkey` — *"deliberately unbacked as reconstructible cache"* |
 | `recoverable` | a nightly application-level backup with a retention sweep suffices | backup job + sweep | the Postgres logical dumps |
 | `irreplaceable` | needs an off-cluster copy, and a rehearsed restore before its first production apply | backup job + sweep + off-cluster copy | `knowledge-vault-clone`, a personal vault on `local-path` |
+
+**The terms are platform-assigned, the class is not**
+([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)). The window a
+backup runs in, how many copies are kept, and where an off-cluster copy goes are
+contended — one node's IO, one remote target — so by
+[0004](../../docs/adr/model/0004-contention-decides-authority.md) the Cluster
+Context carries one policy per class and the volume declares only what the data
+is worth. A volume that genuinely needs different terms restates one with a
+reason ([chapter 20](20-resolved-deployment.md#overrides)).
+
+**The method is platform-assigned too**, keyed by the Workload's
+[`engine`](#workload): an application-level backup is `pg_dump` for `postgres`, a
+definitions export for `rabbitmq`, a file-level copy for `files`, and the image
+and command for each arrive with the blueprint packs
+([0013](../../docs/adr/model/0013-blueprint-packs-pinned-checkout.md)). Nothing
+authored is executable, which is what [0012](../../docs/adr/model/0012-assets-not-code.md)
+requires and what a `backup.sh` Asset would have violated.
+
+The `kubernetes` adapter emits the resulting `CronJob` — one per volume that
+derives a backup, plus its retention sweep — because that kind is already its
+([chapter 30](30-deliverables.md#the-registered-set)). The credential for an
+off-cluster destination is a **derived** grant against the platform's own Secret
+Store path, recorded in the projection its owner reads back
+([chapter 20](20-resolved-deployment.md#authority)): the platform chose the
+destination, so the platform owns the credential, and it still appears in the
+derived Vault policy ([0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)).
 
 There is no platform durability to fall back on. Storage is `local-path`, not
 Longhorn: all fourteen PVCs are `ReadWriteOnce`, and
