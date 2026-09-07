@@ -1,0 +1,19 @@
+# adapter: kubernetes
+# real path: platform/cluster/flux/apps/auth/namespace.yaml
+#
+# ONE Namespace for the whole domain. `auth-system` derives from `domain: auth`
+# and from nothing else -- no field exists that could divert it. The auth domain
+# happens to hold one Service, so the hoist the data domain needs (three
+# Services, three identical Namespace objects at three paths) does not bite
+# here; the adapter still emits namespace.yaml *per Service directory*, so it
+# would the moment a second Service joined this file.
+#
+# It is not a trust boundary. Nothing in this file isolates anything -- see
+# apps/auth/networkpolicy.yaml, which is where the isolation actually lives.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: auth-system
+  labels:
+    kubernetes.io/metadata.name: auth-system
+    app.kubernetes.io/part-of: auth
