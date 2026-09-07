@@ -85,4 +85,4 @@ renames permanent data rather than a free correction.
   whoever writes the test that proves a held member holds the set.
 - Whatever delivery mechanism is eventually defined must implement
   all-or-nothing switchover per Service — paid by the deferred delivery
-  definition ([deferred/README.md](deferred/README.md)).
+  definition ([deferred/README.md](../deferred/README.md)).

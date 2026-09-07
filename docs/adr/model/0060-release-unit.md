@@ -37,7 +37,7 @@ the old delivery examples deployed `auth-api` and `auth-ui` as one set, and the
 Until now that coupling lived only in delivery machinery — the deferred
 aggregator design carried a `deploys` list that happened to hold both members.
 Delivery is now defined separately from the model
-([deferred/README.md](deferred/README.md)), so the model must carry the
+([deferred/README.md](../deferred/README.md)), so the model must carry the
 coupling itself or lose it. A **Release Unit** carries it: each member Service
 declares its unit by name in layer 1; composition materialises the set; the
 derived gate is that **no member's new version receives traffic until every
@@ -77,7 +77,7 @@ manual release coordination it replaced, one incident at a time.
 - Whatever delivery mechanism is eventually defined must implement
   all-or-nothing switchover for units; this is one of the model's three hard
   demands on the deferred delivery work
-  ([deferred/README.md](deferred/README.md)) — paid by the future delivery
+  ([deferred/README.md](../deferred/README.md)) — paid by the future delivery
   definition.
 - Rollback is unit-scoped: reverting one member means reverting the unit —
   paid by incident responders, in larger but consistent rollback scope.

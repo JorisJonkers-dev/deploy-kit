@@ -27,7 +27,7 @@ because **Flux prunes**: a domain silently omitted from a render is a domain
 deleted from the cluster on the next reconcile, and the render would look
 entirely valid. `E_PARTICIPANT_MISSING` and `E_PARTICIPANT_STALE` are what stand
 between a missed publish and a deletion. Apply-before-prune under
-[0042](deferred/0042-apply-before-prune-inventory.md) does not cover this: it makes prune
+[0042](../deferred/0042-apply-before-prune-inventory.md) does not cover this: it makes prune
 run over an inventory that is *correct*, and a render missing a whole domain is
 correct — it simply does not contain it.
 
@@ -77,7 +77,7 @@ estate's only enumeration of expected domains, with nothing left to rebuild it.
   red compose rather than a silent restore.
 - One stale participant blocks every aggregator, including the one shipping the
   fix (OPS-009); the remaining lever is break-glass with an older lock under
-  [0045](deferred/0045-break-glass-reporting.md) — paid by every other domain owner.
+  [0045](../deferred/0045-break-glass-reporting.md) — paid by every other domain owner.
 - A domain that genuinely publishes less often than weekly must carry an
   override with a written reason — paid by that domain's owner.
 - Dormancy costs a reason and a review date and is reviewed as a ledger entry —

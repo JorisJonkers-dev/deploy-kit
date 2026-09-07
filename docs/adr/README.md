@@ -30,18 +30,31 @@ Citation rule: never a bare ADR number. In-set references are relative links;
 workspace decisions live in a separate namespace
 (`JorisJonkers-dev/workspace/docs/decisions/`) and are always linked absolutely.
 
+## Domains
+
+One directory per decision domain, and the directory is the scope boundary
+([chapter 00](../../spec/v1/00-overview.md#programme-scope)). Numbers run in one
+estate-wide sequence across all three, so a citation resolves without knowing
+which domain a decision lives in.
+
+| directory | holds | `normative:` pointers resolve against | linted |
+|---|---|---|---|
+| [`model/`](model/) | the v1 model: the layers, composition, derivation, the adapters | `spec/v1/` | yes |
+| [`architecture/`](architecture/) | the compiler's own structure: layering, ports, error model, gates | `docs/architecture.md` | yes |
+| [`deferred/`](deferred/README.md) | delivery mechanics and co-testing, defined separately | sections these chapters deliberately lack | no |
+
 ## Premises
 
 | # | title | claim | normative |
 |---|---|---|---|
-| [0001](0001-estate-scale-and-ownership.md) | The estate is one maintainer, one cluster, about thirty Services | open | 00-overview.md#the-estate |
-| [0002](0002-kubernetes-as-substrate.md) | Kubernetes stays, for two properties that must be made real | open | 00-overview.md#substrate |
-| [0003](0003-three-layer-meta-model.md) | Three layers, with the middle layer as a contract | settled | 00-overview.md#the-meta-model |
-| [0004](0004-contention-decides-authority.md) | Contention decides who declares a value | open | 20-resolved-deployment.md#authority |
-| [0005](0005-derivation-is-total.md) | Derivation from declared intent is total | open | 20-resolved-deployment.md#derived-mechanics |
-| [0006](0006-pinned-inputs.md) | Every assignment is a function of pinned, digested inputs | open | 20-resolved-deployment.md#pinned-inputs |
-| [0007](0007-schema-version-separable.md) | The data model's version is not the package's version | open | 40-composition.md#versioning |
-| [0009](0009-vault-read-is-per-path.md) | A Vault KV-v2 read grant covers the whole path | open | 10-service-intent.md#secrets |
+| [0001](model/0001-estate-scale-and-ownership.md) | The estate is one maintainer, one cluster, about thirty Services | open | 00-overview.md#the-estate |
+| [0002](model/0002-kubernetes-as-substrate.md) | Kubernetes stays, for two properties that must be made real | open | 00-overview.md#substrate |
+| [0003](model/0003-three-layer-meta-model.md) | Three layers, with the middle layer as a contract | settled | 00-overview.md#the-meta-model |
+| [0004](model/0004-contention-decides-authority.md) | Contention decides who declares a value | open | 20-resolved-deployment.md#authority |
+| [0005](model/0005-derivation-is-total.md) | Derivation from declared intent is total | open | 20-resolved-deployment.md#derived-mechanics |
+| [0006](model/0006-pinned-inputs.md) | Every assignment is a function of pinned, digested inputs | open | 20-resolved-deployment.md#pinned-inputs |
+| [0007](model/0007-schema-version-separable.md) | The data model's version is not the package's version | open | 40-composition.md#versioning |
+| [0009](model/0009-vault-read-is-per-path.md) | A Vault KV-v2 read grant covers the whole path | open | 10-service-intent.md#secrets |
 
 Premise 0008 (tested-equals-deployed) moved to
 [deferred/](deferred/0008-tested-equals-deployed-requires-push.md) with the
@@ -52,78 +65,78 @@ delivery work it underpins.
 ### Identity and authorship
 | # | title | claim |
 |---|---|---|
-| [0010](0010-flat-service-identity.md) | One flat Service Id | settled |
-| [0011](0011-configuration-env-files-per-workload.md) | Configuration is per-Workload env files with named placeholders | settled |
-| [0012](0012-assets-not-code.md) | File-shaped configuration is an Asset; code is not configuration | settled |
-| [0013](0013-blueprint-packs-pinned-checkout.md) | Blueprint packs arrive by pinned checkout, not a registry | settled |
-| [0063](0063-intent-authored-per-domain.md) | Intent is authored one file per domain | settled |
-| [0064](0064-sidecars-are-workload-vocabulary.md) | A Workload may hold sidecars, and a sidecar carries what a container carries | settled |
+| [0010](model/0010-flat-service-identity.md) | One flat Service Id | settled |
+| [0011](model/0011-configuration-env-files-per-workload.md) | Configuration is per-Workload env files with named placeholders | settled |
+| [0012](model/0012-assets-not-code.md) | File-shaped configuration is an Asset; code is not configuration | settled |
+| [0013](model/0013-blueprint-packs-pinned-checkout.md) | Blueprint packs arrive by pinned checkout, not a registry | settled |
+| [0063](model/0063-intent-authored-per-domain.md) | Intent is authored one file per domain | settled |
+| [0064](model/0064-sidecars-are-workload-vocabulary.md) | A Workload may hold sidecars, and a sidecar carries what a container carries | settled |
 
 ### Workload-declared runtime intent
 | # | title | claim |
 |---|---|---|
-| [0014](0014-probes-are-siblings.md) | Probes are sibling declarations, each carrying its own path | settled |
-| [0015](0015-durability-class-per-volume.md) | Every volume declares a Durability Class | settled |
-| [0016](0016-pod-hardening.md) | Pod hardening is layer-1 vocabulary | open |
-| [0017](0017-placement-by-capability.md) | Placement is declared as capabilities, never labels | superseded by [0061](0061-placement-is-hard-dimensions.md) |
-| [0061](0061-placement-is-hard-dimensions.md) | Placement is a set of hard dimensions matched against allocatable | open |
+| [0014](model/0014-probes-are-siblings.md) | Probes are sibling declarations, each carrying its own path | settled |
+| [0015](model/0015-durability-class-per-volume.md) | Every volume declares a Durability Class | settled |
+| [0016](model/0016-pod-hardening.md) | Pod hardening is layer-1 vocabulary | open |
+| [0017](model/0017-placement-by-capability.md) | Placement is declared as capabilities, never labels | superseded by [0061](model/0061-placement-is-hard-dimensions.md) |
+| [0061](model/0061-placement-is-hard-dimensions.md) | Placement is a set of hard dimensions matched against allocatable | open |
 
 ### Exposure, dependencies, observability
 | # | title | claim |
 |---|---|---|
-| [0018](0018-exposure-by-audience.md) | Exposure is declared by Audience, in one closed vocabulary | settled |
-| [0019](0019-registered-unmanaged-surfaces.md) | Un-deployed hostnames are Registered Unmanaged Surfaces | settled |
-| [0020](0020-dependency-edges-carry-surface.md) | A dependency edge names the provider, the surface, and necessity | settled |
-| [0021](0021-observability-scrape-and-alert-class.md) | Observability is a scrape surface plus an Alert Class | settled |
+| [0018](model/0018-exposure-by-audience.md) | Exposure is declared by Audience, in one closed vocabulary | settled |
+| [0019](model/0019-registered-unmanaged-surfaces.md) | Un-deployed hostnames are Registered Unmanaged Surfaces | settled |
+| [0020](model/0020-dependency-edges-carry-surface.md) | A dependency edge names the provider, the surface, and necessity | settled |
+| [0021](model/0021-observability-scrape-and-alert-class.md) | Observability is a scrape surface plus an Alert Class | settled |
 
 ### Secrets
 | # | title | claim |
 |---|---|---|
-| [0022](0022-grants-live-on-the-service.md) | Secret grants live on the Service document, at two levels | settled |
-| [0023](0023-grant-unit-is-the-path.md) | The grant unit is the path; the subtree splits per reader set | open |
-| [0024](0024-identity-per-workload.md) | Workloads hold their own identity | settled |
-| [0025](0025-access-tiers-derive-policy.md) | Access tiers derive the Vault policy | settled |
-| [0026](0026-delivery-env-file-self.md) | Secret delivery is env, file, or self | settled |
-| [0027](0027-secret-reference-join-key.md) | A secret placeholder byte-matches a granted path | settled |
-| [0028](0028-secrets-at-rest-gate.md) | Secrets at rest gate env and file delivery | open |
+| [0022](model/0022-grants-live-on-the-service.md) | Secret grants live on the Service document, at two levels | settled |
+| [0023](model/0023-grant-unit-is-the-path.md) | The grant unit is the path; the subtree splits per reader set | open |
+| [0024](model/0024-identity-per-workload.md) | Workloads hold their own identity | settled |
+| [0025](model/0025-access-tiers-derive-policy.md) | Access tiers derive the Vault policy | settled |
+| [0026](model/0026-delivery-env-file-self.md) | Secret delivery is env, file, or self | settled |
+| [0027](model/0027-secret-reference-join-key.md) | A secret placeholder byte-matches a granted path | settled |
+| [0028](model/0028-secrets-at-rest-gate.md) | Secrets at rest gate env and file delivery | open |
 
 ### Layer 2 — derivation and assignment
 | # | title | claim |
 |---|---|---|
-| [0029](0029-resolved-deployment-versioned-artifact.md) | The Resolved Deployment is a versioned, reviewable artifact | settled |
-| [0030](0030-runtime-mechanics-derived.md) | Runtime mechanics are derived from declared intent | settled |
-| [0031](0031-derived-overrides-with-reason.md) | A derived value is overridable with a reason; an assignment is not | settled |
-| [0032](0032-reconcile-unit-derived.md) | The Reconcile Unit is derived from the dependency graph | settled |
-| [0033](0033-assignments-published-back.md) | Assignments are published back to the owning repository | settled |
-| [0034](0034-cluster-state-pinned-input.md) | ClusterState is a pinned, digested input | settled |
-| [0035](0035-network-policy-default-deny.md) | Network policy is default-deny, derived from the edge set | settled |
-| [0036](0036-cni-selection.md) | The CNI is chosen for a non-enforcing policy stage | open |
+| [0029](model/0029-resolved-deployment-versioned-artifact.md) | The Resolved Deployment is a versioned, reviewable artifact | settled |
+| [0030](model/0030-runtime-mechanics-derived.md) | Runtime mechanics are derived from declared intent | settled |
+| [0031](model/0031-derived-overrides-with-reason.md) | A derived value is overridable with a reason; an assignment is not | settled |
+| [0032](model/0032-reconcile-unit-derived.md) | The Reconcile Unit is derived from the dependency graph | settled |
+| [0033](model/0033-assignments-published-back.md) | Assignments are published back to the owning repository | settled |
+| [0034](model/0034-cluster-state-pinned-input.md) | ClusterState is a pinned, digested input | settled |
+| [0035](model/0035-network-policy-default-deny.md) | Network policy is default-deny, derived from the edge set | settled |
+| [0036](model/0036-cni-selection.md) | The CNI is chosen for a non-enforcing policy stage | open |
 
 ### Composition and versioning
 | # | title | claim |
 |---|---|---|
-| [0037](0037-composition-oci-fragments.md) | Declarations compose from published OCI fragments | settled |
-| [0038](0038-participants-list-staleness.md) | Participants are listed, bounded by seven days of staleness | settled |
-| [0039](0039-artifact-schema-versioning.md) | The artifact schema is semver; composition accepts a range | settled |
-| [0040](0040-renovate-ordering-gate.md) | Version bumps ride Renovate behind an ordering gate | settled |
+| [0037](model/0037-composition-oci-fragments.md) | Declarations compose from published OCI fragments | settled |
+| [0038](model/0038-participants-list-staleness.md) | Participants are listed, bounded by seven days of staleness | settled |
+| [0039](model/0039-artifact-schema-versioning.md) | The artifact schema is semver; composition accepts a range | settled |
+| [0040](model/0040-renovate-ordering-gate.md) | Version bumps ride Renovate behind an ordering gate | settled |
 
 ### Adapters and rendering
 | # | title | claim |
 |---|---|---|
-| [0052](0052-registered-adapters-are-v1.md) | The registered adapters are v1; the second generation is deleted | settled |
-| [0053](0053-adapter-port-contract.md) | An adapter satisfies one typed port | settled |
-| [0054](0054-adapter-attribution.md) | Every Deliverable is attributed to exactly one Adapter | settled |
-| [0055](0055-bidirectional-ledgers.md) | Every accepted hole is a bidirectional ledger | settled |
+| [0052](model/0052-registered-adapters-are-v1.md) | The registered adapters are v1; the second generation is deleted | settled |
+| [0053](model/0053-adapter-port-contract.md) | An adapter satisfies one typed port | settled |
+| [0054](model/0054-adapter-attribution.md) | Every Deliverable is attributed to exactly one Adapter | settled |
+| [0055](model/0055-bidirectional-ledgers.md) | Every accepted hole is a bidirectional ledger | settled |
 
 ### Platform facts
 | # | title | claim |
 |---|---|---|
-| [0056](0056-node-facts-single-source.md) | Node facts are authored once; nix imports them | settled |
-| [0057](0057-datastore-and-restore.md) | Datastore, server count, and restore are recorded platform facts | open |
+| [0056](model/0056-node-facts-single-source.md) | Node facts are authored once; nix imports them | settled |
+| [0057](model/0057-datastore-and-restore.md) | Datastore, server count, and restore are recorded platform facts | open |
 
 ### Release and programme
 | # | title | claim |
 |---|---|---|
-| [0059](0059-v1-scope-stopping-rule.md) | v1 has a scope and a stopping rule | open |
-| [0060](0060-release-unit.md) | Several Services switch as one Release Unit | superseded by [0062](0062-service-is-the-release-unit.md) |
-| [0062](0062-service-is-the-release-unit.md) | A Service is the unit of atomic release | settled |
+| [0059](model/0059-v1-scope-stopping-rule.md) | v1 has a scope and a stopping rule | open |
+| [0060](model/0060-release-unit.md) | Several Services switch as one Release Unit | superseded by [0062](model/0062-service-is-the-release-unit.md) |
+| [0062](model/0062-service-is-the-release-unit.md) | A Service is the unit of atomic release | settled |

@@ -52,7 +52,7 @@ foundation — it stays a Flux `Kustomization` with a `dependsOn` graph. For cla
 A it is the apply order: an aggregator applies its slice layer by layer in
 `lock.spec.dependencyGraph.order`, which
 `deploy-harness/scripts/apply-candidate.mjs` already does against a vcluster
-under [0041](deferred/0041-push-delivery-boundary.md). The derivation is unchanged; only
+under [0041](../deferred/0041-push-delivery-boundary.md). The derivation is unchanged; only
 the number of consumers is.
 
 ## Alternatives

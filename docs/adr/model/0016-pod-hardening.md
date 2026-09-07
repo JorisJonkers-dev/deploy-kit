@@ -16,7 +16,7 @@ Every image the estate runs can start under `restricted` — `runAsNonRoot`,
 with a small, nameable set of exceptions. False if: a load-bearing image cannot
 run non-root and has no rebuildable equivalent, so the default must be relaxed
 rather than excepted. Settled by: rendering with the default class into a
-vcluster ([0051](deferred/0051-vcluster-substrate.md)), then `kubectl get pods -A
+vcluster ([0051](../deferred/0051-vcluster-substrate.md)), then `kubectl get pods -A
 --field-selector=status.phase!=Running` — each pod it names is a declared
 exception with a reason, or a rebuild.
 
@@ -80,4 +80,4 @@ encodes it, and reverting is a data migration.
   settled by [0061](0061-placement-is-hard-dimensions.md), so a reader chasing
   BestEffort here finds nothing — paid by whoever holds the old citation.
 - The claim settles only through a vcluster render, inheriting
-  [0051](deferred/0051-vcluster-substrate.md)'s risk — paid by joris.
+  [0051](../deferred/0051-vcluster-substrate.md)'s risk — paid by joris.

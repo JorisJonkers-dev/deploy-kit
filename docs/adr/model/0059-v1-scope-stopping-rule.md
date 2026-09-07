@@ -14,7 +14,7 @@ rests-on: ["0001"]
 The model alone — with no new delivery machinery — is independently useful: it
 can render today's estate and be delivered by today's Flux pipeline unchanged.
 False if: rendering the live estate from intent requires any decision in
-[deferred/](deferred/README.md). Settled by: render the live estate from
+[deferred/](../deferred/README.md). Settled by: render the live estate from
 layer-1 intent, deliver it through the existing Flux tree, and diff the result
 against the hand-written manifests it replaces.
 
@@ -32,7 +32,7 @@ are defined separately from the model.** The partition is now structural, not
 enumerated: every ADR in `docs/adr/` is v1 model scope — the eight premises
 (0001–0007, 0009) and the decisions 0010–0040, 0052–0057, 0059 and
 [0060](0060-release-unit.md) — and every ADR in
-[deferred/](deferred/README.md) (0008, 0041–0051, 0058) is out of v1,
+[deferred/](../deferred/README.md) (0008, 0041–0051, 0058) is out of v1,
 parked as direction work for the separate delivery-and-testing definition. A
 future decision moves a file across that boundary or it does not move at all.
 
@@ -68,11 +68,11 @@ Classes, a delivery definition that ignores them breaks declared intent.
   lands.
 - The deferred set is taken up only after
   [workspace#45](https://github.com/JorisJonkers-dev/workspace/issues/45) runs
-  and [deferred/0051](deferred/0051-vcluster-substrate.md)'s measurement
+  and [deferred/0051](../deferred/0051-vcluster-substrate.md)'s measurement
   exists; review date 2026-11-30 — deferred work still unstarted then is cut
   from planning, not extended — paid by joris, who owns the date.
 - Live-defect fixes ride independently of both scopes: the foundation pinning
-  evidence in [deferred/0048](deferred/0048-class-b-pinning.md) and this
+  evidence in [deferred/0048](../deferred/0048-class-b-pinning.md) and this
   repository's own unpinned CI are operational fixes that proceed regardless —
   paid by joris, now.
 - The three demands above are the complete interface between the scopes; a

@@ -10,7 +10,7 @@ machine-checkable property.
 
 An edge is a triple. It names the provider, the surface, and whether the
 consumer requires it
-([0020](../../docs/adr/0020-dependency-edges-carry-surface.md)).
+([0020](../../docs/adr/model/0020-dependency-edges-carry-surface.md)).
 
 ```yaml
 dependsOn:
@@ -20,7 +20,7 @@ dependsOn:
 
 | field | required | meaning |
 |---|---|---|
-| `service` | yes | A Service Id — the only referencable identity ([0010](../../docs/adr/0010-flat-service-identity.md)). It must resolve in the composed union: `E_UNRESOLVED_SERVICE`. |
+| `service` | yes | A Service Id — the only referencable identity ([0010](../../docs/adr/model/0010-flat-service-identity.md)). It must resolve in the composed union: `E_UNRESOLVED_SERVICE`. |
 | `surface` | yes | One surface declared by one of that Service's Workloads. The port is written once, by the provider, and never restated by a consumer: `E_UNKNOWN_SURFACE` where the name matches nothing. |
 | `required` | no | Defaults to `true`. |
 
@@ -34,7 +34,7 @@ by Workload `auth-api`, and the consumer neither names that Workload nor learns
 it exists. A provider may move a surface between its own Workloads without a
 single consumer edit. The Service Id remains the only referencable identity, and
 a Workload is not referencable from outside its Service
-([0062](../../docs/adr/0062-service-is-the-release-unit.md)).
+([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)).
 
 Edges are declared **per Workload**, and a Service's edge set is the union of
 its Workloads' edges. Within `knowledge` the API reaches Postgres while the
@@ -75,7 +75,7 @@ default — buys both. The graph of required edges must be acyclic
 An edge orders; it does not group. Things that must switch versions together are
 Workloads of **one Service**: a Service is the unit of atomic release, its
 Workloads switch together or none switches, and there is no mechanism to couple
-two Services ([0062](../../docs/adr/0062-service-is-the-release-unit.md)).
+two Services ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)).
 Atomicity is authored by drawing the Service boundary, because the graph cannot
 see it: a frontend depends on its API, but a dependency edge does not mean the
 two must cut over together, and deriving atomicity from every edge would make
@@ -88,7 +88,7 @@ redrawing it.
 The same edges read from the provider's side produce derivations no Service
 could declare locally, because no Service knows its own consumers. They are
 computable only over the composed union
-([0037](../../docs/adr/0037-composition-oci-fragments.md)), which is this
+([0037](../../docs/adr/model/0037-composition-oci-fragments.md)), which is this
 chapter's hard dependency on [chapter 40](40-composition.md).
 
 | inbound derivation | evidence it is needed |
@@ -107,11 +107,11 @@ specification — see [Defined separately](#defined-separately).
 Every Workload authenticates as its own principal. The ServiceAccount, the
 Vault Kubernetes auth role and the Vault policy bound to it are derived **per
 Workload** and named for the **Workload alone**
-([0024](../../docs/adr/0024-identity-per-workload.md)). The namespace is the
+([0024](../../docs/adr/model/0024-identity-per-workload.md)). The namespace is the
 domain's, `<domain>-system`
-([0063](../../docs/adr/0063-intent-authored-per-domain.md)), so the principal a
+([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)), so the principal a
 Pod presents is `<domain>-system.<workload>`. No author writes an identity name
-([0030](../../docs/adr/0030-runtime-mechanics-derived.md)).
+([0030](../../docs/adr/model/0030-runtime-mechanics-derived.md)).
 
 | domain | Service | Workloads | derived identity |
 |---|---|---|---|
@@ -132,7 +132,7 @@ are one principal holding the union of the policies bound to it. Two things
 follow. Deriving the account from the Service Id — which
 `src/adapters/kubernetes.ts:665-669` does today, and which the previous version
 of this chapter drew as `id --> ServiceAccount` — makes the two grant levels of
-[0022](../../docs/adr/0022-grants-live-on-the-service.md) documentation rather
+[0022](../../docs/adr/model/0022-grants-live-on-the-service.md) documentation rather
 than a boundary. Under it, `knowledge-api`, which serves anonymous paths from
 the public internet, authenticated as the principal holding `read` on
 `secret/data/knowledge-system/vault-deploy-key`, the `0400` deploy key only the
@@ -153,7 +153,7 @@ starts.
 ### What a grant confers
 
 **The grant unit is the path.** A KV-v2 `read` returns the whole document stored
-at that path ([0009](../../docs/adr/0009-vault-read-is-per-path.md)), so a
+at that path ([0009](../../docs/adr/model/0009-vault-read-is-per-path.md)), so a
 policy naming a key subset would promise a narrowing the store never enforces.
 The previous version of this chapter promised exactly that — "`read` on the
 granted path and keys only" — and it was false. That claim is deleted.
@@ -162,7 +162,7 @@ granted path and keys only" — and it was false. That claim is deleted.
 nothing, and no author may read it as an access boundary. `keys: ['*']` is not
 vocabulary. The boundary can therefore be drawn only at the path, which fixes
 the Secret Subtree layout: **no path may hold keys for more than one reader
-set** ([0023](../../docs/adr/0023-grant-unit-is-the-path.md)).
+set** ([0023](../../docs/adr/model/0023-grant-unit-is-the-path.md)).
 `secret/data/platform/postgres` splits per consumer, and until it does, every
 one of its readers holds `read` on its neighbours' credentials.
 
@@ -191,7 +191,7 @@ DB_PASSWORD=${secret:secret/data/platform/postgres/kb#password}
 
 The placeholder's path half **byte-matches** the granted path — no mount table,
 no `data/` strip, no engine taxonomy
-([0027](../../docs/adr/0027-secret-reference-join-key.md)). The `#<key>` half
+([0027](../../docs/adr/model/0027-secret-reference-join-key.md)). The `#<key>` half
 selects which value fills the variable and confers nothing.
 
 | derives | detail |
@@ -232,13 +232,13 @@ those keys.
 Policy is **default-deny and derived**. A Workload's legal flows are exactly its
 declared edges, the surfaces it declares, the exposure routes that name it, its
 effective grant set, and a platform baseline no Service authors
-([0035](../../docs/adr/0035-network-policy-default-deny.md)).
+([0035](../../docs/adr/model/0035-network-policy-default-deny.md)).
 
 It is evaluated **per pod**, and it has to be. A namespace holds every Service
-of its domain ([0063](../../docs/adr/0063-intent-authored-per-domain.md)), so a
+of its domain ([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)), so a
 namespace wall separates nothing and no isolation claim may rest on one.
 Isolation in this model is the derived edge set plus per-Workload identity
-([0024](../../docs/adr/0024-identity-per-workload.md)) — both per Workload, both
+([0024](../../docs/adr/model/0024-identity-per-workload.md)) — both per Workload, both
 readable in one file.
 
 Opt-in was already measured here and it lost: three NetworkPolicy objects exist
@@ -287,7 +287,7 @@ never be ticked: a grep for `cilium|calico|kube-router|flannel` across `src/`,
 `spec/`, `schemas/`, `fixtures/` and `docs/` returned zero hits, and no decision
 had picked a CNI. It becomes satisfiable only through a CNI carrying a
 non-enforcing policy stage ([chapter 60](60-setup.md#cni),
-[0036](../../docs/adr/0036-cni-selection.md)).
+[0036](../../docs/adr/model/0036-cni-selection.md)).
 
 | stage | what runs | exit criterion |
 |---|---|---|
@@ -475,11 +475,11 @@ flowchart LR
 
 Two edges carry the amendment. `namespace` hangs off `domain`, not off `id`, so
 ten live namespaces come out unchanged and no Service can name its own
-([0063](../../docs/adr/0063-intent-authored-per-domain.md)). And `placement`
+([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)). And `placement`
 feeds both `nodeSelector` and `requests + limits`, so the numbers a Workload
 asks for and the nodes it may land on are one declaration compared against one
 pinned input — the node contract's `allocatable`, never a live read
-([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)). No node
+([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). No node
 satisfying every declared dimension is `E_PLACEMENT_UNSATISFIABLE` at build,
 before an object is rendered. Eligibility is not bin-packing: three Workloads
 asking `memory: 2Gi` each pass against a 4096Mi node, and the scheduler refuses
@@ -488,7 +488,7 @@ the third at apply.
 A node left the map altogether, and with it four edges. There is no derived
 `hostname (FQDN)` any more: `exposure` hangs off the **Service**, and the `host`
 it carries is a full authored FQDN
-([0018](../../docs/adr/0018-exposure-by-audience.md)), so the
+([0018](../../docs/adr/model/0018-exposure-by-audience.md)), so the
 IngressRoute, the reachability entry, both edge catalogs, the Gatus endpoint and
 the published `resolved.yml` all hang off the declaration itself rather than off
 a value layer 2 assembled from a label, a tier policy and a cluster domain. The
@@ -502,7 +502,7 @@ says which host and path, the Workload says which port.
 The map is dense on purpose and is not meant to be read by eye. Its value is
 that the three properties below are **checkable by a script** over the
 renderer's attribution table, which
-[0054](../../docs/adr/0054-adapter-attribution.md) requires every Deliverable to
+[0054](../../docs/adr/model/0054-adapter-attribution.md) requires every Deliverable to
 carry.
 
 ### Worked trace — one exposure declaration
@@ -552,7 +552,7 @@ an object is the defect.
 Every rendered object is reachable from at least one declaration or one pinned
 input. An object with no inbound edge is hand-written, and must either become
 derived or be entered in a Bidirectional Ledger with an owner and a reason
-([0055](../../docs/adr/0055-bidirectional-ledgers.md)).
+([0055](../../docs/adr/model/0055-bidirectional-ledgers.md)).
 
 This is the property that was violated seven ways over: `reachability.yml`, both
 edge catalogs, both IngressRoutes and the Gatus endpoint each declared
@@ -580,7 +580,7 @@ adapter. Every service declared the identical value. Out-degree zero.
 
 The one surface exempt from this check is `overrides`, whose entries replace a
 derived value by name and are therefore invisible to it
-([0031](../../docs/adr/0031-derived-overrides-with-reason.md)). A dead override
+([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md)). A dead override
 looks exactly like a load-bearing one; that cost is accepted, not solved.
 
 ## What the properties would have caught
@@ -603,7 +603,7 @@ deploy, are defined separately from this model. This chapter derives the edge
 set, the identities and the policy set; it does not say who applies them, in
 what order a pipeline runs, or which suites must pass first. The model's whole
 interface to that work is three demands — all-or-nothing switchover per Service
-([0062](../../docs/adr/0062-service-is-the-release-unit.md)), Durability Class
+([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)), Durability Class
 gating on destructive operations, and rendering from pinned inputs only. The
 parked direction work is in
 [docs/adr/deferred/](../../docs/adr/deferred/README.md).
@@ -627,7 +627,7 @@ parked direction work is in
    a non-enforcing policy stage, and that evaluation has not run.
    **Owner:** joris.
    **Settled by:** the lab evaluation on the pinned k3s version required by
-   [0036](../../docs/adr/0036-cni-selection.md) (chapter 60
+   [0036](../../docs/adr/model/0036-cni-selection.md) (chapter 60
    [`#cni`](60-setup.md#cni)).
    **Blocks:** the audit stage, and therefore the 14-day promotion window and
    enforce.

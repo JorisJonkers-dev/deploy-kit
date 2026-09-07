@@ -44,7 +44,7 @@ Flat uniqueness cannot be had by construction, only by check: the id is a bare
 string with no domain or repository path inside it, so nothing structural stops
 two repositories claiming the same string. Uniqueness is therefore a composition-time check —
 `E_DUPLICATE_SERVICE_ID`, specified in
-[chapter 40](../../spec/v1/40-composition.md) — and the window in which two
+[chapter 40](../../../spec/v1/40-composition.md) — and the window in which two
 repositories both claim an id, open until composition runs, is an accepted
 cost.
 

@@ -80,7 +80,7 @@ every historical lock un-re-renderable and every drift report unclassifiable.
   the aggregator pipeline in wall-clock time and by whoever grades that read.
 - A PV rebound after a node failure produces a new lock, not a silent
   correction — paid by the on-call operator, who must land it (with a
-  `state-move-plan` where [0043](deferred/0043-delete-authority-durability-gate.md)
+  `state-move-plan` where [0043](../deferred/0043-delete-authority-durability-gate.md)
   requires one) before placement follows the data.
 - Between captures the estate renders against facts that may already be stale —
   paid by anyone diagnosing a render that is correct as of its snapshot.

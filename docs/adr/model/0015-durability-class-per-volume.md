@@ -50,7 +50,7 @@ The honest position: as of this record `durability` renders nothing.
 `grep -rniE 'durability|reconstructible|irreplaceable|backup' src/ schemas/`
 returns **0 hits**, so the field today meets this decision's own definition of
 the inert attestation it replaced. It is load-bearing only through the two
-decisions that read it: [0043](deferred/0043-delete-authority-durability-gate.md) gates
+decisions that read it: [0043](../deferred/0043-delete-authority-durability-gate.md) gates
 the delete path — a claim backing non-`reconstructible` data leaving the render
 is `E_ORPHANED_CLAIM` plus a state-move-plan, never a delete — and
 [0057](0057-datastore-and-restore.md) makes `irreplaceable` mean a restore
@@ -71,7 +71,7 @@ rehearsed before the first production apply. The worked example:
 Undo cost today: the field is authored and read by nothing, so removal is a
 schema change plus the declarations in the example Services — under an hour,
 zero diff in any rendered object. Becomes irreversible once the
-[0043](deferred/0043-delete-authority-durability-gate.md) refusal runs against production:
+[0043](../deferred/0043-delete-authority-durability-gate.md) refusal runs against production:
 the class is then the only signal separating a cache PVC from the knowledge vault
 at delete time, and withdrawing it re-arms the delete path it disarmed.
 

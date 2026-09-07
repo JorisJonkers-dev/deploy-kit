@@ -2,7 +2,7 @@
 // ADR lint — enforces the docs/adr contract. See review/REBUILD-MANIFEST.md.
 // Checks: structure, register integrity, citation/anchor resolution, content shape.
 import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join, dirname, posix } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Root defaults to the repository, and is overridable so the negative fixtures
@@ -13,12 +13,42 @@ const adrDir = join(root, "docs", "adr");
 const errors = [];
 const err = (file, msg) => errors.push(`${file}: ${msg}`);
 
-const files = readdirSync(adrDir)
-  .filter((f) => /^\d{4}-.+\.md$/.test(f))
-  .sort();
+// One directory per decision domain, and the domain decides which normative
+// root a pointer must resolve against. `deferred` is parked direction work: it
+// is not linted, and its pointers name sections spec/v1 deliberately lacks.
+const DOMAINS = {
+  model: { normativeRoot: "spec/v1/" },
+  architecture: { normativeRoot: "docs/architecture.md" },
+};
+const isAdrName = (f) => /^\d{4}-.+\.md$/.test(f);
+const listing = (dir) => (existsSync(dir) ? readdirSync(dir) : []);
+
+// A file directly under docs/adr belongs to no domain, so no normative root
+// applies to it. That is a misplacement, not a domain of its own.
+for (const stray of listing(adrDir).filter(isAdrName))
+  err(stray, "ADR outside a domain directory");
+
+const files = Object.keys(DOMAINS)
+  .flatMap((domain) =>
+    listing(join(adrDir, domain))
+      .filter(isAdrName)
+      .map((name) => ({ domain, name, rel: posix.join(domain, name) })),
+  )
+  .sort((a, b) => a.rel.localeCompare(b.rel));
 if (files.length === 0) {
   console.error("no ADR files found");
   process.exit(1);
+}
+
+// One estate-wide number sequence: a citation resolves without knowing which
+// domain the decision lives in, which is only true while numbers are unique.
+const byNumber = new Map();
+for (const f of files) {
+  const n = f.name.slice(0, 4);
+  const seen = byNumber.get(n);
+  if (seen && seen.domain !== f.domain)
+    err(f.rel, `number ${n} used in two domains, also ${seen.rel}`);
+  else if (!seen) byNumber.set(n, f);
 }
 
 const SECTIONS = [
@@ -50,8 +80,10 @@ const anchorsOf = (path) => {
 };
 
 const parsed = [];
-for (const f of files) {
-  const p = join(adrDir, f);
+for (const entry of files) {
+  const { domain, name, rel } = entry;
+  const f = rel;
+  const p = join(adrDir, domain, name);
   const text = readFileSync(p, "utf8");
   const m = text.match(/^---\n([\s\S]*?)\n---\n/);
   if (!m) {
@@ -68,7 +100,7 @@ for (const f of files) {
   // -- structure
   if (!["premise", "decision"].includes(fm.tier))
     err(f, `tier must be premise|decision, got '${fm.tier}'`);
-  if (fm.tier === "premise") PREMISES.add(f.slice(0, 4));
+  if (fm.tier === "premise") PREMISES.add(name.slice(0, 4));
   if (!STATUS.includes(fm.status) && !fm["superseded-by"])
     err(
       f,
@@ -92,7 +124,7 @@ for (const f of files) {
     if (!ro || ro.length === 0) err(f, "decision missing rests-on");
     else
       for (const r of ro) {
-        const target = files.find((x) => x.startsWith(r + "-"));
+        const target = files.find((x) => x.name.startsWith(r + "-"));
         if (!target) err(f, `rests-on ${r} names no ADR file`);
       }
   } else if (fm["rests-on"]) err(f, "premise must not carry rests-on");
@@ -120,15 +152,20 @@ for (const f of files) {
   for (const bare of delinked.matchAll(/ADR-\d{4}/g)) {
     err(f, `bare citation '${bare[0]}' outside a link`);
   }
-  // -- internal links resolve
+  // -- internal links resolve, relative to the linking file's own directory
   for (const link of text.matchAll(
-    /\]\(((?:deferred\/)?\d{4}-[\w-]+\.md)\)/g,
+    /\]\(([^)#\s]*\d{4}-[\w-]+\.md)(?:#[^)]*)?\)/g,
   )) {
-    if (!existsSync(join(adrDir, link[1])))
-      err(f, `link to missing ADR file ${link[1]}`);
+    const href = link[1];
+    if (/^[a-z]+:/.test(href)) continue; // an absolute URL is somebody else's tree
+    if (!existsSync(join(adrDir, domain, href)))
+      err(f, `link to missing ADR file ${href}`);
   }
-  // -- normative target + anchor exist
+  // -- normative target + anchor exist, under this domain's normative root
   const [np, anchor] = (fm.normative || "").split("#");
+  const { normativeRoot } = DOMAINS[domain];
+  if (np && !np.startsWith(normativeRoot))
+    err(f, `normative target '${np}' is outside '${normativeRoot}'`);
   const anchors = anchorsOf(join(root, np || ""));
   if (anchors === null) err(f, `normative target '${np}' does not exist`);
   else if (anchor && !anchors.has(anchor))
@@ -148,13 +185,12 @@ const readmePath = join(adrDir, "README.md");
 if (!existsSync(readmePath)) errors.push("docs/adr/README.md: index missing");
 else {
   const readme = readFileSync(readmePath, "utf8");
-  for (const f of files)
-    if (!readme.includes(f)) err("README.md", `no row for ${f}`);
-  // Rows may point into deferred/, which is parked direction work and not part
-  // of the linted set; both are checked against the filesystem, not the list.
-  for (const link of readme.matchAll(
-    /\(((?:deferred\/)?\d{4}-[\w-]+\.md)\)/g,
-  )) {
+  for (const { rel } of files)
+    if (!readme.includes(rel)) err("README.md", `no row for ${rel}`);
+  // Rows carry the domain directory, and may point into deferred/, which is
+  // parked direction work and not part of the linted set. Every row is checked
+  // against the filesystem rather than against the linted list.
+  for (const link of readme.matchAll(/\(([a-z]+\/\d{4}-[\w-]+\.md)\)/g)) {
     if (!existsSync(join(adrDir, link[1])))
       err("README.md", `row points at missing file ${link[1]}`);
   }

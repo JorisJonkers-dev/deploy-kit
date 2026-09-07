@@ -28,16 +28,16 @@ no deploy RBAC, no break-glass path, no reconcile CronJob and no co-test gate.
 An earlier draft of this chapter specified all of them; that text moved with
 its decisions. v1 is the authoring vocabulary, composition, and the registered
 renderer, delivered by today's Flux pipeline unchanged
-([0059](../../docs/adr/0059-v1-scope-stopping-rule.md)).
+([0059](../../docs/adr/model/0059-v1-scope-stopping-rule.md)).
 
 What the model does fix is the *interface* to whatever delivery is eventually
 defined. Three demands, all decided in the model rather than in the parked work:
 
 | demand | decided in | what it requires of any delivery mechanism |
 |---|---|---|
-| **Release Unit atomicity** | [0060](../../docs/adr/0060-release-unit.md) | no member's new version receives traffic until every member's new version is healthy; one failing member holds the whole unit |
-| **Durability Class gating** | [0015](../../docs/adr/0015-durability-class-per-volume.md) | a destructive operation against a volume declared `recoverable` or `irreplaceable` is refused and reported, never performed; only the owning Service can state that class |
-| **Pinned inputs only** | [0006](../../docs/adr/0006-pinned-inputs.md), [0034](../../docs/adr/0034-cluster-state-pinned-input.md) | what is applied is rendered from a named lock — Intent, Cluster Context, images lock, ClusterState snapshot — never from a live read at render time |
+| **Release Unit atomicity** | [0060](../../docs/adr/model/0060-release-unit.md) | no member's new version receives traffic until every member's new version is healthy; one failing member holds the whole unit |
+| **Durability Class gating** | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | a destructive operation against a volume declared `recoverable` or `irreplaceable` is refused and reported, never performed; only the owning Service can state that class |
+| **Pinned inputs only** | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | what is applied is rendered from a named lock — Intent, Cluster Context, images lock, ClusterState snapshot — never from a live read at render time |
 
 A mechanism honouring those three is compatible with this model. Everything
 else it decides — push or pull, who holds cluster credentials, what prunes, how
@@ -56,7 +56,7 @@ A lock names, by digest:
 - the Cluster Context OCI reference;
 - the images lock, which resolves every `image` alias to a digest — never a tag;
 - the ClusterState snapshot, as `clusterStateDigest`
-  ([0034](../../docs/adr/0034-cluster-state-pinned-input.md)).
+  ([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)).
 
 The lock is an **output** of composition and never an input to it, because an
 artefact cannot contain its own digest — chapter 40 carries the evidence and the
@@ -76,7 +76,7 @@ event produces one.
 | a PV rebinds after a node failure; a node joins or leaves | **yes** | the ClusterState snapshot changes, so `clusterStateDigest` changes, and the rebind lands as a visible decision rather than as drift |
 | a node contract republishes new `allocatable` — a reserve is retuned, RAM is added | **yes** | placement is matched against allocatable, so eligibility can change without any Intent changing |
 | a pod restarts; a Kustomization reports Ready; a health check flips | no | that is what is *running*. Chapter 20 keeps the health document (`cluster-state.schema.json`) distinct from the pinned ClusterState snapshot; only the snapshot is an input |
-| the toolkit is upgraded with no model change | no | `schemaVersion` is the data model's own semver and moves only on a model change ([0039](../../docs/adr/0039-artifact-schema-versioning.md)); the lock records the exact versions it was composed under |
+| the toolkit is upgraded with no model change | no | `schemaVersion` is the data model's own semver and moves only on a model change ([0039](../../docs/adr/model/0039-artifact-schema-versioning.md)); the lock records the exact versions it was composed under |
 
 ### What a lock guarantees
 
@@ -84,7 +84,7 @@ Re-rendering from a recorded lock yields a byte-identical Deliverable Set and
 the same `renderHash` — **conditional on identical input digests,
 `clusterStateDigest` included**. That conditional wording is the repaired form
 of chapter 20's purity rule
-([0006](../../docs/adr/0006-pinned-inputs.md)): the earlier absolute claim was
+([0006](../../docs/adr/model/0006-pinned-inputs.md)): the earlier absolute claim was
 falsified by the spec's own normative example, which recorded an observed PV
 binding while `inputDigests` listed only `intent` and `imagesLock`.
 
@@ -115,7 +115,7 @@ without diffing published artefacts.
 ## Release Unit switchover
 
 Membership is structural, not declared: **a Service is the Release Unit**, and
-its members are its Workloads ([0062](../../docs/adr/0062-service-is-the-release-unit.md)).
+its members are its Workloads ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)).
 Nothing names a unit, because nothing needs to — things that must switch
 together are Workloads of one Service, and things that must not are separate
 Services. Chapter 10's [Service identity](10-service-intent.md#service-identity)
@@ -129,8 +129,8 @@ Every term in that rule is already defined elsewhere in the model:
 
 | term | means | where it comes from |
 |---|---|---|
-| **healthy** | the member's own declared readiness — `probes.readiness`, with its own `path` + `port` or `tcp` | chapter 10, [0014](../../docs/adr/0014-probes-are-siblings.md) |
-| **budget** | the derived rollout budget: how long a new version has to report ready before it counts as failed | chapter 20's derived mechanics, [0030](../../docs/adr/0030-runtime-mechanics-derived.md) |
+| **healthy** | the member's own declared readiness — `probes.readiness`, with its own `path` + `port` or `tcp` | chapter 10, [0014](../../docs/adr/model/0014-probes-are-siblings.md) |
+| **budget** | the derived rollout budget: how long a new version has to report ready before it counts as failed | chapter 20's derived mechanics, [0030](../../docs/adr/model/0030-runtime-mechanics-derived.md) |
 | **switch** | the moment traffic reaches the new versions rather than the old | the delivery mechanism performs it; the model states when it may happen |
 
 A Workload declaring `probes: none` publishes no readiness signal and so cannot
@@ -157,7 +157,7 @@ consistent — there is no state in which half a unit has been reverted.
 | | Release Unit | Reconcile Unit |
 |---|---|---|
 | answers | what switches together | what applies before what |
-| origin | **structural** — the Service boundary; its members are its Workloads | **derived** from the dependency graph ([0032](../../docs/adr/0032-reconcile-unit-derived.md)) |
+| origin | **structural** — the Service boundary; its members are its Workloads | **derived** from the dependency graph ([0032](../../docs/adr/model/0032-reconcile-unit-derived.md)) |
 | property | atomicity | ordering |
 | worked case | Service `auth`, Workloads `auth-api` + `auth-ui`: a new UI against an old API is a broken product although each pod reports healthy | `platform-postgres` before `knowledge`: the consumer cannot start without its provider |
 | membership changes when | a Workload joins or leaves the Service | an edge is added or removed |
@@ -224,9 +224,9 @@ The three phases, and what composition sees at each:
 Two limits are worth stating plainly. First, composition sees **declared** edges
 only: an undeclared consumer is invisible to the check, which is why a
 dependency edge names the provider and the surface
-([0020](../../docs/adr/0020-dependency-edges-carry-surface.md)) and why a
+([0020](../../docs/adr/model/0020-dependency-edges-carry-surface.md)) and why a
 hostname served by something outside the model is a Registered Unmanaged Surface
-([0019](../../docs/adr/0019-registered-unmanaged-surfaces.md)) rather than an
+([0019](../../docs/adr/model/0019-registered-unmanaged-surfaces.md)) rather than an
 absence. Second, the check is about *declarations*, not about running pods:
 whether a consumer at an older lock is still serving is a delivery question, and
 the delivery definition owns any stronger guarantee that wants to read live
@@ -256,7 +256,7 @@ it is decided in `docs/adr/`; everything inside it is decided separately.
 ## Open in this chapter
 
 1. **Release Unit atomicity is untested.**
-   [0060](../../docs/adr/0060-release-unit.md) carries `claim: open`.
+   [0060](../../docs/adr/model/0060-release-unit.md) carries `claim: open`.
    Owner: joris. Settled by: rendering a two-member unit and handing the same
    derived gate to two different delivery mechanisms — today's Flux health
    checks on one Kustomization, and any future applier — and observing both
@@ -269,4 +269,4 @@ it is decided in `docs/adr/`; everything inside it is decided separately.
 3. **How far the contraction check reaches.** It is exact over declared edges and
    silent over undeclared ones, so its value is bounded by the completeness of
    the edge set — the same completeness default-deny network policy depends on
-   ([0035](../../docs/adr/0035-network-policy-default-deny.md)).
+   ([0035](../../docs/adr/model/0035-network-policy-default-deny.md)).

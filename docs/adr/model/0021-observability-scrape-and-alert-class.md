@@ -86,5 +86,5 @@ leaves `urgent` and `page` with no receiver, and the symptom is silence.
   `inventory/fleet.yaml`; both become derived and stop naming an archived
   repository — paid by whoever lands the Gatus adapter.
 - Routing derives from fields only a Service carries, so the delivery machinery
-  has no Alert Class here; [0058](deferred/0058-delivery-machinery-observability.md)
+  has no Alert Class here; [0058](../deferred/0058-delivery-machinery-observability.md)
   closes that gap — paid by platform.

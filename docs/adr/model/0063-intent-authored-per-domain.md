@@ -43,7 +43,7 @@ namespace comes from `domain`, and the Workload name and the image are fields
 the author already writes explicitly ([0010](0010-flat-service-identity.md)).
 Nothing remains for it to say. The prohibition on aliasing a Service into
 another deployer's namespace
-([0047](deferred/0047-namespace-per-deployer.md)) loses its subject matter with
+([0047](../deferred/0047-namespace-per-deployer.md)) loses its subject matter with
 it: no field can move a Service out of its domain's namespace.
 
 A namespace now holds several Services **by construction**. It is therefore not

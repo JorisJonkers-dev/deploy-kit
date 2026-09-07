@@ -48,7 +48,7 @@ so the checkout adds no step a consumer does not run today, while OCI would
 add one. The registry-auth friction is evidenced for `@jorisjonkers-dev`
 packages, whereas fragment publication rides infrastructure composition
 requires anyway. And packs are class-B foundation material delivered by Flux
-([0048](deferred/0048-class-b-pinning.md)), consumed whole at render time by two
+([0048](../deferred/0048-class-b-pinning.md)), consumed whole at render time by two
 adapters — they are not domain declarations, join no composition union, carry
 no lock digest, and hold no participants-list row. The exemption is a
 material-class boundary, not a contradiction of the composition decision.

@@ -17,7 +17,7 @@ by the platform, which decides whether a stated requirement fits and where;
 every other value is Service-declared and carried through untouched — and this
 test partitions every field in the model with no residue. False if: any field
 needs a third category, or the authority table needs an exceptions row to hold.
-Settled by: the authority table in [chapter 20](../../spec/v1/20-resolved-deployment.md#authority)
+Settled by: the authority table in [chapter 20](../../../spec/v1/20-resolved-deployment.md#authority)
 deriving every one of its rows from the rule alone, with no exception noted.
 
 ## Why
@@ -49,7 +49,7 @@ This record deliberately carries the rule and no field table. The old record
 carried an illustrative worked list, and that list drifted four times against
 later decisions without amendment — co-test sets, health paths, migration
 strategy, and hostnames — the last recorded as open item 1 in
-[../../spec/v1/00-overview.md](../../spec/v1/00-overview.md): chapter 20
+[../../spec/v1/00-overview.md](../../../spec/v1/00-overview.md): chapter 20
 separates *identity* (unique, declared, checked) from *pool* (finite,
 assigned) "because not one live hostname is derivable from a Service Id". A
 rule and a table have different lifetimes. The table lives once, at the

@@ -53,7 +53,7 @@ included. That list exists already, in the Role (`deployer-rbac.yaml:24-27`:
 *"Exactly the kinds the `kubernetes`, `traefik`, `vso`, `prometheus`,
 `networking` and `availability` adapters attribute to auth-api"*), and such
 duplication is what drifted; so the port
-([0053](../0053-adapter-port-contract.md)) carries the kind set as contract data —
+([0053](../model/0053-adapter-port-contract.md)) carries the kind set as contract data —
 `src/adapters/registry.ts` lacks such a field — and both derive from it. A PVC
 in the inventory means seen, not deleted:
 [0043](0043-delete-authority-durability-gate.md) decides deletion.
@@ -81,7 +81,7 @@ hand, and prune-first would reintroduce the delete-then-create window.
 ## Consequences
 
 - The adapter port gains a declared kind set, all 16 registered adapters
-  ([0052](../0052-registered-adapters-are-v1.md)) must state what they render, and
+  ([0052](../model/0052-registered-adapters-are-v1.md)) must state what they render, and
   the Role derives from that list, so RBAC diffs move on adapter changes — paid
   by joris and every future adapter author.
 - A failed apply leaves a superset of the intended state until the next run —

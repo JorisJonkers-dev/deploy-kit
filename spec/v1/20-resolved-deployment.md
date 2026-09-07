@@ -8,7 +8,7 @@ is the reason layer 3 can contain none.
 The Resolved Deployment is a **versioned, reviewable artifact**: emitted on every
 render, validated against its own schema, and diffed against the previous render
 as part of the change under review
-([0029](../../docs/adr/0029-resolved-deployment-versioned-artifact.md)). A
+([0029](../../docs/adr/model/0029-resolved-deployment-versioned-artifact.md)). A
 reviewer reads that diff and sees what the platform decided on their behalf,
 including decisions nobody asked for.
 
@@ -78,7 +78,7 @@ flowchart LR
 ```
 
 One domain file is one Intent Fragment
-([0063](../../docs/adr/0063-intent-authored-per-domain.md)), so the input a
+([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)), so the input a
 Service owner edits and the input composition unions are the same document. The
 two node-facing inputs are deliberately drawn apart: what a node **can hold** is
 declared in the node contract and pinned with the Cluster Context; what the
@@ -96,7 +96,7 @@ change proves it did not.
 **A value is platform-arbitrated if and only if it must be unique across the
 estate or draws on a shared finite resource; every other value is
 Service-declared and carried through untouched**
-([0004](../../docs/adr/0004-contention-decides-authority.md)). One question —
+([0004](../../docs/adr/model/0004-contention-decides-authority.md)). One question —
 does the value contend? — replaces a per-field negotiation.
 
 Three readings of the rule matter, and none is an exception to it:
@@ -106,12 +106,12 @@ Three readings of the rule matter, and none is an exception to it:
   The Service states its requirement, and the platform decides whether it fits
   and where. Placement forced this reading and settles it. `memory` and `cpu`
   are required on every Workload and authored there as raw quantities
-  ([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)), and both are
+  ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)), and both are
   draws on a finite pool. An authors-only reading of the rule would have to
   forbid the field, which leaves the estate exactly where it is — BestEffort on
   every pod, because a number no Service may write is a number nobody writes.
   The platform arbitrates against node `allocatable` published by the node
-  contract ([0056](../../docs/adr/0056-node-facts-single-source.md)) and refuses
+  contract ([0056](../../docs/adr/model/0056-node-facts-single-source.md)) and refuses
   what no node can hold with `E_PLACEMENT_UNSATISFIABLE`.
 - **Uniqueness alone is not contention.** A value that must be unique but is
   drawn from no finite pool is *declared* by the Service and *checked* at
@@ -120,7 +120,7 @@ Three readings of the rule matter, and none is an exception to it:
   `placed by` column records which reading placed each row.
 - **The rule places values someone must state.** A derived value is stated by
   nobody: it is a function of the rows above it, which is what
-  [0005](../../docs/adr/0005-derivation-is-total.md) claims is always possible.
+  [0005](../../docs/adr/model/0005-derivation-is-total.md) claims is always possible.
   Whether such a value may be overridden is settled in
   [Overrides](#overrides), not here.
 
@@ -155,9 +155,9 @@ field's placement link to this anchor rather than copying rows.
 
 | field | authority | placed by | note |
 |---|---|---|---|
-| `domain` | Service | no contention | the file header, and the unit of fragment publication ([0063](../../docs/adr/0063-intent-authored-per-domain.md)); the namespace derives from it |
+| `domain` | Service | no contention | the file header, and the unit of fragment publication ([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)); the namespace derives from it |
 | `owner` | Service | no contention | the only field raised to the domain header; notification target, never routing |
-| `id` | Service | unique — checked | estate-unique; `E_DUPLICATE_SERVICE_ID` at composition. It is also the atomic release boundary ([0062](../../docs/adr/0062-service-is-the-release-unit.md)) |
+| `id` | Service | unique — checked | estate-unique; `E_DUPLICATE_SERVICE_ID` at composition. It is also the atomic release boundary ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)) |
 | `alertClass` | Service | no contention | urgency, per Service and never raised — a domain would page as loudly as its loudest member |
 | workload `name` | Service | unique — checked | unique within the **domain**; `E_DUPLICATE_WORKLOAD_NAME`, and it names the derived identity |
 | `provides` surface names and ports | Service | no contention | declared on the Workload, because a port is a property of a process; written once, there |
@@ -171,7 +171,7 @@ field's placement link to this anchor rather than copying rows.
 | `exposure[].contentPolicy` | Service | no contention | `strict`, `admin` or `workflow`. Which profile an application needs is a fact about the application; the header set it selects is derived |
 | `exposure[].routes` — `path`, `match`, `workload`, `surface`, `redirectTo` | Service | no contention | which of the Service's own Workloads serves which path of the host. The surface must be one that Workload `provides` (`E_UNKNOWN_SURFACE`); no two routes may share a `path` + `match` pair (`E_DUPLICATE_ROUTE_MATCH`); `redirectTo` is a path, never a regex |
 | `probes`, `startupBudget`, `zeroDowntime` | Service | no contention | what only the Service knows about its own start and health |
-| `hardening` and its exceptions | Service | no contention | the class is declared; each exception names itself and carries a reason ([0016](../../docs/adr/0016-pod-hardening.md)) |
+| `hardening` and its exceptions | Service | no contention | the class is declared; each exception names itself and carries a reason ([0016](../../docs/adr/model/0016-pod-hardening.md)) |
 | `volumes[].durability` | Service | no contention | what the data is worth cannot be observed |
 | `placement.memory`, `placement.cpu` | Service | pool — stated | required on every Workload; the Service states the requirement, the platform arbitrates it against node allocatable |
 | `placement.gpu` | Service | pool — stated | `class` and `memory`, matched against the node contract's `gpus[].class` and `gpus[].memory_mib`; a card is held by one Workload at a time |
@@ -188,7 +188,7 @@ field's placement link to this anchor rather than copying rows.
 | eligible node set, `nodeSelector` and affinity | platform | pool | every declared dimension matched against the node contract; no eligible node is `E_PLACEMENT_UNSATISFIABLE` ([Derived mechanics](#derived-mechanics)) |
 | recorded PV binding | platform | pool | one `local-path` PV lives on one node; read from the ClusterState snapshot |
 | `replicas` | platform | pool | from `minAvailable`, bounded by the size of the eligible node set |
-| `namespace` | derived | — | `<domain>-system`, and nothing else ([0063](../../docs/adr/0063-intent-authored-per-domain.md)); several Services share one by construction |
+| `namespace` | derived | — | `<domain>-system`, and nothing else ([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)); several Services share one by construction |
 | requests and limits | derived | — | from `placement.memory` and `placement.cpu`: memory request equals memory limit, cpu request with no cpu limit |
 | `securityContext` | derived | — | from `hardening` and its declared exceptions |
 | container probe timings | derived | — | from `probes` and `startupBudget` |
@@ -206,7 +206,7 @@ field's placement link to this anchor rather than copying rows.
 | NetworkPolicy set | derived | — | from the edge set, exposure, grants, plus the baseline ([chapter 16](16-dependencies.md#network-policy)) |
 
 A field the rule cannot place falsifies
-[0004](../../docs/adr/0004-contention-decides-authority.md) and forces an
+[0004](../../docs/adr/model/0004-contention-decides-authority.md) and forces an
 amendment to the rule — never an exceptions row in this table.
 
 ### The hostname changed sides
@@ -220,7 +220,7 @@ assembly to run. `knowledge` serves `kb`, `platform-rabbitmq` serves `rabbitmq`,
 — so a hostname policy would be right for most hosts and silently wrong for the
 rest, and the wrong ones are the ones nobody would check. `host` is therefore
 authored in full on the Service's `exposure` entry and carried through untouched
-([0018](../../docs/adr/0018-exposure-by-audience.md)); both old rows are gone,
+([0018](../../docs/adr/model/0018-exposure-by-audience.md)); both old rows are gone,
 replaced by one.
 
 That is the rule's second reading, not an exception to it. A hostname must be
@@ -231,7 +231,7 @@ Unmanaged Surfaces ([chapter 40](40-composition.md#identity)). Nobody's fragment
 wins a contested host — the union fails and no `ComposedIntent` is produced until
 an author changes one of them. Contention decided who arbitrates, not who
 authors, which is the same restatement `placement` forced
-([0004](../../docs/adr/0004-contention-decides-authority.md)).
+([0004](../../docs/adr/model/0004-contention-decides-authority.md)).
 
 What stays on the platform side of this path is everything mechanical about the
 edge: the tier that carries the audience, and the middleware chain that follows
@@ -269,9 +269,9 @@ footnote to an exception:
 - **A namespace is not a trust boundary.** It holds several Services by
   construction, so no isolation claim may rest on a namespace wall. Isolation is
   the derived default-deny edge set
-  ([0035](../../docs/adr/0035-network-policy-default-deny.md)), evaluated per
+  ([0035](../../docs/adr/model/0035-network-policy-default-deny.md)), evaluated per
   pod, plus per-Workload identity
-  ([0024](../../docs/adr/0024-identity-per-workload.md)) — and nothing else.
+  ([0024](../../docs/adr/model/0024-identity-per-workload.md)) — and nothing else.
 
 ## Pinned inputs
 
@@ -288,7 +288,7 @@ why publishing assignments back to a service repository cannot drift.
 Placement is the case that tests the rule hardest, and it stays inside it.
 Every declared dimension is matched against node `allocatable` — the node's
 total minus a reserve declared in the same node file, published by the node
-contract ([0056](../../docs/adr/0056-node-facts-single-source.md)) and pinned
+contract ([0056](../../docs/adr/model/0056-node-facts-single-source.md)) and pinned
 with the Cluster Context. It is never matched against free capacity read from a
 cluster, which is not a pinned input and cannot be made into one: free capacity
 changes with every pod that starts anywhere in the estate.
@@ -336,7 +336,7 @@ Some assignments need facts the cluster alone can supply: which node holds a
 bound PersistentVolume, and where a Workload currently runs. Those facts are
 captured **once**, by a read-only collector, into a snapshot that is digested
 and pinned like every other input
-([0034](../../docs/adr/0034-cluster-state-pinned-input.md)). Assignments read
+([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)). Assignments read
 the snapshot. Nothing reads the live cluster.
 
 | the snapshot enumerates | used by |
@@ -347,9 +347,9 @@ the snapshot. Nothing reads the live cluster.
 **What a node can hold is not on that list.** `allocatable`, `site`, `arch`,
 `gpus[]` and `disks[]` are *declared* platform facts: authored once per node and
 published by the node contract
-([0056](../../docs/adr/0056-node-facts-single-source.md)), pinned with the
+([0056](../../docs/adr/model/0056-node-facts-single-source.md)), pinned with the
 Cluster Context, never observed. Placement reads them there and only there.
-[0034](../../docs/adr/0034-cluster-state-pinned-input.md) enumerates node
+[0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) enumerates node
 capacity among the snapshot's facts because it predates the node contract
 carrying `allocatable`; the spec is normative, and that record is the one that
 gets fixed.
@@ -420,7 +420,7 @@ only it can state: how much memory and cpu each of its Workloads needs. Probe
 timings, rollout strategy, surge and unavailability, progress deadlines, health
 timeout classes, object kind, resource requests and limits, pod hardening,
 backup jobs and retention sweeps all follow
-([0030](../../docs/adr/0030-runtime-mechanics-derived.md)).
+([0030](../../docs/adr/model/0030-runtime-mechanics-derived.md)).
 **None of the derived values may be authored**, and writing one in an env file
 or a Service document is a build error ([chapter 10](10-service-intent.md)).
 
@@ -456,14 +456,14 @@ Five rules carry most of the weight:
 - **Hardening is a class.** It defaults to `restricted` — `runAsNonRoot`,
   `readOnlyRootFilesystem`, all capabilities dropped, seccomp `RuntimeDefault` —
   and each declared exception names itself and carries a reason
-  ([0016](../../docs/adr/0016-pod-hardening.md)).
+  ([0016](../../docs/adr/model/0016-pod-hardening.md)).
 - **Capacity is not a class.** Requests and limits no longer resolve through a
   named table in the Cluster Context; they derive from the raw quantities the
   Workload declares, under two shape rules the author does not write. Memory
   request **equals** memory limit, because memory is incompressible and an OOM
   kill beats eviction roulette. Cpu is a request with **no** limit, because
   throttling gets misdiagnosed as slow application code
-  ([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)). One number per
+  ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). One number per
   dimension goes in, the shape stays derived, and the escape is an override with
   a reason ([Overrides](#overrides)).
 
@@ -504,7 +504,7 @@ declared `disk` dimension that contradicts the binding is
 ## Overrides
 
 A derived value is **overridable with a reason**; an assignment is not
-([0031](../../docs/adr/0031-derived-overrides-with-reason.md)).
+([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md)).
 
 ```yaml
 overrides:
@@ -565,7 +565,7 @@ overrides is a later read over data already in hand.
 ## The Reconcile Unit
 
 The Reconcile Unit is **derived from the dependency graph**, never declared
-([0032](../../docs/adr/0032-reconcile-unit-derived.md)). A Service's unit is
+([0032](../../docs/adr/model/0032-reconcile-unit-derived.md)). A Service's unit is
 `apps-<domain>`; the ordering between units is the edge set of
 [chapter 16](16-dependencies.md#dependency-edges) projected onto domains, plus an
 edge to the secrets-provisioning unit wherever a Service holds any grant.
@@ -608,7 +608,7 @@ applied Service hard to read. A dependency cycle becomes a build failure
 
 **The Reconcile Unit orders; it does not make anything atomic.** Ordering is
 derived from the graph. Atomicity is the **Service boundary itself**
-([0062](../../docs/adr/0062-service-is-the-release-unit.md)): every Workload of
+([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)): every Workload of
 one Service switches together or none switches, and there is no mechanism to
 couple two Services. The two are orthogonal — postgres before knowledge is
 ordering; `auth-api` and `auth-ui` moving together is atomicity, and they move
@@ -633,14 +633,14 @@ their own node placement or Secret Store paths out of their own repository.
 Composition therefore writes each Service's `ResolvedService` projection into
 that Service's repository as a generated file —
 `platform/resolved.yml` — and opens a pull request when it changes
-([0033](../../docs/adr/0033-assignments-published-back.md)).
+([0033](../../docs/adr/model/0033-assignments-published-back.md)).
 
 Two entries left this list. The namespace is now derived from `domain`, which
 the owner writes in the header of the file they are already editing, so
 answering "which namespace am I in" needs no published assignment at all. The
 hostname followed it for another reason: `host` is authored, so the owner reads
 it back out of the line they wrote
-([0018](../../docs/adr/0018-exposure-by-audience.md)). Both still appear in the
+([0018](../../docs/adr/model/0018-exposure-by-audience.md)). Both still appear in the
 projection, because the projection records every layer-2 decision whether or not
 the owner could have predicted it — and on that path the decisions that remain
 are the tier and the middleware chain, not the name.
@@ -749,7 +749,7 @@ assigned:
 Four things in that block are worth reading closely.
 
 `exposure` sits beside `workloads:`, not inside one, because it belongs to the
-Service ([0018](../../docs/adr/0018-exposure-by-audience.md)): a host fronts
+Service ([0018](../../docs/adr/model/0018-exposure-by-audience.md)): a host fronts
 Workloads, and the routes under it are how it picks between them. The projection
 records the entry even though the owner authored `host` and every route
 themselves, because the two lines they did not write are the ones worth a pull
@@ -790,17 +790,17 @@ two Workloads may not share a name (`E_DUPLICATE_WORKLOAD_NAME`).
    `dashboard`, `gatus` `status`, `agents-api` two — and the conclusion drawn
    from it is that nothing derives a hostname at all: `host` is the full FQDN,
    authored on the Service's `exposure` entry
-   ([0018](../../docs/adr/0018-exposure-by-audience.md)), placed
+   ([0018](../../docs/adr/model/0018-exposure-by-audience.md)), placed
    *unique — checked* above, and arbitrated only as a collision at composition
    (`E_DUPLICATE_HOST`). No third category was needed and no row of the table is
-   an exception, so [0004](../../docs/adr/0004-contention-decides-authority.md)
+   an exception, so [0004](../../docs/adr/model/0004-contention-decides-authority.md)
    stands as restated — who arbitrates, not who authors. What still keeps that
    premise's claim open is item 5, not this one.
 2. ~~**Apex hosts need a convention.**~~ The convention is that an apex host
    needs none. With `host` authored in full and no zone derivation anywhere,
    `home-portal` writes `host: jorisjonkers.dev` exactly as `auth` writes
    `host: auth.jorisjonkers.dev`; `apex: true` is not vocabulary
-   ([0018](../../docs/adr/0018-exposure-by-audience.md)). Two Services writing
+   ([0018](../../docs/adr/model/0018-exposure-by-audience.md)). Two Services writing
    the bare domain are one duplicated host like any other
    ([chapter 40](40-composition.md#identity)), which is what `E_DUPLICATE_APEX`
    names when the contested name is that one.
@@ -840,5 +840,5 @@ two Workloads may not share a name (`E_DUPLICATE_WORKLOAD_NAME`).
    against total estate allocatable, then deciding whether over-subscription is
    a build error, a warning, or a number carried on the artifact.
    **Blocks:** nothing today. It is the conceded cost of restating
-   [0004](../../docs/adr/0004-contention-decides-authority.md) as
+   [0004](../../docs/adr/model/0004-contention-decides-authority.md) as
    who-arbitrates, and it comes due the first time a Service cannot place.

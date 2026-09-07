@@ -12,10 +12,10 @@ Status of everything in this directory:
   normative. Their `normative:` pointers name spec sections the v1 spec will
   **not** carry; the future delivery definition owns those.
 - The model's complete interface to this work is three demands, all decided in
-  the model: all-or-nothing [Release Unit](../0060-release-unit.md) cutover,
+  the model: all-or-nothing [Release Unit](../model/0060-release-unit.md) cutover,
   destructive operations gated by
-  [Durability Class](../0015-durability-class-per-volume.md), and rendering
-  only from [pinned inputs](../0006-pinned-inputs.md).
+  [Durability Class](../model/0015-durability-class-per-volume.md), and rendering
+  only from [pinned inputs](../model/0006-pinned-inputs.md).
 - The experiment that informs whether push delivery is needed at all is
   [workspace#45](https://github.com/JorisJonkers-dev/workspace/issues/45)
   (write the caller for the existing system-test workflows); see

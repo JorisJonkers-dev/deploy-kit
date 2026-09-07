@@ -63,7 +63,7 @@ ambient reads, and a path claimed twice is a build error that exists in code.
 
 | option | cost if taken | why rejected |
 |---|---|---|
-| Keep `input: never` plus the hand-set discriminator | Zero now; four new adapters (`rbac`, `availability`, `prometheus`, `networking`) written against no contract | The first symptom is a rendered tree missing a Fragment, and under [0042](deferred/0042-apply-before-prune-inventory.md) a missing Fragment is a deleted object |
+| Keep `input: never` plus the hand-set discriminator | Zero now; four new adapters (`rbac`, `availability`, `prometheus`, `networking`) written against no contract | The first symptom is a rendered tree missing a Fragment, and under [0042](../deferred/0042-apply-before-prune-inventory.md) a missing Fragment is a deleted object |
 | Split into a discriminated union of the three declared inputs | Three signatures, both call sites, every future invariant implemented three times | Neither of the other two shapes adds information: `deploy-config` is one entry of the same context, and `deployment-fragment` is those documents parsed and pinned, so the union triples the surface and buys no expressiveness |
 | Keep `ProjectModel` as the port, move adapters onto it | Retain a 1,477-line IR, port all 16 adapters | Its only field the renderers read is the raw artifact bundle; the deleted deliverables record's own rule applies — "an abstraction with one consumer is shaped entirely by that consumer" |
 

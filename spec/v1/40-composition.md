@@ -11,26 +11,26 @@ in isolation:
 
 | property | needs | decided in |
 |---|---|---|
-| Service Id uniqueness | every Service in the estate | [0010](../../docs/adr/0010-flat-service-identity.md) |
-| domain uniqueness, and exactly one publisher per domain | every fragment in the estate | [0063](../../docs/adr/0063-intent-authored-per-domain.md) |
-| hostname uniqueness | every exposure in the estate, plus the register of surfaces the model does not deploy | [0018](../../docs/adr/0018-exposure-by-audience.md) |
-| reachability completeness — derived ∪ registered | every exposure plus the unmanaged register | [0019](../../docs/adr/0019-registered-unmanaged-surfaces.md) |
-| the Reconcile Unit DAG | every required dependency edge | [0032](../../docs/adr/0032-reconcile-unit-derived.md) |
-| inbound derivations — CORS origins, one database per consumer | edges pointing *at* a Service | [0020](../../docs/adr/0020-dependency-edges-carry-surface.md) |
-| the reader set of a secret path | every grant in the estate | [0023](../../docs/adr/0023-grant-unit-is-the-path.md) |
-| placement eligibility — at least one node per Workload | every declared dimension against the fleet's node contract | [0061](../../docs/adr/0061-placement-is-hard-dimensions.md) |
+| Service Id uniqueness | every Service in the estate | [0010](../../docs/adr/model/0010-flat-service-identity.md) |
+| domain uniqueness, and exactly one publisher per domain | every fragment in the estate | [0063](../../docs/adr/model/0063-intent-authored-per-domain.md) |
+| hostname uniqueness | every exposure in the estate, plus the register of surfaces the model does not deploy | [0018](../../docs/adr/model/0018-exposure-by-audience.md) |
+| reachability completeness — derived ∪ registered | every exposure plus the unmanaged register | [0019](../../docs/adr/model/0019-registered-unmanaged-surfaces.md) |
+| the Reconcile Unit DAG | every required dependency edge | [0032](../../docs/adr/model/0032-reconcile-unit-derived.md) |
+| inbound derivations — CORS origins, one database per consumer | edges pointing *at* a Service | [0020](../../docs/adr/model/0020-dependency-edges-carry-surface.md) |
+| the reader set of a secret path | every grant in the estate | [0023](../../docs/adr/model/0023-grant-unit-is-the-path.md) |
+| placement eligibility — at least one node per Workload | every declared dimension against the fleet's node contract | [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md) |
 
 No Service knows its own consumers, and no domain file holds the fleet's node
 contract, so none of these are locally computable. That is the whole argument for
-composition ([0037](../../docs/adr/0037-composition-oci-fragments.md)), and it is
+composition ([0037](../../docs/adr/model/0037-composition-oci-fragments.md)), and it is
 why this chapter is a hard dependency of chapters 16, 20 and 30.
 
 Two properties left this list on 2026-09-07. **Co-test membership** moved out
 with the delivery and co-testing split; see
 [docs/adr/deferred/README.md](../../docs/adr/deferred/README.md). **Release Unit
 membership** moved out because a Service is now itself the unit of atomic release
-([0062](../../docs/adr/0062-service-is-the-release-unit.md), superseding
-[0060](../../docs/adr/0060-release-unit.md)): its members are the Workloads in
+([0062](../../docs/adr/model/0062-service-is-the-release-unit.md), superseding
+[0060](../../docs/adr/model/0060-release-unit.md)): its members are the Workloads in
 its own document, so membership is readable in one file and needs no union at
 all.
 
@@ -39,7 +39,7 @@ all.
 The unit of publication is a **domain file**. One domain file is one Intent
 Fragment, holding the many Services of that domain, and a fragment therefore
 declares exactly one domain
-([0063](../../docs/adr/0063-intent-authored-per-domain.md)):
+([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)):
 
 ```yaml
 apiVersion: intent.jorisjonkers.dev/v1
@@ -57,7 +57,7 @@ spec:
 ```
 
 This narrows the wording of
-[0037](../../docs/adr/0037-composition-oci-fragments.md), which says "each domain
+[0037](../../docs/adr/model/0037-composition-oci-fragments.md), which says "each domain
 repository publishes". **One repository may hold several domain files**, and it
 then publishes one fragment per domain file rather than one fragment per
 repository: `homelab-collections` stays one repository and publishes one fragment
@@ -81,7 +81,7 @@ A fragment carries:
 - the Secret Subtree the domain owns — paths, keys, engines, readers
 - the node contract, for the fragment that owns the fleet: the `allocatable`
   table every `placement` is matched against
-  ([0056](../../docs/adr/0056-node-facts-single-source.md))
+  ([0056](../../docs/adr/model/0056-node-facts-single-source.md))
 - Registered Unmanaged Surfaces the domain is responsible for
 
 A fragment publishes **on merge to the default branch, independently of any image
@@ -197,18 +197,18 @@ Normative. Composition fails on any of these, and produces no `ComposedIntent`.
 
 **Service ids stay estate-unique even though they no longer determine the
 namespace.** The namespace derives from `domain`, as `<domain>-system`
-([0063](../../docs/adr/0063-intent-authored-per-domain.md)), which is why a
+([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)), which is why a
 namespace now holds several Services and is not a trust boundary. The id's
 uniqueness follows from what *references* it, not from what it names: it is the
 join key every `dependsOn.service` resolves against
-([0010](../../docs/adr/0010-flat-service-identity.md),
-[0020](../../docs/adr/0020-dependency-edges-carry-surface.md)), and two Services
+([0010](../../docs/adr/model/0010-flat-service-identity.md),
+[0020](../../docs/adr/model/0020-dependency-edges-carry-surface.md)), and two Services
 answering to one id would make an edge ambiguous wherever they live.
 
 `E_DUPLICATE_WORKLOAD_NAME` is scoped to the **domain**, not to the Service,
 because the Workload name alone is the ServiceAccount and the Vault role name
 under the domain's namespace — `auth-system.auth-api`, not
-`auth-system.auth-auth-api` ([0024](../../docs/adr/0024-identity-per-workload.md)).
+`auth-system.auth-auth-api` ([0024](../../docs/adr/model/0024-identity-per-workload.md)).
 Two Services in one domain file therefore cannot both call a Workload `api`,
 while the same name may repeat freely across domains. Since a domain is exactly
 one fragment, the check reads one fragment at a time; it is asserted here because
@@ -217,7 +217,7 @@ composition is the one step every fragment passes through.
 **`host` uniqueness is a composition check, not a structural guarantee.**
 Nothing in the model makes a hostname unique by construction: `host` is a full
 FQDN authored on a Service's `exposure` entry
-([0018](../../docs/adr/0018-exposure-by-audience.md)), and two domain files in
+([0018](../../docs/adr/model/0018-exposure-by-audience.md)), and two domain files in
 two repositories can write the same string with neither able to read the other.
 `E_DUPLICATE_HOST` over the union is the only place the property holds at all —
 and it is evaluated over **derived hosts and Registered Unmanaged Surfaces
@@ -273,7 +273,7 @@ Workload outright: the check is that *that* Workload declares *that* surface in
 its own `provides`, with no search across the Service. A route is the one place
 a Workload is named from outside itself, and it is named from inside the same
 Service document — which is why `exposure` sits on the Service while `provides`
-stays on the Workload ([0018](../../docs/adr/0018-exposure-by-audience.md)).
+stays on the Workload ([0018](../../docs/adr/model/0018-exposure-by-audience.md)).
 Moving a surface between two Workloads of one Service therefore breaks no
 `dependsOn` edge and does break a route still naming the old Workload, and that
 asymmetry is correct: the edge asked for a capability, the route asked for a
@@ -289,13 +289,13 @@ joined at composition and nowhere else: a Service held at most one, no Service
 could see its co-members, and a misspelt name yielded two units of one rather
 than an error — atomicity silently gone with every gate green. A Service is now
 itself the unit of atomic release
-([0062](../../docs/adr/0062-service-is-the-release-unit.md)), so there is no join
+([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)), so there is no join
 key to misspell, no membership for composition to materialise, and nothing left
 for that error to catch: the members are the Workloads listed in the Service's
 own document. The readiness requirement the second error carried is unchanged in
 substance — no member's new version takes traffic until every member is healthy,
 health meaning that member's own declared readiness
-([0014](../../docs/adr/0014-probes-are-siblings.md)) — but it is now a property
+([0014](../../docs/adr/model/0014-probes-are-siblings.md)) — but it is now a property
 of one Service in one file rather than of a set assembled across repositories,
 and checking it needs no estate-wide view.
 
@@ -310,9 +310,9 @@ Every declared dimension is **hard**: all of them must match, a list is a set of
 equally acceptable values with no ordering and no weight, and matching is against
 `allocatable` from the pinned node contract — each node's total minus a reserve
 declared in the node file, never a live read of free capacity
-([0061](../../docs/adr/0061-placement-is-hard-dimensions.md),
-[0056](../../docs/adr/0056-node-facts-single-source.md),
-[0006](../../docs/adr/0006-pinned-inputs.md)). `E_PLACEMENT_UNSATISFIABLE` is
+([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md),
+[0056](../../docs/adr/model/0056-node-facts-single-source.md),
+[0006](../../docs/adr/model/0006-pinned-inputs.md)). `E_PLACEMENT_UNSATISFIABLE` is
 the one error for all of it, replacing the retired capability-only error that
 could speak about flat strings and nothing else: it now covers every dimension —
 `memory`, `cpu`, `arch`, `site`, `disk`, `gpu` and `capabilities` alike.
@@ -373,9 +373,9 @@ scheduler drops without an event, a warning or a condition.
 | no literal secret value appears in an env file or an Asset | `E_RAW_SECRET` |
 
 Three points of precision, all following from the grant unit being the path
-([0009](../../docs/adr/0009-vault-read-is-per-path.md),
-[0023](../../docs/adr/0023-grant-unit-is-the-path.md),
-[0027](../../docs/adr/0027-secret-reference-join-key.md)):
+([0009](../../docs/adr/model/0009-vault-read-is-per-path.md),
+[0023](../../docs/adr/model/0023-grant-unit-is-the-path.md),
+[0027](../../docs/adr/model/0027-secret-reference-join-key.md)):
 
 - The placeholder join is **byte equality against the granted path**, with no
   mount rewrite and no engine taxonomy. The `#<key>` half selects which value
@@ -405,7 +405,7 @@ Three points of precision, all following from the grant unit being the path
 
 The last two here, and `E_DISK_BINDING_CONFLICT` above, are evaluated against the
 pinned `ClusterState` snapshot
-([0034](../../docs/adr/0034-cluster-state-pinned-input.md)), so their verdict is
+([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)), so their verdict is
 exactly as fresh as that snapshot — composition reads no live cluster.
 
 ## Participants
@@ -419,7 +419,7 @@ Seven media services, zero inbound edges, invisible to any edge-derived guard.
 `participants.yml` is the one central artefact that survives composition by
 fragments. It changes when a domain is added or retired, never when a
 declaration changes — and since one fragment is exactly one domain
-([0063](../../docs/adr/0063-intent-authored-per-domain.md)), that sentence is now
+([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)), that sentence is now
 literal rather than approximate. The list enumerates domains, and because a
 domain has exactly one publisher it is also the domain-to-repository map that
 `E_DUPLICATE_DOMAIN` is checked against. A repository holding several domain
@@ -448,7 +448,7 @@ roundness: `CHANGELOG.md` records 26 releases between 2026-06-09 and 2026-08-20 
 one every 2.8 days — so seven days is about 2.5 observed intervals. Long enough
 to absorb two consecutive missed releases, short enough that a broken publish job
 is caught in the week it breaks
-([0038](../../docs/adr/0038-participants-list-staleness.md)). A participant that
+([0038](../../docs/adr/model/0038-participants-list-staleness.md)). A participant that
 genuinely publishes less often overrides the default **with a written reason**;
 an override without one is a build error.
 
@@ -495,8 +495,8 @@ the model. Under this rule the literal `schemaVersion: 1.0.0` written by every
 document in this specification, including the lock below, is correct and stays
 correct across those releases: the model is at `1.0.0`, the toolkit is at
 `0.22.0`, and they are allowed to differ
-([0007](../../docs/adr/0007-schema-version-separable.md),
-[0039](../../docs/adr/0039-artifact-schema-versioning.md)).
+([0007](../../docs/adr/model/0007-schema-version-separable.md),
+[0039](../../docs/adr/model/0039-artifact-schema-versioning.md)).
 
 Composition admits a fragment on a **range**, not on equality:
 
@@ -598,7 +598,7 @@ services — `tailscale`, `media-storage`, `backup-storage`,
 `btrfs-backup-snapshots` — have no cluster presence at all. `tailscale` here is
 the host daemon; it is not a placement capability, that use having retired with
 the flat capability vocabulary
-([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)). Modelling NixOS was
+([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). Modelling NixOS was
 rejected: rendering it is not writing a file but producing a build and an
 activation, an order of magnitude more v1 scope for roughly eight hosts.
 
@@ -640,9 +640,9 @@ entry, and a Service later authoring `host: wolf.jorisjonkers.dev` has to
 collide with it rather than quietly take the name back.
 
 Derived entries come from Audience declarations
-([0018](../../docs/adr/0018-exposure-by-audience.md)); registered entries come
+([0018](../../docs/adr/model/0018-exposure-by-audience.md)); registered entries come
 from the ledger; anything in neither is a build error
-([0019](../../docs/adr/0019-registered-unmanaged-surfaces.md)). Because the check
+([0019](../../docs/adr/model/0019-registered-unmanaged-surfaces.md)). Because the check
 is symmetric, the register cannot quietly outlive what it excuses.
 
 A registration is an **unverified assertion**: nothing proves `samba` is actually
@@ -686,8 +686,8 @@ spec:
 
 `domain` and `repository` are recorded per fragment because the union is over
 domains and a domain has exactly one publisher
-([0037](../../docs/adr/0037-composition-oci-fragments.md),
-[0063](../../docs/adr/0063-intent-authored-per-domain.md)). A replay can then
+([0037](../../docs/adr/model/0037-composition-oci-fragments.md),
+[0063](../../docs/adr/model/0063-intent-authored-per-domain.md)). A replay can then
 show which repository published a domain at that digest, and a domain that moved
 repositories between two locks appears as a diff rather than as a quietly
 different render.
@@ -716,11 +716,11 @@ a Workload or a namespace.
 Renaming a Service is therefore a breaking change to every inbound reference,
 which is what `E_UNRESOLVED_SERVICE` reports, and there is no escape hatch left:
 the `aliases` block is deleted
-([0063](../../docs/adr/0063-intent-authored-per-domain.md)). It existed so a
+([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)). It existed so a
 *coordinate* could diverge from the identity, and it now has nothing to express —
 the namespace comes from `domain`, and the Workload name and the image are fields
 the author already writes explicitly
-([0010](../../docs/adr/0010-flat-service-identity.md)). A Service id that reads
+([0010](../../docs/adr/model/0010-flat-service-identity.md)). A Service id that reads
 nothing like its processes is not a divergence to be recorded: Service
 `home-portal` holding Workload `app-ui` with image `app-ui` is simply what those
 things are called. A rename lands in every referring domain file, or composition
@@ -737,12 +737,12 @@ is [docs/adr/deferred/README.md](../../docs/adr/deferred/README.md).
 
 The model makes exactly three demands on whatever that definition turns out to
 be: all-or-nothing switchover of a Service's Workloads
-([0062](../../docs/adr/0062-service-is-the-release-unit.md)), destructive
+([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)), destructive
 operations gated by Durability Class
-([0015](../../docs/adr/0015-durability-class-per-volume.md)), and rendering from
+([0015](../../docs/adr/model/0015-durability-class-per-volume.md)), and rendering from
 pinned inputs only
-([0006](../../docs/adr/0006-pinned-inputs.md),
-[0034](../../docs/adr/0034-cluster-state-pinned-input.md)).
+([0006](../../docs/adr/model/0006-pinned-inputs.md),
+[0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)).
 
 ## Open in this chapter
 
@@ -791,4 +791,4 @@ pinned inputs only
      matter how it is spread, and would be worth failing at composition.
    - **Blocks:** nothing today. Until it runs, over-subscription surfaces as the
      scheduler refusing to place a pod, which is the conceded cost of
-     eligibility ([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)).
+     eligibility ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)).

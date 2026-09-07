@@ -66,7 +66,7 @@ Undo cost today: edit this file and re-examine the six decisions whose
 `rests-on` names it — [0013](0013-blueprint-packs-pinned-checkout.md),
 [0037](0037-composition-oci-fragments.md),
 [0038](0038-participants-list-staleness.md),
-[0049](deferred/0049-aggregator-owned-tests.md), [0050](deferred/0050-exercises-and-deploys.md),
+[0049](../deferred/0049-aggregator-owned-tests.md), [0050](../deferred/0050-exercises-and-deploys.md),
 [0059](0059-v1-scope-stopping-rule.md) — a day of review, no code, no cluster
 change. Becomes irreversible once: mechanisms sized to this premise are live in
 production and a real second maintainer or second cluster exists; from that

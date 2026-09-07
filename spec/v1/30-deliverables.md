@@ -29,7 +29,7 @@ not a special case — a pack **is a list of Fragments**, each tagged
 `adapter: flux-packs`.
 
 **The sixteen registered adapters are the v1 set**
-([0052](../../docs/adr/0052-registered-adapters-are-v1.md)). They are enumerated
+([0052](../../docs/adr/model/0052-registered-adapters-are-v1.md)). They are enumerated
 only by `adapterContract()`; nothing renders that is not registered. A second,
 unregistered renderer generation exists in the tree today —
 `src/deployment/render/`, 14 modules and 1,967 lines, reachable from neither
@@ -59,7 +59,7 @@ the earlier reading of them as duplicate "twins" is withdrawn here.
 ## The adapter port
 
 Every adapter satisfies one typed port
-([0053](../../docs/adr/0053-adapter-port-contract.md)):
+([0053](../../docs/adr/model/0053-adapter-port-contract.md)):
 
 > **Documents in, attributed Fragments out. Deterministic. No ambient reads. A
 > path claimed twice is a build error.**
@@ -104,12 +104,12 @@ Narrowing the port is cheap now and expensive later. Once adapters outside this
 repository register through the public `registerAdapter` export, the port is a
 compatibility surface every out-of-tree adapter pins, and narrowing it means a
 major toolkit release — a version number separate from `schemaVersion`
-([0039](../../docs/adr/0039-artifact-schema-versioning.md), chapter 40).
+([0039](../../docs/adr/model/0039-artifact-schema-versioning.md), chapter 40).
 
 ## Attribution
 
 **Every Deliverable is attributed to exactly one Adapter**
-([0054](../../docs/adr/0054-adapter-attribution.md)). Attribution is a property of
+([0054](../../docs/adr/model/0054-adapter-attribution.md)). Attribution is a property of
 the producer, declared in the registry, not a property of the output that an edit
 could lose:
 
@@ -161,7 +161,7 @@ build error in this chapter rather than a convention.
 ## Ledgers
 
 **Every accepted hole is a bidirectional ledger**
-([0055](../../docs/adr/0055-bidirectional-ledgers.md)). Each ledger fails **both**
+([0055](../../docs/adr/model/0055-bidirectional-ledgers.md)). Each ledger fails **both**
 when something is missing from it and when one of its own entries no longer
 matches anything, which is the property `catalog/accepted-fragment-drift.yml`
 already has and states:
@@ -174,7 +174,7 @@ already has and states:
 |---|---|---|---|
 | coverage ledger | every live object with no producing adapter | `E_UNATTRIBUTED_OBJECT` | `E_LEDGER_ENTRY_STALE` |
 | accepted fragment drift | differences between the render and what a Service published, each a deferred fix | `E_UNACCEPTED_DRIFT` | `E_LEDGER_ENTRY_STALE` |
-| registered unmanaged surfaces | hostnames the model does not deploy ([0019](../../docs/adr/0019-registered-unmanaged-surfaces.md), chapter 40) | `E_UNREGISTERED_SURFACE` | `E_LEDGER_ENTRY_STALE` |
+| registered unmanaged surfaces | hostnames the model does not deploy ([0019](../../docs/adr/model/0019-registered-unmanaged-surfaces.md), chapter 40) | `E_UNREGISTERED_SURFACE` | `E_LEDGER_ENTRY_STALE` |
 
 Every entry carries three fields and a build consequence:
 
@@ -189,7 +189,7 @@ three identities in `git shortlog`, every review date is a note to self, and the
 build failure — not the review — is what enforces the deadline.
 
 The check runs against the pinned `ClusterState` snapshot
-([0034](../../docs/adr/0034-cluster-state-pinned-input.md), chapter 20), so a
+([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md), chapter 20), so a
 ledger verdict is exactly as fresh as that snapshot's `clusterStateDigest` and no
 fresher. Closing a hole is therefore always two changes — register the adapter,
 delete the entry — and forgetting the second breaks the build. That is the whole
@@ -255,17 +255,17 @@ them is wrong by 74.
 | class | objects | share | how it is produced |
 |---|---|---|---|
 | **A — derived from Service Intent** | 364 | 81% | a registered adapter, per Service |
-| **B — pack-delivered platform infrastructure** | 41 | 9% | `flux-packs` / `flux-source` from `flux-modules` at a pinned ref ([0013](../../docs/adr/0013-blueprint-packs-pinned-checkout.md)) |
+| **B — pack-delivered platform infrastructure** | 41 | 9% | `flux-packs` / `flux-source` from `flux-modules` at a pinned ref ([0013](../../docs/adr/model/0013-blueprint-packs-pinned-checkout.md)) |
 | **C — authored content** | 45 | 10% | not derivable; ledgered until its owner lands |
 
 Class C is entirely Grafana — 31 `GrafanaDashboard`, 14 `GrafanaFolder`. Nothing
 in Service Intent implies a dashboard's panels; deriving one would be inventing a
 dashboard DSL. It is ledgered rather than permanent: 14 service dashboards become
-Assets on the owning Service ([0012](../../docs/adr/0012-assets-not-code.md)), 3
+Assets on the owning Service ([0012](../../docs/adr/model/0012-assets-not-code.md)), 3
 runtime-family dashboards ship with the Runtime Profile, 14 platform dashboards
 ship in the observability pack, and `service-overview` / `service-template` derive
 per Service from the scrape surface and exposure
-([0021](../../docs/adr/0021-observability-scrape-and-alert-class.md)).
+([0021](../../docs/adr/model/0021-observability-scrape-and-alert-class.md)).
 
 ### The true gap
 
@@ -274,9 +274,9 @@ it is three kinds, all genuinely unrendered by anything registered:
 
 | kind | objects (2026-08-31) | the model demands it because | producer today |
 |---|---|---|---|
-| `ClusterRole` 6, `ClusterRoleBinding` 4, `Role` 4, `RoleBinding` 2 | 16 | workloads hold their own identity ([0024](../../docs/adr/0024-identity-per-workload.md), chapter 16) | **none.** No `rbac` adapter exists. `ClusterRole` and `ClusterRoleBinding` are also on the raw-manifest forbidden list, so they cannot ride in as authored YAML either |
-| `NetworkPolicy` | 3 | network policy is default-deny, derived from the edge set ([0035](../../docs/adr/0035-network-policy-default-deny.md), chapter 16) | **none.** The only implementation is `src/deployment/render/networkpolicy.ts`, which the deletion in [0052](../../docs/adr/0052-registered-adapters-are-v1.md) removes; coverage for this kind goes from unregistered to absent |
-| `PrometheusRule` | 1 | every Service declares an Alert Class ([0021](../../docs/adr/0021-observability-scrape-and-alert-class.md), chapter 10) | **none.** Zero occurrences anywhere under `src/`, in either generation |
+| `ClusterRole` 6, `ClusterRoleBinding` 4, `Role` 4, `RoleBinding` 2 | 16 | workloads hold their own identity ([0024](../../docs/adr/model/0024-identity-per-workload.md), chapter 16) | **none.** No `rbac` adapter exists. `ClusterRole` and `ClusterRoleBinding` are also on the raw-manifest forbidden list, so they cannot ride in as authored YAML either |
+| `NetworkPolicy` | 3 | network policy is default-deny, derived from the edge set ([0035](../../docs/adr/model/0035-network-policy-default-deny.md), chapter 16) | **none.** The only implementation is `src/deployment/render/networkpolicy.ts`, which the deletion in [0052](../../docs/adr/model/0052-registered-adapters-are-v1.md) removes; coverage for this kind goes from unregistered to absent |
+| `PrometheusRule` | 1 | every Service declares an Alert Class ([0021](../../docs/adr/model/0021-observability-scrape-and-alert-class.md), chapter 10) | **none.** Zero occurrences anywhere under `src/`, in either generation |
 
 `GitRepository` is a fourth honest correction: no registered adapter emits one.
 `flux-root` only *references* `flux-system` as a `sourceRef`, and the estate's
@@ -291,7 +291,7 @@ because counting files under `fleet-infra/cluster` measures the cluster tree
 rather than the registry. Second, no adapter is registered "for free" — writing
 `rbac`, `networking` and `prometheus` against `AdapterContext` is three pieces of
 adapter work of comparable size, and the v1 schedule prices them that way
-([0059](../../docs/adr/0059-v1-scope-stopping-rule.md)).
+([0059](../../docs/adr/model/0059-v1-scope-stopping-rule.md)).
 
 ## Determinism and parity
 
@@ -373,13 +373,13 @@ stale participant (chapter 40) rather than as a quietly smaller render.
 ## Open in this chapter
 
 1. **`rbac` does not exist.** 16 objects, the largest true gap, and
-   [0024](../../docs/adr/0024-identity-per-workload.md) requires a per-Workload
+   [0024](../../docs/adr/model/0024-identity-per-workload.md) requires a per-Workload
    identity to bind. *Settled by:* a registered `rbac` adapter rendering
    `Role`/`RoleBinding` per Workload, with the coverage ledger's RBAC entries
    deleted in the same change.
 2. **`NetworkPolicy` regresses to zero producers** when `src/deployment/render/`
    is deleted, while
-   [0035](../../docs/adr/0035-network-policy-default-deny.md) requires
+   [0035](../../docs/adr/model/0035-network-policy-default-deny.md) requires
    default-deny derived from the edge set. *Settled by:* a `networking` adapter
    written against `AdapterContext` — a port, not a registration.
 3. **`PrometheusRule` has no implementation in either generation.** *Settled by:*
@@ -395,7 +395,7 @@ stale participant (chapter 40) rather than as a quietly smaller render.
    per-adapter measurement against the registered generation, recorded as the
    corrected class-A gap in [The true gap](#the-true-gap).
 7. **The Service `ServiceAccount` name is the Service Id today**, while
-   [0024](../../docs/adr/0024-identity-per-workload.md) requires
+   [0024](../../docs/adr/model/0024-identity-per-workload.md) requires
    `<service>-<workload>`, collapsing to `<service>` only for single-workload
    Services. *Settled by:* the `kubernetes` adapter deriving the name per
    Workload, and chapter 16's identity table matching what renders.

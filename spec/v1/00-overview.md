@@ -19,7 +19,7 @@ deploy RBAC, break-glass or co-test gating.
 
 Every mechanism in this specification must justify itself at the scale that
 exists, not at the scale of an imagined organisation
-([0001](../../docs/adr/0001-estate-scale-and-ownership.md)).
+([0001](../../docs/adr/model/0001-estate-scale-and-ownership.md)).
 
 | fact | value | how it is counted |
 |---|---|---|
@@ -39,7 +39,7 @@ premise is re-opened against the new scale rather than re-worded.
 ## Substrate
 
 Kubernetes stays, and not for the reasons it is usually bought
-([0002](../../docs/adr/0002-kubernetes-as-substrate.md)). Rescheduling does not
+([0002](../../docs/adr/model/0002-kubernetes-as-substrate.md)). Rescheduling does not
 exist here: storage is `local-path`, all fourteen PVCs are `ReadWriteOnce`, and
 a `local-path` volume does not survive its node, so every stateful Workload is
 pinned to one machine by construction. Control-plane HA does not exist: every
@@ -73,7 +73,7 @@ against a shipped v1.
 ## The meta-model
 
 Deployment configuration is split into three layers, and the middle one is a
-contract ([0003](../../docs/adr/0003-three-layer-meta-model.md)).
+contract ([0003](../../docs/adr/model/0003-three-layer-meta-model.md)).
 
 | Layer | Name | Authored | Owns |
 |---|---|---|---|
@@ -87,7 +87,7 @@ by two questions — must a human author it, and does it record a decision or
 merely serialize one. Which side of layer 1 a value falls on is decided by the
 contention test: a value is platform-assigned if and only if it must be unique
 across the estate or draws on a shared finite resource
-([0004](../../docs/adr/0004-contention-decides-authority.md), normative in
+([0004](../../docs/adr/model/0004-contention-decides-authority.md), normative in
 [chapter 20](20-resolved-deployment.md#authority)).
 
 The counter-experiment is on record. Two layers, with resolution private to the
@@ -99,8 +99,8 @@ wrong.
 
 Layer 2 is derived from a **closed set of pinned, digested inputs** — Service
 Intent, the Cluster Context, the locks, and a ClusterState snapshot carrying its
-own digest ([0006](../../docs/adr/0006-pinned-inputs.md),
-[0034](../../docs/adr/0034-cluster-state-pinned-input.md)). Nothing at render
+own digest ([0006](../../docs/adr/model/0006-pinned-inputs.md),
+[0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)). Nothing at render
 time reads live cluster state. Reproducibility is therefore conditional and
 true: identical inputs *including* `clusterStateDigest` produce a byte-identical
 tree, so a differing render with identical digests is a defect, never weather.
@@ -142,18 +142,25 @@ flowchart TB
 
 ## Programme scope
 
-v1 is the model ([0059](../../docs/adr/0059-v1-scope-stopping-rule.md)): the
+v1 is the model ([0059](../../docs/adr/model/0059-v1-scope-stopping-rule.md)): the
 layer-1 authoring vocabulary, composition, layer-2 derivation, and the
 registered renderer that serializes layer 3. It ships when it renders the live
 estate from declared intent and that render is delivered by today's Flux tree
 unchanged. No deferred decision can block it.
 
-The partition is structural rather than enumerated, so it cannot drift: **every
-ADR in `docs/adr/` is v1 model scope; every ADR in `docs/adr/deferred/` is
+The partition is structural rather than enumerated, so it cannot drift:
+`docs/adr/` carries **one directory per decision domain**, and **every ADR in
+`docs/adr/model/` is v1 model scope; every ADR in `docs/adr/deferred/` is
 not.** A future decision moves a file across that boundary or it does not move
 at all. The first draft of this rebuild defined a "core" and a "group G" that
 failed to partition the decision set — six ADRs landed on neither side — which
 is why membership of a directory, not a list, is the line.
+
+A third domain, `docs/adr/architecture/`, carries decisions about the
+compiler's own structure. It is neither model nor delivery: its `normative:`
+pointers name sections of [`docs/architecture.md`](../../docs/architecture.md)
+rather than of these chapters, and nothing in it can change what the model
+means. `scripts/lint-adrs.mjs` holds each domain to its own normative root.
 
 The model makes exactly three demands on whatever delivery is eventually
 defined. They are model decisions, not delivery ones, and together they are the
@@ -161,9 +168,9 @@ complete interface between the two scopes.
 
 | demand | decided in | what any delivery definition must do |
 |---|---|---|
-| Release Unit atomicity | [0060](../../docs/adr/0060-release-unit.md) | no member's new version receives traffic until every member's new version is healthy; if any member fails its budget, none switch and the old versions keep serving |
-| Durability Class gating | [0015](../../docs/adr/0015-durability-class-per-volume.md) | no destructive operation proceeds automatically against a volume declared `recoverable` or `irreplaceable` |
-| Pinned inputs only | [0006](../../docs/adr/0006-pinned-inputs.md), [0034](../../docs/adr/0034-cluster-state-pinned-input.md) | render from recorded digests — Intent, Cluster Context, locks, ClusterState — never from live cluster state |
+| Release Unit atomicity | [0060](../../docs/adr/model/0060-release-unit.md) | no member's new version receives traffic until every member's new version is healthy; if any member fails its budget, none switch and the old versions keep serving |
+| Durability Class gating | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | no destructive operation proceeds automatically against a volume declared `recoverable` or `irreplaceable` |
+| Pinned inputs only | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | render from recorded digests — Intent, Cluster Context, locks, ClusterState — never from live cluster state |
 
 Anything else the delivery definition chooses — push or pull, who applies, what
 prunes, what reconciles, how co-testing gates — is its own business. A delivery
@@ -271,7 +278,7 @@ it, and what it blocks. An entry that an ADR has since decided is struck
 through, with the deciding ADR named.
 
 1. ~~**`exposure[].name` and apex hosts.**~~ Decided by
-   [0018](../../docs/adr/0018-exposure-by-audience.md) as amended: the hostname
+   [0018](../../docs/adr/model/0018-exposure-by-audience.md) as amended: the hostname
    is **authored on the Service**, never assigned. An `exposure` entry carries
    `host` as the full FQDN, so no zone rule and no `<service>.<zone>`
    derivation exists anywhere — and with none, there is no apex flag left to
@@ -283,11 +290,11 @@ through, with the deciding ADR named.
    `E_DUPLICATE_HOST`, evaluated over the composed union together with the
    Registered Unmanaged Surfaces ([chapter 40](40-composition.md#identity)):
    the Service authors the value and composition arbitrates the collision,
-   which is [0004](../../docs/adr/0004-contention-decides-authority.md)
+   which is [0004](../../docs/adr/model/0004-contention-decides-authority.md)
    restated as contention deciding who arbitrates rather than who authors.
 
 2. **Four ConfigMap-hosted scripts, three images to build.** Code is not
-   configuration ([0012](../../docs/adr/0012-assets-not-code.md)), and an Asset
+   configuration ([0012](../../docs/adr/model/0012-assets-not-code.md)), and an Asset
    may not be executable — so `hermes-bootstrap` (221 lines of shell),
    `n8n-hooks` (499 lines of JavaScript) and the `garage` bootstrap need
    first-party images, and the `alpine:3.21`-plus-ConfigMap pattern retires with
@@ -299,13 +306,13 @@ through, with the deciding ADR named.
      then a ConfigMap census (`kubectl get configmap -A -o yaml`) in which no
      data key contains an executable script.
    - **Blocks:** rendering the live estate from intent — which is the settling
-     test of [0059](../../docs/adr/0059-v1-scope-stopping-rule.md) itself, so
+     test of [0059](../../docs/adr/model/0059-v1-scope-stopping-rule.md) itself, so
      this blocks v1's own stopping condition.
 
 3. **Label prefix retirement.** Node facts are authored once and generate the
-   contract ([0056](../../docs/adr/0056-node-facts-single-source.md)), and
+   contract ([0056](../../docs/adr/model/0056-node-facts-single-source.md)), and
    placement is declared as capabilities rather than labels
-   ([0017](../../docs/adr/0017-placement-by-capability.md)) — so retiring a
+   ([0017](../../docs/adr/model/0017-placement-by-capability.md)) — so retiring a
    prefix costs no edit in any service repository. The live nodes still carry
    two: 110 labels across 7 nodes, 55 under `platform.jorisjonkers.dev/*` and
    the same 55 under `personal-stack/*`, named after an archived repository that
@@ -315,7 +322,7 @@ through, with the deciding ADR named.
    - **Settled by:** regenerate the node contract without `personal-stack/*`,
      apply it through the generated path, and confirm `kubectl get nodes -o
      json` contains zero `personal-stack/` keys after a full reconcile.
-   - **Blocks:** [0056](../../docs/adr/0056-node-facts-single-source.md)'s
+   - **Blocks:** [0056](../../docs/adr/model/0056-node-facts-single-source.md)'s
      single-source claim. It blocks no render: adapters emit
      `<cluster>/capability-<name>`.
 
@@ -324,7 +331,7 @@ through, with the deciding ADR named.
    its four rows: the registered `kubernetes` adapter already pushes `pdb.yaml`,
    `servicemonitor.yaml` and `podmonitor.yaml`, and builds the PDB from
    `rollout.availability`
-   ([0052](../../docs/adr/0052-registered-adapters-are-v1.md)). Chapter 30 has
+   ([0052](../../docs/adr/model/0052-registered-adapters-are-v1.md)). Chapter 30 has
    re-derived it from the registry — 20 objects across three kinds, still
    arithmetic on the 2026-08-31 survey. Three related items travel
    with it: four duplicated adapter pairs must collapse before attribution can
@@ -337,26 +344,26 @@ through, with the deciding ADR named.
      table's unattributed rows total.
    - **Blocks:** chapter 60's pre-apply item on one renderer generation with
      unambiguous attribution; enforcing single attribution
-     ([0054](../../docs/adr/0054-adapter-attribution.md)).
+     ([0054](../../docs/adr/model/0054-adapter-attribution.md)).
 
 5. **`minAvailable`.** Chapter 10 proposed three fields. One became `placement`
-   ([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)), `sidecars` is
-   graded by [0064](../../docs/adr/0064-sidecars-are-workload-vocabulary.md),
+   ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)), `sidecars` is
+   graded by [0064](../../docs/adr/model/0064-sidecars-are-workload-vocabulary.md),
    and this one is still ungraded. It has live evidence: six
    PodDisruptionBudgets are live, which is `minAvailable` serialised.
    - **Owner:** joris.
    - **Settled by:** one grading pass per field against the contention test,
-     landed either as a decision in `docs/adr/` with a `normative:` pointer into
+     landed either as a decision in `docs/adr/model/` with a `normative:` pointer into
      chapter 10, or as an explicit rejection with the live objects re-homed in a
      Bidirectional Ledger.
    - **Blocks:** approving chapter 10; the availability half of item 4.
 
 6. **Whether the composed union may span clusters** (chapter 40). The lock is
    keyed by cluster while Service Id uniqueness is estate-wide. With one cluster
-   ([0001](../../docs/adr/0001-estate-scale-and-ownership.md)) the question is
+   ([0001](../../docs/adr/model/0001-estate-scale-and-ownership.md)) the question is
    invisible, and neither
-   [0037](../../docs/adr/0037-composition-oci-fragments.md) nor
-   [0038](../../docs/adr/0038-participants-list-staleness.md) settles it.
+   [0037](../../docs/adr/model/0037-composition-oci-fragments.md) nor
+   [0038](../../docs/adr/model/0038-participants-list-staleness.md) settles it.
    - **Owner:** joris.
    - **Settled by:** only observable at a second cluster — decide at the 0001
      horizon review (2028-08-31) or on the day a second production cluster is
@@ -365,7 +372,7 @@ through, with the deciding ADR named.
 
 7. **Fragment signing** (chapter 40). Composition verifies `MANIFEST.sha256`
    per file and pins every fragment by digest
-   ([0037](../../docs/adr/0037-composition-oci-fragments.md)), which fixes
+   ([0037](../../docs/adr/model/0037-composition-oci-fragments.md)), which fixes
    *what* is composed but says nothing about *who* published it — while the
    artifact publishing workflow already carries `id-token: write` and
    `attestations: write`.
@@ -379,31 +386,31 @@ through, with the deciding ADR named.
 ### Retired since the rebuild
 
 - ~~**Kubernetes secrets-at-rest encryption.**~~ Decided by
-  [0028](../../docs/adr/0028-secrets-at-rest-gate.md): the renderer refuses
+  [0028](../../docs/adr/model/0028-secrets-at-rest-gate.md): the renderer refuses
   `delivery: env` and `delivery: file` unless the pinned cluster context
   advertises `secretsEncryption: true` (`E_SECRETS_AT_REST_REQUIRED`), normative
   in [chapter 60](60-setup.md#secrets-at-rest). The claim is open and owned
   there, not here.
 - ~~**Default-deny promotion criterion.**~~ Decided by
-  [0035](../../docs/adr/0035-network-policy-default-deny.md) — zero undeclared
+  [0035](../../docs/adr/model/0035-network-policy-default-deny.md) — zero undeclared
   flows observed over 14 days — and by
-  [0036](../../docs/adr/0036-cni-selection.md), which supplies the non-enforcing
+  [0036](../../docs/adr/model/0036-cni-selection.md), which supplies the non-enforcing
   policy stage the old audit-mode precondition assumed and `networking.k8s.io/v1`
   does not have.
 - ~~**Where third-party Service Intent lives.**~~ Decided by
-  [0037](../../docs/adr/0037-composition-oci-fragments.md): publication is
+  [0037](../../docs/adr/model/0037-composition-oci-fragments.md): publication is
   repository-scoped and a fragment declares the domains it contributes to, so
   splitting a multi-domain repository is a convenience, never a prerequisite.
 - ~~**Fragment publication trigger**~~ and ~~**who runs composition.**~~ Decided
-  by [0037](../../docs/adr/0037-composition-oci-fragments.md): fragments publish
+  by [0037](../../docs/adr/model/0037-composition-oci-fragments.md): fragments publish
   on merge, independently of any image release; composition runs on any publish
   and merges nothing.
 - ~~**The `resolved.yml` drift check's failure mode.**~~ Decided by
-  [0033](../../docs/adr/0033-assignments-published-back.md): the file is
+  [0033](../../docs/adr/model/0033-assignments-published-back.md): the file is
   generated, never hand-edited, and its drift check fails the build in the
   repository holding it when it disagrees with a fresh compose.
 - ~~**Grading the resource class.**~~ Decided by
-  [0061](../../docs/adr/0061-placement-is-hard-dimensions.md): the closed
+  [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md): the closed
   `xs`–`xl` class is replaced by `placement`, which states `memory` and `cpu` as
   raw quantities alongside the other node dimensions and is matched against
   allocatable.

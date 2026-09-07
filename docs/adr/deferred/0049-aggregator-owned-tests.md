@@ -85,7 +85,7 @@ repository merge per suite plus a rewrite of every gate.
 
 ## Consequences
 
-- A Service's gate must discover which Aggregators name it, which is only possible through composition, making [0037](../0037-composition-oci-fragments.md) and [0038](../0038-participants-list-staleness.md) prerequisites for having any gate at all — paid by joris, at build time.
+- A Service's gate must discover which Aggregators name it, which is only possible through composition, making [0037](../model/0037-composition-oci-fragments.md) and [0038](../model/0038-participants-list-staleness.md) prerequisites for having any gate at all — paid by joris, at build time.
 - `tests/stack-integration-tests` is decomposed; the auth federation suite is the natural first project and carries twelve of the classes — paid by joris, once.
 - A relationship with no Aggregator has no gate, and nothing announces that absence; the participants list is the only place it can be made visible — paid by whoever later debugs the untested relationship.
 - Every domain needs a default Aggregator or a Service named by none cannot deploy at all: `jellyfin`, `sonarr`, `radarr`, `prowlarr`, `bazarr`, `qbittorrent` and `immich` have zero test classes between them and get one behind smoke tests only — paid by joris.

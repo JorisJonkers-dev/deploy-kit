@@ -19,7 +19,7 @@ on a k3d vcluster, apply the `auth-federation` slice, write a marker file into
 every mounted claim, delete the labelled set, re-apply the identical lock, then
 diff both the live objects and the mounted file trees; one missing marker
 settles it. The dependence on the Durability Class
-([0015](../0015-durability-class-per-volume.md)) is carried in prose, not in
+([0015](../model/0015-durability-class-per-volume.md)) is carried in prose, not in
 `rests-on`: 0015 is a decision, and `rests-on` names premises only.
 
 ## Why
@@ -36,7 +36,7 @@ whose two callers are an Actions job and a CronJob. Neither has a human in it.
 
 Nothing downstream narrows that grant, and nothing behind it restores.
 `grep -rniE 'durability|reconstructible|irreplaceable' src/ schemas/` returns
-**0 hits**: the field [0015](../0015-durability-class-per-volume.md) introduced
+**0 hits**: the field [0015](../model/0015-durability-class-per-volume.md) introduced
 specifically to replace an inert attestation is, today, exactly as inert as the
 `rollbackTargetRetention` it condemned. Storage is `local-path` with no CSI
 snapshot support and all fourteen PVCs `ReadWriteOnce`; every fixture has exactly
@@ -87,7 +87,7 @@ restores exactly the state this record exists to end.
 - The RBAC adapter splits `delete` by kind and re-renders every deployer Role;
   `--confirm-deletions` disappears from every aggregator workflow and from the
   lifecycle chapter — paid by adapter maintainers and aggregator repositories.
-- [0015](../0015-durability-class-per-volume.md) becomes load-bearing: a volume
+- [0015](../model/0015-durability-class-per-volume.md) becomes load-bearing: a volume
   mis-declared `reconstructible` is deletable — paid by whoever declares it.
 - The gate protects claims, not the bytes inside them; a Workload that corrupts
   its own volume is untouched — paid by owners who read the gate as a backup.

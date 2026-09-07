@@ -5,10 +5,10 @@
 # E_DUPLICATE_WORKLOAD_NAME and with nothing else.
 schemaVersion: 1.0.0
 
-# One file per domain (docs/adr/0063-intent-authored-per-domain.md). The
+# One file per domain (docs/adr/model/0063-intent-authored-per-domain.md). The
 # namespace derives from this header as agents-system, and the ServiceAccount
 # and Vault role of a Workload are its NAME under that namespace
-# (docs/adr/0024-identity-per-workload.md) -- which is what makes the collision
+# (docs/adr/model/0024-identity-per-workload.md) -- which is what makes the collision
 # below an identity collision rather than a style complaint.
 domain: agents
 owner: joris
@@ -16,7 +16,7 @@ owner: joris
 services:
   # Two Services in one file are ordinary: co-location couples nothing, and
   # these two release independently
-  # (docs/adr/0062-service-is-the-release-unit.md). What is not ordinary is that
+  # (docs/adr/model/0062-service-is-the-release-unit.md). What is not ordinary is that
   # both name a Workload `api`.
   - id: agents-api
     alertClass: urgent

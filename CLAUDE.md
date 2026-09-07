@@ -34,8 +34,13 @@ what gets fixed.
 
 Before changing anything under `docs/adr/` or `spec/v1/`:
 
-- Read [`docs/adr/README.md`](docs/adr/README.md) for the register and the
-  citation rule, and `docs/adr/0003`–`0006` for the model's premises.
+- Read [`docs/adr/README.md`](docs/adr/README.md) for the register, the citation
+  rule and the domain table, and `docs/adr/model/0003`–`0006` for the model's
+  premises.
+- `docs/adr/` carries **one directory per domain** — `model/` (v1 model,
+  pointers into `spec/v1`), `architecture/` (the compiler's own structure,
+  pointers into `docs/architecture.md`), `deferred/` (not linted). Numbers run
+  in one estate-wide sequence, so never reuse a number from another domain.
 - Run `npm run lint:adrs`. It enforces frontmatter schema, register integrity,
   qualified citations (a bare `ADR-` token outside a link fails), normative
   anchors resolving against real headings in `spec/v1`, and content shape.

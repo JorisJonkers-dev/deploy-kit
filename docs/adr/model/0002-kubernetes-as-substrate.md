@@ -14,9 +14,9 @@ Both retained properties — the API server as a per-aggregator authorisation
 boundary, and server-side-apply field ownership as the drift signal — can be
 made real at this scale. False if: either cannot — an aggregator can still
 mutate a Service it does not deploy after
-[0047](deferred/0047-namespace-per-deployer.md) lands, or a hand edit to an
+[0047](../deferred/0047-namespace-per-deployer.md) lands, or a hand edit to an
 owned field still surfaces no conflict after
-[0046](deferred/0046-distinct-field-managers.md) lands. Settled by: a `kubectl
+[0046](../deferred/0046-distinct-field-managers.md) lands. Settled by: a `kubectl
 auth can-i` matrix (every aggregator ServiceAccount × every foreign namespace ×
 create/patch/delete, all `no`) run after 0047 is applied, and one provoked
 field-manager conflict — hand-edit a field the deployer owns, let the re-apply
@@ -54,8 +54,8 @@ field-manager name `auth-federation`
 (`spec/v1/examples/workflows/aggregator-deploy.yml:103`,
 `spec/v1/examples/rendered/reapply-cronjob.yaml:56`), so server-side apply
 cannot report a conflict between the two writers most likely to collide.
-[0047](deferred/0047-namespace-per-deployer.md) and
-[0046](deferred/0046-distinct-field-managers.md) are what make the two
+[0047](../deferred/0047-namespace-per-deployer.md) and
+[0046](../deferred/0046-distinct-field-managers.md) are what make the two
 properties real; this premise stands or falls with their settling measurements,
 which is why its claim is open.
 
@@ -90,7 +90,7 @@ undo.
 
 ## Consequences
 - The estate keeps paying orchestrator overhead — 41 foundation objects, their CVEs and CRD upgrades, roughly a tenth of the object count — for two properties, not for scheduling — paid by joris, in operations time.
-- [0046](deferred/0046-distinct-field-managers.md) and [0047](deferred/0047-namespace-per-deployer.md) become load-bearing: until both land and the settling measurements pass, this premise is unproven and every authority or drift claim built on it overstates — paid by joris, who owns the open claim.
+- [0046](../deferred/0046-distinct-field-managers.md) and [0047](../deferred/0047-namespace-per-deployer.md) become load-bearing: until both land and the settling measurements pass, this premise is unproven and every authority or drift claim built on it overstates — paid by joris, who owns the open claim.
 - No design may cite rescheduling, HA or horizontal scale as justification; everything resting on this premise assumes node-pinned state and one control plane — paid by future decision authors, in narrowed options.
 - The single-server shape leaves the datastore unnamed and unbacked-up; declaring platform facts and rehearsing restore falls to [0057](0057-datastore-and-restore.md) — paid by joris, before the first `irreplaceable` apply.
 - Aggregators get platform-enforced 403s and human-edit conflict reports instead of bespoke tooling — paid for out of the foundation overhead above, by joris.

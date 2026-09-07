@@ -232,7 +232,7 @@ spec:
               readOnly: true
         # ------------------------------------------------------------------
         # Rendered from the Workload's `sidecars`
-        # (docs/adr/0064-sidecars-are-workload-vocabulary.md). Without it
+        # (docs/adr/model/0064-sidecars-are-workload-vocabulary.md). Without it
         # `provides: {metrics: 9187}` has no listener, servicemonitor.yaml
         # scrapes nothing, and the one secret grant in this domain has no
         # consumer.

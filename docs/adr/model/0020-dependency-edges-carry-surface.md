@@ -45,7 +45,7 @@ surfaces once; every consumer refers to them by name rather than restating
 for four derivations that today are four separate hand-maintained artefacts:
 Reconcile Unit ordering ([0032](0032-reconcile-unit-derived.md)), dependency
 coordinates, NetworkPolicy egress, and co-test membership
-([0049](deferred/0049-aggregator-owned-tests.md)). The estate's current state is the
+([0049](../deferred/0049-aggregator-owned-tests.md)). The estate's current state is the
 argument for completeness: three NetworkPolicy objects exist for roughly thirty
 workloads, so the cluster is effectively open east-west, and no default-deny
 posture ([0035](0035-network-policy-default-deny.md)) is even expressible until

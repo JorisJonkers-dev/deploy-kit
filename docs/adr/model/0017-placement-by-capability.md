@@ -35,7 +35,7 @@ nothing.**"* The shapes fail differently: an unmet hard `requires` leaves a pod
 `Pending`, which is loud; an unmet `prefers` is dropped by the scheduler in
 silence. That asymmetry is why an unsatisfiable preference is a **build error**
 here (`E_CAPABILITY_UNSATISFIABLE`, [chapter
-40](../../spec/v1/40-composition.md)) — before the manifest exists is the only
+40](../../../spec/v1/40-composition.md)) — before the manifest exists is the only
 place the silence can be broken.
 
 Both shapes are needed. The same document records the success case:

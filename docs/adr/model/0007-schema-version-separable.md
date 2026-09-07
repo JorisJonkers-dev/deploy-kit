@@ -52,7 +52,7 @@ was declared. The range governs admission; the lock governs reproduction. The
 concrete range rule and rollout mechanics are decided in
 [0039](0039-artifact-schema-versioning.md) and
 [0040](0040-renovate-ordering-gate.md); the normative rule lives in
-[40-composition](../../spec/v1/40-composition.md#versioning).
+[40-composition](../../../spec/v1/40-composition.md#versioning).
 
 ## Alternatives
 | option | cost if taken | why rejected |

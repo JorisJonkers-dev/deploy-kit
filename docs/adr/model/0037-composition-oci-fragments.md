@@ -14,7 +14,7 @@ rests-on: ["0001", "0005"]
 No single repository can evaluate the estate-wide properties this specification
 requires. False if: composing one fragment in isolation leaves zero assertions
 unevaluated. Settled by: compose one fragment alone and count the assertions that
-cannot run — seven, tabled in [chapter 40](../../spec/v1/40-composition.md).
+cannot run — seven, tabled in [chapter 40](../../../spec/v1/40-composition.md).
 
 ## Why
 
@@ -28,7 +28,7 @@ prefix-collision rejection ([0023](0023-grant-unit-is-the-path.md)), reconcile
 DAG construction ([0032](0032-reconcile-unit-derived.md)), hostname uniqueness
 and reachability completeness ([0018](0018-exposure-by-audience.md)), inbound
 edges for co-test sets ([0020](0020-dependency-edges-carry-surface.md)), and
-test project discovery ([0049](deferred/0049-aggregator-owned-tests.md)). None works
+test project discovery ([0049](../deferred/0049-aggregator-owned-tests.md)). None works
 against one repository, because no Service knows its own consumers — the
 totality [0005](0005-derivation-is-total.md) demands of derivation.
 
@@ -82,7 +82,7 @@ needs a merge in every one of them, the cost this decision was taken to avoid.
   load-bearing rather than hygiene — paid by the estate owner.
 - Composition itself merges nothing: a fragment publishes, composition runs, a
   lock is published. The pull request introduced by
-  [0041](deferred/0041-push-delivery-boundary.md) is per-relationship rather than
+  [0041](../deferred/0041-push-delivery-boundary.md) is per-relationship rather than
   estate-wide and runs that relationship's system tests, it does not record
   pointers; aggregators pin the composed lock rather than individual fragments,
   so the invariants are evaluated exactly once — paid by the aggregator.

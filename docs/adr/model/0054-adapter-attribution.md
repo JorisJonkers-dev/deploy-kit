@@ -28,7 +28,7 @@ and works — sixteen registered adapters, `adapter-compat`, parity checking wit
 behavioural profile, a deterministic render hash, and an artifact contract.
 Replacing it with direct rendering would discard attribution, and attribution is
 what lets a diff say which subsystem produced a file. It is also what makes the
-prune inventory of [0042](deferred/0042-apply-before-prune-inventory.md) derivable and the
+prune inventory of [0042](../deferred/0042-apply-before-prune-inventory.md) derivable and the
 coverage assertion of [0055](0055-bidirectional-ledgers.md) checkable: both ask
 "who produced this object", and only a per-adapter owner answers.
 

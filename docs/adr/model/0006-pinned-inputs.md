@@ -82,7 +82,7 @@ defects as weather across the estate.
   `clusterStateDigest` — paid by joris in the spec rewrite pass.
 - The hourly reconcile re-render must render from the recorded snapshot, not a
   fresh one, or drift detection re-reports weather as lock defects — paid by the
-  implementer of [0044](deferred/0044-reconcile-cronjob.md).
+  implementer of [0044](../deferred/0044-reconcile-cronjob.md).
 - Placement and replica assignment become expressible without the spec
   contradicting itself (`10:463` vs `20:266`) — paid by
   [0034](0034-cluster-state-pinned-input.md), whose snapshot schema must carry PV

@@ -84,7 +84,7 @@ the renderer emits portable `networking.k8s.io/v1` objects any CNI honours.
   the toolkit, which forgoes L7 and identity rules in v1.
 - One more component joins the 41 foundation objects that exist to make the
   other 364 possible (`../../spec/v1/50-lifecycle.md`), with its own CRDs and
-  upgrade cadence — paid by the operator, under [0048](deferred/0048-class-b-pinning.md).
+  upgrade cadence — paid by the operator, under [0048](../deferred/0048-class-b-pinning.md).
 - Installing it restarts the control-plane node's k3s server with flannel and
   the bundled controller disabled, interrupting east-west traffic on the machine
   that also runs the datastore and the deploy runner — paid by the operator.

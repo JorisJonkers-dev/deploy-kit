@@ -53,7 +53,7 @@
         'run': 'npm test'
 
       # Pinned by version, never `curl | bash` from a third-party default
-      # branch: docs/adr/0048-class-b-pinning.md (deferred set) records that
+      # branch: docs/adr/deferred/0048-class-b-pinning.md (deferred set) records that
       # pattern as a live supply-chain defect in the repository this one
       # replaces. Renovate bumps the pin.
       - 'name': 'Actionlint'
@@ -68,7 +68,7 @@
           ./actionlint -color .github/workflows/*.yml
 
       # Binary, not gitleaks-action: the action needs a paid licence for org
-      # repos. Pinned version, per docs/adr/0048-class-b-pinning.md.
+      # repos. Pinned version, per docs/adr/deferred/0048-class-b-pinning.md.
       - 'name': 'Secret scan'
         'shell': 'bash'
         'env':

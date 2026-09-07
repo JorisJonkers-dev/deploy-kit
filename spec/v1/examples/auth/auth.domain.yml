@@ -4,7 +4,7 @@
 #
 # Intent is authored ONE FILE PER DOMAIN, holding every Service that domain
 # owns, and one file is one Intent Fragment
-# (docs/adr/0063-intent-authored-per-domain.md). The namespace derives from the
+# (docs/adr/model/0063-intent-authored-per-domain.md). The namespace derives from the
 # header -- auth-system -- and no field exists that could divert it.
 #
 # Exercises: two Workloads that switch together because they are one Service,
@@ -16,12 +16,12 @@
 # derived.
 #
 # Companion env files, one per WORKLOAD
-# (docs/adr/0011-configuration-env-files-per-workload.md):
+# (docs/adr/model/0011-configuration-env-files-per-workload.md):
 #   platform/env/auth-api/base.env   -- reproduced as examples/auth-api.base.env
 #   platform/env/auth-ui/base.env
 
 # The DATA MODEL's own semver, not the toolkit package's version
-# (docs/adr/0039-artifact-schema-versioning.md). It starts at 1.0.0 and is
+# (docs/adr/model/0039-artifact-schema-versioning.md). It starts at 1.0.0 and is
 # bumped only when the model changes, so a literal here is legitimate and does
 # not go stale on a toolkit release. Composition admits same-major, minor <=
 # toolkit; the composition lock records the exact versions that ran.
@@ -31,8 +31,8 @@ schemaVersion: 1.0.0
 # `alertClass` stays per Service -- raising it makes a domain page as loudly as
 # its loudest member -- and so does `secrets`, because a domain-level grant
 # hands every Service in the file a reader slot on the whole path
-# (docs/adr/0009-vault-read-is-per-path.md,
-# docs/adr/0063-intent-authored-per-domain.md).
+# (docs/adr/model/0009-vault-read-is-per-path.md,
+# docs/adr/model/0063-intent-authored-per-domain.md).
 domain: auth
 owner: joris
 
@@ -41,7 +41,7 @@ services:
   # This Service was two Services -- `auth-api` and `auth-ui` -- coupled by a
   # `releaseUnit: auth` name that each declared in its own repository. That
   # field is deleted. A Service is itself the unit of atomic release
-  # (docs/adr/0062-service-is-the-release-unit.md): its Workloads switch
+  # (docs/adr/model/0062-service-is-the-release-unit.md): its Workloads switch
   # together or none switches. No Workload's new version receives traffic until
   # every Workload's new version is healthy by its own declared readiness, and
   # if any misses its `startupBudget`, none of them switch and the old versions
@@ -55,24 +55,24 @@ services:
   #
   # The merge costs no reference: auth's estate-wide role is the forward-auth
   # middleware derived from every route's exposure audience
-  # (docs/adr/0018-exposure-by-audience.md), never a `dependsOn` edge, and
+  # (docs/adr/model/0018-exposure-by-audience.md), never a `dependsOn` edge, and
   # nothing in the estate names `auth-ui` at all.
   #
   # Still not a Reconcile Unit. That one is DERIVED from the dependency graph
   # and answers ordering (postgres before auth); this one is DECLARED, by
   # drawing a boundary, and answers atomicity
-  # (docs/adr/0032-reconcile-unit-derived.md).
+  # (docs/adr/model/0032-reconcile-unit-derived.md).
   - id: auth
     alertClass: page        # every forward-auth protected route depends on it
 
     # No Service-level `secrets`. The three grants below are auth-api's alone,
     # so they sit on that Workload: a Service-level grant is held by EVERY
     # Workload, including ones added later
-    # (docs/adr/0022-grants-live-on-the-service.md), and leaving them here would
+    # (docs/adr/model/0022-grants-live-on-the-service.md), and leaving them here would
     # hand the nginx container a Vault identity holding `read` on the database
     # credentials. Folding the pair into one Service is what moved them down a
     # level, and the level is an access boundary only because identity is per
-    # Workload (docs/adr/0024-identity-per-workload.md).
+    # Workload (docs/adr/model/0024-identity-per-workload.md).
 
     # ONE HOSTNAME, TWO WORKLOADS -- the case that forced `exposure` up from the
     # Workload to the Service. `auth.jorisjonkers.dev/api` is auth-api and `/`
@@ -82,7 +82,7 @@ services:
     # show. `provides` stays on the Workload, because the two are different
     # facts: `provides` is *this process listens on this port*, `exposure` is
     # *this hostname routes here* (review/EXPOSURE-MANIFEST.md,
-    # docs/adr/0018-exposure-by-audience.md).
+    # docs/adr/model/0018-exposure-by-audience.md).
     #
     # `host` is the full FQDN, AUTHORED. No zone mapping, no `<service>.<zone>`
     # rule, no apex flag -- an apex host is written `host: jorisjonkers.dev`.
@@ -122,7 +122,7 @@ services:
       - name: auth-api
         # The ServiceAccount and the Vault role are the WORKLOAD NAME, unique
         # within the domain: `auth-system.auth-api`, never
-        # `auth-system.auth-auth-api` (docs/adr/0024-identity-per-workload.md).
+        # `auth-system.auth-auth-api` (docs/adr/model/0024-identity-per-workload.md).
         lifecycle: service
 
         # An ALIAS resolved to a digest through the images lock -- never a tag
@@ -139,7 +139,7 @@ services:
           http: 8081
 
         # Placement is a set of HARD dimensions, every one of which must match
-        # (docs/adr/0061-placement-is-hard-dimensions.md). A list is a SET of
+        # (docs/adr/model/0061-placement-is-hard-dimensions.md). A list is a SET of
         # equally acceptable values -- no ordering, no weight. There is no
         # `requires`/`prefers` split: the estate paid for the soft half once,
         # when a preference naming a capability no node advertised was discarded
@@ -151,14 +151,14 @@ services:
           # `memory` and `cpu` are required on every Workload, as raw
           # quantities, and are matched against node ALLOCATABLE from the pinned
           # node contract -- total minus the reserve declared in the node file,
-          # never a live read (docs/adr/0056-node-facts-single-source.md,
-          # docs/adr/0006-pinned-inputs.md). This is ELIGIBILITY, not
+          # never a live read (docs/adr/model/0056-node-facts-single-source.md,
+          # docs/adr/model/0006-pinned-inputs.md). This is ELIGIBILITY, not
           # bin-packing: three Workloads asking 2Gi each all pass against a
           # 4096Mi node, and the scheduler refuses the third at apply.
           #
           # Contention has not moved. Memory and cpu are contended values, and
           # contention decides who ARBITRATES, not who AUTHORS
-          # (docs/adr/0004-contention-decides-authority.md): this Service states
+          # (docs/adr/model/0004-contention-decides-authority.md): this Service states
           # its requirement, and the platform decides whether it fits and where.
           memory: 768Mi         # request == limit, derived: memory is
                                 # incompressible, and a pod that cannot exceed
@@ -181,7 +181,7 @@ services:
           # contract emits 110 of them for 7 nodes, 55 under a prefix named
           # after an archived repository that rejects pushes, and retiring that
           # prefix must not be an edit in every service repository
-          # (docs/adr/0056-node-facts-single-source.md).
+          # (docs/adr/model/0056-node-facts-single-source.md).
           #
           # `tailscale` is not written here and is no longer vocabulary: 7 of 7
           # nodes advertise it, so it excludes nothing, and a filter that never
@@ -193,7 +193,7 @@ services:
         # to /tmp, which the render supplies as an emptyDir. An image that
         # cannot meet the default declares the specific control it relaxes, with
         # a reason; auth-ui below does, and so does postgres in domains/data.yml
-        # (docs/adr/0016-pod-hardening.md).
+        # (docs/adr/model/0016-pod-hardening.md).
 
         dependsOn:
           - {service: platform-postgres, surface: postgres}
@@ -207,7 +207,7 @@ services:
         # `http` is the surface the `/api` route names.
 
         # Siblings, each carrying its own endpoint, neither falling back to the
-        # other (docs/adr/0014-probes-are-siblings.md). Deliberately identical
+        # other (docs/adr/model/0014-probes-are-siblings.md). Deliberately identical
         # endpoints would still be written twice.
         probes:
           readiness:
@@ -223,14 +223,14 @@ services:
         # PROPOSED FIELD -- chapter 10, "Still to be graded". Two others were
         # listed beside it and both are now graded: `size` was replaced by the
         # `placement` block above
-        # (docs/adr/0061-placement-is-hard-dimensions.md), and `sidecars` by
-        # (docs/adr/0064-sidecars-are-workload-vocabulary.md). `minAvailable`
+        # (docs/adr/model/0061-placement-is-hard-dimensions.md), and `sidecars` by
+        # (docs/adr/model/0064-sidecars-are-workload-vocabulary.md). `minAvailable`
         # is what remains.
         #
         # This states the AVAILABILITY requirement, which is 1. The replica
         # count is not declared here and is not read from the live cluster: it
         # is assigned in layer 2 from the pinned ClusterState snapshot and its
-        # digest (docs/adr/0034-cluster-state-pinned-input.md), so the same
+        # digest (docs/adr/model/0034-cluster-state-pinned-input.md), so the same
         # inputs always produce the same number. Live runs two, recorded as a
         # capacity decision on freed Frankfurt budget rather than an
         # availability requirement.
@@ -247,7 +247,7 @@ services:
         # placeholder at all, and the dead-grant check correctly does not fire.
         #
         # The grant unit is the PATH, never the key
-        # (docs/adr/0023-grant-unit-is-the-path.md): a KV-v2 read returns the
+        # (docs/adr/model/0023-grant-unit-is-the-path.md): a KV-v2 read returns the
         # whole document, so `keys:` documents the expected keys, feeds
         # validation, and confers nothing. No wildcard is expressible.
         secrets:
@@ -281,7 +281,7 @@ services:
           # single star, which this grant used to carry -- left the vocabulary:
           # it appears in no field table and no invariant, and it made the
           # reader set undecidable without reading live Vault contents, which
-          # the pinned-input rule forbids (docs/adr/0006-pinned-inputs.md).
+          # the pinned-input rule forbids (docs/adr/model/0006-pinned-inputs.md).
           # Adding a key is now an edit to this file.
           - path: secret/data/auth-api
             keys:
@@ -301,7 +301,7 @@ services:
           # it, and verifiers follow JWKS rather than caching the key.
           #
           # A non-KV mount takes NO placeholder and `delivery: self` is its only
-          # legal delivery (docs/adr/0027-secret-reference-join-key.md): a
+          # legal delivery (docs/adr/model/0027-secret-reference-join-key.md): a
           # transit key is never materialised into an env var or a file, so
           # there is nothing for a ${secret:...} reference to carry. `keys:`
           # names the mount object.
@@ -314,7 +314,7 @@ services:
       # ------------------------------------------------------------- auth-ui
       # The second half of the product. It is here, in this Service, because it
       # must cut over with auth-api and for no other reason
-      # (docs/adr/0062-service-is-the-release-unit.md). Its identity is its own:
+      # (docs/adr/model/0062-service-is-the-release-unit.md). Its identity is its own:
       # `auth-system.auth-ui`, holding none of the grants above.
       - name: auth-ui
         lifecycle: service
@@ -339,10 +339,10 @@ services:
 
         # The one control this image cannot meet, named specifically and with a
         # reason, in the shape derived-value overrides already use
-        # (docs/adr/0031-derived-overrides-with-reason.md). There is no
+        # (docs/adr/model/0031-derived-overrides-with-reason.md). There is no
         # `hardening: privileged` shorthand: the exception list is the estate's
         # inventory of what it cannot harden, and a shorthand would hide its
-        # length (docs/adr/0016-pod-hardening.md).
+        # length (docs/adr/model/0016-pod-hardening.md).
         hardening:
           exceptions:
             - allow: writableRootFilesystem
@@ -358,7 +358,7 @@ services:
         # No `dependsOn`. The bundle is static and the API call is made by the
         # browser, not by this container, so there is no egress edge to declare
         # and the derived default-deny policy gives it none
-        # (docs/adr/0035-network-policy-default-deny.md). A dependency edge
+        # (docs/adr/model/0035-network-policy-default-deny.md). A dependency edge
         # would claim a connection this pod never opens.
 
         # No `exposure` here either. The Service's `public` exposure routes
@@ -369,7 +369,7 @@ services:
         # Siblings, written twice on purpose. For a static server the two
         # questions genuinely have the same answer -- there is no dependency to
         # be unready for -- and 0014 still refuses to infer one from the other
-        # (docs/adr/0014-probes-are-siblings.md).
+        # (docs/adr/model/0014-probes-are-siblings.md).
         probes:
           readiness:
             path: /
@@ -384,7 +384,7 @@ services:
 
         # No `scrape`. This image exports no metrics surface, and a scrape path
         # the platform guessed would collect nothing and report success
-        # (docs/adr/0021-observability-scrape-and-alert-class.md).
+        # (docs/adr/model/0021-observability-scrape-and-alert-class.md).
 
         # No `secrets`. Everything this Workload needs is baked into the bundle
         # at build time or reached through the browser, so no Vault role is
