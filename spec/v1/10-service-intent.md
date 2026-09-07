@@ -1134,6 +1134,26 @@ routes:
   - {path: /, match: exact, workload: stalwart, surface: http, redirectTo: /admin/}
 ```
 
+**Precedence is derived, not inherited from the proxy**
+([0093](../../docs/adr/model/0093-route-precedence-is-derived.md)). `auth`
+declares `/api` and `/` as prefixes on one host, and which one serves a request
+is a routing decision — so the model makes it rather than leaving it to how
+Traefik happens to sort:
+
+| rule | comes first |
+|---|---|
+| `match: exact` | before any `prefix` |
+| a longer `prefix` | before a shorter one |
+
+The rendered route carries that ordering explicitly, so what the document says
+is what the edge does, the ordering is visible in a diff, and a proxy that
+tie-breaks differently changes nothing.
+
+Two routes on one host with the same `path` and `match` are `E_DUPLICATE_ROUTE`
+([chapter 40](40-composition.md#references)). There is no correct
+interpretation of the pair: whichever wins is decided by a string comparison
+inside a proxy, which no author can see in the document.
+
 Everything else at the edge is **derived** from the audience and the tier that
 carries it: forward-auth, the security-headers baseline, the entryPoint, TLS
 and the middleware chain that assembles them

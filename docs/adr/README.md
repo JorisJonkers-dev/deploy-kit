@@ -94,6 +94,7 @@ delivery work it underpins.
 | # | title | claim |
 |---|---|---|
 | [0018](model/0018-exposure-by-audience.md) | Exposure is declared by Audience, in one closed vocabulary | settled |
+| [0093](model/0093-route-precedence-is-derived.md) | Route precedence is derived and rendered explicitly, and a duplicate route is refused | settled |
 | [0019](model/0019-registered-unmanaged-surfaces.md) | Un-deployed hostnames are Registered Unmanaged Surfaces | settled |
 | [0090](model/0090-edges-resolve-against-the-register.md) | An edge resolves against the union or the unmanaged register, and the register carries coordinates | settled |
 | [0020](model/0020-dependency-edges-carry-surface.md) | A dependency edge names the provider, the surface, and necessity | settled |

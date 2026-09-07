@@ -257,6 +257,7 @@ because the vocabulary they were written in had no path to declare — the
 | every `dependsOn.surface` is provided by a Workload of that Service, or listed by that unmanaged surface | `E_UNKNOWN_SURFACE` |
 | every unmanaged surface an edge targets carries an address and the port for that surface | `E_UNMANAGED_SURFACE_WITHOUT_COORDINATES` |
 | every route's `surface` is provided by the Workload that route names | `E_UNKNOWN_SURFACE` |
+| no two routes on one host share a `path` and `match` ([0093](../../docs/adr/model/0093-route-precedence-is-derived.md)) | `E_DUPLICATE_ROUTE` |
 | the graph of **required** edges is acyclic | `E_DEPENDENCY_CYCLE` |
 | every exposure's audience is carryable by some tier | `E_NO_TIER_FOR_AUDIENCE` |
 
