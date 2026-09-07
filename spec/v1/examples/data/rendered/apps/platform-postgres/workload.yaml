@@ -231,12 +231,11 @@ spec:
               subPath: postgresql.conf
               readOnly: true
         # ------------------------------------------------------------------
-        # PROPOSED FIELD. `sidecars` is chapter 10's first ungraded item, and
-        # this container is rendered from it rather than omitted: without it
+        # Rendered from the Workload's `sidecars`
+        # (docs/adr/0064-sidecars-are-workload-vocabulary.md). Without it
         # `provides: {metrics: 9187}` has no listener, servicemonitor.yaml
         # scrapes nothing, and the one secret grant in this domain has no
-        # consumer. What the ungraded field does not answer is listed inline.
-        # README, gap G-02.
+        # consumer.
         # ------------------------------------------------------------------
         - name: postgres-exporter
           image: quay.io/prometheuscommunity/postgres-exporter@sha256:06034c5595aef513e41b4d828317cfb61f44d0c1cee1533e5463bd69e42910d1
@@ -247,13 +246,13 @@ spec:
             # it, which is prose, not a field.
             - name: metrics
               containerPort: 9187
-          # NO `resources`. `placement` is per Workload and a sidecar declares
-          # none, so there is no quantity to derive from. Two consequences:
-          # this container is BestEffort inside a pod whose other container is
-          # not, and the eligibility check that matched 2Gi against a node
-          # accounted for one container out of two. Whether a sidecar carries
-          # its own placement quantities, and whether they ADD to the Workload's
-          # for that check, is exactly the ungraded half.
+          resources:
+            requests: {cpu: 10m, memory: 64Mi}
+            limits: {memory: 64Mi}
+          # Resources come from the sidecar's own `memory` and `cpu`: those are
+          # container-level in Kubernetes, so a sidecar declares them. The node
+          # dimensions stay on the Workload because nodeSelector is pod-level.
+          # Eligibility sums both containers: 2112Mi, not 2Gi.
           securityContext:
             # The Workload's exception is written on the container that needs
             # it. This container gets the unrelaxed class -- which is a choice
