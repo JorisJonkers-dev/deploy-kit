@@ -1181,6 +1181,40 @@ Kustomization goes Ready, the operator logs nothing, and the rules never evaluat
 A generated rule always carries the label; an authored one relies on the author
 remembering.
 
+### What the class derives
+
+**A rule catalog, not authored PromQL**
+([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)).
+The platform carries the rules; the class carries urgency:
+
+| input | supplies |
+|---|---|
+| `scrape` on a Workload | the baseline rule set — target absent, restart loop, probe failure — one instance per scraped Workload |
+| `engine` on a Workload | the engine's rules, where the catalog has them |
+| `alertClass` on the Service | the severity of each derived rule, and which receiver it routes to |
+
+The catalog and the class-to-receiver mapping are platform data, pinned with the
+Cluster Context, for the same reason the backup method is
+([0004](../../docs/adr/model/0004-contention-decides-authority.md)): a receiver is
+a shared notification channel, and PromQL in a domain file would put a mechanism
+in layer 1. The mapping feeds **both** producers, so a Service's urgency means
+one thing whether the signal came from a scrape or from a Gatus endpoint check.
+
+**A class above `none` requires a signal.** `alertClass` on a Service with no
+`scrape` on any Workload and no `exposure` for Gatus to check is
+`E_ALERT_CLASS_WITHOUT_SIGNAL`. `platform-postgres` is the live case: it declares
+`page`, the loudest value in the vocabulary, and produces no monitoring object at
+all, because Gatus derives from exposure and a datastore is correctly not
+exposed. Refusing it is what makes the declaration mean something.
+
+**Scrape timing is platform policy, stated rather than defaulted.** The Cluster
+Context carries the interval and the timeout, and every rendered `ServiceMonitor`
+and `PodMonitor` names them
+([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)).
+Omitting the fields takes the metrics stack's global default — a value decided
+outside the model, so a render would not be a complete description of how the
+estate is scraped. A Workload needing different timing restates it with a reason.
+
 ## Secrets
 
 A `secrets` list declares what a Workload may do to a Secret Store path. It sits

@@ -39,14 +39,16 @@ assertion below possible without new machinery, and it is why a blueprint pack i
 not a special case — a pack **is a list of Fragments**, each tagged
 `adapter: flux-packs`.
 
-**The nineteen registered adapters are the v1 set**
+**The twenty registered adapters are the v1 set**
 ([0052](../../docs/adr/model/0052-registered-adapters-are-v1.md), amended for
 `vault-policy` by
 [0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md) and for
 `networking` by
 [0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md), and for
 `traefik-middleware` by
-[0076](../../docs/adr/model/0076-middleware-has-one-producer.md)). They are enumerated
+[0076](../../docs/adr/model/0076-middleware-has-one-producer.md), and for
+`prometheus` by
+[0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)). They are enumerated
 only by `adapterContract()`; nothing renders that is not registered. A second,
 unregistered renderer generation exists in the tree today —
 `src/deployment/render/`, 14 modules and 1,967 lines, reachable from neither
@@ -57,13 +59,13 @@ registry hands adapters an `AdapterContext` of artifact documents, so bringing
 its behaviour back is a port across that seam and costs what writing a new
 adapter costs.
 
-The nineteen fall into two roles, on the two sides of the composition seam
+The twenty fall into two roles, on the two sides of the composition seam
 (chapter 40):
 
 | role | count | runs in | input | output |
 |---|---|---|---|---|
 | **fragment producer** — the five `*-fragment` adapters | 5 | the Service repository, at publish time | that repository's `Deployment`, images lock and pinned cluster context | exactly one Fragment document per Adapter per Service, pushed by digest |
-| **central adapter** | 14 | centrally, over the composed union | the Resolved Deployment as an `AdapterContext` of artifact documents | the file set for its subsystem |
+| **central adapter** | 15 | centrally, over the composed union | the Resolved Deployment as an `AdapterContext` of artifact documents | the file set for its subsystem |
 
 The pairing is recorded, not folklore: `src/adapters/adapter-compat.ts` maps each
 producer's `outputKind` and `outputSchema` to the central adapters that accept it
@@ -168,8 +170,8 @@ could lose:
 - Every registry entry declares a `defaultPath`, and registration throws
   `adapter definition missing defaultPath` without one. Verified 2026-08-31
   against `src/adapters/registry.ts`: 16 definitions, all sixteen carrying one.
-  `vault-policy`, `networking` and `traefik-middleware` are the seventeenth to
-  nineteenth and carry one by the same rule.
+  `vault-policy`, `networking`, `traefik-middleware` and `prometheus` are the
+  seventeenth to twentieth and carry one by the same rule.
 - `adapterContract()` is the only enumeration of the set. A tool that needs to
   know who produces what reads it; nothing reconstructs ownership by scanning
   rendered YAML.
@@ -278,10 +280,11 @@ Paths abbreviate `platform/cluster/flux` as `…`.
 | `gatus-endpoint-fragment` | fragment | `fragments/gatus-endpoint` | one `GatusEndpointFragment` |
 | `image-metadata` | edge | `…/apps/edge/image-metadata.yaml` | the image metadata document — not a Kubernetes object |
 | `image-metadata-fragment` | fragment | `fragments/image-metadata` | one `ImageMetadataFragment` |
-| `kubernetes` | kubernetes | `…/apps` | per Service: `Namespace`, `ServiceAccount`, `Deployment`/`StatefulSet`/`Job`/`CronJob`, `Service`, `ConfigMap`, `PersistentVolume` + `PersistentVolumeClaim`, **`PodDisruptionBudget`**, `HorizontalPodAutoscaler`, **`ServiceMonitor`**, **`PodMonitor`**, the backup and retention `CronJob` a Durability Class derives ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)), guarded raw manifests, and the directory's kustomize `Kustomization` |
+| `kubernetes` | kubernetes | `…/apps` | per Service: `Namespace`, `ServiceAccount`, `Deployment`/`StatefulSet`/`Job`/`CronJob`, `Service`, `ConfigMap`, `PersistentVolume` + `PersistentVolumeClaim`, **`PodDisruptionBudget`**, `HorizontalPodAutoscaler`, the backup and retention `CronJob` a Durability Class derives ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)), guarded raw manifests, and the directory's kustomize `Kustomization`. The monitoring kinds moved to `prometheus` ([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)) |
 | `kubernetes-workload-fragment` | fragment | `fragments/kubernetes-workload` | one `KubernetesWorkloadFragment` |
 | `networking` | networking | `…/apps` | every `NetworkPolicy`: one per Workload from the derived allow set plus the two baseline rules, and one namespace-wide default-deny per domain ([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)) |
 | `vault-policy` | vault | `…/apps/vso-secrets/policies` | per Workload identity: its derived Vault policy and its Kubernetes auth role, as JSON ([0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)) |
+| `prometheus` | monitoring | `…/apps` | `ServiceMonitor`, `PodMonitor` and `PrometheusRule`, every one carrying `release: metrics-stack` ([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)) |
 | `traefik-middleware` | edge | `…/apps/edge/middlewares.yaml` | every Traefik `Middleware`: forward-auth per tier serving `authenticated`, the security-headers baseline per content profile, and one redirect per `redirectTo` ([0076](../../docs/adr/model/0076-middleware-has-one-producer.md)) |
 | `traefik-lan` | edge | `…/apps/edge/traefik-lan-ingressroutes.yaml` | `IngressRoute` per LAN route, with middleware references |
 | `traefik-public` | edge | `…/apps/edge/traefik-ingressroutes.yaml` | `IngressRoute` per public route, with middleware references |
@@ -449,8 +452,13 @@ stale participant (chapter 40) rather than as a quietly smaller render.
    baseline rules, and one namespace-wide default-deny per domain. Still a port
    rather than a registration, and still unwritten; the decision is which
    adapter owns it.
-3. **`PrometheusRule` has no implementation in either generation.** *Settled by:*
-   a `prometheus` adapter deriving rules from the Alert Class.
+3. ~~**`PrometheusRule` has no implementation in either generation.**~~
+   **Decided:** the `prometheus` adapter
+   ([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md))
+   owns `PrometheusRule` and takes `ServiceMonitor` and `PodMonitor` with it, so
+   the `release: metrics-stack` label — without which rules are accepted, go
+   Ready and never evaluate — has exactly one owner. Still unwritten; the
+   decision is which adapter owns it and what it derives from.
 4. **`E_PATH_COLLISION` is specified here and implemented nowhere** — zero
    occurrences under `src/`, three central adapters sharing one path prefix.
    *Settled by:* the check at Fragment-set assembly, plus a test registering two

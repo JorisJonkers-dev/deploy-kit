@@ -90,6 +90,7 @@ delivery work it underpins.
 | [0019](model/0019-registered-unmanaged-surfaces.md) | Un-deployed hostnames are Registered Unmanaged Surfaces | settled |
 | [0020](model/0020-dependency-edges-carry-surface.md) | A dependency edge names the provider, the surface, and necessity | settled |
 | [0021](model/0021-observability-scrape-and-alert-class.md) | Observability is a scrape surface plus an Alert Class | settled |
+| [0079](model/0079-alert-class-derives-from-a-rule-catalog.md) | An Alert Class derives rules from a platform catalog, and a class without a signal is refused | settled |
 
 ### Secrets
 | # | title | claim |
@@ -125,7 +126,7 @@ delivery work it underpins.
 ### Adapters and rendering
 | # | title | claim |
 |---|---|---|
-| [0052](model/0052-registered-adapters-are-v1.md) | The registered adapters are v1; the second generation is deleted | settled, amended by [0073](model/0073-vault-policy-is-a-deliverable.md), [0074](model/0074-networking-adapter-emits-policy.md), [0076](model/0076-middleware-has-one-producer.md) |
+| [0052](model/0052-registered-adapters-are-v1.md) | The registered adapters are v1; the second generation is deleted | settled, amended by [0073](model/0073-vault-policy-is-a-deliverable.md), [0074](model/0074-networking-adapter-emits-policy.md), [0076](model/0076-middleware-has-one-producer.md), [0079](model/0079-alert-class-derives-from-a-rule-catalog.md) |
 | [0053](model/0053-adapter-port-contract.md) | An adapter satisfies one typed port | settled |
 | [0054](model/0054-adapter-attribution.md) | Every Deliverable is attributed to exactly one Adapter | settled |
 | [0055](model/0055-bidirectional-ledgers.md) | Every accepted hole is a bidirectional ledger | settled |

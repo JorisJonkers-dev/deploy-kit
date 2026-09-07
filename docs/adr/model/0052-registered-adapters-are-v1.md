@@ -9,7 +9,10 @@ rests-on: ["0003"]
 
 # The registered adapters are v1; the second generation is deleted
 
-> **Amended 2026-09-07.** The set is **nineteen**:
+> **Amended 2026-09-07.** The set is **twenty**:
+> [0079](0079-alert-class-derives-from-a-rule-catalog.md) adds `prometheus`,
+> which takes `ServiceMonitor` and `PodMonitor` from `kubernetes` so that
+> monitoring has one owner;
 > [0076](0076-middleware-has-one-producer.md) adds `traefik-middleware`, which
 > owns the objects the route adapters have only ever referenced;
 > [0074](0074-networking-adapter-emits-policy.md) adds `networking`, which owns

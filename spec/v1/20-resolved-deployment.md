@@ -185,6 +185,8 @@ field's placement link to this anchor rather than copying rows.
 | middleware chain | platform | pool | tier + audience + `contentPolicy`; `forward-auth` for `authenticated` on a public tier, the security-headers baseline with the named content profile, and the redirect rule a route's `redirectTo` asks for |
 | backup window, retention count, off-cluster destination | platform | pool | one policy per Durability Class; the window is one node's IO and the destination is one remote target ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)) |
 | the backup method — image, command, arguments | platform | pool | keyed by `engine`, arriving with the blueprint packs |
+| alert rules, their severity and their receiver | platform | pool | the rule catalog keyed by `scrape` and `engine`; severity and receiver from `alertClass` ([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)) |
+| scrape `interval` and `scrapeTimeout` | platform | pool | the metrics stack's ingest budget is shared; stated in the Cluster Context, never defaulted |
 | the backup identity's grant on the destination | platform | pool | derived, never authored: the platform chose the destination, so it owns the credential |
 | Reconcile Unit and its ordering | platform | unique — arbitrated | one estate-wide DAG ([The Reconcile Unit](#the-reconcile-unit)) |
 | identity name, Vault role, Vault policy | platform | pool | named for the **Workload alone**; the auth role namespace is shared ([chapter 16](16-dependencies.md#workload-identity)) |

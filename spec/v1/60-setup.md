@@ -180,6 +180,8 @@ v1 makes them required platform intent
 | **CNI and its flags** | whether a non-enforcing policy stage exists at all | [CNI](#cni), and default-deny's promotion path |
 | **`secretsEncryption`** | the renderer's gate | [Secrets at rest](#secrets-at-rest) |
 | **the durability policy per class** — backup window, retention count, off-cluster destination | a Durability Class derives objects, and their terms are contended rather than per-Service | [0077](../../docs/adr/model/0077-durability-derives-a-backup.md), [chapter 10](10-service-intent.md#storage-and-durability) |
+| **the alert rule catalog and the class-to-receiver mapping** | a class derives rules and routes them, and both producers read one mapping | [0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md), [chapter 10](10-service-intent.md#what-the-class-derives) |
+| **scrape `interval` and `scrapeTimeout`** | otherwise a render is not a complete description of how the estate is scraped | [0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md) |
 | **the backup method per `engine`** — image, command, arguments | an application-level backup is the only mechanism `local-path` allows, and nothing authored may be executable | [0077](../../docs/adr/model/0077-durability-derives-a-backup.md), [0012](../../docs/adr/model/0012-assets-not-code.md) |
 
 Recording a fact does not choose it. A one-server SQLite cluster stays a
