@@ -339,14 +339,11 @@ through, with the deciding ADR named.
      unambiguous attribution; enforcing single attribution
      ([0054](../../docs/adr/0054-adapter-attribution.md)).
 
-5. **`sidecars` and `minAvailable`.** Chapter 10 proposed three fields; the
-   third became `placement`
-   ([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)), and these two
-   are still ungraded. Both have live evidence: a
-   Workload holding more than one container already exists three times
-   (`postgres` plus `postgres-exporter`, `stalwart` plus `stalwart-apply`,
-   `agent-runner` plus the `agent-gateway` jar), and six PodDisruptionBudgets
-   are live, which is `minAvailable` serialised.
+5. **`minAvailable`.** Chapter 10 proposed three fields. One became `placement`
+   ([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)), `sidecars` is
+   graded by [0064](../../docs/adr/0064-sidecars-are-workload-vocabulary.md),
+   and this one is still ungraded. It has live evidence: six
+   PodDisruptionBudgets are live, which is `minAvailable` serialised.
    - **Owner:** joris.
    - **Settled by:** one grading pass per field against the contention test,
      landed either as a decision in `docs/adr/` with a `normative:` pointer into

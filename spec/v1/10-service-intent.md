@@ -227,8 +227,9 @@ The diagram is embedded rather than kept as a separate `.mmd`. A standalone
 `.mmd` does not render on GitHub, so it would be invisible in exactly the review
 this chapter exists for.
 
-Two things in it are still ungraded and marked as such: `sidecars`, and
-`minAvailable` on the Workload. `placement` is not among them: it is graded by
+One thing in it is still ungraded and marked as such: `minAvailable` on the
+Workload. `sidecars` is graded by
+[0064](../../docs/adr/0064-sidecars-are-workload-vocabulary.md). `placement` is not among them: it is graded by
 [0061](../../docs/adr/0061-placement-is-hard-dimensions.md) and specified in
 full below, and it is the only composite on the Workload that is **required**.
 Env files hang off the **Workload**, not the Service
@@ -1506,22 +1507,18 @@ The model's complete interface to that work is three demands, all decided here:
 
 ## Still to be graded
 
-Three items no decision in the register covers:
+Two items no decision in the register covers:
 
-1. **`sidecars`.** A Workload holds more than one container, and this is not an
-   edge case: `postgres` runs `postgres-exporter` on 9187, `stalwart` runs a
-   `stalwart-apply` sidecar, `agent-runner` carries the `agent-gateway` jar. Whether
-   a sidecar carries its own `placement` quantities and `hardening` is part of the
-   same question, and if it does, whether they add to the Workload's own for the
-   eligibility check.
-2. **`minAvailable`.** `replicas` is contended, and `auth-api`'s two replicas were a
+1. **`minAvailable`.** `replicas` is contended, and `auth-api`'s two replicas were a
    capacity decision on freed Frankfurt budget, not an availability requirement.
    Like the placement quantities, it must resolve through the pinned inputs, never
    through observed capacity.
-3. **`self-renew` × `file`.** Refusing it follows from the tiers' own argument but
+2. **`self-renew` × `file`.** Refusing it follows from the tiers' own argument but
    not from the decisions' text.
 
-The list was five, and two items left it by being answered rather than graded.
+The list was five. Two items left it by being answered rather than graded, and
+`sidecars` left it by being graded
+([0064](../../docs/adr/0064-sidecars-are-workload-vocabulary.md)).
 
 The first asked what checks that a Workload's declared capacity can be satisfied
 by a node it is also allowed to run on: capacity and eligibility are one
