@@ -37,6 +37,32 @@ Attribution is a property of the producing adapter, declared in the registry
 because an edit can lose it. The `# adapter:` header on each file is a reading
 aid; the table below is the attribution.
 
+## Comment-free, and what this pass changed
+
+The tree carries **no commentary**: one `GENERATED. Never hand-edit.` header line
+per file, emitted by the serializer as a constant, and then the object.
+Everything the files used to explain in comments belongs here, in this README,
+or in a decision.
+
+The trees were re-rendered against the decisions taken on 2026-09-07, so this
+pass added the objects that had no producer, applied the fixed label set, and
+made three derivations explicit that a renderer had been choosing:
+
+| change | decided in |
+|---|---|
+| the fixed label set, `instance` now the Workload and `component` the runtime | [0072](../../../../../docs/adr/model/0072-the-label-set-is-fixed.md) |
+| `automountServiceAccountToken`, `false` wherever the pod does not authenticate | [0087](../../../../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md) |
+| `runAsUser`, `runAsGroup`, and `fsGroup` where a volume is held | [0082](../../../../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md) |
+| a startup probe pointed at the **liveness** endpoint, and one probe cadence | [0088](../../../../../docs/adr/model/0088-startup-probe-targets-liveness.md) |
+| an `emptyDir` per declared writable path, at the platform's ephemeral size | [0092](../../../../../docs/adr/model/0092-writable-paths-are-declared.md) |
+| explicit route `priority`, rather than Traefik's rule-length sort | [0093](../../../../../docs/adr/model/0093-route-precedence-is-derived.md) |
+| a `PodDisruptionBudget` only above one replica, as `maxUnavailable` | [0089](../../../../../docs/adr/model/0089-replicas-derived-no-minavailable.md) |
+
+**The "cannot derive today" column below is largely historical.** Twenty-six of
+those rows were decided on 2026-09-07 and the row-by-row status lives in
+[`../../RENDER-GAPS.md`](../../RENDER-GAPS.md) rather than being restated here
+— one source, so the two cannot drift.
+
 ## The files
 
 | file | adapter | derives from (layer 1) | cannot derive today |
@@ -65,6 +91,12 @@ aid; the table below is the attribution.
 | `apps/platform-valkey/kustomization.yaml` | `kubernetes` | the emitted file set | — |
 | `edge/ingressroutes.yaml` | `traefik-public` | the `management` exposure: `host` (authored, and it does **not** follow the Service id), its one route → the rule and the backend surface, `audience: authenticated` → the forward-auth chain | the `Middleware` object the chain references ([G-31](#g-31)); entryPoint and TLS policy ([G-21](#g-21)); the CORS contribution this route makes to another domain ([G-32](#g-32)) |
 | `observability/gatus-endpoints.yaml` | `gatus` | the exposure's authored `host` + its route path, joined to `probes.readiness` on the Workload the route names | **the conditions — the derivation does not compose here** ([G-34](#g-34)); `interval`; the `alerts` block three Alert Classes demand ([G-33](#g-33)); that it lands in another domain's namespace |
+| `apps/platform-postgres/backup.yaml` | `kubernetes` | `durability: irreplaceable` plus `engine: postgres`: the platform's per-class policy supplies the window and retention, the engine catalog the command | — (0077) |
+| `apps/platform-rabbitmq/backup.yaml` | `kubernetes` | `durability: recoverable` plus `engine: rabbitmq`: a backup and a sweep, no off-cluster copy | — (0077) |
+| `apps/vso-secrets/policies/postgres.policy.json` | `vault-policy` | the exporter grant and the derived off-cluster backup credential | — (0073, 0077) |
+| `apps/vso-secrets/policies/postgres.role.json` | `vault-policy` | the Workload's ServiceAccount and namespace | — |
+| `edge/middlewares.yaml` | `traefik-middleware` | forward-auth for rabbitmq's `authenticated` management route | — (0076) |
+| `observability/prometheusrules.yaml` | `prometheus` | the baseline set per Service plus the engine rules the catalog carries for postgres and rabbitmq; severity and receiver from each Service's own class | — (0079) |
 
 ### Not emitted, with the reason
 

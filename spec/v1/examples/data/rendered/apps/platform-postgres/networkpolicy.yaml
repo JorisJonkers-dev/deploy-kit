@@ -1,30 +1,4 @@
-# adapter: networking -- NOT REGISTERED. Chapter 30 records NetworkPolicy as
-# having zero producers: the only implementation is
-# src/deployment/render/networkpolicy.ts, which the unregistered generation's
-# deletion removes, so coverage for the kind goes from unregistered to absent.
-# This file is what the future `networking` adapter must emit.
-# real path: platform/cluster/flux/apps/data/platform-postgres/networkpolicy.yaml
-#
-# THIS FILE IS WHERE `data-system` STOPS BEING A TRUST BOUNDARY AND STARTS BEING
-# A DIRECTORY. Three Services share this namespace by construction. The policy
-# below admits auth-system and knowledge-system pods to 5432 and does NOT admit
-# rabbitmq or valkey -- the two pods sitting next to it. Isolation is the derived
-# edge set, evaluated per pod, plus per-Workload identity. Nothing else.
-#
-# A PROVIDER'S POLICY IS MOSTLY INGRESS, and ingress is the direction no Service
-# can declare about itself. `dependsOn` is written by the consumer; the provider
-# learns who its consumers are only when composition unions every fragment
-# (chapter 40). platform-postgres declares zero edges and gets five ingress
-# rules, all of them from other domains' files.
-#
-# The namespace-wide default-deny is NOT here. It is one object per DOMAIN and
-# three Service directories would emit three copies of it, so it is hoisted to
-# ../../networkpolicy.yaml beside namespace.yaml. README, gap G-20.
-#
-# Selectors marked CONTEXT name platform components (cluster DNS, the metrics
-# stack, the Secret Store). Those are Cluster Context facts and this example set
-# reproduces no Cluster Context: the SHAPE is derived, the values are the live
-# estate's. README, gap G-21.
+# GENERATED. Never hand-edit.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -32,131 +6,79 @@ metadata:
   namespace: data-system
   labels:
     app.kubernetes.io/name: postgres
-    app.kubernetes.io/instance: platform-postgres
-    app.kubernetes.io/part-of: data
+    app.kubernetes.io/instance: postgres
+    app.kubernetes.io/part-of: platform-postgres
     app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
 spec:
   podSelector:
     matchLabels:
       app.kubernetes.io/name: postgres
       app.kubernetes.io/instance: platform-postgres
   policyTypes:
-    - Ingress
-    - Egress
+  - Ingress
+  - Egress
   ingress:
-    # ---- from the consumers of surface `postgres` (5432) ------------------
-    # Each rule is one INBOUND edge, read from another domain's Intent Fragment.
-    # The peer is the consuming WORKLOAD, not the consuming Service, because
-    # `dependsOn` is declared per Workload and a Service's siblings do not
-    # inherit its egress.
-    #
-    # {service: platform-postgres, surface: postgres} declared by auth-api
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: auth-system
-          podSelector:
-            matchLabels:
-              app.kubernetes.io/name: auth-api
-      ports:
-        - protocol: TCP
-          port: 5432
-    # declared by knowledge-api
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: knowledge-system
-          podSelector:
-            matchLabels:
-              app.kubernetes.io/name: knowledge-api
-      ports:
-        - protocol: TCP
-          port: 5432
-    # declared by knowledge-ingest-worker, separately -- the two Workloads of
-    # `knowledge` each declare their own edge, so they each get their own rule.
-    # Collapsing them would widen the allow set to a Workload that did not ask.
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: knowledge-system
-          podSelector:
-            matchLabels:
-              app.kubernetes.io/name: knowledge-ingest-worker
-      ports:
-        - protocol: TCP
-          port: 5432
-    #
-    # FIVE MORE CONSUMERS ARE NOT RENDERED, and this is the domain's central
-    # composition point. The intent names eight consumers of this surface:
-    # auth's api Workload, agents-api, knowledge's two Workloads, lightrag, n8n,
-    # outline, and the observability backup jobs. Three resolve here, because
-    # `auth` and `knowledge` are the only other domains publishing an Intent
-    # Fragment in this example set. The other five exist, run today, and
-    # currently reach this database.
-    #
-    # As rendered, applying this policy CUTS THEM OFF. That is not a rendering
-    # bug -- it is the correct output for the fragment set it was given, and it
-    # is why a provider's policy is only ever as complete as the union it was
-    # composed from. A domain that silently fails to publish must therefore
-    # surface as a stale participant (chapter 40), never as a quietly smaller
-    # render, and this file is what that rule is protecting.
-    #
-    # The failure mode to design against is chapter 16's: a typo'd `surface`
-    # name renders a VALID policy with a missing rule, and the on-call sees a
-    # connection timeout rather than an error code. README, gap G-22.
-    #
-    # ---- from the metrics stack, to the scrape port -----------------------
-    # derived from `scrape`, and part of the baseline: a workload that silently
-    # loses scrape stops alerting.
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: utility-system   # CONTEXT
-          podSelector:
-            matchLabels:
-              app.kubernetes.io/name: prometheus            # CONTEXT
-      ports:
-        - protocol: TCP
-          port: 9187
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: auth-system
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: auth-api
+    ports:
+    - protocol: TCP
+      port: 5432
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: knowledge-system
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: knowledge-api
+    ports:
+    - protocol: TCP
+      port: 5432
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: knowledge-system
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: knowledge-ingest-worker
+    ports:
+    - protocol: TCP
+      port: 5432
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: utility-system
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
+    ports:
+    - protocol: TCP
+      port: 9187
   egress:
-    # baseline: cluster DNS. Once any egress policy selects a pod, ALL unmatched
-    # egress is denied, DNS included. Every rendered policy carrying `Egress` in
-    # policyTypes also matches UDP/53; TCP/53 rides the same rule for truncated
-    # responses.
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system      # CONTEXT
-          podSelector:
-            matchLabels:
-              k8s-app: kube-dns                             # CONTEXT
-      ports:
-        - protocol: UDP
-          port: 53
-        - protocol: TCP
-          port: 53
-    # egress to the Secret Store, derived from "any grant in the Workload's
-    # effective set".
-    #
-    # THE DERIVATION IS WRONG FOR THIS GRANT and the rule is rendered anyway,
-    # because executing the model as written is the point of this file. The one
-    # grant here is `delivery: env`: the Vault Secrets Operator performs the
-    # read and writes a Secret, and this pod never opens a connection to Vault
-    # at all. So the rule below permits a flow that does not happen, while the
-    # flow that DOES happen -- the operator's pod reading this path -- is
-    # governed by a policy in vso-system that no Service declares and nothing
-    # here renders. The rule needs a branch on `delivery`. README, gap G-23.
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: utility-system   # CONTEXT
-          podSelector:
-            matchLabels:
-              app.kubernetes.io/name: vault                 # CONTEXT
-      ports:
-        - protocol: TCP
-          port: 8200                                        # CONTEXT
-    # NOTHING ELSE. platform-postgres declares no `dependsOn`, so it has DNS,
-    # the Secret Store rule above, and no other egress in the estate. A provider
-    # at the bottom of the graph is the one shape where default-deny costs
-    # nothing to derive and is worth the most.
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: utility-system
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: vault
+    ports:
+    - protocol: TCP
+      port: 8200

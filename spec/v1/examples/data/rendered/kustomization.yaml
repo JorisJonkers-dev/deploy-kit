@@ -1,36 +1,9 @@
-# adapter: kubernetes
-# real path: platform/cluster/flux/apps/data/kustomization.yaml
-#
-# The domain's own kustomize Kustomization. Each Service is a directory, and
-# each directory has its own kustomization.yaml -- three independent file sets
-# over one namespace.
-#
-# Independence stops being structural one level up. The Reconcile Unit is
-# `apps-<domain>` (chapter 20), so ONE Flux Kustomization named `apps-data`
-# reconciles all three Services, and a valkey edit re-applies postgres. The
-# Service boundary is the atomic-release boundary, not the reconcile boundary,
-# and nothing in the rendered tree distinguishes them. See README, gap G-01.
-#
-# TWO objects sit at this level rather than in a Service directory, and both are
-# per DOMAIN: namespace.yaml and the namespace-wide default-deny. With three
-# Service directories there is no non-arbitrary Service to own either, and
-# picking one would make deleting that Service delete the namespace's posture as
-# a side effect. See README, gap G-20.
+# GENERATED. Never hand-edit.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - namespace.yaml
-  - networkpolicy.yaml       # the namespace-wide default-deny, per domain
-  - apps/platform-postgres
-  - apps/platform-rabbitmq
-  - apps/platform-valkey
-# Not listed here, and not under this domain's path at all:
-#   edge/ingressroutes.yaml            -> .../apps/edge/traefik-ingressroutes.yaml
-#   observability/gatus-endpoints.yaml -> .../apps/utility-system/gatus/...
-# Estate-wide objects several domains contribute entries to, reproduced under
-# this tree so the data slice reads in one place. The adapters that own them
-# write them elsewhere.
-#
-# Also not here: the Flux Kustomization `apps-data`. It is derived by `flux-root`
-# into .../clusters/production/kustomizations.yaml, and it is the object that
-# makes the three independent Services below one reconcile unit -- G-01.
+- namespace.yaml
+- networkpolicy.yaml
+- apps/platform-postgres
+- apps/platform-rabbitmq
+- apps/platform-valkey

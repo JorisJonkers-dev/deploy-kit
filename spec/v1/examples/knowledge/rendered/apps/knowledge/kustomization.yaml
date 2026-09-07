@@ -1,28 +1,12 @@
-# adapter: kubernetes
-# real path: platform/cluster/flux/apps/knowledge/knowledge/kustomization.yaml
-#
-# The Service directory's file list. `resources` is the emitted file set and
-# nothing else -- a file no adapter claims cannot ship silently, and a
-# hand-added file inside this tree is E_RENDER_OVERWRITE_REFUSED.
-#
-# vso.yaml is listed but is the `vso` adapter's file, not this adapter's; the
-# registered vso adapter would write it under apps/vso-secrets/ with its own
-# kustomization, which is where it actually belongs. README, gap G-25.
-#
-# NOT listed, because no registered adapter produces them and the model demands
-# all four: pdb.yaml, backup.yaml, prometheusrule.yaml, rbac.yaml. See the
-# second table in the README.
-#
-# NOT listed, because they are estate-scoped files holding every domain's
-# entries: ../../edge/ingressroutes.yaml and
-# ../../observability/gatus-endpoints.yaml.
+# GENERATED. Never hand-edit.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - configmap.yaml
-  - networkpolicy.yaml
-  - pvc.yaml
-  - serviceaccount.yaml
-  - servicemonitor.yaml
-  - vso.yaml
-  - workload.yaml
+- configmap.yaml
+- networkpolicy.yaml
+- pvc.yaml
+- serviceaccount.yaml
+- servicemonitor.yaml
+- vso.yaml
+- workload.yaml
+- backup.yaml

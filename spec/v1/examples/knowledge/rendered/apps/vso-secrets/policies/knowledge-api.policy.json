@@ -1,0 +1,14 @@
+{
+  "_generated": "GENERATED. Never hand-edit.",
+  "name": "knowledge-api",
+  "policy": {
+    "path": {
+      "secret/data/knowledge-system/mcp-bearer": { "capabilities": ["read"] },
+      "secret/metadata/knowledge-system/mcp-bearer": { "capabilities": ["read", "list"] },
+      "secret/data/platform/postgres/kb": { "capabilities": ["read"] },
+      "secret/metadata/platform/postgres/kb": { "capabilities": ["read", "list"] },
+      "secret/data/platform/rabbitmq": { "capabilities": ["read"] },
+      "secret/metadata/platform/rabbitmq": { "capabilities": ["read", "list"] }
+    }
+  }
+}

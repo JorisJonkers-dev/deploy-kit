@@ -22,8 +22,35 @@ important entry here.
 
 Attribution is a property of the producing adapter, declared in the registry
 (0054) — not an annotation on the object, which was considered and rejected
-because an edit can lose it. The `# adapter:` header on each file is a reading
-aid; the table below is the attribution.
+because an edit can lose it. The table below is the attribution: the files
+themselves carry no `# adapter:` header, because rendered output carries no
+commentary.
+
+## Comment-free, and what this pass changed
+
+The tree carries **no commentary**: one `GENERATED. Never hand-edit.` header line
+per file, emitted by the serializer as a constant, and then the object.
+Everything the files used to explain in comments belongs here, in this README,
+or in a decision.
+
+The trees were re-rendered against the decisions taken on 2026-09-07, so this
+pass added the objects that had no producer, applied the fixed label set, and
+made three derivations explicit that a renderer had been choosing:
+
+| change | decided in |
+|---|---|
+| the fixed label set, `instance` now the Workload and `component` the runtime | [0072](../../../../../docs/adr/model/0072-the-label-set-is-fixed.md) |
+| `automountServiceAccountToken`, `false` wherever the pod does not authenticate | [0087](../../../../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md) |
+| `runAsUser`, `runAsGroup`, and `fsGroup` where a volume is held | [0082](../../../../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md) |
+| a startup probe pointed at the **liveness** endpoint, and one probe cadence | [0088](../../../../../docs/adr/model/0088-startup-probe-targets-liveness.md) |
+| an `emptyDir` per declared writable path, at the platform's ephemeral size | [0092](../../../../../docs/adr/model/0092-writable-paths-are-declared.md) |
+| explicit route `priority`, rather than Traefik's rule-length sort | [0093](../../../../../docs/adr/model/0093-route-precedence-is-derived.md) |
+| a `PodDisruptionBudget` only above one replica, as `maxUnavailable` | [0089](../../../../../docs/adr/model/0089-replicas-derived-no-minavailable.md) |
+
+**The "cannot derive today" column below is largely historical.** Twenty-six of
+those rows were decided on 2026-09-07 and the row-by-row status lives in
+[`../../RENDER-GAPS.md`](../../RENDER-GAPS.md) rather than being restated here
+— one source, so the two cannot drift.
 
 ## The files
 
@@ -40,6 +67,10 @@ aid; the table below is the attribution.
 | `apps/auth/kustomization.yaml` | `kubernetes` | the file set of the Service | — |
 | `edge/ingressroutes.yaml` | `traefik-public` | the Service's `exposure`: `host` (authored, copied verbatim), each route's `path` + `match` → the rule, `workload` + `surface` → the backend, `audience: anonymous` → no forward-auth, `contentPolicy: strict` → the security-headers middleware reference | entryPoint and TLS policy ([G-11](#g-11)); the `Middleware` objects both references resolve to — forward-auth elsewhere and security-headers here ([G-23](#g-23)) |
 | `observability/gatus-endpoints.yaml` | `gatus` | one entry per route on the `public` exposure — authored `host` + the route's `path` + the named Workload's `probes.readiness` | `interval`; the whole `alerts` block that `alertClass: page` demands ([G-16](#g-16)); it also lands in another domain's namespace ([G-24](#g-24)) |
+| `apps/vso-secrets/policies/auth-api.policy.json` | `vault-policy` | the Workload's grants and their access tiers, per engine: KV read plus its `metadata` sibling, `transit/sign` and `transit/keys/.../rotate` for the JWT key | — (0073, 0085, 0086) |
+| `apps/vso-secrets/policies/auth-api.role.json` | `vault-policy` | the Workload's ServiceAccount and namespace, bound to that one policy | — |
+| `edge/middlewares.yaml` | `traefik-middleware` | the tier's forward-auth endpoint and each `contentPolicy` in use | — (0076) |
+| `observability/prometheusrules.yaml` | `prometheus` | the baseline rule set for `auth-api`'s scrape surface, with severity and receiver from `alertClass: page` | — (0079) |
 
 ### Not emitted, with the reason
 

@@ -11,8 +11,32 @@ because autoscaling is not in the model; storage is `local-path`, because no
 PVC in the estate sets a `storageClassName`.
 
 Adapter attribution lives on the **Fragment** record (`{path, content, adapter}`),
-not on the object, so each file states its adapter in a header comment. Nothing
-in the rendered YAML carries it machine-readably — see G-30.
+not on the object, and the files carry no header comment stating it: rendered
+output carries no commentary. The table below is the attribution, and nothing in
+the rendered YAML carries it machine-readably — see G-30.
+
+## Comment-free, and what this pass changed
+
+The tree carries **no commentary**: one `GENERATED. Never hand-edit.` header line
+per file, emitted by the serializer as a constant, and then the object.
+Everything the files used to explain in comments belongs here or in a decision.
+
+Re-rendered against the decisions of 2026-09-07, so this pass added the objects
+that had no producer and made explicit three things a renderer had been choosing:
+
+| change | decided in |
+|---|---|
+| the fixed label set, `instance` now the Workload and `component` the runtime | [0072](../../../../../docs/adr/model/0072-the-label-set-is-fixed.md) |
+| `automountServiceAccountToken`, `false` wherever the pod does not authenticate | [0087](../../../../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md) |
+| `runAsUser`, `runAsGroup`, and `fsGroup` on the Workload holding the clone | [0082](../../../../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md) |
+| a startup probe pointed at the **liveness** endpoint, and one probe cadence | [0088](../../../../../docs/adr/model/0088-startup-probe-targets-liveness.md) |
+| an `emptyDir` for the JVM's `/tmp`, at the platform's ephemeral size | [0092](../../../../../docs/adr/model/0092-writable-paths-are-declared.md) |
+| explicit route `priority` on all five routes, rather than a rule-length sort | [0093](../../../../../docs/adr/model/0093-route-precedence-is-derived.md) |
+| `size` on the PVC, and the backup a Durability Class derives | [0081](../../../../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md), [0077](../../../../../docs/adr/model/0077-durability-derives-a-backup.md) |
+
+**The "cannot derive today" column below is largely historical.** Those rows
+were decided on 2026-09-07 and their status lives in
+[`../../RENDER-GAPS.md`](../../RENDER-GAPS.md) rather than being restated here.
 
 ## Emitted
 
@@ -30,6 +54,11 @@ in the rendered YAML carries it machine-readably — see G-30.
 | `apps/knowledge/kustomization.yaml` | `kubernetes` | the emitted file set | ownership of `vso.yaml` (**G-25**) |
 | `edge/ingressroutes.yaml` | `traefik-public` | the Service's `exposure`: authored `host`, the exposure `audience` and five routes — four overriding it to `anonymous` — each naming `knowledge-api` and its `http` surface | — |
 | `observability/gatus-endpoints.yaml` | `gatus` | `exposure` (host and routes), `probes.readiness`, `provides` | an externally probeable health path — the URL is derivable now, the anonymous route to it is not (**G-28**); anything at all from `alertClass` (**G-29**); which namespace the ConfigMap belongs in (**G-27**) |
+| `apps/knowledge/backup.yaml` | `kubernetes` | `durability: irreplaceable` plus `engine: files` on the vault clone | — (0077) |
+| `apps/vso-secrets/policies/knowledge-api.policy.json` | `vault-policy` | the three KV grants, each with its `metadata` sibling | — (0073, 0086) |
+| `apps/vso-secrets/policies/knowledge-api.role.json` | `vault-policy` | the Workload's ServiceAccount and namespace | — |
+| `edge/middlewares.yaml` | `traefik-middleware` | forward-auth for the `authenticated` exposure, and the security-headers profile | — (0076) |
+| `observability/prometheusrules.yaml` | `prometheus` | the baseline set, severity and receiver from `alertClass: business-hours` | — (0079) |
 
 ## Deliberately absent, and correct
 

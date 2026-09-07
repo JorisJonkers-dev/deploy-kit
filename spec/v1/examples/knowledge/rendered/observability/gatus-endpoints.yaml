@@ -1,33 +1,4 @@
-# adapter: gatus
-# real path: platform/cluster/flux/apps/observability/gatus/gatus-endpoints-configmap.yaml
-#
-# ESTATE-SCOPED FILE. One ConfigMap holds every endpoint in the estate -- 41
-# today; only the knowledge entries are shown. It is a derived catalog, not
-# configuration: nobody authors an entry here.
-#
-# The registered adapter's defaultPath places this under apps/utility-system/,
-# while the observability pack deploys gatus into namespace `observability` and
-# mounts a ConfigMap named `gatus-endpoints`. The two disagree about where the
-# object lives, and a ConfigMap in the wrong namespace is not mounted and not an
-# error. README, gap G-27.
-#
-# ONE endpoint, and it is INTERNAL. The health path /api/actuator/health/... is
-# matched by the `/` prefix route, whose audience is `authenticated`, so an
-# external probe of it is answered by forward-auth rather than by the Service.
-# The URL an external check would use is now fully derivable -- the exposure
-# authors the host and each route its path -- and it still cannot be probed:
-# that would need a route whose audience is anonymous over a health path, and
-# no such route is declared. So nothing checks that knowledge.jorisjonkers.dev
-# resolves, that its certificate is valid, or that the IngressRoutes match.
-# README, gap G-28.
-#
-# NO endpoint for knowledge-ingest-worker, correctly: `probes: none` and no
-# `provides` leave nothing to probe from anywhere.
-#
-# alertClass: business-hours renders NOTHING here. The ConfigMap carries
-# `endpoints` only; the estate's live gatus has no `alerting` section, monitors
-# 41 endpoints and notifies nobody, and no registered adapter emits a receiver,
-# a notifier route or a PrometheusRule. README, gap G-29.
+# GENERATED. Never hand-edit.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -36,12 +7,6 @@ metadata:
   labels:
     app.kubernetes.io/managed-by: deploy-kit
 data:
-  endpoints.yaml: |
-    endpoints:
-      - name: knowledge
-        group: knowledge
-        url: http://knowledge-api.knowledge-system.svc.cluster.local:8080/api/actuator/health/readiness
-        interval: 60s
-        conditions:
-          - "[STATUS] == 200"
-          - "[RESPONSE_TIME] < 1500"
+  endpoints.yaml: "endpoints:\n  - name: knowledge\n    group: knowledge\n    url: http://knowledge-api.knowledge-system.svc.cluster.local:8080/api/actuator/health/readiness\n\
+    \    interval: 60s\n    conditions:\n      - \"[STATUS] == 200\"\n      - \"[RESPONSE_TIME] < 1500\"\
+    \n"

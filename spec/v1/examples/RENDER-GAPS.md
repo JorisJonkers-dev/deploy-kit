@@ -73,7 +73,20 @@ Also missing from the example set itself: auth-ui has no env file, so its
 container renders with no env at all — the model requires one per Workload and
 the set carries one of two.
 
-## What the closed rows now owe the example set
+## What the closed rows owed the example set
+
+**Discharged on 2026-09-07.** Layer 1 was updated, the Cluster Context was
+written, and the rendered trees were stripped of commentary and re-rendered
+against the decisions. What each row owed is listed below for the record; the
+per-tree summary of what changed is in each `rendered/README.md`.
+
+Two items are deliberately still owed, because they are not the example set's
+to answer: the node contract is a separate pinned input and is not reproduced
+here ([0056](../../../docs/adr/model/0056-node-facts-single-source.md)), and
+`auth-ui` still has no env file of its own — the model requires one per Workload
+and the set carries one of two.
+
+### The list, as it stood
 
 Every **Closed** row above decided something the worked examples predate, so the
 three domain files and the Cluster Context inputs are behind the model. This is

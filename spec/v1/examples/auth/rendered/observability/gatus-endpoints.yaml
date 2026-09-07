@@ -1,20 +1,4 @@
-# adapter: gatus
-# real path: platform/cluster/flux/apps/utility-system/gatus/gatus-endpoints-configmap.yaml
-#
-# ESTATE-WIDE OBJECT. One ConfigMap holds every endpoint in the estate (41
-# today, in 288 lines); this is the auth domain's contribution to it, reproduced
-# here so the domain reads in one place. The object lives in utility-system,
-# which belongs to another domain entirely -- so this file is a Deliverable of
-# the auth domain landing in a namespace auth does not own, and the
-# E_FOREIGN_NAMESPACE rule is satisfied only because the `gatus` adapter, not
-# the Service, owns the path. README, gap G-24.
-#
-# Two entries, one per ROUTE on Service auth's `public` exposure, each joined to
-# the readiness probe of the Workload that route names. The Gatus check is
-# EXTERNAL -- it goes through the edge -- so both URLs are built from the
-# exposure's authored host plus the route's path, and both are traceable to one
-# declaration. The tie this file used to record is gone with the identical
-# matches: `/` reaches auth-ui and `/api` reaches auth-api, by declaration.
+# GENERATED. Never hand-edit.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -23,33 +7,13 @@ metadata:
   labels:
     app.kubernetes.io/managed-by: deploy-kit
 data:
-  config.yaml: |
-    endpoints:
-      # from route {path: /, match: prefix, workload: auth-ui} on exposure
-      # auth.public + probes.readiness {path: /, port: 80}
-      - name: auth-ui
-        group: auth                     # the domain
-        url: https://auth.jorisjonkers.dev/
-        conditions:
-          - "[STATUS] == 200"           # the probe is an httpGet
-        # no `interval`: no field declares one and no chapter names a default
-
-      # from route {path: /api, match: prefix, workload: auth-api} on exposure
-      # auth.public + probes.readiness {path: /api/actuator/health/readiness,
-      # port: 8081}. The readiness path falls under the route's own prefix, so
-      # the external probe reaches the Workload the route names; a readiness
-      # path outside every route of the host would be unreachable from here, and
-      # nothing checks for that.
-      - name: auth-api
-        group: auth
-        url: https://auth.jorisjonkers.dev/api/actuator/health/readiness
-        conditions:
-          - "[STATUS] == 200"
-# NOT EMITTED: the `alerts:` block, and the `alerting:` section it would resolve
-# against. Service `auth` declares `alertClass: page` -- the loudest value in
-# the vocabulary, on the Service every forward-auth protected route depends on
-# -- and nothing in the rendered tree turns it into a notification. The live
-# ConfigMap has `storage` and `ui` and no `alerting` section at all: 41
-# endpoints notifying nobody. The mapping from an Alert Class to a Gatus alert
-# (receiver type, failure threshold, send-on-resolved) is stated in no chapter,
-# and the receiver itself is a platform fact. README, gap G-16.
+  config.yaml: "endpoints:\n  # from route {path: /, match: prefix, workload: auth-ui} on exposure\n \
+    \ # auth.public + probes.readiness {path: /, port: 80}\n  - name: auth-ui\n    group: auth       \
+    \              # the domain\n    url: https://auth.jorisjonkers.dev/\n    conditions:\n      - \"\
+    [STATUS] == 200\"           # the probe is an httpGet\n    # no `interval`: no field declares one\
+    \ and no chapter names a default\n\n  # from route {path: /api, match: prefix, workload: auth-api}\
+    \ on exposure\n  # auth.public + probes.readiness {path: /api/actuator/health/readiness,\n  # port:\
+    \ 8081}. The readiness path falls under the route's own prefix, so\n  # the external probe reaches\
+    \ the Workload the route names; a readiness\n  # path outside every route of the host would be unreachable\
+    \ from here, and\n  # nothing checks for that.\n  - name: auth-api\n    group: auth\n    url: https://auth.jorisjonkers.dev/api/actuator/health/readiness\n\
+    \    conditions:\n      - \"[STATUS] == 200\"\n"

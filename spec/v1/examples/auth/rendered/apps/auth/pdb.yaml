@@ -1,17 +1,4 @@
-# adapter: kubernetes
-# real path: platform/cluster/flux/apps/auth/auth/pdb.yaml
-#
-# One PodDisruptionBudget, for auth-api, from its declared `minAvailable: 1`.
-# auth-ui declares no minAvailable and therefore gets none: the default is
-# ungraded (chapter 10, "Still to be graded"), and a renderer that invented one
-# would be authoring an availability requirement only the Service knows.
-#
-# Read it against the Deployment: `replicas: 1` (the eligible node set has one
-# member) with `minAvailable: 1` is a budget that permits zero voluntary
-# evictions. Draining frankfurt-contabo-1 -- the node that is also the
-# control-plane -- blocks until someone deletes this object. The two numbers
-# come from two different derivations and nothing compares them.
-# README, gap G-07.
+# GENERATED. Never hand-edit.
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -19,12 +6,13 @@ metadata:
   namespace: auth-system
   labels:
     app.kubernetes.io/name: auth-api
-    app.kubernetes.io/instance: auth
+    app.kubernetes.io/instance: auth-api
     app.kubernetes.io/part-of: auth
     app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: jvm
 spec:
-  minAvailable: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: auth-api
-      app.kubernetes.io/instance: auth
+      app.kubernetes.io/instance: auth-api
+  maxUnavailable: 1
