@@ -102,6 +102,7 @@ delivery work it underpins.
 | [0022](model/0022-grants-live-on-the-service.md) | Secret grants live on the Service document, at two levels | settled |
 | [0023](model/0023-grant-unit-is-the-path.md) | The grant unit is the path; the subtree splits per reader set | open |
 | [0024](model/0024-identity-per-workload.md) | Workloads hold their own identity | settled |
+| [0087](model/0087-token-mounted-only-for-delivery-self.md) | A ServiceAccount token is mounted only where the pod itself authenticates | settled |
 | [0025](model/0025-access-tiers-derive-policy.md) | Access tiers derive the Vault policy | settled, KV-only per [0085](model/0085-a-grant-is-a-union-on-engine.md) |
 | [0026](model/0026-delivery-env-file-self.md) | Secret delivery is env, file, or self | settled |
 | [0027](model/0027-secret-reference-join-key.md) | A secret placeholder byte-matches a granted path | settled, amended by [0085](model/0085-a-grant-is-a-union-on-engine.md) |

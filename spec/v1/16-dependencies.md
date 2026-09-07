@@ -323,6 +323,34 @@ A baseline rule is not authorable and not exceptable from a Service document. An
 exception to one is a change to the derivation — reviewed once, applied to every
 Workload at once.
 
+### The token is mounted only where the pod authenticates
+
+`automountServiceAccountToken` derives from **`delivery`**, and from nothing else
+([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)):
+
+| the Workload's grants | token |
+|---|---|
+| at least one with `delivery: self` | mounted |
+| only `env` or `file`, or none at all | **not** mounted |
+
+The obvious rule — no grant, no token — is wrong, and `platform-postgres` is the
+counter-example. It holds a grant and needs no token: under `delivery: env` the
+VSO operator performs the Vault read and projects the result, so the pod never
+authenticates to anything. Under `delivery: file` the kubelet does the
+projecting. Only `delivery: self` means *the pod itself* presents its
+ServiceAccount token to Vault, which is the one case a token is for.
+
+This is [0075](../../docs/adr/model/0075-no-workload-rbac-in-v1.md)'s reasoning
+applied to the token instead of the Role, and it reaches the same place: the
+privilege a Workload of this estate actually needs is smaller than the default,
+and the field that says so already exists.
+
+A Workload that calls the **Kubernetes** API — `agents-api` creates Services at
+runtime — needs a token that no grant implies. It restates the derived value with
+a reason ([chapter 20](20-resolved-deployment.md#overrides)), which records the
+exception in the projection its owner reads back and lets the estate count how
+many pods hold a token they were not derived one for.
+
 ### No Role grants what an absence already denies
 
 Three Services share `data-system`, and the only thing stopping `platform-valkey`'s
