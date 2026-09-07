@@ -93,7 +93,6 @@ classDiagram
         +Duration startupBudget
         +bool zeroDowntime
         +bool stateful
-        +int minAvailable
         +HardeningClass hardening
     }
     class HardeningException {
@@ -228,8 +227,12 @@ The diagram is embedded rather than kept as a separate `.mmd`. A standalone
 `.mmd` does not render on GitHub, so it would be invisible in exactly the review
 this chapter exists for.
 
-One thing in it is still ungraded and marked as such: `minAvailable` on the
-Workload. `sidecars` is graded by
+Nothing in it is ungraded. `minAvailable` was the last such field and it is
+**deleted** rather than graded
+([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)):
+availability by replica count does not exist on this substrate, so the field
+could only ever have been a request the platform could not honour. `sidecars` is
+graded by
 [0064](../../docs/adr/model/0064-sidecars-are-workload-vocabulary.md). `placement` is not among them: it is graded by
 [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md) and specified in
 full below, and it is the only composite on the Workload that is **required**.
@@ -651,6 +654,31 @@ progress deadline alone.
 Readiness is also what the Service's atomic switchover waits on: healthy means
 *this* Workload's declared readiness, so a Service with a Workload that never
 reports ready never switches any of them.
+
+### Replicas, and the disruption budget
+
+`replicas` derives as **1**
+([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)). Storage
+is `local-path` and every claim is `ReadWriteOnce`, so a stateful Workload is
+pinned to one machine by construction; on one node, two replicas are two
+processes on one kernel. A Workload that wants more restates the value with a
+reason ([chapter 20](20-resolved-deployment.md#overrides)) — which is what
+`auth-api`'s two replicas always were, a capacity decision on freed budget,
+recorded now instead of inferred.
+
+A `PodDisruptionBudget` is emitted **only where `replicas` exceeds one**, and as
+`maxUnavailable: 1`:
+
+| replicas | PDB |
+|---|---|
+| 1 | none |
+| more than 1 | `maxUnavailable: 1` |
+
+`minAvailable: 1` against `replicas: 1` permits **zero** voluntary evictions, so
+`kubectl drain` on that node blocks forever — and on this estate that node is
+also the control plane. That is a deadlock dressed as a guarantee. Expressing the
+budget as `maxUnavailable` means a drain can always make progress, and it does
+not have to be recomputed when a replica count changes.
 
 ## Storage and durability
 
@@ -1703,7 +1731,7 @@ declaring site is fixed:
 | a namespace | derived from `domain`, as `<domain>-system` |
 | a node label or selector | `placement` |
 | a scheduler weight, or any soft placement term | every dimension is hard ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)) |
-| `replicas` | assigned from `minAvailable` and the node capacity recorded in the pinned `ClusterState` snapshot ([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)) — never a live cluster read |
+| `replicas` | derived as **1**, and more than one is an override with a reason ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)) — never a live cluster read |
 | storage class, volume capacity | assigned |
 | `resources`, requests or limits | derived from `placement` |
 | a `securityContext` field | `hardening`, plus a declared exception |
@@ -1749,10 +1777,12 @@ The model's complete interface to that work is three demands, all decided here:
 
 Two items no decision in the register covers:
 
-1. **`minAvailable`.** `replicas` is contended, and `auth-api`'s two replicas were a
-   capacity decision on freed Frankfurt budget, not an availability requirement.
-   Like the placement quantities, it must resolve through the pinned inputs, never
-   through observed capacity.
+1. ~~**`minAvailable`.**~~ Graded by deletion
+   ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)):
+   `auth-api`'s two replicas were a capacity decision on freed Frankfurt budget,
+   not an availability requirement, and this substrate cannot deliver
+   availability by replica count. `replicas` derives as 1; a second is an
+   override carrying the reason.
 2. **`self-renew` × `file`.** Refusing it follows from the tiers' own argument but
    not from the decisions' text.
 

@@ -86,6 +86,7 @@ delivery work it underpins.
 | [0083](model/0083-privileged-port-needs-the-capability.md) | A privileged port under non-root is refused, and the escape is the existing exception | settled |
 | [0017](model/0017-placement-by-capability.md) | Placement is declared as capabilities, never labels | superseded by [0061](model/0061-placement-is-hard-dimensions.md) |
 | [0061](model/0061-placement-is-hard-dimensions.md) | Placement is a set of hard dimensions matched against allocatable | open |
+| [0089](model/0089-replicas-derived-no-minavailable.md) | `replicas` derives as one, `minAvailable` is deleted, and a budget over one replica is not emitted | settled |
 
 ### Exposure, dependencies, observability
 | # | title | claim |

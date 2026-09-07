@@ -347,11 +347,15 @@ through, with the deciding ADR named.
      unambiguous attribution; enforcing single attribution
      ([0054](../../docs/adr/model/0054-adapter-attribution.md)).
 
-5. **`minAvailable`.** Chapter 10 proposed three fields. One became `placement`
-   ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)), `sidecars` is
-   graded by [0064](../../docs/adr/model/0064-sidecars-are-workload-vocabulary.md),
-   and this one is still ungraded. It has live evidence: six
-   PodDisruptionBudgets are live, which is `minAvailable` serialised.
+5. ~~**`minAvailable`.**~~ Chapter 10 proposed three fields. One became
+   `placement` ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)),
+   `sidecars` is graded by
+   [0064](../../docs/adr/model/0064-sidecars-are-workload-vocabulary.md), and this
+   one is **graded by deletion**
+   ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)). The six
+   live PodDisruptionBudgets are re-homed rather than derived from a declaration:
+   a budget is emitted only where `replicas` exceeds one, because
+   `minAvailable: 1` over a single replica blocks a drain forever.
    - **Owner:** joris.
    - **Settled by:** one grading pass per field against the contention test,
      landed either as a decision in `docs/adr/model/` with a `normative:` pointer into

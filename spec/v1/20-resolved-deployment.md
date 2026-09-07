@@ -196,7 +196,8 @@ field's placement link to this anchor rather than copying rows.
 | image digest | platform | unique — arbitrated | one image reference resolves to one digest estate-wide, from the pinned images lock |
 | eligible node set, `nodeSelector` and affinity | platform | pool | every declared dimension matched against the node contract; no eligible node is `E_PLACEMENT_UNSATISFIABLE` ([Derived mechanics](#derived-mechanics)) |
 | recorded PV binding | platform | pool | one `local-path` PV lives on one node; read from the ClusterState snapshot |
-| `replicas` | platform | pool | from `minAvailable`, bounded by the size of the eligible node set |
+| `replicas` | derived | — | **1**; more than one is an override with a reason ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)) |
+| `PodDisruptionBudget` | derived | — | emitted only where `replicas` exceeds one, as `maxUnavailable: 1`; a budget over a single replica is a drain deadlock |
 | `namespace` | derived | — | `<domain>-system`, and nothing else ([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)); several Services share one by construction |
 | requests and limits | derived | — | from `placement.memory` and `placement.cpu`: memory request equals memory limit, cpu request with no cpu limit |
 | `securityContext` | derived | — | from `hardening` and its declared exceptions |
