@@ -65,3 +65,22 @@ rule selects pods the traffic never reaches.
 Also missing from the example set itself: auth-ui has no env file, so its
 container renders with no env at all — the model requires one per Workload and
 the set carries one of two.
+
+## What the closed rows now owe the example set
+
+Every **Closed** row above decided something the worked examples predate, so the
+three domain files and the Cluster Context inputs are behind the model. This is
+the list, and it is discharged in one pass rather than row by row — the trees are
+also being stripped of commentary, and both edits touch the same files.
+
+| owed | from | where |
+|---|---|---|
+| `engine` on every datastore Workload | [0078](../../../docs/adr/model/0078-engine-is-workload-vocabulary.md) | `data`, `knowledge` |
+| `size` on every volume | [0081](../../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md) | `data`, `knowledge` |
+| `placement.disk.size` removed — it is now derived | [0081](../../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md) | `data` declares `size: 100Gi` under `disk` |
+| a scrape surface for `platform-postgres`, or a lower class | [0079](../../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md) | `data` — it declares `page` and has no signal, which is now `E_ALERT_CLASS_WITHOUT_SIGNAL` |
+| the durability policy per class, and the backup method per `engine` | [0077](../../../docs/adr/model/0077-durability-derives-a-backup.md) | Cluster Context |
+| the alert rule catalog, the class-to-receiver mapping, scrape `interval` and `scrapeTimeout` | [0079](../../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md) | Cluster Context |
+| a forward-auth endpoint on every tier serving `authenticated` | [0076](../../../docs/adr/model/0076-middleware-has-one-producer.md) | Cluster Context |
+| the label set as fixed, on every rendered object | [0072](../../../docs/adr/model/0072-the-label-set-is-fixed.md) | all three rendered trees |
+| the release gate's inputs in each projection | [0071](../../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md) | `resolved.yml` examples |
