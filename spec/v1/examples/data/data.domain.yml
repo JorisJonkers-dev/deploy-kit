@@ -19,7 +19,8 @@
 # Exercises: three independently released Services, a third-party image behind
 # an alias with `runtime: none`, a declared hardening exception, structured
 # `disk` placement, TCP probes, a static Asset, a proposed sidecar, all three
-# Durability Classes, and `provides` consumed by eight Services.
+# Durability Classes, `provides` consumed by eight Services, and one authored
+# hostname that does not follow its Service id.
 #
 # Companion env file (per Workload, like every env file):
 #   platform/env/postgres/base.env   -- examples/platform-postgres.base.env
@@ -242,6 +243,33 @@ services:
                             # alertClass to the header would make this file page
                             # as loudly as postgres does
 
+    # THE HOST DOES NOT FOLLOW THE SERVICE ID, and this Service is the estate's
+    # evidence for authoring hostnames rather than deriving them: the Service is
+    # `platform-rabbitmq` and the live host is `rabbitmq.jorisjonkers.dev`. Any
+    # `<service>.<zone>` rule produces `platform-rabbitmq.jorisjonkers.dev`,
+    # which resolves to nothing -- and it would be right for auth, so the
+    # derivation would look correct until someone read this line. `host` is
+    # therefore the full FQDN, authored, unique across the estate
+    # (E_DUPLICATE_HOST at composition) (review/EXPOSURE-MANIFEST.md).
+    exposure:
+      - name: management        # unique within the Service; names what this
+                                # host is, which `public` would not
+        host: rabbitmq.jorisjonkers.dev
+        audience: authenticated # the management UI behind forward-auth. One
+                                # word: the chain, the tier and the middleware
+                                # name are all derived and none is authorable
+                                # (docs/adr/0018-exposure-by-audience.md)
+        routes:
+          - {path: /, match: prefix, workload: rabbitmq, surface: management}
+        # No `contentPolicy` and no `redirectTo`: this route takes the derived
+        # header baseline and redirects nowhere. Those two fields are the whole
+        # authored proxy vocabulary, and neither is needed here.
+        #
+        # This is also the inbound edge that puts `rabbitmq` among the nine
+        # hostnames auth's CORS list maintains by hand today -- under this model
+        # that list derives from edges like this one rather than being retyped
+        # (chapter 16). The predicate is still open.
+
     workloads:
       - name: rabbitmq
         lifecycle: service
@@ -260,13 +288,11 @@ services:
         # No `hardening` exceptions: the upstream image runs non-root with a
         # read-only root filesystem once its mnesia directory is a volume.
 
-        exposure:
-          - port: 15672
-            audience: authenticated
-            # The management UI, behind forward-auth. This is the inbound edge
-            # that puts `rabbitmq` among the nine hostnames auth's CORS list
-            # maintains by hand today -- under this model that list derives from
-            # edges like this one rather than being retyped (chapter 16).
+        # No `exposure` here: it sits on the Service above, and its one route
+        # names the `management` surface declared in `provides`. `amqp` and
+        # `metrics` are provided and not routed -- providing a port is not
+        # exposing it, and only the route decides which of the three the edge
+        # can reach.
 
         probes:
           readiness: {tcp: 5672}

@@ -270,22 +270,21 @@ unresolved entry carries three lines: who owns it, the observation that settles
 it, and what it blocks. An entry that an ADR has since decided is struck
 through, with the deciding ADR named.
 
-1. **`exposure[].name` and apex hosts.** Not one live hostname is derivable from
-   a Service Id, so identity (unique, declared, checked) and pool (finite,
-   assigned) had to be separated: an exposure entry carries an authored `name`
-   while the hostname itself stays platform-assigned
-   ([0004](../../docs/adr/0004-contention-decides-authority.md),
-   [0018](../../docs/adr/0018-exposure-by-audience.md)). `apex: true` is
-   proposed for `home-portal` and remains ungraded, though chapter 40 already
-   asserts `E_DUPLICATE_APEX` against it. `name` moves a value the contention
-   test had placed on the platform side, which is exactly the kind of move that
-   needs grading rather than assumption.
-   - **Owner:** joris.
-   - **Settled by:** enumerate every routed surface in the estate, record for
-     `name` and for `apex` whether the value contends, and land the result as an
-     amendment to [0018](../../docs/adr/0018-exposure-by-audience.md) with
-     chapter 10's exposure vocabulary updated to match.
-   - **Blocks:** closing chapter 10's exposure section; the first apex render.
+1. ~~**`exposure[].name` and apex hosts.**~~ Decided by
+   [0018](../../docs/adr/0018-exposure-by-audience.md) as amended: the hostname
+   is **authored on the Service**, never assigned. An `exposure` entry carries
+   `host` as the full FQDN, so no zone rule and no `<service>.<zone>`
+   derivation exists anywhere — and with none, there is no apex flag left to
+   grade, because an apex host is written `host: jorisjonkers.dev` exactly like
+   every other host. `name` is required and unique **within the Service**,
+   which is what `E_DUPLICATE_EXPOSURE_NAME` had always checked and nothing had
+   defined, and what `${exposure:<service>.<name>#url}` addresses. Estate-wide
+   uniqueness of `host` becomes a composition check,
+   `E_DUPLICATE_HOST`, evaluated over the composed union together with the
+   Registered Unmanaged Surfaces ([chapter 40](40-composition.md#identity)):
+   the Service authors the value and composition arbitrates the collision,
+   which is [0004](../../docs/adr/0004-contention-decides-authority.md)
+   restated as contention deciding who arbitrates rather than who authors.
 
 2. **Four ConfigMap-hosted scripts, three images to build.** Code is not
    configuration ([0012](../../docs/adr/0012-assets-not-code.md)), and an Asset

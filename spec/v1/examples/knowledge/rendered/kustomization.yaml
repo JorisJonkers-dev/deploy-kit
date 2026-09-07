@@ -1,0 +1,17 @@
+# adapter: kubernetes
+# real path: platform/cluster/flux/apps/knowledge/kustomization.yaml
+#
+# The domain's own kustomize Kustomization. One directory per Service; this
+# domain has one Service, so one entry.
+#
+# `apps/knowledge` is a kustomize directory, not the Reconcile Unit. The
+# Reconcile Unit is `apps-knowledge`, a Flux Kustomization emitted by
+# `flux-root` at clusters/production/kustomizations.yaml with
+# dependsOn: [apps-core, apps-data, apps-vso-secrets] and a 10m health timeout
+# (stateful, the strongest class across the two Workloads). Not rendered here:
+# that file is estate-scoped and holds every domain's entry.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - apps/knowledge

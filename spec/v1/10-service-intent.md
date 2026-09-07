@@ -114,13 +114,18 @@ classDiagram
         +bool required
     }
     class Exposure {
-        +int port
+        +ExposureName name
+        +Fqdn host
         +Audience audience
+        +ContentPolicy contentPolicy
     }
-    class PathRule {
-        +string path
+    class Route {
+        +Path path
         +Match match
+        +string workload
+        +string surface
         +Audience audience
+        +Path redirectTo
     }
     class Probe {
         +Path path
@@ -192,7 +197,6 @@ classDiagram
     Workload "1" *-- "0..*" Sidecar : sidecars
     Workload "1" *-- "0..*" HardeningException : hardening.exceptions
     Workload "1" *-- "0..*" DependencyEdge : dependsOn
-    Workload "1" *-- "0..*" Exposure : exposure
     Workload "1" *-- "0..1" Probe : probes.readiness
     Workload "1" *-- "0..1" Probe : probes.liveness
     Workload "1" *-- "0..*" Asset : assets
@@ -203,7 +207,10 @@ classDiagram
 
     Placement "1" *-- "0..1" DiskRequest : disk
     Placement "1" *-- "0..1" GpuRequest : gpu
-    Exposure "1" *-- "0..*" PathRule : paths
+
+    Service "1" *-- "0..*" Exposure : exposure
+    Exposure "1" *-- "1..*" Route : routes
+    Route ..> Surface : names a Surface a Workload of this Service provides
     DependencyEdge ..> Surface : names a Surface of another Service
 
     Workload "1" *-- "1..*" EnvFile : env per workload
@@ -213,6 +220,7 @@ classDiagram
     Workload "1" *-- "0..*" Grant : secrets (workload-specific)
     Grant "1" *-- "0..1" Rotation : rotation
     Placeholder ..> Grant : a secret placeholder byte-matches a granted path
+    Placeholder ..> Exposure : an exposure placeholder addresses service.name
 ```
 
 The diagram is embedded rather than kept as a separate `.mmd`. A standalone
@@ -225,7 +233,9 @@ Two things in it are still ungraded and marked as such: `sidecars`, and
 full below, and it is the only composite on the Workload that is **required**.
 Env files hang off the **Workload**, not the Service
 ([0011](../../docs/adr/0011-configuration-env-files-per-workload.md)), and so
-does `provides` — a port is a property of a process.
+does `provides` — a port is a property of a process. `exposure` hangs off the
+**Service**, because a hostname is a property of the product rather than of any
+one process, and one hostname routes into two of them.
 
 ## Service identity
 
@@ -324,6 +334,7 @@ plus per-Workload identity ([0024](../../docs/adr/0024-identity-per-workload.md)
 | `id` | Service | yes | The one referencable identity, estate-unique. The repository or product name. |
 | `alertClass` | Service | yes | `none` \| `business-hours` \| `urgent` \| `page`. Urgency, never routing ([0021](../../docs/adr/0021-observability-scrape-and-alert-class.md)). Never raised to the domain: a domain would then page as loudly as its loudest member. |
 | `workloads` | Service | yes | One or more. They switch together. |
+| `exposure` | Service | no | The hostnames this Service serves and how each routes into its Workloads. On the Service, not the Workload: one hostname fronts two processes in the live `auth` case. A Service nothing reaches from outside declares none. See [Exposure](#exposure). |
 
 Uniqueness cannot be had by construction, only by check: the id encodes neither
 domain nor repository, so nothing structural stops two repositories claiming one
@@ -362,10 +373,7 @@ A Workload with no listener declares no `provides` at all — the ingest worker 
 `knowledge` has none, and the map is absent rather than empty.
 
 ```yaml
-exposure:
-  - port: 8080
-    audience: authenticated
-probes:
+probes:                       # on the Workload: the integer, at its point of use
   readiness:
     path: /api/actuator/health/readiness
     port: 8080
@@ -373,6 +381,10 @@ scrape:
   port: 9187
   path: /metrics
 ```
+
+An [exposure](#exposure) route is the one place a port is *not* written: it sits
+on the Service and names `{workload, surface}`, so the integer stays declared
+once, by the process that listens on it.
 
 Surface **names** are unique within a Service, not within a Workload, because a
 dependency edge names `{service, surface}` and never a Workload
@@ -419,6 +431,10 @@ and `volumes`.
 Workload declares a `placement` block, because two of its dimensions are
 required.
 
+`exposure` is **not** a Workload field. A Workload states which ports it listens
+on; which hostname reaches it, and on what path, is stated once on the Service
+([Exposure](#exposure)).
+
 ### Dependencies
 
 ```yaml
@@ -460,12 +476,13 @@ already what `stalwart-provisioner` half-invented, its `production.env` and
 `staging.env` being byte-identical.
 
 A literal is written literally. A derived value is a **named placeholder** —
-`${dependency:…}` for a coordinate, `${secret:…}` for a secret. Writing a derived
-value as a literal is a build error, and so is writing a Runtime Profile key at
-all: `OTEL_*` and `PYROSCOPE_*` come from `runtime`, and an exceptional value goes
-in `overrides`, not here. Ten `OTEL_*` variables are byte-identical today across
-`auth-api`, `agents-api` and `knowledge-api` except `OTEL_SERVICE_NAME` — sixty
-duplicated lines that leave the service repositories under this rule.
+`${dependency:…}` for a coordinate, `${secret:…}` for a secret, `${exposure:…}`
+for a hostname the estate serves. Writing a derived value as a literal is a
+build error, and so is writing a Runtime Profile key at all: `OTEL_*` and
+`PYROSCOPE_*` come from `runtime`, and an exceptional value goes in `overrides`,
+not here. Ten `OTEL_*` variables are byte-identical today across `auth-api`,
+`agents-api` and `knowledge-api` except `OTEL_SERVICE_NAME` — sixty duplicated
+lines that leave the service repositories under this rule.
 
 Placeholders are named-source references and never a template language: no
 conditionals, no arithmetic. The placeholder names the source; the key names the
@@ -820,7 +837,7 @@ them:
 |---|---|---|---|
 | `app-ui` | `64Mi` | `10m` | nginx serving static files, measured at *"~10–20Mi RAM each"*; `postgres-exporter` sits in the same band |
 | `knowledge-ingest-worker` | `256Mi` | `50m` | an interpreted single-consumer queue worker, not a server |
-| `knowledge-api` | `768Mi` | `250m` | a JVM service at its default heap; `domains/knowledge.yml` measures its cold start at *"~250-300s"* |
+| `knowledge-api` | `768Mi` | `250m` | a JVM service at its default heap; `knowledge/knowledge.domain.yml` measures its cold start at *"~250-300s"* |
 | `platform-postgres` | `2Gi` | `500m` | the datastore with pgvector that eight Services queue behind |
 
 A wrong number now mis-sizes one Workload rather than every member of a class,
@@ -830,24 +847,128 @@ holding one, on every retune.
 
 ## Exposure
 
+An exposure entry says *this hostname routes here*. It sits on the **Service**,
+beside its Workloads, and it carries its own routing:
+
 ```yaml
-exposure:
-  - port: 8080
-    audience: authenticated
-    paths:
-      - {path: /mcp, match: exact, audience: anonymous}
-      - {path: /,    match: prefix, audience: authenticated}
+services:
+  - id: auth
+    exposure:
+      - name: public                    # unique within the Service
+        host: auth.jorisjonkers.dev     # the full FQDN, authored
+        audience: anonymous
+        contentPolicy: strict           # optional: strict | admin | workflow
+        routes:
+          - {path: /api, match: prefix, workload: auth-api, surface: http}
+          - {path: /,    match: prefix, workload: auth-ui,  surface: http}
 ```
 
-`audience` is the single vocabulary — `anonymous`, `authenticated`, `internal`,
-`lan` — shared by Services and route tiers
-([0018](../../docs/adr/0018-exposure-by-audience.md)). No hostname appears: one
-hostname, `kb.jorisjonkers.dev`, was declared in seven authoritative places, and
-six of them derive from this block — the reachability channel, both edge catalogs,
-both Traefik IngressRoutes and the Gatus endpoint. The two conformance tests that
-existed only to detect their disagreement become unnecessary, not merely green.
+| field | level | required | notes |
+|---|---|---|---|
+| `name` | exposure | yes | Unique within the Service. It is what `E_DUPLICATE_EXPOSURE_NAME` checks and what a `${exposure:…}` placeholder addresses. A Service serving two hostnames — `jellyfin` public and lan — needs it to tell them apart. |
+| `host` | exposure | yes | The full FQDN, written out. Unique across the estate. |
+| `audience` | exposure | yes | `anonymous` \| `authenticated` \| `internal` \| `lan`. The default for every route beneath it. |
+| `contentPolicy` | exposure | no | `strict` \| `admin` \| `workflow`. The Content-Security-Policy profile — the one header choice an author makes, from a closed list. |
+| `routes` | exposure | yes | One or more. |
+| `path` | route | yes | The path this rule matches. |
+| `match` | route | yes | `prefix` \| `exact`. |
+| `workload` | route | yes | A Workload of **this** Service. |
+| `surface` | route | yes | A surface that Workload declares in `provides` — a name, never a port integer. |
+| `audience` | route | no | Overrides the exposure's audience, for this path alone. |
+| `redirectTo` | route | no | A path this route redirects to. A path, never a regex. |
 
-One vocabulary replaces three carrying seven values:
+A route carries two optional fields and no others. It may state its own
+`audience`, which is the anonymous endpoint inside an otherwise authenticated
+host:
+
+```yaml
+routes:
+  - {path: /mcp, match: exact,  workload: knowledge-api, surface: http, audience: anonymous}
+  - {path: /,    match: prefix, workload: knowledge-api, surface: http}
+```
+
+and a path may redirect:
+
+```yaml
+routes:
+  - {path: /, match: exact, workload: stalwart, surface: http, redirectTo: /admin/}
+```
+
+Everything else at the edge is **derived** from the audience and the tier that
+carries it: forward-auth, the security-headers baseline, the entryPoint, TLS
+and the middleware chain that assembles them
+([0018](../../docs/adr/0018-exposure-by-audience.md),
+[0030](../../docs/adr/0030-runtime-mechanics-derived.md)).
+
+### Why the host is authored rather than derived
+
+A zone mapping does exist, so the derivation was available and was rejected on
+the evidence rather than on principle. `homelab-inventory/catalog/reachability.yml`
+groups every reachable host into a channel — `public-frankfurt`, `lan` — which is
+the input a `<service>.<zone>` rule would need. What that rule cannot survive is
+the host labels themselves, because they do not follow the Service id:
+
+- `knowledge.jorisjonkers.dev` and `kb.jorisjonkers.dev` both resolve, and one
+  Service id cannot derive two labels.
+- `platform-rabbitmq` serves `rabbitmq.jorisjonkers.dev`, dropping the prefix its
+  id carries.
+- `root`, `status`, `dashboard` and `faro` belong to no Service at all.
+
+A derivation would therefore be right for most of the set and silently wrong for
+the rest, and the wrong ones are precisely the ones nobody would catch: a derived
+hostname is written down nowhere, so there is no second copy for a reader to
+disagree with. The host is authored instead — one FQDN, in full, in the Service
+that serves it. There is no zone field, no `<service>.<zone>` rule and no suffix
+appended anywhere in the render.
+
+An apex host needs no field either. `host: jorisjonkers.dev` is a host like any
+other, and two Services claiming it collide exactly as two Services claiming any
+other name do.
+
+Authoring the host does not make it uncontended. A hostname must be unique across
+the estate, which is what contention means — and
+[0004](../../docs/adr/0004-contention-decides-authority.md), as this chapter's
+preamble restates it, decides who **arbitrates**, not who **authors**. The Service
+writes the FQDN it serves; composition refuses the collision with
+`E_DUPLICATE_HOST`, over the composed union together with the Registered Unmanaged
+Surfaces, so an authored host cannot quietly take a name the estate already
+answers on.
+
+What this ends is the duplication. `kb.jorisjonkers.dev` was declared in seven
+authoritative places: the reachability channel, both edge catalogs, both Traefik
+IngressRoutes, the Gatus endpoint, and the Service itself. It is now written once,
+here, and the other six derive from it; anything that needs the literal reads it
+back through `${exposure:…}` rather than repeating it (see
+[Secret references](#secret-references)). The two conformance tests that existed
+only to detect their disagreement become unnecessary, not merely green.
+
+### Why exposure sits on the Service and `provides` stays on the Workload
+
+`provides` and `exposure` look like one fact and are two. `provides` says *this
+process listens on this port*, which is a property of a process and stays on the
+Workload. `exposure` says *this hostname routes here*, which is a property of the
+product and belongs to the Service.
+
+The case that forced the split is live and unexceptional: `auth.jorisjonkers.dev`
+serves `/api` from `auth-api` and `/` from `auth-ui`. One hostname, two Workloads.
+At the Workload level that is inexpressible — each Workload would have to declare
+a host the other also claims, the two halves of one hostname would be authored in
+two files with nothing joining them but a repeated string, and the estate would be
+back to the duplication the previous section just removed. On the Service the
+hostname is written once and its routes name the Workloads they reach.
+
+It also puts the hostname on the boundary that already governs it. A Service is
+the unit of atomic release
+([0062](../../docs/adr/0062-service-is-the-release-unit.md)), so the Workloads
+behind one host switch together; a hostname authored per Workload would have been
+a per-process fact spanning a release boundary no single process controls.
+
+### Audience is the single vocabulary
+
+`audience` is the single vocabulary — `anonymous`, `authenticated`, `internal`,
+`lan` — shared by exposures, by routes and by the tiers that carry them
+([0018](../../docs/adr/0018-exposure-by-audience.md)). One vocabulary replaces
+three carrying seven values:
 
 | where | values |
 |---|---|
@@ -863,9 +984,89 @@ was implemented, had an error code, and was vacuous exactly where it mattered; i
 is deleted rather than repaired. `E_NO_TIER_FOR_AUDIENCE` (chapter 40) replaces it
 and cannot be vacuous, because the audience is always present.
 
+### The authored proxy vocabulary is two fields
+
+`contentPolicy` on an exposure and `redirectTo` on a route. There is no third, and
+the closure is a decision rather than an oversight: no provider-shaped
+passthrough, no raw middleware reference, no headers block, no annotations map, no
+escape hatch shaped like any of them. Layer 1 carries no mechanism, and a Traefik
+middleware name written into Service Intent is a mechanism
+([0030](../../docs/adr/0030-runtime-mechanics-derived.md)).
+
+The vocabulary is two fields because the estate's own edge is four middlewares,
+counted:
+
+| middleware | live instances | disposition |
+|---|---|---|
+| `forwardAuth` | 3 definitions, 15 references | derived from `audience: authenticated` |
+| `headers` — the security baseline, plus a CSP profile `strict` / `admin` / `workflow` | 7 | baseline derived from the tier; the **profile choice** authored, as `contentPolicy` |
+| `chain` | 2 | derived composition |
+| `redirectRegex` | 2 — `stalwart` `/` → `/admin/`, `traefik` `/` → `/dashboard/` | authored, as `redirectTo` |
+
+`forwardAuth` and `chain` are pure derivation: fifteen references to three
+definitions, all reproducible from an audience and a tier. `headers` is mostly
+derivation — the security baseline is the tier's and is identical everywhere it
+appears — except for the CSP profile, which is a per-product judgement no
+derivation can make, and of which there are exactly three. That judgement is
+`contentPolicy`, a value from a closed list rather than a header block.
+
+Nothing else exists. There are **zero** live instances of timeouts, rate limits,
+IP allowlists, basic auth, compression, retries and circuit breakers — not one of
+any of them, anywhere in the estate — and none of them becomes vocabulary here.
+Writing fields for an estate that does not exist is the failure this model was
+built to stop: a field costs a schema, a derivation, a test and a reader's
+attention, and one nobody populates costs all four and returns nothing. A
+genuinely new case gets a field and a decision record, not a passthrough that
+would readmit every provider fragment at once and take the mechanism rule with it.
+
+**`redirectTo` is a path, never a regex.** Both live redirects are the same
+shape — an exact root sent to a subpath — and the author writes the destination
+path. The renderer produces the provider's `redirectRegex` form from it, so
+`${1}`-style capture groups appear nowhere in layer 1: a capture group is a
+pattern language, and a pattern language in Service Intent brings its own
+escaping rules, its own tests and its own way to fail silently.
+
+`AUTH_CORS_ALLOWED_ORIGINS` is the case that tested the closure hardest, and it is
+deliberately **not** proxy vocabulary. It is an application environment variable
+that happens to list hostnames, and it is derivable from the inbound edge set once
+that predicate is written. Modelling it as edge configuration would be wrong
+twice: it would move an application's own setting to the edge, and it would author
+a value the graph can compute. The derivation does not exist yet. That is an open
+gap, not an argument for a field.
+
+### What is checked
+
+| condition | error |
+|---|---|
+| two exposures declare the same `host` | `E_DUPLICATE_HOST` |
+| two exposures of one Service share a `name` | `E_DUPLICATE_EXPOSURE_NAME` |
+| two routes of one exposure share the same `path` + `match` pair | `E_DUPLICATE_ROUTE_MATCH` |
+| a route's `{workload, surface}` pair names no surface that Workload provides | `E_UNKNOWN_SURFACE` |
+
+`E_DUPLICATE_HOST` is evaluated at composition over the whole union, Registered
+Unmanaged Surfaces included, because a name the estate already answers on is taken
+whether or not this model deploys what answers (chapter 40). The other three are
+scoped to a single document and are refused as soon as the fragment is read.
+
+`E_DUPLICATE_EXPOSURE_NAME` has had an implementation and an error code for longer
+than it has had a definition — nothing said what a name was, or whether an
+exposure had one. It is unique **within the Service**. `jellyfin` may declare
+`public` and `lan`, and no other Service is thereby prevented from having a
+`public` of its own, because a placeholder that reads one names the Service too.
+
+`E_DUPLICATE_ROUTE_MATCH` catches the pair that cannot be ordered rather than
+merely duplicated: two routes with the same path and the same match on one
+hostname have no defined winner, and the provider picks one without saying so.
+`E_UNKNOWN_SURFACE` is the same code a dependency edge uses (chapter 16), holding
+routes to the same rule — a route names a surface by name, never by port, so the
+integer stays written once, by the process that listens on it. Either half of the
+pair failing raises it: a route naming a Workload this Service does not hold names
+no surface either.
+
 A hostname the estate serves but does not deploy is a Registered Unmanaged Surface
 ([0019](../../docs/adr/0019-registered-unmanaged-surfaces.md)), declared in the
-composition input rather than here.
+composition input rather than here, and it takes part in `E_DUPLICATE_HOST` on
+equal terms with everything authored.
 
 ## Observability
 
@@ -1135,13 +1336,63 @@ string a KV path could equally produce — so the one check that enforces the gr
 boundary at build time could be satisfied by a grant the author never intended.
 
 The `#<key>` half selects which value fills the variable and confers nothing; the
-key is checked against the grant's `keys:` list. Dependency coordinates use the
-same mechanism against a different source: `${dependency:<service>.<coordinate>}`,
-resolved from the edge set (chapter 16).
+key is checked against the grant's `keys:` list.
 
 The cost is thirteen extra characters per placeholder. What it buys is that one
 `grep -r` over env files finds every reader of a path, which is what makes the
 reader-set model auditable from the repository.
+
+### Three placeholder sources
+
+`${secret:…}` is one of three, and all three obey one grammar: a placeholder
+**names a source and resolves to one value**.
+
+| placeholder | resolves to | resolved from |
+|---|---|---|
+| `${secret:<path>#<key>}` | one key of one granted Secret Store path | the grant, byte-matched ([0027](../../docs/adr/0027-secret-reference-join-key.md)) |
+| `${dependency:<service>.<coordinate>}` | one coordinate of a Service this Workload depends on | the edge set (chapter 16) |
+| `${exposure:<service>.<name>#<field>}` | one field of a declared exposure | the composed union's exposure set ([Exposure](#exposure)) |
+
+`${exposure:…}` addresses an exposure by the Service that declares it and the
+`name` it carries there — which is what that `name` is for — and `<field>` is one
+of exactly three:
+
+| field | for `exposure: {name: public, host: auth.jorisjonkers.dev}` on Service `auth` |
+|---|---|
+| `url` | `https://auth.jorisjonkers.dev` — scheme and host, no trailing slash and no path |
+| `host` | `auth.jorisjonkers.dev` |
+| `scheme` | `https` |
+
+**A path is written outside the placeholder.** `AUTH_ISSUER`, `AUTH_LOGIN_URL`
+and `CONFIRMATION_URL` all carry a hardcoded `https://auth.jorisjonkers.dev`
+today, and `rabbitmq.conf` carries the same host a fourth time as its one derived
+line in twenty-four (`auth_oauth2.issuer`). Under this rule each becomes one
+placeholder, plus ordinary text after it where a path is needed:
+
+```
+# platform/env/<workload>/base.env, in each Workload that needs the host
+AUTH_ISSUER=${exposure:auth.public#url}
+AUTH_LOGIN_URL=${exposure:auth.public#url}/login
+CONFIRMATION_URL=${exposure:auth.public#url}/confirm
+```
+
+`${exposure:auth.public#url:/login}` — the same thing with the path moved
+inside — is not grammar, and the reason is the rule
+[Configuration](#configuration) already states: a placeholder is a named source,
+never a template language, with no conditionals and no arithmetic. A path
+argument is the smallest possible first argument; the second is a query string
+and the third is a conditional. Keeping the path outside also keeps the hostname
+greppable — `grep -r 'exposure:auth.public'` finds every reader of that host
+whatever each appends, which is the same audit the byte-match rule buys for
+secrets.
+
+Both halves of the address are checked at composition, over the union that
+already checks the other two sources: the Service must resolve in it, exactly as
+a `dependsOn` target must (`E_UNRESOLVED_SERVICE`), and it must declare an
+exposure by that name. Reading a host this way is **not** a dependency edge: it
+resolves to a string at build time and derives no egress, so a Workload that
+actually calls the host still declares `dependsOn`
+([0035](../../docs/adr/0035-network-policy-default-deny.md)).
 
 ### Validation
 
@@ -1207,7 +1458,7 @@ declaring site is fixed:
 
 | forbidden | where the value comes from |
 |---|---|
-| a hostname | assigned; read from `resolved.yml` |
+| a hostname another Service serves, written as a literal | `${exposure:…}`, addressing the exposure that declares it |
 | a namespace | derived from `domain`, as `<domain>-system` |
 | a node label or selector | `placement` |
 | a scheduler weight, or any soft placement term | every dimension is hard ([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)) |
@@ -1228,7 +1479,7 @@ declaring site is fixed:
 | a secret value, anywhere | a grant plus `${secret:…}` |
 | a secret grant with no reference | remove it — it is a dead grant |
 | `keys: ['*']` | enumerate the keys |
-| a route tier, middleware, or `authMode` | `audience` |
+| a route tier, an `authMode`, a middleware name, a headers block, a `redirectRegex` | derived from `audience` and the tier; the authored proxy vocabulary is `contentPolicy` and `redirectTo`, and nothing else |
 | a `volumeClaimTemplate` | declare the claim cluster-side |
 | an executable Asset | an image |
 | a deploy workflow, applier or gate | not a model concern — see below |
@@ -1255,7 +1506,7 @@ The model's complete interface to that work is three demands, all decided here:
 
 ## Still to be graded
 
-Four items no decision in the register covers:
+Three items no decision in the register covers:
 
 1. **`sidecars`.** A Workload holds more than one container, and this is not an
    edge case: `postgres` runs `postgres-exporter` on 9187, `stalwart` runs a
@@ -1267,28 +1518,36 @@ Four items no decision in the register covers:
    capacity decision on freed Frankfurt budget, not an availability requirement.
    Like the placement quantities, it must resolve through the pinned inputs, never
    through observed capacity.
-3. **Naming an exposure entry.** The chapters disagree today: this one writes
-   `port:` alone, chapter 20's projection keys the assignment `kb`, and chapter
-   20 places a Service-declared hostname label this chapter defines no field
-   for. Chapter 40 checks
-   `E_DUPLICATE_EXPOSURE_NAME` against a name none of them agrees on. Grading it
-   moves a value the contention test previously placed on the platform side.
-4. **`self-renew` × `file`.** Refusing it follows from the tiers' own argument but
+3. **`self-renew` × `file`.** Refusing it follows from the tiers' own argument but
    not from the decisions' text.
 
-The list was five. The item asking what checks that a Workload's declared capacity
-can be satisfied by a node it is also allowed to run on is now answered rather than
-graded: capacity and eligibility are one comparison against the node contract, and
-failing it is `E_PLACEMENT_UNSATISFIABLE`
-([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)).
+The list was five, and two items left it by being answered rather than graded.
+
+The first asked what checks that a Workload's declared capacity can be satisfied
+by a node it is also allowed to run on: capacity and eligibility are one
+comparison against the node contract, and failing it is
+`E_PLACEMENT_UNSATISFIABLE` ([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)).
+
+The second asked how an exposure entry is named, and it is now
+[vocabulary](#exposure). An exposure carries an authored `name`, unique within
+its Service, and an authored `host` that is the full FQDN — so the chapters no
+longer disagree about what an exposure is called, and
+`E_DUPLICATE_EXPOSURE_NAME` finally has a definition to check. An apex host is
+`host: jorisjonkers.dev` and needs no flag, no field and no check of its own: two
+Services claiming it is `E_DUPLICATE_HOST`, like any other collision. That closes
+chapter 00's first open item, of which this entry was the chapter-10 half. What
+the entry flagged — a value the contention test had placed on the platform side,
+now authored — is the same move `placement` makes, and it is settled the same
+way: contention decides who arbitrates, not who authors
+([0004](../../docs/adr/0004-contention-decides-authority.md)).
 
 ## Worked examples
 
 | example | what it exercises |
 |---|---|
-| [`domains/knowledge.yml`](examples/domains/knowledge.yml) + [`env`](examples/knowledge-api.base.env) + [`worker env`](examples/knowledge-ingest-worker.base.env) | two Workloads, two runtimes and therefore two identities, `probes: none` and no `provides` on the worker, grants at **both** levels, a split Subtree path, a `0400` file secret, an `irreplaceable` volume |
-| [`domains/auth.yml`](examples/domains/auth.yml) + [`env`](examples/auth-api.base.env) | one Service, two Workloads switching atomically; `delivery: self` with `tolerates: reload`, a `self-roll` transit grant taking no placeholder, and the one hardening exception in the set |
-| [`domains/data.yml`](examples/domains/data.yml) + [`env`](examples/platform-postgres.base.env) | three Services releasing independently in one domain, third-party images, a `disk` dimension, TCP probes, and a surface eight Services consume |
+| [`knowledge/knowledge.domain.yml`](examples/knowledge/knowledge.domain.yml) + [`env`](examples/knowledge/env/knowledge-api.base.env) + [`worker env`](examples/knowledge/env/knowledge-ingest-worker.base.env) | two Workloads, two runtimes and therefore two identities, `probes: none` and no `provides` on the worker, grants at **both** levels, a split Subtree path, a `0400` file secret, an `irreplaceable` volume |
+| [`auth/auth.domain.yml`](examples/auth/auth.domain.yml) + [`env`](examples/auth/env/auth-api.base.env) | one Service, two Workloads switching atomically; `delivery: self` with `tolerates: reload`, a `self-roll` transit grant taking no placeholder, and the one hardening exception in the set |
+| [`data/data.domain.yml`](examples/data/data.domain.yml) + [`env`](examples/data/env/platform-postgres.base.env) | three Services releasing independently in one domain, third-party images, a `disk` dimension, TCP probes, and a surface eight Services consume |
 
 The env-file-to-`secrets` cross-check runs over all three sets. `knowledge-api` has
 5 placeholders matching 5 env-delivered keys, and its ingest worker 4 more against

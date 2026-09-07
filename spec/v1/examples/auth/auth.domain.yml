@@ -8,10 +8,12 @@
 # header -- auth-system -- and no field exists that could divert it.
 #
 # Exercises: two Workloads that switch together because they are one Service,
-# placement as hard dimensions carrying an arch set and a capability, three
-# `delivery: self` grants including a Transit key that takes no placeholder,
-# four dependencies, one hardening exception with a reason, and config that is
-# almost entirely derived.
+# ONE authored hostname fronting both of them through two routes -- the case
+# that forced `exposure` from the Workload to the Service -- placement as hard
+# dimensions carrying an arch set and a capability, three `delivery: self`
+# grants including a Transit key that takes no placeholder, four dependencies,
+# one hardening exception with a reason, and config that is almost entirely
+# derived.
 #
 # Companion env files, one per WORKLOAD
 # (docs/adr/0011-configuration-env-files-per-workload.md):
@@ -71,6 +73,49 @@ services:
     # credentials. Folding the pair into one Service is what moved them down a
     # level, and the level is an access boundary only because identity is per
     # Workload (docs/adr/0024-identity-per-workload.md).
+
+    # ONE HOSTNAME, TWO WORKLOADS -- the case that forced `exposure` up from the
+    # Workload to the Service. `auth.jorisjonkers.dev/api` is auth-api and `/`
+    # is auth-ui, and at the Workload level that is unsayable: two Workloads
+    # each declaring a port and an audience produce two routes claiming the
+    # whole host, which is exactly what this example's rendered tree used to
+    # show. `provides` stays on the Workload, because the two are different
+    # facts: `provides` is *this process listens on this port*, `exposure` is
+    # *this hostname routes here* (review/EXPOSURE-MANIFEST.md,
+    # docs/adr/0018-exposure-by-audience.md).
+    #
+    # `host` is the full FQDN, AUTHORED. No zone mapping, no `<service>.<zone>`
+    # rule, no apex flag -- an apex host is written `host: jorisjonkers.dev`.
+    # That it matches the Service id here is a coincidence and does not
+    # generalise: `platform-rabbitmq` serves rabbitmq, `headlamp` serves
+    # dashboard, and `status` belongs to no Service at all. The host is unique
+    # across the estate -- E_DUPLICATE_HOST at composition, evaluated over the
+    # composed union together with the Registered Unmanaged Surfaces.
+    exposure:
+      - name: public              # required, unique within the Service: what
+                                  # ${exposure:auth.public#url} addresses and
+                                  # what E_DUPLICATE_EXPOSURE_NAME checks
+        host: auth.jorisjonkers.dev
+        audience: anonymous       # both surfaces. This Service is what performs
+                                  # authentication, so it cannot sit behind it;
+                                  # the applications enforce their own
+                                  # authorization and this describes the edge
+        contentPolicy: strict     # one of the TWO authored proxy fields, the
+                                  # other being `redirectTo` on a route. It
+                                  # picks the CSP profile only: the
+                                  # security-headers baseline, forward-auth,
+                                  # the entryPoint, TLS and the chain all derive
+                                  # from audience and tier, and no middleware
+                                  # name, header block, timeout or rate limit is
+                                  # authorable anywhere in layer 1
+        routes:
+          # A route names {path, match, workload, surface}, `match` being
+          # `prefix` or `exact`. The surface must be one the named Workload
+          # declares in `provides` (E_UNKNOWN_SURFACE otherwise), and two routes
+          # on one exposure may not share a path + match pair
+          # (E_DUPLICATE_ROUTE_MATCH).
+          - {path: /api, match: prefix, workload: auth-api, surface: http}
+          - {path: /,    match: prefix, workload: auth-ui,  surface: http}
 
     workloads:
       # ------------------------------------------------------------ auth-api
@@ -156,13 +201,10 @@ services:
           - {service: platform-rabbitmq, surface: amqp}
           - {service: stalwart,          surface: smtp}
 
-        exposure:
-          - port: 8081
-            # The login and registration surface must be reachable
-            # unauthenticated -- this Workload is what performs authentication,
-            # so it cannot sit behind it. The application enforces its own
-            # authorization; this audience describes the edge only.
-            audience: anonymous
+        # No `exposure` here, and none is missing: it sits on the Service
+        # above, where one hostname can front both Workloads. What stays is
+        # `provides` (http: 8081) -- the port this process listens on, and
+        # `http` is the surface the `/api` route names.
 
         # Siblings, each carrying its own endpoint, neither falling back to the
         # other (docs/adr/0014-probes-are-siblings.md). Deliberately identical
@@ -318,11 +360,10 @@ services:
         # (docs/adr/0035-network-policy-default-deny.md). A dependency edge
         # would claim a connection this pod never opens.
 
-        exposure:
-          - port: 80
-            audience: anonymous   # the login page is what unauthenticated
-                                  # users are sent to; it cannot sit behind the
-                                  # authentication it starts
+        # No `exposure` here either. The Service's `public` exposure routes
+        # `/` to this Workload's `http` surface -- the login page is what
+        # unauthenticated users are sent to, so it cannot sit behind the
+        # authentication it starts.
 
         # Siblings, written twice on purpose. For a static server the two
         # questions genuinely have the same answer -- there is no dependency to

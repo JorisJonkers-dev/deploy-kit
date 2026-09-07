@@ -23,7 +23,7 @@ kind: ResolvedService        # the projection published back to one repository
 ```
 
 `ResolvedDeployment` covers the whole composed estate because assignments are
-not separable: hostname uniqueness, the Reconcile Unit DAG, inbound-edge
+not separable: the tier carrying each host, the Reconcile Unit DAG, inbound-edge
 derivations and the reader set of a Secret Store path are global properties
 ([chapter 16](16-dependencies.md)). `ResolvedService` is a **projection** — the
 slice belonging to one Service, obtained by filtering and never computed
@@ -165,8 +165,11 @@ field's placement link to this anchor rather than copying rows.
 | `image`, `runtime`, `lifecycle`, `stateful` | Service | no contention | what the Workload is |
 | env files, `assets` | Service | no contention | per Workload; derived values appear only as placeholders |
 | `secrets` grants — `path`, `keys`, `access`, `delivery`, `rotation` | Service | no contention to declare | per Service and never raised; the *path* is arbitrated (below), what a Service asks of a path is its own |
-| `exposure` audience and paths | Service | no contention | one closed audience vocabulary |
-| hostname label | Service | unique — checked | not one live hostname is derivable from a Service Id; see [open item 1](#open-in-this-chapter) |
+| `exposure[].name` | Service | unique — checked | required; unique **within the Service**, `E_DUPLICATE_EXPOSURE_NAME` at composition. It is the half `${exposure:<service>.<name>#url}` addresses |
+| `exposure[].host` | Service | unique — checked | the full FQDN, authored — no label, no zone rule, no apex flag. Estate-unique across the composed union taken together with the register of unmanaged surfaces: `E_DUPLICATE_HOST` ([chapter 40](40-composition.md#identity)) |
+| `exposure` `audience`, and a route's `audience` override | Service | no contention | one closed audience vocabulary; the per-route form is the anonymous path inside an authenticated host |
+| `exposure[].contentPolicy` | Service | no contention | `strict`, `admin` or `workflow`. Which profile an application needs is a fact about the application; the header set it selects is derived |
+| `exposure[].routes` — `path`, `match`, `workload`, `surface`, `redirectTo` | Service | no contention | which of the Service's own Workloads serves which path of the host. The surface must be one that Workload `provides` (`E_UNKNOWN_SURFACE`); no two routes may share a `path` + `match` pair (`E_DUPLICATE_ROUTE_MATCH`); `redirectTo` is a path, never a regex |
 | `probes`, `startupBudget`, `zeroDowntime` | Service | no contention | what only the Service knows about its own start and health |
 | `hardening` and its exceptions | Service | no contention | the class is declared; each exception names itself and carries a reason ([0016](../../docs/adr/0016-pod-hardening.md)) |
 | `volumes[].durability` | Service | no contention | what the data is worth cannot be observed |
@@ -176,9 +179,8 @@ field's placement link to this anchor rather than copying rows.
 | `placement.arch`, `.site`, `.capabilities` | Service | no contention | filters over facts the node contract publishes; a list is a set of equally acceptable values, never a ranking |
 | `observability.scrape` | Service | no contention | port and path of its own metrics surface |
 | `overrides` | Service | no contention | a derived value restated with a recorded reason ([Overrides](#overrides)) |
-| fully-qualified hostname | platform | unique — arbitrated | the declared label + the tier's hostname policy + the cluster domain |
 | route tier | platform | pool | the shared edge is finite; `E_NO_TIER_FOR_AUDIENCE` where no tier carries the audience |
-| middleware chain | platform | pool | tier + audience; `forward-auth` for `authenticated` on a public tier |
+| middleware chain | platform | pool | tier + audience + `contentPolicy`; `forward-auth` for `authenticated` on a public tier, the security-headers baseline with the named content profile, and the redirect rule a route's `redirectTo` asks for |
 | Reconcile Unit and its ordering | platform | unique — arbitrated | one estate-wide DAG ([The Reconcile Unit](#the-reconcile-unit)) |
 | identity name, Vault role, Vault policy | platform | pool | named for the **Workload alone**; the auth role namespace is shared ([chapter 16](16-dependencies.md#workload-identity)) |
 | Secret Store path layout and grants | platform | pool | one path per reader set; `E_SUBTREE_PREFIX_COLLISION` across Subtrees ([chapter 40](40-composition.md#identity)) |
@@ -206,6 +208,36 @@ field's placement link to this anchor rather than copying rows.
 A field the rule cannot place falsifies
 [0004](../../docs/adr/0004-contention-decides-authority.md) and forces an
 amendment to the rule — never an exceptions row in this table.
+
+### The hostname changed sides
+
+Until this amendment the table carried two rows for one value: a Service-declared
+*label*, and a platform-arbitrated *fully-qualified hostname* assembled from that
+label, the tier's hostname policy and the cluster domain. There is no such
+assembly to run. `knowledge` serves `kb`, `platform-rabbitmq` serves `rabbitmq`,
+`knowledge.jorisjonkers.dev` and `kb.jorisjonkers.dev` both resolve, and `root`,
+`status`, `dashboard` and `faro` belong to no Service at all
+— so a hostname policy would be right for most hosts and silently wrong for the
+rest, and the wrong ones are the ones nobody would check. `host` is therefore
+authored in full on the Service's `exposure` entry and carried through untouched
+([0018](../../docs/adr/0018-exposure-by-audience.md)); both old rows are gone,
+replaced by one.
+
+That is the rule's second reading, not an exception to it. A hostname must be
+unique across the estate and draws on no pool the platform holds, so the Service
+declares it and the **uniqueness check is arbitrated at composition**:
+`E_DUPLICATE_HOST` over the composed union taken together with the Registered
+Unmanaged Surfaces ([chapter 40](40-composition.md#identity)). Nobody's fragment
+wins a contested host — the union fails and no `ComposedIntent` is produced until
+an author changes one of them. Contention decided who arbitrates, not who
+authors, which is the same restatement `placement` forced
+([0004](../../docs/adr/0004-contention-decides-authority.md)).
+
+What stays on the platform side of this path is everything mechanical about the
+edge: the tier that carries the audience, and the middleware chain that follows
+from the tier, the audience and `contentPolicy`. The authored proxy vocabulary is
+exactly two fields — `contentPolicy` on an exposure and `redirectTo` on a route —
+and no Service names a middleware, an entryPoint or a TLS resolver.
 
 ### The namespace row was wrong, and this is the correction
 
@@ -497,16 +529,19 @@ comment no tool can read.
 Three boundaries:
 
 - **Assignments are outside the hatch.** Every row of the
-  [Authority](#authority) table whose authority is *platform* — hostname, route
-  tier, the eligible node set and the selector that expresses it, Secret Store
-  path, Reconcile Unit, image digest — may not be overridden. They arbitrate
-  shared resources, and a local override reintroduces exactly the collision
-  arbitration exists to prevent, at the layer with no arbiter. Widening a
+  [Authority](#authority) table whose authority is *platform* — route tier, the
+  middleware chain it carries, the eligible node set and the selector that
+  expresses it, Secret Store path, Reconcile Unit, image digest — may not be
+  overridden. They arbitrate shared resources, and a local override
+  reintroduces exactly the collision arbitration exists to prevent, at the
+  layer with no arbiter. Widening a
   selector past what the declared dimensions admit is not a correction; it is a
   `Pending` pod with the diagnostic removed. A Workload that should run
   somewhere else edits `placement` in its own file, which is authored intent and
   needs no hatch; a Service wanting a different assignment goes through
-  arbitration and [Publish back](#publish-back).
+  arbitration and [Publish back](#publish-back). `host` left this list with the
+  hostname row it used to sit in: it is authored, so an owner wanting a different
+  one edits their own `exposure` entry and there is nothing derived to override.
 - **`namespace` is derived and still not overridable.** It is the one derivation
   the hatch does not cover, and the reason is the hatch's own argument. The
   hatch exists because a derivation's inputs can be too poor to state the truth,
@@ -594,17 +629,21 @@ consumer is ever added; only the number of consumers does.
 ## Publish back
 
 Because contended values are platform-arbitrated, a Service owner cannot read
-their own hostname, node placement or Secret Store paths out of their own
-repository. Composition therefore writes each Service's `ResolvedService`
-projection into that Service's repository as a generated file —
+their own node placement or Secret Store paths out of their own repository.
+Composition therefore writes each Service's `ResolvedService` projection into
+that Service's repository as a generated file —
 `platform/resolved.yml` — and opens a pull request when it changes
 ([0033](../../docs/adr/0033-assignments-published-back.md)).
 
-The namespace is the one that left this list. It is now derived from `domain`,
-which the owner writes in the header of the file they are already editing, so
-answering "which namespace am I in" no longer needs a published assignment at
-all. It still appears in the projection, because the projection records every
-layer-2 decision whether or not the owner could have predicted it.
+Two entries left this list. The namespace is now derived from `domain`, which
+the owner writes in the header of the file they are already editing, so
+answering "which namespace am I in" needs no published assignment at all. The
+hostname followed it for another reason: `host` is authored, so the owner reads
+it back out of the line they wrote
+([0018](../../docs/adr/0018-exposure-by-audience.md)). Both still appear in the
+projection, because the projection records every layer-2 decision whether or not
+the owner could have predicted it — and on that path the decisions that remain
+are the tier and the middleware chain, not the name.
 
 | rule | why |
 |---|---|
@@ -623,7 +662,7 @@ reserve does the same thing to every eligible node set in the estate.
 
 The discipline is the one `homelab-inventory` already applies to `context/`:
 committed, generated, never hand-edited, with a drift check proving it still
-matches its inputs. Answering "what is my hostname, where may I run, or what is
+matches its inputs. Answering "which tier fronts me, where may I run, or what is
 my Vault path" becomes a `grep` in the owner's own checkout, with no render and
 no cluster access.
 
@@ -656,16 +695,21 @@ assigned:
   reconcileAfter: [apps-core, apps-data, apps-vso-secrets]
   healthTimeoutClass: stateful         # 10m — strongest class across the two Workloads
 
+  exposure:                            # on the Service: one host, its routes
+    public:
+      host: knowledge.jorisjonkers.dev # authored; carried through untouched
+      tier: public-frankfurt           # arbitrated: the tier carrying `authenticated`
+      middleware: [forward-auth]       # derived from audience + tier; the
+                                       # anonymous routes render without it
+      routes:                          # five authored, two shown
+        - {path: /mcp, match: exact,  workload: knowledge-api, surface: http, audience: anonymous}
+        - {path: /,    match: prefix, workload: knowledge-api, surface: http}
+
   workloads:
     knowledge-api:
       serviceAccount: knowledge-api    # the Workload name alone
       objectKind: Deployment
       image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-api@sha256:1ad39d5…
-      exposure:
-        kb:
-          host: kb.jorisjonkers.dev
-          tier: public-frankfurt
-          middleware: [forward-auth]
       probes:
         readiness: {path: /api/actuator/health/readiness, port: 8080}
         startup:   {periodSeconds: 5, failureThreshold: 120}
@@ -702,7 +746,17 @@ assigned:
         moveRequires: state-move-plan
 ```
 
-Three things in that block are worth reading closely.
+Four things in that block are worth reading closely.
+
+`exposure` sits beside `workloads:`, not inside one, because it belongs to the
+Service ([0018](../../docs/adr/0018-exposure-by-audience.md)): a host fronts
+Workloads, and the routes under it are how it picks between them. The projection
+records the entry even though the owner authored `host` and every route
+themselves, because the two lines they did not write are the ones worth a pull
+request — `tier` and `middleware`, which change when the platform's edge changes
+and not when the `knowledge` repository does. A route carrying `audience:
+anonymous` derives a different chain from the same host, which is the whole
+purpose of the override.
 
 `placement.declared` echoes back what the Workload authored, beside what the
 platform did with it. That is the whole of [Authority](#authority)'s first
@@ -730,27 +784,26 @@ two Workloads may not share a name (`E_DUPLICATE_WORKLOAD_NAME`).
 
 ## Open in this chapter
 
-1. **Whether the hostname label survives the contention rule.** The table above
-   places it as *unique — checked*, on the evidence that not one live hostname
-   is derivable from a Service Id: `knowledge` serves `kb`, `auth-api` serves
-   `auth`, `home-portal` the apex, `headlamp` `dashboard`, `gatus` `status`, and
-   `agents-api` serves two. If that placement really needs a third category
-   rather than a reading of the rule, premise
-   [0004](../../docs/adr/0004-contention-decides-authority.md) is falsified and
-   the rule is amended, not the table.
-   **Owner:** joris.
-   **Settled by:** deriving every row of the table above from the rule alone,
-   with no row marked as an exception — including the label, and including the
-   next field added to the model.
-   **Blocks:** 0004 moving from `open` to `settled`; the shape of the exposure
-   entry that carries the label in chapter 10.
-2. **Apex hosts need a convention.** `home-portal` serves the bare domain, and
-   `apex: true` is proposed rather than decided.
-   **Owner:** joris.
-   **Settled by:** rendering `home-portal`'s route from a declared apex marker
-   and diffing against the live IngressRoute; `E_DUPLICATE_APEX` where two
-   Services claim it.
-   **Blocks:** `home-portal` leaving hand-written manifests.
+1. ~~**Whether the hostname label survives the contention rule.**~~ There is no
+   label to survive. The evidence that settled it is the evidence that opened
+   it — `knowledge` serves `kb`, `auth-api` serves `auth`, `headlamp`
+   `dashboard`, `gatus` `status`, `agents-api` two — and the conclusion drawn
+   from it is that nothing derives a hostname at all: `host` is the full FQDN,
+   authored on the Service's `exposure` entry
+   ([0018](../../docs/adr/0018-exposure-by-audience.md)), placed
+   *unique — checked* above, and arbitrated only as a collision at composition
+   (`E_DUPLICATE_HOST`). No third category was needed and no row of the table is
+   an exception, so [0004](../../docs/adr/0004-contention-decides-authority.md)
+   stands as restated — who arbitrates, not who authors. What still keeps that
+   premise's claim open is item 5, not this one.
+2. ~~**Apex hosts need a convention.**~~ The convention is that an apex host
+   needs none. With `host` authored in full and no zone derivation anywhere,
+   `home-portal` writes `host: jorisjonkers.dev` exactly as `auth` writes
+   `host: auth.jorisjonkers.dev`; `apex: true` is not vocabulary
+   ([0018](../../docs/adr/0018-exposure-by-audience.md)). Two Services writing
+   the bare domain are one duplicated host like any other
+   ([chapter 40](40-composition.md#identity)), which is what `E_DUPLICATE_APEX`
+   names when the contested name is that one.
 3. **The drift check's failure mode for upstream-caused staleness.** A
    hand-edited `resolved.yml` fails the build. What is not settled is the copy
    that is merely behind — stale because someone else's change has not yet

@@ -1,0 +1,39 @@
+# adapter: kubernetes
+# real path: platform/cluster/flux/apps/data/platform-rabbitmq/servicemonitor.yaml
+#
+# From `scrape: {port: 15692, path: /metrics}`. The port resolves to the surface
+# name `metrics` through `provides` -- the same derivation postgres uses, over a
+# completely different integer, which is why the model declares surfaces rather
+# than assuming ports.
+#
+# Unlike postgres, the scrape target here is the MAIN container: rabbitmq's
+# prometheus plugin listens in-process. Nothing in the rendered objects
+# distinguishes the two cases, and nothing needs to -- which is the argument for
+# a surface being a property of the Workload rather than of a container.
+#
+# NO PROMETHEUSRULE. `alertClass: urgent` is declared on this Service, one step
+# below platform-postgres's `page` and one above platform-valkey's
+# `business-hours`, and all three derive nothing. README, gap G-33.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: rabbitmq
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: rabbitmq
+    app.kubernetes.io/instance: platform-rabbitmq
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: deploy-kit
+    release: metrics-stack             # CONTEXT: the operator's selector label
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rabbitmq
+      app.kubernetes.io/instance: platform-rabbitmq
+  namespaceSelector:
+    matchNames:
+      - data-system
+  endpoints:
+    - port: metrics
+      path: /metrics
+      # No `interval`, no `scrapeTimeout`: neither is derivable. README, gap G-19.

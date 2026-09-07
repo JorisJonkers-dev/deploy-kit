@@ -1,0 +1,254 @@
+# adapter: kubernetes
+# real path: platform/cluster/flux/apps/knowledge/knowledge/workload.yaml
+#
+# ONE Service (`knowledge`), TWO Workloads, therefore two controllers in one
+# file. The registered `kubernetes` adapter keys every object off the Service
+# name and emits exactly one controller per Service directory, so it cannot
+# produce this file as it stands -- README, gap G-01. It also names the file for
+# the object kind (`deployment.yaml`), not `workload.yaml`.
+#
+# ONE Kubernetes Service object, not two: `knowledge-ingest-worker` declares no
+# `provides`, so it has no surface, no listener and nothing to route to.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: knowledge-api
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/name: knowledge-api        # the Workload name
+    app.kubernetes.io/part-of: knowledge         # the Service id
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  # `replicas` is ASSIGNED from `minAvailable` and the eligible node set.
+  # `minAvailable` is ungraded (chapter 10, "Still to be graded" item 2) and
+  # chapter 20's projection assigns no value, so this render omits the field
+  # rather than inventing one. Kubernetes defaults it to 1.
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: knowledge-api
+  strategy:
+    # zeroDowntime: true, and no volumes on this Workload, so nothing forces
+    # Recreate.
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  progressDeadlineSeconds: 1800     # startupBudget 600s x 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: knowledge-api
+        app.kubernetes.io/part-of: knowledge
+        app.kubernetes.io/managed-by: deploy-kit
+    spec:
+      serviceAccountName: knowledge-api          # the Workload name ALONE
+      automountServiceAccountToken: true         # the VaultAuth for this
+                                                 # identity presents this token
+      securityContext:
+        # hardening: restricted, declared by absence. Four controls, no
+        # exceptions. runAsUser is deliberately absent: the class says
+        # "runAsNonRoot, with the UID from the image", so the UID has no
+        # declaring site in the model and none is invented here.
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      nodeSelector:
+        # The only placement dimension declared beyond memory and cpu.
+        # capabilities is a SET the node must carry; one member, so equality
+        # expresses it and no nodeAffinity is needed. Eligible node set:
+        # [frankfurt-contabo-1] -- the one node advertising public-ingress.
+        # memory and cpu produce no selector: they are checked against
+        # allocatable at build time and enforced by the scheduler at apply.
+        platform.jorisjonkers.dev/capability-public-ingress: "true"
+      containers:
+        - name: knowledge-api
+          # alias `knowledge-api` resolved through the images lock. Digest, never
+          # a tag: E_FLOATING_IMAGE.
+          image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-api@sha256:1ad39d5c0f4b8e2a7d61c3f95b8047ae2c9d1e6b3a5f8027c4d9e1b6a3f75c28
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          ports:
+            - name: http           # the surface name from `provides`
+              containerPort: 8080
+          envFrom:
+            # The env file, PARTITIONED. Literal keys and resolved
+            # ${dependency:...} coordinates are in the ConfigMap; every
+            # ${secret:...} key is in one of the three synced Secrets below.
+            - configMapRef:
+                name: knowledge-api-env
+            - secretRef:
+                name: platform-postgres-kb
+            - secretRef:
+                name: platform-rabbitmq
+            - secretRef:
+                name: knowledge-system-mcp-bearer
+          # NOTE: `envFrom` injects each Secret's OWN key names -- `user`,
+          # `password`, `rabbitmq.user`. The env file asks for DB_USER,
+          # DB_PASSWORD, RABBITMQ_USER. envFrom cannot rename, and
+          # `rabbitmq.user` is not even a legal env var name. See README,
+          # gap G-03 -- this is the largest single hole in the model as written.
+          startupProbe:
+            # Derived from startupBudget 600s: period 5s x threshold 120.
+            httpGet:
+              path: /api/actuator/health/readiness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 120
+          readinessProbe:
+            httpGet:
+              path: /api/actuator/health/readiness
+              port: http
+            timeoutSeconds: 5
+          livenessProbe:
+            # A DISTINCT path, declared as a sibling. Pointing this at the
+            # readiness endpoint turns a Postgres outage into a crash-loop.
+            httpGet:
+              path: /api/actuator/health/liveness
+              port: http
+            timeoutSeconds: 5
+          resources:
+            # From placement.memory 768Mi and placement.cpu 250m, under the two
+            # shape rules the author does not write: memory request == memory
+            # limit (incompressible), cpu request with NO cpu limit
+            # (throttling reads as slow application code).
+            requests:
+              memory: 768Mi
+              cpu: 250m
+            limits:
+              memory: 768Mi
+      # No volumes. readOnlyRootFilesystem is nevertheless true, and a JVM
+      # writes to /tmp. The model has no vocabulary for an ephemeral scratch
+      # volume -- `volumes` carries a claim and a durability class only -- so
+      # no emptyDir can be declared or derived. See README, gap G-04.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: knowledge-api
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/name: knowledge-api
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  selector:
+    app.kubernetes.io/name: knowledge-api
+  ports:
+    - name: http          # the port name IS the surface name from `provides`
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: knowledge-ingest-worker
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/name: knowledge-ingest-worker
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  # Deployment, not StatefulSet, per chapter 20's own projection for this
+  # Workload -- `volumeClaimTemplate` is forbidden, so a StatefulSet buys
+  # nothing over a pre-declared claim. What `stateful: true` then changes about
+  # the object kind is unstated; here it only picks the 10m health timeout
+  # class. See README, gap G-05.
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: knowledge-ingest-worker
+  strategy:
+    # Forced, not chosen: the ReadWriteOnce local-path claim below cannot
+    # attach to two pods at once. zeroDowntime: false records the same fact
+    # from the author's side.
+    type: Recreate
+  progressDeadlineSeconds: 360      # startupBudget 120s x 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: knowledge-ingest-worker
+        app.kubernetes.io/part-of: knowledge
+        app.kubernetes.io/managed-by: deploy-kit
+    spec:
+      serviceAccountName: knowledge-ingest-worker   # the SECOND identity
+      automountServiceAccountToken: true
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      # NO nodeSelector and NO nodeAffinity. This Workload declares memory and
+      # cpu and nothing else, and neither produces a selector. The node it
+      # actually lands on is pinned by the local-path PV binding, which is read
+      # from the ClusterState snapshot -- there is no snapshot in this example
+      # set, so `boundTo` cannot be rendered. See README, gap G-06.
+      containers:
+        - name: knowledge-ingest-worker
+          image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-ingest-worker@sha256:7c2e91b4a8d05f36e1b7c94a2d68f03b5e7a1c94d2b60f83a5e19c47b0d82f61
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          # NO ports. No `provides`, so no containerPort and no Service object.
+          envFrom:
+            - configMapRef:
+                name: knowledge-ingest-worker-env
+            - secretRef:
+                name: platform-postgres-kb
+            - secretRef:
+                name: platform-rabbitmq
+          # NOT here: knowledge-system-mcp-bearer. That grant is declared on
+          # knowledge-api, not on the Service, and this Workload's effective
+          # grant set is the Service list plus its own. Two identities is what
+          # makes that an access boundary rather than a comment.
+          #
+          # NO startupProbe, readinessProbe or livenessProbe. `probes: none` is
+          # declared, so the absence is a decision. startupBudget: 120s
+          # therefore feeds only progressDeadlineSeconds above -- its other
+          # consumer, the startup probe's period and threshold, has nothing to
+          # configure. See README, gap G-07.
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 50m
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: knowledge-vault-clone
+              mountPath: /var/lib/knowledge-vault
+            - name: vault-deploy-key
+              mountPath: /home/worker/.ssh/id_ed25519
+              subPath: id_ed25519
+              readOnly: true
+      volumes:
+        - name: knowledge-vault-clone
+          persistentVolumeClaim:
+            claimName: knowledge-vault-clone
+        - name: vault-deploy-key
+          # delivery: file. A projected volume, never an env var: an SSH private
+          # key is not a string a process reads from its environment.
+          projected:
+            # fileMode "0400" from the grant, as the DECIMAL int Kubernetes
+            # wants. Unquoted `0400` is 400 under a YAML 1.2 parser and 256
+            # under 1.1, so the renderer must convert rather than pass through.
+            defaultMode: 256
+            sources:
+              - secret:
+                  name: knowledge-system-vault-deploy-key
+                  items:
+                    - key: key
+                      path: id_ed25519
+          # `mountAt` is a FILE path, so the mount above needs subPath -- and a
+          # subPath mount does not track later Secret updates. Consistent here
+          # only because rotation.tolerates is `restart` and the
+          # VaultStaticSecret restarts this Deployment.
+          #
+          # At mode 0400 the file is owned root:root, and the container runs as
+          # a non-root UID from the image. As declared, the process cannot read
+          # its own deploy key. Fixing it needs fsGroup or a known UID, neither
+          # of which the model can express. See README, gap G-08.
