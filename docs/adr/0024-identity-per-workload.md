@@ -2,7 +2,7 @@
 tier: decision
 status: proposed
 claim: settled
-date: 2026-08-31
+date: 2026-09-07
 normative: spec/v1/16-dependencies.md#workload-identity
 rests-on: ["0009"]
 ---
@@ -10,10 +10,11 @@ rests-on: ["0009"]
 # Workloads hold their own identity
 
 The ServiceAccount and the Vault Kubernetes auth role are derived **per
-Workload**, named `<service>-<workload>`; a single-Workload Service collapses to
-`<service>`. The policy bound to a Workload's role is exactly its effective
-grant set ([0022](0022-grants-live-on-the-service.md)) — never a sibling's — and
-no author writes an identity name ([0030](0030-runtime-mechanics-derived.md)).
+Workload** and named for the Workload alone: `auth-system.auth-api`, never
+`auth-system.auth-auth-api`. The policy bound to a Workload's role is exactly
+its effective grant set ([0022](0022-grants-live-on-the-service.md)) — never a
+sibling's — and no author writes an identity name
+([0030](0030-runtime-mechanics-derived.md)).
 
 ## Rests on
 
@@ -53,10 +54,17 @@ below the path — so the identity is the only place that boundary can exist.
 
 Splitting the identity makes [0022](0022-grants-live-on-the-service.md)'s levels
 mean something: Service-level *is* shared, Workload-level *is not*, both enforced
-by the token the Pod presents. The collapse keeps identities already live —
-`auth-api` runs `VAULT_KUBERNETES_ROLE: auth-api` today — and the dead-grant and
-unauthorised-reference checks ([0027](0027-secret-reference-join-key.md)) gain a
-subject: the Workload.
+by the token the Pod presents, and the dead-grant and unauthorised-reference
+checks ([0027](0027-secret-reference-join-key.md)) gain a subject: the Workload.
+
+The derived name is the Workload's own. Under domain files
+([0063](0063-intent-authored-per-domain.md)) Service `auth` holds Workload
+`auth-api`, so `<service>-<workload>` would render `auth-system.auth-auth-api`
+for no gain: the Workload name is already the process name and already what
+runs, `auth-api` presenting `VAULT_KUBERNETES_ROLE: auth-api` today. Uniqueness
+moves to the domain file, where two Workloads may not share a name
+(`E_DUPLICATE_WORKLOAD_NAME`) — the guarantee the prefix existed to give,
+enforced where a reader can check it.
 
 ## Alternatives
 
@@ -72,16 +80,18 @@ Undo cost today: one adapter function (`serviceAccountName`,
 `src/adapters/kubernetes.ts:665-669`), the Vault role and policy derivation
 beside it, and `## Workload identity` in `../../spec/v1/16-dependencies.md` —
 hours, blast radius is object count, not authoring. Becomes irreversible once:
-production Vault policies and auth roles carry `<service>-<workload>` names and
-tokens are issued against them; collapsing back re-binds every role to the union
+production Vault policies and auth roles carry per-Workload names and tokens
+are issued against them; collapsing back re-binds every role to the union
 of its Workloads' grants, widening live access silently rather than loudly.
 
 ## Consequences
 
 - A Service with *n* Workloads renders *n* ServiceAccounts, policies and auth
-  roles instead of one of each, all derived; a single-Workload Service still
-  renders one, so live identities such as `auth-api` survive — paid by the
-  platform in object count, not by authors.
+  roles instead of one of each, each named for its Workload, so live identities
+  such as `auth-api` survive unchanged — paid by the platform in object count.
+- Identity uniqueness now comes from the domain file, not the name's shape: two
+  Workloads in one domain sharing a name is `E_DUPLICATE_WORKLOAD_NAME` at
+  composition — paid by authors, in one more invariant to satisfy.
 - A Workload-level grant becomes a boundary a sibling cannot cross — paid by
   nobody; it is the benefit the declaration always claimed.
 - Renaming a Workload renames its identity: role, policy and bindings churn, and

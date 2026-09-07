@@ -1,0 +1,344 @@
+# Worked example — the data domain's Intent Fragment
+#
+#   collections/data/platform/data.yml
+#
+# THREE Services in one file. They are neighbours, not a unit: co-location in a
+# domain file couples nothing, and each of the three releases on its own
+# (docs/adr/0062-service-is-the-release-unit.md,
+# docs/adr/0063-intent-authored-per-domain.md). "Every Service in a domain file
+# releases as one" was considered and rejected exactly because it would let
+# someone couple nine rollouts by editing an unrelated line. Atomicity stops at
+# the Service boundary; the file is an authoring and publication unit.
+#
+# None of the three has a repository of its own. The data domain ships from
+# homelab-collections, and publication is repository-scoped, so the domain may
+# stay there or split out later -- composition behaves identically
+# (docs/adr/0037-composition-oci-fragments.md). What may not happen is a domain
+# spanning two repositories: this file is the whole domain.
+#
+# Exercises: three independently released Services, a third-party image behind
+# an alias with `runtime: none`, a declared hardening exception, structured
+# `disk` placement, TCP probes, a static Asset, a proposed sidecar, all three
+# Durability Classes, and `provides` consumed by eight Services.
+#
+# Companion env file (per Workload, like every env file):
+#   platform/env/postgres/base.env   -- examples/platform-postgres.base.env
+
+# The data model's own semver, not the toolkit's
+# (docs/adr/0039-artifact-schema-versioning.md).
+schemaVersion: 1.0.0
+
+domain: data              # namespace derives: data-system
+owner: joris              # one owner for every Service in the file; a Service
+                          # needing a different owner needs its own domain
+
+services:
+  # ======================================================= platform-postgres
+  - id: platform-postgres
+    alertClass: page        # eight Services depend on it
+
+    workloads:
+      - name: postgres
+        # `platform-postgres` is the repository/product name; `postgres` is what
+        # the process is actually called. That is not a divergence needing a
+        # field to record it -- it is the name
+        # (docs/adr/0063-intent-authored-per-domain.md). The identity derived
+        # from it is `data-system.postgres`.
+        lifecycle: service
+
+        # An ALIAS, resolved to a digest through the images lock -- exactly like
+        # a first-party image. Third-party is not a reason to exempt the most
+        # stateful workload in the estate: `pgvector/pgvector:pg17` is a mutable
+        # tag that moves on every upstream build, and this Workload is Recreate
+        # on a local-path RWO volume, so any reschedule is a fresh pull.
+        # Renovate raises the digest bump behind the ordering gate
+        # (docs/adr/0040-renovate-ordering-gate.md), and every rendered
+        # Deliverable stays E_FLOATING_IMAGE clean.
+        image: postgres
+
+        # No Runtime Profile. A third-party image cannot consume OTEL_* or
+        # PYROSCOPE_* wiring, and injecting it would be noise. 'none' says so
+        # deliberately rather than leaving `runtime` unset.
+        runtime: none
+
+        # Declared on the Workload that opens the sockets. Every consumer names
+        # the Service and the surface, never the port -- `dependsOn` targets
+        # `{service, surface}`, and surface names are unique within a Service.
+        # The eight consumers today: auth (its api Workload), agents-api,
+        # knowledge (api and ingest worker), lightrag, n8n, outline, and the
+        # observability backup jobs.
+        #
+        # NOTE: the live cluster names this port 'db', not 'postgres'. Naming
+        # the surface for what it serves is the right call, so this is a
+        # deliberate rename recorded as a parity entry rather than a divergence.
+        provides:
+          postgres: 5432
+          metrics: 9187
+
+        placement:
+          # The datastore eight Services queue behind. Raw quantities, matched
+          # against node allocatable from the pinned node contract
+          # (docs/adr/0061-placement-is-hard-dimensions.md,
+          # docs/adr/0056-node-facts-single-source.md).
+          memory: 2Gi           # request == limit
+          cpu: 500m             # request only, no limit
+          arch: [amd64]         # pgvector publishes no arm64 build of pg17
+
+          # Structured, and a SET where a set makes sense: nvme or ssd, either
+          # is acceptable, with no ordering between them. The three Pis carry a
+          # 64G sdcard and nothing else, so `media` alone excludes them and the
+          # 100Gi ask excludes them twice over -- which is the point. Under the
+          # deleted class model this Workload could sit beside a placement
+          # admitting only the Pis, pass the build, and go Pending at apply.
+          #
+          # `disk` filters FIRST placement only. Once a PV is bound, the binding
+          # wins, and a `disk` value that contradicts an existing binding in the
+          # pinned ClusterState is E_DISK_BINDING_CONFLICT
+          # (docs/adr/0034-cluster-state-pinned-input.md).
+          #
+          # This is the NODE's disk, not the claim's. The PVC's storage class
+          # and size are still assigned (chapter 20); this dimension only
+          # decides which nodes are eligible to hold it.
+          disk:
+            media: [nvme, ssd]
+            size: 100Gi
+
+        # The class still defaults to `restricted` and the other three controls
+        # stand: the pod runs as uid 999, drops all capabilities and takes
+        # seccomp RuntimeDefault. Only the named control is relaxed, and only
+        # with a reason -- the same shape a derived-value override uses
+        # (docs/adr/0031-derived-overrides-with-reason.md). The vocabulary of
+        # `allow` is the inverse of the four restricted controls: runAsRoot,
+        # writableRootFilesystem, capability:<NAME>, seccompUnconfined
+        # (docs/adr/0016-pod-hardening.md).
+        #
+        # One of two declared exceptions in the example set; the other is nginx
+        # in domains/auth.yml.
+        hardening:
+          exceptions:
+            - allow: writableRootFilesystem
+              reason: >-
+                The upstream postgres entrypoint writes its unix socket to
+                /var/run/postgresql and lock files under /tmp before the server
+                starts, and upstream publishes no read-only-root variant.
+                runAsNonRoot is NOT excepted: the PV is already owned by uid
+                999, so the pod runs non-root as it does today. This exception
+                is this image's line in the estate's inventory of what it
+                cannot harden, and it retires when a rebuilt image relocates
+                the socket.
+
+        # PROPOSED FIELD -- chapter 10, "Still to be graded". postgres-exporter
+        # runs in the same pod and serves the metrics port. stalwart
+        # (stalwart-apply) and agent-runner (the agent-gateway jar) have the
+        # same shape, so this is not an edge case. The sidecar's image is an
+        # alias for the same reason the Workload's is; whether the graded field
+        # types it as an alias or a ref, and whether a sidecar carries its own
+        # `placement` and `hardening`, is the open half.
+        sidecars:
+          - name: postgres-exporter
+            image: postgres-exporter
+
+        # TCP, not HTTP. postgres has no HTTP surface, and this is what the live
+        # probes do -- tcpSocket on port db for both. An HTTP-only probe
+        # vocabulary could not express the estate's data tier at all
+        # (docs/adr/0014-probes-are-siblings.md).
+        probes:
+          readiness: {tcp: 5432}
+          liveness:  {tcp: 5432}
+
+        startupBudget: 60s
+        zeroDowntime: false
+        # Forced, not chosen. A ReadWriteOnce local-path volume cannot attach to
+        # two pods at once, so the strategy derives to Recreate -- which is what
+        # runs today, and why 21 of 30 workloads in this cluster use Recreate.
+
+        stateful: true
+        volumes:
+          - claim: postgres-data
+            mountAt: /var/lib/postgresql/data
+            durability: irreplaceable
+            # The one fact only the owning Service knows
+            # (docs/adr/0015-durability-class-per-volume.md); schedule, sweep
+            # and destination are derived. This is the database eight Services
+            # queue behind, on a `local-path` volume in a cluster with no
+            # VolumeSnapshot CRDs and no CSI snapshot support, so losing the
+            # node loses every consumer's data at once. `irreplaceable` renders
+            # a backup job with a retention sweep plus an off-cluster copy, and
+            # its restore must be rehearsed before the first production apply
+            # (docs/adr/0057-datastore-and-restore.md) -- which is the gap the
+            # workspace backup-coverage decision recorded, where each job writes
+            # a fixed filename so the PVC holds only the newest copy:
+            # https://github.com/JorisJonkers-dev/workspace/blob/main/docs/decisions/ADR-0011-backup-coverage-gaps.md
+            #
+            # Not declared: storage class and 20Gi -- both draw on finite node
+            # disk and are assigned.
+
+        assets:
+          # Fully static: zero derived values in 54 lines. Baking it into the
+          # image was rejected because that means a derived image, a build
+          # pipeline, a registry entry and a Renovate rule, plus a rebuild on
+          # every upstream pg17 bump -- to change one settings file
+          # (docs/adr/0012-assets-not-code.md).
+          - from: config/postgresql.conf
+            mountAt: /etc/postgresql/postgresql.conf
+            onChange: restart
+
+          # NOT declared: init-databases.sh.
+          #
+          # Its 98 lines create one database and one owning user per consuming
+          # Service -- auth_db, agents_db, knowledge_db, n8n_db -- which the
+          # dependency graph already knows from inbound edges and grants. It
+          # becomes a derived Deliverable (chapter 16). An executable is code,
+          # and code is not configuration.
+          #
+          # It also reads /run/secrets/<name>, a Docker Compose convention that
+          # does not exist in Kubernetes, then falls back to env vars. That dead
+          # path is how long the file has gone unexamined.
+
+        scrape:
+          port: 9187            # resolves to port name 'metrics' via provides
+          path: /metrics
+
+        # Declared on the Workload rather than the Service: it is consumed by
+        # the postgres-exporter sidecar, which lives inside this Workload.
+        #
+        # SPLIT PATH, one path per reader set
+        # (docs/adr/0023-grant-unit-is-the-path.md). The exporter's datasource
+        # used to sit in the same document as every consumer's credentials, so
+        # holding `read` for the exporter meant holding `read` on auth's and
+        # knowledge's database passwords too -- a KV-v2 read returns the whole
+        # document. The subtree is now:
+        #
+        #   .../platform/postgres/auth       -> auth's api Workload
+        #   .../platform/postgres/kb         -> knowledge (both Workloads)
+        #   .../platform/postgres/exporter   -> this Workload
+        #
+        # The data domain owns that Subtree and lists the readers of each path,
+        # which is what makes "who breaks if I rotate this" answerable without
+        # reading live Vault contents. postgres itself does not read its
+        # consumers' credentials; each consumer declares its own grant.
+        #
+        # `delivery: env`, so this Service is refused until the pinned Cluster
+        # Context advertises `secretsEncryption: true` --
+        # E_SECRETS_AT_REST_REQUIRED (docs/adr/0028-secrets-at-rest-gate.md).
+        secrets:
+          - path: secret/data/platform/postgres/exporter
+            keys: [datasource]
+            access: read
+            delivery: env
+            rotation: {tolerates: restart}
+
+  # ======================================================= platform-rabbitmq
+  #
+  # A second Service in the same file and the same namespace. It shares nothing
+  # with postgres: not a release, not an identity, not a grant. `data-system`
+  # holds three Services by construction, so it is NOT a trust boundary -- no
+  # isolation claim may rest on the namespace wall. Isolation here is the
+  # derived default-deny edge set, evaluated per pod
+  # (docs/adr/0035-network-policy-default-deny.md), plus per-Workload identity
+  # (docs/adr/0024-identity-per-workload.md).
+  - id: platform-rabbitmq
+    alertClass: urgent      # its own urgency, not the domain's: raising
+                            # alertClass to the header would make this file page
+                            # as loudly as postgres does
+
+    workloads:
+      - name: rabbitmq
+        lifecycle: service
+        image: rabbitmq     # an alias, resolved through the images lock
+        runtime: none       # third-party image; no profile values to inject
+
+        provides:
+          amqp: 5672        # named by auth and knowledge in `dependsOn`
+          management: 15672
+          metrics: 15692    # the prometheus plugin's own listener
+
+        placement:
+          memory: 2Gi       # the broker the estate's async work queues behind
+          cpu: 500m
+
+        # No `hardening` exceptions: the upstream image runs non-root with a
+        # read-only root filesystem once its mnesia directory is a volume.
+
+        exposure:
+          - port: 15672
+            audience: authenticated
+            # The management UI, behind forward-auth. This is the inbound edge
+            # that puts `rabbitmq` among the nine hostnames auth's CORS list
+            # maintains by hand today -- under this model that list derives from
+            # edges like this one rather than being retyped (chapter 16).
+
+        probes:
+          readiness: {tcp: 5672}
+          liveness:  {tcp: 5672}
+
+        startupBudget: 120s
+        zeroDowntime: false   # RWO local-path volume: Recreate, derived
+
+        stateful: true
+        volumes:
+          - claim: rabbitmq-data
+            mountAt: /var/lib/rabbitmq
+            durability: recoverable
+            # One step below `irreplaceable`
+            # (docs/adr/0015-durability-class-per-volume.md): a nightly
+            # application-level backup with a retention sweep suffices, and no
+            # off-cluster copy is required. Losing the mnesia directory costs
+            # undelivered messages and the definitions, not a consumer's data.
+
+        scrape:
+          port: 15692       # resolves to port name 'metrics' via provides
+          path: /metrics
+
+        # No `secrets`, and therefore no env file placeholder to bind. This
+        # Workload reads no Secret Store path: its clients hold the grants --
+        # knowledge reads `secret/data/platform/rabbitmq`, and auth's api
+        # Workload keeps its broker credentials in its own document.
+
+  # ========================================================= platform-valkey
+  - id: platform-valkey
+    alertClass: business-hours    # a cache: losing it is slow, not silent
+
+    workloads:
+      - name: valkey
+        lifecycle: service
+        image: valkey       # an alias, resolved through the images lock
+        runtime: none
+
+        provides:
+          redis: 6379       # the surface auth's api Workload names; the wire
+                            # protocol is the surface's name, not the product's
+
+        placement:
+          memory: 256Mi
+          cpu: 50m
+          # No further dimensions. The image is multi-arch and this Workload
+          # needs no node capability, so every node is eligible -- which is what
+          # a cache should be, and what a `tailscale` filter would have
+          # pretended to narrow while excluding none of the 7.
+
+        probes:
+          readiness: {tcp: 6379}
+          liveness:  {tcp: 6379}
+
+        startupBudget: 30s
+        zeroDowntime: false
+
+        stateful: true
+        volumes:
+          - claim: valkey-data
+            mountAt: /data
+            durability: reconstructible
+            # The estate's own words for this volume: "deliberately unbacked as
+            # reconstructible cache". Losing it costs a rebuild, not data, so no
+            # backup job is rendered at all
+            # (docs/adr/0015-durability-class-per-volume.md). Stating the class
+            # is what makes that a decision rather than an omission. The class
+            # is also the model's gate on destruction -- a claim backing
+            # non-`reconstructible` data may not be removed as a side effect of
+            # a render -- and this is the one class that gate does not cover,
+            # which is a further reason to write it down rather than infer it.
+
+        # No `scrape`. No exporter runs beside this Workload today, so there is
+        # no metrics surface to declare and none is invented
+        # (docs/adr/0021-observability-scrape-and-alert-class.md).

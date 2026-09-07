@@ -1,0 +1,30 @@
+# Fixture A — the knowledge domain, one Intent Fragment.
+#
+# Valid on its own: the union with intent-b is what must fail, and it must fail
+# with E_DUPLICATE_SERVICE_ID rather than for any other reason.
+
+# A literal, and legitimately so. schemaVersion is the DATA MODEL's own semver
+# (docs/adr/0039-artifact-schema-versioning.md), not the toolkit package's, and
+# composition admits same-major with minor <= toolkit. Under the superseded
+# equality assert this literal went stale on the next toolkit release and the
+# fixture was rejected by E_SCHEMA_VERSION_MISMATCH before the union ever
+# evaluated identity -- while the gate-can-fail step, which tested only for a
+# non-zero exit, still printed success.
+schemaVersion: 1.0.0
+
+# One file per domain, one file one Intent Fragment
+# (docs/adr/0063-intent-authored-per-domain.md). `owner` is the only field the
+# header raises.
+domain: knowledge
+owner: joris
+
+services:
+  - id: knowledge
+    alertClass: business-hours
+    workloads:
+      - name: knowledge-api
+        lifecycle: service
+        image: knowledge-api
+        runtime: jvm
+        placement: {memory: 768Mi, cpu: 250m}
+        probes: none

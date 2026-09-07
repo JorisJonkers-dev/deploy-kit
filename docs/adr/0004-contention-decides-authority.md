@@ -3,7 +3,7 @@ tier: premise
 status: proposed
 claim: open
 owner: joris
-date: 2026-08-31
+date: 2026-09-07
 normative: spec/v1/20-resolved-deployment.md#authority
 ---
 
@@ -11,12 +11,13 @@ normative: spec/v1/20-resolved-deployment.md#authority
 
 ## Rests on
 
-A value is platform-assigned if and only if it must be unique across the
-estate or draws on a shared finite resource; every other value is
-Service-declared — and this single test partitions every field in the model
-with no residue. False if: any field needs a third category, or the authority
-table needs an exceptions row to hold. Settled by: the table at
-[../../spec/v1/20-resolved-deployment.md#authority](../../spec/v1/20-resolved-deployment.md#authority)
+Contention decides who **arbitrates** a value, not who authors it: a value
+unique across the estate or drawing on a shared finite resource is arbitrated
+by the platform, which decides whether a stated requirement fits and where;
+every other value is Service-declared and carried through untouched — and this
+test partitions every field in the model with no residue. False if: any field
+needs a third category, or the authority table needs an exceptions row to hold.
+Settled by: the authority table in [chapter 20](../../spec/v1/20-resolved-deployment.md#authority)
 deriving every one of its rows from the rule alone, with no exception noted.
 
 ## Why
@@ -33,10 +34,16 @@ fix, which is how the estate arrived here.
 
 The rule replaces a per-field negotiation with a one-question test: does the
 value contend? A hostname must be unique across the estate; a node slot is a
-draw on a finite pool; those are assigned, with Service Intent expressing only
-the need. A value only its own Service cares about contends with nothing, so
-the Service declares it outright and the platform carries it through
-untouched.
+draw on a finite pool. Contention does not silence the Service — it means the
+Service does not get the last word: the Service states its requirement, the
+platform decides whether it fits and where. Placement forced that reading.
+`memory` and `cpu` are authored per Workload as raw quantities
+([0061](0061-placement-is-hard-dimensions.md)) and both are contended, so an
+authors-only rule would forbid the field and leave the estate where it is —
+BestEffort on every pod, because a number no Service may write is a number
+nobody writes. The platform arbitrates against node `allocatable` from the
+pinned node contract ([0056](0056-node-facts-single-source.md)) and rejects what
+no node can hold with `E_PLACEMENT_UNSATISFIABLE`.
 
 This record deliberately carries the rule and no field table. The old record
 carried an illustrative worked list, and that list drifted four times against
@@ -88,3 +95,6 @@ that is a schema-shape change paid again in every consuming repository.
   who give up local worked lists like the one that drifted four times.
 - A field the rule cannot place falsifies the premise and forces a rule
   amendment, never a table exception — paid by the claim owner (joris).
+- Nothing stops an author writing `memory: 8Gi`: the rule places arbitration,
+  not restraint, and no arbitration exists yet beyond the scheduler refusing to
+  place the pod — paid by the estate, in capacity claimed but not used.

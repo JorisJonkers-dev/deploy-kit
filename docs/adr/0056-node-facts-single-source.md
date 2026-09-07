@@ -2,7 +2,7 @@
 tier: decision
 status: proposed
 claim: settled
-date: 2026-08-31
+date: 2026-09-07
 normative: spec/v1/60-setup.md#node-facts
 rests-on: ["0005"]
 ---
@@ -22,25 +22,23 @@ for all 7 hosts with `nix flake check` green.
 
 ## Why
 
-Each node is declared three times by hand.
-`nix-config/inventory/nodes/<n>.yml` carries 37–83 lines of capacity, ssh,
-disks, longhorn and taints; `nix-config/nix/hosts/<n>/default.nix` carries
-`platformBlueprints.k3s.nodeLabels`, the labels actually applied to the live
-node; `homelab-inventory/node-contract/inputs/<n>.yml` carries labels and
-capacity a third time in different casing — `cpuMillicores` against
+Each node is declared three times by hand. `nix-config/inventory/nodes/<n>.yml`
+carries 37–83 lines of capacity, ssh, disks, longhorn and taints;
+`nix-config/nix/hosts/<n>/default.nix` carries the labels actually applied to
+the live node; `homelab-inventory/node-contract/inputs/<n>.yml` carries labels
+and capacity a third time in different casing — `cpuMillicores` against
 `cpu_millicores`. Three further artifacts are generated from those inputs, and
 the estate does not claim they agree: `specs/002-node-contract-drift` and
 `scripts/audit-node-labels.sh` exist only to police the disagreement.
 
 The duplication shows in the output. `nix-config/generated/node-contract.yml`
 emits **110 labels for 7 nodes** — 55 under `platform.jorisjonkers.dev/*` and
-the same 55 under `personal-stack/*`. The `.nix` files author only the latter,
-named after `ExtraToast/personal-stack`, an **archived** repository that
-rejects pushes: the live labels are named after a repository nobody can commit
-to. The renderer inherited the name — `src/adapters/flux-utils.ts:957-962`
-builds its selector key from `platform.name`, so
-`test/fixtures/kubernetes-parity/postgres-derived.yaml:13` renders
-`personal-stack/site: frankfurt`.
+the same 55 under `personal-stack/*`, the latter named after
+`ExtraToast/personal-stack`, an **archived** repository that rejects pushes: the
+live labels carry a name nobody can commit to. The renderer inherited it —
+`src/adapters/flux-utils.ts:957-962` builds its selector key from
+`platform.name`, so `test/fixtures/kubernetes-parity/postgres-derived.yaml:13`
+renders `personal-stack/site: frankfurt`.
 
 One YAML file per node is the source; node contract, k3s label set and nix host
 configuration are all generated from it. Nix reads generated data
@@ -48,11 +46,19 @@ configuration are all generated from it. Nix reads generated data
 `nix-config/inventory/` is deleted rather than kept in sync. Nix then builds
 machines and stops being the place the deployment model must read to learn
 where anything can run — the precondition for
-[0017](0017-placement-by-capability.md), whose capabilities need one advertised
-label set to validate against. Retiring the dead prefix goes through
-the generated contract rather than a `kubectl label`, which the [estate agent
+[0061](0061-placement-is-hard-dimensions.md), which matches every declared
+dimension against these facts. Retiring the dead prefix goes through the
+generated contract rather than a `kubectl label`, which the [estate agent
 contract](https://github.com/JorisJonkers-dev/workspace/blob/main/CLAUDE.md)
 warns drifts back on the next reconcile.
+
+Placement makes the contract's shape load-bearing. Per node it publishes `site`,
+`allocatable` cpu and memory — the node total minus a reserve declared in the
+same node file, never a live read ([0006](0006-pinned-inputs.md)) — `gpus[]`
+with `class` and `memory_mib`, and `disks[]` with `media` and `usable_gib`.
+Structure, not labels: `enschede-gtx-960m-1` and `enschede-t1000-1` both
+advertise `nvidia`; only `memory_mib: 2048` on the 960M's Maxwell card separates
+them.
 
 ## Alternatives
 
@@ -79,8 +85,12 @@ describe the cluster, and reverting means relabelling 7 nodes back.
 - `nix-config/inventory/` is deleted, and with it the reason
   `specs/002-node-contract-drift` and `scripts/audit-node-labels.sh` exist —
   paid by the platform owner.
-- A capability or capacity fact exists only once the node YAML declares it —
-  paid by the platform owner.
+- A capability, GPU, disk or capacity fact exists only once the node YAML
+  declares it — paid by the platform owner.
+- `allocatable` is authored, so the reserve is a guess until reconciled against
+  `kubectl describe node`; on the 4096Mi `enschede-pi-2` and `enschede-pi-3` it
+  is a large fraction of the node, and a wrong guess bites there first — a pod
+  the contract says fits and the scheduler refuses — paid by the platform owner.
 - Retiring `personal-stack/*` touches no service repository but does mean
   relabelling live nodes through the contract — paid by the platform owner.
 - The selector key comes from the contract’s prefix rather than `platform.name`,

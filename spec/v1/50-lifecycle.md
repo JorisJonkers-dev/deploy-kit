@@ -71,9 +71,10 @@ event produces one.
 |---|---|---|
 | a Service repository merges an Intent change and republishes its fragment | **yes** | a new fragment digest is a new input, whether the change was an image, a grant, an exposure or an edge |
 | a fragment republishes with byte-identical content | no | digests are content-addressed, so the input set has not moved |
-| the Cluster Context is republished — a tier, an audience, a capability, a `size` class, a platform fact | **yes** | Context is a pinned input, republished deliberately |
+| the Cluster Context is republished — a tier, an audience, a capability, a platform fact | **yes** | Context is a pinned input, republished deliberately |
 | the images lock resolves an alias to a new digest | **yes** | the rendered image reference changes |
 | a PV rebinds after a node failure; a node joins or leaves | **yes** | the ClusterState snapshot changes, so `clusterStateDigest` changes, and the rebind lands as a visible decision rather than as drift |
+| a node contract republishes new `allocatable` — a reserve is retuned, RAM is added | **yes** | placement is matched against allocatable, so eligibility can change without any Intent changing |
 | a pod restarts; a Kustomization reports Ready; a health check flips | no | that is what is *running*. Chapter 20 keeps the health document (`cluster-state.schema.json`) distinct from the pinned ClusterState snapshot; only the snapshot is an input |
 | the toolkit is upgraded with no model change | no | `schemaVersion` is the data model's own semver and moves only on a model change ([0039](../../docs/adr/0039-artifact-schema-versioning.md)); the lock records the exact versions it was composed under |
 
@@ -113,13 +114,14 @@ without diffing published artefacts.
 
 ## Release Unit switchover
 
-The field and its authoring rules are chapter 10's:
-[`releaseUnit`](10-service-intent.md#release-units) is a string declared in
-layer 1, at most one per Service, and composition materialises the set of
-Services sharing a name. This section is the lifecycle view.
+Membership is structural, not declared: **a Service is the Release Unit**, and
+its members are its Workloads ([0062](../../docs/adr/0062-service-is-the-release-unit.md)).
+Nothing names a unit, because nothing needs to — things that must switch
+together are Workloads of one Service, and things that must not are separate
+Services. Chapter 10's [Service identity](10-service-intent.md#service-identity)
+carries the authoring rules; this section is the lifecycle view.
 
-**The Release Unit is the unit of switchover.** The rule
-([0060](../../docs/adr/0060-release-unit.md)): no member's new version receives
+**The Service is the unit of switchover.** The rule: no member's new version receives
 traffic until every member's new version is healthy; if any member fails its
 budget, none switch and the old versions keep serving.
 
@@ -132,8 +134,8 @@ Every term in that rule is already defined elsewhere in the model:
 | **switch** | the moment traffic reaches the new versions rather than the old | the delivery mechanism performs it; the model states when it may happen |
 
 A Workload declaring `probes: none` publishes no readiness signal and so cannot
-contribute to the gate. A Release Unit member must therefore declare readiness
-on at least one Workload — `E_RELEASE_UNIT_NO_READINESS`, a composition-time
+contribute to the gate. A Service must therefore declare readiness on at least
+one Workload — `E_RELEASE_UNIT_NO_READINESS`, a composition-time
 check in [chapter 40](40-composition.md#versioning)'s estate-wide invariants,
 not something a delivery mechanism discovers at apply time.
 
@@ -155,29 +157,31 @@ consistent — there is no state in which half a unit has been reverted.
 | | Release Unit | Reconcile Unit |
 |---|---|---|
 | answers | what switches together | what applies before what |
-| origin | **declared** — `releaseUnit` on each member | **derived** from the dependency graph ([0032](../../docs/adr/0032-reconcile-unit-derived.md)) |
+| origin | **structural** — the Service boundary; its members are its Workloads | **derived** from the dependency graph ([0032](../../docs/adr/0032-reconcile-unit-derived.md)) |
 | property | atomicity | ordering |
-| worked case | `auth-api` + `auth-ui`: a new UI against an old API is a broken product although each pod reports healthy | `platform-postgres` before `knowledge`: the consumer cannot start without its provider |
-| membership changes when | an author edits `releaseUnit` | an edge is added or removed |
+| worked case | Service `auth`, Workloads `auth-api` + `auth-ui`: a new UI against an old API is a broken product although each pod reports healthy | `platform-postgres` before `knowledge`: the consumer cannot start without its provider |
+| membership changes when | a Workload joins or leaves the Service | an edge is added or removed |
 
-Atomicity is declared rather than derived because lockstep release is a product
-choice the graph cannot see. The frontend depends on the API, but a dependency
-edge does not mean the two must cut over together; deriving atomicity from every
-edge takes the transitive closure and turns the estate into one unit, making
-every deploy estate-wide.
+Atomicity follows the Service boundary rather than the dependency graph because
+lockstep release is a product choice the graph cannot see. The frontend depends
+on the API, but a dependency edge does not mean the two must cut over together;
+deriving atomicity from every edge takes the transitive closure and turns the
+estate into one unit, making every deploy estate-wide. Drawing the boundary is
+therefore the decision, and a pair that must release together but cannot be one
+Service is evidence the boundary is drawn wrong.
 
 ```mermaid
 flowchart LR
-    N["new lock renders<br/>every member of the unit"] --> A1["auth-api<br/>new version starts"]
+    N["new lock renders<br/>every Workload of the Service"] --> A1["auth-api<br/>new version starts"]
     N --> A2["auth-ui<br/>new version starts"]
     A1 --> P1{"readiness<br/>within budget?"}
     A2 --> P2{"readiness<br/>within budget?"}
-    P1 -->|yes| K{"every member<br/>ready?"}
+    P1 -->|yes| K{"every Workload<br/>ready?"}
     P2 -->|yes| K
-    P1 -->|no| H["hold the unit<br/>old versions keep serving"]
+    P1 -->|no| H["hold the Service<br/>old versions keep serving"]
     P2 -->|no| H
-    K -->|yes| SW["switch all members together"]
-    H --> RB["fix forward, or revert the unit<br/>to the previous lock"]
+    K -->|yes| SW["switch all Workloads together"]
+    H --> RB["fix forward, or revert the Service<br/>to the previous lock"]
 ```
 
 ## Expand and contract
@@ -238,9 +242,9 @@ flowchart TB
     S["ClusterState snapshot changes<br/>PV rebinds, node joins or leaves"] --> C
     C --> L["new lock<br/>fragments + context + images + clusterStateDigest"]
     L --> R["render<br/>registered adapters, renderHash"]
-    R --> G{"members of a<br/>releaseUnit?"}
+    R --> G{"Service has more<br/>than one Workload?"}
     G -->|"no"| D["delivery and co-testing<br/>defined separately<br/>docs/adr/deferred/"]
-    G -->|"yes"| U["all-or-nothing switchover<br/>gated on every member ready"]
+    G -->|"yes"| U["all-or-nothing switchover<br/>gated on every Workload ready"]
     U --> D
     C -.->|"E_CONTRACT_TOO_EARLY"| B["no lock.<br/>Nothing renders."]
     style D stroke-width:2px,stroke-dasharray:6 4;
