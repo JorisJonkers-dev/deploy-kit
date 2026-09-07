@@ -60,7 +60,7 @@ the spec chapter carries.
 |---|---|---|
 | Keep policy opt-in, one flag per Service | Zero migration, no baseline needed, no CNI dependency | Measured: three policies for ~30 workloads is what opt-in produces here |
 | Default-deny straight to enforce, no audit stage | Unblocks now; no CNI evaluation | Severs the undeclared east-west paths this estate is known to contain, at first render, on one node with no second control plane to debug from |
-| One allow-all-within, deny-across policy per namespace | One object per namespace; no edge set needed | `aliases.namespace` lets two Services share a namespace, so the namespace is not the trust boundary ([0047](deferred/0047-namespace-per-deployer.md)) |
+| One allow-all-within, deny-across policy per namespace | One object per namespace; no edge set needed | a domain's namespace holds every Service in that domain ([0063](0063-intent-authored-per-domain.md)), so the namespace is not the trust boundary |
 | Replace the audit stage with flow logs off the existing Alloy/Loki pack | A pipeline to build; weeks of work | A flow log says a connection happened, not that the rendered policy would have dropped it — it cannot produce the promotion number |
 
 ## Reversibility

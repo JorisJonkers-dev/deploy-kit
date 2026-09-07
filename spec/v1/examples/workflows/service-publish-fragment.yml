@@ -6,8 +6,14 @@
 #                                                            -> oras resolve
 #                                                            -> verify digest
 #
-# Fires independently of any image release. That is deliberate: a change to
-# service.yml, an env file or a secret grant produces no image, and the unit of
+# ONE DOMAIN FILE IS ONE FRAGMENT (docs/adr/0063-intent-authored-per-domain.md).
+# This repository holds one, platform/knowledge.yml, so it publishes one
+# fragment; a repository holding several domain files runs these steps once per
+# file, and a domain never spans repositories, so no fragment is ever a partial
+# domain.
+#
+# Fires independently of any image release. That is deliberate: a change to the
+# domain file, an env file or a secret grant produces no image, and the unit of
 # composition is the FRAGMENT, not the image
 # (docs/adr/0037-composition-oci-fragments.md). Tying this to a version tag
 # would let intent-only changes sit unpublished until the participant tripped
@@ -58,7 +64,7 @@ jobs:
           # the previous render-local.sh copies went stale by four minor
           # releases.
           #
-          # It is NOT read from platform/service.yml's schemaVersion. That
+          # It is NOT read from the domain file's schemaVersion. That
           # field is the DATA MODEL's own semver and no longer tracks the
           # package version (docs/adr/0039-artifact-schema-versioning.md):
           # reading it as a package version pins the toolkit to a release that
@@ -78,7 +84,7 @@ jobs:
           # Estate-wide invariants cannot be checked here and are
           # composition's job.
           npx --no-install deploy-config-schema intent validate \
-            --service platform/service.yml \
+            --domain platform/knowledge.yml \
             --env-dir platform/env \
             --strict
 
@@ -89,9 +95,11 @@ jobs:
           # (docs/adr/0011-configuration-env-files-per-workload.md):
           # platform/env/knowledge-api/base.env and
           # platform/env/knowledge-ingest-worker/base.env, each with its own
-          # per-cluster overlay.
+          # per-cluster overlay. Workload names are unique within a domain, so
+          # one directory per Workload is unambiguous across every Service the
+          # file declares (docs/adr/0024-identity-per-workload.md).
           npx --no-install deploy-config-schema intent pack \
-            --service platform/service.yml \
+            --domain platform/knowledge.yml \
             --env-dir platform/env \
             --out fragment/
 

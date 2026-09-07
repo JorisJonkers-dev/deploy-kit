@@ -2,7 +2,7 @@
 tier: decision
 status: proposed
 claim: settled
-date: 2026-08-31
+date: 2026-09-07
 normative: spec/v1/40-composition.md#fragments
 rests-on: ["0001", "0005"]
 ---
@@ -88,3 +88,9 @@ needs a merge in every one of them, the cost this decision was taken to avoid.
   so the invariants are evaluated exactly once — paid by the aggregator.
 - Each participant needs a publish workflow and credentials, and debugging means
   resolving digests, not reading a tree — paid by that owner and by on-call.
+- The fragment unit is the domain file, not the repository: one domain file is
+  one Intent Fragment ([0063](0063-intent-authored-per-domain.md)), one
+  repository may hold several, and a domain never spans repositories, so the
+  union is over domains and a domain has exactly one publisher — paid by the
+  repository owner, who publishes one fragment per domain held rather than one
+  per repository.

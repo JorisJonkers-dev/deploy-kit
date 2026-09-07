@@ -6,32 +6,40 @@ downstream works without it.
 
 ## Why composition exists
 
-Seven properties in this specification cannot be evaluated against one repository
+Eight properties in this specification cannot be evaluated against one repository
 in isolation:
 
 | property | needs | decided in |
 |---|---|---|
 | Service Id uniqueness | every Service in the estate | [0010](../../docs/adr/0010-flat-service-identity.md) |
+| domain uniqueness, and exactly one publisher per domain | every fragment in the estate | [0063](../../docs/adr/0063-intent-authored-per-domain.md) |
 | exposure name and apex uniqueness | every exposure in the estate | [0018](../../docs/adr/0018-exposure-by-audience.md) |
 | reachability completeness — derived ∪ registered | every exposure plus the unmanaged register | [0019](../../docs/adr/0019-registered-unmanaged-surfaces.md) |
 | the Reconcile Unit DAG | every required dependency edge | [0032](../../docs/adr/0032-reconcile-unit-derived.md) |
 | inbound derivations — CORS origins, one database per consumer | edges pointing *at* a Service | [0020](../../docs/adr/0020-dependency-edges-carry-surface.md) |
 | the reader set of a secret path | every grant in the estate | [0023](../../docs/adr/0023-grant-unit-is-the-path.md) |
-| Release Unit membership | every member's Service document | [0060](../../docs/adr/0060-release-unit.md) |
+| placement eligibility — at least one node per Workload | every declared dimension against the fleet's node contract | [0061](../../docs/adr/0061-placement-is-hard-dimensions.md) |
 
-No Service knows its own consumers, so none of these are locally computable. That
-is the whole argument for composition
-([0037](../../docs/adr/0037-composition-oci-fragments.md)), and it is why this
-chapter is a hard dependency of chapters 16, 20 and 30.
+No Service knows its own consumers, and no domain file holds the fleet's node
+contract, so none of these are locally computable. That is the whole argument for
+composition ([0037](../../docs/adr/0037-composition-oci-fragments.md)), and it is
+why this chapter is a hard dependency of chapters 16, 20 and 30.
 
-An eighth property — co-test membership — was counted here until 2026-09-07. It
-moved out with the delivery and co-testing split; see
-[docs/adr/deferred/README.md](../../docs/adr/deferred/README.md).
+Two properties left this list on 2026-09-07. **Co-test membership** moved out
+with the delivery and co-testing split; see
+[docs/adr/deferred/README.md](../../docs/adr/deferred/README.md). **Release Unit
+membership** moved out because a Service is now itself the unit of atomic release
+([0062](../../docs/adr/0062-service-is-the-release-unit.md), superseding
+[0060](../../docs/adr/0060-release-unit.md)): its members are the Workloads in
+its own document, so membership is readable in one file and needs no union at
+all.
 
 ## Fragments
 
-The unit of publication is a **repository**, not a domain. A fragment declares
-which domains it contributes to, so the two need not be one-to-one:
+The unit of publication is a **domain file**. One domain file is one Intent
+Fragment, holding the many Services of that domain, and a fragment therefore
+declares exactly one domain
+([0063](../../docs/adr/0063-intent-authored-per-domain.md)):
 
 ```yaml
 apiVersion: intent.jorisjonkers.dev/v1
@@ -41,31 +49,46 @@ metadata:
   sourceSha: 22b9d332a9e059eaeebaffbe49ab25f762985029
 spec:
   schemaVersion: 1.0.0
-  domains: [knowledge]
+  domain: knowledge                 # exactly one; the domain file's header
+  owner: joris                      # the only field raised to the domain
   contains:
     services: [knowledge]
     secretSubtrees: [knowledge-system/]
 ```
 
-This refines the wording of
+This narrows the wording of
 [0037](../../docs/adr/0037-composition-oci-fragments.md), which says "each domain
-repository publishes". Repository-scoped publication means `homelab-collections`
-may stay one repository publishing one fragment that declares five domains, or
-split into five each publishing one: composition behaves identically, so the
-split is a convenience rather than a prerequisite.
+repository publishes". **One repository may hold several domain files**, and it
+then publishes one fragment per domain file rather than one fragment per
+repository: `homelab-collections` stays one repository and publishes one fragment
+for each domain it holds. Splitting it into separate repositories remains a
+convenience rather than a prerequisite, because composition behaves identically
+either way — it unions fragments, and every fragment is already a whole domain.
+
+**A domain never spans repositories, and composition rejects one that does.** A
+domain name may be declared by exactly one fragment across the union; a second
+fragment declaring `domain: knowledge` — in the same repository or in another —
+is `E_DUPLICATE_DOMAIN`. That check is what makes the union total: composition
+unions fragments and never has to union a domain, so a domain's membership is
+never a fact that becomes knowable only after composition has run. Without it,
+two repositories could each hold half of `knowledge` and no single file would
+state who is in it.
 
 A fragment carries:
 
-- Service documents (`service.yml`) and the per-Workload env files they name
+- the domain file — its Services, their Workloads, and the per-Workload env files
+  those Workloads name
 - the Secret Subtree the domain owns — paths, keys, engines, readers
-- node declarations, for the fragment that owns the fleet
+- the node contract, for the fragment that owns the fleet: the `allocatable`
+  table every `placement` is matched against
+  ([0056](../../docs/adr/0056-node-facts-single-source.md))
 - Registered Unmanaged Surfaces the domain is responsible for
 
 A fragment publishes **on merge to the default branch, independently of any image
 release**. An intent-only change — a changed exposure, a secret grant, a
-dependency edge, a `releaseUnit` name — produces no image, and tying publication
-to a version tag would leave such a change unpublished behind a staleness window.
-The worked workflow is
+dependency edge, a raised `placement.memory` — produces no image, and tying
+publication to a version tag would leave such a change unpublished behind a
+staleness window. The worked workflow is
 [`examples/workflows/service-publish-fragment.yml`](examples/workflows/service-publish-fragment.yml).
 
 ### Publication, and why the lock is an output
@@ -124,15 +147,16 @@ flowchart TB
     end
 
     subgraph UNION["2. union"]
-        u1["merge Services, Secret Subtrees,<br/>node facts, unmanaged surfaces"]
-        u2["materialise Release Units<br/>and the required-edge DAG"]
+        u1["merge domain files — Services, Workloads,<br/>Secret Subtrees, unmanaged surfaces"]
+        u2["materialise the required-edge DAG<br/>and the node allocatable table"]
     end
 
     subgraph ASSERT["3. assert estate-wide invariants"]
         a1["identity"]
         a2["references"]
-        a3["secrets"]
-        a4["completeness"]
+        a3["placement"]
+        a4["secrets"]
+        a5["completeness"]
     end
 
     subgraph OUT["4. record"]
@@ -163,32 +187,129 @@ Normative. Composition fails on any of these, and produces no `ComposedIntent`.
 | invariant | error |
 |---|---|
 | Service Ids are unique across the union | `E_DUPLICATE_SERVICE_ID` |
+| a domain name is declared by exactly one fragment, so a domain sits in exactly one repository | `E_DUPLICATE_DOMAIN` |
+| Workload names are unique within their domain | `E_DUPLICATE_WORKLOAD_NAME` |
 | exposure names are unique across the union | `E_DUPLICATE_EXPOSURE_NAME` |
 | at most one Service claims the apex | `E_DUPLICATE_APEX` |
 | Secret Store path prefixes do not overlap between Subtrees | `E_SUBTREE_PREFIX_COLLISION` |
+
+**Service ids stay estate-unique even though they no longer determine the
+namespace.** The namespace derives from `domain`, as `<domain>-system`
+([0063](../../docs/adr/0063-intent-authored-per-domain.md)), which is why a
+namespace now holds several Services and is not a trust boundary. The id's
+uniqueness follows from what *references* it, not from what it names: it is the
+join key every `dependsOn.service` resolves against
+([0010](../../docs/adr/0010-flat-service-identity.md),
+[0020](../../docs/adr/0020-dependency-edges-carry-surface.md)), and two Services
+answering to one id would make an edge ambiguous wherever they live.
+
+`E_DUPLICATE_WORKLOAD_NAME` is scoped to the **domain**, not to the Service,
+because the Workload name alone is the ServiceAccount and the Vault role name
+under the domain's namespace — `auth-system.auth-api`, not
+`auth-system.auth-auth-api` ([0024](../../docs/adr/0024-identity-per-workload.md)).
+Two Services in one domain file therefore cannot both call a Workload `api`,
+while the same name may repeat freely across domains. Since a domain is exactly
+one fragment, the check reads one fragment at a time; it is asserted here because
+composition is the one step every fragment passes through.
 
 ### References
 
 | invariant | error |
 |---|---|
 | every `dependsOn.service` resolves to a Service in the union | `E_UNRESOLVED_SERVICE` |
-| every `dependsOn.surface` exists in that Service's `provides` | `E_UNKNOWN_SURFACE` |
+| every `dependsOn.surface` is provided by a Workload of that Service | `E_UNKNOWN_SURFACE` |
 | the graph of **required** edges is acyclic | `E_DEPENDENCY_CYCLE` |
-| every `placement.requires` and `prefers` capability is advertised by some node | `E_CAPABILITY_UNSATISFIABLE` |
 | every exposure's audience is carryable by some tier | `E_NO_TIER_FOR_AUDIENCE` |
-| every `releaseUnit` name resolves to two or more member Services | `E_RELEASE_UNIT_SINGLETON` |
-| every Release Unit member declares readiness on at least one Workload | `E_RELEASE_UNIT_NO_READINESS` |
+
+An edge still targets `{service, surface}`, and surface names are still unique
+within a Service. What moved is where the surface is declared: `provides` sits on
+the **Workload** that listens, because a port is a property of a process. So
+resolving `E_UNKNOWN_SURFACE` is a lookup for the Service in the union and then
+for the Workload of that Service carrying the name — the edge itself never names
+a Workload, and a surface moving between Workloads of one Service breaks no
+reference.
 
 Optional edges are excluded from the cycle check deliberately. `required: false`
 means a Workload starts without its peer, so a cycle through optional edges
 cannot deadlock a rollout.
 
-`E_RELEASE_UNIT_SINGLETON` exists because `releaseUnit` is a free string joined
-at composition and nowhere else: a Service holds at most one, no Service can see
-its co-members, and a misspelt name therefore yields two units of one rather than
-an error. Atomicity would be silently gone with every gate green. Composition is
-the only place the spelling is checkable
-([0060](../../docs/adr/0060-release-unit.md)).
+Two release-unit invariants left this table on 2026-09-07.
+`E_RELEASE_UNIT_SINGLETON` existed only because `releaseUnit` was a free string
+joined at composition and nowhere else: a Service held at most one, no Service
+could see its co-members, and a misspelt name yielded two units of one rather
+than an error — atomicity silently gone with every gate green. A Service is now
+itself the unit of atomic release
+([0062](../../docs/adr/0062-service-is-the-release-unit.md)), so there is no join
+key to misspell, no membership for composition to materialise, and nothing left
+for that error to catch: the members are the Workloads listed in the Service's
+own document. The readiness requirement the second error carried is unchanged in
+substance — no member's new version takes traffic until every member is healthy,
+health meaning that member's own declared readiness
+([0014](../../docs/adr/0014-probes-are-siblings.md)) — but it is now a property
+of one Service in one file rather than of a set assembled across repositories,
+and checking it needs no estate-wide view.
+
+### Placement
+
+| invariant | error |
+|---|---|
+| every Workload's `placement` has at least one eligible node in the pinned node contract | `E_PLACEMENT_UNSATISFIABLE` |
+| no `disk` dimension conflicts with that Workload's existing PV binding | `E_DISK_BINDING_CONFLICT` |
+
+Every declared dimension is **hard**: all of them must match, a list is a set of
+equally acceptable values with no ordering and no weight, and matching is against
+`allocatable` from the pinned node contract — each node's total minus a reserve
+declared in the node file, never a live read of free capacity
+([0061](../../docs/adr/0061-placement-is-hard-dimensions.md),
+[0056](../../docs/adr/0056-node-facts-single-source.md),
+[0006](../../docs/adr/0006-pinned-inputs.md)). `E_PLACEMENT_UNSATISFIABLE` is
+the one error for all of it, replacing the retired capability-only error that
+could speak about flat strings and nothing else: it now covers every dimension —
+`memory`, `cpu`, `arch`, `site`, `disk`, `gpu` and `capabilities` alike.
+
+This is the check no single fragment can run. The node contract belongs to the
+fragment that owns the fleet, so a domain file declaring `placement` cannot know
+whether any node satisfies it; composition is the first place both halves exist.
+
+**It is eligibility, not bin-packing, and the difference must not be papered
+over.** Each Workload is compared against one node's allocatable on its own.
+Three Workloads declaring `memory: 2Gi` all pass against a 4096Mi node —
+`enschede-pi-2` and `enschede-pi-3` are exactly that — and the scheduler refuses
+the third at apply. Composition asserts that some node *could* hold each
+Workload; it never asserts that the fleet can hold all of them at once. That
+residue is open item 5 below.
+
+`gpu` is structured, matched against the node contract's `gpus[].class` and
+`gpus[].memory_mib` rather than a flat string, and the union is where the trap it
+closes is visible. `nvidia` is advertised on 2 of 7 nodes, one of them
+`enschede-gtx-960m-1` — a 2048MiB Maxwell card, re-enabled 2026-09-02 — while
+`enschede-rx7900xtx-1` is not `nvidia` at all. Today `jellyfin` and
+`immich-machine-learning` avoid that Maxwell only because they also select
+`capability-samba`, which exactly one node carries: placement working by accident
+of an unrelated filter. `gpu: {class: transcode, memory: 4Gi}` excludes it by the
+fact that actually matters.
+
+`disk` filters first placement; **the PV binding wins thereafter.** A `local-path`
+volume binds to the node holding its PersistentVolume, and that binding is read
+from the pinned `ClusterState` snapshot (chapter 20), so once a volume is bound
+the binding decides the node. A `disk` dimension the bound node cannot satisfy is
+therefore `E_DISK_BINDING_CONFLICT` — a build error naming the conflict — rather
+than a silent re-placement or a `Pending` pod. The live shape to hold in mind:
+`knowledge-vault-clone` is bound to `enschede-t1000-1`, whose disks are nvme and
+hdd, so a later `disk: {media: [ssd]}` on that Workload is the error, not a move.
+Note also what `disk` is not: it is a media and capacity filter over node facts,
+not a storage class. Longhorn is declared eligible on four nodes, but no PVC in
+`fleet-infra` sets a `storageClassName` — everything takes k3s's default
+`local-path` — so nothing in this estate is served by Longhorn today.
+
+The capability vocabulary shrank by one, and composition is where the loss is
+felt as a gain. `tailscale` is gone from it: advertised on 7 of 7 nodes it
+excluded nothing, and a filter that never excludes teaches authors that filters
+do nothing. What remains, with node counts: `adguard`(5) `lan-ingress`(3)
+`nvidia`(2) `samba`(1) `public-ingress`(1) `llm-host`(1) `backup-store`(1)
+`amd-gpu`(1). Because composition holds the whole fleet, a capability no node
+advertises fails the build here instead of surviving as a preference the
+scheduler drops without an event, a warning or a condition.
 
 ### Secrets
 
@@ -232,7 +353,8 @@ Three points of precision, all following from the grant unit being the path
 | every ledger entry still matches something | `E_LEDGER_ENTRY_STALE` |
 | no derived value is removed while a consumer still depends on it (chapter 50) | `E_CONTRACT_TOO_EARLY` |
 
-The last two are evaluated against the pinned `ClusterState` snapshot
+The last two here, and `E_DISK_BINDING_CONFLICT` above, are evaluated against the
+pinned `ClusterState` snapshot
 ([0034](../../docs/adr/0034-cluster-state-pinned-input.md)), so their verdict is
 exactly as fresh as that snapshot — composition reads no live cluster.
 
@@ -246,7 +368,14 @@ Seven media services, zero inbound edges, invisible to any edge-derived guard.
 
 `participants.yml` is the one central artefact that survives composition by
 fragments. It changes when a domain is added or retired, never when a
-declaration changes.
+declaration changes — and since one fragment is exactly one domain
+([0063](../../docs/adr/0063-intent-authored-per-domain.md)), that sentence is now
+literal rather than approximate. The list enumerates domains, and because a
+domain has exactly one publisher it is also the domain-to-repository map that
+`E_DUPLICATE_DOMAIN` is checked against. A repository holding several domain
+files appears once per domain rather than once per repository, so dropping one
+domain file out of a repository that still publishes its others is
+`E_PARTICIPANT_MISSING` rather than an unremarked absence.
 
 ```yaml
 participants:
@@ -416,7 +545,10 @@ targets, not one: `samba` exists only as a NixOS module yet owns
 `samba.lan.jorisjonkers.dev`; `wolf` exists in neither target and owns
 `wolf.jorisjonkers.dev`; `adguard` and `ollama` exist in both; and host-level
 services — `tailscale`, `media-storage`, `backup-storage`,
-`btrfs-backup-snapshots` — have no cluster presence at all. Modelling NixOS was
+`btrfs-backup-snapshots` — have no cluster presence at all. `tailscale` here is
+the host daemon; it is not a placement capability, that use having retired with
+the flat capability vocabulary
+([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)). Modelling NixOS was
 rejected: rendering it is not writing a file but producing a build and an
 activation, an order of magnitude more v1 scope for roughly eight hosts.
 
@@ -482,6 +614,8 @@ spec:
   fragments:
     intent-knowledge:
       ref: ghcr.io/jorisjonkers-dev/intent-knowledge@sha256:…
+      domain: knowledge               # exactly one per fragment
+      repository: JorisJonkers-dev/knowledge
       schemaVersion: 1.0.0            # exact resolved model version
       sourceSha: 22b9d33…
       inputsSha: 84021c5…
@@ -491,6 +625,14 @@ spec:
     inventorySourceSha: 84021c5…
   clusterStateDigest: sha256:…        # the pinned snapshot, chapter 20
 ```
+
+`domain` and `repository` are recorded per fragment because the union is over
+domains and a domain has exactly one publisher
+([0037](../../docs/adr/0037-composition-oci-fragments.md),
+[0063](../../docs/adr/0063-intent-authored-per-domain.md)). A replay can then
+show which repository published a domain at that digest, and a domain that moved
+repositories between two locks appears as a diff rather than as a quietly
+different render.
 
 The two version fields are what makes the range in
 [Versioning](#versioning) safe: `schemaVersion: 1.0.0` and
@@ -509,10 +651,22 @@ unbroken chain from a published fragment to a rendered file.
 
 A reference is a Service Id and, where it names a connection, a surface name.
 Resolution is a lookup in the union — no URL, no repository coordinate, no
-network call at authoring time. Renaming a Service is therefore a breaking change
-to every inbound reference, which is what `E_UNRESOLVED_SERVICE` reports, and the
-`aliases` block ([0010](../../docs/adr/0010-flat-service-identity.md)) exists so
-that a *coordinate* can diverge without the identity moving.
+network call at authoring time. The surface is found on the Workload of that
+Service which provides it, so a reference names a Service and a surface and never
+a Workload or a namespace.
+
+Renaming a Service is therefore a breaking change to every inbound reference,
+which is what `E_UNRESOLVED_SERVICE` reports, and there is no escape hatch left:
+the `aliases` block is deleted
+([0063](../../docs/adr/0063-intent-authored-per-domain.md)). It existed so a
+*coordinate* could diverge from the identity, and it now has nothing to express —
+the namespace comes from `domain`, and the Workload name and the image are fields
+the author already writes explicitly
+([0010](../../docs/adr/0010-flat-service-identity.md)). A Service id that reads
+nothing like its processes is not a divergence to be recorded: Service
+`home-portal` holding Workload `app-ui` with image `app-ui` is simply what those
+things are called. A rename lands in every referring domain file, or composition
+fails.
 
 ## Delivery and co-testing are defined separately
 
@@ -524,10 +678,11 @@ version of the model**. They are defined separately; the parked direction work
 is [docs/adr/deferred/README.md](../../docs/adr/deferred/README.md).
 
 The model makes exactly three demands on whatever that definition turns out to
-be: all-or-nothing Release Unit switchover
-([0060](../../docs/adr/0060-release-unit.md)), destructive operations gated by
-Durability Class ([0015](../../docs/adr/0015-durability-class-per-volume.md)),
-and rendering from pinned inputs only
+be: all-or-nothing switchover of a Service's Workloads
+([0062](../../docs/adr/0062-service-is-the-release-unit.md)), destructive
+operations gated by Durability Class
+([0015](../../docs/adr/0015-durability-class-per-volume.md)), and rendering from
+pinned inputs only
 ([0006](../../docs/adr/0006-pinned-inputs.md),
 [0034](../../docs/adr/0034-cluster-state-pinned-input.md)).
 
@@ -567,3 +722,15 @@ and rendering from pinned inputs only
      rejected.
    - **Blocks:** nothing today; it bounds what a compromised publish credential
      can do.
+5. **Composition asserts eligibility, never fleet capacity.** Every Workload
+   having an eligible node does not mean the fleet can run them all, and nothing
+   in this chapter compares total declared demand with what the nodes publish.
+   - **Owner:** joris.
+   - **Settled by:** summing `placement.memory` and `placement.cpu` across the
+     composed union and comparing them with the node contract's `allocatable`
+     totals — the fleet's seven nodes total 129536Mi and 189600m before each
+     node's declared reserve. A demand above that total is unschedulable no
+     matter how it is spread, and would be worth failing at composition.
+   - **Blocks:** nothing today. Until it runs, over-subscription surfaces as the
+     scheduler refusing to place a pod, which is the conceded cost of
+     eligibility ([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)).

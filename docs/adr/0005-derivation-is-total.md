@@ -45,9 +45,9 @@ returns **0 hits** (verified 2026-08-31; the grep spans both renderer
 generations), and resource requests are emitted only when the model already
 carries them: pod hardening and QoS have no layer-1 vocabulary at all, so every
 pod runs root-by-default and BestEffort with no field able to reach either
-(`review/CONSOLIDATED.md` B6). [0016](0016-pod-hardening-and-resource-class.md)
-closes that known gap; the premise stays open until the render-and-diff shows
-no others.
+(`review/CONSOLIDATED.md` B6). [0016](0016-pod-hardening.md) closes the
+hardening half and [0061](0061-placement-is-hard-dimensions.md) the QoS half;
+the premise stays open until the render-and-diff shows no others.
 
 ## Alternatives
 Rival premises, this being a premise:

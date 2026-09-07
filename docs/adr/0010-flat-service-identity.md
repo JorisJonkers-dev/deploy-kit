@@ -2,58 +2,57 @@
 tier: decision
 status: proposed
 claim: settled
-date: 2026-08-31
+date: 2026-09-07
 normative: spec/v1/10-service-intent.md#service-identity
 rests-on: ["0004"]
 ---
 
-# One flat Service Id, with deliberate renames as data
+# One flat Service Id
 
 A Service is identified by one short string, unique across the estate, and that
-string is the only identity another Service may reference. Namespace, workload
-name and image reference are derived from the id by rule; a divergence is
-expressed as an `alias` carrying the reason for it.
+string is the only identity another Service may reference. The id is the
+repository or product name. The namespace derives from the Service's domain
+([0063](0063-intent-authored-per-domain.md)); Workload names and image
+references are authored, not derived; there is no alias mechanism.
 
 ## Rests on
 
-Identity is the estate's most contended surface — dependency edges, Vault
-paths, route ownership and the alias catalogue all resolve through it — so per
+Identity is the estate's most contended surface — dependency edges, Vault paths
+and route ownership all resolve through it — so per
 [0004](0004-contention-decides-authority.md) it takes exactly one authoritative
-form, while namespace, workload and image names are uncontended and derivable.
-False if: a Service turns up whose live coordinates must diverge from its id
-for a reason that cannot be stated as one `alias` with a `reason`, or two
-Services genuinely require the same id. Settled by: composing the full
-participants list and asserting zero `E_DUPLICATE_SERVICE_ID` occurrences and a
-non-empty `reason` on every `aliases.*` entry.
+form, while the namespace is derivable from the domain and Workload and image
+names are properties of the processes themselves. False if: two Services
+genuinely require the same id, or a live coordinate turns up that is neither
+derivable from the domain nor already authored explicitly. Settled by: composing
+the full participants list and asserting zero `E_DUPLICATE_SERVICE_ID`
+occurrences and that every namespace it renders is `<domain>-system`.
 
 ## Why
 
-Six coordinates currently name one thing: the `home-portal` repository holds a
-document named `app-ui`, in namespace `app-system`, with a workload `app-ui`
-running the image `home-portal`, whose route declares `owner: home-portal`.
-`fleet-infra/docs/live-divergence.md` records why — *"the service repository is
-home-portal; live called the image app-ui. A rename, not a different image"* —
-and `stalwart` / `stalwart-provisioner` is a second case. Renames are permanent
-in this estate, not migration artifacts. A model with no field for one forces
-the explanation into prose, where it is re-litigated at every render and
-re-discovered by every reviewer. An `alias` with a `reason` turns that
-documentation row into a validated field; chapter 20's derivation table already
-records `app-system` for `home-portal` as exactly such an alias.
+Take the case the alias field was invented for.
+`fleet-infra/docs/live-divergence.md` records it as a rename — *"the service
+repository is home-portal; live called the image app-ui"* — and the model
+carried an `alias` to explain it. Under this decision there is nothing to
+explain. The Service id is the repository name, `home-portal`. The Workload is
+called what the process is called, `app-ui`, and so is its image, because a
+Workload name is a process name and never a derivative of the id. The namespace
+is `app-system` because the domain is `app`
+([0063](0063-intent-authored-per-domain.md)). Nothing moves and nothing is
+aliased: the prose row describes a divergence that no longer exists.
 
-Flat uniqueness cannot be had by construction, only by check: the id encodes
-neither domain nor repository, so nothing structural stops two repositories
-claiming the same string. Uniqueness is therefore a composition-time check —
+Flat uniqueness cannot be had by construction, only by check: the id is a bare
+string with no domain or repository path inside it, so nothing structural stops
+two repositories claiming the same string. Uniqueness is therefore a composition-time check —
 `E_DUPLICATE_SERVICE_ID`, specified in
 [chapter 40](../../spec/v1/40-composition.md) — and the window in which two
 repositories both claim an id, open until composition runs, is an accepted
 cost.
 
-An alias is bounded by deploy authority. The review found that
-`aliases.namespace` is precisely what lets two Services share a namespace
-(`home-portal` aliased into `app-system`), the move that would dissolve the
-one-namespace-one-deployer control. An alias may therefore not move a Service
-into another deployer's namespace; composition rejects that with
-`E_NAMESPACE_FOREIGN_DEPLOYER` ([0047](deferred/0047-namespace-per-deployer.md)).
+An alias field would have nothing left to carry. The namespace comes from the
+domain, the Workload name and the image are already authored, and the one
+divergence an alias still expressed — a namespace of its own choosing — is
+exactly the move that lets a Service claim another domain's namespace. Deleting
+the field deletes that move with it.
 
 ## Alternatives
 
@@ -75,16 +74,17 @@ avoid.
 
 ## Consequences
 
-- Every cross-Service reference resolves through one string, and namespace,
-  workload and image fall out by rule — paid by authors, who give up encoding
-  domain or location in the name.
-- Deliberate renames become validated `aliases` entries with reasons, retiring
-  the prose rows in `fleet-infra/docs/live-divergence.md` — paid by Service
-  authors, who must state the reason as data at authoring time.
+- Every cross-Service reference resolves through one string, and the namespace
+  falls out of the domain — paid by authors, who give up encoding domain or
+  location in the id.
+- A deliberate divergence can no longer be recorded as data with a reason:
+  there is no field for one, so a name that surprises a reader is explained in
+  prose or not at all — paid by whoever next asks why the `home-portal`
+  repository runs a process called `app-ui`.
 - Uniqueness is enforced by `E_DUPLICATE_SERVICE_ID` at composition, not by
   construction; two repositories can claim one id until composition runs —
   paid by the aggregator operator, who discovers the collision only then.
-- An alias cannot move a Service into another deployer's namespace
-  (`E_NAMESPACE_FOREIGN_DEPLOYER`, [0047](deferred/0047-namespace-per-deployer.md)) —
-  paid by authors of co-located Services, who must share a deployer or split
-  namespaces.
+- A namespace is no longer reachable from Service Intent at all: it is
+  `<domain>-system` and nothing else, so the Services of one domain share one
+  namespace and that namespace is not a trust boundary — paid by anyone who
+  read co-location as isolation.

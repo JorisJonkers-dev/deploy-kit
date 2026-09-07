@@ -19,27 +19,31 @@ depend on the previous step's output existing.
 
 ```mermaid
 flowchart TB
-    A["1. node facts<br/>one YAML per node, contract generated,<br/>nix imports the labels"]
+    A["1. node facts<br/>one YAML per node — site, allocatable cpu and memory,<br/>structured gpus and disks, capabilities;<br/>contract generated, nix imports the labels"]
     B["2. platform facts recorded<br/>datastore kind, server count,<br/>k3s version and flags"]
-    C["3. Cluster Context published<br/>tiers, audiences, capabilities, size classes,<br/>secretsEncryption — pinned by digest"]
+    C["3. Cluster Context published<br/>tiers, audiences, capabilities,<br/>secretsEncryption — pinned by digest"]
     D["4. blueprint packs checked out<br/>at a pinned ref, root passed explicitly"]
     E["5. ClusterState collector<br/>snapshot plus clusterStateDigest"]
     F["6. participants.yml<br/>expected publishers plus maxAge"]
-    G["7. one Intent Fragment publishes<br/>any single Service"]
+    G["7. one domain file publishes<br/>one Intent Fragment, holding its Services"]
     H["8. composition runs<br/>estate-wide invariants, on one fragment"]
     I["9. render<br/>registered adapters, into the existing Flux tree"]
 
     A --> B --> C --> D --> E --> F --> G --> H --> I
-    A -.->|"capabilities validate<br/>against the node contract"| C
+    A -.->|"the capability list validates<br/>against the node contract"| C
+    A -.->|"every placement dimension is matched against<br/>allocatable, gpus, disks and site"| H
     B -.->|"the gate reads<br/>secretsEncryption"| C
     D -.->|"flux-source and flux-packs<br/>render nothing without packs"| I
-    E -.->|"placement and capacity<br/>assignments read the snapshot"| I
+    E -.->|"existing PV bindings and the<br/>disk dimension read the snapshot"| I
 ```
 
 Steps 1–3 look like paperwork and are not: they are the facts every later step
-reads. Step 4 is the one most often skipped, because the two pack-backed
-adapters fail in quietly interesting ways without it. Step 5 exists because layer 2
-may read a pinned snapshot and may never read the live cluster
+reads, and since [0061](../../docs/adr/0061-placement-is-hard-dimensions.md)
+every Workload's declared `memory` and `cpu` are compared against numbers step 1
+publishes — so step 1 is arithmetic that other repositories' builds now fail
+against. Step 4 is the one most often skipped, because the two pack-backed
+adapters fail in quietly interesting ways without it. Step 5 exists because
+layer 2 may read a pinned snapshot and may never read the live cluster
 ([0034](../../docs/adr/0034-cluster-state-pinned-input.md)).
 
 ## Node facts
@@ -58,15 +62,93 @@ v1 requires the single source
 
 | artefact | authored or generated | holds |
 |---|---|---|
-| one YAML file per node | **authored** — the only hand-edited copy | capacity, capabilities, taints, disks, ssh |
-| `node-contract.yml` | generated | the advertised label set and capacity, one casing |
+| one YAML file per node | **authored** — the only hand-edited copy | node totals and the **declared reserve** subtracted from them, site, gpus, disks, capabilities, taints, ssh |
+| `node-contract.yml` | generated | the published node facts and the advertised label set, in one casing |
 | the k3s label set | generated | what is applied to the live node |
 | `nix/hosts/<n>/default.nix` | generated input, read with `readFile` / `fromJSON` | nix builds machines; it no longer authors labels |
 
-Two consequences bind other chapters. Placement declares **capabilities, never
-labels** ([0017](../../docs/adr/0017-placement-by-capability.md)), and a
-capability is only resolvable because the contract advertises exactly one label
-set to validate against. And the selector key comes from the contract's prefix
+**What the contract must publish, per node.** Placement is a set of hard
+dimensions, every one of which must match
+([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)), so the contract
+is the other half of that comparison and its shape is load-bearing:
+
+| published fact | shape | what matches against it |
+|---|---|---|
+| `allocatable.cpu`, `allocatable.memory` | quantities — the node total minus the reserve declared in the node file | `placement.cpu` and `placement.memory`, required on every Workload |
+| `site` | one string | `placement.site` |
+| `arch` | one string | `placement.arch`, which is a set of acceptable values |
+| `gpus[]` | one entry per card: `vendor`, `model`, `class`, `memory_mib` | `placement.gpu`, by `class` and by memory |
+| `disks[]` | one entry per device: `media`, `usable_gib` | `placement.disk`, by `media` and by the amount asked for |
+| capabilities | a flat list of strings | `placement.capabilities` |
+
+Structure, not strings, is the point of the middle two rows.
+`enschede-gtx-960m-1` and `enschede-t1000-1` both advertise `nvidia`; only
+`memory_mib: 2048` on the 960M's Maxwell card separates them, and today
+`jellyfin` and `immich-machine-learning` avoid that card only because they also
+select `capability-samba`, which exactly one node carries — placement working by
+accident of an unrelated filter.
+
+**What that has to express today.** Seven nodes, from
+`nix-config/inventory/nodes/*.yml`:
+
+| node | site | arch | cpu | memory | gpu | disks | roles |
+|---|---|---|---|---|---|---|---|
+| `enschede-t1000-1` | enschede | amd64 | 54000m | 32000Mi | t1000, class `transcode` | nvme 120G + 500G, hdd 4096G | worker, utility |
+| `enschede-rx7900xtx-1` | enschede | amd64 | 72800m | 32000Mi | rx7900xtx, class `render-compute` | nvme 160G + 1000G, hdd 8192G | worker, utility |
+| `enschede-gtx-960m-1` | enschede | amd64 | 28800m | 16384Mi | gtx960m, class `transcode`, 2048MiB | ssd 100G + 500G, hdd 2048G | worker, utility |
+| `enschede-pi-1` | enschede | arm64 | 6000m | 8192Mi | — | sdcard 64G | worker |
+| `enschede-pi-2` | enschede | arm64 | 6000m | 4096Mi | — | sdcard 64G | worker |
+| `enschede-pi-3` | enschede | arm64 | 6000m | 4096Mi | — | sdcard 64G | worker |
+| `frankfurt-contabo-1` | frankfurt | amd64 | 16000m | 32768Mi | — | ssd 80G + 120G | control-plane, worker |
+
+The cpu and memory columns are **node totals**. What the contract publishes is
+allocatable — the total minus the reserve declared in the same node file — and
+it is never read back from the live cluster, which would put an assignment
+outside the pinned input set ([0006](../../docs/adr/0006-pinned-inputs.md)).
+
+**The reserve is a guess until it is reconciled, and the cost is not evenly
+spread.** An authored reserve is an assertion about what the kubelet, the
+container runtime, the OS and the k3s agent take before a pod gets anything, and
+nothing validates it until someone compares it with `kubectl describe node`.
+Get it wrong and the contract says a Workload fits while the scheduler refuses
+to place it — a build that passes and a pod that stays `Pending`. It bites first
+on `enschede-pi-2` and `enschede-pi-3`: at 4096Mi total, a 512Mi error is an
+eighth of the machine, where the same 512Mi against `frankfurt-contabo-1`'s
+32768Mi is noise. Reconciling the seven reserves is a pre-flight item below, not
+an implementation detail.
+
+Allocatable is also an **eligibility bound, not a budget**. The contract records
+what a node has, not what is already running on it, so three Workloads each
+declaring `memory: 2Gi` all pass against a 4096Mi node and the scheduler refuses
+the third at apply. Nothing in this chapter, and nothing in layer 2, bin-packs.
+
+**Two facts this contract carries that are not what they look like.**
+
+*Tailscale is on 7 of 7 nodes, so it stops being a capability.* A filter that
+excludes nothing teaches authors that filters do nothing, so it leaves the
+capability vocabulary
+([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)). What remains,
+with node counts: `adguard` (5), `lan-ingress` (3), `nvidia` (2), `samba` (1),
+`public-ingress` (1), `llm-host` (1), `backup-store` (1), `amd-gpu` (1). No node
+carries a taint. The two GPU strings stay node facts and
+stop being how a Workload asks for a GPU: `nvidia` cannot separate a 2048MiB
+Maxwell from a T1000, and `enschede-rx7900xtx-1` — the fastest card in the
+estate — is not `nvidia` at all. That selection is `gpus[]`.
+
+*Longhorn is declared eligible on four nodes and is not in use.* No PVC in
+`fleet-infra` sets a `storageClassName`, so every claim in the estate takes
+k3s's default `local-path`. The contract publishes the eligibility as what it
+is — a declared property of a node — and **nothing downstream may read it as
+storage that exists**. Two things follow: [restore](#platform-facts-and-restore)
+is a `local-path` problem because every volume is a `local-path` volume, and a
+`disk` dimension filters first placement only, after which the existing PV
+binding in the pinned ClusterState wins.
+
+Two consequences bind other chapters. Placement declares **dimensions and
+capabilities, never labels**
+([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)), and both are only
+resolvable because the contract advertises exactly one label set and one set of
+facts to validate against. And the selector key comes from the contract's prefix
 rather than from `platform.name`, so retiring `personal-stack/*` changes
 rendered output for every Workload carrying a `nodeSelector`. Retirement goes
 through the generated contract, never a `kubectl label` — the estate agent
@@ -110,8 +192,11 @@ hits, both about re-applying Flux manifests, neither about data.
 [Workspace ADR-0011](https://github.com/JorisJonkers-dev/workspace/blob/main/docs/decisions/ADR-0011-backup-coverage-gaps.md)
 records that *"PVC-level snapshots are impossible here: no VolumeSnapshot CRDs,
 and `local-path` has no CSI snapshot support. The job that pretended otherwise
-was deleted."* What remains is one off-cluster copy from the daily node backup;
-three application-level jobs gained dated archives with age-based retention when
+was deleted."* That is the whole estate, not a corner of it: as
+[Node facts](#node-facts) records, Longhorn is declared eligible on four nodes
+and no claim uses it. What remains is one off-cluster copy from the daily node
+backup; three application-level jobs gained dated archives with age-based
+retention when
 [workspace#48](https://github.com/JorisJonkers-dev/workspace/issues/48) closed on
 2026-08-27 — 30 days for `postgres` and `rabbitmq-definitions`, 14 for `vault` —
 and no such history exists for an arbitrary `local-path` claim. Against that,
@@ -153,7 +238,7 @@ without acquiring an owner. v1 makes it mechanical
 
 Reading a pinned input rather than the live cluster keeps the check inside
 layer-2 purity. `delivery: self` and `access: custody` persist nothing and are
-unaffected, so a Service that speaks Vault itself — `auth-api` does, through
+unaffected, so a Workload that speaks Vault itself — `auth-api` does, through
 spring-cloud-vault — is never blocked by this gate.
 
 Two limits, stated so the gate is not read as more than it is. The fact is
@@ -163,7 +248,8 @@ the datastore-file and backup path only — a token with API read still gets
 plaintext, so path grants
 ([0009](../../docs/adr/0009-vault-read-is-per-path.md),
 [0023](../../docs/adr/0023-grant-unit-is-the-path.md)) and RBAC remain the real
-boundary.
+boundary. A namespace is not one: it holds several Services by construction
+([0063](../../docs/adr/0063-intent-authored-per-domain.md)).
 
 Ticked by: enable the flag, then
 `kubectl create secret generic canary --from-literal=k=<sentinel>`, then
@@ -207,6 +293,11 @@ API server and the datastore.
 | **Blocks** | enforce-mode default-deny, and nothing else. Until it settles, default-deny does **not** ship — it is not silently shipped as enforce |
 | **Does not block** | v1 rendering. The renderer emits portable `networking.k8s.io/v1` objects that any CNI honours, and nothing CNI-specific ever enters an artefact |
 
+The agent's own footprint is a placement fact, not a free variable: sampled
+per-node memory has to fit inside the same allocatable the
+[node contract](#node-facts) publishes, and on the two 4096Mi Pis it comes out
+of the reserve every Workload's `memory` is then compared against.
+
 Installing it restarts the control-plane node's k3s server with flannel and the
 bundled controller disabled, interrupting east-west traffic on the machine that
 also runs the datastore — which is why it is a recorded platform fact and a
@@ -229,46 +320,69 @@ A missing root, or a root without `packs/`, fails with a structured diagnostic
 rather than silently rendering empty pack output.
 
 This is a deliberate divergence from
-[0037](../../docs/adr/0037-composition-oci-fragments.md), where domain
-declarations compose from published OCI fragments. Packs are foundation material
-consumed whole by two adapters: they join no composition union, carry no lock
-digest and hold no participants-list row, and every consumer already obtains
-them by ref, while private-registry auth has caused evidenced friction for
-`@jorisjonkers-dev` packages. So two consumption models coexist — fragments by
-OCI digest, packs by git ref — and the boundary is material class, not
-inconsistency. The declared tag is **recorded, not verified**: provenance holds
-what the caller passed, so whoever audits a render is trusting that CI pinned
-the checkout it declared.
+[0037](../../docs/adr/0037-composition-oci-fragments.md), where a domain file
+publishes as an OCI fragment. Packs are foundation material consumed whole by
+two adapters: they join no composition union, carry no lock digest and hold no
+participants-list row, and every consumer already obtains them by ref, while
+private-registry auth has caused evidenced friction for `@jorisjonkers-dev`
+packages. So two consumption models coexist — fragments by OCI digest, packs by
+git ref — and the boundary is material class, not inconsistency. The declared
+tag is **recorded, not verified**: provenance holds what the caller passed, so
+whoever audits a render is trusting that CI pinned the checkout it declared.
 
 ## Onboarding a new Service
 
-1. Write `platform/service.yml` — `id`, `domain`, `owner`, `alertClass`, and the
-   Workloads. Add `releaseUnit: <name>` only if this Service must switch in
-   lockstep with another ([chapter 50](50-lifecycle.md#release-unit-switchover));
-   at most one per Service.
+A Service is added **to a domain file**, not to a repository of its own. One
+file per domain holds many Services, that file is one Intent Fragment, and a
+domain never spans repositories
+([0063](../../docs/adr/0063-intent-authored-per-domain.md)). The namespace is
+derived — `<domain>-system` — so no step below names one.
+
+1. Add the Service to its domain file, whose shape is
+   [chapter 10](10-service-intent.md#two-artefacts). The file header carries
+   `domain` and `owner`, the only field raised to the domain; the Service
+   carries `id`, `alertClass`, `secrets[]` and its Workloads; each Workload
+   carries its `image`, the ports it `provides`, and its `placement`. Workload
+   names are unique within the domain (`E_DUPLICATE_WORKLOAD_NAME`), because the
+   ServiceAccount and the Vault role are the Workload name alone
+   ([0024](../../docs/adr/0024-identity-per-workload.md)). Two Workloads that
+   must switch together belong to one Service — a Service is the unit of atomic
+   release ([0062](../../docs/adr/0062-service-is-the-release-unit.md)), and
+   there is no field that couples two of them.
 2. Write `platform/env/<workload>/base.env` **per Workload** — never one file per
    Service — plus a cluster overlay only where something differs.
 3. Declare `secrets[]` at the level they are shared, each entry carrying `path`,
-   `keys`, `access`, `delivery` and `rotation`. Reference env-delivered values as
-   `${secret:<granted-path>#<key>}`, where the path **byte-matches** a granted
-   path, and cross-Service values as `${dependency:…}`. The declaration and the
-   env file check each other in both directions.
-4. Declare the runtime intent only this Service knows: `size`; any
+   `keys`, `access`, `delivery` and `rotation`. They stay on the Service and are
+   never raised to the domain header, which would hand every Service in the file
+   a reader slot on a path it may not need
+   ([0009](../../docs/adr/0009-vault-read-is-per-path.md)). Reference
+   env-delivered values as `${secret:<granted-path>#<key>}`, where the path
+   **byte-matches** a granted path, and cross-Service values as
+   `${dependency:…}`. The declaration and the env file check each other in both
+   directions.
+4. Declare `placement` on **every** Workload: `memory` and `cpu` are required —
+   this field exists to end BestEffort as the estate's standing QoS class — and
+   `arch`, `site`, `disk`, `gpu` and `capabilities` are declared only where they
+   are true. Every declared dimension is hard, a list is a set of equally
+   acceptable values, and a dimension no node can satisfy is
+   `E_PLACEMENT_UNSATISFIABLE` at build
+   ([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)).
+5. Declare the rest of the runtime intent only this Service knows: any
    `hardening.exceptions` entries, each carrying `allow` and a `reason`, against
    the `restricted` default; `durability` per volume — `reconstructible`,
    `recoverable` or `irreplaceable`; and `probes.readiness` / `probes.liveness`,
    each with its own `path` + `port` or `tcp`, or `probes: none` stated
    explicitly where there is nothing to probe.
-5. Add `.github/workflows/publish-fragment.yml`
+6. Add `.github/workflows/publish-fragment.yml`
    ([example](examples/workflows/service-publish-fragment.yml)).
-6. Register the repository in `participants.yml` with its staleness bound —
+7. Register the repository in `participants.yml` with its staleness bound —
    `maxAge` defaults to **7 days**
    ([0038](../../docs/adr/0038-participants-list-staleness.md)).
-7. Confirm the fragment composes: composition accepts it, the render is clean,
+8. Confirm the fragment composes: composition accepts it, the render is clean,
    and the resulting `resolved.yml` projection is published back to the
    repository ([0033](../../docs/adr/0033-assignments-published-back.md)).
 
-Step 6 is the one a Service cannot do for itself, and it fails loudly rather
+Step 7 is the one a Service cannot do for itself, and it fails loudly rather
 than silently: an unregistered participant is invisible to composition, so its
 Services simply are not in the union. Any additional onboarding the delivery
 definition requires is that definition's, not this list's.
@@ -291,6 +405,14 @@ before anything is applied, and it is the half worth doing carefully.
    gap is chapter 30's coverage work.
 4. **Swap the source** once the render reproduces the live objects.
 
+Two differences are expected at step 2 and are not adapter gaps. The namespace
+is one the Service already runs in: `<domain>-system` reproduces all ten live
+namespaces and renames nothing. The resource block is not: a Workload that runs
+BestEffort today renders with a `memory` request equal to its limit and a `cpu`
+request with no limit, from the `placement` numbers someone has to choose — the
+first honest reading of what these Services actually need, and the one part of
+adoption that is authoring rather than transcription.
+
 Step 4 is delivery, and it is where adoption is dangerous: a source that prunes
 will delete objects removed from it, so the order in which the old manifests
 leave and the rendered ones arrive decides whether adoption is a no-op or an
@@ -306,25 +428,32 @@ adopting an estate that was hand-written first.
 
 ## Adoption order across the estate
 
-Adopt in dependency order, providers before consumers, so a consumer is never
-rendered against a provider that has published no fragment:
+Adopt one domain file at a time, in dependency order, providers before
+consumers, so a consumer is never rendered against a provider that has published
+no fragment:
 
 ```
 1. node facts + platform facts   nothing depends on them; everything reads them
-2. intent-data                   postgres, valkey, rabbitmq -- 8 Services depend on them
-3. intent-auth                   auth-api, auth-ui; every forward-auth route and OIDC consumer
-4. intent-knowledge              depends on data
-5. intent-agents                 depends on knowledge and vso-secrets
-6. intent-media                  the largest set, the sparsest edges, the lowest blast radius
-7. intent-mail, utility          the remainder
+2. data                          postgres, valkey, rabbitmq -- 8 Services depend on them
+3. auth                          every forward-auth route and OIDC consumer
+4. knowledge                     depends on data
+5. agents                        depends on knowledge and vso-secrets
+6. media                         the largest set, the sparsest edges, the lowest blast radius
+7. mail, notes, app,             the remainder
+   automation, utility
 ```
 
-`intent-auth` third rather than last is deliberate: it has the densest edge set
-in the estate, so it is where the derivation is proven — inbound CORS origins,
-forward-auth middleware, and the estate's clearest lockstep pair, `auth-api`
-with `auth-ui`.
-`intent-media` late is also deliberate: sparse edges mean a clean render says
-less, so it should run on machinery already trusted.
+`auth` third rather than last is deliberate: it has the densest edge set in the
+estate, so it is where the derivation is proven — inbound CORS origins and
+forward-auth middleware. It is also where the release rule shows its teeth. The
+estate's clearest lockstep pair, `auth-api` and `auth-ui`, is not a pair of
+Services to couple: under
+[0062](../../docs/adr/0062-service-is-the-release-unit.md) it is one Service,
+`auth`, holding two Workloads that switch together or not at all. Their images
+still build wherever they build; what moves into one file is the intent, and
+with it the atomicity claim, which is now checkable by reading a single Service.
+`media` late is also deliberate: sparse edges mean a clean render says less, so
+it should run on machinery already trusted.
 
 ## Before the first production apply
 
@@ -333,7 +462,20 @@ owns it. One item is blocked rather than open, and says so.
 
 - [ ] **Node facts are generated from one source.** Ticked by: the `nix eval` /
       `yq` diff in [Node facts](#node-facts) matching for all 7 hosts with
-      `nix flake check` green. Owner: joris. Blocks: placement resolution.
+      `nix flake check` green. Owner: joris. Blocks: placement resolution, which
+      has nothing to match against until exactly one copy of the facts exists.
+- [ ] **The node contract publishes allocatable, and the reserve has been
+      reconciled.** Per node: `allocatable.cpu` and `allocatable.memory` — total
+      minus the reserve declared in the node file — plus `site`, `gpus[]` with
+      `vendor`, `model`, `class` and `memory_mib`, `disks[]` with `media` and
+      `usable_gib`, and the capability list. Ticked by: the contract carrying
+      all six for all 7 nodes, and each node's published allocatable compared
+      once against `kubectl describe node <n>`, with any gap corrected in the
+      node file rather than in the contract — the two 4096Mi Pis first, where
+      the reserve is a large fraction of the machine. Owner: joris. Blocks: the
+      first placement-gated apply — `memory` and `cpu` are required on every
+      Workload and nothing can be matched against a contract that does not
+      publish allocatable.
 - [ ] **Platform facts are recorded and validate.** Datastore kind, server
       count, k3s version, server flag set, CNI, `secretsEncryption`. Ticked by:
       the platform document carrying all six and passing schema validation, in
@@ -358,9 +500,9 @@ owns it. One item is blocked rather than open, and says so.
 - [ ] **The ClusterState collector exists and its digest is in the lock.**
       Ticked by: two captures ten minutes apart against an idle cluster
       producing an equal `sha256sum`, and `clusterStateDigest` appearing beside
-      `intent` and `imagesLock`. Owner: joris. Blocks: any assignment reading a
-      PV binding or node capacity — which is what made the old spec contradict
-      itself in two places.
+      `intent` and `imagesLock`. Owner: joris. Blocks: any assignment reading an
+      existing PV binding — including `E_DISK_BINDING_CONFLICT`, where a `disk`
+      dimension contradicts a binding the cluster already holds.
 - [ ] **One renderer generation, with attribution unambiguous.** Ticked by:
       `src/deployment/render/` deleted with an identical before/after estate
       render ([0052](../../docs/adr/0052-registered-adapters-are-v1.md)), the
@@ -368,9 +510,12 @@ owns it. One item is blocked rather than open, and says so.
       implemented ([0054](../../docs/adr/0054-adapter-attribution.md)). Owner:
       the toolkit maintainer. Blocks: the coverage assertion in chapter 30.
 - [ ] **One negative fixture exists per invariant, and composition runs them.**
-      Ticked by: [`compose.yml`](examples/workflows/compose.yml) proving the gate
-      can fail — an assertion that stopped running looks identical to one that
-      passes. Owner: the toolkit maintainer.
+      Ticked by: [`compose.yml`](examples/workflows/compose.yml) proving each
+      gate can fail — `E_PLACEMENT_UNSATISFIABLE` and
+      `E_DUPLICATE_WORKLOAD_NAME` included, since both are new — because an
+      assertion that stopped running looks identical to one that passes. Owner:
+      the toolkit maintainer. Blocks: relying on any estate-wide invariant as
+      evidence.
 - [ ] **The four images are built.** `hermes-bootstrap` (221 lines of shell),
       `n8n-hooks` (499 lines of JavaScript) and the `garage` bootstrap leave
       their ConfigMaps and become first-party images, retiring the `alpine:3.21`
