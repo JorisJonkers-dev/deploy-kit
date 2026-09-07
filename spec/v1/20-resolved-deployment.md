@@ -180,6 +180,7 @@ field's placement link to this anchor rather than copying rows.
 | PVC capacity and the disk capacity filter | derived | — | the volume's `size`, and their sum per Workload for placement |
 | `placement.arch`, `.site`, `.capabilities` | Service | no contention | filters over facts the node contract publishes; a list is a set of equally acceptable values, never a ranking |
 | `observability.scrape` | Service | no contention | port and path of its own metrics surface |
+| `writablePaths` | Service | no contention | which paths the process must write; the size of each is platform-assigned ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)) |
 | `volumes[].durability` | Service | no contention | what losing the data costs; only the owner knows ([0015](../../docs/adr/model/0015-durability-class-per-volume.md)) |
 | `engine` | Service | no contention | what the process is, which the platform keys its backup method off ([0078](../../docs/adr/model/0078-engine-is-workload-vocabulary.md)) |
 | `overrides` | Service | no contention | a derived value restated with a recorded reason ([Overrides](#overrides)) |
@@ -202,6 +203,7 @@ field's placement link to this anchor rather than copying rows.
 | requests and limits | derived | — | from `placement.memory` and `placement.cpu`: memory request equals memory limit, cpu request with no cpu limit |
 | `securityContext` | derived | — | from `hardening` and its declared exceptions |
 | `automountServiceAccountToken` | derived | — | `true` only where a grant carries `delivery: self`; the pod authenticates in that case and in no other ([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)) |
+| the `emptyDir` per writable path, and its `sizeLimit` | derived | — | one mount per declared path, sized from the Cluster Context's ephemeral default ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)) |
 | `runAsUser`, `runAsGroup`, `fsGroup` | derived | — | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Workload holds a volume ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)) |
 | container probe timings | derived | — | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Cluster Context's probe policy ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)) |
 | `progressDeadlineSeconds` | derived | — | from `startupBudget` |

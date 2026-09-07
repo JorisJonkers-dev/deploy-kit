@@ -84,6 +84,7 @@ delivery work it underpins.
 | [0078](model/0078-engine-is-workload-vocabulary.md) | `engine` is layer-1 vocabulary: what the process is, not how it is instrumented | settled |
 | [0016](model/0016-pod-hardening.md) | Pod hardening is layer-1 vocabulary | open |
 | [0082](model/0082-images-lock-carries-uid-and-gid.md) | The images lock resolves each image's uid and gid, and fsGroup derives from the gid | settled |
+| [0092](model/0092-writable-paths-are-declared.md) | A Workload declares the paths it writes, and that is not a hardening exception | settled |
 | [0083](model/0083-privileged-port-needs-the-capability.md) | A privileged port under non-root is refused, and the escape is the existing exception | settled |
 | [0017](model/0017-placement-by-capability.md) | Placement is declared as capabilities, never labels | superseded by [0061](model/0061-placement-is-hard-dimensions.md) |
 | [0061](model/0061-placement-is-hard-dimensions.md) | Placement is a set of hard dimensions matched against allocatable | open |

@@ -93,6 +93,7 @@ classDiagram
         +Duration startupBudget
         +bool zeroDowntime
         +bool stateful
+        +Path[] writablePaths
         +HardeningClass hardening
     }
     class HardeningException {
@@ -820,6 +821,39 @@ together:
 | immutable root filesystem | `readOnlyRootFilesystem: true` |
 | no capabilities | `capabilities.drop: [ALL]` |
 | default syscall filter | `seccompProfile.type: RuntimeDefault` |
+
+### Writable paths are declared, not exempted
+
+A read-only root filesystem is not a filesystem nothing writes. A JVM needs
+`/tmp`; nginx needs `/var/cache/nginx` and `/var/run`. A Workload therefore
+lists the paths it must write ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)):
+
+```yaml
+writablePaths: [/tmp]
+```
+
+Each derives an `emptyDir` mounted at that path, and `readOnlyRootFilesystem`
+**stays `true`** — which is what the control means: the image's own filesystem is
+immutable, and the paths a process writes are mounted. A writable path is
+therefore **not** an exception and gets no entry in the inventory; conflating a
+mounted tmpfs with disabling the control would put `auth-api` writing to `/tmp`
+in the same list as a pod running as root.
+
+`sizeLimit` is **not** authored per path. Ephemeral storage is finite node disk
+and therefore contended
+([0004](../../docs/adr/model/0004-contention-decides-authority.md)), so the
+Cluster Context carries one default and a Workload needing more restates it with
+a reason ([chapter 20](20-resolved-deployment.md#overrides)). One number covers
+every case the estate has; the escape exists for the case it does not.
+
+Nothing is implicit. `/tmp` is not supplied unless it is declared — a mount
+nobody asked for would appear in every static image that never writes — and the
+worked `auth` domain claiming that "the render supplies `/tmp` as an `emptyDir`"
+described behaviour no chapter specified.
+
+`auth-ui`'s exception retires under this rule: nginx declaring
+`writablePaths: [/var/cache/nginx, /var/run]` meets the `restricted` class
+without relaxing anything, which is what its own recorded reason predicted.
 
 A Workload that cannot meet the class declares the **specific** control it
 relaxes, with a reason, in the shape derived-value overrides already use
