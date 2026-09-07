@@ -247,6 +247,13 @@ Three of thirty is what opt-in produces on this estate, and the number is the
 argument. Default-deny is expressible only because the edge set is complete —
 every legal flow named by a declaration someone owns.
 
+The producer is the `networking` adapter
+([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)): every
+`NetworkPolicy` in the estate, per Workload from the allow set below plus the two
+baseline rules, and one namespace-wide default-deny per domain. Nothing else
+emits one, which is what makes the DNS assertion checkable against a single
+producer.
+
 ### The derived allow set
 
 | rule | derived from | direction |
@@ -275,6 +282,30 @@ to hold.
 A baseline rule is not authorable and not exceptable from a Service document. An
 exception to one is a change to the derivation — reviewed once, applied to every
 Workload at once.
+
+### No Role grants what an absence already denies
+
+Three Services share `data-system`, and the only thing stopping `platform-valkey`'s
+ServiceAccount from reading `platform-postgres`'s Secret is that no Role grants
+it. That is an absence rather than a boundary, and the model turns it into a
+checked property rather than rendering RBAC
+([0075](../../docs/adr/model/0075-no-workload-rbac-in-v1.md)).
+
+**v1 renders no `Role`, `ClusterRole`, `RoleBinding` or `ClusterRoleBinding` for
+a Workload**, and no rendered Deliverable may grant access to `secrets` —
+`E_WORKLOAD_RBAC_GRANT`, a composition-time invariant
+([chapter 40](40-composition.md#secrets)). Under `delivery: env` and
+`delivery: file` the kubelet projects the Secret and the pod never calls the API,
+so a least-privilege Role for these Workloads grants nothing; rendering sixty
+objects that grant nothing would make an empty Role read as an oversight and
+give a future broad grant somewhere to hide.
+
+A Workload that genuinely needs the Kubernetes API — `agents-api` creates
+Services at runtime — is the case this rule refuses to guess at. It is an
+unregistered capability today, so it belongs in a Bidirectional Ledger with an
+owner until the model has vocabulary for it
+([0055](../../docs/adr/model/0055-bidirectional-ledgers.md)), not in an
+adapter's default.
 
 ### Audit before enforce
 

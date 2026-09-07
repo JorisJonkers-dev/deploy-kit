@@ -9,14 +9,18 @@ rests-on: ["0003"]
 
 # The registered adapters are v1; the second generation is deleted
 
-> **Amended 2026-09-07.** The set is **seventeen**:
+> **Amended 2026-09-07.** The set is **eighteen**:
+> [0074](0074-networking-adapter-emits-policy.md) adds `networking`, which owns
+> every NetworkPolicy in the estate now that the only implementation is in the
+> generation this ADR deletes; and
 > [0073](0073-vault-policy-is-a-deliverable.md) adds `vault-policy`, because the
 > policy [0025](0025-access-tiers-derive-policy.md) derives had no producer and
 > a derivation with no output is not total
 > ([0005](0005-derivation-is-total.md)). The decision this ADR records is
 > unchanged — the registry is the enumeration, nothing renders that is not
 > registered, and the second generation is still deleted. Adding an adapter is
-> an amendment here, which is what the count is for.
+> an amendment here, which is what the count is for. An `rbac` adapter is
+> **not** coming: [0075](0075-no-workload-rbac-in-v1.md) decides against one.
 
 ## Rests on
 

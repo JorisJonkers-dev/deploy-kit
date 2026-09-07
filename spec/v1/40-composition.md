@@ -371,6 +371,7 @@ scheduler drops without an event, a warning or a condition.
 | every `${secret:<path>#<key>}` placeholder byte-matches a granted path | `E_UNAUTHORISED_SECRET_REFERENCE` |
 | `access: self-roll` on a path with other readers carries an acknowledgement | `E_ROLL_AFFECTS_OTHER_READERS` |
 | no literal secret value appears in an env file or an Asset | `E_RAW_SECRET` |
+| no rendered Deliverable grants a Workload access to `secrets` | `E_WORKLOAD_RBAC_GRANT` |
 
 Three points of precision, all following from the grant unit being the path
 ([0009](../../docs/adr/model/0009-vault-read-is-per-path.md),

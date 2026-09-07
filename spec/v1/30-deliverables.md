@@ -39,10 +39,12 @@ assertion below possible without new machinery, and it is why a blueprint pack i
 not a special case — a pack **is a list of Fragments**, each tagged
 `adapter: flux-packs`.
 
-**The seventeen registered adapters are the v1 set**
+**The eighteen registered adapters are the v1 set**
 ([0052](../../docs/adr/model/0052-registered-adapters-are-v1.md), amended for
 `vault-policy` by
-[0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)). They are enumerated
+[0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md) and for
+`networking` by
+[0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)). They are enumerated
 only by `adapterContract()`; nothing renders that is not registered. A second,
 unregistered renderer generation exists in the tree today —
 `src/deployment/render/`, 14 modules and 1,967 lines, reachable from neither
@@ -53,13 +55,13 @@ registry hands adapters an `AdapterContext` of artifact documents, so bringing
 its behaviour back is a port across that seam and costs what writing a new
 adapter costs.
 
-The seventeen fall into two roles, on the two sides of the composition seam
+The eighteen fall into two roles, on the two sides of the composition seam
 (chapter 40):
 
 | role | count | runs in | input | output |
 |---|---|---|---|---|
 | **fragment producer** — the five `*-fragment` adapters | 5 | the Service repository, at publish time | that repository's `Deployment`, images lock and pinned cluster context | exactly one Fragment document per Adapter per Service, pushed by digest |
-| **central adapter** | 12 | centrally, over the composed union | the Resolved Deployment as an `AdapterContext` of artifact documents | the file set for its subsystem |
+| **central adapter** | 13 | centrally, over the composed union | the Resolved Deployment as an `AdapterContext` of artifact documents | the file set for its subsystem |
 
 The pairing is recorded, not folklore: `src/adapters/adapter-compat.ts` maps each
 producer's `outputKind` and `outputSchema` to the central adapters that accept it
@@ -164,7 +166,8 @@ could lose:
 - Every registry entry declares a `defaultPath`, and registration throws
   `adapter definition missing defaultPath` without one. Verified 2026-08-31
   against `src/adapters/registry.ts`: 16 definitions, all sixteen carrying one.
-  `vault-policy` is the seventeenth and carries one by the same rule.
+  `vault-policy` and `networking` are the seventeenth and eighteenth and carry
+  one by the same rule.
 - `adapterContract()` is the only enumeration of the set. A tool that needs to
   know who produces what reads it; nothing reconstructs ownership by scanning
   rendered YAML.
@@ -275,6 +278,7 @@ Paths abbreviate `platform/cluster/flux` as `…`.
 | `image-metadata-fragment` | fragment | `fragments/image-metadata` | one `ImageMetadataFragment` |
 | `kubernetes` | kubernetes | `…/apps` | per Service: `Namespace`, `ServiceAccount`, `Deployment`/`StatefulSet`/`Job`/`CronJob`, `Service`, `ConfigMap`, `PersistentVolume` + `PersistentVolumeClaim`, **`PodDisruptionBudget`**, `HorizontalPodAutoscaler`, **`ServiceMonitor`**, **`PodMonitor`**, guarded raw manifests, and the directory's kustomize `Kustomization` |
 | `kubernetes-workload-fragment` | fragment | `fragments/kubernetes-workload` | one `KubernetesWorkloadFragment` |
+| `networking` | networking | `…/apps` | every `NetworkPolicy`: one per Workload from the derived allow set plus the two baseline rules, and one namespace-wide default-deny per domain ([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)) |
 | `vault-policy` | vault | `…/apps/vso-secrets/policies` | per Workload identity: its derived Vault policy and its Kubernetes auth role, as JSON ([0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)) |
 | `traefik-lan` | edge | `…/apps/edge/traefik-lan-ingressroutes.yaml` | `IngressRoute` per LAN route, with middleware references |
 | `traefik-public` | edge | `…/apps/edge/traefik-ingressroutes.yaml` | `IngressRoute` per public route, with middleware references |
@@ -340,7 +344,8 @@ per adapter against the registered generation before any schedule is committed,
 because counting files under `fleet-infra/cluster` measures the cluster tree
 rather than the registry. Second, no adapter is registered "for free" — writing
 `rbac`, `networking` and `prometheus` against `AdapterContext` is three pieces of
-adapter work of comparable size, and the v1 schedule prices them that way
+adapter work of comparable size, and the v1 schedule prices them that way —
+`rbac` excepted, which 0075 decides against writing at all
 ([0059](../../docs/adr/model/0059-v1-scope-stopping-rule.md)).
 
 ## Determinism and parity
@@ -422,16 +427,25 @@ stale participant (chapter 40) rather than as a quietly smaller render.
 
 ## Open in this chapter
 
-1. **`rbac` does not exist.** 16 objects, the largest true gap, and
-   [0024](../../docs/adr/model/0024-identity-per-workload.md) requires a per-Workload
-   identity to bind. *Settled by:* a registered `rbac` adapter rendering
-   `Role`/`RoleBinding` per Workload, with the coverage ledger's RBAC entries
-   deleted in the same change.
-2. **`NetworkPolicy` regresses to zero producers** when `src/deployment/render/`
-   is deleted, while
-   [0035](../../docs/adr/model/0035-network-policy-default-deny.md) requires
-   default-deny derived from the edge set. *Settled by:* a `networking` adapter
-   written against `AdapterContext` — a port, not a registration.
+1. ~~**`rbac` does not exist.**~~ **Decided:** it will not.
+   [0075](../../docs/adr/model/0075-no-workload-rbac-in-v1.md) renders no
+   `Role` or `RoleBinding` for a Workload, because under `delivery: env` and
+   `delivery: file` the kubelet projects the Secret and the pod never calls the
+   API, so a least-privilege Role grants nothing. The absence becomes a checked
+   property instead — `E_WORKLOAD_RBAC_GRANT`
+   ([chapter 40](40-composition.md#secrets)) — and the 16 objects counted here
+   are objects that will not be rendered rather than a gap.
+   [0024](../../docs/adr/model/0024-identity-per-workload.md)'s per-Workload
+   identity is still bound, by the Vault auth role
+   ([0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)), which
+   is where that identity is actually used.
+2. ~~**`NetworkPolicy` regresses to zero producers**~~ **Decided:** the
+   `networking` adapter
+   ([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)) is the
+   producer — per-Workload policies from the derived allow set plus the two
+   baseline rules, and one namespace-wide default-deny per domain. Still a port
+   rather than a registration, and still unwritten; the decision is which
+   adapter owns it.
 3. **`PrometheusRule` has no implementation in either generation.** *Settled by:*
    a `prometheus` adapter deriving rules from the Alert Class.
 4. **`E_PATH_COLLISION` is specified here and implemented nowhere** — zero
