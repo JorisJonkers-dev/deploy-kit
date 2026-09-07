@@ -67,9 +67,15 @@
             | tar -xz actionlint
           ./actionlint -color .github/workflows/*.yml
 
+      # Binary, not gitleaks-action: the action needs a paid licence for org
+      # repos. Pinned version, per docs/adr/0048-class-b-pinning.md.
       - 'name': 'Secret scan'
-        'uses': 'gitleaks/gitleaks-action@v2'
+        'shell': 'bash'
         'env':
-          'GITHUB_TOKEN': '${{ secrets.GITHUB_TOKEN }}'
-          'GITLEAKS_ENABLE_UPLOAD_ARTIFACT': 'false'
-          'GITLEAKS_ENABLE_SUMMARY': 'false'
+          'GITLEAKS_VERSION': '8.30.1'
+        'run': |
+          set -euo pipefail
+          curl --fail --silent --show-error --location \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          ./gitleaks detect --no-git --redact --source . --exit-code 1
