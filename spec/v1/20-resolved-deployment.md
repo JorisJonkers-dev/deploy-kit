@@ -200,6 +200,7 @@ field's placement link to this anchor rather than copying rows.
 | `namespace` | derived | — | `<domain>-system`, and nothing else ([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)); several Services share one by construction |
 | requests and limits | derived | — | from `placement.memory` and `placement.cpu`: memory request equals memory limit, cpu request with no cpu limit |
 | `securityContext` | derived | — | from `hardening` and its declared exceptions |
+| `runAsUser`, `runAsGroup`, `fsGroup` | derived | — | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Workload holds a volume ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)) |
 | container probe timings | derived | — | from `probes` and `startupBudget` |
 | `progressDeadlineSeconds` | derived | — | from `startupBudget` |
 | rollout strategy, surge, unavailability | derived | — | from `zeroDowntime` and `volumes` |

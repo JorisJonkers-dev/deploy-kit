@@ -751,7 +751,7 @@ together:
 
 | control | rendered as |
 |---|---|
-| non-root | `runAsNonRoot: true`, with the UID from the image |
+| non-root | `runAsNonRoot: true`, with the numeric UID the images lock resolved ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)) |
 | immutable root filesystem | `readOnlyRootFilesystem: true` |
 | no capabilities | `capabilities.drop: [ALL]` |
 | default syscall filter | `seccompProfile.type: RuntimeDefault` |
@@ -764,6 +764,32 @@ closed vocabulary — `runAsRoot`, `writableRootFilesystem`,
 control. An exception with an empty or missing `reason` fails schema validation.
 There is no `hardening: privileged` shorthand: the exception list is the estate's
 inventory of what it cannot harden, and a shorthand would hide its length.
+
+### The UID is a pinned input, and the volume needs a group
+
+"The UID from the image" was not a derivation: the images lock resolves an alias
+to a digest and records nothing about the user, so `runAsNonRoot: true` rendered
+without a UID at all. Three failures follow, and one lock field closes all three
+([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)).
+
+The lock records the **resolved `uid` and `gid`** for each alias, read from the
+image config when the lock is built — the one moment a registry may legitimately
+be consulted, since the lock is an output. `runAsUser` and `runAsGroup` then
+derive from a pinned input like everything else.
+
+An image whose `USER` is a **name** rather than a number is refused when the lock
+is built: `E_IMAGE_USER_NOT_NUMERIC`. The kubelet cannot verify non-root from a
+name and fails the pod with `CreateContainerConfigError`, so the choice is a
+lock-time error with a name or a runtime error without one.
+
+**A volume gets `fsGroup`.** A freshly provisioned `local-path` directory is
+root-owned, so without a group a non-root pod cannot write its own PV —
+`platform-postgres` cannot `initdb`. Any Workload holding a volume therefore
+derives `fsGroup` from the resolved `gid`, with
+`fsGroupChangePolicy: OnRootMismatch` so the kubelet does not re-chown a large
+volume on every start. No authored field, and no root-capable init container —
+which would be a hardening exception on every stateful Workload, widening the
+estate's inventory of what it cannot harden to solve a problem `fsGroup` solves.
 
 Enforcement from the platform side was rejected rather than overlooked. Pod
 Security Admission can reject but never fill in, so a non-conforming pod fails at
