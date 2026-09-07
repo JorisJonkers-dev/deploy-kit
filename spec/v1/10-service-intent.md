@@ -1642,6 +1642,29 @@ alongside `jorisjonkers-dev-tls`, `garage-node-secrets` and
 `restart` or `reload` — and `rolloutRestartTargets` derives from it rather than
 being hand-declared.
 
+### Zero-downtime rotation
+
+**Replacing a secret without downtime is an option, and it is one combination**
+([0026](../../docs/adr/model/0026-delivery-env-file-self.md)):
+
+| delivery | `tolerates` | replacing the value costs |
+|---|---|---|
+| `self` | `reload` | **nothing** — the client re-reads; no pod restarts |
+| `file` | `reload` | nothing, for a consumer that watches its projected file |
+| `self` or `file` | `restart` | a rollout |
+| `env` | `restart` | a rollout; `env` cannot do better |
+| `env` | `reload` | refused — `E_ENV_CANNOT_RELOAD` |
+
+`env` is refused rather than degraded because a pod's environment is **fixed for
+its lifetime**: a rotated value cannot reach a running process that way, so a
+declaration claiming otherwise would be a promise the substrate cannot keep.
+
+`auth-api` is the case this exists for. It runs `delivery: self` today, its
+client re-reads from Vault, and its credential can be replaced while it serves
+traffic. A Service that needs the same property declares `delivery: self` with
+`rotation.tolerates: reload` and gets it; one that declares `env` has chosen a
+rollout, and the model says so at schema time rather than at rotation time.
+
 Two gates apply to the two deliveries that persist a Secret:
 
 - **Secrets at rest.** `env` and `file` are refused unless the pinned Cluster

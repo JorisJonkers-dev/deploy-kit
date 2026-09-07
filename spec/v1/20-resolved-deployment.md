@@ -212,7 +212,7 @@ field's placement link to this anchor rather than copying rows.
 | object kind | derived | — | from `lifecycle`, `stateful` and `volumes` |
 | the Service's release-gate deadline | derived | — | `max` over the Service's Workloads of `progressDeadlineSeconds` ([The release gate](#the-release-gate)) |
 | the object label set | derived | — | fixed, from Workload name, Service Id and the images lock ([chapter 10](10-service-intent.md#the-label-set)) |
-| Secret and VSO sync objects | derived | — | from grants with `delivery: env` or `file`, plus `rolloutRestartTargets` from `rotation` |
+| Secret and VSO sync objects | derived | — | from grants with `delivery: env` or `file`, plus `rolloutRestartTargets` from `rotation`; a grant with `delivery: self` and `tolerates: reload` derives **no** restart target, which is what makes its rotation zero-downtime ([chapter 10](10-service-intent.md#zero-downtime-rotation)) |
 | an Asset's object name, and the restart it causes | derived | — | content-hashed unconditionally; there is no authored change response ([0094](../../docs/adr/model/0094-asset-change-restarts-unconditionally.md)) |
 | env entries and `envFrom` refs | derived | — | from env files, after placeholder resolution — including `${identity:…}`, the Workload's own derived facts ([0091](../../docs/adr/model/0091-identity-placeholders-not-framework-wiring.md)) |
 | dependency coordinates | derived | — | from the edge set and the provider's surfaces, bound to the key the consumer chose |
