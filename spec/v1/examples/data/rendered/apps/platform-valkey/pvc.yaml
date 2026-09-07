@@ -1,0 +1,33 @@
+# adapter: kubernetes
+# real path: platform/cluster/flux/apps/data/platform-valkey/pvc.yaml
+#
+# `durability: reconstructible`. The one class in the vocabulary that derives NO
+# backup job, and the only absence in this domain that is not a hole: losing this
+# volume costs a rebuild, not data.
+#
+# It is also the one class the model's destruction gate does NOT cover. A claim
+# backing non-`reconstructible` data may not be removed as a side effect of a
+# render; this claim may. So the annotation below is doing more than labelling --
+# it is the flag that permits a delivery mechanism to prune this object, which is
+# a further reason for the author to write the class down rather than let it be
+# inferred from silence.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: valkey-data
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: valkey
+    app.kubernetes.io/instance: platform-valkey
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    deploy-kit.jorisjonkers.dev/durability: reconstructible   # README, gap G-18
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      # CANNOT DERIVE -- assigned. README, gap G-17.
+      storage: null

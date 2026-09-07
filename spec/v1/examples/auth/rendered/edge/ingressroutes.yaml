@@ -1,0 +1,111 @@
+# adapter: traefik-public
+# real path: platform/cluster/flux/apps/edge/traefik-ingressroutes.yaml
+#
+# ESTATE-WIDE FILE. One file holds every public IngressRoute in the estate; this
+# is the auth domain's slice of it, reproduced here so the domain reads in one
+# place. The objects themselves live in auth-system, beside the Services they
+# route to.
+#
+# Everything below is traceable to one block of intent -- Service `auth`'s
+# `public` exposure -- and nothing in this file is a live value read off the
+# estate any more.
+#
+# 1. THE HOSTNAME IS AUTHORED. `host: auth.jorisjonkers.dev` is written on the
+#    exposure as a full FQDN. No zone table, no `<service>.<zone>` rule and no
+#    apex flag stands behind it, so the renderer copies a declaration instead of
+#    guessing one -- which is what a hostname like `rabbitmq` on Service
+#    `platform-rabbitmq`, or `status` on no Service at all, makes necessary.
+#
+# 2. THE TWO ROUTES HAVE DISTINCT MATCHES. The exposure declares two: `/api`
+#    prefix to auth-api's `http` surface, `/` prefix to auth-ui's. The
+#    identical-match defect this file used to record is gone -- the split is
+#    declared rather than resolved by Traefik ordering. The two prefixes still
+#    nest, and Traefik ranks the longer rule first, which is exactly the
+#    declared intent rather than a tie-break over two rules nobody could tell
+#    apart.
+#
+# What is DERIVED, which is everything else at this edge:
+#
+#   - No forward-auth. `audience: anonymous` on a public tier derives no chain
+#     member; both surfaces must be reachable unauthenticated, because this
+#     Service is what performs authentication.
+#   - The security-headers middleware reference, from `contentPolicy: strict`.
+#     The author picked a profile; the baseline headers, the middleware's name
+#     and the namespace it lives in are the tier's. THE OBJECT IT NAMES HAS NO
+#     PRODUCER, exactly as the forward-auth Middleware has none. README, gap
+#     G-23.
+#   - entryPoint and TLS, from the tier. CONTEXT.
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: auth-ui
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-ui
+    app.kubernetes.io/instance: auth
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  entryPoints:
+    - websecure                        # CONTEXT: the tier's entryPoint
+  routes:
+    - kind: Rule
+      # route {path: /, match: prefix, workload: auth-ui, surface: http}
+      match: Host(`auth.jorisjonkers.dev`) && PathPrefix(`/`)
+      middlewares:
+        # derived from `contentPolicy: strict`. No forward-auth: the audience is
+        # anonymous. The chain is the tier's, and the profile name is the only
+        # half the author wrote.
+        - name: security-headers-strict
+          namespace: kube-system       # CONTEXT
+      services:
+        - name: auth-ui
+          namespace: auth-system
+          port: 80                     # the routed `provides` port
+  tls:
+    # CONTEXT: the tier's certificate policy. Nothing in Service Intent names a
+    # certificate, an issuer or a resolver, and nothing in this tree derives
+    # one.
+    certResolver: letsencrypt
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: auth-api
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-api
+    app.kubernetes.io/instance: auth
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  entryPoints:
+    - websecure                        # CONTEXT
+  routes:
+    - kind: Rule
+      # route {path: /api, match: prefix, workload: auth-api, surface: http}.
+      # `match: prefix` renders PathPrefix and `match: exact` renders Path;
+      # those two are the whole vocabulary.
+      match: Host(`auth.jorisjonkers.dev`) && PathPrefix(`/api`)
+      middlewares:
+        # the same profile: `contentPolicy` sits on the exposure, so it applies
+        # to every route under that host.
+        - name: security-headers-strict
+          namespace: kube-system       # CONTEXT
+      services:
+        - name: auth-api
+          namespace: auth-system
+          port: 8081
+  tls:
+    certResolver: letsencrypt          # CONTEXT
+# NOT EMITTED, and it is the estate's most-referenced missing object: the
+# forward-auth Middleware. Every `audience: authenticated` route in every other
+# domain derives a middleware reference pointing at this Service, and the
+# registry says traefik-public emits "IngressRoute per public route, WITH
+# MIDDLEWARE REFERENCES" -- references only. No registered adapter emits the
+# Middleware object those references resolve to, and it is the one object in
+# the estate that names auth-api without a dependsOn edge. The same hole
+# swallows the security-headers Middleware referenced above, which is now a
+# second object with a reference and no producer.
+# README, gap G-23.

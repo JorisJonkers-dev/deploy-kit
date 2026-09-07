@@ -2,7 +2,7 @@
 tier: decision
 status: proposed
 claim: settled
-date: 2026-08-31
+date: 2026-09-07
 normative: spec/v1/10-service-intent.md#configuration
 rests-on: ["0005"]
 ---
@@ -15,7 +15,9 @@ Cluster Target (`platform/env/<workload>/<cluster>.env`) carries only what
 differs, overlay winning key by key. A literal is written literally; a value the
 platform derives is written as a **named placeholder** the renderer resolves —
 `${dependency:…}` for a Dependency Coordinate, `${secret:…}` for a secret
-([0027](0027-secret-reference-join-key.md)). Writing a derived value as a literal
+([0027](0027-secret-reference-join-key.md)), and `${exposure:…}` for a hostname
+another Service authored ([0018](0018-exposure-by-audience.md)). Writing a
+derived value as a literal
 is a build error; overriding a derived value uses the Workload's declared
 override mechanism ([0031](0031-derived-overrides-with-reason.md)), never the env
 file. The old configuration ADR scoped these files per Service while the spec and
@@ -30,8 +32,8 @@ Every non-secret value a Workload's environment needs is either service-owned (a
 literal the author knows) or a total function of the Intent and pinned inputs
 ([0005](0005-derivation-is-total.md)). False if: a Workload requires an
 environment variable that is neither author-known nor producible by any
-`${dependency:…}` or `${secret:…}` source, forcing a hand-maintained copy of a
-derived value. Settled by: rendering the three service repositories' Workloads
+`${dependency:…}`, `${secret:…}` or `${exposure:…}` source, forcing a
+hand-maintained copy of a derived value. Settled by: rendering the three service repositories' Workloads
 and diffing each rendered environment against `knowledge-api`'s roughly thirty
 hand-written live variables; any live variable no literal or placeholder can
 reproduce falsifies the claim.

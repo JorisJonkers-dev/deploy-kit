@@ -1,0 +1,220 @@
+# adapter: networkpolicy  -- NOT REGISTERED. Chapter 30 records NetworkPolicy as
+# having zero producers: the only implementation was
+# src/deployment/render/networkpolicy.ts, which the unregistered generation's
+# deletion removes, so coverage for this kind goes from unregistered to absent.
+# This file is what the `networking` adapter must emit; nothing emits it today.
+# real path: platform/cluster/flux/apps/auth/auth/networkpolicy.yaml
+#
+# Default-deny plus the derived allow set, evaluated PER POD. A namespace wall
+# separates nothing here -- auth-system holds every Service of the auth domain
+# by construction -- so these three objects, plus per-Workload identity, are the
+# whole of the isolation story.
+#
+# Selectors marked CONTEXT name platform components (the edge, the metrics
+# stack, the Secret Store, cluster DNS). Those are Cluster Context facts, not
+# Service Intent, and this example set does not reproduce the Cluster Context:
+# the SHAPE below is derived, the four selector values are the live estate's and
+# must come from the pinned context. README, gap G-11.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  # Every pod in the namespace, including one no rendered Workload accounts for.
+  # This object is what makes default-deny a POSTURE rather than a property of
+  # the Workloads that happen to have been rendered.
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  # It carries Egress, so the baseline applies to it too: the static check is
+  # "every rendered NetworkPolicy carrying Egress in policyTypes also matches
+  # UDP/53". The namespace-wide deny is therefore a deny-all-except-DNS, and it
+  # is the baseline rule -- not a judgement call -- that makes it one.
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system   # CONTEXT
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns                          # CONTEXT
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53                    # truncated responses ride the same rule
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: auth-api
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-api
+    app.kubernetes.io/instance: auth
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: auth-api
+      app.kubernetes.io/instance: auth
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # from the route tier carrying the audience -- derived from the route
+    # {path: /api, workload: auth-api, surface: http} on Service auth's `public`
+    # exposure, whose audience is anonymous
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system   # CONTEXT: the edge
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik            # CONTEXT
+      ports:
+        - protocol: TCP
+          port: 8081
+    # from the metrics stack to the scrape port -- derived from `scrape`
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: utility-system  # CONTEXT
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus           # CONTEXT
+      ports:
+        - protocol: TCP
+          port: 8081                  # scrape resolves to the `http` surface
+    # No ingress from consumers: no Workload in the composed example set
+    # declares an edge to {service: auth}. auth's estate-wide role is the
+    # forward-auth middleware derived from every route's audience, which is not
+    # a dependency edge and therefore produces no ingress rule here. If the edge
+    # middleware calls this Workload, the rule that admits it is the edge rule
+    # above -- by luck of the same peer, not by derivation. README, gap G-18.
+  egress:
+    # baseline: cluster DNS. Once any egress policy selects a pod, ALL unmatched
+    # egress is denied, DNS included -- the failure the dead renderer shipped,
+    # where a consumer could not resolve the svc.cluster.local name the
+    # coordinate derivation had just handed it and the timeout was diagnosed as
+    # "Postgres is down".
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system   # CONTEXT
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns                          # CONTEXT
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # dependsOn {service: platform-postgres, surface: postgres}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres     # the Workload behind the surface
+      ports:
+        - protocol: TCP
+          port: 5432
+    # dependsOn {service: platform-valkey, surface: redis}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: valkey
+      ports:
+        - protocol: TCP
+          port: 6379
+    # dependsOn {service: platform-rabbitmq, surface: amqp}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: rabbitmq
+      ports:
+        - protocol: TCP
+          port: 5672
+    # dependsOn {service: stalwart, surface: smtp} is NOT RENDERED. The mail
+    # domain publishes no Intent Fragment in this example set, so neither the
+    # Workload behind the surface nor its port is known. A declared edge with no
+    # rendered rule is a silently narrowed allow set -- the failure mode chapter
+    # 16 names, where the on-call sees a connection timeout and no error code.
+    # Over the composed union it resolves. README, gap G-04.
+    # egress to the Secret Store -- derived from the Workload's effective grant
+    # set (three grants, all `delivery: self`, so the pod fetches at runtime and
+    # this is the only object in the tree that reflects them at all)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: utility-system  # CONTEXT
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: vault                # CONTEXT
+      ports:
+        - protocol: TCP
+          port: 8200                                       # CONTEXT
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: auth-ui
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-ui
+    app.kubernetes.io/instance: auth
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: auth-ui
+      app.kubernetes.io/instance: auth
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # from the route {path: /, workload: auth-ui, surface: http} on the same
+    # exposure: the surface a route names is what the tier is admitted to
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system   # CONTEXT: the edge
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik            # CONTEXT
+      ports:
+        - protocol: TCP
+          port: 80
+    # No scrape ingress: auth-ui declares no scrape surface.
+  egress:
+    # The baseline, and nothing else. auth-ui declares no dependsOn -- the API
+    # call is made by the browser, not by this container -- and holds no grant,
+    # so it gets DNS and no other egress. This is the minimal derived policy.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system   # CONTEXT
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns                          # CONTEXT
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

@@ -230,8 +230,8 @@ those keys.
 ## Network policy
 
 Policy is **default-deny and derived**. A Workload's legal flows are exactly its
-declared edges, its declared surfaces and exposure, its effective grant set, and
-a platform baseline no Service authors
+declared edges, the surfaces it declares, the exposure routes that name it, its
+effective grant set, and a platform baseline no Service authors
 ([0035](../../docs/adr/0035-network-policy-default-deny.md)).
 
 It is evaluated **per pod**, and it has to be. A namespace holds every Service
@@ -254,7 +254,7 @@ every legal flow named by a declaration someone owns.
 | to a provider's surface port | each `dependsOn` edge of the Workload | egress |
 | from each consumer of a surface | the inbound edge set, over the composed union | ingress |
 | to the Secret Store | any grant in the Workload's effective set | egress |
-| from the route tier carrying the audience | an `exposure` entry | ingress |
+| from the route tier carrying the audience | a route on the Service's `exposure` naming this Workload | ingress |
 | from the metrics stack, to the scrape port | `observability.scrape` | ingress |
 
 ### The baseline
@@ -322,7 +322,7 @@ flowchart LR
         d_env["env files<br/>per Workload"]
         d_sec["secrets<br/>path, access, delivery"]
         d_ast["assets"]
-        d_exp["exposure"]
+        d_exp["exposure — on the Service<br/>name, host (authored FQDN),<br/>audience, contentPolicy,<br/>routes: path, match,<br/>workload, surface"]
         d_prb["probes<br/>readiness + liveness"]
         d_bud["startupBudget"]
         d_zdt["zeroDowntime"]
@@ -343,7 +343,6 @@ flowchart LR
 
     subgraph DER["Derived — assignments and Deliverables (layers 2 and 3)"]
         r_ns["namespace<br/>domain-system"]
-        r_host["hostname (FQDN)"]
         r_tier["route tier + middleware"]
         r_ru["Reconcile Unit + DAG"]
         r_sw["switch gate<br/>per Service"]
@@ -411,13 +410,13 @@ flowchart LR
     d_ast --> k_cm
     d_ast --> k_dep
 
-    d_exp --> r_host
     d_exp --> r_tier
     d_exp --> k_ir
     d_exp --> k_rch
     d_exp --> k_edg
     d_exp --> k_gat
     d_exp --> k_np
+    d_exp --> k_res
 
     d_prb --> r_prb
     d_prb --> r_tc
@@ -442,7 +441,6 @@ flowchart LR
     d_scr --> k_pr
     d_scr --> k_np
 
-    p_ctx --> r_host
     p_ctx --> r_plc
     p_cs --> r_rep
     p_cs --> r_bind
@@ -462,7 +460,6 @@ flowchart LR
     r_dig --> k_dep
     r_plc --> k_dep
     r_bind --> k_dep
-    r_host --> k_ir
     r_tier --> k_ir
     r_tc --> k_flx
     r_ru --> k_flx
@@ -471,7 +468,6 @@ flowchart LR
     d_ovr -.->|"replaces one derived value"| r_dl
 
     r_ns --> k_res
-    r_host --> k_res
     r_sa --> k_res
     r_vp --> k_res
     r_bind --> k_res
@@ -489,6 +485,20 @@ before an object is rendered. Eligibility is not bin-packing: three Workloads
 asking `memory: 2Gi` each pass against a 4096Mi node, and the scheduler refuses
 the third at apply.
 
+A node left the map altogether, and with it four edges. There is no derived
+`hostname (FQDN)` any more: `exposure` hangs off the **Service**, and the `host`
+it carries is a full authored FQDN
+([0018](../../docs/adr/0018-exposure-by-audience.md)), so the
+IngressRoute, the reachability entry, both edge catalogs, the Gatus endpoint and
+the published `resolved.yml` all hang off the declaration itself rather than off
+a value layer 2 assembled from a label, a tier policy and a cluster domain. The
+Cluster Context no longer contributes to a hostname at all. What layer 2 still
+decides on that path is `r_tier` — the tier carrying the audience and the
+middleware chain that comes with it — which is why the exposure node keeps an
+arrow into it. `provides` stays on the Workload, so the two ends of a route are
+declared in the same document without a port ever being restated: the Service
+says which host and path, the Workload says which port.
+
 The map is dense on purpose and is not meant to be read by eye. Its value is
 that the three properties below are **checkable by a script** over the
 renderer's attribution table, which
@@ -499,13 +509,13 @@ carry.
 
 ```mermaid
 flowchart LR
-    X["exposure:<br/>audience: authenticated<br/>paths: 5 rules"]
+    X["exposure — on the Service:<br/>name: kb<br/>host: kb.jorisjonkers.dev<br/>audience: authenticated<br/>routes: 5"]
 
-    X --> H["hostname<br/>kb.jorisjonkers.dev"]
-    X --> T["tier public-frankfurt<br/>+ forward-auth middleware"]
+    X --> H["host, carried through<br/>kb.jorisjonkers.dev"]
+    X --> T["tier public-frankfurt<br/>+ forward-auth middleware<br/>derived from audience + tier"]
 
     H --> A1["IngressRoute (host)"]
-    H --> A2["IngressRoute (mcp paths)"]
+    H --> A2["IngressRoute (mcp routes)"]
     H --> A3["reachability channel entry"]
     H --> A4["edge-catalog ConfigMap"]
     H --> A5["edge-route-catalog ConfigMap"]
@@ -517,9 +527,16 @@ flowchart LR
 One declaration, six artefacts, plus the two conformance tests that existed only
 to detect when those six disagreed (`route-auth-conformance.test.js`,
 `gatus-route-coverage.test.js`). Under property 1 those tests have nothing left
-to check, because the six cannot disagree — they share one upstream. The
-hostname itself is assembled by layer 2 from the label the Service declares and
-the tier that carries the audience
+to check, because the six cannot disagree — they share one upstream. That
+upstream is a **Service** field: one host fronting two Workloads,
+`auth.jorisjonkers.dev/api` to `auth-api` and `/` to `auth-ui`, is a single
+exposure with two routes, and it is unexpressible while `exposure` sits on a
+Workload.
+
+The hostname is no longer assembled. `host` is the full FQDN as authored and is
+carried through untouched; what layer 2 decides on this path is the tier that
+carries the audience and the middleware chain that follows from it,
+`contentPolicy` included
 ([chapter 20](20-resolved-deployment.md#authority)).
 
 ## The three properties
@@ -595,7 +612,7 @@ parked direction work is in
 
 1. **The CORS predicate.** `AUTH_CORS_ALLOWED_ORIGINS` lists nine hostnames, and
    the inbound derivation above claims they are the inbound edge set projected
-   onto assigned hostnames. The shape is right; the predicate is not
+   onto the hosts those Services declare. The shape is right; the predicate is not
    established. A browser origin is needed only by a consumer making
    cross-origin requests *to* `auth-api`, whereas an OIDC redirect flow — what
    `GrafanaOidc`, `N8nOidc` and `RabbitMqOidc` exercise — needs no CORS entry.
