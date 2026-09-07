@@ -1,7 +1,7 @@
 # Chapter 10 — Service Intent
 
-Layer 1. The only layer a human authors, and the only layer that lives in a
-Service's own repository.
+Layer 1. The only layer a human authors, and the only layer that lives in the
+domain's own repository.
 
 Two rules govern everything below, and every field is justified against one of
 them:
@@ -12,11 +12,24 @@ them:
    appear nowhere. What they should be is derived from what is declared
    ([0005](../../docs/adr/0005-derivation-is-total.md),
    [0030](../../docs/adr/0030-runtime-mechanics-derived.md)).
-2. **Service Intent contains no contended values.** A value that must be unique
-   across the estate, or that draws on a shared finite resource, is assigned by
-   layer 2 ([0004](../../docs/adr/0004-contention-decides-authority.md)). A
-   Service expresses a need and reads the assignment back from its generated
-   `resolved.yml` ([0033](../../docs/adr/0033-assignments-published-back.md)).
+2. **Service Intent never gets the last word on a contended value.** A value
+   that must be unique across the estate, or that draws on a shared finite
+   resource, is **arbitrated** by layer 2
+   ([0004](../../docs/adr/0004-contention-decides-authority.md)). Contention
+   decides who **arbitrates**, not who **authors**: the Service states its
+   requirement, the platform decides whether it fits and where, and the Service
+   reads the assignment back from its generated `resolved.yml`
+   ([0033](../../docs/adr/0033-assignments-published-back.md)).
+
+The second rule reads as it does because placement forced it. `memory` and `cpu`
+are contended — they draw on a finite pool of node capacity — and they are
+nevertheless authored here, as raw quantities per Workload
+([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)). An authors-only
+reading of contention would forbid the field and leave the estate exactly where
+it is, because a number no Service may write is a number nobody writes, and what
+that produced is BestEffort on every pod. Arbitration is real and it is the
+platform's: eligibility is checked against node allocatable at build time, and
+the scheduler places at apply.
 
 ## Two artefacts
 
@@ -24,26 +37,35 @@ Layer 1 is authored as two kinds of file:
 
 | file | owns |
 |---|---|
-| `platform/service.yml` | shape: workloads, surfaces, dependencies, exposure, probes, volumes, placement, size, hardening, release unit, and secret **access** |
+| `platform/<domain>.yml` | one domain: its `owner`, and every Service in it — workloads, surfaces, dependencies, exposure, probes, volumes, placement, hardening, and secret **access** |
 | `platform/env/<workload>/base.env` + `platform/env/<workload>/<cluster>.env` | every environment variable that **that Workload** receives |
 
+One file is one domain and one Intent Fragment
+([0063](../../docs/adr/0063-intent-authored-per-domain.md)). A repository may
+hold several domain files — which is what lets `homelab-collections` stay one
+repository holding three Services rather than three repositories with three
+publish workflows — and a domain never spans repositories, so composition unions
+fragments and never has to union a domain (chapter 40).
+
 The split that matters is not file-level but concern-level. A secret's **access**
-is declared in `service.yml`, beside the `dependsOn` edge that motivates it; the
+is declared in the domain file, beside the `dependsOn` edge that motivates it; the
 **environment variable** that carries it is a placeholder in the env file. Each
 file therefore checks the other: an env file referencing a secret with no grant is
 an unauthorised reference, and a grant with no reference is a dead grant.
 
 ```yaml
 apiVersion: intent.jorisjonkers.dev/v1
-kind: Service
+kind: Domain
 schemaVersion: 1.0.0
 ```
 
 The `apiVersion` deliberately does not reuse `deployment.jorisjonkers.dev`, which
 three mutually incompatible documents already share — the defect
 [0003](../../docs/adr/0003-three-layer-meta-model.md) exists to fix. Each layer
-gets its own namespace. `schemaVersion` is the **data model's own semver**, not
-the toolkit package's version, and composition accepts a range rather than an
+gets its own namespace. `kind` names the authored document — one domain holding
+many Services — while chapter 40's `IntentFragment` is the envelope that
+publishes it. `schemaVersion` is the **data model's own semver**, not the
+toolkit package's version, and composition accepts a range rather than an
 equality ([0039](../../docs/adr/0039-artifact-schema-versioning.md)); chapter 40
 defines the range and what the lock records.
 
@@ -53,18 +75,14 @@ defines the range and what the lock records.
 classDiagram
     direction LR
 
-    class Service {
-        +ServiceId id
-        +Domain domain
+    class Domain {
+        +DomainName domain
         +string owner
-        +AlertClass alertClass
-        +ReleaseUnit releaseUnit
         +SemVer schemaVersion
     }
-    class Alias {
-        +string namespace
-        +string workload
-        +string reason
+    class Service {
+        +ServiceId id
+        +AlertClass alertClass
     }
     class Workload {
         +string name
@@ -75,7 +93,6 @@ classDiagram
         +bool zeroDowntime
         +bool stateful
         +int minAvailable
-        +SizeClass size
         +HardeningClass hardening
     }
     class HardeningException {
@@ -85,7 +102,6 @@ classDiagram
     class Surface {
         +string name
         +int port
-        +Protocol protocol
     }
     class Sidecar {
         <<proposed>>
@@ -123,11 +139,19 @@ classDiagram
         +DurabilityClass durability
     }
     class Placement {
-        +Capability[] requires
+        +Quantity memory
+        +Quantity cpu
+        +Arch[] arch
+        +Site site
+        +Capability[] capabilities
     }
-    class CapabilityPreference {
-        +Capability capability
-        +int weight
+    class DiskRequest {
+        +Media[] media
+        +Quantity size
+    }
+    class GpuRequest {
+        +GpuClass class
+        +Quantity memory
     }
     class Scrape {
         +int port
@@ -161,10 +185,10 @@ classDiagram
         +Duration maxAge
     }
 
-    Service "1" *-- "0..1" Alias : aliases
-    Service "1" *-- "0..*" Surface : provides
+    Domain "1" *-- "1..*" Service : services
     Service "1" *-- "1..*" Workload : workloads
 
+    Workload "1" *-- "0..*" Surface : provides
     Workload "1" *-- "0..*" Sidecar : sidecars
     Workload "1" *-- "0..*" HardeningException : hardening.exceptions
     Workload "1" *-- "0..*" DependencyEdge : dependsOn
@@ -173,12 +197,13 @@ classDiagram
     Workload "1" *-- "0..1" Probe : probes.liveness
     Workload "1" *-- "0..*" Asset : assets
     Workload "1" *-- "0..*" Volume : volumes
-    Workload "1" *-- "0..1" Placement : placement
+    Workload "1" *-- "1" Placement : placement
     Workload "1" *-- "0..1" Scrape : scrape
     Workload "1" *-- "0..*" Override : overrides
 
+    Placement "1" *-- "0..1" DiskRequest : disk
+    Placement "1" *-- "0..1" GpuRequest : gpu
     Exposure "1" *-- "0..*" PathRule : paths
-    Placement "1" *-- "0..*" CapabilityPreference : prefers
     DependencyEdge ..> Surface : names a Surface of another Service
 
     Workload "1" *-- "1..*" EnvFile : env per workload
@@ -195,62 +220,146 @@ The diagram is embedded rather than kept as a separate `.mmd`. A standalone
 this chapter exists for.
 
 Two things in it are still ungraded and marked as such: `sidecars`, and
-`minAvailable` on the Workload. `size` is no longer proposed — it is a closed
-class, graded by
-[0016](../../docs/adr/0016-pod-hardening-and-resource-class.md) and tabulated
-below. Env files hang off the **Workload**, not the Service
-([0011](../../docs/adr/0011-configuration-env-files-per-workload.md)).
+`minAvailable` on the Workload. `placement` is not among them: it is graded by
+[0061](../../docs/adr/0061-placement-is-hard-dimensions.md) and specified in
+full below, and it is the only composite on the Workload that is **required**.
+Env files hang off the **Workload**, not the Service
+([0011](../../docs/adr/0011-configuration-env-files-per-workload.md)), and so
+does `provides` — a port is a property of a process.
 
 ## Service identity
 
-A Service is identified by one short string, unique across the estate, and that
-string is the only identity another Service may reference
-([0010](../../docs/adr/0010-flat-service-identity.md)). Namespace, workload name
-and image reference derive from the id by rule; a deliberate divergence is an
-`alias` carrying its reason.
-
-| field | required | notes |
-|---|---|---|
-| `id` | yes | The one referencable identity, estate-unique. |
-| `domain` | yes | Ownership grouping, owner of the Secret Subtree, and the unit of Intent Fragment publication ([0037](../../docs/adr/0037-composition-oci-fragments.md)). |
-| `owner` | yes | Who is notified. |
-| `alertClass` | yes | `none` \| `business-hours` \| `urgent` \| `page`. Urgency, never routing ([0021](../../docs/adr/0021-observability-scrape-and-alert-class.md)). |
-| `releaseUnit` | no | At most one. Members switch together or not at all ([0060](../../docs/adr/0060-release-unit.md)). |
-| `aliases` | no | A deliberate divergence from a derived coordinate, with `reason`. |
-| `provides` | no | Surfaces other Services may depend on, as a flat map of name to port integer. |
-| `workloads` | yes | One or more. |
-
-Renames are permanent here, not migration artifacts. `fleet-infra/docs/live-divergence.md`
-records one — *"the service repository is home-portal; live called the image
-app-ui. A rename, not a different image"* — and `stalwart` /
-`stalwart-provisioner` is a second. An `alias` turns that prose row into a
-validated field:
+Intent is authored one file per domain. The file states the domain, raises
+exactly one field to it, and lists the Services it holds
+([0063](../../docs/adr/0063-intent-authored-per-domain.md)):
 
 ```yaml
-id: home-portal
-aliases:
-  namespace: app-system
-  reason: pre-existing namespace; a rename would break four inbound references.
+domain: auth                 # the file header; one domain per file
+owner: joris                 # the only field raised to the domain
+services:
+  - id: auth                 # the referencable identity; namespace auth-system
+    alertClass: page
+    workloads:
+      - name: auth-api       # the process's own name, and its identity
+        image: auth-api
+      - name: auth-ui
+        image: auth-ui
 ```
+
+A Service is identified by one short string, unique across the estate, and that
+string is the only identity another Service may reference
+([0010](../../docs/adr/0010-flat-service-identity.md)). The id is the repository
+or product name. Workload names are whatever the processes are actually called,
+and so are their images: neither is a derivative of the id.
+
+**The namespace derives from the domain**, as `<domain>-system`, and from nothing
+else. That reproduces all ten live Service namespaces — `auth-system`,
+`data-system`, `knowledge-system`, `app-system`, `agents-system`, `mail-system`,
+`media-system`, `notes-system`, `automation-system`, `utility-system` — with zero
+renames and not one live object moved.
+
+Which is why nothing remains for an alias field to express, and why there is
+none. `fleet-infra/docs/live-divergence.md` records the case one was invented
+for — *"the service repository is home-portal; live called the image app-ui. A
+rename, not a different image"* — and under these rules the row describes a
+divergence that no longer exists. The id is the repository name, `home-portal`.
+The Workload is called what the process is called, `app-ui`, and so is its
+image. The domain is `app`, so the namespace is `app-system`, which is where the
+Service already runs. The three things an alias used to carry are the namespace
+(now derived from the domain), the Workload name and the image (both authored
+explicitly), and the one divergence it still expressed — a namespace of the
+Service's own choosing — is exactly the move that let a Service claim another
+domain's namespace. Deleting the field deletes that move with it.
+
+**A Service is the unit of atomic release.** Some products are one thing in two
+processes: a new frontend against an old API is a broken product even though each
+pod individually reports healthy. That coupling is carried by the Service
+boundary itself ([0062](../../docs/adr/0062-service-is-the-release-unit.md)).
+The Workloads of one Service switch together or none switches. No Workload's new
+version receives traffic until **every** Workload's new version is healthy, where
+healthy means that Workload's own declared readiness
+([0014](../../docs/adr/0014-probes-are-siblings.md)). If any member fails its
+`startupBudget`, **no** member switches and the old versions keep serving.
+Rollback is Service-scoped: reverting one Workload reverts all of them.
+
+There is no mechanism to couple two Services, and no field naming a set. A pair
+that must release together is **one Service** — `auth-api` and `auth-ui` are
+Workloads of Service `auth`, `stalwart` and `stalwart-provisioner` Workloads of
+Service `stalwart` — and a surviving pair that cannot merge is evidence the
+Service boundary is drawn wrong, not a missing field. Merging costs nothing in
+this estate because nothing references the folded names: the complete set of
+`dependsOn` targets across the composed union is `platform-postgres`,
+`platform-rabbitmq`, `stalwart` and `platform-valkey`, and `auth-api`'s
+estate-wide role is the forward-auth middleware derived from every route's
+audience ([0018](../../docs/adr/0018-exposure-by-audience.md)), never an edge.
+
+Atomicity is declared rather than derived, because lockstep release is a product
+choice the graph cannot see: a frontend depends on its API, but a dependency edge
+does not mean the two must cut over together, and deriving atomicity from every
+edge would make the whole estate one unit. A Service is therefore not a Reconcile
+Unit:
+
+| | Reconcile Unit | Service |
+|---|---|---|
+| answers | in what order | all at once, or not at all |
+| origin | derived from the dependency graph ([0032](../../docs/adr/0032-reconcile-unit-derived.md)) | declared, by drawing a boundary |
+| example | `platform-postgres` before `knowledge` | `auth-api` and `auth-ui`, in Service `auth` |
+| failure | the later unit waits | nothing switches |
+
+The Service says **what** must hold, never **how** it is achieved. The mechanism —
+what applies the change, in what order, behind what gate — is defined separately.
+
+**A namespace holds several Services by construction, so it is not a trust
+boundary.** This was once a footnote to an exception; it is now the normal case
+for every namespace in the estate, and it must be read as normal rather than as
+an edge case. No isolation claim may rest on a namespace wall. Isolation is the
+derived default-deny edge set
+([0035](../../docs/adr/0035-network-policy-default-deny.md)), evaluated per pod,
+plus per-Workload identity ([0024](../../docs/adr/0024-identity-per-workload.md)).
+
+| field | level | required | notes |
+|---|---|---|---|
+| `domain` | file header | yes | One domain per file. The namespace is `<domain>-system`; the domain also owns the Secret Subtree and is the unit of Intent Fragment publication ([0037](../../docs/adr/0037-composition-oci-fragments.md), [0063](../../docs/adr/0063-intent-authored-per-domain.md)). |
+| `owner` | file header | yes | Who is notified. The **only** field raised to the domain; a Service needing a different owner needs its own domain. |
+| `id` | Service | yes | The one referencable identity, estate-unique. The repository or product name. |
+| `alertClass` | Service | yes | `none` \| `business-hours` \| `urgent` \| `page`. Urgency, never routing ([0021](../../docs/adr/0021-observability-scrape-and-alert-class.md)). Never raised to the domain: a domain would then page as loudly as its loudest member. |
+| `workloads` | Service | yes | One or more. They switch together. |
 
 Uniqueness cannot be had by construction, only by check: the id encodes neither
 domain nor repository, so nothing structural stops two repositories claiming one
 string. `E_DUPLICATE_SERVICE_ID` fires at composition (chapter 40), and the
 window in which two repositories both claim an id is an accepted cost.
 
-Whether an alias may name a namespace some other applier owns is not a model
-question — see
+Workload names carry a second uniqueness rule, and it is scoped to the **domain
+file** rather than to the Service, because the ServiceAccount and the Vault role
+are the Workload name alone — `auth-system.auth-api`, never
+`auth-system.auth-auth-api` ([0024](../../docs/adr/0024-identity-per-workload.md),
+derived in chapter 16). Two Services in one file therefore cannot both call a
+Workload `api`: that is `E_DUPLICATE_WORKLOAD_NAME` at composition (chapter 40),
+raised where a reader can see both declarations at once.
+
+No field can move a Service out of its domain's namespace, so the old question of
+whether a Service may name a namespace some other applier owns has lost its
+subject matter — see
 [Delivery and co-testing are defined separately](#delivery-and-co-testing-are-defined-separately).
 
 ## Ports and surfaces
 
-There is no `ports` list. A port is an **integer**, written where it is used:
+There is no `ports` list. A port is an **integer**, written where it is used, and
+`provides` is a flat map of surface name to port declared **on the Workload**,
+because a port is a property of a process:
 
 ```yaml
-provides:
-  http: 8080
-  metrics: 9187
+# in the data domain file, under Service platform-postgres
+workloads:
+  - name: platform-postgres
+    provides:
+      db: 5432          # the process itself
+      metrics: 9187     # its exporter sidecar, in the same pod
 ```
+
+A Workload with no listener declares no `provides` at all — the ingest worker of
+`knowledge` has none, and the map is absent rather than empty.
 
 ```yaml
 exposure:
@@ -264,6 +373,13 @@ scrape:
   port: 9187
   path: /metrics
 ```
+
+Surface **names** are unique within a Service, not within a Workload, because a
+dependency edge names `{service, surface}` and never a Workload
+([0020](../../docs/adr/0020-dependency-edges-carry-surface.md)). A Service's
+surface set is the union of its Workloads' `provides` maps, and one name declared
+twice inside that union is a build error: the edge would otherwise be ambiguous
+about which process it means.
 
 The rendered Kubernetes port name is **the name of the `provides` surface
 declaring that same integer**; where no surface declares it, the name derives
@@ -284,6 +400,10 @@ happens to expose.
 
 ## Workload
 
+`name` is the process's own name, unique within the domain file. It is not a
+derivative of the Service id, and it is what the Workload's ServiceAccount and
+Vault role are called (chapter 16).
+
 `image` is an alias resolved to a digest through the images lock — never a tag,
 never a digest here.
 
@@ -293,6 +413,11 @@ and `volumes`.
 
 `runtime` selects the Runtime Profile: `jvm`, `python`, `node`, `static`, `none`.
 `none` is correct for a third-party image and injects no profile values at all.
+
+`provides` and `placement` are Workload fields, specified in
+[Ports and surfaces](#ports-and-surfaces) and [Placement](#placement). Every
+Workload declares a `placement` block, because two of its dimensions are
+required.
 
 ### Dependencies
 
@@ -429,6 +554,10 @@ probes: none        # knowledge-ingest-worker: no ports, nothing to probe
 Timings, thresholds and deadlines stay derived. A Workload that declares ports
 but no probe declaration is refused.
 
+Readiness is also what the Service's atomic switchover waits on: healthy means
+*this* Workload's declared readiness, so a Service with a Workload that never
+reports ready never switches any of them.
+
 ## Storage and durability
 
 ```yaml
@@ -456,12 +585,17 @@ and `local-path` has no CSI snapshot support."* Two consequences follow: a volum
 pins its Workload to the node holding the PV, and retention can only be an
 application-level backup job.
 
+The first of those is why `disk` in [Placement](#placement) filters only the
+**first** placement of a Workload. Once a claim is bound, the binding recorded in
+the pinned `ClusterState` outranks the declared media, and a `disk` value that
+contradicts it is `E_DISK_BINDING_CONFLICT` rather than a term quietly ignored.
+
 The class replaces `rollbackTargetRetention`, which every Service declared
 identically as `{minimumDays: 90, acknowledged: true}`, which no renderer read,
 and which asserted a ninety-day rollback a snapshot-less cluster cannot perform.
-Storage class and size do not appear: they draw on finite node disk and are
-assigned. `volumeClaimTemplate` is forbidden — a template ties the volume to the
-Workload's name, so a rename orphans the claim.
+Storage class and volume capacity do not appear: they draw on finite node disk and
+are assigned. `volumeClaimTemplate` is forbidden — a template ties the volume to
+the Workload's name, so a rename orphans the claim.
 
 Durability is also the model's gate on destruction: a claim backing
 non-`reconstructible` data may not be removed as a side effect of a render. What
@@ -470,21 +604,20 @@ three demands on the separately-defined delivery work. `irreplaceable` adds a
 precondition on standing up the cluster at all — the restore rehearsal in
 chapter 60.
 
-## Pod hardening and resource class
+## Pod hardening
 
-Two required-by-default fields per Workload, added before the first production
+One required-by-default field per Workload, added before the first production
 apply because the retrofit gets strictly more expensive every week
-([0016](../../docs/adr/0016-pod-hardening-and-resource-class.md)).
+([0016](../../docs/adr/0016-pod-hardening.md)).
 
 ```yaml
-size: m
 hardening:
   exceptions:
     - allow: writableRootFilesystem
       reason: nginx writes /var/cache/nginx; no upstream image with a writable-free layout.
 ```
 
-Neither field exists today, in either renderer generation:
+The field does not exist today, in either renderer generation:
 `grep -rniE 'securityContext|runAsNonRoot|readOnlyRootFilesystem|seccompProfile' src/ schemas/`
 returns **0 hits**, and `src/deployment/render/workloads.ts:130` builds a
 container from name, image, pullPolicy, ports, command, args, env, envFrom,
@@ -492,6 +625,11 @@ volumeMounts, probes and resources — and stops. Rendered pods run as their ima
 UID, with a writable root and default capabilities, and the standing QoS class for
 the estate is BestEffort on a node the k3s server, the datastore and every
 application pod share.
+
+Capacity left this record with [0016](../../docs/adr/0016-pod-hardening.md)'s
+amendment. Requests, limits and the QoS class are settled by
+[Placement](#placement), and a reader chasing BestEffort here finds only the
+symptom.
 
 ### Hardening
 
@@ -520,24 +658,145 @@ apply with no exception path a Service can author; a mutating admission default 
 a value the render cannot see, which contradicts
 [0005](../../docs/adr/0005-derivation-is-total.md).
 
-### Resource class
+## Placement
 
-`size` is a closed class. The class name is what an author writes; the requests
-and limits behind it reach the render through the pinned Cluster Context
-([0006](../../docs/adr/0006-pinned-inputs.md)), because capacity is contended and
-[0004](../../docs/adr/0004-contention-decides-authority.md) therefore puts the
-numbers on the platform side. The mapping the current cluster's Context carries:
+```yaml
+placement:
+  memory: 768Mi                              # required
+  cpu: 250m                                  # required
+  arch: [amd64]                              # optional; a set, no ordering
+  site: enschede                             # optional
+  disk: {media: [nvme, ssd], size: 100Gi}    # optional
+  gpu: {class: transcode, memory: 4Gi}       # optional
+  capabilities: [public-ingress]             # optional; flat strings
+```
 
-| class | cpu request | memory request = limit | what it is for, and the evidence |
+Six dimensions and a flat capability set, all of them **hard**
+([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)). `memory` and `cpu`
+are required on every Workload; every other term defaults to *any node*.
+
+| dimension | required | shape | matched against, in the pinned node contract |
 |---|---|---|---|
-| `xs` | `10m` | `64Mi` | a static file server or an exporter sidecar. `app-ui` runs nginx at *"~10–20Mi RAM each"*; `postgres-exporter` sits in the same band |
-| `s` | `50m` | `256Mi` | an interpreted service or worker: `knowledge-ingest-worker` (python), `stalwart-provisioner` |
-| `m` | `250m` | `768Mi` | a JVM service at its default heap: `auth-api`, `agents-api`, `knowledge-api`. This is the class whose cold start `knowledge.service.yml` measures at *"~250-300s"* |
-| `l` | `500m` | `2Gi` | the data tier: `platform-postgres` with pgvector, the datastore eight Services queue behind; `platform-rabbitmq` |
-| `xl` | `1000m` | `4Gi` | no member today. One step of headroom above the data tier, so absorbing a bigger consumer is a class move rather than a schema change |
+| `memory` | yes | one quantity | the node's allocatable memory |
+| `cpu` | yes | one quantity | the node's allocatable cpu |
+| `arch` | no | a set of values | the node's architecture |
+| `site` | no | one value | the node's site |
+| `disk` | no | `{media: [...], size: <quantity>}` | the media and capacity of the node's disks |
+| `gpu` | no | `{class: <name>, memory: <quantity>}` | `gpus[].class` and `gpus[].memory_mib` |
+| `capabilities` | no | a set of flat strings | the capabilities the node advertises |
 
-Two shape rules hold across every row, and they are the reason the table is a
-class rather than a free-form block:
+**Every declared dimension must match.** There is no soft half: no weight, no
+ordering, no second shape the scheduler is free to discard. A list is always a
+**set**, and what a set means follows from the dimension rather than from a
+modifier the author writes. On a dimension a node has exactly one value of —
+`arch`, `disk.media` — the set is the set of **acceptable** values, so
+`arch: [arm64, amd64]` says *either*, never *arm64 first*. On `capabilities`,
+which a node advertises many of, the set is what the node must **carry**. Neither
+reading admits a preference, and no ordering is significant in either.
+
+If no node satisfies every declared term, the build fails with
+`E_PLACEMENT_UNSATISFIABLE` (chapter 40). Before the manifest exists is the only
+place this can be broken loudly. The estate has already paid for the alternative:
+*"No affinity preference for `gpu-model-gtx960m` — no node advertises it… **An
+unsatisfiable preference is silently ignored, so it read as GPU-aware placement
+while doing nothing.**"* An unmet hard term at least leaves a pod `Pending`; an
+unmet preference is discarded by the scheduler without an event, a warning or a
+condition. Making every term hard removes the shape that could fail in silence,
+and the fallback the soft shape was reached for comes back as a value set.
+
+### Eligibility, not bin-packing
+
+Each term is compared against **one node's allocatable** — the node's total minus
+a reserve declared in the node file, published by the node contract
+([0056](../../docs/adr/0056-node-facts-single-source.md), chapter 60). It is never
+a live read of free capacity, which would put an assignment outside the pinned
+input set ([0006](../../docs/adr/0006-pinned-inputs.md)).
+
+A Workload is eligible on a node when every declared term matches that node
+**alone**. The check never sums Workloads. Three Workloads each declaring
+`memory: 2Gi` therefore **all pass** against a 4096Mi node — each is compared
+against allocatable on its own — and the scheduler refuses the third at apply.
+State that plainly to anyone reading this gate as a capacity plan: it proves a
+home exists for each Workload, not that every Workload fits at once.
+
+`memory` and `cpu` are contended, and they are authored here anyway. That is not
+a hole in [0004](../../docs/adr/0004-contention-decides-authority.md): contention
+decides who **arbitrates**, not who **authors**. The Service states its
+requirement, the platform decides whether it fits, refuses what no node can hold,
+and the scheduler decides where. The accepted cost is stated rather than
+hidden — nothing stops an author writing `memory: 8Gi`, and no arbitration exists
+beyond that refusal.
+
+### What the dimensions must discriminate on
+
+Seven nodes, from `nix-config/inventory/nodes/*.yml`:
+
+| node | site | arch | cpu | mem | gpu | disks | roles |
+|---|---|---|---|---|---|---|---|
+| enschede-t1000-1 | enschede | amd64 | 54000m | 32000Mi | t1000, transcode | nvme 120+500G, hdd 4096G | worker, utility |
+| enschede-rx7900xtx-1 | enschede | amd64 | 72800m | 32000Mi | rx7900xtx, render-compute | nvme 160+1000G, hdd 8192G | worker, utility |
+| enschede-gtx-960m-1 | enschede | amd64 | 28800m | 16384Mi | gtx960m, transcode, 2048MiB | ssd 100+500G, hdd 2048G | worker, utility |
+| enschede-pi-1 | enschede | arm64 | 6000m | 8192Mi | — | sdcard 64G | worker |
+| enschede-pi-2 | enschede | arm64 | 6000m | 4096Mi | — | sdcard 64G | worker |
+| enschede-pi-3 | enschede | arm64 | 6000m | 4096Mi | — | sdcard 64G | worker |
+| frankfurt-contabo-1 | frankfurt | amd64 | 16000m | 32768Mi | — | ssd 80+120G | control-plane, worker |
+
+Memory alone spans 4096Mi on `enschede-pi-2` and `enschede-pi-3` to 32768Mi on
+`frankfurt-contabo-1`, across two architectures, two sites and four disk media.
+No number is safe to assume, which is why both quantities are required rather
+than defaulted.
+
+Capabilities advertised, with node counts: `adguard` (5), `lan-ingress` (3),
+`nvidia` (2), `samba` (1), `public-ingress` (1), `llm-host` (1), `backup-store`
+(1), `amd-gpu` (1). No node carries a taint, so a capability set is the only
+thing keeping a Workload off a node it should not be on.
+
+`tailscale` is absent from that list deliberately. It was advertised on 7 of 7
+nodes, where it excluded nothing, and a filter that never excludes teaches
+authors that filters do nothing. It leaves the capability vocabulary in one
+node-contract change.
+
+Longhorn is declared eligible on four nodes, but no PVC in `fleet-infra` sets a
+`storageClassName` — everything takes k3s's default `local-path`. No `disk` term
+may be written as though Longhorn were in use.
+
+### Why `gpu` is structured
+
+A flat capability string cannot describe a GPU, and treating it as one is a live
+trap rather than a hypothetical. `nvidia` is advertised on 2 of 7 nodes and those
+two are not interchangeable: `enschede-t1000-1` carries a T1000, while
+`enschede-gtx-960m-1` is a 2048MiB Maxwell, re-enabled on 2026-09-02.
+`enschede-rx7900xtx-1` is not `nvidia` at all. Today `jellyfin` and
+`immich-machine-learning` avoid the Maxwell only because they also select
+`capability-samba`, which exactly one node advertises — placement working by
+accident of an unrelated filter, and breaking the day that filter is relaxed or
+a second node gains samba.
+
+`gpu` therefore carries `class` and `memory`, matched against the node contract's
+`gpus[].class` and `gpus[].memory_mib`, so a transcode job needing 4Gi of VRAM is
+ineligible on a 2048MiB card by arithmetic rather than by luck. `gpu-nvidia` is
+not vocabulary, and neither is any other flat string standing in for a device.
+
+### Labels are not the Service's to name
+
+`nix-config/generated/node-contract.yml` emits 110 labels for 7 nodes — 55 under
+`platform.jorisjonkers.dev/*` and the same 55 under `personal-stack/*`, named
+after an archived repository that rejects pushes. Authored as selectors, retiring
+that prefix is an edit in every service repository; authored as placement
+dimensions it touches none
+([0056](../../docs/adr/0056-node-facts-single-source.md)).
+
+Placement already implied is not declared either: a `local-path` volume pins its
+Workload to the node holding the PV, and the resolver states that — reading the
+binding from the pinned `ClusterState` snapshot, never from a live cluster
+([0034](../../docs/adr/0034-cluster-state-pinned-input.md)). A PV that rebinds
+after a node failure therefore surfaces as a new lock, not as drift, and a `disk`
+term contradicting that binding is `E_DISK_BINDING_CONFLICT`.
+
+### The two shape rules are derived, not authored
+
+The author writes **one** number per dimension. Two shape rules follow from it,
+and neither is a field:
 
 - **Memory request equals memory limit.** Memory is incompressible and it is what
   drives eviction on a shared kernel: one leaking container puts the node under
@@ -546,43 +805,28 @@ class rather than a free-form block:
   causes that, and cannot be evicted for exceeding it either.
 - **CPU carries a request and no limit.** CPU is compressible, and a limit
   throttles precisely the class-loading burst the 250–300 s JVM cold start
-  consists of — the same burst `startupBudget` exists to bound.
+  consists of — the same burst `startupBudget` exists to bound. Throttling gets
+  misdiagnosed as slow application code, over and over, by whoever did not set
+  the limit.
 
-A wrong row mis-sizes every Service in the class at once, and the correction
-reschedules all of them on the next reconcile. That is the price of a name an
-owner can defend; a millicore number in thirty repositories is not one.
+The escape is an override with a reason
+([0031](../../docs/adr/0031-derived-overrides-with-reason.md)) — the same shape
+every other derived value uses — never a second field inside `placement`.
 
-## Placement
+What the numbers look like against real Workloads, with the evidence that fixed
+them:
 
-```yaml
-placement:
-  requires: [public-ingress]
-  prefers:
-    - {capability: arm64, weight: 50}
-```
+| workload | `memory` | `cpu` | why |
+|---|---|---|---|
+| `app-ui` | `64Mi` | `10m` | nginx serving static files, measured at *"~10–20Mi RAM each"*; `postgres-exporter` sits in the same band |
+| `knowledge-ingest-worker` | `256Mi` | `50m` | an interpreted single-consumer queue worker, not a server |
+| `knowledge-api` | `768Mi` | `250m` | a JVM service at its default heap; `domains/knowledge.yml` measures its cold start at *"~250-300s"* |
+| `platform-postgres` | `2Gi` | `500m` | the datastore with pgvector that eight Services queue behind |
 
-Capabilities, never labels ([0017](../../docs/adr/0017-placement-by-capability.md)).
-Both shapes are needed and they fail differently: an unmet `requires` leaves a pod
-`Pending`, which is loud, while an unmet `prefers` is discarded by the scheduler
-without an event, a warning or a condition. That silence is why an unsatisfiable
-**preference** is a build error (`E_CAPABILITY_UNSATISFIABLE`, chapter 40) — before
-the manifest exists is the only place it can be broken. The estate has already paid
-for the alternative: *"No affinity preference for `gpu-model-gtx960m` — no node
-advertises it… **An unsatisfiable preference is silently ignored, so it read as
-GPU-aware placement while doing nothing.**"*
-
-Labels are not the Service's to name. `nix-config/generated/node-contract.yml`
-emits 110 labels for 7 nodes — 55 under `platform.jorisjonkers.dev/*` and the same
-55 under `personal-stack/*`, named after an archived repository that rejects
-pushes. Authored as selectors, retiring that prefix is an edit in every service
-repository; as capabilities it touches none
-([0056](../../docs/adr/0056-node-facts-single-source.md)).
-
-Placement already implied is not declared: a `local-path` volume pins its Workload
-to the node holding the PV, and the resolver states that — reading the binding from
-the pinned `ClusterState` snapshot, never from a live cluster
-([0034](../../docs/adr/0034-cluster-state-pinned-input.md)). A PV that rebinds after
-a node failure therefore surfaces as a new lock, not as drift.
+A wrong number now mis-sizes one Workload rather than every member of a class,
+and correcting it is an edit in that Workload's own file. The cost is the mirror
+image: raising every JVM service from 768Mi to 1Gi is an edit in every repository
+holding one, on every retune.
 
 ## Exposure
 
@@ -640,6 +884,10 @@ that guessed would collect nothing and report success. The Alert Class states
 urgency and never routing: `none`, `business-hours`, `urgent`, `page`. Receivers,
 notifier routes, Gatus checks, ServiceMonitors and PrometheusRules all derive.
 
+`alertClass` sits on the Service and is never raised to the domain header, for the
+same reason `owner` is: urgency is a per-Service fact, and a domain that pages
+because one of its Services does is a domain that gets muted.
+
 `none` is a value an author must write, not an omission, because the estate's two
 holes are both silent ones. Gatus monitors 41 endpoints and notifies nobody — its
 ConfigMap has `storage` and `ui` and no `alerting` section at all — and 8
@@ -651,48 +899,6 @@ Rendering the rules also closes a documented trap: a `PrometheusRule` without
 Kustomization goes Ready, the operator logs nothing, and the rules never evaluate.
 A generated rule always carries the label; an authored one relies on the author
 remembering.
-
-## Release units
-
-Some Services are one product in two processes. A new frontend against an old API
-is a broken product even though each pod individually reports healthy. A **Release
-Unit** carries that coupling in the model
-([0060](../../docs/adr/0060-release-unit.md)):
-
-```yaml
-id: auth-api
-releaseUnit: auth        # auth-ui declares the same name
-```
-
-**Declaration.** `releaseUnit` is a Service-level field naming one unit. A Service
-belongs to **at most one** unit; a Service that declares none releases alone.
-Composition materialises the set by name over the composed union, so no member
-lists its neighbours and adding a member is one line in one repository.
-
-**Semantics.** No member's new version receives traffic until **every** member's
-new version is healthy, where healthy means that member's own declared readiness.
-If any member fails its `startupBudget`, **no** member switches and the old
-versions keep serving. Rollback is unit-scoped: reverting one member reverts the
-unit.
-
-**Orthogonality.** A Release Unit is not a Reconcile Unit:
-
-| | Reconcile Unit | Release Unit |
-|---|---|---|
-| answers | in what order | all at once, or not at all |
-| origin | derived from the dependency graph ([0032](../../docs/adr/0032-reconcile-unit-derived.md)) | declared |
-| example | `platform-postgres` before `knowledge` | `auth-api` and `auth-ui` |
-| failure | the later unit waits | nothing switches |
-
-Atomicity is declared rather than derived because lockstep release is a product
-choice the graph cannot see: a frontend depends on its API, but a dependency edge
-does not mean the two must cut over together, and deriving atomicity from every
-edge would make the whole estate one unit. The estate already contains the pairs —
-`auth-api` / `auth-ui`, and `stalwart` / `stalwart-provisioner`, which move in
-lockstep for the same reason.
-
-The unit says **what** must hold, never **how** it is achieved. The mechanism —
-what applies the change, in what order, behind what gate — is defined separately.
 
 ## Secrets
 
@@ -732,6 +938,13 @@ workloads:
 | `mountAt`, `fileMode` | `file` only | Where the projected file lands, and its mode. |
 | `rotation` | yes | `tolerates: restart` \| `reload`, plus an optional `maxAge`. |
 
+There is a third level the list does **not** have: the domain header. A
+domain-level grant would hand every Service in the file a reader slot on a path
+it may not need, and a read grant covers the whole document
+([0009](../../docs/adr/0009-vault-read-is-per-path.md)), so the widening would be
+real rather than notional. `secrets` stays per Service and per Workload
+([0063](../../docs/adr/0063-intent-authored-per-domain.md)).
+
 A Workload's effective set is the Service-level list plus its own. There is no
 override or removal syntax: a Workload that must *not* hold a shared secret is
 evidence the secret was never shared, and it moves down a level. Sharing is the
@@ -739,10 +952,10 @@ common case and duplication is what drifts — `knowledge` holds six grants acro
 two Workloads and two are identical for both.
 
 The two levels are an access boundary **only** because identity is per Workload.
-The ServiceAccount and Vault role are derived as `<service>-<workload>`, collapsing
-to `<service>` for a single-Workload Service
-([0024](../../docs/adr/0024-identity-per-workload.md), specified in chapter 16). At
-review time they were not: `serviceAccountName()` in
+The ServiceAccount and Vault role are derived as the **Workload name alone** —
+`auth-system.auth-api`, never `auth-system.auth-auth-api` — unique within the
+domain file ([0024](../../docs/adr/0024-identity-per-workload.md), specified in
+chapter 16). At review time they were not: `serviceAccountName()` in
 `src/adapters/kubernetes.ts:665-669` returned `serviceName`, so two Workloads of
 one Service authenticated as the same principal and received the union of both
 policies whatever level a grant was written at. The nesting was documentation. The
@@ -866,8 +1079,9 @@ In all three the derived policy is granted per **path**: delivery decides how a
 value reaches a process, never what its token may read.
 
 `self` is not an edge case. `auth-api` runs it today — `SPRING_CONFIG_IMPORT:
-vault://`, `VAULT_AUTHENTICATION: KUBERNETES`, `VAULT_KUBERNETES_ROLE: auth-api`,
-`VAULT_DB_ENABLED: true` — and it is the only delivery achieving zero-downtime
+vault://`, `VAULT_AUTHENTICATION: KUBERNETES`, `VAULT_KUBERNETES_ROLE: auth-api` —
+and that role name is the Workload's own, which is what the identity rule now
+derives rather than renames. It is also the only delivery achieving zero-downtime
 rotation, because a pod's environment is fixed for its lifetime. That same fact
 makes `delivery: env` with `rotation.tolerates: reload` a build error
 (`E_ENV_CANNOT_RELOAD`), not a slow path. `file` is not an edge case either: an SSH
@@ -902,7 +1116,7 @@ ${secret:<granted-path>#<key>}
 ```
 
 ```yaml
-# platform/service.yml
+# platform/knowledge.yml
 - path: secret/data/platform/postgres/kb
   keys: [user, password]
 ```
@@ -960,10 +1174,10 @@ startupBudget: 600s     # knowledge-api: JVM cold start measured at ~250-300s
 zeroDowntime: true
 ```
 
-Derived from these plus `stateful`, `size` and `volumes`: rollout strategy, surge
-and unavailability, startup probe period and threshold, the progress deadline, and
-the health-gate deadline a Release Unit's switchover waits on. `minAvailable` is
-still ungraded — see below.
+Derived from these plus `stateful`, `placement` and `volumes`: rollout strategy,
+surge and unavailability, startup probe period and threshold, the progress
+deadline, and the health-gate deadline the Service's switchover waits on.
+`minAvailable` is still ungraded — see below.
 
 ## Overrides
 
@@ -981,6 +1195,10 @@ needs 600 and cannot say so will misreport their `startupBudget` to coax the num
 out of the derivation, corrupting the one field only they could know. The `reason`
 makes the rationale data rather than a YAML comment no tool can read.
 
+The memory and cpu shape rules are derivations, so they are reachable this way:
+a Workload that genuinely needs a cpu limit, or a memory limit above its request,
+writes an override with a reason rather than a second placement field.
+
 ## What layer 1 may never contain
 
 A build error, not a warning. This is the layer-1 face of the authority table in
@@ -990,14 +1208,16 @@ declaring site is fixed:
 | forbidden | where the value comes from |
 |---|---|
 | a hostname | assigned; read from `resolved.yml` |
-| a namespace | derived from `id`, or an alias |
-| a node label or selector | `placement.requires` |
+| a namespace | derived from `domain`, as `<domain>-system` |
+| a node label or selector | `placement` |
+| a scheduler weight, or any soft placement term | every dimension is hard ([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)) |
 | `replicas` | assigned from `minAvailable` and the node capacity recorded in the pinned `ClusterState` snapshot ([0034](../../docs/adr/0034-cluster-state-pinned-input.md)) — never a live cluster read |
-| storage class, volume size | assigned |
-| `resources`, requests or limits | `size` |
+| storage class, volume capacity | assigned |
+| `resources`, requests or limits | derived from `placement` |
 | a `securityContext` field | `hardening`, plus a declared exception |
 | a ServiceAccount, Vault role or policy name | derived per Workload (chapter 16) |
 | a Reconcile Unit or `platform.layer` | derived from the edge set |
+| a field coupling the release of two Services | one Service, or two that release independently ([0062](../../docs/adr/0062-service-is-the-release-unit.md)) |
 | an image tag or digest | the images lock |
 | a `ports` list, or a port as a string | an integer at its point of use |
 | `RollingUpdate`, `maxSurge`, `progressDeadlineSeconds` | derived; `overrides` if exceptional |
@@ -1023,8 +1243,9 @@ work lives in [docs/adr/deferred/](../../docs/adr/deferred/README.md).
 
 The model's complete interface to that work is three demands, all decided here:
 
-1. **Release Unit atomicity** — no member switches until every member is healthy
-   ([0060](../../docs/adr/0060-release-unit.md)).
+1. **Service atomicity** — no Workload of a Service switches until every Workload
+   of that Service is healthy
+   ([0062](../../docs/adr/0062-service-is-the-release-unit.md)).
 2. **Durability Class gating** — a destructive operation on a non-`reconstructible`
    claim is refused ([0015](../../docs/adr/0015-durability-class-per-volume.md)).
 3. **Pinned inputs only** — every rendered value is a function of digested inputs,
@@ -1034,16 +1255,18 @@ The model's complete interface to that work is three demands, all decided here:
 
 ## Still to be graded
 
-Five items no decision in the register covers:
+Four items no decision in the register covers:
 
 1. **`sidecars`.** A Workload holds more than one container, and this is not an
    edge case: `postgres` runs `postgres-exporter` on 9187, `stalwart` runs a
    `stalwart-apply` sidecar, `agent-runner` carries the `agent-gateway` jar. Whether
-   a sidecar carries its own `size` and `hardening` is part of the same question.
+   a sidecar carries its own `placement` quantities and `hardening` is part of the
+   same question, and if it does, whether they add to the Workload's own for the
+   eligibility check.
 2. **`minAvailable`.** `replicas` is contended, and `auth-api`'s two replicas were a
    capacity decision on freed Frankfurt budget, not an availability requirement.
-   Like `size`, it must resolve through the pinned inputs, never through observed
-   capacity.
+   Like the placement quantities, it must resolve through the pinned inputs, never
+   through observed capacity.
 3. **Naming an exposure entry.** The chapters disagree today: this one writes
    `port:` alone, chapter 20's projection keys the assignment `kb`, and chapter
    20 places a Service-declared hostname label this chapter defines no field
@@ -1052,17 +1275,20 @@ Five items no decision in the register covers:
    moves a value the contention test previously placed on the platform side.
 4. **`self-renew` × `file`.** Refusing it follows from the tiers' own argument but
    not from the decisions' text.
-5. **A size class that fits nowhere.** Nothing yet checks that a Workload's `size`
-   can be satisfied by a node advertising its `placement.requires` capabilities.
-   Both inputs are pinned, so the check is available; no invariant claims it.
+
+The list was five. The item asking what checks that a Workload's declared capacity
+can be satisfied by a node it is also allowed to run on is now answered rather than
+graded: capacity and eligibility are one comparison against the node contract, and
+failing it is `E_PLACEMENT_UNSATISFIABLE`
+([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)).
 
 ## Worked examples
 
 | example | what it exercises |
 |---|---|
-| [`knowledge.service.yml`](examples/knowledge.service.yml) + [`env`](examples/knowledge-api.base.env) + [`worker env`](examples/knowledge-ingest-worker.base.env) | two Workloads, two runtimes and therefore two identities, five path rules, `probes: none`, grants at **both** levels, a split Subtree path beside an unsplit one, a `0400` file secret, an `irreplaceable` volume |
-| [`auth-api.service.yml`](examples/auth-api.service.yml) + [`env`](examples/auth-api.base.env) | `delivery: self` with `tolerates: reload`, a `self-roll` transit grant taking no placeholder, four dependencies, inbound-derived CORS, and a `releaseUnit` shared with its UI |
-| [`platform-postgres.service.yml`](examples/platform-postgres.service.yml) + [`env`](examples/platform-postgres.base.env) | third-party image with `runtime: none`, the one declared hardening exception in the set, `size: l`, a proposed sidecar, TCP probes, a static Asset, `provides` consumed by eight Services |
+| [`domains/knowledge.yml`](examples/domains/knowledge.yml) + [`env`](examples/knowledge-api.base.env) + [`worker env`](examples/knowledge-ingest-worker.base.env) | two Workloads, two runtimes and therefore two identities, `probes: none` and no `provides` on the worker, grants at **both** levels, a split Subtree path, a `0400` file secret, an `irreplaceable` volume |
+| [`domains/auth.yml`](examples/domains/auth.yml) + [`env`](examples/auth-api.base.env) | one Service, two Workloads switching atomically; `delivery: self` with `tolerates: reload`, a `self-roll` transit grant taking no placeholder, and the one hardening exception in the set |
+| [`domains/data.yml`](examples/domains/data.yml) + [`env`](examples/platform-postgres.base.env) | three Services releasing independently in one domain, third-party images, a `disk` dimension, TCP probes, and a surface eight Services consume |
 
 The env-file-to-`secrets` cross-check runs over all three sets. `knowledge-api` has
 5 placeholders matching 5 env-delivered keys, and its ingest worker 4 more against
@@ -1071,3 +1297,9 @@ the same Service-level grants; `platform-postgres` has 1 matching 1; `auth-api` 
 demonstrates the check does not false-positive on runtime fetch. The byte-match rule
 changes how each placeholder is spelled, not how many there are. No dead grants, no
 unauthorised references, and no `delivery: env` paired with `tolerates: reload`.
+
+Two negative fixtures sit beside them: `negative/duplicate-service-id/` asserts
+`E_DUPLICATE_SERVICE_ID` across two repositories, and
+`negative/duplicate-workload-name/` asserts `E_DUPLICATE_WORKLOAD_NAME` for two
+Services in one domain reusing a Workload name — the check that lets a
+ServiceAccount be the Workload name alone.
