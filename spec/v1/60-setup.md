@@ -223,8 +223,11 @@ recovered data. A drill that cannot complete falsifies
 
 ## Secrets at rest
 
-Mounting `kubernetes` auth, configuring its JWT issuer and CA, and creating the
-KV mounts are **platform fixtures**: estate-unique, drawing on a shared
+Mounting `kubernetes` auth, configuring its JWT issuer and CA, creating the KV
+mounts, and configuring the **database secrets engine** whose roles issue
+per-consumer database credentials
+([0080](../../docs/adr/model/0080-database-catalog-is-derived-data.md)) are
+**platform fixtures**: estate-unique, drawing on a shared
 resource, and therefore platform-assigned
 ([0004](../../docs/adr/model/0004-contention-decides-authority.md)). They arrive
 through a blueprint pack at a pinned ref

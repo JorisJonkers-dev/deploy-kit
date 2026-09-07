@@ -102,6 +102,37 @@ Which test suites exercise a provider together with its consumers is the same
 inbound question. Whether that membership gates anything is not settled in this
 specification — see [Defined separately](#defined-separately).
 
+### The database catalog
+
+The first row of that table has a producer
+([0080](../../docs/adr/model/0080-database-catalog-is-derived-data.md)). For a
+provider Workload whose [`engine`](10-service-intent.md#workload) is a datastore
+that owns databases, the inbound edge set derives a **catalog**: one entry per
+consuming Service naming its database, its owning user, and the Vault role that
+issues that user's credentials.
+
+The catalog is **data, not a procedure**. It renders as a `ConfigMap` and the
+platform's engine catalog supplies the image and command that applies it — the
+same split [0077](../../docs/adr/model/0077-durability-derives-a-backup.md) makes
+for backups, and for the same reason: [0012](../../docs/adr/model/0012-assets-not-code.md)
+forbids an executable Asset, and a rendered shell script is a diff no reviewer
+can validate except by running it. What exists today is 98 lines of
+`init-databases.sh` creating `auth_db`, `agents_db`, `knowledge_db` and `n8n_db`
+— one per Service claiming a Postgres credential, which is exactly the inbound
+edge set.
+
+**No password is rendered.** The catalog names a Vault role; Vault's database
+secrets engine issues the credential, and `vso` projects it with the
+`VaultDynamicSecret` it already emits. The engine mount and its connection
+configuration are platform fixtures like the auth method
+([chapter 60](60-setup.md#secrets-at-rest)); what the render owns is the per-
+consumer role name and the catalog entry.
+
+The credential therefore lives at `database/creds/<role>`, which is **not** a KV
+path any grant declares — the mismatch [R20](examples/RENDER-GAPS.md) records.
+That row is now load-bearing rather than latent: this derivation cannot be
+completed until the grant vocabulary can name a non-KV engine path.
+
 ## Workload identity
 
 Every Workload authenticates as its own principal. The ServiceAccount, the

@@ -89,6 +89,7 @@ delivery work it underpins.
 | [0018](model/0018-exposure-by-audience.md) | Exposure is declared by Audience, in one closed vocabulary | settled |
 | [0019](model/0019-registered-unmanaged-surfaces.md) | Un-deployed hostnames are Registered Unmanaged Surfaces | settled |
 | [0020](model/0020-dependency-edges-carry-surface.md) | A dependency edge names the provider, the surface, and necessity | settled |
+| [0080](model/0080-database-catalog-is-derived-data.md) | The per-consumer database catalog is derived data, and Vault mints the credentials | open |
 | [0021](model/0021-observability-scrape-and-alert-class.md) | Observability is a scrape surface plus an Alert Class | settled |
 | [0079](model/0079-alert-class-derives-from-a-rule-catalog.md) | An Alert Class derives rules from a platform catalog, and a class without a signal is refused | settled |
 
