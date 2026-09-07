@@ -220,11 +220,12 @@ services:
         startupBudget: 600s
         zeroDowntime: true
 
-        # PROPOSED FIELD -- chapter 10, "Still to be graded". `size` used to be
-        # listed beside it; it was graded and then deleted, replaced by the
+        # PROPOSED FIELD -- chapter 10, "Still to be graded". Two others were
+        # listed beside it and both are now graded: `size` was replaced by the
         # `placement` block above
-        # (docs/adr/0061-placement-is-hard-dimensions.md). `minAvailable` and
-        # `sidecars` are what remain.
+        # (docs/adr/0061-placement-is-hard-dimensions.md), and `sidecars` by
+        # (docs/adr/0064-sidecars-are-workload-vocabulary.md). `minAvailable`
+        # is what remains.
         #
         # This states the AVAILABILITY requirement, which is 1. The replica
         # count is not declared here and is not read from the live cluster: it

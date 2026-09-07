@@ -18,7 +18,7 @@
 #
 # Exercises: three independently released Services, a third-party image behind
 # an alias with `runtime: none`, a declared hardening exception, structured
-# `disk` placement, TCP probes, a static Asset, a proposed sidecar, all three
+# `disk` placement, TCP probes, a static Asset, a sidecar, all three
 # Durability Classes, `provides` consumed by eight Services, and one authored
 # hostname that does not follow its Service id.
 #
@@ -128,16 +128,22 @@ services:
                 cannot harden, and it retires when a rebuilt image relocates
                 the socket.
 
-        # PROPOSED FIELD -- chapter 10, "Still to be graded". postgres-exporter
-        # runs in the same pod and serves the metrics port. stalwart
-        # (stalwart-apply) and agent-runner (the agent-gateway jar) have the
-        # same shape, so this is not an edge case. The sidecar's image is an
-        # alias for the same reason the Workload's is; whether the graded field
-        # types it as an alias or a ref, and whether a sidecar carries its own
-        # `placement` and `hardening`, is the open half.
+        # postgres-exporter runs in the same pod and serves the metrics port
+        # this Workload declares in `provides`. stalwart (stalwart-apply) and
+        # agent-runner (the agent-gateway jar) have the same shape
+        # (docs/adr/0064-sidecars-are-workload-vocabulary.md).
+        #
+        # A sidecar carries what a container carries: its own memory, cpu and
+        # hardening. The node dimensions stay on the Workload above, because
+        # nodeSelector is pod-level and the pod is one. Eligibility SUMS: this
+        # Workload needs a node with 2112Mi free, not 2Gi.
         sidecars:
           - name: postgres-exporter
             image: postgres-exporter
+            memory: 64Mi
+            cpu: 10m
+            # No exception: the exporter is a static Go binary that meets the
+            # restricted class, even though postgres beside it does not.
 
         # TCP, not HTTP. postgres has no HTTP surface, and this is what the live
         # probes do -- tcpSocket on port db for both. An HTTP-only probe

@@ -57,6 +57,7 @@ delivery work it underpins.
 | [0012](0012-assets-not-code.md) | File-shaped configuration is an Asset; code is not configuration | settled |
 | [0013](0013-blueprint-packs-pinned-checkout.md) | Blueprint packs arrive by pinned checkout, not a registry | settled |
 | [0063](0063-intent-authored-per-domain.md) | Intent is authored one file per domain | settled |
+| [0064](0064-sidecars-are-workload-vocabulary.md) | A Workload may hold sidecars, and a sidecar carries what a container carries | settled |
 
 ### Workload-declared runtime intent
 | # | title | claim |
