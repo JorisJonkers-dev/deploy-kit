@@ -253,8 +253,9 @@ because the vocabulary they were written in had no path to declare — the
 
 | invariant | error |
 |---|---|
-| every `dependsOn.service` resolves to a Service in the union | `E_UNRESOLVED_SERVICE` |
-| every `dependsOn.surface` is provided by a Workload of that Service | `E_UNKNOWN_SURFACE` |
+| every `dependsOn.service` resolves to a Service in the union **or to a Registered Unmanaged Surface** ([0090](../../docs/adr/model/0090-edges-resolve-against-the-register.md)) | `E_UNRESOLVED_SERVICE` |
+| every `dependsOn.surface` is provided by a Workload of that Service, or listed by that unmanaged surface | `E_UNKNOWN_SURFACE` |
+| every unmanaged surface an edge targets carries an address and the port for that surface | `E_UNMANAGED_SURFACE_WITHOUT_COORDINATES` |
 | every route's `surface` is provided by the Workload that route names | `E_UNKNOWN_SURFACE` |
 | the graph of **required** edges is acyclic | `E_DEPENDENCY_CYCLE` |
 | every exposure's audience is carryable by some tier | `E_NO_TIER_FOR_AUDIENCE` |
@@ -611,6 +612,13 @@ bounds nothing, it just moves the drift where no check looks.
 Every hostname the model does not deploy is therefore a **Registered Unmanaged
 Surface** — a Bidirectional Ledger entry (chapter 30) carrying an owner, a reason
 and a review date:
+
+An entry an edge targets carries **coordinates** as well
+([0090](../../docs/adr/model/0090-edges-resolve-against-the-register.md)): the
+address the provider answers on and the ports it serves, keyed by surface name.
+Without them a derived egress rule has nothing to select, and the rule is absent
+rather than wrong — R18's failure, seen on-call as a timeout and never as an
+error code.
 
 ```yaml
 unmanagedSurfaces:

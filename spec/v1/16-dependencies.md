@@ -298,7 +298,7 @@ producer.
 
 | rule | derived from | direction |
 |---|---|---|
-| to a provider's surface port | each `dependsOn` edge of the Workload | egress |
+| to a provider's surface port | each `dependsOn` edge of the Workload; for an edge to a Registered Unmanaged Surface, to the address and port the register carries ([0090](../../docs/adr/model/0090-edges-resolve-against-the-register.md)) | egress |
 | from each consumer of a surface | the inbound edge set, over the composed union | ingress |
 | to the Secret Store | any grant in the Workload's effective set | egress |
 | from the route tier carrying the audience | a route on the Service's `exposure` naming this Workload | ingress |
@@ -402,11 +402,25 @@ so an unpicked CNI does not block the render.
 | audit | the set is loaded into the non-enforcing stage; observed flows are diffed against the rendered allow set | **zero undeclared flows over 14 days** |
 | enforce | the set is enforced estate-wide | — |
 
-Two costs are accepted rather than mitigated. An undeclared east-west path —
-this estate is known to hold some — stays invisible until promotion, and then
-breaks a workload. And a typo in a `surface` name narrows the allow set silently
-while still rendering a valid policy: the on-call sees a connection timeout, not
-an error code.
+An edge whose target resolves to neither a Service in the union nor a Registered
+Unmanaged Surface is `E_UNRESOLVED_SERVICE`, and one resolving to a register
+entry without coordinates for that surface is
+`E_UNMANAGED_SURFACE_WITHOUT_COORDINATES`
+([0090](../../docs/adr/model/0090-edges-resolve-against-the-register.md)). Both
+existed as silence before: `{service: stalwart, surface: smtp}` derived no
+coordinates and therefore no egress rule, producing a valid policy with a
+missing rule — a timeout on-call rather than a build error.
+
+One cost is accepted rather than mitigated: an undeclared east-west path — this
+estate is known to hold some — stays invisible until promotion, and then breaks
+a workload.
+
+The second cost this section used to accept is now refused. A typo in a
+`surface` name is `E_UNKNOWN_SURFACE` on the consuming edge, and a target
+outside both namespaces is `E_UNRESOLVED_SERVICE`; a rendered policy can no
+longer be silently short a rule while every gate stays green. What remains
+genuinely silent is a flow nobody declared at all, which is what the audit stage
+exists to find.
 
 ## The derivation map
 
