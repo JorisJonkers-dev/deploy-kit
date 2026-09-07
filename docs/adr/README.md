@@ -92,7 +92,7 @@ delivery work it underpins.
 | [0018](model/0018-exposure-by-audience.md) | Exposure is declared by Audience, in one closed vocabulary | settled |
 | [0019](model/0019-registered-unmanaged-surfaces.md) | Un-deployed hostnames are Registered Unmanaged Surfaces | settled |
 | [0020](model/0020-dependency-edges-carry-surface.md) | A dependency edge names the provider, the surface, and necessity | settled |
-| [0080](model/0080-database-catalog-is-derived-data.md) | The per-consumer database catalog is derived data, and Vault mints the credentials | open |
+| [0080](model/0080-database-catalog-is-derived-data.md) | The per-consumer database catalog is derived data, and Vault mints the credentials | settled |
 | [0021](model/0021-observability-scrape-and-alert-class.md) | Observability is a scrape surface plus an Alert Class | settled |
 | [0079](model/0079-alert-class-derives-from-a-rule-catalog.md) | An Alert Class derives rules from a platform catalog, and a class without a signal is refused | settled |
 
@@ -102,10 +102,12 @@ delivery work it underpins.
 | [0022](model/0022-grants-live-on-the-service.md) | Secret grants live on the Service document, at two levels | settled |
 | [0023](model/0023-grant-unit-is-the-path.md) | The grant unit is the path; the subtree splits per reader set | open |
 | [0024](model/0024-identity-per-workload.md) | Workloads hold their own identity | settled |
-| [0025](model/0025-access-tiers-derive-policy.md) | Access tiers derive the Vault policy | settled |
+| [0025](model/0025-access-tiers-derive-policy.md) | Access tiers derive the Vault policy | settled, KV-only per [0085](model/0085-a-grant-is-a-union-on-engine.md) |
 | [0026](model/0026-delivery-env-file-self.md) | Secret delivery is env, file, or self | settled |
-| [0027](model/0027-secret-reference-join-key.md) | A secret placeholder byte-matches a granted path | settled |
+| [0027](model/0027-secret-reference-join-key.md) | A secret placeholder byte-matches a granted path | settled, amended by [0085](model/0085-a-grant-is-a-union-on-engine.md) |
 | [0028](model/0028-secrets-at-rest-gate.md) | Secrets at rest gate env and file delivery | open |
+| [0085](model/0085-a-grant-is-a-union-on-engine.md) | A grant is a discriminated union on engine, and every grant derives a read path | settled |
+| [0086](model/0086-kv-read-covers-its-metadata-sibling.md) | A KV-v2 read grant covers the document's metadata sibling | settled |
 
 ### Layer 2 — derivation and assignment
 | # | title | claim |

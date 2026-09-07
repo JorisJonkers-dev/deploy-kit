@@ -128,10 +128,12 @@ configuration are platform fixtures like the auth method
 ([chapter 60](60-setup.md#secrets-at-rest)); what the render owns is the per-
 consumer role name and the catalog entry.
 
-The credential therefore lives at `database/creds/<role>`, which is **not** a KV
-path any grant declares — the mismatch [R20](examples/RENDER-GAPS.md) records.
-That row is now load-bearing rather than latent: this derivation cannot be
-completed until the grant vocabulary can name a non-KV engine path.
+The credential lives at `database/creds/<role>`, which a `database` grant names
+by deriving it from the role
+([0085](../../docs/adr/model/0085-a-grant-is-a-union-on-engine.md)). That was the
+mismatch R20 recorded — a grant path is not the path a credential is read from —
+and it is why the catalog could not render until the grant vocabulary became a
+union on engine.
 
 ## Workload identity
 
@@ -188,6 +190,13 @@ at that path ([0009](../../docs/adr/model/0009-vault-read-is-per-path.md)), so a
 policy naming a key subset would promise a narrowing the store never enforces.
 The previous version of this chapter promised exactly that — "`read` on the
 granted path and keys only" — and it was false. That claim is deleted.
+
+That is the `kv` engine's rule. A grant is a union on `engine`
+([0085](../../docs/adr/model/0085-a-grant-is-a-union-on-engine.md)): a `database`
+grant names a role and confers a read on `database/creds/<role>`, and a `transit`
+grant names a key and the operations it performs, each conferring exactly one
+Vault path. The unit is still one path per grant; what differs is which path the
+declaration derives.
 
 `keys:` documents the keys a reader expects and feeds validation; it confers
 nothing, and no author may read it as an access boundary. `keys: ['*']` is not

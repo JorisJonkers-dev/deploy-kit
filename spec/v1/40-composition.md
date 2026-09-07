@@ -368,7 +368,7 @@ scheduler drops without an event, a warning or a condition.
 | every grant's `path` is declared by exactly one Subtree | `E_UNDECLARED_SECRET_PATH` |
 | the Subtree lists the granting Service as a reader of that path | `E_READER_NOT_DECLARED` |
 | every grant with `delivery: env` is named by at least one placeholder | `E_UNBOUND_SECRET_GRANT` |
-| every `${secret:<path>#<key>}` placeholder byte-matches a granted path | `E_UNAUTHORISED_SECRET_REFERENCE` |
+| every `${secret:<path>#<key>}` placeholder byte-matches a grant's **derived read path** ([0085](../../docs/adr/model/0085-a-grant-is-a-union-on-engine.md)) | `E_UNAUTHORISED_SECRET_REFERENCE` |
 | `access: self-roll` on a path with other readers carries an acknowledgement | `E_ROLL_AFFECTS_OTHER_READERS` |
 | no literal secret value appears in an env file or an Asset | `E_RAW_SECRET` |
 | no rendered Deliverable grants a Workload access to `secrets` | `E_WORKLOAD_RBAC_GRANT` |
@@ -378,8 +378,9 @@ Three points of precision, all following from the grant unit being the path
 [0023](../../docs/adr/model/0023-grant-unit-is-the-path.md),
 [0027](../../docs/adr/model/0027-secret-reference-join-key.md)):
 
-- The placeholder join is **byte equality against the granted path**, with no
-  mount rewrite and no engine taxonomy. The `#<key>` half selects which value
+- The placeholder join is **byte equality against the grant's derived read
+  path**, with no mount rewrite and no engine taxonomy in the comparison itself.
+  For a `kv` grant that path is the declared one. The `#<key>` half selects which value
   fills the variable and confers nothing; `keys:` documents and validates and
   confers nothing either.
 - `delivery: file` and `delivery: self` grants carry no placeholder at all —

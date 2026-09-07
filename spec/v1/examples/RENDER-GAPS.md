@@ -13,8 +13,8 @@ that forced the decision stays with it.
 
 **Both blocking sections are discharged as of 2026-09-07.** R1–R11 are decided:
 nine closed outright, R1 and R11 reclassified as obligations that were never the
-render's, and R7 decided but blocked on R20 for a grant that can name
-`database/creds/<role>`. What is left in this document is the fifteen model holes
+render's, and R7's blocker — a grant that can name
+`database/creds/<role>` — closed with R19 and R21 on the same day. What is left in this document is the fifteen model holes
 below, each of which the compiler will force in turn, and the list of what the
 decisions owe the example set.
 
@@ -50,9 +50,9 @@ decisions owe the example set.
 | R16 | **`replicas` and `minAvailable` are derived separately and never compared.** auth-api's eligible node set is one node, so live's two replicas is not reproducible; PDB `minAvailable: 1` against `replicas: 1` permits zero voluntary evictions, so draining that node — also the control plane — blocks forever. | auth |
 | R17 | **No exposure name and no hostname label.** Two anonymous exposures with no `paths` render two IngressRoutes with an identical match; Traefik breaks the tie by rule length then name. The live `/api` versus `/` split is expressible and is not declared. | auth |
 | R18 | **A cross-domain edge outside the fragment set narrows the allow set silently.** `{service: stalwart, surface: smtp}` does not resolve, so the coordinates and the egress rule are absent rather than wrong — a valid policy with a missing rule, seen on-call as a timeout, not an error code. | auth |
-| R19 | **`self-roll` derives a capability that cannot perform the roll.** `patch` on a transit key permits neither `transit/keys/<name>/rotate` nor `transit/sign/<name>`. The access × path derivation needs a non-KV branch. | auth |
-| R20 | **A grant path is not the path the credential is read from.** The dynamic database credential is granted at a KV-v2 path while the engine lives at `database/creds/<role>`, which no grant declares and no policy covers. | auth |
-| R21 | **Byte-matched grant paths cannot reach their KV-v2 `metadata` sibling.** No transform is permitted, so version listing and soft-delete are denied to every reader in the estate. | auth |
+| R19 | **`self-roll` derives a capability that cannot perform the roll.** `patch` on a transit key permits neither `transit/keys/<name>/rotate` nor `transit/sign/<name>`. The access × path derivation needs a non-KV branch. **Closed** by [0085](../../../docs/adr/model/0085-a-grant-is-a-union-on-engine.md): a `transit` grant declares a key and a closed `operations` set — sign, verify, encrypt, decrypt, rotate — each mapping to one Vault path; the access tiers are KV intents only. | auth |
+| R20 | **A grant path is not the path the credential is read from.** The dynamic database credential is granted at a KV-v2 path while the engine lives at `database/creds/<role>`, which no grant declares and no policy covers. **Closed** by [0085](../../../docs/adr/model/0085-a-grant-is-a-union-on-engine.md): every grant derives a read path, a `database` grant's is `database/creds/<role>`, and 0027's join key becomes that derived path — identical to the declared one for `kv`. | auth |
+| R21 | **Byte-matched grant paths cannot reach their KV-v2 `metadata` sibling.** No transform is permitted, so version listing and soft-delete are denied to every reader in the estate. **Closed** by [0086](../../../docs/adr/model/0086-kv-read-covers-its-metadata-sibling.md): one `kv` declaration derives both `secret/data/<path>` and `secret/metadata/<path>`, since KV-v2 splitting one document across two API paths is an engine detail. Soft-delete stays out — it is a write. | auth |
 | R22 | **`runtime: jvm` is asked to imply Spring Boot.** Four spring-cloud-vault spellings derive from `delivery: self`, and no field distinguishes a Spring JVM from any other. | auth |
 | R23 | **An Asset's change-propagation mechanism is unstated.** `onChange: restart` needs either a content-hashed ConfigMap name or a checksum annotation; no chapter picks one. `onChange` has two values and postgres supports `pg_ctl reload`, so under `Recreate` a one-line config edit is a full outage. | data |
 | R24 | **The label set is not fixed anywhere.** `name` + `instance` are the Deployment selector and therefore immutable — changing the convention later is delete-and-recreate on every workload in the estate. **Closed** by [0072](../../../docs/adr/model/0072-the-label-set-is-fixed.md): the five labels are named, part-of carries the Service, and name plus instance are named as immutable selectors. | auth |

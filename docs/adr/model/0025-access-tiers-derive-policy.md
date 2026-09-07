@@ -9,6 +9,13 @@ rests-on: ["0009"]
 
 # Access tiers derive the Vault policy
 
+> **Amended 2026-09-07.** The four tiers are **KV intents** and apply to the
+> `kv` engine only ([0085](0085-a-grant-is-a-union-on-engine.md)). A `transit`
+> grant declares `operations`, because `self-roll`'s `patch` permits neither
+> `transit/keys/<name>/rotate` nor `transit/sign/<name>`; a `database` grant
+> declares a role and takes no tier, because the engine issues the credential.
+> The derivation this ADR records is unchanged for KV.
+
 ## Rests on
 
 Every secret-touching workload in the estate holds exactly one of four

@@ -9,6 +9,14 @@ rests-on: ["0009"]
 
 # A secret placeholder byte-matches a granted path
 
+> **Amended 2026-09-07.** The join key is the grant's **derived read path**, not
+> its declared path ([0085](0085-a-grant-is-a-union-on-engine.md)). For a `kv`
+> grant the two are the same string, so this decision is unchanged in every case
+> it was written for; for a `database` grant the placeholder names
+> `database/creds/<role>`, which is where the credential is read from. Byte
+> equality, no mount rewrite, no engine taxonomy inside the comparison — all
+> unchanged.
+
 ## Rests on
 
 Every Secret Store path an author may grant is a string that can appear

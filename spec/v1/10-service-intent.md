@@ -1305,14 +1305,40 @@ workloads:
         rotation: {tolerates: restart}
 ```
 
-| field | required | notes |
-|---|---|---|
-| `path` | yes | The full Secret Store path, exactly as the derived policy names it. This is the grant unit. |
-| `keys` | yes | The keys the Workload expects at that path. Documentation and a validation input — **not** an access boundary. No wildcard exists. |
-| `access` | yes | `read` \| `self-renew` \| `self-roll` \| `custody`. |
-| `delivery` | yes | `env` \| `file` \| `self`. |
+A grant is a **discriminated union on `engine`**, because the estate uses three
+and they authorise different things
+([0085](../../docs/adr/model/0085-a-grant-is-a-union-on-engine.md)). `engine`
+defaults to `kv`, so every grant written before this rule stays valid.
+
+| field | engine | required | notes |
+|---|---|---|---|
+| `engine` | all | no | `kv` \| `database` \| `transit`; defaults to `kv` |
+| `path` | `kv` | yes | The full KV path. This is the grant unit ([0023](../../docs/adr/model/0023-grant-unit-is-the-path.md)). |
+| `keys` | `kv` | yes | The keys the Workload expects there. Documentation and a validation input — **not** an access boundary. No wildcard exists. |
+| `access` | `kv` | yes | `read` \| `self-renew` \| `self-roll` \| `custody`. A KV intent, and only a KV intent. |
+| `role` | `database` | yes | The database role that issues the credential. The read path derives as `database/creds/<role>`. |
+| `key` | `transit` | yes | The transit key name. |
+| `operations` | `transit` | yes | A closed set: `sign`, `verify`, `encrypt`, `decrypt`, `rotate`. Each maps to exactly one Vault path. |
+| `delivery` | all | yes | `env` \| `file` \| `self`; a `transit` grant is `self` only (`E_NON_KV_DELIVERY`). |
 | `mountAt`, `fileMode` | `file` only | Where the projected file lands, and its mode. |
-| `rotation` | yes | `tolerates: restart` \| `reload`, plus an optional `maxAge`. |
+| `rotation` | all | yes | `tolerates: restart` \| `reload`, plus an optional `maxAge`. |
+
+**Every grant derives a read path**, and that derived path — not the declared
+one — is what a placeholder byte-matches
+([Secret references](#secret-references), amending
+[0027](../../docs/adr/model/0027-secret-reference-join-key.md)):
+
+| engine | derived read path |
+|---|---|
+| `kv` | `secret/data/<path>`, and `secret/metadata/<path>` for the same document ([0086](../../docs/adr/model/0086-kv-read-covers-its-metadata-sibling.md)) |
+| `database` | `database/creds/<role>` |
+| `transit` | one path per declared operation: `transit/sign/<key>`, `transit/keys/<key>/rotate`, and so on |
+
+For a `kv` grant the derived path is the string the author already wrote, so
+nothing about today's placeholders changes. For the other two it is the path the
+credential is actually read from, which is what R20 recorded as missing: the
+declared thing and the readable thing were different, and no policy covered the
+second.
 
 There is a third level the list does **not** have: the domain header. A
 domain-level grant would hand every Service in the file a reader slot on a path
@@ -1412,6 +1438,15 @@ and merged documents outlive the migration.
 runtime under `secret/data/agents/projects/<id>/repos/<id>`, paths that cannot be
 enumerated at render time. Its blast radius is bounded only by the prefix.
 
+**The four tiers are KV intents and nothing else**
+([0085](../../docs/adr/model/0085-a-grant-is-a-union-on-engine.md)). A `transit`
+grant declares `operations` instead, because no tier means anything there:
+`self-roll` derives `patch`, and `patch` on a transit key permits neither
+`transit/keys/<name>/rotate` nor `transit/sign/<name>` — which is what
+`auth-api`'s JWT key needs and has never had. A `database` grant declares a role
+and takes no tier at all: the engine issues the credential, so there is no
+capability to choose.
+
 The tiers are intents, not a privilege lattice. A Workload that both reads a path
 and rolls it declares two entries.
 
@@ -1484,12 +1519,20 @@ Two gates apply to the two deliveries that persist a Secret:
 ## Secret references
 
 An env-delivered grant is bound to a variable by a placeholder in the Workload's
-env file, and the placeholder's path half **byte-matches the granted path**
-([0027](../../docs/adr/model/0027-secret-reference-join-key.md)):
+env file, and the placeholder's path half **byte-matches the grant's derived read
+path** ([0027](../../docs/adr/model/0027-secret-reference-join-key.md), amended by
+[0085](../../docs/adr/model/0085-a-grant-is-a-union-on-engine.md)):
 
 ```
-${secret:<granted-path>#<key>}
+${secret:<derived-read-path>#<key>}
 ```
+
+For a `kv` grant the derived read path is the declared path, so this is the rule
+0027 always stated. For a `database` grant it is `database/creds/<role>`, which
+is where the credential is read from and what the derived policy covers. The join
+stays byte equality, with no mount rewrite and no engine taxonomy in the
+comparison — one rule over one string, which is the property that made the join
+checkable in the first place.
 
 ```yaml
 # platform/knowledge.yml

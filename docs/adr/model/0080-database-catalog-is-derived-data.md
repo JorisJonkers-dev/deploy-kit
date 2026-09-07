@@ -1,8 +1,7 @@
 ---
 tier: decision
 status: proposed
-claim: open
-owner: joris
+claim: settled
 date: 2026-09-07
 normative: spec/v1/16-dependencies.md#the-database-catalog
 rests-on: ["0005"]
@@ -46,13 +45,13 @@ rotated by hand. That matters more here than elsewhere: a static database
 password is the class of secret this estate holds the most of, and it is the
 class [0028](0028-secrets-at-rest-gate.md) is most exposed by.
 
-This decision is `claim: open` for one reason, and it is honest about it: the
-issued credential lives at `database/creds/<role>`, and no grant in the model can
-name that path. R20 records exactly this — a grant path is not the path a dynamic
-credential is read from — and the derivation cannot be completed until the grant
-vocabulary can express a non-KV engine path. Choosing dynamic credentials makes
-that row load-bearing instead of latent, which is the point: the alternative
-worked around it by keeping a static password nobody wanted.
+This was recorded `claim: open` for one reason: the issued credential lives at
+`database/creds/<role>`, and no grant in the model could name that path — R20's
+row exactly. Choosing dynamic credentials made that row load-bearing instead of
+latent rather than working around it with a static password nobody wanted, and
+[0085](0085-a-grant-is-a-union-on-engine.md) closed it the same day: a
+`database` grant names a role and derives that read path, so the catalog is
+renderable and this decision settles.
 
 ## Alternatives
 | option | cost if taken | why rejected |
@@ -70,9 +69,10 @@ to a static password then means re-granting ownership inside a running database
 rather than editing a render.
 
 ## Consequences
-- R7 closes as a decision and stays open as work: the catalog is specified and
-  the derivation cannot render until R20 gives it a path to name — paid by
-  whoever takes R20, which this decision deliberately promotes to blocking.
+- R7 closes, and it promoted R20 to blocking on the way — which is how R19, R20
+  and R21 came to be decided together rather than each waiting for a compiler to
+  trip over it — paid by nobody, and it is the argument for choosing the option
+  that exposes a gap over the one that hides it.
 - Vault's database secrets engine becomes a platform fixture the estate must
   actually configure, with a connection to Postgres holding privilege to create
   roles — paid by the platform, and it is privilege that previously lived in a
