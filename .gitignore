@@ -50,14 +50,12 @@ templates/**/.claude/commands/speckit*.md
 # elsewhere in the estate is not silently ignored.
 .claude/worktrees/
 
-# Agent worktrees. `.claude/worktrees/<name>/` is a full git worktree checked
 # out beside the sources; it is machine-local scratch, several MB, and being
 # untracked rather than ignored it left this repo permanently dirty.
 # Scoped to worktrees/ rather than all of .claude/ so tracked agent config
 # elsewhere in the estate is not silently ignored.
 .claude/worktrees/
 
-# Agent worktrees: `.claude/worktrees/<name>/` is a full git worktree checked
 # out beside the sources - machine-local scratch, several MB. Scoped to
 # worktrees/ rather than all of .claude/ so repos that deliberately track
 # agent config are not silently ignored.
@@ -66,3 +64,21 @@ templates/**/.claude/commands/speckit*.md
 # Python bytecode
 __pycache__/
 *.py[cod]
+
+# Coverage output. The estate mandates a coverage gate, so every repo produces
+# these; the template did not ignore them.
+coverage/
+.nyc_output/
+*.lcov
+
+# Build and tool caches
+*.tsbuildinfo
+.eslintcache
+
+# npm pack output
+*.tgz
+
+# CI downloads these pinned binaries into the workspace root
+/actionlint
+/gitleaks
+
