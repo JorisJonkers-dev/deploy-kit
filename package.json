@@ -17,12 +17,13 @@
     "lint:fix": "eslint . --fix",
     "lint:adrs": "node scripts/lint-adrs.mjs",
     "lint:links": "node scripts/lint-links.mjs",
+    "lint:manifests": "node scripts/lint-manifests.mjs",
     "lint:boundaries": "node scripts/lint-boundaries.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "c8 --all --include \"scripts/**/*.mjs\" --check-coverage --lines 80 --branches 70 node --test",
-    "verify": "npm run lint && npm run format:check && npm run typecheck && npm run lint:adrs && npm run lint:links && npm run lint:boundaries && npm test"
+    "verify": "npm run lint && npm run format:check && npm run typecheck && npm run lint:adrs && npm run lint:links && npm run lint:manifests && npm run lint:boundaries && npm test"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

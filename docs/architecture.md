@@ -194,6 +194,7 @@ cost something in the generation this compiler replaces.
 | types | `npm run typecheck` | `strict` violations; `@ts-nocheck` is an ESLint error and `@ts-expect-error` needs a description |
 | decisions | `npm run lint:adrs` | frontmatter, register integrity, citations, normative anchors per domain |
 | links | `npm run lint:links` | relative links and heading anchors across every tracked Markdown file |
+| manifests | `npm run lint:manifests` | every rendered example object against pinned Kubernetes and CRD schemas |
 | tests | `npm test` | behaviour, plus the coverage floor |
 
 The reachability half of the boundary gate is the one worth naming. Coverage

@@ -48,6 +48,20 @@
       - 'name': 'ADR contract'
         'run': 'npm run lint:adrs'
 
+      # Every rendered example object, against Kubernetes and CRD schemas.
+      # "All parse" is what let a PVC with `storage: null` through
+      # (spec/v1/examples/RENDER-GAPS.md, R8). Pinned by version, never
+      # `curl | bash` from a default branch: see
+      # docs/adr/deferred/0048-class-b-pinning.md.
+      - 'name': 'Manifest schemas'
+        'shell': 'bash'
+        'run': |
+          set -euo pipefail
+          version='0.6.7'
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/v${version}/kubeconform-linux-amd64.tar.gz" \
+            | tar -xz kubeconform
+          KUBECONFORM="${PWD}/kubeconform" npm run lint:manifests
+
       # Relative links and heading anchors across every tracked Markdown file.
       # The ADR domain move rewrote about a hundred references outside the
       # decision set, and nothing checked them.
