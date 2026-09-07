@@ -108,7 +108,7 @@ tree, so a differing render with identical digests is a defect, never weather.
 ```mermaid
 flowchart TB
     subgraph AUTH["layer 1 — Service Intent, hand-authored in each owning repository"]
-        a1["service.yml<br/>releaseUnit, size, hardening,<br/>durability, probes, exposure, secrets"]
+        a1["domains/&lt;domain&gt;.yml<br/>services, workloads, placement, hardening,<br/>durability, probes, exposure, secrets"]
         a2["env/&lt;workload&gt;/*.env<br/>one set per Workload"]
         a3["assets<br/>declarative, never executable"]
         a4["node declarations"]
@@ -245,7 +245,7 @@ parse-checked in CI.
 
 | path | what it shows |
 |---|---|
-| `examples/{knowledge,auth-api,platform-postgres}.service.yml` | Service Intent: two-level secret grants, `probes: none` stated explicitly, TCP probes, `size` and declared hardening exceptions, `durability` per volume, `releaseUnit` on the auth pair |
+| `examples/domains/{auth,knowledge,data}.yml` | Service Intent, one file per domain: two-level secret grants, `probes: none` stated explicitly, TCP probes, `placement` dimensions and declared hardening exceptions, `durability` per volume, and the `auth` pair as two Workloads of one Service |
 | `examples/{knowledge-api,knowledge-ingest-worker,auth-api,platform-postgres}.base.env` | env files, one set **per Workload**, threaded with `${dependency:…}` and `${secret:<granted-path>#<key>}` placeholders whose paths byte-match a granted path |
 | `examples/workflows/service-publish-fragment.yml` | publish on merge, `oras push` then `oras resolve`, read back |
 | `examples/workflows/compose.yml` | pull participants, assert the estate-wide invariants, **prove the gate can fail** |
@@ -340,9 +340,10 @@ through, with the deciding ADR named.
      unambiguous attribution; enforcing single attribution
      ([0054](../../docs/adr/0054-adapter-attribution.md)).
 
-5. **`sidecars` and `minAvailable`.** Chapter 10 proposed three fields;
-   [0016](../../docs/adr/0016-pod-hardening-and-resource-class.md) graded
-   `size`, and the other two are still ungraded. Both have live evidence: a
+5. **`sidecars` and `minAvailable`.** Chapter 10 proposed three fields; the
+   third became `placement`
+   ([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)), and these two
+   are still ungraded. Both have live evidence: a
    Workload holding more than one container already exists three times
    (`postgres` plus `postgres-exporter`, `stalwart` plus `stalwart-apply`,
    `agent-runner` plus the `agent-gateway` jar), and six PodDisruptionBudgets
@@ -405,10 +406,11 @@ through, with the deciding ADR named.
   [0033](../../docs/adr/0033-assignments-published-back.md): the file is
   generated, never hand-edited, and its drift check fails the build in the
   repository holding it when it disagrees with a fresh compose.
-- ~~**Grading `size`.**~~ Decided by
-  [0016](../../docs/adr/0016-pod-hardening-and-resource-class.md): a closed
-  class `xs`–`xl`, with the requests and limits table in chapter 10 reaching the
-  render through the pinned Cluster Context.
+- ~~**Grading the resource class.**~~ Decided by
+  [0061](../../docs/adr/0061-placement-is-hard-dimensions.md): the closed
+  `xs`–`xl` class is replaced by `placement`, which states `memory` and `cpu` as
+  raw quantities alongside the other node dimensions and is matched against
+  allocatable.
 - ~~**Aggregator CI cost**~~, ~~**whether the test substrate runs Flux for the
   foundation**~~, ~~**the lag bound**~~ and ~~**what replaces
   `deploy/production`.**~~ All four are delivery or co-testing questions, and
