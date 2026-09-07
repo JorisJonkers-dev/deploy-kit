@@ -820,7 +820,7 @@ them:
 |---|---|---|---|
 | `app-ui` | `64Mi` | `10m` | nginx serving static files, measured at *"~10–20Mi RAM each"*; `postgres-exporter` sits in the same band |
 | `knowledge-ingest-worker` | `256Mi` | `50m` | an interpreted single-consumer queue worker, not a server |
-| `knowledge-api` | `768Mi` | `250m` | a JVM service at its default heap; `domains/knowledge.yml` measures its cold start at *"~250-300s"* |
+| `knowledge-api` | `768Mi` | `250m` | a JVM service at its default heap; `knowledge/knowledge.domain.yml` measures its cold start at *"~250-300s"* |
 | `platform-postgres` | `2Gi` | `500m` | the datastore with pgvector that eight Services queue behind |
 
 A wrong number now mis-sizes one Workload rather than every member of a class,
@@ -1286,9 +1286,9 @@ failing it is `E_PLACEMENT_UNSATISFIABLE`
 
 | example | what it exercises |
 |---|---|
-| [`domains/knowledge.yml`](examples/domains/knowledge.yml) + [`env`](examples/knowledge-api.base.env) + [`worker env`](examples/knowledge-ingest-worker.base.env) | two Workloads, two runtimes and therefore two identities, `probes: none` and no `provides` on the worker, grants at **both** levels, a split Subtree path, a `0400` file secret, an `irreplaceable` volume |
-| [`domains/auth.yml`](examples/domains/auth.yml) + [`env`](examples/auth-api.base.env) | one Service, two Workloads switching atomically; `delivery: self` with `tolerates: reload`, a `self-roll` transit grant taking no placeholder, and the one hardening exception in the set |
-| [`domains/data.yml`](examples/domains/data.yml) + [`env`](examples/platform-postgres.base.env) | three Services releasing independently in one domain, third-party images, a `disk` dimension, TCP probes, and a surface eight Services consume |
+| [`knowledge/knowledge.domain.yml`](examples/knowledge/knowledge.domain.yml) + [`env`](examples/knowledge/env/knowledge-api.base.env) + [`worker env`](examples/knowledge/env/knowledge-ingest-worker.base.env) | two Workloads, two runtimes and therefore two identities, `probes: none` and no `provides` on the worker, grants at **both** levels, a split Subtree path, a `0400` file secret, an `irreplaceable` volume |
+| [`auth/auth.domain.yml`](examples/auth/auth.domain.yml) + [`env`](examples/auth/env/auth-api.base.env) | one Service, two Workloads switching atomically; `delivery: self` with `tolerates: reload`, a `self-roll` transit grant taking no placeholder, and the one hardening exception in the set |
+| [`data/data.domain.yml`](examples/data/data.domain.yml) + [`env`](examples/data/env/platform-postgres.base.env) | three Services releasing independently in one domain, third-party images, a `disk` dimension, TCP probes, and a surface eight Services consume |
 
 The env-file-to-`secrets` cross-check runs over all three sets. `knowledge-api` has
 5 placeholders matching 5 env-delivered keys, and its ingest worker 4 more against
