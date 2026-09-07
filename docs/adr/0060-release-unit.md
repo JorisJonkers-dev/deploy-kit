@@ -1,14 +1,19 @@
 ---
 tier: decision
-status: proposed
+superseded-by: 0062
 claim: open
 owner: joris
 date: 2026-09-07
-normative: spec/v1/10-service-intent.md#release-units
+normative: spec/v1/10-service-intent.md#service-identity
 rests-on: ["0003", "0005"]
 ---
 
 # Several Services switch as one Release Unit
+
+Superseded by [0062](0062-service-is-the-release-unit.md): a Service is itself
+the unit of atomic release, so a pair that must switch together is one Service
+and the `releaseUnit` field this record introduces is deleted rather than
+specified.
 
 ## Rests on
 An all-or-nothing multi-Service cutover can be expressed as layer-1 intent plus
