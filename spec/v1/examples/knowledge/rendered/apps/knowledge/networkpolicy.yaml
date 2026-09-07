@@ -1,0 +1,187 @@
+# adapter: networking  -- NOT REGISTERED. No adapter in adapterContract() emits
+# NetworkPolicy; the only implementation ever written,
+# src/deployment/render/networkpolicy.ts, is in the generation being deleted.
+# This file is the goal state, and it has no producer. README, gap G-16.
+#
+# real path: platform/cluster/flux/apps/knowledge/knowledge/networkpolicy.yaml
+#
+# Default-deny plus derived allows, evaluated PER POD. The namespace wall does
+# nothing here by construction, so all of the isolation in this domain is in
+# this file and in the two ServiceAccounts.
+#
+# Every policy below carries Egress in policyTypes and therefore also matches
+# UDP/53 -- the baseline no Service authors, and the statically checkable
+# property the baseline exists to hold. Omitting it is how a consumer that was
+# just handed a svc.cluster.local coordinate fails with a DNS timeout that gets
+# diagnosed as "Postgres is down".
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  # Catches any pod in the namespace that no per-Workload policy selects. The
+  # namespace holds every Service of the domain, so this object governs Services
+  # that may be added to knowledge.yml later and were never reviewed with it.
+  # Whether the derivation emits a namespace-scoped catch-all at all, or relies
+  # on every Workload having its own policy, is not stated. README, gap G-17.
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}    # truncated responses ride the same rule
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: knowledge-api
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/name: knowledge-api
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: knowledge-api
+  policyTypes: [Ingress, Egress]
+  ingress:
+    # from the route tier carrying the audience -- derived from `exposure`
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: edge-system
+      ports:
+        - {protocol: TCP, port: 8080}
+    # from the metrics stack to the declared scrape port -- the second baseline
+    # rule. A Workload that silently loses scrape stops alerting.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - {protocol: TCP, port: 8080}
+    # NO rule admitting a consumer of the `http` surface. Nothing in the
+    # composed example set declares dependsOn: {service: knowledge}. In the live
+    # estate the agents Services do, so this allow set is a function of WHICH
+    # fragments are in the union -- a domain that fails to publish narrows its
+    # providers' ingress rather than shrinking its own render. README, gap G-18.
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    # dependsOn {platform-postgres, postgres}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres
+      ports:
+        - {protocol: TCP, port: 5432}
+    # dependsOn {platform-rabbitmq, amqp}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: rabbitmq
+      ports:
+        - {protocol: TCP, port: 5672}
+    # "to the Secret Store, from the Workloads holding the grant". All three of
+    # this Workload's grants are delivery: env, so the VSO operator does the
+    # reading and this pod never opens a connection to Vault. The rule as the
+    # model states it is over-broad -- it should be conditioned on
+    # `delivery: self`. README, gap G-19.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: vault-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: vault
+      ports:
+        - {protocol: TCP, port: 8200}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: knowledge-ingest-worker
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/name: knowledge-ingest-worker
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: knowledge-ingest-worker
+  # Ingress is in policyTypes with NO ingress rules: deny all inbound,
+  # explicitly. That is the whole derivation for a Workload with no `provides`,
+  # no `exposure` and no `scrape` -- there is nothing to admit, and the absence
+  # is stated rather than left to a missing key.
+  policyTypes: [Ingress, Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: rabbitmq
+      ports:
+        - {protocol: TCP, port: 5672}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres
+      ports:
+        - {protocol: TCP, port: 5432}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: vault-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: vault
+      ports:
+        - {protocol: TCP, port: 8200}
+    # NO rule for the git remote this Workload exists to clone. It holds an SSH
+    # deploy key at 0400 and a claim called knowledge-vault-CLONE, so it must
+    # reach a host outside the cluster -- and `dependsOn` can only name a
+    # Service Id in the composed union. Under default-deny this Workload cannot
+    # do its job, and no field in layer 1 can say so. README, gap G-20.

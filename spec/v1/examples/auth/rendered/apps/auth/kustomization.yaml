@@ -1,0 +1,31 @@
+# adapter: kubernetes
+# real path: platform/cluster/flux/apps/auth/auth/kustomization.yaml
+#
+# ONE kustomization for the Service, covering BOTH Workloads -- the file set of
+# the atomic release unit. Grouping is all it does. kustomize applies the
+# resources below in its own order and returns; nothing here waits for
+# auth-api's readiness before auth-ui's new pods take traffic, and nothing here
+# marks the two Deployments as one unit for any consumer that might.
+# README, gap G-01.
+#
+# namespace.yaml is not listed: it is one object for the whole domain and sits
+# one level up. vault.yaml is not listed either, and cannot be -- it carries no
+# apiVersion and no kind, because a Vault policy and a Kubernetes auth role are
+# not cluster objects. Anything that applies them is outside this file set.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: auth-system
+resources:
+  - workload.yaml            # Deployment + Service, per Workload
+  - serviceaccount.yaml      # one identity per Workload
+  - pdb.yaml                 # auth-api only
+  - servicemonitor.yaml      # auth-api only
+  - networkpolicy.yaml       # default-deny + one policy per Workload
+# Not emitted, each for a stated reason:
+#   configmap.yaml  -- no Workload declares `assets`, and env-file entries
+#                      render as inline `env:` on the container, not as a
+#                      ConfigMap. auth-ui's env file is not in this example set.
+#   pvc.yaml        -- no Workload declares `volumes`. Nothing in this domain
+#                      touches storage, so no storageClassName is rendered.
+#   podmonitor.yaml -- no scrape surface without a fronting Service.
+#   vso.yaml        -- all three grants are `delivery: self`; VSO syncs nothing.

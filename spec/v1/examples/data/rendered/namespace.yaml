@@ -1,0 +1,19 @@
+# adapter: kubernetes
+# real path: platform/cluster/flux/apps/data/namespace.yaml
+#
+# ONE Namespace for THREE Services. `data-system` derives from `domain: data`
+# and from nothing else. It is not a trust boundary: platform-postgres,
+# platform-rabbitmq and platform-valkey share it by construction, and none of
+# the three may reach either other one -- see the three networkpolicy.yaml
+# files, which is where the isolation actually lives.
+#
+# The registered `kubernetes` adapter emits namespace.yaml *per Service
+# directory*. Three Services in one namespace would therefore emit three
+# identical Namespace objects at three paths. Hoisted here once; see README.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data-system
+  labels:
+    kubernetes.io/metadata.name: data-system
+    app.kubernetes.io/part-of: data

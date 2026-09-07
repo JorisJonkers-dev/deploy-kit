@@ -1,0 +1,161 @@
+# adapter: kubernetes
+# real path: platform/cluster/flux/apps/data/platform-rabbitmq/workload.yaml
+#
+# A SECOND Service in the same domain file and the same namespace, with its own
+# directory, its own kustomization and its own release. It shares nothing with
+# platform-postgres: not a release, not an identity, not a grant, not a policy.
+# The only thing the two have in common is the string `data-system` and the
+# label `part-of: data`, and neither is consumed by any controller.
+#
+# THREE surfaces from one Workload -- amqp, management, metrics -- of which one
+# is consumed by dependency edges, one by an exposure, and one by a scrape. Each
+# derives a different thing, and they are declared once, together, on the process
+# that opens them.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: rabbitmq
+    app.kubernetes.io/instance: platform-rabbitmq
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  # Deployment for the same reason postgres is one: `volumeClaimTemplate` is
+  # forbidden, so a StatefulSet's distinguishing feature is unavailable and its
+  # other effects are declared by nothing. README, gap G-04.
+  replicas: 1                           # forced by the RWO volume, not derived
+  strategy:
+    type: Recreate                      # forced by the RWO volume; zeroDowntime:
+                                        # false says the same from the author's
+                                        # side
+  progressDeadlineSeconds: 360          # startupBudget 120s x 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rabbitmq
+      app.kubernetes.io/instance: platform-rabbitmq
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: rabbitmq
+        app.kubernetes.io/instance: platform-rabbitmq
+        app.kubernetes.io/part-of: data
+        app.kubernetes.io/managed-by: deploy-kit
+    spec:
+      serviceAccountName: rabbitmq      # the Workload name alone; it holds no
+                                        # policy, because this Service declares
+                                        # no grants
+      # NO nodeSelector and NO nodeAffinity. `placement` declares memory and cpu
+      # and nothing else, and neither produces a selector: they were matched
+      # against node allocatable at build time. All seven nodes are eligible.
+      #
+      # Two things that eligible set does not check, and both bite here rather
+      # than on postgres:
+      #
+      # 1. ARCHITECTURE IS UNCHECKED AGAINST THE IMAGE. Four of the seven
+      #    eligible nodes are amd64 and three are arm64, and this Workload
+      #    declares no `arch` because the upstream image is multi-arch. Nothing
+      #    verifies that. The images lock resolves an alias to ONE digest, and a
+      #    single-architecture digest scheduled onto a Pi is an `exec format
+      #    error` at runtime -- the model holds both facts (the digest, the
+      #    eligible set) and compares them nowhere. platform-postgres writes
+      #    `arch: [amd64]` because pgvector publishes no arm64 pg17 build, and
+      #    that too is an unverified assertion by the author. README, gap G-27.
+      #
+      # 2. 2Gi PASSES AGAINST enschede-pi-2 AND enschede-pi-3, whose total is
+      #    4096Mi and whose allocatable is that minus a reserve nobody has
+      #    measured (chapter 20, open item 4). This is the node where a wrong
+      #    reserve bites first: the build says it fits and the scheduler refuses.
+      #    Eligibility is not bin-packing -- it proves a home exists, not that
+      #    everything fits at once.
+      securityContext:
+        # hardening: restricted, NO exceptions. All four controls stand. The
+        # upstream image runs non-root with a read-only root filesystem once its
+        # mnesia directory is a volume -- which it is, below.
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+        # NOT RENDERED: runAsUser, fsGroup. Same hole as postgres, same
+        # consequence: a freshly provisioned local-path directory is root-owned
+        # and a non-root uid cannot write /var/lib/rabbitmq. README, gap G-15.
+      containers:
+        - name: rabbitmq
+          # alias `rabbitmq` resolved to a digest through the images lock. Third
+          # party, pinned exactly like a first-party image; every rendered
+          # Deliverable stays E_FLOATING_IMAGE clean. README, gap G-03.
+          image: docker.io/library/rabbitmq@sha256:902448b00f3d3f117daac08865d2f40971e33bd2fa8a863d1a23da3b83fd4f00
+          ports:
+            # one containerPort per `provides` entry; the NAME is the surface
+            # name, which is what every derived object refers to afterwards
+            - name: amqp
+              containerPort: 5672
+            - name: management
+              containerPort: 15672
+            - name: metrics
+              containerPort: 15692
+          resources:
+            requests:
+              memory: 2Gi
+              cpu: 500m
+            limits:
+              memory: 2Gi
+          securityContext:
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          # NO `env` and NO `envFrom`. The model requires one env file per
+          # Workload; this example set reproduces platform-postgres's and not
+          # this one's. Inventing entries for a file that exists would be worse
+          # than rendering none. There are also no Runtime Profile values to
+          # inject: `runtime: none`. README, gap G-28.
+          startupProbe:
+            # TCP on the amqp surface. startupBudget 120s -> period 5s x
+            # threshold 24.
+            tcpSocket:
+              port: amqp
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            tcpSocket:
+              port: amqp
+            timeoutSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: amqp
+            timeoutSeconds: 5
+          volumeMounts:
+            - name: rabbitmq-data
+              mountPath: /var/lib/rabbitmq
+      volumes:
+        - name: rabbitmq-data
+          persistentVolumeClaim:
+            claimName: rabbitmq-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: rabbitmq
+    app.kubernetes.io/instance: platform-rabbitmq
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  selector:
+    app.kubernetes.io/name: rabbitmq
+    app.kubernetes.io/instance: platform-rabbitmq
+  ports:
+    - name: amqp                        # named by auth and knowledge in dependsOn
+      port: 5672
+      targetPort: amqp
+      protocol: TCP
+    - name: management                  # reached only through the edge; no
+      port: 15672                       # dependency edge names it
+      targetPort: management
+      protocol: TCP
+    - name: metrics                     # the prometheus plugin's own listener
+      port: 15692
+      targetPort: metrics
+      protocol: TCP

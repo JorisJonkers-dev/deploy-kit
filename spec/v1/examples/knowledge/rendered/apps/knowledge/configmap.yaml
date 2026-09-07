@@ -1,0 +1,87 @@
+# adapter: kubernetes
+# real path: platform/cluster/flux/apps/knowledge/knowledge/configmap.yaml
+#
+# ONE ConfigMap PER WORKLOAD, because there is one env file per Workload and
+# the two overlap on the RabbitMQ coordinates and on nothing else.
+#
+# This is the LITERAL half of the partition. Every key here is either a literal
+# the author wrote, a resolved ${dependency:...} coordinate, or a value the
+# renderer injects and the author is forbidden to write. The ${secret:...} half
+# is in vso.yaml and reaches the pod as envFrom secretRef -- it never appears
+# here, and a literal secret value anywhere in this file is E_RAW_SECRET.
+#
+# Names are plain, not content-hashed. `onChange: restart` hashes an ASSET's
+# object name; no rule states what an ENV FILE's ConfigMap does, so an edit to
+# base.env applies successfully and does not reach the running pod. See README,
+# gap G-10.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: knowledge-api-env
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/name: knowledge-api
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+data:
+  # --- literals, byte for byte from platform/env/knowledge-api/base.env
+  SPRING_PROFILES_ACTIVE: prod
+  KB_RECALL_DEFAULT_MODE: hybrid
+  KNOWLEDGE_MODE: lite
+
+  # --- ${dependency:...} resolved from this Workload's own dependsOn edges.
+  # The coordinate resolves to the PROVIDER'S Kubernetes Service, which is named
+  # for the provider's WORKLOAD (`postgres`, `rabbitmq`), not for the Service id
+  # the consumer wrote (`platform-postgres`, `platform-rabbitmq`). See README,
+  # gap G-11.
+  DB_HOST: postgres.data-system.svc.cluster.local
+  DB_PORT: "5432"
+  DB_NAME: knowledge_db          # the inbound derivation: one database and one
+                                 # owning user per consumer of the postgres
+                                 # surface. The <service>_db spelling is
+                                 # evidenced by init-databases.sh and specified
+                                 # nowhere -- README, gap G-12.
+  RABBITMQ_HOST: rabbitmq.data-system.svc.cluster.local
+  RABBITMQ_PORT: "5672"
+
+  # --- injected; a build error if the author had written them
+  SERVER_PORT: "8080"              # from the exposure port
+  DEPLOYMENT_ENVIRONMENT: production   # from the Cluster Target
+  OTEL_SERVICE_NAME: knowledge-api     # from the Workload name
+
+  # runtime: jvm injects 10 OTEL_* and 6 PYROSCOPE_* keys. Exactly one of the
+  # sixteen -- OTEL_SERVICE_NAME, above -- is a function of anything declared;
+  # the other fifteen are constants held in the Runtime Profile, and no pinned
+  # input in chapter 20 carries a Runtime Profile. They cannot be rendered from
+  # this example set and are not invented here. See README, gap G-13.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: knowledge-ingest-worker-env
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/name: knowledge-ingest-worker
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+data:
+  # --- literals, none of them shared with the api
+  INGEST_QUEUE: knowledge.ingest
+  INGEST_PREFETCH: "4"
+  LOG_LEVEL: INFO
+
+  # --- ${dependency:...} from this Workload's OWN dependsOn edges. Same two
+  # providers as the api, declared separately, because edges are per Workload.
+  RABBITMQ_HOST: rabbitmq.data-system.svc.cluster.local
+  RABBITMQ_PORT: "5672"
+  DB_HOST: postgres.data-system.svc.cluster.local
+  DB_PORT: "5432"
+  DB_NAME: knowledge_db
+
+  # --- injected. No SERVER_PORT: this Workload has no exposure and no port.
+  DEPLOYMENT_ENVIRONMENT: production
+  OTEL_SERVICE_NAME: knowledge-ingest-worker
+
+  # runtime: python injects 5 OTEL_* keys plus OTEL_PYTHON_LOG_CORRELATION. Same
+  # hole as above: only OTEL_SERVICE_NAME is derivable. G-13.

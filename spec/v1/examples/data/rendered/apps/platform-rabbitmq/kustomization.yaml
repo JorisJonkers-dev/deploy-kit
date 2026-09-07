@@ -1,0 +1,33 @@
+# adapter: kubernetes
+# real path: platform/cluster/flux/apps/data/platform-rabbitmq/kustomization.yaml
+#
+# The second of three. Nothing here references ../platform-postgres or
+# ../platform-valkey, and nothing there references this directory.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: data-system
+resources:
+  - workload.yaml            # Deployment + Service (three surfaces)
+  - serviceaccount.yaml
+  - pvc.yaml                 # rabbitmq-data, recoverable
+  - servicemonitor.yaml
+  - networkpolicy.yaml
+# Not emitted:
+#   configmap.yaml  -- no `assets`, and this Workload's env file is not
+#                      reproduced in the example set (README, gap G-28).
+#   vso.yaml        -- no `secrets` at either level. Its clients hold the broker
+#                      credentials, which is what a provider looks like.
+#   pdb.yaml        -- `minAvailable` undeclared and ungraded.
+#   podmonitor.yaml -- the scrape surface is fronted by a Service.
+#   hpa.yaml        -- autoscaling is not in this model.
+#   prometheusrule.yaml -- `alertClass: urgent` derives nothing today.
+#   backup.yaml     -- `durability: recoverable` demands a job and a sweep; no
+#                      adapter reads `durability`.
+#
+# Not listed here and not under this domain's path at all:
+#   ../../edge/ingressroutes.yaml -> .../apps/edge/traefik-ingressroutes.yaml
+#   ../../observability/gatus-endpoints.yaml
+#                                 -> .../apps/utility-system/gatus/...
+# Both are ESTATE-WIDE objects several domains contribute entries to. They are
+# reproduced under this domain's rendered/ tree so the slice reads in one place;
+# the adapters that own them write them elsewhere.

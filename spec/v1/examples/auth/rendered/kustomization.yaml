@@ -1,0 +1,30 @@
+# adapter: kubernetes
+# real path: platform/cluster/flux/apps/auth/kustomization.yaml
+#
+# The domain's own kustomize Kustomization. One Service, therefore one Service
+# directory, therefore one entry -- and that single entry is the whole of what
+# the rendered tree says about atomic release. `apps/auth` holds BOTH Workloads'
+# objects, which groups them; it does not gate them. See README, gap G-01.
+#
+# apps/auth/networkpolicy.yaml carries the namespace-wide default-deny as well
+# as the two per-Workload policies, so it is listed as part of the Service
+# directory rather than beside namespace.yaml. That is a path-ownership
+# question a second Service in this domain would force -- README, gap G-14.
+#
+# Not listed here, and not under this domain's path at all:
+#   - edge/ingressroutes.yaml         -> ...apps/edge/traefik-ingressroutes.yaml
+#   - observability/gatus-endpoints.yaml
+#                                     -> ...apps/utility-system/gatus/gatus-endpoints-configmap.yaml
+# Both are ESTATE-WIDE objects that several domains contribute entries to. They
+# are reproduced under this domain's rendered/ tree so the auth slice can be
+# read in one place; the adapters that own them write them elsewhere.
+#
+# Also not here: the Flux Kustomization `apps-auth`. The Reconcile Unit is
+# derived (`apps-<domain>`) and rendered by `flux-root` into
+# .../clusters/production/kustomizations.yaml. It orders; it makes nothing
+# atomic.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - apps/auth
