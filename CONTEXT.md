@@ -189,10 +189,20 @@ registered rather than ignored
 
 ## Words to use carefully
 
-**Fragment.** Two chapters use it for different things: chapter 40's Intent
-Fragment is a published *input*, chapter 30's Fragment is an *output* file with
-its adapter attribution. In prose, qualify it. In code, never name a type
-`Fragment` — the input is `IntentFragment` and the output is `Deliverable`.
+**Fragment.** Overloaded three ways, so never use it bare.
+
+| use | what it is | where |
+|---|---|---|
+| Intent Fragment | one domain file, published as an input | [chapter 40](spec/v1/40-composition.md#fragments) |
+| Fragment | the output unit and unit of attribution: a Deliverable plus its path and its adapter | [chapter 30](spec/v1/30-deliverables.md#adapters) |
+| `*Fragment` kind | a document a fragment-producer adapter emits, such as `TraefikRouteFragment` | [chapter 30](spec/v1/30-deliverables.md#adapters) |
+
+Chapter 30 uses **Fragment** and **Deliverable** interchangeably for the middle
+one. In code the output unit is `Deliverable`, matching the layer's own name;
+`IntentFragment` is the input; the producer kinds keep their `*Fragment` names
+because those are wire kinds a consumer pins. Whether the chapter should be
+edited to use one word is open, and belongs with the next edit that touches
+chapter 30.
 
 **Deployment.** Ambiguous between the Kubernetes kind and the estate's old
 `deployment.jorisjonkers.dev` documents, which is the confusion
