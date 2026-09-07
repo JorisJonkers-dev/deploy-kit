@@ -123,7 +123,7 @@ delivery work it underpins.
 ### Adapters and rendering
 | # | title | claim |
 |---|---|---|
-| [0052](model/0052-registered-adapters-are-v1.md) | The registered adapters are v1; the second generation is deleted | settled, amended by [0073](model/0073-vault-policy-is-a-deliverable.md), [0074](model/0074-networking-adapter-emits-policy.md) |
+| [0052](model/0052-registered-adapters-are-v1.md) | The registered adapters are v1; the second generation is deleted | settled, amended by [0073](model/0073-vault-policy-is-a-deliverable.md), [0074](model/0074-networking-adapter-emits-policy.md), [0076](model/0076-middleware-has-one-producer.md) |
 | [0053](model/0053-adapter-port-contract.md) | An adapter satisfies one typed port | settled |
 | [0054](model/0054-adapter-attribution.md) | Every Deliverable is attributed to exactly one Adapter | settled |
 | [0055](model/0055-bidirectional-ledgers.md) | Every accepted hole is a bidirectional ledger | settled |
@@ -133,6 +133,7 @@ delivery work it underpins.
 | [0073](model/0073-vault-policy-is-a-deliverable.md) | The derived Vault policy and auth role are Deliverables of their own adapter | settled |
 | [0074](model/0074-networking-adapter-emits-policy.md) | A networking adapter owns every NetworkPolicy in the estate | settled |
 | [0075](model/0075-no-workload-rbac-in-v1.md) | v1 renders no workload RBAC, and refuses any Deliverable that grants it | settled |
+| [0076](model/0076-middleware-has-one-producer.md) | Every Middleware has one producer, and the tier names its forward-auth endpoint | settled |
 
 ### Platform facts
 | # | title | claim |

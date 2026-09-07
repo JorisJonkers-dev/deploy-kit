@@ -508,6 +508,28 @@ choice: moving the data requires a state-move-plan, not a re-render, and a
 declared `disk` dimension that contradicts the binding is
 `E_DISK_BINDING_CONFLICT` rather than a quiet move.
 
+### The forward-auth endpoint
+
+The middleware chain is derived, and one of its members needs an address: a
+forward-auth Middleware must name the endpoint that performs the check. **The
+tier names it** ([0076](../../docs/adr/model/0076-middleware-has-one-producer.md)).
+A tier in the Cluster Context that serves the `authenticated` audience carries
+the address of the endpoint that authenticates for it, beside the audiences it
+serves; a tier that serves no `authenticated` route carries no such field and
+needs none.
+
+It is not derived from the authenticating Service's own surface. `auth-api`'s
+estate-wide role *is* this middleware
+([chapter 10](10-service-intent.md#service-identity)), and resolving it as if it
+were a dependency edge would make the edge tree depend on resolving a Service
+and would write one Service's id into a platform derivation. It is a platform
+fact, so it sits where platform facts sit — the Cluster Context, pinned by
+digest ([Pinned inputs](#pinned-inputs)).
+
+A route declaring `audience: authenticated` on a tier whose declaration carries
+no endpoint is `E_NO_FORWARD_AUTH_ENDPOINT`, checked when the chain is derived
+rather than discovered as a 500 at the edge.
+
 ## The release gate
 
 A Service is the Release Unit, and no member's new version receives traffic

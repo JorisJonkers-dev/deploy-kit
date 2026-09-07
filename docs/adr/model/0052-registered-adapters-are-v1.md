@@ -9,7 +9,9 @@ rests-on: ["0003"]
 
 # The registered adapters are v1; the second generation is deleted
 
-> **Amended 2026-09-07.** The set is **eighteen**:
+> **Amended 2026-09-07.** The set is **nineteen**:
+> [0076](0076-middleware-has-one-producer.md) adds `traefik-middleware`, which
+> owns the objects the route adapters have only ever referenced;
 > [0074](0074-networking-adapter-emits-policy.md) adds `networking`, which owns
 > every NetworkPolicy in the estate now that the only implementation is in the
 > generation this ADR deletes; and
