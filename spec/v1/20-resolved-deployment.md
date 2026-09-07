@@ -175,7 +175,9 @@ field's placement link to this anchor rather than copying rows.
 | `volumes[].durability` | Service | no contention | what the data is worth cannot be observed |
 | `placement.memory`, `placement.cpu` | Service | pool — stated | required on every Workload; the Service states the requirement, the platform arbitrates it against node allocatable |
 | `placement.gpu` | Service | pool — stated | `class` and `memory`, matched against the node contract's `gpus[].class` and `gpus[].memory_mib`; a card is held by one Workload at a time |
-| `placement.disk` | Service | pool — stated | a `media` set and a `size`; it filters the first placement and the PV binding wins thereafter — `E_DISK_BINDING_CONFLICT` |
+| `placement.disk` | Service | pool — stated | a `media` set; it filters the first placement and the PV binding wins thereafter — `E_DISK_BINDING_CONFLICT` |
+| `volumes[].size` | Service | pool — stated | how much data the volume holds, matched against the node contract's `disks[].usable_gib`; no eligible node is `E_STORAGE_UNSATISFIABLE` ([0081](../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md)) |
+| PVC capacity and the disk capacity filter | derived | — | the volume's `size`, and their sum per Workload for placement |
 | `placement.arch`, `.site`, `.capabilities` | Service | no contention | filters over facts the node contract publishes; a list is a set of equally acceptable values, never a ranking |
 | `observability.scrape` | Service | no contention | port and path of its own metrics surface |
 | `volumes[].durability` | Service | no contention | what losing the data costs; only the owner knows ([0015](../../docs/adr/model/0015-durability-class-per-volume.md)) |

@@ -142,6 +142,7 @@ classDiagram
     class Volume {
         +ClaimName claim
         +Path mountAt
+        +Quantity size
         +DurabilityClass durability
     }
     class Placement {
@@ -153,7 +154,6 @@ classDiagram
     }
     class DiskRequest {
         +Media[] media
-        +Quantity size
     }
     class GpuRequest {
         +GpuClass class
@@ -635,6 +635,7 @@ reports ready never switches any of them.
 volumes:
   - claim: knowledge-vault-clone
     mountAt: /var/lib/knowledge-vault
+    size: 20Gi
     durability: irreplaceable
 ```
 
@@ -690,8 +691,23 @@ contradicts it is `E_DISK_BINDING_CONFLICT` rather than a term quietly ignored.
 The class replaces `rollbackTargetRetention`, which every Service declared
 identically as `{minimumDays: 90, acknowledged: true}`, which no renderer read,
 and which asserted a ninety-day rollback a snapshot-less cluster cannot perform.
-Storage class and volume capacity do not appear: they draw on finite node disk and
-are assigned. `volumeClaimTemplate` is forbidden — a template ties the volume to
+**A volume declares its `size`; the platform decides whether it fits**
+([0081](../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md)). How much
+data a volume holds is a fact only its owner knows, so it is a hard dimension
+authored beside `claim` and `mountAt` — exactly the shape
+[0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md) uses for
+`memory` and `cpu`. The platform matches it against the node contract's
+`disks[].usable_gib`, and a volume that fits no eligible node is
+`E_STORAGE_UNSATISFIABLE` rather than a PVC that parses and cannot bind.
+
+`storageClassName` still does not appear, and is still assigned: everything takes
+k3s's default `local-path`.
+
+`placement.disk.size` is **derived** — the sum of the Workload's volume sizes —
+so the quantity has one declaring site. Authoring it in both places let the same
+number be stated twice and disagree, which is what chapter 16's single-authority
+property forbids. `placement.disk.media` stays authored: which media a Workload
+needs is not implied by how much it needs. `volumeClaimTemplate` is forbidden — a template ties the volume to
 the Workload's name, so a rename orphans the claim.
 
 Durability is also the model's gate on destruction: a claim backing
@@ -763,7 +779,7 @@ placement:
   cpu: 250m                                  # required
   arch: [amd64]                              # optional; a set, no ordering
   site: enschede                             # optional
-  disk: {media: [nvme, ssd], size: 100Gi}    # optional
+  disk: {media: [nvme, ssd]}                 # optional; size is derived
   gpu: {class: transcode, memory: 4Gi}       # optional
   capabilities: [public-ingress]             # optional; flat strings
 ```
@@ -778,7 +794,7 @@ are required on every Workload; every other term defaults to *any node*.
 | `cpu` | yes | one quantity | the node's allocatable cpu |
 | `arch` | no | a set of values | the node's architecture |
 | `site` | no | one value | the node's site |
-| `disk` | no | `{media: [...], size: <quantity>}` | the media and capacity of the node's disks |
+| `disk` | no | `{media: [...]}` | the media of the node's disks; the capacity term is derived from the Workload's volume sizes ([Storage and durability](#storage-and-durability)) |
 | `gpu` | no | `{class: <name>, memory: <quantity>}` | `gpus[].class` and `gpus[].memory_mib` |
 | `capabilities` | no | a set of flat strings | the capabilities the node advertises |
 

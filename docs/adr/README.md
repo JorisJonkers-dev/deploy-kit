@@ -78,6 +78,7 @@ delivery work it underpins.
 | [0014](model/0014-probes-are-siblings.md) | Probes are sibling declarations, each carrying its own path | settled |
 | [0015](model/0015-durability-class-per-volume.md) | Every volume declares a Durability Class | settled |
 | [0077](model/0077-durability-derives-a-backup.md) | A Durability Class derives a backup, from platform terms and a method keyed by engine | settled |
+| [0081](model/0081-volume-size-is-a-hard-dimension.md) | A volume declares its size; the platform decides whether it fits | settled |
 | [0078](model/0078-engine-is-workload-vocabulary.md) | `engine` is layer-1 vocabulary: what the process is, not how it is instrumented | settled |
 | [0016](model/0016-pod-hardening.md) | Pod hardening is layer-1 vocabulary | open |
 | [0017](model/0017-placement-by-capability.md) | Placement is declared as capabilities, never labels | superseded by [0061](model/0061-placement-is-hard-dimensions.md) |
