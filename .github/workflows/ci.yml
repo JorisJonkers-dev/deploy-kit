@@ -1,0 +1,75 @@
+# One pipeline, one job. GitHub bills every job rounded up to a full minute, so
+# splitting fast checks across jobs multiplies the bill while the work stays the
+# same. Add a second job only for a reusable workflow (`uses:` cannot be a step),
+# and gate it from `Pipeline Complete` with `needs:` plus an alls-green step.
+'name': 'CI'
+
+'on':
+  'pull_request':
+  'push':
+    'branches':
+      - 'main'
+  'workflow_dispatch':
+
+'concurrency':
+  'group': 'ci-${{ github.workflow }}-${{ github.ref }}'
+  'cancel-in-progress': '${{ github.ref != ''refs/heads/main'' }}'
+
+'permissions':
+  'contents': 'read'
+
+'jobs':
+  'pipeline-complete':
+    'name': 'Pipeline Complete'
+    'runs-on': 'ubuntu-latest'
+    'steps':
+      - 'uses': 'actions/checkout@v6'
+
+      - 'uses': 'actions/setup-node@v6'
+        'with':
+          'node-version': '24'
+          'cache': 'npm'
+
+      - 'name': 'Install'
+        'run': 'npm ci'
+
+      - 'name': 'Lint'
+        'run': 'npm run lint'
+
+      - 'name': 'Format check'
+        'run': 'npm run format:check'
+
+      - 'name': 'Typecheck'
+        'run': 'npm run typecheck'
+
+      # The decision-record contract: frontmatter schema, register integrity,
+      # qualified citations, normative anchors resolving into spec/, and content
+      # shape. See docs/adr/README.md.
+      - 'name': 'ADR contract'
+        'run': 'npm run lint:adrs'
+
+      # Coverage gate is enforced inside the test script (c8 --check-coverage).
+      - 'name': 'Test'
+        'run': 'npm test'
+
+      # Pinned by version, never `curl | bash` from a third-party default
+      # branch: docs/adr/0048-class-b-pinning.md (deferred set) records that
+      # pattern as a live supply-chain defect in the repository this one
+      # replaces. Renovate bumps the pin.
+      - 'name': 'Actionlint'
+        'shell': 'bash'
+        'env':
+          'ACTIONLINT_VERSION': '1.7.7'
+        'run': |
+          set -euo pipefail
+          curl --fail --silent --show-error --location \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz actionlint
+          ./actionlint -color .github/workflows/*.yml
+
+      - 'name': 'Secret scan'
+        'uses': 'gitleaks/gitleaks-action@v2'
+        'env':
+          'GITHUB_TOKEN': '${{ secrets.GITHUB_TOKEN }}'
+          'GITLEAKS_ENABLE_UPLOAD_ARTIFACT': 'false'
+          'GITLEAKS_ENABLE_SUMMARY': 'false'

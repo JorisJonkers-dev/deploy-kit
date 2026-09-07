@@ -1,0 +1,9 @@
+# GitHub does not inherit CODEOWNERS from the org defaults repository, so every
+# repo carries its own.
+
+* @JorisJonkers-dev/maintainers
+
+# The decision surface and the normative specification change together. A model
+# change that lands without its ADR is the drift this repository exists to stop.
+/docs/adr/ @JorisJonkers-dev/maintainers
+/spec/     @JorisJonkers-dev/maintainers

@@ -1,0 +1,142 @@
+# services/knowledge/.github/workflows/publish-fragment.yml
+#
+# Publishes this repository's Intent Fragment when platform intent changes.
+#
+#   merge to main (platform/**) -> validate -> build fragment -> oras push
+#                                                            -> oras resolve
+#                                                            -> verify digest
+#
+# Fires independently of any image release. That is deliberate: a change to
+# service.yml, an env file or a secret grant produces no image, and the unit of
+# composition is the FRAGMENT, not the image
+# (docs/adr/0037-composition-oci-fragments.md). Tying this to a version tag
+# would let intent-only changes sit unpublished until the participant tripped
+# its staleness bound (docs/adr/0038-participants-list-staleness.md). Whether
+# and how such a change is co-tested against other units before it reaches a
+# cluster is defined separately from the model: see docs/adr/deferred/README.md.
+#
+# ONE job, many steps. Jobs are billed by the minute rounded up, so splitting a
+# fast pipeline across parallel jobs multiplies its cost while the work stays
+# identical. Each step carries `if: ${{ !cancelled() }}` so a single failure
+# still surfaces the rest.
+name: Publish Intent Fragment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'platform/**'
+      - '.github/workflows/publish-fragment.yml'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: publish-fragment-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Validate and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    outputs:
+      digest: ${{ steps.resolve.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the toolkit at this repository's pinned version
+        run: |
+          # The version lives in ONE place: this repository's own lockfile,
+          # bumped by Renovate behind the ordering gate
+          # (docs/adr/0040-renovate-ordering-gate.md). Restating it here is how
+          # the previous render-local.sh copies went stale by four minor
+          # releases.
+          #
+          # It is NOT read from platform/service.yml's schemaVersion. That
+          # field is the DATA MODEL's own semver and no longer tracks the
+          # package version (docs/adr/0039-artifact-schema-versioning.md):
+          # reading it as a package version pins the toolkit to a release that
+          # may not exist, and hides the real pin from Renovate. Composition
+          # checks the fragment's schemaVersion against the composing toolkit's
+          # range -- same major, minor <= toolkit -- and that check belongs
+          # there, over the union, not here.
+          npm ci
+
+      - name: Validate intent locally
+        if: ${{ !cancelled() }}
+        run: |
+          # Local-only checks: schema shape, forbidden fields, and
+          # placeholder-to-grant agreement WITHIN this repository -- every
+          # ${secret:...} byte-matches a granted path and every delivery: env
+          # grant has a placeholder (docs/adr/0027-secret-reference-join-key.md).
+          # Estate-wide invariants cannot be checked here and are
+          # composition's job.
+          npx --no-install deploy-config-schema intent validate \
+            --service platform/service.yml \
+            --env-dir platform/env \
+            --strict
+
+      - name: Build the fragment tree
+        if: ${{ !cancelled() }}
+        run: |
+          # --env-dir holds one directory per WORKLOAD
+          # (docs/adr/0011-configuration-env-files-per-workload.md):
+          # platform/env/knowledge-api/base.env and
+          # platform/env/knowledge-ingest-worker/base.env, each with its own
+          # per-cluster overlay.
+          npx --no-install deploy-config-schema intent pack \
+            --service platform/service.yml \
+            --env-dir platform/env \
+            --out fragment/
+
+          # inputsSha covers AUTHORED inputs only, never generated output.
+          # homelab-inventory derives inventorySourceSha the same way; a hash
+          # that included generated output would change on every publish and
+          # detect nothing.
+          find platform -type f -print0 | sort -z \
+            | xargs -0 sha256sum | sha256sum | cut -d' ' -f1 > fragment/INPUTS_SHA
+
+          # Per-file digests, so a consumer can verify the package it pulled.
+          ( cd fragment && find . -type f -not -name MANIFEST.sha256 \
+              | sort | xargs sha256sum > MANIFEST.sha256 )
+
+      - uses: oras-project/setup-oras@v1
+        if: ${{ !cancelled() }}
+
+      - name: Push and resolve
+        id: resolve
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REF="ghcr.io/${{ github.repository_owner }}/intent-knowledge:latest"
+          echo "$GH_TOKEN" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+          ( cd fragment && oras push "$REF" \
+              --annotation "org.opencontainers.image.revision=${{ github.sha }}" \
+              --annotation "dev.jorisjonkers.inputs-sha=$(cat INPUTS_SHA)" \
+              . )
+
+          # An artefact cannot contain its own digest, so it is resolved AFTER
+          # the push and recorded by the consumer. This is why the composition
+          # lock is an output rather than an input
+          # (docs/adr/0037-composition-oci-fragments.md).
+          DIGEST="$(oras resolve "$REF")"
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the value, not the command
+        if: ${{ !cancelled() }}
+        run: |
+          # A successful push is not evidence that a consumer can read what we
+          # meant. Pull it back by digest and check the content.
+          oras pull "ghcr.io/${{ github.repository_owner }}/intent-knowledge@${{ steps.resolve.outputs.digest }}" \
+            --output verify/
+          ( cd verify && sha256sum -c MANIFEST.sha256 )
+          test "$(cat verify/INPUTS_SHA)" = "$(cat fragment/INPUTS_SHA)"
+          echo "verified: $(cat verify/INPUTS_SHA)"

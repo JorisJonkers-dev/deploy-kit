@@ -1,0 +1,51 @@
+{
+  "name": "@jorisjonkers-dev/deploy-kit",
+  "version": "0.1.0",
+  "description": "Deployment toolkit: the Service Intent model, its decision record, and the compiler that renders it.",
+  "type": "module",
+  "license": "LicenseRef-JorisJonkers-Proprietary-1.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "files": [
+    "docs/adr/",
+    "spec/",
+    "scripts/lint-adrs.mjs"
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:adrs": "node scripts/lint-adrs.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "test": "c8 --all --include \"scripts/**/*.mjs\" --check-coverage --lines 80 --branches 70 node --test",
+    "verify": "npm run lint && npm run format:check && npm run typecheck && npm run lint:adrs && npm test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/node": "^24.3.0",
+    "c8": "^11.0.0",
+    "eslint": "^9.39.4",
+    "globals": "^16.5.0",
+    "prettier": "^3.9.4",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.62.1"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JorisJonkers-dev/deploy-kit.git"
+  },
+  "homepage": "https://github.com/JorisJonkers-dev/deploy-kit#readme",
+  "keywords": [
+    "deploy",
+    "kubernetes",
+    "service-intent",
+    "json-schema",
+    "gitops"
+  ]
+}

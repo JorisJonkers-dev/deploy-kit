@@ -1,0 +1,15 @@
+# Generated
+CHANGELOG.md
+coverage/
+dist/
+node_modules/
+.github-workflows/
+
+# Normative prose: the decision record and the specification are hand-wrapped
+# for reviewability, and reflowing them would churn every line of a diff.
+docs/
+spec/
+*.md
+
+# Workflows use the estate's quoted-key YAML style, which prettier rewrites.
+.github/workflows/
