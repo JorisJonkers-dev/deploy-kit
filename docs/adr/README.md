@@ -76,6 +76,7 @@ delivery work it underpins.
 | # | title | claim |
 |---|---|---|
 | [0014](model/0014-probes-are-siblings.md) | Probes are sibling declarations, each carrying its own path | settled |
+| [0088](model/0088-startup-probe-targets-liveness.md) | The startup probe targets liveness, and probe cadence is platform policy | settled |
 | [0015](model/0015-durability-class-per-volume.md) | Every volume declares a Durability Class | settled |
 | [0077](model/0077-durability-derives-a-backup.md) | A Durability Class derives a backup, from platform terms and a method keyed by engine | settled |
 | [0081](model/0081-volume-size-is-a-hard-dimension.md) | A volume declares its size; the platform decides whether it fits | settled |

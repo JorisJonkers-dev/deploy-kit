@@ -202,7 +202,7 @@ field's placement link to this anchor rather than copying rows.
 | `securityContext` | derived | — | from `hardening` and its declared exceptions |
 | `automountServiceAccountToken` | derived | — | `true` only where a grant carries `delivery: self`; the pod authenticates in that case and in no other ([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)) |
 | `runAsUser`, `runAsGroup`, `fsGroup` | derived | — | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Workload holds a volume ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)) |
-| container probe timings | derived | — | from `probes` and `startupBudget` |
+| container probe timings | derived | — | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Cluster Context's probe policy ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)) |
 | `progressDeadlineSeconds` | derived | — | from `startupBudget` |
 | rollout strategy, surge, unavailability | derived | — | from `zeroDowntime` and `volumes` |
 | object kind | derived | — | from `lifecycle`, `stateful` and `volumes` |
@@ -635,7 +635,8 @@ input cannot be right for both.
 
 Refusing the hatch does not buy a better rule; it buys a falsified input. The
 deadline derives from the Startup Budget, and so do the startup probe's period
-and failure threshold. An owner who needs 600 and cannot say so declares a
+and failure threshold — its target comes from the liveness declaration
+([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)). An owner who needs 600 and cannot say so declares a
 200-second budget to coax the number out — corrupting the one field only they
 could know and mis-deriving the probe along with it. The lie is invisible; an
 override is not. Requiring a reason makes the rationale data rather than a YAML
@@ -826,8 +827,9 @@ assigned:
       objectKind: Deployment
       image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-api@sha256:1ad39d5…
       probes:
-        readiness: {path: /api/actuator/health/readiness, port: 8080}
-        startup:   {periodSeconds: 5, failureThreshold: 120}
+        readiness: {path: /api/actuator/health/readiness, port: 8080, periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 3}
+        liveness:  {path: /api/actuator/health/liveness, port: 8080, periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 3}
+        startup:   {path: /api/actuator/health/liveness, port: 8080, periodSeconds: 5, failureThreshold: 120}
       strategy: {type: RollingUpdate, maxSurge: 1, maxUnavailable: 0}
       progressDeadlineSeconds: 1800
       resources:                       # memory request == limit; cpu request, no cpu limit

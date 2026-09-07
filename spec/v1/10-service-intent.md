@@ -625,6 +625,29 @@ probes: none        # knowledge-ingest-worker: no ports, nothing to probe
 Timings, thresholds and deadlines stay derived. A Workload that declares ports
 but no probe declaration is refused.
 
+### What the probe derivation completes
+
+Three things were derived only halfway, and a renderer filled the gap by
+choosing ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)):
+
+| derived | from |
+|---|---|
+| the startup probe's **target** | the **liveness** declaration — its `path` + `port`, or its `tcp` port |
+| the startup probe's period and failure threshold | `startupBudget`, as before |
+| readiness and liveness `periodSeconds`, `timeoutSeconds`, `failureThreshold` | the Cluster Context's probe policy, named on every rendered probe |
+| `initialDelaySeconds` | `0` on readiness and liveness, because the startup probe already gates both |
+
+**The startup probe targets liveness, not readiness.** Exceeding a startup
+probe's failure threshold kills the container, exactly as a failing liveness
+probe does, so pointing it at a readiness endpoint reproduces the defect
+[0014](../../docs/adr/model/0014-probes-are-siblings.md) exists to prevent: a
+dependency outage makes readiness fail, startup never succeeds, and the pod
+crash-loops on somebody else's outage.
+
+A Workload declaring readiness and no liveness therefore derives **no startup
+probe** — there is nothing safe to poll — and its start is bounded by the
+progress deadline alone.
+
 Readiness is also what the Service's atomic switchover waits on: healthy means
 *this* Workload's declared readiness, so a Service with a Workload that never
 reports ready never switches any of them.
