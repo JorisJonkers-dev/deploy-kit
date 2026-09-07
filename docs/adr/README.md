@@ -123,13 +123,14 @@ delivery work it underpins.
 ### Adapters and rendering
 | # | title | claim |
 |---|---|---|
-| [0052](model/0052-registered-adapters-are-v1.md) | The registered adapters are v1; the second generation is deleted | settled |
+| [0052](model/0052-registered-adapters-are-v1.md) | The registered adapters are v1; the second generation is deleted | settled, amended by [0073](model/0073-vault-policy-is-a-deliverable.md) |
 | [0053](model/0053-adapter-port-contract.md) | An adapter satisfies one typed port | settled |
 | [0054](model/0054-adapter-attribution.md) | Every Deliverable is attributed to exactly one Adapter | settled |
 | [0055](model/0055-bidirectional-ledgers.md) | Every accepted hole is a bidirectional ledger | settled |
 | [0070](model/0070-path-authority-is-layer-2.md) | Layer 2 assigns every output path; layer 3 serialises what it is handed | settled |
 | [0071](model/0071-release-gate-inputs-are-layer-2.md) | The release gate is derived into layer 2, and nothing is rendered for it | settled |
 | [0072](model/0072-the-label-set-is-fixed.md) | The object label set is fixed, and two of its labels are immutable | settled |
+| [0073](model/0073-vault-policy-is-a-deliverable.md) | The derived Vault policy and auth role are Deliverables of their own adapter | settled |
 
 ### Platform facts
 | # | title | claim |

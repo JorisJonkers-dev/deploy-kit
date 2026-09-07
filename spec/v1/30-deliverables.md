@@ -39,8 +39,10 @@ assertion below possible without new machinery, and it is why a blueprint pack i
 not a special case — a pack **is a list of Fragments**, each tagged
 `adapter: flux-packs`.
 
-**The sixteen registered adapters are the v1 set**
-([0052](../../docs/adr/model/0052-registered-adapters-are-v1.md)). They are enumerated
+**The seventeen registered adapters are the v1 set**
+([0052](../../docs/adr/model/0052-registered-adapters-are-v1.md), amended for
+`vault-policy` by
+[0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)). They are enumerated
 only by `adapterContract()`; nothing renders that is not registered. A second,
 unregistered renderer generation exists in the tree today —
 `src/deployment/render/`, 14 modules and 1,967 lines, reachable from neither
@@ -51,13 +53,13 @@ registry hands adapters an `AdapterContext` of artifact documents, so bringing
 its behaviour back is a port across that seam and costs what writing a new
 adapter costs.
 
-The sixteen fall into two roles, on the two sides of the composition seam
+The seventeen fall into two roles, on the two sides of the composition seam
 (chapter 40):
 
 | role | count | runs in | input | output |
 |---|---|---|---|---|
 | **fragment producer** — the five `*-fragment` adapters | 5 | the Service repository, at publish time | that repository's `Deployment`, images lock and pinned cluster context | exactly one Fragment document per Adapter per Service, pushed by digest |
-| **central adapter** | 11 | centrally, over the composed union | the Resolved Deployment as an `AdapterContext` of artifact documents | the file set for its subsystem |
+| **central adapter** | 12 | centrally, over the composed union | the Resolved Deployment as an `AdapterContext` of artifact documents | the file set for its subsystem |
 
 The pairing is recorded, not folklore: `src/adapters/adapter-compat.ts` maps each
 producer's `outputKind` and `outputSchema` to the central adapters that accept it
@@ -117,6 +119,41 @@ compatibility surface every out-of-tree adapter pins, and narrowing it means a
 major toolkit release — a version number separate from `schemaVersion`
 ([0039](../../docs/adr/model/0039-artifact-schema-versioning.md), chapter 40).
 
+## Vault configuration is rendered, not applied
+
+`vso` emits the operator's Kubernetes objects — `VaultConnection`, `VaultAuth`,
+the operator `ServiceAccount` per target namespace, `VaultStaticSecret`,
+`VaultDynamicSecret`. None of those is a policy or an auth role, so until
+[0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md) the policy
+that [0025](../../docs/adr/model/0025-access-tiers-derive-policy.md) derives had
+no output at all, and a derivation with no output is not total
+([0005](../../docs/adr/model/0005-derivation-is-total.md)).
+
+The `vault-policy` adapter emits, **per Workload identity**, two documents:
+
+| document | derived from |
+|---|---|
+| the Vault policy | the Workload's grants and their access tiers: `read` on the granted path, `patch` for `self-roll`, `create`/`update`/`delete` on a prefix for `custody`, nothing for `self-renew` |
+| the Kubernetes auth role | the Workload's ServiceAccount and namespace ([0024](../../docs/adr/model/0024-identity-per-workload.md)), bound to that one policy |
+
+One document per identity, not per Service: identity is per Workload, so a
+two-Workload Service produces two policies and a diff says which principal's
+privilege changed. Both are JSON, which Vault accepts and which lets the one
+serializer own key order.
+
+**Rendered, not applied.** Writing a policy into Vault is an act against a live
+system by an identity with privilege, which is delivery
+([`docs/adr/deferred/`](../../docs/adr/deferred/README.md)). This chapter emits
+the documents and attributes them; nothing here says who writes them.
+
+**The auth method itself is a platform fixture.** Mounting `kubernetes` auth,
+configuring its JWT issuer and CA, and creating the KV mounts are estate-unique
+and draw on a shared resource, so by
+[0004](../../docs/adr/model/0004-contention-decides-authority.md) they are
+platform-assigned, and they arrive through a blueprint pack
+([chapter 60](60-setup.md#secrets-at-rest)) rather than per-Service render. The
+render owns what varies per Workload and nothing else.
+
 ## Attribution
 
 **Every Deliverable is attributed to exactly one Adapter**
@@ -127,6 +164,7 @@ could lose:
 - Every registry entry declares a `defaultPath`, and registration throws
   `adapter definition missing defaultPath` without one. Verified 2026-08-31
   against `src/adapters/registry.ts`: 16 definitions, all sixteen carrying one.
+  `vault-policy` is the seventeenth and carries one by the same rule.
 - `adapterContract()` is the only enumeration of the set. A tool that needs to
   know who produces what reads it; nothing reconstructs ownership by scanning
   rendered YAML.
@@ -237,6 +275,7 @@ Paths abbreviate `platform/cluster/flux` as `…`.
 | `image-metadata-fragment` | fragment | `fragments/image-metadata` | one `ImageMetadataFragment` |
 | `kubernetes` | kubernetes | `…/apps` | per Service: `Namespace`, `ServiceAccount`, `Deployment`/`StatefulSet`/`Job`/`CronJob`, `Service`, `ConfigMap`, `PersistentVolume` + `PersistentVolumeClaim`, **`PodDisruptionBudget`**, `HorizontalPodAutoscaler`, **`ServiceMonitor`**, **`PodMonitor`**, guarded raw manifests, and the directory's kustomize `Kustomization` |
 | `kubernetes-workload-fragment` | fragment | `fragments/kubernetes-workload` | one `KubernetesWorkloadFragment` |
+| `vault-policy` | vault | `…/apps/vso-secrets/policies` | per Workload identity: its derived Vault policy and its Kubernetes auth role, as JSON ([0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)) |
 | `traefik-lan` | edge | `…/apps/edge/traefik-lan-ingressroutes.yaml` | `IngressRoute` per LAN route, with middleware references |
 | `traefik-public` | edge | `…/apps/edge/traefik-ingressroutes.yaml` | `IngressRoute` per public route, with middleware references |
 | `traefik-route-fragment` | fragment | `fragments/traefik-route` | one `TraefikRouteFragment` |

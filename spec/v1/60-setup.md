@@ -219,6 +219,16 @@ recovered data. A drill that cannot complete falsifies
 
 ## Secrets at rest
 
+Mounting `kubernetes` auth, configuring its JWT issuer and CA, and creating the
+KV mounts are **platform fixtures**: estate-unique, drawing on a shared
+resource, and therefore platform-assigned
+([0004](../../docs/adr/model/0004-contention-decides-authority.md)). They arrive
+through a blueprint pack at a pinned ref
+([0013](../../docs/adr/model/0013-blueprint-packs-pinned-checkout.md)), never
+from per-Service render. What the render owns is the part that varies per
+Workload — one derived policy and one auth role per identity
+([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)).
+
 `delivery: env` and `delivery: file` write a Kubernetes Secret. With no
 `--secrets-encryption` configuration anywhere in `nix-config` or the bootstrap
 tree, that Secret is plaintext base64 in the datastore and in every backup taken

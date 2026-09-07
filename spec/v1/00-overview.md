@@ -66,7 +66,8 @@ a serialized object attributed to exactly one adapter, so there is always a
 single answer to "what should own this field".
 
 The layer-1 intent files survive a substrate swap — they name no Kubernetes
-kind. The registered adapters do not: all sixteen emit Kubernetes kinds, which
+kind. The registered adapters do not: sixteen of the seventeen emit Kubernetes
+kinds and the seventeenth emits Vault configuration, which
 is why the swap is a v2 migration rather than an undo once repositories author
 against a shipped v1.
 
