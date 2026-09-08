@@ -48,9 +48,15 @@ in one frame, which no layout makes readable. The split is also where the two
 properties live: totality is a statement about the first half, and
 in-degree-at-least-one about the second.
 
-In the second drawing the Deliverable column is the middle one, and layer 2
-sits to its right. Reading is inward from both sides: an edge from the left is a
-declaration that reaches the object directly, with no assignment in between, and
-is drawn in light grey; an edge from the right comes from a layer-2 assignment.
-That order is what keeps the drawing free of connectors running across boxes —
-with layer 2 in the middle, every direct edge had to cross it.
+Both halves are **matrices, not graphs**. Arrows were tried twice and failed
+twice: between two columns of twenty-five rows, ninety connectors are
+indistinguishable however they are routed, and routing them around each other
+put lines across boxes. A mark at a row-column intersection carries the same
+edge with no connector to trace and nothing to cross.
+
+Row colour is the layer the input belongs to — blue for a declared field, grey
+for a pinned fact, amber for a layer-2 assignment — and the mark takes its row's
+colour, so a Deliverable's column shows at a glance how much of it is declared
+and how much is decided. The `in` and `out` counts are rendered from the same
+edge list as the marks, which is what makes totality and in-degree-at-least-one
+readable rather than asserted.

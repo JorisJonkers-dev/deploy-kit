@@ -416,21 +416,29 @@ exists to find.
 
 ## The derivation map
 
-The normative set of derivations, in two drawings. In the first, the left
-columns are declared in Service Intent and the pinned platform input set of
-[chapter 20](20-resolved-deployment.md#pinned-inputs), and the right column is
-the layer-2 assignment each one decides. In the second, the **Deliverable
-column sits in the middle**: declarations reach it from the left and layer-2
-assignments from the right, so every arrow crosses one empty channel instead of
-passing over the other column's boxes.
+The normative set of derivations, as two matrices. A **mark is one
+derivation**: read a row to the right for everything that input decides, and a
+column down for everything an output rests on. Ninety arrows between two tall
+columns is a hairball no layout fixes — which line ends where stops being
+answerable — so the relation is carried by position instead.
+
+The first matrix has the fields of Service Intent and the pinned input set of
+[chapter 20](20-resolved-deployment.md#pinned-inputs) as rows, and the layer-2
+assignments as columns. The second has those assignments **and** the declared
+fields as rows, and the Deliverables as columns. The `in` row under each grid is
+the in-degree of that column and the `out` column is the out-degree of that row,
+so both properties below are countable off the drawing.
 
 ![The derivation map — assignments — every declared field and pinned fact, and the assignment it decides](diagrams/16-derivation-map-assignments.drawio.svg)
 
-*Assignments — every declared field and pinned fact, and the assignment it decides.*
+*Assignments — every declared field and pinned fact, and the assignment it decides. No column
+reads zero: that is totality.*
 
 ![The derivation map — Deliverables — every declaration and assignment, and the object it reaches](diagrams/16-derivation-map-deliverables.drawio.svg)
 
-*Deliverables — every declaration and assignment, and the object it reaches.*
+*Deliverables — every declaration and assignment, and the object it reaches. No column reads
+zero: that is in-degree at least one. A blue mark is a declared value that reaches the object with
+no assignment in between.*
 
 <sub>[Diagram source](#the-derivation-map) · edit by opening the SVG in draw.io</sub>
 
