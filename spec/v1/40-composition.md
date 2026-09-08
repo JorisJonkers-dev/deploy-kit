@@ -253,9 +253,9 @@ because the vocabulary they were written in had no path to declare — the
 
 | invariant | error |
 |---|---|
-| every `dependsOn.service` resolves to a Service in the union **or to a Registered Unmanaged Surface** ([0090](../../docs/adr/model/0090-edges-resolve-against-the-register.md)) | `E_UNRESOLVED_SERVICE` |
-| every `dependsOn.surface` is provided by a Workload of that Service, or listed by that unmanaged surface | `E_UNKNOWN_SURFACE` |
-| every unmanaged surface an edge targets carries an address and the port for that surface | `E_UNMANAGED_SURFACE_WITHOUT_COORDINATES` |
+| every `dependsOn.service` resolves to a Service in the union **or to a provider the Platform document declares** ([0090](../../docs/adr/model/0090-edges-resolve-against-the-register.md), [0095](../../docs/adr/model/0095-platform-intent-is-the-second-authored-document.md)) | `E_UNRESOLVED_SERVICE` |
+| every `dependsOn.surface` is provided by a Workload of that Service, or listed by that provider | `E_UNKNOWN_SURFACE` |
+| every provider an edge targets carries an address and the port for that surface ([chapter 14](14-platform-intent.md#providers)) | `E_PROVIDER_WITHOUT_COORDINATES` |
 | every route's `surface` is provided by the Workload that route names | `E_UNKNOWN_SURFACE` |
 | no two routes on one host share a `path` and `match` ([0093](../../docs/adr/model/0093-route-precedence-is-derived.md)) | `E_DUPLICATE_ROUTE` |
 | the graph of **required** edges is acyclic | `E_DEPENDENCY_CYCLE` |
@@ -419,6 +419,13 @@ references was considered and rejected: a **leaf** Service that nothing depends
 on can vanish without breaking any reference, and leaves are the majority —
 `immich`, `jellyfin`, `sonarr`, `radarr`, `bazarr`, `prowlarr`, `qbittorrent`.
 Seven media services, zero inbound edges, invisible to any edge-derived guard.
+
+**The Platform document is a required participant.** It publishes as an Intent
+Fragment like any domain ([0095](../../docs/adr/model/0095-platform-intent-is-the-second-authored-document.md)),
+appears in `participants.yml` under the platform's own repository, and is held to
+the same seven-day bound: a render without it is `E_PARTICIPANT_MISSING`, a
+render against a stale one is `E_PARTICIPANT_STALE`. There is no side channel by
+which platform facts reach the render.
 
 `participants.yml` is the one central artefact that survives composition by
 fragments. It changes when a domain is added or retired, never when a
@@ -614,12 +621,14 @@ Every hostname the model does not deploy is therefore a **Registered Unmanaged
 Surface** — a Bidirectional Ledger entry (chapter 30) carrying an owner, a reason
 and a review date:
 
-An entry an edge targets carries **coordinates** as well
-([0090](../../docs/adr/model/0090-edges-resolve-against-the-register.md)): the
-address the provider answers on and the ports it serves, keyed by surface name.
-Without them a derived egress rule has nothing to select, and the rule is absent
-rather than wrong — R18's failure, seen on-call as a timeout and never as an
-error code.
+A hostname the estate **depends on** is not an entry here. Something the estate
+runs and does not deploy but reaches — `stalwart` for SMTP — is a **provider**,
+a fact with an address and surfaces in the Platform document
+([chapter 14](14-platform-intent.md#providers)), resolvable by an edge
+([0090](../../docs/adr/model/0090-edges-resolve-against-the-register.md)). The
+register below holds the remainder: hostnames nobody deploys and nobody depends
+on, each an accepted hole with a review date. An edge resolves against facts,
+never against exemptions ([0095](../../docs/adr/model/0095-platform-intent-is-the-second-authored-document.md)).
 
 ```yaml
 unmanagedSurfaces:

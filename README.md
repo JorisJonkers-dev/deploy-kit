@@ -20,7 +20,7 @@ lands — the **compiler** that turns that model into deployable artifacts.
 | [`docs/adr/model/`](docs/adr/model/) | The v1 model: 8 premises carrying falsifiable claims, 43 decisions resting on them. |
 | [`docs/adr/architecture/`](docs/adr/architecture/README.md) | The compiler's own structure. Pointers resolve against `docs/architecture.md`, not `spec/v1`. |
 | [`docs/adr/deferred/`](docs/adr/deferred/README.md) | Delivery and co-testing decisions, defined separately from the model. Direction work, not v1. |
-| [`spec/v1/`](spec/v1/00-overview.md) | The normative specification. Chapters 00–60. |
+| [`spec/v1/`](spec/v1/00-overview.md) | The normative specification. Chapters 00–60, including the two authored documents: Service Intent (10) and Platform Intent (14). |
 | [`spec/v1/examples/`](spec/v1/examples) | Worked examples: real Services from this estate, written in the model. |
 | `scripts/lint-adrs.mjs` | Enforces the decision-record contract. Runs in CI. |
 

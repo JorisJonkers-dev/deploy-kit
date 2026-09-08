@@ -10,6 +10,13 @@ rests-on: ["0005"]
 
 # Pod hardening is layer-1 vocabulary
 
+> **Note, 2026-09-08.** `allow: capability:<NAME>` keeps the Linux capability
+> name deliberately. A capability is what the binary asks the kernel for — the
+> same kind of fact as a port or a writable path, and the same word on any
+> substrate — so it is not the mechanism leak the layer-1 rule excludes
+> ([0097](0097-authored-values-name-model-concepts.md) records why, so the next
+> review does not re-raise it).
+
 ## Rests on
 Every image the estate runs can start under `restricted` — `runAsNonRoot`,
 `readOnlyRootFilesystem`, all capabilities dropped, seccomp `RuntimeDefault` —

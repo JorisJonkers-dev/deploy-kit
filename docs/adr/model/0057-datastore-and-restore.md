@@ -10,6 +10,15 @@ rests-on: ["0002"]
 
 # Datastore, server count, and restore are recorded platform facts
 
+> **Amended 2026-09-08.** The facts live in the Platform document's `substrate`
+> block, named for what they are — `datastore`, `serverCount`,
+> `kubernetesVersion`, `secretsEncryption`, `cni`, `networkPolicyController` —
+> and never as the k3s flag that sets them
+> ([0097](0097-authored-values-name-model-concepts.md),
+> [chapter 14](../../../spec/v1/14-platform-intent.md#substrate-facts)). The
+> "server flag set" this text asks to record is a derivation nobody authors, or
+> an observation; it appears in no authored file.
+
 ## Rests on
 A `local-path` PersistentVolume can be restored to a running Workload from the
 daily node backup, and the time that takes is measurable. False if: a drill

@@ -48,7 +48,7 @@ unticked pre-apply checkbox. This is that work item: owner **joris**, target
 **before any `delivery: env` ships**.
 
 The gate is mechanical because three prose restatements failed.
-`secretsEncryption: true` becomes a fact of the pinned Cluster Context, beside
+`secretsEncryption: true` becomes a fact of the pinned Platform Intent, beside
 the datastore kind and k3s flags [0057](0057-datastore-and-restore.md) makes
 required fields, and the renderer refuses `delivery: env` and
 `delivery: file` against a context lacking it with `E_SECRETS_AT_REST_REQUIRED`.
@@ -82,7 +82,7 @@ cheap to delete, key custody does not.
 - Until then `delivery: self` is the only delivery for a sensitive value, so a
   consumer that cannot speak Vault has no path — paid by the authors of
   `knowledge` and `platform-postgres`.
-- Every pinned Cluster Context gains one more required fact, asserted rather
+- Every pinned Platform Intent gains one more required fact, asserted rather
   than measured: omitting it fails every env-delivering Service at once, and a
   false `true` defeats the gate silently, so the settling command is run per
   cluster and recorded — paid by the context maintainer.

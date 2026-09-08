@@ -94,6 +94,8 @@ chapter's hard dependency on [chapter 40](40-composition.md).
 | inbound derivation | evidence it is needed |
 |---|---|
 | a database and owning user per consumer | `init-databases.sh` creates `auth_db`, `agents_db`, `knowledge_db` and `n8n_db` — one per Service claiming a Postgres credential. 98 lines the graph already knows. |
+| the Gatus endpoint list | one check per route on every exposure in the union, for the declared `gatus` Service — 41 derived references in 288 hand-maintained lines today ([0098](../../docs/adr/model/0098-one-publication-path.md)) |
+| the edge catalogs | every host and route the estate serves, for the declared Traefik Services — 30 and 28 derived references in two hand-maintained ConfigMaps |
 | NetworkPolicy **ingress** | a provider must admit its consumers, and only the inbound set says who they are |
 | browser origin allow-lists | `auth-api` hand-maintains `AUTH_CORS_ALLOWED_ORIGINS` with nine hostnames |
 | rotation blast radius | "who breaks if I rotate this?" is the reader set of a Secret Subtree **path**, computed over readers of the path and never over declared key sets |
@@ -457,7 +459,7 @@ flowchart LR
     end
 
     subgraph PIN["Pinned inputs (layer 2)"]
-        p_ctx["Cluster Context<br/>+ node contract<br/>(allocatable)"]
+        p_ctx["Platform Intent<br/>+ node contract<br/>(allocatable)"]
         p_cs["ClusterState snapshot"]
         p_img["images lock"]
     end
@@ -613,7 +615,7 @@ it carries is a full authored FQDN
 IngressRoute, the reachability entry, both edge catalogs, the Gatus endpoint and
 the published `resolved.yml` all hang off the declaration itself rather than off
 a value layer 2 assembled from a label, a tier policy and a cluster domain. The
-Cluster Context no longer contributes to a hostname at all. What layer 2 still
+Platform Intent no longer contributes to a hostname at all. What layer 2 still
 decides on that path is `r_tier` — the tier carrying the audience and the
 middleware chain that comes with it — which is why the exposure node keeps an
 arrow into it. `provides` stays on the Workload, so the two ends of a route are
@@ -638,7 +640,7 @@ flowchart LR
     H --> A1["IngressRoute (host)"]
     H --> A2["IngressRoute (mcp routes)"]
     H --> A3["reachability channel entry"]
-    H --> A4["edge-catalog ConfigMap"]
+    H --> A4["edge catalog — an Asset of the Traefik Service"]
     H --> A5["edge-route-catalog ConfigMap"]
     H --> A6["Gatus external endpoint"]
     T --> A1

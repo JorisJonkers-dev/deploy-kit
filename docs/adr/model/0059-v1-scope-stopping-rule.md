@@ -10,6 +10,15 @@ rests-on: ["0001"]
 
 # v1 has a scope and a stopping rule
 
+> **Amended 2026-09-08.** The stopping clause reads: v1 ships when it renders
+> the live estate — foundation included
+> ([0096](0096-the-foundation-is-declared.md)) — from declared intent, and that
+> render is delivered by **today's Flux installation applying a tree the model
+> rendered**. "Today's Flux tree unchanged" was true while 41 objects were
+> copied from packs and is false once they are derived; what is held constant is
+> the applier, not the tree. The directory partition and the 2026-11-30 review
+> are unchanged.
+
 ## Rests on
 The model alone — with no new delivery machinery — is independently useful: it
 can render today's estate and be delivered by today's Flux pipeline unchanged.

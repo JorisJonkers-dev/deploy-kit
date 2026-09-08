@@ -5,7 +5,7 @@ worth separating — it contains **no decisions**.
 
 ## The rule
 
-> A Fragment's content is a pure function of the Resolved Deployment, and its
+> A Deliverable's content is a pure function of the Resolved Deployment, and its
 > path is **assigned by** the Resolved Deployment
 > ([0070](../../docs/adr/model/0070-path-authority-is-layer-2.md), normative in
 > [chapter 20](20-resolved-deployment.md#the-path-plan)).
@@ -22,72 +22,79 @@ per-domain object, and it put an estate-scoped Deliverable in whichever
 namespace the emitting adapter happened to key off; both are recorded in
 chapter 20's path plan as the reason authority moved up a layer. An Adapter
 still declares a `defaultPath` — that is how the registry states what an Adapter
-is for, and it is what the plan assigns from — but the path a Fragment carries
-comes from the plan.
+is for, and it is what the plan assigns from — but the path a Deliverable
+carries comes from the plan.
 
 ## Adapters
 
-An **Adapter** is a named renderer registered in one registry. A **Fragment** is
-the unit of output and of attribution, already implemented as exactly this shape:
+An **Adapter** is a named renderer registered in one registry. A **Deliverable**
+is the unit of output and of attribution:
 
 ```ts
 { path: string, content: string, adapter: string, executable?: boolean }
 ```
 
-Every Fragment names its producing adapter. That is what makes the attribution
-assertion below possible without new machinery, and it is why a blueprint pack is
-not a special case — a pack **is a list of Fragments**, each tagged
-`adapter: flux-packs`.
+Every Deliverable names its producing adapter. That is what makes the
+attribution assertion below possible without new machinery.
 
-**The twenty registered adapters are the v1 set**
-([0052](../../docs/adr/model/0052-registered-adapters-are-v1.md), amended for
-`vault-policy` by
-[0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md) and for
-`networking` by
-[0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md), and for
-`traefik-middleware` by
-[0076](../../docs/adr/model/0076-middleware-has-one-producer.md), and for
-`prometheus` by
-[0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)). They are enumerated
-only by `adapterContract()`; nothing renders that is not registered. A second,
-unregistered renderer generation exists in the tree today —
+**The registry is the enumeration**
+([0052](../../docs/adr/model/0052-registered-adapters-are-v1.md), rewritten by
+[0098](../../docs/adr/model/0098-one-publication-path.md)): nothing renders
+that is not registered, `adapterContract()` is the only list, and a change to the
+set is a decision with its own ADR. The set is six, one per subsystem, and every
+one of them is a **central** adapter running once over the composed union:
+
+| adapter | subsystem | emits |
+|---|---|---|
+| `kubernetes` | workloads | per Service: the controller, `Service`, `ServiceAccount`, `ConfigMap` — including every inbound-derived Asset — `PersistentVolumeClaim`, `PodDisruptionBudget` above one replica, the backup and sweep `CronJob`, `Namespace` per domain, and the kustomize `Kustomization` per directory |
+| `networking` | policy | every `NetworkPolicy` ([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)) |
+| `prometheus` | monitoring | `ServiceMonitor`, `PodMonitor`, `PrometheusRule` ([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)) |
+| `traefik` | edge | one `IngressRoute` set and one `Middleware` set **per tier** the Platform document declares ([0076](../../docs/adr/model/0076-middleware-has-one-producer.md), [0098](../../docs/adr/model/0098-one-publication-path.md)) |
+| `vault-policy` | secret store | one policy and one auth role per Workload identity, as JSON ([0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)) |
+| `vso` | secret delivery | `VaultConnection`, `VaultAuth`, the operator `ServiceAccount` per namespace, `VaultStaticSecret`, `VaultDynamicSecret` |
+
+**There is one publication path.** A repository publishes its Intent Fragment
+by digest ([chapter 40](40-composition.md#fragments)) and nothing else; no
+adapter runs at publish time. The five publish-time `*-fragment` producers of the
+previous generation, and the `adapter-compat` map that paired them with their
+consumers, are deleted: every kind they emitted is derived centrally from the
+same declaration, so they were a second render of the same intent, and their
+map's digest padded `renderHash` for no reason but to pair them. A Service owner
+who wants to see their own render runs the same core locally over the same pinned
+inputs — a use-case, not a second adapter set.
+
+Three former adapters are not deleted so much as reclassified. The Gatus
+endpoints and the two edge catalogs are **inbound derivations** of the platform
+Service that consumes them ([chapter 16](16-dependencies.md#what-an-edge-derives-read-inbound)),
+rendered as that Service's own Assets by `kubernetes`. Image metadata is a
+**projection of the images lock** and joins the Resolved Deployment artifact set
+([chapter 20](20-resolved-deployment.md#publish-back)). `flux-root` — one Flux
+`Kustomization` per layer, with `dependsOn` and health checks — is one delivery
+mechanism's reading of the Reconcile Unit DAG, and lives in
+[`docs/adr/deferred/`](../../docs/adr/deferred/README.md) with the rest of
+delivery. `flux-packs` and `flux-source` had nothing left to render once the
+foundation was declared ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)).
+
+A second, unregistered renderer generation exists in the tree being replaced —
 `src/deployment/render/`, 14 modules and 1,967 lines, reachable from neither
 entry point, imported only by 11 test files, yet inside the `--lines 90` coverage
-gate that guards every pull request. It is deleted in the code pass. Nothing it
-contains is promoted for free: its renderers consume `ProjectModel` while the
-registry hands adapters an `AdapterContext` of artifact documents, so bringing
-its behaviour back is a port across that seam and costs what writing a new
-adapter costs.
-
-The twenty fall into two roles, on the two sides of the composition seam
-(chapter 40):
-
-| role | count | runs in | input | output |
-|---|---|---|---|---|
-| **fragment producer** — the five `*-fragment` adapters | 5 | the Service repository, at publish time | that repository's `Deployment`, images lock and pinned cluster context | exactly one Fragment document per Adapter per Service, pushed by digest |
-| **central adapter** | 15 | centrally, over the composed union | the Resolved Deployment as an `AdapterContext` of artifact documents | the file set for its subsystem |
-
-The pairing is recorded, not folklore: `src/adapters/adapter-compat.ts` maps each
-producer's `outputKind` and `outputSchema` to the central adapters that accept it
-— `TraefikRouteFragment` to `traefik-public` and `traefik-lan`,
-`KubernetesWorkloadFragment` to `kubernetes`, and so on — and the digest of that
-map enters the render hash. A producer and its consumer therefore own different
-kinds at different paths; they are not two generations of the same renderer, and
-the earlier reading of them as duplicate "twins" is withdrawn here.
+gate that guards every pull request. It is deleted in the code pass, and nothing
+it contains is promoted for free: bringing its behaviour back is a port across
+the adapter port and costs what writing a new adapter costs.
 
 ## The adapter port
 
 Every adapter satisfies one typed port
 ([0053](../../docs/adr/model/0053-adapter-port-contract.md)):
 
-> **Documents in, attributed Fragments out. Deterministic. No ambient reads. A
+> **Documents in, attributed Deliverables out. Deterministic. No ambient reads. A
 > path claimed twice is a build error.**
 
 | invariant | normative statement | failure |
 |---|---|---|
-| one input shape | An adapter receives parsed, pinned documents and nothing else. `deploy-config` is one entry of that context; a published fragment is the same documents parsed and pinned. There is no discriminated union and no hand-set input string. | compile error |
-| attributed output | Every returned Fragment carries `adapter`, set by the port, not by the adapter. | compile error |
-| deterministic | Same documents in, byte-identical Fragments out, in a stable order. | `E_RENDER_NONDETERMINISTIC` |
+| one input shape | An adapter receives the Resolved Deployment as parsed, pinned documents and nothing else. There is no discriminated union and no hand-set input string. | compile error |
+| attributed output | Every returned Deliverable carries `adapter`, set by the port, not by the adapter. | compile error |
+| deterministic | Same documents in, byte-identical Deliverables out, in a stable order. | `E_RENDER_NONDETERMINISTIC` |
 | no ambient reads | No environment variable, clock, network or filesystem read inside `render`. Reading manifests from disk is the caller's job; the parsed documents are passed in. | `E_AMBIENT_INPUT_FORBIDDEN`, `E_INPUT_OUTSIDE_WORKDIR` |
 | one owner per path | Two adapters may never claim the same output path. | `E_PATH_COLLISION` |
 | safe paths | Every path is relative and normalised; `..` and absolute paths are rejected. | `E_UNSAFE_OUTPUT_PATH` |
@@ -98,15 +105,15 @@ entries "intentionally heterogeneous"; `never` accepts every function, both call
 sites launder the argument through a double cast, and the only runtime check is
 `typeof render === "function"`. Which of three declared input shapes an adapter
 receives is one string comparison, `adapter.input === "canonical-artifacts"`, and
-the five `deployment-fragment` adapters match no branch of their own — they fall
-through to the `deploy-config` branch and are handed the wrong document.
-`kubernetes-workload-fragment` reads raw manifests from disk inside `render`;
-under the port that read moves to the caller, as `loadFragmentInput` already
-does. `E_PATH_COLLISION` has **zero occurrences under `src/`**, while the writer
-applies each prepared file in turn: two adapters sharing a path both write, second
-wins, silently, both reporting `action: "create"`. The collision check belongs
-where the Fragment set is assembled, not at the writer, and it must exist in code
-before the coverage assertion means anything.
+the five publish-time producers match no branch of their own — they fall through
+to the `deploy-config` branch and are handed the wrong document. One of them
+reads raw manifests from disk inside `render`. `E_PATH_COLLISION` has **zero
+occurrences under `src/`**, while the writer applies each prepared file in turn:
+two adapters sharing a path both write, second wins, silently, both reporting
+`action: "create"`. The collision check belongs where the Deliverable set is
+assembled — on the path plan, before any adapter runs
+([chapter 20](20-resolved-deployment.md#the-path-plan)) — and it must exist in
+code before the coverage assertion means anything.
 
 Two ratchets carry the port:
 
@@ -168,16 +175,13 @@ the producer, declared in the registry, not a property of the output that an edi
 could lose:
 
 - Every registry entry declares a `defaultPath`, and registration throws
-  `adapter definition missing defaultPath` without one. Verified 2026-08-31
-  against `src/adapters/registry.ts`: 16 definitions, all sixteen carrying one.
-  `vault-policy`, `networking`, `traefik-middleware` and `prometheus` are the
-  seventeenth to twentieth and carry one by the same rule.
+  `adapter definition missing defaultPath` without one. It is what the path plan
+  assigns from ([0070](../../docs/adr/model/0070-path-authority-is-layer-2.md)).
 - `adapterContract()` is the only enumeration of the set. A tool that needs to
   know who produces what reads it; nothing reconstructs ownership by scanning
   rendered YAML.
-- A fragment producer emits one Fragment per Adapter per Service. A central
-  adapter emits a file set, every file of it a Fragment naming that adapter and
-  no other.
+- An adapter emits a file set, every file of it a Deliverable naming that adapter
+  and no other.
 - A file no adapter claims cannot ship silently. It becomes a ledger entry with
   an owner and a reason, or the build fails.
 
@@ -192,27 +196,27 @@ gets lifted, with two real consumers to shape it.
 
 Two adapters may render objects of the same **kind** — `kubernetes` creates the
 Service's own `ServiceAccount`, `vso` mirrors the VSO operator's `ServiceAccount`
-into each target namespace. That is allowed: attribution is per Fragment, and
+into each target namespace. That is allowed: attribution is per Deliverable, and
 single authority is per **field**, not per kind. What is never allowed is two
 adapters claiming one path.
 
 ### Path allocation
 
-Paths are deterministic and derived, never configured per Service:
+Paths are assigned by the Resolved Deployment's path plan
+([chapter 20](20-resolved-deployment.md#the-path-plan)) from each adapter's
+`defaultPath`, never configured per Service:
 
 ```
-<gitopsRoot>/apps/<group>/<service>/<fragment>.yaml
-<gitopsRoot>/apps/vso-secrets/<fragment>.yaml
-<gitopsRoot>/apps/edge/traefik-ingressroutes.yaml
-<gitopsRoot>/clusters/<cluster>/kustomizations.yaml
-fragments/<producer>/<fragment>.yaml
+<gitopsRoot>/apps/<domain>/<service>/<object>.yaml
+<gitopsRoot>/apps/<domain>/namespace.yaml
+<gitopsRoot>/apps/vso-secrets/…
+<gitopsRoot>/apps/vso-secrets/policies/<workload>.{policy,role}.json
+<gitopsRoot>/apps/edge/<tier>/…
 ```
 
-Three central adapters — `kubernetes`, `flux-packs`, `flux-source` — declare the
-same `platform/cluster/flux/apps` prefix and are kept apart only by the group and
-service segments they append. That is a live path-collision hazard with no
-enforcement behind it, and it is the concrete reason `E_PATH_COLLISION` is a
-build error in this chapter rather than a convention.
+Two adapters — `kubernetes` and `networking` — declare the same `apps` prefix
+and are kept apart by the object segment. That is why `E_PATH_COLLISION` is
+decided on the plan, before any adapter runs, rather than left as a convention.
 
 ## Ledgers
 
@@ -266,41 +270,10 @@ enumeration genuinely leaves.
 
 ### The registered set
 
-Paths abbreviate `platform/cluster/flux` as `…`.
-
-| adapter | target | declared path | emits |
-|---|---|---|---|
-| `edge-catalog` | edge | `…/apps/edge/edge-catalog-configmap.yaml` | the platform edge catalog `ConfigMap` |
-| `edge-catalog-fragment` | fragment | `fragments/edge-catalog` | one `EdgeCatalogFragment` |
-| `edge-route-catalog` | edge | `…/apps/edge/edge-route-catalog-configmap.yaml` | the route catalog `ConfigMap` |
-| `flux-packs` | flux | `…/apps` | pack trees copied at a pinned ref, plus `Namespace`, `VaultStaticSecret` and each group's kustomize `Kustomization` |
-| `flux-root` | flux | `…/clusters/production/kustomizations.yaml` | the cluster root: one Flux `Kustomization` per layer, plus the cluster kustomize `Kustomization` |
-| `flux-source` | flux | `…/apps` | `HelmRepository` and `HelmRelease` per chart |
-| `gatus` | edge | `…/apps/utility-system/gatus/gatus-endpoints-configmap.yaml` | the endpoints `ConfigMap` |
-| `gatus-endpoint-fragment` | fragment | `fragments/gatus-endpoint` | one `GatusEndpointFragment` |
-| `image-metadata` | edge | `…/apps/edge/image-metadata.yaml` | the image metadata document — not a Kubernetes object |
-| `image-metadata-fragment` | fragment | `fragments/image-metadata` | one `ImageMetadataFragment` |
-| `kubernetes` | kubernetes | `…/apps` | per Service: `Namespace`, `ServiceAccount`, `Deployment`/`StatefulSet`/`Job`/`CronJob`, `Service`, `ConfigMap`, `PersistentVolume` + `PersistentVolumeClaim`, **`PodDisruptionBudget`**, `HorizontalPodAutoscaler`, the backup and retention `CronJob` a Durability Class derives ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)), guarded raw manifests, and the directory's kustomize `Kustomization`. The monitoring kinds moved to `prometheus` ([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)) |
-| `kubernetes-workload-fragment` | fragment | `fragments/kubernetes-workload` | one `KubernetesWorkloadFragment` |
-| `networking` | networking | `…/apps` | every `NetworkPolicy`: one per Workload from the derived allow set plus the two baseline rules, and one namespace-wide default-deny per domain ([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)) |
-| `vault-policy` | vault | `…/apps/vso-secrets/policies` | per Workload identity: its derived Vault policy and its Kubernetes auth role, as JSON ([0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)) |
-| `prometheus` | monitoring | `…/apps` | `ServiceMonitor`, `PodMonitor` and `PrometheusRule`, every one carrying `release: metrics-stack` ([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)) |
-| `traefik-middleware` | edge | `…/apps/edge/middlewares.yaml` | every Traefik `Middleware`: forward-auth per tier serving `authenticated`, the security-headers baseline per content profile, and one redirect per `redirectTo` ([0076](../../docs/adr/model/0076-middleware-has-one-producer.md)) |
-| `traefik-lan` | edge | `…/apps/edge/traefik-lan-ingressroutes.yaml` | `IngressRoute` per LAN route, with middleware references |
-| `traefik-public` | edge | `…/apps/edge/traefik-ingressroutes.yaml` | `IngressRoute` per public route, with middleware references |
-| `traefik-route-fragment` | fragment | `fragments/traefik-route` | one `TraefikRouteFragment` |
-| `vso` | vault | `…/apps/vso-secrets` | `VaultConnection`, `VaultAuth`, the operator `ServiceAccount` per target namespace, `VaultStaticSecret`, `VaultDynamicSecret`, and its kustomize `Kustomization` |
-
-### Correction to the earlier table
-
-The previous version of this chapter recorded `PodDisruptionBudget` as *"no
-adapter, no renderer"* and `ServiceMonitor` / `PodMonitor` / `PrometheusRule` as
-*"exists but is not a registered adapter"*. **Both rows were wrong.** The
-registered `kubernetes` adapter pushes `pdb.yaml`, `servicemonitor.yaml` and
-`podmonitor.yaml`, and builds the PDB from `rollout.availability`. The table was
-wrong on two of its four rows, and the bootstrap step that sequenced off it —
-"22 of the 36-object coverage gap" — was costed against a number matching neither
-renderer generation.
+The six adapters above are the set, and their `defaultPath`s are the roots of
+the path plan. The estate's coverage is the union of what they emit plus the
+bootstrap set ([chapter 14](14-platform-intent.md#the-bootstrap-set)) plus the
+ledgers; anything live that is in none of the three is `E_UNATTRIBUTED_OBJECT`.
 
 ### The estate, by class
 
@@ -315,7 +288,7 @@ them is wrong by 74.
 | class | objects | share | how it is produced |
 |---|---|---|---|
 | **A — derived from Service Intent** | 364 | 81% | a registered adapter, per Service |
-| **B — pack-delivered platform infrastructure** | 41 | 9% | `flux-packs` / `flux-source` from `flux-modules` at a pinned ref ([0013](../../docs/adr/model/0013-blueprint-packs-pinned-checkout.md)) |
+| **B — the foundation** | 41 | 9% | was pack-delivered from `flux-modules` at a pinned ref; now **declared** as Services of the platform domains and rendered like class A ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)). The CRDs among them are the bootstrap set |
 | **C — authored content** | 45 | 10% | not derivable; ledgered until its owner lands |
 
 Class C is entirely Grafana — 31 `GrafanaDashboard`, 14 `GrafanaFolder`. Nothing
@@ -323,75 +296,58 @@ in Service Intent implies a dashboard's panels; deriving one would be inventing 
 dashboard DSL. It is ledgered rather than permanent: 14 service dashboards become
 Assets on the owning Service ([0012](../../docs/adr/model/0012-assets-not-code.md)), 3
 runtime-family dashboards ship with the Runtime Profile, 14 platform dashboards
-ship in the observability pack, and `service-overview` / `service-template` derive
+become Assets of the declared observability Services, and `service-overview` / `service-template` derive
 per Service from the scrape surface and exposure
 ([0021](../../docs/adr/model/0021-observability-scrape-and-alert-class.md)).
 
 ### The true gap
 
-With the two wrong rows removed, the class A gap is **20 objects, not 36** — and
-it is three kinds, all genuinely unrendered by anything registered:
+Every kind the 2026-08-31 survey found unrendered now has a decision: `Role` and
+`RoleBinding` are not rendered ([0075](../../docs/adr/model/0075-no-workload-rbac-in-v1.md)),
+`NetworkPolicy` is `networking`'s ([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)),
+`PrometheusRule` is `prometheus`'s ([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)),
+and `GitRepository` is a bootstrap fact
+([0099](../../docs/adr/model/0099-bootstrap-set-is-recorded.md)) — created by
+`flux bootstrap`, never rendered.
 
-| kind | objects (2026-08-31) | the model demands it because | producer today |
-|---|---|---|---|
-| `ClusterRole` 6, `ClusterRoleBinding` 4, `Role` 4, `RoleBinding` 2 | 16 | workloads hold their own identity ([0024](../../docs/adr/model/0024-identity-per-workload.md), chapter 16) | **none.** No `rbac` adapter exists. `ClusterRole` and `ClusterRoleBinding` are also on the raw-manifest forbidden list, so they cannot ride in as authored YAML either |
-| `NetworkPolicy` | 3 | network policy is default-deny, derived from the edge set ([0035](../../docs/adr/model/0035-network-policy-default-deny.md), chapter 16) | **none.** The only implementation is `src/deployment/render/networkpolicy.ts`, which the deletion in [0052](../../docs/adr/model/0052-registered-adapters-are-v1.md) removes; coverage for this kind goes from unregistered to absent |
-| `PrometheusRule` | 1 | every Service declares an Alert Class ([0021](../../docs/adr/model/0021-observability-scrape-and-alert-class.md), chapter 10) | **none.** Zero occurrences anywhere under `src/`, in either generation |
-
-`GitRepository` is a fourth honest correction: no registered adapter emits one.
-`flux-root` only *references* `flux-system` as a `sourceRef`, and the estate's
-single `GitRepository` is created by `flux bootstrap`. It is a bootstrap fact
-(chapter 60), not a rendered Deliverable, and the earlier claim that `flux-source`
-owned the kind was false.
-
-Two rules govern the number itself. First, **20 is the corrected arithmetic on the
-old survey, not a fresh measurement**: the object-level gap must be re-measured
-per adapter against the registered generation before any schedule is committed,
-because counting files under `fleet-infra/cluster` measures the cluster tree
-rather than the registry. Second, no adapter is registered "for free" — writing
-`rbac`, `networking` and `prometheus` against `AdapterContext` is three pieces of
-adapter work of comparable size, and the v1 schedule prices them that way —
-`rbac` excepted, which 0075 decides against writing at all
-([0059](../../docs/adr/model/0059-v1-scope-stopping-rule.md)).
+The number itself is arithmetic on an old survey, not a fresh measurement. The
+object-level gap is re-measured per adapter against the registered generation
+before any schedule is committed, because counting files under
+`fleet-infra/cluster` measures the cluster tree rather than the registry.
 
 ## Determinism and parity
 
 ```mermaid
 flowchart LR
-    subgraph svc["Service repository — publish"]
-      D["Deployment + images lock<br/>+ pinned cluster context"]
-      D --> FP["5 fragment producers<br/>traefik-route, gatus-endpoint,<br/>edge-catalog, image-metadata,<br/>kubernetes-workload"]
-      FP --> PF["one Fragment document each<br/>pushed by digest"]
+    subgraph pub["every repository — publish"]
+      IF["Intent Fragment<br/>(domain file, or the Platform document)<br/>pushed by digest"]
     end
-    subgraph agg["Central render — over the ComposedIntent"]
-      RD["Resolved Deployment<br/>+ clusterStateDigest"]
-      RD --> C1["kubernetes"]
-      RD --> C2["vso"]
-      RD --> C3["traefik-public<br/>traefik-lan"]
-      RD --> C4["gatus, edge-catalog,<br/>edge-route-catalog,<br/>image-metadata"]
-      RD --> C5["flux-root, flux-packs,<br/>flux-source"]
-      C1 --> F["Fragments<br/>{path, content, adapter}"]
-      C2 --> F
-      C3 --> F
-      C4 --> F
-      C5 --> F
-      F --> COL["E_PATH_COLLISION check<br/>one owner per path"]
-      COL --> H["renderHash over<br/>the sorted Fragment set"]
+    subgraph agg["central render — over the ComposedIntent"]
+      RD["Resolved Deployment<br/>+ path plan + clusterStateDigest"]
+      RD --> A1["kubernetes"]
+      RD --> A2["networking"]
+      RD --> A3["prometheus"]
+      RD --> A4["traefik"]
+      RD --> A5["vault-policy"]
+      RD --> A6["vso"]
+      A1 & A2 & A3 & A4 & A5 & A6 --> DL["Deliverables<br/>{path, content, adapter}"]
+      DL --> COL["E_PATH_COLLISION on the plan<br/>one owner per path"]
+      COL --> H["renderHash over the pinned inputs"]
       COL --> T["Deliverable Set<br/>file tree"]
-      COL --> L["coverage assertion<br/>vs the three ledgers"]
+      COL --> L["coverage assertion<br/>vs bootstrap set + ledgers"]
     end
-    PF --> RD
+    IF --> RD
     T --> X["delivery<br/>defined separately"]
 ```
 
-`renderHash` is taken over the sorted Fragment set — each path, a NUL, then its
-newline-normalised content — prefixed with the schema package integrity, the
-deployment, images and context digests, and the `adapter-compat` digest. It is
-therefore stable against emission order, and it moves when the adapter set's
-compatibility map moves. Combined with chapter 20's pinned-input rule this gives
-the property that matters: **re-rendering from the recorded input digests,
-including `clusterStateDigest`, produces a byte-identical tree.** A mismatch means
-an input was not pinned.
+`renderHash` is taken over the recorded input digests — every Intent Fragment
+including the Platform document, the images lock, the node contract, the
+ClusterState snapshot — prefixed with the schema package integrity
+([chapter 20](20-resolved-deployment.md#pinned-inputs)). It moves when and only
+when an input moves. Combined with the pinned-input rule this gives the property
+that matters: **re-rendering from the recorded digests, `clusterStateDigest`
+included, produces a byte-identical tree.** A mismatch means an input was not
+pinned.
 
 The parity check compares the rendered tree against the pinned `ClusterState` by
 object identity — `apiVersion/kind/namespace/name` — with a behavioural profile so
@@ -405,14 +361,13 @@ needs a decision, not an allowlist entry."*
 
 | forbidden | why |
 |---|---|
-| a raw `Secret` with a literal value | the raw-manifests guard scans for it; secrets arrive through VSO or are fetched by the workload (chapter 10) |
-| a kind on the forbidden list — `Secret`, `ClusterRole`, `ClusterRoleBinding`, `CustomResourceDefinition`, `Namespace` | `E_FORBIDDEN_KIND`; the guard reports kind, filename and line |
-| a `PersistentVolumeClaim` or a cluster-scoped kind out of a fragment producer | `E_FORBIDDEN_KIND`; those objects are the central adapter's to render, not a Service repository's |
+| a kind on the forbidden list — `Secret`, `ClusterRole`, `ClusterRoleBinding`, `CustomResourceDefinition` | `E_FORBIDDEN_KIND`; a CRD is a bootstrap fact ([chapter 14](14-platform-intent.md#the-bootstrap-set)), a Secret arrives through VSO, and RBAC is not rendered ([0075](../../docs/adr/model/0075-no-workload-rbac-in-v1.md)) |
 | an object in a namespace the Service does not own | `E_FOREIGN_NAMESPACE` |
 | a floating image tag | `E_FLOATING_IMAGE`; digests only |
 | a path claimed by two adapters | `E_PATH_COLLISION`; attribution becomes ambiguous |
 | a path outside the gitops root, or containing `..` | `E_UNSAFE_OUTPUT_PATH` |
 | a hand-added file inside the rendered tree | `E_RENDER_OVERWRITE_REFUSED`; the writer refuses to overwrite a file it does not manage, and parity would stay red |
+| a hand-written object of any kind — a raw manifest, a pack file | there is no pass-through ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)); what cannot be declared yet is a ledger entry with a review date |
 
 ## Delivery is defined separately
 
@@ -433,49 +388,21 @@ stale participant (chapter 40) rather than as a quietly smaller render.
 
 ## Open in this chapter
 
-1. ~~**`rbac` does not exist.**~~ **Decided:** it will not.
-   [0075](../../docs/adr/model/0075-no-workload-rbac-in-v1.md) renders no
-   `Role` or `RoleBinding` for a Workload, because under `delivery: env` and
-   `delivery: file` the kubelet projects the Secret and the pod never calls the
-   API, so a least-privilege Role grants nothing. The absence becomes a checked
-   property instead — `E_WORKLOAD_RBAC_GRANT`
-   ([chapter 40](40-composition.md#secrets)) — and the 16 objects counted here
-   are objects that will not be rendered rather than a gap.
-   [0024](../../docs/adr/model/0024-identity-per-workload.md)'s per-Workload
-   identity is still bound, by the Vault auth role
-   ([0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)), which
-   is where that identity is actually used.
-2. ~~**`NetworkPolicy` regresses to zero producers**~~ **Decided:** the
-   `networking` adapter
-   ([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)) is the
-   producer — per-Workload policies from the derived allow set plus the two
-   baseline rules, and one namespace-wide default-deny per domain. Still a port
-   rather than a registration, and still unwritten; the decision is which
-   adapter owns it.
-3. ~~**`PrometheusRule` has no implementation in either generation.**~~
-   **Decided:** the `prometheus` adapter
-   ([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md))
-   owns `PrometheusRule` and takes `ServiceMonitor` and `PodMonitor` with it, so
-   the `release: metrics-stack` label — without which rules are accepted, go
-   Ready and never evaluate — has exactly one owner. Still unwritten; the
-   decision is which adapter owns it and what it derives from.
-4. **`E_PATH_COLLISION` is specified here and implemented nowhere** — zero
-   occurrences under `src/`, three central adapters sharing one path prefix.
-   *Settled by:* the check at Fragment-set assembly, plus a test registering two
-   adapters on one path and asserting the build fails.
-5. **The `@ts-nocheck` count is 10, four of them registered adapters.** *Settled
-   by:* the CI ratchet landing, and the four adapter files type-checking under
-   `strict: true`.
-6. **The object-level gap is arithmetic on an old survey.** *Settled by:* a
-   per-adapter measurement against the registered generation, recorded as the
-   corrected class-A gap in [The true gap](#the-true-gap).
-7. **The Service `ServiceAccount` name is the Service Id today**, while
-   [0024](../../docs/adr/model/0024-identity-per-workload.md) requires
-   `<service>-<workload>`, collapsing to `<service>` only for single-workload
-   Services. *Settled by:* the `kubernetes` adapter deriving the name per
-   Workload, and chapter 16's identity table matching what renders.
-8. **The gitops root is still `platform/cluster/flux` in the allocator** while
-   `fleet-infra` uses `cluster/flux`. One of the two is stale; the packs' Fragment
-   paths carry the `platform/` prefix, which suggests the allocator predates the
-   monorepo split. *Settled by:* rendering against the live tree and comparing
-   paths.
+The first three items this section carried — `rbac`, `NetworkPolicy`,
+`PrometheusRule` — are decided
+([0075](../../docs/adr/model/0075-no-workload-rbac-in-v1.md),
+[0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md),
+[0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)).
+Four more — the `E_PATH_COLLISION` implementation, the `@ts-nocheck` ratchet, the
+Service `ServiceAccount` name and the gitops root in the allocator — are code
+work against a compiler that does not exist yet, and belong in its issue tracker
+rather than in a normative chapter; `docs/architecture.md` carries the gates that
+will hold them. What remains open here is a model question:
+
+1. **The object-level gap is arithmetic on an old survey.** *Settled by:* a
+   per-adapter measurement against the six registered adapters, recorded as the
+   class-A number, before any schedule is committed.
+   - **Owner:** joris.
+   - **Settled by:** one full render of the estate diffed against
+     `fleet-infra/cluster` by object identity.
+   - **Blocks:** the v1 schedule, not the model.

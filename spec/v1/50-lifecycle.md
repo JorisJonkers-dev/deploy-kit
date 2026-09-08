@@ -37,7 +37,7 @@ defined. Three demands, all decided in the model rather than in the parked work:
 |---|---|---|
 | **Release Unit atomicity** | [0060](../../docs/adr/model/0060-release-unit.md) | no member's new version receives traffic until every member's new version is healthy; one failing member holds the whole unit |
 | **Durability Class gating** | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | a destructive operation against a volume declared `recoverable` or `irreplaceable` is refused and reported, never performed; only the owning Service can state that class |
-| **Pinned inputs only** | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | what is applied is rendered from a named lock — Intent, Cluster Context, images lock, ClusterState snapshot — never from a live read at render time |
+| **Pinned inputs only** | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | what is applied is rendered from a named lock — Intent, Platform Intent, images lock, ClusterState snapshot — never from a live read at render time |
 
 A mechanism honouring those three is compatible with this model. Everything
 else it decides — push or pull, who holds cluster credentials, what prunes, how
@@ -53,7 +53,8 @@ a new lock exists, what one guarantees, and what one is not.
 A lock names, by digest:
 
 - every Intent Fragment in the union, with its `sourceSha` and `inputsSha`;
-- the Cluster Context OCI reference;
+- the Platform document's fragment, with its `sourceSha` and `inputsSha` like any other;
+- the node contract, by digest;
 - the images lock, which resolves every `image` alias to a digest — never a tag;
 - the ClusterState snapshot, as `clusterStateDigest`
   ([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)).
@@ -71,7 +72,7 @@ event produces one.
 |---|---|---|
 | a Service repository merges an Intent change and republishes its fragment | **yes** | a new fragment digest is a new input, whether the change was an image, a grant, an exposure or an edge |
 | a fragment republishes with byte-identical content | no | digests are content-addressed, so the input set has not moved |
-| the Cluster Context is republished — a tier, an audience, a capability, a platform fact | **yes** | Context is a pinned input, republished deliberately |
+| the Platform document is republished — a tier, a durability policy, a receiver, a provider | **yes** | the Platform document is a pinned input, republished deliberately |
 | the images lock resolves an alias to a new digest | **yes** | the rendered image reference changes |
 | a PV rebinds after a node failure; a node joins or leaves | **yes** | the ClusterState snapshot changes, so `clusterStateDigest` changes, and the rebind lands as a visible decision rather than as drift |
 | a node contract republishes new `allocatable` — a reserve is retuned, RAM is added | **yes** | placement is matched against allocatable, so eligibility can change without any Intent changing |
@@ -237,7 +238,7 @@ state.
 ```mermaid
 flowchart TB
     I["Intent change merged<br/>one Service repository"] --> F["Intent Fragment republished<br/>OCI, by digest"]
-    X["Cluster Context republished<br/>tiers, audiences, capabilities, platform facts"] --> C
+    X["Platform document republished<br/>tiers, policies, providers"] --> C
     F --> C["composition<br/>union + estate-wide invariants"]
     S["ClusterState snapshot changes<br/>PV rebinds, node joins or leaves"] --> C
     C --> L["new lock<br/>fragments + context + images + clusterStateDigest"]

@@ -23,7 +23,7 @@ snapshots; unequal digests mean it is not pinnable.
 
 Chapter 20 declares at `spec/v1/20-resolved-deployment.md:8-11`, as "the
 load-bearing property of the whole specification", that *"Every assignment is a
-pure function of Service Intent, the pinned Cluster Context, and the pinned
+pure function of Service Intent, the pinned Platform Intent, and the pinned
 locks"* — then breaks it in its own normative `ResolvedService` example. At
 `:246-249`, under `assigned:`, sits `observed: {node: enschede-t1000-1, because:
 knowledge-vault-clone PV is bound here, moveRequires: state-move-plan}`, while
@@ -60,7 +60,7 @@ PV bindings with their nodes, node capacity against
 |---|---|---|
 | Read the live cluster at render time, record no digest | Keeps the status quo the review found: the hourly re-render diverges from the merge render with identical `inputDigests`, and property 1 classifies it as a lock defect. Every such incident costs an investigation of a lock that is correct | It is the defect B2 names; the diagnostic that pays for chapter 20 stops working exactly during a node failure |
 | Reuse `cluster-state.schema.json` as the pinned input | Its digest moves whenever `flux_ready`, `gatus_status` or `last_reconcile` moves — every reconcile. Renders would never be byte-identical across two runs, and it still lacks PV bindings and capacity, so the assignments stay unexpressible | An input whose digest churns on health is not pinnable; adding the missing facts to it would make one document answer both "what is true" and "what was true when we decided" |
-| Fold observed facts into the Cluster Context OCI artifact | Context is human-maintained and republished deliberately; PV rebinds are not. Every failover would block all deploys until someone republished and re-pinned Context — hours of estate-wide unavailability per node failure | Puts a machine-paced fact behind a human-paced release gate |
+| Fold observed facts into the Platform Intent fragment | the Platform document is human-maintained and republished deliberately; PV rebinds are not. Every failover would block all deploys until someone republished and re-pinned Context — hours of estate-wide unavailability per node failure | Puts a machine-paced fact behind a human-paced release gate |
 
 ## Reversibility
 

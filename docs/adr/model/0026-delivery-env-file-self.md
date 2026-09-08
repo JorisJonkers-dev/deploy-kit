@@ -46,7 +46,7 @@ projected at `0400` today (`examples/knowledge.service.yml:121-126`) alongside
 `jorisjonkers-dev-tls`, `garage-node-secrets` and `vault-prometheus-token`.
 
 `env` and `file` are the two that persist a Kubernetes Secret, so both are
-refused unless the pinned cluster context advertises secrets-at-rest encryption
+refused unless the pinned Platform Intent advertises secrets-at-rest encryption
 ([0028](0028-secrets-at-rest-gate.md)): the old credential-provisioning ADR
 recorded that *"the agent-inject path being replaced never touches etcd"*, so
 shipping them ungated is a regression against what runs today, not an unmet

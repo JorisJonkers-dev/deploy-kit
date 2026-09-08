@@ -48,7 +48,7 @@ be a category error.
 
 `sizeLimit` is platform-assigned. Ephemeral storage is finite node disk, so by
 [0004](0004-contention-decides-authority.md) the size is contended and the
-Cluster Context carries one default — the same shape as probe cadence and scrape
+Platform Intent carries one default — the same shape as probe cadence and scrape
 timing. Authoring a size per path was the alternative and it is 0081's shape,
 which is right for a persistent volume whose size is a property of the data and
 wrong here: a temp directory's size is a property of the node's tolerance, not of

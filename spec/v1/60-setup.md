@@ -20,20 +20,20 @@ depend on the previous step's output existing.
 ```mermaid
 flowchart TB
     A["1. node facts<br/>one YAML per node — site, allocatable cpu and memory,<br/>structured gpus and disks, capabilities;<br/>contract generated, nix imports the labels"]
-    B["2. platform facts recorded<br/>datastore kind, server count,<br/>k3s version and flags"]
-    C["3. Cluster Context published<br/>tiers, audiences, capabilities,<br/>secretsEncryption — pinned by digest"]
-    D["4. blueprint packs checked out<br/>at a pinned ref, root passed explicitly"]
+    B["2. the bootstrap set applied<br/>k3s, the Flux source, Vault unsealed,<br/>the CRDs — recorded in the Platform document"]
+    C["3. Platform document published<br/>substrate facts, tiers, policies, engines,<br/>providers — an Intent Fragment by digest"]
+    D["4. platform domains published<br/>edge, secrets, observability —<br/>the foundation, as Services"]
     E["5. ClusterState collector<br/>snapshot plus clusterStateDigest"]
-    F["6. participants.yml<br/>expected publishers plus maxAge"]
-    G["7. one domain file publishes<br/>one Intent Fragment, holding its Services"]
-    H["8. composition runs<br/>estate-wide invariants, on one fragment"]
-    I["9. render<br/>registered adapters, into the existing Flux tree"]
+    F["6. participants.yml<br/>the platform and every domain, plus maxAge"]
+    G["7. one tenant domain publishes<br/>one Intent Fragment, holding its Services"]
+    H["8. composition runs<br/>estate-wide invariants over the union"]
+    I["9. render<br/>six adapters, into the tree the Flux source pulls"]
 
     A --> B --> C --> D --> E --> F --> G --> H --> I
     A -.->|"the capability list validates<br/>against the node contract"| C
     A -.->|"every placement dimension is matched against<br/>allocatable, gpus, disks and site"| H
-    B -.->|"the gate reads<br/>secretsEncryption"| C
-    D -.->|"flux-source and flux-packs<br/>render nothing without packs"| I
+    B -.->|"CRDs must exist before<br/>any object of their kind"| I
+    C -.->|"the gate reads<br/>secretsEncryption"| H
     E -.->|"existing PV bindings and the<br/>disk dimension read the snapshot"| I
 ```
 
@@ -41,9 +41,14 @@ Steps 1–3 look like paperwork and are not: they are the facts every later step
 reads, and since [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)
 every Workload's declared `memory` and `cpu` are compared against numbers step 1
 publishes — so step 1 is arithmetic that other repositories' builds now fail
-against. Step 4 is the one most often skipped, because the two pack-backed
-adapters fail in quietly interesting ways without it. Step 5 exists because
-layer 2 may read a pinned snapshot and may never read the live cluster
+against. Step 2 is the whole of what is applied by hand, and it is a table in
+the Platform document ([chapter 14](14-platform-intent.md#the-bootstrap-set),
+[0099](../../docs/adr/model/0099-bootstrap-set-is-recorded.md)); everything
+after it is rendered. Step 4 is new: the foundation is declared
+([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)), so Vault,
+VSO, Traefik and the metrics stack publish like any domain and tenants render
+against them. Step 5 exists because layer 2 may read a pinned snapshot and may
+never read the live cluster
 ([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)).
 
 ## Node facts
@@ -160,35 +165,21 @@ matches `yq -o=json '.nodes.<n>.labels' nix-config/generated/node-contract.yml`.
 
 ## Platform facts and restore
 
-Three facts that decide other decisions are, today, expressible in no schema
-here: what the datastore is, how many servers there are, and what the k3s
-version and server flags are. `schemas/platform.schema.json` requires only
-`version`, `name` and `domain`; `$defs/host.roles` is an unconstrained array, so
-`k3s-control-plane` is a spelling convention rather than a validated fact.
-Whether the single server keeps cluster state in SQLite or embedded etcd decides
-whether `k3s etcd-snapshot` exists at all.
-
-v1 makes them required platform intent
-([0057](../../docs/adr/model/0057-datastore-and-restore.md)):
-
-| fact | why it is load-bearing | read by |
-|---|---|---|
-| **datastore kind** (SQLite or embedded etcd) | decides whether a snapshot command exists, and what a restore is | the restore rehearsal; the secrets-at-rest settling check, which greps the datastore file |
-| **server count** | decides whether the control plane is a single point of failure by design or by accident | every decision resting on [0002](../../docs/adr/model/0002-kubernetes-as-substrate.md) that would otherwise hedge about HA that is not there |
-| **k3s version** | the version everything else is evaluated against | [0036](../../docs/adr/model/0036-cni-selection.md)'s lab evaluation; [0028](../../docs/adr/model/0028-secrets-at-rest-gate.md)'s flag |
-| **server flag set** | flags are configuration that exists nowhere in-tree | `--secrets-encryption`, `--flannel-backend`, `--disable-network-policy` — the flags two open decisions turn on |
-| **CNI and its flags** | whether a non-enforcing policy stage exists at all | [CNI](#cni), and default-deny's promotion path |
-| **`secretsEncryption`** | the renderer's gate | [Secrets at rest](#secrets-at-rest) |
-| **the durability policy per class** — backup window, retention count, off-cluster destination | a Durability Class derives objects, and their terms are contended rather than per-Service | [0077](../../docs/adr/model/0077-durability-derives-a-backup.md), [chapter 10](10-service-intent.md#storage-and-durability) |
-| **the alert rule catalog and the class-to-receiver mapping** | a class derives rules and routes them, and both producers read one mapping | [0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md), [chapter 10](10-service-intent.md#what-the-class-derives) |
-| **the ephemeral `sizeLimit` default** for a declared writable path | ephemeral storage is finite node disk, so the size is contended rather than per-Service | [0092](../../docs/adr/model/0092-writable-paths-are-declared.md) |
-| **the probe policy** — readiness and liveness `periodSeconds`, `timeoutSeconds`, `failureThreshold` | four deployments derived the same block by hand, with the reasoning in comments no tool can read | [0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md) |
-| **scrape `interval` and `scrapeTimeout`** | otherwise a render is not a complete description of how the estate is scraped | [0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md) |
-| **the backup method per `engine`** — image, command, arguments | an application-level backup is the only mechanism `local-path` allows, and nothing authored may be executable | [0077](../../docs/adr/model/0077-durability-derives-a-backup.md), [0012](../../docs/adr/model/0012-assets-not-code.md) |
+The facts that decide other decisions — the datastore, the server count, the
+Kubernetes version, `secretsEncryption`, the CNI and its policy controller — are
+**substrate facts** in the Platform document, named for what they are and never
+for the k3s flag that sets them
+([chapter 14](14-platform-intent.md#substrate-facts),
+[0057](../../docs/adr/model/0057-datastore-and-restore.md),
+[0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)). So
+are the durability, observability, probe and ephemeral policies that earlier
+drafts of this chapter tabulated here; chapter 14 is their normative home, and
+this chapter keeps only what setup and restore need from them.
 
 Recording a fact does not choose it. A one-server SQLite cluster stays a
 one-server SQLite cluster; it stops being an assumption each reader re-derives
-by ssh.
+by ssh — and whether `k3s etcd-snapshot` exists at all follows from the
+`datastore` fact rather than from a flag someone remembers.
 
 ### Restore
 
@@ -229,14 +220,16 @@ Mounting `kubernetes` auth, configuring its JWT issuer and CA, creating the KV
 mounts, and configuring the **database secrets engine** whose roles issue
 per-consumer database credentials
 ([0080](../../docs/adr/model/0080-database-catalog-is-derived-data.md)) are
-**platform fixtures**: estate-unique, drawing on a shared
-resource, and therefore platform-assigned
-([0004](../../docs/adr/model/0004-contention-decides-authority.md)). They arrive
-through a blueprint pack at a pinned ref
-([0013](../../docs/adr/model/0013-blueprint-packs-pinned-checkout.md)), never
-from per-Service render. What the render owns is the part that varies per
-Workload — one derived policy and one auth role per identity
+estate-unique and draw on a shared resource, so they are platform-assigned
+([0004](../../docs/adr/model/0004-contention-decides-authority.md)). They are
+Assets of the declared `vault` Service in the platform's secrets domain
+([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)) — declarative
+Vault configuration, rendered and attributed like any Asset — never per-Service
+render. What per-Service render owns is the part that varies per Workload: one
+derived policy and one auth role per identity
 ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)).
+Vault's **unseal** alone is a bootstrap fact
+([chapter 14](14-platform-intent.md#the-bootstrap-set)).
 
 `delivery: env` and `delivery: file` write a Kubernetes Secret. With no
 `--secrets-encryption` configuration anywhere in `nix-config` or the bootstrap
@@ -250,7 +243,7 @@ except `auth-api` uses, and the item has now been written three times as prose
 without acquiring an owner. v1 makes it mechanical
 ([0028](../../docs/adr/model/0028-secrets-at-rest-gate.md)):
 
-> The pinned Cluster Context carries `secretsEncryption`. The renderer refuses
+> The pinned Platform Intent carries `secretsEncryption`. The renderer refuses
 > any `secrets[]` entry with `delivery: env` or `delivery: file` against a
 > context that does not advertise `secretsEncryption: true`, with
 > `E_SECRETS_AT_REST_REQUIRED`.
@@ -324,30 +317,16 @@ scheduled operation, not a step in a bootstrap script.
 
 ## Blueprint packs
 
-The `flux-source` and `flux-packs` adapters need `flux-modules/packs/**` to
-render source and release manifests and consumer-owned pack files. Packs arrive
-by **pinned checkout, not a registry**
-([0013](../../docs/adr/model/0013-blueprint-packs-pinned-checkout.md)):
-
-| input | how it is supplied | effect |
-|---|---|---|
-| the pack tree | check out `flux-modules` at a pinned tag or ref | the content the two adapters read |
-| the root | `--blueprints-root <dir>` or `DEPLOY_CONFIG_BLUEPRINTS_ROOT` | explicit, always. There is no implicit or default path — machine-specific defaults make CI behaviour depend on a workstation layout |
-| the version | `--blueprints-version <tag>` | recorded in render-plan provenance, so output traces back to the pack version used |
-
-A missing root, or a root without `packs/`, fails with a structured diagnostic
-rather than silently rendering empty pack output.
-
-This is a deliberate divergence from
-[0037](../../docs/adr/model/0037-composition-oci-fragments.md), where a domain file
-publishes as an OCI fragment. Packs are foundation material consumed whole by
-two adapters: they join no composition union, carry no lock digest and hold no
-participants-list row, and every consumer already obtains them by ref, while
-private-registry auth has caused evidenced friction for `@jorisjonkers-dev`
-packages. So two consumption models coexist — fragments by OCI digest, packs by
-git ref — and the boundary is material class, not inconsistency. The declared
-tag is **recorded, not verified**: provenance holds what the caller passed, so
-whoever audits a render is trusting that CI pinned the checkout it declared.
+There are none. The foundation the packs delivered — 41 objects copied from
+`flux-modules` at a git ref that this chapter used to describe as *"recorded, not
+verified"* — is **declared** as Services of the platform domains and rendered
+like everything else ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)),
+and the CRDs among them are the bootstrap set
+([chapter 14](14-platform-intent.md#the-bootstrap-set)).
+[0013](../../docs/adr/model/0013-blueprint-packs-pinned-checkout.md), which
+decided how packs arrive, is superseded: nothing arrives that way. The
+`flux-packs` and `flux-source` adapters, and the `--blueprints-root` and
+`--blueprints-version` inputs they needed, do not exist.
 
 ## Onboarding a new Service
 
@@ -452,17 +431,19 @@ consumers, so a consumer is never rendered against a provider that has published
 no fragment:
 
 ```
-1. node facts + platform facts   nothing depends on them; everything reads them
-2. data                          postgres, valkey, rabbitmq -- 8 Services depend on them
-3. auth                          every forward-auth route and OIDC consumer
-4. knowledge                     depends on data
-5. agents                        depends on knowledge and vso-secrets
-6. media                         the largest set, the sparsest edges, the lowest blast radius
-7. mail, notes, app,             the remainder
+1. node facts + the Platform document   nothing depends on them; everything reads them
+2. the platform domains               edge, secrets, observability -- the foundation,
+                                      declared; every tenant depends on it
+3. data                          postgres, valkey, rabbitmq -- 8 Services depend on them
+4. auth                          every forward-auth route and OIDC consumer
+5. knowledge                     depends on data
+6. agents                        depends on knowledge and the secrets domain
+7. media                         the largest set, the sparsest edges, the lowest blast radius
+8. mail, notes, app,             the remainder
    automation, utility
 ```
 
-`auth` third rather than last is deliberate: it has the densest edge set in the
+`auth` fourth rather than last is deliberate: it has the densest edge set in the
 estate, so it is where the derivation is proven — inbound CORS origins and
 forward-auth middleware. It is also where the release rule shows its teeth. The
 estate's clearest lockstep pair, `auth-api` and `auth-ui`, is not a pair of
@@ -506,16 +487,17 @@ owns it. One item is blocked rather than open, and says so.
       recovered data written into this chapter. Owner: joris. Blocks: the first
       production apply of any volume declared `durability: irreplaceable` —
       nothing else.
-- [ ] **Secrets at rest are encrypted and the pinned context says so.** Ticked
-      by: the canary sentinel check in [Secrets at rest](#secrets-at-rest), then
-      a republished, re-pinned context advertising `secretsEncryption: true`.
+- [ ] **Secrets at rest are encrypted and the Platform document says so.**
+      Ticked by: the canary sentinel check in [Secrets at rest](#secrets-at-rest),
+      then a republished Platform document advertising `secretsEncryption: true`.
       Owner: joris. Blocks: `delivery: env` and `delivery: file` — and only
       those, since `delivery: self` persists nothing.
-- [ ] **Blueprint packs are wired into CI by pinned ref.** Ticked by: the render
-      job checking out `flux-modules` at a pinned ref, passing
-      `--blueprints-root` explicitly, and provenance recording
-      `--blueprints-version`. Owner: joris. Blocks: `flux-source` and
-      `flux-packs` output.
+- [ ] **The bootstrap set is applied and recorded, and the foundation renders.**
+      Ticked by: the four bootstrap entries present in the Platform document
+      with versions, and the platform domains rendering Vault, VSO, Traefik and
+      the metrics stack with no pack file and no raw manifest anywhere in the
+      tree. Owner: joris. Blocks: every tenant domain, which renders against the
+      foundation.
 - [ ] **The ClusterState collector exists and its digest is in the lock.**
       Ticked by: two captures ten minutes apart against an idle cluster
       producing an equal `sha256sum`, and `clusterStateDigest` appearing beside

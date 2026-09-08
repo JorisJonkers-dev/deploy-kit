@@ -70,7 +70,7 @@ delivery work it underpins.
 | [0091](model/0091-identity-placeholders-not-framework-wiring.md) | The model derives no framework wiring; it exposes the Workload's own identity as placeholders | settled |
 | [0012](model/0012-assets-not-code.md) | File-shaped configuration is an Asset; code is not configuration | settled |
 | [0094](model/0094-asset-change-restarts-unconditionally.md) | An Asset change is content-hashed and restarts the Workload; there is no onChange field | settled |
-| [0013](model/0013-blueprint-packs-pinned-checkout.md) | Blueprint packs arrive by pinned checkout, not a registry | settled |
+| [0013](model/0013-blueprint-packs-pinned-checkout.md) | Blueprint packs arrive by pinned checkout, not a registry | superseded by [0096](model/0096-the-foundation-is-declared.md) |
 | [0063](model/0063-intent-authored-per-domain.md) | Intent is authored one file per domain | settled |
 | [0064](model/0064-sidecars-are-workload-vocabulary.md) | A Workload may hold sidecars, and a sidecar carries what a container carries | settled |
 
@@ -141,7 +141,7 @@ delivery work it underpins.
 ### Adapters and rendering
 | # | title | claim |
 |---|---|---|
-| [0052](model/0052-registered-adapters-are-v1.md) | The registered adapters are v1; the second generation is deleted | settled, amended by [0073](model/0073-vault-policy-is-a-deliverable.md), [0074](model/0074-networking-adapter-emits-policy.md), [0076](model/0076-middleware-has-one-producer.md), [0079](model/0079-alert-class-derives-from-a-rule-catalog.md) |
+| [0052](model/0052-registered-adapters-are-v1.md) | The registered adapters are v1; the second generation is deleted — the registry is the enumeration | settled, rewritten by [0098](model/0098-one-publication-path.md) |
 | [0053](model/0053-adapter-port-contract.md) | An adapter satisfies one typed port | settled |
 | [0054](model/0054-adapter-attribution.md) | Every Deliverable is attributed to exactly one Adapter | settled |
 | [0055](model/0055-bidirectional-ledgers.md) | Every accepted hole is a bidirectional ledger | settled |
@@ -152,6 +152,15 @@ delivery work it underpins.
 | [0074](model/0074-networking-adapter-emits-policy.md) | A networking adapter owns every NetworkPolicy in the estate | settled |
 | [0075](model/0075-no-workload-rbac-in-v1.md) | v1 renders no workload RBAC, and refuses any Deliverable that grants it | settled |
 | [0076](model/0076-middleware-has-one-producer.md) | Every Middleware has one producer, and the tier names its forward-auth endpoint | settled |
+
+### Platform Intent
+| # | title | claim |
+|---|---|---|
+| [0095](model/0095-platform-intent-is-the-second-authored-document.md) | Platform Intent is the second authored document, published as an Intent Fragment | settled |
+| [0096](model/0096-the-foundation-is-declared.md) | The foundation is declared as Services; nothing hand-written enters the render | settled |
+| [0097](model/0097-authored-values-name-model-concepts.md) | An authored value names a model concept; the target's spelling is a derivation | settled |
+| [0098](model/0098-one-publication-path.md) | A repository publishes its Intent Fragment and nothing else; every derivation runs once, centrally | settled |
+| [0099](model/0099-bootstrap-set-is-recorded.md) | The bootstrap set is a recorded, enumerated table | open |
 
 ### Platform facts
 | # | title | claim |

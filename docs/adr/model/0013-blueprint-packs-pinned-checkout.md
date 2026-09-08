@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+superseded-by: 0096
 claim: settled
 date: 2026-08-31
 normative: spec/v1/60-setup.md#blueprint-packs
@@ -8,6 +8,14 @@ rests-on: ["0001"]
 ---
 
 # Blueprint packs arrive by pinned checkout, not a registry
+
+> **Superseded by [0096](0096-the-foundation-is-declared.md) on 2026-09-08.**
+> This decision settled *how* packs arrive. The direction is now that packs do
+> not exist: the foundation they delivered is declared as Services of the
+> platform domains and rendered, and the CRDs among them are the bootstrap set
+> ([chapter 14](../../../spec/v1/14-platform-intent.md#the-bootstrap-set)). The
+> evidence below — that every consumer already checks out `flux-modules` by ref
+> — stays true and stops mattering, because nothing reads the checkout.
 
 ## Rests on
 

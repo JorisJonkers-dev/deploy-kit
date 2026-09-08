@@ -52,7 +52,7 @@ directory name. This repository already contains one resolved tree —
 flowchart LR
     subgraph IN["Pinned inputs — each carried by digest"]
         i1["Intent Fragment<br/>this domain's file + env/"]
-        i2["Cluster Context<br/>contextRef + node contract<br/>(site, allocatable, gpus, disks)"]
+        i2["Platform Intent<br/>contextRef + node contract<br/>(site, allocatable, gpus, disks)"]
         i3["images lock"]
         i4["ClusterState snapshot<br/>clusterStateDigest<br/>(PV bindings, current placements)"]
         i5["Intent Fragments<br/>of every other domain"]
@@ -81,7 +81,7 @@ One domain file is one Intent Fragment
 ([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)), so the input a
 Service owner edits and the input composition unions are the same document. The
 two node-facing inputs are deliberately drawn apart: what a node **can hold** is
-declared in the node contract and pinned with the Cluster Context; what the
+declared in the node contract and pinned with the Platform Intent; what the
 cluster **currently holds** is observed into the ClusterState snapshot. They
 answer different questions and are never read for each other's
 ([Cluster state](#cluster-state)).
@@ -188,9 +188,9 @@ field's placement link to this anchor rather than copying rows.
 | route precedence | derived | — | `exact` before `prefix`, longer prefix before shorter; carried explicitly on the rendered route rather than left to the proxy's sort ([0093](../../docs/adr/model/0093-route-precedence-is-derived.md)) |
 | middleware chain | platform | pool | tier + audience + `contentPolicy`; `forward-auth` for `authenticated` on a public tier, the security-headers baseline with the named content profile, and the redirect rule a route's `redirectTo` asks for |
 | backup window, retention count, off-cluster destination | platform | pool | one policy per Durability Class; the window is one node's IO and the destination is one remote target ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)) |
-| the backup method — image, command, arguments | platform | pool | keyed by `engine`, arriving with the blueprint packs |
+| the backup method | platform | pool | the image the Platform document names per `engine`, resolved through the images lock; nothing executable is authored ([chapter 14](14-platform-intent.md#engines)) |
 | alert rules, their severity and their receiver | platform | pool | the rule catalog keyed by `scrape` and `engine`; severity and receiver from `alertClass` ([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)) |
-| scrape `interval` and `scrapeTimeout` | platform | pool | the metrics stack's ingest budget is shared; stated in the Cluster Context, never defaulted |
+| scrape `interval` and `scrapeTimeout` | platform | pool | the metrics stack's ingest budget is shared; stated in the Platform Intent, never defaulted |
 | the backup identity's grant on the destination | platform | pool | derived, never authored: the platform chose the destination, so it owns the credential |
 | Reconcile Unit and its ordering | platform | unique — arbitrated | one estate-wide DAG ([The Reconcile Unit](#the-reconcile-unit)) |
 | identity name, Vault role, Vault policy | platform | pool | named for the **Workload alone**; the auth role namespace is shared ([chapter 16](16-dependencies.md#workload-identity)) |
@@ -204,9 +204,9 @@ field's placement link to this anchor rather than copying rows.
 | requests and limits | derived | — | from `placement.memory` and `placement.cpu`: memory request equals memory limit, cpu request with no cpu limit |
 | `securityContext` | derived | — | from `hardening` and its declared exceptions |
 | `automountServiceAccountToken` | derived | — | `true` only where a grant carries `delivery: self`; the pod authenticates in that case and in no other ([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)) |
-| the `emptyDir` per writable path, and its `sizeLimit` | derived | — | one mount per declared path, sized from the Cluster Context's ephemeral default ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)) |
+| the `emptyDir` per writable path, and its `sizeLimit` | derived | — | one mount per declared path, sized from the Platform Intent's ephemeral default ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)) |
 | `runAsUser`, `runAsGroup`, `fsGroup` | derived | — | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Workload holds a volume ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)) |
-| container probe timings | derived | — | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Cluster Context's probe policy ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)) |
+| container probe timings | derived | — | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Platform Intent's probe policy ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)) |
 | `progressDeadlineSeconds` | derived | — | from `startupBudget` |
 | rollout strategy, surge, unavailability | derived | — | from `zeroDowntime` and `volumes` |
 | object kind | derived | — | from `lifecycle`, `stateful` and `volumes` |
@@ -254,7 +254,7 @@ What stays on the platform side of this path is everything mechanical about the
 edge: the tier that carries the audience, and the middleware chain that follows
 from the tier, the audience and `contentPolicy`. The authored proxy vocabulary is
 exactly two fields — `contentPolicy` on an exposure and `redirectTo` on a route —
-and no Service names a middleware, an entryPoint or a TLS resolver.
+and no Service names a middleware, a listener or a certificate issuer.
 
 ### The namespace row was wrong, and this is the correction
 
@@ -292,10 +292,11 @@ footnote to an exception:
 
 ## Pinned inputs
 
-> **Every assignment is a pure function of the pinned input set: Service Intent,
-> the pinned Cluster Context and the node contract it carries, the locks, and
-> the ClusterState snapshot — each carried by digest.** Identical inputs,
-> identical output, always.
+> **Every assignment is a pure function of the pinned input set: every Intent
+> Fragment — the domain files and the Platform document
+> ([chapter 14](14-platform-intent.md)) — the node contract the Platform document
+> names, the locks, and the ClusterState snapshot — each carried by digest.**
+> Identical inputs, identical output, always.
 
 The set is **closed**. No assignment consults live cluster state, a mutable
 pool, a counter, or state remembered between renders. There is no allocation
@@ -306,13 +307,13 @@ Placement is the case that tests the rule hardest, and it stays inside it.
 Every declared dimension is matched against node `allocatable` — the node's
 total minus a reserve declared in the same node file, published by the node
 contract ([0056](../../docs/adr/model/0056-node-facts-single-source.md)) and pinned
-with the Cluster Context. It is never matched against free capacity read from a
+with the Platform Intent. It is never matched against free capacity read from a
 cluster, which is not a pinned input and cannot be made into one: free capacity
 changes with every pod that starts anywhere in the estate.
 
 The rule has teeth because it forces a decision whenever something cannot be a
 pure function of what is pinned. Such a value moves **up** into layer 1, where
-it is declared and checked; **sideways** into the Cluster Context, where it is
+it is declared and checked; **sideways** into the Platform Intent, where it is
 platform data republished deliberately; **into the node contract**, where it is
 a node fact authored once and generated from
 ([chapter 60](60-setup.md#node-facts)); or **into the ClusterState snapshot**,
@@ -365,7 +366,7 @@ the snapshot. Nothing reads the live cluster.
 `gpus[]` and `disks[]` are *declared* platform facts: authored once per node and
 published by the node contract
 ([0056](../../docs/adr/model/0056-node-facts-single-source.md)), pinned with the
-Cluster Context, never observed. Placement reads them there and only there.
+Platform Intent, never observed. Placement reads them there and only there.
 [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) enumerates node
 capacity among the snapshot's facts because it predates the node contract
 carrying `allocatable`; the spec is normative, and that record is the one that
@@ -395,7 +396,7 @@ Four documents must not be conflated:
 |---|---|---|---|---|
 | answers | what a node can hold | what should be true | what was true when we decided | what is true now |
 | source | one authored YAML file per node, generated from | the pinned inputs | one read-only capture, digested | the cluster, continuously |
-| pinned | yes — with the Cluster Context | it *is* the output | yes — `clusterStateDigest` | no |
+| pinned | yes — named by the Platform document | it *is* the output | yes — `clusterStateDigest` | no |
 | changes | when a node is re-declared | when an input changes | when the collector runs | continuously |
 
 The fourth is the existing `schemas/cluster-state.schema.json` — `flux_ready`,
@@ -489,7 +490,7 @@ Five rules carry most of the weight:
   and each declared exception names itself and carries a reason
   ([0016](../../docs/adr/model/0016-pod-hardening.md)).
 - **Capacity is not a class.** Requests and limits no longer resolve through a
-  named table in the Cluster Context; they derive from the raw quantities the
+  named table in the Platform Intent; they derive from the raw quantities the
   Workload declares, under two shape rules the author does not write. Memory
   request **equals** memory limit, because memory is incompressible and an OOM
   kill beats eviction roulette. Cpu is a request with **no** limit, because
@@ -537,7 +538,7 @@ declared `disk` dimension that contradicts the binding is
 The middleware chain is derived, and one of its members needs an address: a
 forward-auth Middleware must name the endpoint that performs the check. **The
 tier names it** ([0076](../../docs/adr/model/0076-middleware-has-one-producer.md)).
-A tier in the Cluster Context that serves the `authenticated` audience carries
+A tier in the Platform Intent that serves the `authenticated` audience carries
 the address of the endpoint that authenticates for it, beside the audiences it
 serves; a tier that serves no `authenticated` route carries no such field and
 needs none.
@@ -547,7 +548,7 @@ estate-wide role *is* this middleware
 ([chapter 10](10-service-intent.md#service-identity)), and resolving it as if it
 were a dependency edge would make the edge tree depend on resolving a Service
 and would write one Service's id into a platform derivation. It is a platform
-fact, so it sits where platform facts sit — the Cluster Context, pinned by
+fact, so it sits where platform facts sit — the Platform Intent, pinned by
 digest ([Pinned inputs](#pinned-inputs)).
 
 A route declaring `audience: authenticated` on a tier whose declaration carries
@@ -628,10 +629,17 @@ A derived value is **overridable with a reason**; an assignment is not
 
 ```yaml
 overrides:
-  - field: progressDeadlineSeconds
+  - derivation: startupDeadline
     value: 600
     reason: nginx pods, ~10-20Mi RAM each; a 1800s deadline is 3x the real budget
 ```
+
+The key is the **derivation's own name**, from the closed set
+[chapter 14](14-platform-intent.md#overridable-derivations) enumerates beside the
+field each renders to ([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)).
+An owner overrides a decision, not a Kubernetes field: a target rename touches
+that table and no domain file, and `E_UNKNOWN_OVERRIDE` refuses a name no
+derivation produces.
 
 The exception already exists in the tree: `app-ui` runs
 `progressDeadlineSeconds: 600` while the three JVM services run `1800`, and a
@@ -755,6 +763,12 @@ Composition therefore writes each Service's `ResolvedService` projection into
 that Service's repository as a generated file —
 `platform/resolved.yml` — and opens a pull request when it changes
 ([0033](../../docs/adr/model/0033-assignments-published-back.md)).
+
+The projection carries, per Workload, the **image it runs at the digest the lock
+resolved** — the image metadata the previous generation rendered as a separate
+document. That is a layer-2 fact and it is published back like every other
+([0098](../../docs/adr/model/0098-one-publication-path.md)); nothing about it was
+ever a Deliverable.
 
 Two entries left this list. The namespace is now derived from `domain`, which
 the owner writes in the header of the file they are already editing, so

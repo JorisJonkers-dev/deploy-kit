@@ -38,7 +38,7 @@ The terms are platform-assigned by the contention test
 ([0004](0004-contention-decides-authority.md)). A backup window is one node's IO
 on a seven-node cluster where every stateful Workload is pinned to the machine
 holding its PV; an off-cluster destination is one remote target with one
-credential. Both are shared finite resources, so the Cluster Context carries one
+credential. Both are shared finite resources, so the Platform Intent carries one
 policy per class and the volume declares only the class. Authoring the terms per
 volume would put a mechanism in layer 1 and let two Services claim the same
 window with nothing arbitrating. A volume needing different terms restates one
@@ -46,9 +46,11 @@ with a reason, which [0031](0031-derived-overrides-with-reason.md) already
 allows.
 
 The method is keyed by the Workload's `engine`
-([0078](0078-engine-is-workload-vocabulary.md)) and lives with the blueprint
-packs ([0013](0013-blueprint-packs-pinned-checkout.md)). `pg_dump` for
-`postgres`, a definitions export for `rabbitmq`, a file-level copy for `files`.
+([0078](0078-engine-is-workload-vocabulary.md)) and **is an image**: one
+purpose-built image per engine, named in the Platform document and resolved
+through the images lock ([0097](0097-authored-values-name-model-concepts.md)).
+What it does — `pg_dump` for `postgres`, a definitions export for `rabbitmq`, a
+file-level copy for `files` — is the image's entrypoint, versioned and digested.
 It has to be platform-owned because the alternative is an authored script, and
 [0012](0012-assets-not-code.md) forbids an executable Asset — a `backup.sh` in
 an Asset is exactly the case that decision exists to refuse.
@@ -70,7 +72,7 @@ privilege nobody has to take on trust.
 | Author schedule, retention and destination per volume | The owner sees the terms beside the class | A schedule and a destination are mechanisms, which layer 1 excludes, and two Services could contend for one window with nothing arbitrating |
 | Author retention only, platform-assign the rest | Splits the tuple along the contention line exactly | A second authored field whose legal values are per-class anyway, and a 90-day claim on a snapshot-less cluster is what the deleted `rollbackTargetRetention` already asserted falsely |
 | Let each Service declare a backup Workload of its own | Fully general, no new vocabulary, nothing derived | Every datastore owner reimplements retention and off-cluster copy, and the Durability Class derives nothing — 0015 reduced to a label, which is the state this decision ends |
-| A hand-written backup stack in a blueprint pack | Nothing to derive; fixtures are already pinned | Which objects are needed follows from which volumes declare which class, so the fixture is a superset that drifts — the objection that ruled out fixture Middlewares |
+| A hand-written backup stack, delivered as a fixture | Nothing to derive | Which objects are needed follows from which volumes declare which class, so the fixture is a superset that drifts — the objection that ruled out fixture Middlewares |
 
 ## Reversibility
 Undo cost today: one per-class policy in the context, one derivation, and the

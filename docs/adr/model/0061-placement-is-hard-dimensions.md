@@ -60,9 +60,9 @@ decides whether it fits and where.
 ## Alternatives
 | option | cost if taken | why rejected |
 |---|---|---|
-| Keep `size` beside `placement` | two fields answering one question, the class resolved through the Cluster Context and the node facts through the node contract — no build-time comparison without joining them | this is the gap being closed: a `size: l` Workload pinned to a 4096Mi Pi passes the build and goes `Pending` |
+| Keep `size` beside `placement` | two fields answering one question, the class resolved through the Platform Intent and the node facts through the node contract — no build-time comparison without joining them | this is the gap being closed: a `size: l` Workload pinned to a 4096Mi Pi passes the build and goes `Pending` |
 | Scored best-match: rank eligible nodes, place on the highest | a term matching nothing scores zero and the pod still places, so the failure mode is a worse node rather than a refusal | hands back the silence the `gtx960m` evidence bought — an unmet term producing a Running pod is precisely what nobody could see |
-| Named amounts instead of raw quantities | keeps [0004](0004-contention-decides-authority.md) intact as written, and a retune is one Cluster Context edit rather than an edit in every repository — the cost this decision accepts | a class name cannot be compared to a node's allocatable without the table, so the consistency check stays a join; raw was chosen because the comparison is then arithmetic |
+| Named amounts instead of raw quantities | keeps [0004](0004-contention-decides-authority.md) intact as written, and a retune is one Platform Intent edit rather than an edit in every repository — the cost this decision accepts | a class name cannot be compared to a node's allocatable without the table, so the consistency check stays a join; raw was chosen because the comparison is then arithmetic |
 
 ## Reversibility
 Undo cost today: the intent schema block, the matcher against the node contract,
@@ -82,7 +82,7 @@ means someone other than the author bucketing each.
   ~30 of them, and BestEffort stops being the standing QoS class — paid by the
   one maintainer.
 - Raising every JVM service from 768Mi to 1Gi is now an edit in every repository
-  holding one, not one row in the Cluster Context — paid by the one maintainer,
+  holding one, not one row in the Platform Intent — paid by the one maintainer,
   on every retune.
 - A Workload that could fall back to Frankfurt when the Pis are full must list
   both arches or sit `Pending` — paid by service authors, who write the fallback

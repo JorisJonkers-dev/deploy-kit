@@ -49,7 +49,7 @@ because there is nothing safe to poll, and its start is bounded by the progress
 deadline alone. That is a narrower guarantee, and it is honest: the alternative
 is to invent a target.
 
-Cadence goes to the Cluster Context for the reason scrape timing did
+Cadence goes to the Platform Intent for the reason scrape timing did
 ([0079](0079-alert-class-derives-from-a-rule-catalog.md)): it is one operational
 default shared by the estate, and stating it makes a render a complete
 description of how a pod is checked. Deriving it from `startupBudget` was the

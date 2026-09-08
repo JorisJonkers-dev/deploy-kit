@@ -9,23 +9,27 @@ rests-on: ["0003"]
 
 # The registered adapters are v1; the second generation is deleted
 
-> **Amended 2026-09-07.** The set is **twenty**:
-> [0079](0079-alert-class-derives-from-a-rule-catalog.md) adds `prometheus`,
-> which takes `ServiceMonitor` and `PodMonitor` from `kubernetes` so that
-> monitoring has one owner;
-> [0076](0076-middleware-has-one-producer.md) adds `traefik-middleware`, which
-> owns the objects the route adapters have only ever referenced;
-> [0074](0074-networking-adapter-emits-policy.md) adds `networking`, which owns
-> every NetworkPolicy in the estate now that the only implementation is in the
-> generation this ADR deletes; and
-> [0073](0073-vault-policy-is-a-deliverable.md) adds `vault-policy`, because the
-> policy [0025](0025-access-tiers-derive-policy.md) derives had no producer and
-> a derivation with no output is not total
-> ([0005](0005-derivation-is-total.md)). The decision this ADR records is
-> unchanged — the registry is the enumeration, nothing renders that is not
-> registered, and the second generation is still deleted. Adding an adapter is
-> an amendment here, which is what the count is for. An `rbac` adapter is
-> **not** coming: [0075](0075-no-workload-rbac-in-v1.md) decides against one.
+> **Rewritten 2026-09-08** ([0098](0098-one-publication-path.md)). This ADR
+> records the **rule**, not a count: the registry is the enumeration, nothing
+> renders that is not registered, and a change to the set is a decision with its
+> own ADR. The number that used to sit here was a second copy of the register
+> table and was amended four times in one week, which is what a second copy
+> does. The set is six central adapters — `kubernetes`, `networking`,
+> `prometheus`, `traefik`, `vault-policy`, `vso` — enumerated in
+> [chapter 30](../../../spec/v1/30-deliverables.md#adapters). How it got there:
+> [0073](0073-vault-policy-is-a-deliverable.md) added `vault-policy`;
+> [0074](0074-networking-adapter-emits-policy.md) added `networking`;
+> [0079](0079-alert-class-derives-from-a-rule-catalog.md) added `prometheus`
+> and moved the monitoring kinds out of `kubernetes`;
+> [0076](0076-middleware-has-one-producer.md) added a middleware producer that
+> [0098](0098-one-publication-path.md) then folded into one `traefik` adapter
+> with the two tier adapters; 0098 also deleted the five publish-time producers
+> and reclassified `gatus`, the two edge catalogs and `image-metadata` as
+> derivations, and moved `flux-root` to the deferred set; and
+> [0096](0096-the-foundation-is-declared.md) removed what `flux-packs` and
+> `flux-source` rendered. An `rbac` adapter is **not** coming:
+> [0075](0075-no-workload-rbac-in-v1.md). The other half of this decision — the
+> second generation is deleted — is unchanged.
 
 ## Rests on
 

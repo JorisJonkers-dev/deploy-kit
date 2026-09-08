@@ -9,6 +9,18 @@ rests-on: ["0005"]
 
 # An edge resolves against the union or the unmanaged register, and the register carries coordinates
 
+> **Amended 2026-09-08.** The register this ADR extended is split
+> ([0095](0095-platform-intent-is-the-second-authored-document.md)). A target the
+> estate *depends on* — `stalwart` with an address and surfaces — is a
+> **provider**, a fact in the Platform document
+> ([chapter 14](../../../spec/v1/14-platform-intent.md#providers)), and that is
+> what an edge resolves against; the error for a missing address is
+> `E_PROVIDER_WITHOUT_COORDINATES`. The Registered Unmanaged Surface ledger
+> keeps only hostnames nobody deploys and nobody depends on. The decision this
+> ADR records — an edge has two namespaces and the second carries coordinates —
+> is unchanged; the second namespace is providers rather than the ledger, so an
+> edge resolves against facts and never against exemptions.
+
 ## Rests on
 Every provider a Workload depends on is either deployed by this model or
 registered as something the estate runs and does not deploy, so an edge has
@@ -42,7 +54,7 @@ the address the provider answers on and the ports it serves, keyed by surface
 name, and an entry an edge targets without them is
 `E_UNMANAGED_SURFACE_WITHOUT_COORDINATES`. They are platform data by
 [0004](0004-contention-decides-authority.md) — an estate-unique endpoint drawing
-on shared network — so they sit with the rest of the Cluster Context, and moving
+on shared network — so they sit with the rest of the Platform Intent, and moving
 `stalwart` to another host is one republish rather than an edit in every
 consumer.
 
@@ -79,7 +91,7 @@ derived rules, because removing the namespace then cuts live traffic.
   wrong platform fact does — paid by whoever moves a host, and the review date
   each entry already carries is now load-bearing.
 - Every unmanaged surface an edge targets needs an address before the estate
-  renders, so `stalwart`'s SMTP coordinates are one of the Cluster Context inputs
+  renders, so `stalwart`'s SMTP coordinates are one of the Platform Intent inputs
   the example set still owes — paid once, per surface.
 - An edge to an unmanaged surface derives egress and **no ingress**, because the
   provider is not a pod this model selects; the provider's own firewall is

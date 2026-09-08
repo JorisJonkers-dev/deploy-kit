@@ -9,6 +9,12 @@ rests-on: ["0003"]
 
 # One hexagon, two use-cases, and a domain whose folders are the three layers
 
+> **Amended 2026-09-08.** Still two use-cases, one core — but `publish` no
+> longer renders anything. A repository validates its Intent Fragment and pushes
+> it by digest; every adapter runs in `compose`
+> ([0098](../model/0098-one-publication-path.md)). The role-flag evidence below
+> is the state the decision was taken in.
+
 ## Rests on
 Every module the compiler needs is assignable to exactly one of seven rings, and
 the two runtimes the model describes are two use-cases over one core rather than

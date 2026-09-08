@@ -9,6 +9,14 @@ rests-on: ["0004"]
 
 # An Alert Class derives rules from a platform catalog, and a class without a signal is refused
 
+> **Amended 2026-09-08.** "Both producers" below are the `prometheus` adapter
+> and the declared `gatus` Service: Gatus is no longer an adapter, and its
+> endpoint list and `alerting` section are an **inbound derivation** rendered as
+> its own Asset ([0098](0098-one-publication-path.md),
+> [0096](0096-the-foundation-is-declared.md)). The catalog and the
+> class-to-receiver mapping live in the Platform document
+> ([chapter 14](../../../spec/v1/14-platform-intent.md#observability-policy)).
+
 ## Rests on
 The rules worth alerting on are a property of what a Workload is and what it
 exposes, not of who owns it, so a platform catalog plus a declared urgency
@@ -59,7 +67,7 @@ would otherwise hold half of monitoring.
 Scrape timing joins them (R25). Omitting `interval` and `scrapeTimeout` takes
 the metrics stack's global default, a value decided outside the model, so a
 render would not be a complete description of how the estate is scraped. The
-Cluster Context states both and every emitted monitor names them; the ingest
+Platform Intent states both and every emitted monitor names them; the ingest
 budget is shared, so the value is not a Service's to set.
 
 ## Alternatives

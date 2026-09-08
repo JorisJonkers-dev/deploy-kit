@@ -9,6 +9,14 @@ rests-on: ["0005"]
 
 # A derived value is overridable with a reason; an assignment is not
 
+> **Amended 2026-09-08.** An override names a derivation by the **derivation's
+> own name** — `startupDeadline`, `replicas`, `automountToken` — from the closed
+> set [chapter 14](../../../spec/v1/14-platform-intent.md#overridable-derivations)
+> enumerates beside the field each renders to, never by the Kubernetes field
+> ([0097](0097-authored-values-name-model-concepts.md)). A name no derivation
+> produces is `E_UNKNOWN_OVERRIDE`. The rule this ADR records — a derived value
+> is overridable with a reason, an assignment is not — is unchanged.
+
 ## Rests on
 Exceptions to a correct derivation rule are real but rare — few enough to name
 one at a time. False if: rendering the estate needs more than one override per

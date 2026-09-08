@@ -96,7 +96,7 @@ or circuit breaker exists anywhere in the estate, and none is invented here.
 | option | cost if taken | why rejected |
 |---|---|---|
 | Keep the three vocabularies; make `expose.tier` required and add a mapping table between them | every routed service repository is edited — the same migration cost as this decision — plus a hand-maintained 3×7 mapping table | the table is a fourth authority free to drift from the three it joins, and the gate it repairs already existed, had an error code, and was vacuous |
-| Derive `<service>.<zone>` from a zone in the Cluster Context | no host is authored anywhere, and a zone mapping already exists in the reachability channels; right for `auth` and `knowledge` today | silently wrong for `kb`, for `rabbitmq` under Service `platform-rabbitmq`, and for every platform host belonging to no Service — and the wrong ones are the ones nobody checks. A derivation right for most is worse than none, because it is trusted |
+| Derive `<service>.<zone>` from a zone in the Platform Intent | no host is authored anywhere, and a zone mapping already exists in the reachability channels; right for `auth` and `knowledge` today | silently wrong for `kb`, for `rabbitmq` under Service `platform-rabbitmq`, and for every platform host belonging to no Service — and the wrong ones are the ones nobody checks. A derivation right for most is worse than none, because it is trusted |
 | Author `host` on the Workload, repeated by each Workload behind it | no new nesting; the exposure block stays where it already sits | two Workloads can disagree about their own hostname, and the disagreement renders as two IngressRoutes rather than an error. One host fronting several Workloads is expressible only by repeating the string |
 
 ## Reversibility

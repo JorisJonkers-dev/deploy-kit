@@ -11,7 +11,7 @@ normative: spec/v1/20-resolved-deployment.md#pinned-inputs
 
 ## Rests on
 
-The pinned input set — Service Intent, the Cluster Context, the locks, and a
+The pinned input set — Service Intent, the Platform Intent, the locks, and a
 ClusterState snapshot, each carried by digest — is closed: no layer-2 assignment
 reads anything outside it at render time. False if: any assignment consults live
 cluster state, a mutable pool, a counter, or state remembered between renders.
@@ -24,7 +24,7 @@ machines, and byte-diff the output trees; any difference falsifies the premise.
 The previous formulation was absolute and was falsified by its own chapter.
 `spec/v1/20-resolved-deployment.md:8-11` declared, as "the load-bearing property
 of the whole specification", that *"Every assignment is a pure function of
-Service Intent, the pinned Cluster Context, and the pinned locks."* Yet the same
+Service Intent, the pinned Platform Intent, and the pinned locks."* Yet the same
 chapter's normative `ResolvedService` example (`:246-249`) carries an observed PV
 binding — `node: enschede-t1000-1`, `because: knowledge-vault-clone PV is bound
 here` — while `inputDigests` is `{intent, imagesLock}` with `contextRef`

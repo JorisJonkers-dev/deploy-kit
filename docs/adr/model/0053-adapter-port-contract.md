@@ -9,6 +9,13 @@ rests-on: ["0003"]
 
 # An adapter satisfies one typed port
 
+> **Amended 2026-09-08.** The port has one input shape because there is one
+> kind of adapter left: every adapter is central and receives the Resolved
+> Deployment ([0098](0098-one-publication-path.md)). The five publish-time
+> producers whose mis-dispatch is the evidence below are deleted rather than
+> re-typed, and the output unit is a **Deliverable**; `Fragment` in this text is
+> the old word for it.
+
 ## Rests on
 
 The three adapter input shapes declared at `src/adapters/registry.ts:19` are not
@@ -56,7 +63,7 @@ adapters sharing a path both write, second wins, silently, both reporting
 inside render (`src/adapters/kubernetes-workload-fragment.ts:48-49`, `:236-247`);
 under the port that read moves to the caller, which passes the parsed documents
 in, as `loadFragmentInput` already does at `src/adapters/fragment-model.ts:95-98`.
-Hence the contract — documents in, attributed Fragments out, deterministic, no
+Hence the contract — documents in, attributed Deliverables out, deterministic, no
 ambient reads, and a path claimed twice is a build error that exists in code.
 
 ## Alternatives
@@ -86,7 +93,7 @@ major toolkit release and a coordinated bump of that pin — a separate number f
   `strict: true` before v1 — paid by the toolkit maintainer, in the pass that
   deletes the dead generation.
 - A `@ts-nocheck` file count that cannot increase becomes a CI gate; it starts at 10 and only falls — paid by whoever would have added the eleventh.
-- `E_PATH_COLLISION` is implemented where the Fragment set is assembled, not at
+- `E_PATH_COLLISION` is implemented on the path plan, where the Deliverable set is assembled, not at
   the writer, and the render hash preimage carries the adapter — paid by the
   toolkit maintainer; precondition for [0054](0054-adapter-attribution.md) and
   the coverage assertion in [0055](0055-bidirectional-ledgers.md).

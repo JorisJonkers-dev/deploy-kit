@@ -50,14 +50,17 @@ the outermost ring; a use-case that reached them could not be called by a test.
 
 ## Ports
 
-Two use-cases, one core. `publishFragment` runs in a Service repository at
-publish time; `compose` runs centrally over the composed union. They share the
-domain, and neither performs an effect directly: everything that touches the
-world arrives as a port the domain declares and the CLI supplies.
+Two use-cases, one core. `publish` runs in any repository that authors intent —
+a domain, or the platform — validates the Intent Fragment and pushes it by
+digest, and renders nothing; `compose` runs centrally over the composed union
+and is where every adapter runs
+([0098](adr/model/0098-one-publication-path.md)). They share the domain, and
+neither performs an effect directly: everything that touches the world arrives
+as a port the domain declares and the CLI supplies.
 
 | port | what it hides | production implementation |
 |---|---|---|
-| `PinnedInputSet` | resolving Service Intent, the Cluster Context, the locks and the ClusterState snapshot into parsed, validated, digested documents | filesystem plus OCI |
+| `PinnedInputSet` | resolving every Intent Fragment — the domain files and the Platform document — the node contract, the locks and the ClusterState snapshot into parsed, validated, digested documents | filesystem plus OCI |
 | `FragmentSource` / `FragmentPublisher` | reading and publishing Intent Fragments by digest | `oras push` then `oras resolve`, and a filesystem implementation for tests |
 | `Hasher` | the hash primitive | `node:crypto`, so the domain imports no crypto |
 | `DeliverableWriter` | putting bytes on disk | staging directory plus atomic rename |

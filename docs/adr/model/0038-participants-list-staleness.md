@@ -9,6 +9,12 @@ rests-on: ["0001"]
 
 # Participants are listed, bounded by seven days of staleness
 
+> **Amended 2026-09-08.** The Platform document is a **required participant**
+> under the same seven-day bound
+> ([0095](0095-platform-intent-is-the-second-authored-document.md)): it
+> publishes as an Intent Fragment like any domain, so a stale platform is
+> `E_PARTICIPANT_STALE` where before it was a digest nobody compared to a clock.
+
 ## Rests on
 A domain that has published nothing for seven days has stopped publishing by
 fault, not by cadence. False if: a non-dormant participant routinely goes more

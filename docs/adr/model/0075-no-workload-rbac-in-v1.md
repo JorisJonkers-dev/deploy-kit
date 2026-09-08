@@ -79,7 +79,7 @@ a check rather than a shape other repositories pin.
 - A Workload that later needs the API cannot get it from an adapter default; it
   needs a ledger entry now and a declaring site eventually — paid by
   `agents-api`'s owner, visibly.
-- The invariant must see rendered Deliverables, so it runs where the Fragment
+- The invariant must see rendered Deliverables, so it runs where the Deliverable
   set is assembled rather than over Intent alone — paid by the composition run,
   in one more check over output.
 - Nothing states the boundary inside the cluster, so an operator inspecting

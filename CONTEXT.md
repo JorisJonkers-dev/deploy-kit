@@ -18,9 +18,17 @@ contract ([0003](docs/adr/model/0003-three-layer-meta-model.md), normative in
 [chapter 00](spec/v1/00-overview.md#the-meta-model)). **Layer 1 contains no
 mechanisms; layer 3 contains no decisions.**
 
-**Service Intent** — layer 1. What a repository authors by hand: requirements,
-never mechanisms. Two kinds of file, a domain file and one env file set per
-Workload ([chapter 10](spec/v1/10-service-intent.md)).
+**Service Intent** — layer 1. What a Service's repository authors by hand:
+requirements, never mechanisms. Two kinds of file, a domain file and one env file
+set per Workload ([chapter 10](spec/v1/10-service-intent.md)).
+
+**Platform Intent** — layer 1, the second authored document. What the estate
+offers, authored by the platform: substrate facts, the bootstrap set, tiers,
+durability and observability policy, engines, providers. Same rule as Service
+Intent, and the contention test decides which of the two a value lives in
+([chapter 14](spec/v1/14-platform-intent.md),
+[0095](docs/adr/model/0095-platform-intent-is-the-second-authored-document.md)).
+Formerly the *Cluster Context*, which had no chapter.
 
 **Resolved Deployment** — layer 2. Every platform decision, derived and never
 authored, as a pure function of the pinned input set. A versioned, reviewable
@@ -85,7 +93,7 @@ how a process is instrumented
 
 **Durability policy** — the platform's terms for one Durability Class: the
 backup window, the retention count, and the off-cluster destination. Carried by
-the Cluster Context, never authored per volume.
+the Platform Intent, never authored per volume.
 
 **Placement** — the hard dimensions a Workload requires of a node: memory, cpu,
 architecture, site, capabilities, and optionally disk and GPU. Eligibility, not
@@ -141,17 +149,33 @@ family and separate from the toolkit's package version
 
 ## Layer 2 — what the platform decides
 
-**Pinned input set** — the closed set layer 2 derives from: Service Intent, the
-Cluster Context and its node contract, the locks, and the ClusterState
-snapshot, each carried by digest. Nothing at render time reads live cluster
+**Pinned input set** — the closed set layer 2 derives from: every Intent Fragment
+(the domain files and the Platform document), the node contract, the locks, and
+the ClusterState snapshot, each carried by digest. Nothing at render time reads live cluster
 state ([0006](docs/adr/model/0006-pinned-inputs.md),
 [0034](docs/adr/model/0034-cluster-state-pinned-input.md)).
 
-**Cluster Context** — the platform's own facts, republished deliberately and
-pinned by digest.
+**Node contract** — the node facts a cluster publishes, authored once where nix
+reads them and named by the Platform document by digest
+([0056](docs/adr/model/0056-node-facts-single-source.md)).
 
-**Node contract** — the node facts a cluster publishes, authored once and
-generated from ([0056](docs/adr/model/0056-node-facts-single-source.md)).
+**Tier** — where the edge terminates: four facts, `audiences`, `listener`,
+`certificates`, `forwardAuth`, plus the Traefik Service that is its proxy. A
+route's audience is the only way it reaches a tier
+([chapter 14](spec/v1/14-platform-intent.md#tiers)).
+
+**Provider** — something the estate runs and does not deploy, that a Service may
+depend on: an address and surfaces, in the Platform document. A fact, not a hole
+([chapter 14](spec/v1/14-platform-intent.md#providers)).
+
+**Bootstrap set** — what must exist before the first rendered object can apply:
+k3s, the Flux source, Vault's unseal, the CRDs. Recorded, enumerated, never
+declared ([0099](docs/adr/model/0099-bootstrap-set-is-recorded.md)).
+
+**The foundation** — Vault, VSO, Traefik, Prometheus, Gatus: Services in domain
+files the platform owns, declared like any tenant
+([0096](docs/adr/model/0096-the-foundation-is-declared.md)). Not packs, not
+charts.
 
 **ClusterState snapshot** — observed cluster facts captured once, digested, and
 then treated as an input like any other.
@@ -181,41 +205,34 @@ input digests alone, so if it changes at least one input changed.
 **Deliverable** — one serialized object destined for a file. Attributed to
 exactly one Adapter ([0054](docs/adr/model/0054-adapter-attribution.md)).
 
-**Adapter** — a named renderer registered in one registry. Documents in,
-attributed Deliverables out; deterministic; no ambient reads
+**Adapter** — one of six named renderers registered in one registry, every one
+central and run once over the composed union. Documents in, attributed
+Deliverables out; deterministic; no ambient reads
 ([0052](docs/adr/model/0052-registered-adapters-are-v1.md),
 [0053](docs/adr/model/0053-adapter-port-contract.md)).
 
 **Adapter port** — the single typed contract every Adapter satisfies.
 
-**Blueprint pack** — a pinned checkout of platform fixtures, delivered as
-Deliverables like anything else
-([0013](docs/adr/model/0013-blueprint-packs-pinned-checkout.md)).
-
 **Bidirectional ledger** — where an accepted hole is recorded, with an owner and
 a reason. Bidirectional because an entry outliving the gap it covered fails the
 build too ([0055](docs/adr/model/0055-bidirectional-ledgers.md)).
 
-**Unmanaged surface** — a deployment target Service Intent does not cover,
-registered rather than ignored
-([0019](docs/adr/model/0019-registered-unmanaged-surfaces.md)).
+**Unmanaged surface** — a hostname nobody deploys and nobody depends on,
+registered as a ledger entry rather than ignored
+([0019](docs/adr/model/0019-registered-unmanaged-surfaces.md)). Something the
+estate *depends on* is a Provider, not an unmanaged surface.
 
 ## Words to use carefully
 
-**Fragment.** Overloaded three ways, so never use it bare.
+**Fragment.** One meaning now: the **Intent Fragment**, an authored document
+published by digest. The output unit is a **Deliverable**, in chapter 30 as
+everywhere else, and the `*Fragment` producer kinds are deleted
+([0098](docs/adr/model/0098-one-publication-path.md)). Say *Intent Fragment*
+in prose, `IntentFragment` in code, and never `Fragment` bare.
 
-| use | what it is | where |
-|---|---|---|
-| Intent Fragment | one domain file, published as an input | [chapter 40](spec/v1/40-composition.md#fragments) |
-| Fragment | the output unit and unit of attribution: a Deliverable plus its path and its adapter | [chapter 30](spec/v1/30-deliverables.md#adapters) |
-| `*Fragment` kind | a document a fragment-producer adapter emits, such as `TraefikRouteFragment` | [chapter 30](spec/v1/30-deliverables.md#adapters) |
-
-Chapter 30 uses **Fragment** and **Deliverable** interchangeably for the middle
-one. In code the output unit is `Deliverable`, matching the layer's own name;
-`IntentFragment` is the input; the producer kinds keep their `*Fragment` names
-because those are wire kinds a consumer pins. Whether the chapter should be
-edited to use one word is open, and belongs with the next edit that touches
-chapter 30.
+**Cluster Context.** Retired. The document is Platform Intent; the old name
+described observed context and the content is authored intent
+([0095](docs/adr/model/0095-platform-intent-is-the-second-authored-document.md)).
 
 **Deployment.** Ambiguous between the Kubernetes kind and the estate's old
 `deployment.jorisjonkers.dev` documents, which is the confusion
@@ -234,5 +251,5 @@ An Asset has no such actor, so an Asset change restarts
 from this model ([`docs/adr/deferred/`](docs/adr/deferred/README.md)). A render
 is not a deploy.
 
-**Config.** Avoid. Env files carry *configuration*; the platform's own facts are
-the *Cluster Context*; the authored document is *Service Intent*.
+**Config.** Avoid. Env files carry *configuration*; the platform's facts and
+policies are *Platform Intent*; a Service's authored document is *Service Intent*.

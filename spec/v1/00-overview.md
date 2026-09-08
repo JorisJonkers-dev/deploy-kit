@@ -65,11 +65,12 @@ obligation is narrower and is discharged in these chapters: every Deliverable is
 a serialized object attributed to exactly one adapter, so there is always a
 single answer to "what should own this field".
 
-The layer-1 intent files survive a substrate swap — they name no Kubernetes
-kind. The registered adapters do not: nineteen of the twenty emit Kubernetes
-kinds and the other emits Vault configuration, which
-is why the swap is a v2 migration rather than an undo once repositories author
-against a shipped v1.
+The layer-1 documents — Service Intent and Platform Intent alike — survive a
+substrate swap: neither names a Kubernetes kind, a Traefik field or a k3s flag
+([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)). The
+registered adapters do not: five of the six emit Kubernetes kinds and the sixth
+emits Vault configuration, which is why the swap is a v2 migration rather than
+an undo once repositories author against a shipped v1.
 
 ## The meta-model
 
@@ -78,7 +79,7 @@ contract ([0003](../../docs/adr/model/0003-three-layer-meta-model.md)).
 
 | Layer | Name | Authored | Owns |
 |---|---|---|---|
-| 1 | Service Intent | by hand, in the owning repo | requirements, never mechanisms |
+| 1 | Service Intent, and Platform Intent | by hand — a Service's in its owning repo, the estate's in the platform's | requirements and facts, never mechanisms |
 | 2 | Resolved Deployment | never — derived | every platform decision |
 | 3 | Deliverable Set | never — serialized | files, no decisions |
 
@@ -89,7 +90,11 @@ merely serialize one. Which side of layer 1 a value falls on is decided by the
 contention test: a value is platform-assigned if and only if it must be unique
 across the estate or draws on a shared finite resource
 ([0004](../../docs/adr/model/0004-contention-decides-authority.md), normative in
-[chapter 20](20-resolved-deployment.md#authority)).
+[chapter 20](20-resolved-deployment.md#authority)). The same test decides which
+of the two authored documents a value is written in: a Service's own in
+[chapter 10](10-service-intent.md), the estate's in
+[chapter 14](14-platform-intent.md)
+([0095](../../docs/adr/model/0095-platform-intent-is-the-second-authored-document.md)).
 
 The counter-experiment is on record. Two layers, with resolution private to the
 renderer, produced three mutually incompatible documents all claiming
@@ -99,7 +104,7 @@ than fixing it, because a two-layer vocabulary could not say which document was
 wrong.
 
 Layer 2 is derived from a **closed set of pinned, digested inputs** — Service
-Intent, the Cluster Context, the locks, and a ClusterState snapshot carrying its
+Intent, the Platform Intent, the locks, and a ClusterState snapshot carrying its
 own digest ([0006](../../docs/adr/model/0006-pinned-inputs.md),
 [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)). Nothing at render
 time reads live cluster state. Reproducibility is therefore conditional and
@@ -108,29 +113,29 @@ tree, so a differing render with identical digests is a defect, never weather.
 
 ```mermaid
 flowchart TB
-    subgraph AUTH["layer 1 — Service Intent, hand-authored in each owning repository"]
+    subgraph AUTH["layer 1 — hand-authored: Service Intent in each owning repository, Platform Intent in the platform's"]
         a1["domains/&lt;domain&gt;.yml<br/>services, workloads, placement, hardening,<br/>durability, probes, exposure, secrets"]
         a2["env/&lt;workload&gt;/*.env<br/>one set per Workload"]
         a3["assets<br/>declarative, never executable"]
-        a4["node declarations"]
+        a5["platform.yml<br/>tiers, durability policy, engines,<br/>receivers, cadences, providers, bootstrap set"]
     end
 
-    a1 --> FR["Intent Fragment<br/>published per repository, by digest"]
+    a1 --> FR["Intent Fragments<br/>every authored document, published by digest"]
     a2 --> FR
     a3 --> FR
-    a4 --> FR
+    a5 --> FR
 
     FR --> CO["composition<br/>union + estate-wide invariants<br/>merges nothing, runs on any publish"]
     PAR["participants.yml<br/>expected domains, maxAge 7d"] --> CO
     CO --> CI["ComposedIntent<br/>+ CompositionLock"]
 
     CI --> RES["layer 2 — Resolved Deployment<br/>every platform assignment,<br/>a function of the pinned inputs alone"]
-    CTX["Cluster Context<br/>by digest"] --> RES
+    NC["node contract<br/>by digest"] --> RES
     CS["ClusterState snapshot<br/>clusterStateDigest"] --> RES
-    IL["images lock<br/>digests, never tags"] --> RES
+    IL["images lock<br/>digests, uid, gid — never tags"] --> RES
 
     RES --> RS["resolved.yml<br/>published back per Service"]
-    RES --> DS["layer 3 — Deliverable Set<br/>registered adapters,<br/>one attributed adapter per file"]
+    RES --> DS["layer 3 — Deliverable Set<br/>six registered adapters, run once centrally,<br/>one attributed adapter per file"]
 
     DS --> DEL["delivery — DEFINED SEPARATELY<br/>docs/adr/deferred/<br/>must honour Release Unit atomicity,<br/>Durability Class gates,<br/>pinned inputs only"]
     DEL --> K["the cluster"]
@@ -144,10 +149,12 @@ flowchart TB
 ## Programme scope
 
 v1 is the model ([0059](../../docs/adr/model/0059-v1-scope-stopping-rule.md)): the
-layer-1 authoring vocabulary, composition, layer-2 derivation, and the
-registered renderer that serializes layer 3. It ships when it renders the live
-estate from declared intent and that render is delivered by today's Flux tree
-unchanged. No deferred decision can block it.
+two layer-1 vocabularies, composition, layer-2 derivation, and the registered
+renderer that serializes layer 3. It ships when it renders the live estate —
+foundation included ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md))
+— from declared intent, and that render is delivered by today's Flux
+installation applying a tree the model rendered. No deferred decision can block
+it.
 
 The partition is structural rather than enumerated, so it cannot drift:
 `docs/adr/` carries **one directory per decision domain**, and **every ADR in
@@ -171,7 +178,7 @@ complete interface between the two scopes.
 |---|---|---|
 | Release Unit atomicity | [0060](../../docs/adr/model/0060-release-unit.md) | no member's new version receives traffic until every member's new version is healthy; if any member fails its budget, none switch and the old versions keep serving |
 | Durability Class gating | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | no destructive operation proceeds automatically against a volume declared `recoverable` or `irreplaceable` |
-| Pinned inputs only | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | render from recorded digests — Intent, Cluster Context, locks, ClusterState — never from live cluster state |
+| Pinned inputs only | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | render from recorded digests — Intent, Platform Intent, locks, ClusterState — never from live cluster state |
 
 Anything else the delivery definition chooses — push or pull, who applies, what
 prunes, what reconciles, how co-testing gates — is its own business. A delivery
@@ -218,12 +225,13 @@ places is the duplication this specification spends its time removing.
 | Chapter | Covers | Diagram |
 |---|---|---|
 | [`10-service-intent.md`](10-service-intent.md) | Service, Workload, and every layer-1 field by concern: identity, configuration, assets, probes, storage and durability, hardening and size, placement, exposure, observability, secrets and grants, release units | embedded |
+| [`14-platform-intent.md`](14-platform-intent.md) | the second authored document: substrate facts, the bootstrap set, the declared foundation, tiers as edge facts, durability and observability policy, engines as images, providers, the overridable derivations | none |
 | [`16-dependencies.md`](16-dependencies.md) | dependency edges, per-Workload identity, derived network policy, the derivation map | embedded |
 | [`20-resolved-deployment.md`](20-resolved-deployment.md) | the Resolved Deployment, the authority table in one place, the pinned input set including ClusterState, derived mechanics, overrides, the Reconcile Unit, publish-back | embedded |
 | [`30-deliverables.md`](30-deliverables.md) | adapters, the adapter port, attribution, ledgers, coverage re-derived from the registry | embedded |
 | [`40-composition.md`](40-composition.md) | Intent Fragments, participants and the staleness bound, schema versioning and rollout, unmanaged surfaces | embedded |
 | [`50-lifecycle.md`](50-lifecycle.md) | model-level lifecycle: Release Unit switchover, expand/contract for cross-Service contract changes, lock lifecycle — and the statement that delivery mechanics and co-testing are defined separately | embedded |
-| [`60-setup.md`](60-setup.md) | blueprint packs, secrets at rest, CNI selection, node facts, platform facts and restore | embedded |
+| [`60-setup.md`](60-setup.md) | bootstrap order, secrets at rest, CNI selection, node facts, restore, onboarding and adoption | embedded |
 
 **Chapter 16's derivation map is the load-bearing artefact**, and its value is
 that it is checkable by a script rather than read by eye. Three properties hold
@@ -392,7 +400,7 @@ through, with the deciding ADR named.
 
 - ~~**Kubernetes secrets-at-rest encryption.**~~ Decided by
   [0028](../../docs/adr/model/0028-secrets-at-rest-gate.md): the renderer refuses
-  `delivery: env` and `delivery: file` unless the pinned cluster context
+  `delivery: env` and `delivery: file` unless the pinned Platform Intent
   advertises `secretsEncryption: true` (`E_SECRETS_AT_REST_REQUIRED`), normative
   in [chapter 60](60-setup.md#secrets-at-rest). The claim is open and owned
   there, not here.

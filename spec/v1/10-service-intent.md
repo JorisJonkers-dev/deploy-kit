@@ -607,8 +607,10 @@ a hostname belonging to another Service). Those thirteen are Assets. The other
 **five are derived catalogs** — `gatus-endpoints` (41 derived references in 288
 lines), `platform-edge-route-catalog` (30/163), `platform-edge-catalog` (28/146),
 `grafana-datasources` (6/104), `postgres-init-script` (18/98) — and they leave
-configuration entirely: they are Deliverables, rendered from the dependency graph
-(chapter 30).
+*authored* configuration entirely: each is an **inbound derivation** for the
+platform Service that consumes it, rendered as that Service's own Asset
+([chapter 16](16-dependencies.md#what-an-edge-derives-read-inbound),
+[0098](../../docs/adr/model/0098-one-publication-path.md)).
 
 An Asset may not be executable. `hermes-bootstrap` is 221 lines of shell and
 `n8n-hooks` 499 lines of JavaScript, both run by `alpine:3.21` from a ConfigMap:
@@ -666,7 +668,7 @@ choosing ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)):
 |---|---|
 | the startup probe's **target** | the **liveness** declaration — its `path` + `port`, or its `tcp` port |
 | the startup probe's period and failure threshold | `startupBudget`, as before |
-| readiness and liveness `periodSeconds`, `timeoutSeconds`, `failureThreshold` | the Cluster Context's probe policy, named on every rendered probe |
+| readiness and liveness `periodSeconds`, `timeoutSeconds`, `failureThreshold` | the Platform Intent's probe policy, named on every rendered probe |
 | `initialDelaySeconds` | `0` on readiness and liveness, because the startup probe already gates both |
 
 **The startup probe targets liveness, not readiness.** Exceeding a startup
@@ -739,12 +741,13 @@ is worth. A volume that genuinely needs different terms restates one with a
 reason ([chapter 20](20-resolved-deployment.md#overrides)).
 
 **The method is platform-assigned too**, keyed by the Workload's
-[`engine`](#workload): an application-level backup is `pg_dump` for `postgres`, a
-definitions export for `rabbitmq`, a file-level copy for `files`, and the image
-and command for each arrive with the blueprint packs
-([0013](../../docs/adr/model/0013-blueprint-packs-pinned-checkout.md)). Nothing
-authored is executable, which is what [0012](../../docs/adr/model/0012-assets-not-code.md)
-requires and what a `backup.sh` Asset would have violated.
+[`engine`](#workload): the method **is an image** — one purpose-built image per
+engine whose entrypoint performs the backup, named in the Platform document and
+resolved through the images lock ([chapter 14](14-platform-intent.md#engines),
+[0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)).
+Nothing authored is executable, which is what [0012](../../docs/adr/model/0012-assets-not-code.md)
+requires and what a `backup.sh` Asset — or a shell string in a platform file —
+would have violated.
 
 The `kubernetes` adapter emits the resulting `CronJob` — one per volume that
 derives a backup, plus its retention sweep — because that kind is already its
@@ -856,7 +859,7 @@ in the same list as a pod running as root.
 `sizeLimit` is **not** authored per path. Ephemeral storage is finite node disk
 and therefore contended
 ([0004](../../docs/adr/model/0004-contention-decides-authority.md)), so the
-Cluster Context carries one default and a Workload needing more restates it with
+Platform Intent carries one default and a Workload needing more restates it with
 a reason ([chapter 20](20-resolved-deployment.md#overrides)). One number covers
 every case the estate has; the escape exists for the case it does not.
 
@@ -1169,8 +1172,8 @@ interpretation of the pair: whichever wins is decided by a string comparison
 inside a proxy, which no author can see in the document.
 
 Everything else at the edge is **derived** from the audience and the tier that
-carries it: forward-auth, the security-headers baseline, the entryPoint, TLS
-and the middleware chain that assembles them
+carries it: forward-auth, the security-headers baseline, the tier's listener and
+certificates, and the middleware chain that assembles them
 ([0018](../../docs/adr/model/0018-exposure-by-audience.md),
 [0030](../../docs/adr/model/0030-runtime-mechanics-derived.md)).
 
@@ -1388,7 +1391,7 @@ The platform carries the rules; the class carries urgency:
 | `alertClass` on the Service | the severity of each derived rule, and which receiver it routes to |
 
 The catalog and the class-to-receiver mapping are platform data, pinned with the
-Cluster Context, for the same reason the backup method is
+Platform Intent, for the same reason the backup method is
 ([0004](../../docs/adr/model/0004-contention-decides-authority.md)): a receiver is
 a shared notification channel, and PromQL in a domain file would put a mechanism
 in layer 1. The mapping feeds **both** producers, so a Service's urgency means
@@ -1812,12 +1815,16 @@ deadline, and the health-gate deadline the Service's switchover waits on.
 
 ```yaml
 overrides:
-  - field: progressDeadlineSeconds
+  - derivation: startupDeadline
     value: 600
     reason: nginx pods, ~10-20Mi each; the derived 1800 assumes a JVM cold start.
 ```
 
-An override targets a **derivation**, never an **assignment**
+An override names a **derivation by its own name** — the closed set in
+[chapter 14](14-platform-intent.md#overridable-derivations) — never a Kubernetes
+field ([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)),
+and a name not in that set is `E_UNKNOWN_OVERRIDE`. It targets a derivation,
+never an **assignment**
 ([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md)). The escape exists
 because the alternative is not a better rule but a falsified input: an owner who
 needs 600 and cannot say so will misreport their `startupBudget` to coax the number

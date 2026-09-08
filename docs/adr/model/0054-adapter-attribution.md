@@ -9,6 +9,14 @@ rests-on: ["0003"]
 
 # Every Deliverable is attributed to exactly one Adapter
 
+> **Amended 2026-09-08.** Attribution is per **Deliverable**, and every adapter
+> is central ([0098](0098-one-publication-path.md)): nothing is emitted per
+> Service repository at publish time any more, so the "one Fragment per Adapter
+> per Service" this text once described no longer exists. The path an adapter
+> declares is what the path plan assigns from
+> ([0070](0070-path-authority-is-layer-2.md)). The sixteen-adapter evidence below
+> is the state this decision was taken in.
+
 ## Rests on
 
 Attribution is derivable from the registry rather than reconstructed from rendered
@@ -22,9 +30,8 @@ carrying `defaultPath`, and `registry.ts:231-235` throws `adapter definition mis
 
 ## Why
 
-Every file in the Deliverable Set is produced by exactly one Adapter, as one
-Fragment per Adapter per Service. The adapter and fragment layer already exists
-and works — sixteen registered adapters, `adapter-compat`, parity checking with a
+Every file in the Deliverable Set is produced by exactly one Adapter. The
+adapter layer already exists and works — a registry, parity checking with a
 behavioural profile, a deterministic render hash, and an artifact contract.
 Replacing it with direct rendering would discard attribution, and attribution is
 what lets a diff say which subsystem produced a file. It is also what makes the
@@ -74,7 +81,6 @@ every live object by hand.
 
 - Each Adapter must become total for its target subsystem, and today none are — paid by the adapter owner.
 - The totality gap must be measured **per adapter against the registered generation** ([0052](0052-registered-adapters-are-v1.md)) before any schedule is committed; the old count of 342 files under `fleet-infra/cluster` measured the cluster tree instead of the registry and is not the number to plan against — paid by the programme.
-- The five `-fragment` twins must collapse to one owner per kind, and `E_PATH_COLLISION` must be implemented, before the coverage assertion can be enforced — paid by the toolkit maintainer.
+- `E_PATH_COLLISION` must be implemented — on the path plan, before any adapter runs — before the coverage assertion can be enforced; the five `-fragment` twins that made it urgent are deleted by [0098](0098-one-publication-path.md) — paid by the toolkit maintainer.
 - A file no adapter claims cannot ship silently: it becomes a ledger entry with an owner and a reason ([0055](0055-bidirectional-ledgers.md)) — paid by the Service owner.
-- One Fragment per Adapter per Service multiplies fragment count by the adapter set, and every one is pushed and pulled by composition ([0037](0037-composition-oci-fragments.md)) — paid by the registry and the composition step.
 - A reviewer reading a Deliverable diff can name the producing subsystem without reading render code — paid by the adapter owner, who must declare and defend a unique `defaultPath` on every registry entry.

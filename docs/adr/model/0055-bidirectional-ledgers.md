@@ -9,6 +9,15 @@ rests-on: ["0003"]
 
 # Every accepted hole is a bidirectional ledger
 
+> **Amended 2026-09-08.** Two of the three ledgers this ADR names are unchanged.
+> The third — registered unmanaged surfaces — now holds only hostnames nobody
+> deploys and nobody depends on: a provider the estate reaches is a **fact** in
+> the Platform document, not a hole
+> ([0095](0095-platform-intent-is-the-second-authored-document.md)). The
+> bootstrap set is a fourth list with this ADR's shape
+> ([0099](0099-bootstrap-set-is-recorded.md)). Class B below — 41 pack-delivered
+> objects — is now declared and rendered ([0096](0096-the-foundation-is-declared.md)).
+
 ## Rests on
 
 Under [0003](0003-three-layer-meta-model.md) layer 3 is a total function of the

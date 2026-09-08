@@ -41,3 +41,13 @@ Status of everything in this directory:
 | [0050](0050-exercises-and-deploys.md) | co-testing | exercises many-to-many, deploys exactly-one |
 | [0051](0051-vcluster-substrate.md) | co-testing | the test substrate is measured before it gates |
 | [0058](0058-delivery-machinery-observability.md) | delivery | the delivery machinery watches itself |
+
+## Joined this set on 2026-09-08
+
+- **`flux-root`** — one Flux `Kustomization` per layer, with `dependsOn` and
+  health checks. It is one delivery mechanism's reading of the Reconcile Unit
+  DAG that [chapter 20](../../../spec/v1/20-resolved-deployment.md#the-reconcile-unit)
+  derives, so it is delivery's to define
+  ([0098](../model/0098-one-publication-path.md)). The model emits the kustomize
+  groupings and the ordering; until this set defines otherwise, the bootstrap
+  Flux source applies the tree those groupings describe.
