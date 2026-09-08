@@ -52,7 +52,7 @@ cannot deploy at all — and the default cannot come from testing: `jellyfin`,
 `sonarr`, `radarr`, `prowlarr`, `bazarr`, `qbittorrent` and `immich` have **zero**
 test classes between them, so `media-stack` deploys seven services behind smoke
 tests only. The symmetric gap has no backstop: a relationship with *no* Aggregator
-has no gate, visible only in [0038](../0038-participants-list-staleness.md)'s list.
+has no gate, visible only in [0038](../model/0038-participants-list-staleness.md)'s list.
 
 ## Alternatives
 

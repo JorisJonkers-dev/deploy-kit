@@ -11,8 +11,43 @@ because autoscaling is not in the model; storage is `local-path`, because no
 PVC in the estate sets a `storageClassName`.
 
 Adapter attribution lives on the **Fragment** record (`{path, content, adapter}`),
-not on the object, so each file states its adapter in a header comment. Nothing
-in the rendered YAML carries it machine-readably — see G-30.
+not on the object, and the files carry no header comment stating it: rendered
+output carries no commentary. The table below is the attribution, and nothing in
+the rendered YAML carries it machine-readably — see G-30.
+
+## Comment-free, and what this pass changed
+
+The tree carries **no commentary**: one `GENERATED. Never hand-edit.` header line
+per file, emitted by the serializer as a constant, and then the object.
+Everything the files used to explain in comments belongs here or in a decision.
+
+Re-rendered against the decisions of 2026-09-07, so this pass added the objects
+that had no producer and made explicit three things a renderer had been choosing:
+
+| change | decided in |
+|---|---|
+| the fixed label set, `instance` now the Workload and `component` the runtime | [0072](../../../../../docs/adr/model/0072-the-label-set-is-fixed.md) |
+| `automountServiceAccountToken`, `false` wherever the pod does not authenticate | [0087](../../../../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md) |
+| `runAsUser`, `runAsGroup`, and `fsGroup` on the Workload holding the clone | [0082](../../../../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md) |
+| a startup probe pointed at the **liveness** endpoint, and one probe cadence | [0088](../../../../../docs/adr/model/0088-startup-probe-targets-liveness.md) |
+| an `emptyDir` for the JVM's `/tmp`, at the platform's ephemeral size | [0092](../../../../../docs/adr/model/0092-writable-paths-are-declared.md) |
+| explicit route `priority` on all five routes, rather than a rule-length sort | [0093](../../../../../docs/adr/model/0093-route-precedence-is-derived.md) |
+| `size` on the PVC, and the backup a Durability Class derives | [0081](../../../../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md), [0077](../../../../../docs/adr/model/0077-durability-derives-a-backup.md) |
+
+**The "cannot derive today" column below is largely historical.** Those rows
+were decided on 2026-09-07 and their status lives in
+[`../../RENDER-GAPS.md`](../../RENDER-GAPS.md) rather than being restated here.
+
+## Estate-scoped objects are not in this tree
+
+Two files this tree used to carry — `edge/middlewares.yaml` and
+`observability/gatus-endpoints.yaml` — render in the **platform domains** now:
+the Middleware set is emitted per tier by the `traefik` adapter into the edge
+domain, and the Gatus endpoint list is an inbound derivation rendered as the
+declared `gatus` Service's own Asset in the observability domain
+([0096](../../../../../docs/adr/model/0096-the-foundation-is-declared.md),
+[0098](../../../../../docs/adr/model/0098-one-publication-path.md)). This domain
+contributes routes and exposures to both; it owns neither object.
 
 ## Emitted
 
@@ -28,8 +63,11 @@ in the rendered YAML carries it machine-readably — see G-30.
 | `apps/knowledge/networkpolicy.yaml` | `networking` — **not registered** (**G-16**) | `dependsOn`, `provides`, `exposure`, `scrape`, effective grant set, baseline | egress to anything outside the estate — the worker's git remote (**G-20**); ingress from consumers absent from the union (**G-18**); whether a namespace catch-all is emitted (**G-17**) |
 | `apps/knowledge/vso.yaml` | `vso` | `secrets` at both levels, `delivery`, `rotation`, workload `name` | Secret/object naming (**G-21**); which identity reads a shared path (**G-23**); the Kubernetes auth mount name |
 | `apps/knowledge/kustomization.yaml` | `kubernetes` | the emitted file set | ownership of `vso.yaml` (**G-25**) |
-| `edge/ingressroutes.yaml` | `traefik-public` | the Service's `exposure`: authored `host`, the exposure `audience` and five routes — four overriding it to `anonymous` — each naming `knowledge-api` and its `http` surface | — |
-| `observability/gatus-endpoints.yaml` | `gatus` | `exposure` (host and routes), `probes.readiness`, `provides` | an externally probeable health path — the URL is derivable now, the anonymous route to it is not (**G-28**); anything at all from `alertClass` (**G-29**); which namespace the ConfigMap belongs in (**G-27**) |
+| `edge/ingressroutes.yaml` | `traefik`, for the tier each route's audience selects | the Service's `exposure`: authored `host`, the exposure `audience` and five routes — four overriding it to `anonymous` — each naming `knowledge-api` and its `http` surface | — |
+| `apps/knowledge/backup.yaml` | `kubernetes` | `durability: irreplaceable` plus `engine: files` on the vault clone | — (0077) |
+| `apps/vso-secrets/policies/knowledge-api.policy.json` | `vault-policy` | the three KV grants, each with its `metadata` sibling | — (0073, 0086) |
+| `apps/vso-secrets/policies/knowledge-api.role.json` | `vault-policy` | the Workload's ServiceAccount and namespace | — |
+| `observability/prometheusrules.yaml` | `prometheus` | the baseline set, severity and receiver from `alertClass: business-hours` | — (0079) |
 
 ## Deliberately absent, and correct
 
@@ -39,7 +77,7 @@ in the rendered YAML carries it machine-readably — see G-30.
 | a `ServiceMonitor` or `PodMonitor` for `knowledge-ingest-worker` | no `scrape` is declared, and a ServiceMonitor selects a Service it does not have. |
 | any probe on `knowledge-ingest-worker` | `probes: none` is **declared**, so the absence is a decision rather than a forgotten block — and a readiness gate on a Workload that can never report ready would stop the Service switching for ever. |
 | `podmonitor.yaml`, `hpa.yaml` | nothing declares a pod-level scrape; autoscaling is not in this model. |
-| `traefik-lan` routes | no path rule carries the `lan` audience. |
+| `traefik` routes | no path rule carries the `lan` audience. |
 
 ## Demanded by the model, produced by nothing
 
@@ -51,9 +89,13 @@ in the rendered YAML carries it machine-readably — see G-30.
 | `Role` / `RoleBinding` per Workload | per-Workload identity | **none.** No `rbac` adapter. It is also what keeps the two Secret boundaries apart in a shared namespace (**G-24**). |
 | `resolved.yml` (the `ResolvedService` projection) | publish-back | central composition; not part of a Deliverable Set. |
 
-Estate-scoped files this domain contributes rows to but cannot render alone:
-`edge-catalog`, `edge-route-catalog`, `image-metadata`, `flux-root`'s
-`apps-knowledge` Kustomization, and `vso`'s `VaultConnection` in `vso-system`.
+Estate-scoped objects this domain contributes rows to but does not render: the
+edge catalogs, now Assets of the declared Traefik Services in the platform edge
+domain; the Gatus endpoint list, an Asset of the declared `gatus` Service; and
+`vso`'s `VaultConnection` in `vso-system`. The per-Workload image digests that
+were once an `image-metadata` document are in this Service's `resolved.yml`
+projection, and the Flux `Kustomization` for `apps-knowledge` is delivery's
+([0098](../../../../../docs/adr/model/0098-one-publication-path.md)).
 
 ## Gaps
 
@@ -124,7 +166,7 @@ not enumerated anywhere either.
 python` injects 6. Exactly one of them, `OTEL_SERVICE_NAME`, is a function of
 anything declared. The other fifteen are constants held in a **Runtime Profile**,
 and chapter 20's pinned input set does not include one — it lists Intent
-Fragments, the Cluster Context and node contract, the images lock and the
+Fragments, the Platform document and node contract, the images lock and the
 ClusterState snapshot. A render cannot be a pure function of pinned inputs while
 16 env vars come from an unpinned source.
 
@@ -249,6 +291,6 @@ intent and invents no dimension. The chapter's example needs correcting, or the
 two disagree about what the same Workload asks for.
 
 **G-36** `E_SECRETS_AT_REST_REQUIRED` blocks all four grants until the pinned
-Cluster Context advertises `secretsEncryption: true`, so **none of this domain
-ships** on today's inputs. There is no Cluster Context document in the example
+Platform document advertises `secretsEncryption: true`, so **none of this domain
+ships** on today's inputs. There is no Platform document in the example
 set to check against.

@@ -6,7 +6,7 @@
 #                                                            -> oras resolve
 #                                                            -> verify digest
 #
-# ONE DOMAIN FILE IS ONE FRAGMENT (docs/adr/0063-intent-authored-per-domain.md).
+# ONE DOMAIN FILE IS ONE FRAGMENT (docs/adr/model/0063-intent-authored-per-domain.md).
 # This repository holds one, platform/knowledge.yml, so it publishes one
 # fragment; a repository holding several domain files runs these steps once per
 # file, and a domain never spans repositories, so no fragment is ever a partial
@@ -15,9 +15,9 @@
 # Fires independently of any image release. That is deliberate: a change to the
 # domain file, an env file or a secret grant produces no image, and the unit of
 # composition is the FRAGMENT, not the image
-# (docs/adr/0037-composition-oci-fragments.md). Tying this to a version tag
+# (docs/adr/model/0037-composition-oci-fragments.md). Tying this to a version tag
 # would let intent-only changes sit unpublished until the participant tripped
-# its staleness bound (docs/adr/0038-participants-list-staleness.md). Whether
+# its staleness bound (docs/adr/model/0038-participants-list-staleness.md). Whether
 # and how such a change is co-tested against other units before it reaches a
 # cluster is defined separately from the model: see docs/adr/deferred/README.md.
 #
@@ -60,13 +60,13 @@ jobs:
         run: |
           # The version lives in ONE place: this repository's own lockfile,
           # bumped by Renovate behind the ordering gate
-          # (docs/adr/0040-renovate-ordering-gate.md). Restating it here is how
+          # (docs/adr/model/0040-renovate-ordering-gate.md). Restating it here is how
           # the previous render-local.sh copies went stale by four minor
           # releases.
           #
           # It is NOT read from the domain file's schemaVersion. That
           # field is the DATA MODEL's own semver and no longer tracks the
-          # package version (docs/adr/0039-artifact-schema-versioning.md):
+          # package version (docs/adr/model/0039-artifact-schema-versioning.md):
           # reading it as a package version pins the toolkit to a release that
           # may not exist, and hides the real pin from Renovate. Composition
           # checks the fragment's schemaVersion against the composing toolkit's
@@ -80,7 +80,7 @@ jobs:
           # Local-only checks: schema shape, forbidden fields, and
           # placeholder-to-grant agreement WITHIN this repository -- every
           # ${secret:...} byte-matches a granted path and every delivery: env
-          # grant has a placeholder (docs/adr/0027-secret-reference-join-key.md).
+          # grant has a placeholder (docs/adr/model/0027-secret-reference-join-key.md).
           # Estate-wide invariants cannot be checked here and are
           # composition's job.
           npx --no-install deploy-config-schema intent validate \
@@ -92,12 +92,12 @@ jobs:
         if: ${{ !cancelled() }}
         run: |
           # --env-dir holds one directory per WORKLOAD
-          # (docs/adr/0011-configuration-env-files-per-workload.md):
+          # (docs/adr/model/0011-configuration-env-files-per-workload.md):
           # platform/env/knowledge-api/base.env and
           # platform/env/knowledge-ingest-worker/base.env, each with its own
           # per-cluster overlay. Workload names are unique within a domain, so
           # one directory per Workload is unambiguous across every Service the
-          # file declares (docs/adr/0024-identity-per-workload.md).
+          # file declares (docs/adr/model/0024-identity-per-workload.md).
           npx --no-install deploy-config-schema intent pack \
             --domain platform/knowledge.yml \
             --env-dir platform/env \
@@ -134,7 +134,7 @@ jobs:
           # An artefact cannot contain its own digest, so it is resolved AFTER
           # the push and recorded by the consumer. This is why the composition
           # lock is an output rather than an input
-          # (docs/adr/0037-composition-oci-fragments.md).
+          # (docs/adr/model/0037-composition-oci-fragments.md).
           DIGEST="$(oras resolve "$REF")"
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
 

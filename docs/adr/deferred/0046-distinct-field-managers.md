@@ -53,7 +53,7 @@ CronJob the next hour is the retry. Both appliers already run under the
 aggregator ServiceAccount on a runner *"inside the cluster"*
 (`spec/v1/50-lifecycle.md:195-198`), so the Lease is reachable from both. Which
 lock the CronJob picks is decided in [0044](0044-reconcile-cronjob.md); this is
-half of what makes [0002](../0002-kubernetes-as-substrate.md)'s second property
+half of what makes [0002](../model/0002-kubernetes-as-substrate.md)'s second property
 real, and [0047](0047-namespace-per-deployer.md) is the other half.
 
 ## Alternatives

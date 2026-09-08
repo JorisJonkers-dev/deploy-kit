@@ -1,0 +1,111 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notes-api
+  namespace: notes-system
+  labels: &id001
+    app.kubernetes.io/name: notes-api
+    app.kubernetes.io/instance: notes-api
+    app.kubernetes.io/part-of: notes
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: node
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  progressDeadlineSeconds: 60
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: notes-api
+      app.kubernetes.io/instance: notes-api
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      serviceAccountName: notes-api
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: notes-api
+        image: ghcr.io/jorisjonkers-dev/notes/notes-api@sha256:9c1e5a4b7d2f8e3a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a
+        ports:
+        - name: http
+          containerPort: 8080
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 50m
+          limits:
+            memory: 256Mi
+        securityContext:
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        env:
+        - name: NODE_ENV
+          value: production
+        - name: NOTES_PAGE_SIZE
+          value: '50'
+        - name: PORT
+          value: '8080'
+        - name: DEPLOYMENT_ENVIRONMENT
+          value: production
+        - name: OTEL_SERVICE_NAME
+          value: notes-api
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector.utility-system.svc.cluster.local:4317
+        readinessProbe:
+          httpGet:
+            path: /healthz/ready
+            port: 8080
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          initialDelaySeconds: 0
+        livenessProbe:
+          httpGet:
+            path: /healthz/live
+            port: 8080
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          initialDelaySeconds: 0
+        startupProbe:
+          httpGet:
+            path: /healthz/live
+            port: 8080
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 4
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notes-api
+  namespace: notes-system
+  labels:
+    app.kubernetes.io/name: notes-api
+    app.kubernetes.io/instance: notes-api
+    app.kubernetes.io/part-of: notes
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: node
+spec:
+  selector:
+    app.kubernetes.io/name: notes-api
+    app.kubernetes.io/instance: notes-api
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+    protocol: TCP

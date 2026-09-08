@@ -48,12 +48,39 @@
       - 'name': 'ADR contract'
         'run': 'npm run lint:adrs'
 
+      # Every rendered example object, against Kubernetes and CRD schemas.
+      # "All parse" is what let a PVC with `storage: null` through
+      # (spec/v1/examples/RENDER-GAPS.md, R8). Pinned by version, never
+      # `curl | bash` from a default branch: see
+      # docs/adr/deferred/0048-class-b-pinning.md.
+      - 'name': 'Manifest schemas'
+        'shell': 'bash'
+        'run': |
+          set -euo pipefail
+          version='0.6.7'
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/v${version}/kubeconform-linux-amd64.tar.gz" \
+            | tar -xz kubeconform
+          KUBECONFORM="${PWD}/kubeconform" npm run lint:manifests
+
+      # Relative links and heading anchors across every tracked Markdown file.
+      # The ADR domain move rewrote about a hundred references outside the
+      # decision set, and nothing checked them.
+      - 'name': 'Link contract'
+        'run': 'npm run lint:links'
+
+      # The layer boundaries on the module graph: no layer reaching outward, no
+      # adapter reading another adapter, no cycle, nothing unreachable from an
+      # entry point. Skips loudly while src/ does not exist.
+      # See docs/adr/architecture/0069-boundaries-enforced-on-the-graph.md.
+      - 'name': 'Boundaries'
+        'run': 'npm run lint:boundaries'
+
       # Coverage gate is enforced inside the test script (c8 --check-coverage).
       - 'name': 'Test'
         'run': 'npm test'
 
       # Pinned by version, never `curl | bash` from a third-party default
-      # branch: docs/adr/0048-class-b-pinning.md (deferred set) records that
+      # branch: docs/adr/deferred/0048-class-b-pinning.md (deferred set) records that
       # pattern as a live supply-chain defect in the repository this one
       # replaces. Renovate bumps the pin.
       - 'name': 'Actionlint'
@@ -68,7 +95,7 @@
           ./actionlint -color .github/workflows/*.yml
 
       # Binary, not gitleaks-action: the action needs a paid licence for org
-      # repos. Pinned version, per docs/adr/0048-class-b-pinning.md.
+      # repos. Pinned version, per docs/adr/deferred/0048-class-b-pinning.md.
       - 'name': 'Secret scan'
         'shell': 'bash'
         'env':

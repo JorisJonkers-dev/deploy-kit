@@ -3,7 +3,7 @@
 #   services/knowledge/platform/knowledge.yml
 #
 # One file per domain, one file one Intent Fragment
-# (docs/adr/0063-intent-authored-per-domain.md). The knowledge domain owns one
+# (docs/adr/model/0063-intent-authored-per-domain.md). The knowledge domain owns one
 # Service today; the namespace derives from the header as knowledge-system,
 # which is the namespace it already runs in.
 #
@@ -14,14 +14,14 @@
 # one, and an irreplaceable volume.
 #
 # Companion env files, one per WORKLOAD
-# (docs/adr/0011-configuration-env-files-per-workload.md):
+# (docs/adr/model/0011-configuration-env-files-per-workload.md):
 #   platform/env/knowledge-api/base.env
 #     -- reproduced as examples/knowledge-api.base.env
 #   platform/env/knowledge-ingest-worker/base.env
 #     -- reproduced as examples/knowledge-ingest-worker.base.env
 
 # The data model's own semver, not the toolkit's
-# (docs/adr/0039-artifact-schema-versioning.md).
+# (docs/adr/model/0039-artifact-schema-versioning.md).
 schemaVersion: 1.0.0
 
 domain: knowledge
@@ -34,13 +34,13 @@ services:
 
     # The two Workloads below switch together, because they are one Service and
     # a Service is the unit of atomic release
-    # (docs/adr/0062-service-is-the-release-unit.md). Nothing declares that: the
+    # (docs/adr/model/0062-service-is-the-release-unit.md). Nothing declares that: the
     # boundary carries it. If the ingest worker misses its startup budget, the
     # API stays on its old version too, and a rollback takes both back.
     #
     # A Service is still not a Reconcile Unit: `platform-postgres` before
     # `knowledge` is ordering, derived from the edge set
-    # (docs/adr/0032-reconcile-unit-derived.md), and the later unit waits rather
+    # (docs/adr/model/0032-reconcile-unit-derived.md), and the later unit waits rather
     # than being held.
 
     # Shared grants. Both Workloads read the same Postgres and RabbitMQ
@@ -48,20 +48,20 @@ services:
     # edit and two when a key is added. A Service-level grant is held by every
     # Workload, including ones added later; a grant that must NOT be shared
     # moves down a level, and there is no removal syntax
-    # (docs/adr/0022-grants-live-on-the-service.md).
+    # (docs/adr/model/0022-grants-live-on-the-service.md).
     #
     # `secrets` stays on the Service and is never raised to the domain header: a
     # domain-level grant would hand every Service in the file a reader slot on
-    # the whole path (docs/adr/0009-vault-read-is-per-path.md).
+    # the whole path (docs/adr/model/0009-vault-read-is-per-path.md).
     #
     # `delivery: env` and `delivery: file` render a Kubernetes Secret, so both
-    # are refused unless the pinned Cluster Context advertises
+    # are refused unless the pinned Platform document advertises
     # `secretsEncryption: true` -- E_SECRETS_AT_REST_REQUIRED
-    # (docs/adr/0028-secrets-at-rest-gate.md). Until that flag lands on the
+    # (docs/adr/model/0028-secrets-at-rest-gate.md). Until that flag lands on the
     # pinned k3s version, knowledge cannot ship.
     secrets:
       # SPLIT PATH, one path per reader set
-      # (docs/adr/0023-grant-unit-is-the-path.md). A KV-v2 read returns the
+      # (docs/adr/model/0023-grant-unit-is-the-path.md). A KV-v2 read returns the
       # whole document, so the only boundary the store can enforce is the path:
       # while every consumer's credentials shared secret/data/platform/postgres,
       # these pods could read auth-api's database password. The reader set here
@@ -107,7 +107,7 @@ services:
           # scripts are fetched by curl before any session exists. The `/`
           # catch-all keeps the Service's audience, so everything else is
           # behind forward-auth -- derived from the audience, never named here
-          # (docs/adr/0018-exposure-by-audience.md).
+          # (docs/adr/model/0018-exposure-by-audience.md).
           #
           # Written as block mappings rather than one-liners only because five
           # fields do not fit a line; the shape is the same one auth's two
@@ -146,10 +146,15 @@ services:
       - name: knowledge-api
         # Identity is the Workload name under the domain namespace:
         # `knowledge-system.knowledge-api`
-        # (docs/adr/0024-identity-per-workload.md).
+        # (docs/adr/model/0024-identity-per-workload.md).
         lifecycle: service
         image: knowledge-api    # alias -> digest through the images lock
         runtime: jvm            # -> otel-jvm profile: 10 OTEL, 6 PYROSCOPE
+
+        # The JVM writes to /tmp. Declared, mounted as an emptyDir, and the
+        # read-only root control stays intact
+        # (docs/adr/model/0092-writable-paths-are-declared.md).
+        writablePaths: [/tmp]
 
         # Surfaces are a property of the process, so they sit on the Workload.
         # The rendered Kubernetes port name is the surface name, which is how
@@ -159,7 +164,7 @@ services:
           http: 8080
 
         # Hard dimensions, all of which must match
-        # (docs/adr/0061-placement-is-hard-dimensions.md).
+        # (docs/adr/model/0061-placement-is-hard-dimensions.md).
         placement:
           memory: 768Mi         # a JVM service at its default heap. Raw, not a
                                 # class: a class name cannot be compared to a
@@ -177,7 +182,7 @@ services:
         # No `hardening` block. The default `restricted` class applies
         # unstated: runAsNonRoot, readOnlyRootFilesystem, drop ALL, seccomp
         # RuntimeDefault. This image is built here and meets it
-        # (docs/adr/0016-pod-hardening.md).
+        # (docs/adr/model/0016-pod-hardening.md).
 
         dependsOn:
           - {service: platform-postgres, surface: postgres}
@@ -196,7 +201,7 @@ services:
             port: 8080
           # Distinct paths, stated. A liveness probe on the readiness endpoint
           # turns a Postgres outage into a crash-loop
-          # (docs/adr/0014-probes-are-siblings.md).
+          # (docs/adr/model/0014-probes-are-siblings.md).
 
         startupBudget: 600s     # JVM cold start measured at ~250-300s
         zeroDowntime: true      # the MCP endpoint 503s if a roll opens a gap
@@ -210,7 +215,7 @@ services:
         # pod authenticates as `knowledge-api` and the worker as
         # `knowledge-ingest-worker`, each bound to exactly its own effective
         # grant set, which is the Service-level list plus this one
-        # (docs/adr/0024-identity-per-workload.md).
+        # (docs/adr/model/0024-identity-per-workload.md).
         secrets:
           - path: secret/data/knowledge-system/mcp-bearer
             keys: [workstation]
@@ -229,7 +234,7 @@ services:
         # No `provides`. A RabbitMQ consumer opens no listener, so it declares
         # no surface, nothing can depend on it, and the derived default-deny
         # policy gives it no ingress at all
-        # (docs/adr/0035-network-policy-default-deny.md).
+        # (docs/adr/model/0035-network-policy-default-deny.md).
 
         placement:
           memory: 256Mi         # a single-consumer queue worker, not a server
@@ -237,7 +242,7 @@ services:
           # Nothing else is declared, and the volume below is why nothing more
           # is needed: a `local-path` PV pins this Workload to the node holding
           # it. That pinning is DERIVED -- read from the pinned ClusterState
-          # snapshot (docs/adr/0034-cluster-state-pinned-input.md) -- rather
+          # snapshot (docs/adr/model/0034-cluster-state-pinned-input.md) -- rather
           # than restated here as a dimension that could disagree with the
           # binding.
 
@@ -251,7 +256,7 @@ services:
 
         # A RabbitMQ consumer with no listener. Declared, not omitted, so the
         # absence is a decision rather than an oversight
-        # (docs/adr/0014-probes-are-siblings.md).
+        # (docs/adr/model/0014-probes-are-siblings.md).
         probes: none
 
         startupBudget: 120s
@@ -260,17 +265,24 @@ services:
                                 # pods at once, so the strategy derives to
                                 # Recreate
 
+        # A file-level copy is the backup method for a directory of files, and
+        # `irreplaceable` derives one -- so the engine is required here
+        # (docs/adr/model/0077-durability-derives-a-backup.md,
+        # docs/adr/model/0078-engine-is-workload-vocabulary.md).
+        engine: files
+
         stateful: true
         volumes:
           - claim: knowledge-vault-clone
             mountAt: /var/lib/knowledge-vault
+            size: 20Gi
             durability: irreplaceable
             # The one fact only the owning Service knows
-            # (docs/adr/0015-durability-class-per-volume.md); schedule, sweep
+            # (docs/adr/model/0015-durability-class-per-volume.md); schedule, sweep
             # and destination are derived. `irreplaceable` renders a backup job
             # with retention plus an off-cluster copy, and its restore must be
             # rehearsed before the first production apply
-            # (docs/adr/0057-datastore-and-restore.md).
+            # (docs/adr/model/0057-datastore-and-restore.md).
             #
             # Not declared: storage class and volume size -- both draw on finite
             # node disk and are assigned. A `placement.disk` dimension filters
@@ -282,7 +294,7 @@ services:
         # identity load-bearing: under one identity per Service the
         # internet-facing API Workload would authenticate as a principal holding
         # `read` on this key, and the store cannot narrow a read below the path
-        # (docs/adr/0009-vault-read-is-per-path.md).
+        # (docs/adr/model/0009-vault-read-is-per-path.md).
         secrets:
           - path: secret/data/knowledge-system/vault-deploy-key
             keys: [key]

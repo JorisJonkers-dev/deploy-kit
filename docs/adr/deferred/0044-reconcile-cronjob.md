@@ -41,7 +41,7 @@ own ServiceAccount, re-applying the lock read from *its own* objects' annotation
 and undo a break-glass rollback ([0045](0045-break-glass-reporting.md)).
 
 The loop renders from the same pinned inputs as the merge deploy, including the
-`clusterStateDigest` of [0034](../0034-cluster-state-pinned-input.md). Without it it
+`clusterStateDigest` of [0034](../model/0034-cluster-state-pinned-input.md). Without it it
 can diverge legitimately and be misreported: finding B2 traced the case where a
 PV rebinds after a node failure, the hourly render observes the new binding, and
 the tree differs from the merge-time tree with every recorded digest identical —

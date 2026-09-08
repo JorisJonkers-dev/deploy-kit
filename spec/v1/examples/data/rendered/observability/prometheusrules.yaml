@@ -1,0 +1,135 @@
+# GENERATED. Never hand-edit.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: data
+  namespace: data-system
+  labels:
+    app.kubernetes.io/part-of: data
+    app.kubernetes.io/managed-by: deploy-kit
+    release: metrics-stack
+spec:
+  groups:
+    - name: platform-postgres.baseline
+      rules:
+        - alert: TargetAbsent
+          expr: absent(up{job="postgres"}) == 1
+          for: 10m
+          labels:
+            severity: page
+            receiver: pushover-page
+            service: platform-postgres
+          annotations:
+            summary: postgres is not being scraped
+        - alert: RestartLoop
+          expr: increase(kube_pod_container_status_restarts_total{container="postgres"}[15m]) > 3
+          for: 10m
+          labels:
+            severity: page
+            receiver: pushover-page
+            service: platform-postgres
+          annotations:
+            summary: postgres is restarting repeatedly
+        - alert: ProbeFailing
+          expr: kube_pod_status_ready{condition="false", pod=~"postgres-.*"} == 1
+          for: 10m
+          labels:
+            severity: page
+            receiver: pushover-page
+            service: platform-postgres
+          annotations:
+            summary: postgres is not ready
+        - alert: ReplicationLag
+          expr: deploy_kit_catalog_rule{rule="replication-lag", job="postgres"} == 1
+          for: 10m
+          labels:
+            severity: page
+            receiver: pushover-page
+            service: platform-postgres
+          annotations:
+            summary: "postgres: replication-lag (engine rule from the platform catalog)"
+        - alert: ConnectionsExhausted
+          expr: deploy_kit_catalog_rule{rule="connections-exhausted", job="postgres"} == 1
+          for: 10m
+          labels:
+            severity: page
+            receiver: pushover-page
+            service: platform-postgres
+          annotations:
+            summary: "postgres: connections-exhausted (engine rule from the platform catalog)"
+    - name: platform-rabbitmq.baseline
+      rules:
+        - alert: TargetAbsent
+          expr: absent(up{job="rabbitmq"}) == 1
+          for: 10m
+          labels:
+            severity: urgent
+            receiver: discord-oncall
+            service: platform-rabbitmq
+          annotations:
+            summary: rabbitmq is not being scraped
+        - alert: RestartLoop
+          expr: increase(kube_pod_container_status_restarts_total{container="rabbitmq"}[15m]) > 3
+          for: 10m
+          labels:
+            severity: urgent
+            receiver: discord-oncall
+            service: platform-rabbitmq
+          annotations:
+            summary: rabbitmq is restarting repeatedly
+        - alert: ProbeFailing
+          expr: kube_pod_status_ready{condition="false", pod=~"rabbitmq-.*"} == 1
+          for: 10m
+          labels:
+            severity: urgent
+            receiver: discord-oncall
+            service: platform-rabbitmq
+          annotations:
+            summary: rabbitmq is not ready
+        - alert: QueueDepth
+          expr: deploy_kit_catalog_rule{rule="queue-depth", job="rabbitmq"} == 1
+          for: 10m
+          labels:
+            severity: urgent
+            receiver: discord-oncall
+            service: platform-rabbitmq
+          annotations:
+            summary: "rabbitmq: queue-depth (engine rule from the platform catalog)"
+        - alert: ConsumersZero
+          expr: deploy_kit_catalog_rule{rule="consumers-zero", job="rabbitmq"} == 1
+          for: 10m
+          labels:
+            severity: urgent
+            receiver: discord-oncall
+            service: platform-rabbitmq
+          annotations:
+            summary: "rabbitmq: consumers-zero (engine rule from the platform catalog)"
+    - name: platform-valkey.baseline
+      rules:
+        - alert: TargetAbsent
+          expr: absent(up{job="valkey"}) == 1
+          for: 10m
+          labels:
+            severity: business-hours
+            receiver: discord-daytime
+            service: platform-valkey
+          annotations:
+            summary: valkey is not being scraped
+        - alert: RestartLoop
+          expr: increase(kube_pod_container_status_restarts_total{container="valkey"}[15m]) > 3
+          for: 10m
+          labels:
+            severity: business-hours
+            receiver: discord-daytime
+            service: platform-valkey
+          annotations:
+            summary: valkey is restarting repeatedly
+        - alert: ProbeFailing
+          expr: kube_pod_status_ready{condition="false", pod=~"valkey-.*"} == 1
+          for: 10m
+          labels:
+            severity: business-hours
+            receiver: discord-daytime
+            service: platform-valkey
+          annotations:
+            summary: valkey is not ready

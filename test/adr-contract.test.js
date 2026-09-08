@@ -2,15 +2,20 @@
 // scripts/lint-adrs.mjs enforces them; this test is what makes the enforcement
 // part of `npm test` rather than a thing someone remembers to run.
 import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { join, basename } from "node:path";
 import assert from "node:assert/strict";
 import test from "node:test";
 
+// The linted domains, each its own directory under docs/adr. `deferred` is
+// parked direction work and is deliberately not part of the linted set.
 const ADR_DIR = "docs/adr";
-const adrFiles = readdirSync(ADR_DIR)
-  .filter((f) => /^\d{4}-.+\.md$/.test(f))
-  .sort();
+const DOMAINS = ["model", "architecture"];
+const adrFiles = DOMAINS.flatMap((domain) =>
+  (existsSync(join(ADR_DIR, domain)) ? readdirSync(join(ADR_DIR, domain)) : [])
+    .filter((f) => /^\d{4}-.+\.md$/.test(f))
+    .map((f) => join(domain, f)),
+).sort();
 
 test("the ADR lint passes over the committed decision set", () => {
   const out = execFileSync("node", ["scripts/lint-adrs.mjs"], {
@@ -19,9 +24,9 @@ test("the ADR lint passes over the committed decision set", () => {
   assert.match(out, /files clean/);
 });
 
-test("the decision set is non-empty and contiguously numbered", () => {
+test("the decision set is non-empty, and one number is used once", () => {
   assert.ok(adrFiles.length >= 40, `only ${adrFiles.length} ADRs found`);
-  const numbers = adrFiles.map((f) => Number(f.slice(0, 4)));
+  const numbers = adrFiles.map((f) => Number(basename(f).slice(0, 4)));
   assert.equal(new Set(numbers).size, numbers.length, "duplicate ADR number");
 });
 
@@ -44,7 +49,7 @@ test("every premise carries a falsifiable claim and every decision rests on one"
     assert.match(restsOn, /False\s+if:/, `${file}: claim is not falsifiable`);
     assert.match(restsOn, /Settled\s+by:/, `${file}: no settling test`);
 
-    if (tier === "premise") premises.add(file.slice(0, 4));
+    if (tier === "premise") premises.add(basename(file).slice(0, 4));
     else decisions.push({ file, frontmatter: frontmatter[1] });
   }
 

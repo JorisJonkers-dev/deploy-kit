@@ -1,0 +1,125 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: knowledge-ingest-worker-backup
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/name: knowledge-ingest-worker
+    app.kubernetes.io/instance: knowledge-ingest-worker
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    deploy-kit.jorisjonkers.dev/durability: irreplaceable
+    deploy-kit.jorisjonkers.dev/engine: files
+spec:
+  schedule: 45 2 * * *
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          serviceAccountName: knowledge-ingest-worker
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: backup
+            image: ghcr.io/jorisjonkers-dev/platform/file-backup@sha256:0000000000000000000000000000000000000000000000000000000000000000
+            command:
+            - /bin/sh
+            - -c
+            - tar -cf - .
+            securityContext:
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+            volumeMounts:
+            - name: data
+              mountPath: /data
+              readOnly: true
+            - name: backup
+              mountPath: /backup
+            envFrom:
+            - secretRef:
+                name: backup-off-cluster
+            env:
+            - name: BACKUP_DESTINATION
+              value: s3://backup-storage/jorisjonkers-dev/knowledge-vault-clone
+          volumes:
+          - name: data
+            persistentVolumeClaim:
+              claimName: knowledge-vault-clone
+          - name: backup
+            persistentVolumeClaim:
+              claimName: knowledge-vault-clone-backup
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: knowledge-ingest-worker-sweep
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/name: knowledge-ingest-worker
+    app.kubernetes.io/instance: knowledge-ingest-worker
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    deploy-kit.jorisjonkers.dev/durability: irreplaceable
+    deploy-kit.jorisjonkers.dev/engine: files
+spec:
+  schedule: 30 4 * * *
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          serviceAccountName: knowledge-ingest-worker
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: sweep
+            image: ghcr.io/jorisjonkers-dev/platform/file-backup@sha256:0000000000000000000000000000000000000000000000000000000000000000
+            command:
+            - /bin/sh
+            - -c
+            - find /backup -type f -mtime +90 -delete
+            securityContext:
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+            volumeMounts:
+            - name: data
+              mountPath: /data
+              readOnly: false
+            - name: backup
+              mountPath: /backup
+          volumes:
+          - name: data
+            persistentVolumeClaim:
+              claimName: knowledge-vault-clone
+          - name: backup
+            persistentVolumeClaim:
+              claimName: knowledge-vault-clone-backup

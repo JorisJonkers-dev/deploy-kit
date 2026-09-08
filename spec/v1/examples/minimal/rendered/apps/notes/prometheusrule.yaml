@@ -1,0 +1,41 @@
+# GENERATED. Never hand-edit.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: notes
+  namespace: notes-system
+  labels:
+    app.kubernetes.io/part-of: notes
+    app.kubernetes.io/managed-by: deploy-kit
+    release: metrics-stack
+spec:
+  groups:
+  - name: notes.baseline
+    rules:
+    - alert: TargetAbsent
+      expr: absent(up{job="notes-api"}) == 1
+      for: 10m
+      labels:
+        severity: business-hours
+        receiver: discord-daytime
+        service: notes
+      annotations:
+        summary: notes-api is not being scraped
+    - alert: RestartLoop
+      expr: increase(kube_pod_container_status_restarts_total{container="notes-api"}[15m]) > 3
+      for: 5m
+      labels:
+        severity: business-hours
+        receiver: discord-daytime
+        service: notes
+      annotations:
+        summary: notes-api is restarting repeatedly
+    - alert: ProbeFailing
+      expr: kube_pod_status_ready{condition="false", pod=~"notes-api-.*"} == 1
+      for: 10m
+      labels:
+        severity: business-hours
+        receiver: discord-daytime
+        service: notes
+      annotations:
+        summary: notes-api is not ready

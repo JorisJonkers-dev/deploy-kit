@@ -1,0 +1,28 @@
+# GENERATED. Never hand-edit.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: notes-api
+  namespace: notes-system
+  labels:
+    app.kubernetes.io/name: notes-api
+    app.kubernetes.io/instance: notes-api
+    app.kubernetes.io/part-of: notes
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: node
+spec:
+  entryPoints:
+  - websecure
+  routes:
+  - kind: Rule
+    match: Host(`notes.jorisjonkers.dev`) && PathPrefix(`/`)
+    priority: 1001
+    middlewares:
+    - name: security-headers-strict
+      namespace: kube-system
+    services:
+    - name: notes-api
+      namespace: notes-system
+      port: 8080
+  tls:
+    certResolver: letsencrypt

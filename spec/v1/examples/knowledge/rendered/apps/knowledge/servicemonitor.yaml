@@ -1,18 +1,4 @@
-# adapter: kubernetes
-# real path: platform/cluster/flux/apps/knowledge/knowledge/servicemonitor.yaml
-#
-# ONE ServiceMonitor, for knowledge-api's declared scrape surface.
-#
-# NONE for knowledge-ingest-worker, and that is correct rather than missing: it
-# declares no `scrape`, and a ServiceMonitor selects a Kubernetes Service, which
-# that Workload does not have because it declares no `provides`. A PodMonitor is
-# the shape that would fit a listener-less Workload, and nothing in the intent
-# asks for one -- so no podmonitor.yaml is emitted either.
-#
-# `release: metrics-stack` is not decoration. Without it the operator ignores
-# the object, the Kustomization still goes Ready, and nothing is scraped. A
-# generated object always carries it; an authored one relies on the author
-# remembering.
+# GENERATED. Never hand-edit.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -20,16 +6,20 @@ metadata:
   namespace: knowledge-system
   labels:
     app.kubernetes.io/name: knowledge-api
+    app.kubernetes.io/instance: knowledge-api
     app.kubernetes.io/part-of: knowledge
     app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: jvm
     release: metrics-stack
 spec:
   jobLabel: app.kubernetes.io/name
   selector:
     matchLabels:
       app.kubernetes.io/name: knowledge-api
+      app.kubernetes.io/instance: knowledge-api
   endpoints:
-    - port: http           # scrape.port 8080 resolves to the surface name
-      path: /api/actuator/prometheus
-      interval: 30s        # not declared anywhere; the adapter's constant
-      scheme: http
+  - port: http
+    path: /api/actuator/prometheus
+    interval: 30s
+    scheme: http
+    scrapeTimeout: 10s

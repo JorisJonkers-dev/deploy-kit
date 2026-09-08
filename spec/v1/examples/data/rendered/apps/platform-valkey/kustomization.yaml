@@ -1,25 +1,9 @@
-# adapter: kubernetes
-# real path: platform/cluster/flux/apps/data/platform-valkey/kustomization.yaml
-#
-# The third of three. Four resources -- the smallest Service in the example set,
-# and every absence below is a declaration that was not made rather than a
-# derivation that failed.
+# GENERATED. Never hand-edit.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: data-system
 resources:
-  - workload.yaml            # Deployment + Service (one surface)
-  - serviceaccount.yaml
-  - pvc.yaml                 # valkey-data, reconstructible
-  - networkpolicy.yaml
-# Not emitted, all for declared reasons rather than missing producers:
-#   servicemonitor.yaml -- no `scrape`. No exporter runs beside this Workload
-#                          today, so there is no metrics surface to declare and
-#                          none is invented.
-#   configmap.yaml      -- no `assets`; env file not in the example set.
-#   vso.yaml            -- no `secrets`.
-#   backup.yaml         -- `durability: reconstructible` derives NO backup job.
-#                          This is the one "not emitted" row in the domain that
-#                          needs no gap number.
-#   pdb.yaml, hpa.yaml, podmonitor.yaml -- as elsewhere.
-#   prometheusrule.yaml -- `alertClass: business-hours` derives nothing today.
+- workload.yaml
+- serviceaccount.yaml
+- pvc.yaml
+- networkpolicy.yaml

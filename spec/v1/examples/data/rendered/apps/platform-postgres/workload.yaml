@@ -1,321 +1,173 @@
-# adapter: kubernetes
-# real path: platform/cluster/flux/apps/data/platform-postgres/workload.yaml
-#
-# ONE Service, ONE Workload, TWO surfaces. `postgres` opens 5432 itself and its
-# postgres-exporter sidecar opens 9187, and both appear on the single Service
-# object below -- a Kubernetes Service selects pods, not containers, so one
-# object fronts both. That is what lets `scrape: {port: 9187}` resolve to the
-# port NAME `metrics` and lets servicemonitor.yaml name a port instead of
-# repeating an integer.
-#
-# Two Deployments in this namespace belong to other Services (rabbitmq, valkey)
-# and NOTHING here relates to them. Three Services share `data-system` by
-# construction: the namespace groups, networkpolicy.yaml isolates.
-#
-# Attribution is a property of the producing adapter, declared in the registry
-# (0054), never an annotation on the object. The `# adapter:` header is a
-# reading aid.
+# GENERATED. Never hand-edit.
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: postgres                        # the WORKLOAD name, not the Service id
-  namespace: data-system                # <domain>-system
+  name: postgres
+  namespace: data-system
   labels:
-    # `name` is the Workload, `instance` the Service, `part-of` the domain. In
-    # this domain `instance` earns its place: it is the only label that says
-    # which of the three Services in `data-system` an object belongs to.
-    # No chapter fixes the set -- README, gap G-13.
     app.kubernetes.io/name: postgres
-    app.kubernetes.io/instance: platform-postgres
-    app.kubernetes.io/part-of: data
+    app.kubernetes.io/instance: postgres
+    app.kubernetes.io/part-of: platform-postgres
     app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
 spec:
-  # Deployment, not StatefulSet. Chapter 20 derives the object kind from
-  # `lifecycle`, `stateful` and `volumes` and states no function over the three.
-  # A StatefulSet's distinguishing feature is `volumeClaimTemplate`, which
-  # chapter 10 forbids (a template ties the claim to the Workload name, so a
-  # rename orphans the data), and its other effects -- a headless Service,
-  # ordinal pod names, ordered rollout -- are declared by nothing here. So
-  # `stateful: true` selects the 10m Flux health timeout class and nothing else
-  # about this object. README, gap G-04.
-  #
-  # replicas is NOT derived here. The rule is "from `minAvailable`, bounded by
-  # the size of the eligible node set", `minAvailable` is ungraded and undeclared
-  # on all three Services of this domain, and the eligible set has four members.
-  # 1 is forced from the other side -- one ReadWriteOnce local-path volume
-  # cannot attach to two pods -- so the number is right and the derivation that
-  # is supposed to produce it has no input. README, gap G-05.
   replicas: 1
   strategy:
-    # FORCED, not chosen. The RWO local-path claim in pvc.yaml cannot attach to
-    # two pods at once, so no surge is possible. `zeroDowntime: false` records
-    # the same fact from the author's side, and the two agree here; nothing
-    # checks that they always will.
-    #
-    # The cost is stated where a reader will meet it: every roll of the estate's
-    # datastore is a zero-pod window, and eight Services queue behind this one.
     type: Recreate
-  progressDeadlineSeconds: 180          # startupBudget 60s x 3
+  progressDeadlineSeconds: 180
   selector:
     matchLabels:
       app.kubernetes.io/name: postgres
-      app.kubernetes.io/instance: platform-postgres
+      app.kubernetes.io/instance: postgres
   template:
     metadata:
       labels:
         app.kubernetes.io/name: postgres
-        app.kubernetes.io/instance: platform-postgres
-        app.kubernetes.io/part-of: data
+        app.kubernetes.io/instance: postgres
+        app.kubernetes.io/part-of: platform-postgres
         app.kubernetes.io/managed-by: deploy-kit
-      # NO checksum annotation. An Asset with `onChange: restart` reaches a
-      # running pod only if the pod template changes when the file does, and
-      # there are two mechanisms for that -- a content-hashed ConfigMap name, or
-      # a checksum annotation here. No chapter picks one, and rendering both
-      # would be two records of one fact. The hashed name is used; see below.
-      # README, gap G-08.
+        app.kubernetes.io/component: none
     spec:
-      serviceAccountName: postgres      # the WORKLOAD name ALONE
-      # placement: memory 2Gi, cpu 500m, arch [amd64], disk {media: [nvme, ssd],
-      # size: 100Gi}.
-      #
-      # Eligible node set, computed against the pinned node contract:
-      #   enschede-t1000-1        amd64, nvme 120G + 500G
-      #   enschede-rx7900xtx-1    amd64, nvme 160G + 1000G
-      #   enschede-gtx-960m-1     amd64, ssd 100G + 500G
-      #   frankfurt-contabo-1     amd64, ssd 80G + 120G
-      # The three Pis fail three ways over: arm64, sdcard media, and 64G against
-      # a 100Gi ask. `memory` and `cpu` produce NO selector -- they were matched
-      # against node allocatable at build time and the scheduler re-checks
-      # capacity itself.
-      #
-      # No nodeSelector: `capabilities` is undeclared, and one required label
-      # per declared capability is the only thing that renders one.
+      serviceAccountName: postgres
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-              - matchExpressions:
-                  # `arch` is a SET and renders as In whatever its cardinality.
-                  - key: kubernetes.io/arch
-                    operator: In
-                    values: [amd64]
-                  # THE DISK DIMENSION HAS NO LABEL. `disk` is matched against
-                  # the node contract's `disks[].media` and `disks[].usable_gib`,
-                  # and no node label expresses "carries a disk of media nvme or
-                  # ssd with at least 100Gi usable". A per-media boolean label
-                  # would express `media` (two ORed nodeSelectorTerms) and could
-                  # not express `size` at all, because the size is a per-disk
-                  # number and a label is a string.
-                  #
-                  # So the computed eligible set is materialised by hostname.
-                  # That is the set, exactly, and it is the honest serialisation
-                  # of a build-time decision -- but it hard-codes four node names
-                  # into the tree, so a fifth node satisfying the dimension is
-                  # not admitted until someone re-renders against a new node
-                  # contract. Whether that is correct (pinned inputs say a new
-                  # node IS a new render) or a defect is undecided.
-                  # README, gap G-06.
-                  - key: kubernetes.io/hostname
-                    operator: In
-                    values:
-                      - enschede-t1000-1
-                      - enschede-rx7900xtx-1
-                      - enschede-gtx-960m-1
-                      - frankfurt-contabo-1
-      # NOT RENDERED, and it is the term that actually decides where this pod
-      # runs: the local-path PV binding. `disk` filters the FIRST placement
-      # only; once postgres-data is bound, the node holding it is the fact and
-      # the four-node term above is dead weight. That binding is read from the
-      # pinned ClusterState snapshot, which this example set does not reproduce,
-      # so `boundTo` cannot be rendered -- and nothing in this object records
-      # that the eligible set was computed, against which node-contract digest,
-      # or that three of its four members are unreachable for this pod.
-      # A `disk` value contradicting the binding is E_DISK_BINDING_CONFLICT.
-      # README, gap G-07.
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - enschede-t1000-1
+                - enschede-rx7900xtx-1
+                - enschede-gtx-960m-1
+                - frankfurt-contabo-1
       securityContext:
-        # hardening: restricted, with ONE declared exception. Two of the four
-        # controls are pod-level, two container-level; no chapter fixes the
-        # split, and here it decides whether the sidecar is covered by controls
-        # its own container never declared. README, gap G-16.
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
-        # NOT RENDERED: runAsUser and fsGroup. `runAsNonRoot: true` renders
-        # "with the UID from the image" and no pinned input carries a UID -- the
-        # images lock carries digests. The intent's prose says uid 999 and says
-        # the PV is already owned by 999; neither sentence is a field. This
-        # matters more here than anywhere else in the example set, because all
-        # three Services of this domain mount an RWO volume that a non-root uid
-        # must be able to write: without fsGroup, a freshly provisioned
-        # local-path directory is root-owned and postgres cannot initdb into it.
-        # README, gap G-15.
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
       containers:
+      - name: postgres
+        image: docker.io/pgvector/pgvector@sha256:1d757171e8712971926e2f2cc82508e1bc045578cabc2fb7bc134d839e5668b5
+        ports:
         - name: postgres
-          # alias `postgres` resolved to a digest through the images lock.
-          # THIRD-PARTY IS NOT A REASON TO FLOAT: `pgvector/pgvector:pg17` moves
-          # on every upstream build, and this Workload is Recreate on an RWO
-          # volume, so any reschedule is a fresh pull. The repository path is the
-          # lock's; nothing in layer 1 names a registry. README, gap G-03.
-          image: docker.io/pgvector/pgvector@sha256:1d757171e8712971926e2f2cc82508e1bc045578cabc2fb7bc134d839e5668b5
-          ports:
-            - name: postgres            # the surface name declaring 5432
-              containerPort: 5432
-              # The live cluster names this port `db`. Naming the surface for
-              # what it serves is the deliberate call; the rename is a parity
-              # entry, not a divergence.
-          resources:
-            # from placement. memory request == limit (incompressible; an OOM
-            # kill beats eviction roulette); cpu request, NO cpu limit
-            # (throttling reads as slow application code).
-            requests:
-              memory: 2Gi
-              cpu: 500m
-            limits:
-              memory: 2Gi
-          securityContext:
-            # THE EXCEPTION, AND THE WHOLE OF IT. One control is relaxed; the
-            # other three stand, byte-identical to every other container in this
-            # domain. Rendered as an explicit `false` rather than an omission so
-            # the relaxed control is visible in a diff.
-            readOnlyRootFilesystem: false   # exception: writableRootFilesystem
-            capabilities:
-              drop: [ALL]
-          env:
-            # literals, byte for byte from platform/env/postgres/base.env.
-            # runtime: none, so no OTEL_* and no PYROSCOPE_* are injected -- a
-            # third-party image cannot consume them and `none` says so
-            # deliberately rather than leaving `runtime` unset.
-            - name: POSTGRES_DB
-              value: postgres
-            - name: POSTGRES_USER
-              value: postgres
-          envFrom:
-            # The ${secret:...} half of the same env file. One env file per
-            # WORKLOAD, and this Workload has two containers -- so the file's
-            # three keys reach both of them, including DATA_SOURCE_NAME, which
-            # only the exporter uses. The model has no per-container partition
-            # rule, so the database container holds the exporter's connection
-            # string in its environment. README, gap G-09.
-            - secretRef:
-                name: platform-postgres-exporter
-          startupProbe:
-            # TCP, not HTTP: postgres has no HTTP surface, and an HTTP-only
-            # probe vocabulary could not express this domain at all.
-            # startupBudget 60s -> period 5s x threshold 12.
-            tcpSocket:
-              port: postgres
-            periodSeconds: 5
-            failureThreshold: 12
-          readinessProbe:
-            tcpSocket:
-              port: postgres
-            timeoutSeconds: 5
-          livenessProbe:
-            # A sibling declaration, not a fallback. Identical to readiness by
-            # declaration and written twice on purpose. A TCP accept says the
-            # listener is up; it does not say the database will answer a query,
-            # which is what `readiness` is supposed to mean for the Service eight
-            # consumers queue behind. The model has no richer probe vocabulary.
-            tcpSocket:
-              port: postgres
-            timeoutSeconds: 5
-          volumeMounts:
-            - name: postgres-data
-              mountPath: /var/lib/postgresql/data
-            - name: postgresql-conf
-              # `mountAt` is a FILE path, so the mount needs subPath -- and a
-              # subPath mount does not track later ConfigMap updates. Consistent
-              # here only because `onChange: restart` replaces the pod.
-              mountPath: /etc/postgresql/postgresql.conf
-              subPath: postgresql.conf
-              readOnly: true
-        # ------------------------------------------------------------------
-        # Rendered from the Workload's `sidecars`
-        # (docs/adr/0064-sidecars-are-workload-vocabulary.md). Without it
-        # `provides: {metrics: 9187}` has no listener, servicemonitor.yaml
-        # scrapes nothing, and the one secret grant in this domain has no
-        # consumer.
-        # ------------------------------------------------------------------
-        - name: postgres-exporter
-          image: quay.io/prometheuscommunity/postgres-exporter@sha256:06034c5595aef513e41b4d828317cfb61f44d0c1cee1533e5463bd69e42910d1
-          ports:
-            # `provides` is declared on the WORKLOAD and the Workload has two
-            # containers. Nothing says which container declares which port; it
-            # is placed here because the intent's prose says the exporter serves
-            # it, which is prose, not a field.
-            - name: metrics
-              containerPort: 9187
-          resources:
-            requests: {cpu: 10m, memory: 64Mi}
-            limits: {memory: 64Mi}
-          # Resources come from the sidecar's own `memory` and `cpu`: those are
-          # container-level in Kubernetes, so a sidecar declares them. The node
-          # dimensions stay on the Workload because nodeSelector is pod-level.
-          # Eligibility sums both containers: 2112Mi, not 2Gi.
-          securityContext:
-            # The Workload's exception is written on the container that needs
-            # it. This container gets the unrelaxed class -- which is a choice
-            # made during serialisation, because `hardening` is declared on the
-            # Workload and the Workload now has two containers. The pod-level
-            # half (runAsNonRoot, seccompProfile) covers this container whether
-            # or not anyone intended it to.
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: [ALL]
-          envFrom:
-            - secretRef:
-                name: platform-postgres-exporter
-          # NO probes. `probes` is declared on the Workload and both entries name
-          # port 5432, which this container does not open. A sidecar serving a
-          # scraped surface has no way to declare its own health.
-      volumes:
+          containerPort: 5432
+        resources:
+          requests:
+            memory: 2Gi
+            cpu: 500m
+          limits:
+            memory: 2Gi
+        securityContext:
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+        env:
+        - name: POSTGRES_DB
+          value: postgres
+        - name: POSTGRES_USER
+          value: postgres
+        envFrom:
+        - secretRef:
+            name: platform-postgres-exporter
+        startupProbe:
+          tcpSocket:
+            port: 5432
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 12
+        readinessProbe:
+          tcpSocket:
+            port: postgres
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 0
+        livenessProbe:
+          tcpSocket:
+            port: postgres
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 0
+        volumeMounts:
         - name: postgres-data
-          persistentVolumeClaim:
-            claimName: postgres-data
+          mountPath: /var/lib/postgresql/data
         - name: postgresql-conf
-          configMap:
-            # The content-hashed name from `onChange: restart`. The hash is a
-            # function of the file's bytes, and config/postgresql.conf lives in
-            # the Service repository, which this example set does not reproduce
-            # -- so the SUFFIX below stands for a hash rather than being one.
-            # See configmap.yaml. README, gap G-08.
-            name: postgres-postgresql-conf-<content-hash>
-            items:
-              - key: postgresql.conf
-                path: postgresql.conf
-      # NO emptyDir volumes. The `writableRootFilesystem` exception covers the
-      # unix socket at /var/run/postgresql and the lock files under /tmp, so the
-      # scratch-volume question the auth domain hits does not arise -- the
-      # exception answered it by relaxing the control instead.
+          mountPath: /etc/postgresql/postgresql.conf
+          subPath: postgresql.conf
+          readOnly: true
+        - name: writable-var-run-postgresql
+          mountPath: /var/run/postgresql
+        - name: writable-tmp
+          mountPath: /tmp
+      - name: postgres-exporter
+        image: quay.io/prometheuscommunity/postgres-exporter@sha256:06034c5595aef513e41b4d828317cfb61f44d0c1cee1533e5463bd69e42910d1
+        ports:
+        - name: metrics
+          containerPort: 9187
+        resources:
+          requests:
+            cpu: 10m
+            memory: 64Mi
+          limits:
+            memory: 64Mi
+        securityContext:
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        envFrom:
+        - secretRef:
+            name: platform-postgres-exporter
+      volumes:
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: postgres-data
+      - name: postgresql-conf
+        configMap:
+          name: postgres-postgresql-conf-<content-hash>
+          items:
+          - key: postgresql.conf
+            path: postgresql.conf
+      - name: writable-var-run-postgresql
+        emptyDir:
+          sizeLimit: 64Mi
+      - name: writable-tmp
+        emptyDir:
+          sizeLimit: 64Mi
+      automountServiceAccountToken: false
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: postgres                        # the Workload name: what a coordinate
-                                        # resolves to. Eight consumers write
-                                        # {service: platform-postgres, surface:
-                                        # postgres} and none of them writes
-                                        # this string or learns it exists.
+  name: postgres
   namespace: data-system
   labels:
     app.kubernetes.io/name: postgres
-    app.kubernetes.io/instance: platform-postgres
-    app.kubernetes.io/part-of: data
+    app.kubernetes.io/instance: postgres
+    app.kubernetes.io/part-of: platform-postgres
     app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
 spec:
   selector:
     app.kubernetes.io/name: postgres
-    app.kubernetes.io/instance: platform-postgres
+    app.kubernetes.io/instance: postgres
   ports:
-    # BOTH surfaces of one Workload, on one object. The port NAME is the
-    # `provides` surface name in each case, which is what servicemonitor.yaml
-    # and every derived NetworkPolicy rule then refer to.
-    - name: postgres
-      port: 5432
-      targetPort: postgres
-      protocol: TCP
-    - name: metrics
-      port: 9187
-      targetPort: metrics               # resolves into the SIDECAR container
-      protocol: TCP
+  - name: postgres
+    port: 5432
+    targetPort: postgres
+    protocol: TCP
+  - name: metrics
+    port: 9187
+    targetPort: metrics
+    protocol: TCP

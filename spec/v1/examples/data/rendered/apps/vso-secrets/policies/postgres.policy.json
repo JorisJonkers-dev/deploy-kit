@@ -1,0 +1,12 @@
+{
+  "_generated": "GENERATED. Never hand-edit.",
+  "name": "postgres",
+  "policy": {
+    "path": {
+      "secret/data/platform/postgres/exporter": { "capabilities": ["read"] },
+      "secret/metadata/platform/postgres/exporter": { "capabilities": ["read", "list"] },
+      "secret/data/platform/backup/off-cluster": { "capabilities": ["read"] },
+      "secret/metadata/platform/backup/off-cluster": { "capabilities": ["read", "list"] }
+    }
+  }
+}

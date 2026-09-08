@@ -51,7 +51,7 @@ not be built.
 This premise is therefore decided-in-direction but untested, and proceeding on
 it before #45 runs is exactly the pattern the review flagged. It stays `open`,
 its falsification path is cheap and already filed, and
-[0059](../0059-v1-scope-stopping-rule.md) makes group G conditional on the
+[0059](../model/0059-v1-scope-stopping-rule.md) makes group G conditional on the
 result. A second, independent reason for aggregators — relationships have no
 owner; 12 of the 32 system-tagged classes exercise `auth-api` *with its consumers*
 — survives whichever way #45 lands and lives in
@@ -72,7 +72,7 @@ resting on this premise — [0041](0041-push-delivery-boundary.md) through
 [0045](0045-break-glass-reporting.md), plus [0048](0048-class-b-pinning.md),
 [0051](0051-vcluster-substrate.md) and
 [0058](0058-delivery-machinery-observability.md) — are superseded in scope per
-[0059](../0059-v1-scope-stopping-rule.md). No delivery machinery exists yet; the
+[0059](../model/0059-v1-scope-stopping-rule.md). No delivery machinery exists yet; the
 blast radius is documents, roughly a day. Becomes irreversible once:
 aggregators are the only apply path for derived objects and Flux's class-A
 reconciliation is dismantled — after that, the "existing pipeline" the
@@ -89,7 +89,7 @@ experiment needs is gone and the premise can no longer be tested cheaply.
   suite execution against the existing pipeline — paid by joris, an afternoon
   plus one full test run.
 - If #45 falsifies the premise, group G is cut per
-  [0059](../0059-v1-scope-stopping-rule.md) and a third of the review's findings
+  [0059](../model/0059-v1-scope-stopping-rule.md) and a third of the review's findings
   close unbuilt — paid by joris; the afternoon was the price of finding out.
 - If the premise holds, the deployer must be the thing that ran the tests, and
   push machinery — per-aggregator RBAC, inventory, reapply, break-glass —

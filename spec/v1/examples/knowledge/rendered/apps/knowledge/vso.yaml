@@ -1,34 +1,5 @@
-# adapter: vso
-# real path: platform/cluster/flux/apps/vso-secrets/<name>.yaml
-#
-# The registered `vso` adapter writes ONE FILE PER OBJECT into a single
-# estate-wide directory, apps/vso-secrets/, with its own kustomization. It is
-# collected here per the review layout; the adapter, not the directory, owns
-# these objects, and a second adapter claiming this path is E_PATH_COLLISION.
-#
-# Not here, because they are estate-scoped and this domain contributes nothing
-# to them: VaultConnection `default` and, in the shape that ships today, a
-# single VaultAuth -- both in vso-system, one per estate.
-#
-# ALL FOUR grants are delivery: env or file, so all four persist a Kubernetes
-# Secret, so NONE of them may render until the pinned Cluster Context advertises
-# secretsEncryption: true (E_SECRETS_AT_REST_REQUIRED). Until that flag lands on
-# the pinned k3s version, this domain cannot ship at all.
-#
-# The Secret and VaultStaticSecret names are the granted path with the KV mount
-# and the `data/` segment removed and `/` replaced by `-`. Mechanical and
-# collision-free, because one path has one reader set. No chapter states the
-# rule. README, gap G-21.
+# GENERATED. Never hand-edit.
 ---
-# TWO VaultAuth objects, one per Workload identity. This is what makes the
-# per-Workload Vault role load-bearing for env and file delivery: the read is
-# performed under `knowledge-system.knowledge-api` or
-# `knowledge-system.knowledge-ingest-worker`, each bound to exactly its own
-# effective grant set.
-#
-# The registered adapter emits ONE VaultAuth, in vso-system, on the operator's
-# own ServiceAccount and role -- under which the operator reads every path for
-# everyone and the two derived roles do nothing. README, gap G-22.
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultAuth
 metadata:
@@ -41,10 +12,9 @@ metadata:
 spec:
   vaultConnectionRef: vso-system/default
   method: kubernetes
-  mount: kubernetes        # the Kubernetes auth mount name, a Cluster Context
-                           # fact; this example set carries no context document
+  mount: kubernetes
   kubernetes:
-    role: knowledge-api                # the Workload name ALONE
+    role: knowledge-api
     serviceAccount: knowledge-api
 ---
 apiVersion: secrets.hashicorp.com/v1beta1
@@ -64,13 +34,6 @@ spec:
     role: knowledge-ingest-worker
     serviceAccount: knowledge-ingest-worker
 ---
-# SERVICE-LEVEL grant, held by both Workloads. A SPLIT Subtree path: while every
-# consumer's credentials shared secret/data/platform/postgres, these pods could
-# read auth-api's database password, because a KV-v2 read returns the whole
-# document and `keys:` narrows nothing.
-#
-# The synced Secret carries EVERY key at the path, not a projection of
-# `keys: [user, password]`.
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultStaticSecret
 metadata:
@@ -80,24 +43,20 @@ metadata:
     app.kubernetes.io/part-of: knowledge
     app.kubernetes.io/managed-by: deploy-kit
 spec:
-  # A shared grant has two eligible identities and the model states no tie-break
-  # for which one performs the read. Picked arbitrarily. README, gap G-23.
   vaultAuthRef: knowledge-api
   type: kv-v2
   mount: secret
-  path: platform/postgres/kb          # the granted path, minus mount and data/
+  path: platform/postgres/kb
   destination:
     name: platform-postgres-kb
     create: true
   refreshAfter: 1h
   rolloutRestartTargets:
-    # from rotation.tolerates: restart -- both holders, never hand-declared
-    - {kind: Deployment, name: knowledge-api}
-    - {kind: Deployment, name: knowledge-ingest-worker}
+  - kind: Deployment
+    name: knowledge-api
+  - kind: Deployment
+    name: knowledge-ingest-worker
 ---
-# SERVICE-LEVEL grant, NOT split. Its reader set is already exactly this
-# Service's two Workloads, and the rule is one path per reader SET. It splits on
-# the day a second Service is granted it.
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultStaticSecret
 metadata:
@@ -116,11 +75,11 @@ spec:
     create: true
   refreshAfter: 1h
   rolloutRestartTargets:
-    - {kind: Deployment, name: knowledge-api}
-    - {kind: Deployment, name: knowledge-ingest-worker}
+  - kind: Deployment
+    name: knowledge-api
+  - kind: Deployment
+    name: knowledge-ingest-worker
 ---
-# WORKLOAD-LEVEL grant: the API serves /mcp, the worker does not. One
-# rolloutRestartTarget, not two.
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultStaticSecret
 metadata:
@@ -140,16 +99,9 @@ spec:
     create: true
   refreshAfter: 1h
   rolloutRestartTargets:
-    - {kind: Deployment, name: knowledge-api}
+  - kind: Deployment
+    name: knowledge-api
 ---
-# WORKLOAD-LEVEL grant, delivery: file. The object is identical in shape to an
-# env-delivered one -- delivery decides how the value reaches a process, never
-# what the token may read. What differs is entirely on the consuming side: this
-# Secret is referenced by a projected volume in workload.yaml and by no envFrom.
-#
-# This is the grant that makes per-Workload identity load-bearing. Under one
-# identity per Service the internet-facing API would authenticate as a principal
-# holding `read` on this path, and the store cannot narrow a read below the path.
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultStaticSecret
 metadata:
@@ -169,7 +121,5 @@ spec:
     create: true
   refreshAfter: 1h
   rolloutRestartTargets:
-    - {kind: Deployment, name: knowledge-ingest-worker}
-  # The Vault boundary holds. The KUBERNETES one holds only because no Role
-  # grants `get secrets` in knowledge-system -- and there is no `rbac` adapter
-  # to render one, in either direction. README, gap G-24.
+  - kind: Deployment
+    name: knowledge-ingest-worker

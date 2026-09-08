@@ -1,26 +1,4 @@
-# adapter: kubernetes
-# real path: platform/cluster/flux/apps/data/platform-postgres/servicemonitor.yaml
-#
-# From `scrape: {port: 9187, path: /metrics}` alone. The declared port resolves
-# to the port NAME `metrics` through `provides`, which is why the endpoint below
-# names a port rather than repeating an integer -- and why the second surface of
-# this Workload had to be declared at all.
-#
-# The scrape target is the SIDECAR. The selector picks the pod; the port name
-# picks the container's port. Nothing in this object, and nothing in the model,
-# records that the process answering /metrics is not the process the Service is
-# named for.
-#
-# No PodMonitor: the scrape surface is fronted by a Service.
-#
-# NO PROMETHEUSRULE, and this domain is where that hole is most visible. Three
-# Services in one file declare three DIFFERENT Alert Classes -- `page` here,
-# `urgent` on platform-rabbitmq, `business-hours` on platform-valkey -- which is
-# the whole vocabulary except `none`, deliberately chosen per Service and never
-# raised to the domain. All three derive exactly the same thing: nothing. No
-# registered adapter renders a PrometheusRule (zero occurrences under src/ in
-# either generation), and the notifier route that `alertClass` + `owner` is
-# supposed to produce has no producer either. README, gap G-33.
+# GENERATED. Never hand-edit.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -28,26 +6,21 @@ metadata:
   namespace: data-system
   labels:
     app.kubernetes.io/name: postgres
-    app.kubernetes.io/instance: platform-postgres
-    app.kubernetes.io/part-of: data
+    app.kubernetes.io/instance: postgres
+    app.kubernetes.io/part-of: platform-postgres
     app.kubernetes.io/managed-by: deploy-kit
-    # CONTEXT: the operator selects on this label. A ServiceMonitor without it is
-    # accepted by the API server, its Kustomization goes Ready, the operator logs
-    # nothing, and the target is never scraped. The value is a Cluster Context
-    # fact (the metrics stack's HelmRelease name), not intent.
+    app.kubernetes.io/component: none
     release: metrics-stack
 spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: postgres
-      app.kubernetes.io/instance: platform-postgres
+      app.kubernetes.io/instance: postgres
   namespaceSelector:
     matchNames:
-      - data-system
+    - data-system
   endpoints:
-    - port: metrics                    # resolved from `provides`, not restated
-      path: /metrics
-      # No `interval` and no `scrapeTimeout`. Neither is derivable: no field
-      # declares a scrape interval and no chapter names a default. Omitting them
-      # takes the operator's global default, decided by whoever configured the
-      # metrics stack. README, gap G-19.
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
