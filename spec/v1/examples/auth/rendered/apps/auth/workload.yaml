@@ -1,244 +1,169 @@
-# adapter: kubernetes
-# real path: platform/cluster/flux/apps/auth/auth/workload.yaml
-#
-# ONE file, because the `kubernetes` adapter emits workload.yaml per SERVICE and
-# Service `auth` holds two Workloads. Four objects: a Deployment and a Service
-# per Workload.
-#
-# This file is the closest the rendered tree comes to expressing atomic release,
-# and it is not close. The two Deployments below roll INDEPENDENTLY: each one's
-# new ReplicaSet is admitted to its own Service's Endpoints the moment its own
-# readiness passes, so a 30-second nginx roll serves the new UI against the old
-# API for up to the ten minutes auth-api's cold start is allowed to take. That
-# is exactly the failure the Service boundary exists to prevent, and nothing
-# below prevents it. README, gap G-01 -- the delivery definition must close it.
-#
-# Attribution is a property of the PRODUCER, declared in the registry
-# (0054), not an annotation on the object -- post-hoc annotation was considered
-# and rejected because an edit can lose it. The `# adapter:` header is a reading
-# aid, not a machine-readable claim.
+# GENERATED. Never hand-edit.
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: auth-api
-  namespace: auth-system              # <domain>-system
+  namespace: auth-system
   labels:
-    # No chapter fixes the label set. These four are the renderer's convention:
-    # `name` is the Workload, `instance` the Service, `part-of` the domain.
-    # README, gap G-13.
     app.kubernetes.io/name: auth-api
-    app.kubernetes.io/instance: auth
+    app.kubernetes.io/instance: auth-api
     app.kubernetes.io/part-of: auth
     app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: jvm
 spec:
-  # minAvailable: 1, bounded by the size of the eligible node set. The eligible
-  # set is ONE node -- frankfurt-contabo-1 is the only node advertising
-  # public-ingress -- so the bound is 1. Live runs 2 on that node; the rule as
-  # written cannot reproduce it, and there is no anti-affinity vocabulary that
-  # would make a second replica mean anything. README, gap G-06.
-  replicas: 1
+  replicas: 2
   strategy:
-    # zeroDowntime: true, no volumes -> RollingUpdate. maxUnavailable: 0 is what
-    # makes the switch a switch; it is also what lets this Deployment switch
-    # alone.
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 0
-  progressDeadlineSeconds: 1800       # startupBudget 600s x 3, floored
+  progressDeadlineSeconds: 1800
   selector:
     matchLabels:
       app.kubernetes.io/name: auth-api
-      app.kubernetes.io/instance: auth
+      app.kubernetes.io/instance: auth-api
   template:
     metadata:
       labels:
         app.kubernetes.io/name: auth-api
-        app.kubernetes.io/instance: auth
+        app.kubernetes.io/instance: auth-api
         app.kubernetes.io/part-of: auth
         app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: jvm
     spec:
-      serviceAccountName: auth-api    # the WORKLOAD name alone
-      # placement: arch [amd64] + capabilities [public-ingress].
-      # `memory` and `cpu` produce NO selector: they were matched against node
-      # allocatable at build time (eligible set = [frankfurt-contabo-1]) and the
-      # scheduler re-checks capacity itself. Nothing in this object records that
-      # the eligible set was computed, or against which node contract digest.
+      serviceAccountName: auth-api
       nodeSelector:
-        # one required label per declared capability, ANDed by nodeSelector
-        platform.jorisjonkers.dev/capability-public-ingress: "true"
+        platform.jorisjonkers.dev/capability-public-ingress: 'true'
       affinity:
         nodeAffinity:
-          # `arch` is a SET, so it renders as matchExpressions/In whatever its
-          # cardinality -- a set of one and a set of two produce the same shape.
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-              - matchExpressions:
-                  - key: kubernetes.io/arch
-                    operator: In
-                    values: [amd64]
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
       securityContext:
-        # hardening: restricted, no exceptions. Two of the four controls are
-        # pod-level, two are container-level; no chapter fixes that split.
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+        runAsUser: 1000
+        runAsGroup: 1000
       containers:
-        - name: auth-api
-          # alias `auth-api` resolved through the images lock. The repository
-          # path is the lock's, not the intent's.
-          image: ghcr.io/jorisjonkers-dev/auth/auth-api@sha256:f8c36eb830a1d01ed91538c8defe7d55d82d76bf5228c2b5a0ef8056b662a512
-          ports:
-            - name: http              # the surface name declaring 8081
-              containerPort: 8081
-          resources:
-            # from placement. memory request == limit (incompressible);
-            # cpu request, NO cpu limit (throttling reads as slow code).
-            requests:
-              memory: 768Mi
-              cpu: 250m
-            limits:
-              memory: 768Mi
-          securityContext:
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: [ALL]
-          env:
-            # --- literals, carried through from base.env ----------------------
-            - name: SPRING_PROFILES_ACTIVE
-              value: prod
-            - name: SESSION_COOKIE_SECURE
-              value: "true"
-            # --- ${dependency:...} coordinates --------------------------------
-            # The host is the provider's Kubernetes Service, which is named for
-            # the WORKLOAD (`postgres`), not for the Service id
-            # (`platform-postgres`). The consumer wrote neither.
-            - name: DB_HOST
-              value: postgres.data-system.svc.cluster.local
-            - name: DB_PORT
-              value: "5432"           # surface `postgres` of platform-postgres
-            - name: VALKEY_HOST
-              value: valkey.data-system.svc.cluster.local
-            - name: VALKEY_PORT
-              value: "6379"           # surface `redis` of platform-valkey
-            - name: SPRING_RABBITMQ_HOST
-              value: rabbitmq.data-system.svc.cluster.local
-            - name: SPRING_RABBITMQ_PORT
-              value: "5672"           # surface `amqp` of platform-rabbitmq
-            # MAIL_HOST / MAIL_PORT are NOT RENDERED. The edge
-            # {service: stalwart, surface: smtp} does not resolve in this
-            # example set -- the mail domain publishes no Intent Fragment here,
-            # so the port and the Workload name behind that surface are both
-            # unknown. Over the composed union it resolves; inventing 25 would
-            # be inventing the provider's declaration. README, gap G-04.
-            # --- derived from this Workload's own `provides` ------------------
-            - name: SERVER_PORT
-              value: "8081"
-            # --- resolved from ${exposure:auth.public#url} --------------------
-            # SOURCE: `host: auth.jorisjonkers.dev` on the `public` exposure of
-            # Service auth, plus the scheme the tier terminates. The env file
-            # writes the placeholder and never the literal; the substitution is
-            # a named source resolving to one value, and the two paths below are
-            # written OUTSIDE it, so nothing here is a template with arguments.
-            # The host moves in one line of intent and all three follow.
-            - name: AUTH_ISSUER
-              value: https://auth.jorisjonkers.dev
-            - name: AUTH_LOGIN_URL
-              value: https://auth.jorisjonkers.dev/login
-            - name: CONFIRMATION_URL
-              value: https://auth.jorisjonkers.dev/confirm
-            # AUTH_CORS_ALLOWED_ORIGINS is NOT RENDERED. Its predicate over the
-            # inbound edge set is open (chapter 16 open item 1): nine hostnames
-            # are maintained by hand today and the derivation is probably
-            # "inbound edges declaring a browser surface", which no field
-            # declares. It stays hand-maintained. README, gap G-05.
-            - name: MAIL_USERNAME
-              value: auth@jorisjonkers.dev   # cluster public domain + Service id
-            # --- derived from `delivery: self` on all three grants ------------
-            - name: VAULT_ENABLED
-              value: "true"
-            - name: VAULT_AUTHENTICATION
-              value: KUBERNETES
-            - name: VAULT_KUBERNETES_ROLE
-              value: auth-api           # the Workload's identity; no author writes it
-            - name: VAULT_DB_ENABLED
-              value: "true"             # the grant on .../postgres/auth
-            # CONTEXT: the Secret Store's address is a Cluster Context fact.
-            # The in-cluster form is used here so that the derived "egress to
-            # the Secret Store" rule in networkpolicy.yaml matches the flow this
-            # value produces; if the live value is the public hostname, that
-            # rule matches nothing and the flow leaves through the edge instead.
-            # README, gap G-11.
-            - name: VAULT_ADDR
-              value: http://vault.utility-system.svc.cluster.local:8200
-            # SPRING_CONFIG_IMPORT is Spring-specific. `runtime: jvm` selects a
-            # JVM profile; nothing in the model says this JVM runs Spring Boot
-            # with spring-cloud-vault, and no other runtime value would produce
-            # this key. README, gap G-10.
-            - name: SPRING_CONFIG_IMPORT
-              value: vault://
-            - name: AUTH_TRANSIT_ENABLED
-              value: "true"
-            - name: AUTH_TRANSIT_KEY_NAME
-              value: auth-api-jwt       # the transit grant's `keys:` entry
-            # --- Runtime Profile (runtime: jvm) -------------------------------
-            - name: OTEL_SERVICE_NAME
-              value: auth-api           # the only one derivable from the intent
-            # The other nine OTEL_* and all six PYROSCOPE_* values live in the
-            # jvm Runtime Profile, which is carried by the pinned Cluster
-            # Context. This example set does not reproduce the Cluster Context,
-            # so they are not rendered rather than guessed. README, gap G-11.
-            # DEPLOYMENT_ENVIRONMENT comes from the Cluster Target, same reason.
-          startupProbe:
-            # derived from startupBudget 600s: period 5s x threshold 120.
-            # WHICH endpoint a startup probe uses is not stated anywhere; the
-            # readiness path is used here. README, gap G-08.
-            httpGet:
-              path: /api/actuator/health/readiness
-              port: http
-            periodSeconds: 5
-            failureThreshold: 120
-          readinessProbe:
-            httpGet:
-              path: /api/actuator/health/readiness
-              port: http
-            timeoutSeconds: 5
-          livenessProbe:
-            # a sibling declaration, not a fallback: its own path, its own port
-            httpGet:
-              path: /api/actuator/health/liveness
-              port: http
-            timeoutSeconds: 5
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
+      - name: auth-api
+        image: ghcr.io/jorisjonkers-dev/auth/auth-api@sha256:f8c36eb830a1d01ed91538c8defe7d55d82d76bf5228c2b5a0ef8056b662a512
+        ports:
+        - name: http
+          containerPort: 8081
+        resources:
+          requests:
+            memory: 768Mi
+            cpu: 250m
+          limits:
+            memory: 768Mi
+        securityContext:
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: prod
+        - name: SESSION_COOKIE_SECURE
+          value: 'true'
+        - name: DB_HOST
+          value: postgres.data-system.svc.cluster.local
+        - name: DB_PORT
+          value: '5432'
+        - name: VALKEY_HOST
+          value: valkey.data-system.svc.cluster.local
+        - name: VALKEY_PORT
+          value: '6379'
+        - name: SPRING_RABBITMQ_HOST
+          value: rabbitmq.data-system.svc.cluster.local
+        - name: SPRING_RABBITMQ_PORT
+          value: '5672'
+        - name: SERVER_PORT
+          value: '8081'
+        - name: AUTH_ISSUER
+          value: https://auth.jorisjonkers.dev
+        - name: AUTH_LOGIN_URL
+          value: https://auth.jorisjonkers.dev/login
+        - name: CONFIRMATION_URL
+          value: https://auth.jorisjonkers.dev/confirm
+        - name: MAIL_USERNAME
+          value: auth@jorisjonkers.dev
+        - name: VAULT_ENABLED
+          value: 'true'
+        - name: VAULT_AUTHENTICATION
+          value: KUBERNETES
+        - name: VAULT_KUBERNETES_ROLE
+          value: auth-api
+        - name: VAULT_DB_ENABLED
+          value: 'true'
+        - name: VAULT_ADDR
+          value: http://vault.utility-system.svc.cluster.local:8200
+        - name: SPRING_CONFIG_IMPORT
+          value: vault://
+        - name: AUTH_TRANSIT_ENABLED
+          value: 'true'
+        - name: AUTH_TRANSIT_KEY_NAME
+          value: auth-api-jwt
+        - name: OTEL_SERVICE_NAME
+          value: auth-api
+        startupProbe:
+          httpGet:
+            path: /api/actuator/health/liveness
+            port: 8081
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 120
+        readinessProbe:
+          httpGet:
+            path: /api/actuator/health/readiness
+            port: http
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 0
+        livenessProbe:
+          httpGet:
+            path: /api/actuator/health/liveness
+            port: http
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 0
+        volumeMounts:
+        - name: writable-tmp
+          mountPath: /tmp
       volumes:
-        # readOnlyRootFilesystem: true with runtime: jvm. The intent says the
-        # render supplies /tmp as an emptyDir; no field says which paths a
-        # Workload needs writable, and no sizeLimit is derivable. G-09.
-        - name: tmp
-          emptyDir: {}
+      - name: writable-tmp
+        emptyDir:
+          sizeLimit: 64Mi
+      automountServiceAccountToken: true
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: auth-api                       # the Workload name: what a coordinate resolves to
+  name: auth-api
   namespace: auth-system
   labels:
     app.kubernetes.io/name: auth-api
-    app.kubernetes.io/instance: auth
+    app.kubernetes.io/instance: auth-api
     app.kubernetes.io/part-of: auth
     app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: jvm
 spec:
   selector:
     app.kubernetes.io/name: auth-api
-    app.kubernetes.io/instance: auth
+    app.kubernetes.io/instance: auth-api
   ports:
-    - name: http                       # from `provides`
-      port: 8081
-      targetPort: http
-      protocol: TCP
+  - name: http
+    port: 8081
+    targetPort: http
+    protocol: TCP
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -247,85 +172,91 @@ metadata:
   namespace: auth-system
   labels:
     app.kubernetes.io/name: auth-ui
-    # `instance: auth` is the ONLY thing in the whole rendered tree tying this
-    # object to the Deployment above, and nothing at apply time consumes it.
-    app.kubernetes.io/instance: auth
+    app.kubernetes.io/instance: auth-ui
     app.kubernetes.io/part-of: auth
     app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: static
 spec:
-  # auth-ui declares no minAvailable. The default is ungraded (chapter 10,
-  # "Still to be graded"), so 1 is the renderer's floor, not a derivation.
   replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 0
-  progressDeadlineSeconds: 90          # startupBudget 30s x 3
+  progressDeadlineSeconds: 90
   selector:
     matchLabels:
       app.kubernetes.io/name: auth-ui
-      app.kubernetes.io/instance: auth
+      app.kubernetes.io/instance: auth-ui
   template:
     metadata:
       labels:
         app.kubernetes.io/name: auth-ui
-        app.kubernetes.io/instance: auth
+        app.kubernetes.io/instance: auth-ui
         app.kubernetes.io/part-of: auth
         app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: static
     spec:
-      serviceAccountName: auth-ui      # exists, holds no policy
-      # No nodeSelector and no affinity: auth-ui declares only the two required
-      # dimensions, so every one of the seven nodes is eligible. auth-api is
-      # pinned to one node and this Workload is pinned to none -- they may land
-      # apart and still have to switch together. Atomic release is not
-      # co-location.
+      serviceAccountName: auth-ui
       securityContext:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+        runAsUser: 101
+        runAsGroup: 101
       containers:
-        - name: auth-ui
-          image: ghcr.io/jorisjonkers-dev/auth/auth-ui@sha256:eda66dbb44a90a9967a98599a9b4180cec0267350ba1a72cde1512b5d9356cbe
-          ports:
-            - name: http
-              containerPort: 80
-          resources:
-            requests:
-              memory: 64Mi
-              cpu: 10m
-            limits:
-              memory: 64Mi
-          securityContext:
-            # The hardening exception, and the whole of it. ONE control is
-            # relaxed; the other three stand, byte-identical to auth-api's. It
-            # is rendered as an explicit `false` rather than an omission so the
-            # relaxed control is visible in a diff.
-            readOnlyRootFilesystem: false   # exception: writableRootFilesystem
-            capabilities:
-              drop: [ALL]
-          # No `env`. auth-ui's env file (platform/env/auth-ui/base.env) is not
-          # reproduced in this example set, and inventing entries for a file
-          # that exists would be worse than rendering none. README, gap G-12.
-          startupProbe:
-            httpGet:
-              path: /
-              port: http
-            periodSeconds: 5
-            failureThreshold: 6        # startupBudget 30s / 5s
-          readinessProbe:
-            httpGet:
-              path: /
-              port: http
-            timeoutSeconds: 5
-          livenessProbe:
-            # identical to readiness by declaration, written twice on purpose
-            httpGet:
-              path: /
-              port: http
-            timeoutSeconds: 5
-          # No volumes. The root filesystem is writable by exception, so
-          # /var/cache/nginx and /var/run need no emptyDir.
+      - name: auth-ui
+        image: ghcr.io/jorisjonkers-dev/auth/auth-ui@sha256:eda66dbb44a90a9967a98599a9b4180cec0267350ba1a72cde1512b5d9356cbe
+        ports:
+        - name: http
+          containerPort: 80
+        resources:
+          requests:
+            memory: 64Mi
+            cpu: 10m
+          limits:
+            memory: 64Mi
+        securityContext:
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+        startupProbe:
+          httpGet:
+            path: /
+            port: 8080
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 0
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 0
+        volumeMounts:
+        - name: writable-var-cache-nginx
+          mountPath: /var/cache/nginx
+        - name: writable-var-run
+          mountPath: /var/run
+      automountServiceAccountToken: false
+      volumes:
+      - name: writable-var-cache-nginx
+        emptyDir:
+          sizeLimit: 64Mi
+      - name: writable-var-run
+        emptyDir:
+          sizeLimit: 64Mi
 ---
 apiVersion: v1
 kind: Service
@@ -334,15 +265,16 @@ metadata:
   namespace: auth-system
   labels:
     app.kubernetes.io/name: auth-ui
-    app.kubernetes.io/instance: auth
+    app.kubernetes.io/instance: auth-ui
     app.kubernetes.io/part-of: auth
     app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: static
 spec:
   selector:
     app.kubernetes.io/name: auth-ui
-    app.kubernetes.io/instance: auth
+    app.kubernetes.io/instance: auth-ui
   ports:
-    - name: http
-      port: 80
-      targetPort: http
-      protocol: TCP
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP

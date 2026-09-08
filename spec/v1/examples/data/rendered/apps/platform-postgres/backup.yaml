@@ -1,0 +1,125 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: postgres
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    deploy-kit.jorisjonkers.dev/durability: irreplaceable
+    deploy-kit.jorisjonkers.dev/engine: postgres
+spec:
+  schedule: 45 2 * * *
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          serviceAccountName: postgres
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: backup
+            image: ghcr.io/jorisjonkers-dev/platform/postgres-backup@sha256:0000000000000000000000000000000000000000000000000000000000000000
+            command:
+            - /bin/sh
+            - -c
+            - pg_dump --format=custom
+            securityContext:
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+            volumeMounts:
+            - name: data
+              mountPath: /data
+              readOnly: true
+            - name: backup
+              mountPath: /backup
+            envFrom:
+            - secretRef:
+                name: backup-off-cluster
+            env:
+            - name: BACKUP_DESTINATION
+              value: s3://backup-storage/jorisjonkers-dev/postgres-data
+          volumes:
+          - name: data
+            persistentVolumeClaim:
+              claimName: postgres-data
+          - name: backup
+            persistentVolumeClaim:
+              claimName: postgres-data-backup
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-sweep
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: postgres
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    deploy-kit.jorisjonkers.dev/durability: irreplaceable
+    deploy-kit.jorisjonkers.dev/engine: postgres
+spec:
+  schedule: 30 4 * * *
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          serviceAccountName: postgres
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: sweep
+            image: ghcr.io/jorisjonkers-dev/platform/postgres-backup@sha256:0000000000000000000000000000000000000000000000000000000000000000
+            command:
+            - /bin/sh
+            - -c
+            - find /backup -type f -mtime +90 -delete
+            securityContext:
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+            volumeMounts:
+            - name: data
+              mountPath: /data
+              readOnly: false
+            - name: backup
+              mountPath: /backup
+          volumes:
+          - name: data
+            persistentVolumeClaim:
+              claimName: postgres-data
+          - name: backup
+            persistentVolumeClaim:
+              claimName: postgres-data-backup

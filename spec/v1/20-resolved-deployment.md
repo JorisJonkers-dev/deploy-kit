@@ -8,7 +8,7 @@ is the reason layer 3 can contain none.
 The Resolved Deployment is a **versioned, reviewable artifact**: emitted on every
 render, validated against its own schema, and diffed against the previous render
 as part of the change under review
-([0029](../../docs/adr/0029-resolved-deployment-versioned-artifact.md)). A
+([0029](../../docs/adr/model/0029-resolved-deployment-versioned-artifact.md)). A
 reviewer reads that diff and sees what the platform decided on their behalf,
 including decisions nobody asked for.
 
@@ -48,40 +48,15 @@ directory name. This repository already contains one resolved tree —
 .github/ package.json` returns nothing. The decision is therefore the emission
 **and** the gate: render, validate, diff, review.
 
-```mermaid
-flowchart LR
-    subgraph IN["Pinned inputs — each carried by digest"]
-        i1["Intent Fragment<br/>this domain's file + env/"]
-        i2["Cluster Context<br/>contextRef + node contract<br/>(site, allocatable, gpus, disks)"]
-        i3["images lock"]
-        i4["ClusterState snapshot<br/>clusterStateDigest<br/>(PV bindings, current placements)"]
-        i5["Intent Fragments<br/>of every other domain"]
-    end
+![The Resolved Deployment — pinned inputs and outputs](diagrams/20-resolved-deployment-io.drawio.svg)
 
-    RD["ResolvedDeployment<br/>one document, whole estate"]
-
-    subgraph OUT["Outputs"]
-        o1["Deliverable Set<br/>layer 3, per adapter"]
-        o2["ResolvedService<br/>per-Service projection"]
-        o3["renderHash<br/>+ inputDigests"]
-    end
-
-    i1 --> RD
-    i2 --> RD
-    i3 --> RD
-    i4 --> RD
-    i5 --> RD
-    RD --> o1
-    RD --> o2
-    RD --> o3
-    o2 -.->|"published back as a pull request"| i1
-```
+<sub>[Diagram source](#the-resolved-deployment--pinned-inputs-and-outputs) · edit by opening the SVG in draw.io</sub>
 
 One domain file is one Intent Fragment
-([0063](../../docs/adr/0063-intent-authored-per-domain.md)), so the input a
+([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)), so the input a
 Service owner edits and the input composition unions are the same document. The
 two node-facing inputs are deliberately drawn apart: what a node **can hold** is
-declared in the node contract and pinned with the Cluster Context; what the
+declared in the node contract and pinned with the Platform Intent; what the
 cluster **currently holds** is observed into the ClusterState snapshot. They
 answer different questions and are never read for each other's
 ([Cluster state](#cluster-state)).
@@ -96,7 +71,7 @@ change proves it did not.
 **A value is platform-arbitrated if and only if it must be unique across the
 estate or draws on a shared finite resource; every other value is
 Service-declared and carried through untouched**
-([0004](../../docs/adr/0004-contention-decides-authority.md)). One question —
+([0004](../../docs/adr/model/0004-contention-decides-authority.md)). One question —
 does the value contend? — replaces a per-field negotiation.
 
 Three readings of the rule matter, and none is an exception to it:
@@ -106,12 +81,12 @@ Three readings of the rule matter, and none is an exception to it:
   The Service states its requirement, and the platform decides whether it fits
   and where. Placement forced this reading and settles it. `memory` and `cpu`
   are required on every Workload and authored there as raw quantities
-  ([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)), and both are
+  ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)), and both are
   draws on a finite pool. An authors-only reading of the rule would have to
   forbid the field, which leaves the estate exactly where it is — BestEffort on
   every pod, because a number no Service may write is a number nobody writes.
   The platform arbitrates against node `allocatable` published by the node
-  contract ([0056](../../docs/adr/0056-node-facts-single-source.md)) and refuses
+  contract ([0056](../../docs/adr/model/0056-node-facts-single-source.md)) and refuses
   what no node can hold with `E_PLACEMENT_UNSATISFIABLE`.
 - **Uniqueness alone is not contention.** A value that must be unique but is
   drawn from no finite pool is *declared* by the Service and *checked* at
@@ -120,7 +95,7 @@ Three readings of the rule matter, and none is an exception to it:
   `placed by` column records which reading placed each row.
 - **The rule places values someone must state.** A derived value is stated by
   nobody: it is a function of the rows above it, which is what
-  [0005](../../docs/adr/0005-derivation-is-total.md) claims is always possible.
+  [0005](../../docs/adr/model/0005-derivation-is-total.md) claims is always possible.
   Whether such a value may be overridden is settled in
   [Overrides](#overrides), not here.
 
@@ -155,9 +130,9 @@ field's placement link to this anchor rather than copying rows.
 
 | field | authority | placed by | note |
 |---|---|---|---|
-| `domain` | Service | no contention | the file header, and the unit of fragment publication ([0063](../../docs/adr/0063-intent-authored-per-domain.md)); the namespace derives from it |
+| `domain` | Service | no contention | the file header, and the unit of fragment publication ([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)); the namespace derives from it |
 | `owner` | Service | no contention | the only field raised to the domain header; notification target, never routing |
-| `id` | Service | unique — checked | estate-unique; `E_DUPLICATE_SERVICE_ID` at composition. It is also the atomic release boundary ([0062](../../docs/adr/0062-service-is-the-release-unit.md)) |
+| `id` | Service | unique — checked | estate-unique; `E_DUPLICATE_SERVICE_ID` at composition. It is also the atomic release boundary ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)) |
 | `alertClass` | Service | no contention | urgency, per Service and never raised — a domain would page as loudly as its loudest member |
 | workload `name` | Service | unique — checked | unique within the **domain**; `E_DUPLICATE_WORKLOAD_NAME`, and it names the derived identity |
 | `provides` surface names and ports | Service | no contention | declared on the Workload, because a port is a property of a process; written once, there |
@@ -171,33 +146,50 @@ field's placement link to this anchor rather than copying rows.
 | `exposure[].contentPolicy` | Service | no contention | `strict`, `admin` or `workflow`. Which profile an application needs is a fact about the application; the header set it selects is derived |
 | `exposure[].routes` — `path`, `match`, `workload`, `surface`, `redirectTo` | Service | no contention | which of the Service's own Workloads serves which path of the host. The surface must be one that Workload `provides` (`E_UNKNOWN_SURFACE`); no two routes may share a `path` + `match` pair (`E_DUPLICATE_ROUTE_MATCH`); `redirectTo` is a path, never a regex |
 | `probes`, `startupBudget`, `zeroDowntime` | Service | no contention | what only the Service knows about its own start and health |
-| `hardening` and its exceptions | Service | no contention | the class is declared; each exception names itself and carries a reason ([0016](../../docs/adr/0016-pod-hardening.md)) |
+| `hardening` and its exceptions | Service | no contention | the class is declared; each exception names itself and carries a reason ([0016](../../docs/adr/model/0016-pod-hardening.md)) |
 | `volumes[].durability` | Service | no contention | what the data is worth cannot be observed |
 | `placement.memory`, `placement.cpu` | Service | pool — stated | required on every Workload; the Service states the requirement, the platform arbitrates it against node allocatable |
 | `placement.gpu` | Service | pool — stated | `class` and `memory`, matched against the node contract's `gpus[].class` and `gpus[].memory_mib`; a card is held by one Workload at a time |
-| `placement.disk` | Service | pool — stated | a `media` set and a `size`; it filters the first placement and the PV binding wins thereafter — `E_DISK_BINDING_CONFLICT` |
+| `placement.disk` | Service | pool — stated | a `media` set; it filters the first placement and the PV binding wins thereafter — `E_DISK_BINDING_CONFLICT` |
+| `volumes[].size` | Service | pool — stated | how much data the volume holds, matched against the node contract's `disks[].usable_gib`; no eligible node is `E_STORAGE_UNSATISFIABLE` ([0081](../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md)) |
+| PVC capacity and the disk capacity filter | derived | — | the volume's `size`, and their sum per Workload for placement |
 | `placement.arch`, `.site`, `.capabilities` | Service | no contention | filters over facts the node contract publishes; a list is a set of equally acceptable values, never a ranking |
 | `observability.scrape` | Service | no contention | port and path of its own metrics surface |
+| `writablePaths` | Service | no contention | which paths the process must write; the size of each is platform-assigned ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)) |
+| `volumes[].durability` | Service | no contention | what losing the data costs; only the owner knows ([0015](../../docs/adr/model/0015-durability-class-per-volume.md)) |
+| `engine` | Service | no contention | what the process is, which the platform keys its backup method off ([0078](../../docs/adr/model/0078-engine-is-workload-vocabulary.md)) |
 | `overrides` | Service | no contention | a derived value restated with a recorded reason ([Overrides](#overrides)) |
 | route tier | platform | pool | the shared edge is finite; `E_NO_TIER_FOR_AUDIENCE` where no tier carries the audience |
+| route precedence | derived | — | `exact` before `prefix`, longer prefix before shorter; carried explicitly on the rendered route rather than left to the proxy's sort ([0093](../../docs/adr/model/0093-route-precedence-is-derived.md)) |
 | middleware chain | platform | pool | tier + audience + `contentPolicy`; `forward-auth` for `authenticated` on a public tier, the security-headers baseline with the named content profile, and the redirect rule a route's `redirectTo` asks for |
+| backup window, retention count, off-cluster destination | platform | pool | one policy per Durability Class; the window is one node's IO and the destination is one remote target ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)) |
+| the backup method | platform | pool | the image the Platform document names per `engine`, resolved through the images lock; nothing executable is authored ([chapter 14](14-platform-intent.md#engines)) |
+| alert rules, their severity and their receiver | platform | pool | the rule catalog keyed by `scrape` and `engine`; severity and receiver from `alertClass` ([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)) |
+| scrape `interval` and `scrapeTimeout` | platform | pool | the metrics stack's ingest budget is shared; stated in the Platform Intent, never defaulted |
+| the backup identity's grant on the destination | platform | pool | derived, never authored: the platform chose the destination, so it owns the credential |
 | Reconcile Unit and its ordering | platform | unique — arbitrated | one estate-wide DAG ([The Reconcile Unit](#the-reconcile-unit)) |
 | identity name, Vault role, Vault policy | platform | pool | named for the **Workload alone**; the auth role namespace is shared ([chapter 16](16-dependencies.md#workload-identity)) |
 | Secret Store path layout and grants | platform | pool | one path per reader set; `E_SUBTREE_PREFIX_COLLISION` across Subtrees ([chapter 40](40-composition.md#identity)) |
 | image digest | platform | unique — arbitrated | one image reference resolves to one digest estate-wide, from the pinned images lock |
 | eligible node set, `nodeSelector` and affinity | platform | pool | every declared dimension matched against the node contract; no eligible node is `E_PLACEMENT_UNSATISFIABLE` ([Derived mechanics](#derived-mechanics)) |
 | recorded PV binding | platform | pool | one `local-path` PV lives on one node; read from the ClusterState snapshot |
-| `replicas` | platform | pool | from `minAvailable`, bounded by the size of the eligible node set |
-| `namespace` | derived | — | `<domain>-system`, and nothing else ([0063](../../docs/adr/0063-intent-authored-per-domain.md)); several Services share one by construction |
+| `replicas` | derived | — | **1**; more than one is an override with a reason ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)) |
+| `PodDisruptionBudget` | derived | — | emitted only where `replicas` exceeds one, as `maxUnavailable: 1`; a budget over a single replica is a drain deadlock |
+| `namespace` | derived | — | `<domain>-system`, and nothing else ([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)); several Services share one by construction |
 | requests and limits | derived | — | from `placement.memory` and `placement.cpu`: memory request equals memory limit, cpu request with no cpu limit |
 | `securityContext` | derived | — | from `hardening` and its declared exceptions |
-| container probe timings | derived | — | from `probes` and `startupBudget` |
+| `automountServiceAccountToken` | derived | — | `true` only where a grant carries `delivery: self`; the pod authenticates in that case and in no other ([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)) |
+| the `emptyDir` per writable path, and its `sizeLimit` | derived | — | one mount per declared path, sized from the Platform Intent's ephemeral default ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)) |
+| `runAsUser`, `runAsGroup`, `fsGroup` | derived | — | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Workload holds a volume ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)) |
+| container probe timings | derived | — | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Platform Intent's probe policy ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)) |
 | `progressDeadlineSeconds` | derived | — | from `startupBudget` |
 | rollout strategy, surge, unavailability | derived | — | from `zeroDowntime` and `volumes` |
 | object kind | derived | — | from `lifecycle`, `stateful` and `volumes` |
-| Flux health timeout class | derived | — | from `stateful` and `lifecycle` |
-| Secret and VSO sync objects | derived | — | from grants with `delivery: env` or `file`, plus `rolloutRestartTargets` from `rotation` |
-| env entries and `envFrom` refs | derived | — | from env files, after placeholder resolution |
+| the Service's release-gate deadline | derived | — | `max` over the Service's Workloads of `progressDeadlineSeconds` ([The release gate](#the-release-gate)) |
+| the object label set | derived | — | fixed, from Workload name, Service Id and the images lock ([chapter 10](10-service-intent.md#the-label-set)) |
+| Secret and VSO sync objects | derived | — | from grants with `delivery: env` or `file`, plus `rolloutRestartTargets` from `rotation`; a grant with `delivery: self` and `tolerates: reload` derives **no** restart target, which is what makes its rotation zero-downtime ([chapter 10](10-service-intent.md#zero-downtime-rotation)) |
+| an Asset's object name, and the restart it causes | derived | — | content-hashed unconditionally; there is no authored change response ([0094](../../docs/adr/model/0094-asset-change-restarts-unconditionally.md)) |
+| env entries and `envFrom` refs | derived | — | from env files, after placeholder resolution — including `${identity:…}`, the Workload's own derived facts ([0091](../../docs/adr/model/0091-identity-placeholders-not-framework-wiring.md)) |
 | dependency coordinates | derived | — | from the edge set and the provider's surfaces, bound to the key the consumer chose |
 | Runtime Profile values | derived | — | from `runtime` |
 | ServiceMonitor, PrometheusRule | derived | — | from `scrape` and `alertClass` |
@@ -206,7 +198,7 @@ field's placement link to this anchor rather than copying rows.
 | NetworkPolicy set | derived | — | from the edge set, exposure, grants, plus the baseline ([chapter 16](16-dependencies.md#network-policy)) |
 
 A field the rule cannot place falsifies
-[0004](../../docs/adr/0004-contention-decides-authority.md) and forces an
+[0004](../../docs/adr/model/0004-contention-decides-authority.md) and forces an
 amendment to the rule — never an exceptions row in this table.
 
 ### The hostname changed sides
@@ -220,7 +212,7 @@ assembly to run. `knowledge` serves `kb`, `platform-rabbitmq` serves `rabbitmq`,
 — so a hostname policy would be right for most hosts and silently wrong for the
 rest, and the wrong ones are the ones nobody would check. `host` is therefore
 authored in full on the Service's `exposure` entry and carried through untouched
-([0018](../../docs/adr/0018-exposure-by-audience.md)); both old rows are gone,
+([0018](../../docs/adr/model/0018-exposure-by-audience.md)); both old rows are gone,
 replaced by one.
 
 That is the rule's second reading, not an exception to it. A hostname must be
@@ -231,13 +223,13 @@ Unmanaged Surfaces ([chapter 40](40-composition.md#identity)). Nobody's fragment
 wins a contested host — the union fails and no `ComposedIntent` is produced until
 an author changes one of them. Contention decided who arbitrates, not who
 authors, which is the same restatement `placement` forced
-([0004](../../docs/adr/0004-contention-decides-authority.md)).
+([0004](../../docs/adr/model/0004-contention-decides-authority.md)).
 
 What stays on the platform side of this path is everything mechanical about the
 edge: the tier that carries the audience, and the middleware chain that follows
 from the tier, the audience and `contentPolicy`. The authored proxy vocabulary is
 exactly two fields — `contentPolicy` on an exposure and `redirectTo` on a route —
-and no Service names a middleware, an entryPoint or a TLS resolver.
+and no Service names a middleware, a listener or a certificate issuer.
 
 ### The namespace row was wrong, and this is the correction
 
@@ -269,16 +261,17 @@ footnote to an exception:
 - **A namespace is not a trust boundary.** It holds several Services by
   construction, so no isolation claim may rest on a namespace wall. Isolation is
   the derived default-deny edge set
-  ([0035](../../docs/adr/0035-network-policy-default-deny.md)), evaluated per
+  ([0035](../../docs/adr/model/0035-network-policy-default-deny.md)), evaluated per
   pod, plus per-Workload identity
-  ([0024](../../docs/adr/0024-identity-per-workload.md)) — and nothing else.
+  ([0024](../../docs/adr/model/0024-identity-per-workload.md)) — and nothing else.
 
 ## Pinned inputs
 
-> **Every assignment is a pure function of the pinned input set: Service Intent,
-> the pinned Cluster Context and the node contract it carries, the locks, and
-> the ClusterState snapshot — each carried by digest.** Identical inputs,
-> identical output, always.
+> **Every assignment is a pure function of the pinned input set: every Intent
+> Fragment — the domain files and the Platform document
+> ([chapter 14](14-platform-intent.md)) — the node contract the Platform document
+> names, the locks, and the ClusterState snapshot — each carried by digest.**
+> Identical inputs, identical output, always.
 
 The set is **closed**. No assignment consults live cluster state, a mutable
 pool, a counter, or state remembered between renders. There is no allocation
@@ -288,14 +281,14 @@ why publishing assignments back to a service repository cannot drift.
 Placement is the case that tests the rule hardest, and it stays inside it.
 Every declared dimension is matched against node `allocatable` — the node's
 total minus a reserve declared in the same node file, published by the node
-contract ([0056](../../docs/adr/0056-node-facts-single-source.md)) and pinned
-with the Cluster Context. It is never matched against free capacity read from a
+contract ([0056](../../docs/adr/model/0056-node-facts-single-source.md)) and pinned
+with the Platform Intent. It is never matched against free capacity read from a
 cluster, which is not a pinned input and cannot be made into one: free capacity
 changes with every pod that starts anywhere in the estate.
 
 The rule has teeth because it forces a decision whenever something cannot be a
 pure function of what is pinned. Such a value moves **up** into layer 1, where
-it is declared and checked; **sideways** into the Cluster Context, where it is
+it is declared and checked; **sideways** into the Platform Intent, where it is
 platform data republished deliberately; **into the node contract**, where it is
 a node fact authored once and generated from
 ([chapter 60](60-setup.md#node-facts)); or **into the ClusterState snapshot**,
@@ -336,7 +329,7 @@ Some assignments need facts the cluster alone can supply: which node holds a
 bound PersistentVolume, and where a Workload currently runs. Those facts are
 captured **once**, by a read-only collector, into a snapshot that is digested
 and pinned like every other input
-([0034](../../docs/adr/0034-cluster-state-pinned-input.md)). Assignments read
+([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)). Assignments read
 the snapshot. Nothing reads the live cluster.
 
 | the snapshot enumerates | used by |
@@ -347,9 +340,9 @@ the snapshot. Nothing reads the live cluster.
 **What a node can hold is not on that list.** `allocatable`, `site`, `arch`,
 `gpus[]` and `disks[]` are *declared* platform facts: authored once per node and
 published by the node contract
-([0056](../../docs/adr/0056-node-facts-single-source.md)), pinned with the
-Cluster Context, never observed. Placement reads them there and only there.
-[0034](../../docs/adr/0034-cluster-state-pinned-input.md) enumerates node
+([0056](../../docs/adr/model/0056-node-facts-single-source.md)), pinned with the
+Platform Intent, never observed. Placement reads them there and only there.
+[0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) enumerates node
 capacity among the snapshot's facts because it predates the node contract
 carrying `allocatable`; the spec is normative, and that record is the one that
 gets fixed.
@@ -378,7 +371,7 @@ Four documents must not be conflated:
 |---|---|---|---|---|
 | answers | what a node can hold | what should be true | what was true when we decided | what is true now |
 | source | one authored YAML file per node, generated from | the pinned inputs | one read-only capture, digested | the cluster, continuously |
-| pinned | yes — with the Cluster Context | it *is* the output | yes — `clusterStateDigest` | no |
+| pinned | yes — named by the Platform document | it *is* the output | yes — `clusterStateDigest` | no |
 | changes | when a node is re-declared | when an input changes | when the collector runs | continuously |
 
 The fourth is the existing `schemas/cluster-state.schema.json` — `flux_ready`,
@@ -420,7 +413,7 @@ only it can state: how much memory and cpu each of its Workloads needs. Probe
 timings, rollout strategy, surge and unavailability, progress deadlines, health
 timeout classes, object kind, resource requests and limits, pod hardening,
 backup jobs and retention sweeps all follow
-([0030](../../docs/adr/0030-runtime-mechanics-derived.md)).
+([0030](../../docs/adr/model/0030-runtime-mechanics-derived.md)).
 **None of the derived values may be authored**, and writing one in an env file
 or a Service document is a build error ([chapter 10](10-service-intent.md)).
 
@@ -449,21 +442,35 @@ Five rules carry most of the weight:
   as budget × 3, floored. The current renderer emits `600` against a 600-second
   budget, so a JVM still inside its legitimate startup window is marked
   `ProgressDeadlineExceeded`.
-- **The health timeout class is a table over declarations**, not a number:
-  `stateless: 5m`, `stateful: 10m`, `control-plane: 15m`, `job: 10m`
-  (`src/schemas/health-timeout-map.ts:1-6`), taking the strongest class across a
-  Service's Workloads.
+- **There is no health timeout class.** The generation being replaced carried a
+  table over declarations — `stateless: 5m`, `stateful: 10m`,
+  `control-plane: 15m`, `job: 10m`
+  (`src/schemas/health-timeout-map.ts:1-6`), strongest class across a Service —
+  and it is a second derivation over the same input as
+  `progressDeadlineSeconds`. The two already disagree: `auth-api` declares a
+  600-second `startupBudget`, derives an 1800-second deadline, and its class
+  gives up at 5 minutes on a Workload the model says may legitimately take ten.
+  One input has one derivation, and the Service-scoped number that a switchover
+  waits on is the release-gate deadline below.
+- **Durability derives objects, not just a label.** A volume of class
+  `recoverable` derives a backup `CronJob` and a retention sweep; `irreplaceable`
+  derives both plus an off-cluster copy and a derived grant for the destination;
+  `reconstructible` derives nothing. The schedule, retention and destination come
+  from the platform's per-class policy and the method from the Workload's
+  `engine`, so two Services of the same class and engine derive the same objects
+  with different volumes — which is the property that makes a restore rehearsal
+  meaningful ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)).
 - **Hardening is a class.** It defaults to `restricted` — `runAsNonRoot`,
   `readOnlyRootFilesystem`, all capabilities dropped, seccomp `RuntimeDefault` —
   and each declared exception names itself and carries a reason
-  ([0016](../../docs/adr/0016-pod-hardening.md)).
+  ([0016](../../docs/adr/model/0016-pod-hardening.md)).
 - **Capacity is not a class.** Requests and limits no longer resolve through a
-  named table in the Cluster Context; they derive from the raw quantities the
+  named table in the Platform Intent; they derive from the raw quantities the
   Workload declares, under two shape rules the author does not write. Memory
   request **equals** memory limit, because memory is incompressible and an OOM
   kill beats eviction roulette. Cpu is a request with **no** limit, because
   throttling gets misdiagnosed as slow application code
-  ([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)). One number per
+  ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). One number per
   dimension goes in, the shape stays derived, and the escape is an override with
   a reason ([Overrides](#overrides)).
 
@@ -501,17 +508,113 @@ choice: moving the data requires a state-move-plan, not a re-render, and a
 declared `disk` dimension that contradicts the binding is
 `E_DISK_BINDING_CONFLICT` rather than a quiet move.
 
+### The forward-auth endpoint
+
+The middleware chain is derived, and one of its members needs an address: a
+forward-auth Middleware must name the endpoint that performs the check. **The
+tier names it** ([0076](../../docs/adr/model/0076-middleware-has-one-producer.md)).
+A tier in the Platform Intent that serves the `authenticated` audience carries
+the address of the endpoint that authenticates for it, beside the audiences it
+serves; a tier that serves no `authenticated` route carries no such field and
+needs none.
+
+It is not derived from the authenticating Service's own surface. `auth-api`'s
+estate-wide role *is* this middleware
+([chapter 10](10-service-intent.md#service-identity)), and resolving it as if it
+were a dependency edge would make the edge tree depend on resolving a Service
+and would write one Service's id into a platform derivation. It is a platform
+fact, so it sits where platform facts sit — the Platform Intent, pinned by
+digest ([Pinned inputs](#pinned-inputs)).
+
+A route declaring `audience: authenticated` on a tier whose declaration carries
+no endpoint is `E_NO_FORWARD_AUTH_ENDPOINT`, checked when the chain is derived
+rather than discovered as a 500 at the edge.
+
+## The release gate
+
+A Service is the Release Unit, and no member's new version receives traffic
+until every member's new version is healthy
+([chapter 50](50-lifecycle.md#release-unit-switchover)). *Performing* the switch
+belongs to delivery, which is defined separately. What the model owes is the
+gate's **inputs**, and it owes them as a derivation rather than as an object
+([0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md)).
+
+Layer 2 therefore carries, per Service:
+
+| field | derived from |
+|---|---|
+| the member list | the Service's Workloads; membership is structural |
+| each member's readiness reference | that Workload's `probes.readiness` — its `path` + `port`, or its `tcp` port |
+| the gate deadline | `max` over the members of `progressDeadlineSeconds`, itself `startupBudget × 3` |
+
+`max` is the reading "held, not partial" requires: the unit waits for its
+slowest legitimate starter. `auth` declares a 600-second budget on `auth-api`
+and 30 seconds on `auth-ui`, so its gate deadline is 1800 seconds — the API's,
+because a UI that is ready in 30 seconds must still not receive traffic while
+the API it talks to is inside its own legitimate startup window.
+
+**Nothing is rendered for the gate.** The inputs live in the Resolved
+Deployment and in each Service's projection, which is where decisions live and
+where a delivery mechanism reading a pinned lock already looks
+([0006](../../docs/adr/model/0006-pinned-inputs.md)). Layer 3 emits the fixed
+label set ([chapter 10](10-service-intent.md#the-label-set)) and nothing else on
+the Service's behalf: an object no controller consumes is the defect
+`app.kubernetes.io/instance` already is, and rendering a second one would not
+make the gate real.
+
+A Service whose Workloads all declare `probes: none` publishes no readiness
+signal and cannot be gated — `E_RELEASE_UNIT_NO_READINESS`, checked at
+composition time ([chapter 40](40-composition.md#completeness)), not discovered
+by a delivery mechanism at apply time.
+
+## The path plan
+
+Layer 2 assigns **every output path**
+([0070](../../docs/adr/model/0070-path-authority-is-layer-2.md)). The Resolved
+Deployment carries, for each object to be rendered, the Adapter that owns it and
+the path it is written to. Layer 3 serialises what it is handed and chooses
+nothing.
+
+The rule follows from the layer rule rather than adding to it. A path is a
+decision: it says which directory owns an object, and therefore which
+kustomization includes it, which Reconcile Unit applies it, and who is
+answerable for the field. A decision taken while serialising appears in no
+schema, is recorded in no lock, and is invisible in the projection its owner
+reads back.
+
+Two live cases show that the alternative does not work. A per-domain object —
+`namespace.yaml`, and the namespace-wide default-deny — is one object per
+domain, while an Adapter keyed off the Service emits one directory per Service:
+`auth` has one Service and nothing collides, `data` has three and produces three
+identical Namespace objects at three paths. And an estate-scoped Deliverable,
+the Gatus endpoints ConfigMap, lands in `utility-system` rather than in the
+namespace of the Service that motivated it. Under an adapter-computed path both
+are accidents of who ran last; under a path plan both are assignments, with one
+owner and a recorded reason.
+
+The consequence for the build is a check that arrives earlier. `E_PATH_COLLISION`
+is decidable when the plan is assembled, before any Adapter runs, because the
+complete set of paths is known at that point. Two Adapters claiming one path is
+a defect in the plan.
+
 ## Overrides
 
 A derived value is **overridable with a reason**; an assignment is not
-([0031](../../docs/adr/0031-derived-overrides-with-reason.md)).
+([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md)).
 
 ```yaml
 overrides:
-  - field: progressDeadlineSeconds
+  - derivation: startupDeadline
     value: 600
     reason: nginx pods, ~10-20Mi RAM each; a 1800s deadline is 3x the real budget
 ```
+
+The key is the **derivation's own name**, from the closed set
+[chapter 14](14-platform-intent.md#overridable-derivations) enumerates beside the
+field each renders to ([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)).
+An owner overrides a decision, not a Kubernetes field: a target rename touches
+that table and no domain file, and `E_UNKNOWN_OVERRIDE` refuses a name no
+derivation produces.
 
 The exception already exists in the tree: `app-ui` runs
 `progressDeadlineSeconds: 600` while the three JVM services run `1800`, and a
@@ -520,7 +623,8 @@ input cannot be right for both.
 
 Refusing the hatch does not buy a better rule; it buys a falsified input. The
 deadline derives from the Startup Budget, and so do the startup probe's period
-and failure threshold. An owner who needs 600 and cannot say so declares a
+and failure threshold — its target comes from the liveness declaration
+([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)). An owner who needs 600 and cannot say so declares a
 200-second budget to coax the number out — corrupting the one field only they
 could know and mis-deriving the probe along with it. The lie is invisible; an
 override is not. Requiring a reason makes the rationale data rather than a YAML
@@ -565,21 +669,14 @@ overrides is a later read over data already in hand.
 ## The Reconcile Unit
 
 The Reconcile Unit is **derived from the dependency graph**, never declared
-([0032](../../docs/adr/0032-reconcile-unit-derived.md)). A Service's unit is
+([0032](../../docs/adr/model/0032-reconcile-unit-derived.md)). A Service's unit is
 `apps-<domain>`; the ordering between units is the edge set of
 [chapter 16](16-dependencies.md#dependency-edges) projected onto domains, plus an
 edge to the secrets-provisioning unit wherever a Service holds any grant.
 
-```mermaid
-flowchart LR
-    core["apps-core"] --> vso["apps-vso-secrets"]
-    core --> data["apps-data"]
-    core --> sl["apps-stateless"]
-    data --> know["apps-knowledge"]
-    vso --> know
-    know --> agents["apps-agents"]
-    vso --> agents
-```
+![The Reconcile Unit DAG](diagrams/20-reconcile-unit-dag.drawio.svg)
+
+<sub>[Diagram source](#the-reconcile-unit-dag) · edit by opening the SVG in draw.io</sub>
 
 An arrow means *must be Ready first*. `apps-knowledge` follows `apps-data`
 because `knowledge` depends on `platform-postgres` and `platform-rabbitmq`;
@@ -608,7 +705,7 @@ applied Service hard to read. A dependency cycle becomes a build failure
 
 **The Reconcile Unit orders; it does not make anything atomic.** Ordering is
 derived from the graph. Atomicity is the **Service boundary itself**
-([0062](../../docs/adr/0062-service-is-the-release-unit.md)): every Workload of
+([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)): every Workload of
 one Service switches together or none switches, and there is no mechanism to
 couple two Services. The two are orthogonal — postgres before knowledge is
 ordering; `auth-api` and `auth-ui` moving together is atomicity, and they move
@@ -633,14 +730,20 @@ their own node placement or Secret Store paths out of their own repository.
 Composition therefore writes each Service's `ResolvedService` projection into
 that Service's repository as a generated file —
 `platform/resolved.yml` — and opens a pull request when it changes
-([0033](../../docs/adr/0033-assignments-published-back.md)).
+([0033](../../docs/adr/model/0033-assignments-published-back.md)).
+
+The projection carries, per Workload, the **image it runs at the digest the lock
+resolved** — the image metadata the previous generation rendered as a separate
+document. That is a layer-2 fact and it is published back like every other
+([0098](../../docs/adr/model/0098-one-publication-path.md)); nothing about it was
+ever a Deliverable.
 
 Two entries left this list. The namespace is now derived from `domain`, which
 the owner writes in the header of the file they are already editing, so
 answering "which namespace am I in" needs no published assignment at all. The
 hostname followed it for another reason: `host` is authored, so the owner reads
 it back out of the line they wrote
-([0018](../../docs/adr/0018-exposure-by-audience.md)). Both still appear in the
+([0018](../../docs/adr/model/0018-exposure-by-audience.md)). Both still appear in the
 projection, because the projection records every layer-2 decision whether or not
 the owner could have predicted it — and on that path the decisions that remain
 are the tier and the middleware chain, not the name.
@@ -711,8 +814,9 @@ assigned:
       objectKind: Deployment
       image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-api@sha256:1ad39d5…
       probes:
-        readiness: {path: /api/actuator/health/readiness, port: 8080}
-        startup:   {periodSeconds: 5, failureThreshold: 120}
+        readiness: {path: /api/actuator/health/readiness, port: 8080, periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 3}
+        liveness:  {path: /api/actuator/health/liveness, port: 8080, periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 3}
+        startup:   {path: /api/actuator/health/liveness, port: 8080, periodSeconds: 5, failureThreshold: 120}
       strategy: {type: RollingUpdate, maxSurge: 1, maxUnavailable: 0}
       progressDeadlineSeconds: 1800
       resources:                       # memory request == limit; cpu request, no cpu limit
@@ -749,7 +853,7 @@ assigned:
 Four things in that block are worth reading closely.
 
 `exposure` sits beside `workloads:`, not inside one, because it belongs to the
-Service ([0018](../../docs/adr/0018-exposure-by-audience.md)): a host fronts
+Service ([0018](../../docs/adr/model/0018-exposure-by-audience.md)): a host fronts
 Workloads, and the routes under it are how it picks between them. The projection
 records the entry even though the owner authored `host` and every route
 themselves, because the two lines they did not write are the ones worth a pull
@@ -790,17 +894,17 @@ two Workloads may not share a name (`E_DUPLICATE_WORKLOAD_NAME`).
    `dashboard`, `gatus` `status`, `agents-api` two — and the conclusion drawn
    from it is that nothing derives a hostname at all: `host` is the full FQDN,
    authored on the Service's `exposure` entry
-   ([0018](../../docs/adr/0018-exposure-by-audience.md)), placed
+   ([0018](../../docs/adr/model/0018-exposure-by-audience.md)), placed
    *unique — checked* above, and arbitrated only as a collision at composition
    (`E_DUPLICATE_HOST`). No third category was needed and no row of the table is
-   an exception, so [0004](../../docs/adr/0004-contention-decides-authority.md)
+   an exception, so [0004](../../docs/adr/model/0004-contention-decides-authority.md)
    stands as restated — who arbitrates, not who authors. What still keeps that
    premise's claim open is item 5, not this one.
 2. ~~**Apex hosts need a convention.**~~ The convention is that an apex host
    needs none. With `host` authored in full and no zone derivation anywhere,
    `home-portal` writes `host: jorisjonkers.dev` exactly as `auth` writes
    `host: auth.jorisjonkers.dev`; `apex: true` is not vocabulary
-   ([0018](../../docs/adr/0018-exposure-by-audience.md)). Two Services writing
+   ([0018](../../docs/adr/model/0018-exposure-by-audience.md)). Two Services writing
    the bare domain are one duplicated host like any other
    ([chapter 40](40-composition.md#identity)), which is what `E_DUPLICATE_APEX`
    names when the contested name is that one.
@@ -814,20 +918,18 @@ two Workloads may not share a name (`E_DUPLICATE_WORKLOAD_NAME`).
    a branch, compose, and observe what the `knowledge` pipeline does between the
    pull request opening and merging.
    **Blocks:** enabling the check across the participating repositories.
-4. **The ClusterState snapshot is unmeasured, and `allocatable` is a guess.** No
-   collector exists, and the claim that its digest is stable between
-   operator-visible events is untested; every reproducibility statement in this
-   chapter and in [chapter 30](30-deliverables.md) depends on it. The node
-   contract's `allocatable` has the same problem from the other side: the
-   reserve is authored, not measured, and on the 4096Mi `enschede-pi-2` and
-   `enschede-pi-3` it is a large fraction of the node, so a wrong guess bites
-   there first — as a pod the build says fits and the scheduler refuses.
+4. **The node contract's `allocatable` is a guess.** The reserve is authored,
+   not measured, and on the 4096Mi `enschede-pi-2` and `enschede-pi-3` it is a
+   large fraction of the node, so a wrong guess bites there first — as a pod
+   the build says fits and the scheduler refuses. (The other half this item
+   used to carry — whether the ClusterState digest is stable — is
+   [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)'s own
+   settling test and is recorded there.)
    **Owner:** joris.
-   **Settled by:** running the collector twice, ten minutes apart, against an
-   idle cluster and comparing `sha256sum` of the two snapshots; and reconciling
-   each node's declared `allocatable` against `kubectl describe node`.
-   **Blocks:** the double-render determinism test, and therefore properties 1
-   and 2 of [Pinned inputs](#pinned-inputs).
+   **Settled by:** reconciling each node's declared `allocatable` against
+   `kubectl describe node`, and deciding whether the reserve is authored or
+   observed.
+   **Blocks:** trusting `E_PLACEMENT_UNSATISFIABLE` on the two small nodes.
 5. **Nothing arbitrates a declared requirement.** `memory` and `cpu` are stated
    by the Service and arbitrated by the platform, but the arbitration today is
    one eligibility test against one node's allocatable. Nothing compares the sum
@@ -840,5 +942,58 @@ two Workloads may not share a name (`E_DUPLICATE_WORKLOAD_NAME`).
    against total estate allocatable, then deciding whether over-subscription is
    a build error, a warning, or a number carried on the artifact.
    **Blocks:** nothing today. It is the conceded cost of restating
-   [0004](../../docs/adr/0004-contention-decides-authority.md) as
+   [0004](../../docs/adr/model/0004-contention-decides-authority.md) as
    who-arbitrates, and it comes due the first time a Service cannot place.
+
+## Diagram sources
+
+Each diagram above is drawn in draw.io and committed as an SVG with the editable
+diagram embedded, so opening the `.svg` in draw.io recovers the drawing. The
+mermaid below is the same structure in text, kept so a diagram change shows up in
+a plain diff. **Where the two disagree the SVG is the diagram and the mermaid is
+what gets fixed** — the same precedence this repository uses between a chapter and
+an ADR.
+
+### The Resolved Deployment — pinned inputs and outputs
+
+```mermaid
+flowchart LR
+    subgraph IN["Pinned inputs — each carried by digest"]
+        i1["Intent Fragment<br/>this domain's file + env/"]
+        i2["Platform Intent<br/>contextRef + node contract<br/>(site, allocatable, gpus, disks)"]
+        i3["images lock"]
+        i4["ClusterState snapshot<br/>clusterStateDigest<br/>(PV bindings, current placements)"]
+        i5["Intent Fragments<br/>of every other domain"]
+    end
+
+    RD["ResolvedDeployment<br/>one document, whole estate"]
+
+    subgraph OUT["Outputs"]
+        o1["Deliverable Set<br/>layer 3, per adapter"]
+        o2["ResolvedService<br/>per-Service projection"]
+        o3["renderHash<br/>+ inputDigests"]
+    end
+
+    i1 --> RD
+    i2 --> RD
+    i3 --> RD
+    i4 --> RD
+    i5 --> RD
+    RD --> o1
+    RD --> o2
+    RD --> o3
+    o2 -.->|"published back as a pull request"| i1
+```
+
+### The Reconcile Unit DAG
+
+```mermaid
+flowchart LR
+    core["apps-core"] --> vso["apps-vso-secrets"]
+    core --> data["apps-data"]
+    core --> sl["apps-stateless"]
+    data --> know["apps-knowledge"]
+    vso --> know
+    know --> agents["apps-agents"]
+    vso --> agents
+```

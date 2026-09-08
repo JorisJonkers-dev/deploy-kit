@@ -1,20 +1,4 @@
-# adapter: kubernetes
-# real path: platform/cluster/flux/apps/data/platform-rabbitmq/pvc.yaml
-#
-# `durability: recoverable` -- one step below postgres's `irreplaceable`, and the
-# difference is exactly one derived object: a nightly application-level backup
-# with a retention sweep, and NO off-cluster copy. Losing the mnesia directory
-# costs undelivered messages and the definitions, not a consumer's data.
-#
-# Three Durability Classes appear in this one domain file, on three claims, and
-# they derive three different backup shapes. None of the three is rendered,
-# because no adapter reads `durability`. README, gap G-12.
-#
-# This Workload declares NO `disk` placement dimension, so every node is eligible
-# to hold this claim -- including the three Pis, whose only storage is a 64G
-# sdcard. A broker's mnesia directory on an sdcard is a decision nobody made and
-# nothing refuses. postgres declares `disk` and gets four candidate nodes; this
-# claim gets seven, and the difference is a line the author did or did not write.
+# GENERATED. Never hand-edit.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -22,19 +6,16 @@ metadata:
   namespace: data-system
   labels:
     app.kubernetes.io/name: rabbitmq
-    app.kubernetes.io/instance: platform-rabbitmq
-    app.kubernetes.io/part-of: data
+    app.kubernetes.io/instance: rabbitmq
+    app.kubernetes.io/part-of: platform-rabbitmq
     app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
   annotations:
-    deploy-kit.jorisjonkers.dev/durability: recoverable   # key is a convention
-                                                          # this render chose;
-                                                          # README, gap G-18
+    deploy-kit.jorisjonkers.dev/durability: recoverable
 spec:
   accessModes:
-    - ReadWriteOnce
+  - ReadWriteOnce
   storageClassName: local-path
   resources:
     requests:
-      # CANNOT DERIVE -- assigned, and no pinned input in this example set
-      # carries an assignment. README, gap G-17.
-      storage: null
+      storage: 20Gi

@@ -1,26 +1,4 @@
-# adapter: networking -- NOT REGISTERED. Chapter 30 records NetworkPolicy as
-# having zero producers.
-# real path: platform/cluster/flux/apps/data/<which Service directory?>/networkpolicy.yaml
-#
-# THE NAMESPACE-WIDE DEFAULT-DENY. One object per DOMAIN, hoisted here beside
-# namespace.yaml for the same reason namespace.yaml itself was hoisted: the
-# `kubernetes` adapter emits per SERVICE DIRECTORY, this domain has three, and
-# three copies of one object at three paths is E_PATH_COLLISION waiting for a
-# second writer.
-#
-# The auth domain could leave its copy inside its single Service directory and
-# note the problem. This domain cannot -- which is what makes G-20 a decision the
-# renderer work must take rather than a note. Whichever Service directory were
-# picked, that Service would own an object governing its two neighbours, and
-# deleting that Service from the domain file would delete the namespace's
-# default-deny posture as a side effect.
-#
-# Why the posture needs an object of its own at all: `podSelector: {}` selects
-# EVERY pod in data-system, including a pod no rendered Workload accounts for --
-# a hand-applied debug pod, a Job left behind, a Service whose fragment failed to
-# publish. The three per-Workload policies are allow-lists over pods the render
-# knows about; this one is what makes default-deny a property of the namespace
-# rather than of the render.
+# GENERATED. Never hand-edit.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -29,35 +7,21 @@ metadata:
   labels:
     app.kubernetes.io/part-of: data
     app.kubernetes.io/managed-by: deploy-kit
-    # No `name` and no `instance` label: this object belongs to the domain, and
-    # naming one of the three Services on it would be false.
 spec:
   podSelector: {}
   policyTypes:
-    - Ingress
-    - Egress
-  # It carries Egress, so the baseline applies to it too: the static check is
-  # "every rendered NetworkPolicy carrying Egress in policyTypes also matches
-  # UDP/53". The namespace-wide deny is therefore a deny-all-except-DNS, and it
-  # is the baseline rule -- not a judgement call -- that makes it one.
+  - Ingress
+  - Egress
   egress:
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system     # CONTEXT
-          podSelector:
-            matchLabels:
-              k8s-app: kube-dns                            # CONTEXT
-      ports:
-        - protocol: UDP
-          port: 53
-        - protocol: TCP
-          port: 53                    # truncated responses ride the same rule
-# One consequence of default-deny is worth stating where the datastore lives:
-# NetworkPolicy is additive, so this object denies nothing the three per-Workload
-# policies allow. What it does deny is everything they DO NOT mention -- which,
-# on the day this ships, includes the five consumers of `postgres` whose Intent
-# Fragments are not in the composed union. Chapter 16 sequences that: render-only,
-# then audit against observed flows for 14 days, then enforce -- and audit needs
-# a CNI carrying a non-enforcing stage, which k3s's embedded kube-router does not
-# have. README, gap G-29.
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53

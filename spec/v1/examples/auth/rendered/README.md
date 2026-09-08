@@ -22,8 +22,46 @@ important entry here.
 
 Attribution is a property of the producing adapter, declared in the registry
 (0054) — not an annotation on the object, which was considered and rejected
-because an edit can lose it. The `# adapter:` header on each file is a reading
-aid; the table below is the attribution.
+because an edit can lose it. The table below is the attribution: the files
+themselves carry no `# adapter:` header, because rendered output carries no
+commentary.
+
+## Comment-free, and what this pass changed
+
+The tree carries **no commentary**: one `GENERATED. Never hand-edit.` header line
+per file, emitted by the serializer as a constant, and then the object.
+Everything the files used to explain in comments belongs here, in this README,
+or in a decision.
+
+The trees were re-rendered against the decisions taken on 2026-09-07, so this
+pass added the objects that had no producer, applied the fixed label set, and
+made three derivations explicit that a renderer had been choosing:
+
+| change | decided in |
+|---|---|
+| the fixed label set, `instance` now the Workload and `component` the runtime | [0072](../../../../../docs/adr/model/0072-the-label-set-is-fixed.md) |
+| `automountServiceAccountToken`, `false` wherever the pod does not authenticate | [0087](../../../../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md) |
+| `runAsUser`, `runAsGroup`, and `fsGroup` where a volume is held | [0082](../../../../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md) |
+| a startup probe pointed at the **liveness** endpoint, and one probe cadence | [0088](../../../../../docs/adr/model/0088-startup-probe-targets-liveness.md) |
+| an `emptyDir` per declared writable path, at the platform's ephemeral size | [0092](../../../../../docs/adr/model/0092-writable-paths-are-declared.md) |
+| explicit route `priority`, rather than Traefik's rule-length sort | [0093](../../../../../docs/adr/model/0093-route-precedence-is-derived.md) |
+| a `PodDisruptionBudget` only above one replica, as `maxUnavailable` | [0089](../../../../../docs/adr/model/0089-replicas-derived-no-minavailable.md) |
+
+**The "cannot derive today" column below is largely historical.** Twenty-six of
+those rows were decided on 2026-09-07 and the row-by-row status lives in
+[`../../RENDER-GAPS.md`](../../RENDER-GAPS.md) rather than being restated here
+— one source, so the two cannot drift.
+
+## Estate-scoped objects are not in this tree
+
+Two files this tree used to carry — `edge/middlewares.yaml` and
+`observability/gatus-endpoints.yaml` — render in the **platform domains** now:
+the Middleware set is emitted per tier by the `traefik` adapter into the edge
+domain, and the Gatus endpoint list is an inbound derivation rendered as the
+declared `gatus` Service's own Asset in the observability domain
+([0096](../../../../../docs/adr/model/0096-the-foundation-is-declared.md),
+[0098](../../../../../docs/adr/model/0098-one-publication-path.md)). This domain
+contributes routes and exposures to both; it owns neither object.
 
 ## The files
 
@@ -38,8 +76,10 @@ aid; the table below is the attribution.
 | `apps/auth/networkpolicy.yaml` | **none** — `networkpolicy` is not a registered adapter ([G-30](#g-30)) | `dependsOn` (egress), the Service's `exposure` routes (ingress, per routed Workload), `scrape` (ingress), the effective grant set (egress to the Secret Store), plus the non-authorable baseline | the four platform-component selectors ([G-11](#g-11)); the stalwart rule ([G-04](#g-04)); an ingress rule for the forward-auth caller ([G-18](#g-18)) |
 | `apps/auth/vault.yaml` | **none** — no adapter writes Vault policies or auth roles ([G-02](#g-02)) | metadata paths ([G-19](#g-19)); the database engine path the wiring actually reads ([G-20](#g-20)); a capability that can roll or sign the transit key ([G-21](#g-21)); token TTLs ([G-22](#g-22)) |
 | `apps/auth/kustomization.yaml` | `kubernetes` | the file set of the Service | — |
-| `edge/ingressroutes.yaml` | `traefik-public` | the Service's `exposure`: `host` (authored, copied verbatim), each route's `path` + `match` → the rule, `workload` + `surface` → the backend, `audience: anonymous` → no forward-auth, `contentPolicy: strict` → the security-headers middleware reference | entryPoint and TLS policy ([G-11](#g-11)); the `Middleware` objects both references resolve to — forward-auth elsewhere and security-headers here ([G-23](#g-23)) |
-| `observability/gatus-endpoints.yaml` | `gatus` | one entry per route on the `public` exposure — authored `host` + the route's `path` + the named Workload's `probes.readiness` | `interval`; the whole `alerts` block that `alertClass: page` demands ([G-16](#g-16)); it also lands in another domain's namespace ([G-24](#g-24)) |
+| `edge/ingressroutes.yaml` | `traefik`, for the tier each route's audience selects | the Service's `exposure`: `host` (authored, copied verbatim), each route's `path` + `match` → the rule, `workload` + `surface` → the backend, `audience: anonymous` → no forward-auth, `contentPolicy: strict` → the security-headers middleware reference | entryPoint and TLS policy ([G-11](#g-11)); the `Middleware` objects both references resolve to — forward-auth elsewhere and security-headers here ([G-23](#g-23)) |
+| `apps/vso-secrets/policies/auth-api.policy.json` | `vault-policy` | the Workload's grants and their access tiers, per engine: KV read plus its `metadata` sibling, `transit/sign` and `transit/keys/.../rotate` for the JWT key | — (0073, 0085, 0086) |
+| `apps/vso-secrets/policies/auth-api.role.json` | `vault-policy` | the Workload's ServiceAccount and namespace, bound to that one policy | — |
+| `observability/prometheusrules.yaml` | `prometheus` | the baseline rule set for `auth-api`'s scrape surface, with severity and receiver from `alertClass: page` | — (0079) |
 
 ### Not emitted, with the reason
 
@@ -139,7 +179,7 @@ renumbered — every other reference in this file keeps pointing where it did.
 | <a id="g-08"></a>G-08 | **The probe derivation is partial.** `startupBudget` → period 5 s × threshold 120 and `progressDeadlineSeconds` = budget × 3 are stated. Which endpoint the startup probe uses is not (readiness is used here, which is a choice made during serialisation — the thing chapter 30 forbids), and neither are `periodSeconds`, `failureThreshold` or `initialDelaySeconds` for readiness and liveness. Only `timeoutSeconds: 5` has evidence behind it |
 | <a id="g-09"></a>G-09 | **Nothing declares which paths a read-only root filesystem needs writable.** The intent's prose says the render supplies `/tmp` as an emptyDir for the JVM; no field says so, no `sizeLimit` is derivable, and a Workload needing a second writable path has no way to say it short of a `writableRootFilesystem` exception that relaxes everything |
 | <a id="g-10"></a>G-10 | **`runtime: jvm` is asked to imply Spring Boot.** The env file expects `SPRING_CONFIG_IMPORT`, `VAULT_AUTHENTICATION`, `VAULT_KUBERNETES_ROLE` and `VAULT_DB_ENABLED` to be derived from `delivery: self`, but their spelling is spring-cloud-vault's. A `jvm` Workload that is not Spring gets keys it cannot read, and no field distinguishes the two |
-| <a id="g-11"></a>G-11 | **Every platform-component fact is a Cluster Context input this example set does not carry.** Marked `CONTEXT` in the files: cluster DNS, the edge, the metrics stack and the Secret Store selectors in `networkpolicy.yaml`; `release: metrics-stack` on the ServiceMonitor; `entryPoints` and `certResolver` on the IngressRoutes; `VAULT_ADDR`; `DEPLOYMENT_ENVIRONMENT`; and the nine remaining `OTEL_*` plus six `PYROSCOPE_*` values from the jvm Runtime Profile. The shapes are derived; the values must come from the pinned context. Note the coupling: if `VAULT_ADDR` resolves to the public hostname, the derived "egress to the Secret Store" rule selects pods the traffic never reaches |
+| <a id="g-11"></a>G-11 | **Every platform-component fact is a Platform document input this example set does not carry.** Marked `CONTEXT` in the files: cluster DNS, the edge, the metrics stack and the Secret Store selectors in `networkpolicy.yaml`; `release: metrics-stack` on the ServiceMonitor; `entryPoints` and `certResolver` on the IngressRoutes; `VAULT_ADDR`; `DEPLOYMENT_ENVIRONMENT`; and the nine remaining `OTEL_*` plus six `PYROSCOPE_*` values from the jvm Runtime Profile. The shapes are derived; the values must come from the pinned context. Note the coupling: if `VAULT_ADDR` resolves to the public hostname, the derived "egress to the Secret Store" rule selects pods the traffic never reaches |
 | <a id="g-12"></a>G-12 | **auth-ui's env file is not in the example set**, so its container renders with no `env` at all. The model requires one env file per Workload; the example set reproduces one of two |
 | <a id="g-13"></a>G-13 | **No chapter fixes the label set.** `app.kubernetes.io/{name,instance,part-of,managed-by}` here. `name` + `instance` are load-bearing (they are the selector, and a selector is immutable on a Deployment), so this is not cosmetic: changing the convention later is a delete-and-recreate on every workload in the estate |
 | <a id="g-14"></a>G-14 | **Per-Service directories versus per-domain objects.** `namespace.yaml` and the namespace-wide `default-deny` NetworkPolicy are one object per *domain*, while the adapter emits per *Service directory*. auth has one Service so nothing collides; the data domain has three, and three identical Namespace objects at three paths is `E_PATH_COLLISION` waiting for a second writer. Which Service directory owns a per-namespace object is undecided |
@@ -151,11 +191,11 @@ renumbered — every other reference in this file keeps pointing where it did.
 | <a id="g-20"></a>G-20 | **The dynamic database credential is granted at a path it is not read from.** The grant declares `secret/data/platform/postgres/auth` (KV-v2) while the intent's prose and the derived `VAULT_DB_ENABLED=true` describe the database secrets engine, which lives at `database/creds/<role>`. No grant declares that path, so the derived policy does not permit the read the wiring performs |
 | <a id="g-21"></a>G-21 | **`self-roll` derives a capability that cannot perform the roll.** The tier derives `patch` on the *granted path*, `transit/keys/auth-api-jwt`. Vault rotates a transit key at `transit/keys/<name>/rotate` and signs at `transit/sign/<name>`, both requiring `update`. The grant that exists so this Workload can roll its own JWT key derives a policy that permits neither rotation nor signing. The `access` × path derivation needs a non-KV branch |
 | <a id="g-22"></a>G-22 | **No token TTLs.** `token_ttl`, `token_max_ttl` and `token_period` on the Kubernetes auth role have no field and no derivation; the mount default applies |
-| <a id="g-23"></a>G-23 | **The forward-auth `Middleware` object has no producer.** The registry says `traefik-public` emits IngressRoutes "with middleware references" — references only. Every `audience: authenticated` route in every other domain resolves against a Middleware pointing at this Service, and nothing renders it |
+| <a id="g-23"></a>G-23 | **The forward-auth `Middleware` object has no producer.** The registry says `traefik` emits IngressRoutes "with middleware references" — references only. Every `audience: authenticated` route in every other domain resolves against a Middleware pointing at this Service, and nothing renders it |
 | <a id="g-24"></a>G-24 | **A domain's Deliverables land in another domain's namespace.** The Gatus endpoints ConfigMap is one estate-wide object in `utility-system`, contributed to by every domain. `E_FOREIGN_NAMESPACE` is satisfied only because the adapter owns the path rather than the Service — worth stating explicitly before someone tightens the rule |
 | <a id="g-25"></a>G-25 | **auth-ui cannot bind port 80 as rendered.** `provides: {http: 80}` with `runAsNonRoot: true` and `capabilities.drop: [ALL]`, and the only declared exception is `writableRootFilesystem`. Binding below 1024 needs `CAP_NET_BIND_SERVICE`, which the exception vocabulary can express (`capability:NET_BIND_SERVICE`) and this Workload does not declare. Nothing checks it: the model has every fact needed to refuse this at build time — an exposed or provided port < 1024, non-root, no capability exception — and no rule that does |
 | <a id="g-26"></a>G-26 | **`runAsNonRoot: true` with no UID.** Chapter 10 renders the control "with the UID from the image", and no pinned input carries a UID — the images lock carries digests. If the image's `USER` is a name rather than a number, the kubelet cannot verify non-root and the pod fails with `CreateContainerConfigError`. Either the lock grows a UID or the model grows a field |
-| <a id="g-27"></a>G-27 | **The Flux health timeout class contradicts the startup budget.** The class table gives `stateless: 5m`; auth-api's `startupBudget` is 600 s and its derived `progressDeadlineSeconds` is 1800. The Kustomization gives up at 5 minutes on a Workload the model says may legitimately take ten. Two derivations over the same declaration disagree |
+| <a id="g-27"></a>G-27 | **The Flux health timeout class contradicts the startup budget.** The class table gives `stateless: 5m`; auth-api's `startupBudget` is 600 s and its derived `progressDeadlineSeconds` is 1800. The Kustomization gives up at 5 minutes on a Workload the model says may legitimately take ten. Two derivations over the same declaration disagree | **Closed** by [0071](../../../../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md): the class table is deleted and the Service-scoped number is the release-gate deadline, max over members of progressDeadlineSeconds. |
 | <a id="g-28"></a>G-28 | **The hardening class does not say where its controls land.** `runAsNonRoot` and `seccompProfile` are rendered at pod level, `readOnlyRootFilesystem` and `capabilities` at container level (the latter two have no pod-level form). The split is a serialisation choice, and it matters the moment `sidecars` is graded: a pod-level control covers a sidecar the Workload did not declare |
 | <a id="g-29"></a>G-29 | **Two label sources for `arch`.** `kubernetes.io/arch` is the kubelet's own; the node contract emits 110 labels for 7 nodes, 55 of them under a prefix named after an archived repository. Which one a selector uses is not fixed, and picking the archived prefix is the trap 0056 exists to retire. Capabilities have only one source (`platform.jorisjonkers.dev/capability-*`), so the ambiguity is `arch`-specific — and it is a single-authority (property 2) question, not a style one |
 | <a id="g-30"></a>G-30 | **`NetworkPolicy` has no registered producer.** Chapter 30's open item 2: the only implementation is in the generation being deleted, so coverage for the kind goes from unregistered to absent. Everything in `networkpolicy.yaml` is what the future `networking` adapter must emit. The same holds for the RBAC gap — see G-31 |

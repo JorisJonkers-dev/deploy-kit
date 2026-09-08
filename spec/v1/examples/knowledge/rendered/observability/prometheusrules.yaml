@@ -1,0 +1,41 @@
+# GENERATED. Never hand-edit.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: knowledge
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+    release: metrics-stack
+spec:
+  groups:
+    - name: knowledge.baseline
+      rules:
+        - alert: TargetAbsent
+          expr: absent(up{job="knowledge-api"}) == 1
+          for: 10m
+          labels:
+            severity: business-hours
+            receiver: discord-daytime
+            service: knowledge
+          annotations:
+            summary: knowledge-api is not being scraped
+        - alert: RestartLoop
+          expr: increase(kube_pod_container_status_restarts_total{container="knowledge-api"}[15m]) > 3
+          for: 10m
+          labels:
+            severity: business-hours
+            receiver: discord-daytime
+            service: knowledge
+          annotations:
+            summary: knowledge-api is restarting repeatedly
+        - alert: ProbeFailing
+          expr: kube_pod_status_ready{condition="false", pod=~"knowledge-api-.*"} == 1
+          for: 10m
+          labels:
+            severity: business-hours
+            receiver: discord-daytime
+            service: knowledge
+          annotations:
+            summary: knowledge-api is not ready

@@ -1,35 +1,7 @@
-# adapter: kubernetes
-# real path: platform/cluster/flux/apps/data/platform-postgres/configmap.yaml
-#
-# ONE ConfigMap, and it carries the ASSET -- not the env file.
-#
-# The env file's literal keys (POSTGRES_DB, POSTGRES_USER) render as inline
-# `env:` entries on the container, per chapter 10: "the renderer partitions the
-# file: literal keys become plain env entries, and ${secret:...} keys become
-# envFrom secretRef entries". The registered `kubernetes` adapter also emits a
-# `configmap.yaml`, and the sibling `knowledge` render in this example set puts
-# its env literals there instead. Two readings of one rule, and no chapter
-# settles which -- README, gap G-10.
-#
-# `onChange: restart` derives a CONTENT-HASHED object name, so an edit to the
-# file changes the pod template and the change actually reaches the pod. 16 of
-# the estate's 18 ConfigMaps are plain today, meaning an edit applies
-# successfully and has nothing happen.
-#
-# Under `Recreate` on an RWO volume that mechanism has a price worth naming: a
-# one-line change to postgresql.conf is a full zero-pod restart of the datastore
-# eight Services queue behind. Nothing in the model distinguishes an Asset whose
-# change needs a restart from one whose change needs a reload -- `onChange` has
-# exactly the two values, and postgres supports `pg_ctl reload`.
+# GENERATED. Never hand-edit.
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  # CANNOT DERIVE THE NAME. The suffix is a hash over the bytes of
-  # config/postgresql.conf, which lives in the Service repository. This example
-  # set reproduces the domain file and one env file and no Assets, so the hash
-  # has no input here. Written as a marker rather than as a plausible hex string,
-  # because a wrong hash is indistinguishable from a right one and would make
-  # this file look appliable. README, gap G-08.
   name: postgres-postgresql-conf-<content-hash>
   namespace: data-system
   labels:
@@ -37,25 +9,6 @@ metadata:
     app.kubernetes.io/instance: platform-postgres
     app.kubernetes.io/part-of: data
     app.kubernetes.io/managed-by: deploy-kit
-immutable: true                          # follows from the hashed name: a new
-                                         # content hash is a new object, so this
-                                         # one never changes in place
+immutable: true
 data:
-  # The KEY derives from the basename of `from:`; the mount path comes from
-  # `mountAt`, and the two are independent -- which is why workload.yaml needs a
-  # subPath rather than mounting the directory.
-  #
-  # THE VALUE CANNOT BE RENDERED. `from: config/postgresql.conf` is a path into
-  # the Service repository; the intent records it as "fully static: zero derived
-  # values in 54 lines", and this example set does not carry those 54 lines.
-  # Inventing a postgresql.conf would be inventing tuning decisions -- shared
-  # buffers, WAL settings, max_connections -- that are the whole reason the file
-  # is an Asset and not a derived value.
   postgresql.conf: null
-# NOT EMITTED: a ConfigMap for init-databases.sh, and it is deliberate on two
-# separate grounds. It is 98 lines of executable shell, and an Asset may not be
-# executable (the fix is an image, not a template language). And its content is
-# derivable: one database and one owning user per consumer of the `postgres`
-# surface -- auth_db, agents_db, knowledge_db, n8n_db -- which the inbound edge
-# set already knows. It is a derived catalog, a Deliverable rather than
-# configuration, and nothing registered produces it. README, gap G-11.

@@ -1,23 +1,4 @@
-# adapter: kubernetes
-# real path: platform/cluster/flux/apps/data/platform-postgres/pvc.yaml
-#
-# ONE claim, declared by name on the Workload. A PersistentVolumeClaim and no
-# PersistentVolume: local-path provisions dynamically on first consumer, so the
-# PV and its node affinity are created by the provisioner, not rendered.
-#
-# storageClassName is `local-path`. Longhorn is declared eligible on four nodes
-# and no PVC in fleet-infra sets a storageClassName, so nothing in this estate is
-# on Longhorn and this render does not pretend otherwise.
-#
-# ReadWriteOnce follows from local-path having no other mode, and it is what
-# forces `Recreate` on the Deployment that mounts it.
-#
-# TWO SIZES THAT ARE NOT THE SAME FACT, and a reader will conflate them:
-# `placement.disk.size: 100Gi` is a filter on the NODE's disks -- which nodes are
-# eligible to hold this data at all -- while `resources.requests.storage` below
-# is how much of that disk this claim takes. Live is 20Gi against a 100Gi
-# eligibility floor. Nothing in the rendered tree relates the two numbers, and
-# nothing checks that the claim fits inside the disk the dimension selected for.
+# GENERATED. Never hand-edit.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -25,38 +6,16 @@ metadata:
   namespace: data-system
   labels:
     app.kubernetes.io/name: postgres
-    app.kubernetes.io/instance: platform-postgres
-    app.kubernetes.io/part-of: data
+    app.kubernetes.io/instance: postgres
+    app.kubernetes.io/part-of: platform-postgres
     app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
   annotations:
-    # The one fact only the owning Service knows, carried onto the object so a
-    # delivery mechanism can refuse to prune it -- the model's second demand on
-    # the separately-defined delivery work. The annotation KEY is a convention
-    # this render is choosing; no chapter names one. README, gap G-18.
     deploy-kit.jorisjonkers.dev/durability: irreplaceable
 spec:
   accessModes:
-    - ReadWriteOnce
+  - ReadWriteOnce
   storageClassName: local-path
   resources:
     requests:
-      # CANNOT DERIVE. Capacity is platform-ASSIGNED and the author is forbidden
-      # to write it, and no pinned input in this example set carries an
-      # assignment: the node contract publishes disks[].usable_gib and no rule
-      # allocates a number to a claim. For a claim that already exists the bound
-      # PV's capacity would come from the ClusterState snapshot, and there is no
-      # snapshot here. A PVC without this field does not apply.
-      # README, gap G-17.
-      storage: null
-# NOT EMITTED, and this is the largest hole in the domain: the backup job.
-#
-# `durability: irreplaceable` is declared on the claim holding the database
-# eight Services queue behind, on a local-path volume in a cluster with no
-# VolumeSnapshot CRDs and no CSI snapshot support -- so losing the node loses
-# every consumer's data at once. The class derives a backup job, a retention
-# sweep AND an off-cluster copy, plus a restore rehearsed before the first
-# production apply.
-#
-# No registered adapter reads `durability`. Even with one, three values have no
-# declaring site anywhere in layer 1: the schedule, the retention window, and the
-# off-cluster destination. Not rendered rather than invented. README, gap G-12.
+      storage: 100Gi

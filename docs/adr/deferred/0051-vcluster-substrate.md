@@ -44,7 +44,7 @@ composed estate` — the substrate's location is never named. If VC lands on the
 production control plane, six concurrent full-estate applies draw on the same
 7-node pool (node facts emit 110 labels for 7 nodes) and the same `local-path`
 storage the placement model exists to arbitrate, contending for exactly the CPU and
-memory [0061](../0061-placement-is-hard-dimensions.md)'s dimensions ration — a
+memory [0061](../model/0061-placement-is-hard-dimensions.md)'s dimensions ration — a
 test substrate on the production kernel defeats the control that protects
 production. Hence k3d on the CI runner: the same k3s binary as production, in a
 container namespace on the runner host, with no production API server, scheduler or
@@ -61,8 +61,8 @@ script above "already does" a layer-ordered apply against a vcluster today.
 
 | option | cost if taken | why rejected |
 |---|---|---|
-| vclusters on the production k3s cluster | six concurrent syncers × 405 objects on the 7-node pool and its `local-path` volumes; no isolation from the workloads [0061](../0061-placement-is-hard-dimensions.md) rations | Test load evicting production is precisely the failure the placement model exists to prevent |
-| a dedicated always-on test cluster | second set of hardware plus its own k3s upgrade, CNI ([0036](../0036-cni-selection.md)) and restore ([0057](../0057-datastore-and-restore.md)) story, run by the same one person | Doubles the operational surface to serve a gate whose cost is not yet known |
+| vclusters on the production k3s cluster | six concurrent syncers × 405 objects on the 7-node pool and its `local-path` volumes; no isolation from the workloads [0061](../model/0061-placement-is-hard-dimensions.md) rations | Test load evicting production is precisely the failure the placement model exists to prevent |
+| a dedicated always-on test cluster | second set of hardware plus its own k3s upgrade, CNI ([0036](../model/0036-cni-selection.md)) and restore ([0057](../model/0057-datastore-and-restore.md)) story, run by the same one person | Doubles the operational surface to serve a gate whose cost is not yet known |
 | `kind` on the runner instead of k3d | same isolation, but a different distribution from the k3s the gate is predicting for | Reintroduces substrate drift the gate exists to eliminate; k3d runs the production k3s binary |
 | no substrate — schema validation plus `--dry-run=server` against production | near-zero CI cost | Needs a production credential on every PR and still never runs a relationship suite ([0049](0049-aggregator-owned-tests.md)) |
 
@@ -87,7 +87,7 @@ its registry, `local-path` defaults) rather than the k3s API, or once the gate s
 - Production nodes are never the test substrate, so the 7-node pool stays rationed
   for real workloads — paid by nobody; a benefit to service owners
 - k3d cannot exercise the production CNI's enforcement path or the real MetalLB
-  pool, so [0035](../0035-network-policy-default-deny.md)'s flow observation still
+  pool, so [0035](../model/0035-network-policy-default-deny.md)'s flow observation still
   needs a real cluster — paid by the network-policy work
 - The figure goes stale whenever the class-B chart set moves, so it is re-taken on
   each foundation pin bump ([0048](0048-class-b-pinning.md)) — paid by joris

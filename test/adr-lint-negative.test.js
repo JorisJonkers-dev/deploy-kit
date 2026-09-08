@@ -3,10 +3,14 @@
 // A lint that has only ever been run against a clean tree is untested: nothing
 // proves it would fail. Each case below builds a throwaway tree that violates
 // exactly one rule and asserts the lint reports that rule and exits non-zero.
+//
+// Fixture keys are domain-relative paths under docs/adr — "model/0002-x.md",
+// "architecture/0064-y.md" — because the domain a file lives in decides which
+// normative root its pointer must resolve against.
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, dirname, basename } from "node:path";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -69,21 +73,28 @@ function lintTree(files, { premise = true, register = true } = {}) {
       join(root, "spec", "v1", "00-overview.md"),
       "# Overview\n\n## A heading\n\nText.\n",
     );
+    mkdirSync(join(root, "docs"), { recursive: true });
+    writeFileSync(
+      join(root, "docs", "architecture.md"),
+      "# Architecture\n\n## Layers\n\nText.\n",
+    );
 
     const all = { ...files };
     if (premise) {
-      all["0001-a-premise.md"] = validAdr({
+      all["model/0001-a-premise.md"] = validAdr({
         tier: "premise",
         title: "A premise stated as one sentence",
         restsOn: null,
       });
     }
-    for (const [name, content] of Object.entries(all)) {
-      writeFileSync(join(adrDir, name), content);
+    for (const [rel, content] of Object.entries(all)) {
+      const target = join(adrDir, rel);
+      mkdirSync(dirname(target), { recursive: true });
+      writeFileSync(target, content);
     }
     if (register) {
       const rows = Object.keys(all)
-        .map((n) => `| [${n.slice(0, 4)}](${n}) | a row |`)
+        .map((rel) => `| [${basename(rel).slice(0, 4)}](${rel}) | a row |`)
         .join("\n");
       writeFileSync(
         join(adrDir, "README.md"),
@@ -99,21 +110,21 @@ function lintTree(files, { premise = true, register = true } = {}) {
 }
 
 test("a clean tree passes", () => {
-  const { code, output } = lintTree({ "0002-a-decision.md": validAdr() });
+  const { code, output } = lintTree({ "model/0002-a-decision.md": validAdr() });
   assert.equal(code, 0, output);
   assert.match(output, /files clean/);
 });
 
 test("a missing required section fails", () => {
   const broken = validAdr().replace("## Reversibility", "## Notes");
-  const { code, output } = lintTree({ "0002-a-decision.md": broken });
+  const { code, output } = lintTree({ "model/0002-a-decision.md": broken });
   assert.equal(code, 1);
   assert.match(output, /missing section '## Reversibility'/);
 });
 
 test("an unknown claim value fails", () => {
   const { code, output } = lintTree({
-    "0002-a-decision.md": validAdr({ claim: "probably" }),
+    "model/0002-a-decision.md": validAdr({ claim: "probably" }),
   });
   assert.equal(code, 1);
   assert.match(output, /claim must be one of/);
@@ -121,7 +132,7 @@ test("an unknown claim value fails", () => {
 
 test("an open claim without an owner fails", () => {
   const { code, output } = lintTree({
-    "0002-a-decision.md": validAdr({ claim: "open" }),
+    "model/0002-a-decision.md": validAdr({ claim: "open" }),
   });
   assert.equal(code, 1);
   assert.match(output, /requires an owner/);
@@ -129,8 +140,8 @@ test("an open claim without an owner fails", () => {
 
 test("a decision resting on another decision fails", () => {
   const { code, output } = lintTree({
-    "0002-a-decision.md": validAdr({ restsOn: '["0003"]' }),
-    "0003-another-decision.md": validAdr(),
+    "model/0002-a-decision.md": validAdr({ restsOn: '["0003"]' }),
+    "model/0003-another-decision.md": validAdr(),
   });
   assert.equal(code, 1);
   assert.match(output, /rests-on 0003 is not a premise/);
@@ -141,14 +152,16 @@ test("a premise carrying rests-on fails", () => {
     "date: 2026-09-07",
     'date: 2026-09-07\nrests-on: ["0001"]',
   );
-  const { code, output } = lintTree({ "0002-a-premise.md": premise });
+  const { code, output } = lintTree({ "model/0002-a-premise.md": premise });
   assert.equal(code, 1);
   assert.match(output, /premise must not carry rests-on/);
 });
 
 test("a bare ADR citation outside a link fails", () => {
   const { code, output } = lintTree({
-    "0002-a-decision.md": validAdr({ body: "\nSee ADR-0001 for context.\n" }),
+    "model/0002-a-decision.md": validAdr({
+      body: "\nSee ADR-0001 for context.\n",
+    }),
   });
   assert.equal(code, 1);
   assert.match(output, /bare citation 'ADR-0001' outside a link/);
@@ -156,7 +169,7 @@ test("a bare ADR citation outside a link fails", () => {
 
 test("a normative anchor that does not exist fails", () => {
   const { code, output } = lintTree({
-    "0002-a-decision.md": validAdr({
+    "model/0002-a-decision.md": validAdr({
       normative: "spec/v1/00-overview.md#no-such-heading",
     }),
   });
@@ -166,7 +179,7 @@ test("a normative anchor that does not exist fails", () => {
 
 test("a link to a missing ADR file fails", () => {
   const { code, output } = lintTree({
-    "0002-a-decision.md": validAdr({
+    "model/0002-a-decision.md": validAdr({
       body: "\nSee [0099](0099-absent.md).\n",
     }),
   });
@@ -177,7 +190,7 @@ test("a link to a missing ADR file fails", () => {
 test("a fenced block over the ten-line cap fails", () => {
   const fence = ["", "```yaml", ...Array(14).fill("key: value"), "```", ""];
   const { code, output } = lintTree({
-    "0002-a-decision.md": validAdr({ body: fence.join("\n") }),
+    "model/0002-a-decision.md": validAdr({ body: fence.join("\n") }),
   });
   assert.equal(code, 1);
   assert.match(output, /exceeds the 10-line cap/);
@@ -188,14 +201,14 @@ test("an Alternatives table with no rows fails", () => {
     "| the other thing | a real cost | a real reason |",
     "",
   );
-  const { code, output } = lintTree({ "0002-a-decision.md": broken });
+  const { code, output } = lintTree({ "model/0002-a-decision.md": broken });
   assert.equal(code, 1);
   assert.match(output, /Alternatives table has no rows/);
 });
 
 test("an ADR absent from the register fails", () => {
   const { code, output } = lintTree(
-    { "0002-a-decision.md": validAdr() },
+    { "model/0002-a-decision.md": validAdr() },
     { register: false },
   );
   assert.equal(code, 1);
@@ -206,4 +219,122 @@ test("an empty decision set fails loudly", () => {
   const { code, output } = lintTree({}, { premise: false });
   assert.equal(code, 1);
   assert.match(output, /no ADR files found/);
+});
+
+// -- domain directories ------------------------------------------------------
+// docs/adr carries one directory per decision domain. Which directory a file
+// lives in decides which normative root its pointer must resolve against, so
+// the domain rules get their own fixtures.
+
+test("an architecture ADR anchoring into docs/architecture.md passes", () => {
+  const { code, output } = lintTree({
+    "model/0002-a-decision.md": validAdr(),
+    "architecture/0064-a-code-decision.md": validAdr({
+      normative: "docs/architecture.md#layers",
+    }),
+  });
+  assert.equal(code, 0, output);
+  assert.match(output, /files clean/);
+});
+
+test("an architecture ADR with a missing anchor fails", () => {
+  const { code, output } = lintTree({
+    "architecture/0064-a-code-decision.md": validAdr({
+      normative: "docs/architecture.md#no-such-heading",
+    }),
+  });
+  assert.equal(code, 1);
+  assert.match(output, /anchor '#no-such-heading' not found/);
+});
+
+test("a model ADR pointing outside spec/v1 fails", () => {
+  const { code, output } = lintTree({
+    "model/0002-a-decision.md": validAdr({
+      normative: "docs/architecture.md#layers",
+    }),
+  });
+  assert.equal(code, 1);
+  assert.match(output, /normative target .* outside .*spec\/v1/);
+});
+
+test("an architecture ADR pointing into spec/v1 fails", () => {
+  const { code, output } = lintTree({
+    "architecture/0064-a-code-decision.md": validAdr(),
+  });
+  assert.equal(code, 1);
+  assert.match(output, /normative target .* outside .*docs\/architecture\.md/);
+});
+
+test("an ADR left outside a domain directory fails", () => {
+  const { code, output } = lintTree({
+    "0002-a-decision.md": validAdr(),
+    "model/0003-another-decision.md": validAdr(),
+  });
+  assert.equal(code, 1);
+  assert.match(output, /outside a domain directory/);
+});
+
+test("one number used in two domains fails", () => {
+  const { code, output } = lintTree({
+    "model/0002-a-decision.md": validAdr(),
+    "architecture/0002-a-code-decision.md": validAdr({
+      normative: "docs/architecture.md#layers",
+    }),
+  });
+  assert.equal(code, 1);
+  assert.match(output, /number 0002 used in two domains/);
+});
+
+test("a cross-domain link into deferred resolves", () => {
+  const { code, output } = lintTree({
+    "model/0002-a-decision.md": validAdr({
+      body: "\nDelivery is [0041](../deferred/0041-a-parked-decision.md).\n",
+    }),
+    "deferred/0041-a-parked-decision.md": "# Parked, and not linted.\n",
+  });
+  assert.equal(code, 0, output);
+});
+
+test("a cross-domain link to a missing file fails", () => {
+  const { code, output } = lintTree({
+    "model/0002-a-decision.md": validAdr({
+      body: "\nDelivery is [0041](../deferred/0041-absent.md).\n",
+    }),
+  });
+  assert.equal(code, 1);
+  assert.match(
+    output,
+    /link to missing ADR file \.\.\/deferred\/0041-absent\.md/,
+  );
+});
+
+test("a number already used in deferred fails", () => {
+  const { code, output } = lintTree({
+    "model/0002-a-decision.md": validAdr(),
+    "architecture/0041-a-code-decision.md": validAdr({
+      normative: "docs/architecture.md#layers",
+    }),
+    "deferred/0041-a-parked-decision.md": "# Parked, and not linted.\n",
+  });
+  assert.equal(code, 1);
+  assert.match(output, /number 0041 used in two domains/);
+});
+
+test("one number used twice inside a domain fails", () => {
+  const { code, output } = lintTree({
+    "model/0002-a-decision.md": validAdr(),
+    "model/0002-a-different-decision.md": validAdr(),
+  });
+  assert.equal(code, 1);
+  assert.match(output, /number 0002 used twice in model/);
+});
+
+test("a tree where every ADR was left at the root says so", () => {
+  const { code, output } = lintTree(
+    { "0002-a-decision.md": validAdr() },
+    { premise: false },
+  );
+  assert.equal(code, 1);
+  assert.match(output, /outside a domain directory/);
+  assert.doesNotMatch(output, /no ADR files found/);
 });

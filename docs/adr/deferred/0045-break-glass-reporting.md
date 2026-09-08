@@ -47,7 +47,7 @@ report (`spec/v1/examples/workflows/aggregator-deploy.yml:57,128`), and the esta
 only other break-glass token is a CI summary enum (`actor_decision: "break-glass"`,
 `schemas/gate-summary.schema.json:26`). Nobody reads a completed run. So a break-glass
 apply raises an alert at the `urgent` Alert Class of
-[0021](../0021-observability-scrape-and-alert-class.md), addressed to the owner and
+[0021](../model/0021-observability-scrape-and-alert-class.md), addressed to the owner and
 expressed as the lag measurement already defined (`spec/v1/50-lifecycle.md:165`). It
 fires until the applied lock equals the merged pin: clearing is a condition, not a
 decision by whoever caused it.
@@ -58,7 +58,7 @@ decision by whoever caused it.
 |---|---|---|
 | Leave reporting where it is: the `::warning::` line plus `actor_decision: "break-glass"` in the gate summary | zero build; visible for one run's log retention | this *is* the unreported state the old ADR named — the record expires while the divergence persists |
 | Auto-expire: the CronJob returns to the merged pin after N hours | one CronJob branch plus a field, roughly half a day | destroys the sticking property that makes break-glass usable; an incident outlasting N hours re-breaks itself unattended — exactly `rollback-source.sh`'s undo-on-failed-check shape |
-| Post to a channel from the workflow instead of raising an alert | one webhook, no rule to maintain | routing is estate knowledge per [0021](../0021-observability-scrape-and-alert-class.md); a named channel nobody reads fails identically to no report — Gatus monitoring 41 endpoints and notifying nobody is the estate's own proof |
+| Post to a channel from the workflow instead of raising an alert | one webhook, no rule to maintain | routing is estate knowledge per [0021](../model/0021-observability-scrape-and-alert-class.md); a named channel nobody reads fails identically to no report — Gatus monitoring 41 endpoints and notifying nobody is the estate's own proof |
 
 ## Reversibility
 
@@ -85,5 +85,5 @@ record of which divergence was deliberate.
   the alert fired — paid by joris.
 - The mechanism is group-G scope and inherits the untested premise of
   [0008](0008-tested-equals-deployed-requires-push.md); if push delivery is cut per
-  [0059](../0059-v1-scope-stopping-rule.md), Flux's rollback replaces it — paid by joris,
+  [0059](../model/0059-v1-scope-stopping-rule.md), Flux's rollback replaces it — paid by joris,
   as work built ahead of the experiment that justifies it.

@@ -1,67 +1,33 @@
-# adapter: traefik-public
-# real path: platform/cluster/flux/apps/edge/traefik-ingressroutes.yaml
-#
-# ESTATE-SCOPED FILE. The traefik-public adapter emits one file holding every
-# public route in the estate; only the knowledge entries are shown. Nothing in
-# this domain's own tree references it.
-#
-# No traefik-lan file: this exposure carries no `lan` audience, so the
-# `traefik-lan` adapter renders nothing for knowledge.
-#
-# ONE exposure with five routes becomes TWO IngressRoutes, because the routes
-# carry two audiences and audience is what selects the middleware chain. Four
-# routes override the exposure's `authenticated` with `anonymous`; the `/`
-# catch-all takes the exposure's own. Traefik orders rules by match specificity,
-# so the four anonymous predicates beat the catch-all without a priority field.
-#
-# THE HOSTNAME IS AUTHORED: `host: knowledge.jorisjonkers.dev`, the full FQDN,
-# written on the Service's `public` exposure. It is not assembled from a label,
-# a tier policy and a cluster domain, and it is not read back from resolved.yml
-# -- the estate also answers on kb.jorisjonkers.dev, and no rule could have
-# picked between them.
-#
-# Each route names `{path, match, workload, surface}`, so the backend below is a
-# derivation and not a guess: `workload: knowledge-api` + `surface: http` is the
-# Kubernetes Service and the port. knowledge-ingest-worker declares no
-# `provides`, so no route can name it and none does.
-#
-# This single block replaces the six independent declarations of the hostname:
-# both catalogs, both IngressRoutes, the reachability channel and the Gatus
-# endpoint.
+# GENERATED. Never hand-edit.
 ---
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
   name: knowledge-anonymous
-  namespace: edge-system        # the route tier's namespace, not the Service's
+  namespace: edge-system
   labels:
     app.kubernetes.io/name: knowledge-api
+    app.kubernetes.io/instance: knowledge-api
     app.kubernetes.io/part-of: knowledge
     app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: jvm
   annotations:
-    # The tier's DNS policy: the default rule is ingress.<publicDomain>, which a
-    # tier may override with its own target. This example set carries no Cluster
-    # Context document, so the default rule is what is applied.
     external-dns.alpha.kubernetes.io/target: ingress.jorisjonkers.dev
     external-dns.alpha.kubernetes.io/cloudflare-proxied: 'true'
     kubernetes.io/ingress.class: traefik
 spec:
   entryPoints:
-    - websecure
+  - websecure
   routes:
-    - kind: Rule
-      # all four routes OVERRIDE the exposure's `authenticated` with
-      # `audience: anonymous`, which is the case per-route audience exists for.
-      # NO middlewares block: that
-      # absence is the whole derivation, and it is why /mcp answers a
-      # workstation holding only a bearer token inside an authenticated host.
-      # `match: exact` renders Path and `match: prefix` renders PathPrefix.
-      match: Host(`knowledge.jorisjonkers.dev`) && (Path(`/mcp`) || PathPrefix(`/mcp/`) || Path(`/install.sh`) || Path(`/install-agents.sh`))
-      services:
-        - name: knowledge-api
-          namespace: knowledge-system
-          port: 8080
-  tls: {}      # the default certificate comes from the edge pack's TLSStore
+  - kind: Rule
+    match: Host(`knowledge.jorisjonkers.dev`) && (Path(`/mcp`) || PathPrefix(`/mcp/`) || Path(`/install.sh`)
+      || Path(`/install-agents.sh`))
+    services:
+    - name: knowledge-api
+      namespace: knowledge-system
+      port: 8080
+    priority: 1005
+  tls: {}
 ---
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
@@ -70,30 +36,26 @@ metadata:
   namespace: edge-system
   labels:
     app.kubernetes.io/name: knowledge-api
+    app.kubernetes.io/instance: knowledge-api
     app.kubernetes.io/part-of: knowledge
     app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: jvm
   annotations:
     external-dns.alpha.kubernetes.io/target: ingress.jorisjonkers.dev
     external-dns.alpha.kubernetes.io/cloudflare-proxied: 'true'
     kubernetes.io/ingress.class: traefik
 spec:
   entryPoints:
-    - websecure
+  - websecure
   routes:
-    - kind: Rule
-      # the one route that declares no `audience` of its own, so it takes the
-      # exposure's
-      match: Host(`knowledge.jorisjonkers.dev`) && PathPrefix(`/`)
-      middlewares:
-        # audience: authenticated on a public tier derives forward-auth. The
-        # Service never names a middleware, a tier or an authMode; it names an
-        # audience, and this is what the audience buys. No `contentPolicy` is
-        # authored, so the header baseline is the tier's and no CSP profile
-        # reference is emitted.
-        - name: forward-auth
-          namespace: edge-system
-      services:
-        - name: knowledge-api
-          namespace: knowledge-system
-          port: 8080
+  - kind: Rule
+    match: Host(`knowledge.jorisjonkers.dev`) && PathPrefix(`/`)
+    middlewares:
+    - name: forward-auth
+      namespace: edge-system
+    services:
+    - name: knowledge-api
+      namespace: knowledge-system
+      port: 8080
+    priority: 1001
   tls: {}

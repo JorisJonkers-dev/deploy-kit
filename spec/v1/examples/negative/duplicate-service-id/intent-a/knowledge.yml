@@ -4,7 +4,7 @@
 # with E_DUPLICATE_SERVICE_ID rather than for any other reason.
 
 # A literal, and legitimately so. schemaVersion is the DATA MODEL's own semver
-# (docs/adr/0039-artifact-schema-versioning.md), not the toolkit package's, and
+# (docs/adr/model/0039-artifact-schema-versioning.md), not the toolkit package's, and
 # composition admits same-major with minor <= toolkit. Under the superseded
 # equality assert this literal went stale on the next toolkit release and the
 # fixture was rejected by E_SCHEMA_VERSION_MISMATCH before the union ever
@@ -13,7 +13,7 @@
 schemaVersion: 1.0.0
 
 # One file per domain, one file one Intent Fragment
-# (docs/adr/0063-intent-authored-per-domain.md). `owner` is the only field the
+# (docs/adr/model/0063-intent-authored-per-domain.md). `owner` is the only field the
 # header raises.
 domain: knowledge
 owner: joris

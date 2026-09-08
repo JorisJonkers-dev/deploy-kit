@@ -23,7 +23,7 @@ then wait three hours and record every notification received, from any channel.
 
 Routing was derived from fields only a Service carries. The old observability
 record ends its decision at *"notifier routing from the Alert Class and owner"*,
-and both are Service intent ([0021](../0021-observability-scrape-and-alert-class.md)).
+and both are Service intent ([0021](../model/0021-observability-scrape-and-alert-class.md)).
 The reapply CronJob, the composition workflow, the relationship gate and the deploy
 job are not Services: no Alert Class, no owner, no derived route. Their only
 failure signal is a red GitHub Actions run, in an estate whose own record says a
@@ -52,7 +52,7 @@ been red for a week, its runner is offline, or its Renovate PR was closed: the
 failure mode it exists to detect is the only one during which it does not run. So
 machinery components carry the same scrape-surface-plus-Alert-Class vocabulary as
 Services, and four conditions — missed or failed CronJob run, composition failure,
-participant staleness past [0038](../0038-participants-list-staleness.md)'s `maxAge`,
+participant staleness past [0038](../model/0038-participants-list-staleness.md)'s `maxAge`,
 lag beyond bound — each carry an urgent class and an owner, lag evaluated
 cluster-side over the minimum lock annotation, not on the deploy path.
 
@@ -83,8 +83,8 @@ then leaves the thing that deploys everything unwatched, with no habit left.
 - Lag moves off the deploy path into a cluster-side query: one more object per
   aggregator — paid by the cron and rbac adapters.
 - The gate and composition run outside the cluster, so their signal is a heartbeat,
-  not a scrape — paid by the workflow templates ([0037](../0037-composition-oci-fragments.md)).
+  not a scrape — paid by the workflow templates ([0037](../model/0037-composition-oci-fragments.md)).
 - Deliberate maintenance — a suspended CronJob, a dormant participant — pages unless
-  silenced first, a ledger entry ([0055](../0055-bidirectional-ledgers.md)) — paid by the maintainer.
+  silenced first, a ledger entry ([0055](../model/0055-bidirectional-ledgers.md)) — paid by the maintainer.
 - A conflict "reported" by `--on-conflict report` (`reapply-cronjob.yaml:58`) becomes
   a routed alert, not a log line — paid by whoever hand-edited the field ([0046](0046-distinct-field-managers.md)).

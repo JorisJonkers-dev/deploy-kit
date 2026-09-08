@@ -1,0 +1,10 @@
+{
+  "_generated": "GENERATED. Never hand-edit.",
+  "name": "postgres",
+  "role": {
+    "bound_service_account_names": ["postgres"],
+    "bound_service_account_namespaces": ["data-system"],
+    "token_policies": ["postgres"],
+    "token_ttl": "1h"
+  }
+}

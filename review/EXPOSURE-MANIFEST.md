@@ -54,7 +54,7 @@ AUTH_LOGIN_URL=${exposure:auth.public#url}/login
    and lan) needs it to disambiguate.
 4. **`host` is unique across the estate**: `E_DUPLICATE_HOST` at composition,
    evaluated over the composed union together with Registered Unmanaged
-   Surfaces. Authored, arbitrated — which is [0004](../docs/adr/0004-contention-decides-authority.md)
+   Surfaces. Authored, arbitrated — which is [0004](../docs/adr/model/0004-contention-decides-authority.md)
    as restated: contention decides who arbitrates, not who authors.
 5. **A route names `{path, match, workload, surface}`.** `match` is `prefix` or
    `exact`. The surface must be one the named Workload declares in `provides`;

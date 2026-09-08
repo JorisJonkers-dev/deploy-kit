@@ -17,34 +17,23 @@ satisfied at all; see [CNI](#cni).
 Nothing here is optional and the order matters, because each step's checks
 depend on the previous step's output existing.
 
-```mermaid
-flowchart TB
-    A["1. node facts<br/>one YAML per node — site, allocatable cpu and memory,<br/>structured gpus and disks, capabilities;<br/>contract generated, nix imports the labels"]
-    B["2. platform facts recorded<br/>datastore kind, server count,<br/>k3s version and flags"]
-    C["3. Cluster Context published<br/>tiers, audiences, capabilities,<br/>secretsEncryption — pinned by digest"]
-    D["4. blueprint packs checked out<br/>at a pinned ref, root passed explicitly"]
-    E["5. ClusterState collector<br/>snapshot plus clusterStateDigest"]
-    F["6. participants.yml<br/>expected publishers plus maxAge"]
-    G["7. one domain file publishes<br/>one Intent Fragment, holding its Services"]
-    H["8. composition runs<br/>estate-wide invariants, on one fragment"]
-    I["9. render<br/>registered adapters, into the existing Flux tree"]
+![Bootstrap order](diagrams/60-bootstrap-order.drawio.svg)
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I
-    A -.->|"the capability list validates<br/>against the node contract"| C
-    A -.->|"every placement dimension is matched against<br/>allocatable, gpus, disks and site"| H
-    B -.->|"the gate reads<br/>secretsEncryption"| C
-    D -.->|"flux-source and flux-packs<br/>render nothing without packs"| I
-    E -.->|"existing PV bindings and the<br/>disk dimension read the snapshot"| I
-```
+<sub>[Diagram source](#bootstrap-order) · edit by opening the SVG in draw.io</sub>
 
 Steps 1–3 look like paperwork and are not: they are the facts every later step
-reads, and since [0061](../../docs/adr/0061-placement-is-hard-dimensions.md)
+reads, and since [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)
 every Workload's declared `memory` and `cpu` are compared against numbers step 1
 publishes — so step 1 is arithmetic that other repositories' builds now fail
-against. Step 4 is the one most often skipped, because the two pack-backed
-adapters fail in quietly interesting ways without it. Step 5 exists because
-layer 2 may read a pinned snapshot and may never read the live cluster
-([0034](../../docs/adr/0034-cluster-state-pinned-input.md)).
+against. Step 2 is the whole of what is applied by hand, and it is a table in
+the Platform document ([chapter 14](14-platform-intent.md#the-bootstrap-set),
+[0099](../../docs/adr/model/0099-bootstrap-set-is-recorded.md)); everything
+after it is rendered. Step 4 is new: the foundation is declared
+([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)), so Vault,
+VSO, Traefik and the metrics stack publish like any domain and tenants render
+against them. Step 5 exists because layer 2 may read a pinned snapshot and may
+never read the live cluster
+([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)).
 
 ## Node facts
 
@@ -58,7 +47,7 @@ duplication shows in the output: the generated contract emits **110 labels for
 `personal-stack/*` — named after an archived repository that rejects pushes.
 
 v1 requires the single source
-([0056](../../docs/adr/0056-node-facts-single-source.md)):
+([0056](../../docs/adr/model/0056-node-facts-single-source.md)):
 
 | artefact | authored or generated | holds |
 |---|---|---|
@@ -69,7 +58,7 @@ v1 requires the single source
 
 **What the contract must publish, per node.** Placement is a set of hard
 dimensions, every one of which must match
-([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)), so the contract
+([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)), so the contract
 is the other half of that comparison and its shape is load-bearing:
 
 | published fact | shape | what matches against it |
@@ -104,7 +93,7 @@ accident of an unrelated filter.
 The cpu and memory columns are **node totals**. What the contract publishes is
 allocatable — the total minus the reserve declared in the same node file — and
 it is never read back from the live cluster, which would put an assignment
-outside the pinned input set ([0006](../../docs/adr/0006-pinned-inputs.md)).
+outside the pinned input set ([0006](../../docs/adr/model/0006-pinned-inputs.md)).
 
 **The reserve is a guess until it is reconciled, and the cost is not evenly
 spread.** An authored reserve is an assertion about what the kubelet, the
@@ -127,7 +116,7 @@ the third at apply. Nothing in this chapter, and nothing in layer 2, bin-packs.
 *Tailscale is on 7 of 7 nodes, so it stops being a capability.* A filter that
 excludes nothing teaches authors that filters do nothing, so it leaves the
 capability vocabulary
-([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)). What remains,
+([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). What remains,
 with node counts: `adguard` (5), `lan-ingress` (3), `nvidia` (2), `samba` (1),
 `public-ingress` (1), `llm-host` (1), `backup-store` (1), `amd-gpu` (1). No node
 carries a taint. The two GPU strings stay node facts and
@@ -146,7 +135,7 @@ binding in the pinned ClusterState wins.
 
 Two consequences bind other chapters. Placement declares **dimensions and
 capabilities, never labels**
-([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)), and both are only
+([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)), and both are only
 resolvable because the contract advertises exactly one label set and one set of
 facts to validate against. And the selector key comes from the contract's prefix
 rather than from `platform.name`, so retiring `personal-stack/*` changes
@@ -160,29 +149,21 @@ matches `yq -o=json '.nodes.<n>.labels' nix-config/generated/node-contract.yml`.
 
 ## Platform facts and restore
 
-Three facts that decide other decisions are, today, expressible in no schema
-here: what the datastore is, how many servers there are, and what the k3s
-version and server flags are. `schemas/platform.schema.json` requires only
-`version`, `name` and `domain`; `$defs/host.roles` is an unconstrained array, so
-`k3s-control-plane` is a spelling convention rather than a validated fact.
-Whether the single server keeps cluster state in SQLite or embedded etcd decides
-whether `k3s etcd-snapshot` exists at all.
-
-v1 makes them required platform intent
-([0057](../../docs/adr/0057-datastore-and-restore.md)):
-
-| fact | why it is load-bearing | read by |
-|---|---|---|
-| **datastore kind** (SQLite or embedded etcd) | decides whether a snapshot command exists, and what a restore is | the restore rehearsal; the secrets-at-rest settling check, which greps the datastore file |
-| **server count** | decides whether the control plane is a single point of failure by design or by accident | every decision resting on [0002](../../docs/adr/0002-kubernetes-as-substrate.md) that would otherwise hedge about HA that is not there |
-| **k3s version** | the version everything else is evaluated against | [0036](../../docs/adr/0036-cni-selection.md)'s lab evaluation; [0028](../../docs/adr/0028-secrets-at-rest-gate.md)'s flag |
-| **server flag set** | flags are configuration that exists nowhere in-tree | `--secrets-encryption`, `--flannel-backend`, `--disable-network-policy` — the flags two open decisions turn on |
-| **CNI and its flags** | whether a non-enforcing policy stage exists at all | [CNI](#cni), and default-deny's promotion path |
-| **`secretsEncryption`** | the renderer's gate | [Secrets at rest](#secrets-at-rest) |
+The facts that decide other decisions — the datastore, the server count, the
+Kubernetes version, `secretsEncryption`, the CNI and its policy controller — are
+**substrate facts** in the Platform document, named for what they are and never
+for the k3s flag that sets them
+([chapter 14](14-platform-intent.md#substrate-facts),
+[0057](../../docs/adr/model/0057-datastore-and-restore.md),
+[0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)). So
+are the durability, observability, probe and ephemeral policies that earlier
+drafts of this chapter tabulated here; chapter 14 is their normative home, and
+this chapter keeps only what setup and restore need from them.
 
 Recording a fact does not choose it. A one-server SQLite cluster stays a
 one-server SQLite cluster; it stops being an assumption each reader re-derives
-by ssh.
+by ssh — and whether `k3s etcd-snapshot` exists at all follows from the
+`datastore` fact rather than from a flag someone remembers.
 
 ### Restore
 
@@ -207,7 +188,7 @@ So the numbers are split by how they are obtained:
 
 | number | value | how it is obtained |
 |---|---|---|
-| **RPO** | **24 hours** | stated, not measured — it is the daily node backup's period. A Workload wanting better declares `durability: recoverable` and gets an application-level backup job with a retention sweep ([0015](../../docs/adr/0015-durability-class-per-volume.md)) |
+| **RPO** | **24 hours** | stated, not measured — it is the daily node backup's period. A Workload wanting better declares `durability: recoverable` and gets an application-level backup job with a retention sweep ([0015](../../docs/adr/model/0015-durability-class-per-volume.md)) |
 | **RTO** | **no number until the drill runs** | measured: wall time from a destroyed claim to a passing readiness probe. This record refuses to invent one |
 
 **A restore is rehearsed before the first production apply of an
@@ -215,9 +196,24 @@ So the numbers are split by how they are obtained:
 outside production, destroy it, restore it from the most recent node backup, and
 record two numbers — wall time to a passing readiness probe, and the age of the
 recovered data. A drill that cannot complete falsifies
-[0057](../../docs/adr/0057-datastore-and-restore.md) rather than adjusting it.
+[0057](../../docs/adr/model/0057-datastore-and-restore.md) rather than adjusting it.
 
 ## Secrets at rest
+
+Mounting `kubernetes` auth, configuring its JWT issuer and CA, creating the KV
+mounts, and configuring the **database secrets engine** whose roles issue
+per-consumer database credentials
+([0080](../../docs/adr/model/0080-database-catalog-is-derived-data.md)) are
+estate-unique and draw on a shared resource, so they are platform-assigned
+([0004](../../docs/adr/model/0004-contention-decides-authority.md)). They are
+Assets of the declared `vault` Service in the platform's secrets domain
+([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)) — declarative
+Vault configuration, rendered and attributed like any Asset — never per-Service
+render. What per-Service render owns is the part that varies per Workload: one
+derived policy and one auth role per identity
+([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)).
+Vault's **unseal** alone is a bootstrap fact
+([chapter 14](14-platform-intent.md#the-bootstrap-set)).
 
 `delivery: env` and `delivery: file` write a Kubernetes Secret. With no
 `--secrets-encryption` configuration anywhere in `nix-config` or the bootstrap
@@ -229,9 +225,9 @@ but a **security regression against what runs today**.
 The exposure is not marginal: `delivery: env` is what every worked example
 except `auth-api` uses, and the item has now been written three times as prose
 without acquiring an owner. v1 makes it mechanical
-([0028](../../docs/adr/0028-secrets-at-rest-gate.md)):
+([0028](../../docs/adr/model/0028-secrets-at-rest-gate.md)):
 
-> The pinned Cluster Context carries `secretsEncryption`. The renderer refuses
+> The pinned Platform Intent carries `secretsEncryption`. The renderer refuses
 > any `secrets[]` entry with `delivery: env` or `delivery: file` against a
 > context that does not advertise `secretsEncryption: true`, with
 > `E_SECRETS_AT_REST_REQUIRED`.
@@ -246,10 +242,10 @@ Two limits, stated so the gate is not read as more than it is. The fact is
 why the settling command is run per cluster and recorded. And the gate closes
 the datastore-file and backup path only — a token with API read still gets
 plaintext, so path grants
-([0009](../../docs/adr/0009-vault-read-is-per-path.md),
-[0023](../../docs/adr/0023-grant-unit-is-the-path.md)) and RBAC remain the real
+([0009](../../docs/adr/model/0009-vault-read-is-per-path.md),
+[0023](../../docs/adr/model/0023-grant-unit-is-the-path.md)) and RBAC remain the real
 boundary. A namespace is not one: it holds several Services by construction
-([0063](../../docs/adr/0063-intent-authored-per-domain.md)).
+([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)).
 
 Ticked by: enable the flag, then
 `kubectl create secret generic canary --from-literal=k=<sentinel>`, then
@@ -278,7 +274,7 @@ default-deny as enforce across ~30 workloads on a cluster known to contain
 undeclared paths — or nothing would ship.
 
 The direction is **Cilium**, for the two properties
-[0035](../../docs/adr/0035-network-policy-default-deny.md) needs: an audit stage
+[0035](../../docs/adr/model/0035-network-policy-default-deny.md) needs: an audit stage
 that logs what a policy would drop instead of dropping it, and per-flow records
 that make the promotion criterion — **zero undeclared flows over 14 days** — an
 evidence question rather than a calendar one. The claim is **open**: the estate
@@ -287,7 +283,7 @@ API server and the datastore.
 
 | | state |
 |---|---|
-| **Status** | open decision — direction fixed, fit unproven ([0036](../../docs/adr/0036-cni-selection.md)) |
+| **Status** | open decision — direction fixed, fit unproven ([0036](../../docs/adr/model/0036-cni-selection.md)) |
 | **Owner** | joris |
 | **Settled by** | a lab evaluation on the recorded k3s version: install with `--flannel-backend=none --disable-network-policy`, sample `cilium-agent` memory and CPU per node over 24 h, then apply a default-deny policy in audit mode and confirm an undeclared connection both succeeds and appears in the flow log as a would-be-deny |
 | **Blocks** | enforce-mode default-deny, and nothing else. Until it settles, default-deny does **not** ship — it is not silently shipped as enforce |
@@ -305,37 +301,27 @@ scheduled operation, not a step in a bootstrap script.
 
 ## Blueprint packs
 
-The `flux-source` and `flux-packs` adapters need `flux-modules/packs/**` to
-render source and release manifests and consumer-owned pack files. Packs arrive
-by **pinned checkout, not a registry**
-([0013](../../docs/adr/0013-blueprint-packs-pinned-checkout.md)):
-
-| input | how it is supplied | effect |
-|---|---|---|
-| the pack tree | check out `flux-modules` at a pinned tag or ref | the content the two adapters read |
-| the root | `--blueprints-root <dir>` or `DEPLOY_CONFIG_BLUEPRINTS_ROOT` | explicit, always. There is no implicit or default path — machine-specific defaults make CI behaviour depend on a workstation layout |
-| the version | `--blueprints-version <tag>` | recorded in render-plan provenance, so output traces back to the pack version used |
-
-A missing root, or a root without `packs/`, fails with a structured diagnostic
-rather than silently rendering empty pack output.
-
-This is a deliberate divergence from
-[0037](../../docs/adr/0037-composition-oci-fragments.md), where a domain file
-publishes as an OCI fragment. Packs are foundation material consumed whole by
-two adapters: they join no composition union, carry no lock digest and hold no
-participants-list row, and every consumer already obtains them by ref, while
-private-registry auth has caused evidenced friction for `@jorisjonkers-dev`
-packages. So two consumption models coexist — fragments by OCI digest, packs by
-git ref — and the boundary is material class, not inconsistency. The declared
-tag is **recorded, not verified**: provenance holds what the caller passed, so
-whoever audits a render is trusting that CI pinned the checkout it declared.
+There are none. The foundation the packs delivered — 41 objects copied from
+`flux-modules` at a git ref that this chapter used to describe as *"recorded, not
+verified"* — is **declared** as Services of the platform domains and rendered
+like everything else ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)),
+and the CRDs among them are the bootstrap set
+([chapter 14](14-platform-intent.md#the-bootstrap-set)).
+[0013](../../docs/adr/model/0013-blueprint-packs-pinned-checkout.md), which
+decided how packs arrive, is superseded: nothing arrives that way. The
+`flux-packs` and `flux-source` adapters, and the `--blueprints-root` and
+`--blueprints-version` inputs they needed, do not exist.
 
 ## Onboarding a new Service
+
+Start from [`examples/minimal/`](examples/minimal/README.md): one domain, one
+Service, one Workload, and nothing that is not required. A Service with no
+storage and no secrets is a copy of that file with three names changed.
 
 A Service is added **to a domain file**, not to a repository of its own. One
 file per domain holds many Services, that file is one Intent Fragment, and a
 domain never spans repositories
-([0063](../../docs/adr/0063-intent-authored-per-domain.md)). The namespace is
+([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)). The namespace is
 derived — `<domain>-system` — so no step below names one.
 
 1. Add the Service to its domain file, whose shape is
@@ -345,9 +331,9 @@ derived — `<domain>-system` — so no step below names one.
    carries its `image`, the ports it `provides`, and its `placement`. Workload
    names are unique within the domain (`E_DUPLICATE_WORKLOAD_NAME`), because the
    ServiceAccount and the Vault role are the Workload name alone
-   ([0024](../../docs/adr/0024-identity-per-workload.md)). Two Workloads that
+   ([0024](../../docs/adr/model/0024-identity-per-workload.md)). Two Workloads that
    must switch together belong to one Service — a Service is the unit of atomic
-   release ([0062](../../docs/adr/0062-service-is-the-release-unit.md)), and
+   release ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)), and
    there is no field that couples two of them.
 2. Write `platform/env/<workload>/base.env` **per Workload** — never one file per
    Service — plus a cluster overlay only where something differs.
@@ -355,7 +341,7 @@ derived — `<domain>-system` — so no step below names one.
    `keys`, `access`, `delivery` and `rotation`. They stay on the Service and are
    never raised to the domain header, which would hand every Service in the file
    a reader slot on a path it may not need
-   ([0009](../../docs/adr/0009-vault-read-is-per-path.md)). Reference
+   ([0009](../../docs/adr/model/0009-vault-read-is-per-path.md)). Reference
    env-delivered values as `${secret:<granted-path>#<key>}`, where the path
    **byte-matches** a granted path, and cross-Service values as
    `${dependency:…}`. The declaration and the env file check each other in both
@@ -366,7 +352,7 @@ derived — `<domain>-system` — so no step below names one.
    are true. Every declared dimension is hard, a list is a set of equally
    acceptable values, and a dimension no node can satisfy is
    `E_PLACEMENT_UNSATISFIABLE` at build
-   ([0061](../../docs/adr/0061-placement-is-hard-dimensions.md)).
+   ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)).
 5. Declare the rest of the runtime intent only this Service knows: any
    `hardening.exceptions` entries, each carrying `allow` and a `reason`, against
    the `restricted` default; `durability` per volume — `reconstructible`,
@@ -377,10 +363,10 @@ derived — `<domain>-system` — so no step below names one.
    ([example](examples/workflows/service-publish-fragment.yml)).
 7. Register the repository in `participants.yml` with its staleness bound —
    `maxAge` defaults to **7 days**
-   ([0038](../../docs/adr/0038-participants-list-staleness.md)).
+   ([0038](../../docs/adr/model/0038-participants-list-staleness.md)).
 8. Confirm the fragment composes: composition accepts it, the render is clean,
    and the resulting `resolved.yml` projection is published back to the
-   repository ([0033](../../docs/adr/0033-assignments-published-back.md)).
+   repository ([0033](../../docs/adr/model/0033-assignments-published-back.md)).
 
 Step 7 is the one a Service cannot do for itself, and it fails loudly rather
 than silently: an unregistered participant is invisible to composition, so its
@@ -400,7 +386,7 @@ before anything is applied, and it is the half worth doing carefully.
    hand-written, or an adapter gap.
 3. **Close the diff.** Wrong intent gets fixed. A genuine hand-written object
    becomes an entry in a Bidirectional Ledger
-   ([0055](../../docs/adr/0055-bidirectional-ledgers.md)), whose header already
+   ([0055](../../docs/adr/model/0055-bidirectional-ledgers.md)), whose header already
    says *"every entry is a deferred fix, not a permanent exemption."* An adapter
    gap is chapter 30's coverage work.
 4. **Swap the source** once the render reproduces the live objects.
@@ -433,22 +419,24 @@ consumers, so a consumer is never rendered against a provider that has published
 no fragment:
 
 ```
-1. node facts + platform facts   nothing depends on them; everything reads them
-2. data                          postgres, valkey, rabbitmq -- 8 Services depend on them
-3. auth                          every forward-auth route and OIDC consumer
-4. knowledge                     depends on data
-5. agents                        depends on knowledge and vso-secrets
-6. media                         the largest set, the sparsest edges, the lowest blast radius
-7. mail, notes, app,             the remainder
+1. node facts + the Platform document   nothing depends on them; everything reads them
+2. the platform domains               edge, secrets, observability -- the foundation,
+                                      declared; every tenant depends on it
+3. data                          postgres, valkey, rabbitmq -- 8 Services depend on them
+4. auth                          every forward-auth route and OIDC consumer
+5. knowledge                     depends on data
+6. agents                        depends on knowledge and the secrets domain
+7. media                         the largest set, the sparsest edges, the lowest blast radius
+8. mail, notes, app,             the remainder
    automation, utility
 ```
 
-`auth` third rather than last is deliberate: it has the densest edge set in the
+`auth` fourth rather than last is deliberate: it has the densest edge set in the
 estate, so it is where the derivation is proven — inbound CORS origins and
 forward-auth middleware. It is also where the release rule shows its teeth. The
 estate's clearest lockstep pair, `auth-api` and `auth-ui`, is not a pair of
 Services to couple: under
-[0062](../../docs/adr/0062-service-is-the-release-unit.md) it is one Service,
+[0062](../../docs/adr/model/0062-service-is-the-release-unit.md) it is one Service,
 `auth`, holding two Workloads that switch together or not at all. Their images
 still build wherever they build; what moves into one file is the intent, and
 with it the atomicity claim, which is now checkable by reading a single Service.
@@ -487,16 +475,17 @@ owns it. One item is blocked rather than open, and says so.
       recovered data written into this chapter. Owner: joris. Blocks: the first
       production apply of any volume declared `durability: irreplaceable` —
       nothing else.
-- [ ] **Secrets at rest are encrypted and the pinned context says so.** Ticked
-      by: the canary sentinel check in [Secrets at rest](#secrets-at-rest), then
-      a republished, re-pinned context advertising `secretsEncryption: true`.
+- [ ] **Secrets at rest are encrypted and the Platform document says so.**
+      Ticked by: the canary sentinel check in [Secrets at rest](#secrets-at-rest),
+      then a republished Platform document advertising `secretsEncryption: true`.
       Owner: joris. Blocks: `delivery: env` and `delivery: file` — and only
       those, since `delivery: self` persists nothing.
-- [ ] **Blueprint packs are wired into CI by pinned ref.** Ticked by: the render
-      job checking out `flux-modules` at a pinned ref, passing
-      `--blueprints-root` explicitly, and provenance recording
-      `--blueprints-version`. Owner: joris. Blocks: `flux-source` and
-      `flux-packs` output.
+- [ ] **The bootstrap set is applied and recorded, and the foundation renders.**
+      Ticked by: the four bootstrap entries present in the Platform document
+      with versions, and the platform domains rendering Vault, VSO, Traefik and
+      the metrics stack with no pack file and no raw manifest anywhere in the
+      tree. Owner: joris. Blocks: every tenant domain, which renders against the
+      foundation.
 - [ ] **The ClusterState collector exists and its digest is in the lock.**
       Ticked by: two captures ten minutes apart against an idle cluster
       producing an equal `sha256sum`, and `clusterStateDigest` appearing beside
@@ -505,9 +494,9 @@ owns it. One item is blocked rather than open, and says so.
       dimension contradicts a binding the cluster already holds.
 - [ ] **One renderer generation, with attribution unambiguous.** Ticked by:
       `src/deployment/render/` deleted with an identical before/after estate
-      render ([0052](../../docs/adr/0052-registered-adapters-are-v1.md)), the
+      render ([0052](../../docs/adr/model/0052-registered-adapters-are-v1.md)), the
       `-fragment` twins collapsed to one owner per kind, and `E_PATH_COLLISION`
-      implemented ([0054](../../docs/adr/0054-adapter-attribution.md)). Owner:
+      implemented ([0054](../../docs/adr/model/0054-adapter-attribution.md)). Owner:
       the toolkit maintainer. Blocks: the coverage assertion in chapter 30.
 - [ ] **One negative fixture exists per invariant, and composition runs them.**
       Ticked by: [`compose.yml`](examples/workflows/compose.yml) proving each
@@ -521,7 +510,7 @@ owns it. One item is blocked rather than open, and says so.
       their ConfigMaps and become first-party images, retiring the `alpine:3.21`
       plus ConfigMap pattern; `postgres-init-script` needs no image because it
       becomes derived. Ticked by: no executable Asset remaining in any Service
-      Intent ([0012](../../docs/adr/0012-assets-not-code.md)). Owners: the owners
+      Intent ([0012](../../docs/adr/model/0012-assets-not-code.md)). Owners: the owners
       of `hermes`, `garage` and `n8n`. Blocks: rendering the current cluster
       from intent.
 - **BLOCKED — a non-enforcing network-policy stage.** Not tickable today, and
@@ -535,3 +524,34 @@ Preconditions belonging to delivery — who applies, what prunes, what
 reconciles, what a break-glass path is, and whether a neighbour's tests gate a
 merge — are deliberately absent from this list. They are defined separately,
 with their evidence, in [`docs/adr/deferred/`](../../docs/adr/deferred/README.md).
+
+## Diagram sources
+
+Each diagram above is drawn in draw.io and committed as an SVG with the editable
+diagram embedded, so opening the `.svg` in draw.io recovers the drawing. The
+mermaid below is the same structure in text, kept so a diagram change shows up in
+a plain diff. **Where the two disagree the SVG is the diagram and the mermaid is
+what gets fixed** — the same precedence this repository uses between a chapter and
+an ADR.
+
+### Bootstrap order
+
+```mermaid
+flowchart TB
+    A["1. node facts<br/>one YAML per node — site, allocatable cpu and memory,<br/>structured gpus and disks, capabilities;<br/>contract generated, nix imports the labels"]
+    B["2. the bootstrap set applied<br/>k3s, the Flux source, Vault unsealed,<br/>the CRDs — recorded in the Platform document"]
+    C["3. Platform document published<br/>substrate facts, tiers, policies, engines,<br/>providers — an Intent Fragment by digest"]
+    D["4. platform domains published<br/>edge, secrets, observability —<br/>the foundation, as Services"]
+    E["5. ClusterState collector<br/>snapshot plus clusterStateDigest"]
+    F["6. participants.yml<br/>the platform and every domain, plus maxAge"]
+    G["7. one tenant domain publishes<br/>one Intent Fragment, holding its Services"]
+    H["8. composition runs<br/>estate-wide invariants over the union"]
+    I["9. render<br/>six adapters, into the tree the Flux source pulls"]
+
+    A --> B --> C --> D --> E --> F --> G --> H --> I
+    A -.->|"the capability list validates<br/>against the node contract"| C
+    A -.->|"every placement dimension is matched against<br/>allocatable, gpus, disks and site"| H
+    B -.->|"CRDs must exist before<br/>any object of their kind"| I
+    C -.->|"the gate reads<br/>secretsEncryption"| H
+    E -.->|"existing PV bindings and the<br/>disk dimension read the snapshot"| I
+```

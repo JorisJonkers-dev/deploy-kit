@@ -6,12 +6,12 @@ this union, **with this error code**.
 Each fragment is one domain file — `intent-a/knowledge.yml` and
 `intent-b/agents.yml` — because Intent is authored one file per domain and one
 file is one Intent Fragment
-([0063](../../../../../docs/adr/0063-intent-authored-per-domain.md)). The two
+([0063](../../../../../docs/adr/model/0063-intent-authored-per-domain.md)). The two
 declare different domains and the same `id`, which is the case the invariant
 exists for: the namespace derives from `domain`, so nothing would collide at
 apply, while every `dependsOn: {service: knowledge, …}` edge in the estate
 becomes ambiguous. Identity is flat and estate-unique
-([0010](../../../../../docs/adr/0010-flat-service-identity.md)); the domain
+([0010](../../../../../docs/adr/model/0010-flat-service-identity.md)); the domain
 header does not namespace it.
 
 Each fragment is otherwise valid and schema-complete, so the union reaches the
@@ -20,7 +20,7 @@ load-bearing: a fixture rejected by `E_SCHEMA_VERSION_MISMATCH` on the way in
 proves the version check can fail and says nothing about identity. It is why
 both Workloads carry a complete `placement` block — `memory` and `cpu` are
 required on every Workload
-([0061](../../../../../docs/adr/0061-placement-is-hard-dimensions.md)), so a
+([0061](../../../../../docs/adr/model/0061-placement-is-hard-dimensions.md)), so a
 fixture missing them would trip schema validation first.
 
 ## The assertion asserts the code, not the exit status

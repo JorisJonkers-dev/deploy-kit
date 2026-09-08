@@ -1,0 +1,121 @@
+# Platform Intent: the second authored document. What the estate offers, held to
+# the same rule as a domain file -- facts and policy, never mechanisms -- and
+# published as an Intent Fragment by digest like any domain
+# (spec/v1/14-platform-intent.md, docs/adr/model/0095-platform-intent-is-the-second-authored-document.md).
+#
+# Every block is a value the contention test put on the platform's side
+# (docs/adr/model/0004-contention-decides-authority.md). Nothing here names a
+# Kubernetes field, a Traefik key, a k3s flag or a shell command
+# (docs/adr/model/0097-authored-values-name-model-concepts.md).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Platform
+schemaVersion: 1.0.0
+owner: joris
+
+metadata:
+  cluster: production
+  domain: jorisjonkers.dev
+  nodeContract: sha256:6f1c2a8e5d3b4c7f9a0e1d2c3b4a5968778695a4b3c2d1e0f9a8b7c6d5e4f3a2
+
+# Facts about the cluster, named for what they are. How k3s is told is a
+# derivation nobody authors (docs/adr/model/0057-datastore-and-restore.md).
+substrate:
+  kubernetesVersion: v1.31.4+k3s1
+  datastore: sqlite
+  serverCount: 1
+  secretsEncryption: false # every delivery: env and file grant fails
+  # E_SECRETS_AT_REST_REQUIRED until this is true -- the gate working, not the
+  # example being wrong (docs/adr/model/0028-secrets-at-rest-gate.md)
+  cni: flannel
+  networkPolicyController: embedded # no non-enforcing stage: default-deny stays
+  # render-only (docs/adr/model/0084-render-only-is-the-v1-policy-stage.md)
+
+# What must exist before the first rendered object can apply. Recorded and
+# enumerated, never declared; growing this table is a decision
+# (docs/adr/model/0099-bootstrap-set-is-recorded.md).
+bootstrap:
+  flux:
+    sourceRef: flux-system/platform
+  vault:
+    unsealed: true
+  crds:
+    - traefik.io/v1alpha1
+    - secrets.hashicorp.com/v1beta1
+    - monitoring.coreos.com/v1
+
+# Where the edge terminates. Four facts per tier; the traefik adapter owns every
+# Traefik spelling. A route's audience is the only way it reaches a tier, so a
+# lan exposure -- jellyfin's high-volume traffic, which may not be proxied
+# through Frankfurt -- can reach the LAN proxy and no other, by construction.
+tiers:
+  - name: public-frankfurt
+    audiences: [anonymous, authenticated]
+    listener: tls
+    certificates: acme
+    forwardAuth: http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward
+    traefik: traefik-public # the declared Service in the platform edge domain,
+    # placed on the public-ingress node
+  - name: lan
+    audiences: [lan]
+    listener: plain
+    certificates: none
+    traefik: traefik-lan # placed on a LAN node
+
+# One policy per Durability Class (docs/adr/model/0077-durability-derives-a-backup.md).
+durability:
+  reconstructible: {}
+  recoverable:
+    schedule: "15 3 * * *"
+    retain: 14
+  irreplaceable:
+    schedule: "45 2 * * *"
+    retain: 90
+    offCluster:
+      destination: s3://backup-storage/jorisjonkers-dev
+      credential: secret/data/platform/backup/off-cluster
+
+# The method IS the image: one purpose-built image per engine, resolved through
+# the images lock. Nothing executable is authored.
+engines:
+  postgres: { backup: postgres-backup }
+  rabbitmq: { backup: rabbitmq-backup }
+  files: { backup: file-backup }
+
+# Receivers, the rule catalog, and scrape cadence
+# (docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md).
+observability:
+  scrape:
+    interval: 30s
+    scrapeTimeout: 10s
+  receivers:
+    none: null
+    business-hours: discord-daytime
+    urgent: discord-oncall
+    page: pushover-page
+  ruleCatalog:
+    baseline: [target-absent, restart-loop, probe-failing]
+    postgres: [replication-lag, connections-exhausted]
+    rabbitmq: [queue-depth, consumers-zero]
+
+# One cadence for every rendered probe
+# (docs/adr/model/0088-startup-probe-targets-liveness.md).
+probes:
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# The ephemeral default for a declared writable path
+# (docs/adr/model/0092-writable-paths-are-declared.md).
+ephemeral:
+  sizeLimit: 64Mi
+
+# Things the estate runs and does not deploy, that a Service depends on. A fact
+# with an address, resolvable by an edge -- not a hole, so no review date
+# (docs/adr/model/0090-edges-resolve-against-the-register.md).
+providers:
+  - name: stalwart
+    address: 10.0.0.12
+    surfaces:
+      smtp: 25
+      http: 8080

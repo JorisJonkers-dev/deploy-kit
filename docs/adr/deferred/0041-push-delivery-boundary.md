@@ -50,7 +50,7 @@ single answer to what is live survives. The claim is **open** and conditional:
 it inherits [0008](0008-tested-equals-deployed-requires-push.md), and if
 [workspace#45](https://github.com/JorisJonkers-dev/workspace/issues/45)
 falsifies that premise, scope is cut per
-[0059](../0059-v1-scope-stopping-rule.md).
+[0059](../model/0059-v1-scope-stopping-rule.md).
 
 ## Alternatives
 

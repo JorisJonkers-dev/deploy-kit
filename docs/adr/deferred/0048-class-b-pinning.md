@@ -20,7 +20,7 @@ each of the fifteen wildcard constants in `src/adapters/flux-utils.ts`, run
 `helm search repo <chart> --versions` against the repository URL declared beside
 it — each must list at least two immutable semver versions — then dry-run
 Renovate over a tree rendered with those versions pinned: one bump per chart.
-The premise here is [0002](../0002-kubernetes-as-substrate.md), which is what makes
+The premise here is [0002](../model/0002-kubernetes-as-substrate.md), which is what makes
 a Flux `HelmRelease` the delivery mechanism for the foundation at all; this
 record does not stand on push delivery
 ([0008](0008-tested-equals-deployed-requires-push.md)), and is a live defect
@@ -44,7 +44,7 @@ while the chapter calls the boundary *"enforced, not documented"*.
 The cost is not hypothetical. `traefik-public/release.yaml` renders
 `replicas: 1` with `maxSurge: 0` and `hostPort: 80/443` — a structural outage
 window on every chart bump, on the single component fronting all public TLS —
-while [0030](../0030-runtime-mechanics-derived.md) carries the pattern for
+while [0030](../model/0030-runtime-mechanics-derived.md) carries the pattern for
 everything behind it: all four first-party deployments run `maxSurge: 1,
 maxUnavailable: 0`, their comments recording what it cost, *"under `Recreate`
 every image roll opened a zero-pod window, so a slow cold start or a flaky ghcr
@@ -62,7 +62,7 @@ ServiceAccount runs `actions/checkout@v4` and `oras-project/setup-oras@v1`,
 floating; and this repository's CI (`.github/workflows/ci.yml:51`) pipes a
 third-party script from `main` into `bash`. So class B takes class A's
 discipline: exact chart versions, images by digest, Renovate bumps behind the
-gate of [0040](../0040-renovate-ordering-gate.md), exact toolkit versions in
+gate of [0040](../model/0040-renovate-ordering-gate.md), exact toolkit versions in
 workflows, actions pinned by SHA. Pinning schedules the traefik window rather
 than closing it; a VIP via MetalLB (dropping `hostPort` for `maxSurge: 1`) or an
 accepted window is settled in the chapter, on `helm template` output. The

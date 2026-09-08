@@ -28,7 +28,7 @@ export default tseslint.config(
     rules: {
       // Deliberately stricter than deploy-config-schema, which set this to
       // "off" and accumulated @ts-nocheck in ten files under "strict": true.
-      // docs/adr/0053-adapter-port-contract.md makes the ratchet a decision:
+      // docs/adr/model/0053-adapter-port-contract.md makes the ratchet a decision:
       // suppressions must carry a description and may not silence a file.
       "@typescript-eslint/ban-ts-comment": [
         "error",

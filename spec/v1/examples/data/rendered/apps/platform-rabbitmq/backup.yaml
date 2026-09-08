@@ -1,0 +1,119 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rabbitmq-backup
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: rabbitmq
+    app.kubernetes.io/instance: rabbitmq
+    app.kubernetes.io/part-of: platform-rabbitmq
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    deploy-kit.jorisjonkers.dev/durability: recoverable
+    deploy-kit.jorisjonkers.dev/engine: rabbitmq
+spec:
+  schedule: 15 3 * * *
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          serviceAccountName: rabbitmq
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: backup
+            image: ghcr.io/jorisjonkers-dev/platform/rabbitmq-backup@sha256:0000000000000000000000000000000000000000000000000000000000000000
+            command:
+            - /bin/sh
+            - -c
+            - rabbitmqctl export_definitions -
+            securityContext:
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+            volumeMounts:
+            - name: data
+              mountPath: /data
+              readOnly: true
+            - name: backup
+              mountPath: /backup
+          volumes:
+          - name: data
+            persistentVolumeClaim:
+              claimName: rabbitmq-data
+          - name: backup
+            persistentVolumeClaim:
+              claimName: rabbitmq-data-backup
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rabbitmq-sweep
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: rabbitmq
+    app.kubernetes.io/instance: rabbitmq
+    app.kubernetes.io/part-of: platform-rabbitmq
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    deploy-kit.jorisjonkers.dev/durability: recoverable
+    deploy-kit.jorisjonkers.dev/engine: rabbitmq
+spec:
+  schedule: 30 4 * * *
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          serviceAccountName: rabbitmq
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: sweep
+            image: ghcr.io/jorisjonkers-dev/platform/rabbitmq-backup@sha256:0000000000000000000000000000000000000000000000000000000000000000
+            command:
+            - /bin/sh
+            - -c
+            - find /backup -type f -mtime +14 -delete
+            securityContext:
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+            volumeMounts:
+            - name: data
+              mountPath: /data
+              readOnly: false
+            - name: backup
+              mountPath: /backup
+          volumes:
+          - name: data
+            persistentVolumeClaim:
+              claimName: rabbitmq-data
+          - name: backup
+            persistentVolumeClaim:
+              claimName: rabbitmq-data-backup

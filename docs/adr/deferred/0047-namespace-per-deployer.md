@@ -23,7 +23,7 @@ by: `kubectl auth can-i --as=system:serviceaccount:deploy-system:deployer-<agg>
 
 ## Why
 
-The first property [0002](../0002-kubernetes-as-substrate.md) keeps Kubernetes for is
+The first property [0002](../model/0002-kubernetes-as-substrate.md) keeps Kubernetes for is
 "a workflow that tries to apply a Service it does not own receives a 403 rather
 than producing a bad deploy" (`spec/v1/50-lifecycle.md:200`). The artefact meant
 to deliver it does not: `spec/v1/examples/rendered/deployer-rbac.yaml:28-51`
@@ -55,14 +55,14 @@ adapter renders one Role and RoleBinding per namespace in that set;
 `aliases.namespace` may not cross a deployer boundary, and composition rejects
 one that does with `E_NAMESPACE_FOREIGN_DEPLOYER`, alias surviving as a rename
 inside one deployer's own namespaces. This is the other half of making
-[0002](../0002-kubernetes-as-substrate.md)'s first property real;
+[0002](../model/0002-kubernetes-as-substrate.md)'s first property real;
 [0046](0046-distinct-field-managers.md) is the half for the drift signal.
 
 ## Alternatives
 
 | option | cost if taken | why rejected |
 |---|---|---|
-| Admission control: a validating webhook checking the deployer label on every write | a webhook to author, deploy and keep available on a cluster with one control-plane host — fail-closed stops every deploy while it is down, fail-open removes the control silently, and there is no second node to run it on | Strictly stronger, and rejected only for now: the availability cost lands on the single node [0002](../0002-kubernetes-as-substrate.md) names as the estate's shape. Revisit if namespaces prove unpartitionable; the in-server CEL variant drops that cost but still needs the ownership fact modelled. |
+| Admission control: a validating webhook checking the deployer label on every write | a webhook to author, deploy and keep available on a cluster with one control-plane host — fail-closed stops every deploy while it is down, fail-open removes the control silently, and there is no second node to run it on | Strictly stronger, and rejected only for now: the availability cost lands on the single node [0002](../model/0002-kubernetes-as-substrate.md) names as the estate's shape. Revisit if namespaces prove unpartitionable; the in-server CEL variant drops that cost but still needs the ownership fact modelled. |
 | `resourceNames` pinning the Role to the rendered object set | the `rbac` adapter regenerates a Role naming every object on every render, and the Role must be applied before the objects it names | Fails outright: `resourceNames` cannot restrict `create` — the name is unknown at authorization time — and `create` is exactly the verb yielding the namespace-wide Secret read. It also breaks `list`. |
 | Keep the `deploy.jorisjonkers.dev/deployer` label as the boundary | nothing to build | The label is mutable and is the same query the prune pass runs; applied to another Aggregator's object, the wrong prune pass deletes it and RBAC permits it. |
 
@@ -84,7 +84,7 @@ irreversible once: those Services have moved and are addressed at the new names.
   `secrets` verbs stops being describable as a control — paid by the estate, as
   accepted residual risk.
 - Namespace count rises to at least one per deployer, multiplying per-namespace
-  foundation objects, and [0002](../0002-kubernetes-as-substrate.md)'s first
+  foundation objects, and [0002](../model/0002-kubernetes-as-substrate.md)'s first
   property becomes measurable — paid by joris, who owns both.
 - The `rbac` adapter must emit one Role and RoleBinding per deployed namespace,
   which the worked example does not — paid by the adapter, as a fixed defect.

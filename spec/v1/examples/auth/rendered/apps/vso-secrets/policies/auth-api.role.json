@@ -1,0 +1,10 @@
+{
+  "_generated": "GENERATED. Never hand-edit.",
+  "name": "auth-api",
+  "role": {
+    "bound_service_account_names": ["auth-api"],
+    "bound_service_account_namespaces": ["auth-system"],
+    "token_policies": ["auth-api"],
+    "token_ttl": "1h"
+  }
+}

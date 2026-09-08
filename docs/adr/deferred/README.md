@@ -12,10 +12,10 @@ Status of everything in this directory:
   normative. Their `normative:` pointers name spec sections the v1 spec will
   **not** carry; the future delivery definition owns those.
 - The model's complete interface to this work is three demands, all decided in
-  the model: all-or-nothing [Release Unit](../0060-release-unit.md) cutover,
+  the model: all-or-nothing [Release Unit](../model/0060-release-unit.md) cutover,
   destructive operations gated by
-  [Durability Class](../0015-durability-class-per-volume.md), and rendering
-  only from [pinned inputs](../0006-pinned-inputs.md).
+  [Durability Class](../model/0015-durability-class-per-volume.md), and rendering
+  only from [pinned inputs](../model/0006-pinned-inputs.md).
 - The experiment that informs whether push delivery is needed at all is
   [workspace#45](https://github.com/JorisJonkers-dev/workspace/issues/45)
   (write the caller for the existing system-test workflows); see
@@ -41,3 +41,18 @@ Status of everything in this directory:
 | [0050](0050-exercises-and-deploys.md) | co-testing | exercises many-to-many, deploys exactly-one |
 | [0051](0051-vcluster-substrate.md) | co-testing | the test substrate is measured before it gates |
 | [0058](0058-delivery-machinery-observability.md) | delivery | the delivery machinery watches itself |
+
+## Joined this set on 2026-09-08
+
+- **`flux-root`** — one Flux `Kustomization` per layer, with `dependsOn` and
+  health checks. It is one delivery mechanism's reading of the Reconcile Unit
+  DAG that [chapter 20](../../../spec/v1/20-resolved-deployment.md#the-reconcile-unit)
+  derives, so it is delivery's to define
+  ([0098](../model/0098-one-publication-path.md)). The model emits the kustomize
+  groupings and the ordering; until this set defines otherwise, the bootstrap
+  Flux source applies the tree those groupings describe.
+- **Whether a Release Unit may span an ownership boundary.** A Service belongs to
+  at most one unit and membership is estate-wide; whether a unit may cross
+  whatever ownership boundary a delivery definition introduces is that
+  definition's question, moved here from
+  [chapter 50](../../../spec/v1/50-lifecycle.md#open-in-this-chapter).
