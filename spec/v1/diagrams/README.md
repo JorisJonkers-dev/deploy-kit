@@ -48,6 +48,9 @@ in one frame, which no layout makes readable. The split is also where the two
 properties live: totality is a statement about the first half, and
 in-degree-at-least-one about the second.
 
-In the second drawing, an edge that runs straight from a declaration to a
-Deliverable — no assignment in between — is drawn in light grey and passes
-*behind* the layer-2 column. Those are the fields that reach an object directly.
+In the second drawing the Deliverable column is the middle one, and layer 2
+sits to its right. Reading is inward from both sides: an edge from the left is a
+declaration that reaches the object directly, with no assignment in between, and
+is drawn in light grey; an edge from the right comes from a layer-2 assignment.
+That order is what keeps the drawing free of connectors running across boxes —
+with layer 2 in the middle, every direct edge had to cross it.

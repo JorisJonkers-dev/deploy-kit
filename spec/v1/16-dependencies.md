@@ -416,9 +416,13 @@ exists to find.
 
 ## The derivation map
 
-The normative set of derivations. The left column is declared in Service Intent;
-the middle is the pinned platform input set of [chapter 20](20-resolved-deployment.md#pinned-inputs);
-the right is produced by layers 2 and 3.
+The normative set of derivations, in two drawings. In the first, the left
+columns are declared in Service Intent and the pinned platform input set of
+[chapter 20](20-resolved-deployment.md#pinned-inputs), and the right column is
+the layer-2 assignment each one decides. In the second, the **Deliverable
+column sits in the middle**: declarations reach it from the left and layer-2
+assignments from the right, so every arrow crosses one empty channel instead of
+passing over the other column's boxes.
 
 ![The derivation map — assignments — every declared field and pinned fact, and the assignment it decides](diagrams/16-derivation-map-assignments.drawio.svg)
 
