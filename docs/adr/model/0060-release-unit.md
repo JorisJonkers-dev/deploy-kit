@@ -10,6 +10,13 @@ rests-on: ["0003", "0005"]
 
 # Several Services switch as one Release Unit
 
+> **Superseded, and its claim is moot.** This decision was superseded by
+> [0062](0062-service-is-the-release-unit.md) before its settling test ran, so
+> the `claim: open` in the frontmatter records the state it was in when it was
+> replaced rather than work outstanding. Nothing settles it; 0062 carries the
+> question now. The owner stays named because the contract requires one for any
+> claim other than `settled`, not because there is a task.
+
 Superseded by [0062](0062-service-is-the-release-unit.md): a Service is itself
 the unit of atomic release, so a pair that must switch together is one Service
 and the `releaseUnit` field this record introduces is deleted rather than
