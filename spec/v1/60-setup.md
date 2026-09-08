@@ -17,25 +17,9 @@ satisfied at all; see [CNI](#cni).
 Nothing here is optional and the order matters, because each step's checks
 depend on the previous step's output existing.
 
-```mermaid
-flowchart TB
-    A["1. node facts<br/>one YAML per node — site, allocatable cpu and memory,<br/>structured gpus and disks, capabilities;<br/>contract generated, nix imports the labels"]
-    B["2. the bootstrap set applied<br/>k3s, the Flux source, Vault unsealed,<br/>the CRDs — recorded in the Platform document"]
-    C["3. Platform document published<br/>substrate facts, tiers, policies, engines,<br/>providers — an Intent Fragment by digest"]
-    D["4. platform domains published<br/>edge, secrets, observability —<br/>the foundation, as Services"]
-    E["5. ClusterState collector<br/>snapshot plus clusterStateDigest"]
-    F["6. participants.yml<br/>the platform and every domain, plus maxAge"]
-    G["7. one tenant domain publishes<br/>one Intent Fragment, holding its Services"]
-    H["8. composition runs<br/>estate-wide invariants over the union"]
-    I["9. render<br/>six adapters, into the tree the Flux source pulls"]
+![Bootstrap order](diagrams/60-bootstrap-order.drawio.svg)
 
-    A --> B --> C --> D --> E --> F --> G --> H --> I
-    A -.->|"the capability list validates<br/>against the node contract"| C
-    A -.->|"every placement dimension is matched against<br/>allocatable, gpus, disks and site"| H
-    B -.->|"CRDs must exist before<br/>any object of their kind"| I
-    C -.->|"the gate reads<br/>secretsEncryption"| H
-    E -.->|"existing PV bindings and the<br/>disk dimension read the snapshot"| I
-```
+<sub>[Diagram source](#bootstrap-order) · edit by opening the SVG in draw.io</sub>
 
 Steps 1–3 look like paperwork and are not: they are the facts every later step
 reads, and since [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)
@@ -330,6 +314,10 @@ decided how packs arrive, is superseded: nothing arrives that way. The
 
 ## Onboarding a new Service
 
+Start from [`examples/minimal/`](examples/minimal/README.md): one domain, one
+Service, one Workload, and nothing that is not required. A Service with no
+storage and no secrets is a copy of that file with three names changed.
+
 A Service is added **to a domain file**, not to a repository of its own. One
 file per domain holds many Services, that file is one Intent Fragment, and a
 domain never spans repositories
@@ -536,3 +524,34 @@ Preconditions belonging to delivery — who applies, what prunes, what
 reconciles, what a break-glass path is, and whether a neighbour's tests gate a
 merge — are deliberately absent from this list. They are defined separately,
 with their evidence, in [`docs/adr/deferred/`](../../docs/adr/deferred/README.md).
+
+## Diagram sources
+
+Each diagram above is drawn in draw.io and committed as an SVG with the editable
+diagram embedded, so opening the `.svg` in draw.io recovers the drawing. The
+mermaid below is the same structure in text, kept so a diagram change shows up in
+a plain diff. **Where the two disagree the SVG is the diagram and the mermaid is
+what gets fixed** — the same precedence this repository uses between a chapter and
+an ADR.
+
+### Bootstrap order
+
+```mermaid
+flowchart TB
+    A["1. node facts<br/>one YAML per node — site, allocatable cpu and memory,<br/>structured gpus and disks, capabilities;<br/>contract generated, nix imports the labels"]
+    B["2. the bootstrap set applied<br/>k3s, the Flux source, Vault unsealed,<br/>the CRDs — recorded in the Platform document"]
+    C["3. Platform document published<br/>substrate facts, tiers, policies, engines,<br/>providers — an Intent Fragment by digest"]
+    D["4. platform domains published<br/>edge, secrets, observability —<br/>the foundation, as Services"]
+    E["5. ClusterState collector<br/>snapshot plus clusterStateDigest"]
+    F["6. participants.yml<br/>the platform and every domain, plus maxAge"]
+    G["7. one tenant domain publishes<br/>one Intent Fragment, holding its Services"]
+    H["8. composition runs<br/>estate-wide invariants over the union"]
+    I["9. render<br/>six adapters, into the tree the Flux source pulls"]
+
+    A --> B --> C --> D --> E --> F --> G --> H --> I
+    A -.->|"the capability list validates<br/>against the node contract"| C
+    A -.->|"every placement dimension is matched against<br/>allocatable, gpus, disks and site"| H
+    B -.->|"CRDs must exist before<br/>any object of their kind"| I
+    C -.->|"the gate reads<br/>secretsEncryption"| H
+    E -.->|"existing PV bindings and the<br/>disk dimension read the snapshot"| I
+```

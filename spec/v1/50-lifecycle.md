@@ -171,19 +171,9 @@ estate into one unit, making every deploy estate-wide. Drawing the boundary is
 therefore the decision, and a pair that must release together but cannot be one
 Service is evidence the boundary is drawn wrong.
 
-```mermaid
-flowchart LR
-    N["new lock renders<br/>every Workload of the Service"] --> A1["auth-api<br/>new version starts"]
-    N --> A2["auth-ui<br/>new version starts"]
-    A1 --> P1{"readiness<br/>within budget?"}
-    A2 --> P2{"readiness<br/>within budget?"}
-    P1 -->|yes| K{"every Workload<br/>ready?"}
-    P2 -->|yes| K
-    P1 -->|no| H["hold the Service<br/>old versions keep serving"]
-    P2 -->|no| H
-    K -->|yes| SW["switch all Workloads together"]
-    H --> RB["fix forward, or revert the Service<br/>to the previous lock"]
-```
+![Release Unit switchover](diagrams/50-release-unit-switchover.drawio.svg)
+
+<sub>[Diagram source](#release-unit-switchover) · edit by opening the SVG in draw.io</sub>
 
 ## Expand and contract
 
@@ -235,21 +225,9 @@ state.
 
 ## The change, end to end
 
-```mermaid
-flowchart TB
-    I["Intent change merged<br/>one Service repository"] --> F["Intent Fragment republished<br/>OCI, by digest"]
-    X["Platform document republished<br/>tiers, policies, providers"] --> C
-    F --> C["composition<br/>union + estate-wide invariants"]
-    S["ClusterState snapshot changes<br/>PV rebinds, node joins or leaves"] --> C
-    C --> L["new lock<br/>fragments + context + images + clusterStateDigest"]
-    L --> R["render<br/>registered adapters, renderHash"]
-    R --> G{"Service has more<br/>than one Workload?"}
-    G -->|"no"| D["delivery and co-testing<br/>defined separately<br/>docs/adr/deferred/"]
-    G -->|"yes"| U["all-or-nothing switchover<br/>gated on every Workload ready"]
-    U --> D
-    C -.->|"E_CONTRACT_TOO_EARLY"| B["no lock.<br/>Nothing renders."]
-    style D stroke-width:2px,stroke-dasharray:6 4;
-```
+![The change, end to end](diagrams/50-change-end-to-end.drawio.svg)
+
+<sub>[Diagram source](#the-change-end-to-end) · edit by opening the SVG in draw.io</sub>
 
 The dashed box is the boundary this chapter refuses to cross. Everything above
 it is decided in `docs/adr/`; everything inside it is decided separately.
@@ -272,3 +250,46 @@ it is decided in `docs/adr/`; everything inside it is decided separately.
    — the same completeness default-deny network policy depends on
    ([0035](../../docs/adr/model/0035-network-policy-default-deny.md)). Nothing
    settles it except the audit stage finding no undeclared flow.
+
+## Diagram sources
+
+Each diagram above is drawn in draw.io and committed as an SVG with the editable
+diagram embedded, so opening the `.svg` in draw.io recovers the drawing. The
+mermaid below is the same structure in text, kept so a diagram change shows up in
+a plain diff. **Where the two disagree the SVG is the diagram and the mermaid is
+what gets fixed** — the same precedence this repository uses between a chapter and
+an ADR.
+
+### Release Unit switchover
+
+```mermaid
+flowchart LR
+    N["new lock renders<br/>every Workload of the Service"] --> A1["auth-api<br/>new version starts"]
+    N --> A2["auth-ui<br/>new version starts"]
+    A1 --> P1{"readiness<br/>within budget?"}
+    A2 --> P2{"readiness<br/>within budget?"}
+    P1 -->|yes| K{"every Workload<br/>ready?"}
+    P2 -->|yes| K
+    P1 -->|no| H["hold the Service<br/>old versions keep serving"]
+    P2 -->|no| H
+    K -->|yes| SW["switch all Workloads together"]
+    H --> RB["fix forward, or revert the Service<br/>to the previous lock"]
+```
+
+### The change, end to end
+
+```mermaid
+flowchart TB
+    I["Intent change merged<br/>one Service repository"] --> F["Intent Fragment republished<br/>OCI, by digest"]
+    X["Platform document republished<br/>tiers, policies, providers"] --> C
+    F --> C["composition<br/>union + estate-wide invariants"]
+    S["ClusterState snapshot changes<br/>PV rebinds, node joins or leaves"] --> C
+    C --> L["new lock<br/>fragments + context + images + clusterStateDigest"]
+    L --> R["render<br/>registered adapters, renderHash"]
+    R --> G{"Service has more<br/>than one Workload?"}
+    G -->|"no"| D["delivery and co-testing<br/>defined separately<br/>docs/adr/deferred/"]
+    G -->|"yes"| U["all-or-nothing switchover<br/>gated on every Workload ready"]
+    U --> D
+    C -.->|"E_CONTRACT_TOO_EARLY"| B["no lock.<br/>Nothing renders."]
+    style D stroke-width:2px,stroke-dasharray:6 4;
+```

@@ -48,34 +48,9 @@ directory name. This repository already contains one resolved tree —
 .github/ package.json` returns nothing. The decision is therefore the emission
 **and** the gate: render, validate, diff, review.
 
-```mermaid
-flowchart LR
-    subgraph IN["Pinned inputs — each carried by digest"]
-        i1["Intent Fragment<br/>this domain's file + env/"]
-        i2["Platform Intent<br/>contextRef + node contract<br/>(site, allocatable, gpus, disks)"]
-        i3["images lock"]
-        i4["ClusterState snapshot<br/>clusterStateDigest<br/>(PV bindings, current placements)"]
-        i5["Intent Fragments<br/>of every other domain"]
-    end
+![The Resolved Deployment — pinned inputs and outputs](diagrams/20-resolved-deployment-io.drawio.svg)
 
-    RD["ResolvedDeployment<br/>one document, whole estate"]
-
-    subgraph OUT["Outputs"]
-        o1["Deliverable Set<br/>layer 3, per adapter"]
-        o2["ResolvedService<br/>per-Service projection"]
-        o3["renderHash<br/>+ inputDigests"]
-    end
-
-    i1 --> RD
-    i2 --> RD
-    i3 --> RD
-    i4 --> RD
-    i5 --> RD
-    RD --> o1
-    RD --> o2
-    RD --> o3
-    o2 -.->|"published back as a pull request"| i1
-```
+<sub>[Diagram source](#the-resolved-deployment--pinned-inputs-and-outputs) · edit by opening the SVG in draw.io</sub>
 
 One domain file is one Intent Fragment
 ([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)), so the input a
@@ -699,16 +674,9 @@ The Reconcile Unit is **derived from the dependency graph**, never declared
 [chapter 16](16-dependencies.md#dependency-edges) projected onto domains, plus an
 edge to the secrets-provisioning unit wherever a Service holds any grant.
 
-```mermaid
-flowchart LR
-    core["apps-core"] --> vso["apps-vso-secrets"]
-    core --> data["apps-data"]
-    core --> sl["apps-stateless"]
-    data --> know["apps-knowledge"]
-    vso --> know
-    know --> agents["apps-agents"]
-    vso --> agents
-```
+![The Reconcile Unit DAG](diagrams/20-reconcile-unit-dag.drawio.svg)
+
+<sub>[Diagram source](#the-reconcile-unit-dag) · edit by opening the SVG in draw.io</sub>
 
 An arrow means *must be Ready first*. `apps-knowledge` follows `apps-data`
 because `knowledge` depends on `platform-postgres` and `platform-rabbitmq`;
@@ -976,3 +944,56 @@ two Workloads may not share a name (`E_DUPLICATE_WORKLOAD_NAME`).
    **Blocks:** nothing today. It is the conceded cost of restating
    [0004](../../docs/adr/model/0004-contention-decides-authority.md) as
    who-arbitrates, and it comes due the first time a Service cannot place.
+
+## Diagram sources
+
+Each diagram above is drawn in draw.io and committed as an SVG with the editable
+diagram embedded, so opening the `.svg` in draw.io recovers the drawing. The
+mermaid below is the same structure in text, kept so a diagram change shows up in
+a plain diff. **Where the two disagree the SVG is the diagram and the mermaid is
+what gets fixed** — the same precedence this repository uses between a chapter and
+an ADR.
+
+### The Resolved Deployment — pinned inputs and outputs
+
+```mermaid
+flowchart LR
+    subgraph IN["Pinned inputs — each carried by digest"]
+        i1["Intent Fragment<br/>this domain's file + env/"]
+        i2["Platform Intent<br/>contextRef + node contract<br/>(site, allocatable, gpus, disks)"]
+        i3["images lock"]
+        i4["ClusterState snapshot<br/>clusterStateDigest<br/>(PV bindings, current placements)"]
+        i5["Intent Fragments<br/>of every other domain"]
+    end
+
+    RD["ResolvedDeployment<br/>one document, whole estate"]
+
+    subgraph OUT["Outputs"]
+        o1["Deliverable Set<br/>layer 3, per adapter"]
+        o2["ResolvedService<br/>per-Service projection"]
+        o3["renderHash<br/>+ inputDigests"]
+    end
+
+    i1 --> RD
+    i2 --> RD
+    i3 --> RD
+    i4 --> RD
+    i5 --> RD
+    RD --> o1
+    RD --> o2
+    RD --> o3
+    o2 -.->|"published back as a pull request"| i1
+```
+
+### The Reconcile Unit DAG
+
+```mermaid
+flowchart LR
+    core["apps-core"] --> vso["apps-vso-secrets"]
+    core --> data["apps-data"]
+    core --> sl["apps-stateless"]
+    data --> know["apps-knowledge"]
+    vso --> know
+    know --> agents["apps-agents"]
+    vso --> agents
+```

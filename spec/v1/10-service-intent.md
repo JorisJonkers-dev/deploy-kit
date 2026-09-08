@@ -71,157 +71,9 @@ defines the range and what the lock records.
 
 ## The model
 
-```mermaid
-classDiagram
-    direction LR
+![The layer-1 model](diagrams/10-service-intent-model.drawio.svg)
 
-    class Domain {
-        +DomainName domain
-        +string owner
-        +SemVer schemaVersion
-    }
-    class Service {
-        +ServiceId id
-        +AlertClass alertClass
-    }
-    class Workload {
-        +string name
-        +Lifecycle lifecycle
-        +ImageAlias image
-        +Runtime runtime
-        +Engine engine
-        +Duration startupBudget
-        +bool zeroDowntime
-        +bool stateful
-        +Path[] writablePaths
-        +HardeningClass hardening
-    }
-    class HardeningException {
-        +Control allow
-        +string reason
-    }
-    class Surface {
-        +string name
-        +int port
-    }
-    class Sidecar {
-        <<proposed>>
-        +string name
-        +ImageRef image
-    }
-    class DependencyEdge {
-        +ServiceId service
-        +string surface
-        +bool required
-    }
-    class Exposure {
-        +ExposureName name
-        +Fqdn host
-        +Audience audience
-        +ContentPolicy contentPolicy
-    }
-    class Route {
-        +Path path
-        +Match match
-        +string workload
-        +string surface
-        +Audience audience
-        +Path redirectTo
-    }
-    class Probe {
-        +Path path
-        +int port
-        +int tcp
-    }
-    class Asset {
-        +Path from
-        +Path mountAt
-        +map substitute
-    }
-    class Volume {
-        +ClaimName claim
-        +Path mountAt
-        +Quantity size
-        +DurabilityClass durability
-    }
-    class Placement {
-        +Quantity memory
-        +Quantity cpu
-        +Arch[] arch
-        +Site site
-        +Capability[] capabilities
-    }
-    class DiskRequest {
-        +Media[] media
-    }
-    class GpuRequest {
-        +GpuClass class
-        +Quantity memory
-    }
-    class Scrape {
-        +int port
-        +Path path
-    }
-    class Override {
-        +string field
-        +any value
-        +string reason
-    }
-
-    class EnvFile {
-        +ClusterTarget cluster
-        +dotenv entries
-    }
-    class Placeholder {
-        +Kind kind
-        +string source
-    }
-
-    class Grant {
-        +VaultPath path
-        +string[] keys
-        +AccessTier access
-        +Delivery delivery
-        +Path mountAt
-        +FileMode fileMode
-    }
-    class Rotation {
-        +Tolerance tolerates
-        +Duration maxAge
-    }
-
-    Domain "1" *-- "1..*" Service : services
-    Service "1" *-- "1..*" Workload : workloads
-
-    Workload "1" *-- "0..*" Surface : provides
-    Workload "1" *-- "0..*" Sidecar : sidecars
-    Workload "1" *-- "0..*" HardeningException : hardening.exceptions
-    Workload "1" *-- "0..*" DependencyEdge : dependsOn
-    Workload "1" *-- "0..1" Probe : probes.readiness
-    Workload "1" *-- "0..1" Probe : probes.liveness
-    Workload "1" *-- "0..*" Asset : assets
-    Workload "1" *-- "0..*" Volume : volumes
-    Workload "1" *-- "1" Placement : placement
-    Workload "1" *-- "0..1" Scrape : scrape
-    Workload "1" *-- "0..*" Override : overrides
-
-    Placement "1" *-- "0..1" DiskRequest : disk
-    Placement "1" *-- "0..1" GpuRequest : gpu
-
-    Service "1" *-- "0..*" Exposure : exposure
-    Exposure "1" *-- "1..*" Route : routes
-    Route ..> Surface : names a Surface a Workload of this Service provides
-    DependencyEdge ..> Surface : names a Surface of another Service
-
-    Workload "1" *-- "1..*" EnvFile : env per workload
-    EnvFile "1" *-- "0..*" Placeholder : resolves
-
-    Service "1" *-- "0..*" Grant : secrets (shared)
-    Workload "1" *-- "0..*" Grant : secrets (workload-specific)
-    Grant "1" *-- "0..1" Rotation : rotation
-    Placeholder ..> Grant : a secret placeholder byte-matches a granted path
-    Placeholder ..> Exposure : an exposure placeholder addresses service.name
-```
+<sub>[Diagram source](#the-layer-1-model) · edit by opening the SVG in draw.io</sub>
 
 The diagram is embedded rather than kept as a separate `.mmd`. A standalone
 `.mmd` does not render on GitHub, so it would be invisible in exactly the review
@@ -1928,11 +1780,13 @@ way: contention decides who arbitrates, not who authors
 
 | example | what it exercises |
 |---|---|
+| [`minimal/notes.domain.yml`](examples/minimal/notes.domain.yml) + [`env`](examples/minimal/env/notes-api/base.env) | **read this first.** One domain, one Service, one Workload, and no field that is not required: 26 authored lines reaching 10 objects, with no grant, no volume and no gap row. It is also the only set that renders on today's pinned inputs, because it holds nothing the secrets-at-rest gate can refuse — see [`minimal/README.md`](examples/minimal/README.md) |
 | [`knowledge/knowledge.domain.yml`](examples/knowledge/knowledge.domain.yml) + [`env`](examples/knowledge/env/knowledge-api.base.env) + [`worker env`](examples/knowledge/env/knowledge-ingest-worker.base.env) | two Workloads, two runtimes and therefore two identities, `probes: none` and no `provides` on the worker, grants at **both** levels, a split Subtree path, a `0400` file secret, an `irreplaceable` volume |
 | [`auth/auth.domain.yml`](examples/auth/auth.domain.yml) + [`env`](examples/auth/env/auth-api.base.env) | one Service, two Workloads switching atomically; `delivery: self` with `tolerates: reload`, a `self-roll` transit grant taking no placeholder, and the one hardening exception in the set |
 | [`data/data.domain.yml`](examples/data/data.domain.yml) + [`env`](examples/data/env/platform-postgres.base.env) | three Services releasing independently in one domain, third-party images, a `disk` dimension, TCP probes, and a surface eight Services consume |
 
-The env-file-to-`secrets` cross-check runs over all three sets. `knowledge-api` has
+The env-file-to-`secrets` cross-check runs over the three larger sets; the
+minimal one has no grant and no placeholder, which is the base case. `knowledge-api` has
 5 placeholders matching 5 env-delivered keys, and its ingest worker 4 more against
 the same Service-level grants; `platform-postgres` has 1 matching 1; `auth-api` has
 **0 and 0**, because all three of its grants are `delivery: self` — which
@@ -1945,3 +1799,166 @@ Two negative fixtures sit beside them: `negative/duplicate-service-id/` asserts
 `negative/duplicate-workload-name/` asserts `E_DUPLICATE_WORKLOAD_NAME` for two
 Services in one domain reusing a Workload name — the check that lets a
 ServiceAccount be the Workload name alone.
+
+## Diagram sources
+
+Each diagram above is drawn in draw.io and committed as an SVG with the editable
+diagram embedded, so opening the `.svg` in draw.io recovers the drawing. The
+mermaid below is the same structure in text, kept so a diagram change shows up in
+a plain diff. **Where the two disagree the SVG is the diagram and the mermaid is
+what gets fixed** — the same precedence this repository uses between a chapter and
+an ADR.
+
+### The layer-1 model
+
+```mermaid
+classDiagram
+    direction LR
+
+    class Domain {
+        +DomainName domain
+        +string owner
+        +SemVer schemaVersion
+    }
+    class Service {
+        +ServiceId id
+        +AlertClass alertClass
+    }
+    class Workload {
+        +string name
+        +Lifecycle lifecycle
+        +ImageAlias image
+        +Runtime runtime
+        +Engine engine
+        +Duration startupBudget
+        +bool zeroDowntime
+        +bool stateful
+        +Path[] writablePaths
+        +HardeningClass hardening
+    }
+    class HardeningException {
+        +Control allow
+        +string reason
+    }
+    class Surface {
+        +string name
+        +int port
+    }
+    class Sidecar {
+        <<proposed>>
+        +string name
+        +ImageRef image
+    }
+    class DependencyEdge {
+        +ServiceId service
+        +string surface
+        +bool required
+    }
+    class Exposure {
+        +ExposureName name
+        +Fqdn host
+        +Audience audience
+        +ContentPolicy contentPolicy
+    }
+    class Route {
+        +Path path
+        +Match match
+        +string workload
+        +string surface
+        +Audience audience
+        +Path redirectTo
+    }
+    class Probe {
+        +Path path
+        +int port
+        +int tcp
+    }
+    class Asset {
+        +Path from
+        +Path mountAt
+        +map substitute
+    }
+    class Volume {
+        +ClaimName claim
+        +Path mountAt
+        +Quantity size
+        +DurabilityClass durability
+    }
+    class Placement {
+        +Quantity memory
+        +Quantity cpu
+        +Arch[] arch
+        +Site site
+        +Capability[] capabilities
+    }
+    class DiskRequest {
+        +Media[] media
+    }
+    class GpuRequest {
+        +GpuClass class
+        +Quantity memory
+    }
+    class Scrape {
+        +int port
+        +Path path
+    }
+    class Override {
+        +string field
+        +any value
+        +string reason
+    }
+
+    class EnvFile {
+        +ClusterTarget cluster
+        +dotenv entries
+    }
+    class Placeholder {
+        +Kind kind
+        +string source
+    }
+
+    class Grant {
+        +VaultPath path
+        +string[] keys
+        +AccessTier access
+        +Delivery delivery
+        +Path mountAt
+        +FileMode fileMode
+    }
+    class Rotation {
+        +Tolerance tolerates
+        +Duration maxAge
+    }
+
+    Domain "1" *-- "1..*" Service : services
+    Service "1" *-- "1..*" Workload : workloads
+
+    Workload "1" *-- "0..*" Surface : provides
+    Workload "1" *-- "0..*" Sidecar : sidecars
+    Workload "1" *-- "0..*" HardeningException : hardening.exceptions
+    Workload "1" *-- "0..*" DependencyEdge : dependsOn
+    Workload "1" *-- "0..1" Probe : probes.readiness
+    Workload "1" *-- "0..1" Probe : probes.liveness
+    Workload "1" *-- "0..*" Asset : assets
+    Workload "1" *-- "0..*" Volume : volumes
+    Workload "1" *-- "1" Placement : placement
+    Workload "1" *-- "0..1" Scrape : scrape
+    Workload "1" *-- "0..*" Override : overrides
+
+    Placement "1" *-- "0..1" DiskRequest : disk
+    Placement "1" *-- "0..1" GpuRequest : gpu
+
+    Service "1" *-- "0..*" Exposure : exposure
+    Exposure "1" *-- "1..*" Route : routes
+    Route ..> Surface : names a Surface a Workload of this Service provides
+    DependencyEdge ..> Surface : names a Surface of another Service
+
+    Workload "1" *-- "1..*" EnvFile : env per workload
+    EnvFile "1" *-- "0..*" Placeholder : resolves
+
+    Service "1" *-- "0..*" Grant : secrets (shared)
+    Workload "1" *-- "0..*" Grant : secrets (workload-specific)
+    Grant "1" *-- "0..1" Rotation : rotation
+    Placeholder ..> Grant : a secret placeholder byte-matches a granted path
+    Placeholder ..> Exposure : an exposure placeholder addresses service.name
+```

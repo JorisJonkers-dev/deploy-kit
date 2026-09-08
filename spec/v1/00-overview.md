@@ -111,40 +111,9 @@ time reads live cluster state. Reproducibility is therefore conditional and
 true: identical inputs *including* `clusterStateDigest` produce a byte-identical
 tree, so a differing render with identical digests is a defect, never weather.
 
-```mermaid
-flowchart TB
-    subgraph AUTH["layer 1 — hand-authored: Service Intent in each owning repository, Platform Intent in the platform's"]
-        a1["domains/&lt;domain&gt;.yml<br/>services, workloads, placement, hardening,<br/>durability, probes, exposure, secrets"]
-        a2["env/&lt;workload&gt;/*.env<br/>one set per Workload"]
-        a3["assets<br/>declarative, never executable"]
-        a5["platform.yml<br/>tiers, durability policy, engines,<br/>receivers, cadences, providers, bootstrap set"]
-    end
+![The meta-model](diagrams/00-overview-meta-model.drawio.svg)
 
-    a1 --> FR["Intent Fragments<br/>every authored document, published by digest"]
-    a2 --> FR
-    a3 --> FR
-    a5 --> FR
-
-    FR --> CO["composition<br/>union + estate-wide invariants<br/>merges nothing, runs on any publish"]
-    PAR["participants.yml<br/>expected domains, maxAge 7d"] --> CO
-    CO --> CI["ComposedIntent<br/>+ CompositionLock"]
-
-    CI --> RES["layer 2 — Resolved Deployment<br/>every platform assignment,<br/>a function of the pinned inputs alone"]
-    NC["node contract<br/>by digest"] --> RES
-    CS["ClusterState snapshot<br/>clusterStateDigest"] --> RES
-    IL["images lock<br/>digests, uid, gid — never tags"] --> RES
-
-    RES --> RS["resolved.yml<br/>published back per Service"]
-    RES --> DS["layer 3 — Deliverable Set<br/>six registered adapters, run once centrally,<br/>one attributed adapter per file"]
-
-    DS --> DEL["delivery — DEFINED SEPARATELY<br/>docs/adr/deferred/<br/>must honour Release Unit atomicity,<br/>Durability Class gates,<br/>pinned inputs only"]
-    DEL --> K["the cluster"]
-
-    RS -.->|"an owner reads their own assignments"| AUTH
-
-    classDef separate stroke-width:2px,stroke-dasharray:6 4;
-    class DEL separate;
-```
+<sub>[Diagram source](#the-meta-model) · edit by opening the SVG in draw.io</sub>
 
 ## Programme scope
 
@@ -217,21 +186,28 @@ namespace and are always linked absolutely.
 
 ## Chapters
 
-**Diagrams are embedded in their chapter** as fenced `mermaid` blocks rather
-than kept as standalone `.mmd` files: GitHub does not render a bare `.mmd`, so
-it would be invisible in the review the chapter exists for, and a copy in both
-places is the duplication this specification spends its time removing.
+**Diagrams are drawn, not sketched in a fence.** Each chapter's diagram is a
+draw.io drawing committed beside it under [`diagrams/`](diagrams/README.md) as
+an SVG with the editable diagram embedded: GitHub renders it inline, and opening
+the same `.svg` in draw.io recovers the drawing. One palette runs through all of
+them, so a box's colour says which layer it belongs to without a legend.
+
+The mermaid each chapter used to embed is kept at the **foot** of the chapter
+under `## Diagram sources`. It is the same structure in text, so a diagram change
+still shows up in a plain diff — and where the two disagree, the SVG is the
+diagram and the mermaid is what gets fixed. That is the precedence this
+repository already uses between a chapter and an ADR.
 
 | Chapter | Covers | Diagram |
 |---|---|---|
-| [`10-service-intent.md`](10-service-intent.md) | Service, Workload, and every layer-1 field by concern: identity, configuration, assets, probes, storage and durability, hardening and size, placement, exposure, observability, secrets and grants, release units | embedded |
+| [`10-service-intent.md`](10-service-intent.md) | Service, Workload, and every layer-1 field by concern: identity, configuration, assets, probes, storage and durability, hardening and size, placement, exposure, observability, secrets and grants, release units | drawn |
 | [`14-platform-intent.md`](14-platform-intent.md) | the second authored document: substrate facts, the bootstrap set, the declared foundation, tiers as edge facts, durability and observability policy, engines as images, providers, the overridable derivations | none |
-| [`16-dependencies.md`](16-dependencies.md) | dependency edges, per-Workload identity, derived network policy, the derivation map | embedded |
-| [`20-resolved-deployment.md`](20-resolved-deployment.md) | the Resolved Deployment, the authority table in one place, the pinned input set including ClusterState, derived mechanics, overrides, the Reconcile Unit, publish-back | embedded |
-| [`30-deliverables.md`](30-deliverables.md) | adapters, the adapter port, attribution, ledgers, coverage re-derived from the registry | embedded |
-| [`40-composition.md`](40-composition.md) | Intent Fragments, participants and the staleness bound, schema versioning and rollout, unmanaged surfaces | embedded |
-| [`50-lifecycle.md`](50-lifecycle.md) | model-level lifecycle: Release Unit switchover, expand/contract for cross-Service contract changes, lock lifecycle — and the statement that delivery mechanics and co-testing are defined separately | embedded |
-| [`60-setup.md`](60-setup.md) | bootstrap order, secrets at rest, CNI selection, node facts, restore, onboarding and adoption | embedded |
+| [`16-dependencies.md`](16-dependencies.md) | dependency edges, per-Workload identity, derived network policy, the derivation map | drawn |
+| [`20-resolved-deployment.md`](20-resolved-deployment.md) | the Resolved Deployment, the authority table in one place, the pinned input set including ClusterState, derived mechanics, overrides, the Reconcile Unit, publish-back | drawn |
+| [`30-deliverables.md`](30-deliverables.md) | adapters, the adapter port, attribution, ledgers, coverage re-derived from the registry | drawn |
+| [`40-composition.md`](40-composition.md) | Intent Fragments, participants and the staleness bound, schema versioning and rollout, unmanaged surfaces | drawn |
+| [`50-lifecycle.md`](50-lifecycle.md) | model-level lifecycle: Release Unit switchover, expand/contract for cross-Service contract changes, lock lifecycle — and the statement that delivery mechanics and co-testing are defined separately | drawn |
+| [`60-setup.md`](60-setup.md) | bootstrap order, secrets at rest, CNI selection, node facts, restore, onboarding and adoption | drawn |
 
 **Chapter 16's derivation map is the load-bearing artefact**, and its value is
 that it is checkable by a script rather than read by eye. Three properties hold
@@ -428,3 +404,49 @@ through, with the deciding ADR named.
   `deploy/production`.**~~ All four are delivery or co-testing questions, and
   both are defined separately from the model: they are carried, with their
   evidence, in [`docs/adr/deferred/`](../../docs/adr/deferred/README.md).
+
+## Diagram sources
+
+Each diagram above is drawn in draw.io and committed as an SVG with the editable
+diagram embedded, so opening the `.svg` in draw.io recovers the drawing. The
+mermaid below is the same structure in text, kept so a diagram change shows up in
+a plain diff. **Where the two disagree the SVG is the diagram and the mermaid is
+what gets fixed** — the same precedence this repository uses between a chapter and
+an ADR.
+
+### The meta-model
+
+```mermaid
+flowchart TB
+    subgraph AUTH["layer 1 — hand-authored: Service Intent in each owning repository, Platform Intent in the platform's"]
+        a1["domains/&lt;domain&gt;.yml<br/>services, workloads, placement, hardening,<br/>durability, probes, exposure, secrets"]
+        a2["env/&lt;workload&gt;/*.env<br/>one set per Workload"]
+        a3["assets<br/>declarative, never executable"]
+        a5["platform.yml<br/>tiers, durability policy, engines,<br/>receivers, cadences, providers, bootstrap set"]
+    end
+
+    a1 --> FR["Intent Fragments<br/>every authored document, published by digest"]
+    a2 --> FR
+    a3 --> FR
+    a5 --> FR
+
+    FR --> CO["composition<br/>union + estate-wide invariants<br/>merges nothing, runs on any publish"]
+    PAR["participants.yml<br/>expected domains, maxAge 7d"] --> CO
+    CO --> CI["ComposedIntent<br/>+ CompositionLock"]
+
+    CI --> RES["layer 2 — Resolved Deployment<br/>every platform assignment,<br/>a function of the pinned inputs alone"]
+    NC["node contract<br/>by digest"] --> RES
+    CS["ClusterState snapshot<br/>clusterStateDigest"] --> RES
+    IL["images lock<br/>digests, uid, gid — never tags"] --> RES
+
+    RES --> RS["resolved.yml<br/>published back per Service"]
+    RES --> DS["layer 3 — Deliverable Set<br/>six registered adapters, run once centrally,<br/>one attributed adapter per file"]
+
+    DS --> DEL["delivery — DEFINED SEPARATELY<br/>docs/adr/deferred/<br/>must honour Release Unit atomicity,<br/>Durability Class gates,<br/>pinned inputs only"]
+    DEL --> K["the cluster"]
+
+    RS -.->|"an owner reads their own assignments"| AUTH
+
+    classDef separate stroke-width:2px,stroke-dasharray:6 4;
+    class DEL separate;
+```

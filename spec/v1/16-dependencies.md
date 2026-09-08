@@ -52,19 +52,9 @@ puts the port in exactly one place.
 
 ### What an edge derives, read outbound
 
-```mermaid
-flowchart LR
-    E["dependsOn<br/>{service, surface, required}"]
+![What a dependency edge derives](diagrams/16-edge-derives.drawio.svg)
 
-    E --> O1["Reconcile Unit ordering<br/>apps-knowledge after apps-data"]
-    E --> O2["dependency coordinates<br/>${dependency:platform-postgres.host}"]
-    E --> O3["NetworkPolicy egress<br/>allow postgres:5432"]
-
-    E -.->|"required: false"| N1["allow rule only —<br/>no ordering, no startup gate"]
-
-    O3 --> B["+ baseline<br/>UDP/53 to cluster DNS"]
-    B -.->|"only when the edge set is complete"| D["default-deny posture"]
-```
+<sub>[Diagram source](#what-a-dependency-edge-derives) · edit by opening the SVG in draw.io</sub>
 
 `required: false` yields an allow rule but no reconcile ordering and no startup
 gate, so an optional dependency cannot deadlock a rollout; the consumer's own
@@ -430,6 +420,187 @@ The normative set of derivations. The left column is declared in Service Intent;
 the middle is the pinned platform input set of [chapter 20](20-resolved-deployment.md#pinned-inputs);
 the right is produced by layers 2 and 3.
 
+![The derivation map — assignments — every declared field and pinned fact, and the assignment it decides](diagrams/16-derivation-map-assignments.drawio.svg)
+
+*Assignments — every declared field and pinned fact, and the assignment it decides.*
+
+![The derivation map — Deliverables — every declaration and assignment, and the object it reaches](diagrams/16-derivation-map-deliverables.drawio.svg)
+
+*Deliverables — every declaration and assignment, and the object it reaches.*
+
+<sub>[Diagram source](#the-derivation-map) · edit by opening the SVG in draw.io</sub>
+
+Two edges carry the amendment. `namespace` hangs off `domain`, not off `id`, so
+ten live namespaces come out unchanged and no Service can name its own
+([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)). And `placement`
+feeds both `nodeSelector` and `requests + limits`, so the numbers a Workload
+asks for and the nodes it may land on are one declaration compared against one
+pinned input — the node contract's `allocatable`, never a live read
+([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). No node
+satisfying every declared dimension is `E_PLACEMENT_UNSATISFIABLE` at build,
+before an object is rendered. Eligibility is not bin-packing: three Workloads
+asking `memory: 2Gi` each pass against a 4096Mi node, and the scheduler refuses
+the third at apply.
+
+A node left the map altogether, and with it four edges. There is no derived
+`hostname (FQDN)` any more: `exposure` hangs off the **Service**, and the `host`
+it carries is a full authored FQDN
+([0018](../../docs/adr/model/0018-exposure-by-audience.md)), so the
+IngressRoute, the reachability entry, both edge catalogs, the Gatus endpoint and
+the published `resolved.yml` all hang off the declaration itself rather than off
+a value layer 2 assembled from a label, a tier policy and a cluster domain. The
+Platform Intent no longer contributes to a hostname at all. What layer 2 still
+decides on that path is `r_tier` — the tier carrying the audience and the
+middleware chain that comes with it — which is why the exposure node keeps an
+arrow into it. `provides` stays on the Workload, so the two ends of a route are
+declared in the same document without a port ever being restated: the Service
+says which host and path, the Workload says which port.
+
+The map is dense on purpose and is not meant to be read by eye. Its value is
+that the three properties below are **checkable by a script** over the
+renderer's attribution table, which
+[0054](../../docs/adr/model/0054-adapter-attribution.md) requires every Deliverable to
+carry.
+
+### Worked trace — one exposure declaration
+
+![Worked trace — one exposure declaration](diagrams/16-exposure-trace.drawio.svg)
+
+<sub>[Diagram source](#worked-trace--one-exposure-declaration) · edit by opening the SVG in draw.io</sub>
+
+One declaration, six artefacts, plus the two conformance tests that existed only
+to detect when those six disagreed (`route-auth-conformance.test.js`,
+`gatus-route-coverage.test.js`). Under property 1 those tests have nothing left
+to check, because the six cannot disagree — they share one upstream. That
+upstream is a **Service** field: one host fronting two Workloads,
+`auth.jorisjonkers.dev/api` to `auth-api` and `/` to `auth-ui`, is a single
+exposure with two routes, and it is unexpressible while `exposure` sits on a
+Workload.
+
+The hostname is no longer assembled. `host` is the full FQDN as authored and is
+carried through untouched; what layer 2 decides on this path is the tier that
+carries the audience and the middleware chain that follows from it,
+`contentPolicy` included
+([chapter 20](20-resolved-deployment.md#authority)).
+
+## The three properties
+
+An earlier draft said the criterion was "any node with two inbound arrows is a
+bled concern". That is wrong. A `Deployment` legitimately draws on image,
+configuration, grants, probes, placement and hardening — many inbound arrows, no
+bleed. Convergence on an *object* is normal; convergence on the same *field* of
+an object is the defect.
+
+### 1. Totality — no Deliverable has in-degree zero
+
+Every rendered object is reachable from at least one declaration or one pinned
+input. An object with no inbound edge is hand-written, and must either become
+derived or be entered in a Bidirectional Ledger with an owner and a reason
+([0055](../../docs/adr/model/0055-bidirectional-ledgers.md)).
+
+This is the property that was violated seven ways over: `reachability.yml`, both
+edge catalogs, both IngressRoutes and the Gatus endpoint each declared
+`kb.jorisjonkers.dev` independently, with no declaration upstream of any of
+them.
+
+### 2. Single authority — no field has two declaring sites
+
+For each field of each Deliverable, exactly one declaration is its authority.
+Checked against the attribution table rather than the diagram, because the
+diagram is object-level and this property is field-level. That granularity gap
+is deliberate: drawing it per-field would make the map unreadable without making
+the check any stronger. Which side of the layer boundary each field's authority
+sits on is settled once, in
+[chapter 20](20-resolved-deployment.md#authority).
+
+### 3. No dead declarations — no declaration has out-degree zero
+
+A declared field that derives nothing is ceremony, and this property is the one
+that would have caught the estate's clearest example.
+`rollbackTargetRetention` was validated for `minimumDays >= 90` and
+`acknowledged: true`, appeared in the readiness scorecard, was documented in
+three `PLATFORM.md` files as failing *never*, and was read by no renderer or
+adapter. Every service declared the identical value. Out-degree zero.
+
+The one surface exempt from this check is `overrides`, whose entries replace a
+derived value by name and are therefore invisible to it
+([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md)). A dead override
+looks exactly like a load-bearing one; that cost is accepted, not solved.
+
+## What the properties would have caught
+
+| defect | property | how it presents |
+|---|---|---|
+| `kb.jorisjonkers.dev` in seven places | 1 | six Deliverables with in-degree zero |
+| `rollbackTargetRetention` inert | 3 | a declaration with out-degree zero |
+| `platform.layer` wrong in 7 of 7 services | 3 | out-degree zero — it fed a registry, never the Reconcile Unit |
+| a ServiceAccount per Service, two Workloads sharing one principal | 2 | one identity field with two Workloads' grant sets declaring it |
+| 41 Gatus checks, no notifier | 1 | `notifier route` unreachable from any declaration |
+| 60 duplicated `OTEL_*` lines | 2 | six declaring sites for one field |
+| a secret granted but never referenced | 3 | a `delivery: env` grant with out-degree zero |
+| a `gpu-model-gtx960m` term no node advertises | 3 | out-degree zero — the scheduler dropped the soft term without an event and it rendered nothing; every dimension is now hard, so it is `E_PLACEMENT_UNSATISFIABLE` at build |
+
+## Defined separately
+
+How the estate deploys, and how dependency on other units for testing gates a
+deploy, are defined separately from this model. This chapter derives the edge
+set, the identities and the policy set; it does not say who applies them, in
+what order a pipeline runs, or which suites must pass first. The model's whole
+interface to that work is three demands — all-or-nothing switchover per Service
+([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)), Durability Class
+gating on destructive operations, and rendering from pinned inputs only. The
+parked direction work is in
+[docs/adr/deferred/](../../docs/adr/deferred/README.md).
+
+## Open in this chapter
+
+1. **The CORS predicate.** `AUTH_CORS_ALLOWED_ORIGINS` lists nine hostnames, and
+   the inbound derivation above claims they are the inbound edge set projected
+   onto the hosts those Services declare. The shape is right; the predicate is not
+   established. A browser origin is needed only by a consumer making
+   cross-origin requests *to* `auth-api`, whereas an OIDC redirect flow — what
+   `GrafanaOidc`, `N8nOidc` and `RabbitMqOidc` exercise — needs no CORS entry.
+   The derivation is probably "inbound edges declaring a browser surface", not
+   "all inbound edges".
+   **Owner:** joris.
+   **Settled by:** diff `auth-api`'s live `AUTH_CORS_ALLOWED_ORIGINS` against
+   the inbound edge set, classifying each of the nine as browser or redirect.
+   **Blocks:** rendering the allow-list at all; it stays hand-maintained until
+   the predicate is written here.
+2. ~~**Nothing enforces the rendered policy set.**~~ Decided: render-only is
+   v1's stage ([0084](../../docs/adr/model/0084-render-only-is-the-v1-policy-stage.md)),
+   so this is not a gap in the model but the first stage of a sequence whose
+   exit criterion is [0036](../../docs/adr/model/0036-cni-selection.md)'s lab
+   evaluation. That evaluation is 0036's own settling test and is recorded
+   there, not here.
+
+## Diagram sources
+
+Each diagram above is drawn in draw.io and committed as an SVG with the editable
+diagram embedded, so opening the `.svg` in draw.io recovers the drawing. The
+mermaid below is the same structure in text, kept so a diagram change shows up in
+a plain diff. **Where the two disagree the SVG is the diagram and the mermaid is
+what gets fixed** — the same precedence this repository uses between a chapter and
+an ADR.
+
+### What a dependency edge derives
+
+```mermaid
+flowchart LR
+    E["dependsOn<br/>{service, surface, required}"]
+
+    E --> O1["Reconcile Unit ordering<br/>apps-knowledge after apps-data"]
+    E --> O2["dependency coordinates<br/>${dependency:platform-postgres.host}"]
+    E --> O3["NetworkPolicy egress<br/>allow postgres:5432"]
+
+    E -.->|"required: false"| N1["allow rule only —<br/>no ordering, no startup gate"]
+
+    O3 --> B["+ baseline<br/>UDP/53 to cluster DNS"]
+    B -.->|"only when the edge set is complete"| D["default-deny posture"]
+```
+
+### The derivation map
+
 ```mermaid
 flowchart LR
     subgraph DEC["Declared — Service Intent (layer 1)"]
@@ -596,38 +767,6 @@ flowchart LR
     r_bind --> k_res
 ```
 
-Two edges carry the amendment. `namespace` hangs off `domain`, not off `id`, so
-ten live namespaces come out unchanged and no Service can name its own
-([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)). And `placement`
-feeds both `nodeSelector` and `requests + limits`, so the numbers a Workload
-asks for and the nodes it may land on are one declaration compared against one
-pinned input — the node contract's `allocatable`, never a live read
-([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). No node
-satisfying every declared dimension is `E_PLACEMENT_UNSATISFIABLE` at build,
-before an object is rendered. Eligibility is not bin-packing: three Workloads
-asking `memory: 2Gi` each pass against a 4096Mi node, and the scheduler refuses
-the third at apply.
-
-A node left the map altogether, and with it four edges. There is no derived
-`hostname (FQDN)` any more: `exposure` hangs off the **Service**, and the `host`
-it carries is a full authored FQDN
-([0018](../../docs/adr/model/0018-exposure-by-audience.md)), so the
-IngressRoute, the reachability entry, both edge catalogs, the Gatus endpoint and
-the published `resolved.yml` all hang off the declaration itself rather than off
-a value layer 2 assembled from a label, a tier policy and a cluster domain. The
-Platform Intent no longer contributes to a hostname at all. What layer 2 still
-decides on that path is `r_tier` — the tier carrying the audience and the
-middleware chain that comes with it — which is why the exposure node keeps an
-arrow into it. `provides` stays on the Workload, so the two ends of a route are
-declared in the same document without a port ever being restated: the Service
-says which host and path, the Workload says which port.
-
-The map is dense on purpose and is not meant to be read by eye. Its value is
-that the three properties below are **checkable by a script** over the
-renderer's attribution table, which
-[0054](../../docs/adr/model/0054-adapter-attribution.md) requires every Deliverable to
-carry.
-
 ### Worked trace — one exposure declaration
 
 ```mermaid
@@ -646,109 +785,3 @@ flowchart LR
     T --> A1
     T --> A2
 ```
-
-One declaration, six artefacts, plus the two conformance tests that existed only
-to detect when those six disagreed (`route-auth-conformance.test.js`,
-`gatus-route-coverage.test.js`). Under property 1 those tests have nothing left
-to check, because the six cannot disagree — they share one upstream. That
-upstream is a **Service** field: one host fronting two Workloads,
-`auth.jorisjonkers.dev/api` to `auth-api` and `/` to `auth-ui`, is a single
-exposure with two routes, and it is unexpressible while `exposure` sits on a
-Workload.
-
-The hostname is no longer assembled. `host` is the full FQDN as authored and is
-carried through untouched; what layer 2 decides on this path is the tier that
-carries the audience and the middleware chain that follows from it,
-`contentPolicy` included
-([chapter 20](20-resolved-deployment.md#authority)).
-
-## The three properties
-
-An earlier draft said the criterion was "any node with two inbound arrows is a
-bled concern". That is wrong. A `Deployment` legitimately draws on image,
-configuration, grants, probes, placement and hardening — many inbound arrows, no
-bleed. Convergence on an *object* is normal; convergence on the same *field* of
-an object is the defect.
-
-### 1. Totality — no Deliverable has in-degree zero
-
-Every rendered object is reachable from at least one declaration or one pinned
-input. An object with no inbound edge is hand-written, and must either become
-derived or be entered in a Bidirectional Ledger with an owner and a reason
-([0055](../../docs/adr/model/0055-bidirectional-ledgers.md)).
-
-This is the property that was violated seven ways over: `reachability.yml`, both
-edge catalogs, both IngressRoutes and the Gatus endpoint each declared
-`kb.jorisjonkers.dev` independently, with no declaration upstream of any of
-them.
-
-### 2. Single authority — no field has two declaring sites
-
-For each field of each Deliverable, exactly one declaration is its authority.
-Checked against the attribution table rather than the diagram, because the
-diagram is object-level and this property is field-level. That granularity gap
-is deliberate: drawing it per-field would make the map unreadable without making
-the check any stronger. Which side of the layer boundary each field's authority
-sits on is settled once, in
-[chapter 20](20-resolved-deployment.md#authority).
-
-### 3. No dead declarations — no declaration has out-degree zero
-
-A declared field that derives nothing is ceremony, and this property is the one
-that would have caught the estate's clearest example.
-`rollbackTargetRetention` was validated for `minimumDays >= 90` and
-`acknowledged: true`, appeared in the readiness scorecard, was documented in
-three `PLATFORM.md` files as failing *never*, and was read by no renderer or
-adapter. Every service declared the identical value. Out-degree zero.
-
-The one surface exempt from this check is `overrides`, whose entries replace a
-derived value by name and are therefore invisible to it
-([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md)). A dead override
-looks exactly like a load-bearing one; that cost is accepted, not solved.
-
-## What the properties would have caught
-
-| defect | property | how it presents |
-|---|---|---|
-| `kb.jorisjonkers.dev` in seven places | 1 | six Deliverables with in-degree zero |
-| `rollbackTargetRetention` inert | 3 | a declaration with out-degree zero |
-| `platform.layer` wrong in 7 of 7 services | 3 | out-degree zero — it fed a registry, never the Reconcile Unit |
-| a ServiceAccount per Service, two Workloads sharing one principal | 2 | one identity field with two Workloads' grant sets declaring it |
-| 41 Gatus checks, no notifier | 1 | `notifier route` unreachable from any declaration |
-| 60 duplicated `OTEL_*` lines | 2 | six declaring sites for one field |
-| a secret granted but never referenced | 3 | a `delivery: env` grant with out-degree zero |
-| a `gpu-model-gtx960m` term no node advertises | 3 | out-degree zero — the scheduler dropped the soft term without an event and it rendered nothing; every dimension is now hard, so it is `E_PLACEMENT_UNSATISFIABLE` at build |
-
-## Defined separately
-
-How the estate deploys, and how dependency on other units for testing gates a
-deploy, are defined separately from this model. This chapter derives the edge
-set, the identities and the policy set; it does not say who applies them, in
-what order a pipeline runs, or which suites must pass first. The model's whole
-interface to that work is three demands — all-or-nothing switchover per Service
-([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)), Durability Class
-gating on destructive operations, and rendering from pinned inputs only. The
-parked direction work is in
-[docs/adr/deferred/](../../docs/adr/deferred/README.md).
-
-## Open in this chapter
-
-1. **The CORS predicate.** `AUTH_CORS_ALLOWED_ORIGINS` lists nine hostnames, and
-   the inbound derivation above claims they are the inbound edge set projected
-   onto the hosts those Services declare. The shape is right; the predicate is not
-   established. A browser origin is needed only by a consumer making
-   cross-origin requests *to* `auth-api`, whereas an OIDC redirect flow — what
-   `GrafanaOidc`, `N8nOidc` and `RabbitMqOidc` exercise — needs no CORS entry.
-   The derivation is probably "inbound edges declaring a browser surface", not
-   "all inbound edges".
-   **Owner:** joris.
-   **Settled by:** diff `auth-api`'s live `AUTH_CORS_ALLOWED_ORIGINS` against
-   the inbound edge set, classifying each of the nine as browser or redirect.
-   **Blocks:** rendering the allow-list at all; it stays hand-maintained until
-   the predicate is written here.
-2. ~~**Nothing enforces the rendered policy set.**~~ Decided: render-only is
-   v1's stage ([0084](../../docs/adr/model/0084-render-only-is-the-v1-policy-stage.md)),
-   so this is not a gap in the model but the first stage of a sequence whose
-   exit criterion is [0036](../../docs/adr/model/0036-cni-selection.md)'s lab
-   evaluation. That evaluation is 0036's own settling test and is recorded
-   there, not here.

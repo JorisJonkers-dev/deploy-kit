@@ -318,28 +318,9 @@ before any schedule is committed, because counting files under
 
 ## Determinism and parity
 
-```mermaid
-flowchart LR
-    subgraph pub["every repository — publish"]
-      IF["Intent Fragment<br/>(domain file, or the Platform document)<br/>pushed by digest"]
-    end
-    subgraph agg["central render — over the ComposedIntent"]
-      RD["Resolved Deployment<br/>+ path plan + clusterStateDigest"]
-      RD --> A1["kubernetes"]
-      RD --> A2["networking"]
-      RD --> A3["prometheus"]
-      RD --> A4["traefik"]
-      RD --> A5["vault-policy"]
-      RD --> A6["vso"]
-      A1 & A2 & A3 & A4 & A5 & A6 --> DL["Deliverables<br/>{path, content, adapter}"]
-      DL --> COL["E_PATH_COLLISION on the plan<br/>one owner per path"]
-      COL --> H["renderHash over the pinned inputs"]
-      COL --> T["Deliverable Set<br/>file tree"]
-      COL --> L["coverage assertion<br/>vs bootstrap set + ledgers"]
-    end
-    IF --> RD
-    T --> X["delivery<br/>defined separately"]
-```
+![The render, end to end](diagrams/30-render-pipeline.drawio.svg)
+
+<sub>[Diagram source](#the-render-end-to-end) · edit by opening the SVG in draw.io</sub>
 
 `renderHash` is taken over the recorded input digests — every Intent Fragment
 including the Platform document, the images lock, the node contract, the
@@ -407,3 +388,37 @@ will hold them. What remains open here is a model question:
    - **Settled by:** one full render of the estate diffed against
      `fleet-infra/cluster` by object identity.
    - **Blocks:** the v1 schedule, not the model.
+
+## Diagram sources
+
+Each diagram above is drawn in draw.io and committed as an SVG with the editable
+diagram embedded, so opening the `.svg` in draw.io recovers the drawing. The
+mermaid below is the same structure in text, kept so a diagram change shows up in
+a plain diff. **Where the two disagree the SVG is the diagram and the mermaid is
+what gets fixed** — the same precedence this repository uses between a chapter and
+an ADR.
+
+### The render, end to end
+
+```mermaid
+flowchart LR
+    subgraph pub["every repository — publish"]
+      IF["Intent Fragment<br/>(domain file, or the Platform document)<br/>pushed by digest"]
+    end
+    subgraph agg["central render — over the ComposedIntent"]
+      RD["Resolved Deployment<br/>+ path plan + clusterStateDigest"]
+      RD --> A1["kubernetes"]
+      RD --> A2["networking"]
+      RD --> A3["prometheus"]
+      RD --> A4["traefik"]
+      RD --> A5["vault-policy"]
+      RD --> A6["vso"]
+      A1 & A2 & A3 & A4 & A5 & A6 --> DL["Deliverables<br/>{path, content, adapter}"]
+      DL --> COL["E_PATH_COLLISION on the plan<br/>one owner per path"]
+      COL --> H["renderHash over the pinned inputs"]
+      COL --> T["Deliverable Set<br/>file tree"]
+      COL --> L["coverage assertion<br/>vs bootstrap set + ledgers"]
+    end
+    IF --> RD
+    T --> X["delivery<br/>defined separately"]
+```

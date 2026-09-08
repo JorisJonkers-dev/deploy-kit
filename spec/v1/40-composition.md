@@ -135,41 +135,9 @@ worked workflow is
 dispatches it, a nightly schedule is a safety net for a missed dispatch, and
 concurrency is serialised because two runs would race on `previousLockDigest`.
 
-```mermaid
-flowchart TB
-    P["participants.yml<br/>expected publishers<br/>maxAge 7d unless overridden"]
+![The composition run](diagrams/40-composition-run.drawio.svg)
 
-    subgraph PULL["1. resolve and verify"]
-        p1["pull each fragment by tag"]
-        p2["oras resolve → digest"]
-        p3["verify MANIFEST.sha256 per file"]
-        p4["admit schemaVersion:<br/>same major, minor ≤ toolkit"]
-    end
-
-    subgraph UNION["2. union"]
-        u1["merge domain files — Services, Workloads,<br/>Secret Subtrees, unmanaged surfaces"]
-        u2["materialise the required-edge DAG<br/>and the node allocatable table"]
-    end
-
-    subgraph ASSERT["3. assert estate-wide invariants"]
-        a1["identity"]
-        a2["references"]
-        a3["placement"]
-        a4["secrets"]
-        a5["completeness"]
-    end
-
-    subgraph OUT["4. record"]
-        o1["composition lock —<br/>every resolved digest,<br/>exact fragment and toolkit versions"]
-        o2["ComposedIntent<br/>input to layer 2"]
-    end
-
-    P --> PULL
-    PULL --> UNION
-    UNION --> ASSERT
-    ASSERT --> OUT
-    ASSERT -.->|"any failure"| X["no ComposedIntent.<br/>Nothing renders."]
-```
+<sub>[Diagram source](#the-composition-run) · edit by opening the SVG in draw.io</sub>
 
 Composition is **order-independent**: the same fragment set yields the same
 `ComposedIntent` regardless of pull order. That is not a nicety, it is what makes
@@ -797,3 +765,50 @@ pinned inputs only
    estate has — and it is owned there. The fleet's seven nodes total 129536Mi
    and 189600m before each node's declared reserve, which is the number that
    comparison runs against.
+
+## Diagram sources
+
+Each diagram above is drawn in draw.io and committed as an SVG with the editable
+diagram embedded, so opening the `.svg` in draw.io recovers the drawing. The
+mermaid below is the same structure in text, kept so a diagram change shows up in
+a plain diff. **Where the two disagree the SVG is the diagram and the mermaid is
+what gets fixed** — the same precedence this repository uses between a chapter and
+an ADR.
+
+### The composition run
+
+```mermaid
+flowchart TB
+    P["participants.yml<br/>expected publishers<br/>maxAge 7d unless overridden"]
+
+    subgraph PULL["1. resolve and verify"]
+        p1["pull each fragment by tag"]
+        p2["oras resolve → digest"]
+        p3["verify MANIFEST.sha256 per file"]
+        p4["admit schemaVersion:<br/>same major, minor ≤ toolkit"]
+    end
+
+    subgraph UNION["2. union"]
+        u1["merge domain files — Services, Workloads,<br/>Secret Subtrees, unmanaged surfaces"]
+        u2["materialise the required-edge DAG<br/>and the node allocatable table"]
+    end
+
+    subgraph ASSERT["3. assert estate-wide invariants"]
+        a1["identity"]
+        a2["references"]
+        a3["placement"]
+        a4["secrets"]
+        a5["completeness"]
+    end
+
+    subgraph OUT["4. record"]
+        o1["composition lock —<br/>every resolved digest,<br/>exact fragment and toolkit versions"]
+        o2["ComposedIntent<br/>input to layer 2"]
+    end
+
+    P --> PULL
+    PULL --> UNION
+    UNION --> ASSERT
+    ASSERT --> OUT
+    ASSERT -.->|"any failure"| X["no ComposedIntent.<br/>Nothing renders."]
+```

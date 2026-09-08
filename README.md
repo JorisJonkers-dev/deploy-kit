@@ -21,6 +21,8 @@ lands — the **compiler** that turns that model into deployable artifacts.
 | [`docs/adr/architecture/`](docs/adr/architecture/README.md) | The compiler's own structure. Pointers resolve against `docs/architecture.md`, not `spec/v1`. |
 | [`docs/adr/deferred/`](docs/adr/deferred/README.md) | Delivery and co-testing decisions, defined separately from the model. Direction work, not v1. |
 | [`spec/v1/`](spec/v1/00-overview.md) | The normative specification. Chapters 00–60, including the two authored documents: Service Intent (10) and Platform Intent (14). |
+| [`spec/v1/diagrams/`](spec/v1/diagrams/README.md) | One drawn diagram per chapter, as an SVG with the editable draw.io diagram embedded. One palette; colour carries the layer. |
+| [`spec/v1/examples/minimal/`](spec/v1/examples/minimal/README.md) | The smallest complete Service: one domain, one Service, one Workload, 26 authored lines reaching 10 objects. |
 | [`spec/v1/examples/`](spec/v1/examples) | Worked examples: real Services from this estate, written in the model. |
 | `scripts/lint-adrs.mjs` | Enforces the decision-record contract. Runs in CI. |
 
