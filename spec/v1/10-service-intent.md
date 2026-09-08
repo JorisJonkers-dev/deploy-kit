@@ -1845,9 +1845,10 @@ classDiagram
         +int port
     }
     class Sidecar {
-        <<proposed>>
         +string name
-        +ImageRef image
+        +ImageAlias image
+        +Quantity memory
+        +Quantity cpu
     }
     class DependencyEdge {
         +ServiceId service
@@ -1903,7 +1904,7 @@ classDiagram
         +Path path
     }
     class Override {
-        +string field
+        +Derivation derivation
         +any value
         +string reason
     }
@@ -1918,9 +1919,13 @@ classDiagram
     }
 
     class Grant {
+        +SecretEngine engine
         +VaultPath path
         +string[] keys
         +AccessTier access
+        +string role
+        +string key
+        +TransitOp[] operations
         +Delivery delivery
         +Path mountAt
         +FileMode fileMode
@@ -1928,6 +1933,122 @@ classDiagram
     class Rotation {
         +Tolerance tolerates
         +Duration maxAge
+    }
+
+%% Every closed vocabulary in layer 1. The authored form of a capability
+%% control is capability:<NAME>; the angle brackets are dropped here because
+%% mermaid reads them as markup.
+    class AccessTier {
+        <<enumeration>>
+        read
+        self-renew
+        self-roll
+        custody
+    }
+    class AlertClass {
+        <<enumeration>>
+        none
+        business-hours
+        urgent
+        page
+    }
+    class Arch {
+        <<enumeration>>
+        amd64
+        arm64
+    }
+    class Audience {
+        <<enumeration>>
+        anonymous
+        authenticated
+        internal
+        lan
+    }
+    class ContentPolicy {
+        <<enumeration>>
+        strict
+        admin
+        workflow
+    }
+    class Control {
+        <<enumeration>>
+        runAsRoot
+        writableRootFilesystem
+        capability:NAME
+        seccompUnconfined
+    }
+    class Delivery {
+        <<enumeration>>
+        env
+        file
+        self
+    }
+    class DurabilityClass {
+        <<enumeration>>
+        reconstructible
+        recoverable
+        irreplaceable
+    }
+    class Engine {
+        <<enumeration>>
+        postgres
+        rabbitmq
+        valkey
+        files
+    }
+    class HardeningClass {
+        <<enumeration>>
+        restricted
+    }
+    class Lifecycle {
+        <<enumeration>>
+        service
+        job
+    }
+    class Match {
+        <<enumeration>>
+        prefix
+        exact
+    }
+    class Media {
+        <<enumeration>>
+        nvme
+        ssd
+        hdd
+    }
+    class PlaceholderKind {
+        <<enumeration>>
+        secret
+        dependency
+        exposure
+        identity
+    }
+    class Runtime {
+        <<enumeration>>
+        jvm
+        python
+        node
+        static
+        none
+    }
+    class SecretEngine {
+        <<enumeration>>
+        kv
+        database
+        transit
+    }
+    class Tolerance {
+        <<enumeration>>
+        restart
+        reload
+    }
+    class TransitOp {
+        <<enumeration>>
+        sign
+        verify
+        encrypt
+        decrypt
+        rotate
     }
 
     Domain "1" *-- "1..*" Service : services
