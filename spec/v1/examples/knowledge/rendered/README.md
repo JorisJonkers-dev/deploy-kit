@@ -38,6 +38,17 @@ that had no producer and made explicit three things a renderer had been choosing
 were decided on 2026-09-07 and their status lives in
 [`../../RENDER-GAPS.md`](../../RENDER-GAPS.md) rather than being restated here.
 
+## Estate-scoped objects are not in this tree
+
+Two files this tree used to carry — `edge/middlewares.yaml` and
+`observability/gatus-endpoints.yaml` — render in the **platform domains** now:
+the Middleware set is emitted per tier by the `traefik` adapter into the edge
+domain, and the Gatus endpoint list is an inbound derivation rendered as the
+declared `gatus` Service's own Asset in the observability domain
+([0096](../../../../../docs/adr/model/0096-the-foundation-is-declared.md),
+[0098](../../../../../docs/adr/model/0098-one-publication-path.md)). This domain
+contributes routes and exposures to both; it owns neither object.
+
 ## Emitted
 
 | file | adapter | derives from | cannot derive today |
@@ -52,12 +63,10 @@ were decided on 2026-09-07 and their status lives in
 | `apps/knowledge/networkpolicy.yaml` | `networking` — **not registered** (**G-16**) | `dependsOn`, `provides`, `exposure`, `scrape`, effective grant set, baseline | egress to anything outside the estate — the worker's git remote (**G-20**); ingress from consumers absent from the union (**G-18**); whether a namespace catch-all is emitted (**G-17**) |
 | `apps/knowledge/vso.yaml` | `vso` | `secrets` at both levels, `delivery`, `rotation`, workload `name` | Secret/object naming (**G-21**); which identity reads a shared path (**G-23**); the Kubernetes auth mount name |
 | `apps/knowledge/kustomization.yaml` | `kubernetes` | the emitted file set | ownership of `vso.yaml` (**G-25**) |
-| `edge/ingressroutes.yaml` | `traefik-public` | the Service's `exposure`: authored `host`, the exposure `audience` and five routes — four overriding it to `anonymous` — each naming `knowledge-api` and its `http` surface | — |
-| `observability/gatus-endpoints.yaml` | `gatus` | `exposure` (host and routes), `probes.readiness`, `provides` | an externally probeable health path — the URL is derivable now, the anonymous route to it is not (**G-28**); anything at all from `alertClass` (**G-29**); which namespace the ConfigMap belongs in (**G-27**) |
+| `edge/ingressroutes.yaml` | `traefik`, for the tier each route's audience selects | the Service's `exposure`: authored `host`, the exposure `audience` and five routes — four overriding it to `anonymous` — each naming `knowledge-api` and its `http` surface | — |
 | `apps/knowledge/backup.yaml` | `kubernetes` | `durability: irreplaceable` plus `engine: files` on the vault clone | — (0077) |
 | `apps/vso-secrets/policies/knowledge-api.policy.json` | `vault-policy` | the three KV grants, each with its `metadata` sibling | — (0073, 0086) |
 | `apps/vso-secrets/policies/knowledge-api.role.json` | `vault-policy` | the Workload's ServiceAccount and namespace | — |
-| `edge/middlewares.yaml` | `traefik-middleware` | forward-auth for the `authenticated` exposure, and the security-headers profile | — (0076) |
 | `observability/prometheusrules.yaml` | `prometheus` | the baseline set, severity and receiver from `alertClass: business-hours` | — (0079) |
 
 ## Deliberately absent, and correct
@@ -68,7 +77,7 @@ were decided on 2026-09-07 and their status lives in
 | a `ServiceMonitor` or `PodMonitor` for `knowledge-ingest-worker` | no `scrape` is declared, and a ServiceMonitor selects a Service it does not have. |
 | any probe on `knowledge-ingest-worker` | `probes: none` is **declared**, so the absence is a decision rather than a forgotten block — and a readiness gate on a Workload that can never report ready would stop the Service switching for ever. |
 | `podmonitor.yaml`, `hpa.yaml` | nothing declares a pod-level scrape; autoscaling is not in this model. |
-| `traefik-lan` routes | no path rule carries the `lan` audience. |
+| `traefik` routes | no path rule carries the `lan` audience. |
 
 ## Demanded by the model, produced by nothing
 
@@ -153,7 +162,7 @@ not enumerated anywhere either.
 python` injects 6. Exactly one of them, `OTEL_SERVICE_NAME`, is a function of
 anything declared. The other fifteen are constants held in a **Runtime Profile**,
 and chapter 20's pinned input set does not include one — it lists Intent
-Fragments, the Cluster Context and node contract, the images lock and the
+Fragments, the Platform document and node contract, the images lock and the
 ClusterState snapshot. A render cannot be a pure function of pinned inputs while
 16 env vars come from an unpinned source.
 
@@ -278,6 +287,6 @@ intent and invents no dimension. The chapter's example needs correcting, or the
 two disagree about what the same Workload asks for.
 
 **G-36** `E_SECRETS_AT_REST_REQUIRED` blocks all four grants until the pinned
-Cluster Context advertises `secretsEncryption: true`, so **none of this domain
-ships** on today's inputs. There is no Cluster Context document in the example
+Platform document advertises `secretsEncryption: true`, so **none of this domain
+ships** on today's inputs. There is no Platform document in the example
 set to check against.

@@ -71,7 +71,7 @@ jobs:
           echo "toolkit=${TOOLKIT}" >> "$GITHUB_OUTPUT"
           echo "composing with toolkit ${TOOLKIT}"
 
-      - name: Require a digest-pinned Cluster Context
+      - name: Require a digest-pinned Platform document
         if: ${{ !cancelled() }}
         env:
           CONTEXT_REF: ${{ vars.CONTEXT_REF }}

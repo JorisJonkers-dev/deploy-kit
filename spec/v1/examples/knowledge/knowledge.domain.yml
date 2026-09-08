@@ -55,7 +55,7 @@ services:
     # the whole path (docs/adr/model/0009-vault-read-is-per-path.md).
     #
     # `delivery: env` and `delivery: file` render a Kubernetes Secret, so both
-    # are refused unless the pinned Cluster Context advertises
+    # are refused unless the pinned Platform document advertises
     # `secretsEncryption: true` -- E_SECRETS_AT_REST_REQUIRED
     # (docs/adr/model/0028-secrets-at-rest-gate.md). Until that flag lands on the
     # pinned k3s version, knowledge cannot ship.

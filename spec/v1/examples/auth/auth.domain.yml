@@ -202,7 +202,7 @@ services:
 
         # The paths this process must write. Nothing is implicit: a mount nobody
         # declared would appear in every image, including those that never
-        # write. sizeLimit is platform-assigned from one Cluster Context default.
+        # write. sizeLimit is platform-assigned from one Platform document default.
         writablePaths: [/tmp]
 
         dependsOn:
@@ -237,7 +237,8 @@ services:
         # second is a capacity decision stated as an override with its reason.
         # auth-api's live pair was exactly that, on freed Frankfurt budget.
         overrides:
-          - field: replicas
+          - derivation: replicas    # a derivation's own name, never a Kubernetes
+                                    # field (docs/adr/model/0097-authored-values-name-model-concepts.md)
             value: 2
             reason: >-
               Capacity, not availability: the pair was provisioned on freed
