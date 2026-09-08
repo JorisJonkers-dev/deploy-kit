@@ -9,6 +9,14 @@ rests-on: ["0004"]
 
 # Exposure is declared by Audience, in one closed vocabulary
 
+> **Amended 2026-09-08.** "entryPoint, TLS" below are Traefik's words for what
+> a tier now declares as `listener` and `certificates` in the Platform document
+> ([chapter 14](../../../spec/v1/14-platform-intent.md#tiers),
+> [0097](0097-authored-values-name-model-concepts.md)); the derivation this ADR
+> records is unchanged, and the Traefik spelling is the `traefik` adapter's. The
+> fragment producers named in the evidence are deleted
+> ([0098](0098-one-publication-path.md)).
+
 A **Service** declares exposure: a hostname, authored as the full FQDN, carrying
 an **Audience**, with routes to the Workloads behind it and per-path audiences
 where they differ. The host is written once and referenced by placeholder

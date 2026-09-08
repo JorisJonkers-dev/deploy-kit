@@ -61,6 +61,12 @@ decisions owe the example set.
 
 ## Missing inputs, not missing derivations
 
+**Discharged on 2026-09-08**: every input this section lists is a block of the
+worked Platform document ([`platform/platform.intent.yml`](platform/platform.intent.yml)),
+in the model's words rather than Traefik's — a tier declares a `listener` and
+`certificates`, and the adapter spells them as `entryPoints` and `certResolver`.
+The paragraph below is kept as the record of what was missing.
+
 Every platform-component fact the render needs is a Platform document input the
 example set does not carry: cluster DNS, edge, metrics-stack and Secret Store
 selectors; `release: metrics-stack` on the ServiceMonitor; entryPoints and

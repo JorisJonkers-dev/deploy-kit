@@ -163,9 +163,10 @@ the documents and attributes them; nothing here says who writes them.
 configuring its JWT issuer and CA, and creating the KV mounts are estate-unique
 and draw on a shared resource, so by
 [0004](../../docs/adr/model/0004-contention-decides-authority.md) they are
-platform-assigned, and they arrive through a blueprint pack
-([chapter 60](60-setup.md#secrets-at-rest)) rather than per-Service render. The
-render owns what varies per Workload and nothing else.
+platform-assigned, and they are Assets of the declared `vault` Service in the
+platform's secrets domain ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md),
+[chapter 60](60-setup.md#secrets-at-rest)) rather than per-Service render. The
+per-Service render owns what varies per Workload and nothing else.
 
 ## Attribution
 

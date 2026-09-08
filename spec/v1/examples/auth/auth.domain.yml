@@ -104,7 +104,7 @@ services:
                                   # other being `redirectTo` on a route. It
                                   # picks the CSP profile only: the
                                   # security-headers baseline, forward-auth,
-                                  # the entryPoint, TLS and the chain all derive
+                                  # the listener, certificates and the chain derive
                                   # from audience and tier, and no middleware
                                   # name, header block, timeout or rate limit is
                                   # authorable anywhere in layer 1

@@ -9,6 +9,12 @@ rests-on: ["0005"]
 
 # Configuration is per-Workload env files with named placeholders
 
+> **Amended 2026-09-08.** The reversibility clause below speaks of blueprint
+> packs distributing the format; packs no longer exist
+> ([0096](0096-the-foundation-is-declared.md)). What makes this decision
+> irreversible is the same thing by another route: participants author against
+> the format and publish it as Intent Fragments.
+
 Configuration is authored as env files in real dotenv format, **per Workload**:
 `platform/env/<workload>/base.env` carries what does not vary, one overlay per
 Cluster Target (`platform/env/<workload>/<cluster>.env`) carries only what

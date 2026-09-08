@@ -89,9 +89,13 @@ contributes routes and exposures to both; it owns neither object.
 | `Role` / `RoleBinding` per Workload | per-Workload identity | **none.** No `rbac` adapter. It is also what keeps the two Secret boundaries apart in a shared namespace (**G-24**). |
 | `resolved.yml` (the `ResolvedService` projection) | publish-back | central composition; not part of a Deliverable Set. |
 
-Estate-scoped files this domain contributes rows to but cannot render alone:
-`edge-catalog`, `edge-route-catalog`, `image-metadata`, `flux-root`'s
-`apps-knowledge` Kustomization, and `vso`'s `VaultConnection` in `vso-system`.
+Estate-scoped objects this domain contributes rows to but does not render: the
+edge catalogs, now Assets of the declared Traefik Services in the platform edge
+domain; the Gatus endpoint list, an Asset of the declared `gatus` Service; and
+`vso`'s `VaultConnection` in `vso-system`. The per-Workload image digests that
+were once an `image-metadata` document are in this Service's `resolved.yml`
+projection, and the Flux `Kustomization` for `apps-knowledge` is delivery's
+([0098](../../../../../docs/adr/model/0098-one-publication-path.md)).
 
 ## Gaps
 

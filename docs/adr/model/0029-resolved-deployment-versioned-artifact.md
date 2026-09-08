@@ -9,6 +9,14 @@ rests-on: ["0003"]
 
 # The Resolved Deployment is a versioned, reviewable artifact
 
+> **Amended 2026-09-08.** The schema family list below includes
+> `adapter-compat/v1`, which no longer exists: the publish-time producers it
+> paired with their consumers are deleted ([0098](0098-one-publication-path.md)).
+> The Resolved Deployment also carries the path plan
+> ([0070](0070-path-authority-is-layer-2.md)), the release gate's inputs
+> ([0071](0071-release-gate-inputs-are-layer-2.md)), the override records and the
+> per-Workload image digests that were once a separate image-metadata document.
+
 ## Rests on
 
 The Resolved Deployment, emitted per render and validated against its own

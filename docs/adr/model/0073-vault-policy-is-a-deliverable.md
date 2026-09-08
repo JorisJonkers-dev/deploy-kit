@@ -58,8 +58,9 @@ would put a v1 dependency on CRDs nobody has installed.
 **The auth method is not in scope of the render.** Mounting `kubernetes` auth,
 its JWT issuer and CA, and the KV mounts are estate-unique and draw on a shared
 resource, so [0004](0004-contention-decides-authority.md) makes them
-platform-assigned; they arrive through a blueprint pack
-([0013](0013-blueprint-packs-pinned-checkout.md)). Rendering them per Service
+platform-assigned; since [0096](0096-the-foundation-is-declared.md) they are
+Assets of the declared `vault` Service in the platform's secrets domain, and
+before it they arrived through a blueprint pack. Rendering them per Service
 would also need a bootstrap answer for the mount that authenticates the renderer
 itself.
 
