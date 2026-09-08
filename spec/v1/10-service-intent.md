@@ -344,6 +344,60 @@ required.
 on; which hostname reaches it, and on what path, is stated once on the Service
 ([Exposure](#exposure)).
 
+### Sidecars
+
+A Workload is one pod, and a pod holds more than one container three times in
+this estate. `sidecars` names the others
+([0064](../../docs/adr/model/0064-sidecars-are-workload-vocabulary.md)):
+
+```yaml
+- name: postgres
+  image: postgres-17
+  engine: postgres
+  provides: {postgres: 5432, metrics: 9187}   # the exporter serves 9187
+  placement: {memory: 2Gi, cpu: 500m}
+  sidecars:
+    - name: postgres-exporter
+      image: postgres-exporter
+      memory: 64Mi
+      cpu: 50m
+      hardening: {}                            # restricted, no exceptions
+```
+
+| field | required | shape | notes |
+|---|---|---|---|
+| `name` | yes | one value | The container's own name, unique among the Workload's containers — the Workload is one of them, so a sidecar may not take its name. A collision is refused at composition (chapter 40). |
+| `image` | yes | an alias | Resolved to a digest through the images lock, exactly as a Workload's is. A tag would put a mutable reference in a Deliverable, which `E_FLOATING_IMAGE` (chapter 30) refuses. |
+| `memory` | yes | one quantity | This container's request. Shape rules are the Workload's ([Placement](#placement)). |
+| `cpu` | yes | one quantity | The same. |
+| `hardening` | yes | `{exceptions: [...]}` | This container's own class and its own exception list, the same shape as the Workload's ([Pod hardening](#pod-hardening)). `{}` is `restricted` with no exceptions. |
+
+The split follows Kubernetes rather than a rule of the model's own: `nodeSelector`
+and affinity are **pod**-level, `resources` and `securityContext` are
+**container**-level. So the node dimensions — `arch`, `site`, `disk`, `gpu`,
+`capabilities` — stay on the Workload and describe the pod, and a sidecar
+declares neither them nor a `placement` block. `memory`, `cpu` and `hardening`
+are per container, and a sidecar declares its own.
+
+Nothing is inherited. `postgres-exporter` meets `restricted` while `postgres`
+does not, so a Workload's exception list does not reach its sidecars — pushing
+one container's exception onto another would widen the estate's inventory of
+what it cannot harden by containers that never needed it.
+
+**Eligibility sums.** A node must fit the pod's containers together, so the
+placement check adds every sidecar's `memory` and `cpu` to the Workload's before
+matching against allocatable
+([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). `postgres` at
+2Gi with a 64Mi exporter needs a node with 2112Mi free, not 2Gi. This is the one
+place the addition matters and the one place it is easy to miss.
+
+A sidecar has no identity, no probes, no exposure and no release semantics of
+its own: it is not independently deployable, which is what makes it a sidecar
+rather than a Workload. `provides` therefore stays on the **Workload** even when
+the listener is a sidecar — `platform-postgres` declares `metrics: 9187` and the
+exporter is the container that serves it, which is exactly the attribution the
+model could not state before this field existed.
+
 ### Dependencies
 
 ```yaml
@@ -1849,6 +1903,7 @@ classDiagram
         +ImageAlias image
         +Quantity memory
         +Quantity cpu
+        +HardeningClass hardening
     }
     class DependencyEdge {
         +ServiceId service
@@ -2056,6 +2111,7 @@ classDiagram
 
     Workload "1" *-- "0..*" Surface : provides
     Workload "1" *-- "0..*" Sidecar : sidecars
+    Sidecar "1" *-- "0..*" HardeningException : hardening.exceptions
     Workload "1" *-- "0..*" HardeningException : hardening.exceptions
     Workload "1" *-- "0..*" DependencyEdge : dependsOn
     Workload "1" *-- "0..1" Probe : probes.readiness
