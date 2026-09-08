@@ -766,24 +766,15 @@ pinned inputs only
 
 ## Open in this chapter
 
-1. **The range's determinism claim is untested.** Same-major, minor-≤ admission
-   assumes a minor bump only adds vocabulary, so renders are identical across
-   the minors a major admits.
-   - **Owner:** joris.
-   - **Settled by:** render the pinned estate inputs once per published toolkit
-     minor within a major and assert `computeRenderHash`
-     (`src/artifact/contract.ts:41`) is equal across the set; one inequality
-     falsifies the range and forces a major bump.
-   - **Blocks:** trusting the range. Until it runs, admission across minors is a
-     decision in direction, not a proven property.
-2. **The 7-day bound is calibrated against today's cadence.** It is 2.5 observed
-   release intervals, not a general constant.
-   - **Owner:** joris.
-   - **Settled by:** `oras repo tags` against the GHCR namespace over 90 days;
-     take the maximum inter-publish gap per participant. The default fails if any
-     non-dormant participant routinely exceeds 7 days while healthy.
-   - **Blocks:** nothing. A failure re-numbers the default; it does not remove
-     the list.
+1. ~~**The range's determinism claim is untested.**~~ It is
+   [0039](../../docs/adr/model/0039-artifact-schema-versioning.md)'s own
+   settling test — render the pinned inputs once per toolkit minor and assert
+   the render hash is equal across the set — and it is recorded there, where a
+   failure flips the claim rather than a chapter item.
+2. ~~**The 7-day bound is calibrated against today's cadence.**~~ It is
+   [0038](../../docs/adr/model/0038-participants-list-staleness.md)'s own
+   settling test — the maximum inter-publish gap per participant over 90 days —
+   and is recorded there.
 3. **Whether the union may span clusters.** The lock is keyed by cluster, but the
    invariants — Service Id uniqueness in particular — are estate-wide rather than
    per-cluster.
@@ -800,15 +791,9 @@ pinned inputs only
      rejected.
    - **Blocks:** nothing today; it bounds what a compromised publish credential
      can do.
-5. **Composition asserts eligibility, never fleet capacity.** Every Workload
-   having an eligible node does not mean the fleet can run them all, and nothing
-   in this chapter compares total declared demand with what the nodes publish.
-   - **Owner:** joris.
-   - **Settled by:** summing `placement.memory` and `placement.cpu` across the
-     composed union and comparing them with the node contract's `allocatable`
-     totals — the fleet's seven nodes total 129536Mi and 189600m before each
-     node's declared reserve. A demand above that total is unschedulable no
-     matter how it is spread, and would be worth failing at composition.
-   - **Blocks:** nothing today. Until it runs, over-subscription surfaces as the
-     scheduler refusing to place a pod, which is the conceded cost of
-     eligibility ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)).
+5. **Composition asserts eligibility, never fleet capacity.** The same question
+   as [chapter 20](20-resolved-deployment.md#open-in-this-chapter)'s fifth item
+   — nothing compares the sum of what the estate declared against what the
+   estate has — and it is owned there. The fleet's seven nodes total 129536Mi
+   and 189600m before each node's declared reserve, which is the number that
+   comparison runs against.

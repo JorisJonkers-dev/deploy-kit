@@ -307,9 +307,10 @@ through, with the deciding ADR named.
    may not be executable — so `hermes-bootstrap` (221 lines of shell),
    `n8n-hooks` (499 lines of JavaScript) and the `garage` bootstrap need
    first-party images, and the `alpine:3.21`-plus-ConfigMap pattern retires with
-   them. The fourth candidate, `postgres-init-script`, needs no image: it
-   creates one database and user per consuming Service, which the dependency
-   graph already knows, so it becomes a derived Deliverable.
+   them. The fourth, `postgres-init-script`, is decided: it is the derived
+   database catalog ([0080](../../docs/adr/model/0080-database-catalog-is-derived-data.md)),
+   applied by an engine image on the same rule that makes a backup method an
+   image ([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)).
    - **Owner:** joris, as owner of `hermes`, `garage` and `n8n`.
    - **Settled by:** three published first-party images referenced from intent,
      then a ConfigMap census (`kubectl get configmap -A -o yaml`) in which no
@@ -335,25 +336,20 @@ through, with the deciding ADR named.
      single-source claim. It blocks no render: adapters emit
      `<cluster>/capability-<name>`.
 
-4. **Closing the coverage gap, re-derived.** The published gap — 328 of 364
-   objects attributed, 36 missing — was computed against a table wrong on two of
-   its four rows: the registered `kubernetes` adapter already pushes `pdb.yaml`,
-   `servicemonitor.yaml` and `podmonitor.yaml`, and builds the PDB from
-   `rollout.availability`
-   ([0052](../../docs/adr/model/0052-registered-adapters-are-v1.md)). Chapter 30 has
-   re-derived it from the registry — 20 objects across three kinds, still
-   arithmetic on the 2026-08-31 survey. Three related items travel
-   with it: four duplicated adapter pairs must collapse before attribution can
-   be enforced, `E_PATH_COLLISION` has zero implementations, and Grafana's 45
-   authored objects need a home that is not "the ledger, indefinitely".
+4. **Closing the coverage gap, re-derived.** Every kind the 2026-08-31 survey
+   found unrendered now has a decision, and the three items that travelled with
+   this one are gone: the duplicated adapter pairs are deleted
+   ([0098](../../docs/adr/model/0098-one-publication-path.md)),
+   `E_PATH_COLLISION` is a check on the path plan
+   ([0070](../../docs/adr/model/0070-path-authority-is-layer-2.md)) awaiting a
+   compiler, and Grafana's 45 authored objects become Assets of the declared
+   observability Services ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)).
+   What remains is the number, which is [chapter 30](30-deliverables.md#open-in-this-chapter)'s
+   one open item and is owned there.
    - **Owner:** joris.
-   - **Settled by:** render the estate, attribute every object through
-     `adapterContract()`, publish the corrected table in
-     [chapter 30](30-deliverables.md#coverage); the real gap is what that
-     table's unattributed rows total.
-   - **Blocks:** chapter 60's pre-apply item on one renderer generation with
-     unambiguous attribution; enforcing single attribution
-     ([0054](../../docs/adr/model/0054-adapter-attribution.md)).
+   - **Settled by:** one full render of the estate diffed against
+     `fleet-infra/cluster` by object identity, recorded as the class-A number.
+   - **Blocks:** the v1 schedule, not the model.
 
 5. ~~**`minAvailable`.**~~ Chapter 10 proposed three fields. One became
    `placement` ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)),

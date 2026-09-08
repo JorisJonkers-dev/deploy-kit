@@ -51,3 +51,8 @@ Status of everything in this directory:
   ([0098](../model/0098-one-publication-path.md)). The model emits the kustomize
   groupings and the ordering; until this set defines otherwise, the bootstrap
   Flux source applies the tree those groupings describe.
+- **Whether a Release Unit may span an ownership boundary.** A Service belongs to
+  at most one unit and membership is estate-wide; whether a unit may cross
+  whatever ownership boundary a delivery definition introduces is that
+  definition's question, moved here from
+  [chapter 50](../../../spec/v1/50-lifecycle.md#open-in-this-chapter).

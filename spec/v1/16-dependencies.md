@@ -746,11 +746,9 @@ parked direction work is in
    the inbound edge set, classifying each of the nine as browser or redirect.
    **Blocks:** rendering the allow-list at all; it stays hand-maintained until
    the predicate is written here.
-2. **Nothing enforces the rendered policy set.** Audit mode requires a CNI with
-   a non-enforcing policy stage, and that evaluation has not run.
-   **Owner:** joris.
-   **Settled by:** the lab evaluation on the pinned k3s version required by
-   [0036](../../docs/adr/model/0036-cni-selection.md) (chapter 60
-   [`#cni`](60-setup.md#cni)).
-   **Blocks:** the audit stage, and therefore the 14-day promotion window and
-   enforce.
+2. ~~**Nothing enforces the rendered policy set.**~~ Decided: render-only is
+   v1's stage ([0084](../../docs/adr/model/0084-render-only-is-the-v1-policy-stage.md)),
+   so this is not a gap in the model but the first stage of a sequence whose
+   exit criterion is [0036](../../docs/adr/model/0036-cni-selection.md)'s lab
+   evaluation. That evaluation is 0036's own settling test and is recorded
+   there, not here.

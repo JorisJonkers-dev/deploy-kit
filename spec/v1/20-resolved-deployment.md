@@ -950,20 +950,18 @@ two Workloads may not share a name (`E_DUPLICATE_WORKLOAD_NAME`).
    a branch, compose, and observe what the `knowledge` pipeline does between the
    pull request opening and merging.
    **Blocks:** enabling the check across the participating repositories.
-4. **The ClusterState snapshot is unmeasured, and `allocatable` is a guess.** No
-   collector exists, and the claim that its digest is stable between
-   operator-visible events is untested; every reproducibility statement in this
-   chapter and in [chapter 30](30-deliverables.md) depends on it. The node
-   contract's `allocatable` has the same problem from the other side: the
-   reserve is authored, not measured, and on the 4096Mi `enschede-pi-2` and
-   `enschede-pi-3` it is a large fraction of the node, so a wrong guess bites
-   there first — as a pod the build says fits and the scheduler refuses.
+4. **The node contract's `allocatable` is a guess.** The reserve is authored,
+   not measured, and on the 4096Mi `enschede-pi-2` and `enschede-pi-3` it is a
+   large fraction of the node, so a wrong guess bites there first — as a pod
+   the build says fits and the scheduler refuses. (The other half this item
+   used to carry — whether the ClusterState digest is stable — is
+   [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)'s own
+   settling test and is recorded there.)
    **Owner:** joris.
-   **Settled by:** running the collector twice, ten minutes apart, against an
-   idle cluster and comparing `sha256sum` of the two snapshots; and reconciling
-   each node's declared `allocatable` against `kubectl describe node`.
-   **Blocks:** the double-render determinism test, and therefore properties 1
-   and 2 of [Pinned inputs](#pinned-inputs).
+   **Settled by:** reconciling each node's declared `allocatable` against
+   `kubectl describe node`, and deciding whether the reserve is authored or
+   observed.
+   **Blocks:** trusting `E_PLACEMENT_UNSATISFIABLE` on the two small nodes.
 5. **Nothing arbitrates a declared requirement.** `memory` and `cpu` are stated
    by the Service and arbitrated by the platform, but the arbitration today is
    one eligibility test against one node's allocatable. Nothing compares the sum

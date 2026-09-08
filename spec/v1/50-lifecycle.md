@@ -256,18 +256,19 @@ it is decided in `docs/adr/`; everything inside it is decided separately.
 
 ## Open in this chapter
 
-1. **Release Unit atomicity is untested.**
-   [0060](../../docs/adr/model/0060-release-unit.md) carries `claim: open`.
-   Owner: joris. Settled by: rendering a two-member unit and handing the same
-   derived gate to two different delivery mechanisms — today's Flux health
-   checks on one Kustomization, and any future applier — and observing both
-   honour it unchanged. Blocks: nothing in v1 authoring; it blocks the claim,
-   not the field.
-2. **Whether a unit may span ownership boundaries.** A Service belongs to at most
-   one unit, and unit membership is estate-wide today. Whether a unit may cross
-   whatever ownership boundary the delivery definition introduces is that
-   definition's question, not this chapter's.
-3. **How far the contraction check reaches.** It is exact over declared edges and
-   silent over undeclared ones, so its value is bounded by the completeness of
-   the edge set — the same completeness default-deny network policy depends on
-   ([0035](../../docs/adr/model/0035-network-policy-default-deny.md)).
+1. ~~**Release Unit atomicity is untested.**~~ It is
+   [0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md)'s own
+   settling test — a switchover mechanism written against a `ResolvedService`
+   projection alone — and is recorded there. [0060](../../docs/adr/model/0060-release-unit.md),
+   which this item used to cite, is superseded; the unit is the Service
+   ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)).
+2. ~~**Whether a unit may span ownership boundaries.**~~ Not this chapter's
+   question: whatever ownership boundary a delivery definition introduces is
+   that definition's, and the item belongs in
+   [`docs/adr/deferred/`](../../docs/adr/deferred/README.md), where it now sits.
+3. **How far the contraction check reaches** is a recorded limitation rather
+   than an open decision: it is exact over declared edges and silent over
+   undeclared ones, so its value is bounded by the completeness of the edge set
+   — the same completeness default-deny network policy depends on
+   ([0035](../../docs/adr/model/0035-network-policy-default-deny.md)). Nothing
+   settles it except the audit stage finding no undeclared flow.
