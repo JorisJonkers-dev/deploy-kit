@@ -2127,15 +2127,15 @@ classDiagram
 
     Service "1" *-- "0..*" Exposure : exposure
     Exposure "1" *-- "1..*" Route : routes
-    Route ..> Surface : names a Surface a Workload of this Service provides
-    DependencyEdge ..> Surface : names a Surface of another Service
+    Route ..> Surface : resolves by name
+    DependencyEdge ..> Surface : resolves by name
 
     Workload "1" *-- "1..*" EnvFile : env per workload
     EnvFile "1" *-- "0..*" Placeholder : resolves
 
-    Service "1" *-- "0..*" Grant : secrets (shared)
-    Workload "1" *-- "0..*" Grant : secrets (workload-specific)
+    Service "1" *-- "0..*" Grant : secrets
+    Workload "1" *-- "0..*" Grant : secrets
     Grant "1" *-- "0..1" Rotation : rotation
-    Placeholder ..> Grant : a secret placeholder byte-matches a granted path
+    Placeholder ..> Grant : byte-matches
     Placeholder ..> Exposure : an exposure placeholder addresses service.name
 ```
