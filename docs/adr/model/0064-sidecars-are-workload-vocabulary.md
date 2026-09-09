@@ -3,7 +3,7 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-09-07
-normative: spec/v1/10-service-intent.md#workload
+normative: spec/v1/10-service-intent.md#sidecars
 rests-on: ["0005"]
 ---
 
