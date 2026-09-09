@@ -212,6 +212,26 @@ observability:
     postgres: [replication-lag, connections-exhausted]
 ```
 
+## Hardening policy
+
+One posture for every container the estate renders
+([0016](../../docs/adr/model/0016-pod-hardening.md)):
+
+```yaml
+hardening: restricted
+```
+
+The class is the platform's because it is uniform and contended: thirty
+declarations of the only legal value are thirty copies of one decision
+([0004](../../docs/adr/model/0004-contention-decides-authority.md)). A Workload
+therefore authors no class — only the **exceptions** it needs, each naming one
+control with a reason ([chapter 10](10-service-intent.md#pod-hardening)), and
+that list is the estate's inventory of what it cannot harden.
+
+A second class earns a value here when an image exists that cannot meet
+`restricted` and cannot be excepted control by control. Until then this is one
+value, and the vocabulary stays one value wide.
+
 ## Probe and ephemeral policy
 
 One probe cadence for the estate

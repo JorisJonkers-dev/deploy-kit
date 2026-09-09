@@ -98,6 +98,11 @@ observability:
     postgres: [replication-lag, connections-exhausted]
     rabbitmq: [queue-depth, consumers-zero]
 
+# One posture for every container the estate renders. A Workload authors no
+# class -- only the exceptions it needs
+# (docs/adr/model/0016-pod-hardening.md).
+hardening: restricted
+
 # One cadence for every rendered probe
 # (docs/adr/model/0088-startup-probe-targets-liveness.md).
 probes:
