@@ -361,7 +361,7 @@ this estate. `sidecars` names the others
       image: postgres-exporter
       memory: 64Mi
       cpu: 50m
-      hardening: {}                            # restricted, no exceptions
+      # no hardening block: the platform's posture, no exceptions
 ```
 
 | field | required | shape | notes |
@@ -370,7 +370,7 @@ this estate. `sidecars` names the others
 | `image` | yes | an alias | Resolved to a digest through the images lock, exactly as a Workload's is. A tag would put a mutable reference in a Deliverable, which `E_FLOATING_IMAGE` (chapter 30) refuses. |
 | `memory` | yes | one quantity | This container's request. Shape rules are the Workload's ([Placement](#placement)). |
 | `cpu` | yes | one quantity | The same. |
-| `hardening` | yes | `{exceptions: [...]}` | This container's own class and its own exception list, the same shape as the Workload's ([Pod hardening](#pod-hardening)). `{}` is `restricted` with no exceptions. |
+| `hardening` | no | `{exceptions: [...]}` | This container's own exception list, the same shape as the Workload's ([Pod hardening](#pod-hardening)). Absent means the platform's posture with no exceptions. |
 
 The split follows Kubernetes rather than a rule of the model's own: `nodeSelector`
 and affinity are **pod**-level, `resources` and `securityContext` are
@@ -641,8 +641,8 @@ worth, which only the owning Service knows:
 ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)). The window a
 backup runs in, how many copies are kept, and where an off-cluster copy goes are
 contended — one node's IO, one remote target — so by
-[0004](../../docs/adr/model/0004-contention-decides-authority.md) the Cluster
-Context carries one policy per class and the volume declares only what the data
+[0004](../../docs/adr/model/0004-contention-decides-authority.md) the Platform
+Intent carries one policy per class and the volume declares only what the data
 is worth. A volume that genuinely needs different terms restates one with a
 reason ([chapter 20](20-resolved-deployment.md#overrides)).
 
@@ -735,10 +735,14 @@ symptom.
 
 ### Hardening
 
-`hardening` names a **Hardening Class**, and defaults to `restricted` — the same
-shape as a Durability Class or an Alert Class: a closed vocabulary whose one
-value today stands for a set of controls applied together. `restricted` is four
-of them:
+The posture itself is **not authored per Workload**. It is one estate-wide value,
+`restricted`, declared once in the Platform document
+([chapter 14](14-platform-intent.md#hardening-policy)) — a Workload that repeated
+it thirty times would be restating the only value there is, and a field with one
+legal value carries no information ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)
+deleted `minAvailable` for the same reason). What a Workload authors is the
+**exceptions**, which is where the variation actually lives. `restricted` is four
+controls, applied together:
 
 | control | rendered as |
 |---|---|
@@ -1312,8 +1316,8 @@ one thing whether the signal came from a scrape or from a Gatus endpoint check.
 all, because Gatus derives from exposure and a datastore is correctly not
 exposed. Refusing it is what makes the declaration mean something.
 
-**Scrape timing is platform policy, stated rather than defaulted.** The Cluster
-Context carries the interval and the timeout, and every rendered `ServiceMonitor`
+**Scrape timing is platform policy, stated rather than defaulted.** The Platform
+Intent carries the interval and the timeout, and every rendered `ServiceMonitor`
 and `PodMonitor` names them
 ([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)).
 Omitting the fields takes the metrics stack's global default — a value decided
@@ -1578,8 +1582,8 @@ rollout, and the model says so at schema time rather than at rotation time.
 
 Two gates apply to the two deliveries that persist a Secret:
 
-- **Secrets at rest.** `env` and `file` are refused unless the pinned Cluster
-  Context advertises `secretsEncryption: true`, with
+- **Secrets at rest.** `env` and `file` are refused unless the pinned Platform
+  Intent advertises `secretsEncryption: true`, with
   `E_SECRETS_AT_REST_REQUIRED` ([0028](../../docs/adr/model/0028-secrets-at-rest-gate.md),
   specified in chapter 60). Shipping them before the flag lands is a regression
   against what runs today, since the agent-inject path being replaced never touched
@@ -1890,7 +1894,6 @@ classDiagram
         +bool zeroDowntime
         +bool stateful
         +Path[] writablePaths
-        +HardeningClass hardening
     }
     class HardeningException {
         +Control allow
@@ -1905,7 +1908,6 @@ classDiagram
         +ImageAlias image
         +Quantity memory
         +Quantity cpu
-        +HardeningClass hardening
     }
     class DependencyEdge {
         +ServiceId service
@@ -1937,7 +1939,7 @@ classDiagram
         +map substitute
     }
     class Volume {
-        +ClaimName claim
+        +string claim
         +Path mountAt
         +Quantity size
         +DurabilityClass durability
@@ -2017,10 +2019,6 @@ classDiagram
     class VaultPath {
         <<type>>
         the full KV path, and the grant unit
-    }
-    class ClaimName {
-        <<type>>
-        names the volume's claim
     }
     class ClusterTarget {
         <<type>>
@@ -2126,10 +2124,6 @@ classDiagram
         rabbitmq
         valkey
         files
-    }
-    class HardeningClass {
-        <<enumeration>>
-        restricted
     }
     class Lifecycle {
         <<enumeration>>
