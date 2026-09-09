@@ -735,8 +735,10 @@ symptom.
 
 ### Hardening
 
-`hardening` defaults to `restricted`. The class is four controls, applied
-together:
+`hardening` names a **Hardening Class**, and defaults to `restricted` — the same
+shape as a Durability Class or an Alert Class: a closed vocabulary whose one
+value today stands for a set of controls applied together. `restricted` is four
+of them:
 
 | control | rendered as |
 |---|---|
@@ -1951,7 +1953,7 @@ classDiagram
         +Media[] media
     }
     class GpuRequest {
-        +GpuClass class
+        +GpuClassName class
         +Quantity memory
     }
     class Scrape {
@@ -1969,7 +1971,7 @@ classDiagram
         +dotenv entries
     }
     class Placeholder {
-        +Kind kind
+        +PlaceholderKind kind
         +string source
     }
 
@@ -1990,6 +1992,80 @@ classDiagram
         +Duration maxAge
     }
 
+%% Every named type an attribute mentions. Anything else is a primitive:
+%% string, int, bool, map or any.
+    class DomainName {
+        <<type>>
+        the file header; the namespace derives from it
+    }
+    class ServiceId {
+        <<type>>
+        one short string, unique across the estate
+    }
+    class ImageAlias {
+        <<type>>
+        resolved through the images lock; never a tag
+    }
+    class Fqdn {
+        <<type>>
+        a hostname, unique across the estate
+    }
+    class ExposureName {
+        <<type>>
+        unique within the Service
+    }
+    class VaultPath {
+        <<type>>
+        the full KV path, and the grant unit
+    }
+    class ClaimName {
+        <<type>>
+        names the volume's claim
+    }
+    class ClusterTarget {
+        <<type>>
+        the cluster one env overlay targets
+    }
+    class Derivation {
+        <<type>>
+        a derivation name from chapter 14's set
+    }
+    class Site {
+        <<type>>
+        a site the node contract advertises
+    }
+    class Capability {
+        <<type>>
+        a capability the node contract advertises
+    }
+    class GpuClassName {
+        <<type>>
+        a GPU class the node contract advertises
+    }
+    class Path {
+        <<type>>
+        an absolute path
+    }
+    class Quantity {
+        <<type>>
+        a Kubernetes quantity, 768Mi or 250m
+    }
+    class Duration {
+        <<type>>
+        a duration with a unit, 600s
+    }
+    class FileMode {
+        <<type>>
+        an octal mode as a string, 0400
+    }
+    class SemVer {
+        <<type>>
+        the document's schema version
+    }
+    class dotenv {
+        <<type>>
+        key=value lines in an env file
+    }
 %% Every closed vocabulary in layer 1. The authored form of a capability
 %% control is capability:<NAME>; the angle brackets are dropped here because
 %% mermaid reads them as markup.
@@ -2111,8 +2187,8 @@ classDiagram
 
     Workload "1" *-- "0..*" Surface : provides
     Workload "1" *-- "0..*" Sidecar : sidecars
-    Sidecar "1" *-- "0..*" HardeningException : hardening.exceptions
     Workload "1" *-- "0..*" HardeningException : hardening.exceptions
+    Sidecar "1" *-- "0..*" HardeningException : hardening.exceptions
     Workload "1" *-- "0..*" DependencyEdge : dependsOn
     Workload "1" *-- "0..1" Probe : probes.readiness
     Workload "1" *-- "0..1" Probe : probes.liveness
