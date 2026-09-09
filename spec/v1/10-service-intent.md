@@ -344,6 +344,60 @@ required.
 on; which hostname reaches it, and on what path, is stated once on the Service
 ([Exposure](#exposure)).
 
+### Sidecars
+
+A Workload is one pod, and a pod holds more than one container three times in
+this estate. `sidecars` names the others
+([0064](../../docs/adr/model/0064-sidecars-are-workload-vocabulary.md)):
+
+```yaml
+- name: postgres
+  image: postgres-17
+  engine: postgres
+  provides: {postgres: 5432, metrics: 9187}   # the exporter serves 9187
+  placement: {memory: 2Gi, cpu: 500m}
+  sidecars:
+    - name: postgres-exporter
+      image: postgres-exporter
+      memory: 64Mi
+      cpu: 50m
+      hardening: {}                            # restricted, no exceptions
+```
+
+| field | required | shape | notes |
+|---|---|---|---|
+| `name` | yes | one value | The container's own name, unique among the Workload's containers — the Workload is one of them, so a sidecar may not take its name. A collision is refused at composition (chapter 40). |
+| `image` | yes | an alias | Resolved to a digest through the images lock, exactly as a Workload's is. A tag would put a mutable reference in a Deliverable, which `E_FLOATING_IMAGE` (chapter 30) refuses. |
+| `memory` | yes | one quantity | This container's request. Shape rules are the Workload's ([Placement](#placement)). |
+| `cpu` | yes | one quantity | The same. |
+| `hardening` | yes | `{exceptions: [...]}` | This container's own class and its own exception list, the same shape as the Workload's ([Pod hardening](#pod-hardening)). `{}` is `restricted` with no exceptions. |
+
+The split follows Kubernetes rather than a rule of the model's own: `nodeSelector`
+and affinity are **pod**-level, `resources` and `securityContext` are
+**container**-level. So the node dimensions — `arch`, `site`, `disk`, `gpu`,
+`capabilities` — stay on the Workload and describe the pod, and a sidecar
+declares neither them nor a `placement` block. `memory`, `cpu` and `hardening`
+are per container, and a sidecar declares its own.
+
+Nothing is inherited. `postgres-exporter` meets `restricted` while `postgres`
+does not, so a Workload's exception list does not reach its sidecars — pushing
+one container's exception onto another would widen the estate's inventory of
+what it cannot harden by containers that never needed it.
+
+**Eligibility sums.** A node must fit the pod's containers together, so the
+placement check adds every sidecar's `memory` and `cpu` to the Workload's before
+matching against allocatable
+([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). `postgres` at
+2Gi with a 64Mi exporter needs a node with 2112Mi free, not 2Gi. This is the one
+place the addition matters and the one place it is easy to miss.
+
+A sidecar has no identity, no probes, no exposure and no release semantics of
+its own: it is not independently deployable, which is what makes it a sidecar
+rather than a Workload. `provides` therefore stays on the **Workload** even when
+the listener is a sidecar — `platform-postgres` declares `metrics: 9187` and the
+exporter is the container that serves it, which is exactly the attribution the
+model could not state before this field existed.
+
 ### Dependencies
 
 ```yaml
@@ -1845,9 +1899,11 @@ classDiagram
         +int port
     }
     class Sidecar {
-        <<proposed>>
         +string name
-        +ImageRef image
+        +ImageAlias image
+        +Quantity memory
+        +Quantity cpu
+        +HardeningClass hardening
     }
     class DependencyEdge {
         +ServiceId service
@@ -1903,7 +1959,7 @@ classDiagram
         +Path path
     }
     class Override {
-        +string field
+        +Derivation derivation
         +any value
         +string reason
     }
@@ -1918,9 +1974,13 @@ classDiagram
     }
 
     class Grant {
+        +SecretEngine engine
         +VaultPath path
         +string[] keys
         +AccessTier access
+        +string role
+        +string key
+        +TransitOp[] operations
         +Delivery delivery
         +Path mountAt
         +FileMode fileMode
@@ -1930,11 +1990,128 @@ classDiagram
         +Duration maxAge
     }
 
+%% Every closed vocabulary in layer 1. The authored form of a capability
+%% control is capability:<NAME>; the angle brackets are dropped here because
+%% mermaid reads them as markup.
+    class AccessTier {
+        <<enumeration>>
+        read
+        self-renew
+        self-roll
+        custody
+    }
+    class AlertClass {
+        <<enumeration>>
+        none
+        business-hours
+        urgent
+        page
+    }
+    class Arch {
+        <<enumeration>>
+        amd64
+        arm64
+    }
+    class Audience {
+        <<enumeration>>
+        anonymous
+        authenticated
+        internal
+        lan
+    }
+    class ContentPolicy {
+        <<enumeration>>
+        strict
+        admin
+        workflow
+    }
+    class Control {
+        <<enumeration>>
+        runAsRoot
+        writableRootFilesystem
+        capability:NAME
+        seccompUnconfined
+    }
+    class Delivery {
+        <<enumeration>>
+        env
+        file
+        self
+    }
+    class DurabilityClass {
+        <<enumeration>>
+        reconstructible
+        recoverable
+        irreplaceable
+    }
+    class Engine {
+        <<enumeration>>
+        postgres
+        rabbitmq
+        valkey
+        files
+    }
+    class HardeningClass {
+        <<enumeration>>
+        restricted
+    }
+    class Lifecycle {
+        <<enumeration>>
+        service
+        job
+    }
+    class Match {
+        <<enumeration>>
+        prefix
+        exact
+    }
+    class Media {
+        <<enumeration>>
+        nvme
+        ssd
+        hdd
+    }
+    class PlaceholderKind {
+        <<enumeration>>
+        secret
+        dependency
+        exposure
+        identity
+    }
+    class Runtime {
+        <<enumeration>>
+        jvm
+        python
+        node
+        static
+        none
+    }
+    class SecretEngine {
+        <<enumeration>>
+        kv
+        database
+        transit
+    }
+    class Tolerance {
+        <<enumeration>>
+        restart
+        reload
+    }
+    class TransitOp {
+        <<enumeration>>
+        sign
+        verify
+        encrypt
+        decrypt
+        rotate
+    }
+
     Domain "1" *-- "1..*" Service : services
     Service "1" *-- "1..*" Workload : workloads
 
     Workload "1" *-- "0..*" Surface : provides
     Workload "1" *-- "0..*" Sidecar : sidecars
+    Sidecar "1" *-- "0..*" HardeningException : hardening.exceptions
     Workload "1" *-- "0..*" HardeningException : hardening.exceptions
     Workload "1" *-- "0..*" DependencyEdge : dependsOn
     Workload "1" *-- "0..1" Probe : probes.readiness
@@ -1950,15 +2127,15 @@ classDiagram
 
     Service "1" *-- "0..*" Exposure : exposure
     Exposure "1" *-- "1..*" Route : routes
-    Route ..> Surface : names a Surface a Workload of this Service provides
-    DependencyEdge ..> Surface : names a Surface of another Service
+    Route ..> Surface : resolves by name
+    DependencyEdge ..> Surface : resolves by name
 
     Workload "1" *-- "1..*" EnvFile : env per workload
     EnvFile "1" *-- "0..*" Placeholder : resolves
 
-    Service "1" *-- "0..*" Grant : secrets (shared)
-    Workload "1" *-- "0..*" Grant : secrets (workload-specific)
+    Service "1" *-- "0..*" Grant : secrets
+    Workload "1" *-- "0..*" Grant : secrets
     Grant "1" *-- "0..1" Rotation : rotation
-    Placeholder ..> Grant : a secret placeholder byte-matches a granted path
+    Placeholder ..> Grant : byte-matches
     Placeholder ..> Exposure : an exposure placeholder addresses service.name
 ```
