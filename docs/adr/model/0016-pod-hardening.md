@@ -10,6 +10,19 @@ rests-on: ["0005"]
 
 # Pod hardening is layer-1 vocabulary
 
+> **Amended 2026-09-09.** The *exceptions* are layer-1 vocabulary; the **class is
+> not**. `restricted` is the only value that exists, so a field carrying it on
+> every Workload restates one estate-wide decision thirty times — which is what
+> [0004](0004-contention-decides-authority.md)'s contention test puts in the
+> Platform document, and what
+> [0089](0089-replicas-derived-no-minavailable.md) deleted `minAvailable` for.
+> The posture moves to
+> [chapter 14](../../../spec/v1/14-platform-intent.md#hardening-policy) as one
+> line; a Workload and a sidecar author only the controls they relax. Nothing
+> else in this record changes: the exception list is still the deliverable, and
+> a second class earns a value when an image exists that cannot meet
+> `restricted` and cannot be excepted control by control.
+
 > **Note, 2026-09-08.** `allow: capability:<NAME>` keeps the Linux capability
 > name deliberately. A capability is what the binary asks the kernel for — the
 > same kind of fact as a port or a writable path, and the same word on any
@@ -65,7 +78,8 @@ declared and counted, not silent.
 | One estate-wide hardening posture with no per-Workload exceptions | The first image that cannot run non-root relaxes the default for all ~30 Services at once | The exception list is the deliverable: an estate that cannot name what it fails to harden cannot shrink that list |
 
 ## Reversibility
-Undo cost today: one enum field and an exceptions list in the layer-1 schema, the
+Undo cost today: an exceptions list in the layer-1 schema, one line in the
+Platform document, the
 hardening section of chapter 10, and the container renderer in the surviving
 adapter — one afternoon, blast radius nil while no repository has authored them.
 After adoption the undo is thirty pull requests, the size of the retrofit it

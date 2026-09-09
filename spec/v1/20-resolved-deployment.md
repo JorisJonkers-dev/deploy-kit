@@ -146,7 +146,7 @@ field's placement link to this anchor rather than copying rows.
 | `exposure[].contentPolicy` | Service | no contention | `strict`, `admin` or `workflow`. Which profile an application needs is a fact about the application; the header set it selects is derived |
 | `exposure[].routes` — `path`, `match`, `workload`, `surface`, `redirectTo` | Service | no contention | which of the Service's own Workloads serves which path of the host. The surface must be one that Workload `provides` (`E_UNKNOWN_SURFACE`); no two routes may share a `path` + `match` pair (`E_DUPLICATE_ROUTE_MATCH`); `redirectTo` is a path, never a regex |
 | `probes`, `startupBudget`, `zeroDowntime` | Service | no contention | what only the Service knows about its own start and health |
-| `hardening` and its exceptions | Service | no contention | the class is declared; each exception names itself and carries a reason ([0016](../../docs/adr/model/0016-pod-hardening.md)) |
+| `hardening.exceptions` | Service | no contention | only the exceptions are authored; each names one control and carries a reason. The posture itself is uniform, so it is the platform's ([0016](../../docs/adr/model/0016-pod-hardening.md)) |
 | `volumes[].durability` | Service | no contention | what the data is worth cannot be observed |
 | `placement.memory`, `placement.cpu` | Service | pool — stated | required on every Workload; the Service states the requirement, the platform arbitrates it against node allocatable |
 | `placement.gpu` | Service | pool — stated | `class` and `memory`, matched against the node contract's `gpus[].class` and `gpus[].memory_mib`; a card is held by one Workload at a time |
@@ -460,9 +460,10 @@ Five rules carry most of the weight:
   `engine`, so two Services of the same class and engine derive the same objects
   with different volumes — which is the property that makes a restore rehearsal
   meaningful ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)).
-- **Hardening is a class.** It defaults to `restricted` — `runAsNonRoot`,
-  `readOnlyRootFilesystem`, all capabilities dropped, seccomp `RuntimeDefault` —
-  and each declared exception names itself and carries a reason
+- **Hardening is one platform posture plus declared exceptions.** `restricted` —
+  `runAsNonRoot`, `readOnlyRootFilesystem`, all capabilities dropped, seccomp
+  `RuntimeDefault` — is declared once in the Platform document and authored by no
+  Workload; each declared exception names one control and carries a reason
   ([0016](../../docs/adr/model/0016-pod-hardening.md)).
 - **Capacity is not a class.** Requests and limits no longer resolve through a
   named table in the Platform Intent; they derive from the raw quantities the
