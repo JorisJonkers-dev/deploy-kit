@@ -23,7 +23,6 @@ Colour carries the layer, so a reader can place a box without a legend.
 | `#d1fae5` | `#047857` | layer 3 — a serialized Deliverable ([chapter 30](../30-deliverables.md)) |
 | `#fee2e2` | `#b91c1c` | a refusal: an error code, or a render that does not happen |
 | white, dashed border | `#64748b` | defined separately from the model ([`docs/adr/deferred/`](../../../docs/adr/deferred/README.md)) |
-| `#6d28d9` text | — | a `«...»` reference: a relation named in a box rather than drawn as a line |
 
 Conventions that hold across every drawing:
 
@@ -42,6 +41,11 @@ Conventions that hold across every drawing:
   the same thing, even where they come from different sources — `secrets` is
   `secrets` whether it hangs off the Service or off a Workload.
 
+  **Two edges to the same box share their exit and their run**, and part only
+  on the way down, so `readiness` and `liveness` read as one relation with two
+  ends rather than two lines crossing the drawing. Where two edges say the same
+  thing about the same box, the name is written **once**, under that box.
+
   **Closed vocabularies are not drawn.** They were tried as a panel and then as
   nodes beside their owning class; both made the model harder to read, the first
   by making a reader chase a name across the drawing and the second by adding a
@@ -49,11 +53,12 @@ Conventions that hold across every drawing:
   values live in a table in the chapter instead
   ([chapter 10](../10-service-intent.md#the-closed-vocabularies)).
 
-  A relation that spans two or more layers is not drawn as a line either: it
-  becomes a `«...»` note row inside the source's own box, in the dependency
-  colour. A line that long is what made this drawing unreadable twice. Only
-  relations between two nodes on the same layer are drawn, in a band reserved
-  above that row.
+  A relation that spans two or more layers is **not drawn at all**; the chapter
+  states it in prose. A line that long is what made this drawing unreadable
+  twice. A relation between two nodes on one layer is drawn either as a short
+  run in the band **below** their row, clear of the fan that feeds them from
+  above, or, where the two boxes face each other across an empty gap, as a
+  single straight line side to side.
 
   Chapter 10's is **generated** by
   [`scripts/diagrams/class-diagram.py`](../../../scripts/diagrams/class-diagram.py)

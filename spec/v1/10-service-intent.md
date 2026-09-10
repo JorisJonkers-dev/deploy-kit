@@ -84,8 +84,10 @@ It carries the classes and how they compose, and nothing else. The closed
 vocabularies an attribute's type names are tabulated under
 [The closed vocabularies](#the-closed-vocabularies) rather than drawn: as boxes
 they added a line each and told a reader nothing the type name had not. The two
-relations that span more than one layer are named inside `Placeholder` for the
-same reason.
+relations that reach across more than one layer are not drawn either. A
+`Placeholder` byte-matches a granted path and an exposure placeholder addresses
+`service.name`; both are stated where they are enforced, under
+[Validation](#validation).
 
 Nothing in it is ungraded. `minAvailable` was the last such field and it is
 **deleted** rather than graded

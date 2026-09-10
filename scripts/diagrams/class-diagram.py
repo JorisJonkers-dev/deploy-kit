@@ -22,11 +22,15 @@ Layout rules, in the order they matter:
 4. A row gap is sized to hold the deepest lane stack any parent above it needs,
    plus a reserved band above the row for sibling cross-links, which sits above
    the tree labels rather than among them.
-5. Edges that are not tree edges are routed by distance. Between two nodes on
-   the same layer that sibling order has put next to each other, a short run in
-   the reserved band. Anything spanning two or more layers is not drawn as a
-   line at all: it becomes a `«...»` note row inside the source's own box,
-   because a line that long is what made this drawing unreadable twice.
+5. Edges that are not tree edges are routed by distance.
+   - Two nodes on the same layer that sibling order made **neighbours** get a
+     short run in the band **below** their row, out of the way of the fan that
+     feeds them from above.
+   - Two nodes on the same layer with boxes **facing each other** get a single
+     straight line side to side, at a height inside both.
+   - Anything spanning two or more layers is **not drawn**. Those relations are
+     prose in the chapter, and a line that long is what made this drawing
+     unreadable twice.
 
 Usage:
     python3 scripts/diagrams/class-diagram.py out.drawio
@@ -158,14 +162,9 @@ E_ENUM = BASE + ("strokeColor=#6d28d9;fontColor=#6d28d9;dashed=1;dashPattern=8 4
                  "endFill=0;endSize=10;exitX=0.5;exitY=1;exitDx=0;exitDy=0;"
                  "entryX=0.5;entryY=0;entryDx=0;entryDy=0;")
 
-# anything spanning two layers or more becomes a note row in the source's box
-keep = []
-for a, b, label in dep:
-    if (a, b) not in tree and abs(depth[a] - depth[b]) >= 2:
-        nodes[a]["notes"].append(f"«{label}» {b}")
-    else:
-        keep.append((a, b, label))
-dep = keep
+# a relation spanning two layers or more is not drawn; the chapter states it
+dep = [(a, b, l) for a, b, l in dep
+       if (a, b) in tree or abs(depth[a] - depth[b]) < 2]
 
 model = ET.Element("mxGraphModel", {
     "dx": "0", "dy": "0", "grid": "0", "gridSize": "10", "guides": "1", "tooltips": "1",
@@ -212,14 +211,15 @@ seen = {}
 def tree_edge(eid, style, a, b, label):
     k = seen.get((a, b), 0)
     seen[(a, b)] = k + 1
-    ly = lane_y(a) + k * LANE
-    off = 62 * k
+    ly = lane_y(a)
     st = style
+    drop = cx(b)
     if k:
-        st = style.replace("exitX=0.5;", "exitX=0.82;").replace("entryX=0.5;", "entryX=0.82;")
-    # the label rides the child's vertical drop, where no other line is
-    add_edge(eid, st, a, b, label, [(cx(a) + off, ly), (cx(b) + off, ly)],
-             at=1, lift=-16 - 20 * k)
+        # same exit, same run: it diverges from its twin only on the way down
+        drop = cx(b) + 0.24 * W
+        st = style.replace("entryX=0.5;", "entryX=0.74;")
+    add_edge(eid, st, a, b, label, [(cx(a), ly), (drop, ly)],
+             at=1, lift=-16 - 18 * k, shift=0)
 
 i = 0
 for a, b, mult, label in comp:
@@ -234,22 +234,52 @@ for a, b, label in dep:
 # what is left links two nodes on one layer that sibling order made neighbours
 cross = [(E_COMP, a, b, f"{m}  {l}") for a, b, m, l in comp if (a, b) not in tree]
 cross += [(E_ENUM, a, b, f"«{l}»") for a, b, l in dep if (a, b) not in tree]
+def neighbours(a, b):
+    """True when nothing on their row sits between the two boxes."""
+    lo, hi = sorted((cx(a), cx(b)))
+    row = [n for n in nodes if depth[n] == depth[a] and n not in (a, b)]
+    return not any(lo < cx(n) < hi for n in row)
+
+# two links into one box that say the same thing are named once, under that box
+labelled = set()
 taken = {}
 for j, (style, a, b, label) in enumerate(cross):
-    d = max(depth[a], depth[b])
-    assert depth[a] == depth[b], f"{a}->{b} spans layers and should be a note"
-    lo, hi = sorted((cx(a), cx(b)))
-    k = 0
-    while any(not (hi <= l or lo >= h) for l, h in taken.get((d, k), [])):
-        k += 1
-    taken.setdefault((d, k), []).append((lo, hi))
-    ly = y[d] - 36 - k * 15
-    side = 0.26 if cx(a) < cx(b) else 0.74
-    shift = -74 if cx(a) < cx(b) else 74
-    st = (style.replace("exitX=0.5;exitY=1;", "exitX=0.5;exitY=0;")
-               .replace("entryX=0.5;entryY=0;", f"entryX={side};entryY=0;"))
-    add_edge(f"x{j}", st, a, b, label, [(cx(a), ly), (cx(b), ly)], at=0.88,
-             lift=-14, shift=shift)
+    if (b, label) in labelled:
+        label = ""
+    else:
+        labelled.add((b, label))
+    d = depth[a]
+    assert depth[a] == depth[b], f"{a}->{b} spans layers and is not drawn"
+    gap = max(cx(a), cx(b)) - min(cx(a), cx(b)) - W
+    if neighbours(a, b) and gap < W:
+        # a short run in the band below the row, clear of the fan above it
+        k = taken.get(d, 0)
+        taken[d] = k + 1
+        ly = y[d] + rowh[d] + 14 + k * 26
+        # each link enters the shared target on its own side, and its name
+        # stays beside that target at its own lane's height
+        into = 0.34 if cx(a) < cx(b) else 0.66
+        st = style.replace("entryX=0.5;entryY=0;", f"entryX={into};entryY=1;")
+        add_edge(f"x{j}", st, a, b, label, [(cx(a), ly), (cx(b), ly)],
+                 at=0.86, lift=13, shift=0)
+    else:
+        # the boxes face each other: one straight line, side to side, at a
+        # height that is inside both of them
+        ha, hb = height(a), height(b)
+        mid = y[d] + min(ha, hb) / 2.0
+        ea, eb = (mid - y[d]) / ha, (mid - y[d]) / hb
+        left, right = (a, b) if cx(a) < cx(b) else (b, a)
+        el, er = (ea, eb) if left is a else (eb, ea)
+        st = (style.replace("exitX=0.5;exitY=1;exitDx=0;exitDy=0;",
+                            f"exitX=1;exitY={round(el, 4)};exitDx=0;exitDy=0;")
+                   .replace("entryX=0.5;entryY=0;entryDx=0;entryDy=0;",
+                            f"entryX=0;entryY={round(er, 4)};entryDx=0;entryDy=0;"))
+        if left is not a:
+            st = (style.replace("exitX=0.5;exitY=1;exitDx=0;exitDy=0;",
+                                f"exitX=0;exitY={round(ea, 4)};exitDx=0;exitDy=0;")
+                       .replace("entryX=0.5;entryY=0;entryDx=0;entryDy=0;",
+                                f"entryX=1;entryY={round(eb, 4)};entryDx=0;entryDy=0;"))
+        add_edge(f"x{j}", st, a, b, label, [], at=0.86, lift=-12)
 
 open(sys.argv[1], "w").write(
     '<mxfile host="Electron" agent="scripts/diagrams/class-diagram.py" version="29.0.3">'
