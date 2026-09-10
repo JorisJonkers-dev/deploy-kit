@@ -33,8 +33,11 @@ Conventions that hold across every drawing:
   reference, a feedback path, or something defined separately.
 - **Filled diamond**: UML composition — the part cannot exist without its whole.
 - **A class diagram puts its root at the top**, children below it, and their
-  children below those. Enumerations are separate `«enumeration»` nodes rather
-  than inline lists, gathered in one panel.
+  children below those. Enumerations are separate `«enumeration»` nodes drawn
+  **beside the class whose attribute names them**, joined by a dashed edge
+  labelled with that attribute, rather than gathered in a panel away from the
+  graph. A panel makes a reader chase a name across the drawing to learn which
+  class a vocabulary belongs to; an edge says it in place.
 - **Labels are plain text with manual line breaks**, which is what keeps the
   exported SVG real text rather than a rasterised image — it stays searchable,
   selectable and small.

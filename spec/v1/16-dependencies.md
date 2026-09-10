@@ -619,7 +619,7 @@ flowchart LR
         d_dom["domain"]
         d_own["owner"]
         d_id["id"]
-        d_alert["alertClass"]
+        d_obs["observability<br/>alertClass + scrape<br/>{workload, surface, path}"]
         d_wl["workload name"]
         d_prov["provides<br/>surface: port<br/>on the Workload"]
         d_dep["dependsOn"]
@@ -636,8 +636,6 @@ flowchart LR
         d_sf["stateful"]
         d_vol["volumes + durability"]
         d_plc["placement<br/>hard dimensions:<br/>memory, cpu, arch,<br/>site, disk, gpu,<br/>capabilities"]
-        d_hard["hardening<br/>+ exceptions"]
-        d_scr["scrape<br/>port + path"]
         d_rep["replicas<br/>count + reason"]
     end
 
@@ -680,20 +678,15 @@ flowchart LR
         k_bkp["backup CronJob + sweep"]
         k_res["resolved.yml"]
 
-        subgraph OBS["observability service — outside the model"]
-            obs_run["observability runner<br/>monitors, cadence, rules,<br/>severity, receiver routes<br/>from resolved Service facts"]
-            k_sm["ServiceMonitor / PodMonitor"]
-            k_pr["PrometheusRule"]
-        end
+        k_sm["ServiceMonitor / PodMonitor"]
     end
 
     d_dom --> r_ns
     d_dom --> r_ru
     d_dom --> r_vp
     d_id --> r_sw
-    d_alert --> obs_run
-    d_scr --> obs_run
-    d_scr --> k_np
+    d_obs --> k_sm
+    d_obs --> k_np
     d_wl --> r_sa
     d_wl --> k_svc
 
@@ -747,10 +740,8 @@ flowchart LR
 
     d_plc --> r_plc
     d_plc --> r_res
-    d_hard --> r_sc
+    p_ctx --> r_sc
 
-    obs_run --> k_sm
-    obs_run --> k_pr
 
     p_ctx --> r_plc
     p_cs --> r_rep
