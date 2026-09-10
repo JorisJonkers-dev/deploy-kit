@@ -32,12 +32,22 @@ Conventions that hold across every drawing:
 - **Solid arrow**: a derivation, or a step that must happen. **Dashed arrow**: a
   reference, a feedback path, or something defined separately.
 - **Filled diamond**: UML composition — the part cannot exist without its whole.
-- **A class diagram puts its root at the top**, children below it, and their
-  children below those. Enumerations are separate `«enumeration»` nodes drawn
-  **beside the class whose attribute names them**, joined by a dashed edge
-  labelled with that attribute, rather than gathered in a panel away from the
-  graph. A panel makes a reader chase a name across the drawing to learn which
-  class a vocabulary belongs to; an edge says it in place.
+- **A class diagram is a tidy tree, laid out layer by layer downwards**, so it
+  has **no edge crossings**. Enumerations are separate `«enumeration»` nodes
+  drawn one layer **below the class whose attribute names them**, joined by a
+  dashed edge labelled with that attribute, rather than gathered in a panel away
+  from the graph: a panel makes a reader chase a name across the drawing to
+  learn which class a vocabulary belongs to, and an edge says it in place. Each
+  parent's fan runs on a horizontal bus of its own and drops straight into each
+  child's top edge. The few edges that are not tree edges — `«resolves by
+  name»`, `«byte-matches»`, a grant held at two levels — are routed through the
+  nearest empty gap, never across the drawing.
+
+  Chapter 10's is **generated** by
+  [`scripts/diagrams/class-diagram.py`](../../../scripts/diagrams/class-diagram.py)
+  from the mermaid block that mirrors it, so the two cannot drift. Edit the
+  mermaid, re-run the script, re-export. Every other diagram is drawn by hand in
+  draw.io.
 - **Labels are plain text with manual line breaks**, which is what keeps the
   exported SVG real text rather than a rasterised image — it stays searchable,
   selectable and small.
