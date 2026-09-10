@@ -7,7 +7,7 @@
 #
 # The model refuses rather than downgrading silently to `Recreate`. A silent
 # downgrade is what makes an owner believe they have continuity they do not have
-# (spec/v1/10-service-intent.md #cutover,
+# (spec/v1/10-service-intent.md #cutover-is-declared-not-promised,
 # spec/v1/20-resolved-deployment.md #authority).
 #
 # Its accepted counterpart is cutover-recreate-over-rwo.domain.yml — the same

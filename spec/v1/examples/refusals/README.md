@@ -11,7 +11,7 @@ one defect so the refusal has a single cause.
 | [`alert-class-without-signal.domain.yml`](alert-class-without-signal.domain.yml) | `E_ALERT_CLASS_WITHOUT_SIGNAL` | a class above `none` with no `scrape` on any Workload and no external health surface — the model's one observability guarantee ([chapter 10](../../10-service-intent.md#the-observability-boundary)) |
 | [`alert-class-unknown.domain.yml`](alert-class-unknown.domain.yml) | schema validation | a value outside the closed `AlertClass` vocabulary, refused before composition runs — no new error code carries it |
 | [`unroutable-runner.config.yml`](unroutable-runner.config.yml) | the runner's build fails | a valid class the runner's receiver table does not map; the runner must fail, not warn |
-| [`cutover-rolling-over-rwo.domain.yml`](cutover-rolling-over-rwo.domain.yml) | `E_CUTOVER_UNHONOURABLE` | `cutover: rolling` over an RWO volume, which cannot surge ([chapter 10](../../10-service-intent.md#cutover)) |
+| [`cutover-rolling-over-rwo.domain.yml`](cutover-rolling-over-rwo.domain.yml) | `E_CUTOVER_UNHONOURABLE` | `cutover: rolling` over an RWO volume, which cannot surge ([chapter 10](../../10-service-intent.md#cutover-is-declared-not-promised)) |
 | [`cutover-recreate-over-rwo.domain.yml`](cutover-recreate-over-rwo.domain.yml) | accepted | the same Workload and storage with the cutover it can honour — the pair is what makes the refusal above meaningful |
 
 These are **fixtures, not proof of rendered behaviour.** The compiler does not

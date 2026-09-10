@@ -5,7 +5,7 @@
 # derives the safe Kubernetes strategy — `Recreate`, with no surge — from the
 # declared intent and the storage facts. No Kubernetes token appears here:
 # `RollingUpdate`, `maxSurge` and `maxUnavailable` are the adapter's, not the
-# Service author's (spec/v1/10-service-intent.md #cutover).
+# Service author's (spec/v1/10-service-intent.md #cutover-is-declared-not-promised).
 #
 # Rendering that strategy is renderer proof, and there is no renderer yet. What
 # this fixture proves today is the accepted half of the pair at the fixture
