@@ -9,12 +9,32 @@ rests-on: ["0005"]
 
 # Observability is a scrape surface plus an Alert Class
 
+> **Amended 2026-09-10.** The two facts this decision names are now **one
+> optional block on the Service**, `observability: {alertClass, scrape}`, whole
+> or absent. Three things follow.
+>
+> `scrape` names a `{workload, surface, path}` rather than a port, because
+> `provides` already declares the port and a second statement of it is a second
+> declaring site. `none` leaves the vocabulary: an omitted block is how a
+> Service says it wants no monitoring, and a value meaning "I wrote the field to
+> say I did not want the field" is ceremony.
+>
+> The split of what derives is sharper than this record originally drew it. The
+> **ServiceMonitor is derived by the model**, from the declared surface and the
+> one estate-wide cadence — nothing about it needs a monitoring stack's opinion,
+> so it stays a Deliverable and takes part in the derivation map's properties.
+> Rule expressions, severity and receivers derive **nothing here at all**: they
+> are read from the published projection by a stack this model does not operate
+> ([chapter 10](../../../spec/v1/10-service-intent.md#observability)).
+
 ## Rests on
 
-A rule the platform generates always evaluates and its alert always reaches a
-receiver; a hand-written one does neither reliably. False if: a `PrometheusRule`
-rendered from a non-`none` Alert Class is in the cluster but absent from
-Prometheus's loaded rule set, or resolves to no receiver. Settled by: render one Service at `alertClass: urgent`, diff
+A declared scrape surface always produces a monitor that actually scrapes, and a
+declared class always reaches whoever reads the projection; a hand-written
+monitor does neither reliably. False if: a `ServiceMonitor` rendered from a
+declared `scrape` is in the cluster but absent from Prometheus's targets, or a
+class reaches no receiver in the stack that reads it. Settled by: render one
+Service at `alertClass: urgent`, diff
 `kubectl get prometheusrule -A -o jsonpath='{.items[*].metadata.name}'` against
 `curl -s http://prometheus:9090/api/v1/rules | jq -r '.data.groups[].rules[].name'`,
 then `amtool config routes test alertclass=urgent`.
@@ -36,10 +56,18 @@ The scrape path stays service-declared because it is genuinely service
 knowledge and it varies — `/actuator/prometheus`, `/api/actuator/prometheus`,
 `/metrics` — so a platform that guessed would silently collect nothing and
 report success. That is the residue [0005](0005-derivation-is-total.md) leaves:
-a port and a path only the framework inside the container knows. Everything
-downstream is derived — Gatus checks from health and exposure, ServiceMonitors
-from the scrape surface, PrometheusRules from the Alert Class, notifier routing
-from the Alert Class and `owner`.
+a port and a path only the framework inside the container knows.
+
+**Everything past those two facts is stack configuration, not a model
+derivation.** Which monitor kind, what cadence, which external checks, what
+PromQL and which receiver a severity routes to are things a monitoring stack
+knows and a deployment model does not. A versioned configuration owned by the
+observability Service consumes the resolved Service facts and produces them; it
+is authored once for the estate rather than restated per Service, and it is
+configuration of a system rather than a second Service DSL. Putting PromQL and
+receiver names in the Intent model made layer 1 own the configuration of a stack
+it does not operate — which is the same category error as a `backup.sh` string
+in a platform file ([0012](0012-assets-not-code.md)).
 
 Rendering the rules also closes a trap the estate has documented and paid for.
 A `PrometheusRule` without `release: metrics-stack` in `metadata.labels` is
@@ -85,6 +113,13 @@ leaves `urgent` and `page` with no receiver, and the symptom is silence.
 - Gatus's UI strings still read "personal-stack" and reference
   `inventory/fleet.yaml`; both become derived and stop naming an archived
   repository — paid by whoever lands the Gatus adapter.
-- Routing derives from fields only a Service carries, so the delivery machinery
+- Routing derives from facts only a Service carries, so the delivery machinery
   has no Alert Class here; [0058](../deferred/0058-delivery-machinery-observability.md)
   closes that gap — paid by platform.
+- The Intent model no longer carries a cadence, a catalog or a receiver map, so
+  the estate's scrape interval is stated in exactly one place — the
+  observability configuration — instead of in a Platform document the metrics
+  stack does not read; paid by whoever moves the four values.
+- The runner must fail rather than warn when a class and signal cannot be
+  mapped, which is what keeps "monitored but unrouted" impossible without the
+  model owning PromQL — paid by the observability Service's configuration.

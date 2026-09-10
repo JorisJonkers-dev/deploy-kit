@@ -18,9 +18,16 @@ owner: joris # the only field raised to the domain header
 
 services:
   - id: notes
-    # Urgency, not routing. business-hours requires a signal, which the scrape
-    # surface below provides (docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md).
-    alertClass: business-hours
+    # Whole or absent. The class states urgency; the scrape names the Workload
+    # and the surface that carries the signal, so the port is declared once, in
+    # `provides`. Omitting the block entirely is how a Service says it wants no
+    # monitoring -- there is no `none` to write.
+    observability:
+      alertClass: business-hours
+      scrape:
+        workload: notes-api
+        surface: http
+        path: /metrics
 
     exposure:
       - name: public
@@ -51,7 +58,9 @@ services:
           liveness: { path: /healthz/live, port: 8080 }
 
         startupBudget: 20s
-        zeroDowntime: true
 
-        observability:
-          scrape: { port: 8080, path: /metrics }
+        # REQUIRED, no default. No volumes, so a rolling cutover is honourable.
+        cutover: rolling
+
+        # No `replicas` block: the derived count is one, and one is what this
+        # Workload runs. The block is for a count above one, with a reason.

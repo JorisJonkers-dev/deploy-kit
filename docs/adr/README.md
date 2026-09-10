@@ -22,6 +22,17 @@ allocatable, Intent is authored one file per domain, and a Service is itself the
 unit of atomic release. 0017 and 0060 are superseded by that amendment and kept
 for the record; 0004, 0010, 0016, 0024, 0037 and 0056 were amended in place.
 
+The set was amended on 2026-09-10 for the v1 simplification: the generic
+override hatch is deleted and `replicas: {count, reason}` is the sole local
+capacity exception (0031, 0089, 0097); `zeroDowntime` is replaced by required
+`cutover: rolling | recreate` with `E_CUTOVER_UNHONOURABLE` (0030); and
+observability becomes one optional `observability` block on the Service, whole
+or absent, with the ServiceMonitor derived from it and rule expressions,
+severity and receivers left to the stack that reads the projection (0021,
+0079). The hardening exception surface is deleted with the override hatch it
+resembled (0016, 0083). The worked examples now declare every applicable
+authored field and annotate its effect.
+
 Tier-0 **premises** carry one falsifiable claim each; tier-1 **decisions** name
 the premises they stand on in `rests-on`. A `claim: open` means decided in
 direction, untested — its owner and settling test are in the file.
@@ -83,10 +94,10 @@ delivery work it underpins.
 | [0077](model/0077-durability-derives-a-backup.md) | A Durability Class derives a backup, from platform terms and a method keyed by engine | settled |
 | [0081](model/0081-volume-size-is-a-hard-dimension.md) | A volume declares its size; the platform decides whether it fits | settled |
 | [0078](model/0078-engine-is-workload-vocabulary.md) | `engine` is layer-1 vocabulary: what the process is, not how it is instrumented | settled |
-| [0016](model/0016-pod-hardening.md) | Pod hardening is layer-1 vocabulary | open |
+| [0016](model/0016-pod-hardening.md) | Pod hardening is platform policy, and has no exception surface | open |
 | [0082](model/0082-images-lock-carries-uid-and-gid.md) | The images lock resolves each image's uid and gid, and fsGroup derives from the gid | settled |
 | [0092](model/0092-writable-paths-are-declared.md) | A Workload declares the paths it writes, and that is not a hardening exception | settled |
-| [0083](model/0083-privileged-port-needs-the-capability.md) | A privileged port under non-root is refused, and the escape is the existing exception | settled |
+| [0083](model/0083-privileged-port-needs-the-capability.md) | A privileged port under non-root is refused | settled |
 | [0017](model/0017-placement-by-capability.md) | Placement is declared as capabilities, never labels | superseded by [0061](model/0061-placement-is-hard-dimensions.md) |
 | [0061](model/0061-placement-is-hard-dimensions.md) | Placement is a set of hard dimensions matched against allocatable | open |
 | [0089](model/0089-replicas-derived-no-minavailable.md) | `replicas` derives as one, `minAvailable` is deleted, and a budget over one replica is not emitted | settled |
@@ -122,7 +133,7 @@ delivery work it underpins.
 |---|---|---|
 | [0029](model/0029-resolved-deployment-versioned-artifact.md) | The Resolved Deployment is a versioned, reviewable artifact | settled |
 | [0030](model/0030-runtime-mechanics-derived.md) | Runtime mechanics are derived from declared intent | settled |
-| [0031](model/0031-derived-overrides-with-reason.md) | A derived value is overridable with a reason; an assignment is not | settled |
+| [0031](model/0031-derived-overrides-with-reason.md) | A derived value has one declaring site; capacity is the sole named exception — the generic override hatch is deleted | settled |
 | [0032](model/0032-reconcile-unit-derived.md) | The Reconcile Unit is derived from the dependency graph | settled |
 | [0033](model/0033-assignments-published-back.md) | Assignments are published back to the owning repository | settled |
 | [0034](model/0034-cluster-state-pinned-input.md) | ClusterState is a pinned, digested input | settled |

@@ -3,7 +3,7 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-09-08
-normative: spec/v1/14-platform-intent.md#overridable-derivations
+normative: spec/v1/14-platform-intent.md#there-is-nothing-to-override-here
 rests-on: ["0005"]
 ---
 
@@ -34,11 +34,21 @@ target's vocabulary.
 The repair is the same everywhere: the authored value names the **model
 concept**, and one table maps it to the target.
 
-**Overrides** address derived values by the derivation's own name —
+**Overrides** addressed derived values by the derivation's own name —
 `startupDeadline`, `replicas`, `automountToken`, `ephemeralSize` — enumerated in
-chapter 14 with the field each renders to. An author overrides a decision, not a
-field; a rename touches the table; the editor completes the list; and a key no
-derivation produces is `E_UNKNOWN_OVERRIDE` rather than a field silently set.
+chapter 14 with the field each renders to. An author overrode a decision, not a
+field, and a key no derivation produced was `E_UNKNOWN_OVERRIDE` rather than a
+field silently set.
+
+> **Amended 2026-09-10.** The override mechanism is **deleted**
+> ([0031](0031-derived-overrides-with-reason.md)); chapter 14's table is gone
+> and `E_UNKNOWN_OVERRIDE` with it. The naming rule this paragraph records is
+> **unchanged and now applies to the sole survivor**: `replicas` names a model
+> concept — local capacity — and never `spec.replicas`, and its `reason` is
+> required by the field rather than by a convention
+> ([chapter 10](../../../spec/v1/10-service-intent.md#capacity)). The general
+> argument is also unchanged: an authored value names what it means, and the
+> target's spelling is a derivation.
 
 **Tiers** declare four edge facts: `audiences`, `listener`, `certificates`,
 `forwardAuth`. The `traefik` adapter maps `listener: tls` to an entryPoint and
@@ -58,12 +68,13 @@ executable, and what the image does is versioned rather than a string in YAML.
 authors, or an observation 0057 already lets the platform record.
 
 One thing that looks like a leak is not, and is kept on purpose:
-`allow: capability:NET_BIND_SERVICE` in a hardening exception. A Linux
-capability is what the binary asks the kernel for, the same kind of fact as a
+a Linux capability name, back when a hardening exception could still carry one.
+A capability is what the binary asks the kernel for, the same kind of fact as a
 port or a writable path, and it would be the same word on Nomad or bare metal.
 The layer-1 rule excludes the substrate's mechanisms, and the kernel is not the
-substrate. Inventing friendly names over a closed, documented set would produce a
-made-up word the first time a capability had no obvious one.
+substrate. The example is now historical — [0016](0016-pod-hardening.md) deleted
+the field that named it — but the test it illustrates still decides the next
+case.
 
 ## Alternatives
 | option | cost if taken | why rejected |

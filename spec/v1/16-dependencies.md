@@ -294,7 +294,7 @@ producer.
 | from each consumer of a surface | the inbound edge set, over the composed union | ingress |
 | to the Secret Store | any grant in the Workload's effective set | egress |
 | from the route tier carrying the audience | a route on the Service's `exposure` naming this Workload | ingress |
-| from the metrics stack, to the scrape port | `observability.scrape` | ingress |
+| from the metrics stack, to the scrape port | the Workload's `scrape` surface | ingress |
 
 ### The baseline
 
@@ -338,10 +338,10 @@ privilege a Workload of this estate actually needs is smaller than the default,
 and the field that says so already exists.
 
 A Workload that calls the **Kubernetes** API — `agents-api` creates Services at
-runtime — needs a token that no grant implies. It restates the derived value with
-a reason ([chapter 20](20-resolved-deployment.md#overrides)), which records the
-exception in the projection its owner reads back and lets the estate count how
-many pods hold a token they were not derived one for.
+runtime — needs a token that no grant implies. It declares so with a reason,
+recorded in the projection its owner reads back, which lets the estate count how
+many pods hold a token they were not derived one for
+([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)).
 
 ### No Role grants what an absence already denies
 
@@ -534,10 +534,10 @@ that would have caught the estate's clearest example.
 three `PLATFORM.md` files as failing *never*, and was read by no renderer or
 adapter. Every service declared the identical value. Out-degree zero.
 
-The one surface exempt from this check is `overrides`, whose entries replace a
-derived value by name and are therefore invisible to it
-([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md)). A dead override
-looks exactly like a load-bearing one; that cost is accepted, not solved.
+No surface is exempt from this check. The override mechanism that used to be
+exempt is deleted
+([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md)), so the
+dead-declaration property now runs over every declaration in every domain file.
 
 ## What the properties would have caught
 
@@ -619,7 +619,7 @@ flowchart LR
         d_dom["domain"]
         d_own["owner"]
         d_id["id"]
-        d_alert["alertClass"]
+        d_obs["observability<br/>alertClass + scrape<br/>{workload, surface, path}"]
         d_wl["workload name"]
         d_prov["provides<br/>surface: port<br/>on the Workload"]
         d_dep["dependsOn"]
@@ -631,14 +631,12 @@ flowchart LR
         d_exp["exposure — on the Service<br/>name, host (authored FQDN),<br/>audience, contentPolicy,<br/>routes: path, match,<br/>workload, surface"]
         d_prb["probes<br/>readiness + liveness"]
         d_bud["startupBudget"]
-        d_zdt["zeroDowntime"]
+        d_cut["cutover<br/>rolling | recreate"]
         d_life["lifecycle"]
         d_sf["stateful"]
         d_vol["volumes + durability"]
         d_plc["placement<br/>hard dimensions:<br/>memory, cpu, arch,<br/>site, disk, gpu,<br/>capabilities"]
-        d_hard["hardening<br/>+ exceptions"]
-        d_scr["observability.scrape"]
-        d_ovr["overrides"]
+        d_rep["replicas<br/>count + reason"]
     end
 
     subgraph PIN["Pinned inputs (layer 2)"]
@@ -673,24 +671,22 @@ flowchart LR
         k_pol["Vault policy + auth role"]
         k_ir["IngressRoute"]
         k_np["NetworkPolicy"]
-        k_sm["ServiceMonitor"]
-        k_pr["PrometheusRule"]
         k_gat["Gatus endpoint"]
         k_rch["reachability entry"]
         k_edg["edge catalogs"]
         k_flx["Flux Kustomization"]
         k_bkp["backup CronJob + sweep"]
-        k_ntf["notifier route"]
         k_res["resolved.yml"]
+
+        k_sm["ServiceMonitor / PodMonitor"]
     end
 
     d_dom --> r_ns
     d_dom --> r_ru
     d_dom --> r_vp
-    d_own --> k_ntf
     d_id --> r_sw
-    d_alert --> k_pr
-    d_alert --> k_ntf
+    d_obs --> k_sm
+    d_obs --> k_np
     d_wl --> r_sa
     d_wl --> k_svc
 
@@ -730,7 +726,9 @@ flowchart LR
     d_prb --> r_sw
     d_bud --> r_prb
     d_bud --> r_dl
-    d_zdt --> r_strat
+    d_cut --> r_strat
+
+    d_rep --> r_rep
 
     d_life --> k_dep
     d_sf --> k_dep
@@ -742,10 +740,8 @@ flowchart LR
 
     d_plc --> r_plc
     d_plc --> r_res
-    d_hard --> r_sc
-    d_scr --> k_sm
-    d_scr --> k_pr
-    d_scr --> k_np
+    p_ctx --> r_sc
+
 
     p_ctx --> r_plc
     p_cs --> r_rep
@@ -770,8 +766,6 @@ flowchart LR
     r_tc --> k_flx
     r_ru --> k_flx
     r_sw --> k_flx
-
-    d_ovr -.->|"replaces one derived value"| r_dl
 
     r_ns --> k_res
     r_sa --> k_res

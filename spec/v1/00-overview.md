@@ -201,9 +201,9 @@ repository already uses between a chapter and an ADR.
 | Chapter | Covers | Diagram |
 |---|---|---|
 | [`10-service-intent.md`](10-service-intent.md) | Service, Workload, and every layer-1 field by concern: identity, configuration, assets, probes, storage and durability, hardening and size, placement, exposure, observability, secrets and grants, release units | drawn |
-| [`14-platform-intent.md`](14-platform-intent.md) | the second authored document: substrate facts, the bootstrap set, the declared foundation, tiers as edge facts, durability and observability policy, engines as images, providers, the overridable derivations | none |
+| [`14-platform-intent.md`](14-platform-intent.md) | the second authored document: substrate facts, the bootstrap set, the declared foundation, tiers as edge facts, durability policy, engines as images, providers — and no observability policy, which the observability service owns | none |
 | [`16-dependencies.md`](16-dependencies.md) | dependency edges, per-Workload identity, derived network policy, the derivation map | drawn |
-| [`20-resolved-deployment.md`](20-resolved-deployment.md) | the Resolved Deployment, the authority table in one place, the pinned input set including ClusterState, derived mechanics, overrides, the Reconcile Unit, publish-back | drawn |
+| [`20-resolved-deployment.md`](20-resolved-deployment.md) | the Resolved Deployment, the authority table in one place, the pinned input set including ClusterState, derived mechanics, the one capacity exception, the Reconcile Unit, publish-back | drawn |
 | [`30-deliverables.md`](30-deliverables.md) | adapters, the adapter port, attribution, ledgers, coverage re-derived from the registry | drawn |
 | [`40-composition.md`](40-composition.md) | Intent Fragments, participants and the staleness bound, schema versioning and rollout, unmanaged surfaces | drawn |
 | [`50-lifecycle.md`](50-lifecycle.md) | model-level lifecycle: Release Unit switchover, expand/contract for cross-Service contract changes, lock lifecycle — and the statement that delivery mechanics and co-testing are defined separately | drawn |
@@ -237,11 +237,12 @@ parse-checked in CI.
 
 | path | what it shows |
 |---|---|
-| `examples/domains/{auth,knowledge,data}.yml` | Service Intent, one file per domain: two-level secret grants, `probes: none` stated explicitly, TCP probes, `placement` dimensions and declared hardening exceptions, `durability` per volume, and the `auth` pair as two Workloads of one Service |
+| `examples/domains/{auth,knowledge,data}.yml` | Service Intent, one file per domain: two-level secret grants, `probes: none` stated explicitly, TCP probes, `placement` dimensions, declared `writablePaths`, `durability` per volume, and the `auth` pair as two Workloads of one Service |
 | `examples/{knowledge-api,knowledge-ingest-worker,auth-api,platform-postgres}.base.env` | env files, one set **per Workload**, threaded with `${dependency:…}` and `${secret:<granted-path>#<key>}` placeholders whose paths byte-match a granted path |
 | `examples/workflows/service-publish-fragment.yml` | publish on merge, `oras push` then `oras resolve`, read back |
 | `examples/workflows/compose.yml` | pull participants, assert the estate-wide invariants, **prove the gate can fail** |
 | `examples/negative/duplicate-service-id/` | a negative fixture, so an invariant that stops running is detectable |
+| [`examples/refusals/`](examples/refusals/README.md) | the refusal fixtures: an alert class with no signal, a class outside the vocabulary, and the `rolling`/`recreate` pair over RWO storage |
 
 Delivery examples are no longer part of this specification. `aggregator.yml`,
 both aggregator workflows, the generated deployer RBAC, the re-apply CronJob and

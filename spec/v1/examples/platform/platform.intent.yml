@@ -82,25 +82,21 @@ engines:
   rabbitmq: { backup: rabbitmq-backup }
   files: { backup: file-backup }
 
-# Receivers, the rule catalog, and scrape cadence
-# (docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md).
-observability:
-  scrape:
-    interval: 30s
-    scrapeTimeout: 10s
-  receivers:
-    none: null
-    business-hours: discord-daytime
-    urgent: discord-oncall
-    page: pushover-page
-  ruleCatalog:
-    baseline: [target-absent, restart-loop, probe-failing]
-    postgres: [replication-lag, connections-exhausted]
-    rabbitmq: [queue-depth, consumers-zero]
+# One cadence for every rendered monitor, for the same reason the probe cadence
+# below is here: it is contended across the estate, and no Service knows better
+# (docs/adr/model/0004-contention-decides-authority.md).
+monitors:
+  interval: 30s
+  timeout: 10s
+
+# NO rule catalog, no receivers, no severity map. Those belong to the monitoring
+# stack, which reads the published projection; this document decides how often
+# to scrape and nothing else about alerting
+# (spec/v1/10-service-intent.md#observability).
 
 # One posture for every container the estate renders. A Workload authors no
-# class -- only the exceptions it needs
-# (docs/adr/model/0016-pod-hardening.md).
+# hardening at all: it declares the paths it writes, and an image that cannot
+# meet this class is refused (docs/adr/model/0016-pod-hardening.md).
 hardening: restricted
 
 # One cadence for every rendered probe
