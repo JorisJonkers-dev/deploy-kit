@@ -34,10 +34,13 @@ Conventions that hold across every drawing:
 - **Filled diamond**: UML composition — the part cannot exist without its whole.
 - **A class diagram is a tidy tree, laid out layer by layer downwards**, so it
   has **no edge crossings**. Every node sits exactly one layer below its parent,
-  **each child gets a horizontal lane of its own** so no two edges share a run,
-  and the relation's name rides the child's vertical drop where nothing else is
-  drawn. Lanes are ordered farthest-child-first, which is what makes a near
-  child's drop start below the runs that pass over it.
+  **a parent's edges share one horizontal bus** so its children read as one
+  aligned fan, and each parent's bus sits at its own height so no two fans
+  overlay. The relation's name rides the child's vertical drop, **close to the
+  target**, which is what lets the run be shared: the drops are at distinct x,
+  so the names never pile up. Two relations that mean the same thing are named
+  the same thing, even where they come from different sources — `secrets` is
+  `secrets` whether it hangs off the Service or off a Workload.
 
   **Closed vocabularies are not drawn.** They were tried as a panel and then as
   nodes beside their owning class; both made the model harder to read, the first

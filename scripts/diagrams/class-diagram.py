@@ -13,12 +13,12 @@ Layout rules, in the order they matter:
    attribute's type name had not already said, and the lines reaching them are
    what made the model unreadable. They live in a table in the chapter, under
    "The closed vocabularies".
-2. **One lane per child.** A parent's edges never share a horizontal run:
-   each child gets its own lane in the gap above its row, and the lanes are
-   ordered farthest-child-first so a near child's drop starts below the runs
-   that pass over it. Nothing crosses.
-3. **Labels sit on the vertical drop**, not on the horizontal run, so a wide
-   fan reads as that many separately named lines.
+2. **One bus per parent.** All of a parent's edges share one horizontal run, so
+   its children read as one aligned fan, and each parent's bus sits at its own
+   height in the gap so no two fans overlay. Nothing crosses.
+3. **Labels sit on the child's vertical drop**, close to the target, not on the
+   shared run. That is what lets the run be shared: the drops are at distinct x,
+   so the names never pile up.
 4. A row gap is sized to hold the deepest lane stack any parent above it needs,
    plus a reserved band above the row for sibling cross-links, which sits above
    the tree labels rather than among them.
@@ -119,17 +119,15 @@ layout("Domain")
 tree = {(p, k) for p, ks in CHILDREN.items() for k in ks}
 cx = lambda n: x[n] + W / 2.0
 
-# one lane per child, farthest first, left and right of the parent independently
+# one bus per parent: shallowest fan on top, so a parent's run never sits under
+# the drops of a fan that starts lower down
 lane_of = {}
 stack_at = {d: 0 for d in range(maxd + 1)}
-for p, ks in CHILDREN.items():
-    d = depth[p]
-    left = sorted([k for k in ks if cx(k) < cx(p)], key=lambda k: -abs(cx(k) - cx(p)))
-    right = sorted([k for k in ks if cx(k) >= cx(p)], key=lambda k: -abs(cx(k) - cx(p)))
-    for side in (left, right):
-        for i, k in enumerate(side):
-            lane_of[(p, k)] = i
-    stack_at[d] = max(stack_at[d], len(left), len(right))
+for d in range(maxd + 1):
+    parents = sorted([n for n in nodes if depth[n] == d and CHILDREN.get(n)], key=cx)
+    for i, n in enumerate(parents):
+        lane_of[n] = i
+    stack_at[d] = len(parents)
 
 rowh = {d: max(height(n) for n in nodes if depth[n] == d) for d in range(maxd + 1)}
 y, acc = {}, float(ROWSTART)
@@ -138,9 +136,9 @@ for d in range(maxd + 1):
     acc += rowh[d] + MARGIN + max(stack_at[d], 1) * LANE + BAND
 FLOOR = acc + 20
 
-def lane_y(p, k):
+def lane_y(p):
     d = depth[p]
-    return y[d] + rowh[d] + MARGIN + lane_of[(p, k)] * LANE
+    return y[d] + rowh[d] + MARGIN + lane_of[p] * LANE
 
 LANE_C = ("swimlane;html=0;childLayout=stackLayout;horizontal=1;startSize=36;horizontalStack=0;"
           "resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;"
@@ -198,7 +196,7 @@ for i, n in enumerate(sorted(nodes)):
         ET.SubElement(k, "mxGeometry", {"y": str(start + 20 * j), "width": str(W),
                                         "height": "20", "as": "geometry"})
 
-def add_edge(eid, style, s, t, label, points, at=0.5, lift=None):
+def add_edge(eid, style, s, t, label, points, at=0.5, lift=None, shift=0):
     c = ET.SubElement(root, "mxCell", {"id": eid, "value": label, "style": style,
                                        "parent": "1", "edge": "1",
                                        "source": ident[s], "target": ident[t]})
@@ -207,13 +205,14 @@ def add_edge(eid, style, s, t, label, points, at=0.5, lift=None):
     for px, py in points:
         ET.SubElement(arr, "mxPoint", {"x": str(int(px)), "y": str(int(py))})
     if lift is not None:
-        ET.SubElement(g, "mxPoint", {"x": "0", "y": str(int(lift)), "as": "offset"})
+        ET.SubElement(g, "mxPoint", {"x": str(int(shift)), "y": str(int(lift)),
+                                     "as": "offset"})
 
 seen = {}
 def tree_edge(eid, style, a, b, label):
     k = seen.get((a, b), 0)
     seen[(a, b)] = k + 1
-    ly = lane_y(a, b) + k * LANE
+    ly = lane_y(a) + k * LANE
     off = 62 * k
     st = style
     if k:
@@ -233,7 +232,7 @@ for a, b, label in dep:
         i += 1
 
 # what is left links two nodes on one layer that sibling order made neighbours
-cross = [(E_COMP, a, b, f"{a} · {m}  {l}") for a, b, m, l in comp if (a, b) not in tree]
+cross = [(E_COMP, a, b, f"{m}  {l}") for a, b, m, l in comp if (a, b) not in tree]
 cross += [(E_ENUM, a, b, f"«{l}»") for a, b, l in dep if (a, b) not in tree]
 taken = {}
 for j, (style, a, b, label) in enumerate(cross):
@@ -246,9 +245,11 @@ for j, (style, a, b, label) in enumerate(cross):
     taken.setdefault((d, k), []).append((lo, hi))
     ly = y[d] - 36 - k * 15
     side = 0.26 if cx(a) < cx(b) else 0.74
+    shift = -74 if cx(a) < cx(b) else 74
     st = (style.replace("exitX=0.5;exitY=1;", "exitX=0.5;exitY=0;")
                .replace("entryX=0.5;entryY=0;", f"entryX={side};entryY=0;"))
-    add_edge(f"x{j}", st, a, b, label, [(cx(a), ly), (cx(b), ly)], at=0.14)
+    add_edge(f"x{j}", st, a, b, label, [(cx(a), ly), (cx(b), ly)], at=0.88,
+             lift=-14, shift=shift)
 
 open(sys.argv[1], "w").write(
     '<mxfile host="Electron" agent="scripts/diagrams/class-diagram.py" version="29.0.3">'
