@@ -23,7 +23,7 @@ Colour carries the layer, so a reader can place a box without a legend.
 | `#d1fae5` | `#047857` | layer 3 — a serialized Deliverable ([chapter 30](../30-deliverables.md)) |
 | `#fee2e2` | `#b91c1c` | a refusal: an error code, or a render that does not happen |
 | white, dashed border | `#64748b` | defined separately from the model ([`docs/adr/deferred/`](../../../docs/adr/deferred/README.md)) |
-| `#f5f3ff` | `#6d28d9` | a UML `«enumeration»` — a closed vocabulary |
+| `#6d28d9` text | — | a `«...»` reference: a relation named in a box rather than drawn as a line |
 
 Conventions that hold across every drawing:
 
@@ -33,15 +33,24 @@ Conventions that hold across every drawing:
   reference, a feedback path, or something defined separately.
 - **Filled diamond**: UML composition — the part cannot exist without its whole.
 - **A class diagram is a tidy tree, laid out layer by layer downwards**, so it
-  has **no edge crossings**. Enumerations are separate `«enumeration»` nodes
-  drawn one layer **below the class whose attribute names them**, joined by a
-  dashed edge labelled with that attribute, rather than gathered in a panel away
-  from the graph: a panel makes a reader chase a name across the drawing to
-  learn which class a vocabulary belongs to, and an edge says it in place. Each
-  parent's fan runs on a horizontal bus of its own and drops straight into each
-  child's top edge. The few edges that are not tree edges — `«resolves by
-  name»`, `«byte-matches»`, a grant held at two levels — are routed through the
-  nearest empty gap, never across the drawing.
+  has **no edge crossings**. Every node sits exactly one layer below its parent,
+  **each child gets a horizontal lane of its own** so no two edges share a run,
+  and the relation's name rides the child's vertical drop where nothing else is
+  drawn. Lanes are ordered farthest-child-first, which is what makes a near
+  child's drop start below the runs that pass over it.
+
+  **Closed vocabularies are not drawn.** They were tried as a panel and then as
+  nodes beside their owning class; both made the model harder to read, the first
+  by making a reader chase a name across the drawing and the second by adding a
+  line per vocabulary. An attribute's type already names its vocabulary, so the
+  values live in a table in the chapter instead
+  ([chapter 10](../10-service-intent.md#the-closed-vocabularies)).
+
+  A relation that spans two or more layers is not drawn as a line either: it
+  becomes a `«...»` note row inside the source's own box, in the dependency
+  colour. A line that long is what made this drawing unreadable twice. Only
+  relations between two nodes on the same layer are drawn, in a band reserved
+  above that row.
 
   Chapter 10's is **generated** by
   [`scripts/diagrams/class-diagram.py`](../../../scripts/diagrams/class-diagram.py)
