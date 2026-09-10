@@ -455,9 +455,10 @@ its own Vault client, and one of the values it wires — the role name — is
 derived: written as a literal it is the same staleness class as the
 `serviceAccountName()` defect, where a hand-maintained name and a derived one
 disagreed and nothing noticed. Writing a derived value as a literal is a
-build error, and so is writing a Runtime Profile key at all: `OTEL_*` and
-`PYROSCOPE_*` come from `runtime`, and an exceptional value goes in `overrides`,
-not here. Ten `OTEL_*` variables are byte-identical today across `auth-api`,
+Writing a derived value as a literal is a build error, and so is writing a Runtime Profile key at all: `OTEL_*` and
+`PYROSCOPE_*` come from `runtime`, and an exceptional value is not a layer-1
+concept — there is no `overrides` field to put it in. Ten `OTEL_*` variables are
+byte-identical today across `auth-api`,
 `agents-api` and `knowledge-api` except `OTEL_SERVICE_NAME` — sixty duplicated
 lines that leave the service repositories under this rule.
 
@@ -598,9 +599,9 @@ reports ready never switches any of them.
 ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)). Storage
 is `local-path` and every claim is `ReadWriteOnce`, so a stateful Workload is
 pinned to one machine by construction; on one node, two replicas are two
-processes on one kernel. A Workload that wants more restates the value with a
-reason ([chapter 20](20-resolved-deployment.md#overrides)) — which is what
-`auth-api`'s two replicas always were, a capacity decision on freed budget,
+processes on one kernel. A Workload that wants more states it as
+[Capacity](#capacity) — a `count` above one with a reason — which is what
+`auth-api`'s two replicas always were: a capacity decision on freed budget,
 recorded now instead of inferred.
 
 A `PodDisruptionBudget` is emitted **only where `replicas` exceeds one**, and as
@@ -643,8 +644,8 @@ backup runs in, how many copies are kept, and where an off-cluster copy goes are
 contended — one node's IO, one remote target — so by
 [0004](../../docs/adr/model/0004-contention-decides-authority.md) the Platform
 Intent carries one policy per class and the volume declares only what the data
-is worth. A volume that genuinely needs different terms restates one with a
-reason ([chapter 20](20-resolved-deployment.md#overrides)).
+is worth. A volume that genuinely needs different terms is a platform policy
+change, not a per-volume restatement.
 
 **The method is platform-assigned too**, keyed by the Workload's
 [`engine`](#workload): the method **is an image** — one purpose-built image per
@@ -771,9 +772,9 @@ in the same list as a pod running as root.
 `sizeLimit` is **not** authored per path. Ephemeral storage is finite node disk
 and therefore contended
 ([0004](../../docs/adr/model/0004-contention-decides-authority.md)), so the
-Platform Intent carries one default and a Workload needing more restates it with
-a reason ([chapter 20](20-resolved-deployment.md#overrides)). One number covers
-every case the estate has; the escape exists for the case it does not.
+Platform Intent carries one default that covers every case the estate has. There
+is no per-path restatement: a value reachable two ways has no single declaring
+site.
 
 Nothing is implicit. `/tmp` is not supplied unless it is declared — a mount
 nobody asked for would appear in every static image that never writes — and the
@@ -785,8 +786,8 @@ described behaviour no chapter specified.
 without relaxing anything, which is what its own recorded reason predicted.
 
 A Workload that cannot meet the class declares the **specific** control it
-relaxes, with a reason, in the shape derived-value overrides already use
-([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md)). `allow` is a
+relaxes, with a reason. An exception is a declared fact about an image, not an
+override of a derivation. `allow` is a
 closed vocabulary — `runAsRoot`, `writableRootFilesystem`,
 `capability:<NAME>`, `seccompUnconfined` — and one entry relaxes exactly one
 control. An exception with an empty or missing `reason` fails schema validation.
@@ -995,9 +996,9 @@ and neither is a field:
   misdiagnosed as slow application code, over and over, by whoever did not set
   the limit.
 
-The escape is an override with a reason
-([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md)) — the same shape
-every other derived value uses — never a second field inside `placement`.
+Both shape rules are derivations and neither is authorable — there is no second
+field inside `placement`, and no hatch to reach one
+([No overrides](20-resolved-deployment.md#no-overrides)).
 
 What the numbers look like against real Workloads, with the evidence that fixed
 them:
@@ -1271,8 +1272,14 @@ Two declarations, one derived pipeline
 surface stays service-declared because it genuinely varies —
 `/actuator/prometheus`, `/api/actuator/prometheus`, `/metrics` — and a platform
 that guessed would collect nothing and report success. The Alert Class states
-urgency and never routing: `none`, `business-hours`, `urgent`, `page`. Receivers,
-notifier routes, Gatus checks, ServiceMonitors and PrometheusRules all derive.
+urgency and never routing: `none`, `business-hours`, `urgent`, `page`.
+
+Those **two facts are the entire Intent surface**. Everything downstream —
+ServiceMonitor and PodMonitor shape, scrape cadence, external checks, PromQL,
+severity, receiver routing and notifier routes — is configuration of a
+monitoring stack the model does not operate, and it lives in a versioned
+configuration owned and run by the observability service
+([The observability boundary](#the-observability-boundary)).
 
 `alertClass` sits on the Service and is never raised to the domain header, for the
 same reason `owner` is: urgency is a per-Service fact, and a domain that pages
@@ -1284,45 +1291,56 @@ ConfigMap has `storage` and `ui` and no `alerting` section at all — and 8
 ServiceMonitors plus 2 PodMonitors cover roughly thirty workloads, with exactly one
 `PrometheusRule` in the estate.
 
-Rendering the rules also closes a documented trap: a `PrometheusRule` without
-`release: metrics-stack` in `metadata.labels` is accepted by the API server, its
-Kustomization goes Ready, the operator logs nothing, and the rules never evaluate.
-A generated rule always carries the label; an authored one relies on the author
-remembering.
+### The observability boundary
 
-### What the class derives
+**Intent declares the signal and the urgency; the observability service owns the
+mechanism.** A versioned configuration, owned by the observability Service and
+consumed by its runner, takes the resolved Service facts — the `scrape` surface
+and the `alertClass` of every Service — and produces the stack-specific objects:
+which monitor kind, what cadence, which external checks, what PromQL, and which
+receiver a severity routes to. It is normal observability configuration of a
+declared input set, not a second Service DSL, and it is authored once for the
+estate rather than restated per Service.
 
-**A rule catalog, not authored PromQL**
-([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)).
-The platform carries the rules; the class carries urgency:
+| concern | Intent | the observability configuration |
+|---|---|---|
+| `alertClass` | authored per Service | maps a class to a severity and a receiver |
+| `scrape` `{port, path}` | authored per Workload | selects the monitor kind and its target |
+| cadence, `interval`, `scrapeTimeout` | absent | stated once, named by every emitted monitor |
+| rule expressions | absent | the catalog, keyed by signal source and `engine` |
+| receivers and notifier routes | absent | one routing table for the estate |
+| external checks | absent | derived from the exposure set the runner reads |
 
-| input | supplies |
-|---|---|
-| `scrape` on a Workload | the baseline rule set — target absent, restart loop, probe failure — one instance per scraped Workload |
-| `engine` on a Workload | the engine's rules, where the catalog has them |
-| `alertClass` on the Service | the severity of each derived rule, and which receiver it routes to |
+This is the same split the backup method makes
+([Storage and durability](#storage-and-durability)): the platform knows the
+mechanism, the Service knows the fact. PromQL in a domain file would be a
+mechanism in layer 1, and a receiver is a shared notification channel, so by
+[0004](../../docs/adr/model/0004-contention-decides-authority.md) it is
+platform-assigned.
 
-The catalog and the class-to-receiver mapping are platform data, pinned with the
-Platform Intent, for the same reason the backup method is
-([0004](../../docs/adr/model/0004-contention-decides-authority.md)): a receiver is
-a shared notification channel, and PromQL in a domain file would put a mechanism
-in layer 1. The mapping feeds **both** producers, so a Service's urgency means
-one thing whether the signal came from a scrape or from a Gatus endpoint check.
+**One guarantee stays at the Intent boundary**, and it is the property that
+matters: a class above `none` must publish an observable signal.
+`alertClass` on a Service with no `scrape` on any Workload and no external health
+surface is `E_ALERT_CLASS_WITHOUT_SIGNAL`. `platform-postgres` is the live case:
+it declares `page`, the loudest value in the vocabulary, and produces no
+monitoring object at all, because Gatus derives from exposure and a datastore is
+correctly not exposed. Refusing it is what makes the declaration mean something.
 
-**A class above `none` requires a signal.** `alertClass` on a Service with no
-`scrape` on any Workload and no `exposure` for Gatus to check is
-`E_ALERT_CLASS_WITHOUT_SIGNAL`. `platform-postgres` is the live case: it declares
-`page`, the loudest value in the vocabulary, and produces no monitoring object at
-all, because Gatus derives from exposure and a datastore is correctly not
-exposed. Refusing it is what makes the declaration mean something.
+**The runner must fail, not warn.** Where the configuration cannot map a Service's
+signal and class to an active monitor and a receiver, its build fails. That is
+what preserves the property without the model owning PromQL: an unwired Service is
+a build error in the stack that would otherwise have silently collected nothing.
+In a one-maintainer estate a warning is a log line, which is how 41 endpoints came
+to notify nobody.
 
-**Scrape timing is platform policy, stated rather than defaulted.** The Platform
-Intent carries the interval and the timeout, and every rendered `ServiceMonitor`
-and `PodMonitor` names them
-([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)).
-Omitting the fields takes the metrics stack's global default — a value decided
-outside the model, so a render would not be a complete description of how the
-estate is scraped. A Workload needing different timing restates it with a reason.
+### What does not move
+
+`probes`, `startupBudget` and the release gate stay in the model. Readiness and
+liveness are facts about the application process, and the Service's atomic
+switchover waits on the declared readiness surface
+([The release gate](20-resolved-deployment.md#the-release-gate)). Moving the
+checks into an out-of-band configuration would make the gate depend on a file the
+model does not read. A Workload with no listener continues to say `probes: none`.
 
 ## Secrets
 
@@ -1715,37 +1733,87 @@ one of them.
 
 ```yaml
 startupBudget: 600s     # knowledge-api: JVM cold start measured at ~250-300s
-zeroDowntime: true
+cutover: rolling        # required: continuity during the cutover, or an accepted stop-then-start
 ```
 
 Derived from these plus `stateful`, `placement` and `volumes`: rollout strategy,
 surge and unavailability, startup probe period and threshold, the progress
 deadline, and the health-gate deadline the Service's switchover waits on.
-`minAvailable` is still ungraded — see below.
 
-## Overrides
+### Cutover is declared, not promised
+
+`cutover` is **required on every Workload** and has **no default**. It is the
+owner's answer to one question — must the next revision keep serving while it
+cuts over? — and requiring the answer is what keeps the availability consequence
+visible in every declaration instead of implicit in a boolean nobody reads:
+
+| value | means | validation |
+|---|---|---|
+| `rolling` | the next revision must keep serving capacity throughout its cutover | refused where declared storage prevents a surge, including an **`ReadWriteOnce`** volume — `E_CUTOVER_UNHONOURABLE` |
+| `recreate` | the owner accepts a stop-then-start cutover | accepted for any storage; the adapter derives the safe strategy |
+
+The two values are the whole vocabulary, and the Kubernetes spellings —
+`RollingUpdate`, `Recreate`, `maxSurge`, `maxUnavailable` — are derived by the
+adapter and appear nowhere in layer 1
+([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)).
+
+An RWO volume cannot attach to two pods at once, so a `rolling` cutover over one
+is a promise the substrate cannot keep. Refusing it is the point: the old
+`zeroDowntime: true` could ask for continuity while the derived strategy was
+`Recreate`, and the contradiction was silent — the Workload rendered, reported
+success, and simply stopped serving during every roll
+([0030](../../docs/adr/model/0030-runtime-mechanics-derived.md)). A Workload
+whose storage forces `recreate` now says so, and a Workload with no such storage
+says `rolling` only if its owner actually requires continuity.
+
+## Capacity
 
 ```yaml
-overrides:
-  - derivation: startupDeadline
-    value: 600
-    reason: nginx pods, ~10-20Mi each; the derived 1800 assumes a JVM cold start.
+replicas:
+  count: 2
+  reason: Capacity retained after the Frankfurt consolidation; the replicas are spread across two nodes.
 ```
 
-An override names a **derivation by its own name** — the closed set in
-[chapter 14](14-platform-intent.md#overridable-derivations) — never a Kubernetes
-field ([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)),
-and a name not in that set is `E_UNKNOWN_OVERRIDE`. It targets a derivation,
-never an **assignment**
-([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md)). The escape exists
-because the alternative is not a better rule but a falsified input: an owner who
-needs 600 and cannot say so will misreport their `startupBudget` to coax the number
-out of the derivation, corrupting the one field only they could know. The `reason`
-makes the rationale data rather than a YAML comment no tool can read.
+`replicas` derives as **1**
+([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)). Storage
+is `local-path` and every claim is `ReadWriteOnce`, so a stateful Workload is
+pinned to one machine by construction; on one node, two replicas are two
+processes on one kernel.
 
-The memory and cpu shape rules are derivations, so they are reachable this way:
-a Workload that genuinely needs a cpu limit, or a memory limit above its request,
-writes an override with a reason rather than a second placement field.
+**`replicas` is the only exception to a derived value in layer 1, and it is
+narrow on purpose.** Where a Workload genuinely needs more than one, the count
+is stated here rather than routed through a general mechanism:
+
+- `count` must be **greater than one** — the field cannot become a verbose
+  spelling of the default;
+- `reason` is **required whenever `replicas` is present** — a capacity decision
+  is data, not a YAML comment no tool can read;
+- the effective count continues to decide whether a PDB is rendered
+  ([Replicas, and the disruption budget](#replicas-and-the-disruption-budget)).
+
+There is no generic override, no free-form exception map, and no second
+override vocabulary. Where a derived value is wrong for a whole workload class,
+the central derivation is repaired and re-rendered against the estate; where it
+is genuinely a fact only one Service knows, it earns one narrowly named field
+with its own authority and validation
+([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md)).
+
+## No overrides
+
+**There is no `overrides` field.** A derived value has exactly one declaring
+site — the derivation — and an assignment has exactly one author — the platform
+([0004](../../docs/adr/model/0004-contention-decides-authority.md),
+[0005](../../docs/adr/model/0005-derivation-is-total.md)). The one local
+exception is [Capacity](#capacity) above.
+
+The escape this replaces existed because the alternative was said to be a
+falsified input: an owner who needed a different deadline and could not say so
+would misreport their `startupBudget` to coax the number out of the derivation.
+That argument proved to license more than it justified — it was used to carry
+values that were either a workload class the central rule should have covered, or
+platform policy a Service had no business setting. Both are now handled where
+they belong: the rule, or the platform. An owner whose `startupBudget` is
+genuinely special states it accurately, and the derivation reads it.
 
 ## What layer 1 may never contain
 
@@ -1759,7 +1827,7 @@ declaring site is fixed:
 | a namespace | derived from `domain`, as `<domain>-system` |
 | a node label or selector | `placement` |
 | a scheduler weight, or any soft placement term | every dimension is hard ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)) |
-| `replicas` | derived as **1**, and more than one is an override with a reason ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)) — never a live cluster read |
+| `replicas` | derived as **1**, and more than one is a `replicas: {count, reason}` declaration ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)) — never a live cluster read |
 | storage class, volume capacity | assigned |
 | `resources`, requests or limits | derived from `placement` |
 | a `securityContext` field | `hardening`, plus a declared exception |
@@ -1768,11 +1836,11 @@ declaring site is fixed:
 | a field coupling the release of two Services | one Service, or two that release independently ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)) |
 | an image tag or digest | the images lock |
 | a `ports` list, or a port as a string | an integer at its point of use |
-| `RollingUpdate`, `maxSurge`, `progressDeadlineSeconds` | derived; `overrides` if exceptional |
+| `RollingUpdate`, `maxSurge`, `progressDeadlineSeconds` | derived from `cutover`, `startupBudget` and the declared volumes |
 | `statefulset` / `deployment` | derived from `lifecycle` + volumes |
 | a liveness probe with no path | state it, or use `tcp`, or `probes: none` |
 | a Dependency Coordinate as a literal | `${dependency:…}` |
-| a Runtime Profile key in an env file | `runtime`; `overrides` if exceptional |
+| a Runtime Profile key in an env file | `runtime` — the model injects them, and an exceptional value is not a layer-1 concept |
 | a secret value, anywhere | a grant plus `${secret:…}` |
 | a secret grant with no reference | remove it — it is a dead grant |
 | `keys: ['*']` | enumerate the keys |
@@ -1809,8 +1877,8 @@ Two items no decision in the register covers:
    ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)):
    `auth-api`'s two replicas were a capacity decision on freed Frankfurt budget,
    not an availability requirement, and this substrate cannot deliver
-   availability by replica count. `replicas` derives as 1; a second is an
-   override carrying the reason.
+   availability by replica count. `replicas` derives as 1; a second is a
+   `replicas: {count, reason}` declaration carrying its reason.
 2. **`self-renew` × `file`.** Refusing it follows from the tiers' own argument but
    not from the decisions' text.
 
@@ -1891,9 +1959,13 @@ classDiagram
         +Runtime runtime
         +Engine engine
         +Duration startupBudget
-        +bool zeroDowntime
+        +Cutover cutover
         +bool stateful
         +Path[] writablePaths
+    }
+    class Capacity {
+        +int count
+        +string reason
     }
     class HardeningException {
         +Control allow
@@ -1962,12 +2034,6 @@ classDiagram
         +int port
         +Path path
     }
-    class Override {
-        +Derivation derivation
-        +any value
-        +string reason
-    }
-
     class EnvFile {
         +ClusterTarget cluster
         +dotenv entries
@@ -2190,7 +2256,7 @@ classDiagram
     Workload "1" *-- "0..*" Volume : volumes
     Workload "1" *-- "1" Placement : placement
     Workload "1" *-- "0..1" Scrape : scrape
-    Workload "1" *-- "0..*" Override : overrides
+    Workload "1" *-- "0..1" Capacity : replicas
 
     Placement "1" *-- "0..1" DiskRequest : disk
     Placement "1" *-- "0..1" GpuRequest : gpu

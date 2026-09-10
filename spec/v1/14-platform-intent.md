@@ -197,20 +197,20 @@ A shell command in an authored file is what [0012](../../docs/adr/model/0012-ass
 refuses for a Service, and it is refused here for the same reason: what the
 image does is versioned and digested; a string in YAML is neither.
 
-## Observability policy
+## Observability is not configured here
 
-The receiver per Alert Class, the rule catalog, and the scrape cadence
-([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)):
+The Platform document carries **no** observability policy: no scrape cadence, no
+receiver map, no rule catalog. Intent declares two facts — `alertClass` on the
+Service and `scrape {port, path}` on a Workload — and a versioned configuration
+owned and run by the observability Service turns those into ServiceMonitors,
+PodMonitors, cadence, external checks, PromQL, severity and receiver routing
+([chapter 10](10-service-intent.md#the-observability-boundary)).
 
-```yaml
-observability:
-  scrape:    {interval: 30s, scrapeTimeout: 10s}
-  receivers: {none: null, business-hours: discord-daytime,
-              urgent: discord-oncall, page: pushover-page}
-  ruleCatalog:
-    baseline: [target-absent, restart-loop, probe-failing]
-    postgres: [replication-lag, connections-exhausted]
-```
+The one claim the model still makes is a composition-time guarantee: a Service
+above `alertClass: none` must publish a signal, and the runner must fail if it
+cannot map that signal and class to active monitoring and a receiver
+(`E_ALERT_CLASS_WITHOUT_SIGNAL`). Everything past that boundary is stack
+configuration of a monitoring system this document does not operate.
 
 ## Hardening policy
 
@@ -266,29 +266,36 @@ Registered Unmanaged Surface in the ledger
 a review date. The two were one list until 0095 split them; an edge resolves
 against facts, never against exemptions.
 
-## Overridable derivations
+## There is nothing to override here
 
-Every derived value an owner may restate with a reason
-([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md)) is named
-here, by the **derivation's own name**, with the target field it renders to
-stated beside it ([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)).
-An override names a decision, not a field:
+**Layer 1 has no generic override mechanism and this document carries no
+overridable-derivations table.** A derived value has one declaring site — the
+derivation — and an assignment has one author — the platform. The sole local
+exception is capacity ([chapter 10](10-service-intent.md#capacity)):
 
-| override key | derived from | renders to |
-|---|---|---|
-| `replicas` | `1` ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)) | `spec.replicas` |
-| `startupDeadline` | `startupBudget × 3` | `spec.progressDeadlineSeconds` |
-| `gateDeadline` | `max` member `startupDeadline` ([0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md)) | the projection only |
-| `automountToken` | `delivery: self` present ([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)) | `automountServiceAccountToken` |
-| `ephemeralSize` | the ephemeral policy | each writable path's `sizeLimit` |
-| `probeCadence` | the probe policy | `periodSeconds`, `timeoutSeconds`, `failureThreshold` |
-| `backupTerms` | the durability policy | the backup `CronJob`'s schedule and the sweep's retention |
-| `scrapeCadence` | the observability policy | `interval`, `scrapeTimeout` |
-| `routePriority` | path specificity ([0093](../../docs/adr/model/0093-route-precedence-is-derived.md)) | `priority` |
-| `volumeSize` | the volume's declared `size` — not overridable; listed to say so | `resources.requests.storage` |
+```yaml
+replicas:
+  count: 2
+  reason: Capacity retained after the Frankfurt consolidation; the replicas are spread across two nodes.
+```
 
-A key not in this table is `E_UNKNOWN_OVERRIDE`. `namespace` is absent
-deliberately ([chapter 20](20-resolved-deployment.md#overrides)).
+There is no `E_UNKNOWN_OVERRIDE`, because there is no key set to be outside.
+What used to sit in a ten-row table resolves three ways:
+
+- **A workload-class difference is a derivation bug.** If one rule is wrong for a
+  whole class of Workload, the rule is repaired and the estate re-rendered —
+  which is what `startupDeadline` was, and why it is now one rule over
+  `startupBudget` rather than a per-Workload exception.
+- **A platform policy stays platform policy.** Cadence, retention, ephemeral
+  size, probe timing and route precedence are contended and shared; they are
+  stated once here or derived, and no Service restates them.
+- **An irreducible Service fact earns a named field** with its own authority,
+  validation and example — not a generic entry pointing at a rendered field.
+
+That is deliberately more demanding than adding a row. An unbounded exception
+system becomes the normal configuration interface, and a value reachable two ways
+has no single declaring site — which is the property chapter 16's
+single-authority check exists to protect.
 
 ## Open in this chapter
 

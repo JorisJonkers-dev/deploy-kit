@@ -9,16 +9,28 @@ rests-on: ["0005"]
 
 # Runtime mechanics are derived from declared intent
 
+> **Amended 2026-09-10.** `zeroDowntime` is replaced by the required
+> `cutover: rolling | recreate` field
+> ([chapter 10](../../../spec/v1/10-service-intent.md#cutover-is-declared-not-promised)).
+> A boolean that could request continuity while the derived substrate required
+> recreation was a silent contradiction; the Workload rendered, reported success,
+> and stopped serving during every roll. `cutover` has **no default**, and
+> `rolling` over storage that cannot surge is refused with
+> `E_CUTOVER_UNHONOURABLE` instead of silently rendered as `Recreate`. The
+> strategy is still derived — from the declared cutover intent and the volumes —
+> and no Kubernetes spelling reaches layer 1.
+
 ## Rests on
-Rollout strategy is a function of declared volumes, not of a preference: no
-workload holding a `ReadWriteOnce` volume can roll, so every such workload must
-render `Recreate`. False if: a workload holding an RWO volume rolls with
-`maxSurge: 1` and does so without wedging. Settled
+Rollout strategy is a function of declared volumes and declared cutover intent,
+not of a preference: no workload holding a `ReadWriteOnce` volume can roll, so
+every such workload must either declare `recreate` or be refused. False if: a
+workload holding an RWO volume rolls with `maxSurge: 1` and does so without
+wedging. Settled
 by: `kubectl get deploy,sts -A -o json | jq -r '.items[]|[.metadata.name,
 (.spec.strategy.type//"RollingUpdate")]|@tsv'` joined against
 `kubectl get pvc -A -o custom-columns=NAME:.metadata.name,MODE:.spec.accessModes`
 — every RWO holder must appear on the `Recreate` side of the recorded 21-to-9
-split.
+split, and no rendered `RollingUpdate` may hold an RWO volume.
 
 ## Why
 A Service declares what only it can know: its cold-start budget, whether it

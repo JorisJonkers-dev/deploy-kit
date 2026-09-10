@@ -121,8 +121,10 @@ specific to one ([0022](docs/adr/model/0022-grants-live-on-the-service.md),
 than carrying a value. A secret placeholder byte-matches a granted path
 ([0027](docs/adr/model/0027-secret-reference-join-key.md)).
 
-**Override** — an authored escape from a derived value, carrying a reason
-([0031](docs/adr/model/0031-derived-overrides-with-reason.md)).
+**Capacity exception** — the sole local exception to a derived value:
+`replicas: {count, reason}`, with the reason required
+([0031](docs/adr/model/0031-derived-overrides-with-reason.md)). There is no
+generic override mechanism.
 
 ## Composition — many repositories, one estate
 

@@ -55,11 +55,11 @@ contributes routes and exposures to both; it owns neither object.
 |---|---|---|---|
 | `namespace.yaml` | `kubernetes` | `domain` | — (the adapter emits this per *Service* directory, not per domain: **G-02**) |
 | `kustomization.yaml` | `kubernetes` | the Service set of the domain | — |
-| `apps/knowledge/workload.yaml` | `kubernetes` | `lifecycle`, `image`, `runtime`, `provides`, `placement`, `hardening`, `probes`, `startupBudget`, `zeroDowntime`, `stateful`, `volumes`, `secrets`, env files | `replicas` (`minAvailable` ungraded); the image's UID behind `runAsNonRoot`; a scratch volume for a read-only-root JVM (**G-04**); what `stateful` changes about the object kind (**G-05**); the PV-bound node (**G-06**); env-var renaming through `envFrom` (**G-03**); readable mode on the 0400 key (**G-08**) |
+| `apps/knowledge/workload.yaml` | `kubernetes` | `lifecycle`, `image`, `runtime`, `provides`, `placement`, `hardening`, `probes`, `startupBudget`, `cutover`, `stateful`, `volumes`, `secrets`, env files | `replicas` (`minAvailable` ungraded); the image's UID behind `runAsNonRoot`; a scratch volume for a read-only-root JVM (**G-04**); what `stateful` changes about the object kind (**G-05**); the PV-bound node (**G-06**); env-var renaming through `envFrom` (**G-03**); readable mode on the 0400 key (**G-08**) |
 | `apps/knowledge/serviceaccount.yaml` | `kubernetes` | workload `name` × 2, `domain` | — (the adapter names one account after the *Service*: **G-09**) |
 | `apps/knowledge/configmap.yaml` | `kubernetes` | env files, `dependsOn`, the `provides` port, Cluster Target, workload `name` | 15 of the 16 Runtime Profile keys (**G-13**); the database name spelling (**G-12**); change propagation on edit (**G-10**) |
 | `apps/knowledge/pvc.yaml` | `kubernetes` | `volumes[].claim`, `volumes[].durability`, `stateful` | `resources.requests.storage` — **the object does not apply without it** (**G-15**); the durability annotation key (**G-14**) |
-| `apps/knowledge/servicemonitor.yaml` | `kubernetes` | `scrape`, `provides` | `interval` (an adapter constant, not a derivation) |
+| `apps/knowledge/servicemonitor.yaml` | `observability runner` | `scrape`, `provides` | cadence from the runner configuration |
 | `apps/knowledge/networkpolicy.yaml` | `networking` — **not registered** (**G-16**) | `dependsOn`, `provides`, `exposure`, `scrape`, effective grant set, baseline | egress to anything outside the estate — the worker's git remote (**G-20**); ingress from consumers absent from the union (**G-18**); whether a namespace catch-all is emitted (**G-17**) |
 | `apps/knowledge/vso.yaml` | `vso` | `secrets` at both levels, `delivery`, `rotation`, workload `name` | Secret/object naming (**G-21**); which identity reads a shared path (**G-23**); the Kubernetes auth mount name |
 | `apps/knowledge/kustomization.yaml` | `kubernetes` | the emitted file set | ownership of `vso.yaml` (**G-25**) |
@@ -67,7 +67,7 @@ contributes routes and exposures to both; it owns neither object.
 | `apps/knowledge/backup.yaml` | `kubernetes` | `durability: irreplaceable` plus `engine: files` on the vault clone | — (0077) |
 | `apps/vso-secrets/policies/knowledge-api.policy.json` | `vault-policy` | the three KV grants, each with its `metadata` sibling | — (0073, 0086) |
 | `apps/vso-secrets/policies/knowledge-api.role.json` | `vault-policy` | the Workload's ServiceAccount and namespace | — |
-| `observability/prometheusrules.yaml` | `prometheus` | the baseline set, severity and receiver from `alertClass: business-hours` | — (0079) |
+| `observability/prometheusrules.yaml` | `observability runner` | the baseline set, severity and receiver from `alertClass: business-hours` | — (0079) |
 
 ## Deliberately absent, and correct
 

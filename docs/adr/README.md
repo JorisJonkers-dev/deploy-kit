@@ -22,6 +22,15 @@ allocatable, Intent is authored one file per domain, and a Service is itself the
 unit of atomic release. 0017 and 0060 are superseded by that amendment and kept
 for the record; 0004, 0010, 0016, 0024, 0037 and 0056 were amended in place.
 
+The set was amended on 2026-09-10 for the v1 simplification: the generic
+override hatch is deleted and `replicas: {count, reason}` is the sole local
+capacity exception (0031, 0089, 0097); `zeroDowntime` is replaced by required
+`cutover: rolling | recreate` with `E_CUTOVER_UNHONOURABLE` (0030); and
+observability policy leaves the model for a versioned configuration owned by
+the observability service, whose runner must map every non-`none` class to a
+signal and a receiver (0021, 0079). The worked examples now declare every
+applicable authored field and annotate its effect.
+
 Tier-0 **premises** carry one falsifiable claim each; tier-1 **decisions** name
 the premises they stand on in `rests-on`. A `claim: open` means decided in
 direction, untested — its owner and settling test are in the file.
@@ -122,7 +131,7 @@ delivery work it underpins.
 |---|---|---|
 | [0029](model/0029-resolved-deployment-versioned-artifact.md) | The Resolved Deployment is a versioned, reviewable artifact | settled |
 | [0030](model/0030-runtime-mechanics-derived.md) | Runtime mechanics are derived from declared intent | settled |
-| [0031](model/0031-derived-overrides-with-reason.md) | A derived value is overridable with a reason; an assignment is not | settled |
+| [0031](model/0031-derived-overrides-with-reason.md) | A derived value has one declaring site; capacity is the sole named exception — the generic override hatch is deleted | settled |
 | [0032](model/0032-reconcile-unit-derived.md) | The Reconcile Unit is derived from the dependency graph | settled |
 | [0033](model/0033-assignments-published-back.md) | Assignments are published back to the owning repository | settled |
 | [0034](model/0034-cluster-state-pinned-input.md) | ClusterState is a pinned, digested input | settled |

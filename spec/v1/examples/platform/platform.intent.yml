@@ -82,21 +82,13 @@ engines:
   rabbitmq: { backup: rabbitmq-backup }
   files: { backup: file-backup }
 
-# Receivers, the rule catalog, and scrape cadence
-# (docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md).
-observability:
-  scrape:
-    interval: 30s
-    scrapeTimeout: 10s
-  receivers:
-    none: null
-    business-hours: discord-daytime
-    urgent: discord-oncall
-    page: pushover-page
-  ruleCatalog:
-    baseline: [target-absent, restart-loop, probe-failing]
-    postgres: [replication-lag, connections-exhausted]
-    rabbitmq: [queue-depth, consumers-zero]
+# NO observability block. Receivers, the rule catalog, scrape cadence and the
+# monitor kind are configuration of a monitoring stack this document does not
+# operate: they live in the versioned configuration the observability Service
+# owns and its runner consumes (spec/v1/10-service-intent.md
+# #the-observability-boundary). Intent supplies two facts -- `alertClass` and
+# `scrape {port, path}` -- and the runner must fail if it cannot map them to an
+# active signal and a receiver.
 
 # One posture for every container the estate renders. A Workload authors no
 # class -- only the exceptions it needs
