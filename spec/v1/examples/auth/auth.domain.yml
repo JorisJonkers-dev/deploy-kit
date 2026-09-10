@@ -228,23 +228,31 @@ services:
             port: 8081
 
         startupBudget: 600s
-        zeroDowntime: true
+
+        # REQUIRED, and there is no default. `rolling` asks the platform to keep
+        # serving capacity throughout the cutover; `recreate` accepts a
+        # stop-then-start. This Workload holds no volume, so a rolling cutover
+        # is honourable and is what its owner asks for. The Kubernetes spellings
+        # -- RollingUpdate, maxSurge, maxUnavailable -- are derived by the
+        # adapter and appear nowhere here.
+        cutover: rolling
 
         # No `minAvailable`: the field is deleted
         # (docs/adr/model/0089-replicas-derived-no-minavailable.md). Availability
         # by replica count does not exist on this substrate -- local-path, RWO,
-        # one node per stateful volume -- so `replicas` derives as 1 and a
-        # second is a capacity decision stated as an override with its reason.
-        # auth-api's live pair was exactly that, on freed Frankfurt budget.
-        overrides:
-          - derivation: replicas    # a derivation's own name, never a Kubernetes
-                                    # field (docs/adr/model/0097-authored-values-name-model-concepts.md)
-            value: 2
-            reason: >-
-              Capacity, not availability: the pair was provisioned on freed
-              Frankfurt budget and both pods land on the one public-ingress
-              node. Retires when that budget is reclaimed or the capability
-              spreads to a second node.
+        # one node per stateful volume -- so `replicas` derives as 1.
+        #
+        # `replicas` is the ONLY local exception to a derived value in layer 1,
+        # and it is narrow: `count` must be above one, and `reason` is required
+        # whenever the block is present. auth-api's live pair was a capacity
+        # decision on freed Frankfurt budget, not an availability requirement.
+        replicas:
+          count: 2
+          reason: >-
+            Capacity, not availability: the pair was provisioned on freed
+            Frankfurt budget and both pods land on the one public-ingress
+            node. Retires when that budget is reclaimed or the capability
+            spreads to a second node.
 
         scrape:
           port: 8081            # resolves to port name 'http' via provides
@@ -381,11 +389,22 @@ services:
 
         startupBudget: 30s      # nginx serves within a second of starting; the
                                 # budget is the gate auth-api's 600s dominates
-        zeroDowntime: true
+
+        # REQUIRED on every Workload. Same value as auth-api, and stated again:
+        # this Workload holds no volume either, so a rolling cutover is
+        # honourable here too. The two Workloads switch together because they
+        # are one Service, not because they share a strategy.
+        cutover: rolling
+
+        # No `replicas` block: one is the derived count, and one is what this
+        # Workload wants. The block exists for a count above one with a reason,
+        # not to restate the default.
 
         # No `scrape`. This image exports no metrics surface, and a scrape path
         # the platform guessed would collect nothing and report success
-        # (docs/adr/model/0021-observability-scrape-and-alert-class.md).
+        # (docs/adr/model/0021-observability-scrape-and-alert-class.md). The
+        # Service still declares `alertClass: page` and is still observable --
+        # auth-api publishes the signal for the Service.
 
         # No `secrets`. Everything this Workload needs is baked into the bundle
         # at build time or reached through the browser, so no Vault role is

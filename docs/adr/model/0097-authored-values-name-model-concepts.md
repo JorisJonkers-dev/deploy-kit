@@ -3,7 +3,7 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-09-08
-normative: spec/v1/14-platform-intent.md#overridable-derivations
+normative: spec/v1/14-platform-intent.md#there-is-nothing-to-override-here
 rests-on: ["0005"]
 ---
 
@@ -34,11 +34,21 @@ target's vocabulary.
 The repair is the same everywhere: the authored value names the **model
 concept**, and one table maps it to the target.
 
-**Overrides** address derived values by the derivation's own name —
+**Overrides** addressed derived values by the derivation's own name —
 `startupDeadline`, `replicas`, `automountToken`, `ephemeralSize` — enumerated in
-chapter 14 with the field each renders to. An author overrides a decision, not a
-field; a rename touches the table; the editor completes the list; and a key no
-derivation produces is `E_UNKNOWN_OVERRIDE` rather than a field silently set.
+chapter 14 with the field each renders to. An author overrode a decision, not a
+field, and a key no derivation produced was `E_UNKNOWN_OVERRIDE` rather than a
+field silently set.
+
+> **Amended 2026-09-10.** The override mechanism is **deleted**
+> ([0031](0031-derived-overrides-with-reason.md)); chapter 14's table is gone
+> and `E_UNKNOWN_OVERRIDE` with it. The naming rule this paragraph records is
+> **unchanged and now applies to the sole survivor**: `replicas` names a model
+> concept — local capacity — and never `spec.replicas`, and its `reason` is
+> required by the field rather than by a convention
+> ([chapter 10](../../../spec/v1/10-service-intent.md#capacity)). The general
+> argument is also unchanged: an authored value names what it means, and the
+> target's spelling is a derivation.
 
 **Tiers** declare four edge facts: `audiences`, `listener`, `certificates`,
 `forwardAuth`. The `traefik` adapter maps `listener: tls` to an entryPoint and

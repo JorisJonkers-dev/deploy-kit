@@ -9,6 +9,17 @@ rests-on: ["0005"]
 
 # Observability is a scrape surface plus an Alert Class
 
+> **Amended 2026-09-10.** The two Service facts this decision names — `scrape`
+> on a Workload and `alertClass` on a Service — are now the **entire** Intent
+> surface. Cadence, monitor kind, Gatus checks, PrometheusRules, notifier routes
+> and receivers are **not** derivations of the Intent model: they are
+> configuration of a monitoring stack, owned by the observability Service and
+> applied by its runner
+> ([chapter 10](../../../spec/v1/10-service-intent.md#the-observability-boundary)).
+> The property this ADR exists for is unchanged and is now enforced at the
+> runner: every non-`none` class must map to an active signal **and** a
+> receiver, and the runner fails its build if it cannot.
+
 ## Rests on
 
 A rule the platform generates always evaluates and its alert always reaches a
@@ -36,10 +47,18 @@ The scrape path stays service-declared because it is genuinely service
 knowledge and it varies — `/actuator/prometheus`, `/api/actuator/prometheus`,
 `/metrics` — so a platform that guessed would silently collect nothing and
 report success. That is the residue [0005](0005-derivation-is-total.md) leaves:
-a port and a path only the framework inside the container knows. Everything
-downstream is derived — Gatus checks from health and exposure, ServiceMonitors
-from the scrape surface, PrometheusRules from the Alert Class, notifier routing
-from the Alert Class and `owner`.
+a port and a path only the framework inside the container knows.
+
+**Everything past those two facts is stack configuration, not a model
+derivation.** Which monitor kind, what cadence, which external checks, what
+PromQL and which receiver a severity routes to are things a monitoring stack
+knows and a deployment model does not. A versioned configuration owned by the
+observability Service consumes the resolved Service facts and produces them; it
+is authored once for the estate rather than restated per Service, and it is
+configuration of a system rather than a second Service DSL. Putting PromQL and
+receiver names in the Intent model made layer 1 own the configuration of a stack
+it does not operate — which is the same category error as a `backup.sh` string
+in a platform file ([0012](0012-assets-not-code.md)).
 
 Rendering the rules also closes a trap the estate has documented and paid for.
 A `PrometheusRule` without `release: metrics-stack` in `metadata.labels` is
@@ -85,6 +104,13 @@ leaves `urgent` and `page` with no receiver, and the symptom is silence.
 - Gatus's UI strings still read "personal-stack" and reference
   `inventory/fleet.yaml`; both become derived and stop naming an archived
   repository — paid by whoever lands the Gatus adapter.
-- Routing derives from fields only a Service carries, so the delivery machinery
+- Routing derives from facts only a Service carries, so the delivery machinery
   has no Alert Class here; [0058](../deferred/0058-delivery-machinery-observability.md)
   closes that gap — paid by platform.
+- The Intent model no longer carries a cadence, a catalog or a receiver map, so
+  the estate's scrape interval is stated in exactly one place — the
+  observability configuration — instead of in a Platform document the metrics
+  stack does not read; paid by whoever moves the four values.
+- The runner must fail rather than warn when a class and signal cannot be
+  mapped, which is what keeps "monitored but unrouted" impossible without the
+  model owning PromQL — paid by the observability Service's configuration.

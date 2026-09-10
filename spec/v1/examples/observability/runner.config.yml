@@ -1,0 +1,45 @@
+# The observability service's own configuration. Versioned, owned by the
+# observability Service, consumed by its runner.
+#
+# The deployment model does NOT carry this: no cadence, no receivers, no rule
+# catalog. Intent supplies two facts per Service — `alertClass` (Service) and
+# `scrape {port, path}` (Workload) — and this configuration turns the resolved
+# facts into monitors, cadence, external checks, PromQL, severity and receiver
+# routing.
+#
+# The model's one composition-time guarantee stays: a Service above
+# `alertClass: none` must publish a signal (E_ALERT_CLASS_WITHOUT_SIGNAL at
+# composition), and this runner must FAIL if it cannot map a resolved signal and
+# class to an active monitor and a receiver.
+#
+# Docs: spec/v1/10-service-intent.md #the-observability-boundary
+# ADRs: 0021 (the two facts), 0079 (the refusal; the catalog's new home)
+schemaVersion: 1.0.0
+schema: observability.jorisjonkers.dev/v1
+
+# Estate cadence, stated once. Every monitor this runner emits names both.
+scrape:
+  interval: 30s
+  scrapeTimeout: 10s
+
+# One routing table for the estate. Keyed by Alert Class.
+# `none` is the only class with no receiver: it is the honest opt-out.
+receivers:
+  none: null
+  business-hours: discord-daytime
+  urgent: discord-oncall
+  page: pushover-page
+
+# The rule catalog. Keyed by signal source: `baseline` applies to every scraped
+# Workload; `engine`-keyed entries add what that engine needs.
+# Severity and receiver are NOT restated here — they come from the class.
+ruleCatalog:
+  baseline: [target-absent, restart-loop, probe-failing]
+  postgres: [replication-lag, connections-exhausted]
+  rabbitmq: [queue-depth, consumers-zero]
+
+# THE PROOF, stated as configuration: every class except `none` must reach a
+# receiver through this table, and every Service above `none` must publish a
+# signal the runner can map. The runner's build fails when either half fails.
+requirement:
+  every-class-above-none-maps-to-a-signal-and-a-receiver: true

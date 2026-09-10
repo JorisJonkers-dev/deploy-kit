@@ -115,8 +115,8 @@ services:
         # The class still defaults to `restricted` and the other three controls
         # stand: the pod runs as uid 999, drops all capabilities and takes
         # seccomp RuntimeDefault. Only the named control is relaxed, and only
-        # with a reason -- the same shape a derived-value override uses
-        # (docs/adr/model/0031-derived-overrides-with-reason.md). The vocabulary of
+        # with a reason -- a declared fact about an image, not an override of a
+        # derivation. The vocabulary of
         # `allow` is the inverse of the four restricted controls: runAsRoot,
         # writableRootFilesystem, capability:<NAME>, seccompUnconfined
         # (docs/adr/model/0016-pod-hardening.md).
@@ -159,10 +159,13 @@ services:
           liveness:  {tcp: 5432}
 
         startupBudget: 60s
-        zeroDowntime: false
-        # Forced, not chosen. A ReadWriteOnce local-path volume cannot attach to
-        # two pods at once, so the strategy derives to Recreate -- which is what
-        # runs today, and why 21 of 30 workloads in this cluster use Recreate.
+
+        # REQUIRED, no default, and `recreate` is the only honourable answer:
+        # this Workload holds a ReadWriteOnce local-path volume, which cannot
+        # attach to two pods at once. Declaring `rolling` here is
+        # E_CUTOVER_UNHONOURABLE rather than a silent downgrade to Recreate --
+        # the owner states the stop-then-start they already have.
+        cutover: recreate
 
         stateful: true
         volumes:
@@ -312,7 +315,10 @@ services:
           liveness:  {tcp: 5672}
 
         startupBudget: 120s
-        zeroDowntime: false   # RWO local-path volume: Recreate, derived
+
+        # `recreate`: this Workload holds an RWO local-path volume. `rolling`
+        # would be E_CUTOVER_UNHONOURABLE, not a silent Recreate.
+        cutover: recreate
 
         stateful: true
         volumes:
@@ -362,7 +368,10 @@ services:
           liveness:  {tcp: 6379}
 
         startupBudget: 30s
-        zeroDowntime: false
+
+        # `recreate`: RWO volume again. The cache is reconstructible, so the
+        # stop-then-start costs a cold cache and nothing else.
+        cutover: recreate
 
         stateful: true
         volumes:

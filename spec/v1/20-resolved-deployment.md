@@ -96,8 +96,9 @@ Three readings of the rule matter, and none is an exception to it:
 - **The rule places values someone must state.** A derived value is stated by
   nobody: it is a function of the rows above it, which is what
   [0005](../../docs/adr/model/0005-derivation-is-total.md) claims is always possible.
-  Whether such a value may be overridden is settled in
-  [Overrides](#overrides), not here.
+  Whether such a value may be restated locally is settled in
+  [No overrides](#no-overrides), not here — and the answer is no, with one
+  named exception.
 
 The cost of the first reading is accepted and named here rather than discovered
 later: **nothing stops an author writing `memory: 8Gi`.** The rule places
@@ -145,7 +146,7 @@ field's placement link to this anchor rather than copying rows.
 | `exposure` `audience`, and a route's `audience` override | Service | no contention | one closed audience vocabulary; the per-route form is the anonymous path inside an authenticated host |
 | `exposure[].contentPolicy` | Service | no contention | `strict`, `admin` or `workflow`. Which profile an application needs is a fact about the application; the header set it selects is derived |
 | `exposure[].routes` — `path`, `match`, `workload`, `surface`, `redirectTo` | Service | no contention | which of the Service's own Workloads serves which path of the host. The surface must be one that Workload `provides` (`E_UNKNOWN_SURFACE`); no two routes may share a `path` + `match` pair (`E_DUPLICATE_ROUTE_MATCH`); `redirectTo` is a path, never a regex |
-| `probes`, `startupBudget`, `zeroDowntime` | Service | no contention | what only the Service knows about its own start and health |
+| `probes`, `startupBudget`, `cutover` | Service | no contention | what only the Service knows about its own start, health and cutover; `cutover` is required and has no default |
 | `hardening.exceptions` | Service | no contention | only the exceptions are authored; each names one control and carries a reason. The posture itself is uniform, so it is the platform's ([0016](../../docs/adr/model/0016-pod-hardening.md)) |
 | `volumes[].durability` | Service | no contention | what the data is worth cannot be observed |
 | `placement.memory`, `placement.cpu` | Service | pool — stated | required on every Workload; the Service states the requirement, the platform arbitrates it against node allocatable |
@@ -154,18 +155,18 @@ field's placement link to this anchor rather than copying rows.
 | `volumes[].size` | Service | pool — stated | how much data the volume holds, matched against the node contract's `disks[].usable_gib`; no eligible node is `E_STORAGE_UNSATISFIABLE` ([0081](../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md)) |
 | PVC capacity and the disk capacity filter | derived | — | the volume's `size`, and their sum per Workload for placement |
 | `placement.arch`, `.site`, `.capabilities` | Service | no contention | filters over facts the node contract publishes; a list is a set of equally acceptable values, never a ranking |
-| `observability.scrape` | Service | no contention | port and path of its own metrics surface |
+| `scrape` `{port, path}` | Service | no contention | port and path of its own metrics surface; the only observability fact Intent holds ([chapter 10](10-service-intent.md#the-observability-boundary)) |
 | `writablePaths` | Service | no contention | which paths the process must write; the size of each is platform-assigned ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)) |
 | `volumes[].durability` | Service | no contention | what losing the data costs; only the owner knows ([0015](../../docs/adr/model/0015-durability-class-per-volume.md)) |
 | `engine` | Service | no contention | what the process is, which the platform keys its backup method off ([0078](../../docs/adr/model/0078-engine-is-workload-vocabulary.md)) |
-| `overrides` | Service | no contention | a derived value restated with a recorded reason ([Overrides](#overrides)) |
+| `replicas` | Service | no contention | the sole local capacity exception: `count` above one with a required `reason` ([No overrides](#no-overrides)) |
 | route tier | platform | pool | the shared edge is finite; `E_NO_TIER_FOR_AUDIENCE` where no tier carries the audience |
 | route precedence | derived | — | `exact` before `prefix`, longer prefix before shorter; carried explicitly on the rendered route rather than left to the proxy's sort ([0093](../../docs/adr/model/0093-route-precedence-is-derived.md)) |
 | middleware chain | platform | pool | tier + audience + `contentPolicy`; `forward-auth` for `authenticated` on a public tier, the security-headers baseline with the named content profile, and the redirect rule a route's `redirectTo` asks for |
 | backup window, retention count, off-cluster destination | platform | pool | one policy per Durability Class; the window is one node's IO and the destination is one remote target ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)) |
 | the backup method | platform | pool | the image the Platform document names per `engine`, resolved through the images lock; nothing executable is authored ([chapter 14](14-platform-intent.md#engines)) |
-| alert rules, their severity and their receiver | platform | pool | the rule catalog keyed by `scrape` and `engine`; severity and receiver from `alertClass` ([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)) |
-| scrape `interval` and `scrapeTimeout` | platform | pool | the metrics stack's ingest budget is shared; stated in the Platform Intent, never defaulted |
+| alert rules, their severity and their receiver | observability service | pool | the versioned observability configuration, keyed by the resolved signal and `engine`; Intent supplies the class and nothing else ([chapter 10](10-service-intent.md#the-observability-boundary)) |
+| scrape `interval` and `scrapeTimeout` | observability service | pool | the metrics stack's ingest budget is shared; stated in the observability configuration, never in Intent |
 | the backup identity's grant on the destination | platform | pool | derived, never authored: the platform chose the destination, so it owns the credential |
 | Reconcile Unit and its ordering | platform | unique — arbitrated | one estate-wide DAG ([The Reconcile Unit](#the-reconcile-unit)) |
 | identity name, Vault role, Vault policy | platform | pool | named for the **Workload alone**; the auth role namespace is shared ([chapter 16](16-dependencies.md#workload-identity)) |
@@ -173,7 +174,7 @@ field's placement link to this anchor rather than copying rows.
 | image digest | platform | unique — arbitrated | one image reference resolves to one digest estate-wide, from the pinned images lock |
 | eligible node set, `nodeSelector` and affinity | platform | pool | every declared dimension matched against the node contract; no eligible node is `E_PLACEMENT_UNSATISFIABLE` ([Derived mechanics](#derived-mechanics)) |
 | recorded PV binding | platform | pool | one `local-path` PV lives on one node; read from the ClusterState snapshot |
-| `replicas` | derived | — | **1**; more than one is an override with a reason ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)) |
+| `replicas` | derived | — | **1**; more than one is the `replicas: {count, reason}` declaration ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)) |
 | `PodDisruptionBudget` | derived | — | emitted only where `replicas` exceeds one, as `maxUnavailable: 1`; a budget over a single replica is a drain deadlock |
 | `namespace` | derived | — | `<domain>-system`, and nothing else ([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)); several Services share one by construction |
 | requests and limits | derived | — | from `placement.memory` and `placement.cpu`: memory request equals memory limit, cpu request with no cpu limit |
@@ -183,7 +184,7 @@ field's placement link to this anchor rather than copying rows.
 | `runAsUser`, `runAsGroup`, `fsGroup` | derived | — | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Workload holds a volume ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)) |
 | container probe timings | derived | — | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Platform Intent's probe policy ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)) |
 | `progressDeadlineSeconds` | derived | — | from `startupBudget` |
-| rollout strategy, surge, unavailability | derived | — | from `zeroDowntime` and `volumes` |
+| rollout strategy, surge, unavailability | derived | — | from `cutover` and `volumes`; `cutover: rolling` over an RWO volume is `E_CUTOVER_UNHONOURABLE`, not a silent downgrade |
 | object kind | derived | — | from `lifecycle`, `stateful` and `volumes` |
 | the Service's release-gate deadline | derived | — | `max` over the Service's Workloads of `progressDeadlineSeconds` ([The release gate](#the-release-gate)) |
 | the object label set | derived | — | fixed, from Workload name, Service Id and the images lock ([chapter 10](10-service-intent.md#the-label-set)) |
@@ -192,8 +193,8 @@ field's placement link to this anchor rather than copying rows.
 | env entries and `envFrom` refs | derived | — | from env files, after placeholder resolution — including `${identity:…}`, the Workload's own derived facts ([0091](../../docs/adr/model/0091-identity-placeholders-not-framework-wiring.md)) |
 | dependency coordinates | derived | — | from the edge set and the provider's surfaces, bound to the key the consumer chose |
 | Runtime Profile values | derived | — | from `runtime` |
-| ServiceMonitor, PrometheusRule | derived | — | from `scrape` and `alertClass` |
-| notifier route | derived | — | from `alertClass` and `owner` |
+| ServiceMonitor, PodMonitor | observability service | — | from the resolved `scrape` facts, in the observability configuration; the model renders neither |
+| PrometheusRule, severity, receiver route | observability service | — | from `alertClass` and the signal, in the observability configuration ([chapter 10](10-service-intent.md#the-observability-boundary)) |
 | backup job and retention sweep | derived | — | from `volumes[].durability`; `reconstructible` renders none |
 | NetworkPolicy set | derived | — | from the edge set, exposure, grants, plus the baseline ([chapter 16](16-dependencies.md#network-policy)) |
 
@@ -406,8 +407,8 @@ snapshot's age is on the artifact.
 
 ## Derived mechanics
 
-A Service declares what only it can know — its cold-start budget, whether it
-requires zero-downtime rolls, which paths answer readiness and liveness, what a
+A Service declares what only it can know — its cold-start budget, whether its
+next cutover must keep serving, which paths answer readiness and liveness, what a
 volume's data is worth, what it can survive when an input changes — and what
 only it can state: how much memory and cpu each of its Workloads needs. Probe
 timings, rollout strategy, surge and unavailability, progress deadlines, health
@@ -430,14 +431,19 @@ hand, with the reasoning trapped in comments no tool can read.
 
 Five rules carry most of the weight:
 
-- **Strategy is a function of volumes, not a preference.** A `ReadWriteOnce`
-  volume cannot attach to two pods at once, so a Workload holding one renders
-  `Recreate`. Estate-wide the split is 21 `Recreate` to 9 `RollingUpdate`, and
-  every RWO holder is on the `Recreate` side. The renderer today reads an
-  authored enum (`src/adapters/kubernetes.ts:608`) and inspects no volume, which
-  is a trap: a stateful Workload whose author forgets `strategy: recreate` gets
-  `maxSurge: 1` against an RWO volume, appears to work on one node, and wedges
-  the first time a second worker exists.
+- **Strategy is a function of `cutover` and volumes, not a preference.** A
+  `ReadWriteOnce` volume cannot attach to two pods at once, so a Workload
+  holding one cannot surge — and a Workload that declares `cutover: rolling`
+  over one is refused with `E_CUTOVER_UNHONOURABLE` rather than silently
+  rendered as `Recreate`. Estate-wide the split is 21 `Recreate` to 9
+  `RollingUpdate`, and every RWO holder is on the `Recreate` side. The renderer
+  today reads an authored enum (`src/adapters/kubernetes.ts:608`) and inspects
+  no volume, which is a trap: a stateful Workload whose author forgets
+  `strategy: recreate` gets `maxSurge: 1` against an RWO volume, appears to work
+  on one node, and wedges the first time a second worker exists. Under
+  `cutover`, that forgetting is impossible — the two declarations are checked
+  against each other at composition, and the contradiction is a build error
+  naming the Workload and the volume.
 - **The progress deadline must exceed the startup budget, strictly.** It derives
   as budget × 3, floored. The current renderer emits `600` against a 600-second
   budget, so a JVM still inside its legitimate startup window is marked
@@ -472,8 +478,8 @@ Five rules carry most of the weight:
   kill beats eviction roulette. Cpu is a request with **no** limit, because
   throttling gets misdiagnosed as slow application code
   ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). One number per
-  dimension goes in, the shape stays derived, and the escape is an override with
-  a reason ([Overrides](#overrides)).
+  dimension goes in, the shape stays derived, and there is no hatch to reach it
+  ([No overrides](#no-overrides)).
 
 Neither hardening nor resources exists in either renderer today:
 `grep -rniE 'securityContext|runAsNonRoot|readOnlyRootFilesystem|seccompProfile'
@@ -598,74 +604,79 @@ is decidable when the plan is assembled, before any Adapter runs, because the
 complete set of paths is known at that point. Two Adapters claiming one path is
 a defect in the plan.
 
-## Overrides
+## No overrides
 
-A derived value is **overridable with a reason**; an assignment is not
-([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md)).
+**There is no override mechanism.** A derived value has exactly one declaring
+site — the derivation — and an assignment has exactly one author — the platform
+([0004](../../docs/adr/model/0004-contention-decides-authority.md),
+[0005](../../docs/adr/model/0005-derivation-is-total.md)). Nothing in this
+chapter is restated with a reason, and there is no `E_UNKNOWN_OVERRIDE` because
+there is no key set to fall outside.
+
+The one local exception is capacity, and it is a named field rather than a hatch
+([chapter 10](10-service-intent.md#capacity)):
 
 ```yaml
-overrides:
-  - derivation: startupDeadline
-    value: 600
-    reason: nginx pods, ~10-20Mi RAM each; a 1800s deadline is 3x the real budget
+replicas:
+  count: 2
+  reason: Capacity retained after the Frankfurt consolidation; the replicas are spread across two nodes.
 ```
 
-The key is the **derivation's own name**, from the closed set
-[chapter 14](14-platform-intent.md#overridable-derivations) enumerates beside the
-field each renders to ([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)).
-An owner overrides a decision, not a Kubernetes field: a target rename touches
-that table and no domain file, and `E_UNKNOWN_OVERRIDE` refuses a name no
-derivation produces.
+`replicas` derives as 1; `count` above one requires a `reason`. The effective
+count still decides whether a PDB is emitted.
 
-The exception already exists in the tree: `app-ui` runs
-`progressDeadlineSeconds: 600` while the three JVM services run `1800`, and a
-JVM cold start and an nginx start are genuinely different. One rule over one
-input cannot be right for both.
+### Why the hatch closed
 
-Refusing the hatch does not buy a better rule; it buys a falsified input. The
-deadline derives from the Startup Budget, and so do the startup probe's period
-and failure threshold — its target comes from the liveness declaration
-([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)). An owner who needs 600 and cannot say so declares a
-200-second budget to coax the number out — corrupting the one field only they
-could know and mis-deriving the probe along with it. The lie is invisible; an
-override is not. Requiring a reason makes the rationale data rather than a YAML
-comment no tool can read.
+The hatch existed because the alternative was said to be a falsified input: the
+deadline derives from `startupBudget` — and so do the startup probe's period and
+threshold — so an owner who needed 600 and could not say so would declare a
+200-second budget to coax the number out. That argument was sound and it was
+then used to license more than it justified.
 
-Three boundaries:
+The historic case is `app-ui`: `progressDeadlineSeconds: 600` against the three
+JVM services' `1800`, justified as *\"nginx pods, ~10–20Mi RAM each\"*. That is
+not evidence of a value only its owner could know; it is evidence that one rule
+over `startupBudget` was wrong for a whole workload class. A JVM cold start and a
+static-bundle start differ by **two orders of magnitude**, and the correct
+response is a rule that reads an input the Workload already declares — not a
+per-Workload exception carrying a number the rule should have produced.
 
-- **Assignments are outside the hatch.** Every row of the
-  [Authority](#authority) table whose authority is *platform* — route tier, the
-  middleware chain it carries, the eligible node set and the selector that
-  expresses it, Secret Store path, Reconcile Unit, image digest — may not be
-  overridden. They arbitrate shared resources, and a local override
-  reintroduces exactly the collision arbitration exists to prevent, at the
-  layer with no arbiter. Widening a
-  selector past what the declared dimensions admit is not a correction; it is a
-  `Pending` pod with the diagnostic removed. A Workload that should run
-  somewhere else edits `placement` in its own file, which is authored intent and
-  needs no hatch; a Service wanting a different assignment goes through
-  arbitration and [Publish back](#publish-back). `host` left this list with the
-  hostname row it used to sit in: it is authored, so an owner wanting a different
-  one edits their own `exposure` entry and there is nothing derived to override.
-- **`namespace` is derived and still not overridable.** It is the one derivation
-  the hatch does not cover, and the reason is the hatch's own argument. The
-  hatch exists because a derivation's inputs can be too poor to state the truth,
-  so refusing it buys a falsified input. Nothing here is too poor to state:
-  `<domain>-system` has exactly one input, the author writes it, and an author
-  who wants a different namespace changes `domain` — one edit, in the open,
-  which moves the Service to another file and another fragment. An override
-  would buy nothing except a second way to say where a Service lives, and a
-  second record of one fact drifts.
-- **`hardening.exceptions` is the same shape for a different surface.** A
-  Workload that cannot meet the default class names the specific exception and
-  its reason, in the shape used here.
+So the classification, and the evidence it rests on:
 
-Two costs are accepted. Overrides cannot be enumerated estate-wide, so a dead
-override looks identical to a load-bearing one and both persist; and the
-dead-declaration check of [chapter 16](16-dependencies.md#the-three-properties)
-cannot run over the one surface that permits hand-tuning. Both stay recoverable:
-composition already reads every Intent Fragment, so a register of active
-overrides is a later read over data already in hand.
+| old override key | what it actually was | where it went |
+|---|---|---|
+| `replicas` | irreducible local capacity knowledge | the named `replicas: {count, reason}` field — the one survivor |
+| `startupDeadline` | a workload class (`runtime: static` starts in seconds, `jvm` in minutes) | repaired central rule over `startupBudget` and `runtime` |
+| `gateDeadline` | `max` over members — already a derivation, never a decision | derived, unchanged |
+| `automountToken` | a derivation from `delivery: self` | derived, unchanged ([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)) |
+| `ephemeralSize`, `probeCadence`, `backupTerms`, `scrapeCadence` | platform policy over shared resources | platform, stated once |
+| `routePriority` | derived by design, to prevent hand-tuning | derived, unchanged ([0093](../../docs/adr/model/0093-route-precedence-is-derived.md)) |
+| `volumeSize` | the volume's authored `size` | authored, never derived |
+
+**The deadline rule is the one open proof.** `runtime: static` is recorded here
+as the classification, not as a settled multiplier: the estate's actual deadline
+differences and their rollout evidence must be inventoried before the corrected
+rule is selected and tested. Until that inventory passes, the single
+`startupBudget × 3` rule stands and no Workload restates it.
+
+Two properties were bought by the hatch and are kept without it. A wrong
+derivation is now visible as a wrong render for a whole class rather than hidden
+behind a per-Workload reason — which is what makes it fixable. And no value has
+two declaring sites, so chapter 16's single-authority property runs over every
+surface with no exemption for hand-tuning.
+
+### `namespace` is still not restatable
+
+`<domain>-system` has exactly one input, the author writes it, and an author who
+wants a different namespace changes `domain` — one edit, in the open, which moves
+the Service to another file and another fragment. A second way to say where a
+Service lives is a second record of one fact, and it drifts.
+
+### `hardening.exceptions` is not an override
+
+It is the same shape for a different surface: a Workload that cannot meet the
+default posture names the specific control and its reason. The posture itself is
+platform policy; the exception is a declared fact about an image.
 
 ## The Reconcile Unit
 

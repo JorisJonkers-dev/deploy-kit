@@ -204,7 +204,13 @@ services:
           # (docs/adr/model/0014-probes-are-siblings.md).
 
         startupBudget: 600s     # JVM cold start measured at ~250-300s
-        zeroDowntime: true      # the MCP endpoint 503s if a roll opens a gap
+
+        # REQUIRED, no default. This Workload holds no volume, and its owner
+        # requires continuity: the MCP endpoint 503s if a roll opens a gap.
+        cutover: rolling
+
+        # No `replicas` block: the derived count is one. Capacity is the only
+        # local exception to a derived value, and this Workload needs none.
 
         scrape:
           port: 8080            # resolves to port name 'http' via provides
@@ -260,10 +266,13 @@ services:
         probes: none
 
         startupBudget: 120s
-        zeroDowntime: false     # forced, not chosen: the ReadWriteOnce
-                                # local-path volume below cannot attach to two
-                                # pods at once, so the strategy derives to
-                                # Recreate
+
+        # `recreate`, and it is the only honourable answer: the ReadWriteOnce
+        # local-path volume below cannot attach to two pods at once, so
+        # `cutover: rolling` here is E_CUTOVER_UNHONOURABLE rather than a
+        # strategy silently derived to Recreate. The owner states the
+        # stop-then-start that the storage already forces.
+        cutover: recreate
 
         # A file-level copy is the backup method for a directory of files, and
         # `irreplaceable` derives one -- so the engine is required here
