@@ -343,7 +343,17 @@ services:
 
   # ========================================================= platform-valkey
   - id: platform-valkey
-    alertClass: business-hours    # a cache: losing it is slow, not silent
+    # `none` is the honest opt-out, and this Service is why the vocabulary has
+    # one. A cache losing its contents is slow rather than silent, so the
+    # instinct is `business-hours` -- but valkey speaks RESP and exports no
+    # Prometheus surface, no exporter runs beside it, and a datastore is
+    # correctly not exposed, so there is no external health surface either. A
+    # class above `none` here is E_ALERT_CLASS_WITHOUT_SIGNAL: the guarantee is
+    # per Service, and a sibling Service's `scrape` does not satisfy it.
+    # Raising the class is a change to this Workload -- an exporter sidecar and
+    # a `scrape` surface, the repair `platform-postgres` above already makes --
+    # not an edit to this line.
+    alertClass: none
 
     workloads:
       - name: valkey
