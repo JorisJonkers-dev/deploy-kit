@@ -44,7 +44,9 @@ Conventions that hold across every drawing:
   **Two edges to the same box share their exit and their run**, and part only
   on the way down, so `readiness` and `liveness` read as one relation with two
   ends rather than two lines crossing the drawing. Where two edges say the same
-  thing about the same box, the name is written **once**, under that box.
+  thing about the same box, the name is written **once**, as its own text below
+  every run that feeds that box, so it lands on neither a line nor an arrow
+  head.
 
   **Closed vocabularies are not drawn.** They were tried as a panel and then as
   nodes beside their owning class; both made the model harder to read, the first

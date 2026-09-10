@@ -243,6 +243,7 @@ def neighbours(a, b):
 # two links into one box that say the same thing are named once, under that box
 labelled = set()
 taken = {}
+deep = {}
 for j, (style, a, b, label) in enumerate(cross):
     if (b, label) in labelled:
         label = ""
@@ -256,12 +257,17 @@ for j, (style, a, b, label) in enumerate(cross):
         k = taken.get(d, 0)
         taken[d] = k + 1
         ly = y[d] + rowh[d] + 14 + k * 26
-        # each link enters the shared target on its own side, and its name
-        # stays beside that target at its own lane's height
+        # each link enters the shared target on its own side, and the last
+        # waypoint sits under that entry point so the final segment is vertical
+        # and its arrow head points into the box rather than across it
         into = 0.34 if cx(a) < cx(b) else 0.66
+        ex = x[b] + into * W
         st = style.replace("entryX=0.5;entryY=0;", f"entryX={into};entryY=1;")
-        add_edge(f"x{j}", st, a, b, label, [(cx(a), ly), (cx(b), ly)],
-                 at=0.86, lift=13, shift=0)
+        add_edge(f"x{j}", st, a, b, "", [(cx(a), ly), (ex, ly)])
+        # the name goes below every lane feeding this box, as its own text,
+        # clear of both arrow heads and of any run
+        prev_y, prev_l = deep.get(b, (0, ""))
+        deep[b] = (max(prev_y, ly), prev_l or label)
     else:
         # the boxes face each other: one straight line, side to side, at a
         # height that is inside both of them
@@ -280,6 +286,14 @@ for j, (style, a, b, label) in enumerate(cross):
                        .replace("entryX=0.5;entryY=0;entryDx=0;entryDy=0;",
                                 f"entryX=1;entryY={round(eb, 4)};entryDx=0;entryDy=0;"))
         add_edge(f"x{j}", st, a, b, label, [], at=0.86, lift=-12)
+
+LABEL = ("text;html=0;strokeColor=none;fillColor=none;align=center;"
+         "verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=#6d28d9;")
+for t, (ly, label) in deep.items():
+    c = ET.SubElement(root, "mxCell", {"id": f"L{ident[t]}", "value": label,
+                                       "style": LABEL, "parent": "1", "vertex": "1"})
+    ET.SubElement(c, "mxGeometry", {"x": str(int(cx(t) - 110)), "y": str(int(ly + 12)),
+                                    "width": "220", "height": "18", "as": "geometry"})
 
 open(sys.argv[1], "w").write(
     '<mxfile host="Electron" agent="scripts/diagrams/class-diagram.py" version="29.0.3">'
