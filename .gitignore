@@ -85,3 +85,6 @@ coverage/
 
 # Local working specs: session scratch, never committed
 /docs/specs/
+
+# Scratch
+.tmp/

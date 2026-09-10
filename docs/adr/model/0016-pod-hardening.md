@@ -8,7 +8,22 @@ normative: spec/v1/10-service-intent.md#pod-hardening
 rests-on: ["0005"]
 ---
 
-# Pod hardening is layer-1 vocabulary
+# Pod hardening is platform policy, and has no exception surface
+
+> **Amended 2026-09-10.** The exception vocabulary is **deleted**. A Workload
+> authors no hardening at all: it declares the paths it must write, and an image
+> that cannot meet `restricted` is `E_HARDENING_UNMET`. A per-control relaxation
+> carried with a reason is an override under another name, and it outlives the
+> image that justified it — which is the mechanism
+> [0031](0031-derived-overrides-with-reason.md) deleted everywhere else in the
+> model, kept here only because this record called the resulting list a
+> deliverable. The estate settled the argument: after
+> [0092](0092-writable-paths-are-declared.md) and
+> [0082](0082-images-lock-carries-uid-and-gid.md), **no Workload in the worked
+> set declares an exception**. The inventory of what an estate cannot harden
+> belongs in a Bidirectional Ledger with an owner
+> ([0055](0055-bidirectional-ledgers.md)), not in the DSL every Service author
+> writes.
 
 > **Amended 2026-09-09.** The *exceptions* are layer-1 vocabulary; the **class is
 > not**. `restricted` is the only value that exists, so a field carrying it on
@@ -19,26 +34,19 @@ rests-on: ["0005"]
 > The posture moves to
 > [chapter 14](../../../spec/v1/14-platform-intent.md#hardening-policy) as one
 > line; a Workload and a sidecar author only the controls they relax. Nothing
-> else in this record changes: the exception list is still the deliverable, and
-> a second class earns a value when an image exists that cannot meet
-> `restricted` and cannot be excepted control by control.
-
-> **Note, 2026-09-08.** `allow: capability:<NAME>` keeps the Linux capability
-> name deliberately. A capability is what the binary asks the kernel for — the
-> same kind of fact as a port or a writable path, and the same word on any
-> substrate — so it is not the mechanism leak the layer-1 rule excludes
-> ([0097](0097-authored-values-name-model-concepts.md) records why, so the next
-> review does not re-raise it).
+> else in this record changed at the time; the 2026-09-10 amendment above
+> supersedes the exception half of it.
 
 ## Rests on
 Every image the estate runs can start under `restricted` — `runAsNonRoot`,
 `readOnlyRootFilesystem`, all capabilities dropped, seccomp `RuntimeDefault` —
-with a small, nameable set of exceptions. False if: a load-bearing image cannot
-run non-root and has no rebuildable equivalent, so the default must be relaxed
-rather than excepted. Settled by: rendering with the default class into a
-vcluster ([0051](../deferred/0051-vcluster-substrate.md)), then `kubectl get pods -A
---field-selector=status.phase!=Running` — each pod it names is a declared
-exception with a reason, or a rebuild.
+once the paths it writes are declared. False if: a load-bearing image cannot
+run non-root and has no rebuildable equivalent, in which case it is refused and
+the estate carries it in a Bidirectional Ledger until it is replaced. Settled
+by: rendering with the class into a vcluster
+([0051](../deferred/0051-vcluster-substrate.md)), then `kubectl get pods -A
+--field-selector=status.phase!=Running` — each pod it names is a rebuild or a
+ledger entry, not a new field.
 
 ## Why
 The vocabulary does not exist and neither renderer emits the fields.
@@ -75,7 +83,7 @@ declared and counted, not silent.
 |---|---|---|
 | Accept root-by-default as an owned risk (the review's own stated alternative) | Nothing today; the same ~30 pull requests and image rebuild later, but against running services, each taking a restart, and after the incident that prompts it | The cost does not stay flat — it is the one finding that rises weekly, and on a single kernel shared by the k3s server, the datastore and the in-cluster deploy runner, root-by-default is the whole isolation story |
 | Enforce from the platform only, via Pod Security Admission or an admission mutation | An admission controller on a single-node cluster; PSA can reject but never fill in, so a non-conforming pod fails at apply with no exception path a Service can author | A mutating default is a value the render cannot see, contradicting [0005](0005-derivation-is-total.md); rejection with no declared exception is an outage found at apply time |
-| One estate-wide hardening posture with no per-Workload exceptions | The first image that cannot run non-root relaxes the default for all ~30 Services at once | The exception list is the deliverable: an estate that cannot name what it fails to harden cannot shrink that list |
+| One estate-wide hardening posture with no per-Workload exceptions | The first image that cannot run non-root relaxes the default for all ~30 Services at once | Chosen, with the refusal as the answer instead: the class never relaxes, the image is refused, and the ledger names what the estate cannot harden |
 
 ## Reversibility
 Undo cost today: an exceptions list in the layer-1 schema, one line in the

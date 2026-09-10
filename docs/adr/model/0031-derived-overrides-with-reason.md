@@ -3,87 +3,94 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-08-31
-normative: spec/v1/20-resolved-deployment.md#overrides
+normative: spec/v1/20-resolved-deployment.md#no-overrides
 rests-on: ["0005"]
 ---
 
-# A derived value is overridable with a reason; an assignment is not
+# A derived value has one declaring site; capacity is the sole named exception
 
-> **Amended 2026-09-08.** An override names a derivation by the **derivation's
-> own name** — `startupDeadline`, `replicas`, `automountToken` — from the closed
-> set [chapter 14](../../../spec/v1/14-platform-intent.md#overridable-derivations)
-> enumerates beside the field each renders to, never by the Kubernetes field
-> ([0097](0097-authored-values-name-model-concepts.md)). A name no derivation
-> produces is `E_UNKNOWN_OVERRIDE`. The rule this ADR records — a derived value
-> is overridable with a reason, an assignment is not — is unchanged.
+> **Amended 2026-09-08.** An override named a derivation by the **derivation's
+> own name** — `startupDeadline`, `replicas`, `automountToken` — from a closed
+> set in [chapter 14](../../../spec/v1/14-platform-intent.md), never by the
+> Kubernetes field ([0097](0097-authored-values-name-model-concepts.md)).
+>
+> **Superseded in substance 2026-09-10.** The generic mechanism is **deleted**.
+> There is no `overrides` field, no overridable-derivations table and no
+> `E_UNKNOWN_OVERRIDE`. The rule that survives is the one this ADR was always
+> reaching for — a derived value has exactly one declaring site — and the sole
+> local exception is the named `replicas: {count, reason}` field
+> ([chapter 10](../../../spec/v1/10-service-intent.md#capacity)). The argument
+> below is kept because it is the evidence for why the hatch was wrong to
+> generalise, not because the hatch still exists.
 
 ## Rests on
-Exceptions to a correct derivation rule are real but rare — few enough to name
-one at a time. False if: rendering the estate needs more than one override per
-Service, which would mean the rule is wrong rather than the workload unusual.
-Settled by: render every Service, diff the derived rollout and configuration
-values against the live manifests, and count the fields where the live value
-differs *and* the owner can defend the difference — today that count is one.
+A derived value is a function of declared inputs, so a value reachable two ways
+has no single declaring site and cannot be checked. False if: rendering the
+estate needs more than one locally restated value per Service, which would mean
+the derivation rules are wrong rather than the workloads unusual. Settled by:
+render every Service with the single `replicas` exception, and find no derived
+value that a Workload must restate to be correctly rendered.
 
 ## Why
 [0030](0030-runtime-mechanics-derived.md) forbids authoring derived runtime
 mechanics and [0011](0011-configuration-env-files-per-workload.md) forbids
-authoring derived configuration. Both need an escape, because a legitimate
-exception already exists in the tree: `app-ui` runs
-`progressDeadlineSeconds: 600` while the three JVM services run `1800`, and its
-comment explains why — *"nginx pods, ~10–20Mi RAM each"*. That is not a defect
-in the derivation rule. A JVM cold start and an nginx start are genuinely
-different, and one rule over one input cannot be right for both.
+authoring derived configuration. The escape was justified by one case: `app-ui`
+runs `progressDeadlineSeconds: 600` while the three JVM services run `1800`, and
+its comment explains why — *"nginx pods, ~10–20Mi RAM each"*.
 
-Refusing an escape entirely was rejected for a specific reason: the alternative
-is not a better rule, it is a falsified input. The derived deadline is
-`startupBudget × 3, floored`, and the same budget sets the startup probe's
-period and failure threshold. An owner who needs 600 and cannot say so declares
-a 200-second Startup Budget to coax the number out — corrupting the one field
-only they could know, and mis-deriving the probe along with the deadline. The
-lie is invisible; an override is not.
+That case did not justify a general mechanism, and re-reading it shows why. A
+JVM cold start and a static-bundle start differ by **two orders of magnitude**;
+that is not a value only `app-ui`'s owner could know, it is a **workload class**
+the central rule failed to distinguish. The correct response is a rule that
+reads `runtime` — an input every Workload already declares — not a per-Workload
+exception carrying a number the rule should have produced.
 
-Requiring a reason makes the rationale data rather than a YAML comment no tool
-can read, which is what it is today. Assignments — hostname, namespace, node,
-Secret Store path, Reconcile Unit, image digest — stay outside the hatch: they
-arbitrate shared resources under [0004](0004-contention-decides-authority.md),
-and a local override would reintroduce exactly the collision arbitration
-exists to prevent. The boundary is therefore explicit in the schema, not
-conventional: a field is overridable or it is not, and the non-overridable list
-belongs in chapter 20 rather than in the resolver's behaviour.
+The falsified-input argument was sound as far as it went: the deadline derives
+from `startupBudget`, and so do the startup probe's period and threshold, so an
+owner who needs 600 and cannot say so might declare a 200-second budget to coax
+the number out. But that argument licensed every later addition to the table,
+and the table's contents show it: of the ten rows, one was irreducible local
+knowledge (`replicas`), four were platform policy over shared resources
+(cadence, retention, ephemeral size, probe timing), three were derivations that
+were never decisions, and one — `routePriority` — existed to prevent the very
+hand-tuning the hatch reintroduced
+([0093](0093-route-precedence-is-derived.md)).
+
+An unbounded exception system becomes the normal configuration interface. That
+is the defect, and it is not fixed by requiring a reason.
 
 ## Alternatives
 | option | cost if taken | why rejected |
 |---|---|---|
-| No escape hatch — the pure rule | `app-ui` runs a 1800 s deadline (three times its real budget: a wedged roll takes 30 min to fail instead of 10), or its owner reports a false 200 s Startup Budget | The falsified input corrupts the one field only the owner knows and silently mis-derives the startup probe too; it is unauditable in a way an override is not |
-| Per-Service exceptions in the toolkit's rule table | Platform owner edits and releases the toolkit for every exception; ~30 repositories wait on a toolkit release for a one-line tuning change | Moves Service knowledge into the platform and puts a release in the path of every exception |
-| Overrides with no required reason | Nothing to build; a bare number in the fragment | That is precisely today's unreadable YAML comment; the reason is the only thing a later register can use to decide whether an override still earns its place |
-| Assignments overridable as well | Two Services can claim one hostname, one node label, one Secret path | Reintroduces the collisions arbitration exists to prevent, at the layer with no arbiter |
+| Keep the generic hatch (status quo) | Every new derived field needs an overridable flag, and an exception can outlive the bug that justified it | Ten rows, of which one was real; the table becomes the interface |
+| No escape at all, and no `replicas` field | Simplest possible rule | Capacity is genuinely irreducible: only the owner knows why a second replica exists, and a reason for it is the whole point |
+| A narrowly named field per real exception | One field per exception, each with authority and validation | **Taken.** This is the decision: `replicas` is that field, and the bar for a second is deliberately high |
+| Repair every derivation rule instead | Nothing to except, ever | Not achievable in general — `replicas` is a fact, not a rule outcome |
+| Assignments restatable as well | Two Services can claim one hostname, one node label, one Secret path | Reintroduces the collisions [0004](0004-contention-decides-authority.md) exists to prevent |
 
 ## Reversibility
-Undo cost today: delete the `overrides` array from the layer-1 schema, delete
-the resolver branch that applies it, and fix the one field in the estate that
-uses it — hours, blast radius one Workload. Becomes irreversible once: overrides
-are numerous and unenumerated across the ~30 layer-1 repositories; withdrawing
-the hatch then means tracing each one back to a derivation-rule change, with
-the recorded reason as the only surviving record of why the value was chosen.
+Undo cost today: add an `overrides` array to the layer-1 schema and a resolver
+branch — hours, since no Workload carries one and the estate has no
+override-shaped data to migrate. Becomes irreversible once: Workloads come to
+depend on locally restated values, at which point withdrawing the hatch means
+tracing each one back to a derivation-rule change.
 
 ## Consequences
-- Every exception carries machine-readable rationale instead of a comment —
-  writing it paid by the overriding Workload's owner, once per override.
-- Overrides cannot be enumerated estate-wide, so a dead override looks
-  identical to a load-bearing one and both persist; this is an accepted cost —
-  paid by the platform owner at the first estate-wide tuning change.
-- Chapter 16's "no declaration has out-degree zero" property cannot run over
-  overrides: the one surface permitting hand-tuning is the one surface the
-  dead-declaration check is switched off — accepted, paid by joris.
-- It stays recoverable: composition already reads every Intent Fragment
-  ([0037](0037-composition-oci-fragments.md)), so a register of active
-  overrides — and a test of whether each still changes anything — is a later
-  read over data already in hand, not a new mechanism; build cost paid by the
-  toolkit owner when the count justifies it.
-- The overridable/non-overridable flag must be set on every new derived field
-  and every new assignment — paid by the schema author, on each addition.
-- A Service wanting a different hostname, node or namespace must go through
-  arbitration and [0033](0033-assignments-published-back.md) rather than
-  override locally — paid by that Service's owner in turnaround time.
+- One less concept, and one less thing to get wrong: a derived value cannot be
+  wrong in two places at once — paid by nobody.
+- A wrong derivation is now visible as a wrong render for a whole workload class
+  rather than hidden behind a per-Workload reason — which is what makes it
+  fixable, paid by the rule's author.
+- Chapter 16's single-authority property runs over **every** surface; the
+  dead-declaration check no longer has an exemption for hand-tuning — paid by
+  nobody.
+- A genuine exception now has to earn a named field with its own authority,
+  validation and example, which is deliberately more work than adding a row —
+  paid by whoever proposes the next one, and that is the intent.
+- `app-ui`'s deadline is now a derivation-rule problem, not a declared
+  exception, so the corrected rule must be selected and tested against the
+  estate's actual rollout evidence before the single `startupBudget × 3` rule is
+  replaced — see [chapter
+  20](../../../spec/v1/20-resolved-deployment.md#why-the-hatch-closed); paid by
+  joris, and it is the one open proof this decision carries.
+- No `E_UNKNOWN_OVERRIDE`, because there is no key set to fall outside of.

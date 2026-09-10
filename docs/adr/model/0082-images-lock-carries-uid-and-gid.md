@@ -64,7 +64,7 @@ precisely so that its length stays visible. Solving with an exception what
 | The Workload authors `runAsUser` | Explicit and visible, no lock change | A UID is a mechanism, and it duplicates a fact the image carries — the two can disagree, and the image wins at runtime |
 | The platform assigns a UID per Workload | Uniform, independent of what images declare | Requires every image to tolerate an arbitrary UID, and files already written to a PV by the image's own user stop being readable |
 | Author `fsGroup` per Workload | Handles an image whose data group differs from its run group | A second mechanism in layer 1 restating what the image config already says |
-| An init container that chowns the volume | Works regardless of the image, and is the common pattern | Needs a root-capable init container on every stateful Workload, which is a hardening exception per Workload for a problem `fsGroup` solves with none |
+| An init container that chowns the volume | Works regardless of the image, and is the common pattern | Needs a root-capable init container on every stateful Workload, which cannot meet `restricted` at all, for a problem `fsGroup` solves without one |
 
 ## Reversibility
 Undo cost today: two lock fields and one derivation — hours, and the lock is

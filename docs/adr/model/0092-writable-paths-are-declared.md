@@ -36,9 +36,10 @@ writable directories, and its own recorded reason predicts the fix: *"the
 exception retires when a rebuilt image relocates both paths onto a mounted
 emptyDir."* Under this decision no rebuild is needed — the paths are mounted by
 declaration — and the exception retires now. That matters beyond one Workload:
-chapter 10 keeps the exception list as the estate's inventory of what it cannot
-harden, precisely so its length is meaningful. An entry for something that is not
-an exception makes the inventory lie.
+chapter 10 refuses an image that cannot meet the class rather than relaxing a
+control for it, so a mounted tmpfs must not be confused with disabling
+`readOnlyRootFilesystem`. Only one of the two is expressible, and it is this
+one.
 
 So a writable path keeps the control **intact**. `readOnlyRootFilesystem` stays
 `true` and the declared paths are mounted, which is what the control has always

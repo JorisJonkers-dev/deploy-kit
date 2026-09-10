@@ -354,8 +354,8 @@ derived — `<domain>-system` — so no step below names one.
    `E_PLACEMENT_UNSATISFIABLE` at build
    ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)).
 5. Declare the rest of the runtime intent only this Service knows: any
-   `hardening.exceptions` entries, each carrying `allow` and a `reason`, against
-   the `restricted` default; `durability` per volume — `reconstructible`,
+   `writablePaths` the process needs against the `restricted` default;
+   `durability` per volume — `reconstructible`,
    `recoverable` or `irreplaceable`; and `probes.readiness` / `probes.liveness`,
    each with its own `path` + `port` or `tcp`, or `probes: none` stated
    explicitly where there is nothing to probe.

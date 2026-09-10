@@ -12,7 +12,7 @@
 # that forced `exposure` from the Workload to the Service -- placement as hard
 # dimensions carrying an arch set and a capability, three `delivery: self`
 # grants including a Transit key that takes no placeholder, four dependencies,
-# one hardening exception with a reason, and config that is almost entirely
+# writable paths that retired a hardening exception, and config that is almost entirely
 # derived.
 #
 # Companion env files, one per WORKLOAD
@@ -28,7 +28,7 @@
 schemaVersion: 1.0.0
 
 # The header is three fields, and `owner` is the ONLY one raised to the domain.
-# `alertClass` stays per Service -- raising it makes a domain page as loudly as
+# `observability` stays per Service -- raising it makes a domain page as loudly as
 # its loudest member -- and so does `secrets`, because a domain-level grant
 # hands every Service in the file a reader slot on the whole path
 # (docs/adr/model/0009-vault-read-is-per-path.md,
@@ -63,7 +63,18 @@ services:
   # drawing a boundary, and answers atomicity
   # (docs/adr/model/0032-reconcile-unit-derived.md).
   - id: auth
-    alertClass: page        # every forward-auth protected route depends on it
+
+    # Whole or absent. The class states urgency and the scrape names the surface
+    # that carries the signal, both on the Service, because both are facts about
+    # the Service rather than about one of its two containers. auth-api
+    # publishes for the pair; auth-ui exports nothing and needs to say nothing
+    # (docs/adr/model/0021-observability-scrape-and-alert-class.md).
+    observability:
+      alertClass: page      # every forward-auth protected route depends on it
+      scrape:
+        workload: auth-api
+        surface: http       # the name declared in auth-api's `provides`
+        path: /api/actuator/prometheus
 
     # No Service-level `secrets`. The three grants below are auth-api's alone,
     # so they sit on that Workload: a Service-level grant is held by EVERY
@@ -228,27 +239,31 @@ services:
             port: 8081
 
         startupBudget: 600s
-        zeroDowntime: true
+
+        # REQUIRED, and there is no default. `rolling` asks the platform to keep
+        # serving capacity throughout the cutover; `recreate` accepts a
+        # stop-then-start. This Workload holds no volume, so a rolling cutover
+        # is honourable and is what its owner asks for. The Kubernetes spellings
+        # -- RollingUpdate, maxSurge, maxUnavailable -- are derived by the
+        # adapter and appear nowhere here.
+        cutover: rolling
 
         # No `minAvailable`: the field is deleted
         # (docs/adr/model/0089-replicas-derived-no-minavailable.md). Availability
         # by replica count does not exist on this substrate -- local-path, RWO,
-        # one node per stateful volume -- so `replicas` derives as 1 and a
-        # second is a capacity decision stated as an override with its reason.
-        # auth-api's live pair was exactly that, on freed Frankfurt budget.
-        overrides:
-          - derivation: replicas    # a derivation's own name, never a Kubernetes
-                                    # field (docs/adr/model/0097-authored-values-name-model-concepts.md)
-            value: 2
-            reason: >-
-              Capacity, not availability: the pair was provisioned on freed
-              Frankfurt budget and both pods land on the one public-ingress
-              node. Retires when that budget is reclaimed or the capability
-              spreads to a second node.
-
-        scrape:
-          port: 8081            # resolves to port name 'http' via provides
-          path: /api/actuator/prometheus
+        # one node per stateful volume -- so `replicas` derives as 1.
+        #
+        # `replicas` is the ONLY local exception to a derived value in layer 1,
+        # and it is narrow: `count` must be above one, and `reason` is required
+        # whenever the block is present. auth-api's live pair was a capacity
+        # decision on freed Frankfurt budget, not an availability requirement.
+        replicas:
+          count: 2
+          reason: >-
+            Capacity, not availability: the pair was provisioned on freed
+            Frankfurt budget and both pods land on the one public-ingress
+            node. Retires when that budget is reclaimed or the capability
+            spreads to a second node.
 
         # All three grants use `delivery: self` -- the application fetches them
         # through spring-cloud-vault at runtime, which is what it already does
@@ -333,7 +348,12 @@ services:
                                 # PYROSCOPE_* wiring to inject, and saying
                                 # `static` is a decision rather than an omission
         provides:
-          http: 80
+          http: 8080         # above 1024. A port below it cannot be bound
+                             # under runAsNonRoot with capabilities dropped, and
+                             # there is no exception to relax
+                             # (docs/adr/model/0083-privileged-port-needs-the-capability.md).
+                             # The Service object still listens on 80: a route
+                             # names a surface, never a number
 
         placement:
           # The two required dimensions, and nothing else. Every further
@@ -347,10 +367,10 @@ services:
                                 # above that, and request == limit
           cpu: 10m
 
-        # No `hardening` block, and no exception. nginx writes its temporary
-        # bodies and cache under /var/cache/nginx and its pid file under
-        # /var/run; both are declared writable paths, mounted as emptyDirs, and
-        # readOnlyRootFilesystem stays true
+        # No `hardening` block, because there is no hardening to author. nginx
+        # writes its temporary bodies and cache under /var/cache/nginx and its
+        # pid file under /var/run; both are declared writable paths, mounted as
+        # emptyDirs, and readOnlyRootFilesystem stays true
         # (docs/adr/model/0092-writable-paths-are-declared.md). The exception
         # this Workload used to carry retired with that decision, without the
         # rebuilt image its own reason was waiting for.
@@ -381,10 +401,21 @@ services:
 
         startupBudget: 30s      # nginx serves within a second of starting; the
                                 # budget is the gate auth-api's 600s dominates
-        zeroDowntime: true
 
-        # No `scrape`. This image exports no metrics surface, and a scrape path
-        # the platform guessed would collect nothing and report success
+        # REQUIRED on every Workload. Same value as auth-api, and stated again:
+        # this Workload holds no volume either, so a rolling cutover is
+        # honourable here too. The two Workloads switch together because they
+        # are one Service, not because they share a strategy.
+        cutover: rolling
+
+        # No `replicas` block: one is the derived count, and one is what this
+        # Workload wants. The block exists for a count above one with a reason,
+        # not to restate the default.
+
+        # Nothing observability-shaped here, and nothing to omit either: the
+        # whole block sits on the Service above and names auth-api's surface.
+        # This image exports no metrics, and a scrape path the platform guessed
+        # would collect nothing and report success
         # (docs/adr/model/0021-observability-scrape-and-alert-class.md).
 
         # No `secrets`. Everything this Workload needs is baked into the bundle

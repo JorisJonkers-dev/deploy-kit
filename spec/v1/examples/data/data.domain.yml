@@ -17,7 +17,7 @@
 # spanning two repositories: this file is the whole domain.
 #
 # Exercises: three independently released Services, a third-party image behind
-# an alias with `runtime: none`, a declared hardening exception, structured
+# an alias with `runtime: none`, declared writable paths, structured
 # `disk` placement, TCP probes, a static Asset, a sidecar, all three
 # Durability Classes, `provides` consumed by eight Services, and one authored
 # hostname that does not follow its Service id.
@@ -36,7 +36,16 @@ owner: joris              # one owner for every Service in the file; a Service
 services:
   # ======================================================= platform-postgres
   - id: platform-postgres
-    alertClass: page        # eight Services depend on it
+
+    # The scrape surface belongs to the exporter sidecar inside the `postgres`
+    # Workload, and the block names it the same way a route does: by Workload
+    # and surface, never by port. `metrics` is declared once, in `provides`.
+    observability:
+      alertClass: page      # eight Services depend on it
+      scrape:
+        workload: postgres
+        surface: metrics
+        path: /metrics
 
     workloads:
       - name: postgres
@@ -112,18 +121,13 @@ services:
             # sizes, so the quantity has one declaring site
             # (docs/adr/model/0081-volume-size-is-a-hard-dimension.md)
 
-        # The class still defaults to `restricted` and the other three controls
-        # stand: the pod runs as uid 999, drops all capabilities and takes
-        # seccomp RuntimeDefault. Only the named control is relaxed, and only
-        # with a reason -- the same shape a derived-value override uses
-        # (docs/adr/model/0031-derived-overrides-with-reason.md). The vocabulary of
-        # `allow` is the inverse of the four restricted controls: runAsRoot,
-        # writableRootFilesystem, capability:<NAME>, seccompUnconfined
+        # The `restricted` class applies whole: the pod runs as uid 999, drops
+        # all capabilities, takes seccomp RuntimeDefault and keeps
+        # readOnlyRootFilesystem true. There is no hardening block to author
+        # and no control to relax -- an image that cannot meet the class is
+        # E_HARDENING_UNMET, not an entry in an exception list
         # (docs/adr/model/0016-pod-hardening.md).
-        #
-        # One of two declared exceptions in the example set; the other is nginx
-        # in domains/auth.yml.
-        # No exception. The upstream entrypoint writes its unix socket to
+        # The upstream entrypoint writes its unix socket to
         # /var/run/postgresql and lock files under /tmp before the server
         # starts; both are declared writable paths and readOnlyRootFilesystem
         # stays true (docs/adr/model/0092-writable-paths-are-declared.md).
@@ -159,10 +163,13 @@ services:
           liveness:  {tcp: 5432}
 
         startupBudget: 60s
-        zeroDowntime: false
-        # Forced, not chosen. A ReadWriteOnce local-path volume cannot attach to
-        # two pods at once, so the strategy derives to Recreate -- which is what
-        # runs today, and why 21 of 30 workloads in this cluster use Recreate.
+
+        # REQUIRED, no default, and `recreate` is the only honourable answer:
+        # this Workload holds a ReadWriteOnce local-path volume, which cannot
+        # attach to two pods at once. Declaring `rolling` here is
+        # E_CUTOVER_UNHONOURABLE rather than a silent downgrade to Recreate --
+        # the owner states the stop-then-start they already have.
+        cutover: recreate
 
         stateful: true
         volumes:
@@ -207,13 +214,6 @@ services:
           # does not exist in Kubernetes, then falls back to env vars. That dead
           # path is how long the file has gone unexamined.
 
-        scrape:
-          port: 9187            # resolves to port name 'metrics' via provides
-          path: /metrics
-
-        # Declared on the Workload rather than the Service: it is consumed by
-        # the postgres-exporter sidecar, which lives inside this Workload.
-        #
         # SPLIT PATH, one path per reader set
         # (docs/adr/model/0023-grant-unit-is-the-path.md). The exporter's datasource
         # used to sit in the same document as every consumer's credentials, so
@@ -250,9 +250,15 @@ services:
   # (docs/adr/model/0035-network-policy-default-deny.md), plus per-Workload identity
   # (docs/adr/model/0024-identity-per-workload.md).
   - id: platform-rabbitmq
-    alertClass: urgent      # its own urgency, not the domain's: raising
-                            # alertClass to the header would make this file page
-                            # as loudly as postgres does
+    # Its own urgency, not the domain's: raising the class to the header would
+    # make this file page as loudly as postgres does. rabbitmq exports metrics
+    # itself, so no sidecar is involved and the surface is the Workload's own.
+    observability:
+      alertClass: urgent
+      scrape:
+        workload: rabbitmq
+        surface: metrics    # the prometheus plugin's own listener
+        path: /metrics
 
     # THE HOST DOES NOT FOLLOW THE SERVICE ID, and this Service is the estate's
     # evidence for authoring hostnames rather than deriving them: the Service is
@@ -312,7 +318,10 @@ services:
           liveness:  {tcp: 5672}
 
         startupBudget: 120s
-        zeroDowntime: false   # RWO local-path volume: Recreate, derived
+
+        # `recreate`: this Workload holds an RWO local-path volume. `rolling`
+        # would be E_CUTOVER_UNHONOURABLE, not a silent Recreate.
+        cutover: recreate
 
         stateful: true
         volumes:
@@ -326,10 +335,6 @@ services:
             # off-cluster copy is required. Losing the mnesia directory costs
             # undelivered messages and the definitions, not a consumer's data.
 
-        scrape:
-          port: 15692       # resolves to port name 'metrics' via provides
-          path: /metrics
-
         # No `secrets`, and therefore no env file placeholder to bind. This
         # Workload reads no Secret Store path: its clients hold the grants --
         # knowledge reads `secret/data/platform/rabbitmq`, and auth's api
@@ -337,7 +342,15 @@ services:
 
   # ========================================================= platform-valkey
   - id: platform-valkey
-    alertClass: business-hours    # a cache: losing it is slow, not silent
+
+    # No `observability` block, and that is the whole statement. valkey speaks
+    # RESP and exports no Prometheus surface, no exporter runs beside it, and a
+    # datastore is correctly not exposed, so there is no signal to name. An
+    # omission says it: there is no `none` class to write, because a value
+    # meaning "I wrote the field to say I did not want the field" is ceremony
+    # (docs/adr/model/0021-observability-scrape-and-alert-class.md). Giving this
+    # Service a class would be E_ALERT_CLASS_WITHOUT_SIGNAL, and the repair is
+    # an exporter sidecar plus a scrape surface, as postgres has above.
 
     workloads:
       - name: valkey
@@ -362,7 +375,10 @@ services:
           liveness:  {tcp: 6379}
 
         startupBudget: 30s
-        zeroDowntime: false
+
+        # `recreate`: RWO volume again. The cache is reconstructible, so the
+        # stop-then-start costs a cold cache and nothing else.
+        cutover: recreate
 
         stateful: true
         volumes:
@@ -384,6 +400,3 @@ services:
             # a render -- and this is the one class that gate does not cover,
             # which is a further reason to write it down rather than infer it.
 
-        # No `scrape`. No exporter runs beside this Workload today, so there is
-        # no metrics surface to declare and none is invented
-        # (docs/adr/model/0021-observability-scrape-and-alert-class.md).

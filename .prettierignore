@@ -13,3 +13,7 @@ spec/
 
 # Workflows use the estate's quoted-key YAML style, which prettier rewrites.
 .github/workflows/
+
+# Scratch. `.tmp/` is a working directory, not a deliverable, and its contents
+# are whatever a tool last dropped there.
+.tmp/

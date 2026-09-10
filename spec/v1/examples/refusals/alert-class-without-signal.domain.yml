@@ -1,0 +1,45 @@
+# REFUSED: E_ALERT_CLASS_WITHOUT_SIGNAL
+#
+# The `observability` block is half-declared: a class, and no `scrape`. The
+# block is whole or absent, and a class states how loudly to wake someone, so it
+# means nothing without a signal to wake them about.
+#
+# Omitting the block entirely would be accepted and would render no monitoring.
+# It is declaring the urgency while publishing nothing that is refused
+# (spec/v1/10-service-intent.md #observability).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Domain
+schemaVersion: 1.0.0
+
+expect: E_ALERT_CLASS_WITHOUT_SIGNAL
+
+domain: refusals
+owner: joris
+
+services:
+  - id: unwired
+    # The loudest value in the vocabulary, and no surface to carry it.
+    observability:
+      alertClass: page
+      # No `scrape`. That absence is the refusal.
+
+    workloads:
+      - name: unwired-worker
+        lifecycle: service
+        image: unwired-worker
+        runtime: node
+
+        provides:
+          http: 8080
+
+        placement:
+          memory: 128Mi
+          cpu: 25m
+
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+
+        startupBudget: 20s
+        cutover: rolling

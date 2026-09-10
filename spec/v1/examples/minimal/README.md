@@ -32,10 +32,10 @@ written by anyone:
 | no `hardening` block | the `restricted` class: non-root, read-only root, all capabilities dropped, seccomp `RuntimeDefault` | `securityContext`, pod and container |
 | no grant | `automountServiceAccountToken: false` ([0087](../../../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)) | the pod spec |
 | `probes` + `startupBudget: 20s` | the probe cadence from Platform Intent, a startup probe on the **liveness** endpoint, `progressDeadlineSeconds: 60` ([0088](../../../../docs/adr/model/0088-startup-probe-targets-liveness.md)) | all three probes |
-| `zeroDowntime: true` | `RollingUpdate`, `maxSurge: 1`, `maxUnavailable: 0` | the strategy |
+| `cutover: rolling` | `RollingUpdate`, `maxSurge: 1`, `maxUnavailable: 0` — derived from the declared intent and the absence of volumes | the strategy |
 | `provides: http: 8080` | the port name, the Service, the ingress rules | `Service`, `NetworkPolicy` |
 | `exposure` + `audience: anonymous` | the tier, its middleware chain, and the route priority ([0093](../../../../docs/adr/model/0093-route-precedence-is-derived.md)) | `IngressRoute` |
-| `observability.scrape` + `alertClass` | the scrape cadence, three baseline rules, the severity and the receiver ([0079](../../../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)) | `ServiceMonitor`, `PrometheusRule` |
+| `observability` | a `ServiceMonitor` naming the `http` surface and the Platform document's cadence ([chapter 10](../../10-service-intent.md#observability)) | a `PrometheusRule`: rules, severity and receivers are the monitoring stack's, which reads `alertClass` from the projection |
 | the env file's two literals | the Runtime Profile keys and `PORT`, which are a build error to author | the container's `env` |
 
 ## What is absent, and why

@@ -9,14 +9,23 @@ rests-on: ["0002"]
 
 # `replicas` derives as one, `minAvailable` is deleted, and a budget over one replica is not emitted
 
+> **Amended 2026-09-10.** The generic override mechanism this decision relied on
+> is deleted ([0031](0031-derived-overrides-with-reason.md)). The second replica
+> is now the named `replicas: {count, reason}` field — the sole local exception
+> to a derived value in layer 1 — rather than an entry in a general hatch. The
+> substance is unchanged and is now stricter: `count` must exceed one and
+> `reason` is **required** whenever the block is present, so the field cannot
+> become a verbose spelling of the default
+> ([chapter 10](../../../spec/v1/10-service-intent.md#capacity)).
+
 ## Rests on
 No Workload in this estate obtains availability from a replica count, so a
 declared availability requirement could only ever be a request the substrate
 cannot honour. False if: a stateless Workload's second replica measurably
 survives an event that takes the first one down — which requires two nodes, a
 shared-nothing workload and a load balancer that notices. Settled by: rendering
-the estate with `replicas: 1` everywhere except the overrides that state a
-capacity reason, and `kubectl drain` on the control-plane node completing rather
+the estate with `replicas: 1` everywhere except the declared capacity
+exceptions, and `kubectl drain` on the control-plane node completing rather
 than blocking.
 
 ## Why
@@ -40,9 +49,9 @@ rescheduling, HA or horizontal scale as justification for anything.
 
 The estate's own case makes the point: `auth-api` runs two replicas, and chapter
 00 records why — a capacity decision on freed Frankfurt budget, not an
-availability requirement. Under this decision that is an **override with a
-reason**, which is the truthful encoding of what it always was. The field is not
-lost; the pretence is.
+availability requirement. Under this decision that is a **`replicas` declaration
+with a reason**, which is the truthful encoding of what it always was. The field
+is not lost; the pretence is.
 
 The budget is the operational half. Emitting a PDB only where `replicas` exceeds
 one removes the deadlock class entirely, and expressing it as `maxUnavailable: 1`
@@ -73,9 +82,9 @@ was survivable and the undecidedness was not.
 - R16 closes, and the drain deadlock closes with it: no rendered PDB can forbid
   the eviction of a Workload's only pod — paid by nobody, and it was reachable
   on the control-plane node.
-- `auth-api` needs an override to keep its second replica, so the capacity
-  decision becomes a recorded reason instead of a number nobody can source —
-  paid by its owner, once.
+- `auth-api` declares `replicas: {count: 2, reason: …}` to keep its second
+  replica, so the capacity decision becomes a recorded reason instead of a
+  number nobody can source — paid by its owner, once.
 - The estate's six live PDBs are not all re-derivable: any over a single-replica
   Workload will not be rendered, so adoption drops them, which is the intended
   correction and will look like a removal in the first diff — paid at adoption,

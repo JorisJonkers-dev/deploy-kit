@@ -1,0 +1,50 @@
+# REFUSED: schema validation, against the closed AlertClass enumeration
+#
+# `AlertClass` is a closed vocabulary — `business-hours`, `urgent`, `page`
+# (spec/v1/10-service-intent.md). There is no `none` member: a Service that
+# wants no monitoring omits the block. A value outside the vocabulary is refused
+# at schema validation, before composition runs, so no new error code carries
+# this case.
+#
+# The Service publishes a signal, which isolates the defect: the only thing
+# wrong here is the class itself.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Domain
+schemaVersion: 1.0.0
+
+expect: schema — alertClass is not a member of AlertClass
+
+domain: refusals
+owner: joris
+
+services:
+  - id: unknown-class
+    # Not a member of the enumeration. The signal beside it is well-formed, so
+    # the class is the only defect.
+    observability:
+      alertClass: critical
+      scrape:
+        workload: unknown-class-api
+        surface: http
+        path: /metrics
+
+    workloads:
+      - name: unknown-class-api
+        lifecycle: service
+        image: unknown-class-api
+        runtime: node
+
+        provides:
+          http: 8080
+
+        placement:
+          memory: 128Mi
+          cpu: 25m
+
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+
+        startupBudget: 20s
+        cutover: rolling
