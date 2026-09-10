@@ -242,6 +242,8 @@ parse-checked in CI.
 | `examples/workflows/service-publish-fragment.yml` | publish on merge, `oras push` then `oras resolve`, read back |
 | `examples/workflows/compose.yml` | pull participants, assert the estate-wide invariants, **prove the gate can fail** |
 | `examples/negative/duplicate-service-id/` | a negative fixture, so an invariant that stops running is detectable |
+| [`examples/observability/`](examples/observability/README.md) | the observability service's own versioned runner configuration — the cadence, receiver table and rule catalog this model does not carry |
+| [`examples/refusals/`](examples/refusals/README.md) | the refusal fixtures: an alert class with no signal, a class outside the vocabulary, a runner table that cannot route, and the `rolling`/`recreate` pair over RWO storage |
 
 Delivery examples are no longer part of this specification. `aggregator.yml`,
 both aggregator workflows, the generated deployer RBAC, the re-apply CronJob and
