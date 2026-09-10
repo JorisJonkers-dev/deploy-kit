@@ -673,8 +673,6 @@ flowchart LR
         k_pol["Vault policy + auth role"]
         k_ir["IngressRoute"]
         k_np["NetworkPolicy"]
-        k_sm["ServiceMonitor"]
-        k_pr["PrometheusRule"]
         k_gat["Gatus endpoint"]
         k_rch["reachability entry"]
         k_edg["edge catalogs"]
@@ -684,6 +682,8 @@ flowchart LR
 
         subgraph OBS["observability service — outside the model"]
             obs_run["observability runner<br/>monitors, cadence, rules,<br/>severity, receiver routes<br/>from resolved Service facts"]
+            k_sm["ServiceMonitor / PodMonitor"]
+            k_pr["PrometheusRule"]
         end
     end
 
@@ -748,11 +748,9 @@ flowchart LR
     d_plc --> r_plc
     d_plc --> r_res
     d_hard --> r_sc
-    d_scr --> k_np
 
     obs_run --> k_sm
     obs_run --> k_pr
-    obs_run --> k_gat
 
     p_ctx --> r_plc
     p_cs --> r_rep

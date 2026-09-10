@@ -2090,10 +2090,6 @@ classDiagram
         <<type>>
         the cluster one env overlay targets
     }
-    class Derivation {
-        <<type>>
-        a derivation name from chapter 14's set
-    }
     class Site {
         <<type>>
         a site the node contract advertises
