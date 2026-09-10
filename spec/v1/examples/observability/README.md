@@ -18,8 +18,8 @@ configuration of a monitoring stack this model does not operate. It lives here.
 2. **The runner fails, not warns.** If this configuration cannot map a resolved
    Service's signal and class to an active monitor and a receiver, the runner's
    build fails. That is what preserves the "cannot silently unwire" property
-   ([0021](../../../docs/adr/model/0021-observability-scrape-and-alert-class.md),
-   [0079](../../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md))
+   ([0021](../../../../docs/adr/model/0021-observability-scrape-and-alert-class.md),
+   [0079](../../../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md))
    without the Intent model owning PromQL.
 
 ## What moved out of Intent

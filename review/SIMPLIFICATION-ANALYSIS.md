@@ -106,7 +106,7 @@ configuration interface.
 
 The current table has nine overridable derivations plus a `volumeSize` row that
 exists only to say it is not overridable
-([Platform Intent](../spec/v1/14-platform-intent.md#overridable-derivations)).
+([Platform Intent](../spec/v1/14-platform-intent.md#there-is-nothing-to-override-here)).
 The worked `auth` example uses only `replicas`; the historic `app-ui` deadline is
 the motivating case for ADR 0031. The table's `routePriority` is especially
 misaligned: route precedence is explicitly derived to prevent per-Service
@@ -185,7 +185,7 @@ specified in [the release gate](../spec/v1/20-resolved-deployment.md#the-release
 The current model holds receiver mappings, scrape cadence, and an engine-keyed
 rule catalog in Platform Intent, while deriving ServiceMonitors, PrometheusRules,
 and notifier routes from `scrape` and `alertClass`
-([Platform Intent](../spec/v1/14-platform-intent.md#observability-policy),
+([Platform Intent](../spec/v1/14-platform-intent.md#observability-is-not-configured-here),
 [Resolved Deployment](../spec/v1/20-resolved-deployment.md#authority)). ADRs
 [0021](../docs/adr/model/0021-observability-scrape-and-alert-class.md) and
 [0079](../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md) correctly
