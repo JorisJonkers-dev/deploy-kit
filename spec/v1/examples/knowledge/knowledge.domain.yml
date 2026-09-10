@@ -30,7 +30,14 @@ owner: joris              # the only field raised to the domain header
 services:
   # =============================================================== knowledge
   - id: knowledge
-    alertClass: business-hours    # per Service; never raised to the domain
+    # Per Service; never raised to the domain. The api Workload publishes for
+    # the Service, and the ingest worker publishes nothing of its own.
+    observability:
+      alertClass: business-hours
+      scrape:
+        workload: knowledge-api
+        surface: http
+        path: /api/actuator/prometheus
 
     # The two Workloads below switch together, because they are one Service and
     # a Service is the unit of atomic release
@@ -211,10 +218,6 @@ services:
 
         # No `replicas` block: the derived count is one. Capacity is the only
         # local exception to a derived value, and this Workload needs none.
-
-        scrape:
-          port: 8080            # resolves to port name 'http' via provides
-          path: /api/actuator/prometheus
 
         # Workload-level grant: the API serves /mcp, the worker does not. This
         # is an access boundary only because identity is per Workload -- this

@@ -134,7 +134,7 @@ field's placement link to this anchor rather than copying rows.
 | `domain` | Service | no contention | the file header, and the unit of fragment publication ([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)); the namespace derives from it |
 | `owner` | Service | no contention | the only field raised to the domain header; notification target, never routing |
 | `id` | Service | unique — checked | estate-unique; `E_DUPLICATE_SERVICE_ID` at composition. It is also the atomic release boundary ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)) |
-| `alertClass` | Service | no contention | urgency, per Service and never raised — a domain would page as loudly as its loudest member |
+| `observability` `{alertClass, scrape}` | Service | no contention | urgency and the surface that carries the signal, per Service and never raised — a domain would page as loudly as its loudest member. Absent means no monitoring ([chapter 10](10-service-intent.md#observability)) |
 | workload `name` | Service | unique — checked | unique within the **domain**; `E_DUPLICATE_WORKLOAD_NAME`, and it names the derived identity |
 | `provides` surface names and ports | Service | no contention | declared on the Workload, because a port is a property of a process; written once, there |
 | `dependsOn` edges | Service | no contention | provider, surface, necessity ([chapter 16](16-dependencies.md#dependency-edges)) |
@@ -155,7 +155,6 @@ field's placement link to this anchor rather than copying rows.
 | `volumes[].size` | Service | pool — stated | how much data the volume holds, matched against the node contract's `disks[].usable_gib`; no eligible node is `E_STORAGE_UNSATISFIABLE` ([0081](../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md)) |
 | PVC capacity and the disk capacity filter | derived | — | the volume's `size`, and their sum per Workload for placement |
 | `placement.arch`, `.site`, `.capabilities` | Service | no contention | filters over facts the node contract publishes; a list is a set of equally acceptable values, never a ranking |
-| `scrape` `{port, path}` | Service | no contention | port and path of its own metrics surface; the only observability fact Intent holds ([chapter 10](10-service-intent.md#the-observability-boundary)) |
 | `writablePaths` | Service | no contention | which paths the process must write; the size of each is platform-assigned ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)) |
 | `volumes[].durability` | Service | no contention | what losing the data costs; only the owner knows ([0015](../../docs/adr/model/0015-durability-class-per-volume.md)) |
 | `engine` | Service | no contention | what the process is, which the platform keys its backup method off ([0078](../../docs/adr/model/0078-engine-is-workload-vocabulary.md)) |
@@ -165,8 +164,8 @@ field's placement link to this anchor rather than copying rows.
 | middleware chain | platform | pool | tier + audience + `contentPolicy`; `forward-auth` for `authenticated` on a public tier, the security-headers baseline with the named content profile, and the redirect rule a route's `redirectTo` asks for |
 | backup window, retention count, off-cluster destination | platform | pool | one policy per Durability Class; the window is one node's IO and the destination is one remote target ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)) |
 | the backup method | platform | pool | the image the Platform document names per `engine`, resolved through the images lock; nothing executable is authored ([chapter 14](14-platform-intent.md#engines)) |
-| alert rules, their severity and their receiver | observability service | pool | the versioned observability configuration, keyed by the resolved signal and `engine`; Intent supplies the class and nothing else ([chapter 10](10-service-intent.md#the-observability-boundary)) |
-| scrape `interval` and `scrapeTimeout` | observability service | pool | the metrics stack's ingest budget is shared; stated in the observability configuration, never in Intent |
+| alert rules, their severity and their receiver | the monitoring stack | pool | derived nowhere in this model. `alertClass` is published as a resolved fact and the stack that reads it decides what a class means ([chapter 10](10-service-intent.md#observability)) |
+| monitor `interval` and `timeout` | platform | pool | the metrics stack's ingest budget is shared, so it is one estate-wide value in the Platform document ([chapter 14](14-platform-intent.md#monitor-cadence)) |
 | the backup identity's grant on the destination | platform | pool | derived, never authored: the platform chose the destination, so it owns the credential |
 | Reconcile Unit and its ordering | platform | unique — arbitrated | one estate-wide DAG ([The Reconcile Unit](#the-reconcile-unit)) |
 | identity name, Vault role, Vault policy | platform | pool | named for the **Workload alone**; the auth role namespace is shared ([chapter 16](16-dependencies.md#workload-identity)) |
@@ -193,8 +192,8 @@ field's placement link to this anchor rather than copying rows.
 | env entries and `envFrom` refs | derived | — | from env files, after placeholder resolution — including `${identity:…}`, the Workload's own derived facts ([0091](../../docs/adr/model/0091-identity-placeholders-not-framework-wiring.md)) |
 | dependency coordinates | derived | — | from the edge set and the provider's surfaces, bound to the key the consumer chose |
 | Runtime Profile values | derived | — | from `runtime` |
-| ServiceMonitor, PodMonitor | observability service | — | from the resolved `scrape` facts, in the observability configuration; the model renders neither |
-| PrometheusRule, severity, receiver route | observability service | — | from `alertClass` and the signal, in the observability configuration ([chapter 10](10-service-intent.md#the-observability-boundary)) |
+| ServiceMonitor, PodMonitor | derived | — | target and port name from `observability.scrape` and the named surface in `provides`; cadence from the Platform document |
+| PrometheusRule, severity, receiver route | the monitoring stack | — | not rendered by this model. PromQL is a mechanism and a receiver is a shared channel ([chapter 10](10-service-intent.md#observability)) |
 | backup job and retention sweep | derived | — | from `volumes[].durability`; `reconstructible` renders none |
 | NetworkPolicy set | derived | — | from the edge set, exposure, grants, plus the baseline ([chapter 16](16-dependencies.md#network-policy)) |
 
@@ -649,7 +648,7 @@ So the classification, and the evidence it rests on:
 | `startupDeadline` | a workload class (`runtime: static` starts in seconds, `jvm` in minutes) | repaired central rule over `startupBudget` and `runtime` |
 | `gateDeadline` | `max` over members — already a derivation, never a decision | derived, unchanged |
 | `automountToken` | a derivation from `delivery: self` | derived, unchanged ([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)) |
-| `ephemeralSize`, `probeCadence`, `backupTerms`, `scrapeCadence` | platform policy over shared resources | platform, stated once |
+| `ephemeralSize`, `probeCadence`, `backupTerms`, `monitorCadence` | platform policy over shared resources | platform, stated once |
 | `routePriority` | derived by design, to prevent hand-tuning | derived, unchanged ([0093](../../docs/adr/model/0093-route-precedence-is-derived.md)) |
 | `volumeSize` | the volume's authored `size` | authored, never derived |
 

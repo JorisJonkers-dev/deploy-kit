@@ -24,7 +24,7 @@ owner: joris
 
 services:
   - id: rolling-over-rwo
-    alertClass: none
+    # No `observability` block: this fixture isolates the cutover defect.
 
     workloads:
       - name: rolling-over-rwo-store

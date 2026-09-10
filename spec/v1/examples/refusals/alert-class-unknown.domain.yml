@@ -1,9 +1,10 @@
 # REFUSED: schema validation, against the closed AlertClass enumeration
 #
-# `AlertClass` is a closed vocabulary — `none`, `business-hours`, `urgent`,
-# `page` (spec/v1/10-service-intent.md). A value outside it is refused at schema
-# validation, before composition runs and long before the observability runner
-# is handed anything, so no new error code carries this case.
+# `AlertClass` is a closed vocabulary — `business-hours`, `urgent`, `page`
+# (spec/v1/10-service-intent.md). There is no `none` member: a Service that
+# wants no monitoring omits the block. A value outside the vocabulary is refused
+# at schema validation, before composition runs, so no new error code carries
+# this case.
 #
 # The Service publishes a signal, which isolates the defect: the only thing
 # wrong here is the class itself.
@@ -19,8 +20,14 @@ owner: joris
 
 services:
   - id: unknown-class
-    # Not a member of the enumeration, so not a key the runner could route.
-    alertClass: critical
+    # Not a member of the enumeration. The signal beside it is well-formed, so
+    # the class is the only defect.
+    observability:
+      alertClass: critical
+      scrape:
+        workload: unknown-class-api
+        surface: http
+        path: /metrics
 
     workloads:
       - name: unknown-class-api
@@ -41,6 +48,3 @@ services:
 
         startupBudget: 20s
         cutover: rolling
-
-        # The signal exists. It is the class that cannot be routed.
-        scrape: { port: 8080, path: /metrics }

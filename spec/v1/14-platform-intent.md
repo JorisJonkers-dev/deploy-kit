@@ -197,20 +197,22 @@ A shell command in an authored file is what [0012](../../docs/adr/model/0012-ass
 refuses for a Service, and it is refused here for the same reason: what the
 image does is versioned and digested; a string in YAML is neither.
 
-## Observability is not configured here
+## Monitor cadence
 
-The Platform document carries **no** observability policy: no scrape cadence, no
-receiver map, no rule catalog. Intent declares two facts — `alertClass` on the
-Service and `scrape {port, path}` on a Workload — and a versioned configuration
-owned and run by the observability Service turns those into ServiceMonitors,
-PodMonitors, cadence, external checks, PromQL, severity and receiver routing
-([chapter 10](10-service-intent.md#the-observability-boundary)).
+```yaml
+monitors:
+  interval: 30s
+  timeout: 10s
+```
 
-The one claim the model still makes is a composition-time guarantee: a Service
-above `alertClass: none` must publish a signal, and the runner must fail if it
-cannot map that signal and class to active monitoring and a receiver
-(`E_ALERT_CLASS_WITHOUT_SIGNAL`). Everything past that boundary is stack
-configuration of a monitoring system this document does not operate.
+One cadence for every monitor the estate renders, here for the same reason the
+probe cadence below is: it is contended, and no Service knows better
+([0004](../../docs/adr/model/0004-contention-decides-authority.md)).
+
+That is the whole observability surface of this document. No receiver map, no
+severity mapping, no rule catalog: those belong to the monitoring stack, which
+reads `alertClass` from the published projection
+([chapter 10](10-service-intent.md#observability)).
 
 ## Hardening policy
 
@@ -224,13 +226,15 @@ hardening: restricted
 The class is the platform's because it is uniform and contended: thirty
 declarations of the only legal value are thirty copies of one decision
 ([0004](../../docs/adr/model/0004-contention-decides-authority.md)). A Workload
-therefore authors no class — only the **exceptions** it needs, each naming one
-control with a reason ([chapter 10](10-service-intent.md#pod-hardening)), and
-that list is the estate's inventory of what it cannot harden.
+therefore authors no hardening at all: it declares the paths it must write, and
+an image that cannot meet the class is `E_HARDENING_UNMET`
+([chapter 10](10-service-intent.md#pod-hardening)). There is no per-control
+relaxation to author, because a relaxation carried with a reason is an override
+under another name.
 
 A second class earns a value here when an image exists that cannot meet
-`restricted` and cannot be excepted control by control. Until then this is one
-value, and the vocabulary stays one value wide.
+`restricted` and cannot be rebuilt. Until then this is one value, and the
+vocabulary stays one value wide.
 
 ## Probe and ephemeral policy
 

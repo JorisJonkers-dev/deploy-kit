@@ -28,7 +28,7 @@
 schemaVersion: 1.0.0
 
 # The header is three fields, and `owner` is the ONLY one raised to the domain.
-# `alertClass` stays per Service -- raising it makes a domain page as loudly as
+# `observability` stays per Service -- raising it makes a domain page as loudly as
 # its loudest member -- and so does `secrets`, because a domain-level grant
 # hands every Service in the file a reader slot on the whole path
 # (docs/adr/model/0009-vault-read-is-per-path.md,
@@ -63,7 +63,18 @@ services:
   # drawing a boundary, and answers atomicity
   # (docs/adr/model/0032-reconcile-unit-derived.md).
   - id: auth
-    alertClass: page        # every forward-auth protected route depends on it
+
+    # Whole or absent. The class states urgency and the scrape names the surface
+    # that carries the signal, both on the Service, because both are facts about
+    # the Service rather than about one of its two containers. auth-api
+    # publishes for the pair; auth-ui exports nothing and needs to say nothing
+    # (docs/adr/model/0021-observability-scrape-and-alert-class.md).
+    observability:
+      alertClass: page      # every forward-auth protected route depends on it
+      scrape:
+        workload: auth-api
+        surface: http       # the name declared in auth-api's `provides`
+        path: /api/actuator/prometheus
 
     # No Service-level `secrets`. The three grants below are auth-api's alone,
     # so they sit on that Workload: a Service-level grant is held by EVERY
@@ -254,10 +265,6 @@ services:
             node. Retires when that budget is reclaimed or the capability
             spreads to a second node.
 
-        scrape:
-          port: 8081            # resolves to port name 'http' via provides
-          path: /api/actuator/prometheus
-
         # All three grants use `delivery: self` -- the application fetches them
         # through spring-cloud-vault at runtime, which is what it already does
         # in production via SPRING_CONFIG_IMPORT: vault:// and VAULT_DB_ENABLED:
@@ -405,11 +412,11 @@ services:
         # Workload wants. The block exists for a count above one with a reason,
         # not to restate the default.
 
-        # No `scrape`. This image exports no metrics surface, and a scrape path
-        # the platform guessed would collect nothing and report success
-        # (docs/adr/model/0021-observability-scrape-and-alert-class.md). The
-        # Service still declares `alertClass: page` and is still observable --
-        # auth-api publishes the signal for the Service.
+        # Nothing observability-shaped here, and nothing to omit either: the
+        # whole block sits on the Service above and names auth-api's surface.
+        # This image exports no metrics, and a scrape path the platform guessed
+        # would collect nothing and report success
+        # (docs/adr/model/0021-observability-scrape-and-alert-class.md).
 
         # No `secrets`. Everything this Workload needs is baked into the bundle
         # at build time or reached through the browser, so no Vault role is

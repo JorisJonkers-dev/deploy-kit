@@ -18,10 +18,16 @@ owner: joris # the only field raised to the domain header
 
 services:
   - id: notes
-    # Urgency, not routing. business-hours requires a signal, which the scrape
-    # surface below provides; mapping it to a rule and a receiver is the
-    # observability service's configuration, not this file's.
-    alertClass: business-hours
+    # Whole or absent. The class states urgency; the scrape names the Workload
+    # and the surface that carries the signal, so the port is declared once, in
+    # `provides`. Omitting the block entirely is how a Service says it wants no
+    # monitoring -- there is no `none` to write.
+    observability:
+      alertClass: business-hours
+      scrape:
+        workload: notes-api
+        surface: http
+        path: /metrics
 
     exposure:
       - name: public
@@ -58,8 +64,3 @@ services:
 
         # No `replicas` block: the derived count is one, and one is what this
         # Workload runs. The block is for a count above one, with a reason.
-
-        # The two observability facts Intent holds: the signal, and the urgency
-        # on the Service above. Cadence, rules and receivers live in the
-        # observability service's own configuration.
-        scrape: {port: 8080, path: /metrics}

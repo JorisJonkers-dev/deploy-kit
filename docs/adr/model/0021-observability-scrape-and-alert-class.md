@@ -9,23 +9,32 @@ rests-on: ["0005"]
 
 # Observability is a scrape surface plus an Alert Class
 
-> **Amended 2026-09-10.** The two Service facts this decision names — `scrape`
-> on a Workload and `alertClass` on a Service — are now the **entire** Intent
-> surface. Cadence, monitor kind, Gatus checks, PrometheusRules, notifier routes
-> and receivers are **not** derivations of the Intent model: they are
-> configuration of a monitoring stack, owned by the observability Service and
-> applied by its runner
-> ([chapter 10](../../../spec/v1/10-service-intent.md#the-observability-boundary)).
-> The property this ADR exists for is unchanged and is now enforced at the
-> runner: every non-`none` class must map to an active signal **and** a
-> receiver, and the runner fails its build if it cannot.
+> **Amended 2026-09-10.** The two facts this decision names are now **one
+> optional block on the Service**, `observability: {alertClass, scrape}`, whole
+> or absent. Three things follow.
+>
+> `scrape` names a `{workload, surface, path}` rather than a port, because
+> `provides` already declares the port and a second statement of it is a second
+> declaring site. `none` leaves the vocabulary: an omitted block is how a
+> Service says it wants no monitoring, and a value meaning "I wrote the field to
+> say I did not want the field" is ceremony.
+>
+> The split of what derives is sharper than this record originally drew it. The
+> **ServiceMonitor is derived by the model**, from the declared surface and the
+> one estate-wide cadence — nothing about it needs a monitoring stack's opinion,
+> so it stays a Deliverable and takes part in the derivation map's properties.
+> Rule expressions, severity and receivers derive **nothing here at all**: they
+> are read from the published projection by a stack this model does not operate
+> ([chapter 10](../../../spec/v1/10-service-intent.md#observability)).
 
 ## Rests on
 
-A rule the platform generates always evaluates and its alert always reaches a
-receiver; a hand-written one does neither reliably. False if: a `PrometheusRule`
-rendered from a non-`none` Alert Class is in the cluster but absent from
-Prometheus's loaded rule set, or resolves to no receiver. Settled by: render one Service at `alertClass: urgent`, diff
+A declared scrape surface always produces a monitor that actually scrapes, and a
+declared class always reaches whoever reads the projection; a hand-written
+monitor does neither reliably. False if: a `ServiceMonitor` rendered from a
+declared `scrape` is in the cluster but absent from Prometheus's targets, or a
+class reaches no receiver in the stack that reads it. Settled by: render one
+Service at `alertClass: urgent`, diff
 `kubectl get prometheusrule -A -o jsonpath='{.items[*].metadata.name}'` against
 `curl -s http://prometheus:9090/api/v1/rules | jq -r '.data.groups[].rules[].name'`,
 then `amtool config routes test alertclass=urgent`.

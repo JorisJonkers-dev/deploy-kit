@@ -22,7 +22,7 @@ owner: joris
 
 services:
   - id: recreate-over-rwo
-    alertClass: none
+    # No `observability` block: this fixture isolates the cutover defect.
 
     workloads:
       - name: recreate-over-rwo-store

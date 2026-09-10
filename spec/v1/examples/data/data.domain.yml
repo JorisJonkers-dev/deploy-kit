@@ -36,7 +36,16 @@ owner: joris              # one owner for every Service in the file; a Service
 services:
   # ======================================================= platform-postgres
   - id: platform-postgres
-    alertClass: page        # eight Services depend on it
+
+    # The scrape surface belongs to the exporter sidecar inside the `postgres`
+    # Workload, and the block names it the same way a route does: by Workload
+    # and surface, never by port. `metrics` is declared once, in `provides`.
+    observability:
+      alertClass: page      # eight Services depend on it
+      scrape:
+        workload: postgres
+        surface: metrics
+        path: /metrics
 
     workloads:
       - name: postgres
@@ -205,13 +214,6 @@ services:
           # does not exist in Kubernetes, then falls back to env vars. That dead
           # path is how long the file has gone unexamined.
 
-        scrape:
-          port: 9187            # resolves to port name 'metrics' via provides
-          path: /metrics
-
-        # Declared on the Workload rather than the Service: it is consumed by
-        # the postgres-exporter sidecar, which lives inside this Workload.
-        #
         # SPLIT PATH, one path per reader set
         # (docs/adr/model/0023-grant-unit-is-the-path.md). The exporter's datasource
         # used to sit in the same document as every consumer's credentials, so
@@ -248,9 +250,15 @@ services:
   # (docs/adr/model/0035-network-policy-default-deny.md), plus per-Workload identity
   # (docs/adr/model/0024-identity-per-workload.md).
   - id: platform-rabbitmq
-    alertClass: urgent      # its own urgency, not the domain's: raising
-                            # alertClass to the header would make this file page
-                            # as loudly as postgres does
+    # Its own urgency, not the domain's: raising the class to the header would
+    # make this file page as loudly as postgres does. rabbitmq exports metrics
+    # itself, so no sidecar is involved and the surface is the Workload's own.
+    observability:
+      alertClass: urgent
+      scrape:
+        workload: rabbitmq
+        surface: metrics    # the prometheus plugin's own listener
+        path: /metrics
 
     # THE HOST DOES NOT FOLLOW THE SERVICE ID, and this Service is the estate's
     # evidence for authoring hostnames rather than deriving them: the Service is
@@ -327,10 +335,6 @@ services:
             # off-cluster copy is required. Losing the mnesia directory costs
             # undelivered messages and the definitions, not a consumer's data.
 
-        scrape:
-          port: 15692       # resolves to port name 'metrics' via provides
-          path: /metrics
-
         # No `secrets`, and therefore no env file placeholder to bind. This
         # Workload reads no Secret Store path: its clients hold the grants --
         # knowledge reads `secret/data/platform/rabbitmq`, and auth's api
@@ -338,17 +342,15 @@ services:
 
   # ========================================================= platform-valkey
   - id: platform-valkey
-    # `none` is the honest opt-out, and this Service is why the vocabulary has
-    # one. A cache losing its contents is slow rather than silent, so the
-    # instinct is `business-hours` -- but valkey speaks RESP and exports no
-    # Prometheus surface, no exporter runs beside it, and a datastore is
-    # correctly not exposed, so there is no external health surface either. A
-    # class above `none` here is E_ALERT_CLASS_WITHOUT_SIGNAL: the guarantee is
-    # per Service, and a sibling Service's `scrape` does not satisfy it.
-    # Raising the class is a change to this Workload -- an exporter sidecar and
-    # a `scrape` surface, the repair `platform-postgres` above already makes --
-    # not an edit to this line.
-    alertClass: none
+
+    # No `observability` block, and that is the whole statement. valkey speaks
+    # RESP and exports no Prometheus surface, no exporter runs beside it, and a
+    # datastore is correctly not exposed, so there is no signal to name. An
+    # omission says it: there is no `none` class to write, because a value
+    # meaning "I wrote the field to say I did not want the field" is ceremony
+    # (docs/adr/model/0021-observability-scrape-and-alert-class.md). Giving this
+    # Service a class would be E_ALERT_CLASS_WITHOUT_SIGNAL, and the repair is
+    # an exporter sidecar plus a scrape surface, as postgres has above.
 
     workloads:
       - name: valkey
@@ -398,6 +400,3 @@ services:
             # a render -- and this is the one class that gate does not cover,
             # which is a further reason to write it down rather than infer it.
 
-        # No `scrape`. No exporter runs beside this Workload today, so there is
-        # no metrics surface to declare and none is invented
-        # (docs/adr/model/0021-observability-scrape-and-alert-class.md).

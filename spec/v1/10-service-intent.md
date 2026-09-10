@@ -105,7 +105,6 @@ domain: auth                 # the file header; one domain per file
 owner: joris                 # the only field raised to the domain
 services:
   - id: auth                 # the referencable identity; namespace auth-system
-    alertClass: page
     workloads:
       - name: auth-api       # the process's own name, and its identity
         image: auth-api
@@ -189,7 +188,7 @@ plus per-Workload identity ([0024](../../docs/adr/model/0024-identity-per-worklo
 | `domain` | file header | yes | One domain per file. The namespace is `<domain>-system`; the domain also owns the Secret Subtree and is the unit of Intent Fragment publication ([0037](../../docs/adr/model/0037-composition-oci-fragments.md), [0063](../../docs/adr/model/0063-intent-authored-per-domain.md)). |
 | `owner` | file header | yes | Who is notified. The **only** field raised to the domain; a Service needing a different owner needs its own domain. |
 | `id` | Service | yes | The one referencable identity, estate-unique. The repository or product name. |
-| `alertClass` | Service | yes | `none` \| `business-hours` \| `urgent` \| `page`. Urgency, never routing ([0021](../../docs/adr/model/0021-observability-scrape-and-alert-class.md)). Never raised to the domain: a domain would then page as loudly as its loudest member. |
+| `observability` | Service | no | `{alertClass, scrape {workload, surface, path}}`, whole or absent. Absent means no monitoring is rendered. Urgency, never routing ([0021](../../docs/adr/model/0021-observability-scrape-and-alert-class.md)). Never raised to the domain: a domain would then page as loudly as its loudest member. See [Observability](#observability). |
 | `workloads` | Service | yes | One or more. They switch together. |
 | `exposure` | Service | no | The hostnames this Service serves and how each routes into its Workloads. On the Service, not the Workload: one hostname fronts two processes in the live `auth` case. A Service nothing reaches from outside declares none. See [Exposure](#exposure). |
 
@@ -272,14 +271,12 @@ probes:                       # on the Workload: the integer, at its point of us
   readiness:
     path: /api/actuator/health/readiness
     port: 8080
-scrape:
-  port: 9187
-  path: /metrics
 ```
 
-An [exposure](#exposure) route is the one place a port is *not* written: it sits
-on the Service and names `{workload, surface}`, so the integer stays declared
-once, by the process that listens on it.
+An [exposure](#exposure) route and an [observability](#observability) scrape are
+the two places a port is *not* written: both sit on the Service and name
+`{workload, surface}`, so the integer stays declared once, by the process that
+listens on it.
 
 Surface **names** are unique within a Service, not within a Workload, because a
 dependency edge names `{service, surface}` and never a Workload
@@ -1259,78 +1256,77 @@ equal terms with everything authored.
 
 ## Observability
 
+One optional block on the Service, or nothing at all
+([0021](../../docs/adr/model/0021-observability-scrape-and-alert-class.md)):
+
 ```yaml
-alertClass: business-hours     # on the Service
-scrape:                        # on the Workload
-  port: 9187
-  path: /metrics
+observability:
+  alertClass: business-hours
+  scrape:
+    workload: notes-api      # which Workload publishes it
+    surface: metrics         # a name from that Workload's `provides`
+    path: /metrics
 ```
 
-Two declarations, one derived pipeline
-([0021](../../docs/adr/model/0021-observability-scrape-and-alert-class.md)). The scrape
-surface stays service-declared because it genuinely varies —
-`/actuator/prometheus`, `/api/actuator/prometheus`, `/metrics` — and a platform
-that guessed would collect nothing and report success. The Alert Class states
-urgency and never routing: `none`, `business-hours`, `urgent`, `page`.
+**Absent means no monitoring, and that is a complete answer.** A Service that
+declares nothing gets no monitor, no rule and no alert, and nothing is refused.
+The vocabulary carries no `none` member, because an omission already says it and
+a member that means "I wrote the field to say I did not want the field" is
+ceremony. `platform-valkey` is the case: a cache with no exporter beside it and
+no exposure to check publishes nothing, so it declares nothing.
 
-Those **two facts are the entire Intent surface**. Everything downstream —
-ServiceMonitor and PodMonitor shape, scrape cadence, external checks, PromQL,
-severity, receiver routing and notifier routes — is configuration of a
-monitoring stack the model does not operate, and it lives in a versioned
-configuration owned and run by the observability service
-([The observability boundary](#the-observability-boundary)).
+The block is **whole or absent**. Declaring `alertClass` without `scrape` is
+`E_ALERT_CLASS_WITHOUT_SIGNAL`: a class is a statement about how loudly to wake
+someone, and it is meaningless without a signal to wake them about. That refusal
+is the one guarantee this chapter makes about monitoring, and it exists because
+the estate's two holes were both silent ones — Gatus watched 41 endpoints and
+notified nobody, its ConfigMap carrying `storage` and `ui` and no `alerting`
+section at all.
 
-`alertClass` sits on the Service and is never raised to the domain header, for the
-same reason `owner` is: urgency is a per-Service fact, and a domain that pages
-because one of its Services does is a domain that gets muted.
+`scrape` names a **surface, not a port**, the same way a route does
+([Exposure](#exposure)). The port is already declared once in `provides`, and a
+second statement of it would be a second declaring site for one fact. The path
+genuinely varies — `/actuator/prometheus`, `/api/actuator/prometheus`,
+`/metrics` — so it is authored, and a platform that guessed would collect
+nothing and report success.
 
-`none` is a value an author must write, not an omission, because the estate's two
-holes are both silent ones. Gatus monitors 41 endpoints and notifies nobody — its
-ConfigMap has `storage` and `ui` and no `alerting` section at all — and 8
-ServiceMonitors plus 2 PodMonitors cover roughly thirty workloads, with exactly one
-`PrometheusRule` in the estate.
+The whole block sits on the **Service** and is never raised to the domain
+header, for the same reason `owner` is: urgency is a per-Service fact, and a
+domain that pages because one of its Services does is a domain that gets muted.
+`workload` points into the Service's own Workloads, which is what lets one
+declaration name the exporter sidecar's surface without the sidecar authoring
+anything.
 
-### The observability boundary
+### What the model derives, and what it does not
 
-**Intent declares the signal and the urgency; the observability service owns the
-mechanism.** A versioned configuration, owned by the observability Service and
-consumed by its runner, takes the resolved Service facts — the `scrape` surface
-and the `alertClass` of every Service — and produces the stack-specific objects:
-which monitor kind, what cadence, which external checks, what PromQL, and which
-receiver a severity routes to. It is normal observability configuration of a
-declared input set, not a second Service DSL, and it is authored once for the
-estate rather than restated per Service.
+From `scrape` the model derives the **ServiceMonitor or PodMonitor**: its
+target, its port name and its path are the declared surface and path, and the
+cadence is the one estate-wide value in the Platform document
+([chapter 14](14-platform-intent.md#probe-and-ephemeral-policy)). Nothing about
+that needs a monitoring stack's opinion, so it stays a Deliverable like any
+other and takes part in the derivation map's properties
+([chapter 16](16-dependencies.md#the-derivation-map)).
 
-| concern | Intent | the observability configuration |
-|---|---|---|
-| `alertClass` | authored per Service | maps a class to a severity and a receiver |
-| `scrape` `{port, path}` | authored per Workload | selects the monitor kind and its target |
-| cadence, `interval`, `scrapeTimeout` | absent | stated once, named by every emitted monitor |
-| rule expressions | absent | the catalog, keyed by signal source and `engine` |
-| receivers and notifier routes | absent | one routing table for the estate |
-| external checks | absent | derived from the exposure set the runner reads |
-
-This is the same split the backup method makes
-([Storage and durability](#storage-and-durability)): the platform knows the
-mechanism, the Service knows the fact. PromQL in a domain file would be a
-mechanism in layer 1, and a receiver is a shared notification channel, so by
-[0004](../../docs/adr/model/0004-contention-decides-authority.md) it is
+From `alertClass` the model derives **nothing at all**. It is carried into
+`resolved.yml` as a resolved fact and stops there. Rule expressions, severity
+mapping, receiver routing and notifier channels are the monitoring stack's, and
+they are the parts a deployment model has no business owning: PromQL in a domain
+file is a mechanism in layer 1, and a receiver is a shared notification channel,
+so by [0004](../../docs/adr/model/0004-contention-decides-authority.md) it is
 platform-assigned.
 
-**One guarantee stays at the Intent boundary**, and it is the property that
-matters: a class above `none` must publish an observable signal.
-`alertClass` on a Service with no `scrape` on any Workload and no external health
-surface is `E_ALERT_CLASS_WITHOUT_SIGNAL`. `platform-postgres` is the live case:
-it declares `page`, the loudest value in the vocabulary, and produces no
-monitoring object at all, because Gatus derives from exposure and a datastore is
-correctly not exposed. Refusing it is what makes the declaration mean something.
+| concern | where it lives |
+|---|---|
+| `alertClass`, `scrape {workload, surface, path}` | authored, per Service |
+| ServiceMonitor / PodMonitor | derived by the model, from `scrape` and `provides` |
+| scrape cadence | the Platform document, one value for the estate |
+| rule expressions, severity, receivers | the monitoring stack, reading `resolved.yml` |
+| external checks | derived from `exposure`, as the Gatus endpoint already is |
 
-**The runner must fail, not warn.** Where the configuration cannot map a Service's
-signal and class to an active monitor and a receiver, its build fails. That is
-what preserves the property without the model owning PromQL: an unwired Service is
-a build error in the stack that would otherwise have silently collected nothing.
-In a one-maintainer estate a warning is a log line, which is how 41 endpoints came
-to notify nobody.
+There is no second configuration document in this specification and no runner
+contract, because neither is the model's to define. A monitoring stack that
+wants the estate's alert classes reads the published projection, which is what
+[chapter 20](20-resolved-deployment.md#publish-back) publishes it for.
 
 ### What does not move
 
@@ -1949,6 +1945,8 @@ classDiagram
     }
     class Service {
         +ServiceId id
+    }
+    class Observability {
         +AlertClass alertClass
     }
     class Workload {
@@ -2026,7 +2024,8 @@ classDiagram
         +Quantity memory
     }
     class Scrape {
-        +int port
+        +string workload
+        +string surface
         +Path path
     }
     class EnvFile {
@@ -2133,7 +2132,6 @@ classDiagram
     }
     class AlertClass {
         <<enumeration>>
-        none
         business-hours
         urgent
         page
@@ -2237,7 +2235,8 @@ classDiagram
     Workload "1" *-- "0..*" Asset : assets
     Workload "1" *-- "0..*" Volume : volumes
     Workload "1" *-- "1" Placement : placement
-    Workload "1" *-- "0..1" Scrape : scrape
+    Service "1" *-- "0..1" Observability : observability
+    Observability "1" *-- "1" Scrape : scrape
     Workload "1" *-- "0..1" Capacity : replicas
 
     Placement "1" *-- "0..1" DiskRequest : disk

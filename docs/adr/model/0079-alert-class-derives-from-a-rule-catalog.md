@@ -3,33 +3,37 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-09-07
-normative: spec/v1/10-service-intent.md#the-observability-boundary
+normative: spec/v1/10-service-intent.md#observability
 rests-on: ["0004"]
 ---
 
 # An Alert Class derives rules from a platform catalog, and a class without a signal is refused
 
-> **Amended 2026-09-10.** The catalog and the class-to-receiver mapping no
-> longer live in the Platform document and are no longer a derivation of the
-> Intent model: they are part of the versioned observability configuration the
-> observability Service owns and its runner consumes
-> ([chapter 10](../../../spec/v1/10-service-intent.md#the-observability-boundary),
-> [0021](0021-observability-scrape-and-alert-class.md)). The two claims this ADR
-> makes that survive are: the rules worth alerting on are a property of what a
-> Workload is, not of who owns it; and a class above `none` with no signal is
-> refused. The refusal is now enforced in two places — `E_ALERT_CLASS_WITHOUT_SIGNAL`
-> at composition, and a runner build failure where a class and signal cannot be
-> mapped to an active monitor and a receiver.
+> **Amended 2026-09-10.** The catalog, the severity mapping and the receiver
+> table are **deleted from this specification** rather than relocated. A first
+> attempt moved them into a versioned configuration owned by the observability
+> Service; that reproduced the same fifteen lines in a forty-five line file with
+> a schema envelope, changed nothing for a Service author, and shipped an
+> example of a document that belongs in another repository. The model publishes
+> `alertClass` as a resolved fact and a monitoring stack reads it
+> ([chapter 20](../../../spec/v1/20-resolved-deployment.md#publish-back)).
+>
+> What survives is one claim and one refusal. The claim: the rules worth
+> alerting on are a property of what a Workload is, not of who owns it, which is
+> why no domain file authors PromQL. The refusal: a class with no signal is
+> `E_ALERT_CLASS_WITHOUT_SIGNAL`. There is no longer a `none` member to be above
+> — an omitted `observability` block is how a Service says it wants none
+> ([chapter 10](../../../spec/v1/10-service-intent.md#observability),
+> [0021](0021-observability-scrape-and-alert-class.md)).
 
 ## Rests on
 The rules worth alerting on are a property of what a Workload is and what it
 exposes, not of who owns it, so a platform catalog plus a declared urgency
-derives every alert the estate needs. False if: a Service needs a rule whose
-expression only its owner could write, often enough that authored PromQL becomes
-the normal case. Settled by: rendering the estate and finding every Service with
-a class above `none` carrying at least one rule at the severity its class
-implies, with no Service needing an authored expression to be adequately
-alerted.
+derives every alert the estate needs, so no domain file ever authors an
+expression. False if: a Service needs a rule whose expression only its owner
+could write, often enough that authored PromQL becomes the normal case. Settled
+by: rendering the estate and finding no Service that needs an authored
+expression to be adequately alerted.
 
 ## Why
 [0021](0021-observability-scrape-and-alert-class.md) says receivers, notifier

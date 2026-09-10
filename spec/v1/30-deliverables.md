@@ -48,7 +48,7 @@ one of them is a **central** adapter running once over the composed union:
 |---|---|---|
 | `kubernetes` | workloads | per Service: the controller, `Service`, `ServiceAccount`, `ConfigMap` — including every inbound-derived Asset — `PersistentVolumeClaim`, `PodDisruptionBudget` above one replica, the backup and sweep `CronJob`, `Namespace` per domain, and the kustomize `Kustomization` per directory |
 | `networking` | policy | every `NetworkPolicy` ([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)) |
-| `prometheus` | monitoring | nothing in v1's render: monitoring kinds are the observability Service's, produced by its runner from the resolved Service facts ([chapter 10](../../spec/v1/10-service-intent.md#the-observability-boundary)) |
+| `prometheus` | monitoring | one `ServiceMonitor` or `PodMonitor` per Service that declares `observability`, from the named surface and the Platform document's cadence. No `PrometheusRule`: PromQL is the monitoring stack's ([chapter 10](../../spec/v1/10-service-intent.md#observability)) |
 | `traefik` | edge | one `IngressRoute` set and one `Middleware` set **per tier** the Platform document declares ([0076](../../docs/adr/model/0076-middleware-has-one-producer.md), [0098](../../docs/adr/model/0098-one-publication-path.md)) |
 | `vault-policy` | secret store | one policy and one auth role per Workload identity, as JSON ([0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)) |
 | `vso` | secret delivery | `VaultConnection`, `VaultAuth`, the operator `ServiceAccount` per namespace, `VaultStaticSecret`, `VaultDynamicSecret` |
@@ -306,8 +306,8 @@ per Service from the scrape surface and exposure
 Every kind the 2026-08-31 survey found unrendered now has a decision: `Role` and
 `RoleBinding` are not rendered ([0075](../../docs/adr/model/0075-no-workload-rbac-in-v1.md)),
 `NetworkPolicy` is `networking`'s ([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)),
-`ServiceMonitor`, `PodMonitor` and `PrometheusRule` are the observability
-service's, produced by its runner from the resolved Service facts
+`ServiceMonitor` and `PodMonitor` are `prometheus`'s, from the declared
+`observability.scrape` surface, and `PrometheusRule` is rendered by nothing here
 ([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)),
 and `GitRepository` is a bootstrap fact
 ([0099](../../docs/adr/model/0099-bootstrap-set-is-recorded.md)) — created by

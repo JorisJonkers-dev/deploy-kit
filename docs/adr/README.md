@@ -26,10 +26,12 @@ The set was amended on 2026-09-10 for the v1 simplification: the generic
 override hatch is deleted and `replicas: {count, reason}` is the sole local
 capacity exception (0031, 0089, 0097); `zeroDowntime` is replaced by required
 `cutover: rolling | recreate` with `E_CUTOVER_UNHONOURABLE` (0030); and
-observability policy leaves the model for a versioned configuration owned by
-the observability service, whose runner must map every non-`none` class to a
-signal and a receiver (0021, 0079). The worked examples now declare every
-applicable authored field and annotate its effect.
+observability becomes one optional `observability` block on the Service, whole
+or absent, with the ServiceMonitor derived from it and rule expressions,
+severity and receivers left to the stack that reads the projection (0021,
+0079). The hardening exception surface is deleted with the override hatch it
+resembled (0016, 0083). The worked examples now declare every applicable
+authored field and annotate its effect.
 
 Tier-0 **premises** carry one falsifiable claim each; tier-1 **decisions** name
 the premises they stand on in `rests-on`. A `claim: open` means decided in

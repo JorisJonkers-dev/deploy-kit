@@ -35,7 +35,7 @@ written by anyone:
 | `cutover: rolling` | `RollingUpdate`, `maxSurge: 1`, `maxUnavailable: 0` — derived from the declared intent and the absence of volumes | the strategy |
 | `provides: http: 8080` | the port name, the Service, the ingress rules | `Service`, `NetworkPolicy` |
 | `exposure` + `audience: anonymous` | the tier, its middleware chain, and the route priority ([0093](../../../../docs/adr/model/0093-route-precedence-is-derived.md)) | `IngressRoute` |
-| `scrape` + `alertClass` | nothing in this tree: the monitor, its cadence, the rules and the receiver are the observability service's runner output ([chapter 10](../../10-service-intent.md#the-observability-boundary)) | `ServiceMonitor`, `PrometheusRule` in the rendered tree, from the runner configuration |
+| `observability` | a `ServiceMonitor` naming the `http` surface and the Platform document's cadence ([chapter 10](../../10-service-intent.md#observability)) | a `PrometheusRule`: rules, severity and receivers are the monitoring stack's, which reads `alertClass` from the projection |
 | the env file's two literals | the Runtime Profile keys and `PORT`, which are a build error to author | the container's `env` |
 
 ## What is absent, and why

@@ -1,12 +1,12 @@
 # REFUSED: E_ALERT_CLASS_WITHOUT_SIGNAL
 #
-# A Service declares a class above `none` and publishes no signal. No Workload
-# carries `scrape`, and the Service declares no external health surface, so
-# composition cannot hand the observability runner anything to monitor.
+# The `observability` block is half-declared: a class, and no `scrape`. The
+# block is whole or absent, and a class states how loudly to wake someone, so it
+# means nothing without a signal to wake them about.
 #
-# This is the property the model keeps at the Intent boundary while the
-# monitoring stack owns everything else
-# (spec/v1/10-service-intent.md #the-observability-boundary).
+# Omitting the block entirely would be accepted and would render no monitoring.
+# It is declaring the urgency while publishing nothing that is refused
+# (spec/v1/10-service-intent.md #observability).
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Domain
@@ -19,8 +19,10 @@ owner: joris
 
 services:
   - id: unwired
-    # The loudest value in the vocabulary, and nothing below publishes a signal.
-    alertClass: page
+    # The loudest value in the vocabulary, and no surface to carry it.
+    observability:
+      alertClass: page
+      # No `scrape`. That absence is the refusal.
 
     workloads:
       - name: unwired-worker
@@ -41,4 +43,3 @@ services:
 
         startupBudget: 20s
         cutover: rolling
-        # No `scrape`. That absence is the refusal.
