@@ -1,0 +1,57 @@
+# REFUSED: E_CUTOVER_UNHONOURABLE
+#
+# The Workload declares `cutover: rolling`, which is a request for continuity
+# through the cutover, and it declares a volume. Every claim on this estate is
+# `ReadWriteOnce` on `local-path`, and an RWO volume cannot attach to two pods
+# at once, so the surge a rolling cutover needs cannot happen.
+#
+# The model refuses rather than downgrading silently to `Recreate`. A silent
+# downgrade is what makes an owner believe they have continuity they do not have
+# (spec/v1/10-service-intent.md #cutover,
+# spec/v1/20-resolved-deployment.md #authority).
+#
+# Its accepted counterpart is cutover-recreate-over-rwo.domain.yml — the same
+# Workload, the same storage, the honest declaration.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Domain
+schemaVersion: 1.0.0
+
+expect: E_CUTOVER_UNHONOURABLE
+
+domain: refusals
+owner: joris
+
+services:
+  - id: rolling-over-rwo
+    alertClass: none
+
+    workloads:
+      - name: rolling-over-rwo-store
+        lifecycle: service
+        image: rolling-over-rwo-store
+        runtime: static
+        engine: valkey
+        stateful: true
+
+        provides:
+          redis: 6379
+
+        placement:
+          memory: 256Mi
+          cpu: 50m
+
+        probes:
+          readiness: { path: /healthz/ready, port: 6379 }
+          liveness: { path: /healthz/live, port: 6379 }
+
+        startupBudget: 20s
+
+        # The refusal: continuity is asked for over storage that cannot surge.
+        cutover: rolling
+
+        volumes:
+          - claim: rolling-over-rwo-data
+            mountAt: /data
+            size: 1Gi
+            durability: reconstructible

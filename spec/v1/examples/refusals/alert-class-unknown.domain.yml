@@ -1,0 +1,46 @@
+# REFUSED: schema validation, against the closed AlertClass enumeration
+#
+# `AlertClass` is a closed vocabulary — `none`, `business-hours`, `urgent`,
+# `page` (spec/v1/10-service-intent.md). A value outside it is refused at schema
+# validation, before composition runs and long before the observability runner
+# is handed anything, so no new error code carries this case.
+#
+# The Service publishes a signal, which isolates the defect: the only thing
+# wrong here is the class itself.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Domain
+schemaVersion: 1.0.0
+
+expect: schema — alertClass is not a member of AlertClass
+
+domain: refusals
+owner: joris
+
+services:
+  - id: unknown-class
+    # Not a member of the enumeration, so not a key the runner could route.
+    alertClass: critical
+
+    workloads:
+      - name: unknown-class-api
+        lifecycle: service
+        image: unknown-class-api
+        runtime: node
+
+        provides:
+          http: 8080
+
+        placement:
+          memory: 128Mi
+          cpu: 25m
+
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+
+        startupBudget: 20s
+        cutover: rolling
+
+        # The signal exists. It is the class that cannot be routed.
+        scrape: { port: 8080, path: /metrics }

@@ -128,40 +128,218 @@ test("no domain file carries overrides, and replicas is the sole capacity except
   }
 });
 
-test("the runner config maps every non-none class to a receiver", () => {
-  const cfg = read(join(examples, "observability", "runner.config.yml"));
-  const table = {
-    none: null,
-    "business-hours": "discord-daytime",
-    urgent: "discord-oncall",
-    page: "pushover-page",
+const refusals = join(examples, "refusals");
+
+/**
+ * The Services of a domain file as {id, text} slices. A Service starts at
+ * `  - id:` (two spaces) and runs to the next one, so a Service's `alertClass`
+ * and its Workloads' `scrape` surfaces are read together — the guarantee is
+ * per Service, not per file.
+ */
+function servicesOf(file) {
+  const out = [];
+  let current = null;
+  for (const line of read(file).split("\n")) {
+    const m = line.match(/^ {2}- id: (\S+)/);
+    if (m) {
+      if (current) out.push(current);
+      current = { id: m[1], text: "" };
+    } else if (current) {
+      current.text += line + "\n";
+    }
+  }
+  if (current) out.push(current);
+  return out;
+}
+
+/**
+ * The observability runner's configuration, read from the file rather than
+ * restated here. Only the three blocks this proof needs are parsed: the
+ * estate cadence, the class-to-receiver table, and the rule catalog's keys.
+ * A `null` receiver is the honest opt-out and stays distinguishable from an
+ * absent key.
+ */
+function runnerConfig(file) {
+  const lines = read(file).split("\n");
+  const block = (name) => {
+    const start = lines.findIndex((l) => l === `${name}:`);
+    if (start === -1) return [];
+    const out = [];
+    for (const line of lines.slice(start + 1)) {
+      if (/^\S/.test(line)) break;
+      if (line.trim() === "" || line.trim().startsWith("#")) continue;
+      out.push(line);
+    }
+    return out;
   };
-  for (const receiver of Object.values(table).filter(Boolean)) {
+  const pairs = (name) =>
+    Object.fromEntries(
+      block(name)
+        .map((l) => l.match(/^\s+([a-zA-Z0-9-]+):\s*(.*)$/))
+        .filter(Boolean)
+        .map((m) => [m[1], m[2] === "null" || m[2] === "" ? null : m[2]]),
+    );
+  return {
+    scrape: pairs("scrape"),
+    receivers: pairs("receivers"),
+    ruleCatalog: pairs("ruleCatalog"),
+  };
+}
+
+const estateRunner = runnerConfig(
+  join(examples, "observability", "runner.config.yml"),
+);
+
+// The runner emits an active monitor only if it has a cadence to give it and a
+// baseline rule set to attach; both are configuration, and both are read here.
+const runnerMonitorsAnySignal = () =>
+  Boolean(estateRunner.scrape.interval) &&
+  Boolean(estateRunner.scrape.scrapeTimeout) &&
+  Boolean(estateRunner.ruleCatalog.baseline);
+
+const hasScrapeSignal = (text) => /^\s+scrape:\s*(\{|$)/m.test(text);
+
+/** A file's declared lines, with whole-line and trailing comments removed. */
+const declarationsOf = (file) =>
+  read(file)
+    .split("\n")
+    .map((l) => l.replace(/(^|\s)#.*$/, ""))
+    .join("\n");
+
+test("the runner configuration is what carries the receiver table", () => {
+  assert.ok(
+    Object.keys(estateRunner.receivers).length > 1,
+    "no receiver table parsed from the runner configuration",
+  );
+  assert.equal(
+    estateRunner.receivers.none,
+    null,
+    "`none` must stay the one class with no receiver",
+  );
+  assert.ok(
+    runnerMonitorsAnySignal(),
+    "the runner has no cadence or no baseline rules, so it emits no active monitor",
+  );
+});
+
+test("every Service above none has its own signal, monitor and receiver", () => {
+  let proven = 0;
+  for (const f of domainFiles) {
+    for (const s of servicesOf(f)) {
+      const cls = s.text.match(/^\s+alertClass: (\S+)/m)?.[1];
+      assert.ok(cls, `${f}: Service ${s.id} declares no alertClass`);
+      assert.ok(
+        cls in estateRunner.receivers,
+        `${s.id}: alertClass ${cls} is not a key in the runner's table`,
+      );
+      if (cls === "none") continue;
+      assert.ok(
+        hasScrapeSignal(s.text),
+        `${s.id}: class ${cls} above none publishes no signal of its own`,
+      );
+      assert.ok(
+        runnerMonitorsAnySignal(),
+        `${s.id}: the runner cannot turn that signal into an active monitor`,
+      );
+      assert.ok(
+        estateRunner.receivers[cls],
+        `${s.id}: class ${cls} reaches no receiver`,
+      );
+      proven += 1;
+    }
+  }
+  assert.ok(proven > 0, "no Service above none in the worked estate");
+});
+
+test("a class above none with no signal is refused", () => {
+  const f = join(refusals, "alert-class-without-signal.domain.yml");
+  const text = read(f);
+  assert.match(text, /^expect: E_ALERT_CLASS_WITHOUT_SIGNAL$/m);
+  const [service] = servicesOf(f);
+  const cls = service.text.match(/^\s+alertClass: (\S+)/m)?.[1];
+  assert.notEqual(cls, "none", "the fixture must declare a class above none");
+  assert.ok(
+    cls in estateRunner.receivers && estateRunner.receivers[cls],
+    "the class must be routable, so the missing signal is the only defect",
+  );
+  assert.ok(
+    !hasScrapeSignal(service.text),
+    "the fixture must publish no signal — that absence is the refusal",
+  );
+});
+
+test("a class outside the vocabulary is not a routable key", () => {
+  const f = join(refusals, "alert-class-unknown.domain.yml");
+  const text = read(f);
+  assert.match(text, /^expect: schema — /m);
+  const [service] = servicesOf(f);
+  const cls = service.text.match(/^\s+alertClass: (\S+)/m)?.[1];
+  assert.ok(
+    !(cls in estateRunner.receivers),
+    `${cls} is in the runner's table, so it is not the unknown-class case`,
+  );
+  assert.ok(
+    hasScrapeSignal(service.text),
+    "the fixture must publish a signal, so the class is the only defect",
+  );
+});
+
+test("the runner cannot route a class its table drops", () => {
+  const broken = runnerConfig(join(refusals, "unroutable-runner.config.yml"));
+  const declared = new Set();
+  for (const f of domainFiles) {
+    for (const s of servicesOf(f)) {
+      const cls = s.text.match(/^\s+alertClass: (\S+)/m)?.[1];
+      if (cls && cls !== "none") declared.add(cls);
+    }
+  }
+  const unroutable = [...declared].filter((c) => !broken.receivers[c]);
+  assert.ok(
+    unroutable.length > 0,
+    "the fixture routes every class the estate declares, so it proves no refusal",
+  );
+  for (const c of unroutable) {
     assert.ok(
-      cfg.includes(receiver),
-      `runner config does not know receiver ${receiver}`,
+      estateRunner.receivers[c],
+      `${c} is unroutable in the estate configuration too — the fixture is not isolating the defect`,
     );
   }
-  for (const f of domainFiles) {
-    const text = read(f);
-    const classes = [...text.matchAll(/^\s+alertClass: (\S+)/gm)].map(
-      (m) => m[1],
+});
+
+test("rolling over RWO is refused and recreate over RWO is accepted", () => {
+  const refused = join(refusals, "cutover-rolling-over-rwo.domain.yml");
+  const accepted = join(refusals, "cutover-recreate-over-rwo.domain.yml");
+  assert.match(read(refused), /^expect: E_CUTOVER_UNHONOURABLE$/m);
+  assert.match(read(accepted), /^expect: accepted$/m);
+
+  const only = (f) => {
+    const ws = workloadsOf(f);
+    assert.equal(ws.length, 1, `${f}: a refusal fixture carries one Workload`);
+    return ws[0];
+  };
+  const bad = only(refused);
+  const good = only(accepted);
+
+  for (const w of [bad, good]) {
+    assert.match(
+      w.text,
+      /^\s+volumes:$/m,
+      `${w.name}: the pair must both hold an RWO volume`,
     );
-    assert.ok(classes.length > 0, `${f}: no alertClass`);
-    for (const c of classes) {
-      assert.ok(
-        c in table,
-        `${f}: alertClass ${c} is not in the runner's table`,
-      );
-      if (c === "none") continue;
-      // The signal may be block-style (`scrape:` then port/path) or flow-style
-      // (`scrape: {port: …, path: …}`) — either publishes a scrape surface.
-      assert.match(
-        text,
-        /^\s+scrape:\s*(\{|$)/m,
-        `${f}: class ${c} above none has no scrape signal in its domain`,
-      );
-    }
+  }
+  assert.match(bad.text, /^\s+cutover: rolling$/m);
+  assert.match(good.text, /^\s+cutover: recreate$/m);
+
+  // The refusal is the model's, not Kubernetes'. No Kubernetes rollout token
+  // may appear as a declared value in either file: the adapter derives the
+  // strategy. Comments may name the tokens to say who owns them, so the check
+  // runs over the declarations rather than the prose.
+  for (const f of [refused, accepted]) {
+    assert.doesNotMatch(
+      declarationsOf(f),
+      /RollingUpdate|maxSurge|maxUnavailable/,
+      `${f}: a Kubernetes rollout token leaked into Service Intent`,
+    );
   }
 });
 
@@ -169,6 +347,10 @@ test("Intent carries no observability policy vocabulary", () => {
   const intentFiles = [
     join(examples, "platform", "platform.intent.yml"),
     ...domainFiles,
+    join(refusals, "alert-class-without-signal.domain.yml"),
+    join(refusals, "alert-class-unknown.domain.yml"),
+    join(refusals, "cutover-rolling-over-rwo.domain.yml"),
+    join(refusals, "cutover-recreate-over-rwo.domain.yml"),
   ];
   for (const f of intentFiles) {
     const text = read(f);

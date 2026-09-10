@@ -1,0 +1,55 @@
+# ACCEPTED. The counterpart to cutover-rolling-over-rwo.domain.yml.
+#
+# The same Workload over the same `ReadWriteOnce` storage, declaring the cutover
+# its storage can honour. The owner accepts stop-then-start, and the adapter
+# derives the safe Kubernetes strategy — `Recreate`, with no surge — from the
+# declared intent and the storage facts. No Kubernetes token appears here:
+# `RollingUpdate`, `maxSurge` and `maxUnavailable` are the adapter's, not the
+# Service author's (spec/v1/10-service-intent.md #cutover).
+#
+# Rendering that strategy is renderer proof, and there is no renderer yet. What
+# this fixture proves today is the accepted half of the pair at the fixture
+# layer: recreate over RWO is expressible and valid where rolling is refused.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Domain
+schemaVersion: 1.0.0
+
+expect: accepted
+
+domain: refusals
+owner: joris
+
+services:
+  - id: recreate-over-rwo
+    alertClass: none
+
+    workloads:
+      - name: recreate-over-rwo-store
+        lifecycle: service
+        image: recreate-over-rwo-store
+        runtime: static
+        engine: valkey
+        stateful: true
+
+        provides:
+          redis: 6379
+
+        placement:
+          memory: 256Mi
+          cpu: 50m
+
+        probes:
+          readiness: { path: /healthz/ready, port: 6379 }
+          liveness: { path: /healthz/live, port: 6379 }
+
+        startupBudget: 20s
+
+        # The honest declaration over storage that cannot surge.
+        cutover: recreate
+
+        volumes:
+          - claim: recreate-over-rwo-data
+            mountAt: /data
+            size: 1Gi
+            durability: reconstructible
