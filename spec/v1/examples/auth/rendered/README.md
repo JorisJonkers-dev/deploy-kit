@@ -216,9 +216,8 @@ renumbered — every other reference in this file keeps pointing where it did.
   authored `host`, which is unsayable while `exposure` sits on the Workload, and
   three env values resolve from it through `${exposure:auth.public#url}` rather
   than repeating the literal.
-- A hardening exception relaxing exactly one control: auth-ui's
-  `readOnlyRootFilesystem: false` against auth-api's `true`, with the other
-  three controls byte-identical.
+- Two Workloads meeting `restricted` identically, one of them by declaring the
+  paths nginx writes rather than by relaxing a control.
 - `delivery: self` producing no `VaultStaticSecret`, no `Secret` and no
   `envFrom` — and, as a consequence, no Kubernetes object at all
   ([G-02](#g-02)).

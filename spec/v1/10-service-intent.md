@@ -361,7 +361,7 @@ this estate. `sidecars` names the others
       image: postgres-exporter
       memory: 64Mi
       cpu: 50m
-      # no hardening block: the platform's posture, no exceptions
+      # the platform's posture applies; a container authors no hardening
 ```
 
 | field | required | shape | notes |
@@ -370,19 +370,17 @@ this estate. `sidecars` names the others
 | `image` | yes | an alias | Resolved to a digest through the images lock, exactly as a Workload's is. A tag would put a mutable reference in a Deliverable, which `E_FLOATING_IMAGE` (chapter 30) refuses. |
 | `memory` | yes | one quantity | This container's request. Shape rules are the Workload's ([Placement](#placement)). |
 | `cpu` | yes | one quantity | The same. |
-| `hardening` | no | `{exceptions: [...]}` | This container's own exception list, the same shape as the Workload's ([Pod hardening](#pod-hardening)). Absent means the platform's posture with no exceptions. |
 
 The split follows Kubernetes rather than a rule of the model's own: `nodeSelector`
 and affinity are **pod**-level, `resources` and `securityContext` are
 **container**-level. So the node dimensions — `arch`, `site`, `disk`, `gpu`,
 `capabilities` — stay on the Workload and describe the pod, and a sidecar
-declares neither them nor a `placement` block. `memory`, `cpu` and `hardening`
+declares neither them nor a `placement` block. `memory` and `cpu`
 are per container, and a sidecar declares its own.
 
-Nothing is inherited. `postgres-exporter` meets `restricted` while `postgres`
-does not, so a Workload's exception list does not reach its sidecars — pushing
-one container's exception onto another would widen the estate's inventory of
-what it cannot harden by containers that never needed it.
+Nothing is inherited, and nothing needs to be: every container in the pod meets
+`restricted` or the Workload is refused, so there is no per-container relaxation
+to push onto a sidecar in the first place.
 
 **Eligibility sums.** A node must fit the pod's containers together, so the
 placement check adds every sidecar's `memory` and `cpu` to the Workload's before
@@ -714,10 +712,7 @@ apply because the retrofit gets strictly more expensive every week
 ([0016](../../docs/adr/model/0016-pod-hardening.md)).
 
 ```yaml
-hardening:
-  exceptions:
-    - allow: writableRootFilesystem
-      reason: nginx writes /var/cache/nginx; no upstream image with a writable-free layout.
+writablePaths: [/var/cache/nginx, /var/run]
 ```
 
 The field does not exist today, in either renderer generation:
@@ -742,8 +737,8 @@ The posture itself is **not authored per Workload**. It is one estate-wide value
 it thirty times would be restating the only value there is, and a field with one
 legal value carries no information ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)
 deleted `minAvailable` for the same reason). What a Workload authors is the
-**exceptions**, which is where the variation actually lives. `restricted` is four
-controls, applied together:
+paths it must write, and nothing else. `restricted` is four controls, applied
+together:
 
 | control | rendered as |
 |---|---|
@@ -765,9 +760,8 @@ writablePaths: [/tmp]
 Each derives an `emptyDir` mounted at that path, and `readOnlyRootFilesystem`
 **stays `true`** — which is what the control means: the image's own filesystem is
 immutable, and the paths a process writes are mounted. A writable path is
-therefore **not** an exception and gets no entry in the inventory; conflating a
-mounted tmpfs with disabling the control would put `auth-api` writing to `/tmp`
-in the same list as a pod running as root.
+therefore **not** a relaxation of the control: a mounted tmpfs is not the same
+thing as a pod running as root, and only one of the two is expressible here.
 
 `sizeLimit` is **not** authored per path. Ephemeral storage is finite node disk
 and therefore contended
@@ -781,32 +775,37 @@ nobody asked for would appear in every static image that never writes — and th
 worked `auth` domain claiming that "the render supplies `/tmp` as an `emptyDir`"
 described behaviour no chapter specified.
 
-`auth-ui`'s exception retires under this rule: nginx declaring
+This is what retired the estate's last two exceptions. nginx declaring
 `writablePaths: [/var/cache/nginx, /var/run]` meets the `restricted` class
-without relaxing anything, which is what its own recorded reason predicted.
+without relaxing anything, which is what `auth-ui`'s own recorded reason
+predicted.
 
-A Workload that cannot meet the class declares the **specific** control it
-relaxes, with a reason. An exception is a declared fact about an image, not an
-override of a derivation. `allow` is a
-closed vocabulary — `runAsRoot`, `writableRootFilesystem`,
-`capability:<NAME>`, `seccompUnconfined` — and one entry relaxes exactly one
-control. An exception with an empty or missing `reason` fails schema validation.
-There is no `hardening: privileged` shorthand: the exception list is the estate's
-inventory of what it cannot harden, and a shorthand would hide its length.
+**A Workload that cannot meet the class is refused.** There is no exception
+vocabulary, no `allow` list and no `hardening: privileged` shorthand: an image
+that needs root, a writable root filesystem, a dropped capability back or a
+relaxed syscall filter is `E_HARDENING_UNMET` at composition. The fix is the
+image, or an entry in a Bidirectional Ledger with an owner and a reason
+([0055](../../docs/adr/model/0055-bidirectional-ledgers.md)) while the image is
+replaced.
+
+An escape hatch in the DSL is the thing this model exists to remove. A per-field
+relaxation carried with a reason is an override under another name, and it
+outlives the image that justified it: the estate's own inventory of "what we
+cannot harden" was written once and never shortened. Refusing instead puts the
+cost where the defect is. The worked estate proves the point — after
+`writablePaths` and the images lock, **no Workload in the example set declares an
+exception at all**, and the two that used to are `auth-ui`, which lists the paths
+nginx writes, and `platform-postgres`, whose UID comes from the lock.
 
 ### A privileged port needs the capability that binds it
 
 A `provides` port below 1024 cannot be bound by a non-root process without
 `CAP_NET_BIND_SERVICE`, and the `restricted` class drops all capabilities. A
-Workload declaring one without relaxing the control is
-`E_PRIVILEGED_PORT_UNDER_NONROOT`
-([0083](../../docs/adr/model/0083-privileged-port-needs-the-capability.md)).
-
-The escape is the vocabulary that already exists: `allow: capability:NET_BIND_SERVICE`
-with a reason, which puts the Workload in the exception inventory where every
-other relaxation is. Deriving the capability silently instead would re-add what
-the class dropped, for every Workload that happens to declare a low port, and
-the inventory would stop recording it.
+Workload declaring one is `E_PRIVILEGED_PORT_UNDER_NONROOT`
+([0083](../../docs/adr/model/0083-privileged-port-needs-the-capability.md)),
+and the answer is a port above 1024. Deriving the capability silently would
+re-add what the class dropped for every Workload that happens to declare a low
+port.
 
 `auth-ui` is the live case and its answer is to listen on 8080. A route names a
 **surface**, not a number, so the container's port is invisible to every consumer
@@ -836,8 +835,8 @@ root-owned, so without a group a non-root pod cannot write its own PV —
 derives `fsGroup` from the resolved `gid`, with
 `fsGroupChangePolicy: OnRootMismatch` so the kubelet does not re-chown a large
 volume on every start. No authored field, and no root-capable init container —
-which would be a hardening exception on every stateful Workload, widening the
-estate's inventory of what it cannot harden to solve a problem `fsGroup` solves.
+which every stateful Workload would then need, to solve a problem `fsGroup`
+solves.
 
 Enforcement from the platform side was rejected rather than overlooked. Pod
 Security Admission can reject but never fill in, so a non-conforming pod fails at
@@ -1830,7 +1829,7 @@ declaring site is fixed:
 | `replicas` | derived as **1**, and more than one is a `replicas: {count, reason}` declaration ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)) — never a live cluster read |
 | storage class, volume capacity | assigned |
 | `resources`, requests or limits | derived from `placement` |
-| a `securityContext` field | `hardening`, plus a declared exception |
+| a `securityContext` field | the platform's `hardening` posture, and `writablePaths` |
 | a ServiceAccount, Vault role or policy name | derived per Workload (chapter 16) |
 | a Reconcile Unit or `platform.layer` | derived from the edge set |
 | a field coupling the release of two Services | one Service, or two that release independently ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)) |
@@ -1910,7 +1909,7 @@ way: contention decides who arbitrates, not who authors
 |---|---|
 | [`minimal/notes.domain.yml`](examples/minimal/notes.domain.yml) + [`env`](examples/minimal/env/notes-api/base.env) | **read this first.** One domain, one Service, one Workload, and no field that is not required: 26 authored lines reaching 10 objects, with no grant, no volume and no gap row. It is also the only set that renders on today's pinned inputs, because it holds nothing the secrets-at-rest gate can refuse — see [`minimal/README.md`](examples/minimal/README.md) |
 | [`knowledge/knowledge.domain.yml`](examples/knowledge/knowledge.domain.yml) + [`env`](examples/knowledge/env/knowledge-api.base.env) + [`worker env`](examples/knowledge/env/knowledge-ingest-worker.base.env) | two Workloads, two runtimes and therefore two identities, `probes: none` and no `provides` on the worker, grants at **both** levels, a split Subtree path, a `0400` file secret, an `irreplaceable` volume |
-| [`auth/auth.domain.yml`](examples/auth/auth.domain.yml) + [`env`](examples/auth/env/auth-api.base.env) | one Service, two Workloads switching atomically; `delivery: self` with `tolerates: reload`, a `self-roll` transit grant taking no placeholder, and the one hardening exception in the set |
+| [`auth/auth.domain.yml`](examples/auth/auth.domain.yml) + [`env`](examples/auth/env/auth-api.base.env) | one Service, two Workloads switching atomically; `delivery: self` with `tolerates: reload`, a `self-roll` transit grant taking no placeholder, and the writable paths that retired its hardening exception |
 | [`data/data.domain.yml`](examples/data/data.domain.yml) + [`env`](examples/data/env/platform-postgres.base.env) | three Services releasing independently in one domain, third-party images, a `disk` dimension, TCP probes, and a surface eight Services consume |
 
 The env-file-to-`secrets` cross-check runs over the three larger sets; the
@@ -1965,10 +1964,6 @@ classDiagram
     }
     class Capacity {
         +int count
-        +string reason
-    }
-    class HardeningException {
-        +Control allow
         +string reason
     }
     class Surface {
@@ -2161,13 +2156,6 @@ classDiagram
         admin
         workflow
     }
-    class Control {
-        <<enumeration>>
-        runAsRoot
-        writableRootFilesystem
-        capability:NAME
-        seccompUnconfined
-    }
     class Delivery {
         <<enumeration>>
         env
@@ -2243,8 +2231,6 @@ classDiagram
 
     Workload "1" *-- "0..*" Surface : provides
     Workload "1" *-- "0..*" Sidecar : sidecars
-    Workload "1" *-- "0..*" HardeningException : hardening.exceptions
-    Sidecar "1" *-- "0..*" HardeningException : hardening.exceptions
     Workload "1" *-- "0..*" DependencyEdge : dependsOn
     Workload "1" *-- "0..1" Probe : probes.readiness
     Workload "1" *-- "0..1" Probe : probes.liveness

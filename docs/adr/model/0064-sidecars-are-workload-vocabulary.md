@@ -76,9 +76,9 @@ is already exactly that shape.
   container, and `provides` does not say which. The port is on the pod, so
   nothing breaks; but a reader of `provides` alone cannot tell which process
   answers — paid by whoever debugs 9187, in one extra file to open.
-- Two more places to state a hardening exception, and the estate's inventory of
-  what it cannot harden grows by the sidecars that need one — paid in honesty:
-  the exceptions were always there and were invisible.
+- Two more containers that must each meet `restricted` on their own, and a
+  sidecar that cannot is refused along with its Workload — paid in honesty:
+  those containers were always running and were invisible.
 - `probes` stay on the Workload. A sidecar publishes no readiness signal of its
   own, so a failing exporter cannot hold its Workload out of service — the
   right default for a metrics sidecar, and wrong for any sidecar that becomes

@@ -345,12 +345,11 @@ both trace to that declaration. The id is not reused and nothing is renumbered.
 - **All three Durability Classes in one file**, deriving three different backup
   shapes, of which the only one that renders correctly is the one that renders
   nothing.
-- **A hardening exception relaxing exactly one control**: postgres's
-  `readOnlyRootFilesystem: false` against rabbitmq's and valkey's `true`, with
-  the other three controls byte-identical — and the honest note that "meets the
-  restricted class" is an assertion by the author for all three third-party
-  images, checked by nothing until a pod crash-loops ([G-15](#g-15),
-  [G-27](#g-27)).
+- **Three third-party images meeting `restricted` identically**, postgres by
+  declaring the paths its entrypoint writes rather than by relaxing a control —
+  and the honest note that "meets the restricted class" is an assertion by the
+  author for all three, checked by nothing until a pod crash-loops
+  ([G-15](#g-15), [G-27](#g-27)).
 - **Inbound derivation is a composition property** ([G-22](#g-22)): the provider
   declares nothing and receives five rules from two other domains, and would
   receive five more from domains not in this fragment set.

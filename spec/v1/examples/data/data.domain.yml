@@ -17,7 +17,7 @@
 # spanning two repositories: this file is the whole domain.
 #
 # Exercises: three independently released Services, a third-party image behind
-# an alias with `runtime: none`, a declared hardening exception, structured
+# an alias with `runtime: none`, declared writable paths, structured
 # `disk` placement, TCP probes, a static Asset, a sidecar, all three
 # Durability Classes, `provides` consumed by eight Services, and one authored
 # hostname that does not follow its Service id.
@@ -112,18 +112,13 @@ services:
             # sizes, so the quantity has one declaring site
             # (docs/adr/model/0081-volume-size-is-a-hard-dimension.md)
 
-        # The class still defaults to `restricted` and the other three controls
-        # stand: the pod runs as uid 999, drops all capabilities and takes
-        # seccomp RuntimeDefault. Only the named control is relaxed, and only
-        # with a reason -- a declared fact about an image, not an override of a
-        # derivation. The vocabulary of
-        # `allow` is the inverse of the four restricted controls: runAsRoot,
-        # writableRootFilesystem, capability:<NAME>, seccompUnconfined
+        # The `restricted` class applies whole: the pod runs as uid 999, drops
+        # all capabilities, takes seccomp RuntimeDefault and keeps
+        # readOnlyRootFilesystem true. There is no hardening block to author
+        # and no control to relax -- an image that cannot meet the class is
+        # E_HARDENING_UNMET, not an entry in an exception list
         # (docs/adr/model/0016-pod-hardening.md).
-        #
-        # One of two declared exceptions in the example set; the other is nginx
-        # in domains/auth.yml.
-        # No exception. The upstream entrypoint writes its unix socket to
+        # The upstream entrypoint writes its unix socket to
         # /var/run/postgresql and lock files under /tmp before the server
         # starts; both are declared writable paths and readOnlyRootFilesystem
         # stays true (docs/adr/model/0092-writable-paths-are-declared.md).

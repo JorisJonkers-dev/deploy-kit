@@ -12,7 +12,7 @@
 # that forced `exposure` from the Workload to the Service -- placement as hard
 # dimensions carrying an arch set and a capability, three `delivery: self`
 # grants including a Transit key that takes no placeholder, four dependencies,
-# one hardening exception with a reason, and config that is almost entirely
+# writable paths that retired a hardening exception, and config that is almost entirely
 # derived.
 #
 # Companion env files, one per WORKLOAD
@@ -341,7 +341,12 @@ services:
                                 # PYROSCOPE_* wiring to inject, and saying
                                 # `static` is a decision rather than an omission
         provides:
-          http: 80
+          http: 8080         # above 1024. A port below it cannot be bound
+                             # under runAsNonRoot with capabilities dropped, and
+                             # there is no exception to relax
+                             # (docs/adr/model/0083-privileged-port-needs-the-capability.md).
+                             # The Service object still listens on 80: a route
+                             # names a surface, never a number
 
         placement:
           # The two required dimensions, and nothing else. Every further
@@ -355,10 +360,10 @@ services:
                                 # above that, and request == limit
           cpu: 10m
 
-        # No `hardening` block, and no exception. nginx writes its temporary
-        # bodies and cache under /var/cache/nginx and its pid file under
-        # /var/run; both are declared writable paths, mounted as emptyDirs, and
-        # readOnlyRootFilesystem stays true
+        # No `hardening` block, because there is no hardening to author. nginx
+        # writes its temporary bodies and cache under /var/cache/nginx and its
+        # pid file under /var/run; both are declared writable paths, mounted as
+        # emptyDirs, and readOnlyRootFilesystem stays true
         # (docs/adr/model/0092-writable-paths-are-declared.md). The exception
         # this Workload used to carry retired with that decision, without the
         # rebuilt image its own reason was waiting for.

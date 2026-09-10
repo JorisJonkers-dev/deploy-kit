@@ -68,12 +68,13 @@ executable, and what the image does is versioned rather than a string in YAML.
 authors, or an observation 0057 already lets the platform record.
 
 One thing that looks like a leak is not, and is kept on purpose:
-`allow: capability:NET_BIND_SERVICE` in a hardening exception. A Linux
-capability is what the binary asks the kernel for, the same kind of fact as a
+a Linux capability name, back when a hardening exception could still carry one.
+A capability is what the binary asks the kernel for, the same kind of fact as a
 port or a writable path, and it would be the same word on Nomad or bare metal.
 The layer-1 rule excludes the substrate's mechanisms, and the kernel is not the
-substrate. Inventing friendly names over a closed, documented set would produce a
-made-up word the first time a capability had no obvious one.
+substrate. The example is now historical — [0016](0016-pod-hardening.md) deleted
+the field that named it — but the test it illustrates still decides the next
+case.
 
 ## Alternatives
 | option | cost if taken | why rejected |

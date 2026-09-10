@@ -147,7 +147,7 @@ field's placement link to this anchor rather than copying rows.
 | `exposure[].contentPolicy` | Service | no contention | `strict`, `admin` or `workflow`. Which profile an application needs is a fact about the application; the header set it selects is derived |
 | `exposure[].routes` — `path`, `match`, `workload`, `surface`, `redirectTo` | Service | no contention | which of the Service's own Workloads serves which path of the host. The surface must be one that Workload `provides` (`E_UNKNOWN_SURFACE`); no two routes may share a `path` + `match` pair (`E_DUPLICATE_ROUTE_MATCH`); `redirectTo` is a path, never a regex |
 | `probes`, `startupBudget`, `cutover` | Service | no contention | what only the Service knows about its own start, health and cutover; `cutover` is required and has no default |
-| `hardening.exceptions` | Service | no contention | only the exceptions are authored; each names one control and carries a reason. The posture itself is uniform, so it is the platform's ([0016](../../docs/adr/model/0016-pod-hardening.md)) |
+| `hardening` | platform | no contention | one estate-wide posture, `restricted`. A Workload authors no hardening at all: it declares the paths it must write, and an image that cannot meet the class is `E_HARDENING_UNMET` ([0016](../../docs/adr/model/0016-pod-hardening.md)) |
 | `volumes[].durability` | Service | no contention | what the data is worth cannot be observed |
 | `placement.memory`, `placement.cpu` | Service | pool — stated | required on every Workload; the Service states the requirement, the platform arbitrates it against node allocatable |
 | `placement.gpu` | Service | pool — stated | `class` and `memory`, matched against the node contract's `gpus[].class` and `gpus[].memory_mib`; a card is held by one Workload at a time |
@@ -672,11 +672,14 @@ wants a different namespace changes `domain` — one edit, in the open, which mo
 the Service to another file and another fragment. A second way to say where a
 Service lives is a second record of one fact, and it drifts.
 
-### `hardening.exceptions` is not an override
+### Hardening has no exception surface either
 
-It is the same shape for a different surface: a Workload that cannot meet the
-default posture names the specific control and its reason. The posture itself is
-platform policy; the exception is a declared fact about an image.
+The posture is platform policy and a Workload authors none of it. There is no
+per-control relaxation carried with a reason, because that is an override under
+another name and it outlives the image that justified it. An image that cannot
+meet `restricted` is `E_HARDENING_UNMET`; the fix is the image, or a
+Bidirectional Ledger entry with an owner while it is replaced
+([0055](../../docs/adr/model/0055-bidirectional-ledgers.md)).
 
 ## The Reconcile Unit
 
