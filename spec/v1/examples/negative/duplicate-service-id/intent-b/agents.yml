@@ -1,4 +1,4 @@
-# Fixture B — a different domain, in a different repository, claiming the same
+# Fixture B: a different domain, in a different repository, claiming the same
 # Service Id. Identity is flat and unique estate-wide
 # (docs/adr/model/0010-flat-service-identity.md), so the union of these two fragments
 # must fail with E_DUPLICATE_SERVICE_ID -- and with nothing else.

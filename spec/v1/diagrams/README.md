@@ -16,11 +16,11 @@ Colour carries the layer, so a reader can place a box without a legend.
 
 | fill | stroke | means |
 |---|---|---|
-| `#dbeafe` | `#1e40af` | Service Intent — hand-authored by a Service's owner ([chapter 10](../10-service-intent.md)) |
-| `#e0e7ff` | `#4338ca` | Platform Intent — hand-authored by the platform ([chapter 14](../14-platform-intent.md)) |
+| `#dbeafe` | `#1e40af` | Service Intent: hand-authored by a Service's owner ([chapter 10](../10-service-intent.md)) |
+| `#e0e7ff` | `#4338ca` | Platform Intent: hand-authored by the platform ([chapter 14](../14-platform-intent.md)) |
 | `#e2e8f0` | `#475569` | a pinned input, a lock, or a recorded fact |
-| `#fef3c7` | `#b45309` | layer 2 — a decision the platform made ([chapter 20](../20-resolved-deployment.md)) |
-| `#d1fae5` | `#047857` | layer 3 — a serialized Deliverable ([chapter 30](../30-deliverables.md)) |
+| `#fef3c7` | `#b45309` | layer 2: a decision the platform made ([chapter 20](../20-resolved-deployment.md)) |
+| `#d1fae5` | `#047857` | layer 3: a serialized Deliverable ([chapter 30](../30-deliverables.md)) |
 | `#fee2e2` | `#b91c1c` | a refusal: an error code, or a render that does not happen |
 | white, dashed border | `#64748b` | defined separately from the model ([`docs/adr/deferred/`](../../../docs/adr/deferred/README.md)) |
 
@@ -30,7 +30,7 @@ Conventions that hold across every drawing:
   followed across a dense diagram.
 - **Solid arrow**: a derivation, or a step that must happen. **Dashed arrow**: a
   reference, a feedback path, or something defined separately.
-- **Filled diamond**: UML composition — the part cannot exist without its whole.
+- **Filled diamond**: UML composition; the part cannot exist without its whole.
 - **A class diagram is a tidy tree, laid out layer by layer downwards**, so it
   has **no edge crossings**. Every node sits exactly one layer below its parent,
   **a parent's edges share one horizontal bus** so its children read as one
@@ -38,7 +38,7 @@ Conventions that hold across every drawing:
   overlay. The relation's name rides the child's vertical drop, **close to the
   target**, which is what lets the run be shared: the drops are at distinct x,
   so the names never pile up. Two relations that mean the same thing are named
-  the same thing, even where they come from different sources — `secrets` is
+  the same thing, even where they come from different sources; `secrets` is
   `secrets` whether it hangs off the Service or off a Workload.
 
   **Two edges to the same box share their exit and their run**, and part only
@@ -68,12 +68,12 @@ Conventions that hold across every drawing:
   mermaid, re-run the script, re-export. Every other diagram is drawn by hand in
   draw.io.
 - **Labels are plain text with manual line breaks**, which is what keeps the
-  exported SVG real text rather than a rasterised image — it stays searchable,
+  exported SVG real text rather than a rasterised image; it stays searchable,
   selectable and small.
 
 ## The derivation map is two drawings
 
-[Chapter 16](../16-dependencies.md#the-derivation-map)'s map is split in half —
+[Chapter 16](../16-dependencies.md#the-derivation-map)'s map is split in half:
 declarations and pinned facts reaching **assignments**, then declarations and
 assignments reaching **Deliverables**. As one drawing it is roughly ninety edges
 in one frame, which no layout makes readable. The split is also where the two
@@ -86,8 +86,8 @@ indistinguishable however they are routed, and routing them around each other
 put lines across boxes. A mark at a row-column intersection carries the same
 edge with no connector to trace and nothing to cross.
 
-Row colour is the layer the input belongs to — blue for a declared field, grey
-for a pinned fact, amber for a layer-2 assignment — and the mark takes its row's
+Row colour is the layer the input belongs to (blue for a declared field, grey
+for a pinned fact, amber for a layer-2 assignment), and the mark takes its row's
 colour, so a Deliverable's column shows at a glance how much of it is declared
 and how much is decided. The `in` and `out` counts are rendered from the same
 edge list as the marks, which is what makes totality and in-degree-at-least-one

@@ -319,7 +319,7 @@ test("a class with no signal is refused, and an unknown class is not a member", 
   );
 
   const unknown = join(refusals, "alert-class-unknown.domain.yml");
-  assert.match(read(unknown), /^expect: schema — /m);
+  assert.match(read(unknown), /^expect: schema, /m);
   const b = observabilityOf(servicesOf(unknown)[0].text);
   assert.ok(b && b.hasScrape, "the fixture must publish a signal");
   assert.ok(

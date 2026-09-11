@@ -1,4 +1,4 @@
-# Chapter 40 — Composition
+# Chapter 40: Composition
 
 Composition is the step that turns many independently-published declarations into
 the single global view layer 2 needs. It runs before resolution, and nothing
@@ -14,11 +14,11 @@ in isolation:
 | Service Id uniqueness | every Service in the estate | [0010](../../docs/adr/model/0010-flat-service-identity.md) |
 | domain uniqueness, and exactly one publisher per domain | every fragment in the estate | [0063](../../docs/adr/model/0063-intent-authored-per-domain.md) |
 | hostname uniqueness | every exposure in the estate, plus the register of surfaces the model does not deploy | [0018](../../docs/adr/model/0018-exposure-by-audience.md) |
-| reachability completeness — derived ∪ registered | every exposure plus the unmanaged register | [0019](../../docs/adr/model/0019-registered-unmanaged-surfaces.md) |
+| reachability completeness, derived ∪ registered | every exposure plus the unmanaged register | [0019](../../docs/adr/model/0019-registered-unmanaged-surfaces.md) |
 | the Reconcile Unit DAG | every required dependency edge | [0032](../../docs/adr/model/0032-reconcile-unit-derived.md) |
-| inbound derivations — CORS origins, one database per consumer | edges pointing *at* a Service | [0020](../../docs/adr/model/0020-dependency-edges-carry-surface.md) |
+| inbound derivations, CORS origins, one database per consumer | edges pointing *at* a Service | [0020](../../docs/adr/model/0020-dependency-edges-carry-surface.md) |
 | the reader set of a secret path | every grant in the estate | [0023](../../docs/adr/model/0023-grant-unit-is-the-path.md) |
-| placement eligibility — at least one node per Workload | every declared dimension against the fleet's node contract | [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md) |
+| placement eligibility, at least one node per Workload | every declared dimension against the fleet's node contract | [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md) |
 
 No Service knows its own consumers, and no domain file holds the fleet's node
 contract, so none of these are locally computable. That is the whole argument for
@@ -63,11 +63,11 @@ then publishes one fragment per domain file rather than one fragment per
 repository: `homelab-collections` stays one repository and publishes one fragment
 for each domain it holds. Splitting it into separate repositories remains a
 convenience rather than a prerequisite, because composition behaves identically
-either way — it unions fragments, and every fragment is already a whole domain.
+either way: it unions fragments, and every fragment is already a whole domain.
 
 **A domain never spans repositories, and composition rejects one that does.** A
 domain name may be declared by exactly one fragment across the union; a second
-fragment declaring `domain: knowledge` — in the same repository or in another —
+fragment declaring `domain: knowledge` (in the same repository or in another)
 is `E_DUPLICATE_DOMAIN`. That check is what makes the union total: composition
 unions fragments and never has to union a domain, so a domain's membership is
 never a fact that becomes knowable only after composition has run. Without it,
@@ -76,17 +76,17 @@ state who is in it.
 
 A fragment carries:
 
-- the domain file — its Services, their Workloads, and the per-Workload env files
+- the domain file: its Services, their Workloads, and the per-Workload env files
   those Workloads name
-- the Secret Subtree the domain owns — paths, keys, engines, readers
+- the Secret Subtree the domain owns: paths, keys, engines, readers
 - the node contract, for the fragment that owns the fleet: the `allocatable`
   table every `placement` is matched against
   ([0056](../../docs/adr/model/0056-node-facts-single-source.md))
 - Registered Unmanaged Surfaces the domain is responsible for
 
 A fragment publishes **on merge to the default branch, independently of any image
-release**. An intent-only change — a changed exposure, a secret grant, a
-dependency edge, a raised `placement.memory` — produces no image, and tying
+release**. An intent-only change (a changed exposure, a secret grant, a
+dependency edge, a raised `placement.memory`) produces no image, and tying
 publication to a version tag would leave such a change unpublished behind a
 staleness window. The worked workflow is
 [`examples/workflows/service-publish-fragment.yml`](examples/workflows/service-publish-fragment.yml).
@@ -106,8 +106,8 @@ That second line is the whole reason the lock is an output rather than an input.
 `context/public/context-manifest.yml` ships with `packageDigest: ""`, because the
 digest does not exist until the push completes. A design where each repository
 pinned its peers would require every fragment to know digests that cannot be
-known at authoring time, so the digests are recorded by the **consumer** — the
-composition lock — after resolution. This is what satisfies the property that
+known at authoring time, so the digests are recorded by the **consumer** (the
+composition lock) after resolution. This is what satisfies the property that
 **no repository needs a merge before a change takes effect**.
 
 `oras resolve` following `oras push` is also the estate's habit applied
@@ -141,7 +141,7 @@ concurrency is serialised because two runs would race on `previousLockDigest`.
 
 Composition is **order-independent**: the same fragment set yields the same
 `ComposedIntent` regardless of pull order. That is not a nicety, it is what makes
-the composed digest meaningful — and it forces a design consequence. Every merge
+the composed digest meaningful, and it forces a design consequence. Every merge
 must be commutative, so **every collision is an error rather than a
 last-write-wins merge.** There is no precedence between fragments, and no fragment
 can override another.
@@ -175,7 +175,7 @@ answering to one id would make an edge ambiguous wherever they live.
 
 `E_DUPLICATE_WORKLOAD_NAME` is scoped to the **domain**, not to the Service,
 because the Workload name alone is the ServiceAccount and the Vault role name
-under the domain's namespace — `auth-system.auth-api`, not
+under the domain's namespace, `auth-system.auth-api`, not
 `auth-system.auth-auth-api` ([0024](../../docs/adr/model/0024-identity-per-workload.md)).
 Two Services in one domain file therefore cannot both call a Workload `api`,
 while the same name may repeat freely across domains. Since a domain is exactly
@@ -187,7 +187,7 @@ Nothing in the model makes a hostname unique by construction: `host` is a full
 FQDN authored on a Service's `exposure` entry
 ([0018](../../docs/adr/model/0018-exposure-by-audience.md)), and two domain files in
 two repositories can write the same string with neither able to read the other.
-`E_DUPLICATE_HOST` over the union is the only place the property holds at all —
+`E_DUPLICATE_HOST` over the union is the only place the property holds at all,
 and it is evaluated over **derived hosts and Registered Unmanaged Surfaces
 together** ([Unmanaged surfaces](#unmanaged-surfaces)), because a hostname the
 model does not deploy occupies the name exactly as completely as one it does. An
@@ -201,8 +201,8 @@ that pair specifically so the message can say which name was contested.
 
 **`E_DUPLICATE_EXPOSURE_NAME` has a definition at last: unique within the
 Service.** It checked a field nothing defined until `name` became required, and
-it is deliberately not estate-wide. The name is a local handle — the second half
-of `${exposure:<service>.<name>#url}`, already qualified by the Service id — so
+it is deliberately not estate-wide. The name is a local handle: the second half
+of `${exposure:<service>.<name>#url}`, already qualified by the Service id, so
 `public` may repeat in every domain in the estate, while a Service fronting
 several hosts, `jellyfin` public and lan, needs exactly this to tell its own
 apart. Being Service-scoped it is computable inside one fragment, and it is
@@ -214,7 +214,7 @@ exposure sharing a `path` and a `match` render two rules with identical
 matchers, and which of them serves a request is the router's tie-break rather
 than anything the author wrote. The live shape is already in the tree: `auth`'s
 two anonymous exposures render two IngressRoutes with an identical `match`,
-because the vocabulary they were written in had no path to declare — the
+because the vocabulary they were written in had no path to declare: the
 `/api`-versus-`/` split that is now two routes was simply unexpressible.
 
 ### References
@@ -233,7 +233,7 @@ An edge still targets `{service, surface}`, and surface names are still unique
 within a Service. What moved is where the surface is declared: `provides` sits on
 the **Workload** that listens, because a port is a property of a process. So
 resolving `E_UNKNOWN_SURFACE` is a lookup for the Service in the union and then
-for the Workload of that Service carrying the name — the edge itself never names
+for the Workload of that Service carrying the name: the edge itself never names
 a Workload, and a surface moving between Workloads of one Service breaks no
 reference.
 
@@ -242,7 +242,7 @@ inside an `exposure` names `{path, match, workload, surface}`, so it names the
 Workload outright: the check is that *that* Workload declares *that* surface in
 its own `provides`, with no search across the Service. A route is the one place
 a Workload is named from outside itself, and it is named from inside the same
-Service document — which is why `exposure` sits on the Service while `provides`
+Service document, which is why `exposure` sits on the Service while `provides`
 stays on the Workload ([0018](../../docs/adr/model/0018-exposure-by-audience.md)).
 Moving a surface between two Workloads of one Service therefore breaks no
 `dependsOn` edge and does break a route still naming the old Workload, and that
@@ -257,15 +257,15 @@ Two release-unit invariants left this table on 2026-09-07.
 `E_RELEASE_UNIT_SINGLETON` existed only because `releaseUnit` was a free string
 joined at composition and nowhere else: a Service held at most one, no Service
 could see its co-members, and a misspelt name yielded two units of one rather
-than an error — atomicity silently gone with every gate green. A Service is now
+than an error, atomicity silently gone with every gate green. A Service is now
 itself the unit of atomic release
 ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)), so there is no join
 key to misspell, no membership for composition to materialise, and nothing left
 for that error to catch: the members are the Workloads listed in the Service's
 own document. The readiness requirement the second error carried is unchanged in
-substance — no member's new version takes traffic until every member is healthy,
+substance (no member's new version takes traffic until every member is healthy,
 health meaning that member's own declared readiness
-([0014](../../docs/adr/model/0014-probes-are-siblings.md)) — but it is now a property
+([0014](../../docs/adr/model/0014-probes-are-siblings.md)), but it is now a property
 of one Service in one file rather than of a set assembled across repositories,
 and checking it needs no estate-wide view.
 
@@ -278,13 +278,13 @@ and checking it needs no estate-wide view.
 
 Every declared dimension is **hard**: all of them must match, a list is a set of
 equally acceptable values with no ordering and no weight, and matching is against
-`allocatable` from the pinned node contract — each node's total minus a reserve
+`allocatable` from the pinned node contract, each node's total minus a reserve
 declared in the node file, never a live read of free capacity
 ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md),
 [0056](../../docs/adr/model/0056-node-facts-single-source.md),
 [0006](../../docs/adr/model/0006-pinned-inputs.md)). `E_PLACEMENT_UNSATISFIABLE` is
 the one error for all of it, replacing the retired capability-only error that
-could speak about flat strings and nothing else: it now covers every dimension —
+could speak about flat strings and nothing else: it now covers every dimension:
 `memory`, `cpu`, `arch`, `site`, `disk`, `gpu` and `capabilities` alike.
 
 This is the check no single fragment can run. The node contract belongs to the
@@ -293,8 +293,8 @@ whether any node satisfies it; composition is the first place both halves exist.
 
 **It is eligibility, not bin-packing, and the difference must not be papered
 over.** Each Workload is compared against one node's allocatable on its own.
-Three Workloads declaring `memory: 2Gi` all pass against a 4096Mi node —
-`enschede-pi-2` and `enschede-pi-3` are exactly that — and the scheduler refuses
+Three Workloads declaring `memory: 2Gi` all pass against a 4096Mi node (
+`enschede-pi-2` and `enschede-pi-3` are exactly that), and the scheduler refuses
 the third at apply. Composition asserts that some node *could* hold each
 Workload; it never asserts that the fleet can hold all of them at once. That
 residue is open item 5 below.
@@ -302,7 +302,7 @@ residue is open item 5 below.
 `gpu` is structured, matched against the node contract's `gpus[].class` and
 `gpus[].memory_mib` rather than a flat string, and the union is where the trap it
 closes is visible. `nvidia` is advertised on 2 of 7 nodes, one of them
-`enschede-gtx-960m-1` — a 2048MiB Maxwell card, re-enabled 2026-09-02 — while
+`enschede-gtx-960m-1` (a 2048MiB Maxwell card, re-enabled 2026-09-02), while
 `enschede-rx7900xtx-1` is not `nvidia` at all. Today `jellyfin` and
 `immich-machine-learning` avoid that Maxwell only because they also select
 `capability-samba`, which exactly one node carries: placement working by accident
@@ -313,14 +313,14 @@ fact that actually matters.
 volume binds to the node holding its PersistentVolume, and that binding is read
 from the pinned `ClusterState` snapshot (chapter 20), so once a volume is bound
 the binding decides the node. A `disk` dimension the bound node cannot satisfy is
-therefore `E_DISK_BINDING_CONFLICT` — a build error naming the conflict — rather
+therefore `E_DISK_BINDING_CONFLICT` (a build error naming the conflict), rather
 than a silent re-placement or a `Pending` pod. The live shape to hold in mind:
 `knowledge-vault-clone` is bound to `enschede-t1000-1`, whose disks are nvme and
 hdd, so a later `disk: {media: [ssd]}` on that Workload is the error, not a move.
 Note also what `disk` is not: it is a media and capacity filter over node facts,
 not a storage class. Longhorn is declared eligible on four nodes, but no PVC in
-`fleet-infra` sets a `storageClassName` — everything takes k3s's default
-`local-path` — so nothing in this estate is served by Longhorn today.
+`fleet-infra` sets a `storageClassName` (everything takes k3s's default
+`local-path`), so nothing in this estate is served by Longhorn today.
 
 The capability vocabulary shrank by one, and composition is where the loss is
 felt as a gain. `tailscale` is gone from it: advertised on 7 of 7 nodes it
@@ -353,9 +353,9 @@ Three points of precision, all following from the grant unit being the path
   For a `kv` grant that path is the declared one. The `#<key>` half selects which value
   fills the variable and confers nothing; `keys:` documents and validates and
   confers nothing either.
-- `delivery: file` and `delivery: self` grants carry no placeholder at all —
-  a file grant renders a projected file, nothing in the environment — and both
-  are excluded from `E_UNBOUND_SECRET_GRANT`. A non-KV engine — `transit/keys/auth-api-jwt` — is
+- `delivery: file` and `delivery: self` grants carry no placeholder at all (
+  a file grant renders a projected file, nothing in the environment), and both
+  are excluded from `E_UNBOUND_SECRET_GRANT`. A non-KV engine (`transit/keys/auth-api-jwt`) is
   never materialised into a variable or a file, so a placeholder naming one is
   `E_UNAUTHORISED_SECRET_REFERENCE`.
 - `E_ROLL_AFFECTS_OTHER_READERS` computes over the **readers of the path**, never
@@ -378,13 +378,13 @@ Three points of precision, all following from the grant unit being the path
 The last two here, and `E_DISK_BINDING_CONFLICT` above, are evaluated against the
 pinned `ClusterState` snapshot
 ([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)), so their verdict is
-exactly as fresh as that snapshot — composition reads no live cluster.
+exactly as fresh as that snapshot: composition reads no live cluster.
 
 ## Participants
 
 The expected set is **enumerated**, not derived. Deriving it from inbound
 references was considered and rejected: a **leaf** Service that nothing depends
-on can vanish without breaking any reference, and leaves are the majority —
+on can vanish without breaking any reference, and leaves are the majority:
 `immich`, `jellyfin`, `sonarr`, `radarr`, `bazarr`, `prowlarr`, `qbittorrent`.
 Seven media services, zero inbound edges, invisible to any edge-derived guard.
 
@@ -397,7 +397,7 @@ which platform facts reach the render.
 
 `participants.yml` is the one central artefact that survives composition by
 fragments. It changes when a domain is added or retired, never when a
-declaration changes — and since one fragment is exactly one domain
+declaration changes, and since one fragment is exactly one domain
 ([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)), that sentence is now
 literal rather than approximate. The list enumerates domains, and because a
 domain has exactly one publisher it is also the domain-to-repository map that
@@ -423,8 +423,8 @@ participants:
 ```
 
 **`maxAge` defaults to 7 days.** The number is measured, not chosen for
-roundness: `CHANGELOG.md` records 26 releases between 2026-06-09 and 2026-08-20 —
-one every 2.8 days — so seven days is about 2.5 observed intervals. Long enough
+roundness: `CHANGELOG.md` records 26 releases between 2026-06-09 and 2026-08-20 (
+one every 2.8 days), so seven days is about 2.5 observed intervals. Long enough
 to absorb two consecutive missed releases, short enough that a broken publish job
 is caught in the week it breaks
 ([0038](../../docs/adr/model/0038-participants-list-staleness.md)). A participant that
@@ -434,7 +434,7 @@ an override without one is a build error.
 `dormant: true` is the separate exemption and is a Bidirectional Ledger entry
 like any other (chapter 30): owner, reason, review date, and a date in the past
 fails the build. It exempts a participant from `maxAge` **and from nothing
-else** — a dormant fragment still unions, still satisfies every invariant above,
+else**: a dormant fragment still unions, still satisfies every invariant above,
 and still has to sit inside the accepted version range below. A domain nobody is
 otherwise touching must therefore still be republished when the model moves.
 
@@ -450,7 +450,7 @@ At the model level that means: an unpublished domain reaches whatever consumes
 the `ComposedIntent` as an *intentional* absence. Composition is the only place
 that can tell the difference, because it is the only place holding the
 enumeration of what was expected. What a delivery mechanism then does with an
-absent domain — including whether it removes objects — is defined separately
+absent domain (including whether it removes objects), is defined separately
 ([docs/adr/deferred/README.md](../../docs/adr/deferred/README.md)); the model's
 obligation is to refuse to emit the render in the first place.
 
@@ -469,7 +469,7 @@ It is **not** the toolkit package's version. Today the two are one number by
 construction: `src/cluster-context/schema.ts:75-79` throws
 `E_SCHEMA_VERSION_MISMATCH` when `ctx.spec.schemaVersion !== getPackageVersion()`,
 and `getPackageVersion()` reads `package.json`, which sits at `0.22.0` and moves
-at release cadence — 26 releases in ten weeks, most of which changed code and not
+at release cadence: 26 releases in ten weeks, most of which changed code and not
 the model. Under this rule the literal `schemaVersion: 1.0.0` written by every
 document in this specification, including the lock below, is correct and stays
 correct across those releases: the model is at `1.0.0`, the toolkit is at
@@ -492,21 +492,21 @@ whose message says the wrong thing is the one people learn to ignore.
 
 Minor > toolkit stays a hard stop because the union is silent about what it
 drops. A fragment using vocabulary an older toolkit cannot read would compose
-with the unknown fields discarded and exit zero — a declared volume, grant or
+with the unknown fields discarded and exit zero, a declared volume, grant or
 dependency edge leaving the tree with no digest, exit code or ledger noticing. A
 loud stop is recoverable; a missing PVC is not.
 
 Equality is rejected for the opposite reason: it fails closed over the **union**.
 One stale participant blocks every composition, including the composition
 carrying the fix, and dormancy does not exempt a fragment from a version check.
-The estate already demonstrates that skew is survivable — `0.16.0` in four
+The estate already demonstrates that skew is survivable: `0.16.0` in four
 service repos, `0.20.0` in `stalwart-provisioner`, `0.22.0` in the published
 contexts, and it functions.
 
 **Admission and reproduction are different jobs.** The range governs what
-composition accepts; the **lock records the exact resolved versions** — each
+composition accepts; the **lock records the exact resolved versions** (each
 fragment's `schemaVersion` and the toolkit version that produced the
-`ComposedIntent` — so a replay runs the versions that actually ran, not the range
+`ComposedIntent`), so a replay runs the versions that actually ran, not the range
 that admitted them. A lock recording ranges instead of exact versions would break
 byte-identical replay at the only moment it matters.
 
@@ -529,7 +529,7 @@ claiming there is nothing to build. The sequence:
 | 4. merge | a human | the gate, green |
 
 Steps 1 and 2 are manual and outside CI, and they are verified **by pulling the
-artefact by digest and reading `schemaVersion` back out of it — never by the
+artefact by digest and reading `schemaVersion` back out of it, never by the
 publish step's exit code**. That is the estate's own rule applied to its own
 publish path.
 
@@ -541,8 +541,8 @@ cannot be sequenced: a consumer's pin PR may appear before the republish in step
 
 Three normative properties of the gate:
 
-- **Its failure message says the context has not been republished yet** — the
-  literal wording is *"context not yet republished"* — never that the version is
+- **Its failure message says the context has not been republished yet** (the
+  literal wording is *"context not yet republished"*), never that the version is
   wrong. A routinely-red Renovate PR whose message misdescribes the cause is the
   thing people learn to ignore.
 - **It computes compatibility, not string equality**, against the range in
@@ -556,13 +556,13 @@ Three normative properties of the gate:
 The wiring is the part that has already gone wrong: the Renovate manager pattern,
 the gate workflow's `paths:` filter and the path the gate actually reads must all
 name **the same file**. When they diverge, a bump touches a file no workflow
-reads, triggers no gate, and every run reports success. The check is mechanical —
+reads, triggers no gate, and every run reports success. The check is mechanical:
 for each consumer, compare `renovate.json`'s `managerFilePatterns` against both
 the workflow's `paths:` filter and its read path, and require every pair to name
 one file.
 
 Under the range, most releases open no consumer PR at all: only a model change
-moves the pin, so a bump becomes rare — and correspondingly less rehearsed.
+moves the pin, so a bump becomes rare, and correspondingly less rehearsed.
 Rollout of anything other than a version pin, including how a composed lock
 reaches a cluster, is defined separately
 ([docs/adr/deferred/README.md](../../docs/adr/deferred/README.md)).
@@ -573,8 +573,8 @@ Service Intent covers Kubernetes workloads only. The estate has three deployment
 targets, not one: `samba` exists only as a NixOS module yet owns
 `samba.lan.jorisjonkers.dev`; `wolf` exists in neither target and owns
 `wolf.jorisjonkers.dev`; `adguard` and `ollama` exist in both; and host-level
-services — `tailscale`, `media-storage`, `backup-storage`,
-`btrfs-backup-snapshots` — have no cluster presence at all. `tailscale` here is
+services (`tailscale`, `media-storage`, `backup-storage`,
+`btrfs-backup-snapshots`), have no cluster presence at all. `tailscale` here is
 the host daemon; it is not a placement capability, that use having retired with
 the flat capability vocabulary
 ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). Modelling NixOS was
@@ -586,11 +586,11 @@ That leaves a remainder, and an unbounded remainder is how the seven-way split o
 bounds nothing, it just moves the drift where no check looks.
 
 Every hostname the model does not deploy is therefore a **Registered Unmanaged
-Surface** — a Bidirectional Ledger entry (chapter 30) carrying an owner, a reason
+Surface**, a Bidirectional Ledger entry (chapter 30) carrying an owner, a reason
 and a review date:
 
 A hostname the estate **depends on** is not an entry here. Something the estate
-runs and does not deploy but reaches — `stalwart` for SMTP — is a **provider**,
+runs and does not deploy but reaches (`stalwart` for SMTP) is a **provider**,
 a fact with an address and surfaces in the Platform document
 ([chapter 14](14-platform-intent.md#providers)), resolvable by an edge
 ([0090](../../docs/adr/model/0090-edges-resolve-against-the-register.md)). The
@@ -635,7 +635,7 @@ is symmetric, the register cannot quietly outlive what it excuses.
 
 A registration is an **unverified assertion**: nothing proves `samba` is actually
 listening where the entry claims. What it buys is that every hostname in the
-estate has exactly one owner of record — derived or registered — and that
+estate has exactly one owner of record (derived or registered), and that
 `wolf`'s status becomes explicit data with a name against it rather than an
 accident nobody had noticed.
 
@@ -682,7 +682,7 @@ different render.
 
 The two version fields are what makes the range in
 [Versioning](#versioning) safe: `schemaVersion: 1.0.0` and
-`toolkitVersion: 0.22.0` differ legitimately, and both are exact — no range is
+`toolkitVersion: 0.22.0` differ legitimately, and both are exact: no range is
 ever recorded here.
 
 `lockChain` is inherited deliberately: it answers "when did this fragment's digest
@@ -696,7 +696,7 @@ unbroken chain from a published fragment to a rendered file.
 ## Cross-service references
 
 A reference is a Service Id and, where it names a connection, a surface name.
-Resolution is a lookup in the union — no URL, no repository coordinate, no
+Resolution is a lookup in the union: no URL, no repository coordinate, no
 network call at authoring time. The surface is found on the Workload of that
 Service which provides it, so a reference names a Service and a surface and never
 a Workload or a namespace.
@@ -705,7 +705,7 @@ Renaming a Service is therefore a breaking change to every inbound reference,
 which is what `E_UNRESOLVED_SERVICE` reports, and there is no escape hatch left:
 the `aliases` block is deleted
 ([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)). It existed so a
-*coordinate* could diverge from the identity, and it now has nothing to express —
+*coordinate* could diverge from the identity, and it now has nothing to express:
 the namespace comes from `domain`, and the Workload name and the image are fields
 the author already writes explicitly
 ([0010](../../docs/adr/model/0010-flat-service-identity.md)). A Service id that reads
@@ -736,15 +736,15 @@ pinned inputs only
 
 1. ~~**The range's determinism claim is untested.**~~ It is
    [0039](../../docs/adr/model/0039-artifact-schema-versioning.md)'s own
-   settling test — render the pinned inputs once per toolkit minor and assert
-   the render hash is equal across the set — and it is recorded there, where a
+   settling test (render the pinned inputs once per toolkit minor and assert
+   the render hash is equal across the set), and it is recorded there, where a
    failure flips the claim rather than a chapter item.
 2. ~~**The 7-day bound is calibrated against today's cadence.**~~ It is
    [0038](../../docs/adr/model/0038-participants-list-staleness.md)'s own
-   settling test — the maximum inter-publish gap per participant over 90 days —
+   settling test (the maximum inter-publish gap per participant over 90 days)
    and is recorded there.
 3. **Whether the union may span clusters.** The lock is keyed by cluster, but the
-   invariants — Service Id uniqueness in particular — are estate-wide rather than
+   invariants (Service Id uniqueness in particular), are estate-wide rather than
    per-cluster.
    - **Owner:** joris.
    - **Settled by:** a second cluster existing. With one cluster the distinction
@@ -761,8 +761,8 @@ pinned inputs only
      can do.
 5. **Composition asserts eligibility, never fleet capacity.** The same question
    as [chapter 20](20-resolved-deployment.md#open-in-this-chapter)'s fifth item
-   — nothing compares the sum of what the estate declared against what the
-   estate has — and it is owned there. The fleet's seven nodes total 129536Mi
+   (nothing compares the sum of what the estate declared against what the
+   estate has), and it is owned there. The fleet's seven nodes total 129536Mi
    and 189600m before each node's declared reserve, which is the number that
    comparison runs against.
 
@@ -772,7 +772,7 @@ Each diagram above is drawn in draw.io and committed as an SVG with the editable
 diagram embedded, so opening the `.svg` in draw.io recovers the drawing. The
 mermaid below is the same structure in text, kept so a diagram change shows up in
 a plain diff. **Where the two disagree the SVG is the diagram and the mermaid is
-what gets fixed** — the same precedence this repository uses between a chapter and
+what gets fixed**, the same precedence this repository uses between a chapter and
 an ADR.
 
 ### The composition run
@@ -789,7 +789,7 @@ flowchart TB
     end
 
     subgraph UNION["2. union"]
-        u1["merge domain files — Services, Workloads,<br/>Secret Subtrees, unmanaged surfaces"]
+        u1["merge domain files, Services, Workloads,<br/>Secret Subtrees, unmanaged surfaces"]
         u2["materialise the required-edge DAG<br/>and the node allocatable table"]
     end
 
@@ -802,7 +802,7 @@ flowchart TB
     end
 
     subgraph OUT["4. record"]
-        o1["composition lock —<br/>every resolved digest,<br/>exact fragment and toolkit versions"]
+        o1["composition lock,<br/>every resolved digest,<br/>exact fragment and toolkit versions"]
         o2["ComposedIntent<br/>input to layer 2"]
     end
 
