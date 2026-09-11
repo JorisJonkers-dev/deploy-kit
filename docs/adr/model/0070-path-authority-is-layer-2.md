@@ -12,7 +12,7 @@ rests-on: ["0003"]
 ## Rests on
 Where a Deliverable is written is a decision, not a formatting detail, and every
 path in the estate is assignable from the Resolved Deployment alone. False if:
-a path can only be known once an object is being serialised — a name derived
+a path can only be known once an object is being serialised: a name derived
 from content the plan does not carry. Settled by: rendering the three worked
 domains with `E_PATH_COLLISION` evaluated on the assembled plan, before any
 adapter runs, and no adapter holding an API that returns a path.
@@ -21,8 +21,8 @@ adapter runs, and no adapter holding an API that returns a path.
 Layer 3 contains no decisions ([0003](0003-three-layer-meta-model.md)), and a
 path is a decision. It says which directory owns an object, and therefore which
 kustomization includes it, which Reconcile Unit applies it, and who is
-answerable for a field. The earlier rule — a path is a pure function of its
-adapter and the object it carries — reads like serialisation but is authority in
+answerable for a field. The earlier rule, a path is a pure function of its
+adapter and the object it carries, reads like serialisation but is authority in
 disguise.
 
 Two live cases prove it cannot hold. `namespace.yaml` and the namespace-wide
@@ -38,7 +38,7 @@ assignments with an owner.
 
 Moving authority up also moves a check earlier. `E_PATH_COLLISION` has zero
 occurrences under `src/` today while the writer applies each prepared file in
-turn — two adapters sharing a path both write, second wins, silently, both
+turn, two adapters sharing a path both write, second wins, silently, both
 reporting `action: "create"`. With the complete path set known before any
 adapter runs, the collision is decidable at plan assembly, which is the only
 place it can be reported as a defect in a decision rather than as a race in a
@@ -60,21 +60,21 @@ not let one Adapter write into another's.
 ## Reversibility
 Undo cost today: the plan is a field set on the Resolved Deployment and a
 parameter the adapter port already needs, so reverting is deleting both while
-restoring per-adapter path computation — under a day before adapters are
+restoring per-adapter path computation, under a day before adapters are
 written. Becomes irreversible once: the Resolved Deployment's schema is
 published and repositories read paths back from their projection, because the
 plan is then part of the artifact contract and its removal is a schema break.
 
 ## Consequences
 - Layer 2's artifact grows a path per rendered object, so the Resolved
-  Deployment gets larger and its diff shows a path change as the decision it is
-  — paid in artifact size, and repaid in review.
+  Deployment gets larger and its diff shows a path change as the decision it is,
+  paid in artifact size, and repaid in review.
 - `E_PATH_COLLISION` becomes decidable before any adapter runs, so a collision
   is reported once against the plan rather than discovered as a silent
-  overwrite — paid by nobody; it is the fix.
+  overwrite, paid by nobody; it is the fix.
 - A new Adapter cannot invent a location: its `defaultPath` states intent and
   the plan assigns, so adding one requires deciding where its output belongs
-  before it can emit anything — paid by the author, deliberately.
+  before it can emit anything, paid by the author, deliberately.
 - Chapter 30's rule sentence changes, and every reader who learned the old form
   has to unlearn it; the chapter records the old form and why it failed rather
-  than quietly replacing it — paid once, in prose.
+  than quietly replacing it, paid once, in prose.

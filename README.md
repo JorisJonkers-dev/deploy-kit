@@ -1,8 +1,8 @@
 # deploy-kit
 
 Everything needed to get a service deployed: the **model** a service author
-writes, the **decision record** that justifies every rule in it, and — as it
-lands — the **compiler** that turns that model into deployable artifacts.
+writes, the **decision record** that justifies every rule in it, and, as it
+lands, the **compiler** that turns that model into deployable artifacts.
 
 > **Status: pre-implementation.** The model and its decision surface are here
 > and enforced by CI. The compiler is being brought over from
@@ -31,13 +31,13 @@ lands — the **compiler** that turns that model into deployable artifacts.
 Three layers, and the middle one is a contract
 ([0003](docs/adr/model/0003-three-layer-meta-model.md)):
 
-1. **Service Intent** — hand-authored, requirements only. What a service owner
+1. **Service Intent**: hand-authored, requirements only. What a service owner
    knows and nobody else does: its cold-start budget, what its data is worth,
    which paths answer readiness.
-2. **Resolved Deployment** — derived. Every platform decision, assigned from
+2. **Resolved Deployment**: derived. Every platform decision, assigned from
    pinned, digested inputs ([0006](docs/adr/model/0006-pinned-inputs.md)) and
    reviewable as a diff.
-3. **Deliverable Set** — serialization only. No decisions.
+3. **Deliverable Set**: serialization only. No decisions.
 
 Two rules do most of the work. **Contention decides authority**
 ([0004](docs/adr/model/0004-contention-decides-authority.md)): a value is
@@ -53,7 +53,7 @@ Start at [`spec/v1/00-overview.md`](spec/v1/00-overview.md) for the model, or
 [`docs/adr/README.md`](docs/adr/README.md) for why each rule is what it is.
 
 **ADRs justify; the spec is normative.** Where an ADR and its `normative:`
-pointer disagree, the spec wins and the ADR is what gets fixed — CI resolves
+pointer disagree, the spec wins and the ADR is what gets fixed: CI resolves
 every pointer against a real heading, so the two cannot drift silently.
 
 A premise carrying `claim: open` is decided in direction but **not yet tested**.
@@ -68,11 +68,11 @@ whatever delivery mechanism is eventually chosen:
 
 | Demand | Decided in |
 | --- | --- |
-| Release Unit atomicity — no member switches until every member is healthy | [0060](docs/adr/model/0060-release-unit.md) |
+| Release Unit atomicity: no member switches until every member is healthy | [0060](docs/adr/model/0060-release-unit.md) |
 | Destructive operations gated by Durability Class | [0015](docs/adr/model/0015-durability-class-per-volume.md) |
 | Rendering only from pinned, digested inputs | [0006](docs/adr/model/0006-pinned-inputs.md), [0034](docs/adr/model/0034-cluster-state-pinned-input.md) |
 
-Everything else — push or pull, who applies, what prunes — is that definition's
+Everything else (push or pull, who applies, what prunes) is that definition's
 business. The parked direction work is in
 [`docs/adr/deferred/`](docs/adr/deferred/README.md).
 
@@ -87,7 +87,7 @@ npm run verify      # lint, format, typecheck, ADR contract, tests + coverage
 
 ## Conventions
 
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — Conventional Commits, PR flow
-- [`VERSIONING.md`](VERSIONING.md) — the versioning contract
-- [`SECURITY.md`](SECURITY.md) — reporting
-- [`CLAUDE.md`](CLAUDE.md) — agent contract
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): Conventional Commits, PR flow
+- [`VERSIONING.md`](VERSIONING.md): the versioning contract
+- [`SECURITY.md`](SECURITY.md): reporting
+- [`CLAUDE.md`](CLAUDE.md): agent contract
