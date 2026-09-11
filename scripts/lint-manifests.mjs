@@ -4,7 +4,7 @@
 // "All parse" was the old bar, and it is what let R8 through: a PVC with
 // `storage: null` parses and cannot apply. This checks shape and required
 // fields against the schemas for the k3s version the Cluster Context records,
-// plus the CRDs the estate actually uses — Traefik, VSO, Prometheus, Flux.
+// plus the CRDs the estate actually uses (Traefik, VSO, Prometheus, Flux).
 //
 // It is offline-hostile on purpose in one direction only: schemas are fetched
 // from pinned upstreams, so a machine with no network skips loudly rather than
@@ -28,7 +28,7 @@ const bin = process.env.KUBECONFORM ?? "kubeconform";
 const probe = spawnSync(bin, ["-v"], { encoding: "utf8" });
 if (probe.error) {
   console.log(
-    `manifest lint: SKIPPED — ${bin} is not on PATH. ` +
+    `manifest lint: SKIPPED: ${bin} is not on PATH. ` +
       "CI installs a pinned release; set KUBECONFORM to run it locally.",
   );
   process.exit(0);

@@ -1,7 +1,7 @@
 # Versioning & release
 
 Every JorisJonkers-dev repo is versioned and released the same way. Nothing resolves
-or deploys from a moving branch — `main` is an integration branch, not a
+or deploys from a moving branch: `main` is an integration branch, not a
 deploy target.
 
 ## Releasing this repo

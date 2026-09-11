@@ -25,7 +25,7 @@ does not mean nothing writes. A JVM needs `/tmp`. nginx needs
 no way to say so, which produced two defects at once.
 
 The first is undeclared behaviour. `auth.domain.yml` states that "the JVM writes
-only to `/tmp`, which the render supplies as an `emptyDir`" — a mount no chapter
+only to `/tmp`, which the render supplies as an `emptyDir`": a mount no chapter
 specifies, from a derivation that exists nowhere. Either every pod gets a `/tmp`
 nobody asked for, or `auth-api` does not start, and which one happens is a
 property of an adapter rather than of the model.
@@ -34,8 +34,8 @@ The second is worse, because it corrupts a control the estate depends on.
 `auth-ui` relaxes the **whole** `readOnlyRootFilesystem` control to get two
 writable directories, and its own recorded reason predicts the fix: *"the
 exception retires when a rebuilt image relocates both paths onto a mounted
-emptyDir."* Under this decision no rebuild is needed — the paths are mounted by
-declaration — and the exception retires now. That matters beyond one Workload:
+emptyDir."* Under this decision no rebuild is needed, the paths are mounted by
+declaration, and the exception retires now. That matters beyond one Workload:
 chapter 10 refuses an image that cannot meet the class rather than relaxing a
 control for it, so a mounted tmpfs must not be confused with disabling
 `readOnlyRootFilesystem`. Only one of the two is expressible, and it is this
@@ -49,7 +49,7 @@ be a category error.
 
 `sizeLimit` is platform-assigned. Ephemeral storage is finite node disk, so by
 [0004](0004-contention-decides-authority.md) the size is contended and the
-Platform Intent carries one default — the same shape as probe cadence and scrape
+Platform Intent carries one default, the same shape as probe cadence and scrape
 timing. Authoring a size per path was the alternative and it is 0081's shape,
 which is right for a persistent volume whose size is a property of the data and
 wrong here: a temp directory's size is a property of the node's tolerance, not of
@@ -74,18 +74,18 @@ deleted in favour of declared paths, because restoring the old shape would mean
 re-adding a blanket relaxation the inventory has stopped carrying.
 
 ## Consequences
-- R15 closes, and one entry leaves the exception inventory — the first time that
-  list has shrunk for a reason other than a rebuilt image — paid by nobody.
+- R15 closes, and one entry leaves the exception inventory, the first time that
+  list has shrunk for a reason other than a rebuilt image, paid by nobody.
 - Every non-static Workload now declares its writable set, so an image whose
-  write behaviour nobody knows has to be examined before it renders — paid by
+  write behaviour nobody knows has to be examined before it renders, paid by
   its owner, once, and it is information the estate did not have.
 - A wrong or missing path is a runtime failure, not a build error: the model
   cannot know what a process writes, so a forgotten `/var/run` surfaces as a
-  crash — paid at first render, which is the earliest anything could know.
+  crash, paid at first render, which is the earliest anything could know.
 - One ephemeral default governs the estate, so a Workload that needs a large
-  temp area carries an override with a reason and shows up in review — paid in
+  temp area carries an override with a reason and shows up in review, paid in
   one line, deliberately visible.
 - `emptyDir` is node-local and lost on restart, which is correct for every path
   this vocabulary is for; a path that must survive a restart is a volume with a
-  Durability Class, and the two are now clearly different declarations — paid in
+  Durability Class, and the two are now clearly different declarations, paid in
   one distinction authors have to learn.

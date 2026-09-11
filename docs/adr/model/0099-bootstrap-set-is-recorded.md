@@ -26,12 +26,12 @@ rather than a habit, because every item in it is an object the invariants never
 see.
 
 k3s is in the table because it is what applies. The Flux source is in it because
-it pulls the tree everything else is in — the source, not the per-layer
+it pulls the tree everything else is in, the source, not the per-layer
 `Kustomization`s, which encode an ordering that changes and are delivery's to
 define ([0098](0098-one-publication-path.md)). Vault's unseal is in it because
 the model must never hold that secret. The CRDs are in it because they are
 cluster-scoped schema that must exist before any object of their kind can apply;
-the components that *use* them — VSO, Traefik, Prometheus — are declared
+the components that *use* them (VSO, Traefik, Prometheus) are declared
 Services, and the CRDs are pinned by version the way an image is pinned by
 digest.
 
@@ -52,13 +52,13 @@ nobody has run. Both settle together.
 | Include the per-layer Flux `Kustomization`s in the bootstrap set | They rarely change | They encode the Reconcile Unit ordering, which changes on the first new edge |
 
 ## Reversibility
-Undo cost today: a table. Becomes irreversible once: never — the set can grow or
+Undo cost today: a table. Becomes irreversible once: never. The set can grow or
 shrink by decision at any time, which is the point of making it a table.
 
 ## Consequences
-- Four items are outside every invariant and the table says so, in one place —
+- Four items are outside every invariant and the table says so, in one place,
   paid in honesty, and it replaces 41 objects that were outside them silently.
 - A CRD upgrade is a bootstrap-set edit with a version, so it appears in review
-  before any object depending on it renders — paid by whoever upgrades, visibly.
-- The restore rehearsal chapter 60 requires now also settles this claim — paid
+  before any object depending on it renders, paid by whoever upgrades, visibly.
+- The restore rehearsal chapter 60 requires now also settles this claim, paid
   once, in a rehearsal that was already owed.

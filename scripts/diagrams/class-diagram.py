@@ -297,7 +297,7 @@ for t, (ly, label) in deep.items():
 
 open(sys.argv[1], "w").write(
     '<mxfile host="Electron" agent="scripts/diagrams/class-diagram.py" version="29.0.3">'
-    f'<diagram name="Service Intent — the layer-1 model" id="0">'
+    f'<diagram name="Service Intent - the layer-1 model" id="0">'
     f'{ET.tostring(model, encoding="unicode")}</diagram></mxfile>')
 print(f"nodes={len(nodes)} depth={maxd} size={int(cursor[0])}x{int(FLOOR)} "
       f"lanes/row={stack_at} cross={len(cross)} notes="

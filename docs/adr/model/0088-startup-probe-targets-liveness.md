@@ -13,8 +13,8 @@ rests-on: ["0005"]
 A startup probe and a liveness probe ask the same question of a process, so one
 declaration serves both, and the cadence at which any probe runs is an estate
 concern rather than a per-Workload one. False if: a Workload's liveness endpoint
-is unavailable during startup for a reason that is not a defect — a process that
-serves liveness only after warm-up — making the startup probe unable to use it.
+is unavailable during startup for a reason that is not a defect (a process that
+serves liveness only after warm-up), making the startup probe unable to use it.
 Settled by: rendering the estate's probes with every startup probe pointing at a
 declared liveness target and every readiness and liveness probe naming a cadence
 from the context, with no timing chosen inside an adapter.
@@ -22,13 +22,13 @@ from the context, with no timing chosen inside an adapter.
 ## Why
 The derivation was partial in a way that violates the layer rule.
 `startupBudget` gives the startup probe its period and failure threshold, and
-nothing says **which endpoint it polls** — so a renderer picked one, which is a
+nothing says **which endpoint it polls**, so a renderer picked one, which is a
 decision taken during serialisation and chapter 30 forbids exactly that. The
 worked projection shows the shape of the hole: `startup: {periodSeconds: 5,
 failureThreshold: 120}` with no target at all. Readiness and liveness cadence was
 worse: not derived anywhere, hand-written identically in all four first-party
-deployments, with the reasoning left in comments — *"JVM cold start (~250–300 s);
-the 600 s startupProbe budget covers it"* — that no tool can read.
+deployments, with the reasoning left in comments (*"JVM cold start (~250–300 s);
+the 600 s startupProbe budget covers it"*), that no tool can read.
 
 The target is the liveness endpoint, and the argument is
 [0014](0014-probes-are-siblings.md)'s own. Exceeding a startup probe's failure
@@ -53,7 +53,7 @@ Cadence goes to the Platform Intent for the reason scrape timing did
 ([0079](0079-alert-class-derives-from-a-rule-catalog.md)): it is one operational
 default shared by the estate, and stating it makes a render a complete
 description of how a pod is checked. Deriving it from `startupBudget` was the
-parametric-looking option and the relationship is invented — how long a JVM takes
+parametric-looking option and the relationship is invented: how long a JVM takes
 to warm says nothing about how often it should be polled once warm.
 `initialDelaySeconds` is `0` on both, because the startup probe already gates
 them; a delay on top would be a second waiting period nobody declared.
@@ -68,21 +68,21 @@ them; a delay on top would be a second waiting period nobody declared.
 
 ## Reversibility
 Undo cost today: one derivation and one context field; probes are patchable in
-place on a pod template. Becomes irreversible once: never — every value here is
+place on a pod template. Becomes irreversible once: never. Every value here is
 mutable on a live object, which is why getting it wrong is survivable and
 getting it undecided was not.
 
 ## Consequences
-- R14 closes, and no adapter chooses a probe target — which is what made the old
-  behaviour a layer violation rather than merely a gap — paid by nobody.
+- R14 closes, and no adapter chooses a probe target, which is what made the old
+  behaviour a layer violation rather than merely a gap, paid by nobody.
 - A Workload with readiness and no liveness gets no startup probe, so a slow
-  starter without a liveness endpoint is bounded only by its progress deadline —
+  starter without a liveness endpoint is bounded only by its progress deadline,
   paid by that Workload's owner, who can declare liveness and get the budget.
 - Probe cadence becomes a pinned input, so retuning the estate's probes is a
-  context republish and a new lock, and every rendered probe changes in one diff
-  — paid in one more pinned value, and it replaces four hand-copied blocks.
+  context republish and a new lock, and every rendered probe changes in one diff,
+  paid in one more pinned value, and it replaces four hand-copied blocks.
 - A liveness endpoint that is unavailable during warm-up now blocks startup as
   well as liveness, which is stricter than today; the fix is a liveness endpoint
-  that answers while warming, which is what liveness means — paid by whoever owns
+  that answers while warming, which is what liveness means, paid by whoever owns
   such a process, and it surfaces as a crash-loop at first render rather than
   later.

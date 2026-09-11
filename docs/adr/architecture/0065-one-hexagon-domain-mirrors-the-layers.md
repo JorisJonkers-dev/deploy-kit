@@ -9,7 +9,7 @@ rests-on: ["0003"]
 
 # One hexagon, two use-cases, and a domain whose folders are the three layers
 
-> **Amended 2026-09-08.** Still two use-cases, one core — but `publish` no
+> **Amended 2026-09-08.** Still two use-cases, one core, but `publish` no
 > longer renders anything. A repository validates its Intent Fragment and pushes
 > it by digest; every adapter runs in `compose`
 > ([0098](../model/0098-one-publication-path.md)). The role-flag evidence below
@@ -34,9 +34,8 @@ folders after the layers is not decoration. It means a reviewer reading
 `src/domain/resolved/` are looking at the same thing, and a rule that lands in
 the wrong ring is visible as a wrong import rather than as a wrong idea.
 
-The two runtimes in [chapter 30](../../../spec/v1/30-deliverables.md#adapters) —
-five fragment producers in the Service repository, eleven central adapters over
-the union — are the reason to be careful here. They differ in *what documents
+The two runtimes in [chapter 30](../../../spec/v1/30-deliverables.md#adapters) (five fragment producers in the Service repository, eleven central adapters over
+the union) are the reason to be careful here. They differ in *what documents
 they receive*, not in what a Service means. One core with two use-cases keeps
 the invariants in one place; two applications would put them in a third package
 that both import and neither owns.
@@ -49,7 +48,7 @@ what makes the mapping legible in both directions: `Service`, `Workload`,
 The alternative that looks cheapest is a role flag, and the tree already shows
 what it costs. Today's registry decides which of three input shapes an adapter
 receives with one string comparison, `adapter.input === "canonical-artifacts"`,
-and the five `deployment-fragment` adapters match no branch of their own — they
+and the five `deployment-fragment` adapters match no branch of their own: they
 fall through and are handed the wrong document. A role that lives in a string
 is a role the type system cannot check.
 
@@ -69,14 +68,14 @@ release.
 
 ## Consequences
 - A rule that cannot be placed in a ring is a rule whose layer nobody has
-  decided, and the import graph says so before review does — paid by whoever
+  decided, and the import graph says so before review does, paid by whoever
   writes it, at the moment they write it.
 - Every effect the domain needs must be declared as a port before it can be
   used, so adding one filesystem read is a visible design change rather than an
-  import — paid by the author, in one interface.
+  import, paid by the author, in one interface.
 - Folder names now depend on `CONTEXT.md`, so renaming a concept is a rename in
-  three places: the glossary, the chapters, and the tree — paid by whoever
+  three places: the glossary, the chapters, and the tree, paid by whoever
   renames, and the reason the glossary landed first.
 - The publish-time use-case and the central one share a core, so a change to
-  Service semantics cannot apply to one and not the other — which is the point,
+  Service semantics cannot apply to one and not the other, which is the point,
   and it also means neither can be optimised independently.

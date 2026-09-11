@@ -21,7 +21,7 @@ rests-on: ["0005"]
 >
 > The split of what derives is sharper than this record originally drew it. The
 > **ServiceMonitor is derived by the model**, from the declared surface and the
-> one estate-wide cadence — nothing about it needs a monitoring stack's opinion,
+> one estate-wide cadence: nothing about it needs a monitoring stack's opinion,
 > so it stays a Deliverable and takes part in the derivation map's properties.
 > Rule expressions, severity and receivers derive **nothing here at all**: they
 > are read from the published projection by a stack this model does not operate
@@ -43,18 +43,18 @@ then `amtool config routes test alertclass=urgent`.
 
 Observability had no authoring vocabulary at all in v2. The resolved schema
 carried `observability: {metrics[], status[]}` and collections carried
-`observability: {metrics[], gatus[]}` — two shapes, neither used by a single
-service repository — so everything real was hand-written, leaving two silent
+`observability: {metrics[], gatus[]}` (two shapes, neither used by a single
+service repository) so everything real was hand-written, leaving two silent
 holes. **Gatus monitors 41 endpoints and notifies nobody**:
 `gatus-config-configmap.yaml` contains `storage` and `ui` and no `alerting`
 section whatsoever. And **8 ServiceMonitors plus 2 PodMonitors cover roughly
-thirty workloads**, with exactly one `PrometheusRule` in the estate — the 8/2/1
+thirty workloads**, with exactly one `PrometheusRule` in the estate, the 8/2/1
 count `spec/v1/30-deliverables.md:82` records. Deriving routing from a declared
 Alert Class makes monitored-but-unrouted impossible to express.
 
 The scrape path stays service-declared because it is genuinely service
-knowledge and it varies — `/actuator/prometheus`, `/api/actuator/prometheus`,
-`/metrics` — so a platform that guessed would silently collect nothing and
+knowledge and it varies (`/actuator/prometheus`, `/api/actuator/prometheus`,
+`/metrics`) so a platform that guessed would silently collect nothing and
 report success. That is the residue [0005](0005-derivation-is-total.md) leaves:
 a port and a path only the framework inside the container knows.
 
@@ -66,17 +66,17 @@ observability Service consumes the resolved Service facts and produces them; it
 is authored once for the estate rather than restated per Service, and it is
 configuration of a system rather than a second Service DSL. Putting PromQL and
 receiver names in the Intent model made layer 1 own the configuration of a stack
-it does not operate — which is the same category error as a `backup.sh` string
+it does not operate, which is the same category error as a `backup.sh` string
 in a platform file ([0012](0012-assets-not-code.md)).
 
 Rendering the rules also closes a trap the estate has documented and paid for.
 A `PrometheusRule` without `release: metrics-stack` in `metadata.labels` is
 accepted by the API server, its Kustomization goes Ready, the operator logs
-nothing, and the rules never evaluate — `spec/v1/50-lifecycle.md:43` calls
+nothing, and the rules never evaluate: `spec/v1/50-lifecycle.md:43` calls
 `metrics-stack` "the referent of the `release: metrics-stack` label without
 which a `PrometheusRule` never evaluates". A generated rule always carries the
 label; an authored one relies on the author remembering. The scrape half is
-built — the registered `kubernetes` adapter emits `servicemonitor.yaml` and
+built: the registered `kubernetes` adapter emits `servicemonitor.yaml` and
 `podmonitor.yaml` (`src/adapters/kubernetes.ts:56-62`); the alerting half is
 missing there exactly as it is missing in the cluster.
 
@@ -85,15 +85,15 @@ missing there exactly as it is missing in the cluster.
 | option | cost if taken | why rejected |
 |---|---|---|
 | Derive the scrape path from a convention (`/metrics`) | breaks the live `/actuator/prometheus` paths; a wrong guess yields an empty target behind a green render | fails silently, the exact failure mode this decision removes |
-| Let a Service declare its notifier or receiver | a notifier is a shared resource — N services × routes to maintain, and a Service can name a channel nobody reads without anything noticing | routing is estate knowledge; urgency is service knowledge |
+| Let a Service declare its notifier or receiver | a notifier is a shared resource: N services × routes to maintain, and a Service can name a channel nobody reads without anything noticing | routing is estate knowledge; urgency is service knowledge |
 | Keep the v2 `observability` shapes and hand-write the rest | zero service repositories use either shape today; ~30 workloads stay covered by 10 hand-written monitors and 1 rule | unused vocabulary is not vocabulary |
-| Alert Class optional, defaulting to `none` | the honest `none` and the forgotten field become indistinguishable — exactly the 41-endpoint hole, re-created in the schema | absence must be declared, not inferred |
+| Alert Class optional, defaulting to `none` | the honest `none` and the forgotten field become indistinguishable: exactly the 41-endpoint hole, re-created in the schema | absence must be declared, not inferred |
 
 ## Reversibility
 
 Undo cost today: `alertClass` is one required intent field and one derivation
 branch; removing it deletes the PrometheusRule and notifier-route derivations
-and the Gatus `alerting` block — the intent schema plus two adapters, hours
+and the Gatus `alerting` block, the intent schema plus two adapters, hours
 rather than days. Blast radius is bounded, since the monitors render from the
 scrape surface either way.
 Becomes irreversible once: on-call routes exist only as derived output and the
@@ -103,23 +103,23 @@ leaves `urgent` and `page` with no receiver, and the symptom is silence.
 ## Consequences
 
 - Every Service declares `alertClass`, including those whose honest answer is
-  `none`, which puts that answer on the record — paid by service authors.
+  `none`, which puts that answer on the record: paid by service authors.
 - Roughly thirty workloads need a scrape declaration to close the 8 + 2 gap, and
-  a wrong path shows an empty target rather than nothing — paid by service owners.
+  a wrong path shows an empty target rather than nothing: paid by service owners.
 - One `PrometheusRule` in the estate becomes one per non-`none` Service, all
-  evaluated every interval — paid by the metrics stack's capacity budget.
+  evaluated every interval: paid by the metrics stack's capacity budget.
 - A bespoke SLI or custom expression needs an escape hatch that names what it
-  supplements rather than replacing the generated rule — paid by adapters.
+  supplements rather than replacing the generated rule: paid by adapters.
 - Gatus's UI strings still read "personal-stack" and reference
   `inventory/fleet.yaml`; both become derived and stop naming an archived
-  repository — paid by whoever lands the Gatus adapter.
+  repository: paid by whoever lands the Gatus adapter.
 - Routing derives from facts only a Service carries, so the delivery machinery
   has no Alert Class here; [0058](../deferred/0058-delivery-machinery-observability.md)
-  closes that gap — paid by platform.
+  closes that gap: paid by platform.
 - The Intent model no longer carries a cadence, a catalog or a receiver map, so
-  the estate's scrape interval is stated in exactly one place — the
-  observability configuration — instead of in a Platform document the metrics
+  the estate's scrape interval is stated in exactly one place (the
+  observability configuration) instead of in a Platform document the metrics
   stack does not read; paid by whoever moves the four values.
 - The runner must fail rather than warn when a class and signal cannot be
   mapped, which is what keeps "monitored but unrouted" impossible without the
-  model owning PromQL — paid by the observability Service's configuration.
+  model owning PromQL: paid by the observability Service's configuration.

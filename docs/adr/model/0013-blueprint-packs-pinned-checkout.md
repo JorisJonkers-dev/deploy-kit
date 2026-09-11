@@ -14,8 +14,8 @@ rests-on: ["0001"]
 > not exist: the foundation they delivered is declared as Services of the
 > platform domains and rendered, and the CRDs among them are the bootstrap set
 > ([chapter 14](../../../spec/v1/14-platform-intent.md#the-bootstrap-set)). The
-> evidence below — that every consumer already checks out `flux-modules` by ref
-> — stays true and stops mattering, because nothing reads the checkout.
+> evidence below, that every consumer already checks out `flux-modules` by ref,
+> stays true and stops mattering, because nothing reads the checkout.
 
 ## Rests on
 
@@ -34,7 +34,7 @@ The `flux-source` and `flux-packs` adapters need `flux-modules/packs/**` to
 render source/release manifests and consumer-owned Flux pack files. Consumers
 supply that content by checking out `flux-modules` at a pinned tag or ref and
 pointing the toolkit at the checkout explicitly with `--blueprints-root <dir>`
-or `DEPLOY_CONFIG_BLUEPRINTS_ROOT`. There is no implicit or default path —
+or `DEPLOY_CONFIG_BLUEPRINTS_ROOT`. There is no implicit or default path,
 machine-specific defaults make CI behavior depend on a developer workstation
 layout. The caller may also pass `--blueprints-version <tag>`; that declared
 tag is recorded in render-plan provenance so generated output traces back to
@@ -57,7 +57,7 @@ add one. The registry-auth friction is evidenced for `@jorisjonkers-dev`
 packages, whereas fragment publication rides infrastructure composition
 requires anyway. And packs are class-B foundation material delivered by Flux
 ([0048](../deferred/0048-class-b-pinning.md)), consumed whole at render time by two
-adapters — they are not domain declarations, join no composition union, carry
+adapters, they are not domain declarations, join no composition union, carry
 no lock digest, and hold no participants-list row. The exemption is a
 material-class boundary, not a contradiction of the composition decision.
 
@@ -74,7 +74,7 @@ material-class boundary, not a contradiction of the composition decision.
 
 Undo cost today: moving packs to OCI later costs a resolver in front of the
 `flux-source`/`flux-packs` adapters (fetch by digest into a temp root) plus a
-one-line change per consuming CI workflow — hours, not weeks, and provenance
+one-line change per consuming CI workflow, hours, not weeks, and provenance
 already records a declared version, so the audit trail survives the move.
 Nothing about the checkout model is irreversible.
 Becomes irreversible once: no foreseeable event makes it so; the nearest
@@ -84,15 +84,15 @@ into their own tooling, which widens the migration surface without closing it.
 ## Consequences
 
 - Consumers must check out or vendor `flux-modules` at the desired tag before
-  rendering blueprint-backed adapters, via a pinned checkout step — paid by
+  rendering blueprint-backed adapters, via a pinned checkout step, paid by
   each consuming repository's CI configuration.
-- No registry credentials to provision, rotate, or debug for pack resolution
-  — paid for by the checkout step's wall time in every CI run, by consumers.
+- No registry credentials to provision, rotate, or debug for pack resolution,
+  paid for by the checkout step's wall time in every CI run, by consumers.
 - A missing root, or a root without `packs/`, fails with a structured
-  diagnostic instead of silently rendering empty pack output — paid by the
+  diagnostic instead of silently rendering empty pack output, paid by the
   toolkit, which owns that check.
 - The declared tag is recorded, not verified: provenance holds what the
-  caller passed, not what the checkout contains — paid by whoever audits a
+  caller passed, not what the checkout contains, paid by whoever audits a
   render, who must trust that CI pinned the checkout it declared.
 - Two consumption models coexist: fragments arrive by OCI digest, packs by
-  git ref — paid by every newcomer, who must learn where the boundary runs.
+  git ref, paid by every newcomer, who must learn where the boundary runs.

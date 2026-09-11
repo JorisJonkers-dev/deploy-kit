@@ -7,7 +7,7 @@ The estate-wide conventions live in one place and are **not duplicated here**:
 Read it before doing anything non-trivial in this repository. It covers the
 things that most often go wrong, including:
 
-- **Pull request labels.** The estate uses a prefixed taxonomy — `type:`,
+- **Pull request labels.** The estate uses a prefixed taxonomy: `type:`,
   `area:`, `component:`, `priority:`, `status:`. Plain `bug` / `enhancement` /
   `documentation` do **not** exist, and `gh pr create` fails with
   `'bug' not found`. Run `gh label list --repo <owner>/<repo>` once before
@@ -28,7 +28,7 @@ this file stays a pointer. Add repo-specific guidance below.
 the compiler that renders it.
 
 **ADRs justify; `spec/v1` is normative.** An ADR carries no field lists, no
-error-code tables and no worked YAML — those live in the chapter its
+error-code tables and no worked YAML: those live in the chapter its
 `normative:` pointer names. Where the two disagree, the spec wins and the ADR is
 what gets fixed.
 
@@ -37,7 +37,7 @@ Before changing anything under `docs/adr/` or `spec/v1/`:
 - Read [`docs/adr/README.md`](docs/adr/README.md) for the register, the citation
   rule and the domain table, and `docs/adr/model/0003`–`0006` for the model's
   premises.
-- `docs/adr/` carries **one directory per domain** — `model/` (v1 model,
+- `docs/adr/` carries **one directory per domain**: `model/` (v1 model,
   pointers into `spec/v1`), `architecture/` (the compiler's own structure,
   pointers into `docs/architecture.md`), `deferred/` (not linted). Numbers run
   in one estate-wide sequence, so never reuse a number from another domain.
@@ -50,7 +50,7 @@ Before changing anything under `docs/adr/` or `spec/v1/`:
 - Adding a `## ` heading to a chapter that an ADR points at, or renaming one,
   breaks the anchor check. Change both together.
 
-Delivery mechanics and co-testing are **defined separately** — see
+Delivery mechanics and co-testing are **defined separately**: see
 [`docs/adr/deferred/README.md`](docs/adr/deferred/README.md). Do not specify an
 applier, a prune pass, a field manager or a co-test gate in `spec/v1`; state the
 model-level rule and point at the deferred set.
