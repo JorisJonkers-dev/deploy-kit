@@ -1,11 +1,11 @@
-# Negative fixture — `E_DUPLICATE_WORKLOAD_NAME`
+# Negative fixture: `E_DUPLICATE_WORKLOAD_NAME`
 
 One domain file whose two Services declare the same Workload name. Composition
 must reject it, **with this error code**.
 
 `intent/agents.yml` holds Services `agents-api` and `lightrag`, and both call
-their process `api`. Nothing about that is exotic — each Service id already
-carries the product name, so `api` is what an author reaches for twice — and it
+their process `api`. Nothing about that is exotic (each Service id already
+carries the product name, so `api` is what an author reaches for twice), and it
 is precisely what the rule forbids: **Workload names are unique within a
 domain**, because the ServiceAccount and the Vault role are the Workload name
 alone under the domain's namespace
@@ -21,8 +21,8 @@ ids collide across repositories. This one does not: a domain never spans
 repositories and one file is the whole domain
 ([0063](../../../../../docs/adr/model/0063-intent-authored-per-domain.md)), so every
 Workload name that must be compared is in this single file. The check runs
-where the other identity checks run — the union, [chapter
-40](../../../40-composition.md) — and a union of one fragment is still a union.
+where the other identity checks run (the union, [chapter
+40](../../../40-composition.md)), and a union of one fragment is still a union.
 
 The fixture is otherwise valid and schema-complete: complete `placement` blocks
 with the required `memory` and `cpu`
@@ -41,8 +41,8 @@ reason, and a step that accepted any failure would keep printing success while
 proving nothing about the invariant named on the tin. *Verify the value, not
 the command.*
 
-Renaming one of the two Workloads is the fix an author would make — `api` to
-`lightrag-api`, say — and it is a one-line edit, because a Workload is not
+Renaming one of the two Workloads is the fix an author would make (`api` to
+`lightrag-api`, say), and it is a one-line edit, because a Workload is not
 independently referencable: `dependsOn` names `{service, surface}`
 ([0062](../../../../../docs/adr/model/0062-service-is-the-release-unit.md)), so no
 other document names either Workload.

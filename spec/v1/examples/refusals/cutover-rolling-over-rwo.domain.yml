@@ -10,7 +10,7 @@
 # (spec/v1/10-service-intent.md #cutover-is-declared-not-promised,
 # spec/v1/20-resolved-deployment.md #authority).
 #
-# Its accepted counterpart is cutover-recreate-over-rwo.domain.yml — the same
+# Its accepted counterpart is cutover-recreate-over-rwo.domain.yml: the same
 # Workload, the same storage, the honest declaration.
 
 apiVersion: intent.jorisjonkers.dev/v1

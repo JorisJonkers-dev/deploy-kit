@@ -1,6 +1,6 @@
 # REFUSED: schema validation, against the closed AlertClass enumeration
 #
-# `AlertClass` is a closed vocabulary — `business-hours`, `urgent`, `page`
+# `AlertClass` is a closed vocabulary: `business-hours`, `urgent`, `page`
 # (spec/v1/10-service-intent.md). There is no `none` member: a Service that
 # wants no monitoring omits the block. A value outside the vocabulary is refused
 # at schema validation, before composition runs, so no new error code carries
@@ -13,7 +13,7 @@ apiVersion: intent.jorisjonkers.dev/v1
 kind: Domain
 schemaVersion: 1.0.0
 
-expect: schema — alertClass is not a member of AlertClass
+expect: schema, alertClass is not a member of AlertClass
 
 domain: refusals
 owner: joris
