@@ -1,0 +1,109 @@
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[a4paper,margin=2.1cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!55!black,
+  citecolor=blue!55!black,
+  urlcolor=blue!55!black,
+  linktoc=all,
+  bookmarksnumbered=true,
+}
+\renewcommand{\lstlistingname}{Example}
+
+\setlength{\parskip}{2pt}
+\setlength{\parindent}{0pt}
+
+% tighter lists and headings, without enumitem or titlesec
+\makeatletter
+\renewcommand\@seccntformat[1]{\csname the#1\endcsname.\quad}
+\def\@listI{\leftmargin\leftmargini
+  \parsep 0pt \topsep 2pt \itemsep 0.5pt}
+\let\@listi\@listI
+\renewcommand\section{\@startsection{section}{1}{\z@}%
+  {-2.0ex \@plus -0.6ex \@minus -.2ex}{1.0ex \@plus.2ex}%
+  {\normalfont\large\bfseries}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
+  {-1.6ex \@plus -0.5ex \@minus -.2ex}{0.7ex \@plus.2ex}%
+  {\normalfont\normalsize\bfseries}}
+\makeatother
+
+\definecolor{yamlkey}{RGB}{17,72,140}
+\definecolor{yamlval}{RGB}{140,60,10}
+\definecolor{yamlcmt}{RGB}{110,120,130}
+\definecolor{yamlpunct}{RGB}{150,150,160}
+\definecolor{yamlframe}{RGB}{225,228,234}
+\definecolor{yamlbg}{RGB}{250,250,252}
+\lstdefinelanguage{yaml}{
+  keywords={true,false,null},
+  keywordstyle=\color{yamlval}\bfseries,
+  sensitive=false,
+  comment=[l]{\#},
+  commentstyle=\color{yamlcmt}\itshape,
+  stringstyle=\color{yamlval},
+  morestring=[b]',
+  morestring=[b]",
+  moredelim=[l][\color{yamlval}]{\&},
+  moredelim=[l][\color{yamlval}]{*},
+  moredelim=**[il][\color{yamlkey}\bfseries:]{:},
+  literate={\{}{{\textcolor{yamlpunct}{\{}}}1
+           {\}}{{\textcolor{yamlpunct}{\}}}}1
+           {[}{{\textcolor{yamlpunct}{[}}}1
+           {]}{{\textcolor{yamlpunct}{]}}}1
+           {,}{{\textcolor{yamlpunct}{,}}}1
+           {-}{{\textcolor{yamlpunct}{-}}}1,
+}
+
+\lstset{
+  language=yaml,
+  basicstyle=\ttfamily\scriptsize,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  breaklines=true,
+  frame=single,
+  framerule=0.4pt,
+  rulecolor=\color{yamlframe},
+  backgroundcolor=\color{yamlbg},
+  framesep=5pt,
+  framexleftmargin=5pt,
+  framexrightmargin=5pt,
+  xleftmargin=6pt,
+  xrightmargin=6pt,
+  aboveskip=7pt,
+  belowskip=5pt,
+  captionpos=b,
+  abovecaptionskip=3pt,
+}
+
+\begin{document}
+
+\begin{center}
+  {\Large\bfseries Generating a Kubernetes Deployment Set from a\\[2pt]
+   Service-Intent Domain Model}\\[6pt]
+  {\normalsize Project Task 0: Project Description}\\[4pt]
+  {\normalsize Joris Jonkers (s1829157) \quad$\cdot$\quad
+   Model Driven Engineering, University of Twente}\\[2pt]
+  {\normalsize\bfseries Project type: Code generation}
+\end{center}
+
+\vspace{-2pt}
+
+\input{sections/01-problem}
+\input{sections/02-solution}
+\input{sections/03-example}
+\input{sections/04-generated}
+\input{sections/05-metamodels}
+\input{sections/06-architecture}
+\input{sections/07-tooling}
+\input{sections/08-deliverables}
+\input{sections/09-appendix}
+
+\end{document}

@@ -1,0 +1,27 @@
+\section{Source language}
+
+One source file represents a domain and its services. The table summarises the
+language. Example~\ref{lst:auth} in Appendix~\ref{app:rendered} shows the
+\texttt{auth} domain.
+
+{\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.25}
+\noindent\begin{tabular}{@{}p{0.22\linewidth}p{0.75\linewidth}@{}}
+\hline
+\textbf{Concern} & \textbf{Model content} \\
+\hline
+Ownership and release & Domain, responsible team and parts released together. \\
+Workloads & Container image and execution mode for each runnable part. \\
+Placement and scale & Resource, architecture and capability needs; replica count. \\
+Exposure and routing & Host, audience and path-to-workload mapping. \\
+Connections & Named provided ports and outgoing service dependencies. \\
+Health and cutover & Probes, allowed startup time and replacement strategy. \\
+Observability & Metrics surface and alert class. \\
+Storage and writes & Volume properties and paths writable under a read-only root. \\
+Secrets & Allowed paths, keys, access modes and delivery methods. \\
+\hline
+\end{tabular}}
+
+The model contains service requirements rather than Kubernetes kinds, proxy
+fields or machine names. Platform mechanisms are derived in the next stage.

@@ -1,0 +1,279 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-api
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-api
+    app.kubernetes.io/instance: auth-api
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: jvm
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  progressDeadlineSeconds: 1800
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: auth-api
+      app.kubernetes.io/instance: auth-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: auth-api
+        app.kubernetes.io/instance: auth-api
+        app.kubernetes.io/part-of: auth
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: jvm
+    spec:
+      serviceAccountName: auth-api
+      nodeSelector:
+        platform.jorisjonkers.dev/capability-public-ingress: 'true'
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+      - name: auth-api
+        image: ghcr.io/jorisjonkers-dev/auth/auth-api@sha256:f8c36eb830a1d01ed91538c8defe7d55d82d76bf5228c2b5a0ef8056b662a512
+        ports:
+        - name: http
+          containerPort: 8081
+        resources:
+          requests:
+            memory: 768Mi
+            cpu: 250m
+          limits:
+            memory: 768Mi
+        securityContext:
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: prod
+        - name: SESSION_COOKIE_SECURE
+          value: 'true'
+        - name: DB_HOST
+          value: postgres.data-system.svc.cluster.local
+        - name: DB_PORT
+          value: '5432'
+        - name: VALKEY_HOST
+          value: valkey.data-system.svc.cluster.local
+        - name: VALKEY_PORT
+          value: '6379'
+        - name: SPRING_RABBITMQ_HOST
+          value: rabbitmq.data-system.svc.cluster.local
+        - name: SPRING_RABBITMQ_PORT
+          value: '5672'
+        - name: SERVER_PORT
+          value: '8081'
+        - name: AUTH_ISSUER
+          value: https://auth.jorisjonkers.dev
+        - name: AUTH_LOGIN_URL
+          value: https://auth.jorisjonkers.dev/login
+        - name: CONFIRMATION_URL
+          value: https://auth.jorisjonkers.dev/confirm
+        - name: MAIL_USERNAME
+          value: auth@jorisjonkers.dev
+        - name: VAULT_ENABLED
+          value: 'true'
+        - name: VAULT_AUTHENTICATION
+          value: KUBERNETES
+        - name: VAULT_KUBERNETES_ROLE
+          value: auth-api
+        - name: VAULT_DB_ENABLED
+          value: 'true'
+        - name: VAULT_ADDR
+          value: http://vault.utility-system.svc.cluster.local:8200
+        - name: SPRING_CONFIG_IMPORT
+          value: vault://
+        - name: AUTH_TRANSIT_ENABLED
+          value: 'true'
+        - name: AUTH_TRANSIT_KEY_NAME
+          value: auth-api-jwt
+        - name: OTEL_SERVICE_NAME
+          value: auth-api
+        startupProbe:
+          httpGet:
+            path: /api/actuator/health/liveness
+            port: 8081
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 120
+        readinessProbe:
+          httpGet:
+            path: /api/actuator/health/readiness
+            port: http
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 0
+        livenessProbe:
+          httpGet:
+            path: /api/actuator/health/liveness
+            port: http
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 0
+        volumeMounts:
+        - name: writable-tmp
+          mountPath: /tmp
+      volumes:
+      - name: writable-tmp
+        emptyDir:
+          sizeLimit: 64Mi
+      automountServiceAccountToken: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-api
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-api
+    app.kubernetes.io/instance: auth-api
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: jvm
+spec:
+  selector:
+    app.kubernetes.io/name: auth-api
+    app.kubernetes.io/instance: auth-api
+  ports:
+  - name: http
+    port: 8081
+    targetPort: http
+    protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-ui
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-ui
+    app.kubernetes.io/instance: auth-ui
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: static
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  progressDeadlineSeconds: 90
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: auth-ui
+      app.kubernetes.io/instance: auth-ui
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: auth-ui
+        app.kubernetes.io/instance: auth-ui
+        app.kubernetes.io/part-of: auth
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: static
+    spec:
+      serviceAccountName: auth-ui
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+        runAsUser: 101
+        runAsGroup: 101
+      containers:
+      - name: auth-ui
+        image: ghcr.io/jorisjonkers-dev/auth/auth-ui@sha256:eda66dbb44a90a9967a98599a9b4180cec0267350ba1a72cde1512b5d9356cbe
+        ports:
+        - name: http
+          containerPort: 80
+        resources:
+          requests:
+            memory: 64Mi
+            cpu: 10m
+          limits:
+            memory: 64Mi
+        securityContext:
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+        startupProbe:
+          httpGet:
+            path: /
+            port: 8080
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 0
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          timeoutSeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 0
+        volumeMounts:
+        - name: writable-var-cache-nginx
+          mountPath: /var/cache/nginx
+        - name: writable-var-run
+          mountPath: /var/run
+      automountServiceAccountToken: false
+      volumes:
+      - name: writable-var-cache-nginx
+        emptyDir:
+          sizeLimit: 64Mi
+      - name: writable-var-run
+        emptyDir:
+          sizeLimit: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-ui
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-ui
+    app.kubernetes.io/instance: auth-ui
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: static
+spec:
+  selector:
+    app.kubernetes.io/name: auth-ui
+    app.kubernetes.io/instance: auth-ui
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP

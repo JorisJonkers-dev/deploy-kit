@@ -1,0 +1,56 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: auth-ui
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-ui
+    app.kubernetes.io/instance: auth-ui
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: static
+spec:
+  entryPoints:
+  - websecure
+  routes:
+  - kind: Rule
+    match: Host(`auth.jorisjonkers.dev`) && PathPrefix(`/`)
+    middlewares:
+    - name: security-headers-strict
+      namespace: kube-system
+    services:
+    - name: auth-ui
+      namespace: auth-system
+      port: 80
+    priority: 1001
+  tls:
+    certResolver: letsencrypt
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: auth-api
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-api
+    app.kubernetes.io/instance: auth-api
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: jvm
+spec:
+  entryPoints:
+  - websecure
+  routes:
+  - kind: Rule
+    match: Host(`auth.jorisjonkers.dev`) && PathPrefix(`/api`)
+    middlewares:
+    - name: security-headers-strict
+      namespace: kube-system
+    services:
+    - name: auth-api
+      namespace: auth-system
+      port: 8081
+    priority: 1004
+  tls:
+    certResolver: letsencrypt
