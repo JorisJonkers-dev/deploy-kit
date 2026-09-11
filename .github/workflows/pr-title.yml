@@ -1,0 +1,48 @@
+# Validate every pull request title (and, when available, its commits) against
+# the Conventional Commits shape release-please reads. Runs on every pull
+# request but gates nothing; the same script is runnable locally, so a
+# contributor sees the identical failure before pushing.
+'name': 'PR Title Validation'
+
+'on':
+  'pull_request':
+    'types':
+      - 'opened'
+      - 'edited'
+      - 'reopened'
+      - 'synchronize'
+
+'permissions':
+  'contents': 'read'
+
+'concurrency':
+  'group': 'pr-title-${{ github.workflow }}-${{ github.ref }}'
+  'cancel-in-progress': true
+
+'jobs':
+  'validate':
+    'runs-on': 'ubuntu-latest'
+    'steps':
+      - 'uses': 'actions/checkout@v7'
+        'with':
+          'fetch-depth': '0'
+
+      - 'uses': 'actions/setup-node@v7'
+        'with':
+          'node-version': '24'
+          'cache': 'npm'
+
+      - 'name': 'Install'
+        'run': 'npm ci'
+
+      - 'name': 'Check PR title and commits'
+        'shell': 'bash'
+        'env':
+          'PR_TITLE': '${{ github.event.pull_request.title }}'
+        'run': |
+          set -euo pipefail
+          upstream=refs/remotes/origin/${GITHUB_BASE_REF:-main}
+          base_sha=$(git merge-base "${upstream}" "${GITHUB_SHA}")
+          node scripts/check-pr-title.mjs \
+            --title "${PR_TITLE}" \
+            --range "${base_sha}..${GITHUB_SHA}" || exit 1
