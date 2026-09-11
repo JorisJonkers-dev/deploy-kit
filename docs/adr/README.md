@@ -62,7 +62,7 @@ which domain a decision lives in.
 | [0002](model/0002-kubernetes-as-substrate.md) | Kubernetes stays, for two properties that must be made real | open | 00-overview.md#substrate |
 | [0003](model/0003-three-layer-meta-model.md) | Three layers, with the middle layer as a contract | settled | 00-overview.md#the-meta-model |
 | [0004](model/0004-contention-decides-authority.md) | Contention decides who declares a value | open | 20-resolved-deployment.md#authority |
-| [0005](model/0005-derivation-is-total.md) | Derivation from declared intent is total | open | 20-resolved-deployment.md#derived-mechanics |
+| [0005](model/0005-derivation-is-total.md) | Derivation from declared intent covers the live estate | open | 20-resolved-deployment.md#derived-mechanics |
 | [0006](model/0006-pinned-inputs.md) | Every assignment is a function of pinned, digested inputs | open | 20-resolved-deployment.md#pinned-inputs |
 | [0007](model/0007-schema-version-separable.md) | The data model's version is not the package's version | open | 40-composition.md#versioning |
 | [0009](model/0009-vault-read-is-per-path.md) | A Vault KV-v2 read grant covers the whole path | open | 10-service-intent.md#secrets |

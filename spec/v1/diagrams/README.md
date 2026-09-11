@@ -77,7 +77,7 @@ Conventions that hold across every drawing:
 declarations and pinned facts reaching **assignments**, then declarations and
 assignments reaching **Deliverables**. As one drawing it is roughly ninety edges
 in one frame, which no layout makes readable. The split is also where the two
-properties live: totality is a statement about the first half, and
+properties live: provenance is a statement about the first half, and
 in-degree-at-least-one about the second.
 
 Both halves are **matrices, not graphs**. Arrows were tried twice and failed
@@ -90,5 +90,5 @@ Row colour is the layer the input belongs to (blue for a declared field, grey
 for a pinned fact, amber for a layer-2 assignment), and the mark takes its row's
 colour, so a Deliverable's column shows at a glance how much of it is declared
 and how much is decided. The `in` and `out` counts are rendered from the same
-edge list as the marks, which is what makes totality and in-degree-at-least-one
+edge list as the marks, which is what makes provenance and in-degree-at-least-one
 readable rather than asserted.

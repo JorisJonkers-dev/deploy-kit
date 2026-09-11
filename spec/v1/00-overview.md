@@ -211,7 +211,7 @@ repository already uses between a chapter and an ADR.
 that it is checkable by a script rather than read by eye. Three properties hold
 over it:
 
-1. **Totality**, no Deliverable has in-degree zero. An object reachable from no
+1. **Provenance**, no Deliverable has in-degree zero. An object reachable from no
    declaration is hand-written, and must either become derived or be entered in
    a Bidirectional Ledger. This is what was violated seven ways over by
    `kb.jorisjonkers.dev`.

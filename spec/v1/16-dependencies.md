@@ -430,7 +430,7 @@ so both properties below are countable off the drawing.
 ![The derivation map, assignments, every declared field and pinned fact, and the assignment it decides](diagrams/16-derivation-map-assignments.drawio.svg)
 
 *Assignments, every declared field and pinned fact, and the assignment it decides. No column
-reads zero: that is totality.*
+reads zero: that is provenance.*
 
 ![The derivation map, Deliverables, every declaration and assignment, and the object it reaches](diagrams/16-derivation-map-deliverables.drawio.svg)
 
@@ -501,7 +501,7 @@ configuration, grants, probes, placement and hardening, many inbound arrows, no
 bleed. Convergence on an *object* is normal; convergence on the same *field* of
 an object is the defect.
 
-### 1. Totality: no Deliverable has in-degree zero
+### 1. Provenance: no Deliverable has in-degree zero
 
 Every rendered object is reachable from at least one declaration or one pinned
 input. An object with no inbound edge is hand-written, and must either become

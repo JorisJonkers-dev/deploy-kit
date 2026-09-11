@@ -7,7 +7,7 @@ date: 2026-08-31
 normative: spec/v1/20-resolved-deployment.md#derived-mechanics
 ---
 
-# Derivation from declared intent is total
+# Derivation from declared intent covers the live estate
 
 ## Rests on
 Every hand-tuned value in the live estate is reachable from a value only the
@@ -22,8 +22,9 @@ declares what only it can know (its cold-start budget, whether it requires
 zero-downtime rolls, which paths answer readiness and liveness, what a volume's
 data is worth), then probe timings, rollout strategy, surge and unavailability,
 progress deadlines, backup jobs and node pinning all follow, and no derived
-value need ever be authored. The claim is one of reachability: derivation is
-*total* only if no live value falls outside what layer-1 vocabulary can feed.
+value need ever be authored. The claim is one of coverage: derivation *covers*
+the live estate only if no live value falls outside what layer-1 vocabulary can
+feed.
 
 The estate's strongest evidence is the rollout configuration, the most
 carefully-tuned thing in it. All four first-party deployments carry an
