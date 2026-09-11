@@ -246,8 +246,12 @@ client library re-reads the value itself, which happens under `delivery: self`.
 An Asset has no such actor, so an Asset change restarts
 ([0094](docs/adr/model/0094-asset-change-restarts-unconditionally.md)).
 
-**Render.** Serialization only: layer 2 to layer 3. The act of deciding is
-*resolution* or *derivation*, never rendering.
+**Render.** Two steps, both layer 2 to layer 3. The **adapters** map the
+Resolved Deployment into the narrow Kubernetes and Vault object model (a
+model-to-model step, one per registered adapter), and the **serializer** turns
+those objects into the rendered bytes (the only model-to-text step). The
+vocabulary keeps the two apart so the act of deciding is still *resolution* or
+*derivation*, never rendering, and an adapter never formats bytes itself.
 
 **Deploy.** Applying Deliverables to a cluster, which is **defined separately**
 from this model ([`docs/adr/deferred/`](docs/adr/deferred/README.md)). A render
