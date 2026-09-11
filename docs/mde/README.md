@@ -25,28 +25,39 @@ in its row above when its Overleaf project exists.
 ## Layout of a report directory
 
 Each one mirrors its Overleaf project **file for file**, so that a fresh pull
-and the committed tree differ only where someone edited without syncing:
+and the committed tree differ only where someone edited without syncing. The
+page style follows the group's earlier DoSA architecture report — its margins,
+title page and table style — but these are short reports, so they are `article`
+documents whose parts are sections rather than chapters.
 
 ```
-main.tex        root document: preamble, title block, \input list
-sections/       one file per section, numbered in reading order
+main.tex        root document: preamble, \tableofcontents, \input list
+Title/          title page and the University of Twente logo
+Sections/       one file per section, numbered in reading order, appendix last
 listings/       verbatim inputs for \lstinputlisting — models and generated files
 *.sty, *.cfg    vendored LaTeX packages, see below
 ```
 
 ### The vendored `.sty` files
 
-`listings.sty`, `lstmisc.sty`, `lstpatch.sty`, `listings.cfg` and `xcolor.sty`
-sit in the project root on purpose. The Overleaf instance runs a minimal TeX
-Live: `listings`, `xcolor`, `enumitem`, `titlesec`, `microtype` and `fancyvrb`
-are **not installed**, and a `\usepackage` for any of them fails the build with
-`File ... not found`. Keeping these five in the project is what makes it
-compile.
+Ten files — `listings.sty`, `lstmisc.sty`, `lstpatch.sty`, `listings.cfg`,
+`xcolor.sty`, `caption.sty`, `caption3.sty`, `ltcaption.sty`, `booktabs.sty` and
+`float.sty` — sit in the project root on purpose. The Overleaf instance runs a
+minimal TeX Live: `listings`, `xcolor`, `enumitem`, `titlesec`, `microtype` and
+`fancyvrb` are **not installed**, and a `\usepackage` for any of them fails the
+build with `File ... not found`. Vendoring is what makes the project compile.
+`caption` additionally loads `caption3` and `ltcaption`, so all three travel
+together.
 
 Do not delete them, and do not add a package that is not either installed on the
 server or vendored next to `main.tex`. Confirmed present on the server:
 `geometry`, `fontenc`, `inputenc`, `lmodern`, `hyperref`, `verbatim`, `url`,
-`graphicx`, `color`.
+`graphicx`, `color`, `amsmath`, `tabularx`, `longtable`, `textcomp`, `nameref`.
+
+`titlesec` and `enumitem` exist neither on the server nor on the machine these
+reports are built from, so they could not be vendored. Their effect is
+reproduced in `main.tex` with the kernel's own `\@startsection` and list
+parameters.
 
 ## Syncing
 
@@ -60,8 +71,21 @@ Overleaf and re-pulling.
 
 ## Conventions used in these documents
 
-- Section numbers carry a trailing period, via a `\@seccntformat` override in
-  `main.tex`.
+Taken from the DoSA report, so that the four reports read as one series:
+
+- `article` class, 10pt, A4, one-sided; DoSA's margins — 2cm left and right,
+  2.5cm top, 3cm bottom; single spacing, no paragraph indent, 5pt between
+  paragraphs.
+- One file per section in `Sections/`, pulled in with `\input`. Headings stay
+  small and tight: these are short reports, and a chapter slab per topic would
+  cost more space than the topic uses.
+- Headings are Title Case. Sections carry a `\label{sec:…}` and are
+  cross-referenced as `Section~\ref{…}`; the appendix is `\appendix` plus one
+  section, so its parts number `A.1`, `A.2` and so on.
+- Tables are floats: `\begin{table}[ht]`, centred, `\hline` rules, caption
+  **below** the table, `\label{tab:…}`.
+- Front matter is numbered in roman and the body in arabic, with a table of
+  contents between them.
 - Code listings are called **Example**, not Listing (`\lstlistingname`).
 - Every cross-reference is a live PDF link; `hyperref` colours them.
 - Files reproduced from the generator's intended output carry no commentary of

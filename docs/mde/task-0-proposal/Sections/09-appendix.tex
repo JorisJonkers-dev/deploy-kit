@@ -1,7 +1,6 @@
-\clearpage
-\appendix
+%=== APPENDIX ===
 
-\section{Appendix}
+\section{Worked Example}
 \label{app:rendered}
 
 Example~\ref{lst:auth} is a worked source model, the \texttt{auth} domain: one
@@ -15,36 +14,36 @@ measured against rather than a transcript of a run. They are shaped exactly as
 the generator must write them: no commentary, and nothing added or annotated for
 this report.
 
-\subsection{The source model}
+\subsection{The Source Model}
 
 \lstinputlisting[caption={The \texttt{auth} domain.},label={lst:auth}]{listings/auth-domain.yml}
 
-\subsection{Namespace and directory indexes}
+\subsection{Namespace and Directory Indexes}
 
 \lstinputlisting[caption={\texttt{namespace.yaml}},label={lst:namespace}]{listings/namespace.yaml}
 \lstinputlisting[caption={\texttt{kustomization.yaml}, the domain index},label={lst:kust-root}]{listings/kustomization.yaml}
 \lstinputlisting[caption={\texttt{apps/auth/kustomization.yaml}, the service index},label={lst:kust-auth}]{listings/kustomization-auth.yaml}
 
-\subsection{Workload controllers and services}
+\subsection{Workload Controllers and Services}
 
 \lstinputlisting[caption={\texttt{apps/auth/workload.yaml}: two \texttt{Deployment} objects and their \texttt{Service} objects},label={lst:workload}]{listings/workload.yaml}
 \lstinputlisting[caption={\texttt{apps/auth/serviceaccount.yaml}},label={lst:serviceaccount}]{listings/serviceaccount.yaml}
 \lstinputlisting[caption={\texttt{apps/auth/pdb.yaml}},label={lst:pdb}]{listings/pdb.yaml}
 
-\subsection{Network policy}
+\subsection{Network Policy}
 
 \lstinputlisting[caption={\texttt{apps/auth/networkpolicy.yaml}},label={lst:networkpolicy}]{listings/networkpolicy.yaml}
 
-\subsection{Edge routing}
+\subsection{Edge Routing}
 
 \lstinputlisting[caption={\texttt{edge/ingressroutes.yaml}},label={lst:ingressroutes}]{listings/ingressroutes.yaml}
 
-\subsection{Monitoring and alerting}
+\subsection{Monitoring and Alerting}
 
 \lstinputlisting[caption={\texttt{apps/auth/servicemonitor.yaml}},label={lst:servicemonitor}]{listings/servicemonitor.yaml}
 \lstinputlisting[caption={\texttt{observability/prometheusrules.yaml}},label={lst:prometheusrules}]{listings/prometheusrules.yaml}
 
-\subsection{Secret store}
+\subsection{Secret Store}
 
 \lstinputlisting[caption={\texttt{auth-api.policy.json}},label={lst:vaultpolicy}]{listings/auth-api.policy.json}
 \lstinputlisting[caption={\texttt{auth-api.role.json}},label={lst:vaultrole}]{listings/auth-api.role.json}
