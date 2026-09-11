@@ -22,6 +22,15 @@ One directory per deadline, named after the course's own task numbering.
 Add a new report as a sibling directory with the same internal shape, and fill
 in its row above when its Overleaf project exists.
 
+## Course material
+
+Two further directories hold what the course hands out, kept for reference while
+the reports are written and not material of this repository:
+[`lectures/`](lectures/) for the slide decks and
+[`background/`](background/) for the reading set per lecture. Both carry a README
+naming every file, because the names publishers and lecture exports ship with
+say nothing at a glance.
+
 ## Layout of a report directory
 
 Each one mirrors its Overleaf project **file for file**, so that a fresh pull
