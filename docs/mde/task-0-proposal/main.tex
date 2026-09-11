@@ -1,12 +1,26 @@
-\documentclass[10pt,a4paper]{article}
-
-\usepackage[a4paper,margin=2.1cm]{geometry}
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage{lmodern}
+% Project Task 0: project description
+% Model Driven Engineering, University of Twente
+%
+% Always compile twice, to get the table of contents and references right.
+\documentclass[10pt, a4paper, oneside]{article}
+\usepackage[left=2cm, right=2cm, top=2.5cm, bottom=3cm]{geometry}
+\usepackage{color}          % So you can use colors
+\usepackage{amsmath}        % For all kinds of math symbols
+\usepackage{graphicx}       % Package to include photos and graphs
+\usepackage{float}          % Helps in positioning floats
+\usepackage[justification=centering]{caption}  % To center the captions
+\usepackage{url}
 \usepackage{xcolor}
-\usepackage{listings}
 \usepackage{hyperref}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage{listings}
+\usepackage{nameref}
+\setlength{\parindent}{0pt} % When you do not want indentation for your paragraphs.
+\setlength{\parskip}{5pt}   % For space between paragraphs.
 
 \hypersetup{
   colorlinks=true,
@@ -18,23 +32,23 @@
 }
 \renewcommand{\lstlistingname}{Example}
 
-\setlength{\parskip}{2pt}
-\setlength{\parindent}{0pt}
-
-% tighter lists and headings, without enumitem or titlesec
+% Heading and list layout. This is a short report, so the headings stay small
+% and the spacing around them tight. The Overleaf instance carries no titlesec
+% or enumitem, so both are reproduced with the kernel's own commands.
 \makeatletter
-\renewcommand\@seccntformat[1]{\csname the#1\endcsname.\quad}
-\def\@listI{\leftmargin\leftmargini
-  \parsep 0pt \topsep 2pt \itemsep 0.5pt}
-\let\@listi\@listI
 \renewcommand\section{\@startsection{section}{1}{\z@}%
-  {-2.0ex \@plus -0.6ex \@minus -.2ex}{1.0ex \@plus.2ex}%
+  {-2.2ex \@plus -0.6ex \@minus -.2ex}{0.6ex \@plus.2ex}%
   {\normalfont\large\bfseries}}
 \renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
-  {-1.6ex \@plus -0.5ex \@minus -.2ex}{0.7ex \@plus.2ex}%
+  {-1.8ex \@plus -0.5ex \@minus -.2ex}{0.4ex \@plus.2ex}%
   {\normalfont\normalsize\bfseries}}
+\def\@listI{\leftmargin\leftmargini
+  \parsep 0pt \topsep 3pt \itemsep 1pt}
+\let\@listi\@listI
 \makeatother
 
+% Source and generated files are set with listings; no package on the server
+% highlights YAML, so the language is declared here.
 \definecolor{yamlkey}{RGB}{17,72,140}
 \definecolor{yamlval}{RGB}{140,60,10}
 \definecolor{yamlcmt}{RGB}{110,120,130}
@@ -77,33 +91,33 @@
   framexrightmargin=5pt,
   xleftmargin=6pt,
   xrightmargin=6pt,
-  aboveskip=7pt,
-  belowskip=5pt,
+  aboveskip=6pt,
+  belowskip=4pt,
   captionpos=b,
   abovecaptionskip=3pt,
 }
 
 \begin{document}
+%==== FRONT PART====
+\include{Title/titlepage}
+\pagenumbering{roman}
+\tableofcontents
 
-\begin{center}
-  {\Large\bfseries Generating a Kubernetes Deployment Set from a\\[2pt]
-   Service-Intent Domain Model}\\[6pt]
-  {\normalsize Project Task 0: Project Description}\\[4pt]
-  {\normalsize Joris Jonkers (s1829157) \quad$\cdot$\quad
-   Model Driven Engineering, University of Twente}\\[2pt]
-  {\normalsize\bfseries Project type: Code generation}
-\end{center}
+%==== MAIN PART ====
+\newpage
+\pagenumbering{arabic}
+\input{Sections/01-problem}
+\input{Sections/02-solution}
+\input{Sections/03-source-language}
+\input{Sections/04-generated-code}
+\input{Sections/05-metamodels}
+\input{Sections/06-architecture}
+\input{Sections/07-tooling}
+\input{Sections/08-deliverables}
 
-\vspace{-2pt}
+%==== APPENDIX ====
+\appendix
+\input{Sections/09-appendix}
 
-\input{sections/01-problem}
-\input{sections/02-solution}
-\input{sections/03-example}
-\input{sections/04-generated}
-\input{sections/05-metamodels}
-\input{sections/06-architecture}
-\input{sections/07-tooling}
-\input{sections/08-deliverables}
-\input{sections/09-appendix}
-
+%==== END OF ALL ===
 \end{document}

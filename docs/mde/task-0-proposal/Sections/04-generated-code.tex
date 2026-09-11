@@ -1,15 +1,15 @@
-\section{Generated code}
+\section{Generated Code}
+\label{sec:generatedcode}
 
 The generator emits one versioned release bundle per service. Its resources and
 principal derivations are listed below. Appendix~\ref{app:rendered} contains the
 hand-written target for the \texttt{auth} example.
 
-{\footnotesize
-\setlength{\tabcolsep}{5pt}
-\renewcommand{\arraystretch}{1.25}
-\noindent\begin{tabular}{@{}p{0.23\linewidth}p{0.635\linewidth}c@{}}
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{0.22\linewidth}p{0.56\linewidth}c}
 \hline
-\textbf{Output} & \textbf{Principal derivation} & \textbf{Ex.} \\
+\textbf{Output} & \textbf{Principal derivation} & \textbf{Example} \\
 \hline
 \texttt{Namespace} and indexes &
   Domain name, fixed labels and resolved output paths &
@@ -32,7 +32,10 @@ Secret resources &
 Backup and sweep jobs &
   Volume durability and storage engine & n/a \\
 \hline
-\end{tabular}}
+\end{tabular}
+\caption{Generated Resources and Their Principal Derivations}
+\label{tab:generated_resources}
+\end{table}
 
 The transformation computes limits, startup probes, route precedence and policy
 peers. For \texttt{auth}, about 90 source lines determine ten files containing
