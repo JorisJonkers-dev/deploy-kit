@@ -31,11 +31,22 @@ An **Adapter** is a named renderer registered in one registry. A **Deliverable**
 is the unit of output and of attribution:
 
 ```ts
-{ path: string, content: string, adapter: string, executable?: boolean }
+{ path: string, object: TypedObject, adapter: string }
 ```
 
 Every Deliverable names its producing adapter. That is what makes the
 attribution assertion below possible without new machinery.
+
+An adapter is a model-to-model step: it maps the Resolved Deployment into the
+narrow Kubernetes and Vault object model (`TypedObject`), and nothing more. The
+Deliverable's `object` is that model object, and its `content` is the output of
+the one serializer turning that object into bytes. An adapter never formats
+bytes itself: there is exactly one serializer, so determinism, key order and
+line endings are one module's responsibility
+([0067](../../docs/adr/architecture/0067-adapters-build-objects-one-serializer.md)).
+A Deliverable holds `path`, `object` and `adapter`; it has no `content` string
+an adapter would write, and no `executable` flag: nothing in the model is
+executable ([0012](../../docs/adr/model/0012-assets-not-code.md)).
 
 **The registry is the enumeration**
 ([0052](../../docs/adr/model/0052-registered-adapters-are-v1.md), rewritten by
@@ -414,7 +425,7 @@ flowchart LR
       RD --> A4["traefik"]
       RD --> A5["vault-policy"]
       RD --> A6["vso"]
-      A1 & A2 & A3 & A4 & A5 & A6 --> DL["Deliverables<br/>{path, content, adapter}"]
+      A1 & A2 & A3 & A4 & A5 & A6 --> DL["Deliverables<br/>{path, object, adapter}"]
       DL --> COL["E_PATH_COLLISION on the plan<br/>one owner per path"]
       COL --> H["renderHash over the pinned inputs"]
       COL --> T["Deliverable Set<br/>file tree"]
