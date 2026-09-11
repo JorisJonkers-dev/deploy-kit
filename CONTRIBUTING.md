@@ -14,5 +14,11 @@ If you were invited to contribute:
 4. include the relevant tests or validation output in the pull request
 5. use impersonal, professional commit and pull request wording
 
+New prose is written without em-dashes: use a comma, a colon, a full stop or
+parentheses instead. A test (`npm test`) fails if a tracked text file gains an
+em-dash, and the same test flags any file on the transitional allow list that
+no longer has one, so rewrite batches take their files off the list in the same
+pull request.
+
 Security vulnerabilities must be reported privately as described in
 `SECURITY.md`.
