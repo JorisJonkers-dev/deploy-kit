@@ -1,0 +1,18 @@
+\section{Tooling choice}
+\label{sec:tooling}
+
+The proposed implementation uses TypeScript and \texttt{zod}. It fits the
+existing Node.js pipelines and maps YAML and JSON directly to typed values.
+\texttt{zod} provides runtime validation, inferred static types and an exported
+JSON Schema for editor support.
+
+This differs from the prescribed Ecore, ATL or QVT-OM, and Acceleo stack. Those
+tools provide established modelling languages, but add an Eclipse and JVM
+toolchain not otherwise used by the deployment workflow. Here that cost does not
+improve the model or the evidence.
+
+The substitution preserves the modelling stages: UML diagrams and executable
+schemas define metamodels, tested functions implement model-to-model rules, and
+typed builders plus one serialiser implement model-to-text generation. Models,
+rules, generated artifacts and execution evidence remain in scope. Since the
+named technologies are explicit, this change requires approval.

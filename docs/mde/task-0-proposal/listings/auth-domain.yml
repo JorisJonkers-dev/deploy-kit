@@ -1,0 +1,68 @@
+schemaVersion: 1.0.0          # which version of this language the file is written in
+domain: auth                  # one file per area; this one is about logging in
+owner: joris                  # who to ask about anything in this file
+services:
+  - id: auth                  # a service: the parts below are updated together
+    alertClass: wake-on-call  # [none, business-hours, urgent, wake-on-call] urgency
+    exposure:                 # how the outside world reaches this service
+      - name: public          # a label for this entry point
+        host: auth.example.dev
+        audience: anonymous   # [anonymous, authenticated, internal, lan] who may connect
+        contentPolicy: strict # [strict, admin, workflow] browser security rules
+        routes:               # which part of the address goes to which service
+          - {path: /api, match: prefix, workload: auth-api, surface: http}
+          - {path: /,    match: prefix, workload: auth-ui,  surface: http}
+    workloads:                # the parts of the service, one container image each
+      - name: auth-api
+        lifecycle: service    # [service, job] keeps running, or runs once and stops
+        image: auth-api       # a name; the exact image version is filled in later
+        runtime: jvm          # [jvm, python, node, static, none] how the service runs
+        provides:             # the ports the service listens on, each with a name
+          http: 8080
+        placement:            # what the service needs from its machine
+          memory: 768Mi       # how much memory the service may use
+          cpu: 250m           # how much processor time the service asks for
+          arch: [amd64]
+          capabilities: [public-ingress]
+        writablePaths: [/tmp] # the only folders the service may write into
+        dependsOn:            # the other services this service talks to
+          - {service: platform-postgres, surface: postgres}
+          - {service: platform-valkey,   surface: redis}
+          - {service: platform-rabbitmq, surface: amqp}
+          - {service: stalwart,          surface: smtp}
+        probes:               # the addresses used to check that the service is healthy
+          readiness: {path: /api/actuator/health/readiness, port: 8081}
+          liveness:  {path: /api/actuator/health/liveness,  port: 8081}
+        startupBudget: 600s   # how long the service may take to start before failing
+        cutover: rolling      # [rolling, recreate] how a new version replaces the old
+        replicas:             # how many copies of the service run; needs a reason
+          count: 2
+          reason: Capacity on freed budget, not availability.
+        scrape:               # where our monitoring takes its measurements
+          port: 8081
+          path: /api/actuator/prometheus
+        secrets:              # the passwords and keys the service may read, no others
+          - path: secret/data/platform/postgres/auth
+            keys: [user, password]
+            access: read      # [read, self-renew, self-roll, custody] what is allowed
+            delivery: self    # [env, file, self] the service fetches them itself
+            rotation: {tolerates: reload, maxAge: 168h}
+          - engine: transit   # a signing key that never leaves the vault
+            key: auth-api-jwt
+            operations: [sign, rotate]
+            delivery: self
+      - name: auth-ui         # the second part, updated together with the first
+        lifecycle: service
+        image: auth-ui
+        runtime: static       # only files served by a web server, no Java
+        provides:
+          http: 80
+        placement:
+          memory: 64Mi
+          cpu: 10m
+        writablePaths: [/var/cache/nginx, /var/run]
+        probes:
+          readiness: {path: /, port: 8080}
+          liveness:  {path: /, port: 8080}
+        startupBudget: 30s
+        cutover: rolling

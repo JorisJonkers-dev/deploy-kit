@@ -1,0 +1,22 @@
+\section{Architecture}
+
+The generator follows a deterministic three-stage compiler pipeline.
+
+\begin{enumerate}
+  \item \textbf{Read and validate.} A \texttt{zod} schema validates the YAML
+    wire format, which a mapper converts to the Service Intent model. Keeping
+    wire and domain types separate allows the syntax to evolve independently.
+  \item \textbf{Resolve.} Named rules combine the source with the release lock
+    and versioned environment and platform data. They materialise all values
+    needed to deploy without reading live cluster state.
+  \item \textbf{Render.} An adapter for each resource family builds typed
+    objects. One serialiser writes YAML or JSON. Adapters do not make platform
+    decisions or assign paths.
+\end{enumerate}
+
+Rules return diagnostics with stable codes and source locations, allowing one
+run to report several errors and tests to identify the failed rule. Module
+dependency checks prevent renderers from importing source or resolution logic.
+With fixed inputs, repeated runs must produce identical bytes. CI validates the
+bundle and applies its service-level Kustomize entry point on each version
+release.

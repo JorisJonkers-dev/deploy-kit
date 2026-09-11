@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: auth-system
+  labels:
+    kubernetes.io/metadata.name: auth-system
+    app.kubernetes.io/part-of: auth

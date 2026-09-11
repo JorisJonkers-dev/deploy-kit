@@ -1,0 +1,23 @@
+\section{Solution}
+
+The domain-specific language records workloads, ports, dependencies, routes,
+storage, secrets, health and operational requirements once, without naming
+Kubernetes resources or vendor fields.
+
+For a version release, CI provides the Service Intent model, per-workload
+environment files, an image lock mapping image names to immutable digests, and
+versioned platform data. The platform data defines namespace and label rules,
+resource and security defaults, ingress and storage classes, the service
+register, alert catalogue and cluster capabilities. The generator does not read
+live cluster state or retrieve secret values.
+
+A model-to-model transformation turns these inputs into a \emph{Resolved
+Deployment}. This is a complete, non-text model containing exact resource names,
+namespace, paths, image digests, replicas, resources, probes, ports, addresses,
+policy peers, routes, secret references, monitoring rules and configuration
+hashes. Renderers therefore make no deployment decisions.
+
+The model-to-text step writes a per-service \emph{Deliverable Set}: a
+\texttt{kustomization.yaml} and its YAML and JSON resources. After validation,
+release CI deploys that version with \texttt{kubectl apply -k}. Platform changes
+remain confined to versioned generator inputs and rules.

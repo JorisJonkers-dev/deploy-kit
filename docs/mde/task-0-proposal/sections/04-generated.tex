@@ -1,0 +1,40 @@
+\section{Generated code}
+
+The generator emits one versioned release bundle per service. Its resources and
+principal derivations are listed below. Appendix~\ref{app:rendered} contains the
+hand-written target for the \texttt{auth} example.
+
+{\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.25}
+\noindent\begin{tabular}{@{}p{0.23\linewidth}p{0.635\linewidth}c@{}}
+\hline
+\textbf{Output} & \textbf{Principal derivation} & \textbf{Ex.} \\
+\hline
+\texttt{Namespace} and indexes &
+  Domain name, fixed labels and resolved output paths &
+  \ref{lst:namespace}, \ref{lst:kust-root}, \ref{lst:kust-auth} \\
+Workload resources &
+  Locked image, placement, probes, cutover, ports, identity, configuration and replicas &
+  \ref{lst:workload}, \ref{lst:serviceaccount}, \ref{lst:pdb} \\
+\texttt{NetworkPolicy} &
+  Default deny, dependency edges, exposed surfaces and audience &
+  \ref{lst:networkpolicy} \\
+\texttt{IngressRoute} &
+  Routes, path specificity, content policy, audience and host &
+  \ref{lst:ingressroutes} \\
+Monitoring and alerts &
+  Scrape surface and alert class resolved through the rule catalogue &
+  \ref{lst:servicemonitor}, \ref{lst:prometheusrules} \\
+Secret resources &
+  Grants, workload identity and environment, file or direct delivery &
+  \ref{lst:vaultpolicy}, \ref{lst:vaultrole} \\
+Backup and sweep jobs &
+  Volume durability and storage engine & n/a \\
+\hline
+\end{tabular}}
+
+The transformation computes limits, startup probes, route precedence and policy
+peers. For \texttt{auth}, about 90 source lines determine ten files containing
+about 890 lines. The appendix is a manual oracle. The implemented generator must
+reproduce it, validate the result and provide one Kustomize entry point for CI.

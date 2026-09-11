@@ -1,0 +1,40 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: auth
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    release: metrics-stack
+spec:
+  groups:
+    - name: auth.baseline
+      rules:
+        - alert: TargetAbsent
+          expr: absent(up{job="auth-api"}) == 1
+          for: 10m
+          labels:
+            severity: page
+            receiver: pushover-page
+            service: auth
+          annotations:
+            summary: auth-api is not being scraped
+        - alert: RestartLoop
+          expr: increase(kube_pod_container_status_restarts_total{container="auth-api"}[15m]) > 3
+          for: 5m
+          labels:
+            severity: page
+            receiver: pushover-page
+            service: auth
+          annotations:
+            summary: auth-api is restarting repeatedly
+        - alert: ProbeFailing
+          expr: kube_pod_status_ready{condition="false", pod=~"auth-api-.*"} == 1
+          for: 10m
+          labels:
+            severity: page
+            receiver: pushover-page
+            service: auth
+          annotations:
+            summary: auth-api is not ready
