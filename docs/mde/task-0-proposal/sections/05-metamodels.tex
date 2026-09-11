@@ -1,0 +1,17 @@
+\section{Metamodels}
+
+The three pipeline layers have separate metamodels:
+
+\begin{enumerate}
+  \item \textbf{Service Intent}: \emph{Domain}, \emph{Service},
+    \emph{Workload}, \emph{Exposure}, \emph{Route}, \emph{Placement},
+    \emph{Probe}, \emph{Dependency}, \emph{Secret Grant} and \emph{Volume}.
+  \item \textbf{Resolved Deployment}: concrete resources and relationships with
+    every derived value, identity and output path present.
+  \item \textbf{Deliverable Set}: typed Kubernetes and extension resources,
+    each with its path, content and producing adapter.
+\end{enumerate}
+
+UML class diagrams document each metamodel. The implementation uses TypeScript
+types and \texttt{zod} runtime schemas, as discussed in
+Section~\ref{sec:tooling}.

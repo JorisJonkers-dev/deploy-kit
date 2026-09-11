@@ -1,0 +1,11 @@
+\section{Problem Statement}
+
+A Kubernetes service is described by a workload, service, account, network
+policy, ingress routes, monitoring rules and disruption budget. These resources
+repeat the same facts in different schemas. A port can occur in four files; a
+dependency determines both an address and an egress rule.
+
+Manual copies can drift while remaining syntactically valid. The cluster may
+accept every file even though a service cannot reach its database or its metrics
+are no longer collected. The selected problem is therefore to generate a
+consistent Kubernetes deployment set from one abstract service model.
