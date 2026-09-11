@@ -13,7 +13,7 @@ rests-on: ["0005"]
 Every value a human writes in either authored document can be named for what it
 means in the model, and mapping that name to the substrate's field is a
 derivation with one declaring site. False if: an authored value exists whose only
-faithful name is the target's — a knob with no model-level meaning that a
+faithful name is the target's, a knob with no model-level meaning that a
 Service nevertheless needs to turn. Settled by: a grep of both authored kinds
 for Kubernetes field paths, Traefik keys, Linux shell and k3s flags returning
 nothing, with every rendered object still byte-identical to before.
@@ -34,8 +34,7 @@ target's vocabulary.
 The repair is the same everywhere: the authored value names the **model
 concept**, and one table maps it to the target.
 
-**Overrides** addressed derived values by the derivation's own name —
-`startupDeadline`, `replicas`, `automountToken`, `ephemeralSize` — enumerated in
+**Overrides** addressed derived values by the derivation's own name, `startupDeadline`, `replicas`, `automountToken`, `ephemeralSize`, enumerated in
 chapter 14 with the field each renders to. An author overrode a decision, not a
 field, and a key no derivation produced was `E_UNKNOWN_OVERRIDE` rather than a
 field silently set.
@@ -44,7 +43,7 @@ field silently set.
 > ([0031](0031-derived-overrides-with-reason.md)); chapter 14's table is gone
 > and `E_UNKNOWN_OVERRIDE` with it. The naming rule this paragraph records is
 > **unchanged and now applies to the sole survivor**: `replicas` names a model
-> concept — local capacity — and never `spec.replicas`, and its `reason` is
+> concept (local capacity) and never `spec.replicas`, and its `reason` is
 > required by the field rather than by a convention
 > ([chapter 10](../../../spec/v1/10-service-intent.md#capacity)). The general
 > argument is also unchanged: an authored value names what it means, and the
@@ -61,8 +60,8 @@ per engine whose entrypoint performs the backup, resolved through the images loc
 and digested like every other image. The Platform document contains nothing
 executable, and what the image does is versioned rather than a string in YAML.
 
-**Substrate facts** are named for what they are — `secretsEncryption`,
-`networkPolicyController`, `datastore` — because those are what the model reads
+**Substrate facts** are named for what they are, `secretsEncryption`,
+`networkPolicyController`, `datastore`, because those are what the model reads
 ([0028](0028-secrets-at-rest-gate.md), [0084](0084-render-only-is-the-v1-policy-stage.md),
 [0057](0057-datastore-and-restore.md)). How k3s is told is a derivation nobody
 authors, or an observation 0057 already lets the platform record.
@@ -72,8 +71,8 @@ a Linux capability name, back when a hardening exception could still carry one.
 A capability is what the binary asks the kernel for, the same kind of fact as a
 port or a writable path, and it would be the same word on Nomad or bare metal.
 The layer-1 rule excludes the substrate's mechanisms, and the kernel is not the
-substrate. The example is now historical — [0016](0016-pod-hardening.md) deleted
-the field that named it — but the test it illustrates still decides the next
+substrate. The example is now historical ([0016](0016-pod-hardening.md) deleted
+the field that named it) but the test it illustrates still decides the next
 case.
 
 ## Alternatives
@@ -93,14 +92,14 @@ every one of them.
 
 ## Consequences
 - 0031 is amended: an override restates a *derivation*, addressed by its name in
-  chapter 14's table — paid in one amendment and one table to keep current.
-- 0076 and 0077 are amended for the tier and engine shapes — paid in two
+  chapter 14's table, paid in one amendment and one table to keep current.
+- 0076 and 0077 are amended for the tier and engine shapes, paid in two
   amendments; neither had a consumer yet.
 - The `traefik` adapter owns every Traefik spelling in the estate, which is
-  what makes an edge swap a one-adapter change — paid in one more table inside
+  what makes an edge swap a one-adapter change, paid in one more table inside
   the adapter, where mechanisms belong.
 - Each engine needs a purpose-built image in the estate's registry before its
-  backup renders — paid by the platform, once per engine, and the images become
+  backup renders, paid by the platform, once per engine, and the images become
   versioned artefacts instead of strings.
 - The exception vocabulary is recorded as deliberately kept, so the next
-  architecture review does not re-raise it — paid in one paragraph.
+  architecture review does not re-raise it, paid in one paragraph.

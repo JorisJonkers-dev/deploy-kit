@@ -10,15 +10,15 @@ rests-on: ["0003"]
 # Render-only is v1's network-policy stage; promotion waits on the CNI
 
 ## Rests on
-Rendering the policy set has value without loading it — the tree is reviewable,
-diffable and complete — so v1's obligation is discharged by the render alone.
+Rendering the policy set has value without loading it (the tree is reviewable,
+diffable and complete), so v1's obligation is discharged by the render alone.
 False if: a rendered-but-unloaded policy set misleads someone into believing the
 estate is segmented, badly enough that not rendering would be safer. Settled by:
 a full estate render whose policy set is reviewed and diffed, with the tree
 stating plainly that nothing enforces it yet.
 
 ## Why
-Chapter 16 sequences three stages — render-only, audit, enforce — and the audit
+Chapter 16 sequences three stages, render-only, audit, enforce, and the audit
 stage is unreachable today. `networking.k8s.io/v1` has no audit, dry-run or
 log-only mode, k3s's embedded kube-router controller has none either, and a
 policy is enforced the moment it selects a pod. Enforcing `data-system`'s
@@ -36,7 +36,7 @@ Saying so explicitly matters because the alternative readings are both bad. Maki
 v1 depend on a CNI lab evaluation puts a hardware-and-experiment task on the
 critical path of a model, which is what [0059](0059-v1-scope-stopping-rule.md)'s
 stopping rule exists to prevent. And emitting policies with a selector that
-matches nothing — a tree that looks complete — would mean the audit stage
+matches nothing (a tree that looks complete) would mean the audit stage
 compares observed flows against objects that were never in force, which is worse
 than an empty namespace: it is a policy that lies.
 
@@ -53,20 +53,20 @@ recorded stage with an exit criterion instead of an unnumbered gap row.
 | Ship enforcing, per namespace, starting with an empty one | Real enforcement, incrementally | The first non-empty namespace is `data-system`, whose five consumers are exactly what an audit stage exists to discover safely |
 
 ## Reversibility
-Undo cost today: none — this decides which stage v1 is in, and the stages are
+Undo cost today: none. This decides which stage v1 is in, and the stages are
 already specified. Becomes irreversible once: never; promotion is the intended
 next step, not a reversal.
 
 ## Consequences
 - R11 leaves the blocking set: the render is complete and the policy set is
-  reviewable, and an unpicked CNI stops holding up a model decision — paid by
+  reviewable, and an unpicked CNI stops holding up a model decision, paid by
   nobody.
 - The estate stays open east-west until promotion, and the model now says so in
-  the stage table rather than in a gap list — paid in honesty, and it is
+  the stage table rather than in a gap list, paid in honesty, and it is
   unchanged from today in fact.
 - 0036 becomes the single gate on promotion, so the CNI decision inherits a
   clear consumer: the audit stage and its zero-undeclared-flows-over-14-days
-  criterion — paid by whoever runs that evaluation.
+  criterion, paid by whoever runs that evaluation.
 - A reader of the rendered tree could mistake rendered policy for enforced
   policy, so the stage has to be visible where the tree is read, not only in the
-  chapter — paid in one line of the rendered README.
+  chapter, paid in one line of the rendered README.

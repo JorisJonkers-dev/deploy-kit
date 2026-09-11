@@ -1,4 +1,4 @@
-# Refusals — the negative fixtures
+# Refusals: the negative fixtures
 
 The worked examples in the sibling directories are all accepted inputs. They
 prove that the model can express the estate; they cannot prove that it refuses
@@ -11,7 +11,7 @@ one defect so the refusal has a single cause.
 | [`alert-class-without-signal.domain.yml`](alert-class-without-signal.domain.yml) | `E_ALERT_CLASS_WITHOUT_SIGNAL` | an `observability` block carrying a class and no `scrape`. A class states how loudly to wake someone and means nothing without a signal to wake them about ([chapter 10](../../10-service-intent.md#observability)) |
 | [`alert-class-unknown.domain.yml`](alert-class-unknown.domain.yml) | schema validation | a value outside the closed `AlertClass` vocabulary, refused before composition runs, so no new error code carries it |
 | [`cutover-rolling-over-rwo.domain.yml`](cutover-rolling-over-rwo.domain.yml) | `E_CUTOVER_UNHONOURABLE` | `cutover: rolling` over an RWO volume, which cannot surge ([chapter 10](../../10-service-intent.md#cutover-is-declared-not-promised)) |
-| [`cutover-recreate-over-rwo.domain.yml`](cutover-recreate-over-rwo.domain.yml) | accepted | the same Workload and storage with the cutover it can honour — the pair is what makes the refusal above meaningful |
+| [`cutover-recreate-over-rwo.domain.yml`](cutover-recreate-over-rwo.domain.yml) | accepted | the same Workload and storage with the cutover it can honour, the pair that makes the refusal above meaningful |
 
 There is no fixture for "no monitoring". A Service that wants none omits the
 `observability` block, which is an accepted input and appears in the worked set

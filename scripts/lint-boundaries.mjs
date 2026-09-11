@@ -19,7 +19,7 @@ const targets = ["src"].filter((d) => existsSync(join(root, d)));
 
 if (targets.length === 0) {
   console.log(
-    "boundary lint: SKIPPED — src/ does not exist yet. " +
+    "boundary lint: SKIPPED: src/ does not exist yet. " +
       "The ruleset in .dependency-cruiser.cjs takes effect with the first module.",
   );
   process.exit(0);
