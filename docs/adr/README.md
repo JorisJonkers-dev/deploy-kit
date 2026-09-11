@@ -13,7 +13,7 @@ rebuild commit lands they are recoverable with
 pointer disagree, the spec wins and the ADR is what gets fixed. The `spec/v1`
 chapters have **not yet been rewritten** to carry the anchors this register
 names: that is the follow-up spec rewrite, tracked in
-`review/REBUILD-MANIFEST.md`; `scripts/lint-adrs.mjs` stays non-blocking until
+`review/REBUILD-MANIFEST.md`; `scripts/lint-adrs.ts` stays non-blocking until
 it lands.
 
 The set was amended on 2026-09-07 for placement and domain-authored intent:
@@ -200,3 +200,5 @@ Decisions about the compiler's own structure, not about the model. Their
 | [0067](architecture/0067-adapters-build-objects-one-serializer.md) | Adapters build typed objects; one serializer owns the bytes | settled |
 | [0068](architecture/0068-failures-are-a-diagnostic-list.md) | A failure is a coded diagnostic in a list, not a thrown error | settled |
 | [0069](architecture/0069-boundaries-enforced-on-the-graph.md) | Layer boundaries and reachability are gates on the module graph | settled |
+| [0100](architecture/0100-tests-run-in-process-on-vitest.md) | Tests run in-process on Vitest, and the tooling is TypeScript that Node runs directly | settled |
+| [0101](architecture/0101-coverage-is-a-ratchet.md) | Coverage is a ratchet: the thresholds sit on what the suite reaches, and only rise | settled |

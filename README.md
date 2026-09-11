@@ -24,7 +24,7 @@ lands, the **compiler** that turns that model into deployable artifacts.
 | [`spec/v1/diagrams/`](spec/v1/diagrams/README.md) | One drawn diagram per chapter, as an SVG with the editable draw.io diagram embedded. One palette; colour carries the layer. |
 | [`spec/v1/examples/minimal/`](spec/v1/examples/minimal/README.md) | The smallest complete Service: one domain, one Service, one Workload, 26 authored lines reaching 10 objects. |
 | [`spec/v1/examples/`](spec/v1/examples) | Worked examples: real Services from this estate, written in the model. |
-| `scripts/lint-adrs.mjs` | Enforces the decision-record contract. Runs in CI. |
+| [`scripts/`](scripts/) | The gates: the ADR contract, links, manifests and layer boundaries. TypeScript that Node runs directly ([tooling](docs/architecture.md#tooling)). |
 
 ## The shape of the model
 
@@ -79,11 +79,13 @@ business. The parked direction work is in
 ## Local checks
 
 ```bash
+nvm use             # the exact Node version in .nvmrc
 npm ci
 npm run verify      # lint, format, typecheck, ADR contract, tests + coverage
 ```
 
-`npm run lint:adrs` alone runs the decision-record contract.
+`npm run lint:adrs` alone runs the decision-record contract, and `npm test`
+runs the suite without the coverage thresholds.
 
 ## Conventions
 

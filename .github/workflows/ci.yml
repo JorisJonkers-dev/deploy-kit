@@ -27,7 +27,7 @@
 
       - 'uses': 'actions/setup-node@v7'
         'with':
-          'node-version': '24'
+          'node-version-file': '.nvmrc'
           'cache': 'npm'
 
       - 'name': 'Install'
@@ -75,9 +75,11 @@
       - 'name': 'Boundaries'
         'run': 'npm run lint:boundaries'
 
-      # Coverage gate is enforced inside the test script (c8 --check-coverage).
+      # The coverage ratchet lives in vitest.config.ts: thresholds sit on what
+      # the suite reaches and only rise. See
+      # docs/adr/architecture/0101-coverage-is-a-ratchet.md.
       - 'name': 'Test'
-        'run': 'npm test'
+        'run': 'npm run test:coverage'
 
       # Pinned by version, never `curl | bash` from a third-party default
       # branch: docs/adr/deferred/0048-class-b-pinning.md (deferred set) records that

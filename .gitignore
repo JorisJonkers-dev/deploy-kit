@@ -50,17 +50,6 @@ templates/**/.claude/commands/speckit*.md
 # elsewhere in the estate is not silently ignored.
 .claude/worktrees/
 
-# out beside the sources; it is machine-local scratch, several MB, and being
-# untracked rather than ignored it left this repo permanently dirty.
-# Scoped to worktrees/ rather than all of .claude/ so tracked agent config
-# elsewhere in the estate is not silently ignored.
-.claude/worktrees/
-
-# out beside the sources - machine-local scratch, several MB. Scoped to
-# worktrees/ rather than all of .claude/ so repos that deliberately track
-# agent config are not silently ignored.
-.claude/worktrees/
-
 # Python bytecode
 __pycache__/
 *.py[cod]
