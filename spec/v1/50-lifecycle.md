@@ -1,4 +1,4 @@
-# Chapter 50 — Lifecycle
+# Chapter 50: Lifecycle
 
 Model-level lifecycle: what changes over time, and what the model guarantees
 while it is changing.
@@ -8,16 +8,16 @@ not at all. A **cross-Service contract** changes in two steps, never one. A
 **lock** names one pinned input set, and a new lock exists exactly when one of
 those inputs changes.
 
-How a change reaches the cluster — who applies, what prunes, what reconciles,
-what tests gate a deploy — is not in this chapter and is not a v1 model
+How a change reaches the cluster, who applies, what prunes, what reconciles,
+what tests gate a deploy, is not in this chapter and is not a v1 model
 decision. The next section says where it lives and what the model demands of it.
 
 ## Delivery and co-testing are defined separately
 
 On 2026-09-07 the owner drew the boundary: *how the estate deploys, and how
 dependency on other units for testing gates a deploy, are defined separately
-from the model.* Thirteen records — the premise 0008, the delivery decisions
-0041–0048 and 0058, and the co-testing decisions 0049–0051 — are parked in
+from the model.* Thirteen records, the premise 0008, the delivery decisions
+0041–0048 and 0058, and the co-testing decisions 0049–0051, are parked in
 [`docs/adr/deferred/`](../../docs/adr/deferred/README.md) with the worked
 delivery examples this chapter used to carry, now at
 `docs/adr/deferred/examples/`. They are direction work: argued, evidenced,
@@ -37,17 +37,17 @@ defined. Three demands, all decided in the model rather than in the parked work:
 |---|---|---|
 | **Release Unit atomicity** | [0060](../../docs/adr/model/0060-release-unit.md) | no member's new version receives traffic until every member's new version is healthy; one failing member holds the whole unit |
 | **Durability Class gating** | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | a destructive operation against a volume declared `recoverable` or `irreplaceable` is refused and reported, never performed; only the owning Service can state that class |
-| **Pinned inputs only** | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | what is applied is rendered from a named lock — Intent, Platform Intent, images lock, ClusterState snapshot — never from a live read at render time |
+| **Pinned inputs only** | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | what is applied is rendered from a named lock (Intent, Platform Intent, images lock, ClusterState snapshot), never from a live read at render time |
 
 A mechanism honouring those three is compatible with this model. Everything
-else it decides — push or pull, who holds cluster credentials, what prunes, how
-often it reconciles, whether a neighbour's tests gate a merge — is its own
+else it decides, push or pull, who holds cluster credentials, what prunes, how
+often it reconciles, whether a neighbour's tests gate a merge, is its own
 business, and the parked records are the evidence it starts from.
 
 ## The lock lifecycle
 
 A **lock** is the record of one pinned input set. Chapter 40 defines the
-`CompositionLock` document and its fields; this section is the time view — when
+`CompositionLock` document and its fields; this section is the time view: when
 a new lock exists, what one guarantees, and what one is not.
 
 A lock names, by digest:
@@ -55,12 +55,12 @@ A lock names, by digest:
 - every Intent Fragment in the union, with its `sourceSha` and `inputsSha`;
 - the Platform document's fragment, with its `sourceSha` and `inputsSha` like any other;
 - the node contract, by digest;
-- the images lock, which resolves every `image` alias to a digest — never a tag;
+- the images lock, which resolves every `image` alias to a digest, never a tag;
 - the ClusterState snapshot, as `clusterStateDigest`
   ([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)).
 
 The lock is an **output** of composition and never an input to it, because an
-artefact cannot contain its own digest — chapter 40 carries the evidence and the
+artefact cannot contain its own digest: chapter 40 carries the evidence and the
 `oras push` / `oras resolve` pattern it comes from.
 
 ### When a new lock exists
@@ -72,17 +72,17 @@ event produces one.
 |---|---|---|
 | a Service repository merges an Intent change and republishes its fragment | **yes** | a new fragment digest is a new input, whether the change was an image, a grant, an exposure or an edge |
 | a fragment republishes with byte-identical content | no | digests are content-addressed, so the input set has not moved |
-| the Platform document is republished — a tier, a durability policy, a receiver, a provider | **yes** | the Platform document is a pinned input, republished deliberately |
+| the Platform document is republished: a tier, a durability policy, a receiver, a provider | **yes** | the Platform document is a pinned input, republished deliberately |
 | the images lock resolves an alias to a new digest | **yes** | the rendered image reference changes |
 | a PV rebinds after a node failure; a node joins or leaves | **yes** | the ClusterState snapshot changes, so `clusterStateDigest` changes, and the rebind lands as a visible decision rather than as drift |
-| a node contract republishes new `allocatable` — a reserve is retuned, RAM is added | **yes** | placement is matched against allocatable, so eligibility can change without any Intent changing |
+| a node contract republishes new `allocatable`, a reserve is retuned, RAM is added | **yes** | placement is matched against allocatable, so eligibility can change without any Intent changing |
 | a pod restarts; a Kustomization reports Ready; a health check flips | no | that is what is *running*. Chapter 20 keeps the health document (`cluster-state.schema.json`) distinct from the pinned ClusterState snapshot; only the snapshot is an input |
 | the toolkit is upgraded with no model change | no | `schemaVersion` is the data model's own semver and moves only on a model change ([0039](../../docs/adr/model/0039-artifact-schema-versioning.md)); the lock records the exact versions it was composed under |
 
 ### What a lock guarantees
 
 Re-rendering from a recorded lock yields a byte-identical Deliverable Set and
-the same `renderHash` — **conditional on identical input digests,
+the same `renderHash`: **conditional on identical input digests,
 `clusterStateDigest` included**. That conditional wording is the repaired form
 of chapter 20's purity rule
 ([0006](../../docs/adr/model/0006-pinned-inputs.md)): the earlier absolute claim was
@@ -93,7 +93,7 @@ The repair is what makes the diagnostics work:
 
 | observation | what it means |
 |---|---|
-| identical digests, differing render | a defect — an input was read that the lock does not name. Never weather |
+| identical digests, differing render | a defect, an input was read that the lock does not name. Never weather |
 | differing `clusterStateDigest`, differing render | the estate moved. The new lock is the record of it, and landing it is a decision, not a correction |
 | `renderHash` changed | at least one entry in `inputDigests` changed. There is no third possibility, because nothing is remembered between renders |
 
@@ -108,7 +108,7 @@ intended".
 
 A lock is only as re-renderable as the artefacts it names. Deleting a fragment
 digest, a context digest or a snapshot that a live lock references makes that
-lock un-re-renderable — which is why every pinned reference is a retained digest
+lock un-re-renderable, which is why every pinned reference is a retained digest
 and never a moving tag. `previousLockDigest` and `lockChain` (chapter 40) answer
 *when did this fragment's digest change, and which render did that produce*
 without diffing published artefacts.
@@ -117,7 +117,7 @@ without diffing published artefacts.
 
 Membership is structural, not declared: **a Service is the Release Unit**, and
 its members are its Workloads ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)).
-Nothing names a unit, because nothing needs to — things that must switch
+Nothing names a unit, because nothing needs to: things that must switch
 together are Workloads of one Service, and things that must not are separate
 Services. Chapter 10's [Service identity](10-service-intent.md#service-identity)
 carries the authoring rules; this section is the lifecycle view.
@@ -130,35 +130,35 @@ Every term in that rule is already defined elsewhere in the model:
 
 | term | means | where it comes from |
 |---|---|---|
-| **healthy** | the member's own declared readiness — `probes.readiness`, with its own `path` + `port` or `tcp` | chapter 10, [0014](../../docs/adr/model/0014-probes-are-siblings.md) |
+| **healthy** | the member's own declared readiness: `probes.readiness`, with its own `path` + `port` or `tcp` | chapter 10, [0014](../../docs/adr/model/0014-probes-are-siblings.md) |
 | **budget** | the derived rollout budget: how long a new version has to report ready before it counts as failed | chapter 20's derived mechanics, [0030](../../docs/adr/model/0030-runtime-mechanics-derived.md) |
 | **switch** | the moment traffic reaches the new versions rather than the old | the delivery mechanism performs it; the model states when it may happen |
 
 A Workload declaring `probes: none` publishes no readiness signal and so cannot
 contribute to the gate. A Service must therefore declare readiness on at least
-one Workload — `E_RELEASE_UNIT_NO_READINESS`, a composition-time
+one Workload: `E_RELEASE_UNIT_NO_READINESS`, a composition-time
 check in [chapter 40](40-composition.md#versioning)'s estate-wide invariants,
 not something a delivery mechanism discovers at apply time.
 
 **Held, not partial.** A member that fails its budget does not switch on its
 own, and does not let its neighbours switch either: the whole unit holds and
 every member's old version keeps serving. That is the point. It converts the blast radius of a bad
-member from a broken product — a new frontend against an old API, both pods
-individually reporting healthy — into a visibly held release, paid for by
+member from a broken product (a new frontend against an old API, both pods
+individually reporting healthy), into a visibly held release, paid for by
 whoever shipped the failing member.
 
 **Rollback is unit-scoped.** Reverting one member means reverting the unit, and
 what a revert targets is a lock: the previous lock is the whole coherent input
 set, so a unit-scoped rollback is a lock-scoped operation. The cost is a larger
 rollback scope than a single Service, and the benefit is that the scope is
-consistent — there is no state in which half a unit has been reverted.
+consistent: there is no state in which half a unit has been reverted.
 
 **A Release Unit is not a Reconcile Unit.**
 
 | | Release Unit | Reconcile Unit |
 |---|---|---|
 | answers | what switches together | what applies before what |
-| origin | **structural** — the Service boundary; its members are its Workloads | **derived** from the dependency graph ([0032](../../docs/adr/model/0032-reconcile-unit-derived.md)) |
+| origin | **structural**, the Service boundary; its members are its Workloads | **derived** from the dependency graph ([0032](../../docs/adr/model/0032-reconcile-unit-derived.md)) |
 | property | atomicity | ordering |
 | worked case | Service `auth`, Workloads `auth-api` + `auth-ui`: a new UI against an old API is a broken product although each pod reports healthy | `platform-postgres` before `knowledge`: the consumer cannot start without its provider |
 | membership changes when | a Workload joins or leaves the Service | an edge is added or removed |
@@ -178,8 +178,8 @@ Service is evidence the boundary is drawn wrong.
 ## Expand and contract
 
 A Release Unit makes lockstep safe *inside* the unit. Everything else that
-crosses a Service boundary — a surface, a port, a derived value, a name another
-Service references — changes in two steps, because the estate's Services merge
+crosses a Service boundary, a surface, a port, a derived value, a name another
+Service references, changes in two steps, because the estate's Services merge
 and publish independently and no moment exists at which they all move.
 
 The rule is asymmetric, and composition can enforce it because the union puts
@@ -197,7 +197,7 @@ edges (chapter 16):
 | change | at lock N | verdict |
 |---|---|---|
 | `auth-api` allows an origin whose Service is not deployed yet | additive | harmless |
-| `auth-api` stops allowing an origin that is still live at N−1 | removal | broken — the consumer loses access on the switch |
+| `auth-api` stops allowing an origin that is still live at N−1 | removal | broken, the consumer loses access on the switch |
 
 The three phases, and what composition sees at each:
 
@@ -236,8 +236,8 @@ it is decided in `docs/adr/`; everything inside it is decided separately.
 
 1. ~~**Release Unit atomicity is untested.**~~ It is
    [0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md)'s own
-   settling test — a switchover mechanism written against a `ResolvedService`
-   projection alone — and is recorded there. [0060](../../docs/adr/model/0060-release-unit.md),
+   settling test, a switchover mechanism written against a `ResolvedService`
+   projection alone, and is recorded there. [0060](../../docs/adr/model/0060-release-unit.md),
    which this item used to cite, is superseded; the unit is the Service
    ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)).
 2. ~~**Whether a unit may span ownership boundaries.**~~ Not this chapter's
@@ -247,7 +247,7 @@ it is decided in `docs/adr/`; everything inside it is decided separately.
 3. **How far the contraction check reaches** is a recorded limitation rather
    than an open decision: it is exact over declared edges and silent over
    undeclared ones, so its value is bounded by the completeness of the edge set
-   — the same completeness default-deny network policy depends on
+   , the same completeness default-deny network policy depends on
    ([0035](../../docs/adr/model/0035-network-policy-default-deny.md)). Nothing
    settles it except the audit stage finding no undeclared flow.
 
@@ -257,7 +257,7 @@ Each diagram above is drawn in draw.io and committed as an SVG with the editable
 diagram embedded, so opening the `.svg` in draw.io recovers the drawing. The
 mermaid below is the same structure in text, kept so a diagram change shows up in
 a plain diff. **Where the two disagree the SVG is the diagram and the mermaid is
-what gets fixed** — the same precedence this repository uses between a chapter and
+what gets fixed**, the same precedence this repository uses between a chapter and
 an ADR.
 
 ### Release Unit switchover

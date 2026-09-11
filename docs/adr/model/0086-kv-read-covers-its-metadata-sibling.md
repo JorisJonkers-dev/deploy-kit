@@ -28,7 +28,7 @@ the document.
 
 Since the reader already holds the values, denying the version list protects
 nothing. It withholds the ability to see *when* a value changed from the
-principal that can read the value — which is exactly backwards for auditing a
+principal that can read the value, which is exactly backwards for auditing a
 rotation. So one declaration derives both stanzas: `read` on
 `secret/data/<path>` and `read` plus `list` on `secret/metadata/<path>`.
 
@@ -60,14 +60,14 @@ stanza then breaks an audit path rather than narrowing an unused one.
 
 ## Consequences
 - R21 closes, and version listing works for every reader without a second
-  declaration — paid by nobody.
+  declaration, paid by nobody.
 - Every derived KV policy doubles its stanza count, so a policy document is
-  longer and a reviewer reads two paths per grant — paid in policy size, which
+  longer and a reviewer reads two paths per grant, paid in policy size, which
   is generated rather than written.
 - A reader can see the version history of a document it reads, which includes
   timestamps of rotations performed by other principals; that is metadata about
-  someone else's action, and it is information the value itself already implies —
+  someone else's action, and it is information the value itself already implies,
   paid deliberately, and stated so nobody has to rediscover the reasoning.
 - Soft-delete remains unavailable, so a rotation process that wants to prune old
-  versions needs a tier that does not exist yet — paid when the estate wants
+  versions needs a tier that does not exist yet, paid when the estate wants
   pruning, as its own decision.

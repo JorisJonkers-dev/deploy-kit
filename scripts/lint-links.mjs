@@ -4,7 +4,7 @@
 // The ADR lint checks links inside the decision set and the register. Nothing
 // checked the rest, and the ADR domain move rewrote about a hundred references
 // in spec/v1, CONTEXT.md, README.md, docs/architecture.md and two CI comments
-// — every one of which could have broken with lint:adrs, typecheck and the
+// (every one of which could have broken with lint:adrs, typecheck and the
 // tests all green. This closes that.
 //
 // External URLs are not fetched: this checks what this repository owns.
