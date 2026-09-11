@@ -57,3 +57,12 @@ model-level rule and point at the deferred set.
 
 `deploy-config-schema` is the repository this one replaces. It stays alive and
 authoritative until `deploy-kit` can render the estate; do not treat it as dead.
+
+### MDE coursework material
+
+`docs/mde/` holds a university course's reports, lecture decks and background
+reading. Every PDF there has a Markdown conversion beside it, with its figures
+in a sibling `-images/` directory. **Start from
+[`docs/mde/INDEX.md`](docs/mde/INDEX.md)**: it says which document covers which
+topic, down to the section anchor and the PDF page, so open one section of one
+`.md` rather than reading a PDF end to end. Some of these run to 400 pages.

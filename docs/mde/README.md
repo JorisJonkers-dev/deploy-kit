@@ -31,6 +31,11 @@ the reports are written and not material of this repository:
 naming every file, because the names publishers and lecture exports ship with
 say nothing at a glance.
 
+Every PDF has a Markdown conversion beside it — `<name>.md`, figures in
+`<name>-images/` — produced with docling. **[`INDEX.md`](INDEX.md) maps topics
+to documents, sections and PDF pages**; read it first, then open only the
+section it points at.
+
 ## Layout of a report directory
 
 Each one mirrors its Overleaf project **file for file**, so that a fresh pull
