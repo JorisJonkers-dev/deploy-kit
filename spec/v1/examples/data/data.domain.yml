@@ -200,7 +200,9 @@ services:
           # (docs/adr/model/0012-assets-not-code.md).
           - from: config/postgresql.conf
             mountAt: /etc/postgresql/postgresql.conf
-            onChange: restart
+            # No `onChange`. A change to an Asset is content-hashed and restarts
+            # the Workload unconditionally; the field does not exist
+            # (docs/adr/model/0094-asset-change-restarts-unconditionally.md).
 
           # NOT declared: init-databases.sh.
           #
