@@ -15,8 +15,8 @@ surfaces, the routes, the grants and the platform baseline, and one producer can
 own all of them. False if: a policy the estate needs cannot be derived from
 those five inputs, or the per-domain default-deny and the per-Workload policies
 turn out to need different inputs rather than different paths. Settled by: the
-conftest assertion holding over a full estate render — every rendered policy
-carrying `Egress` in `policyTypes` also matches UDP/53 — with `networking` the
+conftest assertion holding over a full estate render (every rendered policy
+carrying `Egress` in `policyTypes` also matches UDP/53), with `networking` the
 only adapter emitting the kind.
 
 ## Why
@@ -43,8 +43,8 @@ one producer it is a property of one adapter, checkable in one place, rather
 than a rule every adapter emitting a policy would have to be held to
 separately.
 
-Splitting further — one adapter for per-Workload policies, another for the
-per-domain baseline — would put the two baseline rules that must appear in
+Splitting further (one adapter for per-Workload policies, another for the
+per-domain baseline), would put the two baseline rules that must appear in
 *every* policy in a different producer from the policies they must appear in.
 The split that matters is by kind, and there is one kind.
 
@@ -53,7 +53,7 @@ The split that matters is by kind, and there is one kind.
 |---|---|---|
 | Extend the `kubernetes` adapter | No registry change; every object a Service owns has one producer | The per-domain default-deny is not Service-scoped, so one adapter would own two path shapes, and a policy regression would be attributed identically to a Deployment regression |
 | Two adapters, per-Workload and per-domain | Each adapter has exactly one path shape | The baseline rules belong in every policy, and this puts them in a different producer from most of the policies that need them |
-| Keep the deleted generation's renderer | It exists and produces objects today | It is unregistered, consumes `ProjectModel` rather than an `AdapterContext`, and omits both baseline rules — porting it costs what writing the adapter costs |
+| Keep the deleted generation's renderer | It exists and produces objects today | It is unregistered, consumes `ProjectModel` rather than an `AdapterContext`, and omits both baseline rules, porting it costs what writing the adapter costs |
 
 ## Reversibility
 Undo cost today: one adapter and its registry entry, deletable before anything
@@ -63,15 +63,15 @@ window's evidence is then keyed to what this adapter emitted.
 
 ## Consequences
 - 0052's set becomes eighteen, amended in place; `rbac` is not among them
-  ([0075](0075-no-workload-rbac-in-v1.md)) — paid in one amendment, and the
+  ([0075](0075-no-workload-rbac-in-v1.md)), paid in one amendment, and the
   count keeps meaning what it meant.
 - The DNS baseline becomes assertable against one producer, so the failure the
-  deleted generation shipped is a test rather than a memory — paid by nobody.
+  deleted generation shipped is a test rather than a memory, paid by nobody.
 - Every policy in the estate now has one owner, so the audit stage's diff is
   between observed flows and one adapter's output rather than between flows and
-  a mixture of rendered and hand-written policies — paid by whoever runs the
+  a mixture of rendered and hand-written policies, paid by whoever runs the
   14-day audit, in a cleaner comparison.
 - A typo in a `surface` name still narrows the allow set silently, because a
   name that resolves to nothing derives no rule; that is R18's row and this
-  decision does not close it — paid on-call, as a timeout rather than an error
+  decision does not close it, paid on-call, as a timeout rather than an error
   code, until R18 is decided.

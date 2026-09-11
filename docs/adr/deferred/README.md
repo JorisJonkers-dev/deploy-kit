@@ -1,9 +1,9 @@
-# Deferred — delivery and co-testing
+# Deferred: delivery and co-testing
 
 These thirteen ADRs are **not part of the v1 model**. On 2026-09-07 the owner
 split them out: *how the estate deploys, and how dependency on other units for
 testing gates a deploy, are defined separately from the model.* They are
-parked here as direction work — argued, evidenced, reviewed — for the separate
+parked here as direction work (argued, evidenced, reviewed) for the separate
 delivery-and-testing definition to take up, amend, or discard.
 
 Status of everything in this directory:
@@ -28,7 +28,7 @@ Status of everything in this directory:
 
 | # | decides | one line |
 |---|---|---|
-| [0008](0008-tested-equals-deployed-requires-push.md) | premise | tested-equals-deployed cannot be had from pull alone — untested, falsifiable via workspace#45 |
+| [0008](0008-tested-equals-deployed-requires-push.md) | premise | tested-equals-deployed cannot be had from pull alone: untested, falsifiable via workspace#45 |
 | [0041](0041-push-delivery-boundary.md) | delivery | class A pushed by aggregators, class B stays with Flux |
 | [0042](0042-apply-before-prune-inventory.md) | delivery | apply first, prune last, from an inventory of rendered kinds |
 | [0043](0043-delete-authority-durability-gate.md) | delivery | deletion gated by Durability Class; no automatic PVC deletes |
@@ -36,7 +36,7 @@ Status of everything in this directory:
 | [0045](0045-break-glass-reporting.md) | delivery | break-glass exists, sticks, and reports itself |
 | [0046](0046-distinct-field-managers.md) | delivery | one field manager per applier, serialised by a lease |
 | [0047](0047-namespace-per-deployer.md) | delivery | a namespace has exactly one deployer |
-| [0048](0048-class-b-pinning.md) | delivery | the foundation pinned like everything else — live defect today |
+| [0048](0048-class-b-pinning.md) | delivery | the foundation pinned like everything else, live defect today |
 | [0049](0049-aggregator-owned-tests.md) | co-testing | system tests owned by the project that understands the relationship |
 | [0050](0050-exercises-and-deploys.md) | co-testing | exercises many-to-many, deploys exactly-one |
 | [0051](0051-vcluster-substrate.md) | co-testing | the test substrate is measured before it gates |
@@ -44,7 +44,7 @@ Status of everything in this directory:
 
 ## Joined this set on 2026-09-08
 
-- **`flux-root`** — one Flux `Kustomization` per layer, with `dependsOn` and
+- **`flux-root`**: one Flux `Kustomization` per layer, with `dependsOn` and
   health checks. It is one delivery mechanism's reading of the Reconcile Unit
   DAG that [chapter 20](../../../spec/v1/20-resolved-deployment.md#the-reconcile-unit)
   derives, so it is delivery's to define

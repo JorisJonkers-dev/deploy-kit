@@ -12,7 +12,7 @@ rests-on: ["0005"]
 ## Rests on
 Five labels are enough for everything the estate selects on, and no authored
 field needs to reach the label set. False if: something must select objects by a
-dimension no label carries — a tier, an audience, a release channel — and cannot
+dimension no label carries (a tier, an audience, a release channel), and cannot
 read it from the Resolved Deployment instead. Settled by: rendering the estate
 with this set and finding no selector, no ServiceMonitor and no NetworkPolicy
 that needs a label it does not have.
@@ -34,7 +34,7 @@ Workload must not require recreating the ones that stayed.
 `name` and `instance` both carry the Workload name, which reads oddly and is
 correct. The selector must match exactly one controller's pods, and a `name`
 naming the Service would make every Workload of a multi-Workload Service
-ambiguous the moment anything selected on `name` alone — `auth` has two, so this
+ambiguous the moment anything selected on `name` alone: `auth` has two, so this
 is not hypothetical.
 
 There is no `version`. It could only come from the images lock, so it would
@@ -58,18 +58,18 @@ Undo cost today: none of the five is live-critical *except* the two selectors,
 and those are already emitted with these values, so adopting the set costs
 nothing now. Becomes irreversible immediately for `name` and `instance`: every
 object applied under them carries an immutable selector, so a later change is
-delete-and-recreate per workload — which is why the set is fixed before the
+delete-and-recreate per workload, which is why the set is fixed before the
 first render rather than after.
 
 ## Consequences
-- R24 closes: the set is named, and the immutable half is named as immutable —
+- R24 closes: the set is named, and the immutable half is named as immutable,
   paid once, in one table.
 - Anything that wants to select on a model concept the labels do not carry has
-  to read the Resolved Deployment instead, or make the case for a sixth label —
+  to read the Resolved Deployment instead, or make the case for a sixth label,
   paid by whoever wants it, deliberately.
 - A Service rename changes `part-of` on every one of its objects; that is a
-  mutable label, so it is a patch rather than a recreate — paid at rename time,
+  mutable label, so it is a patch rather than a recreate, paid at rename time,
   cheaply, which is the reason it is not a selector.
 - `component` carries `runtime`, so a Workload changing runtime rewrites a
   label; harmless, and it means the label tracks a declaration rather than a
-  guess — paid by nobody.
+  guess, paid by nobody.

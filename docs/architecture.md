@@ -50,8 +50,8 @@ the outermost ring; a use-case that reached them could not be called by a test.
 
 ## Ports
 
-Two use-cases, one core. `publish` runs in any repository that authors intent —
-a domain, or the platform — validates the Intent Fragment and pushes it by
+Two use-cases, one core. `publish` runs in any repository that authors intent (
+a domain, or the platform) validates the Intent Fragment and pushes it by
 digest, and renders nothing; `compose` runs centrally over the composed union
 and is where every adapter runs
 ([0098](adr/model/0098-one-publication-path.md)). They share the domain, and
@@ -60,7 +60,7 @@ as a port the domain declares and the CLI supplies.
 
 | port | what it hides | production implementation |
 |---|---|---|
-| `PinnedInputSet` | resolving every Intent Fragment — the domain files and the Platform document — the node contract, the locks and the ClusterState snapshot into parsed, validated, digested documents | filesystem plus OCI |
+| `PinnedInputSet` | resolving every Intent Fragment (the domain files and the Platform document) the node contract, the locks and the ClusterState snapshot into parsed, validated, digested documents | filesystem plus OCI |
 | `FragmentSource` / `FragmentPublisher` | reading and publishing Intent Fragments by digest | `oras push` then `oras resolve`, and a filesystem implementation for tests |
 | `Hasher` | the hash primitive | `node:crypto`, so the domain imports no crypto |
 | `DeliverableWriter` | putting bytes on disk | staging directory plus atomic rename |
@@ -105,7 +105,7 @@ required only after validation.
 
 Every failure is a `Diagnostic`: a code, the document path it occurred at, a
 message, and a hint. Use-cases return a `Result` over a diagnostic list, never
-a thrown error, and every rule runs before the result is returned — one command
+a thrown error, and every rule runs before the result is returned: one command
 reports ten mistakes rather than the first one.
 
 Exceptions are reserved for programmer error: a broken invariant inside the
@@ -129,7 +129,7 @@ under `--json`, and maps failure classes to distinct exit statuses.
 
 Adapters build **typed objects**, not text. The object model
 ([`src/objects/`](#layers)) declares only the fields this estate sets, so a
-field the model cannot express cannot be set by an adapter — which is how
+field the model cannot express cannot be set by an adapter: which is how
 "layer 3 contains no decisions"
 ([0003](adr/model/0003-three-layer-meta-model.md)) becomes a compile-time
 property rather than a review question.
@@ -142,8 +142,8 @@ asserts a field rather than whitespace.
 Rendered output carries **no commentary** beyond one fixed `GENERATED` line,
 emitted by the serializer as a constant and never by an adapter.
 
-The writer assembles the whole Deliverable set, verifies it — path collision,
-safe relative paths, ledger coverage — and only then writes, into a staging
+The writer assembles the whole Deliverable set, verifies it (path collision,
+safe relative paths, ledger coverage) and only then writes, into a staging
 directory that is renamed over the target. A failed render leaves the previous
 tree untouched. Deliverables that a render no longer produces are **reported,
 never deleted**: pruning is delivery scope and is defined separately
@@ -203,7 +203,7 @@ cost something in the generation this compiler replaces.
 The reachability half of the boundary gate is the one worth naming. Coverage
 alone rewards a module for having tests: chapter 30 records 1,967 lines of dead
 renderer that survived a `--lines 90` gate because its own test files imported
-it. Reachability asks a different question — does anything real call this —
+it. Reachability asks a different question (does anything real call this)
 and the two together are what coverage was mistaken for.
 
 Every gate here carries negative fixtures.

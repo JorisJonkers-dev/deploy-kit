@@ -23,7 +23,7 @@ The Resolved Deployment, emitted per render and validated against its own
 versioned schema, is byte-stable for identical pinned inputs, so a diff between
 two renders shows exactly the platform decisions that changed and nothing else.
 False if: two renders of the same Intent against the same pinned context and
-locks differ — map ordering, timestamps, absolute paths — because a diff
+locks differ (map ordering, timestamps, absolute paths), because a diff
 carrying that noise is not a review surface. Settled by: render one Service
 twice from the same lock and context into `/tmp/a` and `/tmp/b`, then
 `diff -r /tmp/a /tmp/b` (empty settles it) and
@@ -33,7 +33,7 @@ twice from the same lock and context into `/tmp/a` and `/tmp/b`, then
 
 The middle layer already has a schema; what it lacks is a version and a reader.
 `schemas/deployment.schema.json` is 1,297 lines and pins `apiVersion` to the
-bare const `deployment.jorisjonkers.dev` — no version segment at all — while
+bare const `deployment.jorisjonkers.dev` (no version segment at all), while
 five sibling schemas in the same directory carry one (`cluster-context/v1`,
 `artifact-contract/v1`, `adapter-compat/v1`, `cluster-composition-lock/v1`,
 `kustomization-health/v1`). The only versioned deployment apiVersion in the
@@ -50,7 +50,7 @@ so it resolves to the third and rejects the first on `/apiVersion`. The estate
 wrote that up as a trap rather than fixing it.
 
 The point of naming the middle layer is that a reviewer reads a diff of the
-Resolved Deployment and sees what the platform decided on their behalf — a claim
+Resolved Deployment and sees what the platform decided on their behalf: a claim
 about a document somebody holds. This repository already contains one such
 resolved tree, `fixtures/deployment/golden/`, and
 `grep -rn 'deployment/golden' test/ scripts/ .github/ package.json` returns
@@ -82,19 +82,19 @@ decision into layer 3 unnoticed: an empty artifact diff across it proves that.
 ## Reversibility
 
 Undo cost today: the schema exists, so undoing means deleting an emit step, a
-CI validate-and-diff job and the version field — one workflow file, one command
+CI validate-and-diff job and the version field: one workflow file, one command
 path, a handful of fixtures; hours, and the review surface is the whole loss.
 Becomes irreversible once: a service repository or a second aggregator pins a
 Resolved Deployment schema version or reads a published artifact of its own
-accord — the middle layer is then a contract with consumers this repository
+accord, the middle layer is then a contract with consumers this repository
 cannot enumerate, and its shape moves only under the compatibility rule.
 
 ## Consequences
 
-- A third schema to version and keep honest — paid by this repository's maintainers.
-- Every render emits and validates an artifact, and CI gains a diff step per Service — paid by the aggregator's pipeline, in wall time on every change.
-- A reviewer sees what the platform decided on their behalf, including decisions nobody asked for — paid by reviewers, who read a second document per change.
-- `validate deployment` is ambiguous by construction and needs a per-layer name; scripts spelling the old one break — paid by tooling authors.
-- Byte-stability stops being an aspiration: any non-determinism in the renderer surfaces as diff noise and must be fixed before the gate is trusted — paid by the renderer's maintainers.
-- `fixtures/deployment/golden/` becomes the conformance baseline rather than decoration, regenerated with intent whenever a derivation changes — paid by whoever changes one.
-- The published version is a promise, so a layer-2 field addition goes through the compatibility rule rather than a single PR — paid by anyone adding one, and by the ledger consumers of [0055](0055-bidirectional-ledgers.md).
+- A third schema to version and keep honest, paid by this repository's maintainers.
+- Every render emits and validates an artifact, and CI gains a diff step per Service, paid by the aggregator's pipeline, in wall time on every change.
+- A reviewer sees what the platform decided on their behalf, including decisions nobody asked for, paid by reviewers, who read a second document per change.
+- `validate deployment` is ambiguous by construction and needs a per-layer name; scripts spelling the old one break, paid by tooling authors.
+- Byte-stability stops being an aspiration: any non-determinism in the renderer surfaces as diff noise and must be fixed before the gate is trusted, paid by the renderer's maintainers.
+- `fixtures/deployment/golden/` becomes the conformance baseline rather than decoration, regenerated with intent whenever a derivation changes, paid by whoever changes one.
+- The published version is a promise, so a layer-2 field addition goes through the compatibility rule rather than a single PR, paid by anyone adding one, and by the ledger consumers of [0055](0055-bidirectional-ledgers.md).

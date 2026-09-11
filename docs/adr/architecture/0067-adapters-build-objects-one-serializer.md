@@ -13,7 +13,7 @@ rests-on: ["0003"]
 Every Deliverable this estate emits is expressible as a typed object built from
 fields the model can name, and turning objects into bytes needs no per-adapter
 choice. False if: an adapter must emit a construct the object model cannot
-express — a comment carrying meaning, a document whose key order is semantic —
+express (a comment carrying meaning, a document whose key order is semantic)
 in which case that adapter is deciding something at serialization time.
 Settled by: the double render over the three worked domains producing a
 byte-identical tree with every adapter going through the one serializer.
@@ -31,7 +31,7 @@ The typed object model earns its place for a second reason, which is stronger.
 Layer 3 contains no decisions ([0003](../model/0003-three-layer-meta-model.md)),
 and a string builder cannot be held to that: any field can be written, including
 one no chapter assigns. A narrow object model declaring only the fields this
-estate sets turns the rule into a compile error — an adapter cannot set what the
+estate sets turns the rule into a compile error: an adapter cannot set what the
 type does not carry, so a new field is a deliberate edit to the model rather
 than a line inside a renderer.
 
@@ -42,8 +42,8 @@ tool whose whole premise is pinned inputs
 ([0006](../model/0006-pinned-inputs.md)) depend on a cluster to build.
 
 The objects are Kubernetes-shaped on purpose. Chapter 30 already refuses a
-target-neutral deliverable IR — an abstraction with one consumer is shaped
-entirely by that consumer — and a narrow model of the kinds this estate emits is
+target-neutral deliverable IR (an abstraction with one consumer is shaped
+entirely by that consumer) and a narrow model of the kinds this estate emits is
 not that abstraction; it is a description of the output.
 
 ## Alternatives
@@ -63,14 +63,14 @@ it reads through that noise.
 ## Consequences
 - A field the object model cannot express cannot be rendered, so a genuinely
   new Kubernetes field costs an edit to the model before it costs an edit to an
-  adapter — paid by whoever needs the field, deliberately.
+  adapter, paid by whoever needs the field, deliberately.
 - The single `GENERATED` header line lives in the serializer as a constant, so
-  no adapter can add commentary and the rendered tree stays comment-free — paid
+  no adapter can add commentary and the rendered tree stays comment-free, paid
   by nobody; it is the property the estate asked for.
 - Adapter tests assert object graphs, which means they say nothing about the
   final bytes; the byte-level guarantee comes from the golden tree and the
-  double render instead — paid in one extra test tier, deliberately placed at
+  double render instead, paid in one extra test tier, deliberately placed at
   the highest seam.
-- CRDs the estate uses — Traefik, VSO, Gatus, Prometheus — need hand-written
+- CRDs the estate uses (Traefik, VSO, Gatus, Prometheus) need hand-written
   narrow types too, and a CRD upgrade that changes a field is a model edit that
-  the pinned schema validation will catch — paid at upgrade time, visibly.
+  the pinned schema validation will catch, paid at upgrade time, visibly.

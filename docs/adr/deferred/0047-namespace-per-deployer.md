@@ -12,8 +12,8 @@ rests-on: ["0002"]
 ## Rests on
 
 Once every namespace has one deploying Aggregator, its deployer Role reaches
-nothing outside the Services that Aggregator deploys — the Secret reach `create`
-confers included. False if: `kubectl auth can-i` returns `yes` for an Aggregator
+nothing outside the Services that Aggregator deploys (the Secret reach `create`
+confers included). False if: `kubectl auth can-i` returns `yes` for an Aggregator
 ServiceAccount against a namespace outside its own `deploys` set, or composition
 still admits two Services with different deployers into one namespace. Settled
 by: `kubectl auth can-i --as=system:serviceaccount:deploy-system:deployer-<agg>
@@ -33,20 +33,20 @@ header comment declares the reach: `deploys: [auth-api, auth-ui] -> namespaces
 auth-system, app-system` (`:8`). `app-system` is `home-portal`'s namespace by
 chapter 20's alias catalogue (`spec/v1/20-resolved-deployment.md:131`), and
 `home-portal` sits in this Aggregator's `exercises`, not its `deploys`
-(`spec/v1/50-lifecycle.md:81-82`) — a different Aggregator applies it into a
+(`spec/v1/50-lifecycle.md:81-82`), a different Aggregator applies it into a
 namespace where this one holds `delete` on every Deployment. `aliases.namespace`
 exists precisely to let Services share a namespace, so that is the sanctioned
 case, and `E_MULTIPLE_DEPLOYERS` cannot see it: the invariant
 (`spec/v1/40-composition.md:193`) asks whether a Service has two deployers, not
 whether a namespace does. One correction to the review's wording: the file renders
-a Role in `auth-system` only — two namespaces declared, one Role emitted, itself a
+a Role in `auth-system` only: two namespaces declared, one Role emitted, itself a
 defect.
 
 Withholding `secrets` verbs from that Role reads as a control and is not one.
 `create`/`patch` on `deployments` (`:31-33`) suffices to read every Secret in the
 namespace, because a Deployment may mount any Secret; `create`/`patch` on
 `vaultstaticsecrets` (`:43-45`) suffices again, because a VaultStaticSecret may
-name any Vault path the VSO role can reach and materialise it — the Vault reach
+name any Vault path the VSO role can reach and materialise it, the Vault reach
 is bounded by VSO's role, not by the `deploys` list. Tightening the Role cannot
 remove that escalation; the namespace is what bounds it.
 
@@ -62,29 +62,29 @@ inside one deployer's own namespaces. This is the other half of making
 
 | option | cost if taken | why rejected |
 |---|---|---|
-| Admission control: a validating webhook checking the deployer label on every write | a webhook to author, deploy and keep available on a cluster with one control-plane host — fail-closed stops every deploy while it is down, fail-open removes the control silently, and there is no second node to run it on | Strictly stronger, and rejected only for now: the availability cost lands on the single node [0002](../model/0002-kubernetes-as-substrate.md) names as the estate's shape. Revisit if namespaces prove unpartitionable; the in-server CEL variant drops that cost but still needs the ownership fact modelled. |
-| `resourceNames` pinning the Role to the rendered object set | the `rbac` adapter regenerates a Role naming every object on every render, and the Role must be applied before the objects it names | Fails outright: `resourceNames` cannot restrict `create` — the name is unknown at authorization time — and `create` is exactly the verb yielding the namespace-wide Secret read. It also breaks `list`. |
+| Admission control: a validating webhook checking the deployer label on every write | a webhook to author, deploy and keep available on a cluster with one control-plane host: fail-closed stops every deploy while it is down, fail-open removes the control silently, and there is no second node to run it on | Strictly stronger, and rejected only for now: the availability cost lands on the single node [0002](../model/0002-kubernetes-as-substrate.md) names as the estate's shape. Revisit if namespaces prove unpartitionable; the in-server CEL variant drops that cost but still needs the ownership fact modelled. |
+| `resourceNames` pinning the Role to the rendered object set | the `rbac` adapter regenerates a Role naming every object on every render, and the Role must be applied before the objects it names | Fails outright: `resourceNames` cannot restrict `create` (the name is unknown at authorization time) and `create` is exactly the verb yielding the namespace-wide Secret read. It also breaks `list`. |
 | Keep the `deploy.jorisjonkers.dev/deployer` label as the boundary | nothing to build | The label is mutable and is the same query the prune pass runs; applied to another Aggregator's object, the wrong prune pass deletes it and RBAC permits it. |
 
 ## Reversibility
 
-Undo cost today: hours for the mechanism — delete one composition invariant, let
+Undo cost today: hours for the mechanism: delete one composition invariant, let
 the `rbac` adapter widen the Role again. The namespace moves it forces cost more:
 a namespace change is a DNS change (`<service>.<namespace>.svc`), so consumers,
 dependency edges and NetworkPolicies follow, and the blast radius is exactly the
-Services sharing a namespace across deployers — today, `app-system`. Becomes
+Services sharing a namespace across deployers, today `app-system`. Becomes
 irreversible once: those Services have moved and are addressed at the new names.
 
 ## Consequences
 
 - `aliases.namespace` narrows to a rename inside one deployer's own namespaces,
-  and Services sharing one across deployers must move — paid by joris, once.
+  and Services sharing one across deployers must move, paid by joris, once.
 - The namespace-wide Secret read is contained, not removed: a compromised deploy
   workflow still gets every Secret its own Services hold, and withholding
-  `secrets` verbs stops being describable as a control — paid by the estate, as
+  `secrets` verbs stops being describable as a control, paid by the estate, as
   accepted residual risk.
 - Namespace count rises to at least one per deployer, multiplying per-namespace
   foundation objects, and [0002](../model/0002-kubernetes-as-substrate.md)'s first
-  property becomes measurable — paid by joris, who owns both.
+  property becomes measurable, paid by joris, who owns both.
 - The `rbac` adapter must emit one Role and RoleBinding per deployed namespace,
-  which the worked example does not — paid by the adapter, as a fixed defect.
+  which the worked example does not, paid by the adapter, as a fixed defect.

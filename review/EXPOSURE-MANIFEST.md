@@ -1,4 +1,4 @@
-# Amendment — configured hostnames and routing (2026-09-07)
+# Amendment: configured hostnames and routing (2026-09-07)
 
 Binding. Overrides anything in docs/adr or spec/v1 that conflicts.
 
@@ -46,7 +46,7 @@ AUTH_LOGIN_URL=${exposure:auth.public#url}/login
    case that forced the move (`auth.jorisjonkers.dev/api` → `auth-api`, `/` →
    `auth-ui`).
 2. **`host` is the full FQDN, authored.** No zone derivation, no
-   `<service>.<zone>` rule, no apex flag — an apex host is just
+   `<service>.<zone>` rule, no apex flag: an apex host is just
    `host: jorisjonkers.dev`. This closes chapter 00 open item 1.
 3. **`name` is required and unique within the Service.** It is what
    `E_DUPLICATE_EXPOSURE_NAME` has always checked and nothing defined, and what
@@ -54,7 +54,7 @@ AUTH_LOGIN_URL=${exposure:auth.public#url}/login
    and lan) needs it to disambiguate.
 4. **`host` is unique across the estate**: `E_DUPLICATE_HOST` at composition,
    evaluated over the composed union together with Registered Unmanaged
-   Surfaces. Authored, arbitrated — which is [0004](../docs/adr/model/0004-contention-decides-authority.md)
+   Surfaces. Authored, arbitrated: which is [0004](../docs/adr/model/0004-contention-decides-authority.md)
    as restated: contention decides who arbitrates, not who authors.
 5. **A route names `{path, match, workload, surface}`.** `match` is `prefix` or
    `exact`. The surface must be one the named Workload declares in `provides`;
@@ -85,9 +85,9 @@ Live middleware in the estate, counted:
 | middleware | instances | disposition |
 |---|---|---|
 | `forwardAuth` | 3 definitions, 15 references | derived from `audience: authenticated` |
-| `headers` — security baseline plus CSP `strict`/`admin`/`workflow` | 7 | baseline derived from tier; **profile choice authored as `contentPolicy`** |
+| `headers`: security baseline plus CSP `strict`/`admin`/`workflow` | 7 | baseline derived from tier; **profile choice authored as `contentPolicy`** |
 | `chain` | 2 | derived composition |
-| `redirectRegex` | 2 — `stalwart` `/`→`/admin/`, `traefik` `/`→`/dashboard/` | **authored as `redirectTo`** |
+| `redirectRegex` | 2: `stalwart` `/`→`/admin/`, `traefik` `/`→`/dashboard/` | **authored as `redirectTo`** |
 
 Nothing else exists. No timeouts, rate limits, IP allowlists, basic auth,
 compression, retries or circuit breakers are in use anywhere, and none is added:
@@ -101,7 +101,7 @@ predicate exists. Modelling it as edge config would be wrong twice.
 ## Hostnames are configured because they are not derivable
 
 `homelab-inventory/catalog/reachability.yml` groups hosts into channels
-(`public-frankfurt`, `lan`), so a zone mapping exists — but the host label does
+(`public-frankfurt`, `lan`), so a zone mapping exists, but the host label does
 not follow the Service id estate-wide. `knowledge.jorisjonkers.dev` and
 `kb.jorisjonkers.dev` both resolve; `platform-rabbitmq` serves
 `rabbitmq.jorisjonkers.dev`; `root`, `status`, `dashboard` and `faro` belong to

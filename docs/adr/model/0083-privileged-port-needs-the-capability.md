@@ -40,8 +40,8 @@ number. The container port is invisible to consumers, to the rendered
 IngressRoute and to the Gatus check; only the Service object's `targetPort`
 moves.
 
-Rewriting the port silently — deriving a high `targetPort` while the Service
-keeps 80 — was the third option and it is the worst. The pod must actually listen
+Rewriting the port silently (deriving a high `targetPort` while the Service
+keeps 80) was the third option and it is the worst. The pod must actually listen
 where the platform decided, which no image obeys, so it would be a decision taken
 during serialisation that the process then contradicts.
 
@@ -53,14 +53,14 @@ during serialisation that the process then contradicts.
 | Leave it to review | No new error code | The render is internally consistent, so review has nothing to notice; the failure appears as a crash-looping pod |
 
 ## Reversibility
-Undo cost today: one check. Becomes irreversible once: never — the check
+Undo cost today: one check. Becomes irreversible once: never. The check
 constrains authoring, and removing it would only make more documents legal.
 
 ## Consequences
-- R10 closes, and `auth-ui` moves to 8080 before it renders — paid by its owner,
+- R10 closes, and `auth-ui` moves to 8080 before it renders, paid by its owner,
   once, at build time rather than in a crash loop.
 - Every low port in the estate becomes a change rather than a silent capability
-  grant, which is a count the estate did not have — paid in honesty.
+  grant, which is a count the estate did not have, paid in honesty.
 - An image that truly cannot be reconfigured is refused, and stays refused until
-  it is rebuilt or entered in a ledger with an owner — paid by whoever owns it,
+  it is rebuilt or entered in a ledger with an owner, paid by whoever owns it,
   which is the point.

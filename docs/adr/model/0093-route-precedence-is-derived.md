@@ -12,7 +12,7 @@ rests-on: ["0005"]
 ## Rests on
 Which route serves a request is decided by the declaration, and path specificity
 is enough to decide it for every exposure in this estate. False if: two routes on
-one host need an order that specificity does not produce — a shorter prefix that
+one host need an order that specificity does not produce: a shorter prefix that
 must win over a longer one. Settled by: rendering the estate's exposures and
 finding every route's precedence explicit, with `auth`'s `/api` ahead of `/` by
 derivation rather than by proxy sort, and no exposure needing a hand-set number.
@@ -26,14 +26,14 @@ work.
 
 `auth` declares `/api` and `/` as prefixes on one host. The request for
 `/api/foo` reaches `auth-api` rather than `auth-ui` **because Traefik sorts
-matching rules by rule length and then by name** — behaviour of one proxy at one
+matching rules by rule length and then by name**, behaviour of one proxy at one
 version, documented nowhere in this model, and load-bearing for the estate's most
 common exposure shape. Which route serves a request is a routing decision, and by
 [0005](0005-derivation-is-total.md) a decision that determines behaviour is one
 the model makes.
 
-So specificity derives a precedence — `exact` before `prefix`, longer prefix
-before shorter — and the rendered route carries it. Three things follow: the
+So specificity derives a precedence, `exact` before `prefix`, longer prefix
+before shorter, and the rendered route carries it. Three things follow: the
 document says what the edge does, a change in ordering appears in a diff, and a
 proxy that tie-breaks differently changes nothing. That last one is not
 hypothetical bookkeeping: the layer-1 files name no Kubernetes kind precisely so
@@ -45,8 +45,8 @@ it refuses the normal case: `/api` beside `/` is the estate's standard split, an
 an overlap is exactly what it is.
 
 The duplicate is separate and simpler. Two routes on one host with the same
-`path` and `match` have no correct interpretation — whichever wins is decided by
-a rule-name comparison no author can see — so `E_DUPLICATE_ROUTE` refuses the
+`path` and `match` have no correct interpretation (whichever wins is decided by
+a rule-name comparison no author can see), so `E_DUPLICATE_ROUTE` refuses the
 pair at composition, one level down from `E_DUPLICATE_HOST`. Declaration order
 was the alternative: it would make YAML list order semantic, which nothing else
 in this model does, and a reordering diff would silently change routing.
@@ -67,14 +67,14 @@ the field then reorders live traffic.
 
 ## Consequences
 - R17 closes, and route precedence stops being a property of a proxy's source
-  code — paid by nobody.
+  code, paid by nobody.
 - A route needing an order specificity does not produce has no way to say so; it
   restates the derived value with a reason like any other derivation
-  ([0031](0031-derived-overrides-with-reason.md)) — paid by whoever needs it, and
+  ([0031](0031-derived-overrides-with-reason.md)), paid by whoever needs it, and
   the override records why.
 - `E_DUPLICATE_ROUTE` can fire on a document that works today, since a duplicate
-  currently resolves silently; adoption may surface one — paid at adoption, which
+  currently resolves silently; adoption may surface one, paid at adoption, which
   is the point of a build error over a coin flip.
 - The rendered IngressRoute grows a field, so the golden trees change for every
-  routed Service — paid once, in the comment-strip pass that is already rewriting
+  routed Service, paid once, in the comment-strip pass that is already rewriting
   them.
