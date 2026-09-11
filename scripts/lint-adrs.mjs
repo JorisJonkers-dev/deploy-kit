@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ADR lint — enforces the docs/adr contract. See review/REBUILD-MANIFEST.md.
+// ADR lint: enforces the docs/adr contract. See review/REBUILD-MANIFEST.md.
 // Checks: structure, register integrity, citation/anchor resolution, content shape.
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname, posix } from "node:path";
@@ -50,7 +50,7 @@ if (files.length === 0) {
 
 // One estate-wide number sequence: a citation resolves without knowing which
 // domain the decision lives in, which is only true while numbers are unique
-// across every domain — deferred/ included, since ADRs cite into it.
+// across every domain (deferred/ included, since ADRs cite into it).
 const numbered = files.concat(
   listing(join(adrDir, "deferred"))
     .filter(isAdrName)

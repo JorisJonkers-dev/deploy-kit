@@ -11,8 +11,8 @@ rests-on: ["0002"]
 
 > **Amended 2026-09-10.** The generic override mechanism this decision relied on
 > is deleted ([0031](0031-derived-overrides-with-reason.md)). The second replica
-> is now the named `replicas: {count, reason}` field — the sole local exception
-> to a derived value in layer 1 — rather than an entry in a general hatch. The
+> is now the named `replicas: {count, reason}` field, the sole local exception
+> to a derived value in layer 1, rather than an entry in a general hatch. The
 > substance is unchanged and is now stricter: `count` must exceed one and
 > `reason` is **required** whenever the block is present, so the field cannot
 > become a verbose spelling of the default
@@ -22,7 +22,7 @@ rests-on: ["0002"]
 No Workload in this estate obtains availability from a replica count, so a
 declared availability requirement could only ever be a request the substrate
 cannot honour. False if: a stateless Workload's second replica measurably
-survives an event that takes the first one down — which requires two nodes, a
+survives an event that takes the first one down: which requires two nodes, a
 shared-nothing workload and a load balancer that notices. Settled by: rendering
 the estate with `replicas: 1` everywhere except the declared capacity
 exceptions, and `kubectl drain` on the control-plane node completing rather
@@ -40,7 +40,7 @@ node is also the control plane.
 `minAvailable` was never graded, and grading it against
 [0002](0002-kubernetes-as-substrate.md) is what deletes it. Storage is
 `local-path`, all fourteen PVCs are `ReadWriteOnce`, and a `local-path` volume
-does not survive its node — so every stateful Workload is pinned to one machine
+does not survive its node, so every stateful Workload is pinned to one machine
 by construction. Rescheduling does not exist. Control-plane HA does not exist.
 Two replicas on one node are two processes on one kernel. A field whose meaning
 is "how many pods must stay up" cannot be honoured by a substrate where the
@@ -48,7 +48,7 @@ answer is decided by which machine is running, and 0002 forbids citing
 rescheduling, HA or horizontal scale as justification for anything.
 
 The estate's own case makes the point: `auth-api` runs two replicas, and chapter
-00 records why — a capacity decision on freed Frankfurt budget, not an
+00 records why: a capacity decision on freed Frankfurt budget, not an
 availability requirement. Under this decision that is a **`replicas` declaration
 with a reason**, which is the truthful encoding of what it always was. The field
 is not lost; the pretence is.
@@ -70,27 +70,27 @@ that is the one case a budget earns its place here.
 | Keep `minAvailable`, graded as an availability requirement | The six live PDBs stay derivable from a declaration | Grades a field whose meaning 0002 denies: no rescheduling, no HA control plane, one node per stateful volume |
 | Replace it with an availability class (`single`, `multi`) | Reads as intent, hides the arithmetic | A two-value class table over a property the substrate cannot deliver, and two such tables were deleted this week already |
 | `minAvailable: replicas - 1` | Stays in the vocabulary the live objects use | The arithmetic is per Workload, so a count change silently changes the budget's meaning, and `replicas: 1` still deadlocks unless special-cased |
-| No PDB at all | Nothing to derive; every stateful Workload is pinned anyway | Loses the one case a budget earns here — a multi-replica stateless Workload losing both pods to one drain |
+| No PDB at all | Nothing to derive; every stateful Workload is pinned anyway | Loses the one case a budget earns here: a multi-replica stateless Workload losing both pods to one drain |
 
 ## Reversibility
 Undo cost today: `replicas` and the PDB are both mutable on live objects, and
 re-introducing an authored field is a schema addition. Becomes irreversible
-once: never — every value here is patchable, which is precisely why the deadlock
+once: never. Every value here is patchable, which is precisely why the deadlock
 was survivable and the undecidedness was not.
 
 ## Consequences
 - R16 closes, and the drain deadlock closes with it: no rendered PDB can forbid
-  the eviction of a Workload's only pod — paid by nobody, and it was reachable
+  the eviction of a Workload's only pod, paid by nobody, and it was reachable
   on the control-plane node.
 - `auth-api` declares `replicas: {count: 2, reason: …}` to keep its second
   replica, so the capacity decision becomes a recorded reason instead of a
-  number nobody can source — paid by its owner, once.
+  number nobody can source, paid by its owner, once.
 - The estate's six live PDBs are not all re-derivable: any over a single-replica
   Workload will not be rendered, so adoption drops them, which is the intended
-  correction and will look like a removal in the first diff — paid at adoption,
+  correction and will look like a removal in the first diff, paid at adoption,
   deliberately.
 - The last ungraded field in chapter 10 is gone, so "still to be graded" shrinks
-  to one item, `self-renew` × `file` — paid by nobody.
+  to one item, `self-renew` × `file`, paid by nobody.
 - If a second production cluster ever appears, this decision is one of those
   0001 re-opens: replica-count availability starts meaning something the moment
-  rescheduling does — paid by whoever adds the cluster, and 0002 already says so.
+  rescheduling does, paid by whoever adds the cluster, and 0002 already says so.

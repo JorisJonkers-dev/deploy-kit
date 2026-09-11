@@ -40,9 +40,9 @@ Forbid` on an hourly schedule
 itself; the workflow's `concurrency` group (`aggregator-deploy.yml:35-39`)
 serialises the deploy against itself. The review's sequence: the deploy applies
 200 of 364 objects at lock N and fails; the CronJob fires at :23, reads its
-lock from annotations chapter 50 itself calls heterogeneous — lag is *"the
+lock from annotations chapter 50 itself calls heterogeneous, lag is *"the
 minimum lock annotation across an aggregator's objects"*
-(`spec/v1/50-lifecycle.md:165`) — and applies the other lock over the remaining
+(`spec/v1/50-lifecycle.md:165`), and applies the other lock over the remaining
 half, hourly, unrecorded.
 
 So each applier gets its own manager, `deploy:<agg>` and `cron:<agg>`; neither
@@ -68,7 +68,7 @@ real, and [0047](0047-namespace-per-deployer.md) is the other half.
 
 Undo cost today: two call sites (`aggregator-deploy.yml:103`,
 `reapply-cronjob.yaml:57`), the lease acquire/release around the apply command,
-and one rule in the rendered deployer RBAC — a two-line diff and a re-render
+and one rule in the rendered deployer RBAC: a two-line diff and a re-render
 per aggregator, under an hour, one aggregator at a time. Becomes irreversible
 once production objects carry `managedFields` entries under both `deploy:<agg>`
 and `cron:<agg>`: collapsing back to one name orphans the other manager's
@@ -76,15 +76,15 @@ entries, and ownership must be reclaimed field by field.
 
 ## Consequences
 
-- A stale re-apply fails loudly instead of rolling half a slice back — paid by
+- A stale re-apply fails loudly instead of rolling half a slice back, paid by
   the aggregator on call, who gets a red CronJob hourly until the lock is fixed.
 - Drift correction is skipped while a deploy holds the lease, so the reconcile
-  guarantee weakens to "hourly unless deploying" — paid by whoever reads lag.
+  guarantee weakens to "hourly unless deploying", paid by whoever reads lag.
 - The first apply under the new names meets `auth-federation` owning every
   field, so each aggregator needs one supervised ownership migration, and the
-  RBAC adapter grows a `coordination.k8s.io` rule — paid by the platform owner
+  RBAC adapter grows a `coordination.k8s.io` rule, paid by the platform owner
   and adapter maintainers.
 - A conflict is only a signal if someone reads it, and a break-glass rollback
   now waits on the lease like any applier
-  ([0045](0045-break-glass-reporting.md)) — paid by the platform owner, via
+  ([0045](0045-break-glass-reporting.md)), paid by the platform owner, via
   [0058](0058-delivery-machinery-observability.md).
