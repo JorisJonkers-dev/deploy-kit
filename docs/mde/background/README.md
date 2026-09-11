@@ -4,6 +4,10 @@ The papers and specifications handed out with each lecture, one directory per
 lecture, named after the work rather than after its DOI or vendor id. The
 citation for each is below.
 
+Each PDF has a Markdown conversion beside it (`<name>.md`, figures in
+`<name>-images/`). [`../INDEX.md`](../INDEX.md) maps topics to sections and
+pages across all the course material.
+
 ## [`lecture-0/`](lecture-0/) — introduction, and Model Driven Architecture
 
 | File | Source |
