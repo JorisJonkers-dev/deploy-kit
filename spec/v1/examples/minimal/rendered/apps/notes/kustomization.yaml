@@ -6,5 +6,4 @@ resources:
   - workload.yaml
   - serviceaccount.yaml
   - servicemonitor.yaml
-  - prometheusrule.yaml
   - networkpolicy.yaml
