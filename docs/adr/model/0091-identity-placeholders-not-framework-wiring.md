@@ -13,7 +13,7 @@ rests-on: ["0005"]
 A self-delivering Workload's Vault client configuration is its framework's
 concern, and the only part the model must supply is the derived values that
 configuration references. False if: two Workloads of the estate wire the same
-framework and their boilerplate drifts apart in a way that breaks one of them —
+framework and their boilerplate drifts apart in a way that breaks one of them,
 which would make the duplication, not the taxonomy, the real cost. Settled by:
 `auth-api` rendering with its four spring-cloud-vault lines in its own env file,
 `VAULT_KUBERNETES_ROLE` resolved through `${identity:vaultRole}`, and no
@@ -23,7 +23,7 @@ framework named anywhere in the model.
 `delivery: self` was specified as deriving "a Vault policy, a Kubernetes auth
 role, and the application's own client wiring". The third item cannot be
 derived. For `auth-api` it is four spring-cloud-vault variables, and producing
-them requires knowing the process is Spring Boot — which `runtime: jvm` does not
+them requires knowing the process is Spring Boot, which `runtime: jvm` does not
 say and must not be made to say. `runtime` selects the Runtime Profile, the
 observability wiring; crossing it with frameworks multiplies it by every library
 the estate ever adopts, and R22 records the pressure to do exactly that.
@@ -47,8 +47,8 @@ Workloads shared a principal.
 
 Hence `${identity:…}`, a fourth named source beside `${dependency:…}`,
 `${secret:…}` and `${exposure:…}`. The first three name something else; this one
-names what the platform decided about **this** Workload — `vaultRole`,
-`serviceAccount`, `namespace` — as a closed key set, with no template language,
+names what the platform decided about **this** Workload (`vaultRole`,
+`serviceAccount`, `namespace`), as a closed key set, with no template language,
 exactly like the others. A literal where a placeholder belongs is already a build
 error, so the drift closes.
 
@@ -70,20 +70,20 @@ it.
 ## Reversibility
 Undo cost today: one placeholder source with three keys, and the sentence about
 client wiring. Becomes irreversible once: env files across repositories use
-`${identity:…}`, because removing the source then breaks every one of them —
+`${identity:…}`, because removing the source then breaks every one of them,
 though that is a rename, not a redesign.
 
 ## Consequences
 - R22 closes without the model learning what a framework is, which is the
-  outcome worth having — paid in four boilerplate lines per self-delivering
+  outcome worth having, paid in four boilerplate lines per self-delivering
   Workload, in the repository that owns the framework.
 - `VAULT_KUBERNETES_ROLE` can no longer disagree with the derived role, so the
-  `serviceAccountName()` class of defect is closed on the authoring side too —
+  `serviceAccountName()` class of defect is closed on the authoring side too,
   paid by nobody.
 - A fourth placeholder source is a fourth thing to validate, complete in an
-  editor and resolve; the key set is closed so the validation is a lookup — paid
+  editor and resolve; the key set is closed so the validation is a lookup, paid
   once, in the resolver.
 - Nothing derives observability wiring for a framework either, so a Spring
   application still writes whatever Spring needs beyond `OTEL_*`; the Runtime
-  Profile boundary stays exactly where it was — paid by the application, and it
+  Profile boundary stays exactly where it was, paid by the application, and it
   keeps the profile from becoming a framework catalog by increments.

@@ -14,8 +14,8 @@ rests-on: ["0003"]
 > renders that is not registered, and a change to the set is a decision with its
 > own ADR. The number that used to sit here was a second copy of the register
 > table and was amended four times in one week, which is what a second copy
-> does. The set is six central adapters — `kubernetes`, `networking`,
-> `prometheus`, `traefik`, `vault-policy`, `vso` — enumerated in
+> does. The set is six central adapters (`kubernetes`, `networking`,
+> `prometheus`, `traefik`, `vault-policy`, `vso`) enumerated in
 > [chapter 30](../../../spec/v1/30-deliverables.md#adapters). How it got there:
 > [0073](0073-vault-policy-is-a-deliverable.md) added `vault-policy`;
 > [0074](0074-networking-adapter-emits-policy.md) added `networking`;
@@ -28,8 +28,8 @@ rests-on: ["0003"]
 > derivations, and moved `flux-root` to the deferred set; and
 > [0096](0096-the-foundation-is-declared.md) removed what `flux-packs` and
 > `flux-source` rendered. An `rbac` adapter is **not** coming:
-> [0075](0075-no-workload-rbac-in-v1.md). The other half of this decision — the
-> second generation is deleted — is unchanged.
+> [0075](0075-no-workload-rbac-in-v1.md). The other half of this decision (the
+> second generation is deleted) is unchanged.
 
 ## Rests on
 
@@ -45,7 +45,7 @@ taken before and after the deletion commit.
 ## Why
 
 Two complete renderer generations coexist here and only one runs: the entire
-`src/deployment/render/` tree — 14 modules, 1,967 lines — is reachable from
+`src/deployment/render/` tree (14 modules, 1,967 lines) is reachable from
 neither entry point, and its only importers are 11 test files. It is
 nonetheless inside the quality bar. `package.json` runs `c8 --all --include
 "dist/src/**/*.js" --check-coverage --lines 90 --branches 80`, so those 1,967
@@ -60,22 +60,22 @@ are false: the registered `kubernetes` adapter pushes `pdb.yaml`,
 `servicemonitor.yaml` and `podmonitor.yaml` at
 `src/adapters/kubernetes.ts:44-62` and builds the PDB from
 `rollout.availability` at `:376-388`. The table is wrong on two of its four
-rows, and `spec/v1/60-setup.md:18` sequences bootstrap step 6 off it — *"22 of
-the 36-object coverage gap"* — a number matching neither generation. Nor was
+rows, and `spec/v1/60-setup.md:18` sequences bootstrap step 6 off it (*"22 of
+the 36-object coverage gap"*) a number matching neither generation. Nor was
 the "cheaper half" cheap: the unregistered renderers consume `ProjectModel`
 while the registry hands adapters an `AdapterContext` of raw artifact
 documents, so registering `networking` and `prometheus` is a port across the
-seam — the work of writing `rbac` — and a new `availability` adapter would
+seam (the work of writing `rbac`) and a new `availability` adapter would
 claim `pdb.yaml` from the incumbent, the collision chapter 30 calls a build
 error and `grep -rn E_PATH_COLLISION src/` finds nowhere (0 hits).
 
-Deleting the tree also retires nine defects verified as written inside it —
+Deleting the tree also retires nine defects verified as written inside it:
 among them every egress policy blocking DNS, hook Jobs with `backoffLimit: 0`
 and no TTL, sidecars losing ports and mounts, and an HPA fighting
 `spec.replicas`. None describes production behaviour today; all nine go live
-the moment that tree is promoted. The surviving generation is not clean —
-`src/adapters/kubernetes.ts:1` is `// @ts-nocheck`, 10 files across `src/` carry
-the pragma under `"strict": true` — but that debt sits on live code.
+the moment that tree is promoted. The surviving generation is not clean
+(`src/adapters/kubernetes.ts:1` is `// @ts-nocheck`, 10 files across `src/` carry
+the pragma under `"strict": true`) but that debt sits on live code.
 
 ## Alternatives
 
@@ -96,17 +96,17 @@ module then fails to compile, and the revert becomes a rewrite.
 ## Consequences
 
 - The 16 registered adapters are the normative v1 set, enumerated only by
-  `adapterContract()`; no renderer ships unregistered — paid by the maintainer.
-- Nine latent defects and the eleven findings against that tree close as moot —
+  `adapterContract()`; no renderer ships unregistered: paid by the maintainer.
+- Nine latent defects and the eleven findings against that tree close as moot:
   paid by the reviewer who would otherwise triage them.
-- Anything salvageable — the networking and Prometheus behaviour — re-enters
+- Anything salvageable (the networking and Prometheus behaviour) re-enters
   through [0053](0053-adapter-port-contract.md) as costed new work against
-  `AdapterContext`, never as free registration — paid by the toolkit maintainer.
+  `AdapterContext`, never as free registration: paid by the toolkit maintainer.
 - Chapter 30's coverage table is re-derived from `adapterContract()` and chapter
-  60's step 6 re-sequenced against the corrected number — paid by the spec author.
+  60's step 6 re-sequenced against the corrected number: paid by the spec author.
 - The 90% line gate is re-measured over reachable code only, and is not lowered
-  if the number falls — paid by whoever lands the next pull request.
+  if the number falls: paid by whoever lands the next pull request.
 - `E_PATH_COLLISION` stays unimplemented, and is now the sole guard against a
   second adapter claiming `pdb.yaml` that [0054](0054-adapter-attribution.md)
-  needs — paid by the toolkit maintainer, within
+  needs: paid by the toolkit maintainer, within
   [0059](0059-v1-scope-stopping-rule.md)'s budget.

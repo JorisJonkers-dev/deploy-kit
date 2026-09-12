@@ -14,7 +14,7 @@
 //                       plus the mappers from wire shape into the domain.
 //   src/adapters/       the registered adapters. Documents in, Fragments out.
 //   src/application/    the use-cases. Orders derivation, performs no IO of
-//                       its own — every effect arrives through a port.
+//                       its own: every effect arrives through a port.
 //   src/infrastructure/ port implementations: filesystem, oras, hashing, the
 //                       serializer, the writer.
 //   src/cli/            argument parsing, diagnostic rendering, exit codes.
@@ -62,8 +62,8 @@ module.exports = {
         orphan: true,
         // Only the entry points themselves. A barrel or a cli/ module that
         // nothing imports is caught here rather than exempted, and a dead
-        // subtree — which has internal edges and is therefore never an orphan
-        // — is caught by unreachable-from-an-entry-point below.
+        // subtree (which has internal edges and is therefore never an orphan)
+        // is caught by unreachable-from-an-entry-point below.
         pathNot: ENTRY_POINTS.concat("\\.d\\.ts$"),
       },
       to: {},

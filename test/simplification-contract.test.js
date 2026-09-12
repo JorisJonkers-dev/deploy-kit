@@ -37,7 +37,7 @@ const domainFiles = [
  * a workload starts at `      - name:` (six spaces) and runs to the next one.
  * Exposure `routes` and negative-fixture files do not reach six spaces with
  * `- name:`, but a Service's `exposure` entry is `      - name: public`, which
- * collides — so slices starting inside an `exposure:` block are skipped by
+ * collides, so slices starting inside an `exposure:` block are skipped by
  * checking the declaration order below.
  */
 const WORKLOAD_RE = /^ {6}- name: (\S+)/;
@@ -311,7 +311,7 @@ test("a class with no signal is refused, and an unknown class is not a member", 
   assert.ok(a && a.alertClass, "the fixture must declare a class");
   assert.ok(
     !a.hasScrape,
-    "the fixture must declare no scrape — that is the refusal",
+    "the fixture must declare no scrape: that is the refusal",
   );
   assert.ok(
     ALERT_CLASSES.includes(a.alertClass),
@@ -319,7 +319,7 @@ test("a class with no signal is refused, and an unknown class is not a member", 
   );
 
   const unknown = join(refusals, "alert-class-unknown.domain.yml");
-  assert.match(read(unknown), /^expect: schema — /m);
+  assert.match(read(unknown), /^expect: schema, /m);
   const b = observabilityOf(servicesOf(unknown)[0].text);
   assert.ok(b && b.hasScrape, "the fixture must publish a signal");
   assert.ok(

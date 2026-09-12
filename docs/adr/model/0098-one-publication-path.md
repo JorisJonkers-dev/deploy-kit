@@ -13,7 +13,7 @@ rests-on: ["0003"]
 Every kind the five publish-time producers emit is derivable centrally from the
 same declaration over the composed union, so the producers add no information a
 consumer can observe. False if: a fragment kind carries something the domain file
-does not — a fact only knowable in the Service repository at publish time.
+does not, a fact only knowable in the Service repository at publish time.
 Settled by: composing the worked domains from their Intent Fragments alone and
 diffing the rendered tree against a render fed by the five producer documents,
 byte for byte.
@@ -36,11 +36,11 @@ how its output reached the estate; with a composed union
 what it declared, and the render is one run over everything declared. One
 runtime, one use-case, and the publish-time step becomes what 0037 already says
 it is: push a domain file by digest. A Service owner wanting to see their own
-render runs the same core locally with the same pinned inputs — a use-case, not a
+render runs the same core locally with the same pinned inputs, a use-case, not a
 second adapter set.
 
 Three more shallow modules fall to the same test. The **estate-scoped
-Deliverables** — the Gatus endpoints, the two edge catalogs — had adapters of
+Deliverables** (the Gatus endpoints, the two edge catalogs) had adapters of
 their own and landed in a namespace no tenant owns. With Gatus and Traefik as
 declared Services ([0096](0096-the-foundation-is-declared.md)) they are
 **inbound derivations** of the Service that consumes them, exactly as the
@@ -50,8 +50,8 @@ by the `kubernetes` adapter. Three adapters exist to render three ConfigMaps who
 content is an inbound derivation the model already has a word for.
 
 **Image metadata** was a document "not a Kubernetes object", consumed by tooling.
-It is a projection of the images lock — which Workload runs which alias at which
-digest — and that is a layer-2 fact [0033](0033-assignments-published-back.md)
+It is a projection of the images lock (which Workload runs which alias at which
+digest), and that is a layer-2 fact [0033](0033-assignments-published-back.md)
 already publishes back. It joins the Resolved Deployment artifact set and its
 adapter goes.
 
@@ -67,11 +67,11 @@ ordering that changes.
 **Two Traefik adapters** split by tier were Traefik's entryPoint distinction
 leaking into the adapter set. A tier is now four declared edge facts
 ([0097](0097-authored-values-name-model-concepts.md)), and one `traefik`
-adapter renders one route set and one middleware set per tier — so
+adapter renders one route set and one middleware set per tier, so
 `traefik-middleware` folds in too, and the route-to-middleware reference is
-owned by the adapter that emits both. The guarantee that matters — LAN traffic
+owned by the adapter that emits both. The guarantee that matters (LAN traffic
 never proxied through Frankfurt, which the estate is not permitted to do for
-Jellyfin's volume — rests on facts an author can see, not on which adapter ran:
+Jellyfin's volume) rests on facts an author can see, not on which adapter ran:
 two tiers with disjoint audiences, a route's audience as the only way it reaches
 a tier, and two Traefik Services placed on different nodes. Adding a tier is a
 Platform document edit.
@@ -91,7 +91,7 @@ everywhere else.
 | option | cost if taken | why rejected |
 |---|---|---|
 | Keep the producers as a separate, later decision | Platform Intent is already large | Leaves two publication paths in a decision whose premise is that there is one |
-| Keep the producers for a local fast check | A repository sees its rendered fragment at publish time | That check is the same core run locally with the same inputs — a use-case, not a second adapter set pushed by digest |
+| Keep the producers for a local fast check | A repository sees its rendered fragment at publish time | That check is the same core run locally with the same inputs, a use-case, not a second adapter set pushed by digest |
 | Keep estate-scoped adapters with assigned paths | 0070 already gives them one owner; nothing is broken | Four adapters render four ConfigMaps whose content is an inbound derivation the model already names |
 | Keep `flux-root` because 0059 says today's Flux tree delivers v1 | The Flux objects come from somewhere | Renders one delivery mechanism's objects inside a model whose chapter 00 says delivery is defined separately |
 | Keep two Traefik adapters | The split is visible in the registry | It encodes the segregation constraint in the place least connected to the audience an author writes |
@@ -106,20 +106,20 @@ own lock semantics.
 
 ## Consequences
 - The adapter set goes from twenty to six, and every one of them is a central
-  adapter over the composed union — paid in the clean rewrite 0052 already
+  adapter over the composed union, paid in the clean rewrite 0052 already
   committed to, which now writes fewer adapters.
 - `renderHash` loses the compat-map digest, so it covers exactly the pinned
-  inputs and the schema package — paid by nobody, and "attributable change"
+  inputs and the schema package, paid by nobody, and "attributable change"
   gets simpler to state.
 - Chapter 30's two-role table collapses to one role, and its `Fragment` becomes
-  `Deliverable` throughout — paid in one chapter pass, and a glossary entry
+  `Deliverable` throughout, paid in one chapter pass, and a glossary entry
   closes.
 - `flux-root` joins the deferred set, so the Flux `Kustomization` per layer is
   delivery's to define; until it is, the bootstrap Flux source applies the tree
-  the kustomize groupings describe — paid by the delivery definition, which
+  the kustomize groupings describe, paid by the delivery definition, which
   inherits an ordering rather than an object.
-- A Service repository's publish workflow shrinks to validate-and-push — paid by
+- A Service repository's publish workflow shrinks to validate-and-push, paid by
   nobody, and ten repositories lose a render step.
 - Jellyfin's LAN-only path is now a property of the Platform document rather
-  than of the adapter registry, so a reviewer reading `tiers` can see it — paid in
+  than of the adapter registry, so a reviewer reading `tiers` can see it, paid in
   one place to look instead of two.

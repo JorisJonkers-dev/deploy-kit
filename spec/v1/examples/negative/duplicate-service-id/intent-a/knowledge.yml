@@ -1,4 +1,4 @@
-# Fixture A — the knowledge domain, one Intent Fragment.
+# Fixture A: the knowledge domain, one Intent Fragment.
 #
 # Valid on its own: the union with intent-b is what must fail, and it must fail
 # with E_DUPLICATE_SERVICE_ID rather than for any other reason.

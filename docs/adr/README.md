@@ -1,8 +1,8 @@
-# Decision register — the v1 model
+# Decision register: the v1 model
 
 This set was rebuilt from scratch on 2026-08-31 as the decision surface for the
 v1 goal state, and restructured on 2026-09-07: **how the estate deploys, and
-how co-testing gates a deploy, are defined separately from the model** — those
+how co-testing gates a deploy, are defined separately from the model**: those
 thirteen ADRs (0008, 0041–0051, 0058; the numbering gaps below) are parked in
 [deferred/](deferred/README.md) and are not v1 decisions. The previous 19 ADRs
 were deleted; the last commit carrying the old set is `7ea3c4f`, and after the
@@ -12,7 +12,7 @@ rebuild commit lands they are recoverable with
 **ADRs justify; `spec/v1` is normative.** Where an ADR and its `normative:`
 pointer disagree, the spec wins and the ADR is what gets fixed. The `spec/v1`
 chapters have **not yet been rewritten** to carry the anchors this register
-names — that is the follow-up spec rewrite, tracked in
+names: that is the follow-up spec rewrite, tracked in
 `review/REBUILD-MANIFEST.md`; `scripts/lint-adrs.mjs` stays non-blocking until
 it lands.
 
@@ -35,7 +35,7 @@ authored field and annotate its effect.
 
 Tier-0 **premises** carry one falsifiable claim each; tier-1 **decisions** name
 the premises they stand on in `rests-on`. A `claim: open` means decided in
-direction, untested — its owner and settling test are in the file.
+direction, untested: its owner and settling test are in the file.
 
 Citation rule: never a bare ADR number. In-set references are relative links;
 workspace decisions live in a separate namespace
@@ -62,7 +62,7 @@ which domain a decision lives in.
 | [0002](model/0002-kubernetes-as-substrate.md) | Kubernetes stays, for two properties that must be made real | open | 00-overview.md#substrate |
 | [0003](model/0003-three-layer-meta-model.md) | Three layers, with the middle layer as a contract | settled | 00-overview.md#the-meta-model |
 | [0004](model/0004-contention-decides-authority.md) | Contention decides who declares a value | open | 20-resolved-deployment.md#authority |
-| [0005](model/0005-derivation-is-total.md) | Derivation from declared intent is total | open | 20-resolved-deployment.md#derived-mechanics |
+| [0005](model/0005-derivation-is-total.md) | Derivation from declared intent covers the live estate | open | 20-resolved-deployment.md#derived-mechanics |
 | [0006](model/0006-pinned-inputs.md) | Every assignment is a function of pinned, digested inputs | open | 20-resolved-deployment.md#pinned-inputs |
 | [0007](model/0007-schema-version-separable.md) | The data model's version is not the package's version | open | 40-composition.md#versioning |
 | [0009](model/0009-vault-read-is-per-path.md) | A Vault KV-v2 read grant covers the whole path | open | 10-service-intent.md#secrets |
@@ -128,12 +128,12 @@ delivery work it underpins.
 | [0085](model/0085-a-grant-is-a-union-on-engine.md) | A grant is a discriminated union on engine, and every grant derives a read path | settled |
 | [0086](model/0086-kv-read-covers-its-metadata-sibling.md) | A KV-v2 read grant covers the document's metadata sibling | settled |
 
-### Layer 2 — derivation and assignment
+### Layer 2: derivation and assignment
 | # | title | claim |
 |---|---|---|
 | [0029](model/0029-resolved-deployment-versioned-artifact.md) | The Resolved Deployment is a versioned, reviewable artifact | settled |
 | [0030](model/0030-runtime-mechanics-derived.md) | Runtime mechanics are derived from declared intent | settled |
-| [0031](model/0031-derived-overrides-with-reason.md) | A derived value has one declaring site; capacity is the sole named exception — the generic override hatch is deleted | settled |
+| [0031](model/0031-derived-overrides-with-reason.md) | A derived value has one declaring site; capacity is the sole named exception | settled |
 | [0032](model/0032-reconcile-unit-derived.md) | The Reconcile Unit is derived from the dependency graph | settled |
 | [0033](model/0033-assignments-published-back.md) | Assignments are published back to the owning repository | settled |
 | [0034](model/0034-cluster-state-pinned-input.md) | ClusterState is a pinned, digested input | settled |
@@ -152,7 +152,7 @@ delivery work it underpins.
 ### Adapters and rendering
 | # | title | claim |
 |---|---|---|
-| [0052](model/0052-registered-adapters-are-v1.md) | The registered adapters are v1; the second generation is deleted — the registry is the enumeration | settled, rewritten by [0098](model/0098-one-publication-path.md) |
+| [0052](model/0052-registered-adapters-are-v1.md) | The registered adapters are v1; the second generation is deleted | settled, rewritten by [0098](model/0098-one-publication-path.md) |
 | [0053](model/0053-adapter-port-contract.md) | An adapter satisfies one typed port | settled |
 | [0054](model/0054-adapter-attribution.md) | Every Deliverable is attributed to exactly one Adapter | settled |
 | [0055](model/0055-bidirectional-ledgers.md) | Every accepted hole is a bidirectional ledger | settled |

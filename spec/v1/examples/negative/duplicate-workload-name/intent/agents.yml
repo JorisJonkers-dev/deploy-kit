@@ -1,4 +1,4 @@
-# Fixture — one domain file, two Services, one Workload name.
+# Fixture: one domain file, two Services, one Workload name.
 #
 # Otherwise valid and schema-complete, so composition reaches the identity check
 # rather than failing earlier for an unrelated reason. It must fail with
