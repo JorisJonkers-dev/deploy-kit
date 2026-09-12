@@ -1,6 +1,6 @@
 {
   "name": "@jorisjonkers-dev/deploy-kit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Deployment toolkit: the Service Intent model, its decision record, and the compiler that renders it.",
   "type": "module",
   "license": "LicenseRef-JorisJonkers-Proprietary-1.0",
