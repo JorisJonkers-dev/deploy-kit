@@ -1,10 +1,10 @@
-# deploy-config-schema v1 — specification index
+# deploy-config-schema v1: specification index
 
 This branch holds the v1 specification. The decisions that justify it live in
 [`docs/adr/`](../../docs/adr/README.md); the vocabulary lives in
 [`CONTEXT.md`](../../CONTEXT.md). None of the three restates the others: the
 glossary defines terms, the ADRs record why, and **these chapters are
-normative** — where a chapter and an ADR disagree, the chapter wins and the ADR
+normative**: where a chapter and an ADR disagree, the chapter wins and the ADR
 is what gets fixed.
 
 One boundary runs through the whole document and is stated once here: **how the
@@ -25,12 +25,12 @@ exists, not at the scale of an imagined organisation
 |---|---|---|
 | regular human maintainers | 1, across three git identities | `git shortlog -sn --all`: 35 commits by the one human, 99 by five bot accounts |
 | production clusters | 1, seven nodes | clusters serving production traffic |
-| Services | about 30 | in about 10 repositories — reviewers who wrote "~30 repositories" were counting Services |
+| Services | about 30 | in about 10 repositories (reviewers who wrote "~30 repositories" were counting Services) |
 | horizon | 2028-08-31 | re-run the counts at that date, or earlier on a falsifying observation |
 
 Two consequences are normative for the rest of the specification. First,
-invariants that arbitrate **between people** — a self-reviewed publish-back pull
-request, an authorisation control protecting the author from the author — are
+invariants that arbitrate **between people** (a self-reviewed publish-back pull
+request, an authorisation control protecting the author from the author) are
 out of v1 scope; the invariants v1 builds are the ones that catch the
 maintainer's own mistakes. Second, if a second regular maintainer or a second
 production cluster appears before the horizon, every decision resting on this
@@ -46,7 +46,7 @@ pinned to one machine by construction. Control-plane HA does not exist: every
 platform fixture carries exactly one `k3s-control-plane` host. Horizontal scale
 is not exercised: `auth-api`'s two replicas were a capacity decision on freed
 budget, and on one node two replicas are two processes on one kernel. The
-overhead is counted — 405 rendered objects for about 30 Services, 41 of them
+overhead is counted: 405 rendered objects for about 30 Services, 41 of them
 foundation, and the foundation is the part carrying the CVEs and the CRD
 upgrades.
 
@@ -57,7 +57,7 @@ appliers, and server-side-apply field ownership as the signal that a human
 edited a field something else owns. No design in this specification may cite
 rescheduling, HA or horizontal scale as justification.
 
-Both retained properties are made real by *how objects are applied* — which
+Both retained properties are made real by *how objects are applied*: which
 identity applies, under which field manager. That is delivery, and it is
 defined separately: see
 [`docs/adr/deferred/`](../../docs/adr/deferred/README.md). The model's own
@@ -65,7 +65,7 @@ obligation is narrower and is discharged in these chapters: every Deliverable is
 a serialized object attributed to exactly one adapter, so there is always a
 single answer to "what should own this field".
 
-The layer-1 documents — Service Intent and Platform Intent alike — survive a
+The layer-1 documents (Service Intent and Platform Intent alike) survive a
 substrate swap: neither names a Kubernetes kind, a Traefik field or a k3s flag
 ([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)). The
 registered adapters do not: five of the six emit Kubernetes kinds and the sixth
@@ -79,13 +79,13 @@ contract ([0003](../../docs/adr/model/0003-three-layer-meta-model.md)).
 
 | Layer | Name | Authored | Owns |
 |---|---|---|---|
-| 1 | Service Intent, and Platform Intent | by hand — a Service's in its owning repo, the estate's in the platform's | requirements and facts, never mechanisms |
-| 2 | Resolved Deployment | never — derived | every platform decision |
-| 3 | Deliverable Set | never — serialized | files, no decisions |
+| 1 | Service Intent, and Platform Intent | by hand, a Service's in its owning repo, the estate's in the platform's | requirements and facts, never mechanisms |
+| 2 | Resolved Deployment | never, derived | every platform decision |
+| 3 | Deliverable Set | never, serialized | files, no decisions |
 
 The rule that makes this worth naming: **Layer 1 contains no mechanisms, Layer 3
 contains no decisions.** Every field is assignable to exactly one layer, decided
-by two questions — must a human author it, and does it record a decision or
+by two questions: must a human author it, and does it record a decision or
 merely serialize one. Which side of layer 1 a value falls on is decided by the
 contention test: a value is platform-assigned if and only if it must be unique
 across the estate or draws on a shared finite resource
@@ -98,12 +98,12 @@ of the two authored documents a value is written in: a Service's own in
 
 The counter-experiment is on record. Two layers, with resolution private to the
 renderer, produced three mutually incompatible documents all claiming
-`deployment.jorisjonkers.dev/v2` — the authoring shape, the collection shape and
-the resolved shape — and the estate documented the consequence as a trap rather
+`deployment.jorisjonkers.dev/v2` (the authoring shape, the collection shape and
+the resolved shape) and the estate documented the consequence as a trap rather
 than fixing it, because a two-layer vocabulary could not say which document was
 wrong.
 
-Layer 2 is derived from a **closed set of pinned, digested inputs** — Service
+Layer 2 is derived from a **closed set of pinned, digested inputs**: Service
 Intent, the Platform Intent, the locks, and a ClusterState snapshot carrying its
 own digest ([0006](../../docs/adr/model/0006-pinned-inputs.md),
 [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)). Nothing at render
@@ -119,9 +119,7 @@ tree, so a differing render with identical digests is a defect, never weather.
 
 v1 is the model ([0059](../../docs/adr/model/0059-v1-scope-stopping-rule.md)): the
 two layer-1 vocabularies, composition, layer-2 derivation, and the registered
-renderer that serializes layer 3. It ships when it renders the live estate —
-foundation included ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md))
-— from declared intent, and that render is delivered by today's Flux
+renderer that serializes layer 3. It ships when it renders the live estate, foundation included ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)), from declared intent, and that render is delivered by today's Flux
 installation applying a tree the model rendered. No deferred decision can block
 it.
 
@@ -130,7 +128,7 @@ The partition is structural rather than enumerated, so it cannot drift:
 `docs/adr/model/` is v1 model scope; every ADR in `docs/adr/deferred/` is
 not.** A future decision moves a file across that boundary or it does not move
 at all. The first draft of this rebuild defined a "core" and a "group G" that
-failed to partition the decision set — six ADRs landed on neither side — which
+failed to partition the decision set (six ADRs landed on neither side), which
 is why membership of a directory, not a list, is the line.
 
 A third domain, `docs/adr/architecture/`, carries decisions about the
@@ -147,10 +145,10 @@ complete interface between the two scopes.
 |---|---|---|
 | Release Unit atomicity | [0060](../../docs/adr/model/0060-release-unit.md) | no member's new version receives traffic until every member's new version is healthy; if any member fails its budget, none switch and the old versions keep serving |
 | Durability Class gating | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | no destructive operation proceeds automatically against a volume declared `recoverable` or `irreplaceable` |
-| Pinned inputs only | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | render from recorded digests — Intent, Platform Intent, locks, ClusterState — never from live cluster state |
+| Pinned inputs only | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | render from recorded digests (Intent, Platform Intent, locks, ClusterState), never from live cluster state |
 
-Anything else the delivery definition chooses — push or pull, who applies, what
-prunes, what reconciles, how co-testing gates — is its own business. A delivery
+Anything else the delivery definition chooses, push or pull, who applies, what
+prunes, what reconciles, how co-testing gates, is its own business. A delivery
 definition that needs a fourth demand amends the model first, in one ADR.
 
 **The stopping rule.** The deferred set is taken up only after
@@ -161,7 +159,7 @@ still unstarted then is cut from planning, not extended. The named failure mode
 this rule exists to prevent is not collapse but partial completion with both
 delivery models live.
 
-Live-defect fixes ride independently of both scopes — the unpinned foundation
+Live-defect fixes ride independently of both scopes: the unpinned foundation
 charts and this repository's own unpinned CI are operational fixes that proceed
 regardless of any delivery decision.
 
@@ -171,8 +169,8 @@ The register is [`docs/adr/README.md`](../../docs/adr/README.md). It is not
 reproduced here, and there is no second table.
 
 It carries the premises (0001–0007, 0009) and the decisions (0010–0040,
-0052–0057, 0059–0060) that make up v1, each with its claim — `settled`, `open`
-or `accepted-untested` — and its `normative:` pointer naming the section of
+0052–0057, 0059–0060) that make up v1, each with its claim, `settled`, `open`
+or `accepted-untested`, and its `normative:` pointer naming the section of
 these chapters where its detail lives. A `claim: open` means decided in
 direction and untested; its owner and settling test are in the ADR file, never
 here. The delivery and co-testing decisions have their own inventory at
@@ -194,38 +192,38 @@ them, so a box's colour says which layer it belongs to without a legend.
 
 The mermaid each chapter used to embed is kept at the **foot** of the chapter
 under `## Diagram sources`. It is the same structure in text, so a diagram change
-still shows up in a plain diff — and where the two disagree, the SVG is the
+still shows up in a plain diff, and where the two disagree, the SVG is the
 diagram and the mermaid is what gets fixed. That is the precedence this
 repository already uses between a chapter and an ADR.
 
 | Chapter | Covers | Diagram |
 |---|---|---|
 | [`10-service-intent.md`](10-service-intent.md) | Service, Workload, and every layer-1 field by concern: identity, configuration, assets, probes, storage and durability, hardening and size, placement, exposure, observability, secrets and grants, release units | drawn |
-| [`14-platform-intent.md`](14-platform-intent.md) | the second authored document: substrate facts, the bootstrap set, the declared foundation, tiers as edge facts, durability policy, engines as images, providers — and no observability policy, which the observability service owns | none |
+| [`14-platform-intent.md`](14-platform-intent.md) | the second authored document: substrate facts, the bootstrap set, the declared foundation, tiers as edge facts, durability policy, engines as images, providers, and no observability policy, which the observability service owns | none |
 | [`16-dependencies.md`](16-dependencies.md) | dependency edges, per-Workload identity, derived network policy, the derivation map | drawn |
 | [`20-resolved-deployment.md`](20-resolved-deployment.md) | the Resolved Deployment, the authority table in one place, the pinned input set including ClusterState, derived mechanics, the one capacity exception, the Reconcile Unit, publish-back | drawn |
 | [`30-deliverables.md`](30-deliverables.md) | adapters, the adapter port, attribution, ledgers, coverage re-derived from the registry | drawn |
 | [`40-composition.md`](40-composition.md) | Intent Fragments, participants and the staleness bound, schema versioning and rollout, unmanaged surfaces | drawn |
-| [`50-lifecycle.md`](50-lifecycle.md) | model-level lifecycle: Release Unit switchover, expand/contract for cross-Service contract changes, lock lifecycle — and the statement that delivery mechanics and co-testing are defined separately | drawn |
+| [`50-lifecycle.md`](50-lifecycle.md) | model-level lifecycle: Release Unit switchover, expand/contract for cross-Service contract changes, lock lifecycle, and the statement that delivery mechanics and co-testing are defined separately | drawn |
 | [`60-setup.md`](60-setup.md) | bootstrap order, secrets at rest, CNI selection, node facts, restore, onboarding and adoption | drawn |
 
 **Chapter 16's derivation map is the load-bearing artefact**, and its value is
 that it is checkable by a script rather than read by eye. Three properties hold
 over it:
 
-1. **Totality** — no Deliverable has in-degree zero. An object reachable from no
+1. **Provenance**, no Deliverable has in-degree zero. An object reachable from no
    declaration is hand-written, and must either become derived or be entered in
    a Bidirectional Ledger. This is what was violated seven ways over by
    `kb.jorisjonkers.dev`.
-2. **Single authority** — no field of a Deliverable has two declaring sites.
+2. **Single authority**, no field of a Deliverable has two declaring sites.
    Checked against the renderer's attribution table, not the diagram, because
    the diagram is object-level and this property is field-level.
-3. **No dead declarations** — no declaration has out-degree zero. A declared
+3. **No dead declarations**, no declaration has out-degree zero. A declared
    field that derives nothing is ceremony, which is exactly what
    `rollbackTargetRetention` and `platform.layer` were: the former is validated,
    scorecarded, documented in three files, and read by no renderer or adapter.
 
-Convergence on an *object* is normal — a `Deployment` legitimately draws on
+Convergence on an *object* is normal: a `Deployment` legitimately draws on
 `image`, `config`, `claims`, `health` and `placement`. Convergence on the same
 *field* of an object is the defect. An earlier draft's rule, "any node with two
 inbound arrows is a bled concern", is superseded by that distinction.
@@ -253,7 +251,7 @@ decisions they illustrate.
 Both remaining workflows are **one job with many steps**, each step carrying
 `if: ${{ !cancelled() }}`. The
 [estate agent contract](https://github.com/JorisJonkers-dev/workspace/blob/main/CLAUDE.md)
-measured why: *"561 minutes of real compute billed 2,845 — four fifths of the
+measured why: *"561 minutes of real compute billed 2,845, four fifths of the
 spend was rounding"*, and *"prefer one job with many steps."*
 
 ## Open items
@@ -267,7 +265,7 @@ through, with the deciding ADR named.
    [0018](../../docs/adr/model/0018-exposure-by-audience.md) as amended: the hostname
    is **authored on the Service**, never assigned. An `exposure` entry carries
    `host` as the full FQDN, so no zone rule and no `<service>.<zone>`
-   derivation exists anywhere — and with none, there is no apex flag left to
+   derivation exists anywhere, and with none, there is no apex flag left to
    grade, because an apex host is written `host: jorisjonkers.dev` exactly like
    every other host. `name` is required and unique **within the Service**,
    which is what `E_DUPLICATE_EXPOSURE_NAME` had always checked and nothing had
@@ -281,7 +279,7 @@ through, with the deciding ADR named.
 
 2. **Four ConfigMap-hosted scripts, three images to build.** Code is not
    configuration ([0012](../../docs/adr/model/0012-assets-not-code.md)), and an Asset
-   may not be executable — so `hermes-bootstrap` (221 lines of shell),
+   may not be executable, so `hermes-bootstrap` (221 lines of shell),
    `n8n-hooks` (499 lines of JavaScript) and the `garage` bootstrap need
    first-party images, and the `alpine:3.21`-plus-ConfigMap pattern retires with
    them. The fourth, `postgres-init-script`, is decided: it is the derived
@@ -292,14 +290,14 @@ through, with the deciding ADR named.
    - **Settled by:** three published first-party images referenced from intent,
      then a ConfigMap census (`kubectl get configmap -A -o yaml`) in which no
      data key contains an executable script.
-   - **Blocks:** rendering the live estate from intent — which is the settling
+   - **Blocks:** rendering the live estate from intent, which is the settling
      test of [0059](../../docs/adr/model/0059-v1-scope-stopping-rule.md) itself, so
      this blocks v1's own stopping condition.
 
 3. **Label prefix retirement.** Node facts are authored once and generate the
    contract ([0056](../../docs/adr/model/0056-node-facts-single-source.md)), and
    placement is declared as capabilities rather than labels
-   ([0017](../../docs/adr/model/0017-placement-by-capability.md)) — so retiring a
+   ([0017](../../docs/adr/model/0017-placement-by-capability.md)), so retiring a
    prefix costs no edit in any service repository. The live nodes still carry
    two: 110 labels across 7 nodes, 55 under `platform.jorisjonkers.dev/*` and
    the same 55 under `personal-stack/*`, named after an archived repository that
@@ -351,7 +349,7 @@ through, with the deciding ADR named.
    [0037](../../docs/adr/model/0037-composition-oci-fragments.md) nor
    [0038](../../docs/adr/model/0038-participants-list-staleness.md) settles it.
    - **Owner:** joris.
-   - **Settled by:** only observable at a second cluster — decide at the 0001
+   - **Settled by:** only observable at a second cluster, decide at the 0001
      horizon review (2028-08-31) or on the day a second production cluster is
      proposed, whichever comes first.
    - **Blocks:** nothing today; it is recorded so the assumption is not silent.
@@ -359,7 +357,7 @@ through, with the deciding ADR named.
 7. **Fragment signing** (chapter 40). Composition verifies `MANIFEST.sha256`
    per file and pins every fragment by digest
    ([0037](../../docs/adr/model/0037-composition-oci-fragments.md)), which fixes
-   *what* is composed but says nothing about *who* published it — while the
+   *what* is composed but says nothing about *who* published it, while the
    artifact publishing workflow already carries `id-token: write` and
    `attestations: write`.
    - **Owner:** joris.
@@ -378,8 +376,8 @@ through, with the deciding ADR named.
   in [chapter 60](60-setup.md#secrets-at-rest). The claim is open and owned
   there, not here.
 - ~~**Default-deny promotion criterion.**~~ Decided by
-  [0035](../../docs/adr/model/0035-network-policy-default-deny.md) — zero undeclared
-  flows observed over 14 days — and by
+  [0035](../../docs/adr/model/0035-network-policy-default-deny.md), zero undeclared
+  flows observed over 14 days, and by
   [0036](../../docs/adr/model/0036-cni-selection.md), which supplies the non-enforcing
   policy stage the old audit-mode precondition assumed and `networking.k8s.io/v1`
   does not have.
@@ -412,14 +410,14 @@ Each diagram above is drawn in draw.io and committed as an SVG with the editable
 diagram embedded, so opening the `.svg` in draw.io recovers the drawing. The
 mermaid below is the same structure in text, kept so a diagram change shows up in
 a plain diff. **Where the two disagree the SVG is the diagram and the mermaid is
-what gets fixed** — the same precedence this repository uses between a chapter and
+what gets fixed**, the same precedence this repository uses between a chapter and
 an ADR.
 
 ### The meta-model
 
 ```mermaid
 flowchart TB
-    subgraph AUTH["layer 1 — hand-authored: Service Intent in each owning repository, Platform Intent in the platform's"]
+    subgraph AUTH["layer 1, hand-authored: Service Intent in each owning repository, Platform Intent in the platform's"]
         a1["domains/&lt;domain&gt;.yml<br/>services, workloads, placement, hardening,<br/>durability, probes, exposure, secrets"]
         a2["env/&lt;workload&gt;/*.env<br/>one set per Workload"]
         a3["assets<br/>declarative, never executable"]
@@ -435,15 +433,15 @@ flowchart TB
     PAR["participants.yml<br/>expected domains, maxAge 7d"] --> CO
     CO --> CI["ComposedIntent<br/>+ CompositionLock"]
 
-    CI --> RES["layer 2 — Resolved Deployment<br/>every platform assignment,<br/>a function of the pinned inputs alone"]
+    CI --> RES["layer 2, Resolved Deployment<br/>every platform assignment,<br/>a function of the pinned inputs alone"]
     NC["node contract<br/>by digest"] --> RES
     CS["ClusterState snapshot<br/>clusterStateDigest"] --> RES
-    IL["images lock<br/>digests, uid, gid — never tags"] --> RES
+    IL["images lock<br/>digests, uid, gid, never tags"] --> RES
 
     RES --> RS["resolved.yml<br/>published back per Service"]
-    RES --> DS["layer 3 — Deliverable Set<br/>six registered adapters, run once centrally,<br/>one attributed adapter per file"]
+    RES --> DS["layer 3, Deliverable Set<br/>six registered adapters, run once centrally,<br/>one attributed adapter per file"]
 
-    DS --> DEL["delivery — DEFINED SEPARATELY<br/>docs/adr/deferred/<br/>must honour Release Unit atomicity,<br/>Durability Class gates,<br/>pinned inputs only"]
+    DS --> DEL["delivery, DEFINED SEPARATELY<br/>docs/adr/deferred/<br/>must honour Release Unit atomicity,<br/>Durability Class gates,<br/>pinned inputs only"]
     DEL --> K["the cluster"]
 
     RS -.->|"an owner reads their own assignments"| AUTH

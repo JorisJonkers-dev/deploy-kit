@@ -4,8 +4,8 @@
 // proves it would fail. Each case below builds a throwaway tree that violates
 // exactly one rule and asserts the lint reports that rule and exits non-zero.
 //
-// Fixture keys are domain-relative paths under docs/adr — "model/0002-x.md",
-// "architecture/0064-y.md" — because the domain a file lives in decides which
+// Fixture keys are domain-relative paths under docs/adr ("model/0002-x.md",
+// "architecture/0064-y.md" (because the domain a file lives in decides which
 // normative root its pointer must resolve against.
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
@@ -56,7 +56,7 @@ function validAdr(overrides = {}) {
     "Undo cost today: an hour. Becomes irreversible once: never.",
     "",
     "## Consequences",
-    "- something — paid by someone",
+    "- something, paid by someone",
     body,
     "",
   ].join("\n");

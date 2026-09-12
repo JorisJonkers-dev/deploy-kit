@@ -1,4 +1,4 @@
-# Chapter 10 — Service Intent
+# Chapter 10: Service Intent
 
 Layer 1. The only layer a human authors, and the only layer that lives in the
 domain's own repository.
@@ -22,7 +22,7 @@ them:
    ([0033](../../docs/adr/model/0033-assignments-published-back.md)).
 
 The second rule reads as it does because placement forced it. `memory` and `cpu`
-are contended — they draw on a finite pool of node capacity — and they are
+are contended (they draw on a finite pool of node capacity) and they are
 nevertheless authored here, as raw quantities per Workload
 ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). An authors-only
 reading of contention would forbid the field and leave the estate exactly where
@@ -37,14 +37,14 @@ Layer 1 is authored as two kinds of file:
 
 | file | owns |
 |---|---|
-| `platform/<domain>.yml` | one domain: its `owner`, and every Service in it — workloads, surfaces, dependencies, exposure, probes, volumes, placement, hardening, and secret **access** |
+| `platform/<domain>.yml` | one domain: its `owner`, and every Service in it: workloads, surfaces, dependencies, exposure, probes, volumes, placement, hardening, and secret **access** |
 | `platform/env/<workload>/base.env` + `platform/env/<workload>/<cluster>.env` | every environment variable that **that Workload** receives |
 
 One file is one domain and one Intent Fragment
 ([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)). A repository may
-hold several domain files — which is what lets `homelab-collections` stay one
+hold several domain files (which is what lets `homelab-collections` stay one
 repository holding three Services rather than three repositories with three
-publish workflows — and a domain never spans repositories, so composition unions
+publish workflows) and a domain never spans repositories, so composition unions
 fragments and never has to union a domain (chapter 40).
 
 The split that matters is not file-level but concern-level. A secret's **access**
@@ -60,10 +60,10 @@ schemaVersion: 1.0.0
 ```
 
 The `apiVersion` deliberately does not reuse `deployment.jorisjonkers.dev`, which
-three mutually incompatible documents already share — the defect
+three mutually incompatible documents already share: the defect
 [0003](../../docs/adr/model/0003-three-layer-meta-model.md) exists to fix. Each layer
-gets its own namespace. `kind` names the authored document — one domain holding
-many Services — while chapter 40's `IntentFragment` is the envelope that
+gets its own namespace. `kind` names the authored document (one domain holding
+many Services) while chapter 40's `IntentFragment` is the envelope that
 publishes it. `schemaVersion` is the **data model's own semver**, not the
 toolkit package's version, and composition accepts a range rather than an
 equality ([0039](../../docs/adr/model/0039-artifact-schema-versioning.md)); chapter 40
@@ -100,7 +100,7 @@ graded by
 full below, and it is the only composite on the Workload that is **required**.
 Env files hang off the **Workload**, not the Service
 ([0011](../../docs/adr/model/0011-configuration-env-files-per-workload.md)), and so
-does `provides` — a port is a property of a process. `exposure` hangs off the
+does `provides`: a port is a property of a process. `exposure` hangs off the
 **Service**, because a hostname is a property of the product rather than of any
 one process, and one hostname routes into two of them.
 
@@ -129,22 +129,22 @@ or product name. Workload names are whatever the processes are actually called,
 and so are their images: neither is a derivative of the id.
 
 **The namespace derives from the domain**, as `<domain>-system`, and from nothing
-else. That reproduces all ten live Service namespaces — `auth-system`,
+else. That reproduces all ten live Service namespaces (`auth-system`,
 `data-system`, `knowledge-system`, `app-system`, `agents-system`, `mail-system`,
-`media-system`, `notes-system`, `automation-system`, `utility-system` — with zero
+`media-system`, `notes-system`, `automation-system`, `utility-system`) with zero
 renames and not one live object moved.
 
 Which is why nothing remains for an alias field to express, and why there is
 none. `fleet-infra/docs/live-divergence.md` records the case one was invented
-for — *"the service repository is home-portal; live called the image app-ui. A
-rename, not a different image"* — and under these rules the row describes a
+for (*"the service repository is home-portal; live called the image app-ui. A
+rename, not a different image"*) and under these rules the row describes a
 divergence that no longer exists. The id is the repository name, `home-portal`.
 The Workload is called what the process is called, `app-ui`, and so is its
 image. The domain is `app`, so the namespace is `app-system`, which is where the
 Service already runs. The three things an alias used to carry are the namespace
 (now derived from the domain), the Workload name and the image (both authored
-explicitly), and the one divergence it still expressed — a namespace of the
-Service's own choosing — is exactly the move that let a Service claim another
+explicitly), and the one divergence it still expressed (a namespace of the
+Service's own choosing) is exactly the move that let a Service claim another
 domain's namespace. Deleting the field deletes that move with it.
 
 **A Service is the unit of atomic release.** Some products are one thing in two
@@ -159,9 +159,9 @@ healthy means that Workload's own declared readiness
 Rollback is Service-scoped: reverting one Workload reverts all of them.
 
 There is no mechanism to couple two Services, and no field naming a set. A pair
-that must release together is **one Service** — `auth-api` and `auth-ui` are
+that must release together is **one Service** (`auth-api` and `auth-ui` are
 Workloads of Service `auth`, `stalwart` and `stalwart-provisioner` Workloads of
-Service `stalwart` — and a surviving pair that cannot merge is evidence the
+Service `stalwart`) and a surviving pair that cannot merge is evidence the
 Service boundary is drawn wrong, not a missing field. Merging costs nothing in
 this estate because nothing references the folded names: the complete set of
 `dependsOn` targets across the composed union is `platform-postgres`,
@@ -182,8 +182,8 @@ Unit:
 | example | `platform-postgres` before `knowledge` | `auth-api` and `auth-ui`, in Service `auth` |
 | failure | the later unit waits | nothing switches |
 
-The Service says **what** must hold, never **how** it is achieved. The mechanism —
-what applies the change, in what order, behind what gate — is defined separately.
+The Service says **what** must hold, never **how** it is achieved. The mechanism (
+what applies the change, in what order, behind what gate) is defined separately.
 
 **A namespace holds several Services by construction, so it is not a trust
 boundary.** This was once a footnote to an exception; it is now the normal case
@@ -209,7 +209,7 @@ window in which two repositories both claim an id is an accepted cost.
 
 Workload names carry a second uniqueness rule, and it is scoped to the **domain
 file** rather than to the Service, because the ServiceAccount and the Vault role
-are the Workload name alone — `auth-system.auth-api`, never
+are the Workload name alone: `auth-system.auth-api`, never
 `auth-system.auth-auth-api` ([0024](../../docs/adr/model/0024-identity-per-workload.md),
 derived in chapter 16). Two Services in one file therefore cannot both call a
 Workload `api`: that is `E_DUPLICATE_WORKLOAD_NAME` at composition (chapter 40),
@@ -217,7 +217,7 @@ raised where a reader can see both declarations at once.
 
 No field can move a Service out of its domain's namespace, so the old question of
 whether a Service may name a namespace some other applier owns has lost its
-subject matter — see
+subject matter: see
 [Delivery and co-testing are defined separately](#delivery-and-co-testing-are-defined-separately).
 
 ## The label set
@@ -231,8 +231,8 @@ in the estate.
 
 | label | value | mutable |
 |---|---|---|
-| `app.kubernetes.io/name` | the Workload `name` | **no** — selector |
-| `app.kubernetes.io/instance` | the Workload `name` | **no** — selector |
+| `app.kubernetes.io/name` | the Workload `name` | **no** (selector) |
+| `app.kubernetes.io/instance` | the Workload `name` | **no** (selector) |
 | `app.kubernetes.io/part-of` | the Service Id | yes |
 | `app.kubernetes.io/managed-by` | `deploy-kit` | yes |
 | `app.kubernetes.io/component` | the Workload `runtime` | yes |
@@ -250,7 +250,7 @@ would make every Workload of a multi-Workload Service selector-ambiguous the
 moment anything selected on `name` alone.
 
 No `app.kubernetes.io/version`. A version label would have to come from the
-images lock, so it changes on every image bump — for a label that no selector
+images lock, so it changes on every image bump, for a label that no selector
 may use and that the image digest already states exactly, on the object, where
 a reader looks anyway.
 
@@ -273,7 +273,7 @@ workloads:
       metrics: 9187     # its exporter sidecar, in the same pod
 ```
 
-A Workload with no listener declares no `provides` at all — the ingest worker of
+A Workload with no listener declares no `provides` at all: the ingest worker of
 `knowledge` has none, and the map is absent rather than empty.
 
 ```yaml
@@ -297,13 +297,13 @@ about which process it means.
 
 The rendered Kubernetes port name is **the name of the `provides` surface
 declaring that same integer**; where no surface declares it, the name derives
-from the role — `http` for an exposure, `metrics` for a scrape. That rule
+from the role: `http` for an exposure, `metrics` for a scrape. That rule
 reproduces every port name the live cluster uses, because the live names already
 are surface names: `http` (23 references), `metrics`, `db`, `smtp`, `sieve`, `s3`,
 `submissions`.
 
-`containerPort` entries are derived. They are documentational in Kubernetes —
-traffic routes by `targetPort` regardless — so declaring them would be a third
+`containerPort` entries are derived. They are documentational in Kubernetes (
+traffic routes by `targetPort` regardless) so declaring them would be a third
 place to state a number.
 
 **One thing to settle:** the live cluster names Postgres's port `db` while the
@@ -318,7 +318,7 @@ happens to expose.
 derivative of the Service id, and it is what the Workload's ServiceAccount and
 Vault role are called (chapter 16).
 
-`image` is an alias resolved to a digest through the images lock — never a tag,
+`image` is an alias resolved to a digest through the images lock, never a tag,
 never a digest here.
 
 `lifecycle` is `service` or `job`. Not `deployment` / `statefulset` / `job`,
@@ -335,10 +335,10 @@ here ([0078](../../docs/adr/model/0078-engine-is-workload-vocabulary.md)), and
 it is what the platform keys its backup method off
 ([Storage and durability](#storage-and-durability)). It is required on a Workload
 holding a volume of a class that derives a backup, and refused on one that
-derives none — `E_ENGINE_WITHOUT_DURABILITY` and `E_DURABILITY_WITHOUT_ENGINE`.
+derives none: `E_ENGINE_WITHOUT_DURABILITY` and `E_DURABILITY_WITHOUT_ENGINE`.
 
-`engine` is not `runtime`. `runtime` says how the process is instrumented —
-`jvm`, `python`, `node` — and `engine` says what its data is. `platform-postgres`
+`engine` is not `runtime`. `runtime` says how the process is instrumented (
+`jvm`, `python`, `node`) and `engine` says what its data is. `platform-postgres`
 runs a third-party image, so its `runtime` is `none` and its `engine` is
 `postgres`.
 
@@ -373,15 +373,15 @@ this estate. `sidecars` names the others
 
 | field | required | shape | notes |
 |---|---|---|---|
-| `name` | yes | one value | The container's own name, unique among the Workload's containers — the Workload is one of them, so a sidecar may not take its name. A collision is refused at composition (chapter 40). |
+| `name` | yes | one value | The container's own name, unique among the Workload's containers. The Workload is one of them, so a sidecar may not take its name. A collision is refused at composition (chapter 40). |
 | `image` | yes | an alias | Resolved to a digest through the images lock, exactly as a Workload's is. A tag would put a mutable reference in a Deliverable, which `E_FLOATING_IMAGE` (chapter 30) refuses. |
 | `memory` | yes | one quantity | This container's request. Shape rules are the Workload's ([Placement](#placement)). |
 | `cpu` | yes | one quantity | The same. |
 
 The split follows Kubernetes rather than a rule of the model's own: `nodeSelector`
 and affinity are **pod**-level, `resources` and `securityContext` are
-**container**-level. So the node dimensions — `arch`, `site`, `disk`, `gpu`,
-`capabilities` — stay on the Workload and describe the pod, and a sidecar
+**container**-level. So the node dimensions (`arch`, `site`, `disk`, `gpu`,
+`capabilities`) stay on the Workload and describe the pod, and a sidecar
 declares neither them nor a `placement` block. `memory` and `cpu`
 are per container, and a sidecar declares its own.
 
@@ -399,7 +399,7 @@ place the addition matters and the one place it is easy to miss.
 A sidecar has no identity, no probes, no exposure and no release semantics of
 its own: it is not independently deployable, which is what makes it a sidecar
 rather than a Workload. `provides` therefore stays on the **Workload** even when
-the listener is a sidecar — `platform-postgres` declares `metrics: 9187` and the
+the listener is a sidecar: `platform-postgres` declares `metrics: 9187` and the
 exporter is the container that serves it, which is exactly the attribution the
 model could not state before this field existed.
 
@@ -439,11 +439,11 @@ DB_USER=${secret:secret/data/platform/postgres/kb#user}
 
 `base.env` carries everything that does not vary; one overlay per Cluster Target
 (`platform/env/<workload>/<cluster>.env`) carries only what differs, overlay
-winning key by key. With one cluster the overlay is usually empty — which is
+winning key by key. With one cluster the overlay is usually empty, which is
 already what `stalwart-provisioner` half-invented, its `production.env` and
 `staging.env` being byte-identical.
 
-A literal is written literally. A derived value is a **named placeholder** —
+A literal is written literally. A derived value is a **named placeholder**:
 `${dependency:…}` for a coordinate, `${secret:…}` for a secret, `${exposure:…}`
 for a hostname the estate serves, and `${identity:…}` for what the platform
 derived about **this** Workload
@@ -451,20 +451,20 @@ derived about **this** Workload
 
 | key | value |
 |---|---|
-| `${identity:vaultRole}` | the Workload's Vault role — its own name ([0024](../../docs/adr/model/0024-identity-per-workload.md)) |
+| `${identity:vaultRole}` | the Workload's Vault role, its own name ([0024](../../docs/adr/model/0024-identity-per-workload.md)) |
 | `${identity:serviceAccount}` | the Workload's ServiceAccount name |
 | `${identity:namespace}` | `<domain>-system` |
 
 The key set is closed. It exists because a self-delivering Workload has to wire
-its own Vault client, and one of the values it wires — the role name — is
+its own Vault client, and one of the values it wires (the role name) is
 derived: written as a literal it is the same staleness class as the
 `serviceAccountName()` defect, where a hand-maintained name and a derived one
 disagreed and nothing noticed. Writing a derived value as a literal is a
 Writing a derived value as a literal is a build error, and so is writing a Runtime Profile key at all: `OTEL_*` and
 `PYROSCOPE_*` come from `runtime`, and an exceptional value is not a layer-1
-concept — there is no `overrides` field to put it in. Ten `OTEL_*` variables are
+concept: there is no `overrides` field to put it in. Ten `OTEL_*` variables are
 byte-identical today across `auth-api`,
-`agents-api` and `knowledge-api` except `OTEL_SERVICE_NAME` — sixty duplicated
+`agents-api` and `knowledge-api` except `OTEL_SERVICE_NAME`, sixty duplicated
 lines that leave the service repositories under this rule.
 
 Placeholders are named-source references and never a template language: no
@@ -475,7 +475,7 @@ variable. That is what lets `knowledge` write `DB_HOST` and `n8n` write
 A derived value is *forbidden* as a literal rather than *defaulted*, because a
 permitted override is indistinguishable from a stale copy. The renderer partitions
 the file: literal keys become plain env entries, and `${secret:…}` keys become
-`envFrom` secretRef entries — the author never partitions.
+`envFrom` secretRef entries: the author never partitions.
 
 ## Assets
 
@@ -492,8 +492,8 @@ assets:
 **Change propagation is unconditional and there is no `onChange` field**
 ([0094](../../docs/adr/model/0094-asset-change-restarts-unconditionally.md)).
 Every Asset renders a **content-hashed object name**, so an edit reaches the pod
-— 16 of the estate's 18 ConfigMaps are plain today, meaning an edit applies
-successfully and has no effect — and the resulting pod-template change restarts
+(16 of the estate's 18 ConfigMaps are plain today, meaning an edit applies
+successfully and has no effect) and the resulting pod-template change restarts
 the Workload.
 
 There is no `reload`. Nothing in Kubernetes reloads a process, no image in this
@@ -512,13 +512,13 @@ actor and stays: there the client library re-reads the value itself
 The eighteen ConfigMaps were three unrelated things, and only two of them are
 Assets. **Six fixed files** with no derived values (`postgresql.conf`,
 `enabled_plugins`, `cors.ini` + `single-node.ini`, `gatus` `config.yaml`, `hermes`
-`sources.conf`, `stalwart` `config.json`) and **seven mixed files** — a large
+`sources.conf`, `stalwart` `config.json`) and **seven mixed files**: a large
 static body threaded with a few derived values, `rabbitmq.conf` most starkly with
 one derived line in twenty-four (`auth_oauth2.issuer = https://auth.jorisjonkers.dev`,
 a hostname belonging to another Service). Those thirteen are Assets. The other
-**five are derived catalogs** — `gatus-endpoints` (41 derived references in 288
+**five are derived catalogs** (`gatus-endpoints` (41 derived references in 288
 lines), `platform-edge-route-catalog` (30/163), `platform-edge-catalog` (28/146),
-`grafana-datasources` (6/104), `postgres-init-script` (18/98) — and they leave
+`grafana-datasources` (6/104), `postgres-init-script` (18/98)) and they leave
 *authored* configuration entirely: each is an **inbound derivation** for the
 platform Service that consumes it, rendered as that Service's own Asset
 ([chapter 16](16-dependencies.md#what-an-edge-derives-read-inbound),
@@ -546,7 +546,7 @@ its own `path` and `port`. **There is no
 fallback** ([0014](../../docs/adr/model/0014-probes-are-siblings.md)). Readiness means
 *can I serve traffic*; liveness means *is my process wedged*. A liveness probe
 pointed at a readiness endpoint turns a dependency outage into a crash-loop, and
-the v2 model made that the default for anyone declaring one path —
+the v2 model made that the default for anyone declaring one path:
 `src/adapters/kubernetes-workload-fragment.ts:166` renders
 `livenessProbe: probe(health.livenessPath ?? health.path)`, and `app-ui` and
 `agents-login` both rely on it today.
@@ -578,7 +578,7 @@ choosing ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)):
 
 | derived | from |
 |---|---|
-| the startup probe's **target** | the **liveness** declaration — its `path` + `port`, or its `tcp` port |
+| the startup probe's **target** | the **liveness** declaration: its `path` + `port`, or its `tcp` port |
 | the startup probe's period and failure threshold | `startupBudget`, as before |
 | readiness and liveness `periodSeconds`, `timeoutSeconds`, `failureThreshold` | the Platform Intent's probe policy, named on every rendered probe |
 | `initialDelaySeconds` | `0` on readiness and liveness, because the startup probe already gates both |
@@ -591,7 +591,7 @@ dependency outage makes readiness fail, startup never succeeds, and the pod
 crash-loops on somebody else's outage.
 
 A Workload declaring readiness and no liveness therefore derives **no startup
-probe** — there is nothing safe to poll — and its start is bounded by the
+probe** (there is nothing safe to poll) and its start is bounded by the
 progress deadline alone.
 
 Readiness is also what the Service's atomic switchover waits on: healthy means
@@ -605,7 +605,7 @@ reports ready never switches any of them.
 is `local-path` and every claim is `ReadWriteOnce`, so a stateful Workload is
 pinned to one machine by construction; on one node, two replicas are two
 processes on one kernel. A Workload that wants more states it as
-[Capacity](#capacity) — a `count` above one with a reason — which is what
+[Capacity](#capacity) (a `count` above one with a reason) which is what
 `auth-api`'s two replicas always were: a capacity decision on freed budget,
 recorded now instead of inferred.
 
@@ -618,7 +618,7 @@ A `PodDisruptionBudget` is emitted **only where `replicas` exceeds one**, and as
 | more than 1 | `maxUnavailable: 1` |
 
 `minAvailable: 1` against `replicas: 1` permits **zero** voluntary evictions, so
-`kubectl drain` on that node blocks forever — and on this estate that node is
+`kubectl drain` on that node blocks forever, and on this estate that node is
 also the control plane. That is a deadlock dressed as a guarantee. Expressing the
 budget as `maxUnavailable` means a drain can always make progress, and it does
 not have to be recomputed when a replica count changes.
@@ -634,35 +634,35 @@ volumes:
 ```
 
 Every volume declares a **Durability Class**
-([0015](../../docs/adr/model/0015-durability-class-per-volume.md)) — what the data is
+([0015](../../docs/adr/model/0015-durability-class-per-volume.md)), what the data is
 worth, which only the owning Service knows:
 
 | class | means | derives | live example |
 |---|---|---|---|
-| `reconstructible` | losing it costs a rebuild, not data | no backup job | `valkey` — *"deliberately unbacked as reconstructible cache"* |
+| `reconstructible` | losing it costs a rebuild, not data | no backup job | `valkey`: *"deliberately unbacked as reconstructible cache"* |
 | `recoverable` | a nightly application-level backup with a retention sweep suffices | backup job + sweep | the Postgres logical dumps |
 | `irreplaceable` | needs an off-cluster copy, and a rehearsed restore before its first production apply | backup job + sweep + off-cluster copy | `knowledge-vault-clone`, a personal vault on `local-path` |
 
 **The terms are platform-assigned, the class is not**
 ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)). The window a
 backup runs in, how many copies are kept, and where an off-cluster copy goes are
-contended — one node's IO, one remote target — so by
+contended (one node's IO, one remote target) so by
 [0004](../../docs/adr/model/0004-contention-decides-authority.md) the Platform
 Intent carries one policy per class and the volume declares only what the data
 is worth. A volume that genuinely needs different terms is a platform policy
 change, not a per-volume restatement.
 
 **The method is platform-assigned too**, keyed by the Workload's
-[`engine`](#workload): the method **is an image** — one purpose-built image per
+[`engine`](#workload): the method **is an image**: one purpose-built image per
 engine whose entrypoint performs the backup, named in the Platform document and
 resolved through the images lock ([chapter 14](14-platform-intent.md#engines),
 [0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)).
 Nothing authored is executable, which is what [0012](../../docs/adr/model/0012-assets-not-code.md)
-requires and what a `backup.sh` Asset — or a shell string in a platform file —
+requires and what a `backup.sh` Asset (or a shell string in a platform file)
 would have violated.
 
-The `kubernetes` adapter emits the resulting `CronJob` — one per volume that
-derives a backup, plus its retention sweep — because that kind is already its
+The `kubernetes` adapter emits the resulting `CronJob` (one per volume that
+derives a backup, plus its retention sweep) because that kind is already its
 ([chapter 30](30-deliverables.md#the-registered-set)). The credential for an
 off-cluster destination is a **derived** grant against the platform's own Secret
 Store path, recorded in the projection its owner reads back
@@ -689,7 +689,7 @@ and which asserted a ninety-day rollback a snapshot-less cluster cannot perform.
 **A volume declares its `size`; the platform decides whether it fits**
 ([0081](../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md)). How much
 data a volume holds is a fact only its owner knows, so it is a hard dimension
-authored beside `claim` and `mountAt` — exactly the shape
+authored beside `claim` and `mountAt`, exactly the shape
 [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md) uses for
 `memory` and `cpu`. The platform matches it against the node contract's
 `disks[].usable_gib`, and a volume that fits no eligible node is
@@ -698,18 +698,18 @@ authored beside `claim` and `mountAt` — exactly the shape
 `storageClassName` still does not appear, and is still assigned: everything takes
 k3s's default `local-path`.
 
-`placement.disk.size` is **derived** — the sum of the Workload's volume sizes —
+`placement.disk.size` is **derived** (the sum of the Workload's volume sizes)
 so the quantity has one declaring site. Authoring it in both places let the same
 number be stated twice and disagree, which is what chapter 16's single-authority
 property forbids. `placement.disk.media` stays authored: which media a Workload
-needs is not implied by how much it needs. `volumeClaimTemplate` is forbidden — a template ties the volume to
+needs is not implied by how much it needs. `volumeClaimTemplate` is forbidden: a template ties the volume to
 the Workload's name, so a rename orphans the claim.
 
 Durability is also the model's gate on destruction: a claim backing
 non-`reconstructible` data may not be removed as a side effect of a render. What
 any particular delivery mechanism must do to honour that is one of the model's
 three demands on the separately-defined delivery work. `irreplaceable` adds a
-precondition on standing up the cluster at all — the restore rehearsal in
+precondition on standing up the cluster at all: the restore rehearsal in
 chapter 60.
 
 ## Pod hardening
@@ -726,7 +726,7 @@ The field does not exist today, in either renderer generation:
 `grep -rniE 'securityContext|runAsNonRoot|readOnlyRootFilesystem|seccompProfile' src/ schemas/`
 returns **0 hits**, and `src/deployment/render/workloads.ts:130` builds a
 container from name, image, pullPolicy, ports, command, args, env, envFrom,
-volumeMounts, probes and resources — and stops. Rendered pods run as their image's
+volumeMounts, probes and resources, and stops. Rendered pods run as their image's
 UID, with a writable root and default capabilities, and the standing QoS class for
 the estate is BestEffort on a node the k3s server, the datastore and every
 application pod share.
@@ -740,7 +740,7 @@ symptom.
 
 The posture itself is **not authored per Workload**. It is one estate-wide value,
 `restricted`, declared once in the Platform document
-([chapter 14](14-platform-intent.md#hardening-policy)) — a Workload that repeated
+([chapter 14](14-platform-intent.md#hardening-policy)), a Workload that repeated
 it thirty times would be restating the only value there is, and a field with one
 legal value carries no information ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)
 deleted `minAvailable` for the same reason). What a Workload authors is the
@@ -765,7 +765,7 @@ writablePaths: [/tmp]
 ```
 
 Each derives an `emptyDir` mounted at that path, and `readOnlyRootFilesystem`
-**stays `true`** — which is what the control means: the image's own filesystem is
+**stays `true`**, which is what the control means: the image's own filesystem is
 immutable, and the paths a process writes are mounted. A writable path is
 therefore **not** a relaxation of the control: a mounted tmpfs is not the same
 thing as a pod running as root, and only one of the two is expressible here.
@@ -777,8 +777,8 @@ Platform Intent carries one default that covers every case the estate has. There
 is no per-path restatement: a value reachable two ways has no single declaring
 site.
 
-Nothing is implicit. `/tmp` is not supplied unless it is declared — a mount
-nobody asked for would appear in every static image that never writes — and the
+Nothing is implicit. `/tmp` is not supplied unless it is declared (a mount
+nobody asked for would appear in every static image that never writes) and the
 worked `auth` domain claiming that "the render supplies `/tmp` as an `emptyDir`"
 described behaviour no chapter specified.
 
@@ -799,7 +799,7 @@ An escape hatch in the DSL is the thing this model exists to remove. A per-field
 relaxation carried with a reason is an override under another name, and it
 outlives the image that justified it: the estate's own inventory of "what we
 cannot harden" was written once and never shortened. Refusing instead puts the
-cost where the defect is. The worked estate proves the point — after
+cost where the defect is. The worked estate proves the point: after
 `writablePaths` and the images lock, **no Workload in the example set declares an
 exception at all**, and the two that used to are `auth-ui`, which lists the paths
 nginx writes, and `platform-postgres`, whose UID comes from the lock.
@@ -827,7 +827,7 @@ without a UID at all. Three failures follow, and one lock field closes all three
 ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)).
 
 The lock records the **resolved `uid` and `gid`** for each alias, read from the
-image config when the lock is built — the one moment a registry may legitimately
+image config when the lock is built, the one moment a registry may legitimately
 be consulted, since the lock is an output. `runAsUser` and `runAsGroup` then
 derive from a pinned input like everything else.
 
@@ -837,11 +837,11 @@ name and fails the pod with `CreateContainerConfigError`, so the choice is a
 lock-time error with a name or a runtime error without one.
 
 **A volume gets `fsGroup`.** A freshly provisioned `local-path` directory is
-root-owned, so without a group a non-root pod cannot write its own PV —
+root-owned, so without a group a non-root pod cannot write its own PV:
 `platform-postgres` cannot `initdb`. Any Workload holding a volume therefore
 derives `fsGroup` from the resolved `gid`, with
 `fsGroupChangePolicy: OnRootMismatch` so the kubelet does not re-chown a large
-volume on every start. No authored field, and no root-capable init container —
+volume on every start. No authored field, and no root-capable init container,
 which every stateful Workload would then need, to solve a problem `fsGroup`
 solves.
 
@@ -881,8 +881,8 @@ are required on every Workload; every other term defaults to *any node*.
 **Every declared dimension must match.** There is no soft half: no weight, no
 ordering, no second shape the scheduler is free to discard. A list is always a
 **set**, and what a set means follows from the dimension rather than from a
-modifier the author writes. On a dimension a node has exactly one value of —
-`arch`, `disk.media` — the set is the set of **acceptable** values, so
+modifier the author writes. On a dimension a node has exactly one value of (
+`arch`, `disk.media`), the set is the set of **acceptable** values, so
 `arch: [arm64, amd64]` says *either*, never *arm64 first*. On `capabilities`,
 which a node advertises many of, the set is what the node must **carry**. Neither
 reading admits a preference, and no ordering is significant in either.
@@ -890,7 +890,7 @@ reading admits a preference, and no ordering is significant in either.
 If no node satisfies every declared term, the build fails with
 `E_PLACEMENT_UNSATISFIABLE` (chapter 40). Before the manifest exists is the only
 place this can be broken loudly. The estate has already paid for the alternative:
-*"No affinity preference for `gpu-model-gtx960m` — no node advertises it… **An
+*"No affinity preference for `gpu-model-gtx960m`: no node advertises it… **An
 unsatisfiable preference is silently ignored, so it read as GPU-aware placement
 while doing nothing.**"* An unmet hard term at least leaves a pod `Pending`; an
 unmet preference is discarded by the scheduler without an event, a warning or a
@@ -899,7 +899,7 @@ and the fallback the soft shape was reached for comes back as a value set.
 
 ### Eligibility, not bin-packing
 
-Each term is compared against **one node's allocatable** — the node's total minus
+Each term is compared against **one node's allocatable**, the node's total minus
 a reserve declared in the node file, published by the node contract
 ([0056](../../docs/adr/model/0056-node-facts-single-source.md), chapter 60). It is never
 a live read of free capacity, which would put an assignment outside the pinned
@@ -907,8 +907,8 @@ input set ([0006](../../docs/adr/model/0006-pinned-inputs.md)).
 
 A Workload is eligible on a node when every declared term matches that node
 **alone**. The check never sums Workloads. Three Workloads each declaring
-`memory: 2Gi` therefore **all pass** against a 4096Mi node — each is compared
-against allocatable on its own — and the scheduler refuses the third at apply.
+`memory: 2Gi` therefore **all pass** against a 4096Mi node (each is compared
+against allocatable on its own) and the scheduler refuses the third at apply.
 State that plainly to anyone reading this gate as a capacity plan: it proves a
 home exists for each Workload, not that every Workload fits at once.
 
@@ -917,7 +917,7 @@ a hole in [0004](../../docs/adr/model/0004-contention-decides-authority.md): con
 decides who **arbitrates**, not who **authors**. The Service states its
 requirement, the platform decides whether it fits, refuses what no node can hold,
 and the scheduler decides where. The accepted cost is stated rather than
-hidden — nothing stops an author writing `memory: 8Gi`, and no arbitration exists
+hidden: nothing stops an author writing `memory: 8Gi`, and no arbitration exists
 beyond that refusal.
 
 ### What the dimensions must discriminate on
@@ -929,10 +929,10 @@ Seven nodes, from `nix-config/inventory/nodes/*.yml`:
 | enschede-t1000-1 | enschede | amd64 | 54000m | 32000Mi | t1000, transcode | nvme 120+500G, hdd 4096G | worker, utility |
 | enschede-rx7900xtx-1 | enschede | amd64 | 72800m | 32000Mi | rx7900xtx, render-compute | nvme 160+1000G, hdd 8192G | worker, utility |
 | enschede-gtx-960m-1 | enschede | amd64 | 28800m | 16384Mi | gtx960m, transcode, 2048MiB | ssd 100+500G, hdd 2048G | worker, utility |
-| enschede-pi-1 | enschede | arm64 | 6000m | 8192Mi | — | sdcard 64G | worker |
-| enschede-pi-2 | enschede | arm64 | 6000m | 4096Mi | — | sdcard 64G | worker |
-| enschede-pi-3 | enschede | arm64 | 6000m | 4096Mi | — | sdcard 64G | worker |
-| frankfurt-contabo-1 | frankfurt | amd64 | 16000m | 32768Mi | — | ssd 80+120G | control-plane, worker |
+| enschede-pi-1 | enschede | arm64 | 6000m | 8192Mi | - | sdcard 64G | worker |
+| enschede-pi-2 | enschede | arm64 | 6000m | 4096Mi | - | sdcard 64G | worker |
+| enschede-pi-3 | enschede | arm64 | 6000m | 4096Mi | - | sdcard 64G | worker |
+| frankfurt-contabo-1 | frankfurt | amd64 | 16000m | 32768Mi | - | ssd 80+120G | control-plane, worker |
 
 Memory alone spans 4096Mi on `enschede-pi-2` and `enschede-pi-3` to 32768Mi on
 `frankfurt-contabo-1`, across two architectures, two sites and four disk media.
@@ -950,7 +950,7 @@ authors that filters do nothing. It leaves the capability vocabulary in one
 node-contract change.
 
 Longhorn is declared eligible on four nodes, but no PVC in `fleet-infra` sets a
-`storageClassName` — everything takes k3s's default `local-path`. No `disk` term
+`storageClassName`: everything takes k3s's default `local-path`. No `disk` term
 may be written as though Longhorn were in use.
 
 ### Why `gpu` is structured
@@ -961,7 +961,7 @@ two are not interchangeable: `enschede-t1000-1` carries a T1000, while
 `enschede-gtx-960m-1` is a 2048MiB Maxwell, re-enabled on 2026-09-02.
 `enschede-rx7900xtx-1` is not `nvidia` at all. Today `jellyfin` and
 `immich-machine-learning` avoid the Maxwell only because they also select
-`capability-samba`, which exactly one node advertises — placement working by
+`capability-samba`, which exactly one node advertises, placement working by
 accident of an unrelated filter, and breaking the day that filter is relaxed or
 a second node gains samba.
 
@@ -972,7 +972,7 @@ not vocabulary, and neither is any other flat string standing in for a device.
 
 ### Labels are not the Service's to name
 
-`nix-config/generated/node-contract.yml` emits 110 labels for 7 nodes — 55 under
+`nix-config/generated/node-contract.yml` emits 110 labels for 7 nodes: 55 under
 `platform.jorisjonkers.dev/*` and the same 55 under `personal-stack/*`, named
 after an archived repository that rejects pushes. Authored as selectors, retiring
 that prefix is an edit in every service repository; authored as placement
@@ -980,7 +980,7 @@ dimensions it touches none
 ([0056](../../docs/adr/model/0056-node-facts-single-source.md)).
 
 Placement already implied is not declared either: a `local-path` volume pins its
-Workload to the node holding the PV, and the resolver states that — reading the
+Workload to the node holding the PV, and the resolver states that, reading the
 binding from the pinned `ClusterState` snapshot, never from a live cluster
 ([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)). A PV that rebinds
 after a node failure therefore surfaces as a new lock, not as drift, and a `disk`
@@ -998,11 +998,11 @@ and neither is a field:
   causes that, and cannot be evicted for exceeding it either.
 - **CPU carries a request and no limit.** CPU is compressible, and a limit
   throttles precisely the class-loading burst the 250–300 s JVM cold start
-  consists of — the same burst `startupBudget` exists to bound. Throttling gets
+  consists of, the same burst `startupBudget` exists to bound. Throttling gets
   misdiagnosed as slow application code, over and over, by whoever did not set
   the limit.
 
-Both shape rules are derivations and neither is authorable — there is no second
+Both shape rules are derivations and neither is authorable: there is no second
 field inside `placement`, and no hatch to reach one
 ([No overrides](20-resolved-deployment.md#no-overrides)).
 
@@ -1041,15 +1041,15 @@ services:
 
 | field | level | required | notes |
 |---|---|---|---|
-| `name` | exposure | yes | Unique within the Service. It is what `E_DUPLICATE_EXPOSURE_NAME` checks and what a `${exposure:…}` placeholder addresses. A Service serving two hostnames — `jellyfin` public and lan — needs it to tell them apart. |
+| `name` | exposure | yes | Unique within the Service. It is what `E_DUPLICATE_EXPOSURE_NAME` checks and what a `${exposure:…}` placeholder addresses. A Service serving two hostnames (`jellyfin` public and lan) needs it to tell them apart. |
 | `host` | exposure | yes | The full FQDN, written out. Unique across the estate. |
 | `audience` | exposure | yes | `anonymous` \| `authenticated` \| `internal` \| `lan`. The default for every route beneath it. |
-| `contentPolicy` | exposure | no | `strict` \| `admin` \| `workflow`. The Content-Security-Policy profile — the one header choice an author makes, from a closed list. |
+| `contentPolicy` | exposure | no | `strict` \| `admin` \| `workflow`. The Content-Security-Policy profile: the one header choice an author makes, from a closed list. |
 | `routes` | exposure | yes | One or more. |
 | `path` | route | yes | The path this rule matches. |
 | `match` | route | yes | `prefix` \| `exact`. |
 | `workload` | route | yes | A Workload of **this** Service. |
-| `surface` | route | yes | A surface that Workload declares in `provides` — a name, never a port integer. |
+| `surface` | route | yes | A surface that Workload declares in `provides`: a name, never a port integer. |
 | `audience` | route | no | Overrides the exposure's audience, for this path alone. |
 | `redirectTo` | route | no | A path this route redirects to. A path, never a regex. |
 
@@ -1073,7 +1073,7 @@ routes:
 **Precedence is derived, not inherited from the proxy**
 ([0093](../../docs/adr/model/0093-route-precedence-is-derived.md)). `auth`
 declares `/api` and `/` as prefixes on one host, and which one serves a request
-is a routing decision — so the model makes it rather than leaving it to how
+is a routing decision, so the model makes it rather than leaving it to how
 Traefik happens to sort:
 
 | rule | comes first |
@@ -1100,7 +1100,7 @@ certificates, and the middleware chain that assembles them
 
 A zone mapping does exist, so the derivation was available and was rejected on
 the evidence rather than on principle. `homelab-inventory/catalog/reachability.yml`
-groups every reachable host into a channel — `public-frankfurt`, `lan` — which is
+groups every reachable host into a channel (`public-frankfurt`, `lan`) which is
 the input a `<service>.<zone>` rule would need. What that rule cannot survive is
 the host labels themselves, because they do not follow the Service id:
 
@@ -1113,7 +1113,7 @@ the host labels themselves, because they do not follow the Service id:
 A derivation would therefore be right for most of the set and silently wrong for
 the rest, and the wrong ones are precisely the ones nobody would catch: a derived
 hostname is written down nowhere, so there is no second copy for a reader to
-disagree with. The host is authored instead — one FQDN, in full, in the Service
+disagree with. The host is authored instead: one FQDN, in full, in the Service
 that serves it. There is no zone field, no `<service>.<zone>` rule and no suffix
 appended anywhere in the render.
 
@@ -1122,7 +1122,7 @@ other, and two Services claiming it collide exactly as two Services claiming any
 other name do.
 
 Authoring the host does not make it uncontended. A hostname must be unique across
-the estate, which is what contention means — and
+the estate, which is what contention means, and
 [0004](../../docs/adr/model/0004-contention-decides-authority.md), as this chapter's
 preamble restates it, decides who **arbitrates**, not who **authors**. The Service
 writes the FQDN it serves; composition refuses the collision with
@@ -1147,7 +1147,7 @@ product and belongs to the Service.
 
 The case that forced the split is live and unexceptional: `auth.jorisjonkers.dev`
 serves `/api` from `auth-api` and `/` from `auth-ui`. One hostname, two Workloads.
-At the Workload level that is inexpressible — each Workload would have to declare
+At the Workload level that is inexpressible: each Workload would have to declare
 a host the other also claims, the two halves of one hostname would be authored in
 two files with nothing joining them but a repeated string, and the estate would be
 back to the duplication the previous section just removed. On the Service the
@@ -1161,8 +1161,8 @@ a per-process fact spanning a release boundary no single process controls.
 
 ### Audience is the single vocabulary
 
-`audience` is the single vocabulary — `anonymous`, `authenticated`, `internal`,
-`lan` — shared by exposures, by routes and by the tiers that carry them
+`audience` is the single vocabulary (`anonymous`, `authenticated`, `internal`,
+`lan`) shared by exposures, by routes and by the tiers that carry them
 ([0018](../../docs/adr/model/0018-exposure-by-audience.md)). One vocabulary replaces
 three carrying seven values:
 
@@ -1195,20 +1195,20 @@ counted:
 | middleware | live instances | disposition |
 |---|---|---|
 | `forwardAuth` | 3 definitions, 15 references | derived from `audience: authenticated` |
-| `headers` — the security baseline, plus a CSP profile `strict` / `admin` / `workflow` | 7 | baseline derived from the tier; the **profile choice** authored, as `contentPolicy` |
+| `headers`: the security baseline, plus a CSP profile `strict` / `admin` / `workflow` | 7 | baseline derived from the tier; the **profile choice** authored, as `contentPolicy` |
 | `chain` | 2 | derived composition |
-| `redirectRegex` | 2 — `stalwart` `/` → `/admin/`, `traefik` `/` → `/dashboard/` | authored, as `redirectTo` |
+| `redirectRegex` | 2: `stalwart` `/` → `/admin/`, `traefik` `/` → `/dashboard/` | authored, as `redirectTo` |
 
 `forwardAuth` and `chain` are pure derivation: fifteen references to three
 definitions, all reproducible from an audience and a tier. `headers` is mostly
-derivation — the security baseline is the tier's and is identical everywhere it
-appears — except for the CSP profile, which is a per-product judgement no
+derivation (the security baseline is the tier's and is identical everywhere it
+appears) except for the CSP profile, which is a per-product judgement no
 derivation can make, and of which there are exactly three. That judgement is
 `contentPolicy`, a value from a closed list rather than a header block.
 
 Nothing else exists. There are **zero** live instances of timeouts, rate limits,
-IP allowlists, basic auth, compression, retries and circuit breakers — not one of
-any of them, anywhere in the estate — and none of them becomes vocabulary here.
+IP allowlists, basic auth, compression, retries and circuit breakers (not one of
+any of them, anywhere in the estate) and none of them becomes vocabulary here.
 Writing fields for an estate that does not exist is the failure this model was
 built to stop: a field costs a schema, a derivation, a test and a reader's
 attention, and one nobody populates costs all four and returns nothing. A
@@ -1216,7 +1216,7 @@ genuinely new case gets a field and a decision record, not a passthrough that
 would readmit every provider fragment at once and take the mechanism rule with it.
 
 **`redirectTo` is a path, never a regex.** Both live redirects are the same
-shape — an exact root sent to a subpath — and the author writes the destination
+shape (an exact root sent to a subpath) and the author writes the destination
 path. The renderer produces the provider's `redirectRegex` form from it, so
 `${1}`-style capture groups appear nowhere in layer 1: a capture group is a
 pattern language, and a pattern language in Service Intent brings its own
@@ -1245,7 +1245,7 @@ whether or not this model deploys what answers (chapter 40). The other three are
 scoped to a single document and are refused as soon as the fragment is read.
 
 `E_DUPLICATE_EXPOSURE_NAME` has had an implementation and an error code for longer
-than it has had a definition — nothing said what a name was, or whether an
+than it has had a definition: nothing said what a name was, or whether an
 exposure had one. It is unique **within the Service**. `jellyfin` may declare
 `public` and `lan`, and no other Service is thereby prevented from having a
 `public` of its own, because a placeholder that reads one names the Service too.
@@ -1254,7 +1254,7 @@ exposure had one. It is unique **within the Service**. `jellyfin` may declare
 merely duplicated: two routes with the same path and the same match on one
 hostname have no defined winner, and the provider picks one without saying so.
 `E_UNKNOWN_SURFACE` is the same code a dependency edge uses (chapter 16), holding
-routes to the same rule — a route names a surface by name, never by port, so the
+routes to the same rule: a route names a surface by name, never by port, so the
 integer stays written once, by the process that listens on it. Either half of the
 pair failing raises it: a route naming a Workload this Service does not hold names
 no surface either.
@@ -1289,15 +1289,15 @@ The block is **whole or absent**. Declaring `alertClass` without `scrape` is
 `E_ALERT_CLASS_WITHOUT_SIGNAL`: a class is a statement about how loudly to wake
 someone, and it is meaningless without a signal to wake them about. That refusal
 is the one guarantee this chapter makes about monitoring, and it exists because
-the estate's two holes were both silent ones — Gatus watched 41 endpoints and
+the estate's two holes were both silent ones: Gatus watched 41 endpoints and
 notified nobody, its ConfigMap carrying `storage` and `ui` and no `alerting`
 section at all.
 
 `scrape` names a **surface, not a port**, the same way a route does
 ([Exposure](#exposure)). The port is already declared once in `provides`, and a
 second statement of it would be a second declaring site for one fact. The path
-genuinely varies — `/actuator/prometheus`, `/api/actuator/prometheus`,
-`/metrics` — so it is authored, and a platform that guessed would collect
+genuinely varies ( `/actuator/prometheus`, `/api/actuator/prometheus`,
+`/metrics`) so it is authored, and a platform that guessed would collect
 nothing and report success.
 
 The whole block sits on the **Service** and is never raised to the domain
@@ -1385,7 +1385,7 @@ defaults to `kv`, so every grant written before this rule stays valid.
 |---|---|---|---|
 | `engine` | all | no | `kv` \| `database` \| `transit`; defaults to `kv` |
 | `path` | `kv` | yes | The full KV path. This is the grant unit ([0023](../../docs/adr/model/0023-grant-unit-is-the-path.md)). |
-| `keys` | `kv` | yes | The keys the Workload expects there. Documentation and a validation input — **not** an access boundary. No wildcard exists. |
+| `keys` | `kv` | yes | The keys the Workload expects there. Documentation and a validation input, **not** an access boundary. No wildcard exists. |
 | `access` | `kv` | yes | `read` \| `self-renew` \| `self-roll` \| `custody`. A KV intent, and only a KV intent. |
 | `role` | `database` | yes | The database role that issues the credential. The read path derives as `database/creds/<role>`. |
 | `key` | `transit` | yes | The transit key name. |
@@ -1394,8 +1394,8 @@ defaults to `kv`, so every grant written before this rule stays valid.
 | `mountAt`, `fileMode` | `file` only | Where the projected file lands, and its mode. |
 | `rotation` | all | yes | `tolerates: restart` \| `reload`, plus an optional `maxAge`. |
 
-**Every grant derives a read path**, and that derived path — not the declared
-one — is what a placeholder byte-matches
+**Every grant derives a read path**, and that derived path (not the declared
+one) is what a placeholder byte-matches
 ([Secret references](#secret-references), amending
 [0027](../../docs/adr/model/0027-secret-reference-join-key.md)):
 
@@ -1421,12 +1421,12 @@ real rather than notional. `secrets` stays per Service and per Workload
 A Workload's effective set is the Service-level list plus its own. There is no
 override or removal syntax: a Workload that must *not* hold a shared secret is
 evidence the secret was never shared, and it moves down a level. Sharing is the
-common case and duplication is what drifts — `knowledge` holds six grants across
+common case and duplication is what drifts: `knowledge` holds six grants across
 two Workloads and two are identical for both.
 
 The two levels are an access boundary **only** because identity is per Workload.
-The ServiceAccount and Vault role are derived as the **Workload name alone** —
-`auth-system.auth-api`, never `auth-system.auth-auth-api` — unique within the
+The ServiceAccount and Vault role are derived as the **Workload name alone** (
+`auth-system.auth-api`, never `auth-system.auth-auth-api`) unique within the
 domain file ([0024](../../docs/adr/model/0024-identity-per-workload.md), specified in
 chapter 16). At review time they were not: `serviceAccountName()` in
 `src/adapters/kubernetes.ts:665-669` returned `serviceName`, so two Workloads of
@@ -1438,7 +1438,7 @@ declaration and the identity ship together or not at all.
 
 **The grant unit is the path.** On this estate's KV-v2 mount the `read` capability
 attaches to the API path `secret/data/<path>`, and a token holding it receives the
-entire document — every key — on each read
+entire document (every key) on each read
 ([0009](../../docs/adr/model/0009-vault-read-is-per-path.md)). No policy stanza narrows a
 read to a key subset.
 
@@ -1454,8 +1454,8 @@ Three consequences are normative here:
 1. **`keys:` confers nothing.** It documents the expected keys and feeds the dead-
    grant and unauthorised-reference checks. An author must never read it as a
    narrowing. Three worked examples used to grant three different key subsets
-   of one `secret/data/platform/postgres` document — `[auth.user, auth.password]`,
-   `[kb.user, kb.password]`, `[exporter.datasource]` — and every one of those
+   of one `secret/data/platform/postgres` document (`[auth.user, auth.password]`,
+   `[kb.user, kb.password]`, `[exporter.datasource]`) and every one of those
    readers held `read` on all of them, so `knowledge`'s pod could read
    `auth-api`'s database password. The example set now grants
    `.../postgres/kb`, `.../postgres/auth` and `.../postgres/exporter`.
@@ -1464,8 +1464,8 @@ Three consequences are normative here:
    enforce. It is one path per reader **set**, not one path per consumer: a path
    read by exactly one Service's Workloads stays whole, and splits on the day a
    second reader is granted it. `secret/data/platform/postgres` splits per
-   consumer under that rule, and `secret/platform/observability` — Prometheus
-   token, Discord webhook and Grafana client secret in one document — must split
+   consumer under that rule, and `secret/platform/observability` (Prometheus
+   token, Discord webhook and Grafana client secret in one document) must split
    before its blast radius closes.
 3. **There is no wildcard.** `keys: ['*']` is not vocabulary. It makes a reader set
    undecidable without reading live Vault contents, which the pinned-input rule
@@ -1475,7 +1475,7 @@ Three consequences are normative here:
 Reader sets are therefore computable from the composed union with no Vault read,
 and `E_ROLL_AFFECTS_OTHER_READERS` (chapter 40) computes over the readers of a
 **path**. Computed over declared key sets it under-reports by the difference
-between the subset and the document — which is the same gap that makes the old
+between the subset and the document, which is the same gap that makes the old
 spec sentence *"`read` on the granted path and keys only"* false.
 
 ## Access tiers
@@ -1487,7 +1487,7 @@ intent; the renderer makes the least-privilege choice once:
 | tier | privilege derived | scope | value changes | downstream |
 |---|---|---|---|---|
 | `read` | `read` | the granted path | no | none |
-| `self-renew` | **none** | — (an identity, no capability) | no | none |
+| `self-renew` | **none** | none (an identity, no capability) | no | none |
 | `self-roll` | `patch`, never `update` | the granted path | **yes** | consumers must re-read |
 | `custody` | `create`, `update`, `delete` | a **prefix** below the granted path | n/a | none |
 
@@ -1497,7 +1497,7 @@ which every token may do. It also leaves the value unchanged, so nothing
 downstream re-reads or restarts. Minting is the fallback for a token already
 expired or revoked, and is the only reason this has a Vault identity at all."* A
 single read/write axis would grant privilege to that job and lose the distinction
-between extending a lease and replacing a value — the distinction that decides
+between extending a lease and replacing a value: the distinction that decides
 whether anything restarts.
 
 `self-roll` derives `patch` rather than `update` because `patch` writes without
@@ -1513,7 +1513,7 @@ enumerated at render time. Its blast radius is bounded only by the prefix.
 ([0085](../../docs/adr/model/0085-a-grant-is-a-union-on-engine.md)). A `transit`
 grant declares `operations` instead, because no tier means anything there:
 `self-roll` derives `patch`, and `patch` on a transit key permits neither
-`transit/keys/<name>/rotate` nor `transit/sign/<name>` — which is what
+`transit/keys/<name>/rotate` nor `transit/sign/<name>`, which is what
 `auth-api`'s JWT key needs and has never had. A `database` grant declares a role
 and takes no tier at all: the engine issues the credential, so there is no
 capability to choose.
@@ -1529,14 +1529,14 @@ rather than left as traps:
 | access | `env` | `file` | `self` |
 |---|---|---|---|
 | `read` | legal | legal | legal |
-| `self-renew` | **refused** | open — see below | legal |
+| `self-renew` | **refused** | open, see below | legal |
 | `self-roll` | legal, with a `read` entry on the same path | legal, with a `read` entry on the same path | legal |
 | `custody` | **refused** | **refused** | legal |
 
 A refusal is `E_ILLEGAL_DELIVERY_FOR_ACCESS`. `custody` with `env` or `file` asks
 the renderer to sync paths that do not exist yet; `self-renew` with `env` hands a
 token with no capability on its path a Secret it never reads. `self-roll` needs a
-companion `read` entry for `env` or `file` because `patch` does not include read —
+companion `read` entry for `env` or `file` because `patch` does not include read,
 that is the whole point of choosing it.
 
 `self-renew` × `file` survives the letter of
@@ -1555,14 +1555,14 @@ secret ([0026](../../docs/adr/model/0026-delivery-env-file-self.md)):
 |---|---|---|
 | `env` | a Vault Secrets Operator sync and a `Secret`; the env file's `${secret:…}` placeholders resolve to `envFrom` secretRef entries, never to literal values | yes |
 | `file` | a projected file at `mountAt` with `fileMode`, and nothing in the environment | yes |
-| `self` | a Vault policy and a Kubernetes auth role ([0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)). No Secret, no env var, nothing injected — the application's own client wiring stays in its env file ([0091](../../docs/adr/model/0091-identity-placeholders-not-framework-wiring.md)) | no |
+| `self` | a Vault policy and a Kubernetes auth role ([0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)). No Secret, no env var, nothing injected: the application's own client wiring stays in its env file ([0091](../../docs/adr/model/0091-identity-placeholders-not-framework-wiring.md)) | no |
 
 In all three the derived policy is granted per **path**: delivery decides how a
 value reaches a process, never what its token may read.
 
-`self` is not an edge case. `auth-api` runs it today — `SPRING_CONFIG_IMPORT:
+`self` is not an edge case. `auth-api` runs it today ( `SPRING_CONFIG_IMPORT:
 vault://`, `VAULT_AUTHENTICATION: KUBERNETES`,
-`VAULT_KUBERNETES_ROLE: ${identity:vaultRole}` — and those lines stay in its own
+`VAULT_KUBERNETES_ROLE: ${identity:vaultRole}`) and those lines stay in its own
 env file, because they are spring-cloud-vault's configuration surface and the
 model does not know what a framework is
 ([0091](../../docs/adr/model/0091-identity-placeholders-not-framework-wiring.md)).
@@ -1576,8 +1576,8 @@ private key cannot be an environment variable, and
 alongside `jorisjonkers-dev-tls`, `garage-node-secrets` and
 `vault-prometheus-token`.
 
-`rotation.tolerates` is what the consumer can survive when the value changes —
-`restart` or `reload` — and `rolloutRestartTargets` derives from it rather than
+`rotation.tolerates` is what the consumer can survive when the value changes (
+`restart` or `reload`) and `rolloutRestartTargets` derives from it rather than
 being hand-declared.
 
 ### Zero-downtime rotation
@@ -1587,11 +1587,11 @@ being hand-declared.
 
 | delivery | `tolerates` | replacing the value costs |
 |---|---|---|
-| `self` | `reload` | **nothing** — the client re-reads; no pod restarts |
+| `self` | `reload` | **nothing**: the client re-reads; no pod restarts |
 | `file` | `reload` | nothing, for a consumer that watches its projected file |
 | `self` or `file` | `restart` | a rollout |
 | `env` | `restart` | a rollout; `env` cannot do better |
-| `env` | `reload` | refused — `E_ENV_CANNOT_RELOAD` |
+| `env` | `reload` | refused: `E_ENV_CANNOT_RELOAD` |
 
 `env` is refused rather than degraded because a pod's environment is **fixed for
 its lifetime**: a rotated value cannot reach a running process that way, so a
@@ -1629,7 +1629,7 @@ For a `kv` grant the derived read path is the declared path, so this is the rule
 0027 always stated. For a `database` grant it is `database/creds/<role>`, which
 is where the credential is read from and what the derived policy covers. The join
 stays byte equality, with no mount rewrite and no engine taxonomy in the
-comparison — one rule over one string, which is the property that made the join
+comparison, one rule over one string, which is the property that made the join
 checkable in the first place.
 
 ```yaml
@@ -1644,11 +1644,11 @@ DB_USER=${secret:secret/data/platform/postgres/kb#user}
 ```
 
 The string between `${secret:` and `#` is compared to the grant's `path:` with no
-transform. There is no mount table, no `data/` strip rule and no engine taxonomy —
+transform. There is no mount table, no `data/` strip rule and no engine taxonomy,
 and no read of live Vault contents, which the pinned-input rule forbids anyway. The
 unstated rewrite the old design relied on did not generalise: `transit/keys/auth-api-jwt`
 has no `data/` segment, and a rule dropping two segments yields `auth-api-jwt`, a
-string a KV path could equally produce — so the one check that enforces the grant
+string a KV path could equally produce, so the one check that enforces the grant
 boundary at build time could be satisfied by a grant the author never intended.
 
 The `#<key>` half selects which value fills the variable and confers nothing; the
@@ -1670,12 +1670,12 @@ reader-set model auditable from the repository.
 | `${exposure:<service>.<name>#<field>}` | one field of a declared exposure | the composed union's exposure set ([Exposure](#exposure)) |
 
 `${exposure:…}` addresses an exposure by the Service that declares it and the
-`name` it carries there — which is what that `name` is for — and `<field>` is one
+`name` it carries there (which is what that `name` is for) and `<field>` is one
 of exactly three:
 
 | field | for `exposure: {name: public, host: auth.jorisjonkers.dev}` on Service `auth` |
 |---|---|
-| `url` | `https://auth.jorisjonkers.dev` — scheme and host, no trailing slash and no path |
+| `url` | `https://auth.jorisjonkers.dev`: scheme and host, no trailing slash and no path |
 | `host` | `auth.jorisjonkers.dev` |
 | `scheme` | `https` |
 
@@ -1692,13 +1692,13 @@ AUTH_LOGIN_URL=${exposure:auth.public#url}/login
 CONFIRMATION_URL=${exposure:auth.public#url}/confirm
 ```
 
-`${exposure:auth.public#url:/login}` — the same thing with the path moved
-inside — is not grammar, and the reason is the rule
+`${exposure:auth.public#url:/login}` (the same thing with the path moved
+inside) is not grammar, and the reason is the rule
 [Configuration](#configuration) already states: a placeholder is a named source,
 never a template language, with no conditionals and no arithmetic. A path
 argument is the smallest possible first argument; the second is a query string
 and the third is a conditional. Keeping the path outside also keeps the hostname
-greppable — `grep -r 'exposure:auth.public'` finds every reader of that host
+greppable: `grep -r 'exposure:auth.public'` finds every reader of that host
 whatever each appends, which is the same audit the byte-match rule buys for
 secrets.
 
@@ -1730,7 +1730,7 @@ this chapter owns:
 
 `keys: ['*']` has no error code because it is not in the grammar: a document
 carrying it fails schema validation. `E_ROLL_AFFECTS_OTHER_READERS` is the check
-nothing in the estate has today, and the case that motivates it is live —
+nothing in the estate has today, and the case that motivates it is live:
 `secret/platform/observability` holds three unrelated credentials and one job rolls
 one of them.
 
@@ -1748,24 +1748,24 @@ deadline, and the health-gate deadline the Service's switchover waits on.
 ### Cutover is declared, not promised
 
 `cutover` is **required on every Workload** and has **no default**. It is the
-owner's answer to one question — must the next revision keep serving while it
-cuts over? — and requiring the answer is what keeps the availability consequence
+owner's answer to one question (must the next revision keep serving while it
+cuts over?) and requiring the answer is what keeps the availability consequence
 visible in every declaration instead of implicit in a boolean nobody reads:
 
 | value | means | validation |
 |---|---|---|
-| `rolling` | the next revision must keep serving capacity throughout its cutover | refused where declared storage prevents a surge, including an **`ReadWriteOnce`** volume — `E_CUTOVER_UNHONOURABLE` |
+| `rolling` | the next revision must keep serving capacity throughout its cutover | refused where declared storage prevents a surge, including an **`ReadWriteOnce`** volume: `E_CUTOVER_UNHONOURABLE` |
 | `recreate` | the owner accepts a stop-then-start cutover | accepted for any storage; the adapter derives the safe strategy |
 
-The two values are the whole vocabulary, and the Kubernetes spellings —
-`RollingUpdate`, `Recreate`, `maxSurge`, `maxUnavailable` — are derived by the
+The two values are the whole vocabulary, and the Kubernetes spellings (
+`RollingUpdate`, `Recreate`, `maxSurge`, `maxUnavailable`) are derived by the
 adapter and appear nowhere in layer 1
 ([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)).
 
 An RWO volume cannot attach to two pods at once, so a `rolling` cutover over one
 is a promise the substrate cannot keep. Refusing it is the point: the old
 `zeroDowntime: true` could ask for continuity while the derived strategy was
-`Recreate`, and the contradiction was silent — the Workload rendered, reported
+`Recreate`, and the contradiction was silent: the Workload rendered, reported
 success, and simply stopped serving during every roll
 ([0030](../../docs/adr/model/0030-runtime-mechanics-derived.md)). A Workload
 whose storage forces `recreate` now says so, and a Workload with no such storage
@@ -1789,9 +1789,9 @@ processes on one kernel.
 narrow on purpose.** Where a Workload genuinely needs more than one, the count
 is stated here rather than routed through a general mechanism:
 
-- `count` must be **greater than one** — the field cannot become a verbose
+- `count` must be **greater than one**: the field cannot become a verbose
   spelling of the default;
-- `reason` is **required whenever `replicas` is present** — a capacity decision
+- `reason` is **required whenever `replicas` is present**: a capacity decision
   is data, not a YAML comment no tool can read;
 - the effective count continues to decide whether a PDB is rendered
   ([Replicas, and the disruption budget](#replicas-and-the-disruption-budget)).
@@ -1806,7 +1806,7 @@ with its own authority and validation
 ## No overrides
 
 **There is no `overrides` field.** A derived value has exactly one declaring
-site — the derivation — and an assignment has exactly one author — the platform
+site (the derivation) and an assignment has exactly one author (the platform)
 ([0004](../../docs/adr/model/0004-contention-decides-authority.md),
 [0005](../../docs/adr/model/0005-derivation-is-total.md)). The one local
 exception is [Capacity](#capacity) above.
@@ -1814,7 +1814,7 @@ exception is [Capacity](#capacity) above.
 The escape this replaces existed because the alternative was said to be a
 falsified input: an owner who needed a different deadline and could not say so
 would misreport their `startupBudget` to coax the number out of the derivation.
-That argument proved to license more than it justified — it was used to carry
+That argument proved to license more than it justified: it was used to carry
 values that were either a workload class the central rule should have covered, or
 platform policy a Service had no business setting. Both are now handled where
 they belong: the rule, or the platform. An owner whose `startupBudget` is
@@ -1855,8 +1855,8 @@ except for `read`, and `TransitOp` applies to a `transit` grant only
 that wants no monitoring omits its `observability` block
 ([Observability](#observability)).
 
-Every other attribute type is either a primitive — `string`, `int`, `bool`,
-`map` — or a named string this chapter constrains: `DomainName`, `ServiceId`,
+Every other attribute type is either a primitive (`string`, `int`, `bool`,
+`map`) or a named string this chapter constrains: `DomainName`, `ServiceId`,
 `ImageAlias`, `Fqdn`, `ExposureName`, `VaultPath`, `ClusterTarget`, `Site`,
 `Capability`, `GpuClassName`, `Path`, `Quantity`, `Duration`, `FileMode`,
 `SemVer` and `dotenv`. Each is defined where the field that uses it is defined.
@@ -1873,7 +1873,7 @@ declaring site is fixed:
 | a namespace | derived from `domain`, as `<domain>-system` |
 | a node label or selector | `placement` |
 | a scheduler weight, or any soft placement term | every dimension is hard ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)) |
-| `replicas` | derived as **1**, and more than one is a `replicas: {count, reason}` declaration ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)) — never a live cluster read |
+| `replicas` | derived as **1**, and more than one is a `replicas: {count, reason}` declaration ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)), never a live cluster read |
 | storage class, volume capacity | assigned |
 | `resources`, requests or limits | derived from `placement` |
 | a `securityContext` field | the platform's `hardening` posture, and `writablePaths` |
@@ -1886,14 +1886,14 @@ declaring site is fixed:
 | `statefulset` / `deployment` | derived from `lifecycle` + volumes |
 | a liveness probe with no path | state it, or use `tcp`, or `probes: none` |
 | a Dependency Coordinate as a literal | `${dependency:…}` |
-| a Runtime Profile key in an env file | `runtime` — the model injects them, and an exceptional value is not a layer-1 concept |
+| a Runtime Profile key in an env file | `runtime`: the model injects them, and an exceptional value is not a layer-1 concept |
 | a secret value, anywhere | a grant plus `${secret:…}` |
-| a secret grant with no reference | remove it — it is a dead grant |
+| a secret grant with no reference | remove it: it is a dead grant |
 | `keys: ['*']` | enumerate the keys |
 | a route tier, an `authMode`, a middleware name, a headers block, a `redirectRegex` | derived from `audience` and the tier; the authored proxy vocabulary is `contentPolicy` and `redirectTo`, and nothing else |
 | a `volumeClaimTemplate` | declare the claim cluster-side |
 | an executable Asset | an image |
-| a deploy workflow, applier or gate | not a model concern — see below |
+| a deploy workflow, applier or gate | not a model concern: see below |
 
 ## Delivery and co-testing are defined separately
 
@@ -1905,12 +1905,12 @@ work lives in [docs/adr/deferred/](../../docs/adr/deferred/README.md).
 
 The model's complete interface to that work is three demands, all decided here:
 
-1. **Service atomicity** — no Workload of a Service switches until every Workload
+1. **Service atomicity**: no Workload of a Service switches until every Workload
    of that Service is healthy
    ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)).
-2. **Durability Class gating** — a destructive operation on a non-`reconstructible`
+2. **Durability Class gating**: a destructive operation on a non-`reconstructible`
    claim is refused ([0015](../../docs/adr/model/0015-durability-class-per-volume.md)).
-3. **Pinned inputs only** — every rendered value is a function of digested inputs,
+3. **Pinned inputs only**: every rendered value is a function of digested inputs,
    `clusterStateDigest` included
    ([0006](../../docs/adr/model/0006-pinned-inputs.md),
    [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)).
@@ -1939,14 +1939,14 @@ comparison against the node contract, and failing it is
 
 The second asked how an exposure entry is named, and it is now
 [vocabulary](#exposure). An exposure carries an authored `name`, unique within
-its Service, and an authored `host` that is the full FQDN — so the chapters no
+its Service, and an authored `host` that is the full FQDN, so the chapters no
 longer disagree about what an exposure is called, and
 `E_DUPLICATE_EXPOSURE_NAME` finally has a definition to check. An apex host is
 `host: jorisjonkers.dev` and needs no flag, no field and no check of its own: two
 Services claiming it is `E_DUPLICATE_HOST`, like any other collision. That closes
 chapter 00's first open item, of which this entry was the chapter-10 half. What
-the entry flagged — a value the contention test had placed on the platform side,
-now authored — is the same move `placement` makes, and it is settled the same
+the entry flagged (a value the contention test had placed on the platform side,
+now authored) is the same move `placement` makes, and it is settled the same
 way: contention decides who arbitrates, not who authors
 ([0004](../../docs/adr/model/0004-contention-decides-authority.md)).
 
@@ -1954,7 +1954,7 @@ way: contention decides who arbitrates, not who authors
 
 | example | what it exercises |
 |---|---|
-| [`minimal/notes.domain.yml`](examples/minimal/notes.domain.yml) + [`env`](examples/minimal/env/notes-api/base.env) | **read this first.** One domain, one Service, one Workload, and no field that is not required: 26 authored lines reaching 10 objects, with no grant, no volume and no gap row. It is also the only set that renders on today's pinned inputs, because it holds nothing the secrets-at-rest gate can refuse — see [`minimal/README.md`](examples/minimal/README.md) |
+| [`minimal/notes.domain.yml`](examples/minimal/notes.domain.yml) + [`env`](examples/minimal/env/notes-api/base.env) | **read this first.** One domain, one Service, one Workload, and no field that is not required: 26 authored lines reaching 10 objects, with no grant, no volume and no gap row. It is also the only set that renders on today's pinned inputs, because it holds nothing the secrets-at-rest gate can refuse: see [`minimal/README.md`](examples/minimal/README.md) |
 | [`knowledge/knowledge.domain.yml`](examples/knowledge/knowledge.domain.yml) + [`env`](examples/knowledge/env/knowledge-api.base.env) + [`worker env`](examples/knowledge/env/knowledge-ingest-worker.base.env) | two Workloads, two runtimes and therefore two identities, `probes: none` and no `provides` on the worker, grants at **both** levels, a split Subtree path, a `0400` file secret, an `irreplaceable` volume |
 | [`auth/auth.domain.yml`](examples/auth/auth.domain.yml) + [`env`](examples/auth/env/auth-api.base.env) | one Service, two Workloads switching atomically; `delivery: self` with `tolerates: reload`, a `self-roll` transit grant taking no placeholder, and the writable paths that retired its hardening exception |
 | [`data/data.domain.yml`](examples/data/data.domain.yml) + [`env`](examples/data/env/platform-postgres.base.env) | three Services releasing independently in one domain, third-party images, a `disk` dimension, TCP probes, and a surface eight Services consume |
@@ -1963,7 +1963,7 @@ The env-file-to-`secrets` cross-check runs over the three larger sets; the
 minimal one has no grant and no placeholder, which is the base case. `knowledge-api` has
 5 placeholders matching 5 env-delivered keys, and its ingest worker 4 more against
 the same Service-level grants; `platform-postgres` has 1 matching 1; `auth-api` has
-**0 and 0**, because all three of its grants are `delivery: self` — which
+**0 and 0**, because all three of its grants are `delivery: self`, which
 demonstrates the check does not false-positive on runtime fetch. The byte-match rule
 changes how each placeholder is spelled, not how many there are. No dead grants, no
 unauthorised references, and no `delivery: env` paired with `tolerates: reload`.
@@ -1971,7 +1971,7 @@ unauthorised references, and no `delivery: env` paired with `tolerates: reload`.
 Two negative fixtures sit beside them: `negative/duplicate-service-id/` asserts
 `E_DUPLICATE_SERVICE_ID` across two repositories, and
 `negative/duplicate-workload-name/` asserts `E_DUPLICATE_WORKLOAD_NAME` for two
-Services in one domain reusing a Workload name — the check that lets a
+Services in one domain reusing a Workload name: the check that lets a
 ServiceAccount be the Workload name alone.
 
 ## Diagram sources
@@ -1980,7 +1980,7 @@ Each diagram above is drawn in draw.io and committed as an SVG with the editable
 diagram embedded, so opening the `.svg` in draw.io recovers the drawing. The
 mermaid below is the same structure in text, kept so a diagram change shows up in
 a plain diff. **Where the two disagree the SVG is the diagram and the mermaid is
-what gets fixed** — the same precedence this repository uses between a chapter and
+what gets fixed**, the same precedence this repository uses between a chapter and
 an ADR.
 
 ### The layer-1 model

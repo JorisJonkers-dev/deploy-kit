@@ -1,9 +1,9 @@
-# Chapter 14 — Platform Intent
+# Chapter 14: Platform Intent
 
 Layer 1 has **two** authored documents, and this chapter is the second. Service
 Intent (chapter 10) says what a Service needs; Platform Intent says what the
-estate offers. Both are held to the same rule — **requirements and facts, never
-mechanisms** — and one test decides which document a value lives in: the
+estate offers. Both are held to the same rule, **requirements and facts, never
+mechanisms**, and one test decides which document a value lives in: the
 contention test ([0004](../../docs/adr/model/0004-contention-decides-authority.md)).
 A value a Service could state for itself belongs in chapter 10; a value that
 must be unique across the estate or draws on a shared finite resource belongs
@@ -38,8 +38,8 @@ Three things a reader might expect here live elsewhere, each for a reason.
 
 | not here | where | why |
 |---|---|---|
-| the foundation components — Vault, VSO, Traefik, the metrics stack, Gatus | domain files the platform owns, as ordinary Services ([The foundation is declared](#the-foundation-is-declared)) | a Service is a Service; a second way to declare one is the duplicate vocabulary [0003](../../docs/adr/model/0003-three-layer-meta-model.md) exists to end |
-| the node contract — site, arch, allocatable, gpus, disks per node | its own pinned input, authored once where nix reads it ([0056](../../docs/adr/model/0056-node-facts-single-source.md), [chapter 60](60-setup.md#node-facts)) | folding it in would make nix read a deployment-model document or duplicate the facts |
+| the foundation components, Vault, VSO, Traefik, the metrics stack, Gatus | domain files the platform owns, as ordinary Services ([The foundation is declared](#the-foundation-is-declared)) | a Service is a Service; a second way to declare one is the duplicate vocabulary [0003](../../docs/adr/model/0003-three-layer-meta-model.md) exists to end |
+| the node contract, site, arch, allocatable, gpus, disks per node | its own pinned input, authored once where nix reads it ([0056](../../docs/adr/model/0056-node-facts-single-source.md), [chapter 60](60-setup.md#node-facts)) | folding it in would make nix read a deployment-model document or duplicate the facts |
 | anything executable | the images lock, as a purpose-built image per engine ([Engines](#engines)) | [0012](../../docs/adr/model/0012-assets-not-code.md) applies to the platform's own files |
 
 The Platform document names the node contract it was composed against, by
@@ -105,8 +105,8 @@ needs fails the build, and a component that should be declared and is not is
 ## The foundation is declared
 
 Vault, VSO, Traefik, Prometheus and Gatus are Services in domain files the
-platform owns — `platform/edge.yml`, `platform/secrets.yml`,
-`platform/observability.yml` — with an `image`, Workloads, `engine`, grants,
+platform owns: `platform/edge.yml`, `platform/secrets.yml`,
+`platform/observability.yml`, with an `image`, Workloads, `engine`, grants,
 `exposure`, volumes and a Durability Class like any tenant Service
 ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)). Nothing
 about them is hand-written, and every estate-wide invariant in
@@ -115,16 +115,16 @@ about them is hand-written, and every estate-wide invariant in
 Two consequences are normative:
 
 - **No chart is rendered.** A component whose upstream ships a Helm chart is
-  declared from its image; what the chart added — defaults and CRDs — is
+  declared from its image; what the chart added (defaults and CRDs) is
   respectively what a declaration replaces and what the bootstrap set pins.
   `HelmRelease` and `HelmRepository` are not rendered kinds.
 - **Two Traefik instances are two Services**, placed by capability: one on the
   `public-ingress` node, one on a LAN node. That placement, and the tier facts
-  below, are what keep LAN traffic off the Frankfurt proxy — not which adapter
+  below, are what keep LAN traffic off the Frankfurt proxy, not which adapter
   emitted the route.
 
-The estate-scoped Deliverables that used to have adapters of their own — the
-Gatus endpoints, the edge catalogs — are **inbound derivations** of the platform
+The estate-scoped Deliverables that used to have adapters of their own, the
+Gatus endpoints, the edge catalogs, are **inbound derivations** of the platform
 Service that consumes them ([chapter 16](16-dependencies.md#what-an-edge-derives-read-inbound)),
 rendered as that Service's own Assets, exactly as the database catalog is for
 `postgres` ([0080](../../docs/adr/model/0080-database-catalog-is-derived-data.md)).
@@ -160,7 +160,7 @@ tiers:
 
 `entryPoint`, `certResolver` and every other Traefik spelling appear only in the
 adapter. A route's audience is the **only** way it reaches a tier, so a `lan`
-exposure can reach the LAN proxy and no other — by construction, not by which
+exposure can reach the LAN proxy and no other, by construction, not by which
 adapter ran.
 
 ## Durability policy
@@ -273,8 +273,8 @@ against facts, never against exemptions.
 ## There is nothing to override here
 
 **Layer 1 has no generic override mechanism and this document carries no
-overridable-derivations table.** A derived value has one declaring site — the
-derivation — and an assignment has one author — the platform. The sole local
+overridable-derivations table.** A derived value has one declaring site, the
+derivation, and an assignment has one author, the platform. The sole local
 exception is capacity ([chapter 10](10-service-intent.md#capacity)):
 
 ```yaml
@@ -287,18 +287,18 @@ There is no `E_UNKNOWN_OVERRIDE`, because there is no key set to be outside.
 What used to sit in a ten-row table resolves three ways:
 
 - **A workload-class difference is a derivation bug.** If one rule is wrong for a
-  whole class of Workload, the rule is repaired and the estate re-rendered —
+  whole class of Workload, the rule is repaired and the estate re-rendered,
   which is what `startupDeadline` was, and why it is now one rule over
   `startupBudget` rather than a per-Workload exception.
 - **A platform policy stays platform policy.** Cadence, retention, ephemeral
   size, probe timing and route precedence are contended and shared; they are
   stated once here or derived, and no Service restates them.
 - **An irreducible Service fact earns a named field** with its own authority,
-  validation and example — not a generic entry pointing at a rendered field.
+  validation and example, not a generic entry pointing at a rendered field.
 
 That is deliberately more demanding than adding a row. An unbounded exception
 system becomes the normal configuration interface, and a value reachable two ways
-has no single declaring site — which is the property chapter 16's
+has no single declaring site, which is the property chapter 16's
 single-authority check exists to protect.
 
 ## Open in this chapter

@@ -2,7 +2,7 @@
 #
 # The same Workload over the same `ReadWriteOnce` storage, declaring the cutover
 # its storage can honour. The owner accepts stop-then-start, and the adapter
-# derives the safe Kubernetes strategy — `Recreate`, with no surge — from the
+# derives the safe Kubernetes strategy (`Recreate`, with no surge) from the
 # declared intent and the storage facts. No Kubernetes token appears here:
 # `RollingUpdate`, `maxSurge` and `maxUnavailable` are the adapter's, not the
 # Service author's (spec/v1/10-service-intent.md #cutover-is-declared-not-promised).
