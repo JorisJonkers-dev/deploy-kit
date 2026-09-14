@@ -204,7 +204,9 @@
 
       # Binary, not gitleaks-action: the action needs a paid licence for org
       # repos. Pinned version, per
-      # docs/adr/deferred/0048-class-b-pinning.md.
+      # docs/adr/deferred/0048-class-b-pinning.md. scripts/lint-secrets.ts is
+      # the one command and one set of patterns `npm run verify` also runs;
+      # this step only supplies the pinned binary it downloads.
       - 'name': 'Secret scan'
         'shell': 'bash'
         'env':
@@ -214,7 +216,7 @@
           curl --fail --silent --show-error --location \
             "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
             | tar -xz gitleaks
-          ./gitleaks detect --no-git --redact --source . --exit-code 1
+          GITLEAKS="${PWD}/gitleaks" npm run lint:secrets
 
   'pipeline-complete':
     'name': 'Pipeline Complete'
