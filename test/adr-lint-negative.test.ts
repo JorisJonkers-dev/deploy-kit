@@ -92,6 +92,13 @@ function tree(
     join(root, "docs", "architecture.md"),
     "# Architecture\n\n## Layers\n\nText.\n",
   );
+  // The second normative document an architecture ADR may point at. It
+  // deliberately carries only one heading, so a pointer at a section it lacks
+  // is the case the anchor check has to catch.
+  writeFileSync(
+    join(root, "docs", "architecture-rules.md"),
+    "# Rule ledger\n\n## Rules\n\nText.\n",
+  );
 
   const all: Record<string, string> = { ...files };
   if (premise)
@@ -414,6 +421,27 @@ describe("domain directories", () => {
         }),
       }),
     ).toMatch(/anchor '#no-such-heading' not found/);
+  });
+
+  it("passes an architecture ADR anchoring into the rule ledger", () => {
+    expect(
+      violations({
+        [DECISION]: validAdr(),
+        "architecture/0064-a-code-decision.md": validAdr({
+          normative: "docs/architecture-rules.md#rules",
+        }),
+      }),
+    ).toBe("");
+  });
+
+  it("fails an architecture ADR naming a rule ledger section that is not there", () => {
+    expect(
+      violations({
+        "architecture/0064-a-code-decision.md": validAdr({
+          normative: "docs/architecture-rules.md#families",
+        }),
+      }),
+    ).toMatch(/anchor '#families' not found in docs\/architecture-rules\.md/);
   });
 
   it("fails a model ADR pointing outside spec/v1", () => {

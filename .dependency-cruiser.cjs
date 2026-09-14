@@ -41,6 +41,35 @@ const AMBIENT = [
 ];
 const ambientPattern = `^(node:)?(${AMBIENT.join("|")})$`;
 
+/**
+ * Packages an architecture decision already rejected, each with the record
+ * that rejected it. A denylist is cheaper than the argument a second time.
+ *
+ *   @kubernetes/client-node  the compiler renders, it does not apply: adapters
+ *                            build typed objects and one serializer owns the
+ *                            bytes (0067).
+ *   ajv                      Zod is the one validator; a second one means two
+ *                            declarations of the same shape (0066).
+ *   zod-to-json-schema       Zod generates JSON Schema itself, from the input
+ *                            variant of each schema (0066).
+ *   handlebars, ejs,         text templating is the generation this compiler
+ *   mustache, nunjucks       replaces: objects in, one serializer out (0067).
+ */
+const DENIED = [
+  "@kubernetes/client-node",
+  "ajv",
+  "zod-to-json-schema",
+  "handlebars",
+  "ejs",
+  "mustache",
+  "nunjucks",
+];
+// The resolved path, not the specifier: an installed package resolves under
+// node_modules/, and one that is merely written resolves to itself.
+const deniedPattern = `^(node_modules/)?(${DENIED.map((name) =>
+  name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+).join("|")})(/|$)`;
+
 module.exports = {
   forbidden: [
     {
@@ -193,6 +222,27 @@ module.exports = {
       comment: "Shipped code may not import a devDependency.",
       from: { path: "^src/", pathNot: "\\.test\\.ts$" },
       to: { dependencyTypes: ["npm-dev"] },
+    },
+    {
+      name: "no-denied-dependency",
+      severity: "error",
+      comment:
+        "A package an architecture decision already rejected. See the DENIED " +
+        "list above for which record rejected which, and " +
+        "docs/architecture-rules.md RULE-022 for the ledger row.",
+      from: { path: "^src/" },
+      to: { path: deniedPattern },
+    },
+    {
+      name: "no-unresolvable-import",
+      severity: "error",
+      comment:
+        "A relative import that resolves to nothing is an edge no other rule " +
+        "can check: the graph cannot tell which ring it crossed. Bare " +
+        "specifiers are left to the package manager and the type checker, " +
+        "which say something more useful about a missing package.",
+      from: { path: "^src/" },
+      to: { couldNotResolve: true, path: "^[.]" },
     },
     {
       name: "not-to-deprecated-core",

@@ -127,6 +127,15 @@
       - 'name': 'Requirements ledger'
         'run': 'npm run lint:requirements'
 
+      # The rule ledger (docs/architecture-rules.md): every row resolves its
+      # enforcer, every enforced row names a fixture that asserts on its
+      # witness, every pending row carries a ticket and a reason, and every
+      # rule the two rule configurations name is claimed by exactly one
+      # enforced row. See
+      # docs/adr/architecture/0104-every-enforced-rule-has-an-id-a-row-and-a-fixture.md.
+      - 'name': 'Rule ledger'
+        'run': 'npm run lint:rules'
+
       # README.md and CONTRIBUTING.md, held to the repository they describe:
       # every named script exists, every backtick-quoted path exists, every
       # quoted coverage number matches vitest.config.ts, every quoted Node

@@ -188,7 +188,7 @@ clean tree is untested: nothing proves it would fail.
 
 ## Gates
 
-Thirteen gates hold the structure, and each exists because its absence has already
+Fourteen gates hold the structure, and each exists because its absence has already
 cost something in the generation this compiler replaces. Each runs as its own
 CI job, aggregated by one required check that fails when any gate job fails,
 is cancelled, or is skipped
@@ -207,17 +207,25 @@ proves the two never drift apart.
 | links | `npm run lint:links` | relative links and heading anchors across every tracked Markdown file |
 | manifests | `npm run lint:manifests` | every rendered example object against pinned Kubernetes and CRD schemas |
 | requirements | `npm run lint:requirements` | a behaviour ledger row that no longer parses, names a missing or empty test, drifts from its stated count, or is cited by an id no row carries |
+| rules | `npm run lint:rules` | a [rule ledger](architecture-rules.md) row whose enforcer no longer exists, whose fixture no longer asserts on its witness, or that is pending with no ticket and no reason, and a rule the ruleset or the lint configuration enforces that no row claims |
 | docs | `npm run lint:docs` | a script, path, coverage number or Node version README.md or CONTRIBUTING.md name that no longer matches the repository |
 | tests | `npm run test:coverage` | behaviour, plus the coverage ratchet |
 | package contents | `node scripts/check-package-contents.ts` | `npm pack` shipping a file outside `docs/adr/` and `spec/`, the boundary the package's `files` field states but does not enforce on its own |
 | actionlint | a pinned `actionlint` binary | invalid workflow syntax, an undefined `${{ }}` expression, a shellcheck finding inside a `run:` step |
 | secret scan | `npm run lint:secrets` | a committed secret matching the default ruleset, or this repository's own allowlist entries |
 
-Decisions, links, manifests, requirements and docs share one CI job,
-`contracts`: all five check a document against a rule rather than code
+Decisions, links, manifests, requirements, rules and docs share one CI job,
+`contracts`: all six check a document against a rule rather than code
 against a graph.
 Boundaries runs alone as `architecture`, because it is the one gate that
 speaks for `docs/architecture.md` itself rather than for a document beside it.
+
+Every rule these gates enforce is written down once, with a greppable id, in
+the [rule ledger](architecture-rules.md)
+([0104](adr/architecture/0104-every-enforced-rule-has-an-id-a-row-and-a-fixture.md)).
+A row names the enforcer that runs the rule and the fixture that proves it
+fires; a rule not enforced yet is listed as pending with a ticket and a reason,
+and stops being allowed to say that the moment something enforces it.
 
 Coverage is a ratchet ([0101](adr/architecture/0101-coverage-is-a-ratchet.md)).
 The thresholds in `vitest.config.ts` sit on what the suite reaches, over an

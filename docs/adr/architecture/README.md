@@ -8,7 +8,9 @@ and no chapter of `spec/v1` depends on one.
 The consequence for the contract every ADR satisfies is one field: a
 `normative:` pointer here names a section of
 [`docs/architecture.md`](../../architecture.md), the normative document for code
-structure, rather than a section of `spec/v1`. Everything else is unchanged
+structure, or of [`docs/architecture-rules.md`](../../architecture-rules.md),
+the ledger of rules that structure is held to, rather than a section of
+`spec/v1`. Everything else is unchanged
 (frontmatter schema, a falsifiable claim per premise, `rests-on` naming premises
 only, the Alternatives table, the citation rule) and `scripts/lint-adrs.ts`
 enforces all of it here exactly as it does for the model, anchor check included.
