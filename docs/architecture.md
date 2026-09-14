@@ -186,6 +186,62 @@ CRD schemas, so a file that parses but cannot apply fails the build.
 Every gate carries negative fixtures. A check that has only ever run against a
 clean tree is untested: nothing proves it would fail.
 
+## The parity contract
+
+This compiler has a second implementation. The model-driven engineering course
+this repository is coursework for requires Ecore, Xtext, OCL, QVT-Operational
+and Acceleo, so a Java implementation lives under [`emf/`](../emf/README.md)
+until its sunset condition holds
+([0105](adr/architecture/0105-two-implementations-meet-at-committed-oracles.md)).
+Everything about that implementation, its build, its checks and its decisions,
+lives inside `emf/`. What lives here is the contract both implementations
+answer to, because the contract outlives the second implementation.
+
+Neither implementation is generated from the other, and neither is the oracle
+for the other. Each is tested on its own against committed oracle files, and
+agreement between the two follows from both agreeing with the oracle.
+
+| oracle | where | compared as |
+|---|---|---|
+| the parsed Service Intent | `spec/v1/examples/<case>/expected/intent.json` | canonical JSON, byte for byte |
+| the Resolved Deployment | `spec/v1/examples/<case>/expected/resolved.json` | canonical JSON, byte for byte |
+| the Deliverable Set | `spec/v1/examples/<case>/rendered/` | the existing golden tree, byte for byte |
+| the diagnostics of a refused case | `<input>.diagnostics.json` beside the refused input in `refusals/` or `negative/` | a set of `(code, path)` pairs |
+| the metamodel's structure | `spec/v1/examples/expected/descriptor.json` | canonical JSON, byte for byte |
+
+**Canonical JSON** is RFC 8785 (JSON Canonicalization Scheme): keys sorted,
+numbers in their shortest form, no insignificant whitespace. An absent
+optional field is absent, never `null`.
+
+**A path** is an RFC 6901 JSON Pointer into the canonical intent document,
+`/services/0/observability/alertClass`. A diagnostic about a derived value
+points at the authored value it derives from. Messages and hints are free per
+implementation; the code and the path are the contract.
+
+**The descriptor** lists every class of every layer with its features, each
+feature's type and multiplicity, and every closed vocabulary with its literals.
+The TypeScript side builds it from the Zod schemas with Zod's native
+`z.toJSONSchema()` and a normaliser; the descriptor's shape is fixed here, not
+by either source format.
+
+**The constraint ledger** gives every model constraint a `CONS-NNN` id, the
+diagnostic code it emits, the check that enforces it in `src/`, and a refused
+fixture that proves it fires. A constraint the ledger does not list is not part
+of the model's validation, whichever implementation happens to enforce it.
+
+**Behaviour rows.** A row of the [behaviour ledger](requirements.md) whose
+behaviour is the model's own (parse, validate, resolve, render) is proved in
+both implementations. The row names the TypeScript test; the Java witness for
+the same id is listed inside `emf/`, and `emf/`'s own gate fails when a model
+row has no witness there.
+
+An oracle file changes in the pull request that changes the behaviour it
+records, and both implementations go red together until both are fixed. CI
+never regenerates an oracle file from either implementation: a tool may write a
+candidate, and the committed file is the reviewed copy of it. A
+case without every oracle file is not yet a parity case, and the ledger that
+lists cases says so rather than skipping it silently.
+
 ## Gates
 
 Fourteen gates hold the structure, and each exists because its absence has already

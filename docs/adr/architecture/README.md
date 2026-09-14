@@ -21,3 +21,9 @@ knowing which domain it lands in. The register is
 
 The scope boundary is stated in
 [chapter 00](../../../spec/v1/00-overview.md#programme-scope).
+
+Four of these decisions are scoped to the TypeScript tree for as long as the
+coursework implementation under `emf/` exists, and
+[0105](0105-two-implementations-meet-at-committed-oracles.md) is the contract
+between the two. The Java implementation's own structure is decided in
+[`emf/docs/adr/`](../../../emf/docs/adr/README.md), not here.

@@ -55,6 +55,26 @@ Delivery mechanics and co-testing are **defined separately**: see
 applier, a prune pass, a field manager or a co-test gate in `spec/v1`; state the
 model-level rule and point at the deferred set.
 
+### The coursework implementation under `emf/`
+
+The MDE course requires the compiler to be built with Ecore, Xtext, OCL,
+QVT-Operational and Acceleo, so `emf/` holds a second, hand-written Java
+implementation (Maven and Tycho, JDK 21, no Eclipse IDE). It is deprecated
+from the day it lands and deleted at its sunset:
+
+- **The root stays TypeScript.** Every pom, module, check, ledger and decision
+  of the Java side lives under `emf/`. The root references it only from CI
+  (the `emf` job and the `emf` ADR lint step), the `emf` domain in
+  `scripts/lint-adrs.ts` and its test, and
+  [`docs/architecture.md#the-parity-contract`](docs/architecture.md#the-parity-contract).
+- **Never generate one implementation from the other.** Both are tested,
+  separately, against committed oracle files under `spec/v1/examples/`.
+- **A model change lands in both implementations** and in the oracle files,
+  in one pull request.
+- EMF decisions live in [`emf/docs/adr/`](emf/docs/adr/README.md), numbered
+  from the root's sequence. Check both registers before taking a number, and
+  lint with `node scripts/lint-adrs.ts emf`.
+
 `deploy-config-schema` is the repository this one replaces. It stays alive and
 authoritative until `deploy-kit` can render the estate; do not treat it as dead.
 

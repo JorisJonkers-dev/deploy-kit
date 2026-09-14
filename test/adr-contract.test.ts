@@ -32,6 +32,29 @@ test("the ADR lint, run as a command, passes over the committed decision set", (
   expect(out).toMatch(/^ADR lint: \d+ files clean$/m);
 });
 
+test("the coursework register under emf/, linted as its own root, passes", () => {
+  const out = execFileSync(
+    process.execPath,
+    [join(REPOSITORY, "scripts", "lint-adrs.ts"), join(REPOSITORY, "emf")],
+    { encoding: "utf8" },
+  );
+  expect(out).toMatch(/^ADR lint: \d+ files clean$/m);
+});
+
+test("no number is used in both the root register and the coursework register", () => {
+  const emfDir = join(REPOSITORY, "emf", "docs", "adr", "emf");
+  const numbers = (dir: string): string[] =>
+    (existsSync(dir) ? readdirSync(dir) : [])
+      .filter((file) => /^\d{4}-.+\.md$/.test(file))
+      .map((file) => file.slice(0, 4));
+  const root = new Set(
+    ["model", "architecture", "deferred"].flatMap((domain) =>
+      numbers(join(ADR_DIR, domain)),
+    ),
+  );
+  expect(numbers(emfDir).filter((n) => root.has(n))).toEqual([]);
+});
+
 test("the decision set is non-empty, and one number is used once", () => {
   expect(adrFiles.length).toBeGreaterThanOrEqual(40);
   const numbers = adrFiles.map((file) => Number(basename(file).slice(0, 4)));
