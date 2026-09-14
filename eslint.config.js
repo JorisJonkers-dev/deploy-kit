@@ -17,6 +17,8 @@ export default defineConfig(
       "dist/**",
       "node_modules/**",
       "reports/**",
+      // Maven build output from the model-driven implementation under emf/.
+      "**/target/**",
     ],
   },
   js.configs.recommended,

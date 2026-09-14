@@ -126,3 +126,33 @@ describe("npm script wiring", () => {
       ).not.toThrow();
   });
 });
+
+// REQ-016 (docs/requirements.md): a code scanning finding of any severity fails
+// Pipeline Complete.
+describe("code scanning gates the merge", () => {
+  const ci = readFileSync(
+    join(REPOSITORY, ".github", "workflows", "ci.yml"),
+    "utf8",
+  );
+  const codeql = readFileSync(
+    join(REPOSITORY, ".github", "workflows", "codeql.yml"),
+    "utf8",
+  );
+  const needs =
+    /'pipeline-complete':[\s\S]*?'needs':\n((?:\s+- '[\w-]+'\n)+)/.exec(
+      ci,
+    )?.[1] ?? "";
+
+  it("CI calls the CodeQL workflow as a job Pipeline Complete needs", () => {
+    expect(ci).toContain("'uses': './.github/workflows/codeql.yml'");
+    expect(needs).toContain("- 'codeql'");
+    expect(codeql).toContain("'workflow_call':");
+  });
+
+  it("the CodeQL workflow fails on any unsuppressed finding", () => {
+    expect(codeql).toContain("'name': 'Fail on any finding'");
+    expect(codeql).toContain("'output': 'sarif'");
+    expect(codeql).toContain("select((.suppressions // []) | length == 0)");
+    expect(codeql).toContain("exit 1");
+  });
+});

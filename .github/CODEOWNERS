@@ -7,3 +7,6 @@
 # change that lands without its ADR is the drift this repository exists to stop.
 /docs/adr/ @JorisJonkers-dev/maintainers
 /spec/     @JorisJonkers-dev/maintainers
+
+# The model-driven implementation, deleted at its sunset.
+/emf/      @JorisJonkers-dev/maintainers
