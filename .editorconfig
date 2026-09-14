@@ -17,3 +17,7 @@ trim_trailing_whitespace = false
 
 [Makefile]
 indent_style = tab
+
+# Oracle files are RFC 8785 canonical JSON, compared byte for byte: no final newline.
+[spec/v1/examples/**/{expected/*.json,*.diagnostics.json}]
+insert_final_newline = false

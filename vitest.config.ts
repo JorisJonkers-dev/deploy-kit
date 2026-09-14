@@ -23,16 +23,16 @@ export default defineConfig({
       // A ratchet, per docs/adr/architecture/0101-coverage-is-a-ratchet.md:
       // set from what the suite reaches, and only ever raised.
       //
-      // Measured 2026-09-14, after the spec error-code gate
-      // (scripts/lint-codes.ts): statements 761/774, branches 414/446,
-      // functions 120/120, lines 707/720. What is left uncovered is the
-      // one-line command guard at the bottom of each gate and the branches for
-      // a tool that cannot be started at all.
+      // Measured 2026-09-14, after the first module under src/ (the canonical
+      // JSON writer, at 100%): statements 786/799, branches 432/464,
+      // functions 100%, lines 731/744. What is left uncovered is the one-line
+      // command guard at the bottom of each gate and the branches for a tool
+      // that cannot be started at all.
       thresholds: {
-        statements: 98.32,
-        branches: 92.82,
+        statements: 98.37,
+        branches: 93.1,
         functions: 100,
-        lines: 98.19,
+        lines: 98.25,
       },
     },
   },
