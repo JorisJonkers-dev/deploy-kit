@@ -83,6 +83,20 @@ twice is a build error ([0053](adr/model/0053-adapter-port-contract.md),
 above it is a published compatibility surface: an out-of-tree adapter pins it,
 so narrowing it later is a major release.
 
+## The process boundary
+
+Only the infrastructure and CLI rings read ambient state: the environment, the
+clock, randomness, a child process, or the filesystem synchronously. Everything
+further in receives what it needs as a value or through a port, so a derivation
+cannot depend on when or where it runs
+([0117](adr/architecture/0117-the-process-lives-in-one-boundary-file.md)).
+
+Only `src/cli/boundary.ts` exits the process, sets its exit code, or writes to
+stdout or stderr, the console included. It holds no decision: it takes the
+result the CLI computed and performs it. It is the one file coverage excludes,
+because a line that ends the process cannot be observed from inside it, and
+every line worth covering sits outside it.
+
 ## The wire boundary
 
 Zod schemas declare what a human writes, one set per document family per
@@ -122,8 +136,31 @@ each is a pure function from the composed intent to a diagnostic list,
 registered with its code. The registry is enumerable, so a rule with no test or
 no spec anchor is detectable rather than merely absent.
 
+Every code a chapter defines is exercised by a test, or pending on the ticket
+that will exercise it, and no code a chapter does not define is used in the
+tree; `npm run lint:codes` holds both
+([0118](adr/architecture/0118-every-spec-error-code-is-proved-by-a-test.md)). A
+test exercises a code by naming it, whether in a TypeScript test, a Java test
+of the model-driven implementation, or a refused case's committed
+`diagnostics.json`.
+
 The CLI renders diagnostics for a human by default, emits the array verbatim
 under `--json`, and maps failure classes to distinct exit statuses.
+
+## Generated files
+
+A file a tool derives from another committed file is committed too, and CI
+regenerates it and fails on a diff, from the pull request that brings its
+generator: the JSON Schema derived from the metamodel, and the diagnostic
+catalogue. A reader sees the artifact without running anything, and a change
+to the source cannot land without the artifact that depends on it
+([0119](adr/architecture/0119-generated-files-are-committed-and-diff-checked.md)).
+
+An oracle file is the opposite. The rendered example trees, `intent.json`,
+`resolved.json`, `dependencies.json`, `diagnostics.json` and the descriptor are
+written and reviewed by hand, and no generator in CI writes into an oracle path,
+because an oracle that an implementation regenerates proves only that the
+implementation agrees with itself.
 
 ## Serialization
 
@@ -261,7 +298,7 @@ lists cases says so rather than skipping it silently.
 
 ## Gates
 
-Sixteen gates hold the structure, and each exists because its absence has already
+Seventeen gates hold the structure, and each exists because its absence has already
 cost something in the generation this compiler replaces. Each runs as its own
 CI job, aggregated by one required check that fails when any gate job fails,
 is cancelled, or is skipped
@@ -281,6 +318,7 @@ proves the two never drift apart.
 | manifests | `npm run lint:manifests` | every rendered example object against pinned Kubernetes and CRD schemas |
 | requirements | `npm run lint:requirements` | a behaviour ledger row that no longer parses, names a missing or empty test, drifts from its stated count, or is cited by an id no row carries |
 | rules | `npm run lint:rules` | a [rule ledger](architecture-rules.md) row whose enforcer no longer exists, whose fixture no longer asserts on its witness, or that is pending with no ticket and no reason, and a rule the ruleset or the lint configuration enforces that no row claims |
+| codes | `npm run lint:codes` | a specification `E_` code no test exercises and no ticket holds pending, a pending code a test already exercises, and a code used in the tree that no chapter defines |
 | docs | `npm run lint:docs` | a script, path, coverage number or Node version README.md or CONTRIBUTING.md name that no longer matches the repository |
 | tests | `npm run test:coverage` | behaviour, plus the coverage ratchet |
 | package contents | `node scripts/check-package-contents.ts` | `npm pack` shipping a file outside `docs/adr/` and `spec/`, the boundary the package's `files` field states but does not enforce on its own |
@@ -289,8 +327,8 @@ proves the two never drift apart.
 | code scanning | CodeQL, called from `ci.yml` as the `codeql` job | any finding, of any severity, in JavaScript, TypeScript, workflow logic or the Java under `emf/`; a wrong one is filtered in `.github/codeql/codeql-config.yml` with its reason |
 | model-driven build | `./mvnw -B -ntp verify` in `emf/` | every gate the [model-driven implementation](../emf/docs/architecture.md#gates) holds itself to: toolchain versions, compiler warnings, tests, coverage and mutation floors, formatting |
 
-Decisions, links, manifests, requirements, rules and docs share one CI job,
-`contracts`: all six check a document against a rule rather than code
+Decisions, links, manifests, requirements, rules, codes and docs share one CI
+job, `contracts`: all seven check a document against a rule rather than code
 against a graph.
 Boundaries runs alone as `architecture`, because it is the one gate that
 speaks for `docs/architecture.md` itself rather than for a document beside it.

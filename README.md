@@ -88,7 +88,7 @@ npm run verify      # lint, format, typecheck, ADR contract, tests + coverage
 `npm run lint:adrs` alone runs the decision-record contract, and `npm test`
 runs the suite without enforcing coverage. `npm run test:coverage` (part of
 `npm run verify`) enforces the ratchet in `vitest.config.ts`: statements
-98.31%, branches 92.43%, functions 100%, lines 98.19%.
+98.32%, branches 92.82%, functions 100%, lines 98.19%.
 
 ## Conventions
 

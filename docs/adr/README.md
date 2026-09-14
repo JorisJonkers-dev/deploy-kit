@@ -228,3 +228,6 @@ Decisions about the compiler's own structure, not about the model. Their
 | [0103](architecture/0103-a-behaviour-ledger-names-what-a-test-proves.md) | A behaviour ledger names every guarantee and the test that proves it, and a meta test holds the two together | settled |
 | [0104](architecture/0104-every-enforced-rule-has-an-id-a-row-and-a-fixture.md) | Every enforced rule has an id, a ledger row and a fixture that proves it fires | settled |
 | [0105](architecture/0105-two-implementations-meet-at-committed-oracles.md) | Two hand-written implementations meet at committed oracle files, and neither is generated from or tested against the other | open |
+| [0117](architecture/0117-the-process-lives-in-one-boundary-file.md) | Ambient reads live in the outer rings, and the process is touched in one boundary file | settled |
+| [0118](architecture/0118-every-spec-error-code-is-proved-by-a-test.md) | Every error code the specification defines is proved by a test, or pending on the ticket that will prove it | settled |
+| [0119](architecture/0119-generated-files-are-committed-and-diff-checked.md) | A generated file is committed and diff-checked in CI, and an oracle file is never generated | open |
