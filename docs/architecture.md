@@ -206,15 +206,16 @@ proves the two never drift apart.
 | decisions | `npm run lint:adrs` | frontmatter, register integrity, citations, normative anchors per domain |
 | links | `npm run lint:links` | relative links and heading anchors across every tracked Markdown file |
 | manifests | `npm run lint:manifests` | every rendered example object against pinned Kubernetes and CRD schemas |
+| requirements | `npm run lint:requirements` | a behaviour ledger row that no longer parses, names a missing or empty test, drifts from its stated count, or is cited by an id no row carries |
 | tests | `npm run test:coverage` | behaviour, plus the coverage ratchet |
 | package contents | `node scripts/check-package-contents.ts` | `npm pack` shipping a file outside `docs/adr/` and `spec/`, the boundary the package's `files` field states but does not enforce on its own |
 | actionlint | a pinned `actionlint` binary | invalid workflow syntax, an undefined `${{ }}` expression, a shellcheck finding inside a `run:` step |
 | secret scan | a pinned `gitleaks` binary | a committed secret matching the default ruleset, or this repository's own allowlist entries |
 
-Decisions, links and manifests share one CI job, `contracts`: all three check a
-document against a rule rather than code against a graph. Boundaries runs
-alone as `architecture`, because it is the one gate that speaks for
-`docs/architecture.md` itself rather than for a document beside it.
+Decisions, links, manifests and requirements share one CI job, `contracts`:
+all four check a document against a rule rather than code against a graph.
+Boundaries runs alone as `architecture`, because it is the one gate that
+speaks for `docs/architecture.md` itself rather than for a document beside it.
 
 Coverage is a ratchet ([0101](adr/architecture/0101-coverage-is-a-ratchet.md)).
 The thresholds in `vitest.config.ts` sit on what the suite reaches, over an

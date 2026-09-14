@@ -3,6 +3,9 @@
 // The ADR domain move rewrote about a hundred references outside the decision
 // set. Nothing checked them, so the next move could break every one of them
 // with every other gate green. These fixtures prove the check would fail.
+//
+// REQ-002 (docs/requirements.md): every relative link and heading anchor in
+// tracked Markdown resolves to a real target.
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";

@@ -8,6 +8,9 @@
 // Two trees are never scanned: `docs/mde/`, which holds third-party papers,
 // lecture material and coursework kept verbatim, and `CHANGELOG.md`, which
 // release-please writes.
+//
+// REQ-006 (docs/requirements.md): no em-dash enters tracked text outside
+// docs/mde/ and CHANGELOG.md.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

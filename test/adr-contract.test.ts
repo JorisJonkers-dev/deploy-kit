@@ -3,6 +3,9 @@
 // part of the test run rather than a thing someone remembers to run. It also
 // starts the lint the way CI does, as a command, which is what proves the
 // guard at the bottom of the script still runs it.
+//
+// REQ-001 (docs/requirements.md): every decision record satisfies its
+// frontmatter, register and citation contract.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { basename, join } from "node:path";

@@ -2,6 +2,9 @@
 // package.json is advisory: npm bundles package.json, README and LICENSE
 // regardless of it, and a stray glob can widen it silently. This proves the
 // gate catches that against real npm, not only against a fabricated list.
+//
+// REQ-009 (docs/requirements.md): the npm package ships nothing outside
+// docs/adr/ and spec/.
 import { spawnSync } from "node:child_process";
 import { chmodSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

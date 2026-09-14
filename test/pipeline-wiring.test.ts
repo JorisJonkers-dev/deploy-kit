@@ -5,6 +5,9 @@
 // docs/adr/architecture/0102-the-gate-grows-with-the-code.md, a new gate's
 // script and its CI job land in the same pull request, and this is the test
 // that makes drift between the two visible instead of silent.
+//
+// REQ-010 (docs/requirements.md): a gate's npm script and the CI job that
+// runs it land together.
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
