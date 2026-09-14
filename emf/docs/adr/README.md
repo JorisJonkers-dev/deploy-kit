@@ -1,11 +1,11 @@
-# Decision register: the coursework implementation
+# Decision register: the model-driven implementation
 
 The decisions that shape the EMF implementation under `emf/`. Every one is
 deleted with this directory
 ([0107](emf/0107-emf-is-coursework-scoped-and-self-contained.md)), and none of
 them can change what the model means: the model's decisions are in
 [`docs/adr/`](../../../docs/adr/README.md), and the contract this
-implementation shares with the TypeScript compiler is
+implementation shares with the production implementation is
 [0105](../../../docs/adr/architecture/0105-two-implementations-meet-at-committed-oracles.md).
 
 The contract every ADR here satisfies is the root register's, unchanged:
@@ -35,7 +35,7 @@ taking a number, check both registers.
 |---|---|---|
 | [0107](emf/0107-emf-is-coursework-scoped-and-self-contained.md) | The EMF implementation is coursework-scoped, lives entirely under `emf/`, and is deleted when two conditions hold | open |
 | [0108](emf/0108-maven-and-tycho-against-a-pinned-target-platform.md) | Maven builds `emf/`, with Tycho resolving p2-only bundles against a pinned target platform, on JDK 21, with no Eclipse IDE | open |
-| [0109](emf/0109-ecore-metamodels-are-hand-written-per-document.md) | Each model document has a hand-written Ecore metamodel, and its Java is generated at build time | open |
+| [0109](emf/0109-source-and-target-metamodels-are-hand-written.md) | The source and target metamodels are hand-written in Ecore, and their Java is generated at build time | open |
 | [0110](emf/0110-constraints-are-complete-ocl-named-by-code.md) | Constraints are Complete OCL invariants named by the diagnostic code they emit | open |
 | [0111](emf/0111-xtext-parses-the-authored-yaml-into-the-metamodel.md) | The Xtext grammar parses the authored YAML files themselves, into the imported metamodel | open |
 | [0112](emf/0112-qvto-derives-the-resolved-deployment.md) | QVT-Operational derives the Resolved Deployment | open |

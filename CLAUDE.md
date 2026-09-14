@@ -35,12 +35,12 @@ what gets fixed.
 Before changing anything under `docs/adr/` or `spec/v1/`:
 
 - Read [`docs/adr/README.md`](docs/adr/README.md) for the register, the citation
-  rule and the project table, and `docs/adr/model/0003`–`0006` for the model's
+  rule and the domain table, and `docs/adr/model/0003`–`0006` for the model's
   premises.
-- `docs/adr/` carries **one directory per project**: `model/` (v1 model,
+- `docs/adr/` carries **one directory per decision domain**: `model/` (v1 model,
   pointers into `spec/v1`), `architecture/` (the compiler's own structure,
   pointers into `docs/architecture.md`), `deferred/` (not linted). Numbers run
-  in one estate-wide sequence, so never reuse a number from another project.
+  in one estate-wide sequence, so never reuse a number from another domain.
 - Run `npm run lint:adrs`. It enforces frontmatter schema, register integrity,
   qualified citations (a bare `ADR-` token outside a link fails), normative
   anchors resolving against real headings in `spec/v1`, and content shape.
@@ -55,17 +55,18 @@ Delivery mechanics and co-testing are **defined separately**: see
 applier, a prune pass, a field manager or a co-test gate in `spec/v1`; state the
 model-level rule and point at the deferred set.
 
-### The coursework implementation under `emf/`
+### The model-driven implementation under `emf/`
 
 The MDE course requires the compiler to be built with Ecore, Xtext, OCL,
-QVT-Operational and Acceleo, so `emf/` holds a second, hand-written Java
+QVT-Operational and Acceleo, so `emf/` holds the model-driven implementation:
+a second, hand-written Java implementation beside the TypeScript production
 implementation (Maven and Tycho, JDK 21, no Eclipse IDE to build, but
 loadable in Eclipse for the course's examiners). It is deprecated
 from the day it lands and deleted at its sunset:
 
 - **The root stays TypeScript.** Every pom, module, check, ledger and decision
   of the Java side lives under `emf/`. The root references it only from CI
-  (the `emf` job and the `emf` ADR lint step), the `emf` project in
+  (the `emf` job and the `emf` ADR lint step), the `emf` domain in
   `scripts/lint-adrs.ts` and its test, and
   [`docs/architecture.md#the-parity-contract`](docs/architecture.md#the-parity-contract).
 - **Never generate one implementation from the other.** Both are tested,
