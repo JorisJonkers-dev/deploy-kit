@@ -202,3 +202,4 @@ Decisions about the compiler's own structure, not about the model. Their
 | [0069](architecture/0069-boundaries-enforced-on-the-graph.md) | Layer boundaries and reachability are gates on the module graph | settled |
 | [0100](architecture/0100-tests-run-in-process-on-vitest.md) | Tests run in-process on Vitest, and the tooling is TypeScript that Node runs directly | settled |
 | [0101](architecture/0101-coverage-is-a-ratchet.md) | Coverage is a ratchet: the thresholds sit on what the suite reaches, and only rise | settled |
+| [0102](architecture/0102-the-gate-grows-with-the-code.md) | A new gate's script and its CI job land in the same pull request, and a test proves the two stay matched | settled |
