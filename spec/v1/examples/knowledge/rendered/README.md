@@ -55,10 +55,10 @@ contributes routes and exposures to both; it owns neither object.
 |---|---|---|---|
 | `namespace.yaml` | `kubernetes` | `domain` | none (the adapter emits this per *Service* directory, not per domain: **G-02**) |
 | `kustomization.yaml` | `kubernetes` | the Service set of the domain | - |
-| `apps/knowledge/workload.yaml` | `kubernetes` | `lifecycle`, `image`, `runtime`, `provides`, `placement`, `hardening`, `probes`, `startupBudget`, `cutover`, `stateful`, `volumes`, `secrets`, env files | `replicas` (`minAvailable` ungraded); the image's UID behind `runAsNonRoot`; a scratch volume for a read-only-root JVM (**G-04**); what `stateful` changes about the object kind (**G-05**); the PV-bound node (**G-06**); env-var renaming through `envFrom` (**G-03**); readable mode on the 0400 key (**G-08**) |
+| `apps/knowledge/workload.yaml` | `kubernetes` | `lifecycle`, `image`, `runtime`, `provides`, `placement`, `hardening`, `probes`, `startupBudget`, `cutover`, `volumes`, `secrets`, env files | `replicas` (`minAvailable` ungraded); the image's UID behind `runAsNonRoot`; a scratch volume for a read-only-root JVM (**G-04**); what the deleted `stateful` boolean changed about the object kind (**G-05**); the PV-bound node (**G-06**); env-var renaming through `envFrom` (**G-03**); readable mode on the 0400 key (**G-08**) |
 | `apps/knowledge/serviceaccount.yaml` | `kubernetes` | workload `name` × 2, `domain` | none (the adapter names one account after the *Service*: **G-09**) |
 | `apps/knowledge/configmap.yaml` | `kubernetes` | env files, `dependsOn`, the `provides` port, Cluster Target, workload `name` | 15 of the 16 Runtime Profile keys (**G-13**); the database name spelling (**G-12**); change propagation on edit (**G-10**) |
-| `apps/knowledge/pvc.yaml` | `kubernetes` | `volumes[].claim`, `volumes[].durability`, `stateful` | `resources.requests.storage`: **the object does not apply without it** (**G-15**); the durability annotation key (**G-14**) |
+| `apps/knowledge/pvc.yaml` | `kubernetes` | `volumes[].claim`, `volumes[].durability` | `resources.requests.storage`: **the object does not apply without it** (**G-15**); the durability annotation key (**G-14**) |
 | `apps/knowledge/servicemonitor.yaml` | `prometheus` | `observability.scrape {workload, surface, path}`, `provides` | cadence from the Platform document |
 | `apps/knowledge/networkpolicy.yaml` | `networking`, **not registered** (**G-16**) | `dependsOn`, `provides`, `exposure`, `scrape`, effective grant set, baseline | egress to anything outside the estate, the worker's git remote (**G-20**); ingress from consumers absent from the union (**G-18**); whether a namespace catch-all is emitted (**G-17**) |
 | `apps/knowledge/vso.yaml` | `vso` | `secrets` at both levels, `delivery`, `rotation`, workload `name` | Secret/object naming (**G-21**); which identity reads a shared path (**G-23**); the Kubernetes auth mount name |
@@ -119,11 +119,13 @@ is the largest hole in the model as written.
 has no vocabulary for an ephemeral volume, `volumes` carries `claim`, `mountAt`
 and `durability` only, so neither the author nor the renderer can produce one.
 
-**G-05** Object kind is documented as derived from `lifecycle` + `stateful` +
-`volumes`, but chapter 20's own projection renders `Deployment` for
-`knowledge-ingest-worker`, which is `stateful: true` with a volume. With
-`volumeClaimTemplate` forbidden, what `stateful` changes about the kind is
-unstated; here it only selects the 10m health timeout class.
+**G-05** **Closed.** Object kind was documented as derived from `lifecycle`, a
+`stateful` boolean and `volumes`, while chapter 20's own projection rendered
+`Deployment` for `knowledge-ingest-worker`, which declared the boolean and held
+a volume. With `volumeClaimTemplate` forbidden, what the boolean changed about
+the kind was never stated, and it turned out to be nothing: it appeared exactly
+where `volumes` did, in every Workload in the example set. The field is deleted
+and the kind derives from `lifecycle` and `volumes`.
 
 **G-06** The example set contains no `ClusterState` snapshot, so `placement.boundTo`,
 `from: clusterState` and the PV's node affinity cannot be rendered. Every

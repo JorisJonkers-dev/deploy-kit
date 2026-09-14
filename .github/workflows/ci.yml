@@ -79,7 +79,7 @@
       - 'uses': './.github/actions/setup'
       # The layer boundaries on the module graph: no layer reaching outward,
       # no adapter reading another adapter, no cycle, nothing unreachable from
-      # an entry point. Skips loudly while src/ does not exist.
+      # an entry point. Skips loudly on a tree with no src/ at all.
       # See docs/adr/architecture/0069-boundaries-enforced-on-the-graph.md.
       - 'name': 'Boundaries'
         'run': 'npm run lint:boundaries'
@@ -143,6 +143,14 @@
       # anchor resolve; this proves the prose around them is still true.
       - 'name': 'Docs contract'
         'run': 'npm run lint:docs'
+
+      # Every Service Intent document in the repository, parsed against the one
+      # metamodel that declares the language: the worked examples, the refusal
+      # fixtures, the negative fixtures and the env files. A refusal fixture
+      # must fail with exactly the code its `expect:` header names, and the
+      # committed JSON Schema must be what the metamodel generates.
+      - 'name': 'Intent metamodel'
+        'run': 'npm run lint:intent'
 
   'tests':
     'name': 'Tests'

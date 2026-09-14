@@ -1,8 +1,10 @@
 // Layer-boundary lint. The ruleset is .dependency-cruiser.cjs, which is where
-// the hexagon is written down; this wrapper exists for one reason: the
-// compiler has no src/ yet, and dependency-cruiser exits non-zero when asked
-// to read a directory that does not exist. It skips loudly rather than passing
-// silently, and starts enforcing the moment src/ lands.
+// the hexagon is written down; this wrapper exists for one reason:
+// dependency-cruiser exits non-zero when asked to read a directory that does
+// not exist. It skips loudly rather than passing silently. This repository's
+// own src/ landed with the Service Intent metamodel, so the gate enforces here
+// rather than skipping; the skip branch is still reached by a fixture tree
+// with no src/ at all, which is what its negative fixtures are.
 //
 // A library first: tests call lintBoundaries() in-process against fixture
 // trees, and `node scripts/lint-boundaries.ts [root]` is the command.

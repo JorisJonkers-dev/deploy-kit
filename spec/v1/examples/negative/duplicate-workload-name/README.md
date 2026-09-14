@@ -33,10 +33,12 @@ can fail and say nothing about Workload identity.
 
 ## The assertion asserts the code, not the exit status
 
-The compose workflow applies this fixture on every run
-([`../../workflows/compose.yml`](../../workflows/compose.yml)) and greps
-`E_DUPLICATE_WORKLOAD_NAME` out of the output. A non-zero exit is not the
-assertion: this fixture is one schema slip away from failing for an unrelated
+The fixture carries `expect: E_DUPLICATE_WORKLOAD_NAME`, and `npm run
+lint:intent` refuses the tree unless that is the code, and the only code, the
+metamodel emits for it. The compose workflow applies it on every run as well
+([`../../workflows/compose.yml`](../../workflows/compose.yml)) and greps the
+same token out of the output. A non-zero exit is not the assertion in either
+place: this fixture is one schema slip away from failing for an unrelated
 reason, and a step that accepted any failure would keep printing success while
 proving nothing about the invariant named on the tin. *Verify the value, not
 the command.*

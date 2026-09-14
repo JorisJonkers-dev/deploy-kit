@@ -40,4 +40,6 @@ vacuous for three of four routed services.
 
 One negative fixture per invariant is the target. This is the first; the second
 is [`../duplicate-workload-name/`](../duplicate-workload-name/), which asserts
-`E_DUPLICATE_WORKLOAD_NAME` over a single domain file.
+`E_DUPLICATE_WORKLOAD_NAME` over a single domain file, which is decided by the
+one document that holds both Workloads and is therefore raised as soon as that
+fragment is read.

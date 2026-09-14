@@ -22,22 +22,25 @@ export default defineConfig({
       // A ratchet, per docs/adr/architecture/0101-coverage-is-a-ratchet.md:
       // set from what the suite reaches, and only ever raised.
       //
-      // Measured 2026-09-14, after the rule ledger gate
-      // (scripts/lint-rules.ts) landed on top of the local secret scan
-      // (scripts/lint-secrets.ts), with the tracked-tree helpers both the
-      // rule ledger and the requirements gate use moved into
-      // scripts/lib/tracked.ts. The new gate's negative fixtures reach every
-      // branch that decides, so all four metrics rose again over the secret
-      // scan's 97.94 / 90.72 / 100 / 97.76. Two runs of one tree, identical
-      // both times: statements 701/713, branches 379/410, functions 107/107,
-      // lines 652/664. What is left uncovered is the one-line command guard
-      // at the bottom of each other gate and the branches for a tool that
-      // cannot be started at all.
+      // Measured 2026-09-14, after the Service Intent metamodel
+      // (src/wire/service-intent/, src/domain/service-intent/) and its gate
+      // (scripts/lint-intent.ts) landed on top of the rule ledger
+      // (scripts/lint-rules.ts) and the local secret scan
+      // (scripts/lint-secrets.ts). Every module under src/ reaches 100% of its
+      // statements, lines and functions: the metamodel is exercised by every
+      // worked example, every refusal fixture and one mutation per registered
+      // rule, and the mapper is reached at the use-case seam rather than
+      // directly. All four metrics rose again over the rule ledger's
+      // 98.31 / 92.43 / 100 / 98.19. Two runs of one tree, identical both
+      // times: statements 1053/1066, branches 533/566, functions 218/218,
+      // lines 976/989. What is left uncovered is the one-line command guard at
+      // the bottom of each gate and the branches for a tool that cannot be
+      // started at all.
       thresholds: {
-        statements: 98.31,
-        branches: 92.43,
+        statements: 98.78,
+        branches: 94.16,
         functions: 100,
-        lines: 98.19,
+        lines: 98.68,
       },
     },
   },

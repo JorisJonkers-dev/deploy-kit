@@ -10,7 +10,13 @@
 # fixture was rejected by E_SCHEMA_VERSION_MISMATCH before the union ever
 # evaluated identity -- while the gate-can-fail step, which tested only for a
 # non-zero exit, still printed success.
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Domain
 schemaVersion: 1.0.0
+
+# Accepted on its own. The collision needs the second fragment beside it, so
+# this document conforms to the metamodel and the union is what refuses.
+expect: accepted
 
 # One file per domain, one file one Intent Fragment
 # (docs/adr/model/0063-intent-authored-per-domain.md). `owner` is the only field the
@@ -20,7 +26,6 @@ owner: joris
 
 services:
   - id: knowledge
-    alertClass: business-hours
     workloads:
       - name: knowledge-api
         lifecycle: service
@@ -28,3 +33,5 @@ services:
         runtime: jvm
         placement: {memory: 768Mi, cpu: 250m}
         probes: none
+        startupBudget: 600s
+        cutover: rolling

@@ -100,7 +100,11 @@ graded by
 full below, and it is the only composite on the Workload that is **required**.
 Env files hang off the **Workload**, not the Service
 ([0011](../../docs/adr/model/0011-configuration-env-files-per-workload.md)), and so
-does `provides`: a port is a property of a process. `exposure` hangs off the
+does `provides`: a port is a property of a process. A Workload has **zero or
+more** of them, because a Workload that needs no configuration of its own
+needs no file to say so: `auth-ui`, `platform-rabbitmq` and `platform-valkey`
+have none in the worked set, and a file holding nothing but comments would be
+a third way of writing the same absence. `exposure` hangs off the
 **Service**, because a hostname is a property of the product rather than of any
 one process, and one hostname routes into two of them.
 
@@ -322,8 +326,8 @@ Vault role are called (chapter 16).
 never a digest here.
 
 `lifecycle` is `service` or `job`. Not `deployment` / `statefulset` / `job`,
-because those are mechanisms; the object kind derives from `lifecycle`, `stateful`
-and `volumes`.
+because those are mechanisms; the object kind derives from `lifecycle` and
+`volumes`.
 
 `runtime` selects the Runtime Profile: `jvm`, `python`, `node`, `static`, `none`.
 `none` is correct for a third-party image and injects no profile values at all.
@@ -1085,7 +1089,8 @@ The rendered route carries that ordering explicitly, so what the document says
 is what the edge does, the ordering is visible in a diff, and a proxy that
 tie-breaks differently changes nothing.
 
-Two routes on one host with the same `path` and `match` are `E_DUPLICATE_ROUTE`
+Two routes on one host with the same `path` and `match` are
+`E_DUPLICATE_ROUTE_MATCH`
 ([chapter 40](40-composition.md#references)). There is no correct
 interpretation of the pair: whichever wins is decided by a string comparison
 inside a proxy, which no author can see in the document.
@@ -1725,7 +1730,7 @@ this chapter owns:
 | a literal secret value in an env file or an Asset | `E_RAW_SECRET` | composition |
 | `delivery: env` with `rotation.tolerates: reload` | `E_ENV_CANNOT_RELOAD` | schema |
 | an illegal access × delivery cell | `E_ILLEGAL_DELIVERY_FOR_ACCESS` | schema |
-| a non-KV grant with `delivery: env` or `file` | `E_NON_KV_DELIVERY` | schema |
+| a `transit` grant with `delivery: env` or `file` | `E_NON_KV_DELIVERY` | schema |
 | `delivery: env` or `file` against a Context without `secretsEncryption` | `E_SECRETS_AT_REST_REQUIRED` | render |
 
 `keys: ['*']` has no error code because it is not in the grammar: a document
@@ -1741,7 +1746,7 @@ startupBudget: 600s     # knowledge-api: JVM cold start measured at ~250-300s
 cutover: rolling        # required: continuity during the cutover, or an accepted stop-then-start
 ```
 
-Derived from these plus `stateful`, `placement` and `volumes`: rollout strategy,
+Derived from these plus `placement` and `volumes`: rollout strategy,
 surge and unavailability, startup probe period and threshold, the progress
 deadline, and the health-gate deadline the Service's switchover waits on.
 
@@ -1883,7 +1888,7 @@ declaring site is fixed:
 | an image tag or digest | the images lock |
 | a `ports` list, or a port as a string | an integer at its point of use |
 | `RollingUpdate`, `maxSurge`, `progressDeadlineSeconds` | derived from `cutover`, `startupBudget` and the declared volumes |
-| `statefulset` / `deployment` | derived from `lifecycle` + volumes |
+| `statefulset` / `deployment` | derived from `lifecycle` and `volumes` |
 | a liveness probe with no path | state it, or use `tcp`, or `probes: none` |
 | a Dependency Coordinate as a literal | `${dependency:…}` |
 | a Runtime Profile key in an env file | `runtime`: the model injects them, and an exceptional value is not a layer-1 concept |
@@ -2008,7 +2013,6 @@ classDiagram
         +Engine engine
         +Duration startupBudget
         +Cutover cutover
-        +bool stateful
         +Path[] writablePaths
     }
     class Capacity {
@@ -2052,7 +2056,6 @@ classDiagram
     class Asset {
         +Path from
         +Path mountAt
-        +map substitute
     }
     class Volume {
         +string claim
@@ -2128,7 +2131,7 @@ classDiagram
     Route ..> Surface : resolves by name
     DependencyEdge ..> Surface : resolves by name
 
-    Workload "1" *-- "1..*" EnvFile : env per workload
+    Workload "1" *-- "0..*" EnvFile : env per workload
     EnvFile "1" *-- "0..*" Placeholder : resolves
 
     Service "1" *-- "0..*" Grant : secrets

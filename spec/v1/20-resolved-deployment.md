@@ -138,7 +138,7 @@ field's placement link to this anchor rather than copying rows.
 | workload `name` | Service | unique, checked | unique within the **domain**; `E_DUPLICATE_WORKLOAD_NAME`, and it names the derived identity |
 | `provides` surface names and ports | Service | no contention | declared on the Workload, because a port is a property of a process; written once, there |
 | `dependsOn` edges | Service | no contention | provider, surface, necessity ([chapter 16](16-dependencies.md#dependency-edges)) |
-| `image`, `runtime`, `lifecycle`, `stateful` | Service | no contention | what the Workload is |
+| `image`, `runtime`, `lifecycle` | Service | no contention | what the Workload is |
 | env files, `assets` | Service | no contention | per Workload; derived values appear only as placeholders |
 | `secrets` grants: `path`, `keys`, `access`, `delivery`, `rotation` | Service | no contention to declare | per Service and never raised; the *path* is arbitrated (below), what a Service asks of a path is its own |
 | `exposure[].name` | Service | unique, checked | required; unique **within the Service**, `E_DUPLICATE_EXPOSURE_NAME` at composition. It is the half `${exposure:<service>.<name>#url}` addresses |
@@ -184,7 +184,7 @@ field's placement link to this anchor rather than copying rows.
 | container probe timings | derived | - | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Platform Intent's probe policy ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)) |
 | `progressDeadlineSeconds` | derived | - | from `startupBudget` |
 | rollout strategy, surge, unavailability | derived | - | from `cutover` and `volumes`; `cutover: rolling` over an RWO volume is `E_CUTOVER_UNHONOURABLE`, not a silent downgrade |
-| object kind | derived | - | from `lifecycle`, `stateful` and `volumes` |
+| object kind | derived | - | from `lifecycle` and `volumes` |
 | the Service's release-gate deadline | derived | - | `max` over the Service's Workloads of `progressDeadlineSeconds` ([The release gate](#the-release-gate)) |
 | the object label set | derived | - | fixed, from Workload name, Service Id and the images lock ([chapter 10](10-service-intent.md#the-label-set)) |
 | Secret and VSO sync objects | derived | - | from grants with `delivery: env` or `file`, plus `rolloutRestartTargets` from `rotation`; a grant with `delivery: self` and `tolerates: reload` derives **no** restart target, which is what makes its rotation zero-downtime ([chapter 10](10-service-intent.md#zero-downtime-rotation)) |

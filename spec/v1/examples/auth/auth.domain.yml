@@ -20,6 +20,14 @@
 #   platform/env/auth-api/base.env   -- reproduced as examples/auth-api.base.env
 #   platform/env/auth-ui/base.env
 
+# The document says which language it is written in. `intent.jorisjonkers.dev`
+# is layer 1's own namespace, deliberately not the one three mutually
+# incompatible documents already shared (docs/adr/model/0003-three-layer-meta-model.md);
+# `kind` names the authored document, and chapter 40's `IntentFragment` is the
+# envelope that publishes it.
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Domain
+
 # The DATA MODEL's own semver, not the toolkit package's version
 # (docs/adr/model/0039-artifact-schema-versioning.md). It starts at 1.0.0 and is
 # bumped only when the model changes, so a literal here is legitimate and does
@@ -27,7 +35,8 @@
 # toolkit; the composition lock records the exact versions that ran.
 schemaVersion: 1.0.0
 
-# The header is three fields, and `owner` is the ONLY one raised to the domain.
+# Five header fields: two naming the language, the model semver, the domain
+# and `owner`, which is the ONLY one raised to the domain.
 # `observability` stays per Service -- raising it makes a domain page as loudly as
 # its loudest member -- and so does `secrets`, because a domain-level grant
 # hands every Service in the file a reader slot on the whole path

@@ -57,7 +57,7 @@ fails the gate, so the taxonomy cannot grow entries nothing stands behind.
 
 ## Rules
 
-This ledger holds **60** rules, **19** of them pending.
+This ledger holds **61** rules, **18** of them pending.
 
 A row is enforced or pending, never both. An enforced row names its enforcer as
 `kind:value`: `depcruise:` a rule in
@@ -84,10 +84,10 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-006 | layering | A use-case takes ports, never a concrete infrastructure implementation | `depcruise:application-takes-ports-not-adapters` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `application-takes-ports-not-adapters` |
 | RULE-007 | layering | Infrastructure implements ports: it does not orchestrate, parse or render | `depcruise:infrastructure-implements-ports-only` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `infrastructure-implements-ports-only` |
 | RULE-008 | layering | Nothing inside imports the CLI ring | `depcruise:nothing-depends-on-the-cli` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `nothing-depends-on-the-cli` |
-| RULE-009 | layering | Shipped code never imports a test file or anything under `dist/` | pending (#30): no `src/` exists yet, so the rule has nothing to constrain and no fixture tree can be shaped like the real one | pending |
+| RULE-009 | layering | Shipped code never imports a test file or anything under `dist/` | pending (#30): `src/` exists now, but nothing in the ruleset states this rule, and no shipped module imports a test file for a fixture to be shaped against | pending |
 | RULE-010 | purity | The domain reaches for no filesystem, network, clock, environment, process or crypto: hashing arrives through a port | `depcruise:domain-reads-nothing-ambient` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `domain-reads-nothing-ambient` |
 | RULE-011 | purity | An adapter renders only: documents in, attributed Deliverables out, with no ambient read and no outward import | `depcruise:adapters-render-only` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `adapters-render-only` |
-| RULE-012 | purity | Environment, clock, randomness, console, spawning and synchronous filesystem calls are allowed only in the infrastructure and CLI rings | pending (#30): needs a probe file per ring to prove it fires, and the rings do not exist until the first module lands | pending |
+| RULE-012 | purity | Environment, clock, randomness, console, spawning and synchronous filesystem calls are allowed only in the infrastructure and CLI rings | pending (#30): needs a probe file per ring to prove it fires, and the two rings it names, `infrastructure/` and `cli/`, are the two that still hold no module | pending |
 | RULE-013 | purity | Exiting the process and writing to stdout or stderr happen only in `src/cli/boundary.ts`, the one file excluded from coverage | pending (#30): the boundary file is the subject of its own decision record, which lands with the CLI ring | pending |
 | RULE-014 | graph | No import cycle between modules | `depcruise:no-circular` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `no-circular` |
 | RULE-015 | graph | No orphan module: every module but an entry point is imported by something | `depcruise:no-orphans` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `no-orphans` |
@@ -118,7 +118,7 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-040 | toolchain | Coverage is a ratchet over an explicit include list, and no ignore comment exempts a line from it | `file:vitest.config.ts` | [test/harness.test.ts](../test/harness.test.ts) `an ignore is slack nobody decided` |
 | RULE-041 | toolchain | No default export outside a tool configuration file | pending (#30): the tool configs are the only modules with exports today, and they are the exception the rule carves out | pending |
 | RULE-042 | toolchain | Shipped code is ESM, and the one CommonJS file is the dependency-cruiser configuration that cannot be anything else | pending (#30): stated by `type: module` and enforced by hand until a lint over `src/` can read it | pending |
-| RULE-043 | toolchain | Generated artifacts are committed, and CI fails when regenerating one produces a diff | pending (#30): nothing generates anything yet; the rule lands with the first generator | pending |
+| RULE-043 | toolchain | Generated artifacts are committed, and CI fails when regenerating one produces a diff | `npm:lint:intent` | [test/intent-lint-negative.test.ts](../test/intent-lint-negative.test.ts) `differs from what the metamodel generates` |
 | RULE-044 | cli | The CLI prints help on `--help` and `-h`, data on stdout and diagnostics on stderr, emits only data under `--json`, maps failures through one exit-code enum, honours `NO_COLOR`, and never prompts | pending (#30): the CLI ring does not exist, and each clause needs a process-level fixture to be worth a row of its own | pending |
 | RULE-045 | registry | Every registered adapter satisfies the adapter port, attributes every Deliverable to itself, and renders deterministically | pending (#30): there is no registry and no adapter; the table-driven contract suite arrives with the first one | pending |
 | RULE-046 | registry | Every estate-wide invariant is registered with its code, its spec anchor and its test, so an unregistered one is detectable rather than merely absent | pending (#30): the registry is a compiler module, and the enumeration it makes possible needs it to exist | pending |
@@ -136,6 +136,7 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-058 | gates | No em-dash enters tracked text outside `docs/mde/` and `CHANGELOG.md` | `file:test/emdash.test.ts` | [test/emdash.test.ts](../test/emdash.test.ts) `contains an em-dash` |
 | RULE-059 | gates | A gate's npm script and the CI job that runs it land together, or the script is listed pending with a reason | `file:test/pipeline-wiring.test.ts` | [test/pipeline-wiring.test.ts](../test/pipeline-wiring.test.ts) `every script either runs in some workflow` |
 | RULE-060 | gates | No committed secret matching the default gitleaks ruleset or this repository's own allowlist, checked locally by the same command CI runs | `npm:lint:secrets` | [test/secret-scan-contract.test.ts](../test/secret-scan-contract.test.ts) `secret scan: could not run` |
+| RULE-061 | gates | Every Service Intent document parses against the metamodel, and a refusal fixture fails with exactly the code its `expect:` header names | `npm:lint:intent` | [test/intent-lint-negative.test.ts](../test/intent-lint-negative.test.ts) `no Service Intent documents` |
 
 ## Considered and rejected
 
