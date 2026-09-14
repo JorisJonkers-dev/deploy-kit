@@ -112,7 +112,7 @@ The estate is the argument for having a rule at all. One hostname,
 `kb.jorisjonkers.dev`, ended up declared in seven authoritative places across
 three repositories (`homelab-inventory/catalog/reachability.yml`, three
 `fleet-infra` manifests, a bearer-token secret and the application's own
-`platform/deployment.yml`) plus hardcoded in `ApplicationPermission.kt`, with two
+`platform/deployment.yml`) plus hardcoded in `ServicePermission.kt`, with two
 conformance tests existing for no purpose but detecting when the seven disagree.
 The guard was cheaper to write than the fix.
 
@@ -824,7 +824,7 @@ assigned:
 
   processes:
     knowledge-api:
-      applicationAccount: knowledge-api    # the Process name alone
+      serviceAccount: knowledge-api    # the Process name alone
       objectKind: Deployment
       image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-api@sha256:1ad39d5…
       probes:
@@ -850,7 +850,7 @@ assigned:
         - {kind: VaultStaticSecret, path: secret/data/platform/postgres/kb}
 
     knowledge-ingest-worker:
-      applicationAccount: knowledge-ingest-worker
+      serviceAccount: knowledge-ingest-worker
       objectKind: Deployment
       strategy: {type: Recreate}       # forced: RWO volume
       resources:

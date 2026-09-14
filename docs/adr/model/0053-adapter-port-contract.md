@@ -64,8 +64,8 @@ while `tsconfig.json:11` sets `"strict": true` and `eslint.config.js:33` sets
 violated. `grep -rn E_PATH_COLLISION src/` returns nothing, while the writer
 applies each prepared file in turn (`src/render-plan/writer.ts:60-66`): two
 adapters sharing a path both write, second wins, silently, both reporting
-`action: "create"`. `kubernetes-process-fragment` reads raw manifests from disk
-inside render (`src/adapters/kubernetes-process-fragment.ts:48-49`, `:236-247`);
+`action: "create"`. `kubernetes-workload-fragment` reads raw manifests from disk
+inside render (`src/adapters/kubernetes-workload-fragment.ts:48-49`, `:236-247`);
 under the port that read moves to the caller, which passes the parsed documents
 in, as `loadFragmentInput` already does at `src/adapters/fragment-model.ts:95-98`.
 Hence the contract: documents in, attributed Deliverables out, deterministic, no

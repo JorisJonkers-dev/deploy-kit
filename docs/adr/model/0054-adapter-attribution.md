@@ -56,7 +56,7 @@ consumers to shape it.
 
 One owner per path is asserted today and enforced nowhere. Five of the sixteen
 registered names end in `-fragment` and shadow an earlier adapter, chapter 30
-names four such pairs and misses `kubernetes-process-fragment`; the twins avoid
+names four such pairs and misses `kubernetes-workload-fragment`; the twins avoid
 a literal collision only because they write under `fragments/` while the first
 generation writes under `platform/cluster/flux/`. Three adapters (`kubernetes`,
 `flux-packs`, `flux-source`) declare the same `platform/cluster/flux/apps` prefix.

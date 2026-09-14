@@ -33,7 +33,7 @@ the change that introduced them was being made. One hostname,
 three repositories: `homelab-inventory/catalog/reachability.yml`, three
 `fleet-infra` edge and knowledge manifests, a bearer-token secret, and the
 application's own `platform/deployment.yml`, plus hardcoded in
-`ApplicationPermission.kt`. Two conformance tests exist for no purpose other than
+`ServicePermission.kt`. Two conformance tests exist for no purpose other than
 detecting when those seven disagree. The guard was cheaper to write than the
 fix, which is how the estate arrived here.
 

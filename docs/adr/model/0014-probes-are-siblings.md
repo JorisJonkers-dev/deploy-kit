@@ -31,7 +31,7 @@ window, and read
 falls back to the other. The endpoints are the part only the owning Application
 knows ([0005](0005-derivation-is-total.md)); timings, thresholds and deadlines
 stay derived ([0030](0030-runtime-mechanics-derived.md)). The v2 model instead
-made liveness a fallback (`src/adapters/kubernetes-process-fragment.ts:166`
+made liveness a fallback (`src/adapters/kubernetes-workload-fragment.ts:166`
 renders `livenessProbe: probe(health.livenessPath ?? health.path)`), and two
 live processes rely on it: `app-ui` declares only `/`, `agents-login` only
 `/healthz`. For both, liveness silently probes the readiness endpoint.

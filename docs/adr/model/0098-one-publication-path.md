@@ -28,7 +28,7 @@ byte for byte.
 publication one mechanism: everything authored enters composition as an Intent
 Fragment by digest. That leaves the five `*-fragment` adapters as the one
 remaining second path into the render, and the deletion test decides them.
-Remove `traefik-route-fragment`, `kubernetes-process-fragment`,
+Remove `traefik-route-fragment`, `kubernetes-workload-fragment`,
 `gatus-endpoint-fragment`, `edge-catalog-fragment` and `image-metadata-fragment`
 together with `adapter-compat.ts`, and nothing a consumer observes changes: the
 central run already derives every one of those kinds from the composed intent.

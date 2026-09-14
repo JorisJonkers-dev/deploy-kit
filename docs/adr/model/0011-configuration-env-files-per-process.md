@@ -60,7 +60,7 @@ three rightful owners: **app knobs** (`SPRING_PROFILES_ACTIVE`,
 `KNOWLEDGE_MODE=lite`, uncontended, application-owned literals), **dependency
 coordinates** (`DB_HOST`, `DB_PORT`, `RABBITMQ_HOST`, entirely derivable from
 `dependsOn`), and **runtime boilerplate** (ten `OTEL_*` variables byte-identical
-across `auth-api`, `agents-api` and `knowledge-api` except `OTEL_APPLICATION_NAME`;
+across `auth-api`, `agents-api` and `knowledge-api` except `OTEL_SERVICE_NAME`;
 `knowledge-ingest-worker`, being Python, carries a different but equally fixed
 set, two Runtime Profiles, one derived value, sixty duplicated lines).
 
@@ -89,7 +89,7 @@ env file.
 | option | cost if taken | why rejected |
 |---|---|---|
 | Per-Application env files (the old ADRs' scoping) | Processes share an environment they do not have (`knowledge-api` and `knowledge-ingest-worker` overlap on RabbitMQ coordinates and nothing else) and the Process-level joins catching dead grants and unauthorised secret references lose their subject | Finding X4: spec and examples were already per Process; the joins are the only checks between a `secrets` list and an unauthorised read |
-| Typed source-declaring map in `application.yml` | A new schema for what dotenv already expresses; a format the estate has zero instances of | The estate's only real config-bearing `.env` file is already dotenv |
+| Typed source-declaring map in `service.yml` | A new schema for what dotenv already expresses; a format the estate has zero instances of | The estate's only real config-bearing `.env` file is already dotenv |
 | Defaulted-but-overridable derived values | Every override must be audited against staleness by hand | A permitted override is indistinguishable from a stale copy |
 | General template language in env files | Configuration becomes a program; values stop being statically derivable and diffable | Placeholders are named-source references, nothing else |
 

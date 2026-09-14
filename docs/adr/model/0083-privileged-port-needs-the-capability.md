@@ -25,11 +25,11 @@ no Process declaring a port below 1024.
 ## Why
 `auth-ui` declared port 80 under the `restricted` class and therefore rendered a
 pod that cannot bind its own port: non-root plus `capabilities.drop: [ALL]`
-removes `CAP_NET_BIND_APPLICATION`. The render was internally consistent and the
+removes `CAP_NET_BIND_SERVICE`. The render was internally consistent and the
 process could not start. The model said nothing either way.
 
 Refusing it is the reading that keeps the class honest. Deriving
-`NET_BIND_APPLICATION` wherever a low port appears would re-add a dropped capability
+`NET_BIND_SERVICE` wherever a low port appears would re-add a dropped capability
 for every Process that happens to declare one, silently, and the class would
 mean less than it says.
 
@@ -53,7 +53,7 @@ during serialisation that the process then contradicts.
 ## Alternatives
 | option | cost if taken | why rejected |
 |---|---|---|
-| Derive `NET_BIND_APPLICATION` where a low port is declared | Nothing in any project file changes | Silently re-adds a capability the class dropped, for every Process that happens to declare a low port |
+| Derive `NET_BIND_SERVICE` where a low port is declared | Nothing in any project file changes | Silently re-adds a capability the class dropped, for every Process that happens to declare a low port |
 | Derive an unprivileged `targetPort` | Nothing authored changes and nothing is refused | The process still listens where its image says, so the rendered object and the running pod disagree |
 | Leave it to review | No new error code | The render is internally consistent, so review has nothing to notice; the failure appears as a crash-looping pod |
 
