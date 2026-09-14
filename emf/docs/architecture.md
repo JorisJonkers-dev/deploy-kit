@@ -1,4 +1,4 @@
-# The coursework implementation's structure
+# The model-driven implementation's structure
 
 Normative for the code under `emf/`, the way
 [`docs/architecture.md`](../../docs/architecture.md) is normative for `src/`.
@@ -18,8 +18,8 @@ grades it.
 
 | course task | due | lands here |
 |---|---|---|
-| Task 1: metamodelling | 2026-09-25 | Ecore metamodels for all three layers and Platform Intent, the Xtext grammar, the OCL constraints; parity on the parsed intent, the descriptor and refused cases |
-| Task 2: transformations | 2026-10-16 | the QVT-Operational transformation into the Resolved Deployment; parity on `resolved.json` |
+| Task 1: metamodelling | 2026-09-25 | the two Ecore metamodels, the Xtext grammar and its editor, the OCL constraints; parity on the parsed intent, the descriptor and refused cases |
+| Task 2: transformations | 2026-10-16 | the QVT-Operational transformation into the Resolved Deployment; parity on the resolved dependency edges |
 | Task 3: code generation | 2026-10-30 | the Acceleo templates rendering the Deliverable Set; parity on `rendered/` |
 
 The tree is deleted in one pull request when both of these hold:
@@ -43,9 +43,9 @@ Maven Central coordinates are used wherever a tool publishes there. JDK 21.
 No Eclipse IDE, workspace or launch configuration is part of the build: every
 step CI runs is `mvn verify` from `emf/`. The projects are nonetheless kept
 loadable in Eclipse Modeling Tools for the course's examiners: they import as
-existing Maven projects, the metamodels open and the example models validate
-against the OCL constraints, and committed launch configurations run the
-transformation and the generator.
+existing Maven projects, the metamodels open, the Xtext-generated editor reports
+OCL constraint violations while a source file is edited, and committed launch
+configurations run the transformation and the generator.
 
 The first change to this tree is a walking skeleton that proves each tool runs
 headless in CI before any model work depends on it: an `.ecore` loads, an OCL
@@ -59,10 +59,10 @@ Tycho configuration and the target platform.
 
 | module | holds | graded in |
 |---|---|---|
-| `metamodel/` | `.ecore` and `.genmodel` per layer, Complete OCL `.ocl` per layer, the descriptor exporter | Task 1 |
-| `syntax/` | the Xtext grammar for the authored YAML subset | Task 1 |
+| `metamodel/` | the source and target `.ecore` and `.genmodel`, Complete OCL `.ocl` for the source metamodel, the descriptor exporter | Task 1 |
+| `syntax/` | the Xtext grammar for the authored YAML subset, and the generated editor bundles that run the OCL validators | Task 1 |
 | `resolve/` | the QVTo transformation from Project Intent and Platform Intent to the Resolved Deployment | Task 2 |
-| `render/` | the Acceleo 4 templates from the Resolved Deployment to the Deliverable Set | Task 3 |
+| `render/` | the Acceleo 4 templates from a Resolved Deployment model to the Deliverable Set's files | Task 3 |
 | `cli/` | the pipeline entry point: files in, canonical JSON, diagnostics and rendered files out | Task 1 onward |
 | `parity/` | JUnit suites asserting each stage against the committed oracles, and the witness ledger check | Task 1 onward |
 
@@ -71,23 +71,38 @@ below.
 
 ## Metamodels
 
-One Ecore metamodel per document the model defines: Project Intent, Platform
-Intent, Resolved Deployment and Deliverable Set. Each is hand-written `.ecore`
-XMI, committed, with names taken unchanged from
-[`CONTEXT.md`](../../CONTEXT.md). Cross-document references are Ecore
-references across packages, not strings.
+Two hand-written Ecore metamodels, as the project proposal defines them. Both
+are committed `.ecore` XMI, with names taken unchanged from
+[`CONTEXT.md`](../../CONTEXT.md).
+
+| metamodel | role | holds |
+|---|---|---|
+| Project Intent | source | the authored Project, Application and Process with everything layer 1 declares, and the Platform document the source is resolved against |
+| Resolved Deployment | target | every derived value of layer 2 together with the typed Kubernetes and extension resources, identities and output paths the templates write |
+
+The Deliverable Set is not a metamodel: it is the files Acceleo generates from
+a Resolved Deployment model. The target metamodel is deliberately not the shape
+of the production implementation's Resolved Deployment, which keeps layer 2 in
+model words and builds typed objects separately; a model-to-text template reads
+one model, so here the two are one package. This is why the parity contract
+compares the two implementations through dependency edges and generated files
+rather than through `resolved.json`.
+
+Cross-document references, including those from a Project into the Platform
+document, are Ecore references, not strings.
 
 Typed Java for each metamodel is generated from its `.genmodel` during the
 Maven build into `target/`, and never committed.
 
-The descriptor exporter walks each `EPackage` reflectively and writes the
+The descriptor exporter walks the source `EPackage` reflectively and writes the
 descriptor the parity contract fixes. It is the only place the Ecore structure
 is compared with anything.
 
 ## Constraints
 
-Every constraint lives in a Complete OCL file beside the metamodel it
-constrains, one file per layer, evaluated by Eclipse OCL standalone. An
+Every constraint lives in a Complete OCL file beside the source metamodel,
+evaluated by Eclipse OCL standalone in the build and by the Xtext-generated
+editor while a file is edited. An
 invariant's name is the diagnostic code it emits, so a failed invariant maps to
 a diagnostic without a lookup table.
 
@@ -108,23 +123,31 @@ The Xtext grammar parses the same authored `.project.yml` and
 subset those files use, with indentation handled by synthetic block tokens, and
 refuses anything outside the subset with a diagnostic rather than a guess.
 
-The grammar imports the hand-written Project Intent and Platform Intent
-metamodels, so the parser produces instances of the graded metamodel directly.
-There is no inferred syntax metamodel and no mapping step between parsing and
-validation.
+The grammar imports the hand-written source metamodel, so the parser produces
+instances of the graded metamodel directly. There is no inferred syntax
+metamodel and no mapping step between parsing and validation.
+
+The generated editor is configured to run the OCL validators and to mark each
+constraint violation on the source line it concerns, with the diagnostic code as
+its message. It is built by the same Maven and Tycho build as an Eclipse plugin;
+CI builds it but never runs it.
 
 ## Transformation
 
-A QVT-Operational transformation derives the Resolved Deployment from the
-parsed Project Intent and Platform Intent, run through the standalone
-transformation executor. Every derivation `spec/v1/20-resolved-deployment.md`
-names is a mapping or a helper in it; a derived value with no mapping is a gap
-the parity case for it exposes.
+A QVT-Operational transformation derives a Resolved Deployment model from the
+parsed Project Intent model, run through the standalone transformation
+executor. Every derivation `spec/v1/20-resolved-deployment.md` names is a mapping
+or a helper in it; a derived value with no mapping is a gap a parity case
+exposes, through the dependency edges or the generated files. The resolved
+dependency edges are exported from the target model as canonical JSON and
+compared with `expected/dependencies.json`.
 
 ## Text generation
 
-Acceleo 4 templates render the Deliverable Set from the Resolved Deployment,
-run through Acceleo's standalone API. Output is compared byte for byte with the
+Acceleo 4 templates generate the Deliverable Set's YAML and JSON files from a
+Resolved Deployment model, run through Acceleo's standalone API. Until the
+transformation covers a case, a template test reads a hand-written Resolved
+Deployment model kept inside `emf/`; it is test input, never an oracle. Output is compared byte for byte with the
 committed `rendered/` tree, so whitespace, key order and the `GENERATED` header
 are template decisions made to match the oracle, not presentation.
 

@@ -14,7 +14,7 @@ One directory per deadline, named after the course's own task numbering.
 
 | Directory | Deliverable | Overleaf project | State |
 |---|---|---|---|
-| [`task-0-proposal/`](task-0-proposal/) | Task 0 — project description, the proposal that must be approved before work starts | `6aa2ba0c3920baa59ec20901` | re-mirrored 2026-09-14, after the joint-implementation revision |
+| [`task-0-proposal/`](task-0-proposal/) | Task 0 — project description, the proposal that must be approved before work starts | `6aa2ba0c3920baa59ec20901` | re-mirrored 2026-09-14, after the simplification in #102 |
 | `task-1-metamodelling/` | Task 1 — domain analysis, modelling decisions, the two metamodels and their diagrams, example models | — | not started |
 | `task-2-transformations/` | Task 2 — the model-to-model transformation, its rules and limitations, evidence it runs | — | not started |
 | `task-3-code-generation/` | Task 3 — the model-to-text transformation, the generated code, evidence it loads | — | not started |

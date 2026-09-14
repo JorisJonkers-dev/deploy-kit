@@ -45,7 +45,7 @@ folders after the layers is not decoration. It means a reviewer reading
 `src/domain/resolved/` are looking at the same thing, and a rule that lands in
 the wrong ring is visible as a wrong import rather than as a wrong idea.
 
-The two runtimes in [chapter 30](../../../spec/v1/30-deliverables.md#adapters) (five fragment producers in the Project repository, eleven central adapters over
+The two runtimes in [chapter 30](../../../spec/v1/30-deliverables.md#adapters) (five fragment producers in the project repository, eleven central adapters over
 the union) are the reason to be careful here. They differ in *what documents
 they receive*, not in what an Application means. One core with two use-cases keeps
 the invariants in one place; two applications would put them in a third package

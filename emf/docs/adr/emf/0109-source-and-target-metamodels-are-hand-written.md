@@ -8,7 +8,15 @@ normative: docs/architecture.md#metamodels
 rests-on: ["0106"]
 ---
 
-# Each model document has a hand-written Ecore metamodel, and its Java is generated at build time
+# The source and target metamodels are hand-written in Ecore, and their Java is generated at build time
+
+> **Amended 2026-09-14.** Aligned with the revised project proposal
+> ([#102](https://github.com/JorisJonkers-dev/deploy-kit/pull/102)). This decision originally gave each model document its own package: Project
+> Intent, Platform Intent, Resolved Deployment and Deliverable Set. The
+> proposal defines two metamodels, so there are two packages: a source
+> metamodel holding Project Intent and the Platform document, and a target
+> metamodel holding the Resolved Deployment with its typed Kubernetes and
+> extension resources. The descriptor covers the source metamodel only.
 
 > **Amended 2026-09-14.** Vocabulary renamed by
 > [0116](../../../../docs/adr/model/0116-project-application-process.md): Domain is now Project,
@@ -17,9 +25,11 @@ rests-on: ["0106"]
 
 ## Rests on
 Resting on [0106](0106-the-model-is-expressible-in-the-emf-toolchain.md), the
-claim is that Project Intent, Platform Intent, the Resolved Deployment and the
-Deliverable Set each fit one Ecore package whose structure, exported as the
-parity descriptor, equals the structure the Zod schemas in `src/` declare.
+claim is that the source metamodel (Project Intent, with the Platform document
+it is resolved against) fits one Ecore package whose structure, exported as the
+parity descriptor, equals the structure the Zod schemas in `src/` declare, and
+that the target metamodel (the Resolved Deployment with its typed resources)
+fits a second package the templates can walk.
 False if: the descriptor exported from Ecore cannot equal the committed
 descriptor without a type, multiplicity or vocabulary that the TypeScript side
 does not have. Settled by: the descriptor parity suite green in both
@@ -32,9 +42,14 @@ the transformation maps between its packages, and the templates walk it. It is
 written by hand because the course grades authored metamodels and because
 generating it from Zod would make its structure unfalsifiable against Zod.
 
-One package per document follows the model's own layering
-([0003](../../../../docs/adr/model/0003-three-layer-meta-model.md)), with
-Platform Intent separate because it is a separately authored document.
+The proposal defines two metamodels, a source and a target, and the course
+grades them as such. The model's three layers
+([0003](../../../../docs/adr/model/0003-three-layer-meta-model.md)) still hold:
+the Deliverable Set is the generated files, so it has no metamodel, and the
+target metamodel carries layer 2 together with the typed resources the files
+are written from, because an Acceleo template reads one model. The Platform
+document is part of the source package because the transformation resolves a
+Project against it.
 Cross-document references are Ecore references, so the transformation navigates
 them rather than joining strings.
 

@@ -10,6 +10,14 @@ rests-on: ["0003", "0006"]
 
 # Two hand-written implementations meet at committed oracle files, and neither is generated from or tested against the other
 
+> **Amended 2026-09-14.** Aligned with the revised project proposal
+> ([#102](https://github.com/JorisJonkers-dev/deploy-kit/pull/102)): the TypeScript code is the production implementation and `emf/` the
+> model-driven implementation. They are compared on validation, dependency
+> resolution, errors and generated resources. `resolved.json` binds the
+> production implementation only, because the model-driven target metamodel
+> holds the Resolved Deployment and the typed resources as one model; a new
+> dependency-edge oracle carries the part of resolution both must agree on.
+
 ## Rests on
 The three layers give three points where a run's state is a complete, closed
 document, and pinned inputs make each of those documents a function of the

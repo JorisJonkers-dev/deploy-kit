@@ -16,7 +16,7 @@ lands, the **compiler** that turns that model into deployable artifacts.
 | --- | --- |
 | [`CONTEXT.md`](CONTEXT.md) | The vocabulary. One term, one meaning; also the naming authority for code. |
 | [`docs/architecture.md`](docs/architecture.md) | Normative for code structure, the way `spec/v1` is normative for the model. |
-| [`docs/adr/`](docs/adr/README.md) | The decision surface, one directory per project. Machine-checked. |
+| [`docs/adr/`](docs/adr/README.md) | The decision surface, one directory per decision domain. Machine-checked. |
 | [`docs/adr/model/`](docs/adr/model/) | The v1 model: 8 premises carrying falsifiable claims, 43 decisions resting on them. |
 | [`docs/adr/architecture/`](docs/adr/architecture/README.md) | The compiler's own structure. Pointers resolve against `docs/architecture.md`, not `spec/v1`. |
 | [`docs/adr/deferred/`](docs/adr/deferred/README.md) | Delivery and co-testing decisions, defined separately from the model. Direction work, not v1. |

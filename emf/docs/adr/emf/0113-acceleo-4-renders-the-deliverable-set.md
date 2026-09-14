@@ -10,6 +10,11 @@ rests-on: ["0106"]
 
 # Acceleo 4 renders the Deliverable Set, byte for byte against the committed tree
 
+> **Amended 2026-09-14.** Aligned with the revised project proposal
+> ([#102](https://github.com/JorisJonkers-dev/deploy-kit/pull/102)). The templates read a Resolved Deployment model of the target metamodel,
+> which already holds the typed resources; the Deliverable Set itself has no
+> metamodel.
+
 ## Rests on
 Resting on [0106](0106-the-model-is-expressible-in-the-emf-toolchain.md), the
 claim is that Acceleo 4 templates run standalone can reproduce every committed

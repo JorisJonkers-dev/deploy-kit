@@ -10,6 +10,12 @@ rests-on: ["0106"]
 
 # Constraints are Complete OCL invariants named by the diagnostic code they emit
 
+> **Amended 2026-09-14.** Aligned with the revised project proposal
+> ([#102](https://github.com/JorisJonkers-dev/deploy-kit/pull/102)). The same Complete OCL constraints also run in the Xtext-generated editor,
+> which marks each violation while a source file is edited. Diagnostics in the
+> build keep the code and JSON Pointer contract; the editor shows the code as
+> the message.
+
 ## Rests on
 Resting on [0106](0106-the-model-is-expressible-in-the-emf-toolchain.md), the
 claim is that every constraint in the constraint ledger is expressible as an

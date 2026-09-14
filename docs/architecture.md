@@ -188,26 +188,41 @@ clean tree is untested: nothing proves it would fail.
 
 ## The parity contract
 
-This compiler has a second implementation. The model-driven engineering course
-this repository is coursework for requires Ecore, Xtext, OCL, QVT-Operational
-and Acceleo, so a Java implementation lives under [`emf/`](../emf/README.md)
+This compiler has two implementations. The TypeScript code under `src/` is the
+**production implementation**. The model-driven engineering course this
+repository is coursework for requires Ecore, Xtext, OCL, QVT-Operational and
+Acceleo, so a **model-driven implementation** in Java lives under
+[`emf/`](../emf/README.md)
 until its sunset condition holds
 ([0105](adr/architecture/0105-two-implementations-meet-at-committed-oracles.md)).
 Everything about that implementation, its build, its checks and its decisions,
 lives inside `emf/`. What lives here is the contract both implementations
-answer to, because the contract outlives the second implementation.
+answer to, because the contract outlives the model-driven implementation.
 
 Neither implementation is generated from the other, and neither is the oracle
 for the other. Each is tested on its own against committed oracle files, and
 agreement between the two follows from both agreeing with the oracle.
 
-| oracle | where | compared as |
-|---|---|---|
-| the parsed Project Intent | `spec/v1/examples/<case>/expected/intent.json` | canonical JSON, byte for byte |
-| the Resolved Deployment | `spec/v1/examples/<case>/expected/resolved.json` | canonical JSON, byte for byte |
-| the Deliverable Set | `spec/v1/examples/<case>/rendered/` | the existing golden tree, byte for byte |
-| the diagnostics of a refused case | `<input>.diagnostics.json` beside the refused input in `refusals/` or `negative/` | a set of `(code, path)` pairs |
-| the metamodel's structure | `spec/v1/examples/expected/descriptor.json` | canonical JSON, byte for byte |
+The two are compared on what the project proposal names: validation, dependency
+resolution, errors and generated resources. They are not required to agree on
+anything else. In particular their intermediate models differ: the production
+implementation keeps the Resolved Deployment and the typed object model its
+adapters build as two things, while the model-driven implementation has one
+target metamodel holding both, because a model-to-text template reads one model.
+
+| oracle | where | compared as | binds |
+|---|---|---|---|
+| the parsed Project Intent (validation) | `spec/v1/examples/<case>/expected/intent.json` | canonical JSON, byte for byte | both |
+| the diagnostics of a refused case (errors) | `<input>.diagnostics.json` beside the refused input in `refusals/` or `negative/` | a set of `(code, path)` pairs | both |
+| the resolved dependency edges (dependency resolution) | `spec/v1/examples/<case>/expected/dependencies.json` | canonical JSON, byte for byte | both |
+| the Deliverable Set (generated resources) | `spec/v1/examples/<case>/rendered/` | the existing golden tree, byte for byte | both |
+| the source metamodel's structure | `spec/v1/examples/expected/descriptor.json` | canonical JSON, byte for byte | both |
+| the Resolved Deployment | `spec/v1/examples/<case>/expected/resolved.json` | canonical JSON, byte for byte | production only |
+
+**The dependency edges** are, per Application, every dependency edge after
+resolution: the consumer, the provider Application and Surface, the address the
+consumer is given, and the policy peers that allow the connection. It is the
+part of resolution both implementations must agree on before either renders.
 
 **Canonical JSON** is RFC 8785 (JSON Canonicalization Scheme): keys sorted,
 numbers in their shortest form, no insignificant whitespace. An absent
@@ -218,8 +233,10 @@ optional field is absent, never `null`.
 points at the authored value it derives from. Messages and hints are free per
 implementation; the code and the path are the contract.
 
-**The descriptor** lists every class of every layer with its features, each
+**The descriptor** lists every class of the source metamodel (Project Intent
+and the platform data it is resolved against) with its features, each
 feature's type and multiplicity, and every closed vocabulary with its literals.
+Target structures are compared through what they generate, not structurally.
 The TypeScript side builds it from the Zod schemas with Zod's native
 `z.toJSONSchema()` and a normaliser; the descriptor's shape is fixed here, not
 by either source format.
@@ -231,8 +248,8 @@ of the model's validation, whichever implementation happens to enforce it.
 
 **Behaviour rows.** A row of the [behaviour ledger](requirements.md) whose
 behaviour is the model's own (parse, validate, resolve, render) is proved in
-both implementations. The row names the TypeScript test; the Java witness for
-the same id is listed inside `emf/`, and `emf/`'s own gate fails when a model
+both implementations. The row names the TypeScript test; the model-driven witness
+for the same id is listed inside `emf/`, and `emf/`'s own gate fails when a model
 row has no witness there.
 
 An oracle file changes in the pull request that changes the behaviour it
