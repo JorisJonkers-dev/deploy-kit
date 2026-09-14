@@ -106,7 +106,7 @@ public final class Ledgers {
         Matcher stated = STATED.matcher(String.join("\n", text));
         if (!stated.find()) {
             errors.add(file + ": states no row count");
-        } else if (Integer.parseInt(stated.group(1)) != rows) {
+        } else if (!stated.group(1).equals(Integer.toString(rows))) {
             errors.add(file + ": states " + stated.group(1) + " rows but holds " + rows);
         }
     }

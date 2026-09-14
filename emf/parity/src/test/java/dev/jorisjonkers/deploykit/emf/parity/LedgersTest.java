@@ -108,6 +108,15 @@ class LedgersTest {
     }
 
     @Test
+    void aStatedCountTooLargeForAnIntIsReportedNotThrown(@TempDir Path root) throws IOException {
+        write(root, "docs/requirements.md", GATE_ROW);
+        write(root, "emf/docs/witnesses.md", "This list holds **99999999999** witnesses.\n");
+
+        assertThat(Ledgers.checkWitnesses(root))
+                .containsExactly("emf/docs/witnesses.md: states 99999999999 rows but holds 0");
+    }
+
+    @Test
     void aLedgerThatCannotBeReadFailsLoudly(@TempDir Path root) {
         assertThatThrownBy(() -> Ledgers.checkRules(root)).isInstanceOf(UncheckedIOException.class);
         assertThatThrownBy(() -> Ledgers.checkWitnesses(root)).isInstanceOf(UncheckedIOException.class);
