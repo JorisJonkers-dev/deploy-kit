@@ -1,8 +1,8 @@
 \section{Source Language}
 \label{sec:sourcelanguage}
 
-One source file represents a project and its applications. Table~\ref{tab:source_language}
-summarises the language.
+One source file represents a project and its applications.
+Table~\ref{tab:source_language} summarises the language.
 
 \begin{table}[!htbp]
 \centering
@@ -12,29 +12,29 @@ summarises the language.
 \textbf{Concern} & \textbf{Model content} \\
 \hline
 Ownership and release &
-  Who owns the project, and which of its processes are released together as one application. \\
+  Who owns the project and which processes are released together as one application. \\
 Processes &
-  The processes that run, packaged as container images, and whether they are one-time executions or long-running. \\
+  Which containerised processes run and whether they are one-time or long-running. \\
 Placement and scale &
-  How much memory and CPU a process needs, which machines can host it, and how many instances run simultaneously. \\
+  A process's CPU, memory, allowed machines and number of running instances. \\
 Exposure and routing &
-  The web address an application answers on, who may reach it, and which process handles each URL path. \\
+  An application's web address, who may reach it and which process handles each URL path. \\
 Connections &
-  The network ports a process offers, and the other applications it needs to reach. \\
+  The ports a process offers and the applications it must reach. \\
 Health and cutover &
-  The checks that tell the platform a process is running and ready, and how an old version is replaced by a new one. \\
+  Checks for process health and readiness, and how a new version replaces an old one. \\
 Observability &
-  Where the platform collects measurements from a process, and how urgently a failure should alert someone. \\
+  Where the platform collects metrics and how urgently a failure raises an alert. \\
 Storage and writes &
-  The disks a process stores data on, what recovery entails, and which folders it has access to. \\
+  Where a process stores data, how it is recovered and which folders it may access. \\
 Secrets &
-  Which secrets a process may read from the vault, and whether they arrive as environment variables, files, or otherwise. \\
+  Which vault secrets a process may read and how it receives them. \\
 \hline
 \end{tabular}
 \caption{Concerns Defined by the Source Language}
 \label{tab:source_language}
 \end{table}
 
-The model contains application requirements rather than Kubernetes kinds, proxy
-fields or machine names. Platform mechanisms are derived in the next stage, described in
-Section~\ref{sec:architecture}.
+The model describes application needs rather than Kubernetes kinds, proxy
+fields or machine names. The model-to-model transformation adds the
+platform-specific details before the final files are generated.

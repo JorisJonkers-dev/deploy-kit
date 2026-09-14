@@ -1,0 +1,20 @@
+\section{Implementation Approach}
+\label{sec:tooling}
+
+The production implementation uses TypeScript and \texttt{zod}. It works with
+the Node.js pipelines used across the JorisJonkers-dev repositories and maps
+YAML and JSON directly to typed values. \texttt{zod} provides runtime validation,
+inferred static types and an exported JSON Schema for editor support.
+
+The model-driven implementation defines both metamodels in Ecore and their
+constraints in OCL. Xtext parses the source language, QVT-OM transforms a
+Project Intent model into a Resolved Deployment model, and Acceleo generates
+the Deliverable Set as YAML and JSON. This implementation will show how
+metamodels and transformations express the same deployment rules as the
+production pipeline.
+
+Both implementations will use the same examples and expected outputs. They will
+be compared on validation, dependency resolution, errors and generated
+resources. The EMF tools will run without an IDE through Maven. The
+Xtext-generated editor will be configured to run the OCL validators and report
+constraint violations during editing.

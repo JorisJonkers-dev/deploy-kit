@@ -1,38 +1,36 @@
 \section{Generated Code}
 \label{sec:generatedcode}
 
-The generator emits one versioned release bundle per application. Its resources and
-principal derivations are listed in Table~\ref{tab:generated_resources}.
+The generator creates one versioned Deliverable Set per application.
+Table~\ref{tab:generated_resources} lists its resources and how they are derived.
 
 \begin{table}[!htbp]
 \centering
 \small
 \begin{tabular}{>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.68\linewidth}}
 \hline
-\textbf{Output} & \textbf{Principal derivation} \\
+\textbf{Output} & \textbf{How it is derived} \\
 \hline
 \texttt{Namespace} and indexes &
-  A named partition of the cluster for the project, and the index files listing what to deploy. \\
+  A named cluster partition for the project and index files listing what to deploy. \\
 Workload resources &
-  The definitions that start and restart processes, give each an identity, and keep enough instances running during maintenance. \\
+  Definitions that run processes, give each an identity and keep enough instances available during maintenance. \\
 \texttt{NetworkPolicy} &
-  Firewall rules stating which processes may talk to which, with everything else blocked. \\
+  Firewall rules that allow required process connections and block all others. \\
 \texttt{IngressRoute} &
-  The web-proxy rules sending incoming requests for an address and path to the right process. \\
+  Web proxy rules that send each address and path to the correct process. \\
 Monitoring and alerts &
-  Instructions to collect measurements, and the conditions under which an alert fires. \\
+  Instructions for collecting metrics and conditions for raising alerts. \\
 Secret resources &
-  Permissions in the vault granting each process exactly the secrets it was allowed. \\
-Backup and sweep jobs &
-  Scheduled jobs copying data somewhere safe, or cleaning up data that may be discarded. \\
+  Vault permissions granting each process only its allowed secrets. \\
 \hline
 \end{tabular}
-\caption{Generated Resources and Their Principal Derivations}
+\caption{Generated Resources and Their Derivation}
 \label{tab:generated_resources}
 \end{table}
 
 The transformation computes limits, startup probes, route precedence and policy
-peers. For \texttt{auth}, about 90 source lines determine ten files containing
-about 890 lines. Hand-written expected files kept in the repository are the oracle. Both
-implementations (Section~\ref{sec:tooling}) must reproduce them, validate the result and provide one
-Kustomize entry point for CI.
+peers. For \texttt{auth}, about 90 source lines produce ten files with about 890
+lines. The repository contains hand-written expected files, which are used to
+check the generated result. CI receives one Kustomize entry point for the
+complete bundle.
