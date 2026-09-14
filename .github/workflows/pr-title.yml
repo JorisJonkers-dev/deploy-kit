@@ -1,7 +1,10 @@
-# Validate every pull request title (and, when available, its commits) against
-# the Conventional Commits shape release-please reads. Runs on every pull
-# request but gates nothing; the same script is runnable locally, so a
-# contributor sees the identical failure before pushing.
+# Validate every pull request title (and, when available, its commits)
+# against the Conventional Commits shape release-please reads, and check the
+# pull request body and every commit message in it for agent attribution: a
+# Co-Authored-By trailer naming a coding agent, a "generated with" banner
+# naming one, or a link back to an agent session. Runs on every pull request
+# but gates nothing; the same script is runnable locally, so a contributor
+# sees the identical failure before pushing.
 'name': 'PR Title Validation'
 
 'on':
@@ -35,14 +38,16 @@
       - 'name': 'Install'
         'run': 'npm ci'
 
-      - 'name': 'Check PR title and commits'
+      - 'name': 'Check PR title, commits and attribution'
         'shell': 'bash'
         'env':
           'PR_TITLE': '${{ github.event.pull_request.title }}'
+          'PR_BODY': '${{ github.event.pull_request.body }}'
         'run': |
           set -euo pipefail
           upstream=refs/remotes/origin/${GITHUB_BASE_REF:-main}
           base_sha=$(git merge-base "${upstream}" "${GITHUB_SHA}")
           node scripts/check-pr-title.ts \
             --title "${PR_TITLE}" \
-            --range "${base_sha}..${GITHUB_SHA}" || exit 1
+            --range "${base_sha}..${GITHUB_SHA}" \
+            --body "${PR_BODY}" || exit 1

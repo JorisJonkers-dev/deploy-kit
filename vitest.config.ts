@@ -22,21 +22,23 @@ export default defineConfig({
       // A ratchet, per docs/adr/architecture/0101-coverage-is-a-ratchet.md:
       // set from what the suite reaches, and only ever raised.
       //
-      // Measured 2026-09-14, after the docs contract gate's own tests
-      // covered it (its `?? ""` capture-group fallbacks were replaced by one
-      // cast, since a `+`-quantified group cannot be absent when `matchAll`
-      // yields a match for it; the missing-scripts-field branch is real and
-      // is tested) and, like the other gates, left only its bottom-of-file
-      // entrypoint guard uncovered, two runs of one tree, identical both
-      // times: statements 470/481, branches 246/274, functions 74/74, lines
-      // 432/443. What is left uncovered elsewhere is mostly the one-line
-      // command guard at the bottom of each other gate and the branches for
-      // a tool that cannot be started at all.
+      // Measured 2026-09-14, after the pull request attribution check
+      // (scripts/check-pr-title.ts) landed. Its two `?? ""` capture-group
+      // fallbacks were replaced by a cast each, the same way the docs
+      // contract gate's were: a `.+` group cannot be absent once the outer
+      // regex has matched, and once `messages` is filtered to non-empty
+      // strings, splitting one always yields a first element. Like the other
+      // gates, it left only its bottom-of-file entrypoint guard uncovered.
+      // Two runs of one tree, identical both times: statements 508/519,
+      // branches 260/288, functions 82/82, lines 467/478. What is left
+      // uncovered elsewhere is mostly the one-line command guard at the
+      // bottom of each other gate and the branches for a tool that cannot be
+      // started at all.
       thresholds: {
-        statements: 97.71,
-        branches: 89.78,
+        statements: 97.88,
+        branches: 90.27,
         functions: 100,
-        lines: 97.51,
+        lines: 97.69,
       },
     },
   },
