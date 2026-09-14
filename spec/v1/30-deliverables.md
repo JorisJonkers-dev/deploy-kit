@@ -307,7 +307,7 @@ in Project Intent implies a dashboard's panels; deriving one would be inventing 
 dashboard DSL. It is ledgered rather than permanent: 14 application dashboards become
 Assets on the owning Application ([0012](../../docs/adr/model/0012-assets-not-code.md)), 3
 runtime-family dashboards ship with the Runtime Profile, 14 platform dashboards
-become Assets of the declared observability Applications, and `application-overview` / `application-template` derive
+become Assets of the declared observability Applications, and `service-overview` / `service-template` derive
 per Application from the scrape surface and exposure
 ([0021](../../docs/adr/model/0021-observability-scrape-and-alert-class.md)).
 

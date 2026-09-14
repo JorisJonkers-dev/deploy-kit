@@ -46,14 +46,14 @@ file, in its own repository. That leaves one real problem, which is the reason
 this is a decision rather than a shrug. One of those four lines is
 `VAULT_KUBERNETES_ROLE: auth-api`, and the role name is **derived**
 ([0024](0024-identity-per-process.md)). Written as a literal it is precisely
-the staleness that produced the `applicationAccountName()` defect, where a
+the staleness that produced the `serviceAccountName()` defect, where a
 hand-maintained name and a derived one disagreed and nothing noticed until two
 Processes shared a principal.
 
 Hence `${identity:…}`, a fourth named source beside `${dependency:…}`,
 `${secret:…}` and `${exposure:…}`. The first three name something else; this one
 names what the platform decided about **this** Process (`vaultRole`,
-`applicationAccount`, `namespace`), as a closed key set, with no template language,
+`serviceAccount`, `namespace`), as a closed key set, with no template language,
 exactly like the others. A literal where a placeholder belongs is already a build
 error, so the drift closes.
 
@@ -83,7 +83,7 @@ though that is a rename, not a redesign.
   outcome worth having, paid in four boilerplate lines per self-delivering
   Process, in the repository that owns the framework.
 - `VAULT_KUBERNETES_ROLE` can no longer disagree with the derived role, so the
-  `applicationAccountName()` class of defect is closed on the authoring side too,
+  `serviceAccountName()` class of defect is closed on the authoring side too,
   paid by nobody.
 - A fourth placeholder source is a fourth thing to validate, complete in an
   editor and resolve; the key set is closed so the validation is a lookup, paid

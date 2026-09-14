@@ -140,7 +140,7 @@ As declared, the process cannot read its own deploy key. Repairing it needs
 `fsGroup` or a known UID, neither of which layer 1 can express, and the two
 declarations that collide are in the same Process block.
 
-**G-09** `applicationAccountName()` returns the Application name today, so both pods
+**G-09** `serviceAccountName()` returns the Application name today, so both pods
 authenticate as one principal and receive the union of both policies. That gives
 the internet-facing API `read` on the ingest worker's SSH deploy key. The
 declaration and the identity must ship together.
@@ -162,7 +162,7 @@ no chapter. The set of legal coordinate names (`host`, `port`, `database`, …) 
 not enumerated anywhere either.
 
 **G-13** `runtime: jvm` injects 10 `OTEL_*` and 6 `PYROSCOPE_*` keys; `runtime:
-python` injects 6. Exactly one of them, `OTEL_APPLICATION_NAME`, is a function of
+python` injects 6. Exactly one of them, `OTEL_SERVICE_NAME`, is a function of
 anything declared. The other fifteen are constants held in a **Runtime Profile**,
 and chapter 20's pinned input set does not include one, and it lists Intent
 Fragments, the Platform document and node contract, the images lock and the

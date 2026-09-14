@@ -30,7 +30,7 @@ a role can bind below the ServiceAccount (to a Pod name, label or controller)
 and give two Pods of one ServiceAccount different policies. Settled by: `vault
 read auth/kubernetes/role/<role>` and the parameters its create path accepts on
 the pinned Vault version, the claim falls if any binding parameter selects finer
-than `bound_application_account_names` × `bound_application_account_namespaces`; then the
+than `bound_service_account_names` × `bound_service_account_namespaces`; then the
 review's tiebreaker, rendering the two-Process `knowledge` example and counting
 ServiceAccounts and Vault roles, which must be two of each.
 
@@ -41,7 +41,7 @@ boundary. The old credential-provisioning record let a grant sit on the Applicat
 (*"every Process receives them"*) or on a Process (*"only it does"*),
 while `spec/v1/16-dependencies.md:104` and `:122` derive the ServiceAccount from
 `id`, an Application field, drawing `d_id --> k_sa`. The implementation agrees:
-`src/adapters/kubernetes.ts:665-669`, `applicationAccountName`, returns
+`src/adapters/kubernetes.ts:665-669`, `serviceAccountName`, returns
 `applicationName`, one ServiceAccount per Application. Two Processes of one Application
 therefore authenticated as the same Vault principal and received the union of
 both policies regardless of which level the grant was declared at. Verifying the
@@ -81,7 +81,7 @@ enforced where a reader can check it.
 
 ## Reversibility
 
-Undo cost today: one adapter function (`applicationAccountName`,
+Undo cost today: one adapter function (`serviceAccountName`,
 `src/adapters/kubernetes.ts:665-669`), the Vault role and policy derivation
 beside it, and `## Process identity` in `../../spec/v1/16-dependencies.md`,
 hours, blast radius is object count, not authoring. Becomes irreversible once:

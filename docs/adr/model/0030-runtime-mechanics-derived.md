@@ -72,7 +72,7 @@ retention can only be an application-level backup job, both falling out of the
 durability class of [0015](0015-durability-class-per-volume.md) as probe
 timings fall out of [0014](0014-probes-are-siblings.md). The renderer does not
 do this yet: `src/adapters/kubernetes.ts:608` reads an authored enum
-(`src/schemas/project-intent.ts:165`), inspecting no volume.
+(`src/schemas/service-intent.ts:165`), inspecting no volume.
 
 ## Alternatives
 | option | cost if taken | why rejected |

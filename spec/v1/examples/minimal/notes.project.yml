@@ -44,7 +44,7 @@ applications:
         runtime: node
 
         provides:
-          http: 8080 # above 1024: restricted drops CAP_NET_BIND_APPLICATION
+          http: 8080 # above 1024: restricted drops CAP_NET_BIND_SERVICE
 
         # Two dimensions are required. Both are matched against what the node
         # contract publishes, never against free capacity

@@ -452,19 +452,19 @@ derived about **this** Process
 | key | value |
 |---|---|
 | `${identity:vaultRole}` | the Process's Vault role, its own name ([0024](../../docs/adr/model/0024-identity-per-process.md)) |
-| `${identity:applicationAccount}` | the Process's ServiceAccount name |
+| `${identity:serviceAccount}` | the Process's ServiceAccount name |
 | `${identity:namespace}` | `<project>-system` |
 
 The key set is closed. It exists because a self-delivering Process has to wire
 its own Vault client, and one of the values it wires (the role name) is
 derived: written as a literal it is the same staleness class as the
-`applicationAccountName()` defect, where a hand-maintained name and a derived one
+`serviceAccountName()` defect, where a hand-maintained name and a derived one
 disagreed and nothing noticed. Writing a derived value as a literal is a
 Writing a derived value as a literal is a build error, and so is writing a Runtime Profile key at all: `OTEL_*` and
 `PYROSCOPE_*` come from `runtime`, and an exceptional value is not a layer-1
 concept: there is no `overrides` field to put it in. Ten `OTEL_*` variables are
 byte-identical today across `auth-api`,
-`agents-api` and `knowledge-api` except `OTEL_APPLICATION_NAME`, sixty duplicated
+`agents-api` and `knowledge-api` except `OTEL_SERVICE_NAME`, sixty duplicated
 lines that leave the project repositories under this rule.
 
 Placeholders are named-source references and never a template language: no
@@ -547,7 +547,7 @@ fallback** ([0014](../../docs/adr/model/0014-probes-are-siblings.md)). Readiness
 *can I serve traffic*; liveness means *is my process wedged*. A liveness probe
 pointed at a readiness endpoint turns a dependency outage into a crash-loop, and
 the v2 model made that the default for anyone declaring one path:
-`src/adapters/kubernetes-process-fragment.ts:166` renders
+`src/adapters/kubernetes-workload-fragment.ts:166` renders
 `livenessProbe: probe(health.livenessPath ?? health.path)`, and `app-ui` and
 `agents-login` both rely on it today.
 
@@ -724,7 +724,7 @@ writablePaths: [/var/cache/nginx, /var/run]
 
 The field does not exist today, in either renderer generation:
 `grep -rniE 'securityContext|runAsNonRoot|readOnlyRootFilesystem|seccompProfile' src/ schemas/`
-returns **0 hits**, and `src/deployment/render/processes.ts:130` builds a
+returns **0 hits**, and `src/deployment/render/workloads.ts:130` builds a
 container from name, image, pullPolicy, ports, command, args, env, envFrom,
 volumeMounts, probes and resources, and stops. Rendered pods run as their image's
 UID, with a writable root and default capabilities, and the standing QoS class for
@@ -807,7 +807,7 @@ nginx writes, and `platform-postgres`, whose UID comes from the lock.
 ### A privileged port needs the capability that binds it
 
 A `provides` port below 1024 cannot be bound by a non-root process without
-`CAP_NET_BIND_APPLICATION`, and the `restricted` class drops all capabilities. A
+`CAP_NET_BIND_SERVICE`, and the `restricted` class drops all capabilities. A
 Process declaring one is `E_PRIVILEGED_PORT_UNDER_NONROOT`
 ([0083](../../docs/adr/model/0083-privileged-port-needs-the-capability.md)),
 and the answer is a port above 1024. Deriving the capability silently would
@@ -1428,7 +1428,7 @@ The two levels are an access boundary **only** because identity is per Process.
 The ServiceAccount and Vault role are derived as the **Process name alone** (
 `auth-system.auth-api`, never `auth-system.auth-auth-api`) unique within the
 project file ([0024](../../docs/adr/model/0024-identity-per-process.md), specified in
-chapter 16). At review time they were not: `applicationAccountName()` in
+chapter 16). At review time they were not: `serviceAccountName()` in
 `src/adapters/kubernetes.ts:665-669` returned `applicationName`, so two Processes of
 one Application authenticated as the same principal and received the union of both
 policies whatever level a grant was written at. The nesting was documentation. The
