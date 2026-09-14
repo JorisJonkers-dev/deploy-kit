@@ -13,8 +13,9 @@ rests-on: ["0106"]
 > **Amended 2026-09-14.** No Eclipse IDE is needed to build, and CI never
 > uses one. The projects must still be loadable in Eclipse Modeling Tools for
 > the course's examiners, as the Task 0 proposal now promises: they import as
-> existing Maven projects, the metamodels open and the example models validate
-> against the OCL constraints, and committed launch configurations run the
+> existing Maven projects, the metamodels open, the Xtext-generated editor
+> reports OCL constraint violations while editing, and committed launch
+> configurations run the
 > QVT-Operational transformation and the Acceleo generator. Keeping that
 > working is part of this decision; the Maven build stays the only path CI
 > checks.
