@@ -10,7 +10,7 @@
 #
 # Runs on a self-hosted runner INSIDE the cluster under a ServiceAccount whose
 # Role is generated from this Aggregator's `deploys` list, so applying a
-# Service it does not own returns 403 rather than producing a bad deploy. No
+# Application it does not own returns 403 rather than producing a bad deploy. No
 # kubeconfig exists outside the cluster.
 name: Deploy
 
@@ -72,7 +72,7 @@ jobs:
       - name: Render my slice
         if: ${{ !cancelled() }}
         run: |
-          # Only the Services this Aggregator deploys. Everything else in the
+          # Only the Applications this Aggregator deploys. Everything else in the
           # composed estate belongs to another Aggregator or to Flux.
           npx deploy-config-schema render \
             --composed candidate/ \

@@ -1,0 +1,26 @@
+# Fixture B: a different project, in a different repository, claiming the same
+# Application Id. Identity is flat and unique estate-wide
+# (docs/adr/model/0010-flat-application-identity.md), so the union of these two fragments
+# must fail with E_DUPLICATE_APPLICATION_ID -- and with nothing else.
+#
+# The project header does NOT namespace the id. Deriving the Kubernetes namespace
+# from `project` (docs/adr/model/0063-intent-authored-per-project.md) would place these
+# two in knowledge-system and agents-system, so nothing would collide at apply.
+# That is exactly why the check exists at composition: the id is what one
+# Application uses to reference another, and two Applications answering to one string
+# makes every `dependsOn: {application: knowledge, ...}` edge ambiguous.
+schemaVersion: 1.0.0
+
+project: agents
+owner: joris
+
+applications:
+  - id: knowledge
+    alertClass: business-hours
+    processes:
+      - name: other-knowledge
+        lifecycle: application
+        image: other-knowledge
+        runtime: jvm
+        placement: {memory: 256Mi, cpu: 50m}
+        probes: none

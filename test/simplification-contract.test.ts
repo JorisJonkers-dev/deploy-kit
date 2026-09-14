@@ -4,15 +4,15 @@
 // fixture-level checks at the narrowest layer available, with any renderer
 // proof reported as a blocker. This file is that check, per decision:
 //
-// 1. Observability: one optional `observability` block per Service, whole or
-//    absent. A declared class names a scrape surface that its own Workload
-//    provides, and no domain file carries monitoring policy.
-// 2. Cutover: `zeroDowntime` is gone, every Workload declares `cutover`, and an
-//    RWO Workload must declare `recreate` (rolling over RWO is the
+// 1. Observability: one optional `observability` block per Application, whole or
+//    absent. A declared class names a scrape surface that its own Process
+//    provides, and no project file carries monitoring policy.
+// 2. Cutover: `zeroDowntime` is gone, every Process declares `cutover`, and an
+//    RWO Process must declare `recreate` (rolling over RWO is the
 //    E_CUTOVER_UNHONOURABLE case; there is no renderer yet to run it in).
 // 3. Overrides: no `overrides` key anywhere, and a `replicas` block always
 //    carries a count above one with a reason.
-// 4. Hardening: no Workload or sidecar authors hardening at all.
+// 4. Hardening: no Process or sidecar authors hardening at all.
 //
 // spec/v1 is normative; the ADRs justify; this file proves the example estate
 // against them at the fixture layer.
@@ -24,11 +24,11 @@ const repo = join(import.meta.dirname, "..");
 const examples = join(repo, "spec", "v1", "examples");
 const read = (path: string): string => readFileSync(path, "utf8");
 
-const domainFiles = [
-  "auth/auth.domain.yml",
-  "knowledge/knowledge.domain.yml",
-  "data/data.domain.yml",
-  "minimal/notes.domain.yml",
+const projectFiles = [
+  "auth/auth.project.yml",
+  "knowledge/knowledge.project.yml",
+  "data/data.project.yml",
+  "minimal/notes.project.yml",
 ].map((file) => join(examples, file));
 
 interface Slice {
@@ -37,24 +37,24 @@ interface Slice {
 }
 
 /**
- * The workloads of a domain file as {name, text} slices. Indentation-keyed:
- * a workload starts at `      - name:` (six spaces) and runs to the next one.
+ * The processes of a project file as {name, text} slices. Indentation-keyed:
+ * a process starts at `      - name:` (six spaces) and runs to the next one.
  * Exposure `routes` and negative-fixture files do not reach six spaces with
- * `- name:`, but a Service's `exposure` entry is `      - name: public`, which
+ * `- name:`, but an Application's `exposure` entry is `      - name: public`, which
  * collides, so a slice that would open inside an `exposure:` block is skipped.
  */
-const WORKLOAD_RE = /^ {6}- name: (\S+)/;
+const PROCESS_RE = /^ {6}- name: (\S+)/;
 
-function workloadsOf(file: string): Slice[] {
+function processesOf(file: string): Slice[] {
   const out: Slice[] = [];
   let current: Slice | null = null;
   let inExposure = false;
   for (const line of read(file).split("\n")) {
     if (/^ {4}[a-zA-Z]/.test(line)) inExposure = /^ {4}exposure:/.test(line);
-    const m = WORKLOAD_RE.exec(line);
-    // A Service-level `exposure` entry sits at the same indent as a Workload
-    // under `workloads:`; only slices opened outside the exposure block are
-    // workloads.
+    const m = PROCESS_RE.exec(line);
+    // An Application-level `exposure` entry sits at the same indent as a Process
+    // under `processes:`; only slices opened outside the exposure block are
+    // processes.
     if (m && !inExposure) {
       if (current) out.push(current);
       current = { name: m[1] ?? "", text: "" };
@@ -66,11 +66,11 @@ function workloadsOf(file: string): Slice[] {
   return out;
 }
 
-test("every worked Workload declares cutover, and zeroDowntime is gone", () => {
-  for (const file of domainFiles) {
-    const workloads = workloadsOf(file);
-    expect(workloads.length, `${file}: no workloads parsed`).toBeGreaterThan(0);
-    for (const w of workloads) {
+test("every worked Process declares cutover, and zeroDowntime is gone", () => {
+  for (const file of projectFiles) {
+    const processes = processesOf(file);
+    expect(processes.length, `${file}: no processes parsed`).toBeGreaterThan(0);
+    for (const w of processes) {
       const rel = `${file.split("/").pop() ?? file}#${w.name}`;
       expect(w.text, `${rel}: no cutover declaration`).toMatch(
         /^\s+cutover: (rolling|recreate)$/m,
@@ -82,9 +82,9 @@ test("every worked Workload declares cutover, and zeroDowntime is gone", () => {
   }
 });
 
-test("RWO Workloads declare recreate; volume-free Workloads declare rolling", () => {
-  for (const file of domainFiles) {
-    for (const w of workloadsOf(file)) {
+test("RWO Processes declare recreate; volume-free Processes declare rolling", () => {
+  for (const file of projectFiles) {
+    for (const w of processesOf(file)) {
       const hasVolume = /^\s+volumes:$/m.test(w.text);
       const cutover = /^\s+cutover: (rolling|recreate)$/m.exec(w.text)?.[1];
       expect(cutover, `${w.name}: cutover missing`).toBeDefined();
@@ -97,14 +97,14 @@ test("RWO Workloads declare recreate; volume-free Workloads declare rolling", ()
   }
 });
 
-test("no domain file carries overrides, and replicas is the sole capacity exception", () => {
-  for (const file of domainFiles) {
+test("no project file carries overrides, and replicas is the sole capacity exception", () => {
+  for (const file of projectFiles) {
     const text = read(file);
     expect(text, `${file}: overrides key present`).not.toMatch(/^overrides:/m);
     expect(text, `${file}: override entry syntax present`).not.toMatch(
       /derivation:/,
     );
-    for (const w of workloadsOf(file)) {
+    for (const w of processesOf(file)) {
       const replicas =
         /^\s+replicas:\s*$\n\s+count: (\d+)(?:\n\s+reason: (.+))?/m.exec(
           w.text,
@@ -132,19 +132,19 @@ const declarationsOf = (file: string): string =>
 const refusals = join(examples, "refusals");
 const platform = join(examples, "platform", "platform.intent.yml");
 
-interface Service {
+interface Application {
   readonly id: string;
   text: string;
 }
 
 /**
- * The Services of a domain file as {id, text} slices. A Service starts at
- * `  - id:` (two spaces) and runs to the next one, so a Service's
- * `observability` block and its Workloads are read together.
+ * The Applications of a project file as {id, text} slices. An Application starts at
+ * `  - id:` (two spaces) and runs to the next one, so an Application's
+ * `observability` block and its Processes are read together.
  */
-function servicesOf(file: string): Service[] {
-  const out: Service[] = [];
-  let current: Service | null = null;
+function applicationsOf(file: string): Application[] {
+  const out: Application[] = [];
+  let current: Application | null = null;
   for (const line of read(file).split("\n")) {
     const m = /^ {2}- id: (\S+)/.exec(line);
     if (m) {
@@ -161,14 +161,14 @@ function servicesOf(file: string): Service[] {
 interface Observability {
   readonly alertClass: string | null;
   readonly hasScrape: boolean;
-  readonly workload: string | null;
+  readonly process: string | null;
   readonly surface: string | null;
   readonly path: string | null;
 }
 
-/** The `observability` block of a Service slice, or null when it declares none. */
-function observabilityOf(serviceText: string): Observability | null {
-  const lines = serviceText.split("\n");
+/** The `observability` block of an Application slice, or null when it declares none. */
+function observabilityOf(applicationText: string): Observability | null {
+  const lines = applicationText.split("\n");
   const start = lines.findIndex((line) => /^ {4}observability:\s*$/.test(line));
   if (start === -1) return null;
   const body: string[] = [];
@@ -186,15 +186,15 @@ function observabilityOf(serviceText: string): Observability | null {
   return {
     alertClass: value("alertClass"),
     hasScrape: body.some((line) => /^ {6}scrape:\s*$/.test(line)),
-    workload: value("workload"),
+    process: value("process"),
     surface: value("surface"),
     path: value("path"),
   };
 }
 
-/** The surface names a Workload slice declares under `provides`. */
-function surfacesOf(workloadText: string): string[] {
-  const lines = workloadText.split("\n");
+/** The surface names a Process slice declares under `provides`. */
+function surfacesOf(processText: string): string[] {
+  const lines = processText.split("\n");
   const start = lines.findIndex((line) => /^ {8}provides:\s*$/.test(line));
   if (start === -1) return [];
   const out: string[] = [];
@@ -212,8 +212,8 @@ const ALERT_CLASSES = ["business-hours", "urgent", "page"];
 test("the observability block is whole or absent, and never partial", () => {
   let declared = 0;
   let omitted = 0;
-  for (const file of domainFiles) {
-    for (const s of servicesOf(file)) {
+  for (const file of projectFiles) {
+    for (const s of applicationsOf(file)) {
       const o = observabilityOf(s.text);
       if (o === null) {
         expect(
@@ -237,44 +237,44 @@ test("the observability block is whole or absent, and never partial", () => {
       declared += 1;
     }
   }
-  expect(declared, "no Service declares observability").toBeGreaterThan(0);
+  expect(declared, "no Application declares observability").toBeGreaterThan(0);
   expect(
     omitted,
-    "no Service omits it, so the opt-out is untested",
+    "no Application omits it, so the opt-out is untested",
   ).toBeGreaterThan(0);
 });
 
 test("`none` is gone: an omitted block is the opt-out", () => {
-  for (const file of [...domainFiles, platform])
+  for (const file of [...projectFiles, platform])
     expect(
       read(file),
       `${file}: alertClass none is no longer a member of the vocabulary`,
     ).not.toMatch(/alertClass:\s*none/);
 });
 
-test("a scrape names a surface its own Workload provides, never a port", () => {
-  for (const file of domainFiles) {
-    for (const s of servicesOf(file)) {
+test("a scrape names a surface its own Process provides, never a port", () => {
+  for (const file of projectFiles) {
+    for (const s of applicationsOf(file)) {
       const o = observabilityOf(s.text);
       if (o === null) continue;
-      expect(o.workload, `${s.id}: scrape names no workload`).toBeTruthy();
+      expect(o.process, `${s.id}: scrape names no process`).toBeTruthy();
       expect(o.surface, `${s.id}: scrape names no surface`).toBeTruthy();
       expect(o.path, `${s.id}: scrape names no path`).toBeTruthy();
-      const w = workloadsOf(file).find((x) => x.name === o.workload);
+      const w = processesOf(file).find((x) => x.name === o.process);
       expect(
         w,
-        `${s.id}: scrape names a Workload that does not exist`,
+        `${s.id}: scrape names a Process that does not exist`,
       ).toBeDefined();
       expect(
         surfacesOf(w?.text ?? ""),
-        `${s.id}: its Workload provides no surface of that name`,
+        `${s.id}: its Process provides no surface of that name`,
       ).toContain(o.surface);
     }
   }
 });
 
-test("no Workload restates a scrape port, and no domain carries alerting policy", () => {
-  for (const file of [...domainFiles, platform]) {
+test("no Process restates a scrape port, and no project carries alerting policy", () => {
+  for (const file of [...projectFiles, platform]) {
     const text = read(file);
     expect(
       text,
@@ -296,17 +296,17 @@ test("the monitor cadence is one estate-wide value in the Platform document", ()
   );
   expect(text, "no monitor interval").toMatch(/^\s+interval: \S+$/m);
   expect(text, "no monitor timeout").toMatch(/^\s+timeout: \S+$/m);
-  for (const file of domainFiles)
+  for (const file of projectFiles)
     expect(
       read(file),
-      `${file}: a domain file restates the cadence`,
+      `${file}: a project file restates the cadence`,
     ).not.toMatch(/interval:|scrapeTimeout:/);
 });
 
 test("a class with no signal is refused, and an unknown class is not a member", () => {
-  const noSignal = join(refusals, "alert-class-without-signal.domain.yml");
+  const noSignal = join(refusals, "alert-class-without-signal.project.yml");
   expect(read(noSignal)).toMatch(/^expect: E_ALERT_CLASS_WITHOUT_SIGNAL$/m);
-  const a = observabilityOf(servicesOf(noSignal)[0]?.text ?? "");
+  const a = observabilityOf(applicationsOf(noSignal)[0]?.text ?? "");
   expect(a?.alertClass, "the fixture must declare a class").toBeTruthy();
   expect(
     a?.hasScrape,
@@ -317,9 +317,9 @@ test("a class with no signal is refused, and an unknown class is not a member", 
     "the class must be a valid member, so the missing signal is the only defect",
   ).toContain(a?.alertClass);
 
-  const unknown = join(refusals, "alert-class-unknown.domain.yml");
+  const unknown = join(refusals, "alert-class-unknown.project.yml");
   expect(read(unknown)).toMatch(/^expect: schema\b/m);
-  const b = observabilityOf(servicesOf(unknown)[0]?.text ?? "");
+  const b = observabilityOf(applicationsOf(unknown)[0]?.text ?? "");
   expect(b?.hasScrape, "the fixture must publish a signal").toBe(true);
   expect(
     ALERT_CLASSES,
@@ -328,20 +328,20 @@ test("a class with no signal is refused, and an unknown class is not a member", 
 });
 
 test("rolling over RWO is refused and recreate over RWO is accepted", () => {
-  const refused = join(refusals, "cutover-rolling-over-rwo.domain.yml");
-  const accepted = join(refusals, "cutover-recreate-over-rwo.domain.yml");
+  const refused = join(refusals, "cutover-rolling-over-rwo.project.yml");
+  const accepted = join(refusals, "cutover-recreate-over-rwo.project.yml");
   expect(read(refused)).toMatch(/^expect: E_CUTOVER_UNHONOURABLE$/m);
   expect(read(accepted)).toMatch(/^expect: accepted$/m);
 
   const only = (file: string): Slice => {
-    const workloads = workloadsOf(file);
+    const processes = processesOf(file);
     expect(
-      workloads,
-      `${file}: a refusal fixture carries one Workload`,
+      processes,
+      `${file}: a refusal fixture carries one Process`,
     ).toHaveLength(1);
-    const [workload] = workloads;
-    if (workload === undefined) throw new Error(`${file}: no Workload`);
-    return workload;
+    const [process] = processes;
+    if (process === undefined) throw new Error(`${file}: no Process`);
+    return process;
   };
   const bad = only(refused);
   const good = only(accepted);
@@ -358,23 +358,23 @@ test("rolling over RWO is refused and recreate over RWO is accepted", () => {
   for (const file of [refused, accepted])
     expect(
       declarationsOf(file),
-      `${file}: a Kubernetes rollout token leaked into Service Intent`,
+      `${file}: a Kubernetes rollout token leaked into Project Intent`,
     ).not.toMatch(/RollingUpdate|maxSurge|maxUnavailable/);
 });
 
-test("no Workload or sidecar authors hardening", () => {
+test("no Process or sidecar authors hardening", () => {
   const inputs = [
-    ...domainFiles,
+    ...projectFiles,
     ...[
-      "alert-class-without-signal.domain.yml",
-      "alert-class-unknown.domain.yml",
-      "cutover-rolling-over-rwo.domain.yml",
-      "cutover-recreate-over-rwo.domain.yml",
+      "alert-class-without-signal.project.yml",
+      "alert-class-unknown.project.yml",
+      "cutover-rolling-over-rwo.project.yml",
+      "cutover-recreate-over-rwo.project.yml",
     ].map((file) => join(refusals, file)),
   ];
   for (const file of inputs) {
     const text = declarationsOf(file);
-    expect(text, `${file}: a Workload authors hardening`).not.toMatch(
+    expect(text, `${file}: a Process authors hardening`).not.toMatch(
       /^\s+hardening:/m,
     );
     expect(text, `${file}: a hardening exception survives`).not.toMatch(
@@ -389,8 +389,8 @@ test("no Workload or sidecar authors hardening", () => {
 });
 
 test("no provides port below 1024, because there is no capability to declare", () => {
-  for (const file of domainFiles) {
-    for (const w of workloadsOf(file)) {
+  for (const file of projectFiles) {
+    for (const w of processesOf(file)) {
       const lines = w.text.split("\n");
       const start = lines.findIndex((line) => /^ {8}provides:\s*$/.test(line));
       if (start === -1) continue;

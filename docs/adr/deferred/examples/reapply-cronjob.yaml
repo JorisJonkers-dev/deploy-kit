@@ -28,7 +28,7 @@ spec:
           restartPolicy: OnFailure
           # The same identity as the merge apply, so the re-apply cannot touch
           # anything the merge apply could not.
-          serviceAccountName: deployer-auth-federation
+          applicationAccountName: deployer-auth-federation
           containers:
             - name: reapply
               image: ghcr.io/jorisjonkers-dev/deploy-config-schema:1.0.0

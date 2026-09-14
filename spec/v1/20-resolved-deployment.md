@@ -26,7 +26,7 @@ kind: ResolvedService        # the projection published back to one repository
 not separable: the tier carrying each host, the Reconcile Unit DAG, inbound-edge
 derivations and the reader set of a Secret Store path are global properties
 ([chapter 16](16-dependencies.md)). `ResolvedService` is a **projection**: the
-slice belonging to one Service, obtained by filtering and never computed
+slice belonging to one Application, obtained by filtering and never computed
 separately, so the two cannot disagree about what was decided.
 
 The version is the data model's own semver, not the package's
@@ -52,9 +52,9 @@ directory name. This repository already contains one resolved tree (
 
 <sub>[Diagram source](#the-resolved-deployment-pinned-inputs-and-outputs) · edit by opening the SVG in draw.io</sub>
 
-One domain file is one Intent Fragment
-([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)), so the input a
-Service owner edits and the input composition unions are the same document. The
+One project file is one Intent Fragment
+([0063](../../docs/adr/model/0063-intent-authored-per-project.md)), so the input a
+Application owner edits and the input composition unions are the same document. The
 two node-facing inputs are deliberately drawn apart: what a node **can hold** is
 declared in the node contract and pinned with the Platform Intent; what the
 cluster **currently holds** is observed into the ClusterState snapshot. They
@@ -70,26 +70,26 @@ change proves it did not.
 
 **A value is platform-arbitrated if and only if it must be unique across the
 estate or draws on a shared finite resource; every other value is
-Service-declared and carried through untouched**
+Application-declared and carried through untouched**
 ([0004](../../docs/adr/model/0004-contention-decides-authority.md)). One question (
 does the value contend?) replaces a per-field negotiation.
 
 Three readings of the rule matter, and none is an exception to it:
 
 - **Contention decides who *arbitrates*, not who *authors*.** A contended value
-  does not silence the Service; it means the Service does not get the last word.
-  The Service states its requirement, and the platform decides whether it fits
+  does not silence the Application; it means the Application does not get the last word.
+  The Application states its requirement, and the platform decides whether it fits
   and where. Placement forced this reading and settles it. `memory` and `cpu`
-  are required on every Workload and authored there as raw quantities
+  are required on every Process and authored there as raw quantities
   ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)), and both are
   draws on a finite pool. An authors-only reading of the rule would have to
   forbid the field, which leaves the estate exactly where it is: BestEffort on
-  every pod, because a number no Service may write is a number nobody writes.
+  every pod, because a number no Application may write is a number nobody writes.
   The platform arbitrates against node `allocatable` published by the node
   contract ([0056](../../docs/adr/model/0056-node-facts-single-source.md)) and refuses
   what no node can hold with `E_PLACEMENT_UNSATISFIABLE`.
 - **Uniqueness alone is not contention.** A value that must be unique but is
-  drawn from no finite pool is *declared* by the Service and *checked* at
+  drawn from no finite pool is *declared* by the Application and *checked* at
   composition; there is nothing to arbitrate. A value drawn from a shared finite
   pool is *arbitrated*, and only the platform can arbitrate. The table's
   `placed by` column records which reading placed each row.
@@ -103,7 +103,7 @@ Three readings of the rule matter, and none is an exception to it:
 The cost of the first reading is accepted and named here rather than discovered
 later: **nothing stops an author writing `memory: 8Gi`.** The rule places
 arbitration, not restraint, and the arbitration that exists today is a single
-eligibility test against one node's allocatable. Every Workload in the estate
+eligibility test against one node's allocatable. Every Process in the estate
 could claim 8Gi, every one of them would pass against `frankfurt-contabo-1`'s
 32768Mi, and the only thing that would refuse is the scheduler, at apply, for
 whichever pods arrive last. That is [open item 5](#open-in-this-chapter).
@@ -111,8 +111,8 @@ whichever pods arrive last. That is [open item 5](#open-in-this-chapter).
 The estate is the argument for having a rule at all. One hostname,
 `kb.jorisjonkers.dev`, ended up declared in seven authoritative places across
 three repositories (`homelab-inventory/catalog/reachability.yml`, three
-`fleet-infra` manifests, a bearer-token secret and the service's own
-`platform/deployment.yml`) plus hardcoded in `ServicePermission.kt`, with two
+`fleet-infra` manifests, a bearer-token secret and the application's own
+`platform/deployment.yml`) plus hardcoded in `ApplicationPermission.kt`, with two
 conformance tests existing for no purpose but detecting when the seven disagree.
 The guard was cheaper to write than the fix.
 
@@ -120,80 +120,80 @@ The `placed by` column takes five values:
 
 | value | meaning |
 |---|---|
-| `no contention` | the Service has the last word |
-| `unique, checked` | estate-unique, declared by the Service; a collision is a build error |
-| `unique, arbitrated` | estate-unique and drawn from no set the Service can see |
+| `no contention` | the Application has the last word |
+| `unique, checked` | estate-unique, declared by the Application; a collision is a build error |
+| `unique, arbitrated` | estate-unique and drawn from no set the Application can see |
 | `pool` | a draw on a shared finite resource, decided by the platform |
-| `pool, stated` | a draw on a shared finite resource the Service states and the platform arbitrates |
+| `pool, stated` | a draw on a shared finite resource the Application states and the platform arbitrates |
 
 This table is the only place field authority is stated. Records needing a
 field's placement link to this anchor rather than copying rows.
 
 | field | authority | placed by | note |
 |---|---|---|---|
-| `domain` | Service | no contention | the file header, and the unit of fragment publication ([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)); the namespace derives from it |
-| `owner` | Service | no contention | the only field raised to the domain header; notification target, never routing |
-| `id` | Service | unique, checked | estate-unique; `E_DUPLICATE_SERVICE_ID` at composition. It is also the atomic release boundary ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)) |
-| `observability` `{alertClass, scrape}` | Service | no contention | urgency and the surface that carries the signal, per Service and never raised: a domain would page as loudly as its loudest member. Absent means no monitoring ([chapter 10](10-service-intent.md#observability)) |
-| workload `name` | Service | unique, checked | unique within the **domain**; `E_DUPLICATE_WORKLOAD_NAME`, and it names the derived identity |
-| `provides` surface names and ports | Service | no contention | declared on the Workload, because a port is a property of a process; written once, there |
-| `dependsOn` edges | Service | no contention | provider, surface, necessity ([chapter 16](16-dependencies.md#dependency-edges)) |
-| `image`, `runtime`, `lifecycle`, `stateful` | Service | no contention | what the Workload is |
-| env files, `assets` | Service | no contention | per Workload; derived values appear only as placeholders |
-| `secrets` grants: `path`, `keys`, `access`, `delivery`, `rotation` | Service | no contention to declare | per Service and never raised; the *path* is arbitrated (below), what a Service asks of a path is its own |
-| `exposure[].name` | Service | unique, checked | required; unique **within the Service**, `E_DUPLICATE_EXPOSURE_NAME` at composition. It is the half `${exposure:<service>.<name>#url}` addresses |
-| `exposure[].host` | Service | unique, checked | the full FQDN, authored: no label, no zone rule, no apex flag. Estate-unique across the composed union taken together with the register of unmanaged surfaces: `E_DUPLICATE_HOST` ([chapter 40](40-composition.md#identity)) |
-| `exposure` `audience`, and a route's `audience` override | Service | no contention | one closed audience vocabulary; the per-route form is the anonymous path inside an authenticated host |
-| `exposure[].contentPolicy` | Service | no contention | `strict`, `admin` or `workflow`. Which profile an application needs is a fact about the application; the header set it selects is derived |
-| `exposure[].routes`: `path`, `match`, `workload`, `surface`, `redirectTo` | Service | no contention | which of the Service's own Workloads serves which path of the host. The surface must be one that Workload `provides` (`E_UNKNOWN_SURFACE`); no two routes may share a `path` + `match` pair (`E_DUPLICATE_ROUTE_MATCH`); `redirectTo` is a path, never a regex |
-| `probes`, `startupBudget`, `cutover` | Service | no contention | what only the Service knows about its own start, health and cutover; `cutover` is required and has no default |
-| `hardening` | platform | no contention | one estate-wide posture, `restricted`. A Workload authors no hardening at all: it declares the paths it must write, and an image that cannot meet the class is `E_HARDENING_UNMET` ([0016](../../docs/adr/model/0016-pod-hardening.md)) |
-| `volumes[].durability` | Service | no contention | what the data is worth cannot be observed |
-| `placement.memory`, `placement.cpu` | Service | pool, stated | required on every Workload; the Service states the requirement, the platform arbitrates it against node allocatable |
-| `placement.gpu` | Service | pool, stated | `class` and `memory`, matched against the node contract's `gpus[].class` and `gpus[].memory_mib`; a card is held by one Workload at a time |
-| `placement.disk` | Service | pool, stated | a `media` set; it filters the first placement and the PV binding wins thereafter: `E_DISK_BINDING_CONFLICT` |
-| `volumes[].size` | Service | pool, stated | how much data the volume holds, matched against the node contract's `disks[].usable_gib`; no eligible node is `E_STORAGE_UNSATISFIABLE` ([0081](../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md)) |
-| PVC capacity and the disk capacity filter | derived | - | the volume's `size`, and their sum per Workload for placement |
-| `placement.arch`, `.site`, `.capabilities` | Service | no contention | filters over facts the node contract publishes; a list is a set of equally acceptable values, never a ranking |
-| `writablePaths` | Service | no contention | which paths the process must write; the size of each is platform-assigned ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)) |
-| `volumes[].durability` | Service | no contention | what losing the data costs; only the owner knows ([0015](../../docs/adr/model/0015-durability-class-per-volume.md)) |
-| `engine` | Service | no contention | what the process is, which the platform keys its backup method off ([0078](../../docs/adr/model/0078-engine-is-workload-vocabulary.md)) |
-| `replicas` | Service | no contention | the sole local capacity exception: `count` above one with a required `reason` ([No overrides](#no-overrides)) |
+| `project` | Application | no contention | the file header, and the unit of fragment publication ([0063](../../docs/adr/model/0063-intent-authored-per-project.md)); the namespace derives from it |
+| `owner` | Application | no contention | the only field raised to the project header; notification target, never routing |
+| `id` | Application | unique, checked | estate-unique; `E_DUPLICATE_APPLICATION_ID` at composition. It is also the atomic release boundary ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)) |
+| `observability` `{alertClass, scrape}` | Application | no contention | urgency and the surface that carries the signal, per Application and never raised: a project would page as loudly as its loudest member. Absent means no monitoring ([chapter 10](10-project-intent.md#observability)) |
+| process `name` | Application | unique, checked | unique within the **project**; `E_DUPLICATE_PROCESS_NAME`, and it names the derived identity |
+| `provides` surface names and ports | Application | no contention | declared on the Process, because a port is a property of a process; written once, there |
+| `dependsOn` edges | Application | no contention | provider, surface, necessity ([chapter 16](16-dependencies.md#dependency-edges)) |
+| `image`, `runtime`, `lifecycle`, `stateful` | Application | no contention | what the Process is |
+| env files, `assets` | Application | no contention | per Process; derived values appear only as placeholders |
+| `secrets` grants: `path`, `keys`, `access`, `delivery`, `rotation` | Application | no contention to declare | per Application and never raised; the *path* is arbitrated (below), what an Application asks of a path is its own |
+| `exposure[].name` | Application | unique, checked | required; unique **within the Application**, `E_DUPLICATE_EXPOSURE_NAME` at composition. It is the half `${exposure:<application>.<name>#url}` addresses |
+| `exposure[].host` | Application | unique, checked | the full FQDN, authored: no label, no zone rule, no apex flag. Estate-unique across the composed union taken together with the register of unmanaged surfaces: `E_DUPLICATE_HOST` ([chapter 40](40-composition.md#identity)) |
+| `exposure` `audience`, and a route's `audience` override | Application | no contention | one closed audience vocabulary; the per-route form is the anonymous path inside an authenticated host |
+| `exposure[].contentPolicy` | Application | no contention | `strict`, `admin` or `workflow`. Which profile an application needs is a fact about the application; the header set it selects is derived |
+| `exposure[].routes`: `path`, `match`, `process`, `surface`, `redirectTo` | Application | no contention | which of the Application's own Processes serves which path of the host. The surface must be one that Process `provides` (`E_UNKNOWN_SURFACE`); no two routes may share a `path` + `match` pair (`E_DUPLICATE_ROUTE_MATCH`); `redirectTo` is a path, never a regex |
+| `probes`, `startupBudget`, `cutover` | Application | no contention | what only the Application knows about its own start, health and cutover; `cutover` is required and has no default |
+| `hardening` | platform | no contention | one estate-wide posture, `restricted`. A Process authors no hardening at all: it declares the paths it must write, and an image that cannot meet the class is `E_HARDENING_UNMET` ([0016](../../docs/adr/model/0016-pod-hardening.md)) |
+| `volumes[].durability` | Application | no contention | what the data is worth cannot be observed |
+| `placement.memory`, `placement.cpu` | Application | pool, stated | required on every Process; the Application states the requirement, the platform arbitrates it against node allocatable |
+| `placement.gpu` | Application | pool, stated | `class` and `memory`, matched against the node contract's `gpus[].class` and `gpus[].memory_mib`; a card is held by one Process at a time |
+| `placement.disk` | Application | pool, stated | a `media` set; it filters the first placement and the PV binding wins thereafter: `E_DISK_BINDING_CONFLICT` |
+| `volumes[].size` | Application | pool, stated | how much data the volume holds, matched against the node contract's `disks[].usable_gib`; no eligible node is `E_STORAGE_UNSATISFIABLE` ([0081](../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md)) |
+| PVC capacity and the disk capacity filter | derived | - | the volume's `size`, and their sum per Process for placement |
+| `placement.arch`, `.site`, `.capabilities` | Application | no contention | filters over facts the node contract publishes; a list is a set of equally acceptable values, never a ranking |
+| `writablePaths` | Application | no contention | which paths the process must write; the size of each is platform-assigned ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)) |
+| `volumes[].durability` | Application | no contention | what losing the data costs; only the owner knows ([0015](../../docs/adr/model/0015-durability-class-per-volume.md)) |
+| `engine` | Application | no contention | what the process is, which the platform keys its backup method off ([0078](../../docs/adr/model/0078-engine-is-process-vocabulary.md)) |
+| `replicas` | Application | no contention | the sole local capacity exception: `count` above one with a required `reason` ([No overrides](#no-overrides)) |
 | route tier | platform | pool | the shared edge is finite; `E_NO_TIER_FOR_AUDIENCE` where no tier carries the audience |
 | route precedence | derived | - | `exact` before `prefix`, longer prefix before shorter; carried explicitly on the rendered route rather than left to the proxy's sort ([0093](../../docs/adr/model/0093-route-precedence-is-derived.md)) |
 | middleware chain | platform | pool | tier + audience + `contentPolicy`; `forward-auth` for `authenticated` on a public tier, the security-headers baseline with the named content profile, and the redirect rule a route's `redirectTo` asks for |
 | backup window, retention count, off-cluster destination | platform | pool | one policy per Durability Class; the window is one node's IO and the destination is one remote target ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)) |
 | the backup method | platform | pool | the image the Platform document names per `engine`, resolved through the images lock; nothing executable is authored ([chapter 14](14-platform-intent.md#engines)) |
-| alert rules, their severity and their receiver | the monitoring stack | pool | derived nowhere in this model. `alertClass` is published as a resolved fact and the stack that reads it decides what a class means ([chapter 10](10-service-intent.md#observability)) |
+| alert rules, their severity and their receiver | the monitoring stack | pool | derived nowhere in this model. `alertClass` is published as a resolved fact and the stack that reads it decides what a class means ([chapter 10](10-project-intent.md#observability)) |
 | monitor `interval` and `timeout` | platform | pool | the metrics stack's ingest budget is shared, so it is one estate-wide value in the Platform document ([chapter 14](14-platform-intent.md#monitor-cadence)) |
 | the backup identity's grant on the destination | platform | pool | derived, never authored: the platform chose the destination, so it owns the credential |
 | Reconcile Unit and its ordering | platform | unique, arbitrated | one estate-wide DAG ([The Reconcile Unit](#the-reconcile-unit)) |
-| identity name, Vault role, Vault policy | platform | pool | named for the **Workload alone**; the auth role namespace is shared ([chapter 16](16-dependencies.md#workload-identity)) |
+| identity name, Vault role, Vault policy | platform | pool | named for the **Process alone**; the auth role namespace is shared ([chapter 16](16-dependencies.md#process-identity)) |
 | Secret Store path layout and grants | platform | pool | one path per reader set; `E_SUBTREE_PREFIX_COLLISION` across Subtrees ([chapter 40](40-composition.md#identity)) |
 | image digest | platform | unique, arbitrated | one image reference resolves to one digest estate-wide, from the pinned images lock |
 | eligible node set, `nodeSelector` and affinity | platform | pool | every declared dimension matched against the node contract; no eligible node is `E_PLACEMENT_UNSATISFIABLE` ([Derived mechanics](#derived-mechanics)) |
 | recorded PV binding | platform | pool | one `local-path` PV lives on one node; read from the ClusterState snapshot |
 | `replicas` | derived | - | **1**; more than one is the `replicas: {count, reason}` declaration ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)) |
 | `PodDisruptionBudget` | derived | - | emitted only where `replicas` exceeds one, as `maxUnavailable: 1`; a budget over a single replica is a drain deadlock |
-| `namespace` | derived | - | `<domain>-system`, and nothing else ([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)); several Services share one by construction |
+| `namespace` | derived | - | `<project>-system`, and nothing else ([0063](../../docs/adr/model/0063-intent-authored-per-project.md)); several Applications share one by construction |
 | requests and limits | derived | - | from `placement.memory` and `placement.cpu`: memory request equals memory limit, cpu request with no cpu limit |
 | `securityContext` | derived | - | from `hardening` and its declared exceptions |
 | `automountServiceAccountToken` | derived | - | `true` only where a grant carries `delivery: self`; the pod authenticates in that case and in no other ([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)) |
 | the `emptyDir` per writable path, and its `sizeLimit` | derived | - | one mount per declared path, sized from the Platform Intent's ephemeral default ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)) |
-| `runAsUser`, `runAsGroup`, `fsGroup` | derived | - | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Workload holds a volume ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)) |
+| `runAsUser`, `runAsGroup`, `fsGroup` | derived | - | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Process holds a volume ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)) |
 | container probe timings | derived | - | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Platform Intent's probe policy ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)) |
 | `progressDeadlineSeconds` | derived | - | from `startupBudget` |
 | rollout strategy, surge, unavailability | derived | - | from `cutover` and `volumes`; `cutover: rolling` over an RWO volume is `E_CUTOVER_UNHONOURABLE`, not a silent downgrade |
 | object kind | derived | - | from `lifecycle`, `stateful` and `volumes` |
-| the Service's release-gate deadline | derived | - | `max` over the Service's Workloads of `progressDeadlineSeconds` ([The release gate](#the-release-gate)) |
-| the object label set | derived | - | fixed, from Workload name, Service Id and the images lock ([chapter 10](10-service-intent.md#the-label-set)) |
-| Secret and VSO sync objects | derived | - | from grants with `delivery: env` or `file`, plus `rolloutRestartTargets` from `rotation`; a grant with `delivery: self` and `tolerates: reload` derives **no** restart target, which is what makes its rotation zero-downtime ([chapter 10](10-service-intent.md#zero-downtime-rotation)) |
+| the Application's release-gate deadline | derived | - | `max` over the Application's Processes of `progressDeadlineSeconds` ([The release gate](#the-release-gate)) |
+| the object label set | derived | - | fixed, from Process name, Application Id and the images lock ([chapter 10](10-project-intent.md#the-label-set)) |
+| Secret and VSO sync objects | derived | - | from grants with `delivery: env` or `file`, plus `rolloutRestartTargets` from `rotation`; a grant with `delivery: self` and `tolerates: reload` derives **no** restart target, which is what makes its rotation zero-downtime ([chapter 10](10-project-intent.md#zero-downtime-rotation)) |
 | an Asset's object name, and the restart it causes | derived | - | content-hashed unconditionally; there is no authored change response ([0094](../../docs/adr/model/0094-asset-change-restarts-unconditionally.md)) |
-| env entries and `envFrom` refs | derived | - | from env files, after placeholder resolution, including `${identity:…}`, the Workload's own derived facts ([0091](../../docs/adr/model/0091-identity-placeholders-not-framework-wiring.md)) |
+| env entries and `envFrom` refs | derived | - | from env files, after placeholder resolution, including `${identity:…}`, the Process's own derived facts ([0091](../../docs/adr/model/0091-identity-placeholders-not-framework-wiring.md)) |
 | dependency coordinates | derived | - | from the edge set and the provider's surfaces, bound to the key the consumer chose |
 | Runtime Profile values | derived | - | from `runtime` |
 | ServiceMonitor, PodMonitor | derived | - | target and port name from `observability.scrape` and the named surface in `provides`; cadence from the Platform document |
-| PrometheusRule, severity, receiver route | the monitoring stack | - | not rendered by this model. PromQL is a mechanism and a receiver is a shared channel ([chapter 10](10-service-intent.md#observability)) |
+| PrometheusRule, severity, receiver route | the monitoring stack | - | not rendered by this model. PromQL is a mechanism and a receiver is a shared channel ([chapter 10](10-project-intent.md#observability)) |
 | backup job and retention sweep | derived | - | from `volumes[].durability`; `reconstructible` renders none |
 | NetworkPolicy set | derived | - | from the edge set, exposure, grants, plus the baseline ([chapter 16](16-dependencies.md#network-policy)) |
 
@@ -203,20 +203,20 @@ amendment to the rule, never an exceptions row in this table.
 
 ### The hostname changed sides
 
-Until this amendment the table carried two rows for one value: a Service-declared
+Until this amendment the table carried two rows for one value: an Application-declared
 *label*, and a platform-arbitrated *fully-qualified hostname* assembled from that
 label, the tier's hostname policy and the cluster domain. There is no such
 assembly to run. `knowledge` serves `kb`, `platform-rabbitmq` serves `rabbitmq`,
 `knowledge.jorisjonkers.dev` and `kb.jorisjonkers.dev` both resolve, and `root`,
-`status`, `dashboard` and `faro` belong to no Service at all, and
+`status`, `dashboard` and `faro` belong to no Application at all, and
 so a hostname policy would be right for most hosts and silently wrong for the
 rest, and the wrong ones are the ones nobody would check. `host` is therefore
-authored in full on the Service's `exposure` entry and carried through untouched
+authored in full on the Application's `exposure` entry and carried through untouched
 ([0018](../../docs/adr/model/0018-exposure-by-audience.md)); both old rows are gone,
 replaced by one.
 
 That is the rule's second reading, not an exception to it. A hostname must be
-unique across the estate and draws on no pool the platform holds, so the Service
+unique across the estate and draws on no pool the platform holds, so the Application
 declares it and the **uniqueness check is arbitrated at composition**:
 `E_DUPLICATE_HOST` over the composed union taken together with the Registered
 Unmanaged Surfaces ([chapter 40](40-composition.md#identity)). Nobody's fragment
@@ -229,25 +229,25 @@ What stays on the platform side of this path is everything mechanical about the
 edge: the tier that carries the audience, and the middleware chain that follows
 from the tier, the audience and `contentPolicy`. The authored proxy vocabulary is
 exactly two fields (`contentPolicy` on an exposure and `redirectTo` on a route)
-and no Service names a middleware, a listener or a certificate issuer.
+and no Application names a middleware, a listener or a certificate issuer.
 
 ### The namespace row was wrong, and this is the correction
 
-Until this amendment the table derived `namespace` from `id`, with a per-Service
+Until this amendment the table derived `namespace` from `id`, with a per-Application
 exception field that could name a different namespace and record a reason. Both
 halves of that rule are retired, because the rule was wrong about this estate.
 
-Namespaces here have never been per Service. They have always been per domain,
+Namespaces here have never been per Application. They have always been per project,
 and there are ten of them (`auth-system`, `data-system`, `knowledge-system`,
 `app-system`, `agents-system`, `mail-system`, `media-system`, `notes-system`,
-`automation-system`, `utility-system`) each of which equals `<domain>-system`
-today. Deriving from `domain` renames nothing and moves no live object.
+`automation-system`, `utility-system`) each of which equals `<project>-system`
+today. Deriving from `project` renames nothing and moves no live object.
 
 The exception field existed only because the rule pointed at the wrong input.
 `home-portal` is the repository and the product, so the id rule derives
-`home-portal-system`: a namespace that does not exist and never has. The Service
-runs in `app-system`, because its domain is `app`. Once the derivation reads
-`domain`, `app-system` falls out directly and there is nothing left for an
+`home-portal-system`: a namespace that does not exist and never has. The Application
+runs in `app-system`, because its project is `app`. Once the derivation reads
+`project`, `app-system` falls out directly and there is nothing left for an
 exception to express, which is why the field is deleted rather than narrowed.
 
 Two consequences follow, and both are now the normal case rather than a
@@ -255,20 +255,20 @@ footnote to an exception:
 
 - **`namespace` is derived, not arbitrated.** It leaves the platform half of
   this table. There is no pool to draw from and no collision to resolve, because
-  a namespace is shared on purpose. A Service owner can therefore read their own
+  a namespace is shared on purpose. An Application owner can therefore read their own
   namespace out of their own file, which is the one decision
   [Publish back](#publish-back) no longer has to tell them about.
-- **A namespace is not a trust boundary.** It holds several Services by
+- **A namespace is not a trust boundary.** It holds several Applications by
   construction, so no isolation claim may rest on a namespace wall. Isolation is
   the derived default-deny edge set
   ([0035](../../docs/adr/model/0035-network-policy-default-deny.md)), evaluated per
-  pod, plus per-Workload identity
-  ([0024](../../docs/adr/model/0024-identity-per-workload.md)), and nothing else.
+  pod, plus per-Process identity
+  ([0024](../../docs/adr/model/0024-identity-per-process.md)), and nothing else.
 
 ## Pinned inputs
 
 > **Every assignment is a pure function of the pinned input set: every Intent
-> Fragment (the domain files and the Platform document
+> Fragment (the project files and the Platform document
 > ([chapter 14](14-platform-intent.md)), the node contract the Platform document
 > names, the locks, and the ClusterState snapshot) each carried by digest.**
 > Identical inputs, identical output, always.
@@ -276,7 +276,7 @@ footnote to an exception:
 The set is **closed**. No assignment consults live cluster state, a mutable
 pool, a counter, or state remembered between renders. There is no allocation
 registry and no assignment state, which is why `renderHash` means something and
-why publishing assignments back to a service repository cannot drift.
+why publishing assignments back to a project repository cannot drift.
 
 Placement is the case that tests the rule hardest, and it stays inside it.
 Every declared dimension is matched against node `allocatable`, the node's
@@ -326,7 +326,7 @@ premise and must be fixed in the renderer before the gate is trusted.
 ## Cluster state
 
 Some assignments need facts the cluster alone can supply: which node holds a
-bound PersistentVolume, and where a Workload currently runs. Those facts are
+bound PersistentVolume, and where a Process currently runs. Those facts are
 captured **once**, by a read-only collector, into a snapshot that is digested
 and pinned like every other input
 ([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)). Assignments read
@@ -334,7 +334,7 @@ the snapshot. Nothing reads the live cluster.
 
 | the snapshot enumerates | used by |
 |---|---|
-| PersistentVolume bindings, with the node holding each | recording where a Workload's data already sits; `E_DISK_BINDING_CONFLICT` where a declared `disk` dimension contradicts the binding |
+| PersistentVolume bindings, with the node holding each | recording where a Process's data already sits; `E_DISK_BINDING_CONFLICT` where a declared `disk` dimension contradicts the binding |
 | current placements | detecting a move before it is rendered |
 
 **What a node can hold is not on that list.** `allocatable`, `site`, `arch`,
@@ -349,10 +349,10 @@ gets fixed.
 
 The distinction is not bookkeeping. Observed capacity is free capacity, and free
 capacity is a function of whatever else was scheduled when the collector ran:
-the same Workload would be eligible at 03:00 and ineligible at 09:00 with no
+the same Process would be eligible at 03:00 and ineligible at 09:00 with no
 input of its own changed, and the build result would depend on the hour.
 Matching declared requirements against declared allocatable is
-**eligibility, not bin-packing**: three Workloads each declaring `memory: 2Gi`
+**eligibility, not bin-packing**: three Processes each declaring `memory: 2Gi`
 all pass against a 4096Mi node, because each is compared against allocatable
 alone. The scheduler refuses the third at apply. That is the accepted cost of
 keeping the answer a pure function of pinned inputs, and it is why the estate
@@ -406,22 +406,22 @@ snapshot's age is on the artifact.
 
 ## Derived mechanics
 
-A Service declares what only it can know (its cold-start budget, whether its
+An Application declares what only it can know (its cold-start budget, whether its
 next cutover must keep serving, which paths answer readiness and liveness, what a
 volume's data is worth, what it can survive when an input changes) and what
-only it can state: how much memory and cpu each of its Workloads needs. Probe
+only it can state: how much memory and cpu each of its Processes needs. Probe
 timings, rollout strategy, surge and unavailability, progress deadlines, health
 timeout classes, object kind, resource requests and limits, pod hardening,
 backup jobs and retention sweeps all follow
 ([0030](../../docs/adr/model/0030-runtime-mechanics-derived.md)).
 **None of the derived values may be authored**, and writing one in an env file
-or a Service document is a build error ([chapter 10](10-service-intent.md)).
+or an Application document is a build error ([chapter 10](10-project-intent.md)).
 
 The rollout configuration is the evidence. All four first-party deployments
 carry the same pattern (`RollingUpdate` with `maxSurge: 1` and
 `maxUnavailable: 0`, `startupProbe` at `periodSeconds: 5` and
 `failureThreshold: 120`, readiness and liveness at `timeoutSeconds: 5`, and
-`progressDeadlineSeconds: 1800` on the three JVM services) and the comments
+`progressDeadlineSeconds: 1800` on the three JVM applications) and the comments
 record what it cost to arrive there: *"under `Recreate` every image roll opened
 a zero-pod window, so a slow cold start or a flaky ghcr image pull took the MCP
 fully down (503)"*; *"JVM cold start (~250–300 s); the 600 s startupProbe budget
@@ -431,18 +431,18 @@ hand, with the reasoning trapped in comments no tool can read.
 Five rules carry most of the weight:
 
 - **Strategy is a function of `cutover` and volumes, not a preference.** A
-  `ReadWriteOnce` volume cannot attach to two pods at once, so a Workload
-  holding one cannot surge, and a Workload that declares `cutover: rolling`
+  `ReadWriteOnce` volume cannot attach to two pods at once, so a Process
+  holding one cannot surge, and a Process that declares `cutover: rolling`
   over one is refused with `E_CUTOVER_UNHONOURABLE` rather than silently
   rendered as `Recreate`. Estate-wide the split is 21 `Recreate` to 9
   `RollingUpdate`, and every RWO holder is on the `Recreate` side. The renderer
   today reads an authored enum (`src/adapters/kubernetes.ts:608`) and inspects
-  no volume, which is a trap: a stateful Workload whose author forgets
+  no volume, which is a trap: a stateful Process whose author forgets
   `strategy: recreate` gets `maxSurge: 1` against an RWO volume, appears to work
   on one node, and wedges the first time a second worker exists. Under
   `cutover`, that forgetting is impossible: the two declarations are checked
   against each other at composition, and the contradiction is a build error
-  naming the Workload and the volume.
+  naming the Process and the volume.
 - **The progress deadline must exceed the startup budget, strictly.** It derives
   as budget × 3, floored. The current renderer emits `600` against a 600-second
   budget, so a JVM still inside its legitimate startup window is marked
@@ -450,29 +450,29 @@ Five rules carry most of the weight:
 - **There is no health timeout class.** The generation being replaced carried a
   table over declarations (`stateless: 5m`, `stateful: 10m`,
   `control-plane: 15m`, `job: 10m`
-  (`src/schemas/health-timeout-map.ts:1-6`), strongest class across a Service)
+  (`src/schemas/health-timeout-map.ts:1-6`), strongest class across an Application)
   and it is a second derivation over the same input as
   `progressDeadlineSeconds`. The two already disagree: `auth-api` declares a
   600-second `startupBudget`, derives an 1800-second deadline, and its class
-  gives up at 5 minutes on a Workload the model says may legitimately take ten.
-  One input has one derivation, and the Service-scoped number that a switchover
+  gives up at 5 minutes on a Process the model says may legitimately take ten.
+  One input has one derivation, and the Application-scoped number that a switchover
   waits on is the release-gate deadline below.
 - **Durability derives objects, not just a label.** A volume of class
   `recoverable` derives a backup `CronJob` and a retention sweep; `irreplaceable`
   derives both plus an off-cluster copy and a derived grant for the destination;
   `reconstructible` derives nothing. The schedule, retention and destination come
-  from the platform's per-class policy and the method from the Workload's
-  `engine`, so two Services of the same class and engine derive the same objects
+  from the platform's per-class policy and the method from the Process's
+  `engine`, so two Applications of the same class and engine derive the same objects
   with different volumes, which is the property that makes a restore rehearsal
   meaningful ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)).
 - **Hardening is one platform posture plus declared exceptions.** `restricted` (
   `runAsNonRoot`, `readOnlyRootFilesystem`, all capabilities dropped, seccomp
   `RuntimeDefault`) is declared once in the Platform document and authored by no
-  Workload; each declared exception names one control and carries a reason
+  Process; each declared exception names one control and carries a reason
   ([0016](../../docs/adr/model/0016-pod-hardening.md)).
 - **Capacity is not a class.** Requests and limits no longer resolve through a
   named table in the Platform Intent; they derive from the raw quantities the
-  Workload declares, under two shape rules the author does not write. Memory
+  Process declares, under two shape rules the author does not write. Memory
   request **equals** memory limit, because memory is incompressible and an OOM
   kill beats eviction roulette. Cpu is a request with **no** limit, because
   throttling gets misdiagnosed as slow application code
@@ -485,14 +485,14 @@ Neither hardening nor resources exists in either renderer today:
 src/ schemas/` returns 0 hits, so every rendered pod runs as its image's UID
 with a writable root and no reservation at all: BestEffort is the estate's
 standing QoS class, and ending that is what `memory` and `cpu` being required
-on every Workload buys.
+on every Process buys.
 
 ### Layer 2 does not assign a node
 
 Earlier drafts said layer 2 decides "which node". That is wrong. Kubernetes
 schedules pods; the platform only constrains where they may land. Layer 2
-computes an **eligible node set** from the placement dimensions the Workload
-declared ([chapter 10](10-service-intent.md#placement)) matched against the node
+computes an **eligible node set** from the placement dimensions the Process
+declared ([chapter 10](10-project-intent.md#placement)) matched against the node
 contract, and emits a **selector and an affinity** that express it.
 
 Every dimension is hard. A list is a set of equally acceptable values ( `arch:
@@ -524,11 +524,11 @@ the address of the endpoint that authenticates for it, beside the audiences it
 serves; a tier that serves no `authenticated` route carries no such field and
 needs none.
 
-It is not derived from the authenticating Service's own surface. `auth-api`'s
+It is not derived from the authenticating Application's own surface. `auth-api`'s
 estate-wide role *is* this middleware
-([chapter 10](10-service-intent.md#service-identity)), and resolving it as if it
-were a dependency edge would make the edge tree depend on resolving a Service
-and would write one Service's id into a platform derivation. It is a platform
+([chapter 10](10-project-intent.md#application-identity)), and resolving it as if it
+were a dependency edge would make the edge tree depend on resolving an Application
+and would write one Application's id into a platform derivation. It is a platform
 fact, so it sits where platform facts sit: the Platform Intent, pinned by
 digest ([Pinned inputs](#pinned-inputs)).
 
@@ -538,19 +538,19 @@ rather than discovered as a 500 at the edge.
 
 ## The release gate
 
-A Service is the Release Unit, and no member's new version receives traffic
+An Application is the Release Unit, and no member's new version receives traffic
 until every member's new version is healthy
 ([chapter 50](50-lifecycle.md#release-unit-switchover)). *Performing* the switch
 belongs to delivery, which is defined separately. What the model owes is the
 gate's **inputs**, and it owes them as a derivation rather than as an object
 ([0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md)).
 
-Layer 2 therefore carries, per Service:
+Layer 2 therefore carries, per Application:
 
 | field | derived from |
 |---|---|
-| the member list | the Service's Workloads; membership is structural |
-| each member's readiness reference | that Workload's `probes.readiness`: its `path` + `port`, or its `tcp` port |
+| the member list | the Application's Processes; membership is structural |
+| each member's readiness reference | that Process's `probes.readiness`: its `path` + `port`, or its `tcp` port |
 | the gate deadline | `max` over the members of `progressDeadlineSeconds`, itself `startupBudget × 3` |
 
 `max` is the reading "held, not partial" requires: the unit waits for its
@@ -560,15 +560,15 @@ because a UI that is ready in 30 seconds must still not receive traffic while
 the API it talks to is inside its own legitimate startup window.
 
 **Nothing is rendered for the gate.** The inputs live in the Resolved
-Deployment and in each Service's projection, which is where decisions live and
+Deployment and in each Application's projection, which is where decisions live and
 where a delivery mechanism reading a pinned lock already looks
 ([0006](../../docs/adr/model/0006-pinned-inputs.md)). Layer 3 emits the fixed
-label set ([chapter 10](10-service-intent.md#the-label-set)) and nothing else on
-the Service's behalf: an object no controller consumes is the defect
+label set ([chapter 10](10-project-intent.md#the-label-set)) and nothing else on
+the Application's behalf: an object no controller consumes is the defect
 `app.kubernetes.io/instance` already is, and rendering a second one would not
 make the gate real.
 
-A Service whose Workloads all declare `probes: none` publishes no readiness
+An Application whose Processes all declare `probes: none` publishes no readiness
 signal and cannot be gated: `E_RELEASE_UNIT_NO_READINESS`, checked at
 composition time ([chapter 40](40-composition.md#completeness)), not discovered
 by a delivery mechanism at apply time.
@@ -588,13 +588,13 @@ answerable for the field. A decision taken while serialising appears in no
 schema, is recorded in no lock, and is invisible in the projection its owner
 reads back.
 
-Two live cases show that the alternative does not work. A per-domain object (
+Two live cases show that the alternative does not work. A per-project object (
 `namespace.yaml`, and the namespace-wide default-deny) is one object per
-domain, while an Adapter keyed off the Service emits one directory per Service:
-`auth` has one Service and nothing collides, `data` has three and produces three
+project, while an Adapter keyed off the Application emits one directory per Application:
+`auth` has one Application and nothing collides, `data` has three and produces three
 identical Namespace objects at three paths. And an estate-scoped Deliverable,
 the Gatus endpoints ConfigMap, lands in `utility-system` rather than in the
-namespace of the Service that motivated it. Under an adapter-computed path both
+namespace of the Application that motivated it. Under an adapter-computed path both
 are accidents of who ran last; under a path plan both are assignments, with one
 owner and a recorded reason.
 
@@ -613,7 +613,7 @@ chapter is restated with a reason, and there is no `E_UNKNOWN_OVERRIDE` because
 there is no key set to fall outside.
 
 The one local exception is capacity, and it is a named field rather than a hatch
-([chapter 10](10-service-intent.md#capacity)):
+([chapter 10](10-project-intent.md#capacity)):
 
 ```yaml
 replicas:
@@ -633,19 +633,19 @@ threshold) so an owner who needed 600 and could not say so would declare a
 then used to license more than it justified.
 
 The historic case is `app-ui`: `progressDeadlineSeconds: 600` against the three
-JVM services' `1800`, justified as *\"nginx pods, ~10–20Mi RAM each\"*. That is
+JVM applications' `1800`, justified as *\"nginx pods, ~10–20Mi RAM each\"*. That is
 not evidence of a value only its owner could know; it is evidence that one rule
-over `startupBudget` was wrong for a whole workload class. A JVM cold start and a
+over `startupBudget` was wrong for a whole process class. A JVM cold start and a
 static-bundle start differ by **two orders of magnitude**, and the correct
-response is a rule that reads an input the Workload already declares, not a
-per-Workload exception carrying a number the rule should have produced.
+response is a rule that reads an input the Process already declares, not a
+per-Process exception carrying a number the rule should have produced.
 
 So the classification, and the evidence it rests on:
 
 | old override key | what it actually was | where it went |
 |---|---|---|
 | `replicas` | irreducible local capacity knowledge | the named `replicas: {count, reason}` field, the one survivor |
-| `startupDeadline` | a workload class (`runtime: static` starts in seconds, `jvm` in minutes) | repaired central rule over `startupBudget` and `runtime` |
+| `startupDeadline` | a process class (`runtime: static` starts in seconds, `jvm` in minutes) | repaired central rule over `startupBudget` and `runtime` |
 | `gateDeadline` | `max` over members, already a derivation, never a decision | derived, unchanged |
 | `automountToken` | a derivation from `delivery: self` | derived, unchanged ([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)) |
 | `ephemeralSize`, `probeCadence`, `backupTerms`, `monitorCadence` | platform policy over shared resources | platform, stated once |
@@ -656,24 +656,24 @@ So the classification, and the evidence it rests on:
 as the classification, not as a settled multiplier: the estate's actual deadline
 differences and their rollout evidence must be inventoried before the corrected
 rule is selected and tested. Until that inventory passes, the single
-`startupBudget × 3` rule stands and no Workload restates it.
+`startupBudget × 3` rule stands and no Process restates it.
 
 Two properties were bought by the hatch and are kept without it. A wrong
 derivation is now visible as a wrong render for a whole class rather than hidden
-behind a per-Workload reason, which is what makes it fixable. And no value has
+behind a per-Process reason, which is what makes it fixable. And no value has
 two declaring sites, so chapter 16's single-authority property runs over every
 surface with no exemption for hand-tuning.
 
 ### `namespace` is still not restatable
 
-`<domain>-system` has exactly one input, the author writes it, and an author who
-wants a different namespace changes `domain`: one edit, in the open, which moves
-the Service to another file and another fragment. A second way to say where a
-Service lives is a second record of one fact, and it drifts.
+`<project>-system` has exactly one input, the author writes it, and an author who
+wants a different namespace changes `project`: one edit, in the open, which moves
+the Application to another file and another fragment. A second way to say where a
+Application lives is a second record of one fact, and it drifts.
 
 ### Hardening has no exception surface either
 
-The posture is platform policy and a Workload authors none of it. There is no
+The posture is platform policy and a Process authors none of it. There is no
 per-control relaxation carried with a reason, because that is an override under
 another name and it outlives the image that justified it. An image that cannot
 meet `restricted` is `E_HARDENING_UNMET`; the fix is the image, or a
@@ -683,10 +683,10 @@ Bidirectional Ledger entry with an owner while it is replaced
 ## The Reconcile Unit
 
 The Reconcile Unit is **derived from the dependency graph**, never declared
-([0032](../../docs/adr/model/0032-reconcile-unit-derived.md)). A Service's unit is
-`apps-<domain>`; the ordering between units is the edge set of
-[chapter 16](16-dependencies.md#dependency-edges) projected onto domains, plus an
-edge to the secrets-provisioning unit wherever a Service holds any grant.
+([0032](../../docs/adr/model/0032-reconcile-unit-derived.md)). An Application's unit is
+`apps-<project>`; the ordering between units is the edge set of
+[chapter 16](16-dependencies.md#dependency-edges) projected onto projects, plus an
+edge to the secrets-provisioning unit wherever an Application holds any grant.
 
 ![The Reconcile Unit DAG](diagrams/20-reconcile-unit-dag.drawio.svg)
 
@@ -694,13 +694,13 @@ edge to the secrets-provisioning unit wherever a Service holds any grant.
 
 An arrow means *must be Ready first*. `apps-knowledge` follows `apps-data`
 because `knowledge` depends on `platform-postgres` and `platform-rabbitmq`;
-`apps-agents` follows `apps-knowledge` because the agent services consume
+`apps-agents` follows `apps-knowledge` because the agent applications consume
 `knowledge`, and follows `apps-vso-secrets` because they hold grants: a
-Workload cannot start before the credential it holds is materialised. That is
+Process cannot start before the credential it holds is materialised. That is
 the fourteen-node graph `fleet-infra` maintains by hand today, rendered instead.
 
-`platform.layer` is **deleted from Service Intent**. It was a free-form string
-typed `"type": "string"` with no enumeration; every Service declared `apps-core`
+`platform.layer` is **deleted from Project Intent**. It was a free-form string
+typed `"type": "string"` with no enumeration; every Application declared `apps-core`
 and not one reconciled there: `auth-api`, `agents-api` and `app-ui` land in
 `apps-stateless`, `knowledge` in `apps-knowledge`, `agent-runtime` in
 `apps-agents`. A field wrong in 100% of observed cases at no cost is a comment,
@@ -710,22 +710,22 @@ two units at once, and one string cannot name two. What survives is optional and
 in, useful only for diffing observation against derivation, never authored, and
 not part of the pinned snapshot.
 
-Two consequences are the price. A Service owner cannot pin their reconcile
+Two consequences are the price. An Application owner cannot pin their reconcile
 position; a wrong order is fixed by correcting the dependency declaration that
-produced it. And a Service's objects may split across units with nothing
+produced it. And an Application's objects may split across units with nothing
 declaring that they do, as `agents-login`'s do, which is what makes a partially
-applied Service hard to read. A dependency cycle becomes a build failure
+applied Application hard to read. A dependency cycle becomes a build failure
 (`E_DEPENDENCY_CYCLE`) rather than a reconcile deadlock.
 
 **The Reconcile Unit orders; it does not make anything atomic.** Ordering is
-derived from the graph. Atomicity is the **Service boundary itself**
-([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)): every Workload of
-one Service switches together or none switches, and there is no mechanism to
-couple two Services. The two are orthogonal: postgres before knowledge is
+derived from the graph. Atomicity is the **Application boundary itself**
+([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)): every Process of
+one Application switches together or none switches, and there is no mechanism to
+couple two Applications. The two are orthogonal: postgres before knowledge is
 ordering; `auth-api` and `auth-ui` moving together is atomicity, and they move
-together because they are two Workloads of one Service, not because they agree
+together because they are two Processes of one Application, not because they agree
 on a name declared in two repositories. A pair that must release together and
-cannot be one Service is not a missing feature; it is evidence the Service
+cannot be one Application is not a missing feature; it is evidence the Application
 boundary is drawn wrong.
 
 The derived unit has one consumer in v1: the Flux `Kustomization` DAG, whose
@@ -734,25 +734,25 @@ push-based applier would do with the same ordering (apply its slice layer by
 layer) belongs to the separately-defined delivery work in
 [docs/adr/deferred/](../../docs/adr/deferred/README.md), along with everything
 else about how objects reach a cluster, and with the mechanism that makes a
-Service's switchover all-or-nothing. The derivation does not change if that
+Application's switchover all-or-nothing. The derivation does not change if that
 consumer is ever added; only the number of consumers does.
 
 ## Publish back
 
-Because contended values are platform-arbitrated, a Service owner cannot read
+Because contended values are platform-arbitrated, an Application owner cannot read
 their own node placement or Secret Store paths out of their own repository.
-Composition therefore writes each Service's `ResolvedService` projection into
-that Service's repository as a generated file (
+Composition therefore writes each Application's `ResolvedService` projection into
+that Application's repository as a generated file (
 `platform/resolved.yml`) and opens a pull request when it changes
 ([0033](../../docs/adr/model/0033-assignments-published-back.md)).
 
-The projection carries, per Workload, the **image it runs at the digest the lock
+The projection carries, per Process, the **image it runs at the digest the lock
 resolved**, the image metadata the previous generation rendered as a separate
 document. That is a layer-2 fact and it is published back like every other
 ([0098](../../docs/adr/model/0098-one-publication-path.md)); nothing about it was
 ever a Deliverable.
 
-Two entries left this list. The namespace is now derived from `domain`, which
+Two entries left this list. The namespace is now derived from `project`, which
 the owner writes in the header of the file they are already editing, so
 answering "which namespace am I in" needs no published assignment at all. The
 hostname followed it for another reason: `host` is authored, so the owner reads
@@ -791,40 +791,40 @@ arrives as a review request.
 ## Worked example: knowledge's projection
 
 ```yaml
-# services/knowledge/platform/resolved.yml
+# applications/knowledge/platform/resolved.yml
 # GENERATED. Never hand-edit. Written by compose; guarded by a drift check.
 apiVersion: resolved.jorisjonkers.dev/v1
 kind: ResolvedService
-domain: knowledge
-service: knowledge
+project: knowledge
+application: knowledge
 
 provenance:
   renderHash: sha256:…
   contextRef: ghcr.io/jorisjonkers-dev/cluster-deploy-context-public@sha256:…
   inputDigests:
-    intent: sha256:…                   # the knowledge domain file
+    intent: sha256:…                   # the knowledge project file
     imagesLock: sha256:…
     clusterState: sha256:…             # the snapshot the bindings below were read from
 
 assigned:
-  namespace: knowledge-system          # <domain>-system, derived, not arbitrated
+  namespace: knowledge-system          # <project>-system, derived, not arbitrated
   reconcileUnit: apps-knowledge
   reconcileAfter: [apps-core, apps-data, apps-vso-secrets]
-  healthTimeoutClass: stateful         # 10m, strongest class across the two Workloads
+  healthTimeoutClass: stateful         # 10m, strongest class across the two Processes
 
-  exposure:                            # on the Service: one host, its routes
+  exposure:                            # on the Application: one host, its routes
     public:
       host: knowledge.jorisjonkers.dev # authored; carried through untouched
       tier: public-frankfurt           # arbitrated: the tier carrying `authenticated`
       middleware: [forward-auth]       # derived from audience + tier; the
                                        # anonymous routes render without it
       routes:                          # five authored, two shown
-        - {path: /mcp, match: exact,  workload: knowledge-api, surface: http, audience: anonymous}
-        - {path: /,    match: prefix, workload: knowledge-api, surface: http}
+        - {path: /mcp, match: exact,  process: knowledge-api, surface: http, audience: anonymous}
+        - {path: /,    match: prefix, process: knowledge-api, surface: http}
 
-  workloads:
+  processes:
     knowledge-api:
-      serviceAccount: knowledge-api    # the Workload name alone
+      applicationAccount: knowledge-api    # the Process name alone
       objectKind: Deployment
       image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-api@sha256:1ad39d5…
       probes:
@@ -850,7 +850,7 @@ assigned:
         - {kind: VaultStaticSecret, path: secret/data/platform/postgres/kb}
 
     knowledge-ingest-worker:
-      serviceAccount: knowledge-ingest-worker
+      applicationAccount: knowledge-ingest-worker
       objectKind: Deployment
       strategy: {type: Recreate}       # forced: RWO volume
       resources:
@@ -866,9 +866,9 @@ assigned:
 
 Four things in that block are worth reading closely.
 
-`exposure` sits beside `workloads:`, not inside one, because it belongs to the
-Service ([0018](../../docs/adr/model/0018-exposure-by-audience.md)): a host fronts
-Workloads, and the routes under it are how it picks between them. The projection
+`exposure` sits beside `processes:`, not inside one, because it belongs to the
+Application ([0018](../../docs/adr/model/0018-exposure-by-audience.md)): a host fronts
+Processes, and the routes under it are how it picks between them. The projection
 records the entry even though the owner authored `host` and every route
 themselves, because the two lines they did not write are the ones worth a pull
 request: `tier` and `middleware`, which change when the platform's edge changes
@@ -876,9 +876,9 @@ and not when the `knowledge` repository does. A route carrying `audience:
 anonymous` derives a different chain from the same host, which is the whole
 purpose of the override.
 
-`placement.declared` echoes back what the Workload authored, beside what the
+`placement.declared` echoes back what the Process authored, beside what the
 platform did with it. That is the whole of [Authority](#authority)'s first
-reading on one screen: the requirement is the Service's, the eligible set and
+reading on one screen: the requirement is the Application's, the eligible set and
 the binding are the platform's, and the diff shows both moving. Where the two
 disagree (a `disk` dimension the bound node no longer satisfies) composition
 fails with `E_DISK_BINDING_CONFLICT` rather than re-placing.
@@ -891,14 +891,14 @@ again. Re-rendering with the same digests reproduces both byte for byte; a
 rebound volume produces a different `clusterStateDigest` and therefore a new
 lock, which someone lands deliberately.
 
-Two identities appear because `knowledge` has two Workloads
-([chapter 16](16-dependencies.md#workload-identity)), and each is named for its
-Workload alone: `knowledge-system.knowledge-api`, never
-`knowledge-system.knowledge-knowledge-api`. There is no Service prefix, and no
-collapsing rule for a single-Workload Service, a Service with one Workload
-shows that Workload's name, which may or may not equal the Service id. The
-uniqueness the prefix used to guarantee now comes from the domain file, where
-two Workloads may not share a name (`E_DUPLICATE_WORKLOAD_NAME`).
+Two identities appear because `knowledge` has two Processes
+([chapter 16](16-dependencies.md#process-identity)), and each is named for its
+Process alone: `knowledge-system.knowledge-api`, never
+`knowledge-system.knowledge-knowledge-api`. There is no Application prefix, and no
+collapsing rule for a single-Process Application, an Application with one Process
+shows that Process's name, which may or may not equal the Application id. The
+uniqueness the prefix used to guarantee now comes from the project file, where
+two Processes may not share a name (`E_DUPLICATE_PROCESS_NAME`).
 
 ## Open in this chapter
 
@@ -907,7 +907,7 @@ two Workloads may not share a name (`E_DUPLICATE_WORKLOAD_NAME`).
    it (`knowledge` serves `kb`, `auth-api` serves `auth`, `headlamp`
    `dashboard`, `gatus` `status`, `agents-api` two) and the conclusion drawn
    from it is that nothing derives a hostname at all: `host` is the full FQDN,
-   authored on the Service's `exposure` entry
+   authored on the Application's `exposure` entry
    ([0018](../../docs/adr/model/0018-exposure-by-audience.md)), placed
    *unique, checked* above, and arbitrated only as a collision at composition
    (`E_DUPLICATE_HOST`). No third category was needed and no row of the table is
@@ -918,8 +918,8 @@ two Workloads may not share a name (`E_DUPLICATE_WORKLOAD_NAME`).
    needs none. With `host` authored in full and no zone derivation anywhere,
    `home-portal` writes `host: jorisjonkers.dev` exactly as `auth` writes
    `host: auth.jorisjonkers.dev`; `apex: true` is not vocabulary
-   ([0018](../../docs/adr/model/0018-exposure-by-audience.md)). Two Services writing
-   the bare domain are one duplicated host like any other
+   ([0018](../../docs/adr/model/0018-exposure-by-audience.md)). Two Applications writing
+   the bare project are one duplicated host like any other
    ([chapter 40](40-composition.md#identity)), which is what `E_DUPLICATE_APEX`
    names when the contested name is that one.
 3. **The drift check's failure mode for upstream-caused staleness.** A
@@ -945,7 +945,7 @@ two Workloads may not share a name (`E_DUPLICATE_WORKLOAD_NAME`).
    observed.
    **Blocks:** trusting `E_PLACEMENT_UNSATISFIABLE` on the two small nodes.
 5. **Nothing arbitrates a declared requirement.** `memory` and `cpu` are stated
-   by the Service and arbitrated by the platform, but the arbitration today is
+   by the Application and arbitrated by the platform, but the arbitration today is
    one eligibility test against one node's allocatable. Nothing compares the sum
    of what the estate has declared against what the estate has, so every author
    writing `memory: 8Gi` passes the build (each claim fits
@@ -957,7 +957,7 @@ two Workloads may not share a name (`E_DUPLICATE_WORKLOAD_NAME`).
    a build error, a warning, or a number carried on the artifact.
    **Blocks:** nothing today. It is the conceded cost of restating
    [0004](../../docs/adr/model/0004-contention-decides-authority.md) as
-   who-arbitrates, and it comes due the first time a Service cannot place.
+   who-arbitrates, and it comes due the first time an Application cannot place.
 
 ## Diagram sources
 
@@ -973,18 +973,18 @@ an ADR.
 ```mermaid
 flowchart LR
     subgraph IN["Pinned inputs: each carried by digest"]
-        i1["Intent Fragment<br/>this domain's file + env/"]
+        i1["Intent Fragment<br/>this project's file + env/"]
         i2["Platform Intent<br/>contextRef + node contract<br/>(site, allocatable, gpus, disks)"]
         i3["images lock"]
         i4["ClusterState snapshot<br/>clusterStateDigest<br/>(PV bindings, current placements)"]
-        i5["Intent Fragments<br/>of every other domain"]
+        i5["Intent Fragments<br/>of every other project"]
     end
 
     RD["ResolvedDeployment<br/>one document, whole estate"]
 
     subgraph OUT["Outputs"]
         o1["Deliverable Set<br/>layer 3, per adapter"]
-        o2["ResolvedService<br/>per-Service projection"]
+        o2["ResolvedService<br/>per-Application projection"]
         o3["renderHash<br/>+ inputDigests"]
     end
 

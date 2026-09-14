@@ -3,11 +3,16 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-08-31
-normative: spec/v1/10-service-intent.md#storage-and-durability
+normative: spec/v1/10-project-intent.md#storage-and-durability
 rests-on: ["0005"]
 ---
 
 # Every volume declares a Durability Class
+
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
 
 ## Rests on
 
@@ -15,7 +20,7 @@ What a volume's data is worth cannot be inferred from anything the platform can
 observe about it. False if: a rule over cluster-observable facts alone (size,
 storage class, access mode, mount path, `stateful`) reproduces the owners'
 classification of every PVC in the estate. Settled by: classify all fourteen
-PVCs from `kubectl get pvc -A -o json` and the rendered Workloads only, then
+PVCs from `kubectl get pvc -A -o json` and the rendered Processes only, then
 diff against the owners' declarations; one mismatch on a volume an owner calls
 `irreplaceable` settles it.
 
@@ -26,7 +31,7 @@ There is no platform-level durability here to fall back on. Storage is
 [workspace ADR-0011](https://github.com/JorisJonkers-dev/workspace/blob/main/docs/decisions/ADR-0011-backup-coverage-gaps.md)
 records that *"PVC-level snapshots are impossible here: no VolumeSnapshot CRDs,
 and `local-path` has no CSI snapshot support. The job that pretended otherwise
-was deleted."* Two consequences follow: a volume pins its workload to one node
+was deleted."* Two consequences follow: a volume pins its process to one node
 permanently, which is why a state-move-plan exists at all, and retention can
 only be an application-level backup job. The only durability a volume gets is
 what someone asks for by name.
@@ -36,11 +41,11 @@ validated for `minimumDays >= 90` and `acknowledged: true`
 (`src/deployment/v2-model.ts:182-187`), appears in the readiness scorecard as
 `rollback_retention_acknowledged` (`schemas/readiness-scorecard.schema.json:13`),
 is documented in three `PLATFORM.md` files as failing *"never"*, and is read by
-no renderer or adapter. Every service declares the identical `{minimumDays: 90,
+no renderer or adapter. Every application declares the identical `{minimumDays: 90,
 acknowledged: true}`, and nothing states whether it retains images or data, a
 ninety-day rollback guarantee a snapshot-less cluster with fixed-filename backups
 cannot provide. A Durability Class per volume (`reconstructible`, `recoverable`,
-`irreplaceable`) replaces it, naming the one fact only the owning Service knows
+`irreplaceable`) replaces it, naming the one fact only the owning Application knows
 ([0005](0005-derivation-is-total.md)) and leaving schedule, sweep and destination
 derived. [Workspace ADR-0011](https://github.com/JorisJonkers-dev/workspace/blob/main/docs/decisions/ADR-0011-backup-coverage-gaps.md) already used the vocabulary in prose (*"Valkey is
 deliberately unbacked as reconstructible cache"*) and the option it
@@ -61,7 +66,7 @@ rehearsed before the first production apply. The worked example:
 
 | option | cost if taken | why rejected |
 |---|---|---|
-| Keep `rollbackTargetRetention` | zero migration; every Service keeps one identical block and the scorecard keeps passing | it asserts a ninety-day rollback this cluster cannot perform, and out-degree zero means no object ever reflects it |
+| Keep `rollbackTargetRetention` | zero migration; every Application keeps one identical block and the scorecard keeps passing | it asserts a ninety-day rollback this cluster cannot perform, and out-degree zero means no object ever reflects it |
 | Derive the class from observable facts | one classifier plus a growing exception list; a wrong guess is silent | `valkey` and `knowledge-vault-clone` are indistinguishable to the platform (both RWO `local-path` PVCs on the one node) and one is cache, one is irreplaceable |
 | Two classes, backed / unbacked | one fewer judgement per volume; a simpler renderer | collapses "a nightly job suffices" into "needs an off-cluster copy and approval on relocation", leaving [0057](0057-datastore-and-restore.md)'s rehearsal gate no input to fire on |
 | A per-volume RPO in hours | owners state numbers the substrate cannot honour: the daily node backup fixes RPO at 24 h | a number nothing enforces is the inert attestation again, with a decimal point |
@@ -69,7 +74,7 @@ rehearsed before the first production apply. The worked example:
 ## Reversibility
 
 Undo cost today: the field is authored and read by nothing, so removal is a
-schema change plus the declarations in the example Services, under an hour,
+schema change plus the declarations in the example Applications, under an hour,
 zero diff in any rendered object. Becomes irreversible once the
 [0043](../deferred/0043-delete-authority-durability-gate.md) refusal runs against production:
 the class is then the only signal separating a cache PVC from the knowledge vault
@@ -78,7 +83,7 @@ at delete time, and withdrawing it re-arms the delete path it disarmed.
 ## Consequences
 
 - Every volume carries one more authored line, and the `recoverable` /
-  `irreplaceable` boundary is a judgement with no safe default: paid by service
+  `irreplaceable` boundary is a judgement with no safe default: paid by application
   owners.
 - Until a backup renderer and retention sweep exist, the field is documentation
   with a delete gate attached: paid by adapter maintainers.
@@ -86,5 +91,5 @@ at delete time, and withdrawing it re-arms the delete path it disarmed.
   restore is rehearsed: paid by the platform owner, in schedule.
 - The error is asymmetric: over-declaring costs an off-cluster copy and a stalled
   delete, under-declaring loses the data silently: paid by whoever declares.
-- Every Service drops its `rollbackTargetRetention` block, and the scorecard
-  entry retires with it: paid by service authors, once.
+- Every Application drops its `rollbackTargetRetention` block, and the scorecard
+  entry retires with it: paid by application authors, once.

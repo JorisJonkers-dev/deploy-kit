@@ -9,12 +9,17 @@ rests-on: ["0003"]
 
 # A repository publishes its Intent Fragment and nothing else; every derivation runs once, centrally
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 Every kind the five publish-time producers emit is derivable centrally from the
 same declaration over the composed union, so the producers add no information a
-consumer can observe. False if: a fragment kind carries something the domain file
-does not, a fact only knowable in the Service repository at publish time.
-Settled by: composing the worked domains from their Intent Fragments alone and
+consumer can observe. False if: a fragment kind carries something the project file
+does not, a fact only knowable in the Project repository at publish time.
+Settled by: composing the worked projects from their Intent Fragments alone and
 diffing the rendered tree against a render fed by the five producer documents,
 byte for byte.
 
@@ -23,7 +28,7 @@ byte for byte.
 publication one mechanism: everything authored enters composition as an Intent
 Fragment by digest. That leaves the five `*-fragment` adapters as the one
 remaining second path into the render, and the deletion test decides them.
-Remove `traefik-route-fragment`, `kubernetes-workload-fragment`,
+Remove `traefik-route-fragment`, `kubernetes-process-fragment`,
 `gatus-endpoint-fragment`, `edge-catalog-fragment` and `image-metadata-fragment`
 together with `adapter-compat.ts`, and nothing a consumer observes changes: the
 central run already derives every one of those kinds from the composed intent.
@@ -35,22 +40,22 @@ how its output reached the estate; with a composed union
 ([0037](0037-composition-oci-fragments.md)) the repository's job is to publish
 what it declared, and the render is one run over everything declared. One
 runtime, one use-case, and the publish-time step becomes what 0037 already says
-it is: push a domain file by digest. A Service owner wanting to see their own
+it is: push a project file by digest. An Application owner wanting to see their own
 render runs the same core locally with the same pinned inputs, a use-case, not a
 second adapter set.
 
 Three more shallow modules fall to the same test. The **estate-scoped
 Deliverables** (the Gatus endpoints, the two edge catalogs) had adapters of
 their own and landed in a namespace no tenant owns. With Gatus and Traefik as
-declared Services ([0096](0096-the-foundation-is-declared.md)) they are
-**inbound derivations** of the Service that consumes them, exactly as the
+declared Applications ([0096](0096-the-foundation-is-declared.md)) they are
+**inbound derivations** of the Application that consumes them, exactly as the
 database catalog is for `postgres` ([0080](0080-database-catalog-is-derived-data.md)):
 what every exposure in the union implies for `gatus`, rendered as its own Asset
 by the `kubernetes` adapter. Three adapters exist to render three ConfigMaps whose
 content is an inbound derivation the model already has a word for.
 
 **Image metadata** was a document "not a Kubernetes object", consumed by tooling.
-It is a projection of the images lock (which Workload runs which alias at which
+It is a projection of the images lock (which Process runs which alias at which
 digest), and that is a layer-2 fact [0033](0033-assignments-published-back.md)
 already publishes back. It joins the Resolved Deployment artifact set and its
 adapter goes.
@@ -73,7 +78,7 @@ owned by the adapter that emits both. The guarantee that matters (LAN traffic
 never proxied through Frankfurt, which the estate is not permitted to do for
 Jellyfin's volume) rests on facts an author can see, not on which adapter ran:
 two tiers with disjoint audiences, a route's audience as the only way it reaches
-a tier, and two Traefik Services placed on different nodes. Adding a tier is a
+a tier, and two Traefik Applications placed on different nodes. Adding a tier is a
 Platform document edit.
 
 What remains is six adapters, one per subsystem: `kubernetes`, `networking`,
@@ -118,7 +123,7 @@ own lock semantics.
   delivery's to define; until it is, the bootstrap Flux source applies the tree
   the kustomize groupings describe, paid by the delivery definition, which
   inherits an ordering rather than an object.
-- A Service repository's publish workflow shrinks to validate-and-push, paid by
+- A Project repository's publish workflow shrinks to validate-and-push, paid by
   nobody, and ten repositories lose a render step.
 - Jellyfin's LAN-only path is now a property of the Platform document rather
   than of the adapter registry, so a reviewer reading `tiers` can see it, paid in

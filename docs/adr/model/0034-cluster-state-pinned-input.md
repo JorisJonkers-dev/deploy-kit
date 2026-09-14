@@ -9,6 +9,11 @@ rests-on: ["0006"]
 
 # ClusterState is a pinned, digested input
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 
 The cluster facts layer-2 assignments need are enumerable and change only on
@@ -23,13 +28,13 @@ snapshots; unequal digests mean it is not pinnable.
 
 Chapter 20 declares at `spec/v1/20-resolved-deployment.md:8-11`, as "the
 load-bearing property of the whole specification", that *"Every assignment is a
-pure function of Service Intent, the pinned Platform Intent, and the pinned
+pure function of Project Intent, the pinned Platform Intent, and the pinned
 locks"*, then breaks it in its own normative `ResolvedService` example. At
 `:246-249`, under `assigned:`, sits `observed: {node: enschede-t1000-1, because:
 knowledge-vault-clone PV is bound here, moveRequires: state-move-plan}`, while
 `inputDigests` at `:217` is `{intent, imagesLock}` with `contextRef` alongside
 at `:216`. That PV binding is in none of them; it was read live. The collision
-recurs across chapters: `spec/v1/10-service-intent.md:463` assigns `replicas`
+recurs across chapters: `spec/v1/10-project-intent.md:463` assigns `replicas`
 "from `minAvailable` and capacity", while
 `spec/v1/20-resolved-deployment.md:266` says such an assignment "would violate
 purity outright". Two lenses found this (RED-002; DAT-006/7, B2).

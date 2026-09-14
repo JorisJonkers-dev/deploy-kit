@@ -57,7 +57,7 @@ Tycho configuration and the target platform.
 |---|---|---|
 | `metamodel/` | `.ecore` and `.genmodel` per layer, Complete OCL `.ocl` per layer, the descriptor exporter | Task 1 |
 | `syntax/` | the Xtext grammar for the authored YAML subset | Task 1 |
-| `resolve/` | the QVTo transformation from Service Intent and Platform Intent to the Resolved Deployment | Task 2 |
+| `resolve/` | the QVTo transformation from Project Intent and Platform Intent to the Resolved Deployment | Task 2 |
 | `render/` | the Acceleo 4 templates from the Resolved Deployment to the Deliverable Set | Task 3 |
 | `cli/` | the pipeline entry point: files in, canonical JSON, diagnostics and rendered files out | Task 1 onward |
 | `parity/` | JUnit suites asserting each stage against the committed oracles, and the witness ledger check | Task 1 onward |
@@ -67,7 +67,7 @@ below.
 
 ## Metamodels
 
-One Ecore metamodel per document the model defines: Service Intent, Platform
+One Ecore metamodel per document the model defines: Project Intent, Platform
 Intent, Resolved Deployment and Deliverable Set. Each is hand-written `.ecore`
 XMI, committed, with names taken unchanged from
 [`CONTEXT.md`](../../CONTEXT.md). Cross-document references are Ecore
@@ -99,12 +99,12 @@ carries.
 
 ## Concrete syntax
 
-The Xtext grammar parses the same authored `.domain.yml` and
+The Xtext grammar parses the same authored `.project.yml` and
 `platform.intent.yml` files the TypeScript compiler reads. It covers the YAML
 subset those files use, with indentation handled by synthetic block tokens, and
 refuses anything outside the subset with a diagnostic rather than a guess.
 
-The grammar imports the hand-written Service Intent and Platform Intent
+The grammar imports the hand-written Project Intent and Platform Intent
 metamodels, so the parser produces instances of the graded metamodel directly.
 There is no inferred syntax metamodel and no mapping step between parsing and
 validation.
@@ -112,7 +112,7 @@ validation.
 ## Transformation
 
 A QVT-Operational transformation derives the Resolved Deployment from the
-parsed Service Intent and Platform Intent, run through the standalone
+parsed Project Intent and Platform Intent, run through the standalone
 transformation executor. Every derivation `spec/v1/20-resolved-deployment.md`
 names is a mapping or a helper in it; a derived value with no mapping is a gap
 the parity case for it exposes.

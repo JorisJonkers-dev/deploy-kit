@@ -13,12 +13,12 @@ worth separating) it contains **no decisions**.
 Layer 2 decided everything (chapter 20). Layer 3 serialises. If a renderer has to
 choose, the choice belongs one layer up, and the choice being made here is the
 defect, because a decision taken during serialisation appears in no schema, is
-recorded in no lock, and is invisible in the published projection a Service owner
+recorded in no lock, and is invisible in the published projection an Application owner
 reads back.
 
 An earlier form of this rule made the path a function of the adapter and the
-object it carries. That form could not answer which Service directory owns a
-per-domain object, and it put an estate-scoped Deliverable in whichever
+object it carries. That form could not answer which Application directory owns a
+per-project object, and it put an estate-scoped Deliverable in whichever
 namespace the emitting adapter happened to key off; both are recorded in
 chapter 20's path plan as the reason authority moved up a layer. An Adapter
 still declares a `defaultPath` (that is how the registry states what an Adapter
@@ -57,11 +57,11 @@ one of them is a **central** adapter running once over the composed union:
 
 | adapter | subsystem | emits |
 |---|---|---|
-| `kubernetes` | workloads | per Service: the controller, `Service`, `ServiceAccount`, `ConfigMap` (including every inbound-derived Asset) `PersistentVolumeClaim`, `PodDisruptionBudget` above one replica, the backup and sweep `CronJob`, `Namespace` per domain, and the kustomize `Kustomization` per directory |
+| `kubernetes` | processes | per Application: the controller, `Service`, `ServiceAccount`, `ConfigMap` (including every inbound-derived Asset) `PersistentVolumeClaim`, `PodDisruptionBudget` above one replica, the backup and sweep `CronJob`, `Namespace` per project, and the kustomize `Kustomization` per directory |
 | `networking` | policy | every `NetworkPolicy` ([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)) |
-| `prometheus` | monitoring | one `ServiceMonitor` or `PodMonitor` per Service that declares `observability`, from the named surface and the Platform document's cadence. No `PrometheusRule`: PromQL is the monitoring stack's ([chapter 10](../../spec/v1/10-service-intent.md#observability)) |
+| `prometheus` | monitoring | one `ServiceMonitor` or `PodMonitor` per Application that declares `observability`, from the named surface and the Platform document's cadence. No `PrometheusRule`: PromQL is the monitoring stack's ([chapter 10](../../spec/v1/10-project-intent.md#observability)) |
 | `traefik` | edge | one `IngressRoute` set and one `Middleware` set **per tier** the Platform document declares ([0076](../../docs/adr/model/0076-middleware-has-one-producer.md), [0098](../../docs/adr/model/0098-one-publication-path.md)) |
-| `vault-policy` | secret store | one policy and one auth role per Workload identity, as JSON ([0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)) |
+| `vault-policy` | secret store | one policy and one auth role per Process identity, as JSON ([0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)) |
 | `vso` | secret delivery | `VaultConnection`, `VaultAuth`, the operator `ServiceAccount` per namespace, `VaultStaticSecret`, `VaultDynamicSecret` |
 
 **There is one publication path.** A repository publishes its Intent Fragment
@@ -70,14 +70,14 @@ adapter runs at publish time. The five publish-time `*-fragment` producers of th
 previous generation, and the `adapter-compat` map that paired them with their
 consumers, are deleted: every kind they emitted is derived centrally from the
 same declaration, so they were a second render of the same intent, and their
-map's digest padded `renderHash` for no reason but to pair them. A Service owner
+map's digest padded `renderHash` for no reason but to pair them. An Application owner
 who wants to see their own render runs the same core locally over the same pinned
 inputs: a use-case, not a second adapter set.
 
 Three former adapters are not deleted so much as reclassified. The Gatus
 endpoints and the two edge catalogs are **inbound derivations** of the platform
-Service that consumes them ([chapter 16](16-dependencies.md#what-an-edge-derives-read-inbound)),
-rendered as that Service's own Assets by `kubernetes`. Image metadata is a
+Application that consumes them ([chapter 16](16-dependencies.md#what-an-edge-derives-read-inbound)),
+rendered as that Application's own Assets by `kubernetes`. Image metadata is a
 **projection of the images lock** and joins the Resolved Deployment artifact set
 ([chapter 20](20-resolved-deployment.md#publish-back)). `flux-root` (one Flux
 `Kustomization` per layer, with `dependsOn` and health checks) is one delivery
@@ -152,15 +152,15 @@ that [0025](../../docs/adr/model/0025-access-tiers-derive-policy.md) derives had
 no output at all, and a derivation with no output is not total
 ([0005](../../docs/adr/model/0005-derivation-is-total.md)).
 
-The `vault-policy` adapter emits, **per Workload identity**, two documents:
+The `vault-policy` adapter emits, **per Process identity**, two documents:
 
 | document | derived from |
 |---|---|
-| the Vault policy | the Workload's grants and their access tiers: `read` on the granted path, `patch` for `self-roll`, `create`/`update`/`delete` on a prefix for `custody`, nothing for `self-renew` |
-| the Kubernetes auth role | the Workload's ServiceAccount and namespace ([0024](../../docs/adr/model/0024-identity-per-workload.md)), bound to that one policy |
+| the Vault policy | the Process's grants and their access tiers: `read` on the granted path, `patch` for `self-roll`, `create`/`update`/`delete` on a prefix for `custody`, nothing for `self-renew` |
+| the Kubernetes auth role | the Process's ServiceAccount and namespace ([0024](../../docs/adr/model/0024-identity-per-process.md)), bound to that one policy |
 
-One document per identity, not per Service: identity is per Workload, so a
-two-Workload Service produces two policies and a diff says which principal's
+One document per identity, not per Application: identity is per Process, so a
+two-Process Application produces two policies and a diff says which principal's
 privilege changed. Both are JSON, which Vault accepts and which lets the one
 serializer own key order.
 
@@ -173,10 +173,10 @@ the documents and attributes them; nothing here says who writes them.
 configuring its JWT issuer and CA, and creating the KV mounts are estate-unique
 and draw on a shared resource, so by
 [0004](../../docs/adr/model/0004-contention-decides-authority.md) they are
-platform-assigned, and they are Assets of the declared `vault` Service in the
-platform's secrets domain ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md),
-[chapter 60](60-setup.md#secrets-at-rest)) rather than per-Service render. The
-per-Service render owns what varies per Workload and nothing else.
+platform-assigned, and they are Assets of the declared `vault` Application in the
+platform's secrets project ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md),
+[chapter 60](60-setup.md#secrets-at-rest)) rather than per-Application render. The
+per-Application render owns what varies per Process and nothing else.
 
 ## Attribution
 
@@ -206,7 +206,7 @@ day Nomad arrived. If a second target ever exists, that is when the abstraction
 gets lifted, with two real consumers to shape it.
 
 Two adapters may render objects of the same **kind**, `kubernetes` creates the
-Service's own `ServiceAccount`, `vso` mirrors the VSO operator's `ServiceAccount`
+Application's own `ServiceAccount`, `vso` mirrors the VSO operator's `ServiceAccount`
 into each target namespace. That is allowed: attribution is per Deliverable, and
 single authority is per **field**, not per kind. What is never allowed is two
 adapters claiming one path.
@@ -215,13 +215,13 @@ adapters claiming one path.
 
 Paths are assigned by the Resolved Deployment's path plan
 ([chapter 20](20-resolved-deployment.md#the-path-plan)) from each adapter's
-`defaultPath`, never configured per Service:
+`defaultPath`, never configured per Application:
 
 ```
-<gitopsRoot>/apps/<domain>/<service>/<object>.yaml
-<gitopsRoot>/apps/<domain>/namespace.yaml
+<gitopsRoot>/apps/<project>/<application>/<object>.yaml
+<gitopsRoot>/apps/<project>/namespace.yaml
 <gitopsRoot>/apps/vso-secrets/…
-<gitopsRoot>/apps/vso-secrets/policies/<workload>.{policy,role}.json
+<gitopsRoot>/apps/vso-secrets/policies/<process>.{policy,role}.json
 <gitopsRoot>/apps/edge/<tier>/…
 ```
 
@@ -244,7 +244,7 @@ already has and states:
 | ledger | holds | absent from it | stale entry in it |
 |---|---|---|---|
 | coverage ledger | every live object with no producing adapter | `E_UNATTRIBUTED_OBJECT` | `E_LEDGER_ENTRY_STALE` |
-| accepted fragment drift | differences between the render and what a Service published, each a deferred fix | `E_UNACCEPTED_DRIFT` | `E_LEDGER_ENTRY_STALE` |
+| accepted fragment drift | differences between the render and what an Application published, each a deferred fix | `E_UNACCEPTED_DRIFT` | `E_LEDGER_ENTRY_STALE` |
 | registered unmanaged surfaces | hostnames the model does not deploy ([0019](../../docs/adr/model/0019-registered-unmanaged-surfaces.md), chapter 40) | `E_UNREGISTERED_SURFACE` | `E_LEDGER_ENTRY_STALE` |
 
 Every entry carries three fields and a build consequence:
@@ -268,8 +268,8 @@ point of the stale half: without it, a coverage entry outlives the adapter that
 closed it and no build says so.
 
 One live drift entry marks where the limit genuinely is: `agent-gateway` cannot be
-probed because it is *"a sidecar jar inside agent-runner pods, not a workload of
-its own"*, and its per-runner Services are created and destroyed by `agents-api`
+probed because it is *"a sidecar jar inside agent-runner pods, not a process of
+its own"*, and its per-runner Applications are created and destroyed by `agents-api`
 at runtime. Some objects are outside any declarative model. The ledger is where
 they belong: with an owner and a reason, not with silence.
 
@@ -298,23 +298,23 @@ them is wrong by 74.
 
 | class | objects | share | how it is produced |
 |---|---|---|---|
-| **A, derived from Service Intent** | 364 | 81% | a registered adapter, per Service |
-| **B, the foundation** | 41 | 9% | was pack-delivered from `flux-modules` at a pinned ref; now **declared** as Services of the platform domains and rendered like class A ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)). The CRDs among them are the bootstrap set |
+| **A, derived from Project Intent** | 364 | 81% | a registered adapter, per Application |
+| **B, the foundation** | 41 | 9% | was pack-delivered from `flux-modules` at a pinned ref; now **declared** as Applications of the platform projects and rendered like class A ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)). The CRDs among them are the bootstrap set |
 | **C, authored content** | 45 | 10% | not derivable; ledgered until its owner lands |
 
 Class C is entirely Grafana: 31 `GrafanaDashboard`, 14 `GrafanaFolder`. Nothing
-in Service Intent implies a dashboard's panels; deriving one would be inventing a
-dashboard DSL. It is ledgered rather than permanent: 14 service dashboards become
-Assets on the owning Service ([0012](../../docs/adr/model/0012-assets-not-code.md)), 3
+in Project Intent implies a dashboard's panels; deriving one would be inventing a
+dashboard DSL. It is ledgered rather than permanent: 14 application dashboards become
+Assets on the owning Application ([0012](../../docs/adr/model/0012-assets-not-code.md)), 3
 runtime-family dashboards ship with the Runtime Profile, 14 platform dashboards
-become Assets of the declared observability Services, and `service-overview` / `service-template` derive
-per Service from the scrape surface and exposure
+become Assets of the declared observability Applications, and `application-overview` / `application-template` derive
+per Application from the scrape surface and exposure
 ([0021](../../docs/adr/model/0021-observability-scrape-and-alert-class.md)).
 
 ### The true gap
 
 Every kind the 2026-08-31 survey found unrendered now has a decision: `Role` and
-`RoleBinding` are not rendered ([0075](../../docs/adr/model/0075-no-workload-rbac-in-v1.md)),
+`RoleBinding` are not rendered ([0075](../../docs/adr/model/0075-no-process-rbac-in-v1.md)),
 `NetworkPolicy` is `networking`'s ([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)),
 `ServiceMonitor` and `PodMonitor` are `prometheus`'s, from the declared
 `observability.scrape` surface, and `PrometheusRule` is rendered by nothing here
@@ -355,8 +355,8 @@ needs a decision, not an allowlist entry."*
 
 | forbidden | why |
 |---|---|
-| a kind on the forbidden list, `Secret`, `ClusterRole`, `ClusterRoleBinding`, `CustomResourceDefinition` | `E_FORBIDDEN_KIND`; a CRD is a bootstrap fact ([chapter 14](14-platform-intent.md#the-bootstrap-set)), a Secret arrives through VSO, and RBAC is not rendered ([0075](../../docs/adr/model/0075-no-workload-rbac-in-v1.md)) |
-| an object in a namespace the Service does not own | `E_FOREIGN_NAMESPACE` |
+| a kind on the forbidden list, `Secret`, `ClusterRole`, `ClusterRoleBinding`, `CustomResourceDefinition` | `E_FORBIDDEN_KIND`; a CRD is a bootstrap fact ([chapter 14](14-platform-intent.md#the-bootstrap-set)), a Secret arrives through VSO, and RBAC is not rendered ([0075](../../docs/adr/model/0075-no-process-rbac-in-v1.md)) |
+| an object in a namespace the Application does not own | `E_FOREIGN_NAMESPACE` |
 | a floating image tag | `E_FLOATING_IMAGE`; digests only |
 | a path claimed by two adapters | `E_PATH_COLLISION`; attribution becomes ambiguous |
 | a path outside the gitops root, or containing `..` | `E_UNSAFE_OUTPUT_PATH` |
@@ -377,18 +377,18 @@ Deliverable Set claims.** Any delivery definition that reconciles a cluster
 towards this tree will treat an unclaimed object as removable, so a coverage gap
 is a correctness problem in the model, not a tidiness problem downstream. That is
 why the coverage assertion fails the build, why the ledger fails in both
-directions, and why a domain that silently fails to publish must show up as a
+directions, and why a project that silently fails to publish must show up as a
 stale participant (chapter 40) rather than as a quietly smaller render.
 
 ## Open in this chapter
 
 The first three items this section carried (`rbac`, `NetworkPolicy`,
 `PrometheusRule`) are decided
-([0075](../../docs/adr/model/0075-no-workload-rbac-in-v1.md),
+([0075](../../docs/adr/model/0075-no-process-rbac-in-v1.md),
 [0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md),
 [0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)).
 Four more, the `E_PATH_COLLISION` implementation, the `@ts-nocheck` ratchet, the
-Service `ServiceAccount` name and the gitops root in the allocator, are code
+Application `ServiceAccount` name and the gitops root in the allocator, are code
 work against a compiler that does not exist yet, and belong in its issue tracker
 rather than in a normative chapter; `docs/architecture.md` carries the gates that
 will hold them. What remains open here is a model question:
@@ -415,7 +415,7 @@ an ADR.
 ```mermaid
 flowchart LR
     subgraph pub["every repository, publish"]
-      IF["Intent Fragment<br/>(domain file, or the Platform document)<br/>pushed by digest"]
+      IF["Intent Fragment<br/>(project file, or the Platform document)<br/>pushed by digest"]
     end
     subgraph agg["central render, over the ComposedIntent"]
       RD["Resolved Deployment<br/>+ path plan + clusterStateDigest"]

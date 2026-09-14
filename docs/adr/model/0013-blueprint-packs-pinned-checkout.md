@@ -9,10 +9,15 @@ rests-on: ["0001"]
 
 # Blueprint packs arrive by pinned checkout, not a registry
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 > **Superseded by [0096](0096-the-foundation-is-declared.md) on 2026-09-08.**
 > This decision settled *how* packs arrive. The direction is now that packs do
-> not exist: the foundation they delivered is declared as Services of the
-> platform domains and rendered, and the CRDs among them are the bootstrap set
+> not exist: the foundation they delivered is declared as Applications of the
+> platform projects and rendered, and the CRDs among them are the bootstrap set
 > ([chapter 14](../../../spec/v1/14-platform-intent.md#the-bootstrap-set)). The
 > evidence below, that every consumer already checks out `flux-modules` by ref,
 > stays true and stops mattering, because nothing reads the checkout.
@@ -50,14 +55,14 @@ already performs. A pinned checkout also works offline once it exists in CI,
 and the consumer controls the ref, which keeps rendering deterministic.
 
 This deliberately diverges from [0037](0037-composition-oci-fragments.md),
-where domain declarations compose from published OCI fragments. Packs are
+where project declarations compose from published OCI fragments. Packs are
 exempt from that route for three reasons. They are already consumed by ref,
 so the checkout adds no step a consumer does not run today, while OCI would
 add one. The registry-auth friction is evidenced for `@jorisjonkers-dev`
 packages, whereas fragment publication rides infrastructure composition
 requires anyway. And packs are class-B foundation material delivered by Flux
 ([0048](../deferred/0048-class-b-pinning.md)), consumed whole at render time by two
-adapters, they are not domain declarations, join no composition union, carry
+adapters, they are not project declarations, join no composition union, carry
 no lock digest, and hold no participants-list row. The exemption is a
 material-class boundary, not a contradiction of the composition decision.
 
@@ -68,7 +73,7 @@ material-class boundary, not a contradiction of the composition decision.
 | Publish `packs/**` as an npm or OCI artifact | Registry credentials in every consumer, a resolver in the toolkit, cache and offline handling | Auth friction is evidenced for `@jorisjonkers-dev` packages; adds a second consumption path beside the ref checkout every consumer already runs |
 | Bundle a pinned pack snapshot inside this package | Every pack change requires a `deploy-config-schema` release; the bundled snapshot skews against the tag Flux delivers | Couples two release cadences and hides the effective pack version from the consumer |
 | Implicit default checkout path | CI behavior depends on developer workstation layout | Machine-specific defaults break reproducibility; the explicit root is the whole point |
-| Route packs through the [0037](0037-composition-oci-fragments.md) fragment pipeline | Digests, lock entries and a participants-list row for material that is never composed | Packs are foundation input to two adapters, not domain declarations; composition's invariants do not apply to them |
+| Route packs through the [0037](0037-composition-oci-fragments.md) fragment pipeline | Digests, lock entries and a participants-list row for material that is never composed | Packs are foundation input to two adapters, not project declarations; composition's invariants do not apply to them |
 
 ## Reversibility
 

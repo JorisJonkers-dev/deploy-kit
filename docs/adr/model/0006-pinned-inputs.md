@@ -9,9 +9,14 @@ normative: spec/v1/20-resolved-deployment.md#pinned-inputs
 
 # Every assignment is a function of pinned, digested inputs
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 
-The pinned input set (Service Intent, the Platform Intent, the locks, and a
+The pinned input set (Project Intent, the Platform Intent, the locks, and a
 ClusterState snapshot, each carried by digest) is closed: no layer-2 assignment
 reads anything outside it at render time. False if: any assignment consults live
 cluster state, a mutable pool, a counter, or state remembered between renders.
@@ -24,13 +29,13 @@ machines, and byte-diff the output trees; any difference falsifies the premise.
 The previous formulation was absolute and was falsified by its own chapter.
 `spec/v1/20-resolved-deployment.md:8-11` declared, as "the load-bearing property
 of the whole specification", that *"Every assignment is a pure function of
-Service Intent, the pinned Platform Intent, and the pinned locks."* Yet the same
+Project Intent, the pinned Platform Intent, and the pinned locks."* Yet the same
 chapter's normative `ResolvedService` example (`:246-249`) carries an observed PV
 binding (`node: enschede-t1000-1`, `because: knowledge-vault-clone PV is bound
 here`) while `inputDigests` is `{intent, imagesLock}` with `contextRef`
 alongside (`:216`): the binding is in none of the pinned inputs and is read from
 the live cluster. A third instance sat unresolved across chapters:
-`spec/v1/10-service-intent.md:463` assigns `replicas` "from `minAvailable` and
+`spec/v1/10-project-intent.md:463` assigns `replicas` "from `minAvailable` and
 capacity" while `20-resolved-deployment.md:266` says a `replicas` assignment
 reading live capacity "would violate purity outright". Two review lenses found
 this independently (RED-002; DAT-006, DAT-007: consolidated finding B2).
@@ -70,7 +75,7 @@ on this premise, would need reworking. No snapshot-capture code exists yet, so
 the blast radius is documents plus that one dependent decision.
 Becomes irreversible once: the double-render determinism test gates CI and
 `resolved.yml` artifacts carrying `clusterStateDigest` are published back into
-service repositories, weakening the premise after that silently reclassifies
+project repositories, weakening the premise after that silently reclassifies
 defects as weather across the estate.
 
 ## Consequences

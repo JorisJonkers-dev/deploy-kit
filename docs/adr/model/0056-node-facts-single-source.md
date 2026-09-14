@@ -9,6 +9,11 @@ rests-on: ["0005"]
 
 # Node facts are authored once; nix imports them
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 
 Every node fact the host build needs can be read from generated data at nix
@@ -65,7 +70,7 @@ them.
 | option | cost if taken | why rejected |
 |---|---|---|
 | Keep the three declarations and the drift machinery | every node change stays three edits across two repositories in two casings, and `specs/002-node-contract-drift` plus `scripts/audit-node-labels.sh` stay funded and green forever | a detector that finds the copies disagreeing is cheaper to delete than to run; it reports the problem it exists because of |
-| Invert it: nix is the source, the YAML contract generated from `.nix` | composition must evaluate a flake to learn a node’s capabilities, so nix enters CI for every consumer that resolves placement | node facts become readable only through a toolchain no service repository has, and the fact is needed by the resolver, not the machine builder |
+| Invert it: nix is the source, the YAML contract generated from `.nix` | composition must evaluate a flake to learn a node’s capabilities, so nix enters CI for every consumer that resolves placement | node facts become readable only through a toolchain no project repository has, and the fact is needed by the resolver, not the machine builder |
 | Keep `homelab-inventory` authoritative, retain the nix inventory as a cache, keep both label prefixes | two writable copies survive so the audit script survives with them, and 110 labels on 7 nodes persist with half under a name nobody can correct at its source | the second writable copy *is* the drift, and the archived-repository name outlives every attempt to explain it |
 
 ## Reversibility
@@ -73,7 +78,7 @@ them.
 Undo cost today: `git revert` restores `nix-config/inventory/` in minutes, but
 re-authoring labels into 7 `nix/hosts/<n>/default.nix` files, re-splitting the
 casings and rewriting the drift spec and audit script to match is a day; blast
-radius is a nix rebuild per host and no service repository either way. Becomes
+radius is a nix rebuild per host and no project repository either way. Becomes
 irreversible once: the live nodes are relabelled to the single surviving prefix
 through the generated contract, the hand-authored files then no longer
 describe the cluster, and reverting means relabelling 7 nodes back.
@@ -91,10 +96,10 @@ describe the cluster, and reverting means relabelling 7 nodes back.
   `kubectl describe node`; on the 4096Mi `enschede-pi-2` and `enschede-pi-3` it
   is a large fraction of the node, and a wrong guess bites there first (a pod
   the contract says fits and the scheduler refuses), paid by the platform owner.
-- Retiring `personal-stack/*` touches no service repository but does mean
+- Retiring `personal-stack/*` touches no project repository but does mean
   relabelling live nodes through the contract, paid by the platform owner.
 - The selector key comes from the contract’s prefix rather than `platform.name`,
-  changing output for every workload carrying a `nodeSelector`, paid by
+  changing output for every process carrying a `nodeSelector`, paid by
   adapter maintainers.
 - One casing wins, so consumers reading `cpu_millicores` are repointed at the
   contract, paid by the owners of the three downstream artifacts.

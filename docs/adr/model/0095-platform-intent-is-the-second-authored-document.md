@@ -9,13 +9,18 @@ rests-on: ["0004"]
 
 # Platform Intent is the second authored document, published as an Intent Fragment
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 Every platform-side value the render reads is either a fact about the estate or
 a policy the estate applies uniformly, and the contention test sorts every value
-between the Service's document and the platform's with no residue. False if: a
-value turns up that neither a Service could state for itself nor the platform can
-state once for the estate: something per-Service that only the platform knows.
-Settled by: composing the worked domains with the Platform document as a
+between the Application's document and the platform's with no residue. False if: a
+value turns up that neither an Application could state for itself nor the platform can
+state once for the estate: something per-Application that only the platform knows.
+Settled by: composing the worked projects with the Platform document as a
 participant and finding every field of the former Cluster Context assigned to
 exactly one of the two authored kinds, with no third document.
 
@@ -40,7 +45,7 @@ value that must be unique across the estate or draws on a shared finite resource
 is the platform's to declare. And it has a **schema to derive from**, which is
 what an editor, a validator and a lock all need.
 
-Publication follows from the same move. A domain enters composition as an
+Publication follows from the same move. A project enters composition as an
 Intent Fragment by OCI digest ([0037](0037-composition-oci-fragments.md)); the
 Cluster Context entered by a separate side channel, also by digest, for no
 reason other than history. One mechanism, one lock, and the platform becomes a
@@ -48,9 +53,9 @@ reason other than history. One mechanism, one lock, and the platform becomes a
 render against a stale platform document is `E_PARTICIPANT_STALE`, where before
 it was a digest nobody compared to a clock.
 
-Two things deliberately stay out. Foundation components are Services in domain
+Two things deliberately stay out. Foundation components are Applications in project
 files the platform owns ([0096](0096-the-foundation-is-declared.md)), because a
-second way to declare a Service is the duplicate vocabulary
+second way to declare an Application is the duplicate vocabulary
 [0003](0003-three-layer-meta-model.md) exists to end. The node contract stays
 its own pinned input ([0056](0056-node-facts-single-source.md)), because nix
 reads it and would otherwise read a deployment-model document.
@@ -65,7 +70,7 @@ both, and an edge should resolve against facts, never against exemptions.
 | option | cost if taken | why rejected |
 |---|---|---|
 | Give the Cluster Context a chapter and leave it a separate pinned input | Preserves today's diagram; smallest edit | Two publication paths for two documents obeying one rule, and a participant no participants list can declare missing |
-| One Platform document holding facts and foundation components | One file to find | Invents a second way to declare a Service: the platform's Vault written differently from a tenant's Postgres |
+| One Platform document holding facts and foundation components | One file to find | Invents a second way to declare an Application: the platform's Vault written differently from a tenant's Postgres |
 | Fold the node contract in | Every estate fact in one document | nix imports a deployment-model document, or the facts exist twice; 0056 was decided to prevent the second |
 | Keep providers in the unmanaged register with optional coordinates | One list, as 0090 left it | A dependency the estate relies on filed as an accepted hole, with a review date threatening the build for something not going away |
 

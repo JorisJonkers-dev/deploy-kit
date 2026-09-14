@@ -7,12 +7,17 @@ date: 2026-08-31
 normative: spec/v1/00-overview.md#the-estate
 ---
 
-# The estate is one maintainer, one cluster, about thirty Services
+# The estate is one maintainer, one cluster, about thirty Applications
+
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
 
 ## Rests on
 The estate is operated by one regular human maintainer (one person across three
 git identities, plus bot accounts), runs one production cluster, and comprises
-about thirty Services across about ten repositories, and this holds for a
+about thirty Applications across about ten repositories, and this holds for a
 stated horizon of 24 months, until 2028-08-31. False if: a second regular human
 maintainer (sustained commits or reviews, not a bot) or a second production
 cluster appears before the horizon. Settled by: `git shortlog -sn --all` run
@@ -27,10 +32,10 @@ bot account (five of them, 99 commits between them, as of 2026-08-31). The red
 team verified the same estate-wide: "`git shortlog --all` shows one human across
 three identities (35 commits) plus bot accounts" (review/06-redteam.md,
 RED-006). The physical estate is what RED-013 measured the design's value
-against: "a 30-service, 7-node, one-cluster, one-user homelab that currently
+against: "a 30-application, 7-node, one-cluster, one-user homelab that currently
 runs." Reviewers who wrote "~30 separate repositories"
-(`review/CONSOLIDATED.md:248`, `review/04-k3s.md:121`) were counting Services,
-not repositories; the premise is ~30 Services in ~10 repositories, and the
+(`review/CONSOLIDATED.md:248`, `review/04-k3s.md:121`) were counting Applications,
+not repositories; the premise is ~30 Applications in ~10 repositories, and the
 horizon recount settles which.
 
 This has to be the outermost premise because its absence was the review's
@@ -40,11 +45,11 @@ an organisation and an estate that do not exist") collapses nine findings
 section) into that one sentence. RED-006 itemises the machinery built for
 separated authority: `owner` fields, `alertClass: page` notifier routing,
 publish-back pull requests into "the owning repository", per-aggregator RBAC
-where a workflow applying a Service it does not own gets a 403. Its verdict: "If
+where a workflow applying an Application it does not own gets a 403. Its verdict: "If
 one person is every owner, then every publish-back PR is a self-review, every
 ledger review date is a note to self, and the 403 protects the author from the
 author." Every mechanism in this specification must therefore justify itself at
-THIS scale, one maintainer, one cluster, thirty Services, not at the scale of
+THIS scale, one maintainer, one cluster, thirty Applications, not at the scale of
 an imagined organisation.
 
 The premise is dated, not permanent. A 24-month horizon is long enough to build
@@ -75,14 +80,14 @@ re-opened against the new scale, at whatever the estate has grown to cost.
 
 ## Consequences
 - Every ADR in this set must justify its mechanism at one-maintainer,
-  one-cluster, thirty-Service scale, and an ADR that cannot is wrong by
+  one-cluster, thirty-Application scale, and an ADR that cannot is wrong by
   construction, paid by the author of each ADR, at writing time.
 - Invariants that arbitrate between people (self-reviewed publish-back PRs,
   RBAC protecting the author from the author) fall out of v1 scope; if a second
   maintainer arrives, those controls are missing on day one and must be built
   then, paid by that second maintainer and joris, at growth time.
 - The horizon review on 2028-08-31 is a standing obligation: re-run the
-  shortlog, recount clusters and Services, re-date or revise this file, paid
+  shortlog, recount clusters and Applications, re-date or revise this file, paid
   by joris.
 - A falsifying observation inside the horizon (second maintainer, second
   production cluster) forces re-examination of every decision resting here,

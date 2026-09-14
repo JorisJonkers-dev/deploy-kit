@@ -9,6 +9,11 @@ rests-on: ["0003"]
 
 # The registered adapters are v1; the second generation is deleted
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 > **Rewritten 2026-09-08** ([0098](0098-one-publication-path.md)). This ADR
 > records the **rule**, not a count: the registry is the enumeration, nothing
 > renders that is not registered, and a change to the set is a decision with its
@@ -28,7 +33,7 @@ rests-on: ["0003"]
 > derivations, and moved `flux-root` to the deferred set; and
 > [0096](0096-the-foundation-is-declared.md) removed what `flux-packs` and
 > `flux-source` rendered. An `rbac` adapter is **not** coming:
-> [0075](0075-no-workload-rbac-in-v1.md). The other half of this decision (the
+> [0075](0075-no-process-rbac-in-v1.md). The other half of this decision (the
 > second generation is deleted) is unchanged.
 
 ## Rests on

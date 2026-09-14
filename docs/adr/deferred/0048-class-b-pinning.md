@@ -9,6 +9,11 @@ rests-on: ["0002"]
 
 # The foundation is pinned like everything else
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](../model/0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 
 Every chart and image in the pack-delivered foundation publishes immutable,
@@ -52,12 +57,12 @@ image pull took the MCP fully down (503)"*. Under `"*"` that window opens
 unattended, at an hour's notice, with no record of what version opened it.
 
 The gap runs past charts. `platform-postgres.service.yml:34-35` pins the database
-eight Services depend on to `pgvector/pgvector:pg17`, a mutable tag commented as
+eight Applications depend on to `pgvector/pgvector:pg17`, a mutable tag commented as
 bypassing the lock, while `30-deliverables.md:224` makes a floating tag
 `E_FLOATING_IMAGE`. Both production-touching workflows invoke bare `npx
 deploy-config-schema`, registry-resolved at invocation, while the one workflow
 that never touches production installs an exact version
-(`service-publish-fragment.yml:50-57`); the in-cluster runner holding the deploy
+(`project-publish-fragment.yml:50-57`); the in-cluster runner holding the deploy
 ServiceAccount runs `actions/checkout@v4` and `oras-project/setup-oras@v1`,
 floating; and this repository's CI (`.github/workflows/ci.yml:51`) pipes a
 third-party script from `main` into `bash`. So class B takes class A's

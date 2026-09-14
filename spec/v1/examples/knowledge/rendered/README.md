@@ -1,8 +1,8 @@
-# Rendered output: the `knowledge` domain
+# Rendered output: the `knowledge` project
 
 Hand-executed Deliverable Set for
-[`knowledge.domain.yml`](../knowledge.domain.yml) and its two env files. One
-domain, one Service, two Workloads, namespace `knowledge-system`.
+[`knowledge.project.yml`](../knowledge.project.yml) and its two env files. One
+project, one Application, two Processes, namespace `knowledge-system`.
 
 This is the **goal state**, not what the tree emits today. Every object carries
 `securityContext` from the hardening class and `resources` from `placement`;
@@ -26,9 +26,9 @@ that had no producer and made explicit three things a renderer had been choosing
 
 | change | decided in |
 |---|---|
-| the fixed label set, `instance` now the Workload and `component` the runtime | [0072](../../../../../docs/adr/model/0072-the-label-set-is-fixed.md) |
+| the fixed label set, `instance` now the Process and `component` the runtime | [0072](../../../../../docs/adr/model/0072-the-label-set-is-fixed.md) |
 | `automountServiceAccountToken`, `false` wherever the pod does not authenticate | [0087](../../../../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md) |
-| `runAsUser`, `runAsGroup`, and `fsGroup` on the Workload holding the clone | [0082](../../../../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md) |
+| `runAsUser`, `runAsGroup`, and `fsGroup` on the Process holding the clone | [0082](../../../../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md) |
 | a startup probe pointed at the **liveness** endpoint, and one probe cadence | [0088](../../../../../docs/adr/model/0088-startup-probe-targets-liveness.md) |
 | an `emptyDir` for the JVM's `/tmp`, at the platform's ephemeral size | [0092](../../../../../docs/adr/model/0092-writable-paths-are-declared.md) |
 | explicit route `priority` on all five routes, rather than a rule-length sort | [0093](../../../../../docs/adr/model/0093-route-precedence-is-derived.md) |
@@ -41,40 +41,40 @@ were decided on 2026-09-07 and their status lives in
 ## Estate-scoped objects are not in this tree
 
 Two files this tree used to carry, `edge/middlewares.yaml` and
-`observability/gatus-endpoints.yaml`, render in the **platform domains** now:
+`observability/gatus-endpoints.yaml`, render in the **platform projects** now:
 the Middleware set is emitted per tier by the `traefik` adapter into the edge
-domain, and the Gatus endpoint list is an inbound derivation rendered as the
-declared `gatus` Service's own Asset in the observability domain
+project, and the Gatus endpoint list is an inbound derivation rendered as the
+declared `gatus` Application's own Asset in the observability project
 ([0096](../../../../../docs/adr/model/0096-the-foundation-is-declared.md),
-[0098](../../../../../docs/adr/model/0098-one-publication-path.md)). This domain
+[0098](../../../../../docs/adr/model/0098-one-publication-path.md)). This project
 contributes routes and exposures to both; it owns neither object.
 
 ## Emitted
 
 | file | adapter | derives from | cannot derive today |
 |---|---|---|---|
-| `namespace.yaml` | `kubernetes` | `domain` | none (the adapter emits this per *Service* directory, not per domain: **G-02**) |
-| `kustomization.yaml` | `kubernetes` | the Service set of the domain | - |
+| `namespace.yaml` | `kubernetes` | `project` | none (the adapter emits this per *Application* directory, not per project: **G-02**) |
+| `kustomization.yaml` | `kubernetes` | the Application set of the project | - |
 | `apps/knowledge/workload.yaml` | `kubernetes` | `lifecycle`, `image`, `runtime`, `provides`, `placement`, `hardening`, `probes`, `startupBudget`, `cutover`, `stateful`, `volumes`, `secrets`, env files | `replicas` (`minAvailable` ungraded); the image's UID behind `runAsNonRoot`; a scratch volume for a read-only-root JVM (**G-04**); what `stateful` changes about the object kind (**G-05**); the PV-bound node (**G-06**); env-var renaming through `envFrom` (**G-03**); readable mode on the 0400 key (**G-08**) |
-| `apps/knowledge/serviceaccount.yaml` | `kubernetes` | workload `name` × 2, `domain` | none (the adapter names one account after the *Service*: **G-09**) |
-| `apps/knowledge/configmap.yaml` | `kubernetes` | env files, `dependsOn`, the `provides` port, Cluster Target, workload `name` | 15 of the 16 Runtime Profile keys (**G-13**); the database name spelling (**G-12**); change propagation on edit (**G-10**) |
+| `apps/knowledge/serviceaccount.yaml` | `kubernetes` | process `name` × 2, `project` | none (the adapter names one account after the *Application*: **G-09**) |
+| `apps/knowledge/configmap.yaml` | `kubernetes` | env files, `dependsOn`, the `provides` port, Cluster Target, process `name` | 15 of the 16 Runtime Profile keys (**G-13**); the database name spelling (**G-12**); change propagation on edit (**G-10**) |
 | `apps/knowledge/pvc.yaml` | `kubernetes` | `volumes[].claim`, `volumes[].durability`, `stateful` | `resources.requests.storage`: **the object does not apply without it** (**G-15**); the durability annotation key (**G-14**) |
-| `apps/knowledge/servicemonitor.yaml` | `prometheus` | `observability.scrape {workload, surface, path}`, `provides` | cadence from the Platform document |
+| `apps/knowledge/servicemonitor.yaml` | `prometheus` | `observability.scrape {process, surface, path}`, `provides` | cadence from the Platform document |
 | `apps/knowledge/networkpolicy.yaml` | `networking`, **not registered** (**G-16**) | `dependsOn`, `provides`, `exposure`, `scrape`, effective grant set, baseline | egress to anything outside the estate, the worker's git remote (**G-20**); ingress from consumers absent from the union (**G-18**); whether a namespace catch-all is emitted (**G-17**) |
-| `apps/knowledge/vso.yaml` | `vso` | `secrets` at both levels, `delivery`, `rotation`, workload `name` | Secret/object naming (**G-21**); which identity reads a shared path (**G-23**); the Kubernetes auth mount name |
+| `apps/knowledge/vso.yaml` | `vso` | `secrets` at both levels, `delivery`, `rotation`, process `name` | Secret/object naming (**G-21**); which identity reads a shared path (**G-23**); the Kubernetes auth mount name |
 | `apps/knowledge/kustomization.yaml` | `kubernetes` | the emitted file set | ownership of `vso.yaml` (**G-25**) |
-| `edge/ingressroutes.yaml` | `traefik`, for the tier each route's audience selects | the Service's `exposure`: authored `host`, the exposure `audience` and five routes, four overriding it to `anonymous`, each naming `knowledge-api` and its `http` surface | - |
+| `edge/ingressroutes.yaml` | `traefik`, for the tier each route's audience selects | the Application's `exposure`: authored `host`, the exposure `audience` and five routes, four overriding it to `anonymous`, each naming `knowledge-api` and its `http` surface | - |
 | `apps/knowledge/backup.yaml` | `kubernetes` | `durability: irreplaceable` plus `engine: files` on the vault clone | none (0077) |
 | `apps/vso-secrets/policies/knowledge-api.policy.json` | `vault-policy` | the three KV grants, each with its `metadata` sibling | none (0073, 0086) |
-| `apps/vso-secrets/policies/knowledge-api.role.json` | `vault-policy` | the Workload's ServiceAccount and namespace | - |
+| `apps/vso-secrets/policies/knowledge-api.role.json` | `vault-policy` | the Process's ServiceAccount and namespace | - |
 
 ## Deliberately absent, and correct
 
 | not emitted | why it is right |
 |---|---|
 | a Kubernetes `Service` for `knowledge-ingest-worker` | it declares no `provides`. A RabbitMQ consumer opens no listener, so there is no surface, nothing may `dependsOn` it, and there is no address to route to. |
-| a `ServiceMonitor` or `PodMonitor` for `knowledge-ingest-worker` | no `scrape` is declared, and a ServiceMonitor selects a Service it does not have. |
-| any probe on `knowledge-ingest-worker` | `probes: none` is **declared**, so the absence is a decision rather than a forgotten block, and a readiness gate on a Workload that can never report ready would stop the Service switching for ever. |
+| a `ServiceMonitor` or `PodMonitor` for `knowledge-ingest-worker` | no `scrape` is declared, and a ServiceMonitor selects an Application it does not have. |
+| any probe on `knowledge-ingest-worker` | `probes: none` is **declared**, so the absence is a decision rather than a forgotten block, and a readiness gate on a Process that can never report ready would stop the Application switching for ever. |
 | `podmonitor.yaml`, `hpa.yaml` | nothing declares a pod-level scrape; autoscaling is not in this model. |
 | `traefik` routes | no path rule carries the `lan` audience. |
 
@@ -85,25 +85,25 @@ contributes routes and exposures to both; it owns neither object.
 | backup `CronJob` + retention sweep + off-cluster copy | `durability: irreplaceable` on `knowledge-vault-clone` | **none.** No adapter reads `durability`, and even with one, three values have no declaring site: the schedule, the retention window and the off-cluster destination. Not rendered rather than invented (**G-31**). |
 | `PodDisruptionBudget` | the `kubernetes` adapter builds one from an availability field | **not derivable.** `minAvailable` is ungraded and no `replicas` assignment exists; a PDB over a single-replica Deployment blocks every node drain (**G-32**). |
 | `PrometheusRule` | nothing in this model | **correctly none.** PromQL, severity and receivers belong to the monitoring stack, which reads `alertClass` from the projection. |
-| `Role` / `RoleBinding` per Workload | per-Workload identity | **none.** No `rbac` adapter. It is also what keeps the two Secret boundaries apart in a shared namespace (**G-24**). |
+| `Role` / `RoleBinding` per Process | per-Process identity | **none.** No `rbac` adapter. It is also what keeps the two Secret boundaries apart in a shared namespace (**G-24**). |
 | `resolved.yml` (the `ResolvedService` projection) | publish-back | central composition; not part of a Deliverable Set. |
 
-Estate-scoped objects this domain contributes rows to but does not render: the
-edge catalogs, now Assets of the declared Traefik Services in the platform edge
-domain; the Gatus endpoint list, an Asset of the declared `gatus` Service; and
-`vso`'s `VaultConnection` in `vso-system`. The per-Workload image digests that
-were once an `image-metadata` document are in this Service's `resolved.yml`
+Estate-scoped objects this project contributes rows to but does not render: the
+edge catalogs, now Assets of the declared Traefik Applications in the platform edge
+project; the Gatus endpoint list, an Asset of the declared `gatus` Application; and
+`vso`'s `VaultConnection` in `vso-system`. The per-Process image digests that
+were once an `image-metadata` document are in this Application's `resolved.yml`
 projection, and the Flux `Kustomization` for `apps-knowledge` is delivery's
 ([0098](../../../../../docs/adr/model/0098-one-publication-path.md)).
 
 ## Gaps
 
-**G-01** The `kubernetes` adapter keys every object off the *Service* name and
-emits one controller per Service directory. Two Workloads in one Service
-overwrite each other. Nothing about the adapter is per-Workload.
+**G-01** The `kubernetes` adapter keys every object off the *Application* name and
+emits one controller per Application directory. Two Processes in one Application
+overwrite each other. Nothing about the adapter is per-Process.
 
-**G-02** The same adapter emits `namespace.yaml` inside each Service directory.
-A domain with three Services emits three identical `Namespace` objects at three
+**G-02** The same adapter emits `namespace.yaml` inside each Application directory.
+A project with three Applications emits three identical `Namespace` objects at three
 paths.
 
 **G-03** `envFrom: secretRef` injects the Secret's **own key names**. The env
@@ -129,7 +129,7 @@ unstated; here it only selects the 10m health timeout class.
 `from: clusterState` and the PV's node affinity cannot be rendered. Every
 statement about reproducibility depends on a collector that does not exist.
 
-**G-07** `startupBudget: 120s` on a Workload with `probes: none` feeds only
+**G-07** `startupBudget: 120s` on a Process with `probes: none` feeds only
 `progressDeadlineSeconds`. Its other stated consumer, the startup probe's
 period and threshold, has nothing to configure, so half the derivation is dead
 for this shape.
@@ -138,9 +138,9 @@ for this shape.
 The container runs as a non-root UID from the image under `hardening: restricted`.
 As declared, the process cannot read its own deploy key. Repairing it needs
 `fsGroup` or a known UID, neither of which layer 1 can express, and the two
-declarations that collide are in the same Workload block.
+declarations that collide are in the same Process block.
 
-**G-09** `serviceAccountName()` returns the Service name today, so both pods
+**G-09** `applicationAccountName()` returns the Application name today, so both pods
 authenticate as one principal and receive the union of both policies. That gives
 the internet-facing API `read` on the ingest worker's SSH deploy key. The
 declaration and the identity must ship together.
@@ -151,18 +151,18 @@ successfully and never reaches the running pod, the failure 16 of the estate's
 18 ConfigMaps already have.
 
 **G-11** A `${dependency:…}` coordinate resolves to the provider's Kubernetes
-`Service`, which is named for the provider's **Workload** (`postgres`), not for
-the Service id the consumer wrote (`platform-postgres`). Chapter 16 promises a
-provider may move a surface between its own Workloads "without a single consumer
+`Service`, which is named for the provider's **Process** (`postgres`), not for
+the Application id the consumer wrote (`platform-postgres`). Chapter 16 promises a
+provider may move a surface between its own Processes "without a single consumer
 edit"; the resolved coordinate in the consumer's ConfigMap changes when it does.
 
 **G-12** `${dependency:platform-postgres.database}` resolves to `knowledge_db`.
-The `<service>_db` spelling is evidenced by `init-databases.sh` and specified in
+The `<application>_db` spelling is evidenced by `init-databases.sh` and specified in
 no chapter. The set of legal coordinate names (`host`, `port`, `database`, …) is
 not enumerated anywhere either.
 
 **G-13** `runtime: jvm` injects 10 `OTEL_*` and 6 `PYROSCOPE_*` keys; `runtime:
-python` injects 6. Exactly one of them, `OTEL_SERVICE_NAME`, is a function of
+python` injects 6. Exactly one of them, `OTEL_APPLICATION_NAME`, is a function of
 anything declared. The other fifteen are constants held in a **Runtime Profile**,
 and chapter 20's pinned input set does not include one, and it lists Intent
 Fragments, the Platform document and node contract, the images lock and the
@@ -185,19 +185,19 @@ ever written is in the generation being deleted, so coverage for the kind goes
 from unregistered to absent while default-deny becomes normative.
 
 **G-17** Whether the derivation emits a namespace-scoped catch-all in addition to
-per-Workload policies is unstated. It matters more than it looks: the namespace
-holds every Service of the domain, so one domain's catch-all governs Services
+per-Process policies is unstated. It matters more than it looks: the namespace
+holds every Application of the project, so one project's catch-all governs Applications
 added to the file later and never reviewed against it.
 
 **G-18** `knowledge-api`'s ingress allow set contains no consumer rule, because
 nothing in the composed example set declares an edge to `knowledge`. In the live
-estate the agents Services do. A provider's policy is therefore a function of
-**which fragments are in the union**: a domain that silently fails to publish
-narrows its *providers'* ingress, and the pod that breaks is not in the domain
+estate the agents Applications do. A provider's policy is therefore a function of
+**which fragments are in the union**: a project that silently fails to publish
+narrows its *providers'* ingress, and the pod that breaks is not in the project
 that broke. Chapter 40's stale-participant check is a correctness gate here, not
 hygiene.
 
-**G-19** "Egress to the Secret Store, from the Workloads holding the grant" is
+**G-19** "Egress to the Secret Store, from the Processes holding the grant" is
 derived from any grant. All four grants here are `delivery: env` or `file`, where
 the VSO operator does the reading and the pod never opens a connection to Vault.
 The rule should be conditioned on `delivery: self`; as stated it grants Vault
@@ -205,8 +205,8 @@ reachability to pods that never use it.
 
 **G-20** `knowledge-ingest-worker` holds an SSH deploy key at 0400 and a claim
 called `knowledge-vault-clone`, so it must reach a git host **outside the
-cluster**. `dependsOn` can only name a Service Id in the composed union, so no
-declaration can produce that egress rule. Under default-deny the Workload cannot
+cluster**. `dependsOn` can only name an Application Id in the composed union, so no
+declaration can produce that egress rule. Under default-deny the Process cannot
 do the job the grant exists for, and no field in layer 1 can say so.
 
 **G-21** The derived `Secret` / `VaultStaticSecret` name is load-bearing, for it is
@@ -216,25 +216,25 @@ replaced by `-`.
 
 **G-22** The registered `vso` adapter emits one `VaultAuth`, in `vso-system`, on
 the operator's own ServiceAccount and role. Under it the operator reads every
-path for everyone and the two derived per-Workload Vault roles do nothing for
-`env` or `file` delivery. This render emits one `VaultAuth` per Workload
+path for everyone and the two derived per-Process Vault roles do nothing for
+`env` or `file` delivery. This render emits one `VaultAuth` per Process
 instead; that is the goal state, and it is a different object graph.
 
-**G-23** A Service-level grant has two eligible identities. The model states no
+**G-23** An Application-level grant has two eligible identities. The model states no
 tie-break for which one performs the read, and the choice is visible in the
 rendered object.
 
-**G-24** With `delivery: env`/`file` the per-Workload Vault boundary is
+**G-24** With `delivery: env`/`file` the per-Process Vault boundary is
 re-materialised as a namespace-scoped Kubernetes `Secret`. It holds only because
 nothing grants `get secrets` in `knowledge-system`, and there is no `rbac`
 adapter to render such a Role, nor to prove none exists.
 
-**G-25** `vso.yaml` sits in the Service directory here but the registered adapter
+**G-25** `vso.yaml` sits in the Application directory here but the registered adapter
 writes to `apps/vso-secrets/<name>.yaml` with its own kustomization. Three
 central adapters already declare the same `platform/cluster/flux/apps` prefix
 and `E_PATH_COLLISION` has zero occurrences under `src/`.
 
-**G-26 is retired.** The IngressRoutes need a hostname and the Service now
+**G-26 is retired.** The IngressRoutes need a hostname and the Application now
 authors one: `host: knowledge.jorisjonkers.dev` on its `public` exposure, a full
 FQDN with five named routes under it. Nothing assembles it from a label, a tier
 policy and a cluster domain, the estate also answers on `kb.jorisjonkers.dev`,
@@ -290,9 +290,9 @@ by no rule; this render omits them and takes Kubernetes' defaults.
 `memory: 512Mi`, `cpu: 100m` and `disk: {media: [nvme], size: 100Gi}`. The intent
 file declares `256Mi`, `50m` and no `disk` dimension. This render follows the
 intent and invents no dimension. The chapter's example needs correcting, or the
-two disagree about what the same Workload asks for.
+two disagree about what the same Process asks for.
 
 **G-36** `E_SECRETS_AT_REST_REQUIRED` blocks all four grants until the pinned
-Platform document advertises `secretsEncryption: true`, so **none of this domain
+Platform document advertises `secretsEncryption: true`, so **none of this project
 ships** on today's inputs. There is no Platform document in the example
 set to check against.

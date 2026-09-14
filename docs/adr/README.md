@@ -16,9 +16,9 @@ names: that is the follow-up spec rewrite, tracked in
 `review/REBUILD-MANIFEST.md`; `scripts/lint-adrs.ts` stays non-blocking until
 it lands.
 
-The set was amended on 2026-09-07 for placement and domain-authored intent:
+The set was amended on 2026-09-07 for placement and project-authored intent:
 `size` became a set of hard `placement` dimensions matched against node
-allocatable, Intent is authored one file per domain, and a Service is itself the
+allocatable, Intent is authored one file per project, and an Application is itself the
 unit of atomic release. 0017 and 0060 are superseded by that amendment and kept
 for the record; 0004, 0010, 0016, 0024, 0037 and 0056 were amended in place.
 
@@ -26,7 +26,7 @@ The set was amended on 2026-09-10 for the v1 simplification: the generic
 override hatch is deleted and `replicas: {count, reason}` is the sole local
 capacity exception (0031, 0089, 0097); `zeroDowntime` is replaced by required
 `cutover: rolling | recreate` with `E_CUTOVER_UNHONOURABLE` (0030); and
-observability becomes one optional `observability` block on the Service, whole
+observability becomes one optional `observability` block on the Application, whole
 or absent, with the ServiceMonitor derived from it and rule expressions,
 severity and receivers left to the stack that reads the projection (0021,
 0079). The hardening exception surface is deleted with the override hatch it
@@ -42,6 +42,12 @@ and 0102 were amended in place to scope them to the TypeScript tree. The Java
 implementation's own decisions live in
 [`emf/docs/adr/`](../../emf/docs/adr/README.md), numbered from the same
 sequence, and are deleted with it. The model is unchanged.
+
+The set was amended on 2026-09-14 for vocabulary: the authored levels Domain,
+Service and Workload are now Project, Application and Process, and Service
+Intent is Project Intent (0116). Every ADR that used the old words carries an
+amendment note and was renamed where its file name used them; no decision
+changed.
 
 Tier-0 **premises** carry one falsifiable claim each; tier-1 **decisions** name
 the premises they stand on in `rests-on`. A `claim: open` means decided in
@@ -73,14 +79,14 @@ check both registers.
 
 | # | title | claim | normative |
 |---|---|---|---|
-| [0001](model/0001-estate-scale-and-ownership.md) | The estate is one maintainer, one cluster, about thirty Services | open | 00-overview.md#the-estate |
+| [0001](model/0001-estate-scale-and-ownership.md) | The estate is one maintainer, one cluster, about thirty Applications | open | 00-overview.md#the-estate |
 | [0002](model/0002-kubernetes-as-substrate.md) | Kubernetes stays, for two properties that must be made real | open | 00-overview.md#substrate |
 | [0003](model/0003-three-layer-meta-model.md) | Three layers, with the middle layer as a contract | settled | 00-overview.md#the-meta-model |
 | [0004](model/0004-contention-decides-authority.md) | Contention decides who declares a value | open | 20-resolved-deployment.md#authority |
 | [0005](model/0005-derivation-is-total.md) | Derivation from declared intent covers the live estate | open | 20-resolved-deployment.md#derived-mechanics |
 | [0006](model/0006-pinned-inputs.md) | Every assignment is a function of pinned, digested inputs | open | 20-resolved-deployment.md#pinned-inputs |
 | [0007](model/0007-schema-version-separable.md) | The data model's version is not the package's version | open | 40-composition.md#versioning |
-| [0009](model/0009-vault-read-is-per-path.md) | A Vault KV-v2 read grant covers the whole path | open | 10-service-intent.md#secrets |
+| [0009](model/0009-vault-read-is-per-path.md) | A Vault KV-v2 read grant covers the whole path | open | 10-project-intent.md#secrets |
 
 Premise 0008 (tested-equals-deployed) moved to
 [deferred/](deferred/0008-tested-equals-deployed-requires-push.md) with the
@@ -91,16 +97,17 @@ delivery work it underpins.
 ### Identity and authorship
 | # | title | claim |
 |---|---|---|
-| [0010](model/0010-flat-service-identity.md) | One flat Service Id | settled |
-| [0011](model/0011-configuration-env-files-per-workload.md) | Configuration is per-Workload env files with named placeholders | settled |
-| [0091](model/0091-identity-placeholders-not-framework-wiring.md) | The model derives no framework wiring; it exposes the Workload's own identity as placeholders | settled |
+| [0010](model/0010-flat-application-identity.md) | One flat Application Id | settled |
+| [0011](model/0011-configuration-env-files-per-process.md) | Configuration is per-Process env files with named placeholders | settled |
+| [0091](model/0091-identity-placeholders-not-framework-wiring.md) | The model derives no framework wiring; it exposes the Process's own identity as placeholders | settled |
 | [0012](model/0012-assets-not-code.md) | File-shaped configuration is an Asset; code is not configuration | settled |
-| [0094](model/0094-asset-change-restarts-unconditionally.md) | An Asset change is content-hashed and restarts the Workload; there is no onChange field | settled |
+| [0094](model/0094-asset-change-restarts-unconditionally.md) | An Asset change is content-hashed and restarts the Process; there is no onChange field | settled |
 | [0013](model/0013-blueprint-packs-pinned-checkout.md) | Blueprint packs arrive by pinned checkout, not a registry | superseded by [0096](model/0096-the-foundation-is-declared.md) |
-| [0063](model/0063-intent-authored-per-domain.md) | Intent is authored one file per domain | settled |
-| [0064](model/0064-sidecars-are-workload-vocabulary.md) | A Workload may hold sidecars, and a sidecar carries what a container carries | settled |
+| [0063](model/0063-intent-authored-per-project.md) | Intent is authored one file per project | settled |
+| [0116](model/0116-project-application-process.md) | The authored hierarchy is Project, Application and Process, named for a reader who does not work with deployments | settled |
+| [0064](model/0064-sidecars-are-process-vocabulary.md) | A Process may hold sidecars, and a sidecar carries what a container carries | settled |
 
-### Workload-declared runtime intent
+### Process-declared runtime intent
 | # | title | claim |
 |---|---|---|
 | [0014](model/0014-probes-are-siblings.md) | Probes are sibling declarations, each carrying its own path | settled |
@@ -108,10 +115,10 @@ delivery work it underpins.
 | [0015](model/0015-durability-class-per-volume.md) | Every volume declares a Durability Class | settled |
 | [0077](model/0077-durability-derives-a-backup.md) | A Durability Class derives a backup, from platform terms and a method keyed by engine | settled |
 | [0081](model/0081-volume-size-is-a-hard-dimension.md) | A volume declares its size; the platform decides whether it fits | settled |
-| [0078](model/0078-engine-is-workload-vocabulary.md) | `engine` is layer-1 vocabulary: what the process is, not how it is instrumented | settled |
+| [0078](model/0078-engine-is-process-vocabulary.md) | `engine` is layer-1 vocabulary: what the process is, not how it is instrumented | settled |
 | [0016](model/0016-pod-hardening.md) | Pod hardening is platform policy, and has no exception surface | open |
 | [0082](model/0082-images-lock-carries-uid-and-gid.md) | The images lock resolves each image's uid and gid, and fsGroup derives from the gid | settled |
-| [0092](model/0092-writable-paths-are-declared.md) | A Workload declares the paths it writes, and that is not a hardening exception | settled |
+| [0092](model/0092-writable-paths-are-declared.md) | A Process declares the paths it writes, and that is not a hardening exception | settled |
 | [0083](model/0083-privileged-port-needs-the-capability.md) | A privileged port under non-root is refused | settled |
 | [0017](model/0017-placement-by-capability.md) | Placement is declared as capabilities, never labels | superseded by [0061](model/0061-placement-is-hard-dimensions.md) |
 | [0061](model/0061-placement-is-hard-dimensions.md) | Placement is a set of hard dimensions matched against allocatable | open |
@@ -132,9 +139,9 @@ delivery work it underpins.
 ### Secrets
 | # | title | claim |
 |---|---|---|
-| [0022](model/0022-grants-live-on-the-service.md) | Secret grants live on the Service document, at two levels | settled |
+| [0022](model/0022-grants-live-on-the-application.md) | Secret grants live on the Application document, at two levels | settled |
 | [0023](model/0023-grant-unit-is-the-path.md) | The grant unit is the path; the subtree splits per reader set | open |
-| [0024](model/0024-identity-per-workload.md) | Workloads hold their own identity | settled |
+| [0024](model/0024-identity-per-process.md) | Processes hold their own identity | settled |
 | [0087](model/0087-token-mounted-only-for-delivery-self.md) | A ServiceAccount token is mounted only where the pod itself authenticates | settled |
 | [0025](model/0025-access-tiers-derive-policy.md) | Access tiers derive the Vault policy | settled, KV-only per [0085](model/0085-a-grant-is-a-union-on-engine.md) |
 | [0026](model/0026-delivery-env-file-self.md) | Secret delivery is env, file, or self | settled |
@@ -176,14 +183,14 @@ delivery work it underpins.
 | [0072](model/0072-the-label-set-is-fixed.md) | The object label set is fixed, and two of its labels are immutable | settled |
 | [0073](model/0073-vault-policy-is-a-deliverable.md) | The derived Vault policy and auth role are Deliverables of their own adapter | settled |
 | [0074](model/0074-networking-adapter-emits-policy.md) | A networking adapter owns every NetworkPolicy in the estate | settled |
-| [0075](model/0075-no-workload-rbac-in-v1.md) | v1 renders no workload RBAC, and refuses any Deliverable that grants it | settled |
+| [0075](model/0075-no-process-rbac-in-v1.md) | v1 renders no process RBAC, and refuses any Deliverable that grants it | settled |
 | [0076](model/0076-middleware-has-one-producer.md) | Every Middleware has one producer, and the tier names its forward-auth endpoint | settled |
 
 ### Platform Intent
 | # | title | claim |
 |---|---|---|
 | [0095](model/0095-platform-intent-is-the-second-authored-document.md) | Platform Intent is the second authored document, published as an Intent Fragment | settled |
-| [0096](model/0096-the-foundation-is-declared.md) | The foundation is declared as Services; nothing hand-written enters the render | settled |
+| [0096](model/0096-the-foundation-is-declared.md) | The foundation is declared as Applications; nothing hand-written enters the render | settled |
 | [0097](model/0097-authored-values-name-model-concepts.md) | An authored value names a model concept; the target's spelling is a derivation | settled |
 | [0098](model/0098-one-publication-path.md) | A repository publishes its Intent Fragment and nothing else; every derivation runs once, centrally | settled |
 | [0099](model/0099-bootstrap-set-is-recorded.md) | The bootstrap set is a recorded, enumerated table | open |
@@ -198,8 +205,8 @@ delivery work it underpins.
 | # | title | claim |
 |---|---|---|
 | [0059](model/0059-v1-scope-stopping-rule.md) | v1 has a scope and a stopping rule | open |
-| [0060](model/0060-release-unit.md) | Several Services switch as one Release Unit | superseded by [0062](model/0062-service-is-the-release-unit.md) |
-| [0062](model/0062-service-is-the-release-unit.md) | A Service is the unit of atomic release | settled |
+| [0060](model/0060-release-unit.md) | Several Applications switch as one Release Unit | superseded by [0062](model/0062-application-is-the-release-unit.md) |
+| [0062](model/0062-application-is-the-release-unit.md) | An Application is the unit of atomic release | settled |
 
 ## Architecture
 

@@ -9,12 +9,17 @@ rests-on: ["0005"]
 
 # An authored value names a model concept; the target's spelling is a derivation
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 Every value a human writes in either authored document can be named for what it
 means in the model, and mapping that name to the substrate's field is a
 derivation with one declaring site. False if: an authored value exists whose only
 faithful name is the target's, a knob with no model-level meaning that a
-Service nevertheless needs to turn. Settled by: a grep of both authored kinds
+Application nevertheless needs to turn. Settled by: a grep of both authored kinds
 for Kubernetes field paths, Traefik keys, Linux shell and k3s flags returning
 nothing, with every rendered object still byte-identical to before.
 
@@ -45,7 +50,7 @@ field silently set.
 > **unchanged and now applies to the sole survivor**: `replicas` names a model
 > concept (local capacity) and never `spec.replicas`, and its `reason` is
 > required by the field rather than by a convention
-> ([chapter 10](../../../spec/v1/10-service-intent.md#capacity)). The general
+> ([chapter 10](../../../spec/v1/10-project-intent.md#capacity)). The general
 > argument is also unchanged: an authored value names what it means, and the
 > target's spelling is a derivation.
 

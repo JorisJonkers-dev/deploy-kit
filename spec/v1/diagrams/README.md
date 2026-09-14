@@ -16,7 +16,7 @@ Colour carries the layer, so a reader can place a box without a legend.
 
 | fill | stroke | means |
 |---|---|---|
-| `#dbeafe` | `#1e40af` | Service Intent: hand-authored by a Service's owner ([chapter 10](../10-service-intent.md)) |
+| `#dbeafe` | `#1e40af` | Project Intent: hand-authored by an Application's owner ([chapter 10](../10-project-intent.md)) |
 | `#e0e7ff` | `#4338ca` | Platform Intent: hand-authored by the platform ([chapter 14](../14-platform-intent.md)) |
 | `#e2e8f0` | `#475569` | a pinned input, a lock, or a recorded fact |
 | `#fef3c7` | `#b45309` | layer 2: a decision the platform made ([chapter 20](../20-resolved-deployment.md)) |
@@ -39,7 +39,7 @@ Conventions that hold across every drawing:
   target**, which is what lets the run be shared: the drops are at distinct x,
   so the names never pile up. Two relations that mean the same thing are named
   the same thing, even where they come from different sources; `secrets` is
-  `secrets` whether it hangs off the Service or off a Workload.
+  `secrets` whether it hangs off the Application or off a Process.
 
   **Two edges to the same box share their exit and their run**, and part only
   on the way down, so `readiness` and `liveness` read as one relation with two
@@ -53,7 +53,7 @@ Conventions that hold across every drawing:
   by making a reader chase a name across the drawing and the second by adding a
   line per vocabulary. An attribute's type already names its vocabulary, so the
   values live in a table in the chapter instead
-  ([chapter 10](../10-service-intent.md#the-closed-vocabularies)).
+  ([chapter 10](../10-project-intent.md#the-closed-vocabularies)).
 
   A relation that spans two or more layers is **not drawn at all**; the chapter
   states it in prose. A line that long is what made this drawing unreadable

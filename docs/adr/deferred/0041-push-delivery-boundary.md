@@ -10,9 +10,14 @@ rests-on: ["0008"]
 
 # Class A is pushed by Aggregators; class B stays with Flux
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](../model/0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 
-Every object derived from Service Intent reaches its intended state under
+Every object derived from Project Intent reaches its intended state under
 `kubectl apply --server-side` alone; the eighteen `HelmRelease`s in the
 pack-delivered foundation do not. False if: any class-A kind the registered
 adapters render needs a Flux controller to take effect, or a pack-delivered
@@ -22,9 +27,9 @@ full estate render into a vcluster with **no** Flux controllers, diff.
 ## Why
 
 Chapter 30 measured coverage and found three classes: **364 objects derived
-from Service Intent**, 41 delivered by blueprint packs, 45 authored. Delivery
+from Project Intent**, 41 delivered by blueprint packs, 45 authored. Delivery
 splits at exactly the same line, which was not planned. An **Aggregator** (a
-repository owning a relationship between Services) applies class A with
+repository owning a relationship between Applications) applies class A with
 `kubectl apply --server-side` on merge, after that relationship's system tests
 pass against an ephemeral vcluster; Flux keeps the foundation. The boundary is
 enforced: both appliers claiming one object is a build error.
@@ -56,7 +61,7 @@ falsifies that premise, scope is cut per
 
 | option | cost if taken | why rejected |
 |---|---|---|
-| Push class B too: render the 18 charts to plain manifests and apply them with `kubectl` | Ownership of 18 upstream charts' values, hooks and CRD upgrade paths, re-paid on every chart bump | `vault` and `vault-secrets-operator` are in the set; one bad render breaks secret delivery for every Service in the estate |
+| Push class B too: render the 18 charts to plain manifests and apply them with `kubectl` | Ownership of 18 upstream charts' values, hooks and CRD upgrade paths, re-paid on every chart bump | `vault` and `vault-secrets-operator` are in the set; one bad render breaks secret delivery for every Application in the estate |
 | Draw the boundary elsewhere: per namespace, or a hand-kept list of pushed objects | A list to maintain across 364 objects and every new adapter | The split is already measured and each object's class is derivable from its adapter; a hand-kept list drifts, and then both appliers claim one object |
 | Leave everything with Flux and gate the source update instead | An afternoon for the missing test caller, plus a required merge in front of the Flux source | Not rejected: this is [0008](0008-tested-equals-deployed-requires-push.md)'s live falsification path, and it is why this claim is `open` |
 
@@ -78,9 +83,9 @@ nothing pruning class A meanwhile.
   anyone debugging at 03:00.
 - A merge is now required to deploy, against composition's *"no repository
   needs a merge before a change takes effect"* (but per-relationship, not
-  estate-wide), paid by service owners, one PR per relationship change.
+  estate-wide), paid by application owners, one PR per relationship change.
 - CI cost grows: a change anywhere invalidates every aggregator's pin, so
-  roughly six suites run per service change, each provisioning a vcluster, a
+  roughly six suites run per application change, each provisioning a vcluster, a
   shape the estate measured as *"561 minutes of real compute billed 2,845,
   four fifths of the spend was rounding"*, paid by joris in Actions minutes,
   against [0051](0051-vcluster-substrate.md)'s thresholds.

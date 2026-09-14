@@ -10,11 +10,16 @@ rests-on: ["0106"]
 
 # The Xtext grammar parses the authored YAML files themselves, into the imported metamodel
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](../../../../docs/adr/model/0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 Resting on [0106](0106-the-model-is-expressible-in-the-emf-toolchain.md), the
 claim is that the YAML subset every authored example uses can be parsed by an
 Xtext grammar with synthetic indentation tokens, producing instances of the
-hand-written Service Intent and Platform Intent metamodels. False if: an
+hand-written Project Intent and Platform Intent metamodels. False if: an
 authored example needs YAML the grammar cannot parse without ambiguity, or the
 parsed model serialises to an `intent.json` different from the committed one.
 Settled by: the parsed-intent parity suite green for every authored file under

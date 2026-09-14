@@ -3,11 +3,16 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-09-07
-normative: spec/v1/10-service-intent.md#assets
+normative: spec/v1/10-project-intent.md#assets
 rests-on: ["0005"]
 ---
 
-# An Asset change is content-hashed and restarts the Workload; there is no onChange field
+# An Asset change is content-hashed and restarts the Process; there is no onChange field
+
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
 
 ## Rests on
 No image in this estate reloads its own configuration file without being told,
@@ -25,7 +30,7 @@ estate's 18 ConfigMaps are plain today, so an edit applies successfully and neve
 reaches the pod. `reload` had no mechanism at all: Kubernetes has no primitive
 that reloads a process, no image here watches its own config file, and reaching
 into a running container to signal it would need Kubernetes API access that
-[0075](0075-no-workload-rbac-in-v1.md) refuses.
+[0075](0075-no-process-rbac-in-v1.md) refuses.
 
 Three ways to give `reload` a meaning were considered and all three cost more
 than the value returns. A hash-named Job invoking the engine's reload command
@@ -36,12 +41,12 @@ A reloader operator adds an operator the substrate does not run and triggers
 restarts anyway. Watching the file is the image's job and no image does it.
 
 So `reload` is deleted, and with it the field: an enum with one legal value is a
-label an author has to type, which is [0078](0078-engine-is-workload-vocabulary.md)'s
+label an author has to type, which is [0078](0078-engine-is-process-vocabulary.md)'s
 own rule turned on this vocabulary. Propagation becomes an unconditional property
 of every Asset rather than a promise kept by the Assets that remembered to ask.
 
 The cost is stated rather than mitigated, because hiding it would be worse.
-Under [0089](0089-replicas-derived-no-minavailable.md) a stateful Workload runs
+Under [0089](0089-replicas-derived-no-minavailable.md) a stateful Process runs
 one replica with `Recreate`, so editing one line of `postgresql.conf` takes
 `platform-postgres` down for a restart. That is what an Asset edit costs on this
 substrate. An author who needs it cheaper needs a mechanism (an image that
@@ -71,7 +76,7 @@ schema addition with a default, which every consumer tolerates.
 - R23 closes, and the propagation guarantee now holds for every Asset rather
   than for those that declared it, paid by nobody, and it fixes the 16 plain
   ConfigMaps by construction.
-- Editing an Asset on a stateful Workload is an outage, stated in the chapter, so
+- Editing an Asset on a stateful Process is an outage, stated in the chapter, so
   a one-line `postgresql.conf` change is planned rather than discovered, paid by
   whoever edits, knowingly.
 - One authored field leaves layer 1, which is the second field this pass has

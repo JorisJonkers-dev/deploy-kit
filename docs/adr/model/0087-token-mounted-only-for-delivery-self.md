@@ -9,13 +9,18 @@ rests-on: ["0005"]
 
 # A ServiceAccount token is mounted only where the pod itself authenticates
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 A pod needs its ServiceAccount token exactly when it authenticates to something
 with it, and in this estate that is exactly `delivery: self`. False if: a
-Workload needs the token for a reason no declaration implies and the case is
+Process needs the token for a reason no declaration implies and the case is
 common enough that an override is the normal path rather than the exception.
 Settled by: rendering the estate and finding `automountServiceAccountToken:
-false` on every Workload except those holding a `delivery: self` grant, with
+false` on every Process except those holding a `delivery: self` grant, with
 `agents-api` the only override.
 
 ## Why
@@ -32,8 +37,8 @@ anything to anyone. Only `delivery: self` means the pod authenticates with its
 own token (that is the whole content of the word `self`), so `delivery` is the
 field the derivation must read, and a grant's existence says nothing on its own.
 
-This is the same shape as [0075](0075-no-workload-rbac-in-v1.md): the privilege
-a Workload of this estate needs is smaller than the default, and refusing to
+This is the same shape as [0075](0075-no-process-rbac-in-v1.md): the privilege
+a Process of this estate needs is smaller than the default, and refusing to
 render the default is what makes that visible. There the object was a Role; here
 it is a token, and mounting one into a pod that never uses it is a credential
 sitting in a container filesystem for no reason: the thing an attacker reads
@@ -73,7 +78,7 @@ live pod template, and widening it back is one derivation change.
   writes one it fails at runtime with a 403 from the API server rather than at
   build time, paid by its owner, and it is the one case the derivation
   deliberately does not guess at.
-- A Workload switching a grant from `self` to `env` loses its token, which is
+- A Process switching a grant from `self` to `env` loses its token, which is
   correct and is also a change nobody asked for when they changed the delivery
   mode, paid by whoever switches, visibly in the projection diff.
 - The override count becomes a number worth watching: every pod holding a token

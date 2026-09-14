@@ -1,4 +1,4 @@
-# services/knowledge/.github/workflows/publish-fragment.yml
+# applications/knowledge/.github/workflows/publish-fragment.yml
 #
 # Publishes this repository's Intent Fragment when platform intent changes.
 #
@@ -6,14 +6,14 @@
 #                                                            -> oras resolve
 #                                                            -> verify digest
 #
-# ONE DOMAIN FILE IS ONE FRAGMENT (docs/adr/model/0063-intent-authored-per-domain.md).
+# ONE PROJECT FILE IS ONE FRAGMENT (docs/adr/model/0063-intent-authored-per-project.md).
 # This repository holds one, platform/knowledge.yml, so it publishes one
-# fragment; a repository holding several domain files runs these steps once per
-# file, and a domain never spans repositories, so no fragment is ever a partial
-# domain.
+# fragment; a repository holding several project files runs these steps once per
+# file, and a project never spans repositories, so no fragment is ever a partial
+# project.
 #
 # Fires independently of any image release. That is deliberate: a change to the
-# domain file, an env file or a secret grant produces no image, and the unit of
+# project file, an env file or a secret grant produces no image, and the unit of
 # composition is the FRAGMENT, not the image
 # (docs/adr/model/0037-composition-oci-fragments.md). Tying this to a version tag
 # would let intent-only changes sit unpublished until the participant tripped
@@ -64,7 +64,7 @@ jobs:
           # the previous render-local.sh copies went stale by four minor
           # releases.
           #
-          # It is NOT read from the domain file's schemaVersion. That
+          # It is NOT read from the project file's schemaVersion. That
           # field is the DATA MODEL's own semver and no longer tracks the
           # package version (docs/adr/model/0039-artifact-schema-versioning.md):
           # reading it as a package version pins the toolkit to a release that
@@ -84,22 +84,22 @@ jobs:
           # Estate-wide invariants cannot be checked here and are
           # composition's job.
           npx --no-install deploy-config-schema intent validate \
-            --domain platform/knowledge.yml \
+            --project platform/knowledge.yml \
             --env-dir platform/env \
             --strict
 
       - name: Build the fragment tree
         if: ${{ !cancelled() }}
         run: |
-          # --env-dir holds one directory per WORKLOAD
-          # (docs/adr/model/0011-configuration-env-files-per-workload.md):
+          # --env-dir holds one directory per PROCESS
+          # (docs/adr/model/0011-configuration-env-files-per-process.md):
           # platform/env/knowledge-api/base.env and
           # platform/env/knowledge-ingest-worker/base.env, each with its own
-          # per-cluster overlay. Workload names are unique within a domain, so
-          # one directory per Workload is unambiguous across every Service the
-          # file declares (docs/adr/model/0024-identity-per-workload.md).
+          # per-cluster overlay. Process names are unique within a project, so
+          # one directory per Process is unambiguous across every Application the
+          # file declares (docs/adr/model/0024-identity-per-process.md).
           npx --no-install deploy-config-schema intent pack \
-            --domain platform/knowledge.yml \
+            --project platform/knowledge.yml \
             --env-dir platform/env \
             --out fragment/
 

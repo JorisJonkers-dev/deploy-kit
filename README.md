@@ -1,6 +1,6 @@
 # deploy-kit
 
-Everything needed to get a service deployed: the **model** a service author
+Everything needed to get an application deployed: the **model** an application author
 writes, the **decision record** that justifies every rule in it, and, as it
 lands, the **compiler** that turns that model into deployable artifacts.
 
@@ -16,14 +16,14 @@ lands, the **compiler** that turns that model into deployable artifacts.
 | --- | --- |
 | [`CONTEXT.md`](CONTEXT.md) | The vocabulary. One term, one meaning; also the naming authority for code. |
 | [`docs/architecture.md`](docs/architecture.md) | Normative for code structure, the way `spec/v1` is normative for the model. |
-| [`docs/adr/`](docs/adr/README.md) | The decision surface, one directory per domain. Machine-checked. |
+| [`docs/adr/`](docs/adr/README.md) | The decision surface, one directory per project. Machine-checked. |
 | [`docs/adr/model/`](docs/adr/model/) | The v1 model: 8 premises carrying falsifiable claims, 43 decisions resting on them. |
 | [`docs/adr/architecture/`](docs/adr/architecture/README.md) | The compiler's own structure. Pointers resolve against `docs/architecture.md`, not `spec/v1`. |
 | [`docs/adr/deferred/`](docs/adr/deferred/README.md) | Delivery and co-testing decisions, defined separately from the model. Direction work, not v1. |
-| [`spec/v1/`](spec/v1/00-overview.md) | The normative specification. Chapters 00–60, including the two authored documents: Service Intent (10) and Platform Intent (14). |
+| [`spec/v1/`](spec/v1/00-overview.md) | The normative specification. Chapters 00–60, including the two authored documents: Project Intent (10) and Platform Intent (14). |
 | [`spec/v1/diagrams/`](spec/v1/diagrams/README.md) | One drawn diagram per chapter, as an SVG with the editable draw.io diagram embedded. One palette; colour carries the layer. |
-| [`spec/v1/examples/minimal/`](spec/v1/examples/minimal/README.md) | The smallest complete Service: one domain, one Service, one Workload, 26 authored lines reaching 10 objects. |
-| [`spec/v1/examples/`](spec/v1/examples) | Worked examples: real Services from this estate, written in the model. |
+| [`spec/v1/examples/minimal/`](spec/v1/examples/minimal/README.md) | The smallest complete Application: one project, one Application, one Process, 26 authored lines reaching 10 objects. |
+| [`spec/v1/examples/`](spec/v1/examples) | Worked examples: real Applications from this estate, written in the model. |
 | [`scripts/`](scripts/) | The gates: the ADR contract, links, manifests and layer boundaries. TypeScript that Node runs directly ([tooling](docs/architecture.md#tooling)). |
 
 ## The shape of the model
@@ -31,7 +31,7 @@ lands, the **compiler** that turns that model into deployable artifacts.
 Three layers, and the middle one is a contract
 ([0003](docs/adr/model/0003-three-layer-meta-model.md)):
 
-1. **Service Intent**: hand-authored, requirements only. What a service owner
+1. **Project Intent**: hand-authored, requirements only. What an application owner
    knows and nobody else does: its cold-start budget, what its data is worth,
    which paths answer readiness.
 2. **Resolved Deployment**: derived. Every platform decision, assigned from
@@ -42,10 +42,10 @@ Three layers, and the middle one is a contract
 Two rules do most of the work. **Contention decides authority**
 ([0004](docs/adr/model/0004-contention-decides-authority.md)): a value is
 platform-assigned exactly when it must be unique estate-wide or draws on a
-shared finite resource; everything else belongs to the Service. And
+shared finite resource; everything else belongs to the Application. And
 **derivation is total** ([0005](docs/adr/model/0005-derivation-is-total.md)): every
 hand-tuned value in the live estate must be reachable from something only the
-Service could have declared.
+Application could have declared.
 
 ## Reading it
 

@@ -9,13 +9,18 @@ rests-on: ["0005"]
 
 # The derived Vault policy and auth role are Deliverables of their own adapter
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
-Every privilege a Workload holds in the Secret Store is derivable from its
+Every privilege a Process holds in the Secret Store is derivable from its
 grants and their access tiers, and the resulting policy and auth role are
 serialisable documents like any other Deliverable. False if: a policy the
 estate needs cannot be expressed without a fact no pinned input carries: a
 capability that depends on the store's live state. Settled by: rendering the
-three worked domains and diffing the emitted policies against the policies live
+three worked projects and diffing the emitted policies against the policies live
 in Vault today, with the differences explained by a gap row rather than by a
 missing input.
 
@@ -34,11 +39,11 @@ It is reached from both delivery modes, so it is not an edge case:
 paths, and `delivery: env` in `data` needs the operator's identity to hold it
 instead. Either way something must exist in Vault that the derivation describes.
 
-The unit is the **Workload identity**, not the Service.
-[0024](0024-identity-per-workload.md) makes the ServiceAccount and the Vault
-role the Workload name alone, and the estate has already paid for getting this
-wrong: `serviceAccountName()` returned the Service name, so two Workloads of one
-Service authenticated as the same principal and received the union of both
+The unit is the **Process identity**, not the Application.
+[0024](0024-identity-per-process.md) makes the ServiceAccount and the Vault
+role the Process name alone, and the estate has already paid for getting this
+wrong: `applicationAccountName()` returned the Application name, so two Processes of one
+Application authenticated as the same principal and received the union of both
 policies whatever level a grant was written at. One document per identity is
 what makes that impossible to reintroduce, and it makes a diff say which
 principal's privilege changed.
@@ -59,8 +64,8 @@ would put a v1 dependency on CRDs nobody has installed.
 its JWT issuer and CA, and the KV mounts are estate-unique and draw on a shared
 resource, so [0004](0004-contention-decides-authority.md) makes them
 platform-assigned; since [0096](0096-the-foundation-is-declared.md) they are
-Assets of the declared `vault` Service in the platform's secrets domain, and
-before it they arrived through a blueprint pack. Rendering them per Service
+Assets of the declared `vault` Application in the platform's secrets project, and
+before it they arrived through a blueprint pack. Rendering them per Application
 would also need a bootstrap answer for the mount that authenticates the renderer
 itself.
 
@@ -70,7 +75,7 @@ itself.
 | Emit CRs for a Vault-configuration operator | Everything becomes a Kubernetes object and one applier covers it | Adds an operator and CRDs the substrate does not run, making them a v1 dependency for a document that only needs to be written once per identity |
 | Register Vault policy as an unmanaged surface | Cheapest, and honest about who writes Vault config today | Leaves 0025 deriving a value nothing emits, so either it or 0005 has to be reopened; and an unmanaged surface is for what the model cannot see, not for output it declines to produce |
 | Extend `vso` to emit policies | No registry change and no amendment to 0052 | One adapter would own two artifact kinds with different appliers, and a path collision inside one adapter is invisible to the per-adapter rule |
-| Aggregate one document per Service | Fewer files; a Service's whole posture in one place | Buries the identity boundary 0024 draws, and a two-Workload Service's diff stops saying which principal changed |
+| Aggregate one document per Application | Fewer files; an Application's whole posture in one place | Buries the identity boundary 0024 draws, and a two-Process Application's diff stops saying which principal changed |
 | HCL rather than JSON | The format every Vault example and the estate's live policies use | Key order and formatting become the adapter's problem, which is the thing one serializer exists to prevent |
 
 ## Reversibility

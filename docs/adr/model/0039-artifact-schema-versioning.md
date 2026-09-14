@@ -9,6 +9,11 @@ rests-on: ["0007"]
 
 # The artifact schema is semver; composition accepts a range
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 A minor model bump only adds vocabulary, so a fragment written against minor
 *m* renders identically under every toolkit minor ≥ *m* within the same major.
@@ -49,14 +54,14 @@ toolkit stays a hard stop because the union is silent about what it drops: a
 fragment using vocabulary an older toolkit cannot read would compose with the
 unknown fields discarded and exit zero. Two spec artifacts become legitimate
 rather than accidental here: `spec/v1/40-composition.md:237` and
-`spec/v1/10-service-intent.md:36` both write `schemaVersion: 1.0.0`,
+`spec/v1/10-project-intent.md:36` both write `schemaVersion: 1.0.0`,
 satisfiable today only while the package sits at `1.0.0`: it is `0.22.0`.
 
 ## Alternatives
 | option | cost if taken | why rejected |
 |---|---|---|
-| Equality over the union (the status quo assert) | 26 releases in ten weeks × ~10 Renovate PRs each, all red until both contexts republish; one stale or dormant participant halts every aggregator including the one carrying the fix | The estate already demonstrates skew is survivable: `0.16.0` in four service repos, `0.20.0` in `stalwart-provisioner`, `0.22.0` in the contexts, and it functions; the assert forbids what reality tolerates and fails closed over the whole union |
-| Same major, any minor (caret range, minor > toolkit allowed) | A fragment at `1.4.0` composed by a `1.2.0` toolkit renders with the unrecognised fields dropped; a declared volume, grant or dependency edge silently leaves the tree and every gate passes | Trades a loud estate-wide stop for a silent per-Service under-render, which no digest, exit code or ledger detects; a stop is recoverable, a missing PVC is not |
+| Equality over the union (the status quo assert) | 26 releases in ten weeks × ~10 Renovate PRs each, all red until both contexts republish; one stale or dormant participant halts every aggregator including the one carrying the fix | The estate already demonstrates skew is survivable: `0.16.0` in four project repos, `0.20.0` in `stalwart-provisioner`, `0.22.0` in the contexts, and it functions; the assert forbids what reality tolerates and fails closed over the whole union |
+| Same major, any minor (caret range, minor > toolkit allowed) | A fragment at `1.4.0` composed by a `1.2.0` toolkit renders with the unrecognised fields dropped; a declared volume, grant or dependency edge silently leaves the tree and every gate passes | Trades a loud estate-wide stop for a silent per-Application under-render, which no digest, exit code or ledger detects; a stop is recoverable, a missing PVC is not |
 | Version the composition rather than each fragment | Every participant republishes whenever the composed model moves, since one number covers all of them | Equality by another name; it reproduces exactly the all-must-merge round this decision removes |
 | Record the accepted range in the lock instead of exact versions | Lock is smaller and human-readable; replay re-resolves and may legitimately pick a different admitted version | Breaks byte-identical replay at the only moment it matters: reconstructing what production actually ran |
 

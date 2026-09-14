@@ -71,7 +71,7 @@ jobs:
           # production's split rather than diverging from it.
           node deploy-harness/scripts/apply-candidate.mjs \
             --candidate candidate/ \
-            --rewrite-domain jorisjonkers.dev=jorisjonkers.test
+            --rewrite-project jorisjonkers.dev=jorisjonkers.test
 
       - name: Wait for readiness
         if: ${{ !cancelled() }}

@@ -9,12 +9,17 @@ rests-on: ["0003"]
 
 # Layer 2 assigns every output path; layer 3 serialises what it is handed
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 Where a Deliverable is written is a decision, not a formatting detail, and every
 path in the estate is assignable from the Resolved Deployment alone. False if:
 a path can only be known once an object is being serialised: a name derived
 from content the plan does not carry. Settled by: rendering the three worked
-domains with `E_PATH_COLLISION` evaluated on the assembled plan, before any
+projects with `E_PATH_COLLISION` evaluated on the assembled plan, before any
 adapter runs, and no adapter holding an API that returns a path.
 
 ## Why
@@ -26,13 +31,13 @@ adapter and the object it carries, reads like serialisation but is authority in
 disguise.
 
 Two live cases prove it cannot hold. `namespace.yaml` and the namespace-wide
-default-deny are **one object per domain**, while an adapter keyed off the
-Service emits one directory per Service: `auth` has one Service so nothing
+default-deny are **one object per project**, while an adapter keyed off the
+Application emits one directory per Application: `auth` has one Application so nothing
 collides, `data` has three and renders three identical Namespace objects at
 three paths, with nothing but write order deciding which survives. And the
 Gatus endpoints ConfigMap is estate-scoped: it lands in `utility-system`, a
-namespace no participating Service owns, and `E_FOREIGN_NAMESPACE` is satisfied
-only because the adapter owns the path rather than the Service. Under an
+namespace no participating Application owns, and `E_FOREIGN_NAMESPACE` is satisfied
+only because the adapter owns the path rather than the Application. Under an
 adapter-computed path both outcomes are accidents; under a plan both are
 assignments with an owner.
 
@@ -53,7 +58,7 @@ not let one Adapter write into another's.
 ## Alternatives
 | option | cost if taken | why rejected |
 |---|---|---|
-| Keep the path a function of the adapter and the object | No spec edit; matches the sentence chapter 30 already carries | Leaves the per-domain object and the estate-scoped Deliverable unresolvable, and keeps collision detection at the writer, where it has never existed |
+| Keep the path a function of the adapter and the object | No spec edit; matches the sentence chapter 30 already carries | Leaves the per-project object and the estate-scoped Deliverable unresolvable, and keeps collision detection at the writer, where it has never existed |
 | A layout policy module consulted by both layers | An explicit seam, testable alone | A component holding decisions while sitting outside the three layers is the unnamed middle the meta-model exists to prevent, and it would own authority no chapter assigns it |
 | Let the writer resolve collisions by precedence | Nothing to design; deterministic given an order | Encodes authority as evaluation order, which is invisible in every artifact a reviewer reads, and makes adding an adapter a change to what an existing one emits |
 

@@ -4,11 +4,16 @@ status: proposed
 claim: open
 owner: joris
 date: 2026-08-31
-normative: spec/v1/10-service-intent.md#grant-unit
+normative: spec/v1/10-project-intent.md#grant-unit
 rests-on: ["0009"]
 ---
 
 # The grant unit is the path; the subtree splits per reader set
+
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
 
 ## Rests on
 
@@ -58,14 +63,14 @@ live Vault contents, which the pinned-input rule forbids.
 | option | cost if taken | why rejected |
 |---|---|---|
 | Per-key grants: `keys:` is the access boundary and the policy narrows to it | a policy generator emitting stanzas KV-v2 has no syntax for, or a broker holding full `read` on every document it slices | impossible under [0009](0009-vault-read-is-per-path.md); the estate chose `patch` over `update` for exactly this reason |
-| Keys as documentation of an unenforced narrowing, the state the review found | zero migration today; reader sets stay undecidable, roll impact stays under-reported, and three Services keep silent `read` on each other's credentials | it is the finding, not a design; a boundary nothing enforces is worse than none, because authors act on it |
-| The renderer copies the needed keys into a per-Service path | a copy pipeline plus a second document to rotate per consumer: three copies for `platform/postgres` alone, each with its own staleness | duplicates the value and moves custody into the toolkit; the copy is a new secret nobody declared |
+| Keys as documentation of an unenforced narrowing, the state the review found | zero migration today; reader sets stay undecidable, roll impact stays under-reported, and three Applications keep silent `read` on each other's credentials | it is the finding, not a design; a boundary nothing enforces is worse than none, because authors act on it |
+| The renderer copies the needed keys into a per-Application path | a copy pipeline plus a second document to rotate per consumer: three copies for `platform/postgres` alone, each with its own staleness | duplicates the value and moves custody into the toolkit; the copy is a new secret nobody declared |
 
 ## Reversibility
 
 Undo cost today: the vocabulary half is a spec edit in chapters 10 and 40 plus the
 policy renderer, hours. The layout half is larger but still small: three grants
-across three example Services, one live shared document, three readers; a split is
+across three example Applications, one live shared document, three readers; a split is
 a Vault write, a grant edit, a `${secret:...}` placeholder edit and one rollout per
 consumer. Becomes irreversible once: production consumers reference the split paths
 and the merged documents are deleted, re-merging then means rewriting every grant,
@@ -74,15 +79,15 @@ placeholder and policy that names them, with no period during which both resolve
 ## Consequences
 
 - `keys:` must be read as documentation and a validation input, never as an access
-  boundary: paid by service authors, who lose a narrowing they believed they had.
+  boundary: paid by application authors, who lose a narrowing they believed they had.
 - One path per reader set multiplies paths, policies and sync objects as reader sets
   diverge: paid by the platform, in object count and policy churn.
 - `secret/data/platform/postgres` and `secret/platform/observability` must be split
   before the blast radius closes: paid by joris, as migration work.
 - `E_ROLL_AFFECTS_OTHER_READERS` becomes honest and fires more often, including on
-  grants that compose cleanly today: paid by service authors.
+  grants that compose cleanly today: paid by application authors.
 - `keys: ['*']` is removed, so `auth-api` must enumerate the keys of
-  `secret/data/auth-api`, and adding a key becomes a Service edit: paid by the
+  `secret/data/auth-api`, and adding a key becomes an Application edit: paid by the
   `auth-api` owner.
 - Reader sets become computable from the composed union without reading Vault, at
   the price of a new rejection for a grant naming an undeclared key: paid by the
