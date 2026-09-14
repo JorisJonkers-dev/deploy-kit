@@ -22,23 +22,25 @@ export default defineConfig({
       // A ratchet, per docs/adr/architecture/0101-coverage-is-a-ratchet.md:
       // set from what the suite reaches, and only ever raised.
       //
-      // Measured 2026-09-14, after the pull request attribution check
-      // (scripts/check-pr-title.ts) landed. Its two `?? ""` capture-group
-      // fallbacks were replaced by a cast each, the same way the docs
-      // contract gate's were: a `.+` group cannot be absent once the outer
-      // regex has matched, and once `messages` is filtered to non-empty
-      // strings, splitting one always yields a first element. Like the other
-      // gates, it left only its bottom-of-file entrypoint guard uncovered.
-      // Two runs of one tree, identical both times: statements 508/519,
-      // branches 260/288, functions 82/82, lines 467/478. What is left
-      // uncovered elsewhere is mostly the one-line command guard at the
-      // bottom of each other gate and the branches for a tool that cannot be
-      // started at all.
+      // Measured 2026-09-14, after the local secret scan
+      // (scripts/lint-secrets.ts) landed. Its file is small enough that the
+      // bottom-of-file entrypoint guard every other gate leaves uncovered
+      // would, left the same way, pull the suite under the previous
+      // threshold; test/secret-scan-contract.test.ts's "the entrypoint guard"
+      // covers it in-process instead, the way
+      // test/package-contents-contract.test.ts already does for
+      // check-package-contents.ts, and its two `??` fallbacks (the default
+      // binary name, a signal-killed scan's null exit status) each get a
+      // fixture of their own. Two runs of one tree, identical both times:
+      // statements 523/534, branches 274/302, functions 84/84, lines
+      // 482/493. What is left uncovered elsewhere is mostly the one-line
+      // command guard at the bottom of each other gate and the branches for a
+      // tool that cannot be started at all.
       thresholds: {
-        statements: 97.88,
-        branches: 90.27,
+        statements: 97.94,
+        branches: 90.72,
         functions: 100,
-        lines: 97.69,
+        lines: 97.76,
       },
     },
   },

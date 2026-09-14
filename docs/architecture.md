@@ -211,7 +211,7 @@ proves the two never drift apart.
 | tests | `npm run test:coverage` | behaviour, plus the coverage ratchet |
 | package contents | `node scripts/check-package-contents.ts` | `npm pack` shipping a file outside `docs/adr/` and `spec/`, the boundary the package's `files` field states but does not enforce on its own |
 | actionlint | a pinned `actionlint` binary | invalid workflow syntax, an undefined `${{ }}` expression, a shellcheck finding inside a `run:` step |
-| secret scan | a pinned `gitleaks` binary | a committed secret matching the default ruleset, or this repository's own allowlist entries |
+| secret scan | `npm run lint:secrets` | a committed secret matching the default ruleset, or this repository's own allowlist entries |
 
 Decisions, links, manifests, requirements and docs share one CI job,
 `contracts`: all five check a document against a rule rather than code
