@@ -188,7 +188,7 @@ clean tree is untested: nothing proves it would fail.
 
 ## Gates
 
-Nine gates hold the structure, and each exists because its absence has already
+Thirteen gates hold the structure, and each exists because its absence has already
 cost something in the generation this compiler replaces. Each runs as its own
 CI job, aggregated by one required check that fails when any gate job fails,
 is cancelled, or is skipped
