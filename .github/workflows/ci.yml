@@ -4,8 +4,10 @@
 # cancelled, or is skipped, so a required check can never go green by GitHub
 # skipping a job whose `if:` did not match.
 #
-# Every job starts from .github/actions/setup (checkout, the pinned Node, npm
-# ci), runs with only `contents: read`, and carries a timeout. Every action
+# Every job checks out and then runs .github/actions/setup (the pinned Node,
+# npm ci), runs with only `contents: read`, and carries a timeout. Checkout
+# sits in the job because a local action is read from the workspace: it cannot
+# do its own checkout. Every action
 # and reusable workflow here is pinned by commit SHA, with the tag it
 # resolves to as a trailing comment; Renovate bumps the pin and the comment
 # together.
@@ -37,6 +39,7 @@
     'permissions':
       'contents': 'read'
     'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
       - 'uses': './.github/actions/setup'
       - 'name': 'Typecheck'
         'run': 'npm run typecheck'
@@ -48,6 +51,7 @@
     'permissions':
       'contents': 'read'
     'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
       - 'uses': './.github/actions/setup'
       - 'name': 'Lint'
         'run': 'npm run lint'
@@ -59,6 +63,7 @@
     'permissions':
       'contents': 'read'
     'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
       - 'uses': './.github/actions/setup'
       - 'name': 'Format check'
         'run': 'npm run format:check'
@@ -70,6 +75,7 @@
     'permissions':
       'contents': 'read'
     'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
       - 'uses': './.github/actions/setup'
       # The layer boundaries on the module graph: no layer reaching outward,
       # no adapter reading another adapter, no cycle, nothing unreachable from
@@ -85,6 +91,7 @@
     'permissions':
       'contents': 'read'
     'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
       - 'uses': './.github/actions/setup'
 
       # The decision-record contract: frontmatter schema, register integrity,
@@ -120,6 +127,7 @@
     'permissions':
       'contents': 'read'
     'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
       - 'uses': './.github/actions/setup'
       # The coverage ratchet lives in vitest.config.ts: thresholds sit on what
       # the suite reaches and only rise. See
@@ -134,6 +142,7 @@
     'permissions':
       'contents': 'read'
     'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
       - 'uses': './.github/actions/setup'
       # Until the compiler exists, the npm package ships docs/adr and spec
       # only (docs/adr/README.md). `files` in package.json states that, but
@@ -150,6 +159,7 @@
     'permissions':
       'contents': 'read'
     'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
       - 'uses': './.github/actions/setup'
 
       # Pinned by version, never `curl | bash` from a third-party default
@@ -174,6 +184,7 @@
     'permissions':
       'contents': 'read'
     'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
       - 'uses': './.github/actions/setup'
 
       # Binary, not gitleaks-action: the action needs a paid licence for org
