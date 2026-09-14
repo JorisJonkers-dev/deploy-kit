@@ -1,30 +1,40 @@
 \section{Source Language}
 \label{sec:sourcelanguage}
 
-One source file represents a domain and its services. The table summarises the
-language. Example~\ref{lst:auth} in Appendix~\ref{app:rendered} shows the
-\texttt{auth} domain.
+One source file represents a project and its applications. Table~\ref{tab:source_language}
+summarises the language.
 
-\begin{table}[ht]
+\begin{table}[!htbp]
 \centering
-\begin{tabular}{p{0.22\linewidth}p{0.68\linewidth}}
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.68\linewidth}}
 \hline
 \textbf{Concern} & \textbf{Model content} \\
 \hline
-Ownership and release & Domain, responsible team and parts released together. \\
-Workloads & Container image and execution mode for each runnable part. \\
-Placement and scale & Resource, architecture and capability needs; replica count. \\
-Exposure and routing & Host, audience and path-to-workload mapping. \\
-Connections & Named provided ports and outgoing service dependencies. \\
-Health and cutover & Probes, allowed startup time and replacement strategy. \\
-Observability & Metrics surface and alert class. \\
-Storage and writes & Volume properties and paths writable under a read-only root. \\
-Secrets & Allowed paths, keys, access modes and delivery methods. \\
+Ownership and release &
+  Who owns the project, and which of its processes are released together as one application. \\
+Processes &
+  The processes that run, packaged as container images, and whether they are one-time executions or long-running. \\
+Placement and scale &
+  How much memory and CPU a process needs, which machines can host it, and how many instances run simultaneously. \\
+Exposure and routing &
+  The web address an application answers on, who may reach it, and which process handles each URL path. \\
+Connections &
+  The network ports a process offers, and the other applications it needs to reach. \\
+Health and cutover &
+  The checks that tell the platform a process is running and ready, and how an old version is replaced by a new one. \\
+Observability &
+  Where the platform collects measurements from a process, and how urgently a failure should alert someone. \\
+Storage and writes &
+  The disks a process stores data on, what recovery entails, and which folders it has access to. \\
+Secrets &
+  Which secrets a process may read from the vault, and whether they arrive as environment variables, files, or otherwise. \\
 \hline
 \end{tabular}
 \caption{Concerns Defined by the Source Language}
 \label{tab:source_language}
 \end{table}
 
-The model contains service requirements rather than Kubernetes kinds, proxy
-fields or machine names. Platform mechanisms are derived in the next stage.
+The model contains application requirements rather than Kubernetes kinds, proxy
+fields or machine names. Platform mechanisms are derived in the next stage, described in
+Section~\ref{sec:architecture}.

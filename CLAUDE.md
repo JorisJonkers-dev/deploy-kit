@@ -59,7 +59,8 @@ model-level rule and point at the deferred set.
 
 The MDE course requires the compiler to be built with Ecore, Xtext, OCL,
 QVT-Operational and Acceleo, so `emf/` holds a second, hand-written Java
-implementation (Maven and Tycho, JDK 21, no Eclipse IDE). It is deprecated
+implementation (Maven and Tycho, JDK 21, no Eclipse IDE to build, but
+loadable in Eclipse for the course's examiners). It is deprecated
 from the day it lands and deleted at its sunset:
 
 - **The root stays TypeScript.** Every pom, module, check, ledger and decision

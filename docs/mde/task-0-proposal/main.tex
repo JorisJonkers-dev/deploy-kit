@@ -30,7 +30,6 @@
   linktoc=all,
   bookmarksnumbered=true,
 }
-\renewcommand{\lstlistingname}{Example}
 
 % Heading and list layout. This is a short report, so the headings stay small
 % and the spacing around them tight. The Overleaf instance carries no titlesec
@@ -46,56 +45,6 @@
   \parsep 0pt \topsep 3pt \itemsep 1pt}
 \let\@listi\@listI
 \makeatother
-
-% Source and generated files are set with listings; no package on the server
-% highlights YAML, so the language is declared here.
-\definecolor{yamlkey}{RGB}{17,72,140}
-\definecolor{yamlval}{RGB}{140,60,10}
-\definecolor{yamlcmt}{RGB}{110,120,130}
-\definecolor{yamlpunct}{RGB}{150,150,160}
-\definecolor{yamlframe}{RGB}{225,228,234}
-\definecolor{yamlbg}{RGB}{250,250,252}
-\lstdefinelanguage{yaml}{
-  keywords={true,false,null},
-  keywordstyle=\color{yamlval}\bfseries,
-  sensitive=false,
-  comment=[l]{\#},
-  commentstyle=\color{yamlcmt}\itshape,
-  stringstyle=\color{yamlval},
-  morestring=[b]',
-  morestring=[b]",
-  moredelim=[l][\color{yamlval}]{\&},
-  moredelim=[l][\color{yamlval}]{*},
-  moredelim=**[il][\color{yamlkey}\bfseries:]{:},
-  literate={\{}{{\textcolor{yamlpunct}{\{}}}1
-           {\}}{{\textcolor{yamlpunct}{\}}}}1
-           {[}{{\textcolor{yamlpunct}{[}}}1
-           {]}{{\textcolor{yamlpunct}{]}}}1
-           {,}{{\textcolor{yamlpunct}{,}}}1
-           {-}{{\textcolor{yamlpunct}{-}}}1,
-}
-
-\lstset{
-  language=yaml,
-  basicstyle=\ttfamily\scriptsize,
-  columns=fullflexible,
-  keepspaces=true,
-  showstringspaces=false,
-  breaklines=true,
-  frame=single,
-  framerule=0.4pt,
-  rulecolor=\color{yamlframe},
-  backgroundcolor=\color{yamlbg},
-  framesep=5pt,
-  framexleftmargin=5pt,
-  framexrightmargin=5pt,
-  xleftmargin=6pt,
-  xrightmargin=6pt,
-  aboveskip=6pt,
-  belowskip=4pt,
-  captionpos=b,
-  abovecaptionskip=3pt,
-}
 
 \begin{document}
 %==== FRONT PART====
@@ -114,10 +63,6 @@
 \input{Sections/06-architecture}
 \input{Sections/07-tooling}
 \input{Sections/08-deliverables}
-
-%==== APPENDIX ====
-\appendix
-\input{Sections/09-appendix}
 
 %==== END OF ALL ===
 \end{document}

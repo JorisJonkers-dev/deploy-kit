@@ -1,11 +1,11 @@
 \section{Metamodels}
 \label{sec:metamodels}
 
-The three pipeline layers have separate metamodels:
+The three pipeline layers of Section~\ref{sec:solution} have separate metamodels:
 
 \begin{enumerate}
-  \item \textbf{Service Intent}: \emph{Domain}, \emph{Service},
-    \emph{Workload}, \emph{Exposure}, \emph{Route}, \emph{Placement},
+  \item \textbf{Project Intent}: \emph{Project}, \emph{Application},
+    \emph{Process}, \emph{Exposure}, \emph{Route}, \emph{Placement},
     \emph{Probe}, \emph{Dependency}, \emph{Secret Grant} and \emph{Volume}.
   \item \textbf{Resolved Deployment}: concrete resources and relationships with
     every derived value, identity and output path present.
@@ -13,6 +13,6 @@ The three pipeline layers have separate metamodels:
     each with its path, content and producing adapter.
 \end{enumerate}
 
-UML class diagrams document each metamodel. The implementation uses TypeScript
-types and \texttt{zod} runtime schemas, as discussed in
-Section~\ref{sec:tooling}.
+UML class diagrams document each metamodel. Each metamodel is defined twice,
+separately: in Ecore with OCL constraints, and as TypeScript types and
+\texttt{zod} runtime schemas, as discussed in Section~\ref{sec:tooling}.

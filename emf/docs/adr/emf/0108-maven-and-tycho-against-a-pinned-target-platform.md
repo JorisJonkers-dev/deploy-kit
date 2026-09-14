@@ -10,6 +10,15 @@ rests-on: ["0106"]
 
 # Maven builds `emf/`, with Tycho resolving p2-only bundles against a pinned target platform, on JDK 21, with no Eclipse IDE
 
+> **Amended 2026-09-14.** No Eclipse IDE is needed to build, and CI never
+> uses one. The projects must still be loadable in Eclipse Modeling Tools for
+> the course's examiners, as the Task 0 proposal now promises: they import as
+> existing Maven projects, the metamodels open and the example models validate
+> against the OCL constraints, and committed launch configurations run the
+> QVT-Operational transformation and the Acceleo generator. Keeping that
+> working is part of this decision; the Maven build stays the only path CI
+> checks.
+
 ## Rests on
 Resting on [0106](0106-the-model-is-expressible-in-the-emf-toolchain.md), the
 claim here is that every tool the course requires runs headless from one Maven
