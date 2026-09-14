@@ -22,19 +22,21 @@ export default defineConfig({
       // A ratchet, per docs/adr/architecture/0101-coverage-is-a-ratchet.md:
       // set from what the suite reaches, and only ever raised.
       //
-      // Measured 2026-09-14, after the requirements ledger gate's own tests
-      // covered its citation-ordering branches (and, like the other gates,
-      // left only its bottom-of-file entrypoint guard uncovered), two runs
-      // of one tree, identical both times: statements 390/400, branches
-      // 214/241, functions 62/62, lines 356/366. What is left uncovered
-      // elsewhere is mostly the one-line command guard at the bottom of each
-      // other gate and the branches for a tool that cannot be started at
-      // all.
+      // Measured 2026-09-14, after the docs contract gate's own tests
+      // covered it (its `?? ""` capture-group fallbacks were replaced by one
+      // cast, since a `+`-quantified group cannot be absent when `matchAll`
+      // yields a match for it; the missing-scripts-field branch is real and
+      // is tested) and, like the other gates, left only its bottom-of-file
+      // entrypoint guard uncovered, two runs of one tree, identical both
+      // times: statements 470/481, branches 246/274, functions 74/74, lines
+      // 432/443. What is left uncovered elsewhere is mostly the one-line
+      // command guard at the bottom of each other gate and the branches for
+      // a tool that cannot be started at all.
       thresholds: {
-        statements: 97.5,
-        branches: 88.79,
+        statements: 97.71,
+        branches: 89.78,
         functions: 100,
-        lines: 97.26,
+        lines: 97.51,
       },
     },
   },

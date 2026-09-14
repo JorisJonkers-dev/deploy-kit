@@ -40,11 +40,22 @@ export interface DocsLintResult {
   readonly errors: readonly string[];
 }
 
+/**
+ * The text a regex's first capture group matched. TypeScript types every
+ * group as possibly absent regardless of quantifier, but a `+`-quantified
+ * group that `matchAll` actually yielded a match for cannot itself be empty:
+ * the whole match would not exist otherwise. The cast says so once, rather
+ * than `?? ""` guessing at a case none of these regexes can reach.
+ */
+function requiredGroup(match: RegExpMatchArray): string {
+  return match[1] as string;
+}
+
 /** Every `npm run <script>` and bare `npm test` a document names, deduplicated. */
 export function scriptClaims(text: string): readonly string[] {
   const found = new Set<string>();
   for (const match of text.matchAll(/npm run ([a-zA-Z0-9:_-]+)/g))
-    found.add(match[1] ?? "");
+    found.add(requiredGroup(match));
   if (/\bnpm test\b/.test(text)) found.add("test");
   return [...found];
 }
@@ -72,7 +83,7 @@ export function pathClaims(text: string): readonly string[] {
   const prose = text.replace(/^```[\s\S]*?^```/gm, "");
   const found = new Set<string>();
   for (const match of prose.matchAll(/`([^`]+)`/g)) {
-    const candidate = match[1] ?? "";
+    const candidate = requiredGroup(match);
     if (isPathLike(candidate)) found.add(candidate);
   }
   return [...found];
@@ -95,7 +106,7 @@ export function coverageClaims(
 export function nodeVersionClaims(text: string): readonly string[] {
   const found = new Set<string>();
   for (const match of text.matchAll(/\bNode\s+v?(\d+\.\d+\.\d+)\b/g))
-    found.add(match[1] ?? "");
+    found.add(requiredGroup(match));
   return [...found];
 }
 

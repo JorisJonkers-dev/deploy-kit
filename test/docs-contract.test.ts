@@ -6,6 +6,10 @@
 // exactly as well wrong as right. lint-docs.ts extracts each of those claims
 // and checks it against the file that is actually true; these fixtures prove
 // it fires, on a tree where only one thing is deliberately wrong.
+//
+// REQ-011 (docs/requirements.md): every script, path, coverage number and
+// Node version README.md and CONTRIBUTING.md name matches the repository
+// they describe.
 import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -77,6 +81,7 @@ function repo(options: {
   thresholds?: Thresholds;
   nvmrc?: string;
   noThresholdsBlock?: boolean;
+  noScriptsField?: boolean;
 }): string {
   const root = mkdtempSync(join(temporary(), "docs-lint-"));
   writeFileSync(
@@ -84,7 +89,9 @@ function repo(options: {
     JSON.stringify({
       name: "fixture",
       version: "0.0.0",
-      scripts: options.scripts ?? DEFAULT_SCRIPTS,
+      ...(options.noScriptsField
+        ? {}
+        : { scripts: options.scripts ?? DEFAULT_SCRIPTS }),
     }),
   );
   writeFileSync(
@@ -290,6 +297,27 @@ describe("lintDocs", () => {
     const { errors } = lintDocs(root);
     expect(errors).toStrictEqual([
       "CONTRIBUTING.md: names `npm run test`, which is not a script in package.json",
+    ]);
+  });
+
+  it("treats a package.json with no scripts field as naming none", () => {
+    const root = repo({
+      readme: "See `docs/adr/` for detail.\n",
+      noScriptsField: true,
+    });
+    const result = lintDocs(root);
+    expect(result.errors).toStrictEqual([]);
+    expect(result.byKind.script).toBe(0);
+  });
+
+  it("fails a script the document names against a package.json with no scripts field", () => {
+    const root = repo({
+      readme: "`npm run verify` runs the gates.\n",
+      noScriptsField: true,
+    });
+    const { errors } = lintDocs(root);
+    expect(errors).toStrictEqual([
+      "README.md: names `npm run verify`, which is not a script in package.json",
     ]);
   });
 
