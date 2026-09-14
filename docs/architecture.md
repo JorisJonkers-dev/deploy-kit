@@ -188,17 +188,33 @@ clean tree is untested: nothing proves it would fail.
 
 ## Gates
 
-Four gates hold the structure, and each exists because its absence has already
-cost something in the generation this compiler replaces.
+Nine gates hold the structure, and each exists because its absence has already
+cost something in the generation this compiler replaces. Each runs as its own
+CI job, aggregated by one required check that fails when any gate job fails,
+is cancelled, or is skipped
+([0069](adr/architecture/0069-boundaries-enforced-on-the-graph.md)); a new
+gate's script and its job land in the same pull request, and
+[0102](adr/architecture/0102-the-gate-grows-with-the-code.md) is the test that
+proves the two never drift apart.
 
 | gate | command | catches |
 |---|---|---|
-| boundaries | `npm run lint:boundaries` | a layer reaching outward, an adapter reading another adapter, a cycle, a module reachable from no entry point |
+| lint | `npm run lint` | ESLint's `strictTypeChecked` rules, the test-file rules from the harness, and every project-specific rule this repository adds |
+| format | `npm run format:check` | Prettier drift |
 | types | `npm run typecheck` | `strict` violations; `@ts-nocheck` is an ESLint error and `@ts-expect-error` needs a description |
+| boundaries | `npm run lint:boundaries` | a layer reaching outward, an adapter reading another adapter, a cycle, a module reachable from no entry point |
 | decisions | `npm run lint:adrs` | frontmatter, register integrity, citations, normative anchors per domain |
 | links | `npm run lint:links` | relative links and heading anchors across every tracked Markdown file |
 | manifests | `npm run lint:manifests` | every rendered example object against pinned Kubernetes and CRD schemas |
 | tests | `npm run test:coverage` | behaviour, plus the coverage ratchet |
+| package contents | `node scripts/check-package-contents.ts` | `npm pack` shipping a file outside `docs/adr/` and `spec/`, the boundary the package's `files` field states but does not enforce on its own |
+| actionlint | a pinned `actionlint` binary | invalid workflow syntax, an undefined `${{ }}` expression, a shellcheck finding inside a `run:` step |
+| secret scan | a pinned `gitleaks` binary | a committed secret matching the default ruleset, or this repository's own allowlist entries |
+
+Decisions, links and manifests share one CI job, `contracts`: all three check a
+document against a rule rather than code against a graph. Boundaries runs
+alone as `architecture`, because it is the one gate that speaks for
+`docs/architecture.md` itself rather than for a document beside it.
 
 Coverage is a ratchet ([0101](adr/architecture/0101-coverage-is-a-ratchet.md)).
 The thresholds in `vitest.config.ts` sit on what the suite reaches, over an

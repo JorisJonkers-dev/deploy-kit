@@ -1,7 +1,20 @@
-# One pipeline, one job. GitHub bills every job rounded up to a full minute, so
-# splitting fast checks across jobs multiplies the bill while the work stays the
-# same. Add a second job only for a reusable workflow (`uses:` cannot be a step),
-# and gate it from `Pipeline Complete` with `needs:` plus an alls-green step.
+# One job per gate, so a pull request shows which check failed instead of
+# where in one long job it stopped. `Pipeline Complete` is the one required
+# check the branch ruleset names: it fails when any gate job fails, is
+# cancelled, or is skipped, so a required check can never go green by GitHub
+# skipping a job whose `if:` did not match.
+#
+# Every job checks out and then runs .github/actions/setup (the pinned Node,
+# npm ci), runs with only `contents: read`, and carries a timeout. Checkout
+# sits in the job because a local action is read from the workspace: it cannot
+# do its own checkout. Every action
+# and reusable workflow here is pinned by commit SHA, with the tag it
+# resolves to as a trailing comment; Renovate bumps the pin and the comment
+# together.
+#
+# docs/adr/architecture/0102-the-gate-grows-with-the-code.md: a new gate's
+# script and its job land in the same pull request, and
+# test/pipeline-wiring.test.ts is what notices when they do not.
 'name': 'CI'
 
 'on':
@@ -19,34 +32,79 @@
   'contents': 'read'
 
 'jobs':
-  'pipeline-complete':
-    'name': 'Pipeline Complete'
+  'typecheck':
+    'name': 'Typecheck'
     'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 10
+    'permissions':
+      'contents': 'read'
     'steps':
-      - 'uses': 'actions/checkout@v7'
-
-      - 'uses': 'actions/setup-node@v7'
-        'with':
-          'node-version-file': '.nvmrc'
-          'cache': 'npm'
-
-      - 'name': 'Install'
-        'run': 'npm ci'
-
-      - 'name': 'Lint'
-        'run': 'npm run lint'
-
-      - 'name': 'Format check'
-        'run': 'npm run format:check'
-
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+      - 'uses': './.github/actions/setup'
       - 'name': 'Typecheck'
         'run': 'npm run typecheck'
 
+  'lint':
+    'name': 'Lint'
+    'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 10
+    'permissions':
+      'contents': 'read'
+    'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+      - 'uses': './.github/actions/setup'
+      - 'name': 'Lint'
+        'run': 'npm run lint'
+
+  'format':
+    'name': 'Format'
+    'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 10
+    'permissions':
+      'contents': 'read'
+    'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+      - 'uses': './.github/actions/setup'
+      - 'name': 'Format check'
+        'run': 'npm run format:check'
+
+  'architecture':
+    'name': 'Architecture'
+    'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 10
+    'permissions':
+      'contents': 'read'
+    'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+      - 'uses': './.github/actions/setup'
+      # The layer boundaries on the module graph: no layer reaching outward,
+      # no adapter reading another adapter, no cycle, nothing unreachable from
+      # an entry point. Skips loudly while src/ does not exist.
+      # See docs/adr/architecture/0069-boundaries-enforced-on-the-graph.md.
+      - 'name': 'Boundaries'
+        'run': 'npm run lint:boundaries'
+
+  'contracts':
+    'name': 'Contracts'
+    'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 15
+    'permissions':
+      'contents': 'read'
+    'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+      - 'uses': './.github/actions/setup'
+
       # The decision-record contract: frontmatter schema, register integrity,
-      # qualified citations, normative anchors resolving into spec/, and content
-      # shape. See docs/adr/README.md.
+      # qualified citations, normative anchors resolving into spec/, and
+      # content shape. See docs/adr/README.md.
       - 'name': 'ADR contract'
         'run': 'npm run lint:adrs'
+
+      # Relative links and heading anchors across every tracked Markdown file.
+      # The ADR domain move rewrote about a hundred references outside the
+      # decision set, and nothing checked them.
+      - 'name': 'Link contract'
+        'run': 'npm run lint:links'
 
       # Every rendered example object, against Kubernetes and CRD schemas.
       # "All parse" is what let a PVC with `storage: null` through
@@ -62,29 +120,52 @@
             | tar -xz kubeconform
           KUBECONFORM="${PWD}/kubeconform" npm run lint:manifests
 
-      # Relative links and heading anchors across every tracked Markdown file.
-      # The ADR domain move rewrote about a hundred references outside the
-      # decision set, and nothing checked them.
-      - 'name': 'Link contract'
-        'run': 'npm run lint:links'
-
-      # The layer boundaries on the module graph: no layer reaching outward, no
-      # adapter reading another adapter, no cycle, nothing unreachable from an
-      # entry point. Skips loudly while src/ does not exist.
-      # See docs/adr/architecture/0069-boundaries-enforced-on-the-graph.md.
-      - 'name': 'Boundaries'
-        'run': 'npm run lint:boundaries'
-
+  'tests':
+    'name': 'Tests'
+    'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 15
+    'permissions':
+      'contents': 'read'
+    'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+      - 'uses': './.github/actions/setup'
       # The coverage ratchet lives in vitest.config.ts: thresholds sit on what
       # the suite reaches and only rise. See
       # docs/adr/architecture/0101-coverage-is-a-ratchet.md.
       - 'name': 'Test'
         'run': 'npm run test:coverage'
 
+  'package-contents':
+    'name': 'Package contents'
+    'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 10
+    'permissions':
+      'contents': 'read'
+    'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+      - 'uses': './.github/actions/setup'
+      # Until the compiler exists, the npm package ships docs/adr and spec
+      # only (docs/adr/README.md). `files` in package.json states that, but
+      # npm always bundles package.json, README and LICENSE regardless of it,
+      # so this asks the real npm what it would ship rather than trusting the
+      # field.
+      - 'name': 'Package contents'
+        'run': 'node scripts/check-package-contents.ts'
+
+  'actionlint':
+    'name': 'Actionlint'
+    'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 10
+    'permissions':
+      'contents': 'read'
+    'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+      - 'uses': './.github/actions/setup'
+
       # Pinned by version, never `curl | bash` from a third-party default
-      # branch: docs/adr/deferred/0048-class-b-pinning.md (deferred set) records that
-      # pattern as a live supply-chain defect in the repository this one
-      # replaces. Renovate bumps the pin.
+      # branch: docs/adr/deferred/0048-class-b-pinning.md (deferred set)
+      # records that pattern as a live supply-chain defect in the repository
+      # this one replaces. Renovate bumps the pin.
       - 'name': 'Actionlint'
         'shell': 'bash'
         'env':
@@ -96,8 +177,19 @@
             | tar -xz actionlint
           ./actionlint -color .github/workflows/*.yml
 
+  'secret-scan':
+    'name': 'Secret scan'
+    'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 10
+    'permissions':
+      'contents': 'read'
+    'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+      - 'uses': './.github/actions/setup'
+
       # Binary, not gitleaks-action: the action needs a paid licence for org
-      # repos. Pinned version, per docs/adr/deferred/0048-class-b-pinning.md.
+      # repos. Pinned version, per
+      # docs/adr/deferred/0048-class-b-pinning.md.
       - 'name': 'Secret scan'
         'shell': 'bash'
         'env':
@@ -108,3 +200,42 @@
             "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
             | tar -xz gitleaks
           ./gitleaks detect --no-git --redact --source . --exit-code 1
+
+  'pipeline-complete':
+    'name': 'Pipeline Complete'
+    'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 5
+    'permissions':
+      'contents': 'read'
+    'needs':
+      - 'typecheck'
+      - 'lint'
+      - 'format'
+      - 'architecture'
+      - 'contracts'
+      - 'tests'
+      - 'package-contents'
+      - 'actionlint'
+      - 'secret-scan'
+    # Runs even when a dependency failed or was cancelled: the branch ruleset
+    # names this job, so it has to run and report failure rather than being
+    # skipped alongside whatever it depends on.
+    'if': 'always()'
+    'steps':
+      # `needs.*.result` is 'success', 'failure', 'cancelled' or 'skipped' for
+      # each job above; contains() over that list is what makes this fail on
+      # any of the last three, and the negated twin below is what prints a
+      # clean pass instead of leaving the job green with no step run at all.
+      - 'name': 'Fail: a gate job failed, was cancelled, or was skipped'
+        'if': >-
+          ${{ contains(needs.*.result, 'failure') ||
+              contains(needs.*.result, 'cancelled') ||
+              contains(needs.*.result, 'skipped') }}
+        'run': 'exit 1'
+
+      - 'name': 'Every gate job succeeded'
+        'if': >-
+          ${{ !(contains(needs.*.result, 'failure') ||
+                contains(needs.*.result, 'cancelled') ||
+                contains(needs.*.result, 'skipped')) }}
+        'run': 'echo "Every gate job succeeded."'

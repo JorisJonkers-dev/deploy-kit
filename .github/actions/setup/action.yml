@@ -1,0 +1,20 @@
+# The setup every CI job runs after checking out: the Node .nvmrc pins, and a
+# clean install. Kept in one place so a Node bump is one file, not nine.
+#
+# Checkout stays in the job, not here: a local action is read from the
+# workspace, so the repository has to be on disk before this file can be
+# resolved at all.
+'name': 'Setup'
+'description': 'Install the pinned Node and run npm ci'
+
+'runs':
+  'using': 'composite'
+  'steps':
+    - 'uses': 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020' # v7.0.0
+      'with':
+        'node-version-file': '.nvmrc'
+        'cache': 'npm'
+
+    - 'name': 'Install'
+      'shell': 'bash'
+      'run': 'npm ci'
