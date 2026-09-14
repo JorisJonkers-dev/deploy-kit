@@ -3,9 +3,9 @@
 // regardless of it, and a stray glob can widen it silently. This proves the
 // gate catches that against real npm, not only against a fabricated list.
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   checkPackageContents,
   isAllowed,
@@ -33,6 +33,15 @@ function pkg(
     writeFileSync(join(root, rel), content);
   }
   return root;
+}
+
+/** A stand-in npm that echoes `output` for any `pack --dry-run` call. */
+function fakeNpm(output: string): string {
+  const bin = mkdtempSync(join(temporary(), "npm-bin-"));
+  const path = join(bin, "npm");
+  writeFileSync(path, `#!/bin/sh\necho '${output}'\n`);
+  chmodSync(path, 0o755);
+  return bin;
 }
 
 describe("isAllowed", () => {
@@ -78,6 +87,21 @@ describe("packedFiles", () => {
     const root = mkdtempSync(join(temporary(), "bad-pkg-"));
     writeFileSync(join(root, "package.json"), "not json");
     expect(() => packedFiles(root)).toThrow(/npm pack --dry-run failed/);
+  });
+
+  it("throws when npm cannot be started at all", () => {
+    // A `cwd` that does not exist fails the spawn itself, before npm ever
+    // runs, so `run.error` is set rather than `run.status`.
+    const gone = join(temporary(), "does-not-exist");
+    expect(() => packedFiles(gone)).toThrow(/could not run npm: /);
+  });
+
+  it("ships nothing when npm reports no package at all", () => {
+    // A real `npm pack --dry-run --json` always names at least one package,
+    // but the code does not assume that; a stand-in npm that reports none
+    // proves the empty-array fallback rather than only asserting the type.
+    vi.stubEnv("PATH", `${fakeNpm("[]")}:${process.env.PATH}`);
+    expect(packedFiles(REPOSITORY)).toStrictEqual([]);
   });
 });
 
@@ -139,5 +163,28 @@ describe("the command", () => {
     );
     expect(run.status).toBe(1);
     expect(run.stderr).toContain("src/leak.ts");
+  });
+});
+
+describe("the entrypoint guard", () => {
+  // This file is small enough that its own bottom-of-file guard, left
+  // uncovered as every other gate leaves its own, would be a large enough
+  // share of the file to pull the suite under the ratchet. Reloading the
+  // module with `process.argv` set to its own path drives the guard for
+  // real, in this process, so v8 sees the line the subprocess test above
+  // proves but coverage otherwise never reaches.
+  it("runs main and sets process.exitCode when Node starts this module", async () => {
+    const modulePath = join(REPOSITORY, "scripts", "check-package-contents.ts");
+    const originalArgv = process.argv;
+    const originalExitCode = process.exitCode;
+    process.argv = [process.argv[0] ?? "node", modulePath];
+    vi.resetModules();
+    try {
+      await import("../scripts/check-package-contents.ts");
+      expect(process.exitCode).toBe(0);
+    } finally {
+      process.argv = originalArgv;
+      process.exitCode = originalExitCode;
+    }
   });
 });
