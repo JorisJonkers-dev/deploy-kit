@@ -9,13 +9,18 @@ rests-on: ["0003"]
 
 # Adapters build typed objects; one serializer owns the bytes
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](../model/0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 Every Deliverable this estate emits is expressible as a typed object built from
 fields the model can name, and turning objects into bytes needs no per-adapter
 choice. False if: an adapter must emit a construct the object model cannot
 express (a comment carrying meaning, a document whose key order is semantic)
 in which case that adapter is deciding something at serialization time.
-Settled by: the double render over the three worked domains producing a
+Settled by: the double render over the three worked projects producing a
 byte-identical tree with every adapter going through the one serializer.
 
 ## Why

@@ -9,6 +9,11 @@ rests-on: ["0003"]
 
 # Every accepted hole is a bidirectional ledger
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 > **Amended 2026-09-08.** Two of the three ledgers this ADR names are unchanged.
 > The third (registered unmanaged surfaces) now holds only hostnames nobody
 > deploys and nobody depends on: a provider the estate reaches is a **fact** in
@@ -43,7 +48,7 @@ permanent exemption."* That is the best-designed artefact in the estate, and the
 only thing this decision does is generalise it to every other accepted gap.
 
 Both halves are load-bearing because the gaps are large and are meant to shrink.
-Of 450 live objects, 364 are derivable from Service Intent, 41 are pack-delivered
+Of 450 live objects, 364 are derivable from Project Intent, 41 are pack-delivered
 and 45 are authored content; of the 364, chapter 30 recorded **328 with a
 producing adapter and 36 without** (`spec/v1/30-deliverables.md:77-89`), a count
 [0052](0052-registered-adapters-are-v1.md) shows is wrong on two of its four rows,
@@ -51,7 +56,7 @@ so the gap is re-derived from `adapterContract()` before it is planned against;
 whatever its size, it is large enough that the ledger must shrink on its own.
 Class C is 31 `GrafanaDashboard` and 14 `GrafanaFolder`; chapter 50 assigns every
 one of them (14 as Assets, 3 to the Runtime Profile, 14 to the observability
-pack, 2 derived per Service) so class C is ledgered only until those owners land,
+pack, 2 derived per Application) so class C is ledgered only until those owners land,
 not permanently. A list failing only on absence would carry those entries after the adapters closing them are
 registered under [0052](0052-registered-adapters-are-v1.md), and no build would
 say so. The stale half makes the ledger shrink on its own.
@@ -63,8 +68,8 @@ value ([0031](0031-derived-overrides-with-reason.md)). Each entry carries an
 owner, a reason and a review date, and a date in the past fails the build like an
 unmatched entry: a review date with no consequence is an adjective. One live
 drift entry marks where the limit genuinely is: `agent-gateway` cannot be probed
-because it is *"a sidecar jar inside agent-runner pods, not a workload of its
-own"*, and its per-runner Services are created and destroyed by `agents-api` at
+because it is *"a sidecar jar inside agent-runner pods, not a process of its
+own"*, and its per-runner Applications are created and destroyed by `agents-api` at
 runtime. Some objects are outside any declarative model; the ledger is where they
 belong, with a reason rather than with silence.
 
@@ -89,7 +94,7 @@ hand.
 ## Consequences
 
 - Accepting a hole costs an owner, a reason and a review date at the moment of
-  acceptance, not later: paid by the service owner taking the exception.
+  acceptance, not later: paid by the application owner taking the exception.
 - Closing a hole is two changes, register and delete, and forgetting the second
   breaks the build: paid by whoever registers the adapter.
 - Class C entries expire only when their chapter-50 owner lands, so they sit in

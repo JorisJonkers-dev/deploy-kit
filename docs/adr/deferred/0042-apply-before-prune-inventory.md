@@ -9,15 +9,20 @@ rests-on: ["0008"]
 
 # Apply first, prune last, from an inventory of rendered kinds
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](../model/0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 
 Every kind the registered adapters render tolerates a bounded window in which
 the outgoing and incoming object both exist, so deferring the delete pass until
 after a successful apply costs a transient duplicate, nothing more. False if: a
 rendered kind is exclusive: two live objects contend for one resource, so the
-overlap breaks the service rather than doubling it (two `IngressRoute`s on one
+overlap breaks the application rather than doubling it (two `IngressRoute`s on one
 hostname). Settled by: in a k3d vcluster ([0051](0051-vcluster-substrate.md)),
-rename a Service owning a public hostname and a PVC, apply the new slice before
+rename an Application owning a public hostname and a PVC, apply the new slice before
 pruning the old, and curl the hostname each second across the overlap; any
 non-2xx falsifies it.
 
@@ -26,7 +31,7 @@ non-2xx falsifies it.
 The order was inverted. `spec/v1/examples/workflows/aggregator-deploy.yml` runs
 *"Prune what left the render"* (line 82) before *"Server-side apply in DAG
 order"* (line 98), and `spec/v1/50-lifecycle.md:105-108` repeats it. Flux
-applies then prunes. A rename, or a Service reassigned between Aggregators,
+applies then prunes. A rename, or an Application reassigned between Aggregators,
 presents here as delete-then-create, and the create can fail: a
 field-ownership conflict *"is reported and fails this step"* by design, and the
 job times out at 20 minutes. Old object gone, new one never written (B4:

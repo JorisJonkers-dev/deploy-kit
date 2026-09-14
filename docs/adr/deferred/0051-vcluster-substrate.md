@@ -10,6 +10,11 @@ rests-on: ["0008"]
 
 # The test substrate is measured before it gates
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](../model/0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 
 One provision-and-apply of the whole composed estate into a k3d cluster on the CI
@@ -25,9 +30,9 @@ The push-delivery design made every deploy conditional on a substrate it never
 located. Objects are applied "after that relationship's system tests have passed
 against an ephemeral vcluster", and its own consequence list concedes that "**CI
 cost grows.** A change anywhere invalidates every aggregator's pin, so roughly six
-suites run per service change, each provisioning a vcluster." What gets provisioned
+suites run per application change, each provisioning a vcluster." What gets provisioned
 six times is not small: chapter 30's coverage measurement is 364 objects derived
-from Service Intent plus 41 delivered by blueprint packs, 405 rendered objects (364 class A plus 41 pack-delivered) per run,
+from Project Intent plus 41 delivered by blueprint packs, 405 rendered objects (364 class A plus 41 pack-delivered) per run,
 and 18 of those 41 are `HelmRelease` (`vault`, `vault-secrets-operator`,
 `metrics-stack`, `traefik`, `cert-manager`, `metallb`, `grafana`, `loki`, `tempo`
 and the rest), none of which mean anything without Flux's `helm-controller` in the
@@ -61,7 +66,7 @@ script above "already does" a layer-ordered apply against a vcluster today.
 
 | option | cost if taken | why rejected |
 |---|---|---|
-| vclusters on the production k3s cluster | six concurrent syncers × 405 objects on the 7-node pool and its `local-path` volumes; no isolation from the workloads [0061](../model/0061-placement-is-hard-dimensions.md) rations | Test load evicting production is precisely the failure the placement model exists to prevent |
+| vclusters on the production k3s cluster | six concurrent syncers × 405 objects on the 7-node pool and its `local-path` volumes; no isolation from the processes [0061](../model/0061-placement-is-hard-dimensions.md) rations | Test load evicting production is precisely the failure the placement model exists to prevent |
 | a dedicated always-on test cluster | second set of hardware plus its own k3s upgrade, CNI ([0036](../model/0036-cni-selection.md)) and restore ([0057](../model/0057-datastore-and-restore.md)) story, run by the same one person | Doubles the operational surface to serve a gate whose cost is not yet known |
 | `kind` on the runner instead of k3d | same isolation, but a different distribution from the k3s the gate is predicting for | Reintroduces substrate drift the gate exists to eliminate; k3d runs the production k3s binary |
 | no substrate: schema validation plus `--dry-run=server` against production | near-zero CI cost | Needs a production credential on every PR and still never runs a relationship suite ([0049](0049-aggregator-owned-tests.md)) |
@@ -85,7 +90,7 @@ its registry, `local-path` defaults) rather than the k3s API, or once the gate s
 - The runner host must hold a k3d cluster plus 18 HelmReleases; it stops being a
   checkout-and-node box and needs a capacity budget, paid by its operator
 - Production nodes are never the test substrate, so the 7-node pool stays rationed
-  for real workloads, paid by nobody; a benefit to service owners
+  for real processes, paid by nobody; a benefit to application owners
 - k3d cannot exercise the production CNI's enforcement path or the real MetalLB
   pool, so [0035](../model/0035-network-policy-default-deny.md)'s flow observation still
   needs a real cluster, paid by the network-policy work

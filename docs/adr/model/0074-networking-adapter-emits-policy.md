@@ -9,11 +9,16 @@ rests-on: ["0005"]
 
 # A `networking` adapter owns every NetworkPolicy in the estate
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 Every rendered NetworkPolicy is derivable from the composed edge set, the
 surfaces, the routes, the grants and the platform baseline, and one producer can
 own all of them. False if: a policy the estate needs cannot be derived from
-those five inputs, or the per-domain default-deny and the per-Workload policies
+those five inputs, or the per-project default-deny and the per-Process policies
 turn out to need different inputs rather than different paths. Settled by: the
 conftest assertion holding over a full estate render (every rendered policy
 carrying `Egress` in `policyTypes` also matches UDP/53), with `networking` the
@@ -34,8 +39,8 @@ fails with a DNS timeout diagnosed as "Postgres is down".
 
 So the producer has to be written, and the question is which adapter owns the
 kind. It is its own adapter for two reasons that are about scope rather than
-size. The namespace-wide default-deny is **one object per domain**, not per
-Service, so it does not fit an adapter keyed off the Service; with path
+size. The namespace-wide default-deny is **one object per project**, not per
+Application, so it does not fit an adapter keyed off the Application; with path
 authority in layer 2 ([0070](0070-path-authority-is-layer-2.md)) that object now
 has one owner and one path, and the owner should be the adapter whose whole
 subject is policy. And the DNS assertion is a property of the policy set: with
@@ -43,16 +48,16 @@ one producer it is a property of one adapter, checkable in one place, rather
 than a rule every adapter emitting a policy would have to be held to
 separately.
 
-Splitting further (one adapter for per-Workload policies, another for the
-per-domain baseline), would put the two baseline rules that must appear in
+Splitting further (one adapter for per-Process policies, another for the
+per-project baseline), would put the two baseline rules that must appear in
 *every* policy in a different producer from the policies they must appear in.
 The split that matters is by kind, and there is one kind.
 
 ## Alternatives
 | option | cost if taken | why rejected |
 |---|---|---|
-| Extend the `kubernetes` adapter | No registry change; every object a Service owns has one producer | The per-domain default-deny is not Service-scoped, so one adapter would own two path shapes, and a policy regression would be attributed identically to a Deployment regression |
-| Two adapters, per-Workload and per-domain | Each adapter has exactly one path shape | The baseline rules belong in every policy, and this puts them in a different producer from most of the policies that need them |
+| Extend the `kubernetes` adapter | No registry change; every object an Application owns has one producer | The per-project default-deny is not Application-scoped, so one adapter would own two path shapes, and a policy regression would be attributed identically to a Deployment regression |
+| Two adapters, per-Process and per-project | Each adapter has exactly one path shape | The baseline rules belong in every policy, and this puts them in a different producer from most of the policies that need them |
 | Keep the deleted generation's renderer | It exists and produces objects today | It is unregistered, consumes `ProjectModel` rather than an `AdapterContext`, and omits both baseline rules, porting it costs what writing the adapter costs |
 
 ## Reversibility
@@ -63,7 +68,7 @@ window's evidence is then keyed to what this adapter emitted.
 
 ## Consequences
 - 0052's set becomes eighteen, amended in place; `rbac` is not among them
-  ([0075](0075-no-workload-rbac-in-v1.md)), paid in one amendment, and the
+  ([0075](0075-no-process-rbac-in-v1.md)), paid in one amendment, and the
   count keeps meaning what it meant.
 - The DNS baseline becomes assertable against one producer, so the failure the
   deleted generation shipped is a test rather than a memory, paid by nobody.

@@ -1,6 +1,6 @@
 # systest-auth-federation/aggregator.yml
 #
-# An Aggregator owns a relationship between Services. It carries two lists, and
+# An Aggregator owns a relationship between Applications. It carries two lists, and
 # the distinction between them is what makes overlap safe.
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Aggregator
@@ -8,7 +8,7 @@ metadata:
   repository: JorisJonkers-dev/systest-auth-federation
 
 spec:
-  # exercises: MANY-TO-MANY. The Services this suite runs against.
+  # exercises: MANY-TO-MANY. The Applications this suite runs against.
   #
   # auth-api appears here and also in systest-auth-pairing, because it
   # genuinely participates in two relationships. The twelve auth relationship
@@ -24,7 +24,7 @@ spec:
     - n8n
     - platform-rabbitmq
 
-  # deploys: ONE-TO-ONE across the estate. The Services this Aggregator alone
+  # deploys: ONE-TO-ONE across the estate. The Applications this Aggregator alone
   # may apply. Every other Aggregator naming them in `exercises` is a gate.
   #
   # Enforced twice: E_NO_DEPLOYER / E_MULTIPLE_DEPLOYERS at composition, and by

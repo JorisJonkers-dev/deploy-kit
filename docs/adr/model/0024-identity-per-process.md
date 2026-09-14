@@ -1,0 +1,105 @@
+---
+tier: decision
+status: proposed
+claim: settled
+date: 2026-09-07
+normative: spec/v1/16-dependencies.md#process-identity
+rests-on: ["0009"]
+---
+
+# Processes hold their own identity
+
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
+The ServiceAccount and the Vault Kubernetes auth role are derived **per
+Process** and named for the Process alone: `auth-system.auth-api`, never
+`auth-system.auth-auth-api`. The policy bound to a Process's role is exactly
+its effective grant set ([0022](0022-grants-live-on-the-application.md)) (never a
+sibling's) and no author writes an identity name
+([0030](0030-runtime-mechanics-derived.md)).
+
+## Rests on
+
+Vault's Kubernetes auth method binds a role to ServiceAccount names and
+namespaces and to nothing finer, so two Pods presenting the same ServiceAccount
+token are one principal holding the union of the policies bound to it. False if:
+a role can bind below the ServiceAccount (to a Pod name, label or controller)
+and give two Pods of one ServiceAccount different policies. Settled by: `vault
+read auth/kubernetes/role/<role>` and the parameters its create path accepts on
+the pinned Vault version, the claim falls if any binding parameter selects finer
+than `bound_application_account_names` × `bound_application_account_namespaces`; then the
+review's tiebreaker, rendering the two-Process `knowledge` example and counting
+ServiceAccounts and Vault roles, which must be two of each.
+
+## Why
+
+The two-level grant declaration was a documentation boundary, not an access
+boundary. The old credential-provisioning record let a grant sit on the Application
+(*"every Process receives them"*) or on a Process (*"only it does"*),
+while `spec/v1/16-dependencies.md:104` and `:122` derive the ServiceAccount from
+`id`, an Application field, drawing `d_id --> k_sa`. The implementation agrees:
+`src/adapters/kubernetes.ts:665-669`, `applicationAccountName`, returns
+`applicationName`, one ServiceAccount per Application. Two Processes of one Application
+therefore authenticated as the same Vault principal and received the union of
+both policies regardless of which level the grant was declared at. Verifying the
+implementation upgraded the review's DAT-004 from *Likely* to *Certain*.
+
+The cost is concrete in the worked example. `knowledge` has two Processes:
+`knowledge-api`, which serves anonymous paths (`/mcp`, `/install.sh`) from the
+public internet, and `knowledge-ingest-worker`, which holds
+`secret/data/knowledge-system/vault-deploy-key` at `fileMode: "0400"` as a
+Process-level grant annotated *"only the worker pushes to the knowledge
+vault"*. Under one identity per Application the internet-facing Process
+authenticated as the principal holding `read` on that SSH private key, and
+[0009](0009-vault-read-is-per-path.md) leaves the store no way to narrow a read
+below the path, so the identity is the only place that boundary can exist.
+
+Splitting the identity makes [0022](0022-grants-live-on-the-application.md)'s levels
+mean something: Application-level *is* shared, Process-level *is not*, both enforced
+by the token the Pod presents, and the dead-grant and unauthorised-reference
+checks ([0027](0027-secret-reference-join-key.md)) gain a subject: the Process.
+
+The derived name is the Process's own. Under project files
+([0063](0063-intent-authored-per-project.md)) Application `auth` holds Process
+`auth-api`, so `<application>-<process>` would render `auth-system.auth-auth-api`
+for no gain: the Process name is already the process name and already what
+runs, `auth-api` presenting `VAULT_KUBERNETES_ROLE: auth-api` today. Uniqueness
+moves to the project file, where two Processes may not share a name
+(`E_DUPLICATE_PROCESS_NAME`), the guarantee the prefix existed to give,
+enforced where a reader can check it.
+
+## Alternatives
+
+| option | cost if taken | why rejected |
+|---|---|---|
+| One ServiceAccount per Application (today's implementation) | `knowledge-api` holds `read` on the worker's `0400` deploy key, and every Process added later silently inherits the union | The declaration promises a boundary the store never enforces, the defect this closes |
+| Drop the Process level; all grants Application-wide | Honest, but blast radius only widens, and splitting `knowledge` then costs a second Application: duplicated namespace, exposure and observability declarations for one secret | Real Applications do hold Processes with disjoint secrets |
+| One identity, a per-Process token broker | A new component holding every Application's full grant set, whose slicing Vault's ACL never audits, a fresh single point of compromise | Moves the boundary into unaudited code to avoid emitting a second ServiceAccount |
+
+## Reversibility
+
+Undo cost today: one adapter function (`applicationAccountName`,
+`src/adapters/kubernetes.ts:665-669`), the Vault role and policy derivation
+beside it, and `## Process identity` in `../../spec/v1/16-dependencies.md`,
+hours, blast radius is object count, not authoring. Becomes irreversible once:
+production Vault policies and auth roles carry per-Process names and tokens
+are issued against them; collapsing back re-binds every role to the union
+of its Processes' grants, widening live access silently rather than loudly.
+
+## Consequences
+
+- An Application with *n* Processes renders *n* ServiceAccounts, policies and auth
+  roles instead of one of each, each named for its Process, so live identities
+  such as `auth-api` survive unchanged, paid by the platform in object count.
+- Identity uniqueness now comes from the project file, not the name's shape: two
+  Processes in one project sharing a name is `E_DUPLICATE_PROCESS_NAME` at
+  composition, paid by authors, in one more invariant to satisfy.
+- A Process-level grant becomes a boundary a sibling cannot cross, paid by
+  nobody; it is the benefit the declaration always claimed.
+- Renaming a Process renames its identity: role, policy and bindings churn, and
+  the new identity must be granted before it starts, paid by application owners.
+- Applications running one ServiceAccount must be migrated before their grants mean
+  what they say; until then the old union stands, paid by the migration owner.

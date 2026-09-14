@@ -3,11 +3,16 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-08-31
-normative: spec/v1/10-service-intent.md#assets
+normative: spec/v1/10-project-intent.md#assets
 rests-on: ["0005"]
 ---
 
 # File-shaped configuration is an Asset; code is not configuration
+
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
 
 ## Rests on
 
@@ -31,14 +36,14 @@ derived catalogs**, which are Deliverables rather than configuration:
 `gatus-endpoints` (41 derived references in 288 lines),
 `platform-edge-route-catalog` (30/163), `platform-edge-catalog` (28/146),
 `grafana-datasources` (6/104), and `postgres-init-script` (18/98, it creates
-one database and user per consuming service, which the dependency graph
+one database and user per consuming application, which the dependency graph
 already knows). **Seven mixed files**, a large static body threaded with a few
 derived values: `rabbitmq.conf` most starkly, with exactly one derived line
 out of twenty-four: `auth_oauth2.issuer = https://auth.jorisjonkers.dev`, a
-hostname belonging to another service. The Asset covers the first and third
+hostname belonging to another application. The Asset covers the first and third
 classes: a declarative settings file in the application's own format, with
 optional substitution of named placeholders, the same restricted mechanism
-env files use ([0011](0011-configuration-env-files-per-workload.md)), never a
+env files use ([0011](0011-configuration-env-files-per-process.md)), never a
 template language. The second class leaves configuration entirely and renders
 as Deliverables.
 
@@ -48,7 +53,7 @@ shell, `n8n-hooks` is 499 lines of JavaScript. That is first-party code with
 no image, no tests and no version, and it belongs in an image. The boundary is
 mechanical, not a judgement: an Asset may not be executable and must be a
 declarative settings file in the consuming application's own format
-(`spec/v1/10-service-intent.md:477` makes an executable Asset a build error).
+(`spec/v1/10-project-intent.md:477` makes an executable Asset a build error).
 `postgres-init-script`'s reliance on `/run/secrets/<name>` (a Docker Compose
 convention that does not exist in Kubernetes) is a sign of how long
 code-shaped ConfigMaps go unexamined.
@@ -57,16 +62,16 @@ code-shaped ConfigMaps go unexamined.
 
 | option | cost if taken | why rejected |
 |---|---|---|
-| Bake the fixed files into images | A derived image, build pipeline, registry entry and Renovate rule per service; a rebuild on every upstream bump; and, because `rabbitmq.conf` carries a derived hostname, a route change becomes an image rebuild | Every one of those services runs a third-party image (`pgvector/pgvector:pg17`, `rabbitmq:4.2-management-alpine`, `twinproduction/gatus`, `stalwartlabs/stalwart`, `couchdb`); only ten images in the estate are first-party, and none are these |
+| Bake the fixed files into images | A derived image, build pipeline, registry entry and Renovate rule per application; a rebuild on every upstream bump; and, because `rabbitmq.conf` carries a derived hostname, a route change becomes an image rebuild | Every one of those applications runs a third-party image (`pgvector/pgvector:pg17`, `rabbitmq:4.2-management-alpine`, `twinproduction/gatus`, `stalwartlabs/stalwart`, `couchdb`); only ten images in the estate are first-party, and none are these |
 | Admit executable Assets (scripts in ConfigMaps) | `hermes-bootstrap` (221 lines of shell) and `n8n-hooks` (499 lines of JavaScript) stay unversioned, untested first-party code invisible to CI and Renovate | Code without an image, tests or a version is the defect, not a convenience |
 | A general template language for Assets | Conditionals and arithmetic make an Asset a program the platform cannot validate, and every file format grows a second syntax | Substitution stays named placeholders with declared sources, shared with env files; nothing else |
 
 ## Reversibility
 
-Undo cost today: `assets` is a short per-Workload list in the Service Intent;
+Undo cost today: `assets` is a short per-Process list in the Project Intent;
 dropping the boundary means editing the Assets section of chapter 10 and the
-intent files of the six-plus-seven services carrying fixed and mixed files,
-hours, blast radius one spec section and those Service repositories. Becomes
+intent files of the six-plus-seven applications carrying fixed and mixed files,
+hours, blast radius one spec section and those Project repositories. Becomes
 irreversible once: the code-shaped ConfigMaps are deleted in favour of built
 first-party images, resurrecting script-in-ConfigMap then means extracting
 code back out of images and re-creating exactly the unversioned state this
@@ -76,14 +81,14 @@ decision removes.
 
 - The six fixed files and the static bodies of the seven mixed files are
   authored as Assets, derived values as named placeholders, paid by the
-  owning Service repositories, once each.
+  owning Project repositories, once each.
 - The five derived catalogs stop being hand-maintained configuration and are
   rendered as Deliverables, paid by the platform's renderer work.
 - `hermes-bootstrap`, `n8n-hooks` and their `alpine:3.21` hosts need
   first-party images before v1 can render the current cluster, paid by the
   owners of `hermes`, `garage` and `n8n`.
 - Assets are unvalidated by the platform: a malformed `postgresql.conf`
-  renders successfully and fails at runtime, paid by the service owner.
+  renders successfully and fails at runtime, paid by the application owner.
 - Substitution stays one restricted mechanism in two places (env files and
   Assets); anyone needing a conditional must build an image instead, paid by
-  the service owner who wanted the shortcut.
+  the application owner who wanted the shortcut.

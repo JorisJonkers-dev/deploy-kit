@@ -51,7 +51,7 @@ the outermost ring; a use-case that reached them could not be called by a test.
 ## Ports
 
 Two use-cases, one core. `publish` runs in any repository that authors intent (
-a domain, or the platform) validates the Intent Fragment and pushes it by
+a project, or the platform) validates the Intent Fragment and pushes it by
 digest, and renders nothing; `compose` runs centrally over the composed union
 and is where every adapter runs
 ([0098](adr/model/0098-one-publication-path.md)). They share the domain, and
@@ -60,7 +60,7 @@ as a port the domain declares and the CLI supplies.
 
 | port | what it hides | production implementation |
 |---|---|---|
-| `PinnedInputSet` | resolving every Intent Fragment (the domain files and the Platform document) the node contract, the locks and the ClusterState snapshot into parsed, validated, digested documents | filesystem plus OCI |
+| `PinnedInputSet` | resolving every Intent Fragment (the project files and the Platform document) the node contract, the locks and the ClusterState snapshot into parsed, validated, digested documents | filesystem plus OCI |
 | `FragmentSource` / `FragmentPublisher` | reading and publishing Intent Fragments by digest | `oras push` then `oras resolve`, and a filesystem implementation for tests |
 | `Hasher` | the hash primitive | `node:crypto`, so the domain imports no crypto |
 | `DeliverableWriter` | putting bytes on disk | staging directory plus atomic rename |
@@ -203,7 +203,7 @@ agreement between the two follows from both agreeing with the oracle.
 
 | oracle | where | compared as |
 |---|---|---|
-| the parsed Service Intent | `spec/v1/examples/<case>/expected/intent.json` | canonical JSON, byte for byte |
+| the parsed Project Intent | `spec/v1/examples/<case>/expected/intent.json` | canonical JSON, byte for byte |
 | the Resolved Deployment | `spec/v1/examples/<case>/expected/resolved.json` | canonical JSON, byte for byte |
 | the Deliverable Set | `spec/v1/examples/<case>/rendered/` | the existing golden tree, byte for byte |
 | the diagnostics of a refused case | `<input>.diagnostics.json` beside the refused input in `refusals/` or `negative/` | a set of `(code, path)` pairs |
@@ -214,7 +214,7 @@ numbers in their shortest form, no insignificant whitespace. An absent
 optional field is absent, never `null`.
 
 **A path** is an RFC 6901 JSON Pointer into the canonical intent document,
-`/services/0/observability/alertClass`. A diagnostic about a derived value
+`/applications/0/observability/alertClass`. A diagnostic about a derived value
 points at the authored value it derives from. Messages and hints are free per
 implementation; the code and the path are the contract.
 

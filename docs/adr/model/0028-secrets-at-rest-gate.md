@@ -10,6 +10,11 @@ rests-on: ["0002"]
 
 # Secrets at rest gate env and file delivery
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 
 With `--secrets-encryption` enabled on the pinned k3s version, a Secret written
@@ -60,8 +65,8 @@ layer-2 purity ([0034](0034-cluster-state-pinned-input.md)).
 | option | cost if taken | why rejected |
 |---|---|---|
 | Ship `env`/`file` now, keep secrets-at-rest as a checklist line | every Secret rendered before the flag lands is plaintext base64 in the datastore and in every backup taken meanwhile; closing it later needs a `secrets-encrypt reencrypt` pass **and** rotation of everything already written, since the old copies sat readable | the checklist has now been written three times (old ADR, `00-overview` open item 2, `60-setup` pre-apply list) and produced no owner and no date; nothing mechanical stopped a render |
-| Restrict v1 to `delivery: self` until encryption lands | each consumer must speak Vault itself: `auth-api` does via spring-cloud-vault, the knowledge ingest worker and the postgres init path do not; the hand-written injector annotations in twelve files stay in service indefinitely | it makes the toolkit unable to express the estate's most common delivery ([0026](0026-delivery-env-file-self.md)) and defers the encryption work rather than dating it |
-| Check at apply time (admission policy or a deployer-side probe) | the failure surfaces per Service in a cluster after a merge, and the deployer needs a live cluster read that layer-2 purity forbids | the pinned context already carries the fact; checking it at render costs one predicate and keeps the failure in the author's loop |
+| Restrict v1 to `delivery: self` until encryption lands | each consumer must speak Vault itself: `auth-api` does via spring-cloud-vault, the knowledge ingest worker and the postgres init path do not; the hand-written injector annotations in twelve files stay in application indefinitely | it makes the toolkit unable to express the estate's most common delivery ([0026](0026-delivery-env-file-self.md)) and defers the encryption work rather than dating it |
+| Check at apply time (admission policy or a deployer-side probe) | the failure surfaces per Application in a cluster after a merge, and the deployer needs a live cluster read that layer-2 purity forbids | the pinned context already carries the fact; checking it at render costs one predicate and keeps the failure in the author's loop |
 
 ## Reversibility
 
@@ -78,12 +83,12 @@ cheap to delete, key custody does not.
 ## Consequences
 
 - `delivery: env` and `delivery: file` cannot ship until the flag is on and a
-  pinned context advertises it, paid by joris, before the first such Service.
+  pinned context advertises it, paid by joris, before the first such Application.
 - Until then `delivery: self` is the only delivery for a sensitive value, so a
   consumer that cannot speak Vault has no path, paid by the authors of
   `knowledge` and `platform-postgres`.
 - Every pinned Platform Intent gains one more required fact, asserted rather
-  than measured: omitting it fails every env-delivering Service at once, and a
+  than measured: omitting it fails every env-delivering Application at once, and a
   false `true` defeats the gate silently, so the settling command is run per
   cluster and recorded, paid by the context maintainer.
 - The encryption key file becomes restore-critical: a backup without it restores

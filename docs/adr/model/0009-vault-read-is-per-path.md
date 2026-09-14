@@ -4,10 +4,15 @@ status: proposed
 claim: open
 owner: joris
 date: 2026-08-31
-normative: spec/v1/10-service-intent.md#secrets
+normative: spec/v1/10-project-intent.md#secrets
 ---
 
 # A Vault KV-v2 read grant covers the whole path
+
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
 
 ## Rests on
 
@@ -72,7 +77,7 @@ placeholder that names them.
 ## Consequences
 
 - `keys:` documents and validates but confers nothing; an author must never
-  read it as an access boundary, paid by service authors.
+  read it as an access boundary, paid by application authors.
 - The grant unit must be the path, and any two secrets with different reader
   sets must live at different paths, the Secret Subtree split decided in
   [0023](0023-grant-unit-is-the-path.md), paid by joris in the layout pass.

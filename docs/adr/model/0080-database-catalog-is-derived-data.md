@@ -9,20 +9,25 @@ rests-on: ["0005"]
 
 # The per-consumer database catalog is derived data, and Vault mints the credentials
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 The inbound edge set already carries everything a database catalog needs (which
-Services consume this provider, and therefore which databases and owning users
+Applications consume this provider, and therefore which databases and owning users
 must exist), and the credential can be issued rather than stored. False if: a
 consumer needs a database whose existence is not implied by an edge, or the
 estate's Vault has no database secrets engine and configuring one is refused.
-Settled by: rendering the `data` domain and diffing the derived catalog against
+Settled by: rendering the `data` project and diffing the derived catalog against
 `init-databases.sh`'s four databases, with every credential resolved through a
 `VaultDynamicSecret` and no password appearing in any rendered file.
 
 ## Why
 Chapter 16 lists "a database and owning user per consumer" as an inbound
 derivation and cites the evidence: 98 lines of `init-databases.sh` creating
-`auth_db`, `agents_db`, `knowledge_db` and `n8n_db`, one per Service claiming a
+`auth_db`, `agents_db`, `knowledge_db` and `n8n_db`, one per Application claiming a
 Postgres credential. The graph already knows all four. Nothing produces them,
 and chapter 10 refuses the obvious vehicle: an Asset may not be executable
 ([0012](0012-assets-not-code.md)), so the script has no legitimate home in the
@@ -59,7 +64,7 @@ renderable and this decision settles.
 | Render the shell script from a platform template | Matches today's artifact exactly; one file, no second concept | A procedure in the render surface, reviewable only by execution, and it makes the model's ban on executable content a formality |
 | Render CRs for a database operator | Fully declarative and self-healing | Adds an operator and CRDs the substrate does not run, the same reason this lost for Vault policies |
 | A static credential per consumer at a KV path | Works with the mount that exists, no database engine to configure, and grants align trivially | A hand-rotated database password is the secret class the estate already has too much of, and it hides R20 rather than answering it |
-| Let the consumer author its credential path | Grant and credential align by construction | Path layout is platform-assigned by [0023](0023-grant-unit-is-the-path.md), and this hands it back to the Service |
+| Let the consumer author its credential path | Grant and credential align by construction | Path layout is platform-assigned by [0023](0023-grant-unit-is-the-path.md), and this hands it back to the Application |
 
 ## Reversibility
 Undo cost today: a derivation, a `ConfigMap`, and a role name: hours, since
@@ -82,6 +87,6 @@ rather than editing a render.
   drop the database, because dropping data is destructive and gated by
   [0015](0015-durability-class-per-volume.md), paid as a stale database nobody
   deletes, which is the safe direction.
-- The catalog is one object per provider Workload, so its diff shows the estate's
+- The catalog is one object per provider Process, so its diff shows the estate's
   whole consumer set changing in one place, paid by nobody, and it is what
   makes an added consumer reviewable.

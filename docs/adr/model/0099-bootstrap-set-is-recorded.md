@@ -10,9 +10,14 @@ rests-on: ["0002"]
 
 # The bootstrap set is a recorded, enumerated table: k3s, the Flux source, Vault's unseal, and the CRDs
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 Four things must exist before the first rendered object can apply, and nothing
-else does. False if: a declared Service turns out to need something applied before
+else does. False if: a declared Application turns out to need something applied before
 it that is neither in this table nor derivable from the Reconcile Unit ordering.
 Settled by: standing up a fresh cluster from the bootstrap set alone and applying
 the full rendered tree in Reconcile Unit order, with no object failing for want of
@@ -32,7 +37,7 @@ define ([0098](0098-one-publication-path.md)). Vault's unseal is in it because
 the model must never hold that secret. The CRDs are in it because they are
 cluster-scoped schema that must exist before any object of their kind can apply;
 the components that *use* them (VSO, Traefik, Prometheus) are declared
-Services, and the CRDs are pinned by version the way an image is pinned by
+Applications, and the CRDs are pinned by version the way an image is pinned by
 digest.
 
 The table is a Bidirectional Ledger in shape

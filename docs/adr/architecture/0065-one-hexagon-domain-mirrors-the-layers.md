@@ -9,6 +9,11 @@ rests-on: ["0003"]
 
 # One hexagon, two use-cases, and a domain whose folders are the three layers
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](../model/0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 > **Amended 2026-09-14.** Scoped to the TypeScript tree under `src/`. For the
 > length of the model-driven engineering course a second, Java implementation
 > lives under `emf/`, bound to this one only by the parity contract
@@ -40,14 +45,14 @@ folders after the layers is not decoration. It means a reviewer reading
 `src/domain/resolved/` are looking at the same thing, and a rule that lands in
 the wrong ring is visible as a wrong import rather than as a wrong idea.
 
-The two runtimes in [chapter 30](../../../spec/v1/30-deliverables.md#adapters) (five fragment producers in the Service repository, eleven central adapters over
+The two runtimes in [chapter 30](../../../spec/v1/30-deliverables.md#adapters) (five fragment producers in the Project repository, eleven central adapters over
 the union) are the reason to be careful here. They differ in *what documents
-they receive*, not in what a Service means. One core with two use-cases keeps
+they receive*, not in what an Application means. One core with two use-cases keeps
 the invariants in one place; two applications would put them in a third package
 that both import and neither owns.
 
 Type names come from [`CONTEXT.md`](../../../CONTEXT.md) unchanged, which is
-what makes the mapping legible in both directions: `Service`, `Workload`,
+what makes the mapping legible in both directions: `Project`, `Application`, `Process`,
 `IntentFragment`, `ResolvedDeployment`, `Deliverable`, `Adapter`,
 `ReconcileUnit`.
 
@@ -83,5 +88,5 @@ release.
   three places: the glossary, the chapters, and the tree, paid by whoever
   renames, and the reason the glossary landed first.
 - The publish-time use-case and the central one share a core, so a change to
-  Service semantics cannot apply to one and not the other, which is the point,
+  Application semantics cannot apply to one and not the other, which is the point,
   and it also means neither can be optimised independently.

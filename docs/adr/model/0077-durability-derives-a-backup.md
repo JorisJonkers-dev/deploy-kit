@@ -3,11 +3,16 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-09-07
-normative: spec/v1/10-service-intent.md#storage-and-durability
+normative: spec/v1/10-project-intent.md#storage-and-durability
 rests-on: ["0004"]
 ---
 
 # A Durability Class derives a backup, from platform terms and a method keyed by engine
+
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
 
 ## Rests on
 Everything a backup needs beyond the class itself is either contended or a
@@ -36,17 +41,17 @@ why the missing pieces are a schedule and a command rather than a
 
 The terms are platform-assigned by the contention test
 ([0004](0004-contention-decides-authority.md)). A backup window is one node's IO
-on a seven-node cluster where every stateful Workload is pinned to the machine
+on a seven-node cluster where every stateful Process is pinned to the machine
 holding its PV; an off-cluster destination is one remote target with one
 credential. Both are shared finite resources, so the Platform Intent carries one
 policy per class and the volume declares only the class. Authoring the terms per
-volume would put a mechanism in layer 1 and let two Services claim the same
+volume would put a mechanism in layer 1 and let two Applications claim the same
 window with nothing arbitrating. A volume needing different terms restates one
 with a reason, which [0031](0031-derived-overrides-with-reason.md) already
 allows.
 
-The method is keyed by the Workload's `engine`
-([0078](0078-engine-is-workload-vocabulary.md)) and **is an image**: one
+The method is keyed by the Process's `engine`
+([0078](0078-engine-is-process-vocabulary.md)) and **is an image**: one
 purpose-built image per engine, named in the Platform document and resolved
 through the images lock ([0097](0097-authored-values-name-model-concepts.md)).
 What it does (`pg_dump` for `postgres`, a definitions export for `rabbitmq`, a
@@ -57,7 +62,7 @@ an Asset is exactly the case that decision exists to refuse.
 
 Two smaller consequences follow from rules already made. The `CronJob` comes from
 the `kubernetes` adapter, because that kind is already its and the object is
-Service-scoped; splitting one kind across two adapters is what made a path
+Application-scoped; splitting one kind across two adapters is what made a path
 collision undetectable before. And the credential for the destination is a
 **derived** grant rather than an authored one: the platform chose the
 destination, so making a datastore owner author a grant against a platform path
@@ -69,9 +74,9 @@ privilege nobody has to take on trust.
 ## Alternatives
 | option | cost if taken | why rejected |
 |---|---|---|
-| Author schedule, retention and destination per volume | The owner sees the terms beside the class | A schedule and a destination are mechanisms, which layer 1 excludes, and two Services could contend for one window with nothing arbitrating |
+| Author schedule, retention and destination per volume | The owner sees the terms beside the class | A schedule and a destination are mechanisms, which layer 1 excludes, and two Applications could contend for one window with nothing arbitrating |
 | Author retention only, platform-assign the rest | Splits the tuple along the contention line exactly | A second authored field whose legal values are per-class anyway, and a 90-day claim on a snapshot-less cluster is what the deleted `rollbackTargetRetention` already asserted falsely |
-| Let each Service declare a backup Workload of its own | Fully general, no new vocabulary, nothing derived | Every datastore owner reimplements retention and off-cluster copy, and the Durability Class derives nothing, 0015 reduced to a label, which is the state this decision ends |
+| Let each Application declare a backup Process of its own | Fully general, no new vocabulary, nothing derived | Every datastore owner reimplements retention and off-cluster copy, and the Durability Class derives nothing, 0015 reduced to a label, which is the state this decision ends |
 | A hand-written backup stack, delivered as a fixture | Nothing to derive | Which objects are needed follows from which volumes declare which class, so the fixture is a superset that drifts, the objection that ruled out fixture Middlewares |
 
 ## Reversibility
@@ -94,7 +99,7 @@ data-safety change rather than a refactor.
   platform, and visible in the derived policy rather than in someone's memory.
 - A volume whose engine has no method in the catalog cannot derive a backup, so
   adding a datastore engine to the estate is a platform change before it is a
-  Service change, paid by whoever adds the engine, at the moment they add it.
+  Application change, paid by whoever adds the engine, at the moment they add it.
 - `E_ENGINE_WITHOUT_DURABILITY` and `E_DURABILITY_WITHOUT_ENGINE` make the pair
   mandatory together, so a datastore that declares a class and forgets the engine
   fails the render rather than silently deriving nothing, paid by the author,

@@ -25,7 +25,7 @@ exists, not at the scale of an imagined organisation
 |---|---|---|
 | regular human maintainers | 1, across three git identities | `git shortlog -sn --all`: 35 commits by the one human, 99 by five bot accounts |
 | production clusters | 1, seven nodes | clusters serving production traffic |
-| Services | about 30 | in about 10 repositories (reviewers who wrote "~30 repositories" were counting Services) |
+| Applications | about 30 | in about 10 repositories (reviewers who wrote "~30 repositories" were counting Applications) |
 | horizon | 2028-08-31 | re-run the counts at that date, or earlier on a falsifying observation |
 
 Two consequences are normative for the rest of the specification. First,
@@ -41,12 +41,12 @@ premise is re-opened against the new scale rather than re-worded.
 Kubernetes stays, and not for the reasons it is usually bought
 ([0002](../../docs/adr/model/0002-kubernetes-as-substrate.md)). Rescheduling does not
 exist here: storage is `local-path`, all fourteen PVCs are `ReadWriteOnce`, and
-a `local-path` volume does not survive its node, so every stateful Workload is
+a `local-path` volume does not survive its node, so every stateful Process is
 pinned to one machine by construction. Control-plane HA does not exist: every
 platform fixture carries exactly one `k3s-control-plane` host. Horizontal scale
 is not exercised: `auth-api`'s two replicas were a capacity decision on freed
 budget, and on one node two replicas are two processes on one kernel. The
-overhead is counted: 405 rendered objects for about 30 Services, 41 of them
+overhead is counted: 405 rendered objects for about 30 Applications, 41 of them
 foundation, and the foundation is the part carrying the CVEs and the CRD
 upgrades.
 
@@ -65,7 +65,7 @@ obligation is narrower and is discharged in these chapters: every Deliverable is
 a serialized object attributed to exactly one adapter, so there is always a
 single answer to "what should own this field".
 
-The layer-1 documents (Service Intent and Platform Intent alike) survive a
+The layer-1 documents (Project Intent and Platform Intent alike) survive a
 substrate swap: neither names a Kubernetes kind, a Traefik field or a k3s flag
 ([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)). The
 registered adapters do not: five of the six emit Kubernetes kinds and the sixth
@@ -79,7 +79,7 @@ contract ([0003](../../docs/adr/model/0003-three-layer-meta-model.md)).
 
 | Layer | Name | Authored | Owns |
 |---|---|---|---|
-| 1 | Service Intent, and Platform Intent | by hand, a Service's in its owning repo, the estate's in the platform's | requirements and facts, never mechanisms |
+| 1 | Project Intent, and Platform Intent | by hand, an Application's in its owning repo, the estate's in the platform's | requirements and facts, never mechanisms |
 | 2 | Resolved Deployment | never, derived | every platform decision |
 | 3 | Deliverable Set | never, serialized | files, no decisions |
 
@@ -91,8 +91,8 @@ contention test: a value is platform-assigned if and only if it must be unique
 across the estate or draws on a shared finite resource
 ([0004](../../docs/adr/model/0004-contention-decides-authority.md), normative in
 [chapter 20](20-resolved-deployment.md#authority)). The same test decides which
-of the two authored documents a value is written in: a Service's own in
-[chapter 10](10-service-intent.md), the estate's in
+of the two authored documents a value is written in: an Application's own in
+[chapter 10](10-project-intent.md), the estate's in
 [chapter 14](14-platform-intent.md)
 ([0095](../../docs/adr/model/0095-platform-intent-is-the-second-authored-document.md)).
 
@@ -103,7 +103,7 @@ the resolved shape) and the estate documented the consequence as a trap rather
 than fixing it, because a two-layer vocabulary could not say which document was
 wrong.
 
-Layer 2 is derived from a **closed set of pinned, digested inputs**: Service
+Layer 2 is derived from a **closed set of pinned, digested inputs**: Project
 Intent, the Platform Intent, the locks, and a ClusterState snapshot carrying its
 own digest ([0006](../../docs/adr/model/0006-pinned-inputs.md),
 [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)). Nothing at render
@@ -131,11 +131,11 @@ at all. The first draft of this rebuild defined a "core" and a "group G" that
 failed to partition the decision set (six ADRs landed on neither side), which
 is why membership of a directory, not a list, is the line.
 
-A third domain, `docs/adr/architecture/`, carries decisions about the
+A third project, `docs/adr/architecture/`, carries decisions about the
 compiler's own structure. It is neither model nor delivery: its `normative:`
 pointers name sections of [`docs/architecture.md`](../../docs/architecture.md)
 rather than of these chapters, and nothing in it can change what the model
-means. `scripts/lint-adrs.ts` holds each domain to its own normative root.
+means. `scripts/lint-adrs.ts` holds each project to its own normative root.
 
 The model makes exactly three demands on whatever delivery is eventually
 defined. They are model decisions, not delivery ones, and together they are the
@@ -198,13 +198,13 @@ repository already uses between a chapter and an ADR.
 
 | Chapter | Covers | Diagram |
 |---|---|---|
-| [`10-service-intent.md`](10-service-intent.md) | Service, Workload, and every layer-1 field by concern: identity, configuration, assets, probes, storage and durability, hardening and size, placement, exposure, observability, secrets and grants, release units | drawn |
-| [`14-platform-intent.md`](14-platform-intent.md) | the second authored document: substrate facts, the bootstrap set, the declared foundation, tiers as edge facts, durability policy, engines as images, providers, and no observability policy, which the observability service owns | none |
-| [`16-dependencies.md`](16-dependencies.md) | dependency edges, per-Workload identity, derived network policy, the derivation map | drawn |
+| [`10-project-intent.md`](10-project-intent.md) | Application, Process, and every layer-1 field by concern: identity, configuration, assets, probes, storage and durability, hardening and size, placement, exposure, observability, secrets and grants, release units | drawn |
+| [`14-platform-intent.md`](14-platform-intent.md) | the second authored document: substrate facts, the bootstrap set, the declared foundation, tiers as edge facts, durability policy, engines as images, providers, and no observability policy, which the observability application owns | none |
+| [`16-dependencies.md`](16-dependencies.md) | dependency edges, per-Process identity, derived network policy, the derivation map | drawn |
 | [`20-resolved-deployment.md`](20-resolved-deployment.md) | the Resolved Deployment, the authority table in one place, the pinned input set including ClusterState, derived mechanics, the one capacity exception, the Reconcile Unit, publish-back | drawn |
 | [`30-deliverables.md`](30-deliverables.md) | adapters, the adapter port, attribution, ledgers, coverage re-derived from the registry | drawn |
 | [`40-composition.md`](40-composition.md) | Intent Fragments, participants and the staleness bound, schema versioning and rollout, unmanaged surfaces | drawn |
-| [`50-lifecycle.md`](50-lifecycle.md) | model-level lifecycle: Release Unit switchover, expand/contract for cross-Service contract changes, lock lifecycle, and the statement that delivery mechanics and co-testing are defined separately | drawn |
+| [`50-lifecycle.md`](50-lifecycle.md) | model-level lifecycle: Release Unit switchover, expand/contract for cross-Application contract changes, lock lifecycle, and the statement that delivery mechanics and co-testing are defined separately | drawn |
 | [`60-setup.md`](60-setup.md) | bootstrap order, secrets at rest, CNI selection, node facts, restore, onboarding and adoption | drawn |
 
 **Chapter 16's derivation map is the load-bearing artefact**, and its value is
@@ -235,11 +235,11 @@ parse-checked in CI.
 
 | path | what it shows |
 |---|---|
-| `examples/domains/{auth,knowledge,data}.yml` | Service Intent, one file per domain: two-level secret grants, `probes: none` stated explicitly, TCP probes, `placement` dimensions, declared `writablePaths`, `durability` per volume, and the `auth` pair as two Workloads of one Service |
-| `examples/{knowledge-api,knowledge-ingest-worker,auth-api,platform-postgres}.base.env` | env files, one set **per Workload**, threaded with `${dependency:…}` and `${secret:<granted-path>#<key>}` placeholders whose paths byte-match a granted path |
-| `examples/workflows/service-publish-fragment.yml` | publish on merge, `oras push` then `oras resolve`, read back |
+| `examples/projects/{auth,knowledge,data}.yml` | Project Intent, one file per project: two-level secret grants, `probes: none` stated explicitly, TCP probes, `placement` dimensions, declared `writablePaths`, `durability` per volume, and the `auth` pair as two Processes of one Application |
+| `examples/{knowledge-api,knowledge-ingest-worker,auth-api,platform-postgres}.base.env` | env files, one set **per Process**, threaded with `${dependency:…}` and `${secret:<granted-path>#<key>}` placeholders whose paths byte-match a granted path |
+| `examples/workflows/project-publish-fragment.yml` | publish on merge, `oras push` then `oras resolve`, read back |
 | `examples/workflows/compose.yml` | pull participants, assert the estate-wide invariants, **prove the gate can fail** |
-| `examples/negative/duplicate-service-id/` | a negative fixture, so an invariant that stops running is detectable |
+| `examples/negative/duplicate-application-id/` | a negative fixture, so an invariant that stops running is detectable |
 | [`examples/refusals/`](examples/refusals/README.md) | the refusal fixtures: an alert class with no signal, a class outside the vocabulary, and the `rolling`/`recreate` pair over RWO storage |
 
 Delivery examples are no longer part of this specification. `aggregator.yml`,
@@ -263,17 +263,17 @@ through, with the deciding ADR named.
 
 1. ~~**`exposure[].name` and apex hosts.**~~ Decided by
    [0018](../../docs/adr/model/0018-exposure-by-audience.md) as amended: the hostname
-   is **authored on the Service**, never assigned. An `exposure` entry carries
-   `host` as the full FQDN, so no zone rule and no `<service>.<zone>`
+   is **authored on the Application**, never assigned. An `exposure` entry carries
+   `host` as the full FQDN, so no zone rule and no `<application>.<zone>`
    derivation exists anywhere, and with none, there is no apex flag left to
    grade, because an apex host is written `host: jorisjonkers.dev` exactly like
-   every other host. `name` is required and unique **within the Service**,
+   every other host. `name` is required and unique **within the Application**,
    which is what `E_DUPLICATE_EXPOSURE_NAME` had always checked and nothing had
-   defined, and what `${exposure:<service>.<name>#url}` addresses. Estate-wide
+   defined, and what `${exposure:<application>.<name>#url}` addresses. Estate-wide
    uniqueness of `host` becomes a composition check,
    `E_DUPLICATE_HOST`, evaluated over the composed union together with the
    Registered Unmanaged Surfaces ([chapter 40](40-composition.md#identity)):
-   the Service authors the value and composition arbitrates the collision,
+   the Application authors the value and composition arbitrates the collision,
    which is [0004](../../docs/adr/model/0004-contention-decides-authority.md)
    restated as contention deciding who arbitrates rather than who authors.
 
@@ -298,7 +298,7 @@ through, with the deciding ADR named.
    contract ([0056](../../docs/adr/model/0056-node-facts-single-source.md)), and
    placement is declared as capabilities rather than labels
    ([0017](../../docs/adr/model/0017-placement-by-capability.md)), so retiring a
-   prefix costs no edit in any service repository. The live nodes still carry
+   prefix costs no edit in any project repository. The live nodes still carry
    two: 110 labels across 7 nodes, 55 under `platform.jorisjonkers.dev/*` and
    the same 55 under `personal-stack/*`, named after an archived repository that
    rejects pushes. A hand-applied `kubectl label` drifts back on the next
@@ -318,7 +318,7 @@ through, with the deciding ADR named.
    `E_PATH_COLLISION` is a check on the path plan
    ([0070](../../docs/adr/model/0070-path-authority-is-layer-2.md)) awaiting a
    compiler, and Grafana's 45 authored objects become Assets of the declared
-   observability Services ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)).
+   observability Applications ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)).
    What remains is the number, which is [chapter 30](30-deliverables.md#open-in-this-chapter)'s
    one open item and is owned there.
    - **Owner:** joris.
@@ -329,7 +329,7 @@ through, with the deciding ADR named.
 5. ~~**`minAvailable`.**~~ Chapter 10 proposed three fields. One became
    `placement` ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)),
    `sidecars` is graded by
-   [0064](../../docs/adr/model/0064-sidecars-are-workload-vocabulary.md), and this
+   [0064](../../docs/adr/model/0064-sidecars-are-process-vocabulary.md), and this
    one is **graded by deletion**
    ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)). The six
    live PodDisruptionBudgets are re-homed rather than derived from a declaration:
@@ -343,7 +343,7 @@ through, with the deciding ADR named.
    - **Blocks:** approving chapter 10; the availability half of item 4.
 
 6. **Whether the composed union may span clusters** (chapter 40). The lock is
-   keyed by cluster while Service Id uniqueness is estate-wide. With one cluster
+   keyed by cluster while Application Id uniqueness is estate-wide. With one cluster
    ([0001](../../docs/adr/model/0001-estate-scale-and-ownership.md)) the question is
    invisible, and neither
    [0037](../../docs/adr/model/0037-composition-oci-fragments.md) nor
@@ -381,10 +381,10 @@ through, with the deciding ADR named.
   [0036](../../docs/adr/model/0036-cni-selection.md), which supplies the non-enforcing
   policy stage the old audit-mode precondition assumed and `networking.k8s.io/v1`
   does not have.
-- ~~**Where third-party Service Intent lives.**~~ Decided by
+- ~~**Where third-party Project Intent lives.**~~ Decided by
   [0037](../../docs/adr/model/0037-composition-oci-fragments.md): publication is
-  repository-scoped and a fragment declares the domains it contributes to, so
-  splitting a multi-domain repository is a convenience, never a prerequisite.
+  repository-scoped and a fragment declares the projects it contributes to, so
+  splitting a multi-project repository is a convenience, never a prerequisite.
 - ~~**Fragment publication trigger**~~ and ~~**who runs composition.**~~ Decided
   by [0037](../../docs/adr/model/0037-composition-oci-fragments.md): fragments publish
   on merge, independently of any image release; composition runs on any publish
@@ -417,9 +417,9 @@ an ADR.
 
 ```mermaid
 flowchart TB
-    subgraph AUTH["layer 1, hand-authored: Service Intent in each owning repository, Platform Intent in the platform's"]
-        a1["domains/&lt;domain&gt;.yml<br/>services, workloads, placement, hardening,<br/>durability, probes, exposure, secrets"]
-        a2["env/&lt;workload&gt;/*.env<br/>one set per Workload"]
+    subgraph AUTH["layer 1, hand-authored: Project Intent in each owning repository, Platform Intent in the platform's"]
+        a1["projects/&lt;project&gt;.yml<br/>applications, processes, placement, hardening,<br/>durability, probes, exposure, secrets"]
+        a2["env/&lt;process&gt;/*.env<br/>one set per Process"]
         a3["assets<br/>declarative, never executable"]
         a5["platform.yml<br/>tiers, durability policy, engines,<br/>receivers, cadences, providers, bootstrap set"]
     end
@@ -430,7 +430,7 @@ flowchart TB
     a5 --> FR
 
     FR --> CO["composition<br/>union + estate-wide invariants<br/>merges nothing, runs on any publish"]
-    PAR["participants.yml<br/>expected domains, maxAge 7d"] --> CO
+    PAR["participants.yml<br/>expected projects, maxAge 7d"] --> CO
     CO --> CI["ComposedIntent<br/>+ CompositionLock"]
 
     CI --> RES["layer 2, Resolved Deployment<br/>every platform assignment,<br/>a function of the pinned inputs alone"]
@@ -438,7 +438,7 @@ flowchart TB
     CS["ClusterState snapshot<br/>clusterStateDigest"] --> RES
     IL["images lock<br/>digests, uid, gid, never tags"] --> RES
 
-    RES --> RS["resolved.yml<br/>published back per Service"]
+    RES --> RS["resolved.yml<br/>published back per Application"]
     RES --> DS["layer 3, Deliverable Set<br/>six registered adapters, run once centrally,<br/>one attributed adapter per file"]
 
     DS --> DEL["delivery, DEFINED SEPARATELY<br/>docs/adr/deferred/<br/>must honour Release Unit atomicity,<br/>Durability Class gates,<br/>pinned inputs only"]

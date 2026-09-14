@@ -1,22 +1,22 @@
-# Worked example: the auth domain's Intent Fragment
+# Worked example: the auth project's Intent Fragment
 #
-#   services/auth/platform/auth.yml
+#   applications/auth/platform/auth.yml
 #
-# Intent is authored ONE FILE PER DOMAIN, holding every Service that domain
+# Intent is authored ONE FILE PER PROJECT, holding every Application that project
 # owns, and one file is one Intent Fragment
-# (docs/adr/model/0063-intent-authored-per-domain.md). The namespace derives from the
+# (docs/adr/model/0063-intent-authored-per-project.md). The namespace derives from the
 # header -- auth-system -- and no field exists that could divert it.
 #
-# Exercises: two Workloads that switch together because they are one Service,
+# Exercises: two Processes that switch together because they are one Application,
 # ONE authored hostname fronting both of them through two routes -- the case
-# that forced `exposure` from the Workload to the Service -- placement as hard
+# that forced `exposure` from the Process to the Application -- placement as hard
 # dimensions carrying an arch set and a capability, three `delivery: self`
 # grants including a Transit key that takes no placeholder, four dependencies,
 # writable paths that retired a hardening exception, and config that is almost entirely
 # derived.
 #
-# Companion env files, one per WORKLOAD
-# (docs/adr/model/0011-configuration-env-files-per-workload.md):
+# Companion env files, one per PROCESS
+# (docs/adr/model/0011-configuration-env-files-per-process.md):
 #   platform/env/auth-api/base.env   -- reproduced as examples/auth-api.base.env
 #   platform/env/auth-ui/base.env
 
@@ -27,30 +27,30 @@
 # toolkit; the composition lock records the exact versions that ran.
 schemaVersion: 1.0.0
 
-# The header is three fields, and `owner` is the ONLY one raised to the domain.
-# `observability` stays per Service -- raising it makes a domain page as loudly as
-# its loudest member -- and so does `secrets`, because a domain-level grant
-# hands every Service in the file a reader slot on the whole path
+# The header is three fields, and `owner` is the ONLY one raised to the project.
+# `observability` stays per Application -- raising it makes a project page as loudly as
+# its loudest member -- and so does `secrets`, because a project-level grant
+# hands every Application in the file a reader slot on the whole path
 # (docs/adr/model/0009-vault-read-is-per-path.md,
-# docs/adr/model/0063-intent-authored-per-domain.md).
-domain: auth
+# docs/adr/model/0063-intent-authored-per-project.md).
+project: auth
 owner: joris
 
-services:
+applications:
   # ==================================================================== auth
-  # This Service was two Services -- `auth-api` and `auth-ui` -- coupled by a
+  # This Application was two Applications -- `auth-api` and `auth-ui` -- coupled by a
   # `releaseUnit: auth` name that each declared in its own repository. That
-  # field is deleted. A Service is itself the unit of atomic release
-  # (docs/adr/model/0062-service-is-the-release-unit.md): its Workloads switch
-  # together or none switches. No Workload's new version receives traffic until
-  # every Workload's new version is healthy by its own declared readiness, and
+  # field is deleted. An Application is itself the unit of atomic release
+  # (docs/adr/model/0062-application-is-the-release-unit.md): its Processes switch
+  # together or none switches. No Process's new version receives traffic until
+  # every Process's new version is healthy by its own declared readiness, and
   # if any misses its `startupBudget`, none of them switch and the old versions
-  # keep serving. Rollback is Service-scoped for the same reason.
+  # keep serving. Rollback is Application-scoped for the same reason.
   #
   # The requirement is unchanged; only the mechanism is. A new UI against an old
   # API is a broken product even though both pods report healthy, and that is
   # now carried by the boundary drawn here rather than by a name two files had
-  # to agree on. The two Workloads below are adjacent, so a reader sees the
+  # to agree on. The two Processes below are adjacent, so a reader sees the
   # coupling without searching the composed union.
   #
   # The merge costs no reference: auth's estate-wide role is the forward-auth
@@ -65,49 +65,49 @@ services:
   - id: auth
 
     # Whole or absent. The class states urgency and the scrape names the surface
-    # that carries the signal, both on the Service, because both are facts about
-    # the Service rather than about one of its two containers. auth-api
+    # that carries the signal, both on the Application, because both are facts about
+    # the Application rather than about one of its two containers. auth-api
     # publishes for the pair; auth-ui exports nothing and needs to say nothing
     # (docs/adr/model/0021-observability-scrape-and-alert-class.md).
     observability:
       alertClass: page      # every forward-auth protected route depends on it
       scrape:
-        workload: auth-api
+        process: auth-api
         surface: http       # the name declared in auth-api's `provides`
         path: /api/actuator/prometheus
 
-    # No Service-level `secrets`. The three grants below are auth-api's alone,
-    # so they sit on that Workload: a Service-level grant is held by EVERY
-    # Workload, including ones added later
-    # (docs/adr/model/0022-grants-live-on-the-service.md), and leaving them here would
+    # No Application-level `secrets`. The three grants below are auth-api's alone,
+    # so they sit on that Process: an Application-level grant is held by EVERY
+    # Process, including ones added later
+    # (docs/adr/model/0022-grants-live-on-the-application.md), and leaving them here would
     # hand the nginx container a Vault identity holding `read` on the database
-    # credentials. Folding the pair into one Service is what moved them down a
+    # credentials. Folding the pair into one Application is what moved them down a
     # level, and the level is an access boundary only because identity is per
-    # Workload (docs/adr/model/0024-identity-per-workload.md).
+    # Process (docs/adr/model/0024-identity-per-process.md).
 
-    # ONE HOSTNAME, TWO WORKLOADS -- the case that forced `exposure` up from the
-    # Workload to the Service. `auth.jorisjonkers.dev/api` is auth-api and `/`
-    # is auth-ui, and at the Workload level that is unsayable: two Workloads
+    # ONE HOSTNAME, TWO PROCESSES -- the case that forced `exposure` up from the
+    # Process to the Application. `auth.jorisjonkers.dev/api` is auth-api and `/`
+    # is auth-ui, and at the Process level that is unsayable: two Processes
     # each declaring a port and an audience produce two routes claiming the
     # whole host, which is exactly what this example's rendered tree used to
-    # show. `provides` stays on the Workload, because the two are different
+    # show. `provides` stays on the Process, because the two are different
     # facts: `provides` is *this process listens on this port*, `exposure` is
     # *this hostname routes here* (review/EXPOSURE-MANIFEST.md,
     # docs/adr/model/0018-exposure-by-audience.md).
     #
-    # `host` is the full FQDN, AUTHORED. No zone mapping, no `<service>.<zone>`
+    # `host` is the full FQDN, AUTHORED. No zone mapping, no `<application>.<zone>`
     # rule, no apex flag -- an apex host is written `host: jorisjonkers.dev`.
-    # That it matches the Service id here is a coincidence and does not
+    # That it matches the Application id here is a coincidence and does not
     # generalise: `platform-rabbitmq` serves rabbitmq, `headlamp` serves
-    # dashboard, and `status` belongs to no Service at all. The host is unique
+    # dashboard, and `status` belongs to no Application at all. The host is unique
     # across the estate -- E_DUPLICATE_HOST at composition, evaluated over the
     # composed union together with the Registered Unmanaged Surfaces.
     exposure:
-      - name: public              # required, unique within the Service: what
+      - name: public              # required, unique within the Application: what
                                   # ${exposure:auth.public#url} addresses and
                                   # what E_DUPLICATE_EXPOSURE_NAME checks
         host: auth.jorisjonkers.dev
-        audience: anonymous       # both surfaces. This Service is what performs
+        audience: anonymous       # both surfaces. This Application is what performs
                                   # authentication, so it cannot sit behind it;
                                   # the applications enforce their own
                                   # authorization and this describes the edge
@@ -120,21 +120,21 @@ services:
                                   # name, header block, timeout or rate limit is
                                   # authorable anywhere in layer 1
         routes:
-          # A route names {path, match, workload, surface}, `match` being
-          # `prefix` or `exact`. The surface must be one the named Workload
+          # A route names {path, match, process, surface}, `match` being
+          # `prefix` or `exact`. The surface must be one the named Process
           # declares in `provides` (E_UNKNOWN_SURFACE otherwise), and two routes
           # on one exposure may not share a path + match pair
           # (E_DUPLICATE_ROUTE_MATCH).
-          - {path: /api, match: prefix, workload: auth-api, surface: http}
-          - {path: /,    match: prefix, workload: auth-ui,  surface: http}
+          - {path: /api, match: prefix, process: auth-api, surface: http}
+          - {path: /,    match: prefix, process: auth-ui,  surface: http}
 
-    workloads:
+    processes:
       # ------------------------------------------------------------ auth-api
       - name: auth-api
-        # The ServiceAccount and the Vault role are the WORKLOAD NAME, unique
-        # within the domain: `auth-system.auth-api`, never
-        # `auth-system.auth-auth-api` (docs/adr/model/0024-identity-per-workload.md).
-        lifecycle: service
+        # The ServiceAccount and the Vault role are the PROCESS NAME, unique
+        # within the project: `auth-system.auth-api`, never
+        # `auth-system.auth-auth-api` (docs/adr/model/0024-identity-per-process.md).
+        lifecycle: application
 
         # An ALIAS resolved to a digest through the images lock -- never a tag
         # and never a digest here. That is what keeps every rendered Deliverable
@@ -142,13 +142,13 @@ services:
         image: auth-api
         runtime: jvm
 
-        # A port is a property of a process, so `provides` sits on the Workload
-        # (chapter 10). `dependsOn` still targets `{service, surface}`: surface
-        # names are unique within a Service, and a consumer names the Service,
-        # never a Workload.
+        # A port is a property of a process, so `provides` sits on the Process
+        # (chapter 10). `dependsOn` still targets `{application, surface}`: surface
+        # names are unique within an Application, and a consumer names the Application,
+        # never a Process.
         provides:
           http: 8080            # not 80: a port below 1024 cannot be bound by a
-                                # non-root process without CAP_NET_BIND_SERVICE,
+                                # non-root process without CAP_NET_BIND_APPLICATION,
                                 # which `restricted` drops
                                 # (docs/adr/model/0083-privileged-port-needs-the-capability.md).
                                 # A route names a surface, not a number, so the
@@ -164,17 +164,17 @@ services:
         # satisfies is E_PLACEMENT_UNSATISFIABLE, a build error, raised before
         # any manifest exists.
         placement:
-          # `memory` and `cpu` are required on every Workload, as raw
+          # `memory` and `cpu` are required on every Process, as raw
           # quantities, and are matched against node ALLOCATABLE from the pinned
           # node contract -- total minus the reserve declared in the node file,
           # never a live read (docs/adr/model/0056-node-facts-single-source.md,
           # docs/adr/model/0006-pinned-inputs.md). This is ELIGIBILITY, not
-          # bin-packing: three Workloads asking 2Gi each all pass against a
+          # bin-packing: three Processes asking 2Gi each all pass against a
           # 4096Mi node, and the scheduler refuses the third at apply.
           #
           # Contention has not moved. Memory and cpu are contended values, and
           # contention decides who ARBITRATES, not who AUTHORS
-          # (docs/adr/model/0004-contention-decides-authority.md): this Service states
+          # (docs/adr/model/0004-contention-decides-authority.md): this Application states
           # its requirement, and the platform decides whether it fits and where.
           memory: 768Mi         # request == limit, derived: memory is
                                 # incompressible, and a pod that cannot exceed
@@ -193,10 +193,10 @@ services:
           capabilities: [public-ingress]
           # frankfurt-contabo-1 is the only node advertising public-ingress, so
           # this replaces `nodeSelector: {site: frankfurt}` without naming a
-          # site or a label. Labels are not the Service's to name: the node
+          # site or a label. Labels are not the Application's to name: the node
           # contract emits 110 of them for 7 nodes, 55 under a prefix named
           # after an archived repository that rejects pushes, and retiring that
-          # prefix must not be an edit in every service repository
+          # prefix must not be an edit in every project repository
           # (docs/adr/model/0056-node-facts-single-source.md).
           #
           # `tailscale` is not written here and is no longer vocabulary: 7 of 7
@@ -217,13 +217,13 @@ services:
         writablePaths: [/tmp]
 
         dependsOn:
-          - {service: platform-postgres, surface: postgres}
-          - {service: platform-valkey,   surface: redis}
-          - {service: platform-rabbitmq, surface: amqp}
-          - {service: stalwart,          surface: smtp}
+          - {application: platform-postgres, surface: postgres}
+          - {application: platform-valkey,   surface: redis}
+          - {application: platform-rabbitmq, surface: amqp}
+          - {application: stalwart,          surface: smtp}
 
-        # No `exposure` here, and none is missing: it sits on the Service
-        # above, where one hostname can front both Workloads. What stays is
+        # No `exposure` here, and none is missing: it sits on the Application
+        # above, where one hostname can front both Processes. What stays is
         # `provides` (http: 8081) -- the port this process listens on, and
         # `http` is the surface the `/api` route names.
 
@@ -242,7 +242,7 @@ services:
 
         # REQUIRED, and there is no default. `rolling` asks the platform to keep
         # serving capacity throughout the cutover; `recreate` accepts a
-        # stop-then-start. This Workload holds no volume, so a rolling cutover
+        # stop-then-start. This Process holds no volume, so a rolling cutover
         # is honourable and is what its owner asks for. The Kubernetes spellings
         # -- RollingUpdate, maxSurge, maxUnavailable -- are derived by the
         # adapter and appear nowhere here.
@@ -268,7 +268,7 @@ services:
         # All three grants use `delivery: self` -- the application fetches them
         # through spring-cloud-vault at runtime, which is what it already does
         # in production via SPRING_CONFIG_IMPORT: vault:// and VAULT_DB_ENABLED:
-        # true. Consequently this Workload's env file contains no ${secret:...}
+        # true. Consequently this Process's env file contains no ${secret:...}
         # placeholder at all, and the dead-grant check correctly does not fire.
         #
         # The grant unit is the PATH, never the key
@@ -283,7 +283,7 @@ services:
           # build error.
           #
           # SPLIT PATH. `secret/data/platform/postgres` used to be one document
-          # holding every consumer's credentials, which made this Workload's
+          # holding every consumer's credentials, which made this Process's
           # password readable by knowledge's pods. One path per reader set is
           # the layout rule; this path's reader set is auth-api alone, and
           # knowledge reads .../postgres/kb.
@@ -298,9 +298,9 @@ services:
           # auth-api's own document: the static credentials for the three
           # dependencies whose credentials are not minted by an engine. They sit
           # here rather than under the platform Subtrees because the reader set
-          # is this Workload alone -- 0023 asks for one path per reader set, not
+          # is this Process alone -- 0023 asks for one path per reader set, not
           # one path per consumer. Only the Postgres pair above is dynamic,
-          # which is why it must live under the data domain's mount.
+          # which is why it must live under the data project's mount.
           #
           # Every key is enumerated. A wildcard key list -- `keys` naming a
           # single star, which this grant used to carry -- left the vocabulary:
@@ -318,11 +318,11 @@ services:
             delivery: self
             rotation: {tolerates: reload}
 
-          # JWT signing through Vault Transit. This Workload rotates the key
+          # JWT signing through Vault Transit. This Process rotates the key
           # itself, so `self-roll` rather than `read` -- which derives the
           # `patch` capability on the named key rather than `update`, granting
           # no read access to anything else in the mount. No rollAffectsReaders
-          # acknowledgement is needed: composition shows no other Service reads
+          # acknowledgement is needed: composition shows no other Application reads
           # it, and verifiers follow JWKS rather than caching the key.
           #
           # A non-KV mount takes NO placeholder and `delivery: self` is its only
@@ -337,12 +337,12 @@ services:
             rotation: {tolerates: reload}
 
       # ------------------------------------------------------------- auth-ui
-      # The second half of the product. It is here, in this Service, because it
+      # The second half of the product. It is here, in this Application, because it
       # must cut over with auth-api and for no other reason
-      # (docs/adr/model/0062-service-is-the-release-unit.md). Its identity is its own:
+      # (docs/adr/model/0062-application-is-the-release-unit.md). Its identity is its own:
       # `auth-system.auth-ui`, holding none of the grants above.
       - name: auth-ui
-        lifecycle: service
+        lifecycle: application
         image: auth-ui          # an alias, resolved through the images lock
         runtime: static         # nginx serving a built bundle: no OTEL_* or
                                 # PYROSCOPE_* wiring to inject, and saying
@@ -360,7 +360,7 @@ services:
           # dimension would exclude nodes for nothing: the image is multi-arch,
           # it needs no node capability and it holds no volume, so all 7 nodes
           # are eligible. auth-api's public-ingress filter is deliberately NOT
-          # repeated -- the two Workloads may land on different nodes and still
+          # repeated -- the two Processes may land on different nodes and still
           # switch together, because atomic release is not co-location.
           memory: 64Mi          # the estate measures its nginx pods at
                                 # "~10-20Mi RAM each"; this is the headroom
@@ -372,7 +372,7 @@ services:
         # pid file under /var/run; both are declared writable paths, mounted as
         # emptyDirs, and readOnlyRootFilesystem stays true
         # (docs/adr/model/0092-writable-paths-are-declared.md). The exception
-        # this Workload used to carry retired with that decision, without the
+        # this Process used to carry retired with that decision, without the
         # rebuilt image its own reason was waiting for.
         writablePaths: [/var/cache/nginx, /var/run]
 
@@ -382,8 +382,8 @@ services:
         # (docs/adr/model/0035-network-policy-default-deny.md). A dependency edge
         # would claim a connection this pod never opens.
 
-        # No `exposure` here either. The Service's `public` exposure routes
-        # `/` to this Workload's `http` surface -- the login page is what
+        # No `exposure` here either. The Application's `public` exposure routes
+        # `/` to this Process's `http` surface -- the login page is what
         # unauthenticated users are sent to, so it cannot sit behind the
         # authentication it starts.
 
@@ -402,23 +402,23 @@ services:
         startupBudget: 30s      # nginx serves within a second of starting; the
                                 # budget is the gate auth-api's 600s dominates
 
-        # REQUIRED on every Workload. Same value as auth-api, and stated again:
-        # this Workload holds no volume either, so a rolling cutover is
-        # honourable here too. The two Workloads switch together because they
-        # are one Service, not because they share a strategy.
+        # REQUIRED on every Process. Same value as auth-api, and stated again:
+        # this Process holds no volume either, so a rolling cutover is
+        # honourable here too. The two Processes switch together because they
+        # are one Application, not because they share a strategy.
         cutover: rolling
 
         # No `replicas` block: one is the derived count, and one is what this
-        # Workload wants. The block exists for a count above one with a reason,
+        # Process wants. The block exists for a count above one with a reason,
         # not to restate the default.
 
         # Nothing observability-shaped here, and nothing to omit either: the
-        # whole block sits on the Service above and names auth-api's surface.
+        # whole block sits on the Application above and names auth-api's surface.
         # This image exports no metrics, and a scrape path the platform guessed
         # would collect nothing and report success
         # (docs/adr/model/0021-observability-scrape-and-alert-class.md).
 
-        # No `secrets`. Everything this Workload needs is baked into the bundle
+        # No `secrets`. Everything this Process needs is baked into the bundle
         # at build time or reached through the browser, so no Vault role is
         # derived for it: `auth-system.auth-ui` is a ServiceAccount with no
         # policy bound to it, which is exactly what moving the three grants down

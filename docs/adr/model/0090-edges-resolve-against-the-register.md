@@ -9,6 +9,11 @@ rests-on: ["0005"]
 
 # An edge resolves against the union or the unmanaged register, and the register carries coordinates
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 > **Amended 2026-09-08.** The register this ADR extended is split
 > ([0095](0095-platform-intent-is-the-second-authored-document.md)). A target the
 > estate *depends on* (`stalwart` with an address and surfaces) is a
@@ -22,19 +27,19 @@ rests-on: ["0005"]
 > edge resolves against facts and never against exemptions.
 
 ## Rests on
-Every provider a Workload depends on is either deployed by this model or
+Every provider a Process depends on is either deployed by this model or
 registered as something the estate runs and does not deploy, so an edge has
 exactly two namespaces to resolve against and no third case. False if: a
-Workload legitimately depends on something in neither (an internet endpoint
+Process legitimately depends on something in neither (an internet endpoint
 that belongs in no register) often enough that registering it is the wrong
 shape. Settled by: rendering the estate with `auth`'s SMTP edge deriving an
 egress rule to `stalwart`'s registered address, and no rendered policy missing a
 rule for any declared edge.
 
 ## Why
-`E_UNRESOLVED_SERVICE` already refuses an edge naming a Service that is not in
+`E_UNRESOLVED_APPLICATION` already refuses an edge naming an Application that is not in
 the union, so the silent case is subtler and worse: an edge naming something the
-estate **has** but the model does not deploy. `{service: stalwart, surface:
+estate **has** but the model does not deploy. `{application: stalwart, surface:
 smtp}` is the live example. Nothing resolved, so nothing derived (no
 coordinates, therefore no egress rule) and the result is a *valid* policy that
 is short one rule. The on-call sees a connection timeout; no gate goes red. The
@@ -71,7 +76,7 @@ nowhere is the model that lost the rule in the first place.
 ## Alternatives
 | option | cost if taken | why rejected |
 |---|---|---|
-| Union Services only; an external provider is not an edge | Keeps the edge set purely internal | The dependency exists in fact and would exist nowhere in the model, the condition that produced R18 |
+| Union Applications only; an external provider is not an edge | Keeps the edge set purely internal | The dependency exists in fact and would exist nowhere in the model, the condition that produced R18 |
 | A raw host or CIDR in the edge | Derivable with no lookup | An address is a mechanism, and the same endpoint gets written into every consumer that needs it |
 | No coordinates: widen egress to the node network for such edges | Always works, nothing to declare | A blanket allow to the node network is the east-west openness default-deny exists to close |
 | Warn on an unresolved target and continue | Nothing blocks | A warning is a log line here, and the failure it describes is already invisible on-call |

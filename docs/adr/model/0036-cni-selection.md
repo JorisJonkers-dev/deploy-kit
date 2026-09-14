@@ -10,11 +10,16 @@ rests-on: ["0002"]
 
 # The CNI is chosen for a non-enforcing policy stage
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 
 Cilium fits these nodes on the pinned k3s version, and its audit stage reports
 an undeclared flow without dropping it. False if: steady-state agent memory or
-CPU per node displaces workloads on the single control-plane host, or the agent
+CPU per node displaces processes on the single control-plane host, or the agent
 will not come up on the pinned version with flannel and the bundled policy
 controller disabled. Settled by: a lab-cluster evaluation on that version:
 install with `--flannel-backend=none --disable-network-policy`, sample
@@ -28,7 +33,7 @@ The old dependency-edges ADR rested the whole mitigation for default-deny on a
 stage that does not exist: *"Default-deny must ship in audit mode first. Any
 connection that exists but is not declared breaks the moment enforcement
 lands"*, on a cluster it says *"is known to contain undeclared paths"*, with
-three NetworkPolicy objects for roughly thirty workloads. The setup checklist
+three NetworkPolicy objects for roughly thirty processes. The setup checklist
 made that stage a hard precondition for the first production apply
 (`60-setup.md:153`). But `networking.k8s.io/v1` NetworkPolicy has no audit,
 dry-run or log-only mode (a policy is enforced the moment it selects a pod)
@@ -58,9 +63,9 @@ direction is fixed; the fit is open.
 
 | option | cost if taken | why rejected |
 |---|---|---|
-| Keep the k3s default (flannel plus the bundled policy controller) | nothing to install; `60-setup.md:153` is deleted instead of satisfied, and default-deny across ~30 workloads with 3 existing policies lands as enforce at the first render, on a node with no second control plane to debug from | it ships precisely the failure the old ADR named and then claimed to have mitigated |
+| Keep the k3s default (flannel plus the bundled policy controller) | nothing to install; `60-setup.md:153` is deleted instead of satisfied, and default-deny across ~30 processes with 3 existing policies lands as enforce at the first render, on a node with no second control plane to debug from | it ships precisely the failure the old ADR named and then claimed to have mitigated |
 | Calico | comparable install and per-node cost; staged policies give the non-enforcing stage | no per-flow observation surface, so the 14-day zero-undeclared-flows criterion needs a second tool or packet capture to evaluate |
-| Ship enforce, gated on a hand-built flow inventory | days of sampling per workload, repeated whenever the estate changes | a snapshot, not continuous evidence; a path appearing after the sample is a production outage, the risk the audit stage exists to remove |
+| Ship enforce, gated on a hand-built flow inventory | days of sampling per process, repeated whenever the estate changes | a snapshot, not continuous evidence; a path appearing after the sample is a production outage, the risk the audit stage exists to remove |
 
 ## Reversibility
 

@@ -9,6 +9,11 @@ normative: spec/v1/40-composition.md#versioning
 
 # The data model's version is not the package's version
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 The artifact schema version can be decoupled from `package.json`'s version, and
 composition can accept a compatibility range per fragment without losing "no
@@ -27,7 +32,7 @@ Today the two versions are one number by construction.
 `version`. That field moves at release cadence, not model cadence: CHANGELOG.md
 shows 26 releases in ten weeks (2026-06-09 to 2026-08-20), most of which
 changed code, not the data model. The superseded lockstep decision (0013 in the
-old set) records the live result: skew of `0.16.0` in four service repos,
+old set) records the live result: skew of `0.16.0` in four project repos,
 `0.20.0` in `stalwart-provisioner`, `0.22.0` in the published contexts, and
 the estate still functions. The equality rule is stricter than what the estate
 demonstrably needs.
@@ -40,7 +45,7 @@ fix), and `dormant: true` exempts a participant from `maxAge` but not from the
 version assert. Post-v1, each of those 26-in-ten-weeks releases would open
 roughly ten Renovate PRs that must all merge before anything renders. Two spec
 artifacts already contradict lockstep as written: `spec/v1/40-composition.md:237`
-and `spec/v1/10-service-intent.md:36` both declare `schemaVersion: 1.0.0`,
+and `spec/v1/10-project-intent.md:36` both declare `schemaVersion: 1.0.0`,
 satisfiable only while the npm package sits at exactly `1.0.0`.
 
 Separability does not surrender determinism. The guarantee the old equality

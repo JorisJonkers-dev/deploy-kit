@@ -3,11 +3,16 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-09-07
-normative: spec/v1/10-service-intent.md#secrets
+normative: spec/v1/10-project-intent.md#secrets
 rests-on: ["0009"]
 ---
 
 # A KV-v2 read grant covers the document's metadata sibling
+
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
 
 ## Rests on
 KV-v2 splitting one document across `secret/data/<path>` and
@@ -55,7 +60,7 @@ That is a worse trade than the one this makes.
 
 ## Reversibility
 Undo cost today: one stanza in the derivation. Becomes irreversible once: a
-workload or a human process depends on listing versions, because removing the
+process or a human process depends on listing versions, because removing the
 stanza then breaks an audit path rather than narrowing an unused one.
 
 ## Consequences

@@ -10,6 +10,11 @@ rests-on: ["0002"]
 
 # Datastore, server count, and restore are recorded platform facts
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 > **Amended 2026-09-08.** The facts live in the Platform document's `substrate`
 > block, named for what they are (`datastore`, `serverCount`,
 > `kubernetesVersion`, `secretsEncryption`, `cni`, `networkPolicyController`)
@@ -20,7 +25,7 @@ rests-on: ["0002"]
 > an observation; it appears in no authored file.
 
 ## Rests on
-A `local-path` PersistentVolume can be restored to a running Workload from the
+A `local-path` PersistentVolume can be restored to a running Process from the
 daily node backup, and the time that takes is measurable. False if: a drill
 cannot reconstruct the volume at all: no per-claim file exists in the
 off-cluster copy, or the most recent node backup is already younger than the
@@ -33,7 +38,7 @@ record rather than adjusting it.
 
 ## Why
 None of the three facts is expressible in any schema here.
-`schemas/platform.schema.json` requires only `version`, `name` and `domain`; its
+`schemas/platform.schema.json` requires only `version`, `name` and `project`; its
 `cluster` object carries `kind` (`k3s | kubernetes | custom`), `api` and
 `bootstrap`, and nothing else. `$defs/host.roles` is an unconstrained array of
 identifiers, so `k3s-control-plane` is a spelling convention rather than a
@@ -74,7 +79,7 @@ So the facts get a home and the restore gets a rehearsal. Platform intent gains
 four required cluster facts (datastore kind, server count, k3s version, and the
 server flag set) read by the pre-flight and by any decision that turns on them,
 instead of discovered by an ssh session per question. RPO is stated rather than
-measured: **24 hours**, the daily node backup's period, and a Workload wanting
+measured: **24 hours**, the daily node backup's period, and a Process wanting
 better declares its own application-level backup, which is what `recoverable`
 renders under [0015](0015-durability-class-per-volume.md). RTO is not asserted
 at all: the drill produces it or there is no number. And an eighth checklist

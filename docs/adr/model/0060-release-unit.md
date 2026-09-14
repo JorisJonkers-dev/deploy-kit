@@ -4,26 +4,31 @@ superseded-by: 0062
 claim: open
 owner: joris
 date: 2026-09-07
-normative: spec/v1/10-service-intent.md#service-identity
+normative: spec/v1/10-project-intent.md#application-identity
 rests-on: ["0003", "0005"]
 ---
 
-# Several Services switch as one Release Unit
+# Several Applications switch as one Release Unit
+
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
 
 > **Superseded, and its claim is moot.** This decision was superseded by
-> [0062](0062-service-is-the-release-unit.md) before its settling test ran, so
+> [0062](0062-application-is-the-release-unit.md) before its settling test ran, so
 > the `claim: open` in the frontmatter records the state it was in when it was
 > replaced rather than work outstanding. Nothing settles it; 0062 carries the
 > question now. The owner stays named because the contract requires one for any
 > claim other than `settled`, not because there is a task.
 
-Superseded by [0062](0062-service-is-the-release-unit.md): a Service is itself
-the unit of atomic release, so a pair that must switch together is one Service
+Superseded by [0062](0062-application-is-the-release-unit.md): an Application is itself
+the unit of atomic release, so a pair that must switch together is one Application
 and the `releaseUnit` field this record introduces is deleted rather than
 specified.
 
 ## Rests on
-An all-or-nothing multi-Service cutover can be expressed as layer-1 intent plus
+An all-or-nothing multi-Application cutover can be expressed as layer-1 intent plus
 derived health gating, without naming a delivery mechanism. False if: expressing
 the gate requires delivery-specific vocabulary (a Flux kind, a workflow step,
 an applier identity) in any layer-1 or layer-2 field. Settled by: render a
@@ -32,7 +37,7 @@ mechanisms (today's Flux (health checks on one Kustomization) and any future
 push applier) and observe both honour it unchanged.
 
 ## Why
-Some Services are one product in two processes. An API and its frontend ship
+Some Applications are one product in two processes. An API and its frontend ship
 together: a new frontend against an old API, or the reverse, is a broken
 product even though each pod individually reports healthy. The requirement,
 stated by the owner on 2026-09-07, is that the model support deploying several
@@ -45,7 +50,7 @@ Until now that coupling lived only in delivery machinery, the deferred
 aggregator design carried a `deploys` list that happened to hold both members.
 Delivery is now defined separately from the model
 ([deferred/README.md](../deferred/README.md)), so the model must carry the
-coupling itself or lose it. A **Release Unit** carries it: each member Service
+coupling itself or lose it. A **Release Unit** carries it: each member Application
 declares its unit by name in layer 1; composition materialises the set; the
 derived gate is that **no member's new version receives traffic until every
 member's new version is healthy**, health meaning the member's own declared
@@ -71,7 +76,7 @@ edge would turn the whole estate into one unit.
 ## Reversibility
 Undo cost today: delete the field; every member rolls independently again, an
 hour, no data movement. Becomes irreversible: never structurally, but once
-service repositories declare units, removing the concept reintroduces the
+project repositories declare units, removing the concept reintroduces the
 manual release coordination it replaced, one incident at a time.
 
 ## Consequences
@@ -88,6 +93,6 @@ manual release coordination it replaced, one incident at a time.
   definition.
 - Rollback is unit-scoped: reverting one member means reverting the unit,
   paid by incident responders, in larger but consistent rollback scope.
-- A Service belongs to at most one unit, and a unit spanning deployer
+- An Application belongs to at most one unit, and a unit spanning deployer
   boundaries is invalid by construction once delivery is defined, paid by
   authors, in one more composition invariant.

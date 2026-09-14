@@ -10,9 +10,14 @@ rests-on: ["0106"]
 
 # Each model document has a hand-written Ecore metamodel, and its Java is generated at build time
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](../../../../docs/adr/model/0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 Resting on [0106](0106-the-model-is-expressible-in-the-emf-toolchain.md), the
-claim is that Service Intent, Platform Intent, the Resolved Deployment and the
+claim is that Project Intent, Platform Intent, the Resolved Deployment and the
 Deliverable Set each fit one Ecore package whose structure, exported as the
 parity descriptor, equals the structure the Zod schemas in `src/` declare.
 False if: the descriptor exported from Ecore cannot equal the committed

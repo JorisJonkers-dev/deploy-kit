@@ -9,9 +9,14 @@ rests-on: ["0005", "0002"]
 
 # Network policy is default-deny, derived from the edge set
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
-The flows a workload legitimately needs are exactly its declared edges plus a
-fixed platform baseline that no Service authors. False if: a flow observed
+The flows a process legitimately needs are exactly its declared edges plus a
+fixed platform baseline that no Application authors. False if: a flow observed
 during the audit window matches no edge and no baseline rule, yet is legitimate,
 the correct fix being a new baseline rule, not a missing edge. Settled by:
 render the estate's policy set, load it into the non-enforcing stage
@@ -21,7 +26,7 @@ NetworkPolicy carrying `Egress` in `policyTypes` also matches UDP/53.
 
 ## Why
 Opt-in enforcement has already been measured on this estate and it lost. Three
-NetworkPolicy objects exist for roughly thirty workloads, so the cluster is
+NetworkPolicy objects exist for roughly thirty processes, so the cluster is
 effectively open east-west; three of thirty is the realistic adoption rate for
 an opt-in control, and the number is the argument. Default-deny is only
 expressible because the edge set is complete: an edge names the provider, the
@@ -44,7 +49,7 @@ lands, default-deny does not ship. Promotion also gets the number the estate
 lacked, `spec/v1/00-overview.md:162-163` recorded only that "The criterion for
 promoting to enforce is unstated": **zero undeclared flows over 14 days**.
 
-The derivation also carries a platform baseline no Service authors, and the dead
+The derivation also carries a platform baseline no Application authors, and the dead
 renderer generation shows why. `providerPolicy` in
 `src/deployment/render/networkpolicy.ts:86-102` emits an egress policy whose only
 rule is to the provider's pod; once any policy with `policyTypes: [Egress]`
@@ -58,9 +63,9 @@ the spec chapter carries.
 ## Alternatives
 | option | cost if taken | why rejected |
 |---|---|---|
-| Keep policy opt-in, one flag per Service | Zero migration, no baseline needed, no CNI dependency | Measured: three policies for ~30 workloads is what opt-in produces here |
+| Keep policy opt-in, one flag per Application | Zero migration, no baseline needed, no CNI dependency | Measured: three policies for ~30 processes is what opt-in produces here |
 | Default-deny straight to enforce, no audit stage | Unblocks now; no CNI evaluation | Severs the undeclared east-west paths this estate is known to contain, at first render, on one node with no second control plane to debug from |
-| One allow-all-within, deny-across policy per namespace | One object per namespace; no edge set needed | a domain's namespace holds every Service in that domain ([0063](0063-intent-authored-per-domain.md)), so the namespace is not the trust boundary |
+| One allow-all-within, deny-across policy per namespace | One object per namespace; no edge set needed | a project's namespace holds every Application in that project ([0063](0063-intent-authored-per-project.md)), so the namespace is not the trust boundary |
 | Replace the audit stage with flow logs off the existing Alloy/Loki pack | A pipeline to build; weeks of work | A flow log says a connection happened, not that the rendered policy would have dropped it. It cannot produce the promotion number |
 
 ## Reversibility
@@ -70,14 +75,14 @@ promotion gate, hours, blast radius zero: the three hand-written cluster
 policies are untouched either way.
 
 Becomes irreversible once: enforcement is on estate-wide. A change to the edge
-shape then re-renders every workload's policy at once, and the only path back is
+shape then re-renders every process's policy at once, and the only path back is
 allow-all per namespace, open east-west in one step, no intermediate posture.
 
 ## Consequences
 - Every legal flow must be declared before promotion; an undeclared path becomes
-  a broken workload at enforce, paid by the consuming Service's owner.
+  a broken process at enforce, paid by the consuming Application's owner.
 - Cluster DNS and the scrape path are baseline rules in the derivation, so no
-  workload can lose DNS by forgetting one, paid by the renderer, which owns a
+  process can lose DNS by forgetting one, paid by the renderer, which owns a
   rule no author can see, and by anyone needing an exception to it.
 - Default-deny cannot ship before [0036](0036-cni-selection.md); the setup
   checklist item stays untickable until then, now a stated dependency rather
@@ -86,5 +91,5 @@ allow-all per namespace, open east-west in one step, no intermediate posture.
   calendar before enforce, paid by the security posture in the gap.
 - A typo in a `surface` name narrows the allow set silently and renders a valid
   policy, paid by the on-call, who sees a connection timeout, not an error code.
-- Roughly thirty workloads each gain policy objects where three exist today,
+- Roughly thirty processes each gain policy objects where three exist today,
   paid by the deployer's apply time and the API server's object count.

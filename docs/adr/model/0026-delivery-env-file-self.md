@@ -3,11 +3,16 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-08-31
-normative: spec/v1/10-service-intent.md#delivery
+normative: spec/v1/10-project-intent.md#delivery
 rests-on: ["0009"]
 ---
 
 # Secret delivery is env, file, or self
+
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
 
 ## Rests on
 
@@ -25,7 +30,7 @@ policy is granted per path, which is what makes delivery independent of keys.
 ## Why
 
 The three deliveries render three object sets. `env` renders a VSO sync and a
-Secret, with the Workload's env file placeholders resolving to `envFrom`
+Secret, with the Process's env file placeholders resolving to `envFrom`
 secretRef entries, not literal values. `file` renders a projected file at
 `mountAt` with `fileMode`. `self` renders a Vault policy, a Kubernetes auth role
 and the application's own client wiring: no Secret, no env var, nothing
@@ -58,8 +63,8 @@ also feeds the rollout: `rolloutRestartTargets` derives from
 
 | option | cost if taken | why rejected |
 |---|---|---|
-| One delivery (`env` only), everything else a workaround | Rewrite `auth-api`'s runtime credential path onto restart-based rotation, losing zero-downtime rotation on the estate's authentication service; ship the deploy key by an entrypoint shim that writes `$SSH_KEY` to a file at `0400` | Falsified by two live consumers before it is written: an SSH private key is not an env var, and a pod's environment is fixed for its lifetime |
-| Keep the Vault Agent Injector as a fourth delivery | A templating sidecar per pod across ~30 Workloads, plus the annotation surface hand-written in twelve files today: the untyped mechanism this vocabulary replaces | It is a projector, not an authoring intent: it renders a file, so it is `file` by another means, and it does not remove the gate for `env`, which still needs a shim to become variables |
+| One delivery (`env` only), everything else a workaround | Rewrite `auth-api`'s runtime credential path onto restart-based rotation, losing zero-downtime rotation on the estate's authentication application; ship the deploy key by an entrypoint shim that writes `$SSH_KEY` to a file at `0400` | Falsified by two live consumers before it is written: an SSH private key is not an env var, and a pod's environment is fixed for its lifetime |
+| Keep the Vault Agent Injector as a fourth delivery | A templating sidecar per pod across ~30 Processes, plus the annotation surface hand-written in twelve files today: the untyped mechanism this vocabulary replaces | It is a projector, not an authoring intent: it renders a file, so it is `file` by another means, and it does not remove the gate for `env`, which still needs a shim to become variables |
 | Derive delivery from `access` and `rotation.tolerates` instead of declaring it | The renderer must invent `mountAt` and `fileMode`, which no other field supplies | `tolerates` constrains delivery without determining it: the deploy key tolerates `restart` and must still be a file, while `platform/postgres` tolerates `restart` as `env` |
 
 ## Reversibility
@@ -68,23 +73,23 @@ Undo cost today: delivery is one enum on the grant, three render branches and a
 schema union carrying `mountAt`/`fileMode`. Adding a fourth value is additive:
 a branch, an enum member, a spec section, hours. Removing one is not: `self` is
 what `auth-api` runs in production, so dropping it means rewriting that
-service's credential path and accepting restart-based rotation on the estate's
+application's credential path and accepting restart-based rotation on the estate's
 front door. Becomes irreversible once: spring-cloud-vault wiring and dynamic
-database backends are compiled into service repositories. The undo is then
+database backends are compiled into project repositories. The undo is then
 application code, not a render change.
 
 ## Consequences
 
 - Until the secrets-at-rest gate ([0028](0028-secrets-at-rest-gate.md)) is
   satisfied only `self` ships, so every author whose grants are `env` waits,
-  paid by service authors and the gate's owner.
+  paid by application authors and the gate's owner.
 - `self` requires a Vault client in the process, so a stack without one cannot
   reach zero-downtime rotation and must tolerate `restart`, paid by teams on
   runtimes with no spring-cloud-vault equivalent.
 - `rolloutRestartTargets` stops being hand-maintained, so a one-word edit to
   `rotation.tolerates` silently changes restart behaviour, paid by reviewers.
 - `file` puts `mountAt` and `fileMode` in the vocabulary, and a wrong mode leaves
-  a readable credential on disk, paid by service authors.
+  a readable credential on disk, paid by application authors.
 - Not every tier × delivery cell is legal: `custody`+`env`, `custody`+`file` and
   `self-renew`+`env` must be refused by the schema, not left as traps, paid by
   the schema, per the review finding on the old tier table.

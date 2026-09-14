@@ -1,37 +1,37 @@
 # REFUSED: schema validation, against the closed AlertClass enumeration
 #
 # `AlertClass` is a closed vocabulary: `business-hours`, `urgent`, `page`
-# (spec/v1/10-service-intent.md). There is no `none` member: a Service that
+# (spec/v1/10-project-intent.md). There is no `none` member: an Application that
 # wants no monitoring omits the block. A value outside the vocabulary is refused
 # at schema validation, before composition runs, so no new error code carries
 # this case.
 #
-# The Service publishes a signal, which isolates the defect: the only thing
+# The Application publishes a signal, which isolates the defect: the only thing
 # wrong here is the class itself.
 
 apiVersion: intent.jorisjonkers.dev/v1
-kind: Domain
+kind: Project
 schemaVersion: 1.0.0
 
 expect: schema, alertClass is not a member of AlertClass
 
-domain: refusals
+project: refusals
 owner: joris
 
-services:
+applications:
   - id: unknown-class
     # Not a member of the enumeration. The signal beside it is well-formed, so
     # the class is the only defect.
     observability:
       alertClass: critical
       scrape:
-        workload: unknown-class-api
+        process: unknown-class-api
         surface: http
         path: /metrics
 
-    workloads:
+    processes:
       - name: unknown-class-api
-        lifecycle: service
+        lifecycle: application
         image: unknown-class-api
         runtime: node
 

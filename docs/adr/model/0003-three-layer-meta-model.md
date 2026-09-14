@@ -8,9 +8,14 @@ normative: spec/v1/00-overview.md#the-meta-model
 
 # Three layers, with the middle layer as a contract
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 
-With deployment configuration split into **Service Intent** (hand-authored,
+With deployment configuration split into **Project Intent** (hand-authored,
 requirements only), **Resolved Deployment** (derived; holds every platform
 decision) and **Deliverable Set** (serialization only, no decisions), every
 field is assignable to exactly one layer, and the boundary is decidable by two
@@ -37,7 +42,7 @@ on `/apiVersion`. A two-layer vocabulary could not even say which document was
 wrong, because "the deployment" named all three.
 
 Naming the middle layer turns two rules from aspirations into things that can
-fail: Service Intent contains no mechanisms, and the Deliverable Set contains
+fail: Project Intent contains no mechanisms, and the Deliverable Set contains
 no decisions. Every field is then assignable to exactly one layer, and a
 reviewer can read a diff of the Resolved Deployment to see what the platform
 decided on their behalf. The middle layer is a contract in the concrete sense:

@@ -1,20 +1,20 @@
-# Worked example: the knowledge domain's Intent Fragment
+# Worked example: the knowledge project's Intent Fragment
 #
-#   services/knowledge/platform/knowledge.yml
+#   applications/knowledge/platform/knowledge.yml
 #
-# One file per domain, one file one Intent Fragment
-# (docs/adr/model/0063-intent-authored-per-domain.md). The knowledge domain owns one
-# Service today; the namespace derives from the header as knowledge-system,
+# One file per project, one file one Intent Fragment
+# (docs/adr/model/0063-intent-authored-per-project.md). The knowledge project owns one
+# Application today; the namespace derives from the header as knowledge-system,
 # which is the namespace it already runs in.
 #
-# Exercises: two Workloads on two runtimes and therefore two identities, one
+# Exercises: two Processes on two runtimes and therefore two identities, one
 # authored hostname whose five routes carry mixed audiences -- four anonymous
-# overrides inside an authenticated host -- `probes: none` for a Workload with
+# overrides inside an authenticated host -- `probes: none` for a Process with
 # no listener, grants at BOTH levels, a split Subtree path beside an unsplit
 # one, and an irreplaceable volume.
 #
-# Companion env files, one per WORKLOAD
-# (docs/adr/model/0011-configuration-env-files-per-workload.md):
+# Companion env files, one per PROCESS
+# (docs/adr/model/0011-configuration-env-files-per-process.md):
 #   platform/env/knowledge-api/base.env
 #     -- reproduced as examples/knowledge-api.base.env
 #   platform/env/knowledge-ingest-worker/base.env
@@ -24,41 +24,41 @@
 # (docs/adr/model/0039-artifact-schema-versioning.md).
 schemaVersion: 1.0.0
 
-domain: knowledge
-owner: joris              # the only field raised to the domain header
+project: knowledge
+owner: joris              # the only field raised to the project header
 
-services:
+applications:
   # =============================================================== knowledge
   - id: knowledge
-    # Per Service; never raised to the domain. The api Workload publishes for
-    # the Service, and the ingest worker publishes nothing of its own.
+    # Per Application; never raised to the project. The api Process publishes for
+    # the Application, and the ingest worker publishes nothing of its own.
     observability:
       alertClass: business-hours
       scrape:
-        workload: knowledge-api
+        process: knowledge-api
         surface: http
         path: /api/actuator/prometheus
 
-    # The two Workloads below switch together, because they are one Service and
-    # a Service is the unit of atomic release
-    # (docs/adr/model/0062-service-is-the-release-unit.md). Nothing declares that: the
+    # The two Processes below switch together, because they are one Application and
+    # an Application is the unit of atomic release
+    # (docs/adr/model/0062-application-is-the-release-unit.md). Nothing declares that: the
     # boundary carries it. If the ingest worker misses its startup budget, the
     # API stays on its old version too, and a rollback takes both back.
     #
-    # A Service is still not a Reconcile Unit: `platform-postgres` before
+    # An Application is still not a Reconcile Unit: `platform-postgres` before
     # `knowledge` is ordering, derived from the edge set
     # (docs/adr/model/0032-reconcile-unit-derived.md), and the later unit waits rather
     # than being held.
 
-    # Shared grants. Both Workloads read the same Postgres and RabbitMQ
+    # Shared grants. Both Processes read the same Postgres and RabbitMQ
     # credentials, so declaring them once here is the difference between one
-    # edit and two when a key is added. A Service-level grant is held by every
-    # Workload, including ones added later; a grant that must NOT be shared
+    # edit and two when a key is added. An Application-level grant is held by every
+    # Process, including ones added later; a grant that must NOT be shared
     # moves down a level, and there is no removal syntax
-    # (docs/adr/model/0022-grants-live-on-the-service.md).
+    # (docs/adr/model/0022-grants-live-on-the-application.md).
     #
-    # `secrets` stays on the Service and is never raised to the domain header: a
-    # domain-level grant would hand every Service in the file a reader slot on
+    # `secrets` stays on the Application and is never raised to the project header: a
+    # project-level grant would hand every Application in the file a reader slot on
     # the whole path (docs/adr/model/0009-vault-read-is-per-path.md).
     #
     # `delivery: env` and `delivery: file` render a Kubernetes Secret, so both
@@ -72,37 +72,37 @@ services:
       # whole document, so the only boundary the store can enforce is the path:
       # while every consumer's credentials shared secret/data/platform/postgres,
       # these pods could read auth-api's database password. The reader set here
-      # is knowledge's two Workloads; auth-api reads .../postgres/auth.
+      # is knowledge's two Processes; auth-api reads .../postgres/auth.
       - path: secret/data/platform/postgres/kb
         keys: [user, password]
         access: read
         delivery: env
         rotation: {tolerates: restart}
 
-      # NOT split. Its reader set is already exactly this Service's two
-      # Workloads, and the rule is one path per reader SET, not one path per
-      # consumer. It splits on the day a second Service is granted it.
+      # NOT split. Its reader set is already exactly this Application's two
+      # Processes, and the rule is one path per reader SET, not one path per
+      # consumer. It splits on the day a second Application is granted it.
       - path: secret/data/platform/rabbitmq
         keys: [rabbitmq.user, rabbitmq.password]
         access: read
         delivery: env
         rotation: {tolerates: restart}
 
-    # ONE hostname, ONE Workload behind it -- and it still belongs to the
-    # Service, because `exposure` says *this hostname routes here* while
+    # ONE hostname, ONE Process behind it -- and it still belongs to the
+    # Application, because `exposure` says *this hostname routes here* while
     # `provides` says *this process listens on this port*
     # (review/EXPOSURE-MANIFEST.md). knowledge-ingest-worker declares no
     # `provides`, so no route can name it and it appears in none below.
     #
     # `host` is the full FQDN, authored. Nothing derives it: the estate also
     # answers on kb.jorisjonkers.dev, `platform-rabbitmq` serves rabbitmq, and
-    # `status` belongs to no Service -- a `<service>.<zone>` rule would be right
+    # `status` belongs to no Application -- a `<application>.<zone>` rule would be right
     # here and silently wrong there, and the wrong ones are the ones nobody
     # checks. This block replaces the six places the hostname used to be
     # declared independently: both catalogs, both IngressRoutes, the
     # reachability channel and the Gatus endpoint.
     exposure:
-      - name: public              # unique within the Service, and what
+      - name: public              # unique within the Application, and what
                                   # ${exposure:knowledge.public#url} addresses
         host: knowledge.jorisjonkers.dev
         audience: authenticated   # the exposure's audience is the default for
@@ -112,7 +112,7 @@ services:
           # for: anonymous paths inside an authenticated host. /mcp answers a
           # workstation holding only a bearer token, and the two install
           # scripts are fetched by curl before any session exists. The `/`
-          # catch-all keeps the Service's audience, so everything else is
+          # catch-all keeps the Application's audience, so everything else is
           # behind forward-auth -- derived from the audience, never named here
           # (docs/adr/model/0018-exposure-by-audience.md).
           #
@@ -121,40 +121,40 @@ services:
           # routes use.
           - path: /mcp
             match: exact
-            workload: knowledge-api
+            process: knowledge-api
             surface: http
             audience: anonymous     # override
           - path: /mcp/
             match: prefix
-            workload: knowledge-api
+            process: knowledge-api
             surface: http
             audience: anonymous     # override
           - path: /install.sh
             match: exact
-            workload: knowledge-api
+            process: knowledge-api
             surface: http
             audience: anonymous     # override
           - path: /install-agents.sh
             match: exact
-            workload: knowledge-api
+            process: knowledge-api
             surface: http
             audience: anonymous     # override
           - path: /
             match: prefix
-            workload: knowledge-api
-            surface: http           # no `audience`: the Service's stands
-        # No `contentPolicy`: this Service picks no CSP profile, so it takes the
+            process: knowledge-api
+            surface: http           # no `audience`: the Application's stands
+        # No `contentPolicy`: this Application picks no CSP profile, so it takes the
         # baseline the tier derives. The field is optional and the vocabulary
         # stops there -- `contentPolicy` and `redirectTo` are the whole of what
         # an author may say about the proxy.
 
-    workloads:
+    processes:
       # ------------------------------------------------------ knowledge-api
       - name: knowledge-api
-        # Identity is the Workload name under the domain namespace:
+        # Identity is the Process name under the project namespace:
         # `knowledge-system.knowledge-api`
-        # (docs/adr/model/0024-identity-per-workload.md).
-        lifecycle: service
+        # (docs/adr/model/0024-identity-per-process.md).
+        lifecycle: application
         image: knowledge-api    # alias -> digest through the images lock
         runtime: jvm            # -> otel-jvm profile: 10 OTEL, 6 PYROSCOPE
 
@@ -163,17 +163,17 @@ services:
         # (docs/adr/model/0092-writable-paths-are-declared.md).
         writablePaths: [/tmp]
 
-        # Surfaces are a property of the process, so they sit on the Workload.
+        # Surfaces are a property of the process, so they sit on the Process.
         # The rendered Kubernetes port name is the surface name, which is how
-        # 'http' survives. A consumer names the Service and the surface, never
-        # a port integer: `dependsOn: {service: knowledge, surface: http}`.
+        # 'http' survives. A consumer names the Application and the surface, never
+        # a port integer: `dependsOn: {application: knowledge, surface: http}`.
         provides:
           http: 8080
 
         # Hard dimensions, all of which must match
         # (docs/adr/model/0061-placement-is-hard-dimensions.md).
         placement:
-          memory: 768Mi         # a JVM service at its default heap. Raw, not a
+          memory: 768Mi         # a JVM application at its default heap. Raw, not a
                                 # class: a class name cannot be compared to a
                                 # node's allocatable without carrying the table,
                                 # and the comparison is now arithmetic
@@ -192,11 +192,11 @@ services:
         # (docs/adr/model/0016-pod-hardening.md).
 
         dependsOn:
-          - {service: platform-postgres, surface: postgres}
-          - {service: platform-rabbitmq, surface: amqp}
+          - {application: platform-postgres, surface: postgres}
+          - {application: platform-rabbitmq, surface: amqp}
 
         # No `exposure` here: the five routes and the hostname they hang off
-        # sit on the Service above, and each route names this Workload and its
+        # sit on the Application above, and each route names this Process and its
         # `http` surface. `provides` is what stays.
 
         probes:
@@ -212,19 +212,19 @@ services:
 
         startupBudget: 600s     # JVM cold start measured at ~250-300s
 
-        # REQUIRED, no default. This Workload holds no volume, and its owner
+        # REQUIRED, no default. This Process holds no volume, and its owner
         # requires continuity: the MCP endpoint 503s if a roll opens a gap.
         cutover: rolling
 
         # No `replicas` block: the derived count is one. Capacity is the only
-        # local exception to a derived value, and this Workload needs none.
+        # local exception to a derived value, and this Process needs none.
 
-        # Workload-level grant: the API serves /mcp, the worker does not. This
-        # is an access boundary only because identity is per Workload -- this
+        # Process-level grant: the API serves /mcp, the worker does not. This
+        # is an access boundary only because identity is per Process -- this
         # pod authenticates as `knowledge-api` and the worker as
         # `knowledge-ingest-worker`, each bound to exactly its own effective
-        # grant set, which is the Service-level list plus this one
-        # (docs/adr/model/0024-identity-per-workload.md).
+        # grant set, which is the Application-level list plus this one
+        # (docs/adr/model/0024-identity-per-process.md).
         secrets:
           - path: secret/data/knowledge-system/mcp-bearer
             keys: [workstation]
@@ -234,7 +234,7 @@ services:
 
       # --------------------------------------------- knowledge-ingest-worker
       - name: knowledge-ingest-worker
-        lifecycle: service
+        lifecycle: application
         image: knowledge-ingest-worker
         runtime: python         # a different profile: 5 OTEL keys plus
                                 # OTEL_PYTHON_LOG_CORRELATION, no JVM batch
@@ -249,7 +249,7 @@ services:
           memory: 256Mi         # a single-consumer queue worker, not a server
           cpu: 50m
           # Nothing else is declared, and the volume below is why nothing more
-          # is needed: a `local-path` PV pins this Workload to the node holding
+          # is needed: a `local-path` PV pins this Process to the node holding
           # it. That pinning is DERIVED -- read from the pinned ClusterState
           # snapshot (docs/adr/model/0034-cluster-state-pinned-input.md) -- rather
           # than restated here as a dimension that could disagree with the
@@ -257,11 +257,11 @@ services:
 
         # Default `restricted` again, and nothing here fights it: the deploy key
         # arrives on a projected volume, not on the root filesystem, so
-        # readOnlyRootFilesystem costs this Workload nothing.
+        # readOnlyRootFilesystem costs this Process nothing.
 
         dependsOn:
-          - {service: platform-rabbitmq, surface: amqp}
-          - {service: platform-postgres, surface: postgres}
+          - {application: platform-rabbitmq, surface: amqp}
+          - {application: platform-postgres, surface: postgres}
 
         # A RabbitMQ consumer with no listener. Declared, not omitted, so the
         # absence is a decision rather than an oversight
@@ -280,7 +280,7 @@ services:
         # A file-level copy is the backup method for a directory of files, and
         # `irreplaceable` derives one -- so the engine is required here
         # (docs/adr/model/0077-durability-derives-a-backup.md,
-        # docs/adr/model/0078-engine-is-workload-vocabulary.md).
+        # docs/adr/model/0078-engine-is-process-vocabulary.md).
         engine: files
 
         stateful: true
@@ -289,7 +289,7 @@ services:
             mountAt: /var/lib/knowledge-vault
             size: 20Gi
             durability: irreplaceable
-            # The one fact only the owning Service knows
+            # The one fact only the owning Application knows
             # (docs/adr/model/0015-durability-class-per-volume.md); schedule, sweep
             # and destination are derived. `irreplaceable` renders a backup job
             # with retention plus an off-cluster copy, and its restore must be
@@ -301,10 +301,10 @@ services:
             # which nodes are ELIGIBLE to hold a claim; it does not decide how
             # large the claim is.
 
-        # Workload-level, and `delivery: file` because an SSH private key cannot
-        # be an environment variable. This is the grant that makes per-Workload
-        # identity load-bearing: under one identity per Service the
-        # internet-facing API Workload would authenticate as a principal holding
+        # Process-level, and `delivery: file` because an SSH private key cannot
+        # be an environment variable. This is the grant that makes per-Process
+        # identity load-bearing: under one identity per Application the
+        # internet-facing API Process would authenticate as a principal holding
         # `read` on this key, and the store cannot narrow a read below the path
         # (docs/adr/model/0009-vault-read-is-per-path.md).
         secrets:

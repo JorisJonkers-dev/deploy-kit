@@ -9,10 +9,15 @@ rests-on: ["0003"]
 
 # Every Deliverable is attributed to exactly one Adapter
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 > **Amended 2026-09-08.** Attribution is per **Deliverable**, and every adapter
 > is central ([0098](0098-one-publication-path.md)): nothing is emitted per
-> Service repository at publish time any more, so the "one Fragment per Adapter
-> per Service" this text once described no longer exists. The path an adapter
+> Project repository at publish time any more, so the "one Fragment per Adapter
+> per Application" this text once described no longer exists. The path an adapter
 > declares is what the path plan assigns from
 > ([0070](0070-path-authority-is-layer-2.md)). The sixteen-adapter evidence below
 > is the state this decision was taken in.
@@ -51,7 +56,7 @@ consumers to shape it.
 
 One owner per path is asserted today and enforced nowhere. Five of the sixteen
 registered names end in `-fragment` and shadow an earlier adapter, chapter 30
-names four such pairs and misses `kubernetes-workload-fragment`; the twins avoid
+names four such pairs and misses `kubernetes-process-fragment`; the twins avoid
 a literal collision only because they write under `fragments/` while the first
 generation writes under `platform/cluster/flux/`. Three adapters (`kubernetes`,
 `flux-packs`, `flux-source`) declare the same `platform/cluster/flux/apps` prefix.
@@ -82,5 +87,5 @@ every live object by hand.
 - Each Adapter must become total for its target subsystem, and today none are, paid by the adapter owner.
 - The totality gap must be measured **per adapter against the registered generation** ([0052](0052-registered-adapters-are-v1.md)) before any schedule is committed; the old count of 342 files under `fleet-infra/cluster` measured the cluster tree instead of the registry and is not the number to plan against, paid by the programme.
 - `E_PATH_COLLISION` must be implemented (on the path plan, before any adapter runs) before the coverage assertion can be enforced; the five `-fragment` twins that made it urgent are deleted by [0098](0098-one-publication-path.md), paid by the toolkit maintainer.
-- A file no adapter claims cannot ship silently: it becomes a ledger entry with an owner and a reason ([0055](0055-bidirectional-ledgers.md)), paid by the Service owner.
+- A file no adapter claims cannot ship silently: it becomes a ledger entry with an owner and a reason ([0055](0055-bidirectional-ledgers.md)), paid by the Application owner.
 - A reviewer reading a Deliverable diff can name the producing subsystem without reading render code, paid by the adapter owner, who must declare and defend a unique `defaultPath` on every registry entry.

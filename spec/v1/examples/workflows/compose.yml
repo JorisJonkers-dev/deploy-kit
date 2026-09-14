@@ -89,7 +89,7 @@ jobs:
         if: ${{ !cancelled() }}
         run: |
           # participants.yml is the one central artefact. It changes when a
-          # domain is added or retired, not when a declaration changes.
+          # project is added or retired, not when a declaration changes.
           npx --no-install deploy-config-schema compose pull \
             --participants participants.yml \
             --out fragments/ \
@@ -97,10 +97,10 @@ jobs:
           # Fails with E_PARTICIPANT_MISSING, or E_PARTICIPANT_STALE past the
           # participant's maxAge -- seven days by default
           # (docs/adr/model/0038-participants-list-staleness.md). Not pedantry: the
-          # composed union is the estate's only complete picture, so a domain
+          # composed union is the estate's only complete picture, so a project
           # that silently stops publishing yields a ComposedIntent that looks
-          # entirely valid and is missing every Service that domain owns. What
-          # then happens to the objects those Services already have in a
+          # entirely valid and is missing every Application that project owns. What
+          # then happens to the objects those Applications already have in a
           # cluster is a delivery question, defined separately from the model:
           # see docs/adr/deferred/README.md.
 
@@ -140,7 +140,7 @@ jobs:
           # exists to detect, one level up.
           set +e
           out="$(npx --no-install deploy-config-schema compose union \
-            --fragments spec/v1/examples/negative/duplicate-service-id/ \
+            --fragments spec/v1/examples/negative/duplicate-application-id/ \
             --context-ref "${{ vars.CONTEXT_REF }}" \
             --out /tmp/should-fail 2>&1)"
           status=$?
@@ -149,38 +149,38 @@ jobs:
           if [ "$status" -eq 0 ]; then
             echo "gate did not fail"; exit 1
           fi
-          printf '%s' "$out" | grep -q 'E_DUPLICATE_SERVICE_ID' || {
-            echo "gate failed, but not on E_DUPLICATE_SERVICE_ID"; exit 1; }
-          echo "gate rejects a duplicate Service Id with E_DUPLICATE_SERVICE_ID"
+          printf '%s' "$out" | grep -q 'E_DUPLICATE_APPLICATION_ID' || {
+            echo "gate failed, but not on E_DUPLICATE_APPLICATION_ID"; exit 1; }
+          echo "gate rejects a duplicate Application Id with E_DUPLICATE_APPLICATION_ID"
 
-      - name: Prove the workload-name gate can fail, on the right error
+      - name: Prove the process-name gate can fail, on the right error
         if: ${{ !cancelled() }}
         run: |
-          # One negative fixture per invariant. This one is a single domain
-          # file whose two Services both name a Workload `api`: Workload names
-          # are unique within a domain, because the ServiceAccount and the
-          # Vault role are the Workload name under the domain's namespace
-          # (docs/adr/model/0024-identity-per-workload.md,
-          # docs/adr/model/0063-intent-authored-per-domain.md). It needs no second
-          # fragment -- a domain never spans repositories, so one file holds
+          # One negative fixture per invariant. This one is a single project
+          # file whose two Applications both name a Process `api`: Process names
+          # are unique within a project, because the ServiceAccount and the
+          # Vault role are the Process name under the project's namespace
+          # (docs/adr/model/0024-identity-per-process.md,
+          # docs/adr/model/0063-intent-authored-per-project.md). It needs no second
+          # fragment -- a project never spans repositories, so one file holds
           # every name that must be compared.
           #
           # Again the assertion is the ERROR CODE. The fixture is otherwise
           # valid, so a non-zero exit could just as easily mean a schema slip.
           set +e
           out="$(npx --no-install deploy-config-schema compose union \
-            --fragments spec/v1/examples/negative/duplicate-workload-name/ \
+            --fragments spec/v1/examples/negative/duplicate-process-name/ \
             --context-ref "${{ vars.CONTEXT_REF }}" \
-            --out /tmp/should-fail-workload 2>&1)"
+            --out /tmp/should-fail-process 2>&1)"
           status=$?
           set -e
           printf '%s\n' "$out"
           if [ "$status" -eq 0 ]; then
             echo "gate did not fail"; exit 1
           fi
-          printf '%s' "$out" | grep -q 'E_DUPLICATE_WORKLOAD_NAME' || {
-            echo "gate failed, but not on E_DUPLICATE_WORKLOAD_NAME"; exit 1; }
-          echo "gate rejects a duplicate Workload name with E_DUPLICATE_WORKLOAD_NAME"
+          printf '%s' "$out" | grep -q 'E_DUPLICATE_PROCESS_NAME' || {
+            echo "gate failed, but not on E_DUPLICATE_PROCESS_NAME"; exit 1; }
+          echo "gate rejects a duplicate Process name with E_DUPLICATE_PROCESS_NAME"
 
       - name: Publish ComposedIntent and its lock
         id: publish

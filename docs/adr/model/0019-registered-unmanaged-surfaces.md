@@ -9,7 +9,12 @@ rests-on: ["0004"]
 
 # Un-deployed hostnames are Registered Unmanaged Surfaces
 
-Service Intent covers Kubernetes workloads only. Any hostname the model does
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
+Project Intent covers Kubernetes processes only. Any hostname the model does
 not deploy is listed as a **Registered Unmanaged Surface** carrying an owner, a
 reason and a review date, and composition asserts that estate reachability
 equals the derived set plus the registered set exactly. An unregistered
@@ -21,7 +26,7 @@ A hostname must be unique estate-wide, so per
 [0004](0004-contention-decides-authority.md) it is contended and takes exactly
 one authoritative form, which for a host the model does not deploy can only be
 a registration, since there is no derivation to be the authority. False if: a
-hostname exists that is neither derivable from a Service nor attributable to
+hostname exists that is neither derivable from an Application nor attributable to
 one owner with a stated reason: a wildcard, a dynamically allocated name, or a
 host two parties both claim. Settled by: composing the full participants
 list and diffing `derived ∪ registered` against
@@ -34,11 +39,11 @@ difference is empty and that every registered entry carries a non-empty
 The estate has three deployment targets, not one. `samba` exists only as a
 NixOS module yet owns `samba.lan.jorisjonkers.dev`; `wolf` exists in neither
 target and owns `wolf.jorisjonkers.dev`; `adguard` and `ollama` exist in both
-Kubernetes and nix. Host-level services (`tailscale`, `media-storage`,
+Kubernetes and nix. Host-level applications (`tailscale`, `media-storage`,
 `backup-storage`, `btrfs-backup-snapshots`) have no cluster presence at all.
 Modelling all of them was rejected: rendering NixOS is not writing a file but
 producing a build and an activation, an order of magnitude larger v1. So
-Service Intent stays Kubernetes-only.
+Project Intent stays Kubernetes-only.
 
 That leaves a remainder, and an unbounded remainder is how the seven-way split
 of `kb.jorisjonkers.dev` began: a scope boundary silent about what falls
@@ -85,6 +90,6 @@ a route and its monitoring instead of raising an error.
   reachability set, who inherit a claim no check validates.
 - Review dates make registrations expire, so the register is recurring work
   rather than a one-time backfill, paid by each registration's named owner.
-- Service Intent stays Kubernetes-only, so NixOS-only services get no probes,
+- Project Intent stays Kubernetes-only, so NixOS-only applications get no probes,
   no policy and no grants from this model, paid by their owners, who keep two
   toolchains and gain only a hostname entry from this one.

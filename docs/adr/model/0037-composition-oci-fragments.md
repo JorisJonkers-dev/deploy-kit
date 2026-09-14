@@ -9,6 +9,11 @@ rests-on: ["0001", "0005"]
 
 # Declarations compose from published OCI fragments
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 
 No single repository can evaluate the estate-wide properties this specification
@@ -18,18 +23,18 @@ cannot run, seven, tabled in [chapter 40](../../../spec/v1/40-composition.md).
 
 ## Why
 
-Each domain repository publishes its own declarations (Service Intents, its
+Each project repository publishes its own declarations (Application Intents, its
 Secret Subtree, node facts, test projects) as an OCI artifact on release.
 Composition resolves the current set at render time, unions it, asserts the
 estate-wide invariants, and records every resolved digest in the lock beside the
-render. Seven properties, spread across six earlier decisions, need that global view: estate-wide Service Id
-uniqueness ([0010](0010-flat-service-identity.md)), Secret Subtree union with
+render. Seven properties, spread across six earlier decisions, need that global view: estate-wide Application Id
+uniqueness ([0010](0010-flat-application-identity.md)), Secret Subtree union with
 prefix-collision rejection ([0023](0023-grant-unit-is-the-path.md)), reconcile
 DAG construction ([0032](0032-reconcile-unit-derived.md)), hostname uniqueness
 and reachability completeness ([0018](0018-exposure-by-audience.md)), inbound
 edges for co-test sets ([0020](0020-dependency-edges-carry-surface.md)), and
 test project discovery ([0049](../deferred/0049-aggregator-owned-tests.md)). None works
-against one repository, because no Service knows its own consumers, the
+against one repository, because no Application knows its own consumers, the
 totality [0005](0005-derivation-is-total.md) demands of derivation.
 
 Git submodules were the obvious candidate, rejected on the estate's own
@@ -60,7 +65,7 @@ change takes effect**, and keeps a render reproducible from recorded digests.
 | Git submodules, pointers bumped centrally | A pointer-bump PR per declaration change, the sync bot that already exists to make those bumps happen, and up to a day of recorded drift | Does not remove the central merge, makes it mandatory for every change |
 | Live discovery by repository topic | No pinning, so no reproducible render; a repo missing its topic lands in `inbox/` and contributes nothing, silently | Reproducibility, and a failure mode the estate has already observed |
 | Each fragment pins its peers (lock as input) | Every fragment must carry digests that do not exist at authoring time | Mechanically impossible; `packageDigest: ""` is the evidence in the tree |
-| One declarations directory in this repository | Every domain merges here before a change takes effect; independent release cadence is gone | Contradicts [0001](0001-estate-scale-and-ownership.md). It would delete OCI publication, `lockChain`, the participants list, dormancy and both participant errors, and stays the fallback if that premise fails |
+| One declarations directory in this repository | Every project merges here before a change takes effect; independent release cadence is gone | Contradicts [0001](0001-estate-scale-and-ownership.md). It would delete OCI publication, `lockChain`, the participants list, dormancy and both participant errors, and stays the fallback if that premise fails |
 
 ## Reversibility
 
@@ -74,9 +79,9 @@ needs a merge in every one of them, the cost this decision was taken to avoid.
 
 ## Consequences
 
-- A render is only as current as the last publish; a domain that has not
-  published does not contribute, paid by the domain repository owner.
-- Because Flux prunes, a silently omitted domain is deleted from the cluster on
+- A render is only as current as the last publish; a project that has not
+  published does not contribute, paid by the project repository owner.
+- Because Flux prunes, a silently omitted project is deleted from the cluster on
   the next reconcile while the render still validates, so the participants list
   and its staleness bound ([0038](0038-participants-list-staleness.md)) are
   load-bearing rather than hygiene, paid by the estate owner.
@@ -88,9 +93,9 @@ needs a merge in every one of them, the cost this decision was taken to avoid.
   so the invariants are evaluated exactly once, paid by the aggregator.
 - Each participant needs a publish workflow and credentials, and debugging means
   resolving digests, not reading a tree, paid by that owner and by on-call.
-- The fragment unit is the domain file, not the repository: one domain file is
-  one Intent Fragment ([0063](0063-intent-authored-per-domain.md)), one
-  repository may hold several, and a domain never spans repositories, so the
-  union is over domains and a domain has exactly one publisher, paid by the
-  repository owner, who publishes one fragment per domain held rather than one
+- The fragment unit is the project file, not the repository: one project file is
+  one Intent Fragment ([0063](0063-intent-authored-per-project.md)), one
+  repository may hold several, and a project never spans repositories, so the
+  union is over projects and a project has exactly one publisher, paid by the
+  repository owner, who publishes one fragment per project held rather than one
   per repository.

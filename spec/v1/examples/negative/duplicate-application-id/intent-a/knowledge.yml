@@ -1,7 +1,7 @@
-# Fixture A: the knowledge domain, one Intent Fragment.
+# Fixture A: the knowledge project, one Intent Fragment.
 #
 # Valid on its own: the union with intent-b is what must fail, and it must fail
-# with E_DUPLICATE_SERVICE_ID rather than for any other reason.
+# with E_DUPLICATE_APPLICATION_ID rather than for any other reason.
 
 # A literal, and legitimately so. schemaVersion is the DATA MODEL's own semver
 # (docs/adr/model/0039-artifact-schema-versioning.md), not the toolkit package's, and
@@ -12,18 +12,18 @@
 # non-zero exit, still printed success.
 schemaVersion: 1.0.0
 
-# One file per domain, one file one Intent Fragment
-# (docs/adr/model/0063-intent-authored-per-domain.md). `owner` is the only field the
+# One file per project, one file one Intent Fragment
+# (docs/adr/model/0063-intent-authored-per-project.md). `owner` is the only field the
 # header raises.
-domain: knowledge
+project: knowledge
 owner: joris
 
-services:
+applications:
   - id: knowledge
     alertClass: business-hours
-    workloads:
+    processes:
       - name: knowledge-api
-        lifecycle: service
+        lifecycle: application
         image: knowledge-api
         runtime: jvm
         placement: {memory: 768Mi, cpu: 250m}

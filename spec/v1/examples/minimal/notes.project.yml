@@ -1,31 +1,31 @@
-# The smallest complete Service Intent in the model.
+# The smallest complete Project Intent in the model.
 #
-# One domain, one Service, one Workload, and nothing that is not required.
+# One project, one Application, one Process, and nothing that is not required.
 # Everything absent from this file is either derived (chapter 20) or refused
 # (chapter 10). It is the file to read first, and the file to copy when
-# onboarding a Service that has no storage and no secrets.
+# onboarding an Application that has no storage and no secrets.
 #
 # It is also the only worked example that renders on today's pinned inputs:
 # it holds no grant, so the secrets-at-rest gate
 # (docs/adr/model/0028-secrets-at-rest-gate.md) has nothing to refuse.
 
 apiVersion: intent.jorisjonkers.dev/v1
-kind: Domain
+kind: Project
 schemaVersion: 1.0.0
 
-domain: notes # the namespace derives: notes-system
-owner: joris # the only field raised to the domain header
+project: notes # the namespace derives: notes-system
+owner: joris # the only field raised to the project header
 
-services:
+applications:
   - id: notes
-    # Whole or absent. The class states urgency; the scrape names the Workload
+    # Whole or absent. The class states urgency; the scrape names the Process
     # and the surface that carries the signal, so the port is declared once, in
-    # `provides`. Omitting the block entirely is how a Service says it wants no
+    # `provides`. Omitting the block entirely is how an Application says it wants no
     # monitoring -- there is no `none` to write.
     observability:
       alertClass: business-hours
       scrape:
-        workload: notes-api
+        process: notes-api
         surface: http
         path: /metrics
 
@@ -35,16 +35,16 @@ services:
         audience: anonymous # selects the tier that carries it
         contentPolicy: strict
         routes:
-          - { path: /, match: prefix, workload: notes-api, surface: http }
+          - { path: /, match: prefix, process: notes-api, surface: http }
 
-    workloads:
+    processes:
       - name: notes-api
-        lifecycle: service
+        lifecycle: application
         image: notes-api # an alias; the lock resolves digest, uid and gid
         runtime: node
 
         provides:
-          http: 8080 # above 1024: restricted drops CAP_NET_BIND_SERVICE
+          http: 8080 # above 1024: restricted drops CAP_NET_BIND_APPLICATION
 
         # Two dimensions are required. Both are matched against what the node
         # contract publishes, never against free capacity
@@ -63,4 +63,4 @@ services:
         cutover: rolling
 
         # No `replicas` block: the derived count is one, and one is what this
-        # Workload runs. The block is for a count above one, with a reason.
+        # Process runs. The block is for a count above one, with a reason.

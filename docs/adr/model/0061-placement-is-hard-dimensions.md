@@ -4,15 +4,20 @@ status: proposed
 claim: open
 owner: joris
 date: 2026-09-07
-normative: spec/v1/10-service-intent.md#placement
+normative: spec/v1/10-project-intent.md#placement
 rests-on: ["0005"]
 ---
 
 # Placement is a set of hard dimensions matched against allocatable
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 The estate's placement needs are expressible as hard filters with no weighted
-preference. False if: a real workload needs to prefer a node without requiring
+preference. False if: a real process needs to prefer a node without requiring
 it, and cannot restate that as a set of acceptable values. Settled by:
 enumerate every soft term the live estate carries (
 `kubectl get deploy,sts,ds -A -o json | jq '..|.preferredDuringSchedulingIgnoredDuringExecution? // empty'`
@@ -24,7 +29,7 @@ half of [0016](0016-pod-hardening.md), which keeps hardening. `size` and
 `placement` were independent fields and nothing compared them. Node memory
 spans 4096Mi on `enschede-pi-2` and `enschede-pi-3` to 32768Mi on
 `frankfurt-contabo-1`, while the class table put `l` at 2Gi and `xl` at 4Gi with
-memory request equal to limit. A `size: l` Workload could sit beside a placement
+memory request equal to limit. A `size: l` Process could sit beside a placement
 admitting only the Pis (2Gi of a 4096Mi node before its reserve, `xl` not
 fitting at all) and the build passed, failing as `Pending` at apply.
 
@@ -50,17 +55,17 @@ Matching is against **allocatable**: node total minus a declared reserve,
 published by the node contract ([0056](0056-node-facts-single-source.md)).
 Never a live read of free capacity, which would put an assignment outside the
 pinned input set ([0006](0006-pinned-inputs.md)). This is **eligibility, not
-bin-packing**: three Workloads declaring `memory: 2Gi` all pass against a
+bin-packing**: three Processes declaring `memory: 2Gi` all pass against a
 4096Mi node, each compared against allocatable alone, and the scheduler refuses
 the third at apply. Memory and cpu are contended, so contention decides **who
 arbitrates**, not **who authors**: [0004](0004-contention-decides-authority.md)
-is restated, not waived. The Service states its requirement; the platform
+is restated, not waived. The Application states its requirement; the platform
 decides whether it fits and where.
 
 ## Alternatives
 | option | cost if taken | why rejected |
 |---|---|---|
-| Keep `size` beside `placement` | two fields answering one question, the class resolved through the Platform Intent and the node facts through the node contract: no build-time comparison without joining them | this is the gap being closed: a `size: l` Workload pinned to a 4096Mi Pi passes the build and goes `Pending` |
+| Keep `size` beside `placement` | two fields answering one question, the class resolved through the Platform Intent and the node facts through the node contract: no build-time comparison without joining them | this is the gap being closed: a `size: l` Process pinned to a 4096Mi Pi passes the build and goes `Pending` |
 | Scored best-match: rank eligible nodes, place on the highest | a term matching nothing scores zero and the pod still places, so the failure mode is a worse node rather than a refusal | hands back the silence the `gtx960m` evidence bought: an unmet term producing a Running pod is precisely what nobody could see |
 | Named amounts instead of raw quantities | keeps [0004](0004-contention-decides-authority.md) intact as written, and a retune is one Platform Intent edit rather than an edit in every repository, the cost this decision accepts | a class name cannot be compared to a node's allocatable without the table, so the consistency check stays a join; raw was chosen because the comparison is then arithmetic |
 
@@ -74,18 +79,18 @@ request equals limit (incompressible; OOM beats eviction roulette), cpu request
 and no cpu limit (throttling gets misdiagnosed as slow application code)) with
 an override and a reason as the escape
 ([0031](0031-derived-overrides-with-reason.md)). Becomes irreversible once about
-thirty repositories carry raw numbers chosen per Workload: returning to classes
+thirty repositories carry raw numbers chosen per Process: returning to classes
 means someone other than the author bucketing each.
 
 ## Consequences
-- `memory` and `cpu` become required on every Workload (one edit per Service,
+- `memory` and `cpu` become required on every Process (one edit per Application,
   ~30 of them, and BestEffort stops being the standing QoS class) paid by the
   one maintainer.
-- Raising every JVM service from 768Mi to 1Gi is now an edit in every repository
+- Raising every JVM application from 768Mi to 1Gi is now an edit in every repository
   holding one, not one row in the Platform Intent: paid by the one maintainer,
   on every retune.
-- A Workload that could fall back to Frankfurt when the Pis are full must list
-  both arches or sit `Pending`: paid by service authors, who write the fallback
+- A Process that could fall back to Frankfurt when the Pis are full must list
+  both arches or sit `Pending`: paid by application authors, who write the fallback
   down instead of weighting it.
 - `tailscale` leaves the capability vocabulary: on 7 of 7 nodes it excludes
   nothing, and a filter that never excludes teaches authors that filters do

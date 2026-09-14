@@ -9,6 +9,11 @@ rests-on: ["0004"]
 
 # Every Middleware has one producer, and the tier names its forward-auth endpoint
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 > **Amended 2026-09-08.** Two things moved. A tier declares four edge facts in
 > the model's words (`audiences`, `listener`, `certificates`, `forwardAuth`)
 > and the Traefik spelling is the adapter's
@@ -27,7 +32,7 @@ per content profile in use, one redirect per `redirectTo`) and the only fact
 that derivation lacks is an address the platform owns. False if: a route needs a
 middleware whose shape depends on something no declaration carries, or two
 routes on one tier and audience need different chains. Settled by: rendering the
-three worked domains and finding every middleware reference in every emitted
+three worked projects and finding every middleware reference in every emitted
 IngressRoute resolved by an object this adapter emitted.
 
 ## Why
@@ -39,7 +44,7 @@ produced nowhere.
 
 The producer is its own adapter for the reason
 [0074](0074-networking-adapter-emits-policy.md) gives for policy: one producer
-per kind. The Middlewares are estate-scoped, not per-Service, and both route
+per kind. The Middlewares are estate-scoped, not per-Application, and both route
 adapters reference them, so making one route adapter the owner would mean a
 lan-only change can require editing the public adapter and the shared object's
 owner is decided by which adapter happened to receive it. A blueprint pack is
@@ -50,8 +55,8 @@ drift the model exists to remove.
 
 The endpoint is the interesting half. A forward-auth Middleware must name the
 address that performs the check, and in this estate that address is `auth-api`.
-Deriving it from `auth-api`'s own surface would write one Service's id into a
-platform derivation and make the edge tree depend on resolving a Service, which
+Deriving it from `auth-api`'s own surface would write one Application's id into a
+platform derivation and make the edge tree depend on resolving an Application, which
 chapter 10 refuses in as many words: `auth-api`'s estate-wide role is this
 middleware, *never an edge*.
 
@@ -74,8 +79,8 @@ class of defect before.
 |---|---|---|
 | `traefik-public` emits them, `traefik-lan` references | No registry change; middlewares live beside the routes using them | One adapter owns objects the other depends on, so a lan change edits the public adapter, and ownership is decided by accident of assignment |
 | A blueprint pack fixture | 0013 already delivers fixtures at a pinned ref, and the security baseline is platform policy | The needed set follows from declared audiences and content policies, so a fixture is a hand-maintained superset that drifts from the routes |
-| Derive the endpoint from the auth Service's surface | Nothing authored twice | Hardcodes a Service id into a platform derivation and makes the edge depend on resolving a Service, which chapter 10 refuses |
-| One Platform Intent field for the estate | Simplest at one cluster and one auth Service | Every tier carries a fact most of them must ignore, and a second endpoint becomes a schema change rather than a value |
+| Derive the endpoint from the auth Application's surface | Nothing authored twice | Hardcodes an Application id into a platform derivation and makes the edge depend on resolving an Application, which chapter 10 refuses |
+| One Platform Intent field for the estate | Simplest at one cluster and one auth Application | Every tier carries a fact most of them must ignore, and a second endpoint becomes a schema change rather than a value |
 
 ## Reversibility
 Undo cost today: one adapter, its registry entry, and one field on the tier

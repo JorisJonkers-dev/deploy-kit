@@ -9,6 +9,11 @@ rests-on: ["0008"]
 
 # Reconciliation is an in-cluster CronJob per Aggregator
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](../model/0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 
 A CronJob object in the cluster fires within one period of the schedule it
@@ -85,7 +90,7 @@ hand-edit the CronJob has quietly overwritten surfaces at once.
 
 ## Consequences
 
-- Drift on a class-A slice is corrected within an hour instead of at the next merge, paid by the Services in that slice, which gain a bounded staleness where they had none.
+- Drift on a class-A slice is corrected within an hour instead of at the next merge, paid by the Applications in that slice, which gain a bounded staleness where they had none.
 - Roughly six CronJobs must be rendered, pinned and kept current, each with an image, a ServiceAccount and a lock read path, paid by the `rbac` and cron adapters and whoever maintains them.
 - `startingDeadlineSeconds` makes a long outage produce refused jobs and `MissedSchedule` events rather than silence, paid by whoever answers the alert [0058](0058-delivery-machinery-observability.md) requires.
 - The reapply and the merge apply now need distinct field managers and a Lease (machinery neither needed while they shared a name), paid by the deploy adapter.

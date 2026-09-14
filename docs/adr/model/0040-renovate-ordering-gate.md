@@ -9,6 +9,11 @@ rests-on: ["0007"]
 
 # Version bumps ride Renovate behind an ordering gate
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 
 Every repository holding a version pin already runs Renovate against the file
@@ -33,7 +38,7 @@ one PR. It is: publish the new schema, republish the OCI context, then update
 repo: `stalwart-provisioner`'s PR pipeline never exercises the deploy path."*
 The 0.20→0.22 bump was proven by replaying `deploy-artifact` by hand, and the
 first harness reported both configurations failing until a known-good control
-was run alongside. Live skew at the time was `0.16.0` in four service repos,
+was run alongside. Live skew at the time was `0.16.0` in four project repos,
 `0.20.0` in `stalwart-provisioner`, `0.22.0` in the contexts; `package.json`
 still reads `0.22.0`. An earlier attempt to drop the constraint entirely
 survives as the abandoned `feat/unversioned-contract` branch.
