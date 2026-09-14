@@ -41,7 +41,11 @@ Maven, with Eclipse Tycho resolving the bundles that are published only to p2
 update sites, against one target platform file pinned to exact versions. Plain
 Maven Central coordinates are used wherever a tool publishes there. JDK 21.
 No Eclipse IDE, workspace or launch configuration is part of the build: every
-step a grader or CI runs is `mvn verify` from `emf/`.
+step CI runs is `mvn verify` from `emf/`. The projects are nonetheless kept
+loadable in Eclipse Modeling Tools for the course's examiners: they import as
+existing Maven projects, the metamodels open and the example models validate
+against the OCL constraints, and committed launch configurations run the
+transformation and the generator.
 
 The first change to this tree is a walking skeleton that proves each tool runs
 headless in CI before any model work depends on it: an `.ecore` loads, an OCL

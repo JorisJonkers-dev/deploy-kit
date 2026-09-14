@@ -14,7 +14,7 @@ One directory per deadline, named after the course's own task numbering.
 
 | Directory | Deliverable | Overleaf project | State |
 |---|---|---|---|
-| [`task-0-proposal/`](task-0-proposal/) | Task 0 — project description, the proposal that must be approved before work starts | `6aa2ba0c3920baa59ec20901` | mirrored 2026-09-11 |
+| [`task-0-proposal/`](task-0-proposal/) | Task 0 — project description, the proposal that must be approved before work starts | `6aa2ba0c3920baa59ec20901` | re-mirrored 2026-09-14, after the joint-implementation revision |
 | `task-1-metamodelling/` | Task 1 — domain analysis, modelling decisions, the two metamodels and their diagrams, example models | — | not started |
 | `task-2-transformations/` | Task 2 — the model-to-model transformation, its rules and limitations, evidence it runs | — | not started |
 | `task-3-code-generation/` | Task 3 — the model-to-text transformation, the generated code, evidence it loads | — | not started |
@@ -48,7 +48,6 @@ documents whose parts are sections rather than chapters.
 main.tex        root document: preamble, \tableofcontents, \input list
 Title/          title page and the University of Twente logo
 Sections/       one file per section, numbered in reading order, appendix last
-listings/       verbatim inputs for \lstinputlisting — models and generated files
 *.sty, *.cfg    vendored LaTeX packages, see below
 ```
 
@@ -96,11 +95,13 @@ Taken from the DoSA report, so that the four reports read as one series:
 - Headings are Title Case. Sections carry a `\label{sec:…}` and are
   cross-referenced as `Section~\ref{…}`; the appendix is `\appendix` plus one
   section, so its parts number `A.1`, `A.2` and so on.
-- Tables are floats: `\begin{table}[ht]`, centred, `\hline` rules, caption
-  **below** the table, `\label{tab:…}`.
+- Tables are floats: `\begin{table}[!htbp]`, centred, `\small`, ragged-right
+  `p` columns, `\hline` rules, caption **below** the table, `\label{tab:…}`.
 - Front matter is numbered in roman and the body in arabic, with a table of
   contents between them.
 - Code listings are called **Example**, not Listing (`\lstlistingname`).
-- Every cross-reference is a live PDF link; `hyperref` colours them.
+- Every cross-reference is a live PDF link; `hyperref` colours them. Prose never
+  says "the table below" or "the next section": it names the target with
+  `Table~\ref{…}` or `Section~\ref{…}`.
 - Files reproduced from the generator's intended output carry no commentary of
   any kind, because the real ones will not.

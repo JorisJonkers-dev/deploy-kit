@@ -1,36 +1,30 @@
 \section{Generated Code}
 \label{sec:generatedcode}
 
-The generator emits one versioned release bundle per service. Its resources and
-principal derivations are listed below. Appendix~\ref{app:rendered} contains the
-hand-written target for the \texttt{auth} example.
+The generator emits one versioned release bundle per application. Its resources and
+principal derivations are listed in Table~\ref{tab:generated_resources}.
 
-\begin{table}[ht]
+\begin{table}[!htbp]
 \centering
-\begin{tabular}{p{0.22\linewidth}p{0.56\linewidth}c}
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.68\linewidth}}
 \hline
-\textbf{Output} & \textbf{Principal derivation} & \textbf{Example} \\
+\textbf{Output} & \textbf{Principal derivation} \\
 \hline
 \texttt{Namespace} and indexes &
-  Domain name, fixed labels and resolved output paths &
-  \ref{lst:namespace}, \ref{lst:kust-root}, \ref{lst:kust-auth} \\
+  A named partition of the cluster for the project, and the index files listing what to deploy. \\
 Workload resources &
-  Locked image, placement, probes, cutover, ports, identity, configuration and replicas &
-  \ref{lst:workload}, \ref{lst:serviceaccount}, \ref{lst:pdb} \\
+  The definitions that start and restart processes, give each an identity, and keep enough instances running during maintenance. \\
 \texttt{NetworkPolicy} &
-  Default deny, dependency edges, exposed surfaces and audience &
-  \ref{lst:networkpolicy} \\
+  Firewall rules stating which processes may talk to which, with everything else blocked. \\
 \texttt{IngressRoute} &
-  Routes, path specificity, content policy, audience and host &
-  \ref{lst:ingressroutes} \\
+  The web-proxy rules sending incoming requests for an address and path to the right process. \\
 Monitoring and alerts &
-  Scrape surface and alert class resolved through the rule catalogue &
-  \ref{lst:servicemonitor}, \ref{lst:prometheusrules} \\
+  Instructions to collect measurements, and the conditions under which an alert fires. \\
 Secret resources &
-  Grants, workload identity and environment, file or direct delivery &
-  \ref{lst:vaultpolicy}, \ref{lst:vaultrole} \\
+  Permissions in the vault granting each process exactly the secrets it was allowed. \\
 Backup and sweep jobs &
-  Volume durability and storage engine & n/a \\
+  Scheduled jobs copying data somewhere safe, or cleaning up data that may be discarded. \\
 \hline
 \end{tabular}
 \caption{Generated Resources and Their Principal Derivations}
@@ -39,5 +33,6 @@ Backup and sweep jobs &
 
 The transformation computes limits, startup probes, route precedence and policy
 peers. For \texttt{auth}, about 90 source lines determine ten files containing
-about 890 lines. The appendix is a manual oracle. The implemented generator must
-reproduce it, validate the result and provide one Kustomize entry point for CI.
+about 890 lines. Hand-written expected files kept in the repository are the oracle. Both
+implementations (Section~\ref{sec:tooling}) must reproduce them, validate the result and provide one
+Kustomize entry point for CI.
