@@ -260,6 +260,14 @@ target metamodel holding both, because a model-to-text template reads one model.
 resolution: the consumer, the provider Application and Surface, the address the
 consumer is given, and the policy peers that allow the connection. It is the
 part of resolution both implementations must agree on before either renders.
+The file is an object with one `applications` entry per Application, each an
+`id` and its `edges`; an Application with no dependency carries an empty list.
+The edge's own fields are fixed by the first case that has one.
+
+**The canonical writers** are `src/infrastructure/canonical-json.ts` and
+`emf/parity`'s `CanonicalJson`, held to the same cases. An oracle file is exactly
+its canonical text, with no final newline, and a test fails any committed oracle
+that is not byte-identical to its own canonicalisation.
 
 **Canonical JSON** is RFC 8785 (JSON Canonicalization Scheme): keys sorted,
 numbers in their shortest form, no insignificant whitespace. An absent
@@ -288,6 +296,11 @@ behaviour is the model's own (parse, validate, resolve, render) is proved in
 both implementations. The row names the TypeScript test; the model-driven witness
 for the same id is listed inside `emf/`, and `emf/`'s own gate fails when a model
 row has no witness there.
+
+**Whichever implementation lands a case first commits its reviewed oracle,
+and the other matches it.** The first oracles are written by hand: `minimal`'s
+parsed intent and dependency edges. The first `resolved.json` lands with the
+Resolved Deployment metamodel that gives it a shape (#42).
 
 An oracle file changes in the pull request that changes the behaviour it
 records, and both implementations go red together until both are fixed. CI

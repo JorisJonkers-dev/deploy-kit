@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **18** rows. The compiler's behaviours join it as they land.
+This ledger holds **20** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -41,3 +41,5 @@ This ledger holds **18** rows. The compiler's behaviours join it as they land.
 | REQ-016 | A code scanning finding of any severity fails `Pipeline Complete`, so it blocks the merge rather than only landing in the Security tab | [test/pipeline-wiring.test.ts](../test/pipeline-wiring.test.ts) |
 | REQ-017 | Every error code the specification defines is exercised by a test, or pending on the ticket that will exercise it, and no code the specification does not define is used in the tree | [test/codes-lint.test.ts](../test/codes-lint.test.ts) |
 | REQ-018 | The compiler's inner rings cannot read the environment, the clock, randomness, a child process or the filesystem synchronously, and only `src/cli/boundary.ts` exits the process or writes output | [test/seams.test.ts](../test/seams.test.ts) |
+| REQ-019 | Every committed oracle file is byte-identical to its own RFC 8785 canonicalisation, so a hand edit cannot leave one in a form the other implementation would not produce | [test/oracles.test.ts](../test/oracles.test.ts) |
+| REQ-020 | The production implementation's canonical JSON writer sorts keys by UTF-16 code units, formats numbers as ECMAScript does, and refuses null, non-finite numbers, non-JSON values and lone surrogates, on the same cases as the model-driven writer | [test/canonical-json.test.ts](../test/canonical-json.test.ts) |
