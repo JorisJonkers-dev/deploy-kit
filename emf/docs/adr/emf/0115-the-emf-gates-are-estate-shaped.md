@@ -10,6 +10,22 @@ rests-on: ["0106"]
 
 # The model-driven build carries the gates the estate's JVM repositories enforce, plus Java-shaped equivalents, and measures its thresholds
 
+> **Amended 2026-09-14, by the walking skeleton (#81).** Every gate still
+> holds with Tycho in the build; two are carried differently in Eclipse
+> bundles, and generated sources are left out where the Consequences said they
+> would be:
+>
+> - Tycho compiles bundles with the Eclipse JDT compiler, not `javac`, so
+>   `-Xlint:all -Werror` reaches plain jar modules only. Bundles get the JDT
+>   equivalent: its default warnings, with any warning failing the build.
+> - Dependency convergence is not checked in bundles. Their dependencies are
+>   p2 bundles at the versions the target platform pins, so Maven has no
+>   version choice to converge.
+> - Coverage and mutation are bound in the parent and run in every module. A
+>   module with no main classes has nothing to measure and both skip it; the
+>   syntax module excludes the classes the Xtext generator writes from both,
+>   and allows an empty mutation set until it holds code written by hand.
+
 ## Rests on
 Resting on [0106](0106-the-model-is-expressible-in-the-emf-toolchain.md), the
 claim is that the gates the estate's Gradle repositories run for JVM code have

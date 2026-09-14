@@ -1,0 +1,13 @@
+modeltype Ecore uses 'http://www.eclipse.org/emf/2002/Ecore';
+
+transformation identity(in source : Ecore, out target : Ecore);
+
+main() {
+	source.rootObjects()[EPackage]->map copy();
+}
+
+mapping EPackage::copy() : EPackage {
+	name := self.name;
+	nsURI := self.nsURI;
+	nsPrefix := self.nsPrefix;
+}

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Runs model/identity.qvto over model/notes.ecore in Eclipse, the path the smoke test runs headless. -->
+<launchConfiguration type="org.eclipse.m2m.qvt.oml.QvtTransformation">
+    <stringAttribute key="org.eclipse.m2m.qvt.oml.interpreter.module" value="platform:/resource/dev.jorisjonkers.deploykit.emf.resolve/model/identity.qvto"/>
+    <intAttribute key="org.eclipse.m2m.qvt.oml.interpreter.elemCount" value="2"/>
+    <stringAttribute key="org.eclipse.m2m.qvt.oml.interpreter.targetType" value="NEW_MODEL"/>
+    <stringAttribute key="org.eclipse.m2m.qvt.oml.interpreter.targetModel" value="platform:/resource/dev.jorisjonkers.deploykit.emf.resolve/model/notes.ecore"/>
+    <stringAttribute key="org.eclipse.m2m.qvt.oml.interpreter.targetType1" value="NEW_MODEL"/>
+    <stringAttribute key="org.eclipse.m2m.qvt.oml.interpreter.targetModel1" value="platform:/resource/dev.jorisjonkers.deploykit.emf.resolve/target/identity/notes.ecore"/>
+    <booleanAttribute key="org.eclipse.m2m.qvt.oml.interpreter.useTraceFile" value="false"/>
+</launchConfiguration>

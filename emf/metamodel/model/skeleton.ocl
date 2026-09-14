@@ -1,0 +1,8 @@
+import 'skeleton.ecore'
+
+package skeleton
+
+context Project
+inv skeletonHasAnApplication: applications->notEmpty()
+
+endpackage

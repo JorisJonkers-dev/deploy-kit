@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>dev.jorisjonkers.deploykit.emf</groupId>
+    <artifactId>emf-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>dev.jorisjonkers.deploykit.emf.syntax</artifactId>
+  <packaging>eclipse-plugin</packaging>
+  <name>deploy-kit model-driven syntax</name>
+
+  <build>
+    <plugins>
+      <!--
+        Every class the Xtext generator writes is build output, not code anyone
+        wrote here, so coverage and mutation leave it out (docs/adr/emf/0115).
+        The globs name what the generator writes for this grammar.
+      -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <configuration>
+          <excludes>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/*Skeleton*</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/skeleton/**</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/parser/**</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/serializer/**</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/services/**</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/scoping/**</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/validation/**</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.pitest</groupId>
+        <artifactId>pitest-maven</artifactId>
+        <configuration>
+          <excludedClasses>
+          <param>dev.jorisjonkers.deploykit.emf.syntax.*Skeleton*</param>
+          <param>dev.jorisjonkers.deploykit.emf.syntax.skeleton.*</param>
+          <param>dev.jorisjonkers.deploykit.emf.syntax.parser.*</param>
+          <param>dev.jorisjonkers.deploykit.emf.syntax.serializer.*</param>
+          <param>dev.jorisjonkers.deploykit.emf.syntax.services.*</param>
+          <param>dev.jorisjonkers.deploykit.emf.syntax.scoping.*</param>
+          <param>dev.jorisjonkers.deploykit.emf.syntax.validation.*</param>
+          </excludedClasses>
+          <!-- Until the syntax ticket adds hand-written code, nothing is left to mutate. -->
+          <failWhenNoMutations>false</failWhenNoMutations>
+        </configuration>
+      </plugin>
+      <!-- Runs the Xtext generator before compiling; its output is build output. -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>generate-language</id>
+            <phase>generate-sources</phase>
+            <goals><goal>java</goal></goals>
+          </execution>
+        </executions>
+        <configuration>
+          <mainClass>org.eclipse.emf.mwe2.launch.runtime.Mwe2Launcher</mainClass>
+          <arguments>
+            <argument>/${project.basedir}/src/main/java/dev/jorisjonkers/deploykit/emf/syntax/GenerateSkeleton.mwe2</argument>
+            <argument>-p</argument>
+            <argument>rootPath=/${project.basedir}/..</argument>
+          </arguments>
+          <classpathScope>compile</classpathScope>
+          <includePluginDependencies>true</includePluginDependencies>
+          <cleanupDaemonThreads>false</cleanupDaemonThreads>
+          <additionalClasspathElements>
+            <additionalClasspathElement>${project.basedir}/src/main/java</additionalClasspathElement>
+          </additionalClasspathElements>
+        </configuration>
+        <dependencies>
+          <!-- The ANTLR 3 parser generator Xtext calls; published to Maven Central only. -->
+          <dependency>
+            <groupId>org.eclipse.xtext</groupId>
+            <artifactId>xtext-antlr-generator</artifactId>
+            <version>2.1.1</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+    </plugins>
+  </build>
+</project>
