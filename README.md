@@ -24,7 +24,9 @@ lands, the **compiler** that turns that model into deployable artifacts.
 | [`spec/v1/diagrams/`](spec/v1/diagrams/README.md) | One drawn diagram per chapter, as an SVG with the editable draw.io diagram embedded. One palette; colour carries the layer. |
 | [`spec/v1/examples/minimal/`](spec/v1/examples/minimal/README.md) | The smallest complete Service: one domain, one Service, one Workload, 26 authored lines reaching 10 objects. |
 | [`spec/v1/examples/`](spec/v1/examples) | Worked examples: real Services from this estate, written in the model. |
-| [`scripts/`](scripts/) | The gates: the ADR contract, links, manifests and layer boundaries. TypeScript that Node runs directly ([tooling](docs/architecture.md#tooling)). |
+| [`spec/v1/schemas/`](spec/v1/schemas) | JSON Schema, generated from the metamodel and committed. An editor reads it; CI fails on a diff. |
+| [`src/`](src) | The compiler, as it lands. Today: the Service Intent metamodel, its well-formedness rules and the use-case that parses a document against them. |
+| [`scripts/`](scripts/) | The gates: the ADR contract, links, manifests, the intent metamodel and layer boundaries. TypeScript that Node runs directly ([tooling](docs/architecture.md#tooling)). |
 
 ## The shape of the model
 
@@ -87,7 +89,7 @@ npm run verify      # lint, format, typecheck, ADR contract, tests + coverage
 `npm run lint:adrs` alone runs the decision-record contract, and `npm test`
 runs the suite without enforcing coverage. `npm run test:coverage` (part of
 `npm run verify`) enforces the ratchet in `vitest.config.ts`: statements
-98.31%, branches 92.43%, functions 100%, lines 98.19%.
+98.78%, branches 94.16%, functions 100%, lines 98.68%.
 
 ## Conventions
 

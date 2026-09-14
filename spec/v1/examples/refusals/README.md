@@ -17,9 +17,12 @@ There is no fixture for "no monitoring". A Service that wants none omits the
 `observability` block, which is an accepted input and appears in the worked set
 as `platform-valkey` rather than here.
 
-These are **fixtures, not proof of rendered behaviour.** The compiler does not
-exist yet, so `test/simplification-contract.test.ts` asserts them at the layer
-that does: the shape of the input.
+These are **fixtures, not proof of rendered behaviour.** Each is parsed against
+the Service Intent metamodel, and the code it is refused with must equal the one
+its `expect:` header names: `npm run lint:intent` is what runs that, over every
+Service Intent document in the repository at once, and a fixture that starts
+failing for a second reason fails the gate exactly as one that stops failing at
+all does. What is still unproven is what a renderer would do with them.
 
 Two things therefore remain **unproven until a renderer exists**, and are named
 as blockers rather than described as verified:

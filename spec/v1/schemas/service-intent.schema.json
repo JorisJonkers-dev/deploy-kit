@@ -1,0 +1,3266 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "const": "intent.jorisjonkers.dev/v1"
+    },
+    "kind": {
+      "type": "string",
+      "const": "Domain"
+    },
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "domain": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "services": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+          },
+          "observability": {
+            "type": "object",
+            "properties": {
+              "alertClass": {
+                "type": "string",
+                "enum": [
+                  "business-hours",
+                  "urgent",
+                  "page"
+                ]
+              },
+              "scrape": {
+                "type": "object",
+                "properties": {
+                  "workload": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+                  },
+                  "surface": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "path": {
+                    "type": "string",
+                    "pattern": "^\\/"
+                  }
+                },
+                "required": [
+                  "workload",
+                  "surface",
+                  "path"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "alertClass"
+            ],
+            "additionalProperties": false
+          },
+          "exposure": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]*$"
+                },
+                "host": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$"
+                },
+                "audience": {
+                  "type": "string",
+                  "enum": [
+                    "anonymous",
+                    "authenticated",
+                    "internal",
+                    "lan"
+                  ]
+                },
+                "contentPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "strict",
+                    "admin",
+                    "workflow"
+                  ]
+                },
+                "routes": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "pattern": "^\\/"
+                      },
+                      "match": {
+                        "type": "string",
+                        "enum": [
+                          "prefix",
+                          "exact"
+                        ]
+                      },
+                      "workload": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+                      },
+                      "surface": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]*$"
+                      },
+                      "audience": {
+                        "type": "string",
+                        "enum": [
+                          "anonymous",
+                          "authenticated",
+                          "internal",
+                          "lan"
+                        ]
+                      },
+                      "redirectTo": {
+                        "type": "string",
+                        "pattern": "^\\/"
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "match",
+                      "workload",
+                      "surface"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "name",
+                "host",
+                "audience",
+                "routes"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "workloads": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+                },
+                "lifecycle": {
+                  "type": "string",
+                  "enum": [
+                    "service",
+                    "job"
+                  ]
+                },
+                "image": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9._-]*$"
+                },
+                "runtime": {
+                  "type": "string",
+                  "enum": [
+                    "jvm",
+                    "python",
+                    "node",
+                    "static",
+                    "none"
+                  ]
+                },
+                "engine": {
+                  "type": "string",
+                  "enum": [
+                    "postgres",
+                    "rabbitmq",
+                    "valkey",
+                    "files"
+                  ]
+                },
+                "startupBudget": {
+                  "type": "string",
+                  "pattern": "^\\d+(s|m|h)$"
+                },
+                "cutover": {
+                  "type": "string",
+                  "enum": [
+                    "rolling",
+                    "recreate"
+                  ]
+                },
+                "writablePaths": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^\\/"
+                  }
+                },
+                "provides": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 65535
+                  }
+                },
+                "sidecars": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+                      },
+                      "image": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9._-]*$"
+                      },
+                      "memory": {
+                        "type": "string",
+                        "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+                      },
+                      "cpu": {
+                        "type": "string",
+                        "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "image",
+                      "memory",
+                      "cpu"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "dependsOn": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "service": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+                      },
+                      "surface": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]*$"
+                      },
+                      "required": {
+                        "default": true,
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "service",
+                      "surface"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "probes": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "none"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "readiness": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "path": {
+                                  "type": "string",
+                                  "pattern": "^\\/"
+                                },
+                                "port": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 65535
+                                }
+                              },
+                              "required": [
+                                "path",
+                                "port"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "tcp": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 65535
+                                }
+                              },
+                              "required": [
+                                "tcp"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "liveness": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "path": {
+                                  "type": "string",
+                                  "pattern": "^\\/"
+                                },
+                                "port": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 65535
+                                }
+                              },
+                              "required": [
+                                "path",
+                                "port"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "tcp": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 65535
+                                }
+                              },
+                              "required": [
+                                "tcp"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "assets": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "from": {
+                        "type": "string",
+                        "pattern": "^[^/].*$"
+                      },
+                      "mountAt": {
+                        "type": "string",
+                        "pattern": "^\\/"
+                      }
+                    },
+                    "required": [
+                      "from",
+                      "mountAt"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "volumes": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "claim": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+                      },
+                      "mountAt": {
+                        "type": "string",
+                        "pattern": "^\\/"
+                      },
+                      "size": {
+                        "type": "string",
+                        "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+                      },
+                      "durability": {
+                        "type": "string",
+                        "enum": [
+                          "reconstructible",
+                          "recoverable",
+                          "irreplaceable"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "claim",
+                      "mountAt",
+                      "size",
+                      "durability"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "placement": {
+                  "type": "object",
+                  "properties": {
+                    "memory": {
+                      "type": "string",
+                      "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+                    },
+                    "cpu": {
+                      "type": "string",
+                      "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+                    },
+                    "arch": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "amd64",
+                          "arm64"
+                        ]
+                      }
+                    },
+                    "site": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "disk": {
+                      "type": "object",
+                      "properties": {
+                        "media": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "nvme",
+                              "ssd",
+                              "hdd"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "media"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "gpu": {
+                      "type": "object",
+                      "properties": {
+                        "class": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "memory": {
+                          "type": "string",
+                          "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+                        }
+                      },
+                      "required": [
+                        "class",
+                        "memory"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "capabilities": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]*$"
+                      }
+                    }
+                  },
+                  "required": [
+                    "memory",
+                    "cpu"
+                  ],
+                  "additionalProperties": false
+                },
+                "replicas": {
+                  "type": "object",
+                  "properties": {
+                    "count": {
+                      "type": "integer",
+                      "minimum": 2,
+                      "maximum": 9007199254740991
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "count",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                },
+                "secrets": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "engine": {
+                            "default": "kv",
+                            "type": "string",
+                            "const": "kv"
+                          },
+                          "path": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "keys": {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+                            }
+                          },
+                          "access": {
+                            "type": "string",
+                            "enum": [
+                              "read",
+                              "self-renew",
+                              "self-roll",
+                              "custody"
+                            ]
+                          },
+                          "mountAt": {
+                            "type": "string",
+                            "pattern": "^\\/"
+                          },
+                          "fileMode": {
+                            "type": "string",
+                            "pattern": "^0[0-7]{3}$"
+                          },
+                          "delivery": {
+                            "type": "string",
+                            "enum": [
+                              "env",
+                              "file",
+                              "self"
+                            ]
+                          },
+                          "rotation": {
+                            "type": "object",
+                            "properties": {
+                              "tolerates": {
+                                "type": "string",
+                                "enum": [
+                                  "restart",
+                                  "reload"
+                                ]
+                              },
+                              "maxAge": {
+                                "type": "string",
+                                "pattern": "^\\d+(s|m|h)$"
+                              }
+                            },
+                            "required": [
+                              "tolerates"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "keys",
+                          "access",
+                          "delivery",
+                          "rotation"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "engine": {
+                            "type": "string",
+                            "const": "database"
+                          },
+                          "role": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "mountAt": {
+                            "type": "string",
+                            "pattern": "^\\/"
+                          },
+                          "fileMode": {
+                            "type": "string",
+                            "pattern": "^0[0-7]{3}$"
+                          },
+                          "delivery": {
+                            "type": "string",
+                            "enum": [
+                              "env",
+                              "file",
+                              "self"
+                            ]
+                          },
+                          "rotation": {
+                            "type": "object",
+                            "properties": {
+                              "tolerates": {
+                                "type": "string",
+                                "enum": [
+                                  "restart",
+                                  "reload"
+                                ]
+                              },
+                              "maxAge": {
+                                "type": "string",
+                                "pattern": "^\\d+(s|m|h)$"
+                              }
+                            },
+                            "required": [
+                              "tolerates"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "engine",
+                          "role",
+                          "delivery",
+                          "rotation"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "engine": {
+                            "type": "string",
+                            "const": "transit"
+                          },
+                          "key": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "operations": {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "sign",
+                                "verify",
+                                "encrypt",
+                                "decrypt",
+                                "rotate"
+                              ]
+                            }
+                          },
+                          "delivery": {
+                            "type": "string",
+                            "enum": [
+                              "env",
+                              "file",
+                              "self"
+                            ]
+                          },
+                          "rotation": {
+                            "type": "object",
+                            "properties": {
+                              "tolerates": {
+                                "type": "string",
+                                "enum": [
+                                  "restart",
+                                  "reload"
+                                ]
+                              },
+                              "maxAge": {
+                                "type": "string",
+                                "pattern": "^\\d+(s|m|h)$"
+                              }
+                            },
+                            "required": [
+                              "tolerates"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "engine",
+                          "key",
+                          "operations",
+                          "delivery",
+                          "rotation"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "name",
+                "lifecycle",
+                "image",
+                "runtime",
+                "startupBudget",
+                "cutover",
+                "probes",
+                "placement"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "secrets": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "engine": {
+                      "default": "kv",
+                      "type": "string",
+                      "const": "kv"
+                    },
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "keys": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+                      }
+                    },
+                    "access": {
+                      "type": "string",
+                      "enum": [
+                        "read",
+                        "self-renew",
+                        "self-roll",
+                        "custody"
+                      ]
+                    },
+                    "mountAt": {
+                      "type": "string",
+                      "pattern": "^\\/"
+                    },
+                    "fileMode": {
+                      "type": "string",
+                      "pattern": "^0[0-7]{3}$"
+                    },
+                    "delivery": {
+                      "type": "string",
+                      "enum": [
+                        "env",
+                        "file",
+                        "self"
+                      ]
+                    },
+                    "rotation": {
+                      "type": "object",
+                      "properties": {
+                        "tolerates": {
+                          "type": "string",
+                          "enum": [
+                            "restart",
+                            "reload"
+                          ]
+                        },
+                        "maxAge": {
+                          "type": "string",
+                          "pattern": "^\\d+(s|m|h)$"
+                        }
+                      },
+                      "required": [
+                        "tolerates"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "keys",
+                    "access",
+                    "delivery",
+                    "rotation"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "engine": {
+                      "type": "string",
+                      "const": "database"
+                    },
+                    "role": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "mountAt": {
+                      "type": "string",
+                      "pattern": "^\\/"
+                    },
+                    "fileMode": {
+                      "type": "string",
+                      "pattern": "^0[0-7]{3}$"
+                    },
+                    "delivery": {
+                      "type": "string",
+                      "enum": [
+                        "env",
+                        "file",
+                        "self"
+                      ]
+                    },
+                    "rotation": {
+                      "type": "object",
+                      "properties": {
+                        "tolerates": {
+                          "type": "string",
+                          "enum": [
+                            "restart",
+                            "reload"
+                          ]
+                        },
+                        "maxAge": {
+                          "type": "string",
+                          "pattern": "^\\d+(s|m|h)$"
+                        }
+                      },
+                      "required": [
+                        "tolerates"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "engine",
+                    "role",
+                    "delivery",
+                    "rotation"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "engine": {
+                      "type": "string",
+                      "const": "transit"
+                    },
+                    "key": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "operations": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "sign",
+                          "verify",
+                          "encrypt",
+                          "decrypt",
+                          "rotate"
+                        ]
+                      }
+                    },
+                    "delivery": {
+                      "type": "string",
+                      "enum": [
+                        "env",
+                        "file",
+                        "self"
+                      ]
+                    },
+                    "rotation": {
+                      "type": "object",
+                      "properties": {
+                        "tolerates": {
+                          "type": "string",
+                          "enum": [
+                            "restart",
+                            "reload"
+                          ]
+                        },
+                        "maxAge": {
+                          "type": "string",
+                          "pattern": "^\\d+(s|m|h)$"
+                        }
+                      },
+                      "required": [
+                        "tolerates"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "engine",
+                    "key",
+                    "operations",
+                    "delivery",
+                    "rotation"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "workloads"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "apiVersion",
+    "kind",
+    "schemaVersion",
+    "domain",
+    "owner",
+    "services"
+  ],
+  "additionalProperties": false,
+  "title": "Service Intent: Domain",
+  "$defs": {
+    "Service": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+        },
+        "observability": {
+          "type": "object",
+          "properties": {
+            "alertClass": {
+              "type": "string",
+              "enum": [
+                "business-hours",
+                "urgent",
+                "page"
+              ]
+            },
+            "scrape": {
+              "type": "object",
+              "properties": {
+                "workload": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+                },
+                "surface": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]*$"
+                },
+                "path": {
+                  "type": "string",
+                  "pattern": "^\\/"
+                }
+              },
+              "required": [
+                "workload",
+                "surface",
+                "path"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "alertClass"
+          ],
+          "additionalProperties": false
+        },
+        "exposure": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "host": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$"
+              },
+              "audience": {
+                "type": "string",
+                "enum": [
+                  "anonymous",
+                  "authenticated",
+                  "internal",
+                  "lan"
+                ]
+              },
+              "contentPolicy": {
+                "type": "string",
+                "enum": [
+                  "strict",
+                  "admin",
+                  "workflow"
+                ]
+              },
+              "routes": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "pattern": "^\\/"
+                    },
+                    "match": {
+                      "type": "string",
+                      "enum": [
+                        "prefix",
+                        "exact"
+                      ]
+                    },
+                    "workload": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+                    },
+                    "surface": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    },
+                    "audience": {
+                      "type": "string",
+                      "enum": [
+                        "anonymous",
+                        "authenticated",
+                        "internal",
+                        "lan"
+                      ]
+                    },
+                    "redirectTo": {
+                      "type": "string",
+                      "pattern": "^\\/"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "match",
+                    "workload",
+                    "surface"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "name",
+              "host",
+              "audience",
+              "routes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "workloads": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+              },
+              "lifecycle": {
+                "type": "string",
+                "enum": [
+                  "service",
+                  "job"
+                ]
+              },
+              "image": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9._-]*$"
+              },
+              "runtime": {
+                "type": "string",
+                "enum": [
+                  "jvm",
+                  "python",
+                  "node",
+                  "static",
+                  "none"
+                ]
+              },
+              "engine": {
+                "type": "string",
+                "enum": [
+                  "postgres",
+                  "rabbitmq",
+                  "valkey",
+                  "files"
+                ]
+              },
+              "startupBudget": {
+                "type": "string",
+                "pattern": "^\\d+(s|m|h)$"
+              },
+              "cutover": {
+                "type": "string",
+                "enum": [
+                  "rolling",
+                  "recreate"
+                ]
+              },
+              "writablePaths": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^\\/"
+                }
+              },
+              "provides": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]*$"
+                },
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                }
+              },
+              "sidecars": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+                    },
+                    "image": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+                    },
+                    "memory": {
+                      "type": "string",
+                      "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+                    },
+                    "cpu": {
+                      "type": "string",
+                      "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "image",
+                    "memory",
+                    "cpu"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "dependsOn": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "service": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+                    },
+                    "surface": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    },
+                    "required": {
+                      "default": true,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "service",
+                    "surface"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "probes": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "none"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "readiness": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string",
+                                "pattern": "^\\/"
+                              },
+                              "port": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 65535
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "port"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "tcp": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 65535
+                              }
+                            },
+                            "required": [
+                              "tcp"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "liveness": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string",
+                                "pattern": "^\\/"
+                              },
+                              "port": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 65535
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "port"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "tcp": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 65535
+                              }
+                            },
+                            "required": [
+                              "tcp"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "assets": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "type": "string",
+                      "pattern": "^[^/].*$"
+                    },
+                    "mountAt": {
+                      "type": "string",
+                      "pattern": "^\\/"
+                    }
+                  },
+                  "required": [
+                    "from",
+                    "mountAt"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "volumes": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "claim": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+                    },
+                    "mountAt": {
+                      "type": "string",
+                      "pattern": "^\\/"
+                    },
+                    "size": {
+                      "type": "string",
+                      "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+                    },
+                    "durability": {
+                      "type": "string",
+                      "enum": [
+                        "reconstructible",
+                        "recoverable",
+                        "irreplaceable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "claim",
+                    "mountAt",
+                    "size",
+                    "durability"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "placement": {
+                "type": "object",
+                "properties": {
+                  "memory": {
+                    "type": "string",
+                    "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+                  },
+                  "cpu": {
+                    "type": "string",
+                    "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+                  },
+                  "arch": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "amd64",
+                        "arm64"
+                      ]
+                    }
+                  },
+                  "site": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "disk": {
+                    "type": "object",
+                    "properties": {
+                      "media": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "nvme",
+                            "ssd",
+                            "hdd"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "media"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "gpu": {
+                    "type": "object",
+                    "properties": {
+                      "class": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "memory": {
+                        "type": "string",
+                        "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+                      }
+                    },
+                    "required": [
+                      "class",
+                      "memory"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "capabilities": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  }
+                },
+                "required": [
+                  "memory",
+                  "cpu"
+                ],
+                "additionalProperties": false
+              },
+              "replicas": {
+                "type": "object",
+                "properties": {
+                  "count": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 9007199254740991
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "count",
+                  "reason"
+                ],
+                "additionalProperties": false
+              },
+              "secrets": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "engine": {
+                          "default": "kv",
+                          "type": "string",
+                          "const": "kv"
+                        },
+                        "path": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "keys": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+                          }
+                        },
+                        "access": {
+                          "type": "string",
+                          "enum": [
+                            "read",
+                            "self-renew",
+                            "self-roll",
+                            "custody"
+                          ]
+                        },
+                        "mountAt": {
+                          "type": "string",
+                          "pattern": "^\\/"
+                        },
+                        "fileMode": {
+                          "type": "string",
+                          "pattern": "^0[0-7]{3}$"
+                        },
+                        "delivery": {
+                          "type": "string",
+                          "enum": [
+                            "env",
+                            "file",
+                            "self"
+                          ]
+                        },
+                        "rotation": {
+                          "type": "object",
+                          "properties": {
+                            "tolerates": {
+                              "type": "string",
+                              "enum": [
+                                "restart",
+                                "reload"
+                              ]
+                            },
+                            "maxAge": {
+                              "type": "string",
+                              "pattern": "^\\d+(s|m|h)$"
+                            }
+                          },
+                          "required": [
+                            "tolerates"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "keys",
+                        "access",
+                        "delivery",
+                        "rotation"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "engine": {
+                          "type": "string",
+                          "const": "database"
+                        },
+                        "role": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "mountAt": {
+                          "type": "string",
+                          "pattern": "^\\/"
+                        },
+                        "fileMode": {
+                          "type": "string",
+                          "pattern": "^0[0-7]{3}$"
+                        },
+                        "delivery": {
+                          "type": "string",
+                          "enum": [
+                            "env",
+                            "file",
+                            "self"
+                          ]
+                        },
+                        "rotation": {
+                          "type": "object",
+                          "properties": {
+                            "tolerates": {
+                              "type": "string",
+                              "enum": [
+                                "restart",
+                                "reload"
+                              ]
+                            },
+                            "maxAge": {
+                              "type": "string",
+                              "pattern": "^\\d+(s|m|h)$"
+                            }
+                          },
+                          "required": [
+                            "tolerates"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "engine",
+                        "role",
+                        "delivery",
+                        "rotation"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "engine": {
+                          "type": "string",
+                          "const": "transit"
+                        },
+                        "key": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "operations": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "sign",
+                              "verify",
+                              "encrypt",
+                              "decrypt",
+                              "rotate"
+                            ]
+                          }
+                        },
+                        "delivery": {
+                          "type": "string",
+                          "enum": [
+                            "env",
+                            "file",
+                            "self"
+                          ]
+                        },
+                        "rotation": {
+                          "type": "object",
+                          "properties": {
+                            "tolerates": {
+                              "type": "string",
+                              "enum": [
+                                "restart",
+                                "reload"
+                              ]
+                            },
+                            "maxAge": {
+                              "type": "string",
+                              "pattern": "^\\d+(s|m|h)$"
+                            }
+                          },
+                          "required": [
+                            "tolerates"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "engine",
+                        "key",
+                        "operations",
+                        "delivery",
+                        "rotation"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            },
+            "required": [
+              "name",
+              "lifecycle",
+              "image",
+              "runtime",
+              "startupBudget",
+              "cutover",
+              "probes",
+              "placement"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "secrets": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "engine": {
+                    "default": "kv",
+                    "type": "string",
+                    "const": "kv"
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "keys": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+                    }
+                  },
+                  "access": {
+                    "type": "string",
+                    "enum": [
+                      "read",
+                      "self-renew",
+                      "self-roll",
+                      "custody"
+                    ]
+                  },
+                  "mountAt": {
+                    "type": "string",
+                    "pattern": "^\\/"
+                  },
+                  "fileMode": {
+                    "type": "string",
+                    "pattern": "^0[0-7]{3}$"
+                  },
+                  "delivery": {
+                    "type": "string",
+                    "enum": [
+                      "env",
+                      "file",
+                      "self"
+                    ]
+                  },
+                  "rotation": {
+                    "type": "object",
+                    "properties": {
+                      "tolerates": {
+                        "type": "string",
+                        "enum": [
+                          "restart",
+                          "reload"
+                        ]
+                      },
+                      "maxAge": {
+                        "type": "string",
+                        "pattern": "^\\d+(s|m|h)$"
+                      }
+                    },
+                    "required": [
+                      "tolerates"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "path",
+                  "keys",
+                  "access",
+                  "delivery",
+                  "rotation"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "engine": {
+                    "type": "string",
+                    "const": "database"
+                  },
+                  "role": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "mountAt": {
+                    "type": "string",
+                    "pattern": "^\\/"
+                  },
+                  "fileMode": {
+                    "type": "string",
+                    "pattern": "^0[0-7]{3}$"
+                  },
+                  "delivery": {
+                    "type": "string",
+                    "enum": [
+                      "env",
+                      "file",
+                      "self"
+                    ]
+                  },
+                  "rotation": {
+                    "type": "object",
+                    "properties": {
+                      "tolerates": {
+                        "type": "string",
+                        "enum": [
+                          "restart",
+                          "reload"
+                        ]
+                      },
+                      "maxAge": {
+                        "type": "string",
+                        "pattern": "^\\d+(s|m|h)$"
+                      }
+                    },
+                    "required": [
+                      "tolerates"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "engine",
+                  "role",
+                  "delivery",
+                  "rotation"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "engine": {
+                    "type": "string",
+                    "const": "transit"
+                  },
+                  "key": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "operations": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "sign",
+                        "verify",
+                        "encrypt",
+                        "decrypt",
+                        "rotate"
+                      ]
+                    }
+                  },
+                  "delivery": {
+                    "type": "string",
+                    "enum": [
+                      "env",
+                      "file",
+                      "self"
+                    ]
+                  },
+                  "rotation": {
+                    "type": "object",
+                    "properties": {
+                      "tolerates": {
+                        "type": "string",
+                        "enum": [
+                          "restart",
+                          "reload"
+                        ]
+                      },
+                      "maxAge": {
+                        "type": "string",
+                        "pattern": "^\\d+(s|m|h)$"
+                      }
+                    },
+                    "required": [
+                      "tolerates"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "engine",
+                  "key",
+                  "operations",
+                  "delivery",
+                  "rotation"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "workloads"
+      ],
+      "additionalProperties": false
+    },
+    "Observability": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "alertClass": {
+          "type": "string",
+          "enum": [
+            "business-hours",
+            "urgent",
+            "page"
+          ]
+        },
+        "scrape": {
+          "type": "object",
+          "properties": {
+            "workload": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+            },
+            "surface": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^\\/"
+            }
+          },
+          "required": [
+            "workload",
+            "surface",
+            "path"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "alertClass"
+      ],
+      "additionalProperties": false
+    },
+    "Scrape": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "workload": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+        },
+        "surface": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^\\/"
+        }
+      },
+      "required": [
+        "workload",
+        "surface",
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "Workload": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+        },
+        "lifecycle": {
+          "type": "string",
+          "enum": [
+            "service",
+            "job"
+          ]
+        },
+        "image": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "runtime": {
+          "type": "string",
+          "enum": [
+            "jvm",
+            "python",
+            "node",
+            "static",
+            "none"
+          ]
+        },
+        "engine": {
+          "type": "string",
+          "enum": [
+            "postgres",
+            "rabbitmq",
+            "valkey",
+            "files"
+          ]
+        },
+        "startupBudget": {
+          "type": "string",
+          "pattern": "^\\d+(s|m|h)$"
+        },
+        "cutover": {
+          "type": "string",
+          "enum": [
+            "rolling",
+            "recreate"
+          ]
+        },
+        "writablePaths": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^\\/"
+          }
+        },
+        "provides": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          }
+        },
+        "sidecars": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+              },
+              "image": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9._-]*$"
+              },
+              "memory": {
+                "type": "string",
+                "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+              },
+              "cpu": {
+                "type": "string",
+                "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+              }
+            },
+            "required": [
+              "name",
+              "image",
+              "memory",
+              "cpu"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "dependsOn": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "service": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+              },
+              "surface": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "required": {
+                "default": true,
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "service",
+              "surface"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "probes": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "none"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "readiness": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "pattern": "^\\/"
+                        },
+                        "port": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 65535
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "port"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "tcp": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 65535
+                        }
+                      },
+                      "required": [
+                        "tcp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "liveness": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "pattern": "^\\/"
+                        },
+                        "port": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 65535
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "port"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "tcp": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 65535
+                        }
+                      },
+                      "required": [
+                        "tcp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "assets": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "pattern": "^[^/].*$"
+              },
+              "mountAt": {
+                "type": "string",
+                "pattern": "^\\/"
+              }
+            },
+            "required": [
+              "from",
+              "mountAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "volumes": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "claim": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+              },
+              "mountAt": {
+                "type": "string",
+                "pattern": "^\\/"
+              },
+              "size": {
+                "type": "string",
+                "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+              },
+              "durability": {
+                "type": "string",
+                "enum": [
+                  "reconstructible",
+                  "recoverable",
+                  "irreplaceable"
+                ]
+              }
+            },
+            "required": [
+              "claim",
+              "mountAt",
+              "size",
+              "durability"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "placement": {
+          "type": "object",
+          "properties": {
+            "memory": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+            },
+            "cpu": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+            },
+            "arch": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "amd64",
+                  "arm64"
+                ]
+              }
+            },
+            "site": {
+              "type": "string",
+              "minLength": 1
+            },
+            "disk": {
+              "type": "object",
+              "properties": {
+                "media": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "nvme",
+                      "ssd",
+                      "hdd"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "media"
+              ],
+              "additionalProperties": false
+            },
+            "gpu": {
+              "type": "object",
+              "properties": {
+                "class": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "memory": {
+                  "type": "string",
+                  "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+                }
+              },
+              "required": [
+                "class",
+                "memory"
+              ],
+              "additionalProperties": false
+            },
+            "capabilities": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              }
+            }
+          },
+          "required": [
+            "memory",
+            "cpu"
+          ],
+          "additionalProperties": false
+        },
+        "replicas": {
+          "type": "object",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 9007199254740991
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "count",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        "secrets": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "engine": {
+                    "default": "kv",
+                    "type": "string",
+                    "const": "kv"
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "keys": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+                    }
+                  },
+                  "access": {
+                    "type": "string",
+                    "enum": [
+                      "read",
+                      "self-renew",
+                      "self-roll",
+                      "custody"
+                    ]
+                  },
+                  "mountAt": {
+                    "type": "string",
+                    "pattern": "^\\/"
+                  },
+                  "fileMode": {
+                    "type": "string",
+                    "pattern": "^0[0-7]{3}$"
+                  },
+                  "delivery": {
+                    "type": "string",
+                    "enum": [
+                      "env",
+                      "file",
+                      "self"
+                    ]
+                  },
+                  "rotation": {
+                    "type": "object",
+                    "properties": {
+                      "tolerates": {
+                        "type": "string",
+                        "enum": [
+                          "restart",
+                          "reload"
+                        ]
+                      },
+                      "maxAge": {
+                        "type": "string",
+                        "pattern": "^\\d+(s|m|h)$"
+                      }
+                    },
+                    "required": [
+                      "tolerates"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "path",
+                  "keys",
+                  "access",
+                  "delivery",
+                  "rotation"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "engine": {
+                    "type": "string",
+                    "const": "database"
+                  },
+                  "role": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "mountAt": {
+                    "type": "string",
+                    "pattern": "^\\/"
+                  },
+                  "fileMode": {
+                    "type": "string",
+                    "pattern": "^0[0-7]{3}$"
+                  },
+                  "delivery": {
+                    "type": "string",
+                    "enum": [
+                      "env",
+                      "file",
+                      "self"
+                    ]
+                  },
+                  "rotation": {
+                    "type": "object",
+                    "properties": {
+                      "tolerates": {
+                        "type": "string",
+                        "enum": [
+                          "restart",
+                          "reload"
+                        ]
+                      },
+                      "maxAge": {
+                        "type": "string",
+                        "pattern": "^\\d+(s|m|h)$"
+                      }
+                    },
+                    "required": [
+                      "tolerates"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "engine",
+                  "role",
+                  "delivery",
+                  "rotation"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "engine": {
+                    "type": "string",
+                    "const": "transit"
+                  },
+                  "key": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "operations": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "sign",
+                        "verify",
+                        "encrypt",
+                        "decrypt",
+                        "rotate"
+                      ]
+                    }
+                  },
+                  "delivery": {
+                    "type": "string",
+                    "enum": [
+                      "env",
+                      "file",
+                      "self"
+                    ]
+                  },
+                  "rotation": {
+                    "type": "object",
+                    "properties": {
+                      "tolerates": {
+                        "type": "string",
+                        "enum": [
+                          "restart",
+                          "reload"
+                        ]
+                      },
+                      "maxAge": {
+                        "type": "string",
+                        "pattern": "^\\d+(s|m|h)$"
+                      }
+                    },
+                    "required": [
+                      "tolerates"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "engine",
+                  "key",
+                  "operations",
+                  "delivery",
+                  "rotation"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "name",
+        "lifecycle",
+        "image",
+        "runtime",
+        "startupBudget",
+        "cutover",
+        "probes",
+        "placement"
+      ],
+      "additionalProperties": false
+    },
+    "Capacity": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 9007199254740991
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "count",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "Sidecar": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+        },
+        "image": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "memory": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+        },
+        "cpu": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+        }
+      },
+      "required": [
+        "name",
+        "image",
+        "memory",
+        "cpu"
+      ],
+      "additionalProperties": false
+    },
+    "DependencyEdge": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "service": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+        },
+        "surface": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "required": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "service",
+        "surface"
+      ],
+      "additionalProperties": false
+    },
+    "Probe": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "pattern": "^\\/"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          },
+          "required": [
+            "path",
+            "port"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "tcp": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          },
+          "required": [
+            "tcp"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Asset": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "pattern": "^[^/].*$"
+        },
+        "mountAt": {
+          "type": "string",
+          "pattern": "^\\/"
+        }
+      },
+      "required": [
+        "from",
+        "mountAt"
+      ],
+      "additionalProperties": false
+    },
+    "Volume": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "claim": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+        },
+        "mountAt": {
+          "type": "string",
+          "pattern": "^\\/"
+        },
+        "size": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+        },
+        "durability": {
+          "type": "string",
+          "enum": [
+            "reconstructible",
+            "recoverable",
+            "irreplaceable"
+          ]
+        }
+      },
+      "required": [
+        "claim",
+        "mountAt",
+        "size",
+        "durability"
+      ],
+      "additionalProperties": false
+    },
+    "Placement": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "memory": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+        },
+        "cpu": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+        },
+        "arch": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "amd64",
+              "arm64"
+            ]
+          }
+        },
+        "site": {
+          "type": "string",
+          "minLength": 1
+        },
+        "disk": {
+          "type": "object",
+          "properties": {
+            "media": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "nvme",
+                  "ssd",
+                  "hdd"
+                ]
+              }
+            }
+          },
+          "required": [
+            "media"
+          ],
+          "additionalProperties": false
+        },
+        "gpu": {
+          "type": "object",
+          "properties": {
+            "class": {
+              "type": "string",
+              "minLength": 1
+            },
+            "memory": {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+            }
+          },
+          "required": [
+            "class",
+            "memory"
+          ],
+          "additionalProperties": false
+        },
+        "capabilities": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          }
+        }
+      },
+      "required": [
+        "memory",
+        "cpu"
+      ],
+      "additionalProperties": false
+    },
+    "DiskRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "media": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "nvme",
+              "ssd",
+              "hdd"
+            ]
+          }
+        }
+      },
+      "required": [
+        "media"
+      ],
+      "additionalProperties": false
+    },
+    "GpuRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "class": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi)?$"
+        }
+      },
+      "required": [
+        "class",
+        "memory"
+      ],
+      "additionalProperties": false
+    },
+    "Exposure": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "host": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$"
+        },
+        "audience": {
+          "type": "string",
+          "enum": [
+            "anonymous",
+            "authenticated",
+            "internal",
+            "lan"
+          ]
+        },
+        "contentPolicy": {
+          "type": "string",
+          "enum": [
+            "strict",
+            "admin",
+            "workflow"
+          ]
+        },
+        "routes": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^\\/"
+              },
+              "match": {
+                "type": "string",
+                "enum": [
+                  "prefix",
+                  "exact"
+                ]
+              },
+              "workload": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+              },
+              "surface": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "audience": {
+                "type": "string",
+                "enum": [
+                  "anonymous",
+                  "authenticated",
+                  "internal",
+                  "lan"
+                ]
+              },
+              "redirectTo": {
+                "type": "string",
+                "pattern": "^\\/"
+              }
+            },
+            "required": [
+              "path",
+              "match",
+              "workload",
+              "surface"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "name",
+        "host",
+        "audience",
+        "routes"
+      ],
+      "additionalProperties": false
+    },
+    "Route": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^\\/"
+        },
+        "match": {
+          "type": "string",
+          "enum": [
+            "prefix",
+            "exact"
+          ]
+        },
+        "workload": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+        },
+        "surface": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "audience": {
+          "type": "string",
+          "enum": [
+            "anonymous",
+            "authenticated",
+            "internal",
+            "lan"
+          ]
+        },
+        "redirectTo": {
+          "type": "string",
+          "pattern": "^\\/"
+        }
+      },
+      "required": [
+        "path",
+        "match",
+        "workload",
+        "surface"
+      ],
+      "additionalProperties": false
+    },
+    "Grant": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "engine": {
+              "default": "kv",
+              "type": "string",
+              "const": "kv"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "keys": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+              }
+            },
+            "access": {
+              "type": "string",
+              "enum": [
+                "read",
+                "self-renew",
+                "self-roll",
+                "custody"
+              ]
+            },
+            "mountAt": {
+              "type": "string",
+              "pattern": "^\\/"
+            },
+            "fileMode": {
+              "type": "string",
+              "pattern": "^0[0-7]{3}$"
+            },
+            "delivery": {
+              "type": "string",
+              "enum": [
+                "env",
+                "file",
+                "self"
+              ]
+            },
+            "rotation": {
+              "type": "object",
+              "properties": {
+                "tolerates": {
+                  "type": "string",
+                  "enum": [
+                    "restart",
+                    "reload"
+                  ]
+                },
+                "maxAge": {
+                  "type": "string",
+                  "pattern": "^\\d+(s|m|h)$"
+                }
+              },
+              "required": [
+                "tolerates"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "path",
+            "keys",
+            "access",
+            "delivery",
+            "rotation"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "engine": {
+              "type": "string",
+              "const": "database"
+            },
+            "role": {
+              "type": "string",
+              "minLength": 1
+            },
+            "mountAt": {
+              "type": "string",
+              "pattern": "^\\/"
+            },
+            "fileMode": {
+              "type": "string",
+              "pattern": "^0[0-7]{3}$"
+            },
+            "delivery": {
+              "type": "string",
+              "enum": [
+                "env",
+                "file",
+                "self"
+              ]
+            },
+            "rotation": {
+              "type": "object",
+              "properties": {
+                "tolerates": {
+                  "type": "string",
+                  "enum": [
+                    "restart",
+                    "reload"
+                  ]
+                },
+                "maxAge": {
+                  "type": "string",
+                  "pattern": "^\\d+(s|m|h)$"
+                }
+              },
+              "required": [
+                "tolerates"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "engine",
+            "role",
+            "delivery",
+            "rotation"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "engine": {
+              "type": "string",
+              "const": "transit"
+            },
+            "key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "operations": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "sign",
+                  "verify",
+                  "encrypt",
+                  "decrypt",
+                  "rotate"
+                ]
+              }
+            },
+            "delivery": {
+              "type": "string",
+              "enum": [
+                "env",
+                "file",
+                "self"
+              ]
+            },
+            "rotation": {
+              "type": "object",
+              "properties": {
+                "tolerates": {
+                  "type": "string",
+                  "enum": [
+                    "restart",
+                    "reload"
+                  ]
+                },
+                "maxAge": {
+                  "type": "string",
+                  "pattern": "^\\d+(s|m|h)$"
+                }
+              },
+              "required": [
+                "tolerates"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "engine",
+            "key",
+            "operations",
+            "delivery",
+            "rotation"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Rotation": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "tolerates": {
+          "type": "string",
+          "enum": [
+            "restart",
+            "reload"
+          ]
+        },
+        "maxAge": {
+          "type": "string",
+          "pattern": "^\\d+(s|m|h)$"
+        }
+      },
+      "required": [
+        "tolerates"
+      ],
+      "additionalProperties": false
+    },
+    "EnvFile": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "cluster": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entries": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "entries"
+      ],
+      "additionalProperties": false
+    },
+    "Placeholder": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "secret",
+            "dependency",
+            "exposure",
+            "identity"
+          ]
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "Surface": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      },
+      "required": [
+        "name",
+        "port"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

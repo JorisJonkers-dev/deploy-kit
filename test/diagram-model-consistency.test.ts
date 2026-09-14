@@ -8,6 +8,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { expect, test } from "vitest";
+import { METAMODEL } from "../src/wire/service-intent/schema.ts";
 
 const repo = join(import.meta.dirname, "..");
 const spec = join(repo, "spec", "v1");
@@ -159,85 +160,89 @@ test("every closed vocabulary names an attribute that exists", () => {
   expect(rows, "the vocabulary table did not parse").toBeGreaterThan(10);
 });
 
-test("a worked example authors no key the model does not carry", () => {
+/**
+ * Attributes the metamodel declares that the drawing deliberately does not draw
+ * as a row, and why. The chapter says the diagram "carries the classes and how
+ * they compose, and nothing else", so a composed child is an edge rather than a
+ * row and is excluded by the edge set below. These are the ones left over, and
+ * naming each with its reason is what stops a third joining them silently.
+ */
+const NOT_DRAWN_AS_A_ROW: Readonly<
+  Record<string, Readonly<Record<string, string>>>
+> = {
+  Domain: {
+    apiVersion: "the document's language tag, not something the model says",
+    kind: "the same: which language this file is written in",
+  },
+  Workload: {
+    probes:
+      "drawn as two edges, readiness and liveness, because a Probe is a class " +
+      "and the two are siblings that never fall back to one another",
+  },
+};
+
+/** Every attribute name a Zod schema declares, unioning a union's arms. */
+function declaredKeys(schema: unknown): string[] {
+  const def = (schema as { _zod?: { def?: Record<string, unknown> } })._zod
+    ?.def;
+  if (def === undefined) return [];
+  if (def["type"] === "object")
+    return Object.keys(def["shape"] as Record<string, unknown>);
+  if (Array.isArray(def["options"]))
+    return [...new Set((def["options"] as unknown[]).flatMap(declaredKeys))];
+  if (def["innerType"] !== undefined) return declaredKeys(def["innerType"]);
+  return [];
+}
+
+/** The composition-edge labels the mermaid draws out of each parent class. */
+function composedOut(): Record<string, Set<string>> {
+  const body =
+    /```mermaid\nclassDiagram\n([\s\S]*?)\n```/.exec(
+      read(join(spec, "10-service-intent.md")),
+    )?.[1] ?? "";
+  const out: Record<string, Set<string>> = {};
+  for (const m of body.matchAll(/(\w+) "[^"]+" \*-- "[^"]+" \w+ : (.+)/g))
+    (out[m[1] ?? ""] ??= new Set()).add((m[2] ?? "").trim());
+  return out;
+}
+
+test("the class diagram draws the classes and attributes the metamodel declares", () => {
+  // What the old check did by reading YAML indentation ("a worked example
+  // authors no key the model does not carry") the metamodel now does by
+  // construction: every class is a strict object, so a key no class carries is
+  // a document that does not parse, and test/intent-contract.test.ts proves it
+  // over every example at once. What is left for this file is the half that is
+  // genuinely two copies: the drawing and the declaration.
   const { classes } = mermaidModel();
-  const attributes = new Set(
-    Object.values(classes).flatMap((rows) =>
-      rows.map((row) => row.split(" ").pop() ?? ""),
-    ),
-  );
-  // Keys that structure the document rather than name an attribute, plus the
-  // author-chosen surface names under `provides` and the two probe roles.
-  const structural = new Set([
-    "apiVersion",
-    "kind",
-    "schemaVersion",
-    "domain",
-    "owner",
-    "services",
-    "workloads",
-    "provides",
-    "probes",
-    "placement",
-    "volumes",
-    "secrets",
-    "assets",
-    "exposure",
-    "routes",
-    "sidecars",
-    "observability",
-    "scrape",
-    "replicas",
-    "rotation",
-    "disk",
-    "gpu",
-    "dependsOn",
-    "env",
-    "expect",
-    "readiness",
-    "liveness",
-  ]);
-  const domainFiles = walk(join(spec, "examples")).filter((f) =>
-    f.endsWith(".domain.yml"),
-  );
+  expect(
+    Object.keys(classes).sort(),
+    "the drawing and the metamodel disagree about which classes exist",
+  ).toStrictEqual(Object.keys(METAMODEL.classes).sort());
 
-  const surfaces = new Set<string>();
-  for (const file of domainFiles) {
-    const lines = read(file).split("\n");
-    lines.forEach((line, i) => {
-      if (!/^ {8}provides:/.test(line)) return;
-      for (const next of lines.slice(i + 1)) {
-        const m = /^ {10}([a-zA-Z][\w-]*):\s*\d+/.exec(
-          next.split("#")[0] ?? "",
-        );
-        if (!m) break;
-        surfaces.add(m[1] ?? "");
-      }
-    });
+  const edges = composedOut();
+  const wrong: string[] = [];
+  for (const [name, rows] of Object.entries(classes)) {
+    const declared = new Set(
+      declaredKeys(METAMODEL.classes[name as keyof typeof METAMODEL.classes]),
+    );
+    const drawn = new Set(rows.map((row) => row.split(" ").pop() ?? ""));
+    for (const attribute of drawn)
+      if (!declared.has(attribute))
+        wrong.push(`${name}.${attribute}: drawn, and no class declares it`);
+    for (const attribute of declared) {
+      if (drawn.has(attribute)) continue;
+      if (edges[name]?.has(attribute) === true) continue;
+      if (attribute in (NOT_DRAWN_AS_A_ROW[name] ?? {})) continue;
+      wrong.push(`${name}.${attribute}: declared, and the drawing omits it`);
+    }
   }
+  expect(wrong, "the drawing and the metamodel disagree").toStrictEqual([]);
+});
 
-  const unknown: string[] = [];
-  for (const file of domainFiles) {
-    // A folded scalar's body is prose, not keys: `reason: >-` is followed by
-    // sentences, and one of them contains the word "availability:".
-    let fold = -1;
-    read(file)
-      .split("\n")
-      .forEach((line, i) => {
-        const indent = line.search(/\S/);
-        if (fold >= 0 && (indent === -1 || indent > fold)) return;
-        fold = -1;
-        const code = line.split("#")[0] ?? "";
-        if (/:\s*[|>][-+]?\s*$/.test(code)) fold = indent;
-        for (const m of code.matchAll(/([a-zA-Z][a-zA-Z0-9_]*)\s*:/g)) {
-          const key = m[1] ?? "";
-          if (attributes.has(key) || structural.has(key) || surfaces.has(key))
-            continue;
-          unknown.push(`${relative(repo, file)}:${i + 1}: authors \`${key}\``);
-        }
-      });
-  }
-  expect(unknown, "keys no class carries").toStrictEqual([]);
+test("every excluded attribute says why it is excluded", () => {
+  for (const [name, entries] of Object.entries(NOT_DRAWN_AS_A_ROW))
+    for (const [attribute, why] of Object.entries(entries))
+      expect(why.length, `${name}.${attribute}`).toBeGreaterThan(20);
 });
 
 test("every rendered kind is a column of the deliverables matrix", () => {

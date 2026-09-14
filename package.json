@@ -21,13 +21,14 @@
     "lint:requirements": "node scripts/lint-requirements.ts",
     "lint:rules": "node scripts/lint-rules.ts",
     "lint:docs": "node scripts/lint-docs.ts",
+    "lint:intent": "node scripts/lint-intent.ts",
     "lint:secrets": "node scripts/lint-secrets.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "verify": "npm run lint && npm run format:check && npm run typecheck && npm run lint:adrs && npm run lint:links && npm run lint:manifests && npm run lint:requirements && npm run lint:rules && npm run lint:docs && npm run lint:secrets && npm run lint:boundaries && npm run test:coverage"
+    "verify": "npm run lint && npm run format:check && npm run typecheck && npm run lint:adrs && npm run lint:links && npm run lint:manifests && npm run lint:requirements && npm run lint:rules && npm run lint:docs && npm run lint:intent && npm run lint:secrets && npm run lint:boundaries && npm run test:coverage"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
@@ -59,6 +60,7 @@
     "gitops"
   ],
   "dependencies": {
+    "yaml": "2.9.1",
     "zod": "^4.5.4"
   }
 }

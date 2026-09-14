@@ -80,7 +80,7 @@ contributes routes and exposures to both; it owns neither object.
 | `namespace.yaml` | `kubernetes` | `domain: data` → `data-system` | Nothing about the object. Which of the three Service directories owns it ([G-20](#g-20)) |
 | `networkpolicy.yaml` | **none**: `networking` is not a registered adapter ([G-35](#g-35)) | the non-authorable baseline; `podSelector: {}` is per domain | Which Service directory owns it ([G-20](#g-20)); the DNS selectors ([G-21](#g-21)); that it cannot be loaded non-enforcing ([G-29](#g-29)) |
 | `kustomization.yaml` | `kubernetes` | the Service list of the domain | Nothing it needs. It groups; it does not gate, and it does not separate ([G-01](#g-01)) |
-| `apps/platform-postgres/workload.yaml` | `kubernetes` | `lifecycle`, `image`, `runtime`, `provides` (×2 surfaces), `placement` (memory, cpu, arch, disk), `hardening` + its exception, `sidecars`, `probes` (tcp), `startupBudget`, `cutover`, `stateful`, `volumes`, `assets`, env file | the digest and repository path ([G-03](#g-03)); whether `stateful` means StatefulSet ([G-04](#g-04)); `replicas` ([G-05](#g-05)); a node label for `disk` ([G-06](#g-06)); the PV binding that actually places it ([G-07](#g-07)); the Asset's content hash ([G-08](#g-08)); which container gets which env key ([G-09](#g-09)); a sidecar-scoped identity and restart target ([G-02](#g-02)); a UID and an fsGroup ([G-15](#g-15)); where the hardening controls land ([G-16](#g-16)); the label set ([G-13](#g-13)) |
+| `apps/platform-postgres/workload.yaml` | `kubernetes` | `lifecycle`, `image`, `runtime`, `provides` (×2 surfaces), `placement` (memory, cpu, arch, disk), `hardening` + its exception, `sidecars`, `probes` (tcp), `startupBudget`, `cutover`, `volumes`, `assets`, env file | the digest and repository path ([G-03](#g-03)); whether a volume means StatefulSet ([G-04](#g-04)); `replicas` ([G-05](#g-05)); a node label for `disk` ([G-06](#g-06)); the PV binding that actually places it ([G-07](#g-07)); the Asset's content hash ([G-08](#g-08)); which container gets which env key ([G-09](#g-09)); a sidecar-scoped identity and restart target ([G-02](#g-02)); a UID and an fsGroup ([G-15](#g-15)); where the hardening controls land ([G-16](#g-16)); the label set ([G-13](#g-13)) |
 | `apps/platform-postgres/serviceaccount.yaml` | `kubernetes` | workload `name`, `domain` | `automountServiceAccountToken` ([G-14](#g-14)); any Role/RoleBinding ([G-35](#g-35)) |
 | `apps/platform-postgres/configmap.yaml` | `kubernetes` | `assets[0].from`, `.mountAt`, `.onChange` | the object's name: the content hash has no input here ([G-08](#g-08)); the file's 54 lines, which live in the Service repository; whether env literals belong here at all ([G-10](#g-10)); the `init-databases.sh` catalog ([G-11](#g-11)) |
 | `apps/platform-postgres/pvc.yaml` | `kubernetes` | `volumes[].claim`, `.durability` | `resources.requests.storage`: **the object does not apply without it** ([G-17](#g-17)); the durability annotation key ([G-18](#g-18)); the backup job the class demands ([G-12](#g-12)) |
@@ -88,13 +88,13 @@ contributes routes and exposures to both; it owns neither object.
 | `apps/platform-postgres/networkpolicy.yaml` | **none** ([G-35](#g-35)) | inbound `dependsOn` edges over the union (ingress), `scrape` (ingress), the grant set (egress), the baseline | five of the eight consumers ([G-22](#g-22)); that the Secret Store rule is wrong for `delivery: env` ([G-23](#g-23)); the platform-component selectors ([G-21](#g-21)) |
 | `apps/platform-postgres/vso.yaml` | `vso` | `secrets` (path, access, delivery, rotation), workload `name` | the object-naming rule ([G-24](#g-24)); one VaultAuth per estate vs per Workload ([G-25](#g-25)); the Vault policy and auth role, which nothing produces ([G-26](#g-26)); that the restart target is the database ([G-02](#g-02)) |
 | `apps/platform-postgres/kustomization.yaml` | `kubernetes` | the Service's emitted file set | who applies `vso.yaml` ([G-24](#g-24)) |
-| `apps/platform-rabbitmq/workload.yaml` | `kubernetes` | `lifecycle`, `image`, `runtime`, `provides` (×3), `placement` (memory, cpu), `hardening`, `probes`, `startupBudget`, `cutover`, `stateful`, `volumes` | the digest ([G-03](#g-03)); object kind ([G-04](#g-04)); `replicas` ([G-05](#g-05)); that the locked digest may not run on 3 of its 7 eligible nodes ([G-27](#g-27)); UID/fsGroup ([G-15](#g-15)); its env file, which the example set omits ([G-28](#g-28)) |
+| `apps/platform-rabbitmq/workload.yaml` | `kubernetes` | `lifecycle`, `image`, `runtime`, `provides` (×3), `placement` (memory, cpu), `hardening`, `probes`, `startupBudget`, `cutover`, `volumes` | the digest ([G-03](#g-03)); object kind ([G-04](#g-04)); `replicas` ([G-05](#g-05)); that the locked digest may not run on 3 of its 7 eligible nodes ([G-27](#g-27)); UID/fsGroup ([G-15](#g-15)); its env file, which the example set omits ([G-28](#g-28)) |
 | `apps/platform-rabbitmq/serviceaccount.yaml` | `kubernetes` | workload `name`, `domain` | `automountServiceAccountToken` ([G-14](#g-14)) |
 | `apps/platform-rabbitmq/pvc.yaml` | `kubernetes` | `volumes[].claim`, `.durability: recoverable` | `storage` ([G-17](#g-17)); the annotation key ([G-18](#g-18)); the backup job and sweep ([G-12](#g-12)) |
 | `apps/platform-rabbitmq/servicemonitor.yaml` | `prometheus` | `observability.scrape {workload: rabbitmq, surface: metrics, path}`, `provides` | cadence from the Platform document |
 | `apps/platform-rabbitmq/networkpolicy.yaml` | **none** ([G-35](#g-35)) | inbound edges, `exposure` (ingress from the tier), `scrape`, the baseline | consumers outside the union ([G-22](#g-22)); the edge selectors ([G-21](#g-21)) |
 | `apps/platform-rabbitmq/kustomization.yaml` | `kubernetes` | the emitted file set | - |
-| `apps/platform-valkey/workload.yaml` | `kubernetes` | `lifecycle`, `image`, `runtime`, `provides`, `placement` (memory, cpu), `hardening`, `probes`, `startupBudget`, `cutover`, `stateful`, `volumes` | the digest ([G-03](#g-03)); object kind ([G-04](#g-04)); `replicas` ([G-05](#g-05)); architecture vs digest ([G-27](#g-27)); its env file ([G-28](#g-28)) |
+| `apps/platform-valkey/workload.yaml` | `kubernetes` | `lifecycle`, `image`, `runtime`, `provides`, `placement` (memory, cpu), `hardening`, `probes`, `startupBudget`, `cutover`, `volumes` | the digest ([G-03](#g-03)); object kind ([G-04](#g-04)); `replicas` ([G-05](#g-05)); architecture vs digest ([G-27](#g-27)); its env file ([G-28](#g-28)) |
 | `apps/platform-valkey/serviceaccount.yaml` | `kubernetes` | workload `name`, `domain` | `automountServiceAccountToken` ([G-14](#g-14)) |
 | `apps/platform-valkey/pvc.yaml` | `kubernetes` | `volumes[].claim`, `.durability: reconstructible` | `storage` ([G-17](#g-17)); the annotation key ([G-18](#g-18)). **No backup job, and that is correct** |
 | `apps/platform-valkey/networkpolicy.yaml` | **none** ([G-35](#g-35)) | one inbound edge, the baseline | the same union problem, at its sharpest ([G-22](#g-22)) |
@@ -141,7 +141,7 @@ Reconcile Unit is derived as `apps-<domain>` (chapter 20), it is rendered by
   three independent releases;
 - the health timeout class is taken as *the strongest class across a Service's
   Workloads*, and no chapter says what happens when three **Services** share one
-  Kustomization. All three here are `stateful`, so 10m, and the disagreement does
+  Kustomization. All three here hold a volume, so 10m, and the disagreement does
   not surface, and it will on the first domain that mixes classes.
 
 Nothing in the rendered tree records which objects belong to which release. The
@@ -211,9 +211,11 @@ them; this render puts the warning in `pvc.yaml` where they will meet it.
 
 ## <a id="g-04"></a>G-04: Deployment or StatefulSet, and why this renders Deployment
 
-`platform-postgres` declares `stateful: true`, `cutover: recreate`, and one
-`ReadWriteOnce` volume. Chapter 20 derives the object kind from `lifecycle`,
-`stateful` and `volumes` and states no function over the three.
+`platform-postgres` declares `cutover: recreate` and one `ReadWriteOnce`
+volume. When this gap was written it also declared a `stateful: true` boolean,
+and chapter 20 derived the object kind from `lifecycle`, that boolean and
+`volumes` while stating no function over the three. The boolean is now deleted
+and the kind derives from `lifecycle` and `volumes`.
 
 **Rendered: `Deployment` with `strategy: {type: Recreate}`.** The reasoning, in
 order:
@@ -224,18 +226,19 @@ order:
   `Recreate` side. `cutover: recreate` records the same fact from the author's
   side, and the two agree here, and nothing checks that they always will. The
   current renderer reads an authored enum and inspects no volume, which is the
-  trap: a stateful Workload whose author forgets it gets `maxSurge: 1` against an
-  RWO volume, appears to work on one node, and wedges the first time a second
-  worker exists.
+  trap: a Workload holding a volume whose author declared the wrong cutover gets
+  `maxSurge: 1` against an RWO volume, appears to work on one node, and wedges
+  the first time a second worker exists. `E_CUTOVER_UNHONOURABLE` is what now
+  refuses the pair, and it reads the declared volumes rather than a boolean.
 - **`StatefulSet` buys nothing available here.** Its distinguishing feature is
   `volumeClaimTemplate`, which chapter 10 forbids outright, for a template ties the
   claim to the Workload's name, so a rename orphans the data. Its other effects (
   a headless Service, ordinal pod names, ordered rollout, stable network identity)
   are declared by nothing in layer 1 and consumed by nothing in this domain,
   which addresses its provider by the Workload's Service name.
-- **So `stateful: true` selects the 10m Flux health timeout class and nothing
-  else about this object.** That is the whole of its effect, and it is not what a
-  reader of the field expects.
+- **So the `stateful` boolean selected the 10m Flux health timeout class and
+  nothing else about this object.** That was the whole of its effect, and it was
+  not what a reader of the field expected, which is why the field is deleted.
 
 The same reasoning renders `platform-rabbitmq` and `platform-valkey` as
 Deployments. The cost is uniform and stated: **every roll of the estate's
@@ -293,7 +296,7 @@ both trace to that declaration. The id is not reused and nothing is renumbered.
 | [G-01](#g-01) | **Three Services release independently and reconcile as one unit.** Detailed above. Two derivations over one domain file disagree about what a unit is |
 | <a id="g-02"></a>G-02 | **A sidecar has no identity of its own, and no restart target.** [0064](../../../../../docs/adr/model/0064-sidecars-are-workload-vocabulary.md) grades the field: `postgres-exporter` now declares its own `memory`, `cpu` and `hardening`, those render as container-level `resources` and `securityContext`, and eligibility sums both containers (2112Mi, not 2Gi). Two things it deliberately does not answer. **Identity**: [0024](../../../../../docs/adr/model/0024-identity-per-workload.md) puts the ServiceAccount on the Workload, and a pod has one, so a grant scoped "to the exporter" is in practice held by the database container beside it, the boundary is a comment, not a control. **Restart target**: `rotation: {tolerates: restart}` on the exporter's grant derives `{kind: Deployment, name: postgres}`, which under `Recreate` takes the datastore down to rotate a read-only connection string. A sidecar-scoped restart target is not expressible. `probes` staying on the Workload is a decision rather than a gap: a failing exporter must not hold its Workload out of service |
 | <a id="g-03"></a>G-03 | **The image digests here are illustrative, and the repository paths are the lock's.** Three third-party aliases, `postgres` → pgvector, `rabbitmq`, `valkey`, plus `postgres-exporter`, resolve through an images lock this example set does not reproduce. Nothing in layer 1 names a registry, so `docker.io/pgvector/pgvector` and `quay.io/prometheuscommunity/postgres-exporter` are the lock's mapping standing in for a lock entry. Third-party is *not* a reason to float a tag: `pgvector/pgvector:pg17` moves on every upstream build and this Workload is `Recreate` on an RWO volume, so any reschedule is a fresh pull |
-| [G-04](#g-04) | **Deployment or StatefulSet is not derived, it is chosen.** Detailed above. `stateful: true` ends up selecting only a health timeout class |
+| [G-04](#g-04) | **Deployment or StatefulSet is not derived, it is chosen.** Detailed above. The `stateful` boolean ended up selecting only a health timeout class, and is deleted |
 | <a id="g-05"></a>G-05 | **`replicas` has no input in this domain.** The rule is "from `minAvailable`, bounded by the size of the eligible node set". No Workload here declares `minAvailable`, the field is ungraded, and the eligible sets are four and seven. `1` is rendered because an RWO volume forces it, so the number is right and the derivation that is supposed to produce it never ran. The same absence removes every PDB in the domain |
 | <a id="g-06"></a>G-06 | **The `disk` dimension has no node label.** `disk` is matched against `disks[].media` and `disks[].usable_gib` in the node contract, and no label expresses "carries a disk of media nvme or ssd with at least 100Gi usable", and a per-media boolean could express `media` as two ORed `nodeSelectorTerms` and could not express `size` at all. This render materialises the computed eligible set as `kubernetes.io/hostname In [four nodes]`. That is the set exactly, and it hard-codes four node names into the tree: a fifth node satisfying the dimension is not admitted until someone re-renders. Whether that is correct (a new node *is* a new node contract, hence a new render) or a defect is undecided. `arch` has the opposite problem, two label sources, `kubernetes.io/arch` and the node contract's 110 labels, 55 of them under a prefix named after an archived repository |
 | [G-07](#g-07) | **`disk` filters the first placement; the PV binding wins thereafter, and the tree says neither.** Detailed above, including `E_DISK_BINDING_CONFLICT` and the two `size` values that are not the same fact |

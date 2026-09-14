@@ -25,6 +25,14 @@
 # Companion env file (per Workload, like every env file):
 #   platform/env/postgres/base.env   -- examples/platform-postgres.base.env
 
+# The document says which language it is written in. `intent.jorisjonkers.dev`
+# is layer 1's own namespace, deliberately not the one three mutually
+# incompatible documents already shared (docs/adr/model/0003-three-layer-meta-model.md);
+# `kind` names the authored document, and chapter 40's `IntentFragment` is the
+# envelope that publishes it.
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Domain
+
 # The data model's own semver, not the toolkit's
 # (docs/adr/model/0039-artifact-schema-versioning.md).
 schemaVersion: 1.0.0
@@ -171,10 +179,11 @@ services:
         # the owner states the stop-then-start they already have.
         cutover: recreate
 
-        stateful: true
         volumes:
           - claim: postgres-data
             mountAt: /var/lib/postgresql/data
+            size: 100Gi              # a hard dimension, matched against the
+                                     # node contract's disks[].usable_gib
             durability: irreplaceable
             # The one fact only the owning Service knows
             # (docs/adr/model/0015-durability-class-per-volume.md); schedule, sweep
@@ -325,7 +334,6 @@ services:
         # would be E_CUTOVER_UNHONOURABLE, not a silent Recreate.
         cutover: recreate
 
-        stateful: true
         volumes:
           - claim: rabbitmq-data
             mountAt: /var/lib/rabbitmq
@@ -382,7 +390,6 @@ services:
         # stop-then-start costs a cold cache and nothing else.
         cutover: recreate
 
-        stateful: true
         volumes:
           - claim: valkey-data
             mountAt: /data

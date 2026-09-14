@@ -3,7 +3,13 @@
 # Otherwise valid and schema-complete, so composition reaches the identity check
 # rather than failing earlier for an unrelated reason. It must fail with
 # E_DUPLICATE_WORKLOAD_NAME and with nothing else.
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Domain
 schemaVersion: 1.0.0
+
+# A domain is exactly one fragment, so this refusal is decided by this document
+# alone and is raised as soon as it is read (spec/v1/40-composition.md#identity).
+expect: E_DUPLICATE_WORKLOAD_NAME
 
 # One file per domain (docs/adr/model/0063-intent-authored-per-domain.md). The
 # namespace derives from this header as agents-system, and the ServiceAccount
@@ -19,7 +25,6 @@ services:
   # (docs/adr/model/0062-service-is-the-release-unit.md). What is not ordinary is that
   # both name a Workload `api`.
   - id: agents-api
-    alertClass: urgent
     workloads:
       - name: api                       # -> agents-system.api
         lifecycle: service
@@ -27,12 +32,13 @@ services:
         runtime: jvm
         provides: {http: 8080}
         placement: {memory: 768Mi, cpu: 250m}
+        startupBudget: 600s
+        cutover: rolling
         probes:
           readiness: {path: /api/actuator/health/readiness, port: 8080}
           liveness:  {path: /api/actuator/health/liveness,  port: 8080}
 
   - id: lightrag
-    alertClass: business-hours
     workloads:
       - name: api                       # -> agents-system.api, ALREADY TAKEN
         lifecycle: service
@@ -40,6 +46,8 @@ services:
         runtime: python
         provides: {http: 9621}
         placement: {memory: 2Gi, cpu: 500m}
+        startupBudget: 600s
+        cutover: rolling
         probes:
           readiness: {path: /health, port: 9621}
           liveness:  {path: /health, port: 9621}

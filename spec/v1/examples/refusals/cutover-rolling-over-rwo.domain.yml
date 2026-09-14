@@ -31,8 +31,6 @@ services:
         lifecycle: service
         image: rolling-over-rwo-store
         runtime: static
-        engine: valkey
-        stateful: true
 
         provides:
           redis: 6379

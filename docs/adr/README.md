@@ -205,3 +205,4 @@ Decisions about the compiler's own structure, not about the model. Their
 | [0102](architecture/0102-the-gate-grows-with-the-code.md) | A new gate's script and its CI job land in the same pull request, and a test proves the two stay matched | settled |
 | [0103](architecture/0103-a-behaviour-ledger-names-what-a-test-proves.md) | A behaviour ledger names every guarantee and the test that proves it, and a meta test holds the two together | settled |
 | [0104](architecture/0104-every-enforced-rule-has-an-id-a-row-and-a-fixture.md) | Every enforced rule has an id, a ledger row and a fixture that proves it fires | settled |
+| [0105](architecture/0105-the-wire-schema-is-the-metamodel.md) | The wire schema is the metamodel, and the rules one document decides are a registry beside it | settled |

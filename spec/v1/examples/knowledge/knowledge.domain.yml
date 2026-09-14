@@ -20,6 +20,14 @@
 #   platform/env/knowledge-ingest-worker/base.env
 #     -- reproduced as examples/knowledge-ingest-worker.base.env
 
+# The document says which language it is written in. `intent.jorisjonkers.dev`
+# is layer 1's own namespace, deliberately not the one three mutually
+# incompatible documents already shared (docs/adr/model/0003-three-layer-meta-model.md);
+# `kind` names the authored document, and chapter 40's `IntentFragment` is the
+# envelope that publishes it.
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Domain
+
 # The data model's own semver, not the toolkit's
 # (docs/adr/model/0039-artifact-schema-versioning.md).
 schemaVersion: 1.0.0
@@ -283,7 +291,6 @@ services:
         # docs/adr/model/0078-engine-is-workload-vocabulary.md).
         engine: files
 
-        stateful: true
         volumes:
           - claim: knowledge-vault-clone
             mountAt: /var/lib/knowledge-vault

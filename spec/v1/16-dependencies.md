@@ -631,7 +631,6 @@ flowchart LR
         d_bud["startupBudget"]
         d_cut["cutover<br/>rolling | recreate"]
         d_life["lifecycle"]
-        d_sf["stateful"]
         d_vol["volumes + durability"]
         d_plc["placement<br/>hard dimensions:<br/>memory, cpu, arch,<br/>site, disk, gpu,<br/>capabilities"]
         d_rep["replicas<br/>count + reason"]

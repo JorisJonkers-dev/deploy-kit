@@ -25,7 +25,7 @@ below, and `npm run lint:boundaries` fails on a violation.
 |---|---|---|
 | `domain/` | layer 1 aggregates, layer 2 derivation, the ports the core declares | itself only |
 | `objects/` | the typed Kubernetes object model layer 3 builds | nothing |
-| `wire/` | Zod schemas per document family per `schemaVersion`, and the mappers into the domain | `domain/`, `zod` |
+| `wire/` | Zod schemas per document family per `schemaVersion`, the mappers into the domain, and the readers for the concrete syntax a document is written in | `domain/`, `zod`, `yaml` |
 | `adapters/` | the registered adapters, one directory each, shared code in `adapters/shared/` | `domain/`, `objects/`, `adapters/shared/` |
 | `application/` | the use-cases; orders derivation, performs no IO of its own | `domain/`, `wire/`, `adapters/`, `objects/` |
 | `infrastructure/` | port implementations: filesystem, `oras`, hashing, the serializer, the writer | `domain/`, `objects/` |
@@ -188,7 +188,7 @@ clean tree is untested: nothing proves it would fail.
 
 ## Gates
 
-Fourteen gates hold the structure, and each exists because its absence has already
+Fifteen gates hold the structure, and each exists because its absence has already
 cost something in the generation this compiler replaces. Each runs as its own
 CI job, aggregated by one required check that fails when any gate job fails,
 is cancelled, or is skipped
@@ -209,13 +209,14 @@ proves the two never drift apart.
 | requirements | `npm run lint:requirements` | a behaviour ledger row that no longer parses, names a missing or empty test, drifts from its stated count, or is cited by an id no row carries |
 | rules | `npm run lint:rules` | a [rule ledger](architecture-rules.md) row whose enforcer no longer exists, whose fixture no longer asserts on its witness, or that is pending with no ticket and no reason, and a rule the ruleset or the lint configuration enforces that no row claims |
 | docs | `npm run lint:docs` | a script, path, coverage number or Node version README.md or CONTRIBUTING.md name that no longer matches the repository |
+| intent | `npm run lint:intent` | a Service Intent document that no longer parses against the metamodel, a refusal fixture that fails with a code other than the one its `expect:` header names, an env file whose placeholder is not in the grammar, or a committed JSON Schema that differs from what the metamodel generates |
 | tests | `npm run test:coverage` | behaviour, plus the coverage ratchet |
 | package contents | `node scripts/check-package-contents.ts` | `npm pack` shipping a file outside `docs/adr/` and `spec/`, the boundary the package's `files` field states but does not enforce on its own |
 | actionlint | a pinned `actionlint` binary | invalid workflow syntax, an undefined `${{ }}` expression, a shellcheck finding inside a `run:` step |
 | secret scan | `npm run lint:secrets` | a committed secret matching the default ruleset, or this repository's own allowlist entries |
 
-Decisions, links, manifests, requirements, rules and docs share one CI job,
-`contracts`: all six check a document against a rule rather than code
+Decisions, links, manifests, requirements, rules, docs and intent share one CI
+job, `contracts`: all seven check a document against a rule rather than code
 against a graph.
 Boundaries runs alone as `architecture`, because it is the one gate that
 speaks for `docs/architecture.md` itself rather than for a document beside it.
