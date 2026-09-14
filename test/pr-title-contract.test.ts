@@ -238,9 +238,55 @@ describe("attributionFindings", () => {
     );
   });
 
+  it("finds a session link through an arbitrary subdomain", () => {
+    const findings = attributionFindings(
+      "See https://app.devin.ai/session/9 for the transcript",
+    );
+    expect(findings).toHaveLength(1);
+  });
+
+  it("finds every genuine multi-label host, dot and all", () => {
+    for (const url of [
+      "https://chat.openai.com/c/abc",
+      "https://jules.google.com/task/1",
+      "https://windsurf.com/session/1",
+    ])
+      expect(
+        attributionFindings(`See ${url} for the transcript`),
+        url,
+      ).toHaveLength(1);
+  });
+
   it("passes a link to anything that is not an agent session", () => {
     expect(
       attributionFindings("See https://github.com/org/repo/pull/1"),
+    ).toStrictEqual([]);
+  });
+
+  it("does not match a banned host sitting in another host's path", () => {
+    // Unanchored, "claude.ai" as a bare substring would also match here;
+    // the real host is evil.com, and claude.ai is only a path segment.
+    expect(
+      attributionFindings("See https://evil.com/claude.ai/x for details"),
+    ).toStrictEqual([]);
+  });
+
+  it("does not match a host name one character off from a real host", () => {
+    // An unescaped "." in "chat.openai.com" is a wildcard, so it would also
+    // match "chatXopenai.com". It must not.
+    expect(
+      attributionFindings("See https://chatXopenai.com/session for details"),
+    ).toStrictEqual([]);
+    expect(
+      attributionFindings("See https://julesXgoogle.com/session for details"),
+    ).toStrictEqual([]);
+  });
+
+  it("does not match a real host used as a prefix of someone else's domain", () => {
+    // claude.ai followed by another label, rather than a real host
+    // boundary, is claude.ai.evil.com, not a link to claude.ai.
+    expect(
+      attributionFindings("See https://claude.ai.evil.com/x for details"),
     ).toStrictEqual([]);
   });
 

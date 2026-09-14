@@ -90,20 +90,42 @@ function agentMarker(text: string): string | undefined {
 
 const CO_AUTHOR_LINE = /^co-authored-by:\s*(.+)$/i;
 const BANNER_LINE = /\bgenerated\s+(with|by|using)\b/i;
+
+/**
+ * Escape every regex metacharacter in `text` (including backslash itself),
+ * so it can be dropped into a `RegExp` and only ever match itself. The
+ * canonical escape-string-regexp shape: escaping only some characters (a
+ * dot, say) leaves the rest live, which is exactly what let a bare
+ * `chat.openai.com` also match `chatXopenai.com`.
+ */
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 const SESSION_HOSTS: readonly string[] = [
   "claude.ai",
   "chatgpt.com",
   "chat.openai.com",
   "devin.ai",
-  "app.devin.ai",
   "cursor.sh",
   "windsurf.com",
   "windsurf.ai",
   "aider.chat",
   "jules.google.com",
 ];
+
+// A host matches only at a real host boundary: right after `scheme://`, an
+// optional run of `label.` subdomain segments (so `app.devin.ai` still
+// matches `devin.ai`), the escaped host itself, and then `/`, `:`,
+// whitespace or the end of the string. Unanchored, a bare host substring
+// also matches a banned host sitting in another host's path
+// (`https://evil.com/claude.ai/x`), which is a spoof in one direction, and
+// an unescaped dot lets a host match one character off
+// (`chatXopenai.com` for `chat.openai.com`), a spoof in the other.
 const SESSION_LINK = new RegExp(
-  `https?://\\S*(?:${SESSION_HOSTS.map((host) => host.replace(/\./g, "\\.")).join("|")})\\S*`,
+  "https?://(?:[a-z0-9-]+\\.)*(?:" +
+    SESSION_HOSTS.map(escapeRegExp).join("|") +
+    ")(?=[/:\\s]|$)",
   "i",
 );
 
