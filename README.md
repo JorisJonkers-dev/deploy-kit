@@ -79,13 +79,15 @@ business. The parked direction work is in
 ## Local checks
 
 ```bash
-nvm use             # the exact Node version in .nvmrc
+nvm use             # Node 24.21.0, pinned in .nvmrc
 npm ci
 npm run verify      # lint, format, typecheck, ADR contract, tests + coverage
 ```
 
 `npm run lint:adrs` alone runs the decision-record contract, and `npm test`
-runs the suite without the coverage thresholds.
+runs the suite without enforcing coverage. `npm run test:coverage` (part of
+`npm run verify`) enforces the ratchet in `vitest.config.ts`: statements
+96.9%, branches 86.52%, functions 100%, lines 96.59%.
 
 ## Conventions
 
