@@ -51,7 +51,7 @@ which domain a decision lives in.
 | directory | holds | `normative:` pointers resolve against | linted |
 |---|---|---|---|
 | [`model/`](model/) | the v1 model: the layers, composition, derivation, the adapters | `spec/v1/` | yes |
-| [`architecture/`](architecture/) | the compiler's own structure: layering, ports, error model, gates | `docs/architecture.md` | yes |
+| [`architecture/`](architecture/) | the compiler's own structure: layering, ports, error model, gates | `docs/architecture.md`, `docs/architecture-rules.md` | yes |
 | [`deferred/`](deferred/README.md) | delivery mechanics and co-testing, defined separately | sections these chapters deliberately lack | no |
 
 ## Premises
@@ -204,3 +204,4 @@ Decisions about the compiler's own structure, not about the model. Their
 | [0101](architecture/0101-coverage-is-a-ratchet.md) | Coverage is a ratchet: the thresholds sit on what the suite reaches, and only rise | settled |
 | [0102](architecture/0102-the-gate-grows-with-the-code.md) | A new gate's script and its CI job land in the same pull request, and a test proves the two stay matched | settled |
 | [0103](architecture/0103-a-behaviour-ledger-names-what-a-test-proves.md) | A behaviour ledger names every guarantee and the test that proves it, and a meta test holds the two together | settled |
+| [0104](architecture/0104-every-enforced-rule-has-an-id-a-row-and-a-fixture.md) | Every enforced rule has an id, a ledger row and a fixture that proves it fires | settled |

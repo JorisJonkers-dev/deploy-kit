@@ -20,11 +20,11 @@
 //
 // A library first, like the other gates: tests call lintRequirements() in
 // -process, and `node scripts/lint-requirements.ts [root]` is the command.
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isEntrypoint } from "./lib/entrypoint.ts";
 import { processOutput, type GateOutput } from "./lib/output.ts";
+import { danglingCitations, trackedText } from "./lib/tracked.ts";
 
 /** One row of the ledger: an id, its guarantee, and the test that proves it. */
 export interface RequirementRow {
@@ -93,48 +93,15 @@ export function parseRequirements(text: string): {
 }
 
 /**
- * Every id cited outside the row that declares it, across the tracked tree,
- * that no row carries. Pure over a {rel: content} map, so it is testable
- * against a synthetic tree the way emdash.test.ts's offendersIn() is.
+ * Every REQ id cited outside the row that declares it, across the tracked
+ * tree, that no row carries. Pure over a {rel: content} map, so it is
+ * testable against a synthetic tree the way emdash.test.ts's offendersIn() is.
  */
 export function citationErrors(
   files: Readonly<Record<string, string>>,
   ids: ReadonlySet<string>,
 ): string[] {
-  const errors: string[] = [];
-  const reported = new Set<string>();
-  // Object keys are unique paths, so two entries are never equal: a strict
-  // less-than is enough to order them, with no equal case to fall through to.
-  const entries = Object.entries(files).sort(([a], [b]) => (a < b ? -1 : 1));
-  for (const [rel, content] of entries) {
-    for (const match of content.matchAll(CITATION)) {
-      const id = match[0];
-      const key = `${rel}\0${id}`;
-      if (ids.has(id) || reported.has(key)) continue;
-      reported.add(key);
-      errors.push(`${rel} cites ${id}, which no row carries`);
-    }
-  }
-  return errors;
-}
-
-/** Every tracked file's text, keyed by its path relative to `root`. */
-function trackedText(root: string): Record<string, string> {
-  const files: Record<string, string> = {};
-  const tracked = execFileSync("git", ["ls-files", "-z"], {
-    cwd: root,
-    encoding: "utf8",
-  }).split("\0");
-  for (const rel of tracked) {
-    if (rel === "") continue;
-    try {
-      files[rel] = readFileSync(join(root, rel), "utf8");
-    } catch {
-      // A path that cannot be read as text (a symlink to nowhere, a
-      // directory entry) carries no citation either way.
-    }
-  }
-  return files;
+  return danglingCitations(files, ids, CITATION);
 }
 
 /** Lint the behaviour ledger under `root`. */

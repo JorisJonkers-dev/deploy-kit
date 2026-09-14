@@ -27,11 +27,17 @@ interface AdrFile {
 const REPOSITORY = join(import.meta.dirname, "..");
 
 // One directory per decision domain, and the domain decides which normative
-// root a pointer must resolve against. `deferred` is parked direction work: it
+// roots a pointer may resolve against. `deferred` is parked direction work: it
 // is not linted, and its pointers name sections spec/v1 deliberately lacks.
+//
+// An architecture ADR may point at either normative document for code: the
+// structure itself, or the ledger of rules that structure is held to.
 const DOMAINS = [
-  { domain: "model", normativeRoot: "spec/v1/" },
-  { domain: "architecture", normativeRoot: "docs/architecture.md" },
+  { domain: "model", normativeRoots: ["spec/v1/"] },
+  {
+    domain: "architecture",
+    normativeRoots: ["docs/architecture.md", "docs/architecture-rules.md"],
+  },
 ] as const;
 
 const SECTIONS = [
@@ -92,12 +98,12 @@ export function lintAdrs(root: string): AdrLintResult {
   for (const stray of listing(adrDir).filter(isAdrName))
     err(stray, "ADR outside a domain directory");
 
-  const files = DOMAINS.flatMap(({ domain, normativeRoot }) =>
+  const files = DOMAINS.flatMap(({ domain, normativeRoots }) =>
     listing(join(adrDir, domain))
       .filter(isAdrName)
       .map((name) => ({
         domain,
-        normativeRoot,
+        normativeRoots,
         name,
         rel: posix.join(domain, name),
       })),
@@ -139,7 +145,7 @@ export function lintAdrs(root: string): AdrLintResult {
   const premises = new Set<string>();
   const decisions: { readonly rel: string; readonly restsOn: string[] }[] = [];
 
-  for (const { domain, normativeRoot, name, rel } of files) {
+  for (const { domain, normativeRoots, name, rel } of files) {
     const text = readFileSync(join(adrDir, domain, name), "utf8");
     const block = /^---\n([\s\S]*?)\n---\n/.exec(text);
     if (!block) {
@@ -242,8 +248,11 @@ export function lintAdrs(root: string): AdrLintResult {
     // -- the normative target and its anchor exist, under this domain's root
     if (normative) {
       const [target = "", anchor] = normative.split("#");
-      if (!target.startsWith(normativeRoot))
-        err(rel, `normative target '${target}' is outside '${normativeRoot}'`);
+      if (!normativeRoots.some((root) => target.startsWith(root)))
+        err(
+          rel,
+          `normative target '${target}' is outside '${normativeRoots.join(", ")}'`,
+        );
       const anchors = anchorsOf(join(root, target));
       if (anchors === null)
         err(rel, `normative target '${target}' does not exist`);

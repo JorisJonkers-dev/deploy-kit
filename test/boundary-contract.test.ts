@@ -255,6 +255,24 @@ describe("the boundary lint", () => {
     expect(output).toMatch(/no-dev-dependency-in-src/);
   });
 
+  it("fails a package an architecture decision already rejected", () => {
+    const { code, output } = cruise({
+      "src/infrastructure/render.ts": mod(["handlebars"]),
+      "src/cli/index.ts": mod(["../infrastructure/render.js"]),
+    });
+    expect(code).not.toBe(0);
+    expect(output).toMatch(/no-denied-dependency/);
+  });
+
+  it("fails an import that resolves to nothing", () => {
+    const { code, output } = cruise({
+      "src/infrastructure/writer.ts": mod(["./gone.js"]),
+      "src/cli/index.ts": mod(["../infrastructure/writer.js"]),
+    });
+    expect(code).not.toBe(0);
+    expect(output).toMatch(/no-unresolvable-import/);
+  });
+
   it("fails a deprecated node builtin", () => {
     const { code, output } = cruise({
       "src/infrastructure/idna.ts": mod(["punycode"]),
