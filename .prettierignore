@@ -1,6 +1,7 @@
 # Generated
 CHANGELOG.md
 coverage/
+**/target/
 dist/
 node_modules/
 .github-workflows/
@@ -16,6 +17,7 @@ spec/
 # and keep the same style.
 .github/workflows/
 .github/actions/
+.github/codeql/
 
 # Scratch. `.tmp/` is a working directory, not a deliverable, and its contents
 # are whatever a tool last dropped there.

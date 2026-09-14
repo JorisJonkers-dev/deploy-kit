@@ -1,4 +1,9 @@
-# CodeQL static analysis: JavaScript, TypeScript, and the workflow logic.
+# CodeQL static analysis: JavaScript, TypeScript, the workflow logic, and the
+# model-driven implementation's Java under emf/.
+#
+# Every language is analysed without a build (`build-mode: none`), so Tycho and
+# p2 resolution can never break the scan. Generated sources and build output
+# are ignored through .github/codeql/codeql-config.yml.
 # Runs on pull requests and on a weekly schedule, out of band from `Pipeline
 # Complete`, so a CodeQL finding never blocks a merge while results land in the
 # repository's Security tab.
@@ -14,6 +19,8 @@
       - '**.mjs'
       - '**.ts'
       - '.github/workflows/*.yml'
+      - '.github/codeql/**'
+      - 'emf/**'
   'schedule':
     - 'cron': '22 3 * * 1'
 
@@ -36,6 +43,7 @@
         'include':
           - 'language': 'javascript-typescript'
           - 'language': 'actions'
+          - 'language': 'java-kotlin'
 
     'steps':
       - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
@@ -44,10 +52,9 @@
         'uses': 'github/codeql-action/init@faaca9a8f6edddba5725ffe5adefdab6669a2eca' # v3.38.0
         'with':
           'languages': '${{ matrix.language }}'
+          'build-mode': 'none'
           'queries': 'security-and-quality'
-
-      - 'name': 'Autobuild'
-        'uses': 'github/codeql-action/autobuild@faaca9a8f6edddba5725ffe5adefdab6669a2eca' # v3.38.0
+          'config-file': './.github/codeql/codeql-config.yml'
 
       - 'name': 'Perform CodeQL Analysis'
         'uses': 'github/codeql-action/analyze@faaca9a8f6edddba5725ffe5adefdab6669a2eca' # v3.38.0

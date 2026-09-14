@@ -77,3 +77,7 @@ coverage/
 
 # Scratch
 .tmp/
+
+# Maven wrapper: the model-driven build uses the script-only wrapper, so no jar
+# is ever committed.
+.mvn/wrapper/maven-wrapper.jar

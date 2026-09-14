@@ -66,8 +66,10 @@ from the day it lands and deleted at its sunset:
 
 - **The root stays TypeScript.** Every pom, module, check, ledger and decision
   of the Java side lives under `emf/`. The root references it only from CI
-  (the `emf` job and the `emf` ADR lint step), the `emf` domain in
-  `scripts/lint-adrs.ts` and its test, and
+  (the `emf` job, the `emf` ADR lint step and CodeQL's `java-kotlin` entry),
+  `test/emf-wiring.test.ts` with its ledger rows, the `emf` domain in
+  `scripts/lint-adrs.ts` and its test, the release-please and Renovate
+  configuration, and
   [`docs/architecture.md#the-parity-contract`](docs/architecture.md#the-parity-contract).
 - **Never generate one implementation from the other.** Both are tested,
   separately, against committed oracle files under `spec/v1/examples/`.

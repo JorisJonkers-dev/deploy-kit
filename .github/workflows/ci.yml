@@ -232,6 +232,31 @@
             | tar -xz gitleaks
           GITLEAKS="${PWD}/gitleaks" npm run lint:secrets
 
+  # The model-driven implementation under emf/ (docs/adr/emf/0107): its own
+  # Maven build, JDK and gates, deleted with the directory at its sunset.
+  # Every gate it runs is listed in emf/docs/rules.md; the thresholds are in
+  # emf/pom.xml. test/emf-wiring.test.ts proves this step names a real build.
+  'emf':
+    'name': 'Model-driven build'
+    'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 20
+    'permissions':
+      'contents': 'read'
+    'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+      - 'uses': 'actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6' # v6.0.1
+        'with':
+          'distribution': 'temurin'
+          'java-version-file': 'emf/.java-version'
+          'cache': 'maven'
+          'cache-dependency-path': 'emf/**/pom.xml'
+      - 'name': 'Verify'
+        'working-directory': 'emf'
+        'run': './mvnw -B -ntp verify'
+      - 'name': 'Summary'
+        'if': 'always()'
+        'run': 'emf/scripts/summary.sh >> "$GITHUB_STEP_SUMMARY"'
+
   'pipeline-complete':
     'name': 'Pipeline Complete'
     'runs-on': 'ubuntu-latest'
@@ -248,6 +273,7 @@
       - 'package-contents'
       - 'actionlint'
       - 'secret-scan'
+      - 'emf'
     # Runs even when a dependency failed or was cancelled: the branch ruleset
     # names this job, so it has to run and report failure rather than being
     # skipped alongside whatever it depends on.

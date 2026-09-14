@@ -261,7 +261,7 @@ lists cases says so rather than skipping it silently.
 
 ## Gates
 
-Fourteen gates hold the structure, and each exists because its absence has already
+Fifteen gates hold the structure, and each exists because its absence has already
 cost something in the generation this compiler replaces. Each runs as its own
 CI job, aggregated by one required check that fails when any gate job fails,
 is cancelled, or is skipped
@@ -286,12 +286,15 @@ proves the two never drift apart.
 | package contents | `node scripts/check-package-contents.ts` | `npm pack` shipping a file outside `docs/adr/` and `spec/`, the boundary the package's `files` field states but does not enforce on its own |
 | actionlint | a pinned `actionlint` binary | invalid workflow syntax, an undefined `${{ }}` expression, a shellcheck finding inside a `run:` step |
 | secret scan | `npm run lint:secrets` | a committed secret matching the default ruleset, or this repository's own allowlist entries |
+| model-driven build | `./mvnw -B -ntp verify` in `emf/` | every gate the [model-driven implementation](../emf/docs/architecture.md#gates) holds itself to: toolchain versions, compiler warnings, tests, coverage and mutation floors, formatting |
 
 Decisions, links, manifests, requirements, rules and docs share one CI job,
 `contracts`: all six check a document against a rule rather than code
 against a graph.
 Boundaries runs alone as `architecture`, because it is the one gate that
 speaks for `docs/architecture.md` itself rather than for a document beside it.
+The model-driven build runs alone as `emf`, on its own JDK and Maven, and is
+deleted with `emf/`.
 
 Every rule these gates enforce is written down once, with a greppable id, in
 the [rule ledger](architecture-rules.md)
