@@ -41,3 +41,4 @@ taking a number, check both registers.
 | [0112](emf/0112-qvto-derives-the-resolved-deployment.md) | QVT-Operational derives the Resolved Deployment | open |
 | [0113](emf/0113-acceleo-4-renders-the-deliverable-set.md) | Acceleo 4 renders the Deliverable Set, byte for byte against the committed tree | open |
 | [0114](emf/0114-model-behaviours-have-a-java-witness.md) | Every model behaviour in the behaviour ledger has a Java witness, listed inside `emf/` | open |
+| [0115](emf/0115-the-emf-gates-are-estate-shaped.md) | The model-driven build carries the gates the estate's JVM repositories enforce, plus Java-shaped equivalents, and measures its thresholds | open |

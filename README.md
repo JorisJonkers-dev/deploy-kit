@@ -24,6 +24,7 @@ lands, the **compiler** that turns that model into deployable artifacts.
 | [`spec/v1/diagrams/`](spec/v1/diagrams/README.md) | One drawn diagram per chapter, as an SVG with the editable draw.io diagram embedded. One palette; colour carries the layer. |
 | [`spec/v1/examples/minimal/`](spec/v1/examples/minimal/README.md) | The smallest complete Application: one project, one Application, one Process, 26 authored lines reaching 10 objects. |
 | [`spec/v1/examples/`](spec/v1/examples) | Worked examples: real Applications from this estate, written in the model. |
+| [`emf/`](emf/README.md) | The model-driven implementation: a Java build on Ecore, Xtext, OCL, QVT-Operational and Acceleo, held to parity with the production implementation and deleted after the course. |
 | [`scripts/`](scripts/) | The gates: the ADR contract, links, manifests and layer boundaries. TypeScript that Node runs directly ([tooling](docs/architecture.md#tooling)). |
 
 ## The shape of the model

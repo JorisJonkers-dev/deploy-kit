@@ -1,4 +1,12 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>JorisJonkers-dev/renovate-config"]
+  "extends": ["github>JorisJonkers-dev/renovate-config"],
+  "packageRules": [
+    {
+      "description": "The model-driven build under emf/ is deleted at its sunset (emf/docs/adr/emf/0107); its Maven and wrapper updates travel together.",
+      "matchManagers": ["maven", "maven-wrapper"],
+      "matchFileNames": ["emf/**"],
+      "groupName": "emf maven"
+    }
+  ]
 }

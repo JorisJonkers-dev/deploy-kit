@@ -31,9 +31,14 @@ The tree is deleted in one pull request when both of these hold:
 What that pull request keeps: every oracle file under `spec/v1/examples/`, the
 constraint ledger without its OCL column, and the descriptor check. What it
 deletes: this directory; the `emf` CI job and the `ADR contract (emf)` step in
-`.github/workflows/ci.yml`; the `emf` domain entry in `scripts/lint-adrs.ts`
-and the two `emf/` cases in `test/adr-contract.test.ts`; and the `emf/`
-mentions in `docs/requirements.md`, `docs/adr/README.md` and `CLAUDE.md`.
+`.github/workflows/ci.yml`; the `java-kotlin` entry in
+`.github/workflows/codeql.yml`; `test/emf-wiring.test.ts`, with `RULE-061`,
+`RULE-062` and `REQ-015`; the `emf` domain entry in `scripts/lint-adrs.ts` and
+the two `emf/` cases in `test/adr-contract.test.ts`; the `emf` exclusion in
+`release-please-config.json`, the `emf maven` rule in `renovate.json`, the
+`/emf/` line in `.github/CODEOWNERS` and the `mvnw` line in `.gitattributes`;
+and the `emf/` mentions in `docs/architecture.md`, `docs/requirements.md`,
+`docs/adr/README.md`, `README.md`, `CONTEXT.md` and `CLAUDE.md`.
 
 ## Toolchain
 
@@ -47,8 +52,11 @@ existing Maven projects, the metamodels open, the Xtext-generated editor reports
 OCL constraint violations while a source file is edited, and committed launch
 configurations run the transformation and the generator.
 
-The first change to this tree is a walking skeleton that proves each tool runs
-headless in CI before any model work depends on it: an `.ecore` loads, an OCL
+The first change to this tree is the **EMF scaffold**: the Maven reactor, the
+wrapper, the gates and the `emf` CI job, with no EMF dependency and one module,
+`parity`, holding the canonical JSON writer and the ledger checks. The second is
+the **walking skeleton**, which proves each tool runs headless in CI before any
+model work depends on it: an `.ecore` loads, an OCL
 invariant fires, the Xtext parser reads a three-line document, a QVTo identity
 transformation runs, and an Acceleo template writes one file.
 
@@ -161,7 +169,28 @@ that does not exist or an id that no row carries.
 
 ## Gates
 
-One CI job, `emf`, runs `mvn verify` in `emf/` on JDK 21 and is required by
-`Pipeline Complete`. It runs every JUnit suite, the parity suites and the
-ledger checks above. The ADR lint for `emf/docs/adr/` runs in the existing
-`contracts` job, as `node scripts/lint-adrs.ts emf`.
+One CI job, `emf`, runs `./mvnw -B -ntp verify` in `emf/` on the JDK named by
+`emf/.java-version` and is required by `Pipeline Complete`. The wrapper
+downloads the Maven distribution pinned by checksum; no wrapper jar is
+committed. The job writes one line to its summary: tests, line coverage and
+mutation score, from `scripts/summary.sh`. The ADR lint for `emf/docs/adr/` runs
+in the existing `contracts` job, as `node scripts/lint-adrs.ts emf`.
+
+`verify` runs these gates, in this order, and fails on the first that does not
+hold ([0115](adr/emf/0115-the-emf-gates-are-estate-shaped.md)):
+
+| gate | plugin | fails when |
+|---|---|---|
+| toolchain | `maven-enforcer-plugin` | the JDK is not 21, Maven is not 3.9, a plugin version is unpinned, dependency versions do not converge, or anything declares a distribution target |
+| compile | `maven-compiler-plugin` | any `-Xlint:all` warning |
+| tests | `maven-surefire-plugin` | a JUnit test fails, including the ArchUnit module rules and the ledger checks |
+| format | `spotless-maven-plugin` | Java source differs from palantir-java-format; `./mvnw spotless:apply` fixes it |
+| coverage | `jacoco-maven-plugin` | line or branch coverage falls below the floor in `emf/pom.xml` |
+| mutation | `pitest-maven` | the mutation score falls below the threshold in `emf/pom.xml` |
+
+Every rule these gates enforce is listed in [the rule ledger](rules.md), and
+every model behaviour's Java proof in [the witness list](witnesses.md).
+
+CodeQL analyses the Java under `emf/` as `java-kotlin` with no build, ignoring
+build output and generated sources; `test/emf-wiring.test.ts` at the root holds
+that configuration and the `emf` job to the tree they describe.

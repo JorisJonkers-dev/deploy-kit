@@ -1,0 +1,32 @@
+# Rule ledger
+
+The rules the model-driven build enforces on itself. The root
+[rule ledger](../../docs/architecture-rules.md) holds the rules the root
+enforces, including the two that watch this build from outside; the rules
+here are enforced by Maven inside `emf/` and deleted with it
+([0115](adr/emf/0115-the-emf-gates-are-estate-shaped.md)).
+
+A row names the file that enforces the rule, relative to `emf/`, and the
+literal in that file that does the enforcing. `Ledgers.checkRules` in
+`parity/` fails the build when a file no longer exists or no longer contains
+its literal, so a gate cannot be removed while its row stays. That the rule
+fires is shown once, by breaking it, in the pull request that adds it.
+
+This ledger holds **14** rules.
+
+| id | rule | enforcer | witness |
+|---|---|---|---|
+| EMF-001 | The build runs on JDK 21 and no other major version | `pom.xml` | `<requireJavaVersion><version>[21,22)</version></requireJavaVersion>` |
+| EMF-002 | The build runs on Maven 3.9, the line Tycho 5 requires | `pom.xml` | `<requireMavenVersion><version>[3.9,4)</version></requireMavenVersion>` |
+| EMF-003 | Every plugin version is pinned | `pom.xml` | `<requirePluginVersions/>` |
+| EMF-004 | Dependency versions converge | `pom.xml` | `<dependencyConvergence/>` |
+| EMF-005 | Nothing is ever published | `pom.xml` | `<banDistributionManagement/>` |
+| EMF-006 | Every compiler warning is enabled and fails the build | `pom.xml` | `<arg>-Werror</arg>` |
+| EMF-007 | Java source is formatted with palantir-java-format, checked in `verify` | `pom.xml` | `<palantirJavaFormat>` |
+| EMF-008 | Line and branch coverage stay at or above the measured floor | `parity/pom.xml` | `<counter>BRANCH</counter>` |
+| EMF-009 | The mutation score stays at or above the measured threshold | `parity/pom.xml` | `<mutationThreshold>${emf.mutation.threshold}</mutationThreshold>` |
+| EMF-010 | A module depends only on the modules above it in the architecture's module table | `parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/ArchitectureTest.java` | `MODULES_DEPEND_ONLY_ON_MODULES_ABOVE_THEM` |
+| EMF-011 | No dependency cycle between modules | `parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/ArchitectureTest.java` | `MODULES_HAVE_NO_CYCLES` |
+| EMF-012 | The Maven distribution the wrapper downloads is pinned by checksum | `.mvn/wrapper/maven-wrapper.properties` | `distributionSha256Sum=` |
+| EMF-013 | Every model behaviour has a Java witness | `parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/LedgersTest.java` | `Ledgers.checkWitnesses(repository)` |
+| EMF-014 | Every rule in this ledger is still enforced by its named file | `parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/LedgersTest.java` | `Ledgers.checkRules(repository)` |

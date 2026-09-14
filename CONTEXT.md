@@ -269,5 +269,11 @@ its objects.
 for a DNS name, an ADR decision domain, and the core ring of the compiler's
 hexagon.
 
+**Bootstrap.** The bootstrap set and the bootstrap order, and nothing else.
+The first build of the model-driven implementation under `emf/` is the **EMF
+scaffold** (its Maven build, gates and CI job, with no EMF dependency), and its
+first change that depends on the modelling tools is the **walking skeleton**,
+which proves each tool runs headless.
+
 **Config.** Avoid. Env files carry *configuration*; the platform's facts and
 policies are *Platform Intent*; an Application's authored document is *Project Intent*.
