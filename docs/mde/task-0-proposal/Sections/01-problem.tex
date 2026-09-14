@@ -1,12 +1,19 @@
 \section{Problem Statement}
 \label{sec:problem}
 
-A Kubernetes application is described by a workload, service, account, network
-policy, ingress routes, monitoring rules and disruption budget. These resources
-repeat the same facts in different schemas. A port can occur in four files; a
-dependency determines both an address and an egress rule.
+A Kubernetes cluster typically runs a large number of services. Each service
+needs a workload, service account, network policies, ingress routes, monitoring
+rules and a disruption budget. These resources repeat the same facts in
+different schemas. For example, a port appears in four files, while one
+dependency sets both an address and an egress rule.
 
-Manual copies can drift while remaining syntactically valid. The cluster may
-accept every file even though an application cannot reach its database or its metrics
-are no longer collected. The selected problem is therefore to generate a
-consistent Kubernetes deployment set from one abstract application model.
+These facts are spread across several places. The path to one service can span
+several repositories. Manually maintained copies can drift apart even when
+each file is valid. The cluster accepts the files, but an application may no
+longer reach its database or its metrics may not be collected.
+
+Service dependencies also change over time. Changing one dependency currently
+requires edits to every dependent service. A model can resolve dependencies
+automatically and avoid these repeated edits. The dependency is changed once,
+and every related service receives the new values. This project will generate
+a consistent Kubernetes deployment set from one abstract application model.

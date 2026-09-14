@@ -1,18 +1,19 @@
 \section{Metamodels}
 \label{sec:metamodels}
 
-The three pipeline layers of Section~\ref{sec:solution} have separate metamodels:
+The pipeline in Section~\ref{sec:solution} uses two metamodels:
 
 \begin{enumerate}
-  \item \textbf{Project Intent}: \emph{Project}, \emph{Application},
+  \item \textbf{Project Intent}, the source metamodel: \emph{Project}, \emph{Application},
     \emph{Process}, \emph{Exposure}, \emph{Route}, \emph{Placement},
     \emph{Probe}, \emph{Dependency}, \emph{Secret Grant} and \emph{Volume}.
-  \item \textbf{Resolved Deployment}: concrete resources and relationships with
-    every derived value, identity and output path present.
-  \item \textbf{Deliverable Set}: typed Kubernetes and extension resources,
-    each with its path, content and producing adapter.
+  \item \textbf{Resolved Deployment}, the target code metamodel: concrete,
+    typed Kubernetes and extension resources with every derived value,
+    relationship, identity and output path.
 \end{enumerate}
 
-UML class diagrams document each metamodel. Each metamodel is defined twice,
-separately: in Ecore with OCL constraints, and as TypeScript types and
-\texttt{zod} runtime schemas, as discussed in Section~\ref{sec:tooling}.
+Acceleo turns a Resolved Deployment model into the Deliverable Set of YAML and
+JSON files. UML class diagrams document both metamodels, which are defined in
+Ecore with OCL constraints. The production implementation represents the same
+structures with TypeScript types and \texttt{zod} runtime schemas, as described
+in Section~\ref{sec:tooling}.
