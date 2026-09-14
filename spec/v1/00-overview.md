@@ -135,7 +135,7 @@ A third domain, `docs/adr/architecture/`, carries decisions about the
 compiler's own structure. It is neither model nor delivery: its `normative:`
 pointers name sections of [`docs/architecture.md`](../../docs/architecture.md)
 rather than of these chapters, and nothing in it can change what the model
-means. `scripts/lint-adrs.mjs` holds each domain to its own normative root.
+means. `scripts/lint-adrs.ts` holds each domain to its own normative root.
 
 The model makes exactly three demands on whatever delivery is eventually
 defined. They are model decisions, not delivery ones, and together they are the

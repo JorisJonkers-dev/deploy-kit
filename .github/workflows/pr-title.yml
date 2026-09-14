@@ -29,7 +29,7 @@
 
       - 'uses': 'actions/setup-node@v7'
         'with':
-          'node-version': '24'
+          'node-version-file': '.nvmrc'
           'cache': 'npm'
 
       - 'name': 'Install'
@@ -43,6 +43,6 @@
           set -euo pipefail
           upstream=refs/remotes/origin/${GITHUB_BASE_REF:-main}
           base_sha=$(git merge-base "${upstream}" "${GITHUB_SHA}")
-          node scripts/check-pr-title.mjs \
+          node scripts/check-pr-title.ts \
             --title "${PR_TITLE}" \
             --range "${base_sha}..${GITHUB_SHA}" || exit 1
