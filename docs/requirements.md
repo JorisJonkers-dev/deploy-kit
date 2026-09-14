@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **16** rows. The compiler's behaviours join it as they land.
+This ledger holds **18** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -39,3 +39,5 @@ This ledger holds **16** rows. The compiler's behaviours join it as they land.
 | REQ-014 | Every rule this repository enforces has a ledger row with a greppable id and a fixture that proves it fires, and a rule not enforced yet is listed as pending with a ticket and a reason rather than dropped | [test/rules-contract.test.ts](../test/rules-contract.test.ts) |
 | REQ-015 | The model-driven build CI runs is the build in the tree: no workflow runs the Maven wrapper where there is no build, the reactor names no missing module, and CodeQL scans its Java | [test/emf-wiring.test.ts](../test/emf-wiring.test.ts) |
 | REQ-016 | A code scanning finding of any severity fails `Pipeline Complete`, so it blocks the merge rather than only landing in the Security tab | [test/pipeline-wiring.test.ts](../test/pipeline-wiring.test.ts) |
+| REQ-017 | Every error code the specification defines is exercised by a test, or pending on the ticket that will exercise it, and no code the specification does not define is used in the tree | [test/codes-lint.test.ts](../test/codes-lint.test.ts) |
+| REQ-018 | The compiler's inner rings cannot read the environment, the clock, randomness, a child process or the filesystem synchronously, and only `src/cli/boundary.ts` exits the process or writes output | [test/seams.test.ts](../test/seams.test.ts) |

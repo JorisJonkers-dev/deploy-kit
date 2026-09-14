@@ -255,6 +255,20 @@ describe("the boundary lint", () => {
     expect(output).toMatch(/no-dev-dependency-in-src/);
   });
 
+  it("fails shipped code importing a test file or build output", () => {
+    const { code, output } = cruise({
+      "src/domain/intent.ts": mod([
+        "../../test/support/fixture.js",
+        "./intent.test.js",
+      ]),
+      "src/domain/intent.test.ts": mod(),
+      "test/support/fixture.ts": mod(),
+      "src/cli/index.ts": mod(["../domain/intent.js"]),
+    });
+    expect(code).not.toBe(0);
+    expect(output).toMatch(/shipped-code-imports-no-test-or-build-output/);
+  });
+
   it("fails a package an architecture decision already rejected", () => {
     const { code, output } = cruise({
       "src/infrastructure/render.ts": mod(["handlebars"]),

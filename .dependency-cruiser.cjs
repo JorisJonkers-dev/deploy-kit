@@ -217,6 +217,14 @@ module.exports = {
       to: { path: "^src/cli/" },
     },
     {
+      name: "shipped-code-imports-no-test-or-build-output",
+      severity: "error",
+      comment:
+        "RULE-009: shipped code never imports a test file or anything under dist/.",
+      from: { path: "^src/", pathNot: "\\.test\\.ts$" },
+      to: { path: ["\\.test\\.ts$", "^test/", "^dist/"] },
+    },
+    {
       name: "no-dev-dependency-in-src",
       severity: "error",
       comment: "Shipped code may not import a devDependency.",

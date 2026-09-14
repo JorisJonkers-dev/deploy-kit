@@ -76,6 +76,108 @@ export default defineConfig(
     },
   },
   {
+    files: ["**/*.ts"],
+    ignores: ["*.config.ts"],
+    rules: {
+      "@typescript-eslint/consistent-type-imports": "error",
+      "@typescript-eslint/naming-convention": [
+        "error",
+        {
+          selector: "interface",
+          format: null,
+          custom: { regex: "^I[A-Z]", match: false },
+        },
+      ],
+      "no-restricted-exports": [
+        "error",
+        {
+          restrictDefaultExports: {
+            direct: true,
+            named: true,
+            defaultFrom: true,
+            namedFrom: true,
+            namespaceFrom: true,
+          },
+        },
+      ],
+    },
+  },
+  {
+    // RULE-012: ambient reads belong to the infrastructure and CLI rings.
+    files: ["src/**/*.ts"],
+    ignores: ["src/infrastructure/**", "src/cli/**", "**/*.test.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        ...[
+          [
+            "MemberExpression[object.name='process'][property.name='env']",
+            "the environment",
+          ],
+          [
+            "CallExpression[callee.object.name='Date'][callee.property.name='now']",
+            "the clock",
+          ],
+          [
+            "NewExpression[callee.name='Date'][arguments.length=0]",
+            "the clock",
+          ],
+          [
+            "CallExpression[callee.object.name='performance'][callee.property.name='now']",
+            "the clock",
+          ],
+          [
+            "CallExpression[callee.object.name='Math'][callee.property.name='random']",
+            "randomness",
+          ],
+          [
+            "CallExpression[callee.property.name=/^(randomUUID|getRandomValues|randomBytes|randomInt)$/]",
+            "randomness",
+          ],
+          [
+            "ImportDeclaration[source.value=/^(node:)?crypto$/] ImportSpecifier[imported.name=/^(randomUUID|getRandomValues|randomBytes|randomInt)$/]",
+            "randomness",
+          ],
+          [
+            "ImportDeclaration[source.value=/^(node:)?child_process$/]",
+            "spawning",
+          ],
+          [
+            "ImportDeclaration[source.value=/^(node:)?fs$/] ImportSpecifier[imported.name=/Sync$/]",
+            "synchronous filesystem calls",
+          ],
+          [
+            "CallExpression[callee.property.name=/Sync$/]",
+            "synchronous filesystem calls",
+          ],
+        ].map(([selector, what]) => ({
+          selector,
+          message: `RULE-012: ${what} belong to the infrastructure or CLI ring`,
+        })),
+      ],
+    },
+  },
+  {
+    // RULE-013: the process is touched in one file, which coverage excludes.
+    files: ["src/**/*.ts"],
+    ignores: ["src/cli/boundary.ts", "**/*.test.ts"],
+    rules: {
+      "no-restricted-properties": [
+        "error",
+        ...["exit", "exitCode", "stdout", "stderr"].map((property) => ({
+          object: "process",
+          property,
+          message:
+            "RULE-013: the process is touched only in src/cli/boundary.ts",
+        })),
+        {
+          object: "console",
+          message: "RULE-013: output is written only in src/cli/boundary.ts",
+        },
+      ],
+    },
+  },
+  {
     // A committed .only or .skip is a suite that is green for the wrong
     // reason, a test that asserts nothing passes for ever, and a fixed sleep
     // is slow when it passes and flaky when the machine is busy.

@@ -141,6 +141,11 @@
       - 'name': 'Rule ledger'
         'run': 'npm run lint:rules'
 
+      # Every E_ code the specification defines is exercised by a test or
+      # pending on the ticket that will exercise it, and no other code is used.
+      - 'name': 'Spec error codes'
+        'run': 'npm run lint:codes'
+
       # README.md and CONTRIBUTING.md, held to the repository they describe:
       # every named script exists, every backtick-quoted path exists, every
       # quoted coverage number matches vitest.config.ts, every quoted Node
