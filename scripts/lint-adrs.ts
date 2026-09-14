@@ -38,6 +38,9 @@ const DOMAINS = [
     domain: "architecture",
     normativeRoots: ["docs/architecture.md", "docs/architecture-rules.md"],
   },
+  // The coursework implementation's register, linted with `emf` as the root,
+  // so its pointers name emf/docs/architecture.md. Deleted with emf/ (0107).
+  { domain: "emf", normativeRoots: ["docs/architecture.md"] },
 ] as const;
 
 const SECTIONS = [

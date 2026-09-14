@@ -33,6 +33,16 @@ severity and receivers left to the stack that reads the projection (0021,
 resembled (0016, 0083). The worked examples now declare every applicable
 authored field and annotate its effect.
 
+The set was amended on 2026-09-14 for the coursework implementation: the
+model-driven engineering course requires the compiler to be built with Ecore,
+Xtext, OCL, QVT-Operational and Acceleo, so a second, hand-written Java
+implementation lives under `emf/` until its sunset condition holds. The two are
+held equal by committed oracle files and nothing else (0105); 0065, 0066, 0100
+and 0102 were amended in place to scope them to the TypeScript tree. The Java
+implementation's own decisions live in
+[`emf/docs/adr/`](../../emf/docs/adr/README.md), numbered from the same
+sequence, and are deleted with it. The model is unchanged.
+
 Tier-0 **premises** carry one falsifiable claim each; tier-1 **decisions** name
 the premises they stand on in `rests-on`. A `claim: open` means decided in
 direction, untested: its owner and settling test are in the file.
@@ -53,6 +63,11 @@ which domain a decision lives in.
 | [`model/`](model/) | the v1 model: the layers, composition, derivation, the adapters | `spec/v1/` | yes |
 | [`architecture/`](architecture/) | the compiler's own structure: layering, ports, error model, gates | `docs/architecture.md`, `docs/architecture-rules.md` | yes |
 | [`deferred/`](deferred/README.md) | delivery mechanics and co-testing, defined separately | sections these chapters deliberately lack | no |
+
+The coursework implementation keeps a register of its own at
+[`emf/docs/adr/`](../../emf/docs/adr/README.md), linted by the same script with
+`emf` as its root. Its numbers come from this sequence: before taking a number,
+check both registers.
 
 ## Premises
 
@@ -205,3 +220,4 @@ Decisions about the compiler's own structure, not about the model. Their
 | [0102](architecture/0102-the-gate-grows-with-the-code.md) | A new gate's script and its CI job land in the same pull request, and a test proves the two stay matched | settled |
 | [0103](architecture/0103-a-behaviour-ledger-names-what-a-test-proves.md) | A behaviour ledger names every guarantee and the test that proves it, and a meta test holds the two together | settled |
 | [0104](architecture/0104-every-enforced-rule-has-an-id-a-row-and-a-fixture.md) | Every enforced rule has an id, a ledger row and a fixture that proves it fires | settled |
+| [0105](architecture/0105-two-implementations-meet-at-committed-oracles.md) | Two hand-written implementations meet at committed oracle files, and neither is generated from or tested against the other | open |
