@@ -2,7 +2,7 @@
 """Render chapter 10's class diagram from the mermaid block that mirrors it.
 
 The drawing and the mermaid cannot disagree, because the mermaid IS the source:
-this reads the `classDiagram` block out of spec/v1/10-service-intent.md and
+this reads the `classDiagram` block out of spec/v1/10-project-intent.md and
 emits a .drawio file, which draw.io then exports to the committed SVG.
 
 Layout rules, in the order they matter:
@@ -35,7 +35,7 @@ Layout rules, in the order they matter:
 Usage:
     python3 scripts/diagrams/class-diagram.py out.drawio
     /Applications/draw.io.app/Contents/MacOS/draw.io -x -f svg -e -b 10 \
-        -o spec/v1/diagrams/10-service-intent-model.drawio.svg out.drawio
+        -o spec/v1/diagrams/10-project-intent-model.drawio.svg out.drawio
 
 CHILDREN below is the only hand-maintained part: it fixes the tree parent of
 each node and the sibling order. Sibling order is chosen so that cross-links
@@ -44,7 +44,7 @@ without adding it here fails loudly.
 """
 import re, sys, xml.etree.ElementTree as ET
 
-MD = "spec/v1/10-service-intent.md"
+MD = "spec/v1/10-project-intent.md"
 src = open(MD).read()
 body = re.search(r"```mermaid\nclassDiagram\n(.*?)\n```", src, re.S).group(1)
 
@@ -68,16 +68,16 @@ for line in body.split("\n"):
         dep.append((m.group(1), m.group(2), m.group(3).strip()))
 
 # The tree. Sibling order puts cross-link partners next to each other:
-# Surface is Workload's last child and Route is Exposure's first, so the two
+# Surface is Process's last child and Route is Exposure's first, so the two
 # `resolves by name` edges and `Route -> Audience` all land between neighbours.
 CHILDREN = {
-    "Domain": ["Service"],
-    "Service": ["Observability", "Grant", "Workload", "Exposure"],
+    "Project": ["Application"],
+    "Application": ["Observability", "Grant", "Process", "Exposure"],
     "Observability": ["Scrape"],
     "Grant": ["Rotation"],
     # Surface stays last, and Route stays Exposure's first, so the two
     # `resolves by name` cross-links land between neighbours.
-    "Workload": [
+    "Process": [
         "Capacity", "Sidecar", "Probe", "Asset", "Volume", "Placement",
         "EnvFile", "DependencyEdge", "Surface",
     ],
@@ -85,7 +85,7 @@ CHILDREN = {
     "EnvFile": ["Placeholder"],
     "Exposure": ["Route"],
 }
-placed = {"Domain"}
+placed = {"Project"}
 for p, ks in CHILDREN.items():
     for k in ks:
         assert k in nodes, f"unknown node {k}"
@@ -101,7 +101,7 @@ def setdepth(n, d):
     depth[n] = d
     for c in CHILDREN.get(n, []):
         setdepth(c, d + 1)
-setdepth("Domain", 0)
+setdepth("Project", 0)
 maxd = max(depth.values())
 
 def height(n):
@@ -118,7 +118,7 @@ def layout(n):
     for c in ks:
         layout(c)
     x[n] = (x[ks[0]] + x[ks[-1]]) / 2.0
-layout("Domain")
+layout("Project")
 
 tree = {(p, k) for p, ks in CHILDREN.items() for k in ks}
 cx = lambda n: x[n] + W / 2.0
@@ -297,7 +297,7 @@ for t, (ly, label) in deep.items():
 
 open(sys.argv[1], "w").write(
     '<mxfile host="Electron" agent="scripts/diagrams/class-diagram.py" version="29.0.3">'
-    f'<diagram name="Service Intent - the layer-1 model" id="0">'
+    f'<diagram name="Project Intent - the layer-1 model" id="0">'
     f'{ET.tostring(model, encoding="unicode")}</diagram></mxfile>')
 print(f"nodes={len(nodes)} depth={maxd} size={int(cursor[0])}x{int(FLOOR)} "
       f"lanes/row={stack_at} cross={len(cross)} notes="

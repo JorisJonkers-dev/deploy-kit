@@ -1,7 +1,7 @@
 // The drawings, the chapters and the worked examples say the same thing.
 //
 // Two defects this file exists to catch actually shipped and were found by
-// hand: `data.domain.yml` authored an `onChange` key that 0094 deleted and no
+// hand: `data.project.yml` authored an `onChange` key that 0094 deleted and no
 // class carries, and four `PrometheusRule` fixtures stayed in the rendered
 // trees after chapter 30 stopped rendering the kind. Both were invisible to
 // every existing gate, because each artefact was internally consistent.
@@ -34,7 +34,7 @@ function mermaidModel(): {
   comps: Pair[];
   deps: Pair[];
 } {
-  const md = read(join(spec, "10-service-intent.md"));
+  const md = read(join(spec, "10-project-intent.md"));
   const body = capture(
     md,
     /```mermaid\nclassDiagram\n([\s\S]*?)\n```/,
@@ -96,7 +96,7 @@ function svgModel(name: string): {
 
 test("the class diagram draws exactly the mermaid's classes and attributes", () => {
   const { classes } = mermaidModel();
-  const { boxes } = svgModel("10-service-intent-model.drawio.svg");
+  const { boxes } = svgModel("10-project-intent-model.drawio.svg");
   expect(
     Object.keys(boxes).sort(),
     "the drawing and the mermaid disagree about which classes exist",
@@ -107,7 +107,7 @@ test("the class diagram draws exactly the mermaid's classes and attributes", () 
 
 test("only the relations that span layers are left undrawn", () => {
   const { comps, deps } = mermaidModel();
-  const { edges } = svgModel("10-service-intent-model.drawio.svg");
+  const { edges } = svgModel("10-project-intent-model.drawio.svg");
   // Placeholder reaches Grant and Exposure across four layers. Those two are
   // stated in the chapter instead; everything else is on the drawing.
   const undrawn = deps.filter(([from]) => from === "Placeholder").length;
@@ -126,7 +126,7 @@ test("no drawing carries an enumeration box", () => {
 });
 
 test("every closed vocabulary names an attribute that exists", () => {
-  const md = read(join(spec, "10-service-intent.md"));
+  const md = read(join(spec, "10-project-intent.md"));
   const table = capture(
     md,
     /## The closed vocabularies\n([\s\S]*?)\n## /,
@@ -172,10 +172,10 @@ test("a worked example authors no key the model does not carry", () => {
     "apiVersion",
     "kind",
     "schemaVersion",
-    "domain",
+    "project",
     "owner",
-    "services",
-    "workloads",
+    "applications",
+    "processes",
     "provides",
     "probes",
     "placement",
@@ -197,12 +197,12 @@ test("a worked example authors no key the model does not carry", () => {
     "readiness",
     "liveness",
   ]);
-  const domainFiles = walk(join(spec, "examples")).filter((f) =>
-    f.endsWith(".domain.yml"),
+  const projectFiles = walk(join(spec, "examples")).filter((f) =>
+    f.endsWith(".project.yml"),
   );
 
   const surfaces = new Set<string>();
-  for (const file of domainFiles) {
+  for (const file of projectFiles) {
     const lines = read(file).split("\n");
     lines.forEach((line, i) => {
       if (!/^ {8}provides:/.test(line)) return;
@@ -217,7 +217,7 @@ test("a worked example authors no key the model does not carry", () => {
   }
 
   const unknown: string[] = [];
-  for (const file of domainFiles) {
+  for (const file of projectFiles) {
     // A folded scalar's body is prose, not keys: `reason: >-` is followed by
     // sentences, and one of them contains the word "availability:".
     let fold = -1;
@@ -243,7 +243,7 @@ test("a worked example authors no key the model does not carry", () => {
 test("every rendered kind is a column of the deliverables matrix", () => {
   const { xml } = svgModel("16-derivation-map-deliverables.drawio.svg");
   // Namespace-scoped operator objects are rendered once per namespace, not per
-  // Service, so the per-Service map does not carry a column for them.
+  // Application, so the per-Application map does not carry a column for them.
   const perNamespace = new Set(["VaultAuth", "VaultConnection", "Namespace"]);
   const alias: Readonly<Record<string, string>> = {
     Kustomization: "kustomization",

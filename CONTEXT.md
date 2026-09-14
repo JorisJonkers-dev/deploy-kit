@@ -18,13 +18,13 @@ contract ([0003](docs/adr/model/0003-three-layer-meta-model.md), normative in
 [chapter 00](spec/v1/00-overview.md#the-meta-model)). **Layer 1 contains no
 mechanisms; layer 3 contains no decisions.**
 
-**Service Intent**: layer 1. What a Service's repository authors by hand:
-requirements, never mechanisms. Two kinds of file, a domain file and one env file
-set per Workload ([chapter 10](spec/v1/10-service-intent.md)).
+**Project Intent**: layer 1. What a project's repository authors by hand:
+requirements, never mechanisms. Two kinds of file, a project file and one env file
+set per Process ([chapter 10](spec/v1/10-project-intent.md)).
 
 **Platform Intent**: layer 1, the second authored document. What the estate
 offers, authored by the platform: substrate facts, the bootstrap set, tiers,
-durability and observability policy, engines, providers. Same rule as Service
+durability and observability policy, engines, providers. Same rule as Project
 Intent, and the contention test decides which of the two a value lives in
 ([chapter 14](spec/v1/14-platform-intent.md),
 [0095](docs/adr/model/0095-platform-intent-is-the-second-authored-document.md)).
@@ -39,33 +39,33 @@ artifact ([chapter 20](spec/v1/20-resolved-deployment.md)).
 
 ## Layer 1: what a human authors
 
-**Domain**: the authored document, and the unit of publication. One domain
-file holds one domain's `owner` and every Service in it. A domain never spans
-repositories ([0063](docs/adr/model/0063-intent-authored-per-domain.md)).
+**Project**: the authored document, and the unit of publication. One project
+file holds one project's `owner` and every Application in it. A project never spans
+repositories ([0063](docs/adr/model/0063-intent-authored-per-project.md)).
 
-**Service**: the release unit, and the thing an owner reasons about. Holds one
-or more Workloads, its exposure and its shared grants
-([0062](docs/adr/model/0062-service-is-the-release-unit.md)).
+**Application**: the release unit, and the thing an owner reasons about. Holds one
+or more Processes, its exposure and its shared grants
+([0062](docs/adr/model/0062-application-is-the-release-unit.md)).
 
-**Workload**: one process to run, with its own image, lifecycle, env file set,
+**Process**: one program to run, with its own image, lifecycle, env file set,
 probes, volumes, placement and hardening. A port is a property of a process, so
-`provides` hangs off the Workload; a hostname is a property of the product, so
-exposure hangs off the Service.
+`provides` hangs off the Process; a hostname is a property of the product, so
+exposure hangs off the Application.
 
-**Surface**: a named port a Workload provides. What a dependency edge and a
+**Surface**: a named port a Process provides. What a dependency edge and a
 route both name.
 
-**Sidecar**: a second container in a Workload's pod, and Workload vocabulary
-rather than a Service of its own
-([0064](docs/adr/model/0064-sidecars-are-workload-vocabulary.md)).
+**Sidecar**: a second container in a Process's pod, and Process vocabulary
+rather than an Application of its own
+([0064](docs/adr/model/0064-sidecars-are-process-vocabulary.md)).
 
-**Dependency edge**: a declared need for another Service's Surface, carrying
+**Dependency edge**: a declared need for another Application's Surface, carrying
 whether it is required ([chapter 16](spec/v1/16-dependencies.md)).
 
-**Exposure**: a hostname a Service answers on, its audience and its content
+**Exposure**: a hostname an Application answers on, its audience and its content
 policy. Holds one or more Routes.
 
-**Route**: a path within an Exposure, naming the Workload and Surface that
+**Route**: a path within an Exposure, naming the Process and Surface that
 serve it.
 
 **Audience**: who may reach an Exposure. The declared word from which the edge
@@ -73,9 +73,9 @@ mechanism is derived ([0018](docs/adr/model/0018-exposure-by-audience.md)).
 
 **Probe**: a declared readiness or liveness check.
 
-**Asset**: a file mounted into a Workload. Declarative, never executable
+**Asset**: a file mounted into a Process. Declarative, never executable
 ([0012](docs/adr/model/0012-assets-not-code.md)). Its object name is
-content-hashed and a change restarts the Workload, unconditionally
+content-hashed and a change restarts the Process, unconditionally
 ([0094](docs/adr/model/0094-asset-change-restarts-unconditionally.md)).
 
 **Volume**: a claim mounted at a path, carrying its Durability Class.
@@ -86,22 +86,22 @@ content-hashed and a change restarts the Workload, unconditionally
 backup objects that make the class mean something
 ([0077](docs/adr/model/0077-durability-derives-a-backup.md)).
 
-**Engine**: what a Workload's process *is*, where the platform must treat it
+**Engine**: what a Process *is*, where the platform must treat it
 specially: `postgres`, `rabbitmq`, `valkey`, `files`. Not `runtime`, which says
 how a process is instrumented
-([0078](docs/adr/model/0078-engine-is-workload-vocabulary.md)).
+([0078](docs/adr/model/0078-engine-is-process-vocabulary.md)).
 
 **Durability policy**: the platform's terms for one Durability Class: the
 backup window, the retention count, and the off-cluster destination. Carried by
 the Platform Intent, never authored per volume.
 
-**Placement**: the hard dimensions a Workload requires of a node: memory, cpu,
+**Placement**: the hard dimensions a Process requires of a node: memory, cpu,
 architecture, site, capabilities, and optionally disk and GPU. Eligibility, not
 bin-packing ([0061](docs/adr/model/0061-placement-is-hard-dimensions.md)).
 
-**Capability**: a named node property a Workload may require.
+**Capability**: a named node property a Process may require.
 
-**Hardening Class**: the pod security posture a Workload takes, with named
+**Hardening Class**: the pod security posture a Process takes, with named
 exceptions each carrying a reason
 ([0016](docs/adr/model/0016-pod-hardening.md)).
 
@@ -109,12 +109,12 @@ exceptions each carrying a reason
 and runtime environment variables are derived. Writing one of its keys by hand
 is a build error.
 
-**Alert Class**: how an alert on this Service should be delivered
+**Alert Class**: how an alert on this Application should be delivered
 ([0021](docs/adr/model/0021-observability-scrape-and-alert-class.md)).
 
 **Grant**: declared access to a Secret Store path, its keys, its access tier
-and its delivery mode. Lives on the Service, or on a Workload when it is
-specific to one ([0022](docs/adr/model/0022-grants-live-on-the-service.md),
+and its delivery mode. Lives on the Application, or on a Process when it is
+specific to one ([0022](docs/adr/model/0022-grants-live-on-the-application.md),
 [0023](docs/adr/model/0023-grant-unit-is-the-path.md)).
 
 **Placeholder**: an env-file entry naming what should be substituted rather
@@ -128,7 +128,7 @@ generic override mechanism.
 
 ## Composition: many repositories, one estate
 
-**Intent Fragment**: one domain file published as an OCI artifact, by digest
+**Intent Fragment**: one project file published as an OCI artifact, by digest
 ([0037](docs/adr/model/0037-composition-oci-fragments.md),
 [chapter 40](spec/v1/40-composition.md#fragments)).
 
@@ -141,7 +141,7 @@ estate-wide invariants. It merges nothing, and runs on every publish.
 fragment it resolved. An output rather than an input, because an artifact
 cannot contain its own digest.
 
-**Participants**: the expected set of publishing domains, with a staleness
+**Participants**: the expected set of publishing projects, with a staleness
 bound. A missed publish is a deletion, so the bound is what makes silence
 visible ([0038](docs/adr/model/0038-participants-list-staleness.md)).
 
@@ -152,7 +152,7 @@ family and separate from the toolkit's package version
 ## Layer 2: what the platform decides
 
 **Pinned input set**: the closed set layer 2 derives from: every Intent Fragment
-(the domain files and the Platform document), the node contract, the locks, and
+(the project files and the Platform document), the node contract, the locks, and
 the ClusterState snapshot, each carried by digest. Nothing at render time reads live cluster
 state ([0006](docs/adr/model/0006-pinned-inputs.md),
 [0034](docs/adr/model/0034-cluster-state-pinned-input.md)).
@@ -162,11 +162,11 @@ reads them and named by the Platform document by digest
 ([0056](docs/adr/model/0056-node-facts-single-source.md)).
 
 **Tier**: where the edge terminates: four facts, `audiences`, `listener`,
-`certificates`, `forwardAuth`, plus the Traefik Service that is its proxy. A
+`certificates`, `forwardAuth`, plus the Traefik Application that is its proxy. A
 route's audience is the only way it reaches a tier
 ([chapter 14](spec/v1/14-platform-intent.md#tiers)).
 
-**Provider**: something the estate runs and does not deploy, that a Service may
+**Provider**: something the estate runs and does not deploy, that an Application may
 depend on: an address and surfaces, in the Platform document. A fact, not a hole
 ([chapter 14](spec/v1/14-platform-intent.md#providers)).
 
@@ -174,7 +174,7 @@ depend on: an address and surfaces, in the Platform document. A fact, not a hole
 k3s, the Flux source, Vault's unseal, the CRDs. Recorded, enumerated, never
 declared ([0099](docs/adr/model/0099-bootstrap-set-is-recorded.md)).
 
-**The foundation**: Vault, VSO, Traefik, Prometheus, Gatus: Services in domain
+**The foundation**: Vault, VSO, Traefik, Prometheus, Gatus: Applications in project
 files the platform owns, declared like any tenant
 ([0096](docs/adr/model/0096-the-foundation-is-declared.md)). Not packs, not
 charts.
@@ -189,7 +189,7 @@ must be unique across the estate or draws on a shared finite resource
 ([0004](docs/adr/model/0004-contention-decides-authority.md)).
 
 **ResolvedService**: the projection of the Resolved Deployment belonging to one
-Service, obtained by filtering and published back to its repository
+Application, obtained by filtering and published back to its repository
 ([0033](docs/adr/model/0033-assignments-published-back.md)).
 
 **Reconcile Unit**: the ordering unit, derived from the dependency graph and
@@ -257,5 +257,17 @@ vocabulary keeps the two apart so the act of deciding is still *resolution* or
 from this model ([`docs/adr/deferred/`](docs/adr/deferred/README.md)). A render
 is not a deploy.
 
+**Service.** Retired as a model word: the level is **Application**
+([0116](docs/adr/model/0116-project-application-process.md)). Say *Service*
+only for the Kubernetes `Service` object a Deliverable contains.
+
+**Workload.** Retired as a model word: the level is **Process**. A rendered
+`workload.yaml` keeps the name, because layer 3 spells what the target calls
+its objects.
+
+**Domain.** Retired as a model word: the level is **Project**. *Domain* is left
+for a DNS name, an ADR decision domain, and the core ring of the compiler's
+hexagon.
+
 **Config.** Avoid. Env files carry *configuration*; the platform's facts and
-policies are *Platform Intent*; a Service's authored document is *Service Intent*.
+policies are *Platform Intent*; an Application's authored document is *Project Intent*.

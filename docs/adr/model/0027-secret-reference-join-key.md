@@ -3,11 +3,16 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-08-31
-normative: spec/v1/10-service-intent.md#secret-references
+normative: spec/v1/10-project-intent.md#secret-references
 rests-on: ["0009"]
 ---
 
 # A secret placeholder byte-matches a granted path
+
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
 
 > **Amended 2026-09-07.** The join key is the grant's **derived read path**, not
 > its declared path ([0085](0085-a-grant-is-a-union-on-engine.md)). For a `kv`
@@ -63,8 +68,8 @@ into an env var or a file, so `delivery: self` is its only legal delivery
 | option | cost if taken | why rejected |
 |---|---|---|
 | Specify the strip rule (`secret/`, then `data/`) in chapter 10 | the composer carries a mount-aware rewrite table, one row per engine, extended whenever a mount is added; `transit/` needs its own row today and an unknown future mount has no row at all, leaving the check undecidable for it | it re-encodes Vault's API-path layout inside the composer to save authors 12 characters, and the review found the unstated version already produced a check satisfiable by the wrong grant |
-| Placeholder names a per-Service alias (`alias: pg` on the grant, `${secret:pg#kb.user}`) | a second name-space per Service, unique across both declaration levels, and a join key that drifts when the alias is renamed on one side only | the old credential-provisioning ADR rejected a separate `SecretAccess` document for exactly this reason: "a join key that can drift, with no compensating benefit", and an alias reintroduces it inside one file |
-| Grant declares the env var name; the env file carries only the key | the shared Service-level grant on `platform/postgres` can no longer serve two Workloads that name the variable differently, so shared grants split per Workload and the sharing the two levels exist for is lost | `knowledge` writes `DB_HOST` and `n8n` writes `DB_POSTGRESDB_HOST` from the same Postgres; keeping the variable name in the env file is the whole point of the placeholder mechanism |
+| Placeholder names a per-Application alias (`alias: pg` on the grant, `${secret:pg#kb.user}`) | a second name-space per Application, unique across both declaration levels, and a join key that drifts when the alias is renamed on one side only | the old credential-provisioning ADR rejected a separate `SecretAccess` document for exactly this reason: "a join key that can drift, with no compensating benefit", and an alias reintroduces it inside one file |
+| Grant declares the env var name; the env file carries only the key | the shared Application-level grant on `platform/postgres` can no longer serve two Processes that name the variable differently, so shared grants split per Process and the sharing the two levels exist for is lost | `knowledge` writes `DB_HOST` and `n8n` writes `DB_POSTGRESDB_HOST` from the same Postgres; keeping the variable name in the env file is the whole point of the placeholder mechanism |
 
 ## Reversibility
 
@@ -81,7 +86,7 @@ the other form.
 
 - Placeholders get longer: `${secret:secret/data/platform/postgres#kb.user}`
   where the old form wrote `${secret:platform/postgres#kb.user}`, paid by
-  service authors, once per placeholder, at authoring time.
+  application authors, once per placeholder, at authoring time.
 - `E_UNAUTHORISED_SECRET_REFERENCE` and the dead-grant check become string
   comparisons over the composed union, with no mount table and no Vault read,
   paid by the composer, which gets smaller.
@@ -89,7 +94,7 @@ the other form.
   the reader-set roll-impact model of [0009](0009-vault-read-is-per-path.md)
   auditable from the repository, paid by nobody.
 - A `transit/` or other non-KV grant with `delivery: env` or `file` is a build
-  error, paid by authors of self-rotating services, who must fetch at runtime.
+  error, paid by authors of self-rotating applications, who must fetch at runtime.
 - Renaming a path edits the grant and every placeholder naming it in lockstep,
   paid by whoever moves paths during the Secret Subtree layout
   ([0023](0023-grant-unit-is-the-path.md)).

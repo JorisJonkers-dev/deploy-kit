@@ -3,42 +3,47 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-09-07
-normative: spec/v1/10-service-intent.md#observability
+normative: spec/v1/10-project-intent.md#observability
 rests-on: ["0004"]
 ---
 
 # An Alert Class derives rules from a platform catalog, and a class without a signal is refused
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 > **Amended 2026-09-10.** The catalog, the severity mapping and the receiver
 > table are **deleted from this specification** rather than relocated. A first
 > attempt moved them into a versioned configuration owned by the observability
-> Service; that reproduced the same fifteen lines in a forty-five line file with
-> a schema envelope, changed nothing for a Service author, and shipped an
+> Application; that reproduced the same fifteen lines in a forty-five line file with
+> a schema envelope, changed nothing for an Application author, and shipped an
 > example of a document that belongs in another repository. The model publishes
 > `alertClass` as a resolved fact and a monitoring stack reads it
 > ([chapter 20](../../../spec/v1/20-resolved-deployment.md#publish-back)).
 >
 > What survives is one claim and one refusal. The claim: the rules worth
-> alerting on are a property of what a Workload is, not of who owns it, which is
-> why no domain file authors PromQL. The refusal: a class with no signal is
+> alerting on are a property of what a Process is, not of who owns it, which is
+> why no project file authors PromQL. The refusal: a class with no signal is
 > `E_ALERT_CLASS_WITHOUT_SIGNAL`. There is no longer a `none` member to be above:
-> an omitted `observability` block is how a Service says it wants none
-> ([chapter 10](../../../spec/v1/10-service-intent.md#observability),
+> an omitted `observability` block is how an Application says it wants none
+> ([chapter 10](../../../spec/v1/10-project-intent.md#observability),
 > [0021](0021-observability-scrape-and-alert-class.md)).
 
 ## Rests on
-The rules worth alerting on are a property of what a Workload is and what it
+The rules worth alerting on are a property of what a Process is and what it
 exposes, not of who owns it, so a platform catalog plus a declared urgency
-derives every alert the estate needs, so no domain file ever authors an
-expression. False if: a Service needs a rule whose expression only its owner
+derives every alert the estate needs, so no project file ever authors an
+expression. False if: an Application needs a rule whose expression only its owner
 could write, often enough that authored PromQL becomes the normal case. Settled
-by: rendering the estate and finding no Service that needs an authored
+by: rendering the estate and finding no Application that needs an authored
 expression to be adequately alerted.
 
 ## Why
 [0021](0021-observability-scrape-and-alert-class.md) says receivers, notifier
 routes, Gatus checks, ServiceMonitors and PrometheusRules all derive from two
-declarations. Three Services declare three different Alert Classes and all three
+declarations. Three Applications declare three different Alert Classes and all three
 produce zero objects. There is exactly one `PrometheusRule` in the estate, and
 Gatus monitors 41 endpoints while notifying nobody, its ConfigMap has `storage`
 and `ui` and no `alerting` section at all. The declaration has been inert in both
@@ -47,20 +52,20 @@ directions.
 The rules come from a catalog because PromQL is a mechanism. A baseline set keyed
 off `scrape` (target absent, restart loop, probe failure) covers what "is it
 working" means for anything, and `engine`
-([0078](0078-engine-is-workload-vocabulary.md)) covers what it means for a
+([0078](0078-engine-is-process-vocabulary.md)) covers what it means for a
 Postgres or a RabbitMQ specifically. The class supplies severity and receiver,
 which is what it already claims to be: urgency, never routing. A receiver is a
 shared notification channel, so by
 [0004](0004-contention-decides-authority.md) the mapping is platform-assigned,
-and it is one mapping feeding both producers, a Service declaring `page` means
+and it is one mapping feeding both producers, an Application declaring `page` means
 the same thing whether the signal came from a scrape or from an endpoint check.
 
 **The refusal is the part that matters.** `platform-postgres` declares `page`,
 the loudest value in the vocabulary, and produces no monitoring object at all:
 Gatus derives from `exposure` and a datastore is correctly not exposed, and no
-adapter reads the class. So the estate's most urgent Service is wired to nothing,
+adapter reads the class. So the estate's most urgent Application is wired to nothing,
 and nothing says so. `E_ALERT_CLASS_WITHOUT_SIGNAL` makes a class above `none`
-require a signal source: a `scrape` surface on some Workload, or an external
+require a signal source: a `scrape` surface on some Process, or an external
 health surface. A warning would not do: in a one-maintainer estate a warning is
 a line in a log, which is how 41 endpoints came to notify nobody.
 
@@ -68,13 +73,13 @@ a line in a log, which is how 41 endpoints came to notify nobody.
 stands: a baseline set keyed off the signal source covers "is it working" for
 anything, and `engine` covers what it means for a Postgres specifically. What
 changed is which document owns it. A rule expression is configuration of a
-monitoring stack, so it belongs to the observability Service's versioned
+monitoring stack, so it belongs to the observability Application's versioned
 configuration, consumed by its runner, not to the Platform Intent, which is a
 deployment model's authored document. The estate's urgency vocabulary and the
 signal facts stay in Intent; the PromQL, the cadence and the receiver table
 follow the stack that evaluates them.
 
-The runner inherits the refusal. Where it cannot map a Service's signal and
+The runner inherits the refusal. Where it cannot map an Application's signal and
 class to an active monitor and a receiver, **its build fails**. That is what
 preserves the property without the model owning PromQL: the same silence this
 decision exists to end, caught by the system that would have produced it.
@@ -92,14 +97,14 @@ takes the metrics stack's global default, a value decided outside the model,
 and the fix is to state both in the observability configuration, where the
 stack that uses them is configured, rather than in a Platform document the
 metrics stack never reads. The ingest budget is shared, so the value is not a
-Service's to set and not the deployment model's to carry.
+Application's to set and not the deployment model's to carry.
 
 ## Alternatives
 | option | cost if taken | why rejected |
 |---|---|---|
-| Authored rules per Service | Highest fidelity to what each owner considers broken | PromQL in a domain file is a mechanism in layer 1, and every Service reimplements up-ness and restart detection |
+| Authored rules per Application | Highest fidelity to what each owner considers broken | PromQL in a project file is a mechanism in layer 1, and every Application reimplements up-ness and restart detection |
 | Derive only an absent-target rule | Small and hard to get wrong | `platform-postgres` declaring `page` would get one rule that fires only when scraping breaks, which is not what `page` means |
-| Derive a synthetic check for a Service with no signal | Nothing is ever silently unmonitored | Invents a signal the Service never declared, and reaching a readiness probe from outside the pod is a mechanism nobody asked for |
+| Derive a synthetic check for an Application with no signal | Nothing is ever silently unmonitored | Invents a signal the Application never declared, and reaching a readiness probe from outside the pod is a mechanism nobody asked for |
 | Warn on a class with no signal | Nothing blocks on a monitoring gap | A warning is a log line here; the two live holes are both silences, which is the argument for a refusal |
 | `kubernetes` keeps all three monitoring kinds | No new adapter, no amendment | The `release: metrics-stack` label rule would live in the adapter that also emits Deployments and PVCs, and monitoring would have two owners once rules landed |
 
@@ -119,12 +124,12 @@ changing it is an operational change rather than a refactor.
   for the estate's most important datastore, paid by its owner, once, and it is
   the exact defect the refusal exists to surface.
 - The catalog is observability data, so a rule that turns out to be wrong is
-  fixed once for the estate rather than per Service, which is the benefit, and
+  fixed once for the estate rather than per Application, which is the benefit, and
   also means one bad rule pages for everything at once.
 - Scrape timing is explicit in every monitor and stated in exactly one
   configuration, so changing the estate's interval is a config edit rather than
   an invisible chart default, paid in one more pinned value.
 - The model no longer renders `ServiceMonitor`, `PodMonitor` or
   `PrometheusRule`, so the `release: metrics-stack` label rule and every
-  monitoring kind belong to the observability Service, one producer, and the
+  monitoring kind belong to the observability Application, one producer, and the
   `kubernetes` adapter shrinks.

@@ -6,27 +6,27 @@
 #
 # Omitting the block entirely would be accepted and would render no monitoring.
 # It is declaring the urgency while publishing nothing that is refused
-# (spec/v1/10-service-intent.md #observability).
+# (spec/v1/10-project-intent.md #observability).
 
 apiVersion: intent.jorisjonkers.dev/v1
-kind: Domain
+kind: Project
 schemaVersion: 1.0.0
 
 expect: E_ALERT_CLASS_WITHOUT_SIGNAL
 
-domain: refusals
+project: refusals
 owner: joris
 
-services:
+applications:
   - id: unwired
     # The loudest value in the vocabulary, and no surface to carry it.
     observability:
       alertClass: page
       # No `scrape`. That absence is the refusal.
 
-    workloads:
+    processes:
       - name: unwired-worker
-        lifecycle: service
+        lifecycle: application
         image: unwired-worker
         runtime: node
 

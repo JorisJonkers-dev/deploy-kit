@@ -1,7 +1,7 @@
 # Chapter 60: Setup and adoption
 
 How to stand this up, what facts have to exist before anything renders, and how
-to move ~30 live Services onto the model without deleting any of them.
+to move ~30 live Applications onto the model without deleting any of them.
 
 Two boundaries apply throughout. **Delivery mechanics and co-testing are defined
 separately** ([chapter 50](50-lifecycle.md#delivery-and-co-testing-are-defined-separately),
@@ -23,14 +23,14 @@ depend on the previous step's output existing.
 
 Steps 1–3 look like paperwork and are not: they are the facts every later step
 reads, and since [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)
-every Workload's declared `memory` and `cpu` are compared against numbers step 1
+every Process's declared `memory` and `cpu` are compared against numbers step 1
 publishes, so step 1 is arithmetic that other repositories' builds now fail
 against. Step 2 is the whole of what is applied by hand, and it is a table in
 the Platform document ([chapter 14](14-platform-intent.md#the-bootstrap-set),
 [0099](../../docs/adr/model/0099-bootstrap-set-is-recorded.md)); everything
 after it is rendered. Step 4 is new: the foundation is declared
 ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)), so Vault,
-VSO, Traefik and the metrics stack publish like any domain and tenants render
+VSO, Traefik and the metrics stack publish like any project and tenants render
 against them. Step 5 exists because layer 2 may read a pinned snapshot and may
 never read the live cluster
 ([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)).
@@ -63,7 +63,7 @@ is the other half of that comparison and its shape is load-bearing:
 
 | published fact | shape | what matches against it |
 |---|---|---|
-| `allocatable.cpu`, `allocatable.memory` | quantities, the node total minus the reserve declared in the node file | `placement.cpu` and `placement.memory`, required on every Workload |
+| `allocatable.cpu`, `allocatable.memory` | quantities, the node total minus the reserve declared in the node file | `placement.cpu` and `placement.memory`, required on every Process |
 | `site` | one string | `placement.site` |
 | `arch` | one string | `placement.arch`, which is a set of acceptable values |
 | `gpus[]` | one entry per card: `vendor`, `model`, `class`, `memory_mib` | `placement.gpu`, by `class` and by memory |
@@ -99,7 +99,7 @@ outside the pinned input set ([0006](../../docs/adr/model/0006-pinned-inputs.md)
 spread.** An authored reserve is an assertion about what the kubelet, the
 container runtime, the OS and the k3s agent take before a pod gets anything, and
 nothing validates it until someone compares it with `kubectl describe node`.
-Get it wrong and the contract says a Workload fits while the scheduler refuses
+Get it wrong and the contract says a Process fits while the scheduler refuses
 to place it, a build that passes and a pod that stays `Pending`. It bites first
 on `enschede-pi-2` and `enschede-pi-3`: at 4096Mi total, a 512Mi error is an
 eighth of the machine, where the same 512Mi against `frankfurt-contabo-1`'s
@@ -107,7 +107,7 @@ eighth of the machine, where the same 512Mi against `frankfurt-contabo-1`'s
 an implementation detail.
 
 Allocatable is also an **eligibility bound, not a budget**. The contract records
-what a node has, not what is already running on it, so three Workloads each
+what a node has, not what is already running on it, so three Processes each
 declaring `memory: 2Gi` all pass against a 4096Mi node and the scheduler refuses
 the third at apply. Nothing in this chapter, and nothing in layer 2, bin-packs.
 
@@ -120,7 +120,7 @@ capability vocabulary
 with node counts: `adguard` (5), `lan-ingress` (3), `nvidia` (2), `samba` (1),
 `public-ingress` (1), `llm-host` (1), `backup-store` (1), `amd-gpu` (1). No node
 carries a taint. The two GPU strings stay node facts and
-stop being how a Workload asks for a GPU: `nvidia` cannot separate a 2048MiB
+stop being how a Process asks for a GPU: `nvidia` cannot separate a 2048MiB
 Maxwell from a T1000, and `enschede-rx7900xtx-1` (the fastest card in the
 estate) is not `nvidia` at all. That selection is `gpus[]`.
 
@@ -139,7 +139,7 @@ capabilities, never labels**
 resolvable because the contract advertises exactly one label set and one set of
 facts to validate against. And the selector key comes from the contract's prefix
 rather than from `platform.name`, so retiring `personal-stack/*` changes
-rendered output for every Workload carrying a `nodeSelector`. Retirement goes
+rendered output for every Process carrying a `nodeSelector`. Retirement goes
 through the generated contract, never a `kubectl label`, the estate agent
 contract records that a hand-applied label drifts back on the next reconcile.
 
@@ -188,7 +188,7 @@ So the numbers are split by how they are obtained:
 
 | number | value | how it is obtained |
 |---|---|---|
-| **RPO** | **24 hours** | stated, not measured, it is the daily node backup's period. A Workload wanting better declares `durability: recoverable` and gets an application-level backup job with a retention sweep ([0015](../../docs/adr/model/0015-durability-class-per-volume.md)) |
+| **RPO** | **24 hours** | stated, not measured, it is the daily node backup's period. A Process wanting better declares `durability: recoverable` and gets an application-level backup job with a retention sweep ([0015](../../docs/adr/model/0015-durability-class-per-volume.md)) |
 | **RTO** | **no number until the drill runs** | measured: wall time from a destroyed claim to a passing readiness probe. This record refuses to invent one |
 
 **A restore is rehearsed before the first production apply of an
@@ -206,10 +206,10 @@ per-consumer database credentials
 ([0080](../../docs/adr/model/0080-database-catalog-is-derived-data.md)) are
 estate-unique and draw on a shared resource, so they are platform-assigned
 ([0004](../../docs/adr/model/0004-contention-decides-authority.md)). They are
-Assets of the declared `vault` Service in the platform's secrets domain
+Assets of the declared `vault` Application in the platform's secrets project
 ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)), declarative
-Vault configuration, rendered and attributed like any Asset, never per-Service
-render. What per-Service render owns is the part that varies per Workload: one
+Vault configuration, rendered and attributed like any Asset, never per-Application
+render. What per-Application render owns is the part that varies per Process: one
 derived policy and one auth role per identity
 ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)).
 Vault's **unseal** alone is a bootstrap fact
@@ -234,7 +234,7 @@ without acquiring an owner. v1 makes it mechanical
 
 Reading a pinned input rather than the live cluster keeps the check inside
 layer-2 purity. `delivery: self` and `access: custody` persist nothing and are
-unaffected, so a Workload that speaks Vault itself (`auth-api` does, through
+unaffected, so a Process that speaks Vault itself (`auth-api` does, through
 spring-cloud-vault) is never blocked by this gate.
 
 Two limits, stated so the gate is not read as more than it is. The fact is
@@ -244,8 +244,8 @@ the datastore-file and backup path only, a token with API read still gets
 plaintext, so path grants
 ([0009](../../docs/adr/model/0009-vault-read-is-per-path.md),
 [0023](../../docs/adr/model/0023-grant-unit-is-the-path.md)) and RBAC remain the real
-boundary. A namespace is not one: it holds several Services by construction
-([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)).
+boundary. A namespace is not one: it holds several Applications by construction
+([0063](../../docs/adr/model/0063-intent-authored-per-project.md)).
 
 Ticked by: enable the flag, then
 `kubectl create secret generic canary --from-literal=k=<sentinel>`, then
@@ -270,7 +270,7 @@ kube-router controller that has none either. A non-enforcing stage is a **vendor
 capability**, and no decision had ever picked a CNI: a repo-wide grep for
 `cilium|calico|kube-router|flannel` returned zero hits outside the review files.
 The item was unsatisfiable, so it was either going to be ignored (landing
-default-deny as enforce across ~30 workloads on a cluster known to contain
+default-deny as enforce across ~30 processes on a cluster known to contain
 undeclared paths) or nothing would ship.
 
 The direction is **Cilium**, for the two properties
@@ -292,7 +292,7 @@ API server and the datastore.
 The agent's own footprint is a placement fact, not a free variable: sampled
 per-node memory has to fit inside the same allocatable the
 [node contract](#node-facts) publishes, and on the two 4096Mi Pis it comes out
-of the reserve every Workload's `memory` is then compared against.
+of the reserve every Process's `memory` is then compared against.
 
 Installing it restarts the control-plane node's k3s server with flannel and the
 bundled controller disabled, interrupting east-west traffic on the machine that
@@ -303,7 +303,7 @@ scheduled operation, not a step in a bootstrap script.
 
 There are none. The foundation the packs delivered (41 objects copied from
 `flux-modules` at a git ref that this chapter used to describe as *"recorded, not
-verified"*) is **declared** as Services of the platform domains and rendered
+verified"*) is **declared** as Applications of the platform projects and rendered
 like everything else ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)),
 and the CRDs among them are the bootstrap set
 ([chapter 14](14-platform-intent.md#the-bootstrap-set)).
@@ -312,55 +312,55 @@ decided how packs arrive, is superseded: nothing arrives that way. The
 `flux-packs` and `flux-source` adapters, and the `--blueprints-root` and
 `--blueprints-version` inputs they needed, do not exist.
 
-## Onboarding a new Service
+## Onboarding a new Application
 
-Start from [`examples/minimal/`](examples/minimal/README.md): one domain, one
-Service, one Workload, and nothing that is not required. A Service with no
+Start from [`examples/minimal/`](examples/minimal/README.md): one project, one
+Application, one Process, and nothing that is not required. An Application with no
 storage and no secrets is a copy of that file with three names changed.
 
-A Service is added **to a domain file**, not to a repository of its own. One
-file per domain holds many Services, that file is one Intent Fragment, and a
-domain never spans repositories
-([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)). The namespace is
-derived (`<domain>-system`), so no step below names one.
+An Application is added **to a project file**, not to a repository of its own. One
+file per project holds many Applications, that file is one Intent Fragment, and a
+project never spans repositories
+([0063](../../docs/adr/model/0063-intent-authored-per-project.md)). The namespace is
+derived (`<project>-system`), so no step below names one.
 
-1. Add the Service to its domain file, whose shape is
-   [chapter 10](10-service-intent.md#two-artefacts). The file header carries
-   `domain` and `owner`, the only field raised to the domain; the Service
-   carries `id`, `alertClass`, `secrets[]` and its Workloads; each Workload
-   carries its `image`, the ports it `provides`, and its `placement`. Workload
-   names are unique within the domain (`E_DUPLICATE_WORKLOAD_NAME`), because the
-   ServiceAccount and the Vault role are the Workload name alone
-   ([0024](../../docs/adr/model/0024-identity-per-workload.md)). Two Workloads that
-   must switch together belong to one Service: a Service is the unit of atomic
-   release ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)), and
+1. Add the Application to its project file, whose shape is
+   [chapter 10](10-project-intent.md#two-artefacts). The file header carries
+   `project` and `owner`, the only field raised to the project; the Application
+   carries `id`, `alertClass`, `secrets[]` and its Processes; each Process
+   carries its `image`, the ports it `provides`, and its `placement`. Process
+   names are unique within the project (`E_DUPLICATE_PROCESS_NAME`), because the
+   ServiceAccount and the Vault role are the Process name alone
+   ([0024](../../docs/adr/model/0024-identity-per-process.md)). Two Processes that
+   must switch together belong to one Application: an Application is the unit of atomic
+   release ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)), and
    there is no field that couples two of them.
-2. Write `platform/env/<workload>/base.env` **per Workload** (never one file per
-   Service), plus a cluster overlay only where something differs.
+2. Write `platform/env/<process>/base.env` **per Process** (never one file per
+   Application), plus a cluster overlay only where something differs.
 3. Declare `secrets[]` at the level they are shared, each entry carrying `path`,
-   `keys`, `access`, `delivery` and `rotation`. They stay on the Service and are
-   never raised to the domain header, which would hand every Service in the file
+   `keys`, `access`, `delivery` and `rotation`. They stay on the Application and are
+   never raised to the project header, which would hand every Application in the file
    a reader slot on a path it may not need
    ([0009](../../docs/adr/model/0009-vault-read-is-per-path.md)). Reference
    env-delivered values as `${secret:<granted-path>#<key>}`, where the path
-   **byte-matches** a granted path, and cross-Service values as
+   **byte-matches** a granted path, and cross-Application values as
    `${dependency:…}`. The declaration and the env file check each other in both
    directions.
-4. Declare `placement` on **every** Workload: `memory` and `cpu` are required (
+4. Declare `placement` on **every** Process: `memory` and `cpu` are required (
    this field exists to end BestEffort as the estate's standing QoS class), and
    `arch`, `site`, `disk`, `gpu` and `capabilities` are declared only where they
    are true. Every declared dimension is hard, a list is a set of equally
    acceptable values, and a dimension no node can satisfy is
    `E_PLACEMENT_UNSATISFIABLE` at build
    ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)).
-5. Declare the rest of the runtime intent only this Service knows: any
+5. Declare the rest of the runtime intent only this Application knows: any
    `writablePaths` the process needs against the `restricted` default;
    `durability` per volume: `reconstructible`,
    `recoverable` or `irreplaceable`; and `probes.readiness` / `probes.liveness`,
    each with its own `path` + `port` or `tcp`, or `probes: none` stated
    explicitly where there is nothing to probe.
 6. Add `.github/workflows/publish-fragment.yml`
-   ([example](examples/workflows/service-publish-fragment.yml)).
+   ([example](examples/workflows/project-publish-fragment.yml)).
 7. Register the repository in `participants.yml` with its staleness bound:
    `maxAge` defaults to **7 days**
    ([0038](../../docs/adr/model/0038-participants-list-staleness.md)).
@@ -368,14 +368,14 @@ derived (`<domain>-system`), so no step below names one.
    and the resulting `resolved.yml` projection is published back to the
    repository ([0033](../../docs/adr/model/0033-assignments-published-back.md)).
 
-Step 7 is the one a Service cannot do for itself, and it fails loudly rather
+Step 7 is the one an Application cannot do for itself, and it fails loudly rather
 than silently: an unregistered participant is invisible to composition, so its
-Services simply are not in the union. Any additional onboarding the delivery
+Applications simply are not in the union. Any additional onboarding the delivery
 definition requires is that definition's, not this list's.
 
-## Adopting a live Service
+## Adopting a live Application
 
-Adoption is a **source swap**: the objects a Service already has stop being
+Adoption is a **source swap**: the objects an Application already has stop being
 hand-written and start being rendered. The model half of that is checkable
 before anything is applied, and it is the half worth doing carefully.
 
@@ -392,11 +392,11 @@ before anything is applied, and it is the half worth doing carefully.
 4. **Swap the source** once the render reproduces the live objects.
 
 Two differences are expected at step 2 and are not adapter gaps. The namespace
-is one the Service already runs in: `<domain>-system` reproduces all ten live
-namespaces and renames nothing. The resource block is not: a Workload that runs
+is one the Application already runs in: `<project>-system` reproduces all ten live
+namespaces and renames nothing. The resource block is not: a Process that runs
 BestEffort today renders with a `memory` request equal to its limit and a `cpu`
 request with no limit, from the `placement` numbers someone has to choose: the
-first honest reading of what these Services actually need, and the one part of
+first honest reading of what these Applications actually need, and the one part of
 adoption that is authoring rather than transcription.
 
 Step 4 is delivery, and it is where adoption is dangerous: a source that prunes
@@ -414,18 +414,18 @@ adopting an estate that was hand-written first.
 
 ## Adoption order across the estate
 
-Adopt one domain file at a time, in dependency order, providers before
+Adopt one project file at a time, in dependency order, providers before
 consumers, so a consumer is never rendered against a provider that has published
 no fragment:
 
 ```
 1. node facts + the Platform document   nothing depends on them; everything reads them
-2. the platform domains               edge, secrets, observability -- the foundation,
+2. the platform projects               edge, secrets, observability -- the foundation,
                                       declared; every tenant depends on it
-3. data                          postgres, valkey, rabbitmq -- 8 Services depend on them
+3. data                          postgres, valkey, rabbitmq -- 8 Applications depend on them
 4. auth                          every forward-auth route and OIDC consumer
 5. knowledge                     depends on data
-6. agents                        depends on knowledge and the secrets domain
+6. agents                        depends on knowledge and the secrets project
 7. media                         the largest set, the sparsest edges, the lowest blast radius
 8. mail, notes, app,             the remainder
    automation, utility
@@ -435,11 +435,11 @@ no fragment:
 estate, so it is where the derivation is proven: inbound CORS origins and
 forward-auth middleware. It is also where the release rule shows its teeth. The
 estate's clearest lockstep pair, `auth-api` and `auth-ui`, is not a pair of
-Services to couple: under
-[0062](../../docs/adr/model/0062-service-is-the-release-unit.md) it is one Service,
-`auth`, holding two Workloads that switch together or not at all. Their images
+Applications to couple: under
+[0062](../../docs/adr/model/0062-application-is-the-release-unit.md) it is one Application,
+`auth`, holding two Processes that switch together or not at all. Their images
 still build wherever they build; what moves into one file is the intent, and
-with it the atomicity claim, which is now checkable by reading a single Service.
+with it the atomicity claim, which is now checkable by reading a single Application.
 `media` late is also deliberate: sparse edges mean a clean render says less, so
 it should run on machinery already trusted.
 
@@ -462,7 +462,7 @@ owns it. One item is blocked rather than open, and says so.
       node file rather than in the contract, the two 4096Mi Pis first, where
       the reserve is a large fraction of the machine. Owner: joris. Blocks: the
       first placement-gated apply: `memory` and `cpu` are required on every
-      Workload and nothing can be matched against a contract that does not
+      Process and nothing can be matched against a contract that does not
       publish allocatable.
 - [ ] **Platform facts are recorded and validate.** Datastore kind, server
       count, k3s version, server flag set, CNI, `secretsEncryption`. Ticked by:
@@ -482,9 +482,9 @@ owns it. One item is blocked rather than open, and says so.
       those, since `delivery: self` persists nothing.
 - [ ] **The bootstrap set is applied and recorded, and the foundation renders.**
       Ticked by: the four bootstrap entries present in the Platform document
-      with versions, and the platform domains rendering Vault, VSO, Traefik and
+      with versions, and the platform projects rendering Vault, VSO, Traefik and
       the metrics stack with no pack file and no raw manifest anywhere in the
-      tree. Owner: joris. Blocks: every tenant domain, which renders against the
+      tree. Owner: joris. Blocks: every tenant project, which renders against the
       foundation.
 - [ ] **The ClusterState collector exists and its digest is in the lock.**
       Ticked by: two captures ten minutes apart against an idle cluster
@@ -501,7 +501,7 @@ owns it. One item is blocked rather than open, and says so.
 - [ ] **One negative fixture exists per invariant, and composition runs them.**
       Ticked by: [`compose.yml`](examples/workflows/compose.yml) proving each
       gate can fail (`E_PLACEMENT_UNSATISFIABLE` and
-      `E_DUPLICATE_WORKLOAD_NAME` included, since both are new), because an
+      `E_DUPLICATE_PROCESS_NAME` included, since both are new), because an
       assertion that stopped running looks identical to one that passes. Owner:
       the toolkit maintainer. Blocks: relying on any estate-wide invariant as
       evidence.
@@ -509,7 +509,7 @@ owns it. One item is blocked rather than open, and says so.
       `n8n-hooks` (499 lines of JavaScript) and the `garage` bootstrap leave
       their ConfigMaps and become first-party images, retiring the `alpine:3.21`
       plus ConfigMap pattern; `postgres-init-script` needs no image because it
-      becomes derived. Ticked by: no executable Asset remaining in any Service
+      becomes derived. Ticked by: no executable Asset remaining in any Project
       Intent ([0012](../../docs/adr/model/0012-assets-not-code.md)). Owners: the owners
       of `hermes`, `garage` and `n8n`. Blocks: rendering the current cluster
       from intent.
@@ -541,10 +541,10 @@ flowchart TB
     A["1. node facts<br/>one YAML per node, site, allocatable cpu and memory,<br/>structured gpus and disks, capabilities;<br/>contract generated, nix imports the labels"]
     B["2. the bootstrap set applied<br/>k3s, the Flux source, Vault unsealed,<br/>the CRDs, recorded in the Platform document"]
     C["3. Platform document published<br/>substrate facts, tiers, policies, engines,<br/>providers, an Intent Fragment by digest"]
-    D["4. platform domains published<br/>edge, secrets, observability,<br/>the foundation, as Services"]
+    D["4. platform projects published<br/>edge, secrets, observability,<br/>the foundation, as Applications"]
     E["5. ClusterState collector<br/>snapshot plus clusterStateDigest"]
-    F["6. participants.yml<br/>the platform and every domain, plus maxAge"]
-    G["7. one tenant domain publishes<br/>one Intent Fragment, holding its Services"]
+    F["6. participants.yml<br/>the platform and every project, plus maxAge"]
+    G["7. one tenant project publishes<br/>one Intent Fragment, holding its Applications"]
     H["8. composition runs<br/>estate-wide invariants over the union"]
     I["9. render<br/>six adapters, into the tree the Flux source pulls"]
 

@@ -9,12 +9,17 @@ rests-on: ["0005"]
 
 # A failure is a coded diagnostic in a list, not a thrown error
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](../model/0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 Every rule the compiler enforces can be evaluated independently of the others,
 so one run can report all violations rather than the first. False if: a later
 rule cannot run until an earlier one passes (a derivation that needs a valid
 input set to be meaningful) in which case the run has phases and each phase
-reports its own complete list. Settled by: a fixture domain with one violation
+reports its own complete list. Settled by: a fixture project with one violation
 per invariant group producing one diagnostic per violation in a single run.
 
 ## Why

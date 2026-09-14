@@ -1,28 +1,28 @@
-# Fixture: one domain file, two Services, one Workload name.
+# Fixture: one project file, two Applications, one Process name.
 #
 # Otherwise valid and schema-complete, so composition reaches the identity check
 # rather than failing earlier for an unrelated reason. It must fail with
-# E_DUPLICATE_WORKLOAD_NAME and with nothing else.
+# E_DUPLICATE_PROCESS_NAME and with nothing else.
 schemaVersion: 1.0.0
 
-# One file per domain (docs/adr/model/0063-intent-authored-per-domain.md). The
+# One file per project (docs/adr/model/0063-intent-authored-per-project.md). The
 # namespace derives from this header as agents-system, and the ServiceAccount
-# and Vault role of a Workload are its NAME under that namespace
-# (docs/adr/model/0024-identity-per-workload.md) -- which is what makes the collision
+# and Vault role of a Process are its NAME under that namespace
+# (docs/adr/model/0024-identity-per-process.md) -- which is what makes the collision
 # below an identity collision rather than a style complaint.
-domain: agents
+project: agents
 owner: joris
 
-services:
-  # Two Services in one file are ordinary: co-location couples nothing, and
+applications:
+  # Two Applications in one file are ordinary: co-location couples nothing, and
   # these two release independently
-  # (docs/adr/model/0062-service-is-the-release-unit.md). What is not ordinary is that
-  # both name a Workload `api`.
+  # (docs/adr/model/0062-application-is-the-release-unit.md). What is not ordinary is that
+  # both name a Process `api`.
   - id: agents-api
     alertClass: urgent
-    workloads:
+    processes:
       - name: api                       # -> agents-system.api
-        lifecycle: service
+        lifecycle: application
         image: agents-api
         runtime: jvm
         provides: {http: 8080}
@@ -33,9 +33,9 @@ services:
 
   - id: lightrag
     alertClass: business-hours
-    workloads:
+    processes:
       - name: api                       # -> agents-system.api, ALREADY TAKEN
-        lifecycle: service
+        lifecycle: application
         image: lightrag
         runtime: python
         provides: {http: 9621}

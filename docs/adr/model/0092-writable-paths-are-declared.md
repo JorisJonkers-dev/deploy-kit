@@ -3,18 +3,23 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-09-07
-normative: spec/v1/10-service-intent.md#writable-paths-are-declared-not-exempted
+normative: spec/v1/10-project-intent.md#writable-paths-are-declared-not-exempted
 rests-on: ["0005"]
 ---
 
-# A Workload declares the paths it writes, and that is not a hardening exception
+# A Process declares the paths it writes, and that is not a hardening exception
+
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
 
 ## Rests on
 A process under a read-only root filesystem writes to a small, knowable set of
 paths, and one ephemeral size covers every such path in this estate. False if: a
-Workload's writable set cannot be enumerated ahead of time, or one default size
+Process's writable set cannot be enumerated ahead of time, or one default size
 is wrong often enough that the override is the normal case. Settled by:
-rendering the estate with every non-static Workload declaring its writable paths,
+rendering the estate with every non-static Process declaring its writable paths,
 `auth-ui`'s `writableRootFilesystem` exception deleted, and no override on the
 size.
 
@@ -24,7 +29,7 @@ does not mean nothing writes. A JVM needs `/tmp`. nginx needs
 `/var/cache/nginx` and `/var/run` before it can serve a request. The model had
 no way to say so, which produced two defects at once.
 
-The first is undeclared behaviour. `auth.domain.yml` states that "the JVM writes
+The first is undeclared behaviour. `auth.project.yml` states that "the JVM writes
 only to `/tmp`, which the render supplies as an `emptyDir`": a mount no chapter
 specifies, from a derivation that exists nowhere. Either every pod gets a `/tmp`
 nobody asked for, or `auth-api` does not start, and which one happens is a
@@ -35,7 +40,7 @@ The second is worse, because it corrupts a control the estate depends on.
 writable directories, and its own recorded reason predicts the fix: *"the
 exception retires when a rebuilt image relocates both paths onto a mounted
 emptyDir."* Under this decision no rebuild is needed, the paths are mounted by
-declaration, and the exception retires now. That matters beyond one Workload:
+declaration, and the exception retires now. That matters beyond one Process:
 chapter 10 refuses an image that cannot meet the class rather than relaxing a
 control for it, so a mounted tmpfs must not be confused with disabling
 `readOnlyRootFilesystem`. Only one of the two is expressible, and it is this
@@ -53,7 +58,7 @@ Platform Intent carries one default, the same shape as probe cadence and scrape
 timing. Authoring a size per path was the alternative and it is 0081's shape,
 which is right for a persistent volume whose size is a property of the data and
 wrong here: a temp directory's size is a property of the node's tolerance, not of
-the Service.
+the Application.
 
 Nothing is implicit. `/tmp` is not supplied unless declared, because a mount
 nobody asked for appears in every static image that never writes, and an implicit
@@ -76,13 +81,13 @@ re-adding a blanket relaxation the inventory has stopped carrying.
 ## Consequences
 - R15 closes, and one entry leaves the exception inventory, the first time that
   list has shrunk for a reason other than a rebuilt image, paid by nobody.
-- Every non-static Workload now declares its writable set, so an image whose
+- Every non-static Process now declares its writable set, so an image whose
   write behaviour nobody knows has to be examined before it renders, paid by
   its owner, once, and it is information the estate did not have.
 - A wrong or missing path is a runtime failure, not a build error: the model
   cannot know what a process writes, so a forgotten `/var/run` surfaces as a
   crash, paid at first render, which is the earliest anything could know.
-- One ephemeral default governs the estate, so a Workload that needs a large
+- One ephemeral default governs the estate, so a Process that needs a large
   temp area carries an override with a reason and shows up in review, paid in
   one line, deliberately visible.
 - `emptyDir` is node-local and lost on restart, which is correct for every path

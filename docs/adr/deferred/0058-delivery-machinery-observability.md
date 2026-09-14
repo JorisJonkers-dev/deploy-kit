@@ -9,6 +9,11 @@ rests-on: ["0008"]
 
 # The delivery machinery watches itself
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](../model/0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 
 Nothing today notices when the delivery machinery stops working: no page, mail or
@@ -21,11 +26,11 @@ then wait three hours and record every notification received, from any channel.
 
 ## Why
 
-Routing was derived from fields only a Service carries. The old observability
+Routing was derived from fields only an Application carries. The old observability
 record ends its decision at *"notifier routing from the Alert Class and owner"*,
-and both are Service intent ([0021](../model/0021-observability-scrape-and-alert-class.md)).
+and both are Application intent ([0021](../model/0021-observability-scrape-and-alert-class.md)).
 The reapply CronJob, the composition workflow, the relationship gate and the deploy
-job are not Services: no Alert Class, no owner, no derived route. Their only
+job are not Applications: no Alert Class, no owner, no derived route. Their only
 failure signal is a red GitHub Actions run, in an estate whose own record says a
 routinely-red PR is what people learn to ignore, and `failedJobsHistoryLimit: 3`
 (`spec/v1/examples/rendered/reapply-cronjob.yaml:22`) means the fourth consecutive
@@ -51,7 +56,7 @@ exactly when a deploy has just succeeded and never when an aggregator's gate has
 been red for a week, its runner is offline, or its Renovate PR was closed: the
 failure mode it exists to detect is the only one during which it does not run. So
 machinery components carry the same scrape-surface-plus-Alert-Class vocabulary as
-Services, and four conditions (missed or failed CronJob run, composition failure,
+Applications, and four conditions (missed or failed CronJob run, composition failure,
 participant staleness past [0038](../model/0038-participants-list-staleness.md)'s `maxAge`,
 lag beyond bound), each carry an urgent class and an owner, lag evaluated
 cluster-side over the minimum lock annotation, not on the deploy path.
@@ -61,7 +66,7 @@ cluster-side over the minimum lock annotation, not on the deploy path.
 | option | cost if taken | why rejected |
 |---|---|---|
 | Leave machinery signalling to red GitHub Actions runs | zero build; it is the status quo | A red run is a pull signal in a repository nobody opens on a quiet day, `failedJobsHistoryLimit: 3` destroys the first failure by the fourth, and it cannot report a job that never started |
-| Model each machinery component as a Service so it inherits the Service vocabulary | one Service entry per CronJob, workflow and gate: six aggregators, four components each | Most Service fields are meaningless for a workflow (exposure, probes, grants), and composition would depend on the machinery being a participant in the estate it composes |
+| Model each machinery component as an Application so it inherits the Application vocabulary | one Application entry per CronJob, workflow and gate: six aggregators, four components each | Most Application fields are meaningless for a workflow (exposure, probes, grants), and composition would depend on the machinery being a participant in the estate it composes |
 | An external dead-man's switch as the whole answer | one third-party account, a heartbeat token per aggregator, roughly a day | Detects the missed run and nothing else: blind to composition failure, staleness and lag. Kept as one of the four signals; rejected as the mechanism |
 
 ## Reversibility
@@ -79,7 +84,7 @@ then leaves the thing that deploys everything unwatched, with no habit left.
 - Four machinery conditions gain an urgent class and a named owner, and someone is
   woken for a CronJob that did not fire, paid by joris, owner of all four.
 - Machinery rules need CronJob and Job state scraped and a receiver for a class no
-  Service routes to, paid by the metrics stack and its Alertmanager config.
+  Application routes to, paid by the metrics stack and its Alertmanager config.
 - Lag moves off the deploy path into a cluster-side query: one more object per
   aggregator, paid by the cron and rbac adapters.
 - The gate and composition run outside the cluster, so their signal is a heartbeat,

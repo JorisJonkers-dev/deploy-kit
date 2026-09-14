@@ -10,6 +10,11 @@ decided-in: JorisJonkers-dev/workspace#45
 
 # Tested-equals-deployed cannot be had from pull alone
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](../model/0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 
 Under Flux pull delivery, the combination of artefacts that passed the system
@@ -60,7 +65,7 @@ owner; 12 of the 32 system-tagged classes exercise `auth-api` *with its consumer
 |---|---|---|
 | Rival premise: the gap is wiring, not architecture: test the lock in CI, let the passing merge gate the Flux source update | An afternoon for the caller (workspace#45) plus a required merge in front of the Flux source, spending composition's no-merge property on every change | Not rejected: this is the live falsification path; the premise stays `open` until the experiment runs, and group-G scope hangs on its outcome |
 | Rival premise: the 147 tests are rotten, so tested-equals-deployed is moot either way | Nothing to build; the suite is abandoned | Falsified by [workspace ADR-0010](https://github.com/JorisJonkers-dev/workspace/blob/main/docs/decisions/ADR-0010-system-tests-disposition.md): all 32 classes compile and lint on every PR, two tasks and two reusable workflows exist, only the caller is missing |
-| Rival premise: tested-equals-deployed is not worth having: deploy on trust and monitor | Cross-service regressions in the auth relationship set surface in production instead of CI | 12 of ~25 test classes exist precisely to catch provider-with-consumer breakage; discarding the estate's only cross-service evidence contradicts its own investment |
+| Rival premise: tested-equals-deployed is not worth having: deploy on trust and monitor | Cross-application regressions in the auth relationship set surface in production instead of CI | 12 of ~25 test classes exist precisely to catch provider-with-consumer breakage; discarding the estate's only cross-application evidence contradicts its own investment |
 
 ## Reversibility
 

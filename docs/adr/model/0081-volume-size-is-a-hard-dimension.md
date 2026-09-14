@@ -3,11 +3,16 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-09-07
-normative: spec/v1/10-service-intent.md#storage-and-durability
+normative: spec/v1/10-project-intent.md#storage-and-durability
 rests-on: ["0004"]
 ---
 
 # A volume declares its size; the platform decides whether it fits
+
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
 
 ## Rests on
 How much data a volume holds is knowable only to its owner, and whether that
@@ -30,7 +35,7 @@ arbitrator with no request to arbitrate assigns nothing.
 
 The resolution is the shape [0061](0061-placement-is-hard-dimensions.md) already
 uses for the other contended quantities. `memory` and `cpu` are authored as hard
-dimensions and matched against `allocatable`; the Service states the requirement
+dimensions and matched against `allocatable`; the Application states the requirement
 and the platform decides eligibility. A volume's `size` is the same kind of fact:
 20Gi of vault clone is a property of the data, and whether a node can hold it is
 a property of the estate. `E_STORAGE_UNSATISFIABLE` is the storage twin of
@@ -38,15 +43,15 @@ a property of the estate. `E_STORAGE_UNSATISFIABLE` is the storage twin of
 
 A size class per engine or Durability Class was the alternative, and this estate
 has already priced that mistake twice. The health timeout class was a four-row
-table that contradicted a declared budget inside one Service, and
-`rollbackTargetRetention` was a value every Service declared identically and no
+table that contradicted a declared budget inside one Application, and
+`rollbackTargetRetention` was a value every Application declared identically and no
 renderer read. A table of guesses about how big a database is would be the third.
 
-`placement.disk.size` becomes **derived** (the sum of the Workload's volume
+`placement.disk.size` becomes **derived** (the sum of the Process's volume
 sizes), because the same quantity was otherwise authored twice, and chapter 16's
 single-authority property forbids exactly that. The two figures could disagree
 today with nothing detecting it. `disk.media` stays authored, because which media
-a Workload needs is not implied by how much it needs: `platform-postgres` wants
+a Process needs is not implied by how much it needs: `platform-postgres` wants
 NVMe for latency, not for room.
 
 `storageClassName` genuinely is assigned and stays absent: everything takes
@@ -56,9 +61,9 @@ k3s's default `local-path`, and there is no second class to choose from.
 | option | cost if taken | why rejected |
 |---|---|---|
 | A size class per engine or Durability Class | Nothing new authored, and no author asks for 500Gi on a whim | A table of guesses about data size, which is what the deleted health-timeout class and `rollbackTargetRetention` both were |
-| Reuse `placement.disk.size` as the capacity | No new field at all | A Workload with two volumes has one disk request and no way to say which volume gets what |
+| Reuse `placement.disk.size` as the capacity | No new field at all | A Process with two volumes has one disk request and no way to say which volume gets what |
 | Keep both figures and check they agree | Nothing changes shape; the filter stays explicit | Two declaring sites for one quantity with a rule papering over it, which is the pattern single authority forbids |
-| Drop `size` from `placement.disk` and check after binding | Smallest vocabulary | Placement could then put a Workload on a node that cannot hold its volumes, and the failure is a pending PVC rather than a build error |
+| Drop `size` from `placement.disk` and check after binding | Smallest vocabulary | Placement could then put a Process on a node that cannot hold its volumes, and the failure is a pending PVC rather than a build error |
 
 ## Reversibility
 Undo cost today: one authored field and one derivation, hours. Becomes
@@ -72,11 +77,11 @@ number later means a data move rather than a re-render.
 - A volume larger than any eligible node's `usable_gib` fails the render, so a
   20Gi request on a cluster of 16GiB disks is a build error rather than a pod
   stuck `Pending`, paid at build time, deliberately.
-- Capacity is now part of the eligible-node computation, so a Workload's node set
+- Capacity is now part of the eligible-node computation, so a Process's node set
   can narrow when a volume grows, exactly as it does when memory grows, paid by
   whoever grows the volume, visibly.
 - `placement.disk.size` disappearing is a schema change to layer 1, so every
-  domain file declaring it must drop it; the sum is derived and cannot be
+  project file declaring it must drop it; the sum is derived and cannot be
   overridden without a reason, paid once, per repository.
 - A `local-path` PVC cannot be resized on this cluster, so the first number is
   load-bearing and growing a volume is a data move; the model states the size

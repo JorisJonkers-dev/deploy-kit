@@ -1,11 +1,11 @@
 # Chapter 14: Platform Intent
 
-Layer 1 has **two** authored documents, and this chapter is the second. Service
-Intent (chapter 10) says what a Service needs; Platform Intent says what the
+Layer 1 has **two** authored documents, and this chapter is the second. Project
+Intent (chapter 10) says what an Application needs; Platform Intent says what the
 estate offers. Both are held to the same rule, **requirements and facts, never
 mechanisms**, and one test decides which document a value lives in: the
 contention test ([0004](../../docs/adr/model/0004-contention-decides-authority.md)).
-A value a Service could state for itself belongs in chapter 10; a value that
+A value an Application could state for itself belongs in chapter 10; a value that
 must be unique across the estate or draws on a shared finite resource belongs
 here.
 
@@ -26,7 +26,7 @@ owner: joris
 
 One Platform document per estate. It is published as an **Intent Fragment**
 ([chapter 40](40-composition.md#fragments)) by the repository that owns the
-platform, pushed by digest like any domain, and it is a **required participant**
+platform, pushed by digest like any project, and it is a **required participant**
 whose staleness bound is the same seven days
 ([chapter 40](40-composition.md#participants)). There is no side channel: a
 render that cannot find the platform fragment is `E_PARTICIPANT_MISSING`, and a
@@ -38,7 +38,7 @@ Three things a reader might expect here live elsewhere, each for a reason.
 
 | not here | where | why |
 |---|---|---|
-| the foundation components, Vault, VSO, Traefik, the metrics stack, Gatus | domain files the platform owns, as ordinary Services ([The foundation is declared](#the-foundation-is-declared)) | a Service is a Service; a second way to declare one is the duplicate vocabulary [0003](../../docs/adr/model/0003-three-layer-meta-model.md) exists to end |
+| the foundation components, Vault, VSO, Traefik, the metrics stack, Gatus | project files the platform owns, as ordinary Applications ([The foundation is declared](#the-foundation-is-declared)) | an Application is an Application; a second way to declare one is the duplicate vocabulary [0003](../../docs/adr/model/0003-three-layer-meta-model.md) exists to end |
 | the node contract, site, arch, allocatable, gpus, disks per node | its own pinned input, authored once where nix reads it ([0056](../../docs/adr/model/0056-node-facts-single-source.md), [chapter 60](60-setup.md#node-facts)) | folding it in would make nix read a deployment-model document or duplicate the facts |
 | anything executable | the images lock, as a purpose-built image per engine ([Engines](#engines)) | [0012](../../docs/adr/model/0012-assets-not-code.md) applies to the platform's own files |
 
@@ -95,19 +95,19 @@ bootstrap:
 | k3s itself | it is what applies |
 | the Flux source | it pulls the tree that everything else is in |
 | Vault's unseal | a secret the model must never hold |
-| the CRDs the estate uses | cluster-scoped schema that must exist before any object of that kind can apply; the components that *use* them are declared Services |
+| the CRDs the estate uses | cluster-scoped schema that must exist before any object of that kind can apply; the components that *use* them are declared Applications |
 
-Everything not in this table is a declared Service. The set is a
+Everything not in this table is a declared Application. The set is a
 [Bidirectional Ledger](30-deliverables.md#ledgers) in shape: an entry nothing
 needs fails the build, and a component that should be declared and is not is
 `E_UNATTRIBUTED_OBJECT`.
 
 ## The foundation is declared
 
-Vault, VSO, Traefik, Prometheus and Gatus are Services in domain files the
+Vault, VSO, Traefik, Prometheus and Gatus are Applications in project files the
 platform owns: `platform/edge.yml`, `platform/secrets.yml`,
-`platform/observability.yml`, with an `image`, Workloads, `engine`, grants,
-`exposure`, volumes and a Durability Class like any tenant Service
+`platform/observability.yml`, with an `image`, Processes, `engine`, grants,
+`exposure`, volumes and a Durability Class like any tenant Application
 ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)). Nothing
 about them is hand-written, and every estate-wide invariant in
 [chapter 40](40-composition.md#the-estate-wide-invariants) sees them.
@@ -118,15 +118,15 @@ Two consequences are normative:
   declared from its image; what the chart added (defaults and CRDs) is
   respectively what a declaration replaces and what the bootstrap set pins.
   `HelmRelease` and `HelmRepository` are not rendered kinds.
-- **Two Traefik instances are two Services**, placed by capability: one on the
+- **Two Traefik instances are two Applications**, placed by capability: one on the
   `public-ingress` node, one on a LAN node. That placement, and the tier facts
   below, are what keep LAN traffic off the Frankfurt proxy, not which adapter
   emitted the route.
 
 The estate-scoped Deliverables that used to have adapters of their own, the
 Gatus endpoints, the edge catalogs, are **inbound derivations** of the platform
-Service that consumes them ([chapter 16](16-dependencies.md#what-an-edge-derives-read-inbound)),
-rendered as that Service's own Assets, exactly as the database catalog is for
+Application that consumes them ([chapter 16](16-dependencies.md#what-an-edge-derives-read-inbound)),
+rendered as that Application's own Assets, exactly as the database catalog is for
 `postgres` ([0080](../../docs/adr/model/0080-database-catalog-is-derived-data.md)).
 
 ## Tiers
@@ -142,7 +142,7 @@ tiers:
     listener: tls                      # tls | plain
     certificates: acme                 # acme | none
     forwardAuth: http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward
-    traefik: traefik-public            # the declared Service that is this tier's proxy
+    traefik: traefik-public            # the declared Application that is this tier's proxy
   - name: lan
     audiences: [lan]
     listener: plain
@@ -156,7 +156,7 @@ tiers:
 | `listener` | whether the edge terminates TLS |
 | `certificates` | how certificates are issued for what it terminates |
 | `forwardAuth` | the endpoint that authenticates for it; required where `authenticated` is carried, `E_NO_FORWARD_AUTH_ENDPOINT` otherwise ([0076](../../docs/adr/model/0076-middleware-has-one-producer.md)) |
-| `traefik` | the platform Service whose proxy this tier is |
+| `traefik` | the platform Application whose proxy this tier is |
 
 `entryPoint`, `certResolver` and every other Traefik spelling appear only in the
 adapter. A route's audience is the **only** way it reaches a tier, so a `lan`
@@ -194,7 +194,7 @@ engines:
 ```
 
 A shell command in an authored file is what [0012](../../docs/adr/model/0012-assets-not-code.md)
-refuses for a Service, and it is refused here for the same reason: what the
+refuses for an Application, and it is refused here for the same reason: what the
 image does is versioned and digested; a string in YAML is neither.
 
 ## Monitor cadence
@@ -206,13 +206,13 @@ monitors:
 ```
 
 One cadence for every monitor the estate renders, here for the same reason the
-probe cadence below is: it is contended, and no Service knows better
+probe cadence below is: it is contended, and no Application knows better
 ([0004](../../docs/adr/model/0004-contention-decides-authority.md)).
 
 That is the whole observability surface of this document. No receiver map, no
 severity mapping, no rule catalog: those belong to the monitoring stack, which
 reads `alertClass` from the published projection
-([chapter 10](10-service-intent.md#observability)).
+([chapter 10](10-project-intent.md#observability)).
 
 ## Hardening policy
 
@@ -225,10 +225,10 @@ hardening: restricted
 
 The class is the platform's because it is uniform and contended: thirty
 declarations of the only legal value are thirty copies of one decision
-([0004](../../docs/adr/model/0004-contention-decides-authority.md)). A Workload
+([0004](../../docs/adr/model/0004-contention-decides-authority.md)). A Process
 therefore authors no hardening at all: it declares the paths it must write, and
 an image that cannot meet the class is `E_HARDENING_UNMET`
-([chapter 10](10-service-intent.md#pod-hardening)). There is no per-control
+([chapter 10](10-project-intent.md#pod-hardening)). There is no per-control
 relaxation to author, because a relaxation carried with a reason is an override
 under another name.
 
@@ -250,7 +250,7 @@ ephemeral: {sizeLimit: 64Mi}
 
 ## Providers
 
-Things the estate runs and this model does not deploy, that a Service may
+Things the estate runs and this model does not deploy, that an Application may
 depend on. A **provider is a fact, not a hole**
 ([0095](../../docs/adr/model/0095-platform-intent-is-the-second-authored-document.md)):
 it has an address and surfaces, an edge resolves against it
@@ -275,7 +275,7 @@ against facts, never against exemptions.
 **Layer 1 has no generic override mechanism and this document carries no
 overridable-derivations table.** A derived value has one declaring site, the
 derivation, and an assignment has one author, the platform. The sole local
-exception is capacity ([chapter 10](10-service-intent.md#capacity)):
+exception is capacity ([chapter 10](10-project-intent.md#capacity)):
 
 ```yaml
 replicas:
@@ -286,14 +286,14 @@ replicas:
 There is no `E_UNKNOWN_OVERRIDE`, because there is no key set to be outside.
 What used to sit in a ten-row table resolves three ways:
 
-- **A workload-class difference is a derivation bug.** If one rule is wrong for a
-  whole class of Workload, the rule is repaired and the estate re-rendered,
+- **A process-class difference is a derivation bug.** If one rule is wrong for a
+  whole class of Process, the rule is repaired and the estate re-rendered,
   which is what `startupDeadline` was, and why it is now one rule over
-  `startupBudget` rather than a per-Workload exception.
+  `startupBudget` rather than a per-Process exception.
 - **A platform policy stays platform policy.** Cadence, retention, ephemeral
   size, probe timing and route precedence are contended and shared; they are
-  stated once here or derived, and no Service restates them.
-- **An irreducible Service fact earns a named field** with its own authority,
+  stated once here or derived, and no Application restates them.
+- **An irreducible Application fact earns a named field** with its own authority,
   validation and example, not a generic entry pointing at a rendered field.
 
 That is deliberately more demanding than adding a row. An unbounded exception

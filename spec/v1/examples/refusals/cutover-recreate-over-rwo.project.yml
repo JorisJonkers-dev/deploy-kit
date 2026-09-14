@@ -1,32 +1,32 @@
-# ACCEPTED. The counterpart to cutover-rolling-over-rwo.domain.yml.
+# ACCEPTED. The counterpart to cutover-rolling-over-rwo.project.yml.
 #
-# The same Workload over the same `ReadWriteOnce` storage, declaring the cutover
+# The same Process over the same `ReadWriteOnce` storage, declaring the cutover
 # its storage can honour. The owner accepts stop-then-start, and the adapter
 # derives the safe Kubernetes strategy (`Recreate`, with no surge) from the
 # declared intent and the storage facts. No Kubernetes token appears here:
 # `RollingUpdate`, `maxSurge` and `maxUnavailable` are the adapter's, not the
-# Service author's (spec/v1/10-service-intent.md #cutover-is-declared-not-promised).
+# Application author's (spec/v1/10-project-intent.md #cutover-is-declared-not-promised).
 #
 # Rendering that strategy is renderer proof, and there is no renderer yet. What
 # this fixture proves today is the accepted half of the pair at the fixture
 # layer: recreate over RWO is expressible and valid where rolling is refused.
 
 apiVersion: intent.jorisjonkers.dev/v1
-kind: Domain
+kind: Project
 schemaVersion: 1.0.0
 
 expect: accepted
 
-domain: refusals
+project: refusals
 owner: joris
 
-services:
+applications:
   - id: recreate-over-rwo
     # No `observability` block: this fixture isolates the cutover defect.
 
-    workloads:
+    processes:
       - name: recreate-over-rwo-store
-        lifecycle: service
+        lifecycle: application
         image: recreate-over-rwo-store
         runtime: static
         engine: valkey

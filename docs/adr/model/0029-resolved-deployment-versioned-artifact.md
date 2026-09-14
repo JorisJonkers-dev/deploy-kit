@@ -9,13 +9,18 @@ rests-on: ["0003"]
 
 # The Resolved Deployment is a versioned, reviewable artifact
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 > **Amended 2026-09-08.** The schema family list below includes
 > `adapter-compat/v1`, which no longer exists: the publish-time producers it
 > paired with their consumers are deleted ([0098](0098-one-publication-path.md)).
 > The Resolved Deployment also carries the path plan
 > ([0070](0070-path-authority-is-layer-2.md)), the release gate's inputs
 > ([0071](0071-release-gate-inputs-are-layer-2.md)), the override records and the
-> per-Workload image digests that were once a separate image-metadata document.
+> per-Process image digests that were once a separate image-metadata document.
 
 ## Rests on
 
@@ -24,10 +29,10 @@ versioned schema, is byte-stable for identical pinned inputs, so a diff between
 two renders shows exactly the platform decisions that changed and nothing else.
 False if: two renders of the same Intent against the same pinned context and
 locks differ (map ordering, timestamps, absolute paths), because a diff
-carrying that noise is not a review surface. Settled by: render one Service
+carrying that noise is not a review surface. Settled by: render one Application
 twice from the same lock and context into `/tmp/a` and `/tmp/b`, then
 `diff -r /tmp/a /tmp/b` (empty settles it) and
-`ajv validate -s schemas/deployment.schema.json -d /tmp/a/<service>.yml`.
+`ajv validate -s schemas/deployment.schema.json -d /tmp/a/<application>.yml`.
 
 ## Why
 
@@ -84,7 +89,7 @@ decision into layer 3 unnoticed: an empty artifact diff across it proves that.
 Undo cost today: the schema exists, so undoing means deleting an emit step, a
 CI validate-and-diff job and the version field: one workflow file, one command
 path, a handful of fixtures; hours, and the review surface is the whole loss.
-Becomes irreversible once: a service repository or a second aggregator pins a
+Becomes irreversible once: a project repository or a second aggregator pins a
 Resolved Deployment schema version or reads a published artifact of its own
 accord, the middle layer is then a contract with consumers this repository
 cannot enumerate, and its shape moves only under the compatibility rule.
@@ -92,7 +97,7 @@ cannot enumerate, and its shape moves only under the compatibility rule.
 ## Consequences
 
 - A third schema to version and keep honest, paid by this repository's maintainers.
-- Every render emits and validates an artifact, and CI gains a diff step per Service, paid by the aggregator's pipeline, in wall time on every change.
+- Every render emits and validates an artifact, and CI gains a diff step per Application, paid by the aggregator's pipeline, in wall time on every change.
 - A reviewer sees what the platform decided on their behalf, including decisions nobody asked for, paid by reviewers, who read a second document per change.
 - `validate deployment` is ambiguous by construction and needs a per-layer name; scripts spelling the old one break, paid by tooling authors.
 - Byte-stability stops being an aspiration: any non-determinism in the renderer surfaces as diff noise and must be fixed before the gate is trusted, paid by the renderer's maintainers.

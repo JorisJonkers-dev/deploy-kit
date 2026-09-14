@@ -1,6 +1,6 @@
 # Platform Intent: the second authored document. What the estate offers, held to
-# the same rule as a domain file -- facts and policy, never mechanisms -- and
-# published as an Intent Fragment by digest like any domain
+# the same rule as a project file -- facts and policy, never mechanisms -- and
+# published as an Intent Fragment by digest like any project
 # (spec/v1/14-platform-intent.md, docs/adr/model/0095-platform-intent-is-the-second-authored-document.md).
 #
 # Every block is a value the contention test put on the platform's side
@@ -15,7 +15,7 @@ owner: joris
 
 metadata:
   cluster: production
-  domain: jorisjonkers.dev
+  project: jorisjonkers.dev
   nodeContract: sha256:6f1c2a8e5d3b4c7f9a0e1d2c3b4a5968778695a4b3c2d1e0f9a8b7c6d5e4f3a2
 
 # Facts about the cluster, named for what they are. How k3s is told is a
@@ -54,7 +54,7 @@ tiers:
     listener: tls
     certificates: acme
     forwardAuth: http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward
-    traefik: traefik-public # the declared Service in the platform edge domain,
+    traefik: traefik-public # the declared Application in the platform edge project,
     # placed on the public-ingress node
   - name: lan
     audiences: [lan]
@@ -83,7 +83,7 @@ engines:
   files: { backup: file-backup }
 
 # One cadence for every rendered monitor, for the same reason the probe cadence
-# below is here: it is contended across the estate, and no Service knows better
+# below is here: it is contended across the estate, and no Application knows better
 # (docs/adr/model/0004-contention-decides-authority.md).
 monitors:
   interval: 30s
@@ -92,9 +92,9 @@ monitors:
 # NO rule catalog, no receivers, no severity map. Those belong to the monitoring
 # stack, which reads the published projection; this document decides how often
 # to scrape and nothing else about alerting
-# (spec/v1/10-service-intent.md#observability).
+# (spec/v1/10-project-intent.md#observability).
 
-# One posture for every container the estate renders. A Workload authors no
+# One posture for every container the estate renders. A Process authors no
 # hardening at all: it declares the paths it writes, and an image that cannot
 # meet this class is refused (docs/adr/model/0016-pod-hardening.md).
 hardening: restricted
@@ -111,7 +111,7 @@ probes:
 ephemeral:
   sizeLimit: 64Mi
 
-# Things the estate runs and does not deploy, that a Service depends on. A fact
+# Things the estate runs and does not deploy, that an Application depends on. A fact
 # with an address, resolvable by an edge -- not a hole, so no review date
 # (docs/adr/model/0090-edges-resolve-against-the-register.md).
 providers:

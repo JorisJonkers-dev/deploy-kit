@@ -2,7 +2,7 @@
 # Never hand-edited.
 #
 # This is what turns "deploy authority is exactly one" from a CI convention
-# into an API-server control. A workflow that tries to apply a Service this
+# into an API-server control. A workflow that tries to apply an Application this
 # Aggregator does not deploy receives 403 rather than producing a bad deploy.
 #
 # deploys: [auth-api, auth-ui]  ->  namespaces auth-system, app-system
@@ -26,7 +26,7 @@ rules:
   # else, and no cluster-scoped verbs: an Aggregator cannot create a Namespace
   # or a CRD, because those belong to class B and to Flux.
   - apiGroups: ['']
-    resources: [services, serviceaccounts, configmaps, persistentvolumeclaims]
+    resources: [applications, serviceaccounts, configmaps, persistentvolumeclaims]
     verbs: [get, list, create, patch, update, delete]
   - apiGroups: [apps]
     resources: [deployments, statefulsets]

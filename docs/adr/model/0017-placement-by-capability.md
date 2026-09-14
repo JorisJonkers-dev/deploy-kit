@@ -3,11 +3,16 @@ tier: decision
 superseded-by: 0061
 claim: settled
 date: 2026-08-31
-normative: spec/v1/10-service-intent.md#placement
+normative: spec/v1/10-project-intent.md#placement
 rests-on: ["0005"]
 ---
 
 # Placement is declared as capabilities, never labels
+
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
 
 Superseded by [0061](0061-placement-is-hard-dimensions.md): placement is now a
 set of hard dimensions matched against node allocatable, so capabilities are one
@@ -42,53 +47,53 @@ Both shapes are needed. The same document records the success case:
 *"Architecture is a preference, not a requirement… as a weighted `nodeAffinity`,
 so they schedule on Frankfurt rather than sitting Pending when the Pis are
 full or down."* Only-hard turns a capacity dip into an outage; only-soft cannot
-say a workload needs the ingress node.
+say a process needs the ingress node.
 
-Labels are also not the Service's to name.
+Labels are also not the Application's to name.
 `nix-config/generated/node-contract.yml` emits 110 labels for 7 nodes, 55 under
 `platform.jorisjonkers.dev/*` and the same 55 under `personal-stack/*`, named
 after an archived repository that rejects pushes. Authored as selectors,
-retiring that prefix is an edit in every service repository; as capabilities it
+retiring that prefix is an edit in every project repository; as capabilities it
 touches none. Losing the capability on the way out costs as much:
 `src/adapters/flux-utils.ts:957-958` finds the host advertising the requested
 capability and returns a selector on that host's *site*, discarding it, so
 `test/fixtures/kubernetes-parity/postgres-derived.yaml:13` renders
-`personal-stack/site: frankfurt` and a workload requiring `public-ingress` lands
+`personal-stack/site: frankfurt` and a process requiring `public-ingress` lands
 on any node in the site. Pinning already implied stays derived instead: a
-`local-path` volume ties its Workload to the node holding the PV and the
+`local-path` volume ties its Process to the node holding the PV and the
 resolver states that ([0015](0015-durability-class-per-volume.md)).
 
 ## Alternatives
 
 | option | cost if taken | why rejected |
 |---|---|---|
-| Node label selectors in Service Intent (the v2 shape) | retiring `personal-stack/*` (55 of the 110 labels on 7 nodes) becomes an edit in ~30 service repositories instead of one node declaration | placement would be coupled to a naming decision no service owner takes part in |
+| Node label selectors in Project Intent (the v2 shape) | retiring `personal-stack/*` (55 of the 110 labels on 7 nodes) becomes an edit in ~30 project repositories instead of one node declaration | placement would be coupled to a naming decision no application owner takes part in |
 | Capabilities, but an unsatisfiable `prefers` is a warning | reproduces the `gtx960m` outcome with a log line nobody reads | the silence is the failure being closed |
-| Hard `requires` only, no preferences | arm64 workloads sit `Pending` when the Pis are full or down instead of scheduling on Frankfurt, the case the divergence document records as working | availability traded away for a distinction the model can afford |
-| Declare node pinning for `local-path` volumes explicitly | every stateful Service restates a constraint the resolver already derives from the volume, and the two disagree the first time a PV moves | derivable from declared intent ([0005](0005-derivation-is-total.md)) |
+| Hard `requires` only, no preferences | arm64 processes sit `Pending` when the Pis are full or down instead of scheduling on Frankfurt, the case the divergence document records as working | availability traded away for a distinction the model can afford |
+| Declare node pinning for `local-path` volumes explicitly | every stateful Application restates a constraint the resolver already derives from the volume, and the two disagree the first time a PV moves | derivable from declared intent ([0005](0005-derivation-is-total.md)) |
 
 ## Reversibility
 
 Undo cost today: one intent-schema block plus the selector/affinity derivation
 (`src/adapters/kubernetes.ts:476` already emits `<cluster>/capability-<name>`).
-Under a day, then re-authoring placement in every Service that declares it;
-blast radius is a reschedule per workload whose `nodeSelector` changes. Becomes
+Under a day, then re-authoring placement in every Application that declares it;
+blast radius is a reschedule per process whose `nodeSelector` changes. Becomes
 irreversible once: the hand-authored node inventory is deleted for the generated
 contract ([0056](0056-node-facts-single-source.md)): no hand-maintained label
 list then exists to write a selector against.
 
 ## Consequences
 
-- A capability must exist on some node before a Service may require or prefer
+- A capability must exist on some node before an Application may require or prefer
   it; adding one is a node declaration, paid by the platform owner.
 - Composition fails the build when `requires` or `prefers` names a capability
-  no node advertises, paid by service authors, who lose the silent no-op.
+  no node advertises, paid by application authors, who lose the silent no-op.
 - Adapters must carry the capability into the selector key instead of
   collapsing it to a site match, and the renderer's two label schemes become
   one, paid by adapter maintainers.
-- Volume pinning is stated once by the resolver, so stateful Services declare
+- Volume pinning is stated once by the resolver, so stateful Applications declare
   durability and nothing about nodes, paid by resolver maintainers.
-- Retiring the archived prefix touches no service repository, but does mean
+- Retiring the archived prefix touches no project repository, but does mean
   relabelling live nodes through the generated contract, since a hand-applied
   label drifts back on the next reconcile, paid by the platform owner.
 - "Just run it on that machine" is no longer expressible without naming a

@@ -1,8 +1,8 @@
 # Chapter 16: Dependencies, identity, and derivation
 
-Chapter 10 defined what a domain file declares: Services, and the Workloads
+Chapter 10 defined what a project file declares: Applications, and the Processes
 under them. This chapter defines what those declarations *produce*: the edge
-set between Services, the identity each Workload authenticates as, the network
+set between Applications, the identity each Process authenticates as, the network
 policy both derive, and the derivation map that gives this specification its one
 machine-checkable property.
 
@@ -14,30 +14,30 @@ consumer requires it
 
 ```yaml
 dependsOn:
-  - {service: platform-postgres, surface: postgres}
-  - {service: auth, surface: http, required: false}
+  - {application: platform-postgres, surface: postgres}
+  - {application: auth, surface: http, required: false}
 ```
 
 | field | required | meaning |
 |---|---|---|
-| `service` | yes | A Service Id, the only referencable identity ([0010](../../docs/adr/model/0010-flat-service-identity.md)). It must resolve in the composed union: `E_UNRESOLVED_SERVICE`. |
-| `surface` | yes | One surface declared by one of that Service's Workloads. The port is written once, by the provider, and never restated by a consumer: `E_UNKNOWN_SURFACE` where the name matches nothing. |
+| `application` | yes | An Application Id, the only referencable identity ([0010](../../docs/adr/model/0010-flat-application-identity.md)). It must resolve in the composed union: `E_UNRESOLVED_APPLICATION`. |
+| `surface` | yes | One surface declared by one of that Application's Processes. The port is written once, by the provider, and never restated by a consumer: `E_UNKNOWN_SURFACE` where the name matches nothing. |
 | `required` | no | Defaults to `true`. |
 
-**`provides` moved to the Workload; the edge did not.** A port is a property of
-a process, so surfaces are declared by the Workload that listens
-([chapter 10](10-service-intent.md#ports-and-surfaces)). `dependsOn` still
-targets `{service, surface}` and nothing a consumer writes changes. Surface
-names stay unique within a Service, so the pair resolves to exactly one
-Workload, one port and one address: `{service: auth, surface: http}` is carried
-by Workload `auth-api`, and the consumer neither names that Workload nor learns
-it exists. A provider may move a surface between its own Workloads without a
-single consumer edit. The Service Id remains the only referencable identity, and
-a Workload is not referencable from outside its Service
-([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)).
+**`provides` moved to the Process; the edge did not.** A port is a property of
+a process, so surfaces are declared by the Process that listens
+([chapter 10](10-project-intent.md#ports-and-surfaces)). `dependsOn` still
+targets `{application, surface}` and nothing a consumer writes changes. Surface
+names stay unique within an Application, so the pair resolves to exactly one
+Process, one port and one address: `{application: auth, surface: http}` is carried
+by Process `auth-api`, and the consumer neither names that Process nor learns
+it exists. A provider may move a surface between its own Processes without a
+single consumer edit. The Application Id remains the only referencable identity, and
+a Process is not referencable from outside its Application
+([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)).
 
-Edges are declared **per Workload**, and a Service's edge set is the union of
-its Workloads' edges. Within `knowledge` the API reaches Postgres while the
+Edges are declared **per Process**, and an Application's edge set is the union of
+its Processes' edges. Within `knowledge` the API reaches Postgres while the
 ingest worker reaches RabbitMQ, and neither inherits the other's egress.
 
 An id alone would not carry enough. The only NetworkPolicy code this estate
@@ -63,29 +63,29 @@ default) buys both. The graph of required edges must be acyclic
 (`E_DEPENDENCY_CYCLE`, [chapter 40](40-composition.md)).
 
 An edge orders; it does not group. Things that must switch versions together are
-Workloads of **one Service**: a Service is the unit of atomic release, its
-Workloads switch together or none switches, and there is no mechanism to couple
-two Services ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)).
-Atomicity is authored by drawing the Service boundary, because the graph cannot
+Processes of **one Application**: an Application is the unit of atomic release, its
+Processes switch together or none switches, and there is no mechanism to couple
+two Applications ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)).
+Atomicity is authored by drawing the Application boundary, because the graph cannot
 see it: a frontend depends on its API, but a dependency edge does not mean the
 two must cut over together, and deriving atomicity from every edge would make
-the whole estate one unit. A lockstep pair that survives as two Services is not
+the whole estate one unit. A lockstep pair that survives as two Applications is not
 a missing feature: it is evidence the boundary is drawn wrong, and the fix is
 redrawing it.
 
 ### What an edge derives, read inbound
 
-The same edges read from the provider's side produce derivations no Service
-could declare locally, because no Service knows its own consumers. They are
+The same edges read from the provider's side produce derivations no Application
+could declare locally, because no Application knows its own consumers. They are
 computable only over the composed union
 ([0037](../../docs/adr/model/0037-composition-oci-fragments.md)), which is this
 chapter's hard dependency on [chapter 40](40-composition.md).
 
 | inbound derivation | evidence it is needed |
 |---|---|
-| a database and owning user per consumer | `init-databases.sh` creates `auth_db`, `agents_db`, `knowledge_db` and `n8n_db`, one per Service claiming a Postgres credential. 98 lines the graph already knows. |
-| the Gatus endpoint list | one check per route on every exposure in the union, for the declared `gatus` Service, 41 derived references in 288 hand-maintained lines today ([0098](../../docs/adr/model/0098-one-publication-path.md)) |
-| the edge catalogs | every host and route the estate serves, for the declared Traefik Services, 30 and 28 derived references in two hand-maintained ConfigMaps |
+| a database and owning user per consumer | `init-databases.sh` creates `auth_db`, `agents_db`, `knowledge_db` and `n8n_db`, one per Application claiming a Postgres credential. 98 lines the graph already knows. |
+| the Gatus endpoint list | one check per route on every exposure in the union, for the declared `gatus` Application, 41 derived references in 288 hand-maintained lines today ([0098](../../docs/adr/model/0098-one-publication-path.md)) |
+| the edge catalogs | every host and route the estate serves, for the declared Traefik Applications, 30 and 28 derived references in two hand-maintained ConfigMaps |
 | NetworkPolicy **ingress** | a provider must admit its consumers, and only the inbound set says who they are |
 | browser origin allow-lists | `auth-api` hand-maintains `AUTH_CORS_ALLOWED_ORIGINS` with nine hostnames |
 | rotation blast radius | "who breaks if I rotate this?" is the reader set of a Secret Subtree **path**, computed over readers of the path and never over declared key sets |
@@ -98,9 +98,9 @@ specification, see [Defined separately](#defined-separately).
 
 The first row of that table has a producer
 ([0080](../../docs/adr/model/0080-database-catalog-is-derived-data.md)). For a
-provider Workload whose [`engine`](10-service-intent.md#workload) is a datastore
+provider Process whose [`engine`](10-project-intent.md#process) is a datastore
 that owns databases, the inbound edge set derives a **catalog**: one entry per
-consuming Service naming its database, its owning user, and the Vault role that
+consuming Application naming its database, its owning user, and the Vault role that
 issues that user's credentials.
 
 The catalog is **data, not a procedure**. It renders as a `ConfigMap` and the
@@ -109,7 +109,7 @@ same split [0077](../../docs/adr/model/0077-durability-derives-a-backup.md) make
 for backups, and for the same reason: [0012](../../docs/adr/model/0012-assets-not-code.md)
 forbids an executable Asset, and a rendered shell script is a diff no reviewer
 can validate except by running it. What exists today is 98 lines of
-`init-databases.sh` creating `auth_db`, `agents_db`, `knowledge_db` and `n8n_db`, one per Service claiming a Postgres credential, which is exactly the inbound
+`init-databases.sh` creating `auth_db`, `agents_db`, `knowledge_db` and `n8n_db`, one per Application claiming a Postgres credential, which is exactly the inbound
 edge set.
 
 **No password is rendered.** The catalog names a Vault role; Vault's database
@@ -126,51 +126,51 @@ mismatch R20 recorded (a grant path is not the path a credential is read from)
 and it is why the catalog could not render until the grant vocabulary became a
 union on engine.
 
-## Workload identity
+## Process identity
 
-Every Workload authenticates as its own principal. The ServiceAccount, the
+Every Process authenticates as its own principal. The ServiceAccount, the
 Vault Kubernetes auth role and the Vault policy bound to it are derived **per
-Workload** and named for the **Workload alone**
-([0024](../../docs/adr/model/0024-identity-per-workload.md)). The namespace is the
-domain's, `<domain>-system`
-([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)), so the principal a
-Pod presents is `<domain>-system.<workload>`. No author writes an identity name
+Process** and named for the **Process alone**
+([0024](../../docs/adr/model/0024-identity-per-process.md)). The namespace is the
+project's, `<project>-system`
+([0063](../../docs/adr/model/0063-intent-authored-per-project.md)), so the principal a
+Pod presents is `<project>-system.<process>`. No author writes an identity name
 ([0030](../../docs/adr/model/0030-runtime-mechanics-derived.md)).
 
-| domain | Service | Workloads | derived identity |
+| project | Application | Processes | derived identity |
 |---|---|---|---|
 | `auth` | `auth` | `auth-api`, `auth-ui` | `auth-system.auth-api`, the identity already live, `VAULT_KUBERNETES_ROLE: auth-api`, and `auth-system.auth-ui` |
 | `knowledge` | `knowledge` | `knowledge-api`, `knowledge-ingest-worker` | `knowledge-system.knowledge-api`, `knowledge-system.knowledge-ingest-worker` |
 
-A `<service>-<workload>` prefix is what the domain file makes absurd. Service
-`auth` holds Workload `auth-api`, so the prefixed rule would render
+A `<application>-<process>` prefix is what the project file makes absurd. Application
+`auth` holds Process `auth-api`, so the prefixed rule would render
 `auth-system.auth-auth-api` for no gain: `auth-api` is the process name, and it
 is the role the live cluster already carries. The uniqueness the prefix existed
-to give moves to where a reader can check it: two Workloads in one domain may
-not share a name, `E_DUPLICATE_WORKLOAD_NAME` at composition
+to give moves to where a reader can check it: two Processes in one project may
+not share a name, `E_DUPLICATE_PROCESS_NAME` at composition
 ([chapter 40](40-composition.md#identity)).
 
 Vault's Kubernetes auth method binds a role to ServiceAccount names and
 namespaces and to nothing finer, so two Pods presenting one ServiceAccount token
 are one principal holding the union of the policies bound to it. Two things
-follow. Deriving the account from the Service Id (which
+follow. Deriving the account from the Application Id (which
 `src/adapters/kubernetes.ts:665-669` does today, and which the previous version
 of this chapter drew as `id --> ServiceAccount`) makes the two grant levels of
-[0022](../../docs/adr/model/0022-grants-live-on-the-service.md) documentation rather
+[0022](../../docs/adr/model/0022-grants-live-on-the-application.md) documentation rather
 than a boundary. Under it, `knowledge-api`, which serves anonymous paths from
 the public internet, authenticated as the principal holding `read` on
 `secret/data/knowledge-system/vault-deploy-key`, the `0400` deploy key only the
 ingest worker declares. And because the binding's other half is the namespace,
-while a namespace now holds every Service of its domain by construction, the
+while a namespace now holds every Application of its project by construction, the
 **namespace is not a trust boundary**: `auth-system` is shared, and no grant is
-narrowed by living in it. What separates two Workloads is the ServiceAccount
+narrowed by living in it. What separates two Processes is the ServiceAccount
 name alone, which is exactly why its uniqueness is checked across the whole
-domain rather than within one Service.
+project rather than within one Application.
 
-A Workload's **effective grant set** is the Service-level `secrets` list plus
-its own. Layer 2 flattens that set per Workload before deriving policy, so a
-Service-level grant renders one policy statement per Workload that holds it,
-never one shared statement. Renaming a Workload renames its identity: role,
+A Process's **effective grant set** is the Application-level `secrets` list plus
+its own. Layer 2 flattens that set per Process before deriving policy, so a
+Application-level grant renders one policy statement per Process that holds it,
+never one shared statement. Renaming a Process renames its identity: role,
 policy and bindings churn, and the new identity must be granted before it
 starts.
 
@@ -200,11 +200,11 @@ one of its readers holds `read` on its neighbours' credentials.
 ### Worked trace: one secret grant
 
 ```yaml
-# the knowledge domain file: the grant sits on the Service, since both
-# Workloads hold it
-domain: knowledge
+# the knowledge project file: the grant sits on the Application, since both
+# Processes hold it
+project: knowledge
 owner: joris
-services:
+applications:
   - id: knowledge
     secrets:
       - path: secret/data/platform/postgres/kb    # one path, one reader set
@@ -227,14 +227,14 @@ selects which value fills the variable and confers nothing.
 
 | derives | detail |
 |---|---|
-| `VaultStaticSecret` | in the domain's namespace, `knowledge-system`, syncing the granted path |
+| `VaultStaticSecret` | in the project's namespace, `knowledge-system`, syncing the granted path |
 | `Secret` | the synced document, every key at the path, because that is what a read returns; not a projection of `keys:` |
 | `envFrom` secretRef | where the two placeholders resolve; they never become literal `env` entries |
 | Vault policy + auth role | bound to `knowledge-api` in `knowledge-system`, carrying the tier's capabilities on the granted **path**. `read` covers the whole document |
 | `rolloutRestartTargets` | from `tolerates: restart`, no longer hand-declared |
 | engine choice | static, because `restart` does not require `delivery: self` |
-| `NetworkPolicy` egress | to the Secret Store, from the Workloads holding the grant and not from their siblings |
-| Secret Subtree cross-check | the `data` domain must declare this path and list this Service as a reader |
+| `NetworkPolicy` egress | to the Secret Store, from the Processes holding the grant and not from their siblings |
+| Secret Subtree cross-check | the `data` project must declare this path and list this Application as a reader |
 | reader set and roll impact | the readers of the path, over the composed union |
 | **inbound**, on the provider | one database and one owning user in `init-databases.sh` |
 
@@ -250,7 +250,7 @@ form could not express:
 | a `${secret:…}` placeholder whose path byte-matches no grant | `E_UNAUTHORISED_SECRET_REFERENCE` |
 | `delivery: env` with `rotation.tolerates: reload` | impossible; a pod's environment is fixed for its lifetime |
 | `delivery: env` or `file` on a non-KV engine (`transit/`) | impossible; `self` is the only legal delivery for a key that is never materialised |
-| `access: self-roll` on a path other Services read, unacknowledged | `E_ROLL_AFFECTS_OTHER_READERS`, computed over the readers of the path |
+| `access: self-roll` on a path other Applications read, unacknowledged | `E_ROLL_AFFECTS_OTHER_READERS`, computed over the readers of the path |
 | `delivery: env` or `file` where the pinned context does not advertise secrets at rest | `E_SECRETS_AT_REST_REQUIRED` ([chapter 60](60-setup.md#secrets-at-rest)) |
 
 The roll-impact check is the one nothing in the estate has today:
@@ -260,27 +260,27 @@ those keys.
 
 ## Network policy
 
-Policy is **default-deny and derived**. A Workload's legal flows are exactly its
+Policy is **default-deny and derived**. A Process's legal flows are exactly its
 declared edges, the surfaces it declares, the exposure routes that name it, its
-effective grant set, and a platform baseline no Service authors
+effective grant set, and a platform baseline no Application authors
 ([0035](../../docs/adr/model/0035-network-policy-default-deny.md)).
 
-It is evaluated **per pod**, and it has to be. A namespace holds every Service
-of its domain ([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)), so a
+It is evaluated **per pod**, and it has to be. A namespace holds every Application
+of its project ([0063](../../docs/adr/model/0063-intent-authored-per-project.md)), so a
 namespace wall separates nothing and no isolation claim may rest on one.
-Isolation in this model is the derived edge set plus per-Workload identity
-([0024](../../docs/adr/model/0024-identity-per-workload.md)), both per Workload, both
+Isolation in this model is the derived edge set plus per-Process identity
+([0024](../../docs/adr/model/0024-identity-per-process.md)), both per Process, both
 readable in one file.
 
 Opt-in was already measured here and it lost: three NetworkPolicy objects exist
-for roughly thirty workloads, so the cluster is effectively open east-west.
+for roughly thirty processes, so the cluster is effectively open east-west.
 Three of thirty is what opt-in produces on this estate, and the number is the
 argument. Default-deny is expressible only because the edge set is complete: every legal flow named by a declaration someone owns.
 
 The producer is the `networking` adapter
 ([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)): every
-`NetworkPolicy` in the estate, per Workload from the allow set below plus the two
-baseline rules, and one namespace-wide default-deny per domain. Nothing else
+`NetworkPolicy` in the estate, per Process from the allow set below plus the two
+baseline rules, and one namespace-wide default-deny per project. Nothing else
 emits one, which is what makes the DNS assertion checkable against a single
 producer.
 
@@ -288,37 +288,37 @@ producer.
 
 | rule | derived from | direction |
 |---|---|---|
-| to a provider's surface port | each `dependsOn` edge of the Workload; for an edge to a Registered Unmanaged Surface, to the address and port the register carries ([0090](../../docs/adr/model/0090-edges-resolve-against-the-register.md)) | egress |
+| to a provider's surface port | each `dependsOn` edge of the Process; for an edge to a Registered Unmanaged Surface, to the address and port the register carries ([0090](../../docs/adr/model/0090-edges-resolve-against-the-register.md)) | egress |
 | from each consumer of a surface | the inbound edge set, over the composed union | ingress |
-| to the Secret Store | any grant in the Workload's effective set | egress |
-| from the route tier carrying the audience | a route on the Service's `exposure` naming this Workload | ingress |
-| from the metrics stack, to the scrape port | the Workload's `scrape` surface | ingress |
+| to the Secret Store | any grant in the Process's effective set | egress |
+| from the route tier carrying the audience | a route on the Application's `exposure` naming this Process | ingress |
+| from the metrics stack, to the scrape port | the Process's `scrape` surface | ingress |
 
 ### The baseline
 
-Two rules are in the rendered set for every Workload and appear in no
+Two rules are in the rendered set for every Process and appear in no
 declaration:
 
 | baseline rule | why it cannot be optional |
 |---|---|
 | **egress UDP/53 to the cluster DNS service**, in every policy carrying `Egress` in `policyTypes` | once any egress policy selects a pod, all unmatched egress is denied, DNS included. The dead renderer generation shows the failure: `providerPolicy` (`src/deployment/render/networkpolicy.ts:86-102`) emits an egress rule to the provider's pod and nothing else, so the consumer cannot resolve the `svc.cluster.local` name the coordinate derivation just handed it, and fails with a DNS timeout diagnosed as "Postgres is down". TCP/53 rides the same rule, for truncated responses. |
-| **ingress from the metrics stack** to any declared scrape port | the same file omits it; a workload that silently loses scrape stops alerting, which is the failure observability exists to prevent |
+| **ingress from the metrics stack** to any declared scrape port | the same file omits it; a process that silently loses scrape stops alerting, which is the failure observability exists to prevent |
 
 The DNS half is checkable statically: **every rendered NetworkPolicy carrying
 `Egress` in `policyTypes` also matches UDP/53**. A `conftest` rule asserts it
 over the rendered set, and that assertion is the property this baseline exists
 to hold.
 
-A baseline rule is not authorable and not exceptable from a Service document. An
+A baseline rule is not authorable and not exceptable from an Application document. An
 exception to one is a change to the derivation, reviewed once, applied to every
-Workload at once.
+Process at once.
 
 ### The token is mounted only where the pod authenticates
 
 `automountServiceAccountToken` derives from **`delivery`**, and from nothing else
 ([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)):
 
-| the Workload's grants | token |
+| the Process's grants | token |
 |---|---|
 | at least one with `delivery: self` | mounted |
 | only `env` or `file`, or none at all | **not** mounted |
@@ -330,12 +330,12 @@ authenticates to anything. Under `delivery: file` the kubelet does the
 projecting. Only `delivery: self` means *the pod itself* presents its
 ServiceAccount token to Vault, which is the one case a token is for.
 
-This is [0075](../../docs/adr/model/0075-no-workload-rbac-in-v1.md)'s reasoning
+This is [0075](../../docs/adr/model/0075-no-process-rbac-in-v1.md)'s reasoning
 applied to the token instead of the Role, and it reaches the same place: the
-privilege a Workload of this estate actually needs is smaller than the default,
+privilege a Process of this estate actually needs is smaller than the default,
 and the field that says so already exists.
 
-A Workload that calls the **Kubernetes** API (`agents-api` creates Services at
+A Process that calls the **Kubernetes** API (`agents-api` creates Applications at
 runtime) needs a token that no grant implies. It declares so with a reason,
 recorded in the projection its owner reads back, which lets the estate count how
 many pods hold a token they were not derived one for
@@ -343,23 +343,23 @@ many pods hold a token they were not derived one for
 
 ### No Role grants what an absence already denies
 
-Three Services share `data-system`, and the only thing stopping `platform-valkey`'s
+Three Applications share `data-system`, and the only thing stopping `platform-valkey`'s
 ServiceAccount from reading `platform-postgres`'s Secret is that no Role grants
 it. That is an absence rather than a boundary, and the model turns it into a
 checked property rather than rendering RBAC
-([0075](../../docs/adr/model/0075-no-workload-rbac-in-v1.md)).
+([0075](../../docs/adr/model/0075-no-process-rbac-in-v1.md)).
 
 **v1 renders no `Role`, `ClusterRole`, `RoleBinding` or `ClusterRoleBinding` for
-a Workload**, and no rendered Deliverable may grant access to `secrets`,
-`E_WORKLOAD_RBAC_GRANT`, a composition-time invariant
+a Process**, and no rendered Deliverable may grant access to `secrets`,
+`E_PROCESS_RBAC_GRANT`, a composition-time invariant
 ([chapter 40](40-composition.md#secrets)). Under `delivery: env` and
 `delivery: file` the kubelet projects the Secret and the pod never calls the API,
-so a least-privilege Role for these Workloads grants nothing; rendering sixty
+so a least-privilege Role for these Processes grants nothing; rendering sixty
 objects that grant nothing would make an empty Role read as an oversight and
 give a future broad grant somewhere to hide.
 
-A Workload that genuinely needs the Kubernetes API (`agents-api` creates
-Services at runtime) is the case this rule refuses to guess at. It is an
+A Process that genuinely needs the Kubernetes API (`agents-api` creates
+Applications at runtime) is the case this rule refuses to guess at. It is an
 unregistered capability today, so it belongs in a Bidirectional Ledger with an
 owner until the model has vocabulary for it
 ([0055](../../docs/adr/model/0055-bidirectional-ledgers.md)), not in an
@@ -392,22 +392,22 @@ so an unpicked CNI does not block the render.
 | audit | the set is loaded into the non-enforcing stage; observed flows are diffed against the rendered allow set | **zero undeclared flows over 14 days** |
 | enforce | the set is enforced estate-wide | - |
 
-An edge whose target resolves to neither a Service in the union nor a Registered
-Unmanaged Surface is `E_UNRESOLVED_SERVICE`, and one resolving to a register
+An edge whose target resolves to neither an Application in the union nor a Registered
+Unmanaged Surface is `E_UNRESOLVED_APPLICATION`, and one resolving to a register
 entry without coordinates for that surface is
 `E_UNMANAGED_SURFACE_WITHOUT_COORDINATES`
 ([0090](../../docs/adr/model/0090-edges-resolve-against-the-register.md)). Both
-existed as silence before: `{service: stalwart, surface: smtp}` derived no
+existed as silence before: `{application: stalwart, surface: smtp}` derived no
 coordinates and therefore no egress rule, producing a valid policy with a
 missing rule, a timeout on-call rather than a build error.
 
 One cost is accepted rather than mitigated: an undeclared east-west path (this
 estate is known to hold some) stays invisible until promotion, and then breaks
-a workload.
+a process.
 
 The second cost this section used to accept is now refused. A typo in a
 `surface` name is `E_UNKNOWN_SURFACE` on the consuming edge, and a target
-outside both namespaces is `E_UNRESOLVED_SERVICE`; a rendered policy can no
+outside both namespaces is `E_UNRESOLVED_APPLICATION`; a rendered policy can no
 longer be silently short a rule while every gate stays green. What remains
 genuinely silent is a flow nobody declared at all, which is what the audit stage
 exists to find.
@@ -420,7 +420,7 @@ column down for everything an output rests on. Ninety arrows between two tall
 columns is a hairball no layout fixes (which line ends where stops being
 answerable), so the relation is carried by position instead.
 
-The first matrix has the fields of Service Intent and the pinned input set of
+The first matrix has the fields of Project Intent and the pinned input set of
 [chapter 20](20-resolved-deployment.md#pinned-inputs) as rows, and the layer-2
 assignments as columns. The second has those assignments **and** the declared
 fields as rows, and the Deliverables as columns. The `in` row under each grid is
@@ -440,20 +440,20 @@ no assignment in between.*
 
 <sub>[Diagram source](#the-derivation-map) · edit by opening the SVG in draw.io</sub>
 
-Two edges carry the amendment. `namespace` hangs off `domain`, not off `id`, so
-ten live namespaces come out unchanged and no Service can name its own
-([0063](../../docs/adr/model/0063-intent-authored-per-domain.md)). And `placement`
-feeds both `nodeSelector` and `requests + limits`, so the numbers a Workload
+Two edges carry the amendment. `namespace` hangs off `project`, not off `id`, so
+ten live namespaces come out unchanged and no Application can name its own
+([0063](../../docs/adr/model/0063-intent-authored-per-project.md)). And `placement`
+feeds both `nodeSelector` and `requests + limits`, so the numbers a Process
 asks for and the nodes it may land on are one declaration compared against one
 pinned input: the node contract's `allocatable`, never a live read
 ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). No node
 satisfying every declared dimension is `E_PLACEMENT_UNSATISFIABLE` at build,
-before an object is rendered. Eligibility is not bin-packing: three Workloads
+before an object is rendered. Eligibility is not bin-packing: three Processes
 asking `memory: 2Gi` each pass against a 4096Mi node, and the scheduler refuses
 the third at apply.
 
 A node left the map altogether, and with it four edges. There is no derived
-`hostname (FQDN)` any more: `exposure` hangs off the **Service**, and the `host`
+`hostname (FQDN)` any more: `exposure` hangs off the **Application**, and the `host`
 it carries is a full authored FQDN
 ([0018](../../docs/adr/model/0018-exposure-by-audience.md)), so the
 IngressRoute, the reachability entry, both edge catalogs, the Gatus endpoint and
@@ -462,9 +462,9 @@ a value layer 2 assembled from a label, a tier policy and a cluster domain. The
 Platform Intent no longer contributes to a hostname at all. What layer 2 still
 decides on that path is `r_tier` (the tier carrying the audience and the
 middleware chain that comes with it), which is why the exposure node keeps an
-arrow into it. `provides` stays on the Workload, so the two ends of a route are
-declared in the same document without a port ever being restated: the Service
-says which host and path, the Workload says which port.
+arrow into it. `provides` stays on the Process, so the two ends of a route are
+declared in the same document without a port ever being restated: the Application
+says which host and path, the Process says which port.
 
 The map is dense on purpose and is not meant to be read by eye. Its value is
 that the three properties below are **checkable by a script** over the
@@ -482,10 +482,10 @@ One declaration, six artefacts, plus the two conformance tests that existed only
 to detect when those six disagreed (`route-auth-conformance.test.js`,
 `gatus-route-coverage.test.js`). Under property 1 those tests have nothing left
 to check, because the six cannot disagree: they share one upstream. That
-upstream is a **Service** field: one host fronting two Workloads,
+upstream is an **Application** field: one host fronting two Processes,
 `auth.jorisjonkers.dev/api` to `auth-api` and `/` to `auth-ui`, is a single
 exposure with two routes, and it is unexpressible while `exposure` sits on a
-Workload.
+Process.
 
 The hostname is no longer assembled. `host` is the full FQDN as authored and is
 carried through untouched; what layer 2 decides on this path is the tier that
@@ -530,12 +530,12 @@ that would have caught the estate's clearest example.
 `rollbackTargetRetention` was validated for `minimumDays >= 90` and
 `acknowledged: true`, appeared in the readiness scorecard, was documented in
 three `PLATFORM.md` files as failing *never*, and was read by no renderer or
-adapter. Every service declared the identical value. Out-degree zero.
+adapter. Every application declared the identical value. Out-degree zero.
 
 No surface is exempt from this check. The override mechanism that used to be
 exempt is deleted
 ([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md)), so the
-dead-declaration property now runs over every declaration in every domain file.
+dead-declaration property now runs over every declaration in every project file.
 
 ## What the properties would have caught
 
@@ -543,8 +543,8 @@ dead-declaration property now runs over every declaration in every domain file.
 |---|---|---|
 | `kb.jorisjonkers.dev` in seven places | 1 | six Deliverables with in-degree zero |
 | `rollbackTargetRetention` inert | 3 | a declaration with out-degree zero |
-| `platform.layer` wrong in 7 of 7 services | 3 | out-degree zero, it fed a registry, never the Reconcile Unit |
-| a ServiceAccount per Service, two Workloads sharing one principal | 2 | one identity field with two Workloads' grant sets declaring it |
+| `platform.layer` wrong in 7 of 7 applications | 3 | out-degree zero, it fed a registry, never the Reconcile Unit |
+| a ServiceAccount per Application, two Processes sharing one principal | 2 | one identity field with two Processes' grant sets declaring it |
 | 41 Gatus checks, no notifier | 1 | `notifier route` unreachable from any declaration |
 | 60 duplicated `OTEL_*` lines | 2 | six declaring sites for one field |
 | a secret granted but never referenced | 3 | a `delivery: env` grant with out-degree zero |
@@ -556,8 +556,8 @@ How the estate deploys, and how dependency on other units for testing gates a
 deploy, are defined separately from this model. This chapter derives the edge
 set, the identities and the policy set; it does not say who applies them, in
 what order a pipeline runs, or which suites must pass first. The model's whole
-interface to that work is three demands: all-or-nothing switchover per Service
-([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)), Durability Class
+interface to that work is three demands: all-or-nothing switchover per Application
+([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)), Durability Class
 gating on destructive operations, and rendering from pinned inputs only. The
 parked direction work is in
 [docs/adr/deferred/](../../docs/adr/deferred/README.md).
@@ -566,7 +566,7 @@ parked direction work is in
 
 1. **The CORS predicate.** `AUTH_CORS_ALLOWED_ORIGINS` lists nine hostnames, and
    the inbound derivation above claims they are the inbound edge set projected
-   onto the hosts those Services declare. The shape is right; the predicate is not
+   onto the hosts those Applications declare. The shape is right; the predicate is not
    established. A browser origin is needed only by a consumer making
    cross-origin requests *to* `auth-api`, whereas an OIDC redirect flow (what
    `GrafanaOidc`, `N8nOidc` and `RabbitMqOidc` exercise) needs no CORS entry.
@@ -597,7 +597,7 @@ an ADR.
 
 ```mermaid
 flowchart LR
-    E["dependsOn<br/>{service, surface, required}"]
+    E["dependsOn<br/>{application, surface, required}"]
 
     E --> O1["Reconcile Unit ordering<br/>apps-knowledge after apps-data"]
     E --> O2["dependency coordinates<br/>${dependency:platform-postgres.host}"]
@@ -613,20 +613,20 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    subgraph DEC["Declared, Service Intent (layer 1)"]
-        d_dom["domain"]
+    subgraph DEC["Declared, Project Intent (layer 1)"]
+        d_dom["project"]
         d_own["owner"]
         d_id["id"]
-        d_obs["observability<br/>alertClass + scrape<br/>{workload, surface, path}"]
-        d_wl["workload name"]
-        d_prov["provides<br/>surface: port<br/>on the Workload"]
+        d_obs["observability<br/>alertClass + scrape<br/>{process, surface, path}"]
+        d_wl["process name"]
+        d_prov["provides<br/>surface: port<br/>on the Process"]
         d_dep["dependsOn"]
         d_img["image"]
         d_run["runtime"]
-        d_env["env files<br/>per Workload"]
+        d_env["env files<br/>per Process"]
         d_sec["secrets<br/>path, access, delivery"]
         d_ast["assets"]
-        d_exp["exposure, on the Service<br/>name, host (authored FQDN),<br/>audience, contentPolicy,<br/>routes: path, match,<br/>workload, surface"]
+        d_exp["exposure, on the Application<br/>name, host (authored FQDN),<br/>audience, contentPolicy,<br/>routes: path, match,<br/>process, surface"]
         d_prb["probes<br/>readiness + liveness"]
         d_bud["startupBudget"]
         d_cut["cutover<br/>rolling | recreate"]
@@ -644,11 +644,11 @@ flowchart LR
     end
 
     subgraph DER["Derived, assignments and Deliverables (layers 2 and 3)"]
-        r_ns["namespace<br/>domain-system"]
+        r_ns["namespace<br/>project-system"]
         r_tier["route tier + middleware"]
         r_ru["Reconcile Unit + DAG"]
-        r_sw["switch gate<br/>per Service"]
-        r_sa["identity name<br/>the workload name"]
+        r_sw["switch gate<br/>per Application"]
+        r_sa["identity name<br/>the process name"]
         r_vp["Secret Store path grant"]
         r_dig["image digest"]
         r_rep["replicas"]
@@ -662,7 +662,7 @@ flowchart LR
         r_bind["recorded PV binding"]
 
         k_dep["Deployment / StatefulSet / Job"]
-        k_svc["Service"]
+        k_svc["Application"]
         k_sa["ServiceAccount"]
         k_cm["ConfigMap"]
         k_sec["VaultStaticSecret / Secret"]
@@ -775,7 +775,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    X["exposure, on the Service:<br/>name: kb<br/>host: kb.jorisjonkers.dev<br/>audience: authenticated<br/>routes: 5"]
+    X["exposure, on the Application:<br/>name: kb<br/>host: kb.jorisjonkers.dev<br/>audience: authenticated<br/>routes: 5"]
 
     X --> H["host, carried through<br/>kb.jorisjonkers.dev"]
     X --> T["tier public-frankfurt<br/>+ forward-auth middleware<br/>derived from audience + tier"]
@@ -783,7 +783,7 @@ flowchart LR
     H --> A1["IngressRoute (host)"]
     H --> A2["IngressRoute (mcp routes)"]
     H --> A3["reachability channel entry"]
-    H --> A4["edge catalog, an Asset of the Traefik Service"]
+    H --> A4["edge catalog, an Asset of the Traefik Application"]
     H --> A5["edge-route-catalog ConfigMap"]
     H --> A6["Gatus external endpoint"]
     T --> A1

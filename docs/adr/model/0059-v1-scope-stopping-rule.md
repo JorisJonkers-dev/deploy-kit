@@ -10,6 +10,11 @@ rests-on: ["0001"]
 
 # v1 has a scope and a stopping rule
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 > **Amended 2026-09-08.** The stopping clause reads: v1 ships when it renders
 > the live estate, foundation included
 > ([0096](0096-the-foundation-is-declared.md)), from declared intent, and that
@@ -67,7 +72,7 @@ which no longer gates v1.
 Undo cost today: move files between `docs/adr/` and `deferred/` and update two
 READMEs, minutes. Becomes irreversible: it does not; the boundary is the one
 deliberately cheap-to-move line in the set. What does harden is the model's
-three demands: once service repositories author Release Units and Durability
+three demands: once project repositories author Release Units and Durability
 Classes, a delivery definition that ignores them breaks declared intent.
 
 ## Consequences

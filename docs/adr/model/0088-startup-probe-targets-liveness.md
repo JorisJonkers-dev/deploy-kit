@@ -3,16 +3,21 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-09-07
-normative: spec/v1/10-service-intent.md#what-the-probe-derivation-completes
+normative: spec/v1/10-project-intent.md#what-the-probe-derivation-completes
 rests-on: ["0005"]
 ---
 
 # The startup probe targets liveness, and probe cadence is platform policy
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 A startup probe and a liveness probe ask the same question of a process, so one
 declaration serves both, and the cadence at which any probe runs is an estate
-concern rather than a per-Workload one. False if: a Workload's liveness endpoint
+concern rather than a per-Process one. False if: a Process's liveness endpoint
 is unavailable during startup for a reason that is not a defect (a process that
 serves liveness only after warm-up), making the startup probe unable to use it.
 Settled by: rendering the estate's probes with every startup probe pointing at a
@@ -44,7 +49,7 @@ That the wider convention points startup probes at readiness is not evidence
 against this. The convention exists because most charts declare one endpoint and
 call it both, which is the fallback 0014 already refused.
 
-A Workload declaring readiness and no liveness derives **no startup probe**,
+A Process declaring readiness and no liveness derives **no startup probe**,
 because there is nothing safe to poll, and its start is bounded by the progress
 deadline alone. That is a narrower guarantee, and it is honest: the alternative
 is to invent a target.
@@ -62,7 +67,7 @@ them; a delay on top would be a second waiting period nobody declared.
 | option | cost if taken | why rejected |
 |---|---|---|
 | The startup probe targets readiness | Matches the common convention, and startup does ask "is it up" | A failing startup probe restarts the container, so this imports 0014's crash-loop-on-a-dependency-outage into the startup path |
-| A third authored `probes.startup` block | Most explicit, and 0014's no-fallback principle taken to its end | A third block on every Workload for a value derivable from one already there, when chapter 10 says timings and thresholds stay derived |
+| A third authored `probes.startup` block | Most explicit, and 0014's no-fallback principle taken to its end | A third block on every Process for a value derivable from one already there, when chapter 10 says timings and thresholds stay derived |
 | Fixed cadence constants in the spec | No context field, impossible to drift per cluster | Changing the estate's probe cadence becomes a spec amendment rather than a context republish with a lock |
 | Derive cadence from `startupBudget` | One authored number drives every timing | The relationship is invented; cold-start duration does not imply steady-state polling frequency |
 
@@ -75,9 +80,9 @@ getting it undecided was not.
 ## Consequences
 - R14 closes, and no adapter chooses a probe target, which is what made the old
   behaviour a layer violation rather than merely a gap, paid by nobody.
-- A Workload with readiness and no liveness gets no startup probe, so a slow
+- A Process with readiness and no liveness gets no startup probe, so a slow
   starter without a liveness endpoint is bounded only by its progress deadline,
-  paid by that Workload's owner, who can declare liveness and get the budget.
+  paid by that Process's owner, who can declare liveness and get the budget.
 - Probe cadence becomes a pinned input, so retuning the estate's probes is a
   context republish and a new lock, and every rendered probe changes in one diff,
   paid in one more pinned value, and it replaces four hand-copied blocks.

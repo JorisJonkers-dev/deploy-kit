@@ -3,11 +3,16 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-09-07
-normative: spec/v1/10-service-intent.md#exposure
+normative: spec/v1/10-project-intent.md#exposure
 rests-on: ["0005"]
 ---
 
 # Route precedence is derived and rendered explicitly, and a duplicate route is refused
+
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
 
 ## Rests on
 Which route serves a request is decided by the declaration, and path specificity
@@ -76,5 +81,5 @@ the field then reorders live traffic.
   currently resolves silently; adoption may surface one, paid at adoption, which
   is the point of a build error over a coin flip.
 - The rendered IngressRoute grows a field, so the golden trees change for every
-  routed Service, paid once, in the comment-strip pass that is already rewriting
+  routed Application, paid once, in the comment-strip pass that is already rewriting
   them.

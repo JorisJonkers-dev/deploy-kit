@@ -9,14 +9,19 @@ rests-on: ["0001"]
 
 # Participants are listed, bounded by seven days of staleness
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 > **Amended 2026-09-08.** The Platform document is a **required participant**
 > under the same seven-day bound
 > ([0095](0095-platform-intent-is-the-second-authored-document.md)): it
-> publishes as an Intent Fragment like any domain, so a stale platform is
+> publishes as an Intent Fragment like any project, so a stale platform is
 > `E_PARTICIPANT_STALE` where before it was a digest nobody compared to a clock.
 
 ## Rests on
-A domain that has published nothing for seven days has stopped publishing by
+A project that has published nothing for seven days has stopped publishing by
 fault, not by cadence. False if: a non-dormant participant routinely goes more
 than seven days between publishes while everything about it is healthy, then
 the bound fires on normal operation and gets ignored, which is worse than no
@@ -27,31 +32,31 @@ exceeds 7 days. Baseline today: `CHANGELOG.md` records 26 releases between
 2026-06-09 and 2026-08-20, 72 days, one every 2.8 days.
 
 ## Why
-A render is only as current as the last publish, and a domain that has not
+A render is only as current as the last publish, and a project that has not
 published does not contribute. That absence is dangerous here specifically
-because **Flux prunes**: a domain silently omitted from a render is a domain
+because **Flux prunes**: a project silently omitted from a render is a project
 deleted from the cluster on the next reconcile, and the render would look
 entirely valid. `E_PARTICIPANT_MISSING` and `E_PARTICIPANT_STALE` are what stand
 between a missed publish and a deletion. Apply-before-prune under
 [0042](../deferred/0042-apply-before-prune-inventory.md) does not cover this: it makes prune
-run over an inventory that is *correct*, and a render missing a whole domain is
+run over an inventory that is *correct*, and a render missing a whole project is
 correct, it simply does not contain it.
 
 Deriving the expected set from inbound references was considered and is
-insufficient. A leaf Service that nothing depends on can vanish without breaking
+insufficient. A leaf Application that nothing depends on can vanish without breaking
 any reference, and leaves are the majority: `immich`, `jellyfin`, `sonarr`,
-`radarr`, `bazarr`, `prowlarr`, `qbittorrent`. Those seven media services are
+`radarr`, `bazarr`, `prowlarr`, `qbittorrent`. Those seven media applications are
 depended on by nothing, so an inbound-edge derivation notices none of them going
 missing. The expected set is therefore enumerated, and that enumeration is the
 one central artefact that survives composition by fragments
-([0037](0037-composition-oci-fragments.md)): it changes when a domain or test
+([0037](0037-composition-oci-fragments.md)): it changes when a project or test
 project is added or retired, never when a declaration changes.
 
 The old decision said "with a staleness bound" and the review flagged the
 adjective. It is not academic: `spec/v1/40-composition.md:209` currently reads
-`intent-media: {maxAge: 180d}`, so the media domain's publishing pipeline can be
+`intent-media: {maxAge: 180d}`, so the media project's publishing pipeline can be
 broken for half a year (roughly 64 observed release intervals), before the
-error that protects seven services from deletion fires. The default is
+error that protects seven applications from deletion fires. The default is
 therefore **7 days**, about 2.5 observed intervals: long enough to absorb two
 consecutive missed releases (2.5 x the observed 2.8-day interval), short enough
 that a broken publish job is caught in the same week it breaks. A participant may override it with a
@@ -64,31 +69,31 @@ version range of [0039](0039-artifact-schema-versioning.md).
 ## Alternatives
 | option | cost if taken | why rejected |
 |---|---|---|
-| No list; compose whatever published | Zero to build. A domain whose publish job breaks is pruned from the cluster on the next reconcile, from a render that passes every one of the 26 invariants | Makes a broken pipeline indistinguishable from a retirement, at the one moment the consequence is deletion |
+| No list; compose whatever published | Zero to build. A project whose publish job breaks is pruned from the cluster on the next reconcile, from a render that passes every one of the 26 invariants | Makes a broken pipeline indistinguishable from a retirement, at the one moment the consequence is deletion |
 | Derive the expected set from inbound dependency edges | Free, the edge graph already exists in chapter 16. Costs the seven media leaves, which have no inbound edges and would vanish undetected | The majority of the estate is leaves; a guard blind to the majority is not a guard |
-| Keep the written 30/90/180-day per-domain bounds | No edit. `intent-media` tolerates a 180-day outage, `intent-nodes` 30 | A bound 64× the interval it protects fires only after the damage it exists to prevent |
-| Let `dormant: true` exempt the version check too | Removes the republish burden on a domain nobody is touching | A dormant fragment still unions into `ComposedIntent`; exempting it means a fragment the toolkit cannot read is merged anyway |
+| Keep the written 30/90/180-day per-project bounds | No edit. `intent-media` tolerates a 180-day outage, `intent-nodes` 30 | A bound 64× the interval it protects fires only after the damage it exists to prevent |
+| Let `dormant: true` exempt the version check too | Removes the republish burden on a project nobody is touching | A dormant fragment still unions into `ComposedIntent`; exempting it means a fragment the toolkit cannot read is merged anyway |
 
 ## Reversibility
 Undo cost today: `participants.yml` is one file plus the two error paths in the
 composition resolver that read it. Deleting it removes a guard, not a capability,
 no rendered manifest changes, no aggregator is touched, an afternoon. Changing
 the number alone is a one-line default. Becomes irreversible once: retiring a
-domain is performed *by* deleting its row, at which point the list is the
-estate's only enumeration of expected domains, with nothing left to rebuild it.
+project is performed *by* deleting its row, at which point the list is the
+estate's only enumeration of expected projects, with nothing left to rebuild it.
 
 ## Consequences
 - A publishing pipeline that breaks fails composition within seven days instead
-  of deleting a domain from the cluster, paid by the domain owner, who gets a
+  of deleting a project from the cluster, paid by the project owner, who gets a
   red compose rather than a silent restore.
 - One stale participant blocks every aggregator, including the one shipping the
   fix (OPS-009); the remaining lever is break-glass with an older lock under
-  [0045](../deferred/0045-break-glass-reporting.md), paid by every other domain owner.
-- A domain that genuinely publishes less often than weekly must carry an
-  override with a written reason, paid by that domain's owner.
+  [0045](../deferred/0045-break-glass-reporting.md), paid by every other project owner.
+- A project that genuinely publishes less often than weekly must carry an
+  override with a written reason, paid by that project's owner.
 - Dormancy costs a reason and a review date and is reviewed as a ledger entry,
   paid by the platform owner at review time.
-- A dormant domain must still be republished when it falls out of the accepted
+- A dormant project must still be republished when it falls out of the accepted
   version range, paid by the owner of a repository nobody is otherwise
   touching, which is the least convenient party.
 - Seven days is measured against this estate's cadence, not a general constant;

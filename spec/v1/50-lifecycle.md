@@ -4,7 +4,7 @@ Model-level lifecycle: what changes over time, and what the model guarantees
 while it is changing.
 
 Three things here have a lifecycle. A **Release Unit** switches all at once or
-not at all. A **cross-Service contract** changes in two steps, never one. A
+not at all. A **cross-Application contract** changes in two steps, never one. A
 **lock** names one pinned input set, and a new lock exists exactly when one of
 those inputs changes.
 
@@ -36,7 +36,7 @@ defined. Three demands, all decided in the model rather than in the parked work:
 | demand | decided in | what it requires of any delivery mechanism |
 |---|---|---|
 | **Release Unit atomicity** | [0060](../../docs/adr/model/0060-release-unit.md) | no member's new version receives traffic until every member's new version is healthy; one failing member holds the whole unit |
-| **Durability Class gating** | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | a destructive operation against a volume declared `recoverable` or `irreplaceable` is refused and reported, never performed; only the owning Service can state that class |
+| **Durability Class gating** | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | a destructive operation against a volume declared `recoverable` or `irreplaceable` is refused and reported, never performed; only the owning Application can state that class |
 | **Pinned inputs only** | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | what is applied is rendered from a named lock (Intent, Platform Intent, images lock, ClusterState snapshot), never from a live read at render time |
 
 A mechanism honouring those three is compatible with this model. Everything
@@ -70,7 +70,7 @@ event produces one.
 
 | event | new lock | why |
 |---|---|---|
-| a Service repository merges an Intent change and republishes its fragment | **yes** | a new fragment digest is a new input, whether the change was an image, a grant, an exposure or an edge |
+| a Project repository merges an Intent change and republishes its fragment | **yes** | a new fragment digest is a new input, whether the change was an image, a grant, an exposure or an edge |
 | a fragment republishes with byte-identical content | no | digests are content-addressed, so the input set has not moved |
 | the Platform document is republished: a tier, a durability policy, a receiver, a provider | **yes** | the Platform document is a pinned input, republished deliberately |
 | the images lock resolves an alias to a new digest | **yes** | the rendered image reference changes |
@@ -115,14 +115,14 @@ without diffing published artefacts.
 
 ## Release Unit switchover
 
-Membership is structural, not declared: **a Service is the Release Unit**, and
-its members are its Workloads ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)).
+Membership is structural, not declared: **an Application is the Release Unit**, and
+its members are its Processes ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)).
 Nothing names a unit, because nothing needs to: things that must switch
-together are Workloads of one Service, and things that must not are separate
-Services. Chapter 10's [Service identity](10-service-intent.md#service-identity)
+together are Processes of one Application, and things that must not are separate
+Applications. Chapter 10's [Application identity](10-project-intent.md#application-identity)
 carries the authoring rules; this section is the lifecycle view.
 
-**The Service is the unit of switchover.** The rule: no member's new version receives
+**The Application is the unit of switchover.** The rule: no member's new version receives
 traffic until every member's new version is healthy; if any member fails its
 budget, none switch and the old versions keep serving.
 
@@ -134,9 +134,9 @@ Every term in that rule is already defined elsewhere in the model:
 | **budget** | the derived rollout budget: how long a new version has to report ready before it counts as failed | chapter 20's derived mechanics, [0030](../../docs/adr/model/0030-runtime-mechanics-derived.md) |
 | **switch** | the moment traffic reaches the new versions rather than the old | the delivery mechanism performs it; the model states when it may happen |
 
-A Workload declaring `probes: none` publishes no readiness signal and so cannot
-contribute to the gate. A Service must therefore declare readiness on at least
-one Workload: `E_RELEASE_UNIT_NO_READINESS`, a composition-time
+A Process declaring `probes: none` publishes no readiness signal and so cannot
+contribute to the gate. An Application must therefore declare readiness on at least
+one Process: `E_RELEASE_UNIT_NO_READINESS`, a composition-time
 check in [chapter 40](40-composition.md#versioning)'s estate-wide invariants,
 not something a delivery mechanism discovers at apply time.
 
@@ -150,7 +150,7 @@ whoever shipped the failing member.
 **Rollback is unit-scoped.** Reverting one member means reverting the unit, and
 what a revert targets is a lock: the previous lock is the whole coherent input
 set, so a unit-scoped rollback is a lock-scoped operation. The cost is a larger
-rollback scope than a single Service, and the benefit is that the scope is
+rollback scope than a single Application, and the benefit is that the scope is
 consistent: there is no state in which half a unit has been reverted.
 
 **A Release Unit is not a Reconcile Unit.**
@@ -158,18 +158,18 @@ consistent: there is no state in which half a unit has been reverted.
 | | Release Unit | Reconcile Unit |
 |---|---|---|
 | answers | what switches together | what applies before what |
-| origin | **structural**, the Service boundary; its members are its Workloads | **derived** from the dependency graph ([0032](../../docs/adr/model/0032-reconcile-unit-derived.md)) |
+| origin | **structural**, the Application boundary; its members are its Processes | **derived** from the dependency graph ([0032](../../docs/adr/model/0032-reconcile-unit-derived.md)) |
 | property | atomicity | ordering |
-| worked case | Service `auth`, Workloads `auth-api` + `auth-ui`: a new UI against an old API is a broken product although each pod reports healthy | `platform-postgres` before `knowledge`: the consumer cannot start without its provider |
-| membership changes when | a Workload joins or leaves the Service | an edge is added or removed |
+| worked case | Application `auth`, Processes `auth-api` + `auth-ui`: a new UI against an old API is a broken product although each pod reports healthy | `platform-postgres` before `knowledge`: the consumer cannot start without its provider |
+| membership changes when | a Process joins or leaves the Application | an edge is added or removed |
 
-Atomicity follows the Service boundary rather than the dependency graph because
+Atomicity follows the Application boundary rather than the dependency graph because
 lockstep release is a product choice the graph cannot see. The frontend depends
 on the API, but a dependency edge does not mean the two must cut over together;
 deriving atomicity from every edge takes the transitive closure and turns the
 estate into one unit, making every deploy estate-wide. Drawing the boundary is
 therefore the decision, and a pair that must release together but cannot be one
-Service is evidence the boundary is drawn wrong.
+Application is evidence the boundary is drawn wrong.
 
 ![Release Unit switchover](diagrams/50-release-unit-switchover.drawio.svg)
 
@@ -178,8 +178,8 @@ Service is evidence the boundary is drawn wrong.
 ## Expand and contract
 
 A Release Unit makes lockstep safe *inside* the unit. Everything else that
-crosses a Service boundary, a surface, a port, a derived value, a name another
-Service references, changes in two steps, because the estate's Services merge
+crosses an Application boundary, a surface, a port, a derived value, a name another
+Application references, changes in two steps, because the estate's Applications merge
 and publish independently and no moment exists at which they all move.
 
 The rule is asymmetric, and composition can enforce it because the union puts
@@ -196,7 +196,7 @@ edges (chapter 16):
 
 | change | at lock N | verdict |
 |---|---|---|
-| `auth-api` allows an origin whose Service is not deployed yet | additive | harmless |
+| `auth-api` allows an origin whose Application is not deployed yet | additive | harmless |
 | `auth-api` stops allowing an origin that is still live at N−1 | removal | broken, the consumer loses access on the switch |
 
 The three phases, and what composition sees at each:
@@ -238,8 +238,8 @@ it is decided in `docs/adr/`; everything inside it is decided separately.
    [0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md)'s own
    settling test, a switchover mechanism written against a `ResolvedService`
    projection alone, and is recorded there. [0060](../../docs/adr/model/0060-release-unit.md),
-   which this item used to cite, is superseded; the unit is the Service
-   ([0062](../../docs/adr/model/0062-service-is-the-release-unit.md)).
+   which this item used to cite, is superseded; the unit is the Application
+   ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)).
 2. ~~**Whether a unit may span ownership boundaries.**~~ Not this chapter's
    question: whatever ownership boundary a delivery definition introduces is
    that definition's, and the item belongs in
@@ -264,31 +264,31 @@ an ADR.
 
 ```mermaid
 flowchart LR
-    N["new lock renders<br/>every Workload of the Service"] --> A1["auth-api<br/>new version starts"]
+    N["new lock renders<br/>every Process of the Application"] --> A1["auth-api<br/>new version starts"]
     N --> A2["auth-ui<br/>new version starts"]
     A1 --> P1{"readiness<br/>within budget?"}
     A2 --> P2{"readiness<br/>within budget?"}
-    P1 -->|yes| K{"every Workload<br/>ready?"}
+    P1 -->|yes| K{"every Process<br/>ready?"}
     P2 -->|yes| K
-    P1 -->|no| H["hold the Service<br/>old versions keep serving"]
+    P1 -->|no| H["hold the Application<br/>old versions keep serving"]
     P2 -->|no| H
-    K -->|yes| SW["switch all Workloads together"]
-    H --> RB["fix forward, or revert the Service<br/>to the previous lock"]
+    K -->|yes| SW["switch all Processes together"]
+    H --> RB["fix forward, or revert the Application<br/>to the previous lock"]
 ```
 
 ### The change, end to end
 
 ```mermaid
 flowchart TB
-    I["Intent change merged<br/>one Service repository"] --> F["Intent Fragment republished<br/>OCI, by digest"]
+    I["Intent change merged<br/>one Project repository"] --> F["Intent Fragment republished<br/>OCI, by digest"]
     X["Platform document republished<br/>tiers, policies, providers"] --> C
     F --> C["composition<br/>union + estate-wide invariants"]
     S["ClusterState snapshot changes<br/>PV rebinds, node joins or leaves"] --> C
     C --> L["new lock<br/>fragments + context + images + clusterStateDigest"]
     L --> R["render<br/>registered adapters, renderHash"]
-    R --> G{"Service has more<br/>than one Workload?"}
+    R --> G{"Application has more<br/>than one Process?"}
     G -->|"no"| D["delivery and co-testing<br/>defined separately<br/>docs/adr/deferred/"]
-    G -->|"yes"| U["all-or-nothing switchover<br/>gated on every Workload ready"]
+    G -->|"yes"| U["all-or-nothing switchover<br/>gated on every Process ready"]
     U --> D
     C -.->|"E_CONTRACT_TOO_EARLY"| B["no lock.<br/>Nothing renders."]
     style D stroke-width:2px,stroke-dasharray:6 4;

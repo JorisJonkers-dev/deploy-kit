@@ -3,11 +3,16 @@ tier: decision
 status: proposed
 claim: settled
 date: 2026-09-07
-normative: spec/v1/10-service-intent.md#secrets
+normative: spec/v1/10-project-intent.md#secrets
 rests-on: ["0009"]
 ---
 
 # A grant is a discriminated union on engine, and every grant derives a read path
+
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
 
 ## Rests on
 The estate uses three Secret Store engines, they authorise different operations,
@@ -67,7 +72,7 @@ the version that stays checkable.
 Undo cost today: the union collapses back to its `kv` arm by deleting two arms
 and the derived-path table: hours, and `engine` defaults to `kv` so no existing
 document changes either way. Becomes irreversible once: a derived policy grants
-a live workload access through a non-KV arm, because collapsing the union would
+a live process access through a non-KV arm, because collapsing the union would
 then revoke privilege something depends on.
 
 ## Consequences

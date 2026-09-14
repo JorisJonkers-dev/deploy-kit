@@ -9,11 +9,16 @@ normative: spec/v1/00-overview.md#substrate
 
 # Kubernetes stays, for two properties that must be made real
 
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
 ## Rests on
 Both retained properties (the API server as a per-aggregator authorisation
 boundary, and server-side-apply field ownership as the drift signal) can be
 made real at this scale. False if: either cannot, an aggregator can still
-mutate a Service it does not deploy after
+mutate an Application it does not deploy after
 [0047](../deferred/0047-namespace-per-deployer.md) lands, or a hand edit to an
 owned field still surfaces no conflict after
 [0046](../deferred/0046-distinct-field-managers.md) lands. Settled by: a `kubectl
@@ -26,20 +31,20 @@ CronJob run, observe the reported conflict) after 0046 is applied.
 The estate uses none of the headline properties Kubernetes is bought for.
 Rescheduling does not exist: storage is `local-path`, the fourteen PVCs are
 `ReadWriteOnce`, and a `local-path` volume does not survive its node, so every
-stateful workload is pinned to one machine by construction. Control-plane HA
+stateful process is pinned to one machine by construction. Control-plane HA
 does not exist: every platform fixture carries exactly one `k3s-control-plane`
 host (`fixtures/platform/single-node.platform.yaml:30`,
 `full-tree.platform.yaml:42`, `multi-site.platform.yaml:37`). Horizontal scale
 is not exercised: `auth-api`'s two replicas "were a capacity decision on freed
 Frankfurt budget, not an availability requirement"
-(`spec/v1/10-service-intent.md:491-492`), and on one node two replicas is two
+(`spec/v1/10-project-intent.md:491-492`), and on one node two replicas is two
 processes on one kernel. The overhead is counted: 405 rendered objects (364
-class A plus 41 pack-delivered, of 450 live) for ~30 Services
+class A plus 41 pack-delivered, of 450 live) for ~30 Applications
 (`spec/v1/50-lifecycle.md:33`), and the foundation 41 is the part with the CVEs
 and the CRD upgrades.
 
 Exactly two properties justify keeping it. First, the API server as the
-authorisation boundary: "a workflow that tries to apply a Service it does not
+authorisation boundary: "a workflow that tries to apply an Application it does not
 own receives a 403 rather than producing a bad deploy"
 (`spec/v1/50-lifecycle.md:200`). Second, server-side-apply field ownership as
 the drift mechanism: a conflict "means a human edited a field this aggregator
@@ -47,7 +52,7 @@ owns: it is reported, never resolved with `--force-conflicts`"
 (`spec/v1/50-lifecycle.md:151`). The review (`review/CONSOLIDATED.md` B9)
 verified both fail as currently designed. The boundary fails because the
 generated deployer Role is namespace-scoped with no `resourceNames` while the
-Services of one domain all share its namespace, so the ownership rule is a CI
+Applications of one project all share its namespace, so the ownership rule is a CI
 check, not an API-server control. The drift signal fails because the
 merge deploy and the hourly re-apply CronJob deliberately share the
 field-manager name `auth-federation`
@@ -60,7 +65,7 @@ properties real; this premise stands or falls with their settling measurements,
 which is why its claim is open.
 
 The rival substrate is already resident: the estate runs Nix as a second
-deployment target for five host services (`samba`, `wolf`, `tailscale`,
+deployment target for five host applications (`samba`, `wolf`, `tailscale`,
 `media-storage`, `btrfs-backup-snapshots`). Collapsing onto it would delete the
 41 foundation objects, two Traefiks, MetalLB, VSO and the upgrade treadmill,
 and would also delete the authorisation boundary and field-level ownership,
@@ -83,8 +88,8 @@ emit Kubernetes kinds, the delivery workflows speak `kubectl` and server-side
 apply, the 41 foundation objects have no non-Kubernetes packaging, and fourteen
 node-pinned `local-path` volumes must be re-homed by hand. The layer-1 intent
 files survive a swap: they name no Kubernetes kind.
-Becomes irreversible once: the ~10 service repositories holding the estate's ~30
-Services author against a shipped v1 whose adapters and delivery machinery are
+Becomes irreversible once: the ~10 project repositories holding the estate's ~30
+Applications author against a shipped v1 whose adapters and delivery machinery are
 Kubernetes-shaped, from that point a substrate swap is a v2 migration, not an
 undo.
 

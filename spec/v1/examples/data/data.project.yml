@@ -1,65 +1,65 @@
-# Worked example: the data domain's Intent Fragment
+# Worked example: the data project's Intent Fragment
 #
 #   collections/data/platform/data.yml
 #
-# THREE Services in one file. They are neighbours, not a unit: co-location in a
-# domain file couples nothing, and each of the three releases on its own
-# (docs/adr/model/0062-service-is-the-release-unit.md,
-# docs/adr/model/0063-intent-authored-per-domain.md). "Every Service in a domain file
+# THREE Applications in one file. They are neighbours, not a unit: co-location in a
+# project file couples nothing, and each of the three releases on its own
+# (docs/adr/model/0062-application-is-the-release-unit.md,
+# docs/adr/model/0063-intent-authored-per-project.md). "Every Application in a project file
 # releases as one" was considered and rejected exactly because it would let
 # someone couple nine rollouts by editing an unrelated line. Atomicity stops at
-# the Service boundary; the file is an authoring and publication unit.
+# the Application boundary; the file is an authoring and publication unit.
 #
-# None of the three has a repository of its own. The data domain ships from
-# homelab-collections, and publication is repository-scoped, so the domain may
+# None of the three has a repository of its own. The data project ships from
+# homelab-collections, and publication is repository-scoped, so the project may
 # stay there or split out later -- composition behaves identically
-# (docs/adr/model/0037-composition-oci-fragments.md). What may not happen is a domain
-# spanning two repositories: this file is the whole domain.
+# (docs/adr/model/0037-composition-oci-fragments.md). What may not happen is a project
+# spanning two repositories: this file is the whole project.
 #
-# Exercises: three independently released Services, a third-party image behind
+# Exercises: three independently released Applications, a third-party image behind
 # an alias with `runtime: none`, declared writable paths, structured
 # `disk` placement, TCP probes, a static Asset, a sidecar, all three
-# Durability Classes, `provides` consumed by eight Services, and one authored
-# hostname that does not follow its Service id.
+# Durability Classes, `provides` consumed by eight Applications, and one authored
+# hostname that does not follow its Application id.
 #
-# Companion env file (per Workload, like every env file):
+# Companion env file (per Process, like every env file):
 #   platform/env/postgres/base.env   -- examples/platform-postgres.base.env
 
 # The data model's own semver, not the toolkit's
 # (docs/adr/model/0039-artifact-schema-versioning.md).
 schemaVersion: 1.0.0
 
-domain: data              # namespace derives: data-system
-owner: joris              # one owner for every Service in the file; a Service
-                          # needing a different owner needs its own domain
+project: data              # namespace derives: data-system
+owner: joris              # one owner for every Application in the file; an Application
+                          # needing a different owner needs its own project
 
-services:
+applications:
   # ======================================================= platform-postgres
   - id: platform-postgres
 
     # The scrape surface belongs to the exporter sidecar inside the `postgres`
-    # Workload, and the block names it the same way a route does: by Workload
+    # Process, and the block names it the same way a route does: by Process
     # and surface, never by port. `metrics` is declared once, in `provides`.
     observability:
-      alertClass: page      # eight Services depend on it
+      alertClass: page      # eight Applications depend on it
       scrape:
-        workload: postgres
+        process: postgres
         surface: metrics
         path: /metrics
 
-    workloads:
+    processes:
       - name: postgres
         # `platform-postgres` is the repository/product name; `postgres` is what
         # the process is actually called. That is not a divergence needing a
         # field to record it -- it is the name
-        # (docs/adr/model/0063-intent-authored-per-domain.md). The identity derived
+        # (docs/adr/model/0063-intent-authored-per-project.md). The identity derived
         # from it is `data-system.postgres`.
-        lifecycle: service
+        lifecycle: application
 
         # An ALIAS, resolved to a digest through the images lock -- exactly like
         # a first-party image. Third-party is not a reason to exempt the most
-        # stateful workload in the estate: `pgvector/pgvector:pg17` is a mutable
-        # tag that moves on every upstream build, and this Workload is Recreate
+        # stateful process in the estate: `pgvector/pgvector:pg17` is a mutable
+        # tag that moves on every upstream build, and this Process is Recreate
         # on a local-path RWO volume, so any reschedule is a fresh pull.
         # Renovate raises the digest bump behind the ordering gate
         # (docs/adr/model/0040-renovate-ordering-gate.md), and every rendered
@@ -73,14 +73,14 @@ services:
 
         # What this process IS, which the platform keys its backup method off.
         # Not `runtime`, which is instrumentation and is correctly `none` here
-        # (docs/adr/model/0078-engine-is-workload-vocabulary.md). Required
-        # because this Workload holds a volume whose class derives a backup.
+        # (docs/adr/model/0078-engine-is-process-vocabulary.md). Required
+        # because this Process holds a volume whose class derives a backup.
         engine: postgres
 
-        # Declared on the Workload that opens the sockets. Every consumer names
-        # the Service and the surface, never the port -- `dependsOn` targets
-        # `{service, surface}`, and surface names are unique within a Service.
-        # The eight consumers today: auth (its api Workload), agents-api,
+        # Declared on the Process that opens the sockets. Every consumer names
+        # the Application and the surface, never the port -- `dependsOn` targets
+        # `{application, surface}`, and surface names are unique within an Application.
+        # The eight consumers today: auth (its api Process), agents-api,
         # knowledge (api and ingest worker), lightrag, n8n, outline, and the
         # observability backup jobs.
         #
@@ -92,7 +92,7 @@ services:
           metrics: 9187
 
         placement:
-          # The datastore eight Services queue behind. Raw quantities, matched
+          # The datastore eight Applications queue behind. Raw quantities, matched
           # against node allocatable from the pinned node contract
           # (docs/adr/model/0061-placement-is-hard-dimensions.md,
           # docs/adr/model/0056-node-facts-single-source.md).
@@ -104,7 +104,7 @@ services:
           # is acceptable, with no ordering between them. The three Pis carry a
           # 64G sdcard and nothing else, so `media` alone excludes them and the
           # 100Gi ask excludes them twice over -- which is the point. Under the
-          # deleted class model this Workload could sit beside a placement
+          # deleted class model this Process could sit beside a placement
           # admitting only the Pis, pass the build, and go Pending at apply.
           #
           # `disk` filters FIRST placement only. Once a PV is bound, the binding
@@ -117,7 +117,7 @@ services:
           # decides which nodes are eligible to hold it.
           disk:
             media: [nvme, ssd]
-            # No `size`: it is derived as the sum of this Workload's volume
+            # No `size`: it is derived as the sum of this Process's volume
             # sizes, so the quantity has one declaring site
             # (docs/adr/model/0081-volume-size-is-a-hard-dimension.md)
 
@@ -138,14 +138,14 @@ services:
         writablePaths: [/var/run/postgresql, /tmp]
 
         # postgres-exporter runs in the same pod and serves the metrics port
-        # this Workload declares in `provides`. stalwart (stalwart-apply) and
+        # this Process declares in `provides`. stalwart (stalwart-apply) and
         # agent-runner (the agent-gateway jar) have the same shape
-        # (docs/adr/model/0064-sidecars-are-workload-vocabulary.md).
+        # (docs/adr/model/0064-sidecars-are-process-vocabulary.md).
         #
         # A sidecar carries what a container carries: its own memory, cpu and
-        # hardening. The node dimensions stay on the Workload above, because
+        # hardening. The node dimensions stay on the Process above, because
         # nodeSelector is pod-level and the pod is one. Eligibility SUMS: this
-        # Workload needs a node with 2112Mi free, not 2Gi.
+        # Process needs a node with 2112Mi free, not 2Gi.
         sidecars:
           - name: postgres-exporter
             image: postgres-exporter
@@ -165,7 +165,7 @@ services:
         startupBudget: 60s
 
         # REQUIRED, no default, and `recreate` is the only honourable answer:
-        # this Workload holds a ReadWriteOnce local-path volume, which cannot
+        # this Process holds a ReadWriteOnce local-path volume, which cannot
         # attach to two pods at once. Declaring `rolling` here is
         # E_CUTOVER_UNHONOURABLE rather than a silent downgrade to Recreate --
         # the owner states the stop-then-start they already have.
@@ -176,9 +176,9 @@ services:
           - claim: postgres-data
             mountAt: /var/lib/postgresql/data
             durability: irreplaceable
-            # The one fact only the owning Service knows
+            # The one fact only the owning Application knows
             # (docs/adr/model/0015-durability-class-per-volume.md); schedule, sweep
-            # and destination are derived. This is the database eight Services
+            # and destination are derived. This is the database eight Applications
             # queue behind, on a `local-path` volume in a cluster with no
             # VolumeSnapshot CRDs and no CSI snapshot support, so losing the
             # node loses every consumer's data at once. `irreplaceable` renders
@@ -201,13 +201,13 @@ services:
           - from: config/postgresql.conf
             mountAt: /etc/postgresql/postgresql.conf
             # No `onChange`. A change to an Asset is content-hashed and restarts
-            # the Workload unconditionally; the field does not exist
+            # the Process unconditionally; the field does not exist
             # (docs/adr/model/0094-asset-change-restarts-unconditionally.md).
 
           # NOT declared: init-databases.sh.
           #
           # Its 98 lines create one database and one owning user per consuming
-          # Service -- auth_db, agents_db, knowledge_db, n8n_db -- which the
+          # Application -- auth_db, agents_db, knowledge_db, n8n_db -- which the
           # dependency graph already knows from inbound edges and grants. It
           # becomes a derived Deliverable (chapter 16). An executable is code,
           # and code is not configuration.
@@ -223,16 +223,16 @@ services:
         # knowledge's database passwords too -- a KV-v2 read returns the whole
         # document. The subtree is now:
         #
-        #   .../platform/postgres/auth       -> auth's api Workload
-        #   .../platform/postgres/kb         -> knowledge (both Workloads)
-        #   .../platform/postgres/exporter   -> this Workload
+        #   .../platform/postgres/auth       -> auth's api Process
+        #   .../platform/postgres/kb         -> knowledge (both Processes)
+        #   .../platform/postgres/exporter   -> this Process
         #
-        # The data domain owns that Subtree and lists the readers of each path,
+        # The data project owns that Subtree and lists the readers of each path,
         # which is what makes "who breaks if I rotate this" answerable without
         # reading live Vault contents. postgres itself does not read its
         # consumers' credentials; each consumer declares its own grant.
         #
-        # `delivery: env`, so this Service is refused until the pinned Cluster
+        # `delivery: env`, so this Application is refused until the pinned Cluster
         # Context advertises `secretsEncryption: true` --
         # E_SECRETS_AT_REST_REQUIRED (docs/adr/model/0028-secrets-at-rest-gate.md).
         secrets:
@@ -244,34 +244,34 @@ services:
 
   # ======================================================= platform-rabbitmq
   #
-  # A second Service in the same file and the same namespace. It shares nothing
+  # A second Application in the same file and the same namespace. It shares nothing
   # with postgres: not a release, not an identity, not a grant. `data-system`
-  # holds three Services by construction, so it is NOT a trust boundary -- no
+  # holds three Applications by construction, so it is NOT a trust boundary -- no
   # isolation claim may rest on the namespace wall. Isolation here is the
   # derived default-deny edge set, evaluated per pod
-  # (docs/adr/model/0035-network-policy-default-deny.md), plus per-Workload identity
-  # (docs/adr/model/0024-identity-per-workload.md).
+  # (docs/adr/model/0035-network-policy-default-deny.md), plus per-Process identity
+  # (docs/adr/model/0024-identity-per-process.md).
   - id: platform-rabbitmq
-    # Its own urgency, not the domain's: raising the class to the header would
+    # Its own urgency, not the project's: raising the class to the header would
     # make this file page as loudly as postgres does. rabbitmq exports metrics
-    # itself, so no sidecar is involved and the surface is the Workload's own.
+    # itself, so no sidecar is involved and the surface is the Process's own.
     observability:
       alertClass: urgent
       scrape:
-        workload: rabbitmq
+        process: rabbitmq
         surface: metrics    # the prometheus plugin's own listener
         path: /metrics
 
-    # THE HOST DOES NOT FOLLOW THE SERVICE ID, and this Service is the estate's
-    # evidence for authoring hostnames rather than deriving them: the Service is
+    # THE HOST DOES NOT FOLLOW THE APPLICATION ID, and this Application is the estate's
+    # evidence for authoring hostnames rather than deriving them: the Application is
     # `platform-rabbitmq` and the live host is `rabbitmq.jorisjonkers.dev`. Any
-    # `<service>.<zone>` rule produces `platform-rabbitmq.jorisjonkers.dev`,
+    # `<application>.<zone>` rule produces `platform-rabbitmq.jorisjonkers.dev`,
     # which resolves to nothing -- and it would be right for auth, so the
     # derivation would look correct until someone read this line. `host` is
     # therefore the full FQDN, authored, unique across the estate
     # (E_DUPLICATE_HOST at composition) (review/EXPOSURE-MANIFEST.md).
     exposure:
-      - name: management        # unique within the Service; names what this
+      - name: management        # unique within the Application; names what this
                                 # host is, which `public` would not
         host: rabbitmq.jorisjonkers.dev
         audience: authenticated # the management UI behind forward-auth. One
@@ -279,7 +279,7 @@ services:
                                 # name are all derived and none is authorable
                                 # (docs/adr/model/0018-exposure-by-audience.md)
         routes:
-          - {path: /, match: prefix, workload: rabbitmq, surface: management}
+          - {path: /, match: prefix, process: rabbitmq, surface: management}
         # No `contentPolicy` and no `redirectTo`: this route takes the derived
         # header baseline and redirects nowhere. Those two fields are the whole
         # authored proxy vocabulary, and neither is needed here.
@@ -289,13 +289,13 @@ services:
         # that list derives from edges like this one rather than being retyped
         # (chapter 16). The predicate is still open.
 
-    workloads:
+    processes:
       - name: rabbitmq
-        lifecycle: service
+        lifecycle: application
         image: rabbitmq     # an alias, resolved through the images lock
         runtime: none       # third-party image; no profile values to inject
         engine: rabbitmq    # keys the backup method: a definitions export
-                            # (docs/adr/model/0078-engine-is-workload-vocabulary.md)
+                            # (docs/adr/model/0078-engine-is-process-vocabulary.md)
 
         provides:
           amqp: 5672        # named by auth and knowledge in `dependsOn`
@@ -309,7 +309,7 @@ services:
         # No `hardening` exceptions: the upstream image runs non-root with a
         # read-only root filesystem once its mnesia directory is a volume.
 
-        # No `exposure` here: it sits on the Service above, and its one route
+        # No `exposure` here: it sits on the Application above, and its one route
         # names the `management` surface declared in `provides`. `amqp` and
         # `metrics` are provided and not routed -- providing a port is not
         # exposing it, and only the route decides which of the three the edge
@@ -321,7 +321,7 @@ services:
 
         startupBudget: 120s
 
-        # `recreate`: this Workload holds an RWO local-path volume. `rolling`
+        # `recreate`: this Process holds an RWO local-path volume. `rolling`
         # would be E_CUTOVER_UNHONOURABLE, not a silent Recreate.
         cutover: recreate
 
@@ -338,9 +338,9 @@ services:
             # undelivered messages and the definitions, not a consumer's data.
 
         # No `secrets`, and therefore no env file placeholder to bind. This
-        # Workload reads no Secret Store path: its clients hold the grants --
+        # Process reads no Secret Store path: its clients hold the grants --
         # knowledge reads `secret/data/platform/rabbitmq`, and auth's api
-        # Workload keeps its broker credentials in its own document.
+        # Process keeps its broker credentials in its own document.
 
   # ========================================================= platform-valkey
   - id: platform-valkey
@@ -351,23 +351,23 @@ services:
     # omission says it: there is no `none` class to write, because a value
     # meaning "I wrote the field to say I did not want the field" is ceremony
     # (docs/adr/model/0021-observability-scrape-and-alert-class.md). Giving this
-    # Service a class would be E_ALERT_CLASS_WITHOUT_SIGNAL, and the repair is
+    # Application a class would be E_ALERT_CLASS_WITHOUT_SIGNAL, and the repair is
     # an exporter sidecar plus a scrape surface, as postgres has above.
 
-    workloads:
+    processes:
       - name: valkey
-        lifecycle: service
+        lifecycle: application
         image: valkey       # an alias, resolved through the images lock
         runtime: none
 
         provides:
-          redis: 6379       # the surface auth's api Workload names; the wire
+          redis: 6379       # the surface auth's api Process names; the wire
                             # protocol is the surface's name, not the product's
 
         placement:
           memory: 256Mi
           cpu: 50m
-          # No further dimensions. The image is multi-arch and this Workload
+          # No further dimensions. The image is multi-arch and this Process
           # needs no node capability, so every node is eligible -- which is what
           # a cache should be, and what a `tailscale` filter would have
           # pretended to narrow while excluding none of the 7.
@@ -388,7 +388,7 @@ services:
             mountAt: /data
             size: 2Gi
             # No `engine`. `reconstructible` derives no backup, and an engine on
-            # a Workload that derives none is refused --
+            # a Process that derives none is refused --
             # E_ENGINE_WITHOUT_DURABILITY
             # (docs/adr/model/0077-durability-derives-a-backup.md)
             durability: reconstructible

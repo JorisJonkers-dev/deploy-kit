@@ -9,7 +9,12 @@ rests-on: ["0004"]
 
 # Assignments are published back to the owning repository
 
-Composition writes every Service's resolved assignments into that Service's own
+> **Amended 2026-09-14.** Vocabulary renamed by
+> [0116](0116-project-application-process.md): Domain is now Project,
+> Service is Application, Workload is Process, and Service Intent is Project
+> Intent. The decision is unchanged.
+
+Composition writes every Application's resolved assignments into that Application's own
 repository as a generated file and opens a pull request when they change. The
 file is generated, never hand-edited, and guarded by a drift check that fails
 the build when it disagrees with a fresh compose.
@@ -30,11 +35,11 @@ drift check exits non-zero.
 ## Why
 
 [0004](0004-contention-decides-authority.md) makes contended values
-platform-assigned, so a Service owner cannot read their own hostname,
+platform-assigned, so an Application owner cannot read their own hostname,
 namespace, placement or Secret Store paths out of their own repository. Two
 earlier records reached the same conclusion from opposite ends and neither
-specified the mechanism: the contention record's consequences state *"A service
-owner cannot read their own service's URL out of their own repository. The
+specified the mechanism: the contention record's consequences state *"An application
+owner cannot read their own application's URL out of their own repository. The
 Resolved Deployment must therefore be published back to the owning repository,
 not merely computed during a render"*, and the exposure record (now
 [0018](0018-exposure-by-audience.md)), repeats it, noting *"This is now the
@@ -63,7 +68,7 @@ drift check is that outcome by construction.
 | option | cost if taken | why rejected |
 |---|---|---|
 | Preview comment only (status quo) | zero new machinery, no write credentials, no PR noise | it fires only when the owner opens a pull request; the `auth-api` → `knowledge` case produces no pull request in `knowledge`, so the one class of change publish-back exists for is exactly the class it misses |
-| A queryable read-only view of all assignments | a service to build, host, authenticate and keep available, including during the incident when someone needs it | nothing arrives; the consumer must already know to look, and not knowing to look is the failure mode |
+| A queryable read-only view of all assignments | an application to build, host, authenticate and keep available, including during the incident when someone needs it | nothing arrives; the consumer must already know to look, and not knowing to look is the failure mode |
 | Commit straight to the default branch, no pull request | saves review latency and roughly one workflow step per repository | the change lands unseen; the diff *is* the notification, and a silent commit buys the file without buying the visibility |
 | Publish the file without a drift check | saves one check invocation per CI run | a snapshot nobody verifies is worse than no file: it looks authoritative while being stale, which is the `render-local.sh` outcome quoted above |
 
@@ -81,7 +86,7 @@ removing a convenience.
 ## Consequences
 
 - A commit-back mechanism holds write access to every participating repository, so a bug in composition can open a pull request in all of them at once, paid by the platform owner, in credential custody and blast radius
-- Pull-request noise is the cost of visibility: an assignment change nobody needed to see still arrives as a review request, paid by every service owner
+- Pull-request noise is the cost of visibility: an assignment change nobody needed to see still arrives as a review request, paid by every application owner
 - The file is a snapshot and goes stale between composes; the drift check is the only thing making it trustworthy, paid by whoever reads it during an incident if the check is ever skipped
 - Hand-editing generated assignments becomes a build failure rather than silent divergence, paid by owners who used to patch rendered output in place
 - "What is my hostname, namespace, or Vault path" becomes a `grep` in the owner's own checkout, with no render and no cluster access, paid for by the composition run that produces the file
