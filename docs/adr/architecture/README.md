@@ -10,7 +10,7 @@ The consequence for the contract every ADR satisfies is one field: a
 [`docs/architecture.md`](../../architecture.md), the normative document for code
 structure, rather than a section of `spec/v1`. Everything else is unchanged
 (frontmatter schema, a falsifiable claim per premise, `rests-on` naming premises
-only, the Alternatives table, the citation rule) and `scripts/lint-adrs.mjs`
+only, the Alternatives table, the citation rule) and `scripts/lint-adrs.ts`
 enforces all of it here exactly as it does for the model, anchor check included.
 
 Numbers come from the one estate-wide sequence, so a citation resolves without

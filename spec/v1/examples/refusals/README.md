@@ -18,7 +18,7 @@ There is no fixture for "no monitoring". A Service that wants none omits the
 as `platform-valkey` rather than here.
 
 These are **fixtures, not proof of rendered behaviour.** The compiler does not
-exist yet, so `test/simplification-contract.test.js` asserts them at the layer
+exist yet, so `test/simplification-contract.test.ts` asserts them at the layer
 that does: the shape of the input.
 
 Two things therefore remain **unproven until a renderer exists**, and are named

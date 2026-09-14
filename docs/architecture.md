@@ -3,7 +3,7 @@
 Normative for **code**, the way [`spec/v1`](../spec/v1/00-overview.md) is
 normative for the model. Decisions recorded in
 [`docs/adr/architecture/`](adr/architecture/README.md) point their `normative:`
-field at sections of this document, and `scripts/lint-adrs.mjs` checks that the
+field at sections of this document, and `scripts/lint-adrs.ts` checks that the
 anchor exists. Adding or renaming a `## ` heading here therefore breaks the
 anchor check for any ADR that names it; change both together.
 
@@ -198,7 +198,14 @@ cost something in the generation this compiler replaces.
 | decisions | `npm run lint:adrs` | frontmatter, register integrity, citations, normative anchors per domain |
 | links | `npm run lint:links` | relative links and heading anchors across every tracked Markdown file |
 | manifests | `npm run lint:manifests` | every rendered example object against pinned Kubernetes and CRD schemas |
-| tests | `npm test` | behaviour, plus the coverage floor |
+| tests | `npm run test:coverage` | behaviour, plus the coverage ratchet |
+
+Coverage is a ratchet ([0101](adr/architecture/0101-coverage-is-a-ratchet.md)).
+The thresholds in `vitest.config.ts` sit on what the suite reaches, over an
+explicit include list so a file no test reaches counts as zero, and they only
+rise: a change that reaches more raises them in the same pull request, and
+lowering one is a line in a diff that has to be argued. Coverage-ignore
+comments are counted, and the count is held at zero.
 
 The reachability half of the boundary gate is the one worth naming. Coverage
 alone rewards a module for having tests: chapter 30 records 1,967 lines of dead
@@ -209,3 +216,23 @@ and the two together are what coverage was mistaken for.
 Every gate here carries negative fixtures.
 A gate that has only ever run against a clean tree is untested: nothing proves
 it would fail.
+
+## Tooling
+
+The gates and their tests are TypeScript, held to the same compiler options and
+lint rules as the compiler, and Node runs them directly: Node 24 strips the
+types, so nothing is built between editing a gate and running it
+([0100](adr/architecture/0100-tests-run-in-process-on-vitest.md)). `.nvmrc`
+pins the exact Node version, and CI reads the same file.
+
+Each gate is a library first. It exports a function that takes a root and
+returns what it found, and a one-line guard at the bottom runs it when Node
+starts the file as a script. Tests call the function in-process, which is what
+lets coverage and mutation testing see the lines that decide; a child process
+would hide them from both. One process-level test per gate proves the guard
+still runs it.
+
+Tests run on Vitest. A shared setup fails any test that reaches the network,
+and gives each test a temporary directory of its own that is removed after it.
+Lint rejects a committed `.only` or `.skip`, a fixed sleep, and a test that
+asserts nothing, and a test proves each of those rules fires.
