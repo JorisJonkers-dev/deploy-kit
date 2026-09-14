@@ -1,10 +1,9 @@
 # Behaviour ledger
 
-This is not `docs/architecture-rules.md` (issue
-[#29](https://github.com/JorisJonkers-dev/deploy-kit/issues/29), not yet
-landed). That ledger will list the rules a tool enforces: a dependency-cruiser
-check, an ESLint message, a lint's error code, each keyed to its enforcer and
-its severity. This one lists the behaviours a person depends on: a sentence a
+This is not [`docs/architecture-rules.md`](architecture-rules.md). That ledger
+lists the rules a tool enforces: a dependency-cruiser check, an ESLint rule, a
+gate script, each keyed to its enforcer and to the fixture that proves it
+fires. This one lists the behaviours a person depends on: a sentence a
 contributor or a consumer can rely on, keyed to the test that fails the moment
 it stops being true. A behaviour can rest on several rules, and one rule can
 serve several behaviours, so the two ledgers stay separate on purpose.
@@ -20,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **13** rows. The compiler's behaviours join it as they land.
+This ledger holds **14** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -37,3 +36,4 @@ This ledger holds **13** rows. The compiler's behaviours join it as they land.
 | REQ-011 | Every script, path, coverage number and Node version README.md and CONTRIBUTING.md name matches the repository they describe | [test/docs-contract.test.ts](../test/docs-contract.test.ts) |
 | REQ-012 | A pull request's title, body and every commit in it carry no agent attribution: no Co-Authored-By trailer naming a coding agent, no "generated with" banner naming one, no link back to an agent session | [test/pr-title-contract.test.ts](../test/pr-title-contract.test.ts) |
 | REQ-013 | `npm run verify` runs the same secret scan CI runs, failing on a committed secret rather than only after a push | [test/secret-scan-contract.test.ts](../test/secret-scan-contract.test.ts) |
+| REQ-014 | Every rule this repository enforces has a ledger row with a greppable id and a fixture that proves it fires, and a rule not enforced yet is listed as pending with a ticket and a reason rather than dropped | [test/rules-contract.test.ts](../test/rules-contract.test.ts) |

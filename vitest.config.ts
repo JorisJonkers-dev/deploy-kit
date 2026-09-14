@@ -22,25 +22,22 @@ export default defineConfig({
       // A ratchet, per docs/adr/architecture/0101-coverage-is-a-ratchet.md:
       // set from what the suite reaches, and only ever raised.
       //
-      // Measured 2026-09-14, after the local secret scan
-      // (scripts/lint-secrets.ts) landed. Its file is small enough that the
-      // bottom-of-file entrypoint guard every other gate leaves uncovered
-      // would, left the same way, pull the suite under the previous
-      // threshold; test/secret-scan-contract.test.ts's "the entrypoint guard"
-      // covers it in-process instead, the way
-      // test/package-contents-contract.test.ts already does for
-      // check-package-contents.ts, and its two `??` fallbacks (the default
-      // binary name, a signal-killed scan's null exit status) each get a
-      // fixture of their own. Two runs of one tree, identical both times:
-      // statements 523/534, branches 274/302, functions 84/84, lines
-      // 482/493. What is left uncovered elsewhere is mostly the one-line
-      // command guard at the bottom of each other gate and the branches for a
-      // tool that cannot be started at all.
+      // Measured 2026-09-14, after the rule ledger gate
+      // (scripts/lint-rules.ts) landed on top of the local secret scan
+      // (scripts/lint-secrets.ts), with the tracked-tree helpers both the
+      // rule ledger and the requirements gate use moved into
+      // scripts/lib/tracked.ts. The new gate's negative fixtures reach every
+      // branch that decides, so all four metrics rose again over the secret
+      // scan's 97.94 / 90.72 / 100 / 97.76. Two runs of one tree, identical
+      // both times: statements 701/713, branches 379/410, functions 107/107,
+      // lines 652/664. What is left uncovered is the one-line command guard
+      // at the bottom of each other gate and the branches for a tool that
+      // cannot be started at all.
       thresholds: {
-        statements: 97.94,
-        branches: 90.72,
+        statements: 98.31,
+        branches: 92.43,
         functions: 100,
-        lines: 97.76,
+        lines: 98.19,
       },
     },
   },
