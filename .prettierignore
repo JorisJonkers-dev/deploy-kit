@@ -12,7 +12,10 @@ spec/
 *.md
 
 # Workflows use the estate's quoted-key YAML style, which prettier rewrites.
+# The composite actions beside them are GitHub Actions YAML of the same kind
+# and keep the same style.
 .github/workflows/
+.github/actions/
 
 # Scratch. `.tmp/` is a working directory, not a deliverable, and its contents
 # are whatever a tool last dropped there.
