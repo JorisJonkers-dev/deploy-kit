@@ -42,7 +42,7 @@ instead. Either way something must exist in Vault that the derivation describes.
 The unit is the **Process identity**, not the Application.
 [0024](0024-identity-per-process.md) makes the ServiceAccount and the Vault
 role the Process name alone, and the estate has already paid for getting this
-wrong: `applicationAccountName()` returned the Application name, so two Processes of one
+wrong: `serviceAccountName()` returned the Application name, so two Processes of one
 Application authenticated as the same principal and received the union of both
 policies whatever level a grant was written at. One document per identity is
 what makes that impossible to reintroduce, and it makes a diff say which

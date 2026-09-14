@@ -31,7 +31,7 @@ identity presenting it to the store is per Process
 ([0024](0024-identity-per-process.md)), so the level a grant is written at is
 the level the store enforces. False if: two Processes of one Application
 authenticate as the same principal. Settled by: render a two-Process Application
-into the lab cluster, confirm `.spec.applicationAccountName` differs between the two
+into the lab cluster, confirm `.spec.serviceAccountName` differs between the two
 pods, then exchange each ServiceAccount token for a store token and
 `vault kv get` the *sibling's* path, the decision falls if that read succeeds.
 This claim inherits [0009](0009-vault-read-is-per-path.md) only through
@@ -62,7 +62,7 @@ split is already achieved by the env-file placeholder
 beside the `dependsOn` edges that motivate them, where a reviewer looks.
 
 The two levels are an access boundary **only** because identity is per Process.
-At review time they were not one: `applicationAccountName()` in
+At review time they were not one: `serviceAccountName()` in
 `src/adapters/kubernetes.ts:665-669` returns `applicationName` for any Application
 holding a non-Kubernetes secret, and the previous `16-dependencies.md` derived
 the account from `id` to match. Two Processes of one Application therefore

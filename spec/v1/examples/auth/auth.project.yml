@@ -148,7 +148,7 @@ applications:
         # never a Process.
         provides:
           http: 8080            # not 80: a port below 1024 cannot be bound by a
-                                # non-root process without CAP_NET_BIND_APPLICATION,
+                                # non-root process without CAP_NET_BIND_SERVICE,
                                 # which `restricted` drops
                                 # (docs/adr/model/0083-privileged-port-needs-the-capability.md).
                                 # A route names a surface, not a number, so the

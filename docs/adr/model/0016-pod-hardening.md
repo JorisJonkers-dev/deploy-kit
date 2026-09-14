@@ -59,7 +59,7 @@ The vocabulary does not exist and neither renderer emits the fields.
 src/ schemas/` returns **0 hits** (verified 2026-08-31; the grep spans *both*
 renderer generations, so choosing one under
 [0052](0052-registered-adapters-are-v1.md) does not rescue it).
-`src/deployment/render/processes.ts:130` builds a container from name, image,
+`src/deployment/render/workloads.ts:130` builds a container from name, image,
 pullPolicy, ports, command, args, env, envFrom, volumeMounts, probes and
 resources, and stops. Rendered pods run as their image's UID, with a writable
 root filesystem and the default capability set.
