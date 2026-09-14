@@ -31,7 +31,7 @@ The tree is deleted in one pull request when both of these hold:
 What that pull request keeps: every oracle file under `spec/v1/examples/`, the
 constraint ledger without its OCL column, and the descriptor check. What it
 deletes: this directory; the `emf` CI job and the `ADR contract (emf)` step in
-`.github/workflows/ci.yml`; the `java-kotlin` entry and `emf/**` path in
+`.github/workflows/ci.yml`; the `java-kotlin` entry in
 `.github/workflows/codeql.yml`; `test/emf-wiring.test.ts`, with `RULE-061`,
 `RULE-062` and `REQ-015`; the `emf` domain entry in `scripts/lint-adrs.ts` and
 the two `emf/` cases in `test/adr-contract.test.ts`; the `emf` exclusion in

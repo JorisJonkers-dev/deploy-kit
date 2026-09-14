@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **15** rows. The compiler's behaviours join it as they land.
+This ledger holds **16** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -38,3 +38,4 @@ This ledger holds **15** rows. The compiler's behaviours join it as they land.
 | REQ-013 | `npm run verify` runs the same secret scan CI runs, failing on a committed secret rather than only after a push | [test/secret-scan-contract.test.ts](../test/secret-scan-contract.test.ts) |
 | REQ-014 | Every rule this repository enforces has a ledger row with a greppable id and a fixture that proves it fires, and a rule not enforced yet is listed as pending with a ticket and a reason rather than dropped | [test/rules-contract.test.ts](../test/rules-contract.test.ts) |
 | REQ-015 | The model-driven build CI runs is the build in the tree: no workflow runs the Maven wrapper where there is no build, the reactor names no missing module, and CodeQL scans its Java | [test/emf-wiring.test.ts](../test/emf-wiring.test.ts) |
+| REQ-016 | A code scanning finding of any severity fails `Pipeline Complete`, so it blocks the merge rather than only landing in the Security tab | [test/pipeline-wiring.test.ts](../test/pipeline-wiring.test.ts) |

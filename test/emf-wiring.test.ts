@@ -139,10 +139,9 @@ describe("CodeQL scans the model-driven build", () => {
     "utf8",
   );
 
-  it("analyses java-kotlin without a build and runs on changes to emf/", () => {
+  it("analyses java-kotlin without a build, with the shared configuration", () => {
     expect(codeql).toContain("'language': 'java-kotlin'");
     expect(codeql).toContain("'build-mode': 'none'");
-    expect(codeql).toContain("- 'emf/**'");
     expect(codeql).toContain(
       "'config-file': './.github/codeql/codeql-config.yml'",
     );

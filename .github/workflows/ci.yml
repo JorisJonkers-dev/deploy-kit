@@ -232,6 +232,17 @@
             | tar -xz gitleaks
           GITLEAKS="${PWD}/gitleaks" npm run lint:secrets
 
+  # CodeQL over every language, as a gate: .github/workflows/codeql.yml fails on
+  # any finding, and Pipeline Complete needs this job, so a finding blocks the
+  # merge. The called workflow needs to upload results, hence the permissions.
+  'codeql':
+    'name': 'Code scanning'
+    'permissions':
+      'actions': 'read'
+      'contents': 'read'
+      'security-events': 'write'
+    'uses': './.github/workflows/codeql.yml'
+
   # The model-driven implementation under emf/ (docs/adr/emf/0107): its own
   # Maven build, JDK and gates, deleted with the directory at its sunset.
   # Every gate it runs is listed in emf/docs/rules.md; the thresholds are in
@@ -273,6 +284,7 @@
       - 'package-contents'
       - 'actionlint'
       - 'secret-scan'
+      - 'codeql'
       - 'emf'
     # Runs even when a dependency failed or was cancelled: the branch ruleset
     # names this job, so it has to run and report failure rather than being
