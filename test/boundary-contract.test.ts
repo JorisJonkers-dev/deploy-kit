@@ -4,6 +4,9 @@
 // has only ever run against a tree with no violations is untested: nothing
 // proves it would fail. Each case builds a throwaway src/ tree that crosses
 // exactly one boundary and asserts the named rule reports it.
+//
+// REQ-004 (docs/requirements.md): layer boundaries and module reachability
+// are enforced on the dependency graph, not on review alone.
 import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";

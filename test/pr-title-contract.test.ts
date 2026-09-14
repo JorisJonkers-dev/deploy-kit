@@ -3,6 +3,9 @@
 // hook is the authority, copied unchanged from the estate; if one side accepts
 // a type the other does not, contributors get conflicting signals on a laptop
 // and in CI.
+//
+// REQ-005 (docs/requirements.md): a pull request title and its commits use a
+// conventional-commit type release-please reads.
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { join } from "node:path";

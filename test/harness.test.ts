@@ -1,5 +1,11 @@
 // The harness proves its own guards fire. A guard that has only ever run
 // against well-behaved tests is untested: nothing shows it would catch one.
+//
+// REQ-007 (docs/requirements.md): a test that reaches the network, is
+// committed focused or skipped, sleeps a fixed duration, or asserts nothing
+// never reaches a green build.
+// REQ-008 (docs/requirements.md): coverage is a ratchet, so no ignore comment
+// exempts a line from it (see "coverage ignore comments" below).
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ESLint } from "eslint";
