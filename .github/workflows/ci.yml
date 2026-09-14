@@ -127,6 +127,14 @@
       - 'name': 'Requirements ledger'
         'run': 'npm run lint:requirements'
 
+      # README.md and CONTRIBUTING.md, held to the repository they describe:
+      # every named script exists, every backtick-quoted path exists, every
+      # quoted coverage number matches vitest.config.ts, every quoted Node
+      # version matches .nvmrc. The link contract above proves a link and its
+      # anchor resolve; this proves the prose around them is still true.
+      - 'name': 'Docs contract'
+        'run': 'npm run lint:docs'
+
   'tests':
     'name': 'Tests'
     'runs-on': 'ubuntu-latest'

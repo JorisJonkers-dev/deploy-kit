@@ -188,7 +188,7 @@ clean tree is untested: nothing proves it would fail.
 
 ## Gates
 
-Nine gates hold the structure, and each exists because its absence has already
+Thirteen gates hold the structure, and each exists because its absence has already
 cost something in the generation this compiler replaces. Each runs as its own
 CI job, aggregated by one required check that fails when any gate job fails,
 is cancelled, or is skipped
@@ -207,13 +207,15 @@ proves the two never drift apart.
 | links | `npm run lint:links` | relative links and heading anchors across every tracked Markdown file |
 | manifests | `npm run lint:manifests` | every rendered example object against pinned Kubernetes and CRD schemas |
 | requirements | `npm run lint:requirements` | a behaviour ledger row that no longer parses, names a missing or empty test, drifts from its stated count, or is cited by an id no row carries |
+| docs | `npm run lint:docs` | a script, path, coverage number or Node version README.md or CONTRIBUTING.md name that no longer matches the repository |
 | tests | `npm run test:coverage` | behaviour, plus the coverage ratchet |
 | package contents | `node scripts/check-package-contents.ts` | `npm pack` shipping a file outside `docs/adr/` and `spec/`, the boundary the package's `files` field states but does not enforce on its own |
 | actionlint | a pinned `actionlint` binary | invalid workflow syntax, an undefined `${{ }}` expression, a shellcheck finding inside a `run:` step |
 | secret scan | a pinned `gitleaks` binary | a committed secret matching the default ruleset, or this repository's own allowlist entries |
 
-Decisions, links, manifests and requirements share one CI job, `contracts`:
-all four check a document against a rule rather than code against a graph.
+Decisions, links, manifests, requirements and docs share one CI job,
+`contracts`: all five check a document against a rule rather than code
+against a graph.
 Boundaries runs alone as `architecture`, because it is the one gate that
 speaks for `docs/architecture.md` itself rather than for a document beside it.
 
