@@ -9,6 +9,13 @@ rests-on: ["0007"]
 
 # Zod declares the authoring shape, and a mapper turns it into the domain
 
+> **Amended 2026-09-14.** "The one validator" means the one validator in
+> `src/`. The Java implementation under `emf/` validates with OCL, and the two
+> are held to the same constraints through the constraint ledger and the
+> refused cases' committed diagnostics
+> ([0105](0105-two-implementations-meet-at-committed-oracles.md)), never by
+> generating one from the other.
+
 ## Rests on
 The shape a human writes and the shape the core reasons about differ enough that
 one type cannot be both, and the difference is exactly what a mapper per document

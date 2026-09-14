@@ -100,6 +100,11 @@
       - 'name': 'ADR contract'
         'run': 'npm run lint:adrs'
 
+      # The coursework implementation's register, linted as its own root.
+      # Deleted with emf/ (emf/docs/adr/emf/0107).
+      - 'name': 'ADR contract (emf)'
+        'run': 'node scripts/lint-adrs.ts emf'
+
       # Relative links and heading anchors across every tracked Markdown file.
       # The ADR domain move rewrote about a hundred references outside the
       # decision set, and nothing checked them.

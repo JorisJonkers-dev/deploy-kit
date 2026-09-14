@@ -9,6 +9,12 @@ rests-on: ["0001"]
 
 # A new gate's script and its CI job land in the same pull request, and a test proves the two stay matched
 
+> **Amended 2026-09-14.** A gate can also be a CI job with no npm script:
+> the `emf` job runs Maven inside `emf/`
+> ([0105](0105-two-implementations-meet-at-committed-oracles.md)). It lands in
+> the pull request that adds the Maven build, joins `Pipeline Complete`, and is
+> deleted with `emf/`.
+
 ## Rests on
 The repository's own npm scripts are the whole list of gates, so the list a
 pull request's checks show and the list `package.json` declares can be kept

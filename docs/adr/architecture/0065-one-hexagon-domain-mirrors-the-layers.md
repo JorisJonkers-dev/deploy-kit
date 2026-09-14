@@ -9,6 +9,12 @@ rests-on: ["0003"]
 
 # One hexagon, two use-cases, and a domain whose folders are the three layers
 
+> **Amended 2026-09-14.** Scoped to the TypeScript tree under `src/`. For the
+> length of the model-driven engineering course a second, Java implementation
+> lives under `emf/`, bound to this one only by the parity contract
+> ([0105](0105-two-implementations-meet-at-committed-oracles.md)). The rings
+> below describe `src/`; nothing in `emf/` imports from it or is held to them.
+
 > **Amended 2026-09-08.** Still two use-cases, one core, but `publish` no
 > longer renders anything. A repository validates its Intent Fragment and pushes
 > it by digest; every adapter runs in `compose`
