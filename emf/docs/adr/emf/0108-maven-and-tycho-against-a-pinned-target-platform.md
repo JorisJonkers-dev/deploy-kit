@@ -1,7 +1,7 @@
 ---
 tier: decision
 status: proposed
-claim: open
+claim: settled
 owner: joris
 date: 2026-09-14
 normative: docs/architecture.md#toolchain
@@ -9,6 +9,28 @@ rests-on: ["0106"]
 ---
 
 # Maven builds `emf/`, with Tycho resolving p2-only bundles against a pinned target platform, on JDK 21, with no Eclipse IDE
+
+> **Amended 2026-09-14, settled by the walking skeleton (#81).** `mvnw verify`
+> ran all five tools headless, each through its standalone API: an `.ecore`
+> loaded and an instance validated, a Complete OCL invariant fired, a generated
+> Xtext parser read a three-line document, a QVT-Operational identity
+> transformation ran, and an Acceleo 4 template wrote a file. What the attempt
+> changed:
+>
+> - Every bundle, EMF and Xtext included, resolves from one p2 repository: the
+>   2026-06 simultaneous release at its dated build, with each unit pinned to
+>   an exact version in `emf/emf.target`. Maven Central carries a newer Xtext
+>   than the release the OCL and QVT-Operational bundles were built against, so
+>   taking EMF and Xtext from Central would have mixed two releases. The one
+>   Central artifact left is the ANTLR 3 generator the Xtext generator calls,
+>   which is not published to p2.
+> - A module that needs a p2 bundle is an Eclipse bundle (`eclipse-plugin`,
+>   with a manifest), because Tycho resolves p2 dependencies only for bundles.
+>   Its tests still run on a plain classpath through Maven Surefire, outside
+>   OSGi, so the standalone APIs CI checks are the ones a command-line user
+>   gets.
+> - The Xtext generator runs as an MWE2 workflow in `generate-sources`, writing
+>   every Java file, stubs included, under `target/`.
 
 > **Amended 2026-09-14.** No Eclipse IDE is needed to build, and CI never
 > uses one. The projects must still be loadable in Eclipse Modeling Tools for
@@ -42,8 +64,9 @@ with the target platform as one file pinned to exact versions, which is the
 same pinning discipline the rest of the repository applies to CI binaries.
 JDK 21 is the current LTS the Eclipse releases target.
 
-The claim is open because resolution has not been tried. The walking skeleton
-is the first change to `emf/` for that reason.
+The claim was open until resolution had been tried, which is why the walking
+skeleton was the first EMF-dependent change to `emf/`; the amendment above
+records what it found.
 
 ## Alternatives
 | option | cost if taken | why rejected |

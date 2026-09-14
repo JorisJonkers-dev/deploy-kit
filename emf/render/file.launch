@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Runs model/file.mtl over model/notes.ecore in Eclipse, the path the smoke test runs headless. -->
+<launchConfiguration type="org.eclipse.acceleo.aql.ls.debug.ide.launchConfigurationType">
+    <stringAttribute key="module" value="/dev.jorisjonkers.deploykit.emf.render/model/file.mtl"/>
+    <stringAttribute key="model" value="/dev.jorisjonkers.deploykit.emf.render/model/notes.ecore"/>
+    <stringAttribute key="destination" value="/dev.jorisjonkers.deploykit.emf.render/target/file"/>
+</launchConfiguration>

@@ -34,7 +34,7 @@ taking a number, check both registers.
 | # | title | claim |
 |---|---|---|
 | [0107](emf/0107-emf-is-coursework-scoped-and-self-contained.md) | The EMF implementation is coursework-scoped, lives entirely under `emf/`, and is deleted when two conditions hold | open |
-| [0108](emf/0108-maven-and-tycho-against-a-pinned-target-platform.md) | Maven builds `emf/`, with Tycho resolving p2-only bundles against a pinned target platform, on JDK 21, with no Eclipse IDE | open |
+| [0108](emf/0108-maven-and-tycho-against-a-pinned-target-platform.md) | Maven builds `emf/`, with Tycho resolving p2-only bundles against a pinned target platform, on JDK 21, with no Eclipse IDE | settled |
 | [0109](emf/0109-source-and-target-metamodels-are-hand-written.md) | The source and target metamodels are hand-written in Ecore, and their Java is generated at build time | open |
 | [0110](emf/0110-constraints-are-complete-ocl-named-by-code.md) | Constraints are Complete OCL invariants named by the diagnostic code they emit | open |
 | [0111](emf/0111-xtext-parses-the-authored-yaml-into-the-metamodel.md) | The Xtext grammar parses the authored YAML files themselves, into the imported metamodel | open |
