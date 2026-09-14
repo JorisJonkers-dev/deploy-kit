@@ -20,7 +20,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **11** rows. The compiler's behaviours join it as they land.
+This ledger holds **12** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -35,3 +35,4 @@ This ledger holds **11** rows. The compiler's behaviours join it as they land.
 | REQ-009 | The npm package ships nothing outside `docs/adr/` and `spec/`, checked against what npm would really pack rather than the advisory `files` field | [test/package-contents-contract.test.ts](../test/package-contents-contract.test.ts) |
 | REQ-010 | A gate's npm script and the CI job that runs it land in the same pull request, so neither can drift from the other unnoticed | [test/pipeline-wiring.test.ts](../test/pipeline-wiring.test.ts) |
 | REQ-011 | Every script, path, coverage number and Node version README.md and CONTRIBUTING.md name matches the repository they describe | [test/docs-contract.test.ts](../test/docs-contract.test.ts) |
+| REQ-012 | A pull request's title, body and every commit in it carry no agent attribution: no Co-Authored-By trailer naming a coding agent, no "generated with" banner naming one, no link back to an agent session | [test/pr-title-contract.test.ts](../test/pr-title-contract.test.ts) |
