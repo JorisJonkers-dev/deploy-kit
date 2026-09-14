@@ -4,6 +4,9 @@
 // binary is absent rather than passing quietly, and it fails the build when the
 // binary fails. Both are what make it a gate rather than a script, and neither
 // is proven by running it against a clean tree.
+//
+// REQ-003 (docs/requirements.md): every rendered manifest in the worked
+// examples validates against its pinned schema.
 import { spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
