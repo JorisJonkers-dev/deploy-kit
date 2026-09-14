@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?pde version="3.8"?>
+<!--
+  The one target platform every Tycho module resolves against
+  (docs/adr/emf/0108). One p2 repository, the Eclipse 2026-06 simultaneous
+  release pinned to its dated build, so EMF, Xtext, OCL, QVT-Operational and
+  Acceleo arrive at versions released and tested together. Every unit names
+  its exact version; a bump changes the repository and every version in one
+  pull request.
+-->
+<target name="deploy-kit emf" sequenceNumber="1">
+  <locations>
+    <location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="false" type="InstallableUnit">
+      <repository location="https://download.eclipse.org/releases/2026-06/202606101000/"/>
+      <unit id="org.eclipse.emf.ecore" version="2.42.0.v20251210-1145"/>
+      <unit id="org.eclipse.emf.ecore.xmi" version="2.40.0.v20251210-1145"/>
+      <unit id="org.eclipse.ocl.xtext.completeocl" version="1.24.0.v20260601-1413"/>
+      <unit id="org.eclipse.ocl.pivot" version="1.24.0.v20260601-1413"/>
+      <unit id="org.eclipse.xtext" version="2.43.0.v20260525-1205"/>
+      <unit id="org.eclipse.xtext.xtext.generator" version="2.43.0.v20260525-1205"/>
+      <unit id="org.eclipse.emf.mwe2.launch" version="2.26.0.v20260523-1243"/>
+      <unit id="org.eclipse.emf.mwe.core" version="1.20.0.v20260523-1243"/>
+      <unit id="org.eclipse.emf.mwe.utils" version="1.20.0.v20260523-1243"/>
+      <unit id="org.eclipse.emf.mwe2.lib" version="2.26.0.v20260523-1243"/>
+      <unit id="org.eclipse.m2m.qvt.oml" version="3.11.2.v20260601-1451"/>
+      <unit id="org.eclipse.m2m.qvt.oml.runtime" version="3.11.0.v20260601-1451"/>
+      <unit id="org.eclipse.acceleo.aql" version="4.2.2"/>
+      <unit id="org.eclipse.acceleo.query" version="8.1.2"/>
+    </location>
+  </locations>
+</target>

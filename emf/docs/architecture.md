@@ -42,9 +42,12 @@ and the `emf/` mentions in `docs/architecture.md`, `docs/requirements.md`,
 
 ## Toolchain
 
-Maven, with Eclipse Tycho resolving the bundles that are published only to p2
-update sites, against one target platform file pinned to exact versions. Plain
-Maven Central coordinates are used wherever a tool publishes there. JDK 21.
+Maven, with Eclipse Tycho resolving every EMF-family bundle from one p2
+repository: the Eclipse simultaneous release at a dated build, named in
+`emf.target` with each unit at an exact version, so EMF, Xtext, OCL,
+QVT-Operational and Acceleo arrive at versions released together. The one
+Maven Central artifact outside the test libraries is the ANTLR 3 generator the
+Xtext generator calls. JDK 21.
 No Eclipse IDE, workspace or launch configuration is part of the build: every
 step CI runs is `mvn verify` from `emf/`. The projects are nonetheless kept
 loadable in Eclipse Modeling Tools for the course's examiners: they import as
@@ -52,13 +55,22 @@ existing Maven projects, the metamodels open, the Xtext-generated editor reports
 OCL constraint violations while a source file is edited, and committed launch
 configurations run the transformation and the generator.
 
+A module that needs a p2 bundle is an Eclipse bundle: a `META-INF/MANIFEST.MF`
+naming the bundles it requires, and `eclipse-plugin` packaging. A manifest
+switches on the parent's `bundle` profile, which runs the module's tests
+through Maven Surefire on a plain classpath, outside OSGi, so every tool is
+exercised through the standalone API a command-line run uses. Modules that
+need no p2 bundle, like `parity/`, stay plain jars.
+
 The first change to this tree is the **EMF scaffold**: the Maven reactor, the
 wrapper, the gates and the `emf` CI job, with no EMF dependency and one module,
 `parity`, holding the canonical JSON writer and the ledger checks. The second is
 the **walking skeleton**, which proves each tool runs headless in CI before any
 model work depends on it: an `.ecore` loads, an OCL
 invariant fires, the Xtext parser reads a three-line document, a QVTo identity
-transformation runs, and an Acceleo template writes one file.
+transformation runs, and an Acceleo template writes one file. Its smoke tests
+sit in the module each tool belongs to, and each is deleted by the stage ticket
+whose suite covers that tool.
 
 ## Modules
 
@@ -181,12 +193,12 @@ hold ([0115](adr/emf/0115-the-emf-gates-are-estate-shaped.md)):
 
 | gate | plugin | fails when |
 |---|---|---|
-| toolchain | `maven-enforcer-plugin` | the JDK is not 21, Maven is not 3.9, a plugin version is unpinned, dependency versions do not converge, or anything declares a distribution target |
-| compile | `maven-compiler-plugin` | any `-Xlint:all` warning |
+| toolchain | `maven-enforcer-plugin` | the JDK is not 21, Maven is not 3.9, a plugin version is unpinned, dependency versions do not converge outside a bundle, or anything declares a distribution target |
+| compile | `maven-compiler-plugin`, or `tycho-compiler-plugin` in a bundle | any `-Xlint:all` warning, or in a bundle any warning the JDT compiler reports |
 | tests | `maven-surefire-plugin` | a JUnit test fails, including the ArchUnit module rules and the ledger checks |
 | format | `spotless-maven-plugin` | Java source differs from palantir-java-format; `./mvnw spotless:apply` fixes it |
-| coverage | `jacoco-maven-plugin` | line or branch coverage falls below the floor in `emf/pom.xml` |
-| mutation | `pitest-maven` | the mutation score falls below the threshold in `emf/pom.xml` |
+| coverage | `jacoco-maven-plugin` | line or branch coverage of a module's hand-written classes falls below the floor in `emf/pom.xml` |
+| mutation | `pitest-maven` | the mutation score of a module's hand-written classes falls below the threshold in `emf/pom.xml` |
 
 Every rule these gates enforce is listed in [the rule ledger](rules.md), and
 every model behaviour's Java proof in [the witness list](witnesses.md).

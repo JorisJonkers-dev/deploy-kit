@@ -1,0 +1,8 @@
+[module file('http://www.eclipse.org/emf/2002/Ecore')/]
+
+[comment @main/]
+[template public generate(aPackage : ecore::EPackage)]
+  [file (aPackage.name + '.txt', overwrite, 'UTF-8')]
+    package [aPackage.name/]
+  [/file]
+[/template]

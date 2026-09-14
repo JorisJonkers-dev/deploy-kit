@@ -1,0 +1,4 @@
+# Eclipse metadata m2e writes when the modules are imported; the Maven build is the source of truth.
+.project
+.classpath
+.settings/

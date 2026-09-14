@@ -23,3 +23,30 @@ oracle files under `spec/v1/examples/` that both are tested against, separately.
 |---|---|
 | [docs/architecture.md](docs/architecture.md) | the structure: toolchain, modules, how each stage meets the contract |
 | [docs/adr/README.md](docs/adr/README.md) | the decisions that shaped it, and the register |
+
+## Building
+
+```sh
+cd emf
+./mvnw verify
+```
+
+JDK 21 is required; the wrapper downloads the pinned Maven, and Tycho the
+bundles `emf.target` pins.
+
+## Opening in Eclipse
+
+For examiners, in Eclipse Modeling Tools 2026-06 with the OCL, QVT-Operational
+and Acceleo 4 SDKs installed from the same release:
+
+1. Open `emf/emf.target` and choose **Set as Active Target Platform**.
+2. **File > Import > Maven > Existing Maven Projects**, with `emf/` as the
+   root directory, and import every module.
+3. In `dev.jorisjonkers.deploykit.emf.metamodel`, open `model/skeleton.ecore`.
+   Open `model/empty.xmi` with the Sample Reflective Ecore Model Editor, load
+   `model/skeleton.ocl` through **OCL > Load Document**, and validate: the
+   `skeletonHasAnApplication` invariant is reported. `model/notes.xmi`
+   validates clean.
+4. Run `identity.launch` in `dev.jorisjonkers.deploykit.emf.resolve` and
+   `file.launch` in `dev.jorisjonkers.deploykit.emf.render` from **Run > Run
+   Configurations**. They write under each project's `target/`.

@@ -265,7 +265,11 @@
           'distribution': 'temurin'
           'java-version-file': 'emf/.java-version'
           'cache': 'maven'
-          'cache-dependency-path': 'emf/**/pom.xml'
+          # Tycho caches p2 bundles in the Maven repository too, so the target
+          # platform is part of the key.
+          'cache-dependency-path': |
+            emf/**/pom.xml
+            emf/emf.target
       - 'name': 'Verify'
         'working-directory': 'emf'
         'run': './mvnw -B -ntp verify'
