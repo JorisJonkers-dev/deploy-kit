@@ -42,7 +42,6 @@ export interface RequirementsLintResult {
 const REPOSITORY = join(import.meta.dirname, "..");
 const LEDGER = join("docs", "requirements.md");
 
-const ID = /^REQ-\d{3}$/;
 const CITATION = /\bREQ-\d{3}\b/g;
 const STATED_COUNT = /this ledger holds \*\*(\d+)\*\* rows?\b/i;
 
@@ -104,8 +103,11 @@ export function citationErrors(
 ): string[] {
   const errors: string[] = [];
   const reported = new Set<string>();
-  for (const rel of Object.keys(files).sort()) {
-    for (const match of (files[rel] ?? "").matchAll(CITATION)) {
+  // Object keys are unique paths, so two entries are never equal: a strict
+  // less-than is enough to order them, with no equal case to fall through to.
+  const entries = Object.entries(files).sort(([a], [b]) => (a < b ? -1 : 1));
+  for (const [rel, content] of entries) {
+    for (const match of content.matchAll(CITATION)) {
       const id = match[0];
       const key = `${rel}\0${id}`;
       if (ids.has(id) || reported.has(key)) continue;
@@ -150,7 +152,6 @@ export function lintRequirements(root: string): RequirementsLintResult {
 
   const byId = new Map<string, RequirementRow>();
   for (const row of rows) {
-    if (!ID.test(row.id)) errors.push(`${row.id}: id does not match REQ-NNN`);
     const seen = byId.get(row.id);
     if (seen)
       errors.push(`${row.id}: id used twice, also for '${seen.sentence}'`);

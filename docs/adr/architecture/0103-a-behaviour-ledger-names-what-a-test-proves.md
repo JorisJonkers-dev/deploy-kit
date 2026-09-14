@@ -29,12 +29,13 @@ connected a sentence a contributor relies on to the test that makes it true,
 so that sentence could go silently unproven and nothing in the suite would
 say so.
 
-The fix is the same shape as the boundary gate and the script-to-workflow
-check landing alongside it: state the rule as a comparison over things that
-already exist on disk (a markdown table and a directory of test files),
-rather than as a convention to remember. A row that no longer resolves, a
-file that exists but holds no test, a stated count that drifts from the rows
-actually present, or an id cited where no row backs it: each is a comparison
+The fix is the same shape as the boundary gate and
+[the script-to-workflow check](0102-the-gate-grows-with-the-code.md): state
+the rule as a comparison over things that already exist on disk (a markdown
+table and a directory of test files), rather than as a convention to
+remember. A row that no longer resolves, a file that exists but holds no
+test, a stated count that drifts from the rows actually present, or an id
+cited where no row backs it: each is a comparison
 a script can run, not a habit a reviewer can forget, which matters here for
 the same reason as [0001](../model/0001-estate-scale-and-ownership.md): one
 person reading their own diff later is not a second pair of eyes.

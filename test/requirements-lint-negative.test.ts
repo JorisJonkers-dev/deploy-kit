@@ -233,4 +233,19 @@ describe("citationErrors", () => {
       ),
     ).toStrictEqual([`a.ts cites ${BOGUS_ID}, which no row carries`]);
   });
+
+  it("walks files in path order regardless of the order they were given in", () => {
+    expect(
+      citationErrors(
+        {
+          "z.ts": BOGUS_ID,
+          "a.ts": BOGUS_ID,
+        },
+        new Set(),
+      ),
+    ).toStrictEqual([
+      `a.ts cites ${BOGUS_ID}, which no row carries`,
+      `z.ts cites ${BOGUS_ID}, which no row carries`,
+    ]);
+  });
 });
