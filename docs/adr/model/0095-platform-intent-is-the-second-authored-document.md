@@ -9,6 +9,14 @@ rests-on: ["0004"]
 
 # Platform Intent is the second authored document, published as an Intent Fragment
 
+> **Amended 2026-09-15.**
+> [Chapter 14](../../../spec/v1/14-platform-intent.md#where-a-vocabulary-lives)
+> states the rule this decision's contention test extends to closed
+> vocabularies: a vocabulary's literals stay Project Intent's when a model
+> derivation branches on which one was named, and become the platform's only
+> where no derivation here reads which literal it is. The decision here is
+> unchanged.
+
 > **Amended 2026-09-14.** Vocabulary renamed by
 > [0116](0116-project-application-process.md): Domain is now Project,
 > Service is Application, Workload is Process, and Service Intent is Project

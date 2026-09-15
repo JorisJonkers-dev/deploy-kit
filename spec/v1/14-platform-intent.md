@@ -62,6 +62,39 @@ A refusal names the document it points into as well as the path, because the
 object at fault can sit in either: a proxy nothing declares is the tier's, and an
 audience nothing carries is the exposure's.
 
+## Where a vocabulary lives
+
+A vocabulary is a closed set of literals a field may hold: `Engine`,
+`AlertClass`, `HardeningClass`, `Datastore`, and the rest this specification
+enumerates. One rule decides which authored document declares a vocabulary's
+literals, applied per vocabulary rather than per document: **fixed in the
+metamodel, in Project Intent, when a model derivation branches on which literal
+was named; defined by the platform, or by whatever reads the projection past
+this model's edge, when no derivation here reads which literal it is, only
+whether one was named at all.**
+
+`Engine`'s literals stay fixed: `engine: postgres` derives a database catalog
+no other engine derives, and answers an Asset's change response differently
+than `engine: rabbitmq` does
+([0078](../../docs/adr/model/0078-engine-is-process-vocabulary.md)). What each
+literal *does*, the backup method, is still the platform's to state, in
+`engines` above; only the set of names is Project Intent's.
+
+`AlertClass`'s literals also stay fixed, though no derivation in this model
+reads which of `business-hours`, `urgent` or `page` an Application chose: the
+value is carried into the published projection unread, and the monitoring
+stack that consumes it, not this metamodel, gives each literal its severity and
+receiver
+([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)).
+0079 records why the vocabulary stays where it is authored rather than moving
+to a platform-declared list.
+
+Either way, a reference a Project Intent field makes into a platform-defined
+set is checked as an invariant, the same way `Tier.traefik` is checked against
+the Applications a project file declares ([Tiers](#tiers)): a literal this
+document assigns no policy to is refused at the point the two documents are
+read together, never accepted and left to fail silently downstream.
+
 ## What it does not contain
 
 Three things a reader might expect here live elsewhere, each for a reason.
