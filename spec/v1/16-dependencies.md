@@ -251,7 +251,7 @@ form could not express:
 | `delivery: env` with `rotation.tolerates: reload` | impossible; a pod's environment is fixed for its lifetime |
 | `delivery: env` or `file` on a non-KV engine (`transit/`) | impossible; `self` is the only legal delivery for a key that is never materialised |
 | `access: self-roll` on a path other Applications read, unacknowledged | `E_ROLL_AFFECTS_OTHER_READERS`, computed over the readers of the path |
-| `delivery: env` or `file` where the pinned context does not advertise secrets at rest | `E_SECRETS_AT_REST_REQUIRED` ([chapter 60](60-setup.md#secrets-at-rest)) |
+| `delivery: env` or `file` where the pinned Platform Intent does not advertise secrets at rest | `E_SECRETS_AT_REST_REQUIRED` ([chapter 60](60-setup.md#secrets-at-rest)) |
 
 The roll-impact check is the one nothing in the estate has today:
 `secret/platform/observability` holds the Prometheus token, the Discord webhook
@@ -637,8 +637,8 @@ flowchart LR
         d_rep["replicas<br/>count + reason"]
     end
 
-    subgraph PIN["Pinned inputs (layer 2)"]
-        p_ctx["Platform Intent<br/>+ node contract<br/>(allocatable)"]
+    subgraph PIN["Pinned inputs, each carried by digest (chapter 20)"]
+        p_ctx["Platform Intent, authored in layer 1<br/>+ node contract<br/>(allocatable)"]
         p_cs["ClusterState snapshot"]
         p_img["images lock"]
     end
@@ -657,22 +657,18 @@ flowchart LR
         r_strat["rollout strategy + surge"]
         r_prb["container probe timings"]
         r_dl["progressDeadlineSeconds"]
-        r_tc["Flux health timeout class"]
         r_plc["nodeSelector + affinity"]
         r_bind["recorded PV binding"]
 
         k_dep["Deployment / StatefulSet / Job"]
-        k_svc["Application"]
+        k_svc["Service"]
         k_sa["ServiceAccount"]
-        k_cm["ConfigMap"]
+        k_cm["ConfigMap<br/>+ derived catalogs"]
         k_sec["VaultStaticSecret / Secret"]
         k_pol["Vault policy + auth role"]
         k_ir["IngressRoute"]
         k_np["NetworkPolicy"]
         k_gat["Gatus endpoint"]
-        k_rch["reachability entry"]
-        k_edg["edge catalogs"]
-        k_flx["Flux Kustomization"]
         k_bkp["backup CronJob + sweep"]
         k_res["resolved.yml"]
 
@@ -712,14 +708,12 @@ flowchart LR
 
     d_exp --> r_tier
     d_exp --> k_ir
-    d_exp --> k_rch
-    d_exp --> k_edg
+    d_exp --> k_cm
     d_exp --> k_gat
     d_exp --> k_np
     d_exp --> k_res
 
     d_prb --> r_prb
-    d_prb --> r_tc
     d_prb --> k_gat
     d_prb --> r_sw
     d_bud --> r_prb
@@ -730,7 +724,6 @@ flowchart LR
 
     d_life --> k_dep
     d_sf --> k_dep
-    d_sf --> r_tc
     d_vol --> k_dep
     d_vol --> r_strat
     d_vol --> k_bkp
@@ -761,9 +754,6 @@ flowchart LR
     r_plc --> k_dep
     r_bind --> k_dep
     r_tier --> k_ir
-    r_tc --> k_flx
-    r_ru --> k_flx
-    r_sw --> k_flx
 
     r_ns --> k_res
     r_sa --> k_res

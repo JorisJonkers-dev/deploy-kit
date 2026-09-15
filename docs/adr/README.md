@@ -81,7 +81,7 @@ check both registers.
 |---|---|---|---|
 | [0001](model/0001-estate-scale-and-ownership.md) | The estate is one maintainer, one cluster, about thirty Applications | open | 00-overview.md#the-estate |
 | [0002](model/0002-kubernetes-as-substrate.md) | Kubernetes stays, for two properties that must be made real | open | 00-overview.md#substrate |
-| [0003](model/0003-three-layer-meta-model.md) | Three layers, with the middle layer as a contract | settled | 00-overview.md#the-meta-model |
+| [0003](model/0003-three-model-pipeline.md) | Three layers, with the middle layer as a contract | settled | 00-overview.md#the-three-model-pipeline |
 | [0004](model/0004-contention-decides-authority.md) | Contention decides who declares a value | open | 20-resolved-deployment.md#authority |
 | [0005](model/0005-derivation-is-total.md) | Derivation from declared intent covers the live estate | open | 20-resolved-deployment.md#derived-mechanics |
 | [0006](model/0006-pinned-inputs.md) | Every assignment is a function of pinned, digested inputs | open | 20-resolved-deployment.md#pinned-inputs |

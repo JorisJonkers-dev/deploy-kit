@@ -1,6 +1,6 @@
 # Worked example: the data project's Intent Fragment
 #
-#   collections/data/platform/data.yml
+#   collections/data/platform/data.project.yml
 #
 # THREE Applications in one file. They are neighbours, not a unit: co-location in a
 # project file couples nothing, and each of the three releases on its own
@@ -23,7 +23,7 @@
 # hostname that does not follow its Application id.
 #
 # Companion env file (per Process, like every env file):
-#   platform/env/postgres/base.env   -- examples/platform-postgres.base.env
+#   platform/env/postgres/base.env   -- reproduced as env/postgres/base.env
 
 # The data model's own semver, not the toolkit's
 # (docs/adr/model/0039-artifact-schema-versioning.md).

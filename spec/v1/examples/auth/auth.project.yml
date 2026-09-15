@@ -1,6 +1,6 @@
 # Worked example: the auth project's Intent Fragment
 #
-#   applications/auth/platform/auth.yml
+#   applications/auth/platform/auth.project.yml
 #
 # Intent is authored ONE FILE PER PROJECT, holding every Application that project
 # owns, and one file is one Intent Fragment
@@ -17,7 +17,7 @@
 #
 # Companion env files, one per PROCESS
 # (docs/adr/model/0011-configuration-env-files-per-process.md):
-#   platform/env/auth-api/base.env   -- reproduced as examples/auth-api.base.env
+#   platform/env/auth-api/base.env   -- reproduced as env/auth-api/base.env
 #   platform/env/auth-ui/base.env
 
 # The DATA MODEL's own semver, not the toolkit package's version

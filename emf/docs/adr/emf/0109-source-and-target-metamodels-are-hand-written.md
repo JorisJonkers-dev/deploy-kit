@@ -43,8 +43,8 @@ written by hand because the course grades authored metamodels and because
 generating it from Zod would make its structure unfalsifiable against Zod.
 
 The proposal defines two metamodels, a source and a target, and the course
-grades them as such. The model's three layers
-([0003](../../../../docs/adr/model/0003-three-layer-meta-model.md)) still hold:
+grades them as such. The three layers of the three-model pipeline
+([0003](../../../../docs/adr/model/0003-three-model-pipeline.md)) still hold:
 the Deliverable Set is the generated files, so it has no metamodel, and the
 target metamodel carries layer 2 together with the typed resources the files
 are written from, because an Acceleo template reads one model. The Platform

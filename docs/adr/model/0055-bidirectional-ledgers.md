@@ -25,7 +25,7 @@ rests-on: ["0003"]
 
 ## Rests on
 
-Under [0003](0003-three-layer-meta-model.md) layer 3 is a total function of the
+Under [0003](0003-three-model-pipeline.md) layer 3 is a total function of the
 Resolved Deployment, so every live object the render does not produce can be
 named as a predicate over the cluster inventory (kind, namespace, and a name or
 name pattern) and so matched or found unmatched by machine. False if: an

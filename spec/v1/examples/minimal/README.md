@@ -56,7 +56,7 @@ Every absence below is a decision, not an omission:
 ## Reading it beside the diagrams
 
 The pipeline this example walks through is
-[chapter 00's meta-model](../../diagrams/00-overview-meta-model.drawio.svg); the
+[chapter 00's three-model pipeline](../../diagrams/00-overview-three-model-pipeline.drawio.svg); the
 shape of the authored file is
 [chapter 10's model](../../diagrams/10-project-intent-model.drawio.svg); and the
 route from a declaration to an object is

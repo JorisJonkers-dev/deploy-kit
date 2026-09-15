@@ -19,7 +19,7 @@ nothing in it names a Kubernetes field, a Traefik key, a k3s flag or a command
 | `tiers` | the shared edge is finite; four edge facts, and the Traefik Application each tier is | [0076](../../../../docs/adr/model/0076-middleware-has-one-producer.md), [0097](../../../../docs/adr/model/0097-authored-values-name-model-concepts.md) |
 | `durability` | a backup window is one node's IO, a destination one remote target | [0077](../../../../docs/adr/model/0077-durability-derives-a-backup.md) |
 | `engines` | the method is an image; nothing authored is executable | [0097](../../../../docs/adr/model/0097-authored-values-name-model-concepts.md) |
-| `observability` | a receiver is a shared channel, the scrape budget shared ingest | [0079](../../../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md) |
+| `monitors` | one scrape cadence for the estate, because ingest is shared and no Application knows better. It is the whole observability surface of this document: no receiver map, no severity mapping, no rule catalog ([chapter 14](../../14-platform-intent.md#monitor-cadence)) | [0021](../../../../docs/adr/model/0021-observability-scrape-and-alert-class.md), [0079](../../../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md) |
 | `probes`, `ephemeral` | one cadence and one size for the estate | [0088](../../../../docs/adr/model/0088-startup-probe-targets-liveness.md), [0092](../../../../docs/adr/model/0092-writable-paths-are-declared.md) |
 | `providers` | something the estate reaches and does not deploy: a fact, not a hole | [0090](../../../../docs/adr/model/0090-edges-resolve-against-the-register.md), [0095](../../../../docs/adr/model/0095-platform-intent-is-the-second-authored-document.md) |
 

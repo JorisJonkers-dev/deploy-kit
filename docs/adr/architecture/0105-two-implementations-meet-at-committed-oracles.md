@@ -44,7 +44,7 @@ make one side a derivative the other cannot be checked against. Two hand-written
 implementations can drift, so equality has to be proven.
 
 It is proven at the layer boundaries the model already has
-([0003](../model/0003-three-layer-meta-model.md)). A parsed intent, a Resolved
+([0003](../model/0003-three-model-pipeline.md)). A parsed intent, a Resolved
 Deployment and a Deliverable Set are each a whole document, and
 [0006](../model/0006-pinned-inputs.md) makes each a function of pinned inputs,
 so a committed canonical copy of each is an oracle both sides can be held to
