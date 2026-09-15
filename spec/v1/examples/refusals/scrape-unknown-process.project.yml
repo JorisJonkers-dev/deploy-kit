@@ -1,0 +1,36 @@
+# REFUSED: E_UNKNOWN_PROCESS
+#
+# A scrape names the Process that carries the signal, and that Process must be
+# one of this Application's own. This one names an exporter no Process of the
+# Application is called, so the signal the class is about has nowhere to come
+# from (spec/v1/10-project-intent.md #observability).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: scrape-unknown-process
+    observability:
+      alertClass: urgent
+      scrape:
+        process: scrape-unknown-process-exporter
+        surface: metrics
+        path: /metrics
+    processes:
+      - name: scrape-unknown-process-api
+        lifecycle: application
+        image: scrape-unknown-process-api
+        runtime: node
+        provides:
+          http: 8080
+          metrics: 9090
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: rolling

@@ -57,7 +57,7 @@ for name, blk in re.findall(r"    class (\w+) \{(.*?)\n    \}", body, re.S):
         rows = [re.sub(r"^\+\s*(\S+)\s+(\S+)$", r"+ \1  \2", r) for r in rows]
     nodes[name] = {"kind": kind, "rows": rows, "notes": []}
 
-comp, dep = [], []
+comp, dep, assoc = [], [], []
 for line in body.split("\n"):
     m = re.match(r'\s*(\w+)\s+"([^"]+)"\s+\*--\s+"([^"]+)"\s+(\w+)\s*:\s*(.*)', line)
     if m:
@@ -66,6 +66,11 @@ for line in body.split("\n"):
     m = re.match(r"\s*(\w+)\s+\.\.>\s+(\w+)\s*:\s*(.*)", line)
     if m:
         dep.append((m.group(1), m.group(2), m.group(3).strip()))
+        continue
+    # an association: a reference the model resolves, drawn as a solid open arrow
+    m = re.match(r"\s*(\w+)\s+-->\s+(\w+)\s*:\s*(.*)", line)
+    if m:
+        assoc.append((m.group(1), m.group(2), m.group(3).strip()))
 
 # The tree. Sibling order puts cross-link partners next to each other:
 # Surface is Process's last child and Route is Exposure's first, so the two
@@ -232,7 +237,9 @@ for a, b, label in dep:
         i += 1
 
 # what is left links two nodes on one layer that sibling order made neighbours
+E_ASSOC = E_ENUM.replace("dashed=1;dashPattern=8 4;", "")
 cross = [(E_COMP, a, b, f"{m}  {l}") for a, b, m, l in comp if (a, b) not in tree]
+cross += [(E_ASSOC, a, b, l) for a, b, l in assoc]
 cross += [(E_ENUM, a, b, f"«{l}»") for a, b, l in dep if (a, b) not in tree]
 def neighbours(a, b):
     """True when nothing on their row sits between the two boxes."""
@@ -266,8 +273,10 @@ for j, (style, a, b, label) in enumerate(cross):
         add_edge(f"x{j}", st, a, b, "", [(cx(a), ly), (ex, ly)])
         # the name goes below every lane feeding this box, as its own text,
         # clear of both arrow heads and of any run
-        prev_y, prev_l = deep.get(b, (0, ""))
-        deep[b] = (max(prev_y, ly), prev_l or label)
+        prev_y, prev_l = deep.get(b, (0, []))
+        # every distinct name, left to right in the order the links arrive
+        named = prev_l + [(cx(a), label)] if label and label not in [l for _, l in prev_l] else prev_l
+        deep[b] = (max(prev_y, ly), named)
     else:
         # the boxes face each other: one straight line, side to side, at a
         # height that is inside both of them
@@ -289,11 +298,12 @@ for j, (style, a, b, label) in enumerate(cross):
 
 LABEL = ("text;html=0;strokeColor=none;fillColor=none;align=center;"
          "verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=#6d28d9;")
-for t, (ly, label) in deep.items():
-    c = ET.SubElement(root, "mxCell", {"id": f"L{ident[t]}", "value": label,
+for t, (ly, labels) in deep.items():
+    c = ET.SubElement(root, "mxCell", {"id": f"L{ident[t]}",
+                                       "value": "  ·  ".join(l for _, l in sorted(labels)),
                                        "style": LABEL, "parent": "1", "vertex": "1"})
-    ET.SubElement(c, "mxGeometry", {"x": str(int(cx(t) - 110)), "y": str(int(ly + 12)),
-                                    "width": "220", "height": "18", "as": "geometry"})
+    ET.SubElement(c, "mxGeometry", {"x": str(int(cx(t) - 130)), "y": str(int(ly + 12)),
+                                    "width": "260", "height": "18", "as": "geometry"})
 
 open(sys.argv[1], "w").write(
     '<mxfile host="Electron" agent="scripts/diagrams/class-diagram.py" version="29.0.3">'

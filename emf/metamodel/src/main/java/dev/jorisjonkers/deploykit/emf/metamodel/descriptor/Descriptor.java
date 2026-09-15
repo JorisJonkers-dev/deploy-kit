@@ -103,13 +103,20 @@ public final class Descriptor {
     }
 
     private static Map<String, Object> feature(EStructuralFeature feature) {
-        boolean map = feature instanceof EReference reference && isMapEntry(reference.getEReferenceType());
+        boolean map = feature instanceof EReference containment
+                && containment.isContainment()
+                && isMapEntry(containment.getEReferenceType());
+        boolean linked = feature instanceof EReference reference && !reference.isContainment();
         Map<String, Object> json = new LinkedHashMap<>();
         json.put("name", feature.getName());
-        json.put("types", types(feature, map));
+        json.put("types", linked ? List.of(feature.getEType().getName()) : types(feature, map));
         json.put("required", feature.isRequired());
         json.put("many", feature.isMany() && !map);
         json.put("map", map);
+        json.put("reference", linked);
+        if (map) {
+            json.put("entry", feature.getEType().getName());
+        }
         return json;
     }
 

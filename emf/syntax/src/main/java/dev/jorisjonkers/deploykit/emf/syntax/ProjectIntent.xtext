@@ -29,8 +29,8 @@ Observability returns Observability:
 	& ('scrape' ':' BEGIN scrape=Scrape END)?);
 
 Scrape returns Scrape:
-	(('process' ':' process=Text)
-	& ('surface' ':' surface=Text)
+	(('process' ':' process=[Process|Text])
+	& ('surface' ':' surface=[Surface|Text])
 	& ('path' ':' path=Text));
 
 Exposure returns Exposure:
@@ -43,8 +43,8 @@ Exposure returns Exposure:
 Route returns Route:
 	(('path' ':' path=Text)
 	& ('match' ':' match=Match)
-	& ('process' ':' process=Text)
-	& ('surface' ':' surface=Text)
+	& ('process' ':' process=[Process|Text])
+	& ('surface' ':' surface=[Surface|Text])
 	& ('audience' ':' audience=Audience)?
 	& ('redirectTo' ':' redirectTo=Text)?);
 
@@ -54,7 +54,7 @@ Process returns Process:
 	& ('image' ':' image=Text)
 	& ('runtime' ':' runtime=Runtime)
 	& ('engine' ':' engine=Engine)?
-	& ('provides' ':' BEGIN provides+=SurfacePort+ END)?
+	& ('provides' ':' BEGIN provides+=Surface+ END)?
 	& ('placement' ':' BEGIN placement=Placement END)
 	& ('writablePaths' ':' BEGIN (DASH BEGIN writablePaths+=Text END | writablePaths+=Text)+ END)?
 	& ('sidecars' ':' BEGIN (DASH BEGIN sidecars+=Sidecar END)+ END)?
@@ -67,7 +67,7 @@ Process returns Process:
 	& ('startupBudget' ':' startupBudget=Text)?
 	& ('cutover' ':' cutover=Cutover));
 
-SurfacePort returns SurfacePort:
+Surface returns Surface:
 	key=Text ':' value=Port;
 
 Placement returns Placement:

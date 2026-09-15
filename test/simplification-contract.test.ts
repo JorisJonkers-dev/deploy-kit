@@ -145,17 +145,14 @@ test("a scrape names a surface its own Process provides, never a port", () => {
     for (const application of applicationsOf(file)) {
       const scrape = application.observability?.scrape;
       if (scrape === undefined) continue;
-      const process = application.processes.find(
-        (candidate) => candidate.name === scrape.process,
-      );
 
       expect(
-        process,
-        `${application.id}: scrape names a Process that does not exist`,
-      ).toBeDefined();
+        application.processes,
+        `${application.id}: scrape names a Process of another Application`,
+      ).toContain(scrape.process);
       expect(
-        [...(process?.provides.keys() ?? [])],
-        `${application.id}: its Process provides no surface of that name`,
+        scrape.process.surfaces,
+        `${application.id}: its Process provides no such surface`,
       ).toContain(scrape.surface);
       expect(scrape.path, `${application.id}: scrape names no path`).not.toBe(
         "",
@@ -225,7 +222,7 @@ test("no Process or sidecar authors hardening", () => {
 test("no provides port below 1024, because there is no capability to declare", () => {
   for (const file of projectFiles)
     for (const process of processesOf(file))
-      for (const [surface, port] of process.provides)
+      for (const { name: surface, port } of process.surfaces)
         expect(
           port,
           `${process.name}: ${surface} on ${port} is E_PRIVILEGED_PORT_UNDER_NONROOT`,

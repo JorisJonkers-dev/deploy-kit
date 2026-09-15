@@ -2,10 +2,13 @@ import type { Diagnostic, Result } from "../../domain/diagnostic.ts";
 import type {
   Application,
   Dependency,
+  Exposure,
+  Observability,
   Placement,
   Process,
   Project,
 } from "../../domain/project-intent/model.ts";
+import { link, type Linked } from "./link.ts";
 import { ruleDiagnostics } from "./rules.ts";
 import { projectIntent, type ProjectIntentDocument } from "./schema.ts";
 
@@ -43,7 +46,10 @@ function toProcess(process: WireProcess): Process {
   } = process;
   return {
     ...rest,
-    provides: new Map(Object.entries(provides ?? {})),
+    surfaces: Object.entries(provides ?? {}).map(([name, port]) => ({
+      name,
+      port,
+    })),
     placement: toPlacement(placement),
     writablePaths: writablePaths ?? [],
     sidecars: sidecars ?? [],
@@ -55,13 +61,72 @@ function toProcess(process: WireProcess): Process {
   };
 }
 
-function toApplication(application: WireApplication): Application {
-  const { exposure, processes, secrets, ...rest } = application;
+type Resolved = Extract<Linked, { readonly ok: true }>;
+
+/** An Application with its routes and scrape linked to its own Processes, or the refusals of what did not link. */
+function toApplication(
+  application: WireApplication,
+  at: string,
+):
+  | { readonly application: Application; readonly refusals: readonly [] }
+  | { readonly refusals: readonly Diagnostic[] } {
+  const { exposure, processes, secrets, observability, ...rest } = application;
+  const linked = processes.map(toProcess);
+  const exposures = exposure ?? [];
+
+  const linkedExposures = exposures.map((wire, index) => ({
+    wire,
+    routes: wire.routes.map(({ process, surface, ...fields }, position) => ({
+      fields,
+      result: link(
+        { process, surface },
+        linked,
+        `${at}/exposure/${index}/routes/${position}`,
+      ),
+    })),
+  }));
+  const scrape = observability?.scrape;
+  const scrapeLinks =
+    scrape === undefined
+      ? []
+      : [link(scrape, linked, `${at}/observability/scrape`)];
+  const refusals = [
+    ...linkedExposures.flatMap(({ routes }) =>
+      routes.map(({ result }) => result),
+    ),
+    ...scrapeLinks,
+  ].flatMap((result) => (result.ok ? [] : [result.diagnostic]));
+  if (refusals.length > 0) return { refusals };
+
+  const resolved = (result: Linked | undefined): Resolved["value"] =>
+    (result as Resolved).value;
+  let monitoring: Observability | undefined;
+  if (observability !== undefined) {
+    const { scrape: _written, ...fields } = observability;
+    monitoring =
+      scrape === undefined
+        ? fields
+        : {
+            ...fields,
+            scrape: { ...resolved(scrapeLinks[0]), path: scrape.path },
+          };
+  }
+
   return {
-    ...rest,
-    exposures: exposure ?? [],
-    grants: secrets ?? [],
-    processes: processes.map(toProcess),
+    application: {
+      ...rest,
+      ...(monitoring === undefined ? {} : { observability: monitoring }),
+      exposures: linkedExposures.map(({ wire, routes }): Exposure => ({
+        ...wire,
+        routes: routes.map(({ fields, result }) => ({
+          ...fields,
+          ...resolved(result),
+        })),
+      })),
+      grants: secrets ?? [],
+      processes: linked,
+    },
+    refusals: [],
   };
 }
 
@@ -84,9 +149,15 @@ export function validateProjectIntent(
         hint: "Correct the field against spec/v1/10-project-intent.md.",
       })),
     };
-  const refusals = ruleDiagnostics(parsed.data);
-  if (refusals.length > 0) return { ok: false, diagnostics: refusals };
   const { project, owner, applications } = parsed.data;
+  const mapped = applications.map((application, index) =>
+    toApplication(application, `/applications/${index}`),
+  );
+  const refusals = [
+    ...ruleDiagnostics(parsed.data),
+    ...mapped.flatMap(({ refusals: unlinked }) => unlinked),
+  ];
+  if (refusals.length > 0) return { ok: false, diagnostics: refusals };
   return {
     ok: true,
     value: {
@@ -94,7 +165,11 @@ export function validateProjectIntent(
       project: {
         name: project,
         owner,
-        applications: applications.map(toApplication),
+        // With no refusal left, every Application linked.
+        applications: mapped.map(
+          (result) =>
+            (result as { readonly application: Application }).application,
+        ),
       },
     },
   };

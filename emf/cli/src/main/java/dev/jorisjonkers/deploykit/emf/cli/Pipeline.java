@@ -9,6 +9,8 @@ import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.xtext.EcoreUtil2;
+import org.eclipse.xtext.linking.impl.XtextLinkingDiagnostic;
 import org.eclipse.xtext.resource.XtextResourceSet;
 
 /**
@@ -31,9 +33,19 @@ public final class Pipeline {
                 .getInstance(XtextResourceSet.class);
         Resource resource =
                 resources.getResource(URI.createFileURI(path.toAbsolutePath().toString()), true);
+        // Linking is lazy: every reference is resolved before the errors are read, so a name that links to
+        // nothing is among them.
+        EcoreUtil2.resolveAll(resource);
         List<Diagnostic> refusals = new ArrayList<>();
+        List<Diagnostic> unlinked = new ArrayList<>();
         for (Resource.Diagnostic error : resource.getErrors()) {
-            refusals.add(new Diagnostic(Diagnostic.SCHEMA, "", "line " + error.getLine() + ": " + error.getMessage()));
+            if (error instanceof XtextLinkingDiagnostic linking) {
+                EObject owner = resource.getEObject(linking.getUriToProblem().fragment());
+                unlinked.add(new Diagnostic(linking.getCode(), Pointer.of(owner), linking.getMessage()));
+            } else {
+                refusals.add(
+                        new Diagnostic(Diagnostic.SCHEMA, "", "line " + error.getLine() + ": " + error.getMessage()));
+            }
         }
         if (resource.getContents().isEmpty()) {
             refusals.add(new Diagnostic(Diagnostic.SCHEMA, "", path.getFileName() + " holds no document"));
@@ -42,8 +54,9 @@ public final class Pipeline {
             return Parsed.refused(refusals);
         }
         EObject document = resource.getContents().get(0);
-        List<Diagnostic> broken =
-                Constraints.check(document, Constraints.beside(ProjectIntentPackage.class, CONSTRAINTS));
+        List<Diagnostic> broken = new ArrayList<>(
+                Constraints.check(document, Constraints.beside(ProjectIntentPackage.class, CONSTRAINTS)));
+        broken.addAll(unlinked);
         return broken.isEmpty() ? Parsed.of(IntentJson.of(document)) : Parsed.refused(broken);
     }
 }
