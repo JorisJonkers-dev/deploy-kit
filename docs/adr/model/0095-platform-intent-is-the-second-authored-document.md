@@ -13,8 +13,9 @@ rests-on: ["0004"]
 > [Chapter 14](../../../spec/v1/14-platform-intent.md#where-a-vocabulary-lives)
 > states the rule this decision's contention test extends to closed
 > vocabularies: a vocabulary's literals stay Project Intent's when a model
-> derivation branches on which one was named, and become the platform's only
-> where no derivation here reads which literal it is. The decision here is
+> derivation branches on which one was named, or when the literal is the
+> Application's own authored intent for a reader past this model's edge to act
+> on; they become the platform's only where neither holds. The decision here is
 > unchanged.
 
 > **Amended 2026-09-14.** Vocabulary renamed by
