@@ -23,6 +23,8 @@
     "lint:codes": "node scripts/lint-codes.ts",
     "lint:docs": "node scripts/lint-docs.ts",
     "lint:secrets": "node scripts/lint-secrets.ts",
+    "report:pr": "node scripts/pr-report.ts",
+    "publish:rc": "node scripts/rc-publish.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
