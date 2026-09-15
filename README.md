@@ -98,4 +98,5 @@ runs the suite without enforcing coverage. `npm run test:coverage` (part of
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): Conventional Commits, PR flow
 - [`VERSIONING.md`](VERSIONING.md): the versioning contract
 - [`SECURITY.md`](SECURITY.md): reporting
-- [`CLAUDE.md`](CLAUDE.md): agent contract
+- [`AGENTS.md`](AGENTS.md): the one agent contract every tool reads;
+  [`CLAUDE.md`](CLAUDE.md) imports it and adds Claude-specific notes only
