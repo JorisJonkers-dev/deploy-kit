@@ -72,10 +72,20 @@ registered adapters do not: five of the six emit Kubernetes kinds and the sixth
 emits Vault configuration, which is why the swap is a v2 migration rather than
 an undo once repositories author against a shipped v1.
 
-## The meta-model
+## The three-model pipeline
 
 Deployment configuration is split into three layers, and the middle one is a
-contract ([0003](../../docs/adr/model/0003-three-layer-meta-model.md)).
+contract ([0003](../../docs/adr/model/0003-three-model-pipeline.md)).
+
+The three layers are **three models**, each written in its own language and
+joined to the next by a transformation. They are **not metalevels**: no layer is
+a type model of the layer below it, and calling the arrangement a "meta-model"
+claims a relation the layers do not have. A metamodel needs the type-model-of
+relation applied twice, which is what separates it from a model of a model; the
+layers here are stages of one modelling pipeline, and a modelling layer is a
+different thing from an abstraction layer. This specification therefore keeps
+**metamodel** for a language definition and calls the arrangement itself the
+three-model pipeline.
 
 | Layer | Name | Authored | Owns |
 |---|---|---|---|
@@ -111,9 +121,9 @@ time reads live cluster state. Reproducibility is therefore conditional and
 true: identical inputs *including* `clusterStateDigest` produce a byte-identical
 tree, so a differing render with identical digests is a defect, never weather.
 
-![The meta-model](diagrams/00-overview-meta-model.drawio.svg)
+![The three-model pipeline](diagrams/00-overview-three-model-pipeline.drawio.svg)
 
-<sub>[Diagram source](#the-meta-model) · edit by opening the SVG in draw.io</sub>
+<sub>[Diagram source](#the-three-model-pipeline) · edit by opening the SVG in draw.io</sub>
 
 ## Programme scope
 
@@ -413,7 +423,7 @@ a plain diff. **Where the two disagree the SVG is the diagram and the mermaid is
 what gets fixed**, the same precedence this repository uses between a chapter and
 an ADR.
 
-### The meta-model
+### The three-model pipeline
 
 ```mermaid
 flowchart TB

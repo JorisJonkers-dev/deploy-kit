@@ -38,7 +38,7 @@ Three things a reader might expect here live elsewhere, each for a reason.
 
 | not here | where | why |
 |---|---|---|
-| the foundation components, Vault, VSO, Traefik, the metrics stack, Gatus | project files the platform owns, as ordinary Applications ([The foundation is declared](#the-foundation-is-declared)) | an Application is an Application; a second way to declare one is the duplicate vocabulary [0003](../../docs/adr/model/0003-three-layer-meta-model.md) exists to end |
+| the foundation components, Vault, VSO, Traefik, the metrics stack, Gatus | project files the platform owns, as ordinary Applications ([The foundation is declared](#the-foundation-is-declared)) | an Application is an Application; a second way to declare one is the duplicate vocabulary [0003](../../docs/adr/model/0003-three-model-pipeline.md) exists to end |
 | the node contract, site, arch, allocatable, gpus, disks per node | its own pinned input, authored once where nix reads it ([0056](../../docs/adr/model/0056-node-facts-single-source.md), [chapter 60](60-setup.md#node-facts)) | folding it in would make nix read a deployment-model document or duplicate the facts |
 | anything executable | the images lock, as a purpose-built image per engine ([Engines](#engines)) | [0012](../../docs/adr/model/0012-assets-not-code.md) applies to the platform's own files |
 

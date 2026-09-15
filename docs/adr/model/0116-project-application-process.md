@@ -11,7 +11,7 @@ rests-on: ["0003"]
 
 ## Rests on
 The three levels of layer 1 are fixed by the model rather than by any
-substrate ([0003](0003-three-layer-meta-model.md)): one authored file with one
+substrate ([0003](0003-three-model-pipeline.md)): one authored file with one
 owner, a set of runnable parts that switch version together, and one runnable
 part. Their names therefore describe those roles and nothing the substrate
 spells. False if: a level's new name is also a name the rendered output uses

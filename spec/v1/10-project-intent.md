@@ -69,7 +69,7 @@ schemaVersion: 1.0.0
 
 The `apiVersion` deliberately does not reuse `deployment.jorisjonkers.dev`, which
 three mutually incompatible documents already share: the defect
-[0003](../../docs/adr/model/0003-three-layer-meta-model.md) exists to fix. Each layer
+[0003](../../docs/adr/model/0003-three-model-pipeline.md) exists to fix. Each layer
 gets its own namespace. `kind` names the authored document (one project holding
 many Applications) while chapter 40's `IntentFragment` is the envelope that
 publishes it. `schemaVersion` is the **data model's own semver**, not the

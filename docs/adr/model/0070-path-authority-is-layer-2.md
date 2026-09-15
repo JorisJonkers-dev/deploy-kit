@@ -23,7 +23,7 @@ projects with `E_PATH_COLLISION` evaluated on the assembled plan, before any
 adapter runs, and no adapter holding an API that returns a path.
 
 ## Why
-Layer 3 contains no decisions ([0003](0003-three-layer-meta-model.md)), and a
+Layer 3 contains no decisions ([0003](0003-three-model-pipeline.md)), and a
 path is a decision. It says which directory owns an object, and therefore which
 kustomization includes it, which Reconcile Unit applies it, and who is
 answerable for a field. The earlier rule, a path is a pure function of its
@@ -59,7 +59,7 @@ not let one Adapter write into another's.
 | option | cost if taken | why rejected |
 |---|---|---|
 | Keep the path a function of the adapter and the object | No spec edit; matches the sentence chapter 30 already carries | Leaves the per-project object and the estate-scoped Deliverable unresolvable, and keeps collision detection at the writer, where it has never existed |
-| A layout policy module consulted by both layers | An explicit seam, testable alone | A component holding decisions while sitting outside the three layers is the unnamed middle the meta-model exists to prevent, and it would own authority no chapter assigns it |
+| A layout policy module consulted by both layers | An explicit seam, testable alone | A component holding decisions while sitting outside the three layers is the unnamed middle the three-model pipeline exists to prevent, and it would own authority no chapter assigns it |
 | Let the writer resolve collisions by precedence | Nothing to design; deterministic given an order | Encodes authority as evaluation order, which is invisible in every artifact a reviewer reads, and makes adding an adapter a change to what an existing one emits |
 
 ## Reversibility

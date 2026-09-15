@@ -56,7 +56,7 @@ it was a digest nobody compared to a clock.
 Two things deliberately stay out. Foundation components are Applications in project
 files the platform owns ([0096](0096-the-foundation-is-declared.md)), because a
 second way to declare an Application is the duplicate vocabulary
-[0003](0003-three-layer-meta-model.md) exists to end. The node contract stays
+[0003](0003-three-model-pipeline.md) exists to end. The node contract stays
 its own pinned input ([0056](0056-node-facts-single-source.md)), because nix
 reads it and would otherwise read a deployment-model document.
 

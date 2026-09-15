@@ -168,7 +168,7 @@ Adapters build **typed objects**, not text. The object model
 ([`src/objects/`](#layers)) declares only the fields this estate sets, so a
 field the model cannot express cannot be set by an adapter: which is how
 "layer 3 contains no decisions"
-([0003](adr/model/0003-three-layer-meta-model.md)) becomes a compile-time
+([0003](adr/model/0003-three-model-pipeline.md)) becomes a compile-time
 property rather than a review question.
 
 One serializer in the infrastructure ring turns those objects into bytes. It
