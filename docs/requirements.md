@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **26** rows. The compiler's behaviours join it as they land.
+This ledger holds **27** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -49,3 +49,4 @@ This ledger holds **26** rows. The compiler's behaviours join it as they land.
 | REQ-024 | A Project Intent document that breaks a model constraint is refused with the code and the JSON Pointer its committed diagnostics oracle names, and every refusal fixture carries one | [test/model/refusals.test.ts](../test/model/refusals.test.ts) |
 | REQ-025 | Every file a pull request changes falls into a named shape bucket (production code, tests, specification, decision records, documentation, examples, tooling, CI, generated), and a file no rule claims fails the bucket test rather than silently joining one | [test/change-buckets.test.ts](../test/change-buckets.test.ts) |
 | REQ-026 | A pull request's shape-and-coverage comment is updated in place on a second push, rather than posted again | [test/pr-report.test.ts](../test/pr-report.test.ts) |
+| REQ-027 | A pull request's release candidate version sorts above the current release and below any version release-please could choose next | [test/rc-version.test.ts](../test/rc-version.test.ts) |

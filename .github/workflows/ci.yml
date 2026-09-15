@@ -384,6 +384,39 @@
           base_sha=$(git merge-base "${upstream}" "${GITHUB_SHA}")
           PR_BASE_SHA="${base_sha}" PR_HEAD_SHA="${GITHUB_SHA}" npm run report:pr
 
+  # Publish a release candidate from every pull request (issue #34). Only a
+  # pull request from a branch of this repository even starts this job: a
+  # fork's GITHUB_TOKEN is downgraded to read-only regardless of the
+  # `permissions` below, so it could not publish even if scripts/rc-publish.ts
+  # let it try. scripts/lib/rc-version.ts's `eligibility` restates the same
+  # rule (plus Dependabot and Renovate) in the job's own log, for the run
+  # where the two conditions could ever disagree.
+  'release-candidate':
+    'name': 'Release Candidate'
+    'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 15
+    'if': >-
+      ${{ github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository }}
+    'permissions':
+      'contents': 'read'
+      'packages': 'write'
+      'id-token': 'write'
+    'env':
+      'NODE_AUTH_TOKEN': '${{ github.token }}'
+    'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+      - 'uses': './.github/actions/setup'
+
+      - 'name': 'Publish a release candidate'
+        'shell': 'bash'
+        'env':
+          'RC_EVENT_NAME': '${{ github.event_name }}'
+          'RC_IS_FORK': '${{ github.event.pull_request.head.repo.full_name != github.repository }}'
+          'RC_ACTOR': '${{ github.event.pull_request.user.login }}'
+          'RC_PR_NUMBER': '${{ github.event.pull_request.number }}'
+        'run': 'npm run publish:rc'
+
   'pipeline-complete':
     'name': 'Pipeline Complete'
     'runs-on': 'ubuntu-latest'
