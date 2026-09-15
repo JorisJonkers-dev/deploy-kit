@@ -57,7 +57,7 @@ fails the gate, so the taxonomy cannot grow entries nothing stands behind.
 
 ## Rules
 
-This ledger holds **68** rules, **11** of them pending.
+This ledger holds **69** rules, **11** of them pending.
 
 A row is enforced or pending, never both. An enforced row names its enforcer as
 `kind:value`: `depcruise:` a rule in
@@ -144,6 +144,7 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-066 | gates | A pull request's shape-and-coverage comment is found by its marker and updated in place, never posted twice for the same pull request | `file:scripts/pr-report.ts` | [test/pr-report.test.ts](../test/pr-report.test.ts) `updates the existing comment on a second run` |
 | RULE-067 | gates | A release candidate publishes nothing for a pull request from a fork, Dependabot or Renovate | `file:scripts/lib/rc-version.ts` | [test/rc-version.test.ts](../test/rc-version.test.ts) `is ineligible for a fork, since its token cannot publish for real` |
 | RULE-068 | gates | A citation to a decision record marked superseded names its successor in the same sentence, a term the model retired is not read as current outside a quotation, and a stated count matches the real collection it counts | `npm:lint:meaning` | [test/meaning-lint-negative.test.ts](../test/meaning-lint-negative.test.ts) `uses retired term 'Cluster Context' outside a quotation` |
+| RULE-069 | gates | AGENTS.md names every npm script package.json defines, verbatim, so a script gained there cannot go undocumented | `npm:lint:agents` | [test/agents-contract.test.ts](../test/agents-contract.test.ts) `does not appear in AGENTS.md` |
 
 ## Considered and rejected
 
