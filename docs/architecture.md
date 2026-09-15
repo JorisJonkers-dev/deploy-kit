@@ -358,6 +358,7 @@ proves the two never drift apart.
 | agents | `npm run lint:agents` | a script `package.json` gains that AGENTS.md does not name verbatim |
 | meaning | `npm run lint:meaning` | a citation to a superseded decision with no successor in the same sentence, a retired term used outside a quotation, a stated count that no longer matches what it counts |
 | tests | `npm run test:coverage` | behaviour, plus the coverage ratchet |
+| mutation | `npm run test:mutation` | a change that keeps every line running but breaks what the line was for, which coverage alone rewards |
 | package contents | `node scripts/check-package-contents.ts` | `npm pack` shipping a file outside `docs/adr/` and `spec/`, the boundary the package's `files` field states but does not enforce on its own |
 | actionlint | a pinned `actionlint` binary | invalid workflow syntax, an undefined `${{ }}` expression, a shellcheck finding inside a `run:` step |
 | secret scan | `npm run lint:secrets` | a committed secret matching the default ruleset, or this repository's own allowlist entries |
@@ -385,6 +386,12 @@ explicit include list so a file no test reaches counts as zero, and they only
 rise: a change that reaches more raises them in the same pull request, and
 lowering one is a line in a diff that has to be argued. Coverage-ignore
 comments are counted, and the count is held at zero.
+
+The mutation break score is measured, not assumed
+([0120](adr/architecture/0120-the-mutation-break-score-is-measured-not-assumed.md)),
+and only rises like the coverage ratchet does. It holds `src/**/*.ts` today;
+`scripts/**/*.ts` joins once its own gates can be exercised inside Stryker's
+sandbox, which two of them cannot yet.
 
 The reachability half of the boundary gate is the one worth naming. Coverage
 alone rewards a module for having tests: chapter 30 records 1,967 lines of dead
