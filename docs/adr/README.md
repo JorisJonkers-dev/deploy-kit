@@ -229,3 +229,4 @@ Decisions about the compiler's own structure, not about the model. Their
 | [0117](architecture/0117-the-process-lives-in-one-boundary-file.md) | Ambient reads live in the outer rings, and the process is touched in one boundary file | settled |
 | [0118](architecture/0118-every-spec-error-code-is-proved-by-a-test.md) | Every error code the specification defines is proved by a test, or pending on the ticket that will prove it | settled |
 | [0119](architecture/0119-generated-files-are-committed-and-diff-checked.md) | A generated file is committed and diff-checked in CI, and an oracle file is never generated | open |
+| [0120](architecture/0120-the-mutation-break-score-is-measured-not-assumed.md) | The mutation break score is measured, not assumed, and stays over `src/` until `scripts/` clears its own sandbox | settled |
