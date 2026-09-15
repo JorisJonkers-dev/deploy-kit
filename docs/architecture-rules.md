@@ -57,7 +57,7 @@ fails the gate, so the taxonomy cannot grow entries nothing stands behind.
 
 ## Rules
 
-This ledger holds **64** rules, **11** of them pending.
+This ledger holds **67** rules, **11** of them pending.
 
 A row is enforced or pending, never both. An enforced row names its enforcer as
 `kind:value`: `depcruise:` a rule in
@@ -140,6 +140,9 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-062 | gates | CodeQL analyses the model-driven implementation's Java without a build, ignoring build output and generated sources | `file:.github/codeql/codeql-config.yml` | [test/emf-wiring.test.ts](../test/emf-wiring.test.ts) `'language': 'java-kotlin'` |
 | RULE-063 | gates | A CodeQL finding of any severity fails `Pipeline Complete`, unless the finding is filtered in the CodeQL configuration | `file:.github/workflows/codeql.yml` | [test/pipeline-wiring.test.ts](../test/pipeline-wiring.test.ts) `'name': 'Fail on any finding'` |
 | RULE-064 | gates | Every module under `src/` is mutated, and a mutation score below the measured break threshold fails the build | `file:stryker.config.json` | [test/mutation-contract.test.ts](../test/mutation-contract.test.ts) `"break": 100` |
+| RULE-065 | gates | Every file a pull request changes falls into a named shape bucket; a path no rule claims fails the fallback test rather than joining one silently | `file:scripts/lib/change-buckets.ts` | [test/change-buckets.test.ts](../test/change-buckets.test.ts) `keeps every file this repository tracks inside a named bucket` |
+| RULE-066 | gates | A pull request's shape-and-coverage comment is found by its marker and updated in place, never posted twice for the same pull request | `file:scripts/pr-report.ts` | [test/pr-report.test.ts](../test/pr-report.test.ts) `updates the existing comment on a second run` |
+| RULE-067 | gates | A release candidate publishes nothing for a pull request from a fork, Dependabot or Renovate | `file:scripts/lib/rc-version.ts` | [test/rc-version.test.ts](../test/rc-version.test.ts) `is ineligible for a fork, since its token cannot publish for real` |
 
 ## Considered and rejected
 
