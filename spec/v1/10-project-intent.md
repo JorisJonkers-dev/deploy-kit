@@ -322,8 +322,8 @@ Vault role are called (chapter 16).
 never a digest here.
 
 `lifecycle` is `application` or `job`. Not `deployment` / `statefulset` / `job`,
-because those are mechanisms; the object kind derives from `lifecycle`, `stateful`
-and `volumes`.
+because those are mechanisms; the object kind derives from `lifecycle` and
+`volumes`.
 
 `runtime` selects the Runtime Profile: `jvm`, `python`, `node`, `static`, `none`.
 `none` is correct for a third-party image and injects no profile values at all.
@@ -1741,7 +1741,7 @@ startupBudget: 600s     # knowledge-api: JVM cold start measured at ~250-300s
 cutover: rolling        # required: continuity during the cutover, or an accepted stop-then-start
 ```
 
-Derived from these plus `stateful`, `placement` and `volumes`: rollout strategy,
+Derived from these plus `placement` and `volumes`: rollout strategy,
 surge and unavailability, startup probe period and threshold, the progress
 deadline, and the health-gate deadline the Application's switchover waits on.
 
@@ -2008,7 +2008,6 @@ classDiagram
         +Engine engine
         +Duration startupBudget
         +Cutover cutover
-        +bool stateful
         +Path[] writablePaths
     }
     class Capacity {

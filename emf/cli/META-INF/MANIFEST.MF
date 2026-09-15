@@ -9,4 +9,6 @@ Export-Package: dev.jorisjonkers.deploykit.emf.cli
 Require-Bundle: dev.jorisjonkers.deploykit.emf.metamodel,
  dev.jorisjonkers.deploykit.emf.syntax,
  org.eclipse.emf.ecore,
- org.eclipse.xtext
+ org.eclipse.xtext,
+ org.eclipse.ocl.pivot,
+ org.eclipse.ocl.xtext.completeocl

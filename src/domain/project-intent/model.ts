@@ -37,7 +37,8 @@ export interface SurfaceRef {
 
 export interface Observability {
   readonly alertClass: AlertClass;
-  readonly scrape: SurfaceRef & { readonly path: string };
+  /** Whole or absent in the model: a document with a class and no signal is refused. */
+  readonly scrape?: SurfaceRef & { readonly path: string };
 }
 
 export interface Exposure {

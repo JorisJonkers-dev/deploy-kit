@@ -6,6 +6,7 @@ import type {
   Process,
   Project,
 } from "../../domain/project-intent/model.ts";
+import { ruleDiagnostics } from "./rules.ts";
 import { projectIntent, type ProjectIntentDocument } from "./schema.ts";
 
 type WireApplication = ProjectIntentDocument["applications"][number];
@@ -83,6 +84,8 @@ export function validateProjectIntent(
         hint: "Correct the field against spec/v1/10-project-intent.md.",
       })),
     };
+  const refusals = ruleDiagnostics(parsed.data);
+  if (refusals.length > 0) return { ok: false, diagnostics: refusals };
   const { project, owner, applications } = parsed.data;
   return {
     ok: true,

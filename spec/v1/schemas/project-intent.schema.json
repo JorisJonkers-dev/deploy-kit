@@ -102,8 +102,7 @@
         }
       },
       "required": [
-        "alertClass",
-        "scrape"
+        "alertClass"
       ],
       "additionalProperties": false
     },

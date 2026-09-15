@@ -13,4 +13,23 @@
   <artifactId>dev.jorisjonkers.deploykit.emf.cli</artifactId>
   <packaging>eclipse-plugin</packaging>
   <name>deploy-kit model-driven cli</name>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.pitest</groupId>
+        <artifactId>pitest-maven</artifactId>
+        <configuration>
+          <!--
+            Registering the OCL language is a one-off for the JVM, so a second
+            test in the same JVM hides the removal of the call. The mutation is
+            equivalent here rather than uncovered.
+          -->
+          <avoidCallsTo>
+            <avoidCallsTo>org.eclipse.ocl.xtext.completeocl.CompleteOCLStandaloneSetup</avoidCallsTo>
+          </avoidCallsTo>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 </project>

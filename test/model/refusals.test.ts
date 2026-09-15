@@ -1,0 +1,153 @@
+// REQ-024 (docs/requirements.md): a document that breaks a rule is refused with
+// the code and the path its committed diagnostics oracle names.
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { canonicalJson, parseProjectIntent } from "../../src/index.ts";
+
+const REFUSALS = join(
+  import.meta.dirname,
+  "..",
+  "..",
+  "spec",
+  "v1",
+  "examples",
+  "refusals",
+);
+
+const fixtures = readdirSync(REFUSALS)
+  .filter((name) => name.endsWith(".project.yml"))
+  .map((name) => name.replace(".project.yml", ""))
+  .sort();
+
+const read = (name: string): string =>
+  readFileSync(join(REFUSALS, name), "utf8");
+
+const oracle = (stem: string): string | undefined => {
+  const file = `${stem}.diagnostics.json`;
+  return readdirSync(REFUSALS).includes(file) ? read(file) : undefined;
+};
+
+const refused = fixtures.filter((stem) => oracle(stem) !== undefined);
+
+const DOCUMENT = `apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: batch
+GRANTS    processes:
+      - name: worker
+        lifecycle: job
+        image: worker
+        runtime: none
+        placement: { memory: 64Mi, cpu: 10m }
+        cutover: recreate
+`;
+
+/** The document above with `secrets` on the Application, indented as the file reads. */
+const withApplicationGrant = (grant: string): string =>
+  DOCUMENT.replace("GRANTS", `    secrets:\n${grant}`);
+
+const refusalsOf = (text: string): { code: string; path: string }[] => {
+  const result = parseProjectIntent(text);
+  return result.ok
+    ? []
+    : result.diagnostics.map(({ code, path }) => ({ code, path }));
+};
+
+describe("the access by delivery matrix", () => {
+  it.each([
+    ["self-renew", "env"],
+    ["custody", "env"],
+    ["custody", "file"],
+  ])("refuses access %s delivered as %s", (access, delivery) => {
+    const grant = `      - path: secret/data/batch\n        keys: [password]\n        access: ${access}\n        delivery: ${delivery}\n        mountAt: /run/secrets/password\n        rotation: { tolerates: restart }\n`;
+
+    expect(refusalsOf(withApplicationGrant(grant))).toStrictEqual([
+      {
+        code: "E_ILLEGAL_DELIVERY_FOR_ACCESS",
+        path: "/applications/0/secrets/0",
+      },
+    ]);
+  });
+
+  it.each([
+    ["read", "env"],
+    ["read", "file"],
+    ["self-renew", "self"],
+    ["self-roll", "file"],
+  ])("accepts access %s delivered as %s", (access, delivery) => {
+    const grant = `      - path: secret/data/batch\n        keys: [password]\n        access: ${access}\n        delivery: ${delivery}\n        mountAt: /run/secrets/password\n        rotation: { tolerates: restart }\n`;
+
+    expect(refusalsOf(withApplicationGrant(grant))).toStrictEqual([]);
+  });
+
+  it("points at the Application's own grant when the grant is the Application's", () => {
+    const grant = `      - path: secret/data/batch\n        keys: [password]\n        access: read\n        delivery: env\n        rotation: { tolerates: reload }\n`;
+
+    expect(refusalsOf(withApplicationGrant(grant))).toStrictEqual([
+      {
+        code: "E_ENV_CANNOT_RELOAD",
+        path: "/applications/0/secrets/0/rotation",
+      },
+    ]);
+  });
+});
+
+describe("the refusal fixtures", () => {
+  it("are the ones this chapter carries, refused but for the accepted counterpart", () => {
+    expect(fixtures).toStrictEqual([
+      "alert-class-unknown",
+      "alert-class-without-signal",
+      "cutover-recreate-over-rwo",
+      "cutover-rolling-over-rwo",
+      "duplicate-route-match",
+      "durability-without-engine",
+      "engine-without-durability",
+      "env-cannot-reload",
+      "illegal-delivery-for-access",
+      "non-kv-delivery",
+    ]);
+    expect(refused).toHaveLength(8);
+    expect(
+      fixtures.length - refused.length,
+      "the accepted counterpart and the vocabulary case carry no oracle",
+    ).toBe(2);
+  });
+
+  it.each(refused)(
+    "%s is refused with the codes and paths its oracle names",
+    (stem) => {
+      const result = parseProjectIntent(read(`${stem}.project.yml`));
+      const pairs = result.ok
+        ? []
+        : result.diagnostics
+            .map(({ code, path }) => ({ code, path }))
+            .sort((a, b) =>
+              `${a.code}${a.path}` < `${b.code}${b.path}` ? -1 : 1,
+            );
+
+      expect(canonicalJson(pairs)).toBe(oracle(stem));
+    },
+  );
+
+  it("accepts the counterpart that declares the cutover its storage can honour", () => {
+    expect(
+      parseProjectIntent(read("cutover-recreate-over-rwo.project.yml")).ok,
+    ).toBe(true);
+    expect(oracle("cutover-recreate-over-rwo")).toBeUndefined();
+  });
+
+  it.each(refused)("%s says what it refused and how to fix it", (stem) => {
+    const result = parseProjectIntent(read(`${stem}.project.yml`));
+    const diagnostics = result.ok ? [] : result.diagnostics;
+
+    expect(diagnostics).not.toHaveLength(0);
+    for (const { message, hint } of diagnostics) {
+      expect(message.trim()).not.toBe("");
+      expect(hint.trim()).not.toBe("");
+    }
+  });
+});

@@ -136,6 +136,15 @@ offending object, computed from its containment chain: each containing feature's
 name, and the index for a many-valued feature. Validation reports every failed
 invariant, never only the first.
 
+Two consequences of evaluating OCL over Ecore, both recorded here because they
+shaped the metamodel. The constraints import the metamodel by its `nsURI`, not
+by file, so they bind to the classes the parser instantiates rather than to a
+second copy. And EMF reads an unset enumeration as its first literal, so a
+vocabulary an invariant tests for absence carries a literal with no spelling:
+`Engine::absent` is what an unset `engine` reads as, a document cannot write it,
+and the descriptor leaves it out because a literal the language cannot write is
+not part of the vocabulary.
+
 The constraint ledger's OCL column lives in `emf/`: a table mapping each
 `CONS-NNN` id to the OCL invariant that enforces it. `parity/` fails when a
 ledger constraint has no invariant, or an invariant names a code no ledger row

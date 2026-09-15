@@ -200,8 +200,10 @@ const scrape = z
   .strictObject({ process: text, surface: text, path: text })
   .meta({ id: "Scrape" });
 
+// `scrape` is optional in the shape, not in the model: a block carrying a class
+// and no signal is refused by a rule with its own code, not by the schema.
 const observability = z
-  .strictObject({ alertClass: alertClass, scrape })
+  .strictObject({ alertClass: alertClass, scrape: scrape.exactOptional() })
   .meta({ id: "Observability" });
 
 const application = z
