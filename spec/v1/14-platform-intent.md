@@ -105,8 +105,8 @@ needs fails the build, and a component that should be declared and is not is
 ## The foundation is declared
 
 Vault, VSO, Traefik, Prometheus and Gatus are Applications in project files the
-platform owns: `platform/edge.yml`, `platform/secrets.yml`,
-`platform/observability.yml`, with an `image`, Processes, `engine`, grants,
+platform owns: `platform/edge.project.yml`, `platform/secrets.project.yml`,
+`platform/observability.project.yml`, with an `image`, Processes, `engine`, grants,
 `exposure`, volumes and a Durability Class like any tenant Application
 ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)). Nothing
 about them is hand-written, and every estate-wide invariant in

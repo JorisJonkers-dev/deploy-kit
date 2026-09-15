@@ -235,8 +235,8 @@ parse-checked in CI.
 
 | path | what it shows |
 |---|---|
-| `examples/projects/{auth,knowledge,data}.yml` | Project Intent, one file per project: two-level secret grants, `probes: none` stated explicitly, TCP probes, `placement` dimensions, declared `writablePaths`, `durability` per volume, and the `auth` pair as two Processes of one Application |
-| `examples/{knowledge-api,knowledge-ingest-worker,auth-api,platform-postgres}.base.env` | env files, one set **per Process**, threaded with `${dependency:…}` and `${secret:<granted-path>#<key>}` placeholders whose paths byte-match a granted path |
+| `examples/{auth,knowledge,data,minimal}/<project>.project.yml` | Project Intent, one file per project: two-level secret grants, `probes: none` stated explicitly, TCP probes, `placement` dimensions, declared `writablePaths`, `durability` per volume, and the `auth` pair as two Processes of one Application |
+| `examples/{auth,knowledge,data,minimal}/env/<process>/base.env` | env files, one set **per Process** in a directory named for it, threaded with `${dependency:…}` and `${secret:<granted-path>#<key>}` placeholders whose paths byte-match a granted path |
 | `examples/workflows/project-publish-fragment.yml` | publish on merge, `oras push` then `oras resolve`, read back |
 | `examples/workflows/compose.yml` | pull participants, assert the estate-wide invariants, **prove the gate can fail** |
 | `examples/negative/duplicate-application-id/` | a negative fixture, so an invariant that stops running is detectable |
@@ -418,10 +418,10 @@ an ADR.
 ```mermaid
 flowchart TB
     subgraph AUTH["layer 1, hand-authored: Project Intent in each owning repository, Platform Intent in the platform's"]
-        a1["projects/&lt;project&gt;.yml<br/>applications, processes, placement, hardening,<br/>durability, probes, exposure, secrets"]
+        a1["platform/&lt;project&gt;.project.yml<br/>applications, processes, placement,<br/>writable paths, durability, probes,<br/>exposure, observability, secrets"]
         a2["env/&lt;process&gt;/*.env<br/>one set per Process"]
         a3["assets<br/>declarative, never executable"]
-        a5["platform.yml<br/>tiers, durability policy, engines,<br/>receivers, cadences, providers, bootstrap set"]
+        a5["platform.intent.yml<br/>substrate facts, bootstrap set,<br/>tiers, durability policy, hardening,<br/>cadences, engines, providers"]
     end
 
     a1 --> FR["Intent Fragments<br/>every authored document, published by digest"]

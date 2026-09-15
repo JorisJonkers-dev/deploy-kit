@@ -101,15 +101,18 @@ bin-packing ([0061](docs/adr/model/0061-placement-is-hard-dimensions.md)).
 
 **Capability**: a named node property a Process may require.
 
-**Hardening Class**: the pod security posture a Process takes, with named
-exceptions each carrying a reason
-([0016](docs/adr/model/0016-pod-hardening.md)).
+**Hardening Class**: the pod security posture every Process takes, declared
+once by the platform and authored by none of them. It has no exception surface:
+a Process states the paths it must write, and an image that cannot meet the
+class is refused ([0016](docs/adr/model/0016-pod-hardening.md)).
 
 **Runtime Profile**: the profile selected by `runtime`, from which observability
 and runtime environment variables are derived. Writing one of its keys by hand
 is a build error.
 
-**Alert Class**: how an alert on this Application should be delivered
+**Alert Class**: how urgently a signal about this Application should wake
+someone. Urgency only: which receiver, which channel and which severity mapping
+belong to the monitoring stack that reads the projection, never to this model
 ([0021](docs/adr/model/0021-observability-scrape-and-alert-class.md)).
 
 **Grant**: declared access to a Secret Store path, its keys, its access tier

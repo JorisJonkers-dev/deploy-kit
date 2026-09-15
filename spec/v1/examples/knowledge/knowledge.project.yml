@@ -1,6 +1,6 @@
 # Worked example: the knowledge project's Intent Fragment
 #
-#   applications/knowledge/platform/knowledge.yml
+#   applications/knowledge/platform/knowledge.project.yml
 #
 # One file per project, one file one Intent Fragment
 # (docs/adr/model/0063-intent-authored-per-project.md). The knowledge project owns one
@@ -16,9 +16,9 @@
 # Companion env files, one per PROCESS
 # (docs/adr/model/0011-configuration-env-files-per-process.md):
 #   platform/env/knowledge-api/base.env
-#     -- reproduced as examples/knowledge-api.base.env
+#     -- reproduced as env/knowledge-api/base.env
 #   platform/env/knowledge-ingest-worker/base.env
-#     -- reproduced as examples/knowledge-ingest-worker.base.env
+#     -- reproduced as env/knowledge-ingest-worker/base.env
 
 # The data model's own semver, not the toolkit's
 # (docs/adr/model/0039-artifact-schema-versioning.md).

@@ -177,7 +177,7 @@ field's placement link to this anchor rather than copying rows.
 | `PodDisruptionBudget` | derived | - | emitted only where `replicas` exceeds one, as `maxUnavailable: 1`; a budget over a single replica is a drain deadlock |
 | `namespace` | derived | - | `<project>-system`, and nothing else ([0063](../../docs/adr/model/0063-intent-authored-per-project.md)); several Applications share one by construction |
 | requests and limits | derived | - | from `placement.memory` and `placement.cpu`: memory request equals memory limit, cpu request with no cpu limit |
-| `securityContext` | derived | - | from `hardening` and its declared exceptions |
+| `securityContext` | derived | - | from the one platform `hardening` posture and the Process's declared `writablePaths`; no Process authors a control and no exception relaxes one |
 | `automountServiceAccountToken` | derived | - | `true` only where a grant carries `delivery: self`; the pod authenticates in that case and in no other ([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)) |
 | the `emptyDir` per writable path, and its `sizeLimit` | derived | - | one mount per declared path, sized from the Platform Intent's ephemeral default ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)) |
 | `runAsUser`, `runAsGroup`, `fsGroup` | derived | - | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Process holds a volume ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)) |
@@ -465,11 +465,14 @@ Five rules carry most of the weight:
   `engine`, so two Applications of the same class and engine derive the same objects
   with different volumes, which is the property that makes a restore rehearsal
   meaningful ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)).
-- **Hardening is one platform posture plus declared exceptions.** `restricted` (
+- **Hardening is one platform posture, and nothing else.** `restricted` (
   `runAsNonRoot`, `readOnlyRootFilesystem`, all capabilities dropped, seccomp
   `RuntimeDefault`) is declared once in the Platform document and authored by no
-  Process; each declared exception names one control and carries a reason
-  ([0016](../../docs/adr/model/0016-pod-hardening.md)).
+  Process. There is no per-control relaxation and no exception vocabulary: a
+  Process declares the paths it must write, and an image that cannot meet the
+  class is `E_HARDENING_UNMET`
+  ([0016](../../docs/adr/model/0016-pod-hardening.md),
+  [Hardening has no exception surface either](#hardening-has-no-exception-surface-either)).
 - **Capacity is not a class.** Requests and limits no longer resolve through a
   named table in the Platform Intent; they derive from the raw quantities the
   Process declares, under two shape rules the author does not write. Memory
