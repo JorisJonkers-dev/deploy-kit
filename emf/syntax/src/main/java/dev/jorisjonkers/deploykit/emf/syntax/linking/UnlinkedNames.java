@@ -8,17 +8,22 @@ import org.eclipse.xtext.linking.impl.LinkingDiagnosticMessageProvider;
 
 /**
  * A name that links to nothing, as the code the specification gives it: `E_UNKNOWN_PROCESS` for a
- * Process, `E_UNKNOWN_SURFACE` for a surface. A surface whose Process did not link is not reported
+ * Process, `E_UNKNOWN_SURFACE` for a surface, `E_UNKNOWN_TIER_PROXY` for a tier's proxy Application. A surface whose Process did not link is not reported
  * as well: there is no Process to look it up in, and the Process's own refusal already says so.
  */
 public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
 
     public static final String UNKNOWN_PROCESS = "E_UNKNOWN_PROCESS";
     public static final String UNKNOWN_SURFACE = "E_UNKNOWN_SURFACE";
+    public static final String UNKNOWN_TIER_PROXY = "E_UNKNOWN_TIER_PROXY";
 
     @Override
     public DiagnosticMessage getUnresolvedProxyMessage(ILinkingDiagnosticContext context) {
         String name = context.getLinkText();
+        if (context.getReference().getEReferenceType() == ProjectIntentPackage.Literals.APPLICATION) {
+            return new DiagnosticMessage(
+                    "no project file declares the Application " + name, Severity.ERROR, UNKNOWN_TIER_PROXY);
+        }
         if (context.getReference().getEReferenceType() == ProjectIntentPackage.Literals.PROCESS) {
             return new DiagnosticMessage(
                     "no Process of this Application is named " + name, Severity.ERROR, UNKNOWN_PROCESS);

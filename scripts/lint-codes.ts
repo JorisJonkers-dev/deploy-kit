@@ -46,16 +46,6 @@ export const RETIRED: Readonly<Record<string, string>> = {
 
 export const PENDING: readonly Pending[] = [
   {
-    ticket: "#41",
-    reason: "a reference into the Platform document, which needs its metamodel",
-    codes: [
-      "E_NO_FORWARD_AUTH_ENDPOINT",
-      "E_NO_TIER_FOR_AUDIENCE",
-      "E_ROUTE_AUTH_MODE_NOT_IN_TIER",
-      "E_SECRETS_AT_REST_REQUIRED",
-    ],
-  },
-  {
     ticket: "#44",
     reason: "a code the rule registry retires or rehomes: one rule, one code",
     codes: [
@@ -63,6 +53,7 @@ export const PENDING: readonly Pending[] = [
       "E_DUPLICATE_APEX",
       "E_DUPLICATE_ROUTE",
       "E_RELEASE_UNIT_NO_READINESS",
+      "E_ROUTE_AUTH_MODE_NOT_IN_TIER",
       "E_UNKNOWN_OVERRIDE",
       "E_UNMANAGED_SURFACE_WITHOUT_COORDINATES",
     ],

@@ -3,10 +3,13 @@ package dev.jorisjonkers.deploykit.emf.syntax.linking;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Application;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Platform;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Route;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Scrape;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Tier;
+import dev.jorisjonkers.deploykit.emf.syntax.PlatformIntentStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.ProjectIntentStandaloneSetup;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -18,10 +21,11 @@ import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.xtext.EcoreUtil2;
 import org.eclipse.xtext.linking.impl.XtextLinkingDiagnostic;
+import org.eclipse.xtext.resource.IResourceFactory;
 import org.eclipse.xtext.resource.XtextResourceSet;
 import org.junit.jupiter.api.Test;
 
-/** What a route's and a scrape's names link to, and what a name that links to nothing becomes. */
+/** What a route's, a scrape's and a tier's names link to, and what a name that links to nothing becomes. */
 class LinkingTest {
 
     private static final String DOCUMENT = """
@@ -116,5 +120,62 @@ class LinkingTest {
     void aSurfaceIsNotReportedWhenItsProcessDidNotLink() throws IOException {
         assertThat(codes(parse("links-api", "http", "nothing", "nothing")))
                 .containsExactly("E_UNKNOWN_PROCESS no Process of this Application is named nothing");
+    }
+
+    private static final String PLATFORM = """
+            apiVersion: intent.jorisjonkers.dev/v1
+            kind: Platform
+            schemaVersion: 1.0.0
+            owner: joris
+            metadata: { cluster: production, project: jorisjonkers.dev, nodeContract: "sha256:6f1c" }
+            substrate:
+              kubernetesVersion: v1.31.4+k3s1
+              datastore: sqlite
+              serverCount: 1
+              secretsEncryption: true
+              cni: flannel
+              networkPolicyController: embedded
+            bootstrap:
+              flux: { sourceRef: flux-system/platform }
+              vault: { unsealed: true }
+              crds: [traefik.io/v1alpha1]
+            tiers:
+              - { name: lan, audiences: [lan], listener: plain, certificates: none, traefik: PROXY }
+            durability: { reconstructible: {} }
+            engines: {}
+            monitors: { interval: 30s, timeout: 10s }
+            hardening: restricted
+            probes: { periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 3 }
+            ephemeral: { sizeLimit: 64Mi }
+            """;
+
+    /** A Platform document read into the same resource set as {@link #DOCUMENT}, its tier naming {@code proxy}. */
+    private static Resource platform(String proxy) throws IOException {
+        Resource project = parse("links-api", "http", "links-api", "metrics");
+        Resource platform = new PlatformIntentStandaloneSetup()
+                .createInjectorAndDoEMFRegistration()
+                .getInstance(IResourceFactory.class)
+                .createResource(URI.createURI("memory:/platform.intent.yml"));
+        project.getResourceSet().getResources().add(platform);
+        platform.load(
+                new ByteArrayInputStream(PLATFORM.replace("PROXY", proxy).getBytes(StandardCharsets.UTF_8)), Map.of());
+        EcoreUtil2.resolveAll(platform);
+        return platform;
+    }
+
+    @Test
+    void aTiersProxyLinksToAnApplicationAnotherDocumentDeclares() throws IOException {
+        Resource platform = platform("elsewhere");
+        Tier tier = ((Platform) platform.getContents().get(0)).getTiers().get(0);
+
+        assertThat(platform.getErrors()).isEmpty();
+        assertThat(tier.getTraefik().getId()).isEqualTo("elsewhere");
+        assertThat(tier.getTraefik().eResource()).isNotSameAs(platform);
+    }
+
+    @Test
+    void aTiersProxyThatNoDocumentDeclaresIsUnknown() throws IOException {
+        assertThat(codes(platform("traefik-lan")))
+                .containsExactly("E_UNKNOWN_TIER_PROXY no project file declares the Application traefik-lan");
     }
 }

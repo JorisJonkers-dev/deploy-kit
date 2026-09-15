@@ -2,6 +2,7 @@ package dev.jorisjonkers.deploykit.emf.parity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.jorisjonkers.deploykit.emf.cli.Diagnostic;
 import dev.jorisjonkers.deploykit.emf.cli.Parsed;
 import dev.jorisjonkers.deploykit.emf.cli.Pipeline;
 import dev.jorisjonkers.deploykit.emf.metamodel.descriptor.Descriptor;
@@ -41,7 +42,7 @@ class ParityTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("casesWithAnIntentOracle")
     void theParsedIntentEqualsTheCommittedOracle(Path directory) throws IOException {
-        Parsed parsed = Pipeline.intent(projectFile(directory));
+        Parsed parsed = Pipeline.intent(intentFile(directory));
 
         assertThat(parsed.diagnostics()).isEmpty();
         assertThat(CanonicalJson.write(parsed.intent())).isEqualTo(read(directory.resolve("expected/intent.json")));
@@ -62,11 +63,17 @@ class ParityTest {
     @MethodSource("refusalsWithADiagnosticsOracle")
     void aRefusedDocumentEqualsItsCommittedDiagnostics(Path oracle) throws IOException {
         String stem = oracle.getFileName().toString().replace(".diagnostics.json", "");
-        Parsed parsed = Pipeline.intent(oracle.resolveSibling(stem + ".project.yml"));
+        Path set = oracle.resolveSibling(stem);
+        // A directory is a set of documents read together; a file beside the oracle is read alone.
+        List<Diagnostic> diagnostics = Files.isDirectory(set)
+                ? Pipeline.check(files(set))
+                : Pipeline.intent(oracle.resolveSibling(stem + ".project.yml")).diagnostics();
 
-        assertThat(CanonicalJson.write(parsed.diagnostics().stream()
-                        .map(diagnostic ->
-                                (Object) new TreeMap<>(Map.of("code", diagnostic.code(), "path", diagnostic.path())))
+        assertThat(CanonicalJson.write(diagnostics.stream()
+                        .map(diagnostic -> (Object) new TreeMap<>(Map.of(
+                                "code", diagnostic.code(),
+                                "document", diagnostic.document(),
+                                "path", diagnostic.path())))
                         .sorted(Comparator.comparing(Object::toString))
                         .toList()))
                 .isEqualTo(read(oracle));
@@ -81,7 +88,7 @@ class ParityTest {
     @Test
     void oneChangedFieldNoLongerMatchesTheOracle() throws IOException {
         Path directory = casesWithAnIntentOracle().get(0);
-        Path project = projectFile(directory);
+        Path project = intentFile(directory);
         Path changed = Files.createTempDirectory("parity").resolve(project.getFileName());
         Files.writeString(changed, read(project).replace("owner: joris", "owner: someone-else"));
 
@@ -89,11 +96,18 @@ class ParityTest {
                 .isNotEqualTo(read(directory.resolve("expected/intent.json")));
     }
 
-    private static Path projectFile(Path directory) throws IOException {
+    /** The one authored document of a case: its project file, or its Platform document. */
+    private static Path intentFile(Path directory) throws IOException {
+        return files(directory).stream()
+                .filter(path -> path.getFileName().toString().endsWith(".project.yml")
+                        || path.getFileName().toString().equals("platform.intent.yml"))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private static List<Path> files(Path directory) throws IOException {
         try (Stream<Path> files = Files.list(directory)) {
-            return files.filter(path -> path.getFileName().toString().endsWith(".project.yml"))
-                    .findFirst()
-                    .orElseThrow();
+            return files.filter(Files::isRegularFile).sorted().toList();
         }
     }
 

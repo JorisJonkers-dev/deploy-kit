@@ -7,9 +7,9 @@ import org.eclipse.xtext.xtext.generator.model.project.*
 var rootPath = ".."
 var generated = "${rootPath}/syntax/target/generated-sources/xtext"
 
-// Every generated file lands under target/ except the two stubs the generator
-// writes once and this tree then owns: the runtime module and the standalone
-// setup, in src/main/java (emf/docs/architecture.md#concrete-syntax).
+// Every generated file lands under target/ except the stubs the generator
+// writes once per language and this tree then owns: the runtime module, the
+// standalone setup and the token source, in src/main/java (emf/docs/architecture.md#concrete-syntax).
 Workflow {
 	bean = StandaloneSetup {
 		scanClassPath = true
@@ -43,6 +43,18 @@ Workflow {
 		language = StandardLanguage {
 			name = "dev.jorisjonkers.deploykit.emf.syntax.ProjectIntent"
 			grammarUri = "classpath:/dev/jorisjonkers/deploykit/emf/syntax/ProjectIntent.xtext"
+			fileExtensions = "yml"
+			referencedResource = "platform:/resource/dev.jorisjonkers.deploykit.emf.metamodel/model/project-intent.genmodel"
+			serializer = { generateStub = false }
+			validator = { generateStub = false }
+			scopeProvider = { generateStub = false }
+			generator = { generateStub = false }
+		}
+		// The Platform document inherits the project language's terminals and
+		// block tokens, and adds only its own rules.
+		language = StandardLanguage {
+			name = "dev.jorisjonkers.deploykit.emf.syntax.PlatformIntent"
+			grammarUri = "classpath:/dev/jorisjonkers/deploykit/emf/syntax/PlatformIntent.xtext"
 			fileExtensions = "yml"
 			referencedResource = "platform:/resource/dev.jorisjonkers.deploykit.emf.metamodel/model/project-intent.genmodel"
 			serializer = { generateStub = false }

@@ -18,7 +18,7 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="applications" lowerBound="1" upperBound="-1" eType="#//Application" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Application">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" iD="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="observability" eType="#//Observability" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="exposure" upperBound="-1" eType="#//Exposure" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="secrets" upperBound="-1" eType="#//Grant" containment="true"/>
@@ -199,10 +199,11 @@
     <eLiterals name="page" value="2" literal="page"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Audience">
-    <eLiterals name="anonymous" literal="anonymous"/>
-    <eLiterals name="authenticated" value="1" literal="authenticated"/>
-    <eLiterals name="internal" value="2" literal="internal"/>
-    <eLiterals name="lan" value="3" literal="lan"/>
+    <eLiterals name="absent" literal=""/>
+    <eLiterals name="anonymous" value="1" literal="anonymous"/>
+    <eLiterals name="authenticated" value="2" literal="authenticated"/>
+    <eLiterals name="internal" value="3" literal="internal"/>
+    <eLiterals name="lan" value="4" literal="lan"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="ContentPolicy">
     <eLiterals name="strict" literal="strict"/>
@@ -240,5 +241,118 @@
   <eClassifiers xsi:type="ecore:EEnum" name="Tolerance">
     <eLiterals name="restart" literal="restart"/>
     <eLiterals name="reload" value="1" literal="reload"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Platform">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="apiVersion" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="schemaVersion" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="owner" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="metadata" lowerBound="1" eType="#//PlatformMetadata" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="substrate" lowerBound="1" eType="#//Substrate" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="bootstrap" lowerBound="1" eType="#//Bootstrap" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="tiers" lowerBound="1" upperBound="-1" eType="#//Tier" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="durability" lowerBound="1" eType="#//DurabilityPolicies" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="engines" lowerBound="1" eType="#//EnginePolicies" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="monitors" lowerBound="1" eType="#//MonitorCadence" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="hardening" lowerBound="1" eType="#//HardeningClass"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="probes" lowerBound="1" eType="#//ProbeCadence" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="ephemeral" lowerBound="1" eType="#//EphemeralPolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="providers" upperBound="-1" eType="#//Provider" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="PlatformMetadata">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cluster" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="project" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="nodeContract" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Substrate">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kubernetesVersion" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="datastore" lowerBound="1" eType="#//Datastore"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="serverCount" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="secretsEncryption" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cni" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="networkPolicyController" lowerBound="1" eType="#//PolicyController"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Bootstrap">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="flux" lowerBound="1" eType="#//FluxSource" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="vault" lowerBound="1" eType="#//VaultState" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="crds" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="FluxSource">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="sourceRef" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="VaultState">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="unsealed" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Tier">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="audiences" lowerBound="1" upperBound="-1" eType="#//Audience"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="listener" lowerBound="1" eType="#//Listener"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="certificates" lowerBound="1" eType="#//CertificateSource"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="forwardAuth" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="traefik" lowerBound="1" eType="#//Application"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="DurabilityPolicies">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="reconstructible" eType="#//DurabilityPolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="recoverable" eType="#//DurabilityPolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="irreplaceable" eType="#//DurabilityPolicy" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="DurabilityPolicy">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="schedule" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="retain" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="offCluster" eType="#//OffClusterCopy" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="OffClusterCopy">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="destination" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="credential" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="EnginePolicies">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="postgres" eType="#//EnginePolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="rabbitmq" eType="#//EnginePolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="valkey" eType="#//EnginePolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="files" eType="#//EnginePolicy" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="EnginePolicy">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="backup" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="MonitorCadence">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ProbeCadence">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="periodSeconds" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeoutSeconds" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="failureThreshold" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="EphemeralPolicy">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="sizeLimit" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Provider">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="address" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="surfaces" lowerBound="1" upperBound="-1" eType="#//ProviderSurface" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ProviderSurface" instanceClassName="java.util.Map$Entry">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Datastore">
+    <eLiterals name="sqlite" literal="sqlite"/>
+    <eLiterals name="etcd" value="1" literal="etcd"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="PolicyController">
+    <eLiterals name="none" literal="none"/>
+    <eLiterals name="embedded" value="1" literal="embedded"/>
+    <eLiterals name="cni" value="2" literal="cni"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Listener">
+    <eLiterals name="tls" literal="tls"/>
+    <eLiterals name="plain" value="1" literal="plain"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="CertificateSource">
+    <eLiterals name="acme" literal="acme"/>
+    <eLiterals name="none" value="1" literal="none"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="HardeningClass">
+    <eLiterals name="restricted" literal="restricted"/>
   </eClassifiers>
 </ecore:EPackage>

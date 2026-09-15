@@ -1,0 +1,47 @@
+# REFUSED: E_UNKNOWN_TIER_PROXY
+#
+# A tier's proxy is a declared Application, like every other component of the
+# foundation. This tier names `lan-proxy`, and the project files beside it
+# declare `edge-proxy`: the tier points at a proxy nothing deploys
+# (spec/v1/14-platform-intent.md #tiers).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Platform
+schemaVersion: 1.0.0
+owner: joris
+metadata:
+  cluster: refusals
+  project: refusals.jorisjonkers.dev
+  nodeContract: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+substrate:
+  kubernetesVersion: v1.31.4+k3s1
+  datastore: sqlite
+  serverCount: 1
+  secretsEncryption: true
+  cni: flannel
+  networkPolicyController: embedded
+bootstrap:
+  flux:
+    sourceRef: flux-system/platform
+  vault:
+    unsealed: true
+  crds:
+    - traefik.io/v1alpha1
+tiers:
+  - name: lan
+    audiences: [lan]
+    listener: plain
+    certificates: none
+    traefik: lan-proxy
+durability:
+  reconstructible: {}
+  recoverable: { schedule: "15 3 * * *", retain: 14 }
+  irreplaceable: { schedule: "45 2 * * *", retain: 90 }
+engines:
+  postgres: { backup: postgres-backup }
+monitors:
+  interval: 30s
+  timeout: 10s
+hardening: restricted
+probes: { periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 3 }
+ephemeral: { sizeLimit: 64Mi }

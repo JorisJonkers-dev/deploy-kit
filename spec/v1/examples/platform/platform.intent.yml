@@ -16,7 +16,7 @@ owner: joris
 metadata:
   cluster: production
   project: jorisjonkers.dev
-  nodeContract: sha256:6f1c2a8e5d3b4c7f9a0e1d2c3b4a5968778695a4b3c2d1e0f9a8b7c6d5e4f3a2
+  nodeContract: "sha256:6f1c2a8e5d3b4c7f9a0e1d2c3b4a5968778695a4b3c2d1e0f9a8b7c6d5e4f3a2"
 
 # Facts about the cluster, named for what they are. How k3s is told is a
 # derivation nobody authors (docs/adr/model/0057-datastore-and-restore.md).
@@ -53,7 +53,7 @@ tiers:
     audiences: [anonymous, authenticated]
     listener: tls
     certificates: acme
-    forwardAuth: http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward
+    forwardAuth: "http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward"
     traefik: traefik-public # the declared Application in the platform edge project,
     # placed on the public-ingress node
   - name: lan
@@ -72,7 +72,7 @@ durability:
     schedule: "45 2 * * *"
     retain: 90
     offCluster:
-      destination: s3://backup-storage/jorisjonkers-dev
+      destination: "s3://backup-storage/jorisjonkers-dev"
       credential: secret/data/platform/backup/off-cluster
 
 # The method IS the image: one purpose-built image per engine, resolved through
