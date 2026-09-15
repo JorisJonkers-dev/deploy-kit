@@ -5,18 +5,24 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.eclipse.emf.common.util.Enumerator;
+import org.eclipse.emf.ecore.EAnnotation;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EStructuralFeature;
 
 /**
  * Reads a parsed model as the JSON value the parity contract compares: every feature named as the
  * authored key it holds, a map entry as an object, an enumeration as its literal, and an optional
- * feature absent when the document left it out. The metamodel is walked reflectively, so a feature
- * added to the {@code .ecore} reaches the intent without a line here.
+ * feature absent when the document left it out. A class the metamodel annotates as a scalar is
+ * written as that scalar, which is how {@code probes: none} stays the word it was authored as. The
+ * metamodel is walked reflectively, so a feature added to the {@code .ecore} reaches the intent
+ * without a line here.
  */
 public final class IntentJson {
 
     private IntentJson() {}
+
+    /** The annotation a class carries when the language writes it as one word rather than a block. */
+    private static final String JSON = "https://jorisjonkers.dev/deploy-kit/json";
 
     /** The JSON value of {@code root}, as a map of authored key to value. */
     public static Map<String, Object> of(EObject root) {
@@ -58,6 +64,12 @@ public final class IntentJson {
         return items;
     }
 
+    /** The word a class is written as, or {@code null} when it is written as a block. */
+    private static String scalar(EObject object) {
+        EAnnotation annotation = object.eClass().getEAnnotation(JSON);
+        return annotation == null ? null : annotation.getDetails().get("scalar");
+    }
+
     /** Whether {@code feature} holds map entries, which are written as one object rather than a list. */
     private static boolean isMapEntry(EStructuralFeature feature) {
         return Map.Entry.class.getName().equals(feature.getEType().getInstanceClassName());
@@ -65,7 +77,7 @@ public final class IntentJson {
 
     private static Object single(Object value) {
         return switch (value) {
-            case EObject child -> of(child);
+            case EObject child -> scalar(child) == null ? of(child) : scalar(child);
             case Enumerator literal -> literal.getLiteral();
             default -> value;
         };

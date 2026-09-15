@@ -3,9 +3,9 @@ package dev.jorisjonkers.deploykit.emf.cli;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.HttpProbe;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Lifecycle;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Placement;
-import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Probe;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Probes;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Process;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentFactory;
@@ -52,7 +52,7 @@ class IntentJsonTest {
         Process process = process();
         process.setStartupBudget("20s");
         Probes probes = MODEL.createProbes();
-        Probe readiness = MODEL.createProbe();
+        HttpProbe readiness = MODEL.createHttpProbe();
         readiness.setPath("/healthz/ready");
         readiness.setPort(8080);
         probes.setReadiness(readiness);

@@ -1,6 +1,6 @@
 // REQ-021 (docs/requirements.md): an authored Project Intent file parses to its
 // committed intent oracle, and YAML or fields outside the language are refused.
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { canonicalJson, parseProjectIntent } from "../../src/index.ts";
@@ -50,7 +50,38 @@ function refused(text: string) {
   }));
 }
 
+const cases = readdirSync(EXAMPLES, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .filter((name) => readdirSync(join(EXAMPLES, name)).includes("expected"))
+  .sort();
+
+const projectFile = (directory: string): string => {
+  const file = readdirSync(join(EXAMPLES, directory)).find((name) =>
+    name.endsWith(".project.yml"),
+  );
+  return readFileSync(join(EXAMPLES, directory, file ?? ""), "utf8");
+};
+
 describe("parseProjectIntent", () => {
+  it.each(cases)(
+    "parses %s to its committed intent oracle, byte for byte",
+    (directory) => {
+      const result = parseProjectIntent(projectFile(directory));
+
+      expect(result.ok && canonicalJson(result.value.document)).toBe(
+        readFileSync(
+          join(EXAMPLES, directory, "expected", "intent.json"),
+          "utf8",
+        ),
+      );
+    },
+  );
+
+  it("covers every worked example", () => {
+    expect(cases).toStrictEqual(["auth", "data", "knowledge", "minimal"]);
+  });
+
   it("parses the minimal case to its committed intent oracle, byte for byte", () => {
     const result = parseProjectIntent(MINIMAL);
 
@@ -76,6 +107,7 @@ describe("parseProjectIntent", () => {
             alertClass: "business-hours",
             scrape: { process: "notes-api", surface: "http", path: "/metrics" },
           },
+          grants: [],
           exposures: [
             {
               name: "public",
@@ -99,7 +131,18 @@ describe("parseProjectIntent", () => {
               image: "notes-api",
               runtime: "node",
               provides: new Map([["http", 8080]]),
-              placement: { memory: "256Mi", cpu: "50m" },
+              placement: {
+                memory: "256Mi",
+                cpu: "50m",
+                arch: [],
+                capabilities: [],
+              },
+              writablePaths: [],
+              sidecars: [],
+              dependencies: [],
+              assets: [],
+              volumes: [],
+              grants: [],
               probes: {
                 readiness: { path: "/healthz/ready", port: 8080 },
                 liveness: { path: "/healthz/live", port: 8080 },
@@ -122,6 +165,7 @@ describe("parseProjectIntent", () => {
       {
         id: "batch",
         exposures: [],
+        grants: [],
         processes: [
           {
             name: "worker",
@@ -129,8 +173,19 @@ describe("parseProjectIntent", () => {
             image: "worker",
             runtime: "none",
             provides: new Map(),
-            placement: { memory: "64Mi", cpu: "10m" },
+            placement: {
+              memory: "64Mi",
+              cpu: "10m",
+              arch: [],
+              capabilities: [],
+            },
+            writablePaths: [],
+            sidecars: [],
+            dependencies: [],
+            assets: [],
             probes: {},
+            volumes: [],
+            grants: [],
             cutover: "recreate",
           },
         ],
@@ -227,6 +282,35 @@ describe("parseProjectIntent", () => {
 
     expect(diagnostics.map(({ path }) => path)).toStrictEqual([
       "/applications/0/processes/0/provides/a~1b~0c",
+    ]);
+  });
+
+  it.each([
+    ["required: false", false],
+    ["required: true", true],
+  ])("reads a dependency written %s as such", (line, required) => {
+    const text = withApplications(
+      `  - id: batch\n    processes:\n${PROCESS}        dependsOn:\n          - application: other\n            surface: http\n            ${line}\n`,
+    );
+    const result = parseProjectIntent(text);
+
+    expect(
+      result.ok &&
+        result.value.project.applications[0]?.processes[0]?.dependencies,
+    ).toStrictEqual([{ application: "other", surface: "http", required }]);
+  });
+
+  it("reads a dependency with no required field as required", () => {
+    const text = withApplications(
+      `  - id: batch\n    processes:\n${PROCESS}        dependsOn:\n          - { application: other, surface: http }\n`,
+    );
+    const result = parseProjectIntent(text);
+
+    expect(
+      result.ok &&
+        result.value.project.applications[0]?.processes[0]?.dependencies,
+    ).toStrictEqual([
+      { application: "other", surface: "http", required: true },
     ]);
   });
 

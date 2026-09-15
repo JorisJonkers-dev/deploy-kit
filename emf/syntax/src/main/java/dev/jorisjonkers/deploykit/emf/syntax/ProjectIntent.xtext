@@ -5,7 +5,9 @@ import "http://www.eclipse.org/emf/2002/Ecore" as ecore
 
 // The YAML subset the authored project files use. Block structure arrives as
 // the synthetic BEGIN and END tokens the blocks package produces, so an
-// indented block and a flow mapping parse through one rule.
+// indented block, a flow mapping and a flow sequence parse through one rule.
+// Keys are unordered groups, because the order of keys in a mapping is not
+// meaning. A union in the model is a union here.
 
 Project returns Project:
 	(('apiVersion' ':' apiVersion=Text)
@@ -19,6 +21,7 @@ Application returns Application:
 	(('id' ':' id=Text)
 	& ('observability' ':' BEGIN observability=Observability END)?
 	& ('exposure' ':' BEGIN (DASH BEGIN exposure+=Exposure END)+ END)?
+	& ('secrets' ':' BEGIN (DASH BEGIN secrets+=Grant END)+ END)?
 	& ('processes' ':' BEGIN (DASH BEGIN processes+=Process END)+ END));
 
 Observability returns Observability:
@@ -34,23 +37,33 @@ Exposure returns Exposure:
 	(('name' ':' name=Text)
 	& ('host' ':' host=Text)
 	& ('audience' ':' audience=Audience)
-	& ('contentPolicy' ':' contentPolicy=ContentPolicy)
+	& ('contentPolicy' ':' contentPolicy=ContentPolicy)?
 	& ('routes' ':' BEGIN (DASH BEGIN routes+=Route END)+ END));
 
 Route returns Route:
 	(('path' ':' path=Text)
 	& ('match' ':' match=Match)
 	& ('process' ':' process=Text)
-	& ('surface' ':' surface=Text));
+	& ('surface' ':' surface=Text)
+	& ('audience' ':' audience=Audience)?
+	& ('redirectTo' ':' redirectTo=Text)?);
 
 Process returns Process:
 	(('name' ':' name=Text)
 	& ('lifecycle' ':' lifecycle=Lifecycle)
 	& ('image' ':' image=Text)
 	& ('runtime' ':' runtime=Runtime)
+	& ('engine' ':' engine=Engine)?
 	& ('provides' ':' BEGIN provides+=SurfacePort+ END)?
 	& ('placement' ':' BEGIN placement=Placement END)
-	& ('probes' ':' BEGIN probes=Probes END)?
+	& ('writablePaths' ':' BEGIN (DASH BEGIN writablePaths+=Text END | writablePaths+=Text)+ END)?
+	& ('sidecars' ':' BEGIN (DASH BEGIN sidecars+=Sidecar END)+ END)?
+	& ('dependsOn' ':' BEGIN (DASH BEGIN dependsOn+=DependencyEdge END)+ END)?
+	& ('assets' ':' BEGIN (DASH BEGIN assets+=Asset END)+ END)?
+	& ('probes' ':' probes=ProbePolicy)?
+	& ('volumes' ':' BEGIN (DASH BEGIN volumes+=Volume END)+ END)?
+	& ('replicas' ':' BEGIN replicas=Capacity END)?
+	& ('secrets' ':' BEGIN (DASH BEGIN secrets+=Grant END)+ END)?
 	& ('startupBudget' ':' startupBudget=Text)?
 	& ('cutover' ':' cutover=Cutover));
 
@@ -59,33 +72,128 @@ SurfacePort returns SurfacePort:
 
 Placement returns Placement:
 	(('memory' ':' memory=Text)
+	& ('cpu' ':' cpu=Text)
+	& ('arch' ':' BEGIN (DASH BEGIN arch+=Arch END | arch+=Arch)+ END)?
+	& ('site' ':' site=Text)?
+	& ('disk' ':' BEGIN disk=DiskRequest END)?
+	& ('gpu' ':' BEGIN gpu=GpuRequest END)?
+	& ('capabilities' ':' BEGIN (DASH BEGIN capabilities+=Text END | capabilities+=Text)+ END)?);
+
+DiskRequest returns DiskRequest:
+	'media' ':' BEGIN (DASH BEGIN media+=Media END | media+=Media)+ END;
+
+GpuRequest returns GpuRequest:
+	(('class' ':' class=Text)
+	& ('memory' ':' memory=Text));
+
+Sidecar returns Sidecar:
+	(('name' ':' name=Text)
+	& ('image' ':' image=Text)
+	& ('memory' ':' memory=Text)
 	& ('cpu' ':' cpu=Text));
 
+DependencyEdge returns DependencyEdge:
+	(('application' ':' application=Text)
+	& ('surface' ':' surface=Text)
+	& ('required' ':' required=Bool)?);
+
+Asset returns Asset:
+	(('from' ':' from=Text)
+	& ('mountAt' ':' mountAt=Text));
+
+ProbePolicy returns ProbePolicy:
+	NoProbes | Probes;
+
+NoProbes returns NoProbes:
+	{NoProbes} 'none';
+
 Probes returns Probes:
+	BEGIN
 	(('readiness' ':' BEGIN readiness=Probe END)?
-	& ('liveness' ':' BEGIN liveness=Probe END)?);
+	& ('liveness' ':' BEGIN liveness=Probe END)?)
+	END;
 
 Probe returns Probe:
+	HttpProbe | TcpProbe;
+
+HttpProbe returns HttpProbe:
 	(('path' ':' path=Text)
 	& ('port' ':' port=Port));
+
+TcpProbe returns TcpProbe:
+	'tcp' ':' tcp=Port;
+
+Volume returns Volume:
+	(('claim' ':' claim=Text)
+	& ('mountAt' ':' mountAt=Text)
+	& ('size' ':' size=Text)?
+	& ('durability' ':' durability=DurabilityClass));
+
+Capacity returns Capacity:
+	(('count' ':' count=Port)
+	& ('reason' ':' reason=Text));
+
+Grant returns Grant:
+	KvGrant | DatabaseGrant | TransitGrant;
+
+KvGrant returns KvGrant:
+	(('path' ':' path=Text)
+	& ('keys' ':' BEGIN (DASH BEGIN keys+=Text END | keys+=Text)+ END)
+	& ('access' ':' access=AccessTier)
+	& ('delivery' ':' delivery=Delivery)
+	& ('mountAt' ':' mountAt=Text)?
+	& ('fileMode' ':' fileMode=Text)?
+	& ('rotation' ':' BEGIN rotation=Rotation END)?);
+
+DatabaseGrant returns DatabaseGrant:
+	'engine' ':' engine=DatabaseEngine
+	(('role' ':' role=Text)
+	& ('delivery' ':' delivery=Delivery)
+	& ('mountAt' ':' mountAt=Text)?
+	& ('fileMode' ':' fileMode=Text)?
+	& ('rotation' ':' BEGIN rotation=Rotation END)?);
+
+TransitGrant returns TransitGrant:
+	'engine' ':' engine=TransitEngine
+	(('key' ':' key=Text)
+	& ('operations' ':' BEGIN (DASH BEGIN operations+=TransitOp END | operations+=TransitOp)+ END)
+	& ('delivery' ':' delivery=Delivery)
+	& ('mountAt' ':' mountAt=Text)?
+	& ('fileMode' ':' fileMode=Text)?
+	& ('rotation' ':' BEGIN rotation=Rotation END)?);
+
+Rotation returns Rotation:
+	(('tolerates' ':' tolerates=Tolerance)
+	& ('maxAge' ':' maxAge=Text)?);
 
 Port returns ecore::EInt:
 	INT;
 
-// A scalar, quoted or not. Every keyword above is also a scalar, so a value
-// that happens to read like a key is still a value.
+Bool returns ecore::EBooleanObject:
+	'true' | 'false';
+
+// A scalar, quoted, folded or plain. Every keyword above is also a scalar, so a
+// value that happens to read like a key is still a value.
 Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword;
 
 Keyword:
-	'apiVersion' | 'kind' | 'schemaVersion' | 'project' | 'owner' | 'applications' | 'id' | 'observability' |
-	'exposure' | 'processes' | 'alertClass' | 'scrape' | 'name' | 'host' | 'audience' | 'contentPolicy' |
-	'routes' | 'match' | 'lifecycle' | 'image' | 'runtime' | 'provides' | 'placement' | 'probes' |
-	'startupBudget' | 'cutover' | 'memory' | 'cpu' | 'readiness' | 'liveness' | 'path' | 'port' |
-	'process' | 'surface' |
-	'application' | 'job' | 'jvm' | 'python' | 'node' | 'static' | 'none' | 'rolling' | 'recreate' |
-	'business-hours' | 'urgent' | 'page' | 'anonymous' | 'authenticated' | 'internal' | 'lan' |
-	'strict' | 'admin' | 'workflow' | 'prefix' | 'exact';
+	'access' | 'admin' | 'alertClass' | 'amd64' | 'anonymous' | 'apiVersion' | 'application' | 'applications' |
+	'arch' | 'arm64' | 'assets' | 'audience' | 'authenticated' | 'business-hours' | 'capabilities' | 'claim' |
+	'class' | 'contentPolicy' | 'count' | 'cpu' | 'custody' | 'cutover' | 'database' | 'decrypt' |
+	'delivery' | 'dependsOn' | 'disk' | 'durability' | 'encrypt' | 'engine' | 'env' | 'exact' |
+	'exposure' | 'false' | 'file' | 'fileMode' | 'files' | 'from' | 'gpu' | 'hdd' |
+	'host' | 'id' | 'image' | 'internal' | 'irreplaceable' | 'job' | 'jvm' | 'key' |
+	'keys' | 'kind' | 'kv' | 'lan' | 'lifecycle' | 'liveness' | 'match' | 'maxAge' |
+	'media' | 'memory' | 'mountAt' | 'name' | 'node' | 'none' | 'nvme' | 'observability' |
+	'operations' | 'owner' | 'page' | 'path' | 'placement' | 'port' | 'postgres' | 'prefix' |
+	'probes' | 'process' | 'processes' | 'project' | 'provides' | 'python' | 'rabbitmq' | 'read' |
+	'readiness' | 'reason' | 'reconstructible' | 'recoverable' | 'recreate' | 'redirectTo' | 'reload' | 'replicas' |
+	'required' | 'restart' | 'role' | 'rolling' | 'rotate' | 'rotation' | 'routes' | 'runtime' |
+	'schemaVersion' | 'scrape' | 'secrets' | 'self' | 'self-renew' | 'self-roll' | 'sidecars' | 'sign' |
+	'site' | 'size' | 'ssd' | 'startupBudget' | 'static' | 'strict' | 'surface' | 'tcp' |
+	'tolerates' | 'transit' | 'true' | 'urgent' | 'valkey' | 'verify' | 'volumes' | 'workflow' |
+	'writablePaths';
 
 enum Lifecycle returns Lifecycle:
 	application='application' | job='job';
@@ -93,8 +201,20 @@ enum Lifecycle returns Lifecycle:
 enum Runtime returns Runtime:
 	jvm='jvm' | python='python' | node='node' | static='static' | none='none';
 
+enum Engine returns Engine:
+	postgres='postgres' | rabbitmq='rabbitmq' | valkey='valkey' | files='files';
+
 enum Cutover returns Cutover:
 	rolling='rolling' | recreate='recreate';
+
+enum DurabilityClass returns DurabilityClass:
+	reconstructible='reconstructible' | recoverable='recoverable' | irreplaceable='irreplaceable';
+
+enum Arch returns Arch:
+	amd64='amd64' | arm64='arm64';
+
+enum Media returns Media:
+	nvme='nvme' | ssd='ssd' | hdd='hdd';
 
 enum AlertClass returns AlertClass:
 	businessHours='business-hours' | urgent='urgent' | page='page';
@@ -108,23 +228,43 @@ enum ContentPolicy returns ContentPolicy:
 enum Match returns Match:
 	prefix='prefix' | exact='exact';
 
+enum DatabaseEngine returns DatabaseEngine:
+	database='database';
+
+enum TransitEngine returns TransitEngine:
+	transit='transit';
+
+enum AccessTier returns AccessTier:
+	read='read' | selfRenew='self-renew' | selfRoll='self-roll' | custody='custody';
+
+enum TransitOp returns TransitOp:
+	sign='sign' | verify='verify' | encrypt='encrypt' | decrypt='decrypt' | rotate='rotate';
+
+enum Delivery returns Delivery:
+	env='env' | file='file' | self='self';
+
+enum Tolerance returns Tolerance:
+	restart='restart' | reload='reload';
+
 terminal BEGIN: 'synthetic:BEGIN';
 terminal END: 'synthetic:END';
 
-// The block markers the token source rewrites: a dash opens a sequence item,
-// and a flow collection opens and closes a block on one line. The parser never
-// sees FLOW_ or LIST_ tokens; they arrive as BEGIN and END.
+// The block markers the token source rewrites: a dash opens a sequence item, a
+// flow collection opens and closes a block on one line, and a fold introduces a
+// scalar written over several lines. The parser sees none of them: they arrive
+// as BEGIN, END and SCALAR.
 terminal DASH: '-';
 terminal FLOW_BEGIN: '{';
 terminal FLOW_END: '}';
 terminal FLOW_SEP: ',';
 terminal LIST_BEGIN: '[';
 terminal LIST_END: ']';
+terminal FOLD: ('>' | '|') '-'?;
 
 terminal INT returns ecore::EInt: ('0'..'9')+;
 
 terminal SCALAR:
-	!(' ' | '\t' | '\r' | '\n' | ':' | ',' | '{' | '}' | '[' | ']' | '#' | '"' | "'" | '-')
+	!(' ' | '\t' | '\r' | '\n' | ':' | ',' | '{' | '}' | '[' | ']' | '#' | '"' | "'" | '-' | '>' | '|')
 	(!(' ' | '\t' | '\r' | '\n' | ':' | ',' | '{' | '}' | '[' | ']' | '#'))*;
 
 terminal STRING:

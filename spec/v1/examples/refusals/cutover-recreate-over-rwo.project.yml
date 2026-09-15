@@ -30,7 +30,6 @@ applications:
         image: recreate-over-rwo-store
         runtime: static
         engine: valkey
-        stateful: true
 
         provides:
           redis: 6379

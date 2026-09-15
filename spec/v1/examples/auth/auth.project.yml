@@ -25,6 +25,8 @@
 # bumped only when the model changes, so a literal here is legitimate and does
 # not go stale on a toolkit release. Composition admits same-major, minor <=
 # toolkit; the composition lock records the exact versions that ran.
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
 schemaVersion: 1.0.0
 
 # The header is three fields, and `owner` is the ONLY one raised to the project.

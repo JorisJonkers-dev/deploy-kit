@@ -13,6 +13,8 @@ package dev.jorisjonkers.deploykit.emf.syntax.blocks;
  * @param listBegin an opening bracket
  * @param listEnd a closing bracket
  * @param separator the comma between flow entries
+ * @param fold the marker of a scalar written over several lines
+ * @param scalar a plain scalar, which is what a folded one becomes
  */
 public record BlockTokens(
         int begin,
@@ -24,7 +26,9 @@ public record BlockTokens(
         int flowEnd,
         int listBegin,
         int listEnd,
-        int separator) {
+        int separator,
+        int fold,
+        int scalar) {
 
     /** Whether {@code type} opens a flow collection, which is a block on one line. */
     public boolean opensFlow(int type) {

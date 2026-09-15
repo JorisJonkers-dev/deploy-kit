@@ -6,4 +6,5 @@ Bundle-Version: 0.1.0.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-21
 Automatic-Module-Name: dev.jorisjonkers.deploykit.emf.parity
 Export-Package: dev.jorisjonkers.deploykit.emf.parity
-Require-Bundle: dev.jorisjonkers.deploykit.emf.cli
+Require-Bundle: dev.jorisjonkers.deploykit.emf.cli,
+ dev.jorisjonkers.deploykit.emf.metamodel
