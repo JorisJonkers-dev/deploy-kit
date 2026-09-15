@@ -114,7 +114,7 @@ contributes routes and exposures to both; it owns neither object.
 | `hpa.yaml` | The registered `kubernetes` adapter can emit one; nothing in layer 1 declares autoscaling |
 | `vso.yaml` for rabbitmq and valkey | Neither declares `secrets` at either level. Their clients hold the credentials, which is what a provider looks like |
 | `configmap.yaml` for rabbitmq and valkey | No `assets`, and their env files are not in this example set ([G-28](#g-28)) |
-| `servicemonitor.yaml` for valkey | No `scrape`. No exporter runs beside it, so there is no metrics surface and none is invented, which is why the Application declares `alertClass: none` rather than a class it could not signal |
+| `servicemonitor.yaml` for valkey | No `scrape`. No exporter runs beside it, so there is no metrics surface and none is invented, which is why the Application declares no `observability` block at all rather than a class it could not signal |
 | a backup job for `valkey-data` | `durability: reconstructible` derives none. **The one absence in this project that is a decision rather than a hole** |
 | `PrometheusRule`, anywhere | Not the model's to render. `alertClass` is published as a resolved fact and the monitoring stack that owns PromQL, severity and receivers reads it from the projection ([chapter 10](../../../10-project-intent.md#observability)) |
 | `Role` / `RoleBinding` | No `rbac` adapter ([G-35](#g-35)) |
