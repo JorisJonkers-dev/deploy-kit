@@ -46,7 +46,8 @@ services:
    "any node". Required because BestEffort was the estate's standing QoS class
    and this field exists to end that.
 3. **Raw quantities**, not named classes. The `xs`..`xl` table is deleted; the
-   Cluster Context no longer carries it.
+   Cluster Context ([0095](../docs/adr/model/0095-platform-intent-is-the-second-authored-document.md))
+   no longer carries it.
 4. **Matched against `allocatable`**, published by the node contract as total
    minus a declared reserve authored in the node file. Never a live read.
    This is **eligibility, not bin-packing**: three `memory: 2Gi` Workloads all
@@ -97,9 +98,9 @@ services:
 ## The 0004 conflict: resolve it, do not hide it
 
 Memory and CPU are contended, and 0004 says a contended value is
-platform-assigned. Raw `memory: 768Mi` in Service Intent puts a contended number
-on the Service side. **Restate the rule**: contention decides **who arbitrates**,
-not **who authors**. The Service states its requirement; the platform decides
+platform-assigned. Raw `memory: 768Mi` in Project Intent puts a contended number
+on the Application side. **Restate the rule**: contention decides **who arbitrates**,
+not **who authors**. The Application states its requirement; the platform decides
 whether it fits and where. Record the accepted cost in Consequences: nothing
 stops every author writing `memory: 8Gi`, and no arbitration exists yet beyond
 the scheduler refusing to place.

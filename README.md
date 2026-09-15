@@ -17,7 +17,7 @@ lands, the **compiler** that turns that model into deployable artifacts.
 | [`CONTEXT.md`](CONTEXT.md) | The vocabulary. One term, one meaning; also the naming authority for code. |
 | [`docs/architecture.md`](docs/architecture.md) | Normative for code structure, the way `spec/v1` is normative for the model. |
 | [`docs/adr/`](docs/adr/README.md) | The decision surface, one directory per decision domain. Machine-checked. |
-| [`docs/adr/model/`](docs/adr/model/) | The v1 model: 8 premises carrying falsifiable claims, 43 decisions resting on them. |
+| [`docs/adr/model/`](docs/adr/model/) | The v1 model: premises carrying falsifiable claims, decisions resting on them. The register counts both. |
 | [`docs/adr/architecture/`](docs/adr/architecture/README.md) | The compiler's own structure. Pointers resolve against `docs/architecture.md`, not `spec/v1`. |
 | [`docs/adr/deferred/`](docs/adr/deferred/README.md) | Delivery and co-testing decisions, defined separately from the model. Direction work, not v1. |
 | [`spec/v1/`](spec/v1/00-overview.md) | The normative specification. Chapters 00–60, including the two authored documents: Project Intent (10) and Platform Intent (14). |
@@ -72,7 +72,7 @@ whatever delivery mechanism is eventually chosen:
 
 | Demand | Decided in |
 | --- | --- |
-| Release Unit atomicity: no member switches until every member is healthy | [0060](docs/adr/model/0060-release-unit.md) |
+| Release Unit atomicity: no member switches until every member is healthy | [0060](docs/adr/model/0060-release-unit.md), superseded by [0062](docs/adr/model/0062-application-is-the-release-unit.md) |
 | Destructive operations gated by Durability Class | [0015](docs/adr/model/0015-durability-class-per-volume.md) |
 | Rendering only from pinned, digested inputs | [0006](docs/adr/model/0006-pinned-inputs.md), [0034](docs/adr/model/0034-cluster-state-pinned-input.md) |
 
@@ -91,7 +91,7 @@ npm run verify      # lint, format, typecheck, ADR contract, tests + coverage
 `npm run lint:adrs` alone runs the decision-record contract, and `npm test`
 runs the suite without enforcing coverage. `npm run test:coverage` (part of
 `npm run verify`) enforces the ratchet in `vitest.config.ts`: statements
-99%, branches 96.04%, functions 100%, lines 98.92%.
+99.03%, branches 96.09%, functions 100%, lines 98.95%.
 
 ## Conventions
 

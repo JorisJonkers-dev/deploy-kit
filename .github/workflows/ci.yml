@@ -154,6 +154,14 @@
       - 'name': 'Docs contract'
         'run': 'npm run lint:docs'
 
+      # A citation to a decision record marked superseded, unless its
+      # successor is linked in the same sentence; a term the model retired
+      # still read as current outside a quotation; a stated count that no
+      # longer matches the collection it counts. See
+      # docs/adr/architecture/0104-every-enforced-rule-has-an-id-a-row-and-a-fixture.md.
+      - 'name': 'Meaning contract'
+        'run': 'npm run lint:meaning'
+
   'tests':
     'name': 'Tests'
     'runs-on': 'ubuntu-latest'

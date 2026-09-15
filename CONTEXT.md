@@ -214,7 +214,8 @@ never declared ([0032](docs/adr/model/0032-reconcile-unit-derived.md)).
 
 **Release Unit**: the set that switches together: no member's new version
 receives traffic until every member's new version is healthy
-([0060](docs/adr/model/0060-release-unit.md)).
+([0060](docs/adr/model/0060-release-unit.md), superseded by
+[0062](docs/adr/model/0062-application-is-the-release-unit.md)).
 
 **`renderHash`**: the hash identifying a render. A function of the recorded
 input digests alone, so if it changes at least one input changed.

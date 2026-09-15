@@ -312,7 +312,9 @@ like everything else ([0096](../../docs/adr/model/0096-the-foundation-is-declare
 and the CRDs among them are the bootstrap set
 ([chapter 14](14-platform-intent.md#the-bootstrap-set)).
 [0013](../../docs/adr/model/0013-blueprint-packs-pinned-checkout.md), which
-decided how packs arrive, is superseded: nothing arrives that way. The
+decided how packs arrive, is superseded by
+[0096](../../docs/adr/model/0096-the-foundation-is-declared.md): nothing
+arrives that way. The
 `flux-packs` and `flux-source` adapters, and the `--blueprints-root` and
 `--blueprints-version` inputs they needed, do not exist.
 

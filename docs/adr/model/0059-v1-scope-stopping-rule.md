@@ -45,14 +45,16 @@ estate deploys, and how dependency-on-other-units-for-testing gates a deploy,
 are defined separately from the model.** The partition is now structural, not
 enumerated: every ADR in `docs/adr/` is v1 model scope (the eight premises
 (0001–0007, 0009) and the decisions 0010–0040, 0052–0057, 0059 and
-[0060](0060-release-unit.md)) and every ADR in
+[0060](0060-release-unit.md), superseded by
+[0062](0062-application-is-the-release-unit.md)) and every ADR in
 [deferred/](../deferred/README.md) (0008, 0041–0051, 0058) is out of v1,
 parked as direction work for the separate delivery-and-testing definition. A
 future decision moves a file across that boundary or it does not move at all.
 
 The model makes exactly three demands on whatever delivery is eventually
 defined, and they are model decisions, not delivery ones: all-or-nothing
-Release Unit cutover ([0060](0060-release-unit.md)), destructive operations
+Release Unit cutover ([0060](0060-release-unit.md), superseded by
+[0062](0062-application-is-the-release-unit.md)), destructive operations
 gated by Durability Class ([0015](0015-durability-class-per-volume.md)), and
 rendering only from pinned, digested inputs ([0006](0006-pinned-inputs.md)).
 Anything else the delivery definition chooses (push or pull, who applies,
