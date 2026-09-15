@@ -46,19 +46,6 @@ export const RETIRED: Readonly<Record<string, string>> = {
 
 export const PENDING: readonly Pending[] = [
   {
-    ticket: "#38",
-    reason:
-      "a rule over one Project Intent document, registered with the metamodel",
-    codes: [
-      "E_DURABILITY_WITHOUT_ENGINE",
-      "E_ENGINE_WITHOUT_DURABILITY",
-      "E_ENV_CANNOT_RELOAD",
-      "E_ILLEGAL_DELIVERY_FOR_ACCESS",
-      "E_NON_KV_DELIVERY",
-      "E_DUPLICATE_ROUTE_MATCH",
-    ],
-  },
-  {
     ticket: "#39",
     reason: "a reference resolved by name, which needs the linking step",
     codes: ["E_UNKNOWN_SURFACE"],

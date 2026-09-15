@@ -1,0 +1,37 @@
+# REFUSED: E_ILLEGAL_DELIVERY_FOR_ACCESS
+#
+# `custody` creates and deletes secrets under a prefix at runtime, so there is
+# nothing to project when the render runs. Asking for it as a file asks the
+# renderer to sync paths that do not exist yet
+# (spec/v1/10-project-intent.md #which-tier-may-use-which-delivery).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: illegal-delivery-for-access
+    processes:
+      - name: illegal-delivery-for-access-api
+        lifecycle: application
+        image: illegal-delivery-for-access-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: rolling
+        secrets:
+          - path: secret/data/refusals/custody
+            keys: [token]
+            access: custody
+            delivery: file
+            mountAt: /run/secrets/token
+            fileMode: "0400"
+            rotation: { tolerates: restart }

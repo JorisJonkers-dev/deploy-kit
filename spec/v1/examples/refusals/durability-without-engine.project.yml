@@ -1,0 +1,34 @@
+# REFUSED: E_DURABILITY_WITHOUT_ENGINE
+#
+# The volume asks for a backup, and the backup method comes from the Process's
+# `engine`, which is absent. The platform would have to guess how to take the
+# backup, and a guessed backup is the kind nobody finds out about until a
+# restore (spec/v1/10-project-intent.md #process).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: durability-without-engine
+    processes:
+      - name: durability-without-engine-store
+        lifecycle: application
+        image: durability-without-engine-store
+        runtime: static
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: recreate
+        volumes:
+          - claim: durability-without-engine-data
+            mountAt: /data
+            size: 1Gi
+            durability: irreplaceable

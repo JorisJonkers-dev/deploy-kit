@@ -26,7 +26,7 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Observability">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="alertClass" lowerBound="1" eType="#//AlertClass"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="scrape" lowerBound="1" eType="#//Scrape" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="scrape" eType="#//Scrape" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Scrape">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="process" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -166,10 +166,14 @@
     <eLiterals name="none" value="4" literal="none"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Engine">
-    <eLiterals name="postgres" literal="postgres"/>
-    <eLiterals name="rabbitmq" value="1" literal="rabbitmq"/>
-    <eLiterals name="valkey" value="2" literal="valkey"/>
-    <eLiterals name="files" value="3" literal="files"/>
+    <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+      <details key="absent" value="absent"/>
+    </eAnnotations>
+    <eLiterals name="absent" literal=""/>
+    <eLiterals name="postgres" value="1" literal="postgres"/>
+    <eLiterals name="rabbitmq" value="2" literal="rabbitmq"/>
+    <eLiterals name="valkey" value="3" literal="valkey"/>
+    <eLiterals name="files" value="4" literal="files"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Cutover">
     <eLiterals name="rolling" literal="rolling"/>
@@ -231,7 +235,7 @@
   <eClassifiers xsi:type="ecore:EEnum" name="Delivery">
     <eLiterals name="env" literal="env"/>
     <eLiterals name="file" value="1" literal="file"/>
-    <eLiterals name="self" value="2" literal="self"/>
+    <eLiterals name="selfDelivery" value="2" literal="self"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Tolerance">
     <eLiterals name="restart" literal="restart"/>

@@ -26,7 +26,7 @@ Application returns Application:
 
 Observability returns Observability:
 	(('alertClass' ':' alertClass=AlertClass)
-	& ('scrape' ':' BEGIN scrape=Scrape END));
+	& ('scrape' ':' BEGIN scrape=Scrape END)?);
 
 Scrape returns Scrape:
 	(('process' ':' process=Text)
@@ -241,7 +241,7 @@ enum TransitOp returns TransitOp:
 	sign='sign' | verify='verify' | encrypt='encrypt' | decrypt='decrypt' | rotate='rotate';
 
 enum Delivery returns Delivery:
-	env='env' | file='file' | self='self';
+	env='env' | file='file' | selfDelivery='self';
 
 enum Tolerance returns Tolerance:
 	restart='restart' | reload='reload';
