@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.2.0...v0.3.0) (2026-09-15)
+
+
+### Features
+
+* **ci:** comment each pull request's shape and publish a release candidate ([#116](https://github.com/JorisJonkers-dev/deploy-kit/issues/116)) ([e481158](https://github.com/JorisJonkers-dev/deploy-kit/commit/e4811582b1fe1adab40dc5bbed934f87a2e81075))
+* link a route's and a scrape's names to the Process and surface they mean ([#118](https://github.com/JorisJonkers-dev/deploy-kit/issues/118)) ([088c931](https://github.com/JorisJonkers-dev/deploy-kit/commit/088c9311a16c8a647843c8e28c40e2a95ef95c68))
+* parse the minimal project intent in both implementations and match its oracle ([#112](https://github.com/JorisJonkers-dev/deploy-kit/issues/112)) ([aa8947b](https://github.com/JorisJonkers-dev/deploy-kit/commit/aa8947b25f8cd7f2b1ca27f9beb1baf338f81bf8))
+* read the Platform document and refuse what it and the project files break together ([#120](https://github.com/JorisJonkers-dev/deploy-kit/issues/120)) ([cd87bbc](https://github.com/JorisJonkers-dev/deploy-kit/commit/cd87bbc67d1fab7e6ad1ec3726b97da1c7f67154)), closes [#41](https://github.com/JorisJonkers-dev/deploy-kit/issues/41)
+* refuse a broken document with the code and pointer both implementations agree on ([#114](https://github.com/JorisJonkers-dev/deploy-kit/issues/114)) ([06257dc](https://github.com/JorisJonkers-dev/deploy-kit/commit/06257dccdf2b5ee6284977ebd119e1a423509de5))
+* run the secret scan locally, not only in CI ([#74](https://github.com/JorisJonkers-dev/deploy-kit/issues/74)) ([fcb4d4a](https://github.com/JorisJonkers-dev/deploy-kit/commit/fcb4d4a1a1633c67907b5750cc8d11dac7dc2744))
+* widen the Project Intent metamodel to every worked example, with its descriptor and JSON Schema ([#113](https://github.com/JorisJonkers-dev/deploy-kit/issues/113)) ([663beb8](https://github.com/JorisJonkers-dev/deploy-kit/commit/663beb89798f0a4fe2e4b6996153a3556c7e85e9))
+
+
+### Bug Fixes
+
+* restore the external names the hierarchy rename rewrote ([#107](https://github.com/JorisJonkers-dev/deploy-kit/issues/107)) ([99751d5](https://github.com/JorisJonkers-dev/deploy-kit/commit/99751d5ee223a06aadda123ef45de9846605533e))
+
 ## [0.2.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.1.0...v0.2.0) (2026-09-14)
 
 
