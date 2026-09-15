@@ -75,7 +75,7 @@ beside it, none of them gating:
 | pr-title | every pull request | Conventional Commits and attribution, described above |
 | repository-hygiene | every pull request | the estate's shared hygiene guard |
 | add-to-project | an issue or pull request opening | files it onto the project board |
-| claim-issue | a pull request opening, updating, or closing | claims or releases the issue it names, by label only (see AGENTS.md's Claiming a ticket section) |
+| claim-issue | a pull request opening, editing, or closing | claims (or, on close, releases) the issue a closing keyword or the branch name names, by label only, never releasing a parent (see AGENTS.md's Claiming a ticket section) |
 | release | a push to `main` | release-please, and publishing the npm package once a release is tagged |
 
 ## Release candidates and releasing

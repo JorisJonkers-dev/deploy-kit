@@ -49,5 +49,7 @@ This repository's own claim procedure sits in
 `status: in-progress` on, `status: ready-for-agent` off, on the issue and its
 parent, before the first edit, and moves it back when the work lands or is
 abandoned. `.github/workflows/claim-issue.yml` does the same for a pull
-request that names an issue an agent forgot to claim by hand, using labels
-only: it cannot set the project board's own field.
+request that closes, fixes or resolves an issue an agent forgot to claim by
+hand, or whose branch name embeds one, using labels only: it cannot set the
+project board's own field, and on release it only ever releases the issue
+itself, never the parent, which stays a human's call.

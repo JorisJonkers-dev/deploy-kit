@@ -24,20 +24,20 @@ export default defineConfig({
       // set from what the suite reaches, and only ever raised.
       //
       // Measured 2026-09-15, after AGENTS.md's script-list gate
-      // (scripts/lint-agents.ts) landed on top of the linking step (#39)
+      // (scripts/lint-agents.ts) and the claim-issue candidate extraction
+      // (scripts/claim-issue.ts) landed on top of the linking step (#39)
       // and the hierarchy-rename cleanup (#119) (issue #32). Two runs of
-      // one tree, identical both times: statements 1501/1515, branches
-      // 873/907, functions 244/244, lines 1382/1396. Unlike every other
-      // gate script, this one's own entrypoint guard is covered too: a
-      // same-process module reload drives it, the way
-      // test/package-contents-contract.test.ts and
-      // test/secret-scan-contract.test.ts already do for theirs, so the new
-      // gate leaves nothing on the table for the ratchet to absorb.
+      // one tree, identical both times: statements 1537/1551, branches
+      // 891/925, functions 254/254, lines 1412/1426. Both new gate scripts
+      // cover their own entrypoint guard too: a same-process module reload
+      // drives it, the way test/package-contents-contract.test.ts and
+      // test/secret-scan-contract.test.ts already do for theirs, so neither
+      // leaves anything on the table for the ratchet to absorb.
       thresholds: {
-        statements: 99.07,
-        branches: 96.25,
+        statements: 99.09,
+        branches: 96.32,
         functions: 100,
-        lines: 98.99,
+        lines: 99.01,
       },
     },
   },

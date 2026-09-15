@@ -1,9 +1,19 @@
-# Claims the issue a pull request names (by title, body, or branch name) when
-# it opens, and releases it when the pull request closes, so a claim an agent
-# forgot to make by hand (AGENTS.md#claiming-a-ticket) corrects itself rather
-# than leaving the board showing work in progress that nobody holds. Per
-# issue #32's own acceptance criterion: "the workflow does it for an agent
-# that forgot."
+# Claims the issue a pull request's title or body closes, fixes or resolves
+# (never a bare mention: "follows #115", "blocked by #39" and "unlike #41" do
+# not claim #115, #39 or #41), or that its branch name's leading number
+# names, when the pull request opens; releases the same candidates, and only
+# those candidates, when it closes. Corrects a claim an agent forgot to make
+# by hand (AGENTS.md#claiming-a-ticket). Per issue #32's own acceptance
+# criterion: "the workflow does it for an agent that forgot."
+#
+# scripts/claim-issue.ts computes the candidate list (unit-tested with no
+# `gh` call at all, in test/claim-issue.test.ts); this workflow is the one
+# thin layer that calls `gh` with that list, in bash below.
+#
+# Not `synchronize`: a push to an already-open pull request re-runs the same
+# extraction over the same title, body and branch name, so it can only
+# reclaim what is already claimed or re-release what is already released.
+# Nothing changes, so it is not a trigger.
 #
 # Non-gating by design: this job carries no bearing on Pipeline Complete
 # (ci.yml). Only a gate belongs in that job's `needs` list, per
@@ -11,8 +21,21 @@
 # sync is not a gate.
 #
 # What this can do: add and remove the two labels the claim procedure names,
-# on the issue a pull request references and on its parent, using the
-# `issues: write` permission below.
+# on the issue a pull request references and, on claim only, its parent,
+# using the `issues: write` permission below. `gh issue view --json parent`
+# is a real, documented field (added in gh CLI 2.94.0, per its 2026-06-10
+# changelog entry; the ubuntu-latest runner image at the time this workflow
+# was written ships 2.100.0), not an assumption; a `gh issue view` failure
+# for any reason is logged with its real error text rather than silently
+# read as "not an issue".
+#
+# A release never touches a claimed issue's parent. Closing one child pull
+# request is not evidence the whole epic is done, only that one child is;
+# whether the parent should still read in-progress is a human's call, or a
+# later workflow's, checking whether any other child is still claimed. This
+# workflow only ever adds `status: in-progress` to a parent, on claim, and
+# only ever removes it from the issue a pull request itself names, on
+# release.
 #
 # What this cannot do: touch the project board's own Status field. Setting a
 # ProjectV2 item field needs the `project` scope, which the default
@@ -32,7 +55,6 @@
       - 'opened'
       - 'reopened'
       - 'edited'
-      - 'synchronize'
       - 'closed'
 
 'permissions':
@@ -54,6 +76,9 @@
       'issues': 'write'
       'pull-requests': 'read'
     'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+      - 'uses': './.github/actions/setup'
+
       # Untrusted pull request fields (title, body, branch name) arrive only
       # as environment variables here, read by the shell as "${VAR}"; none is
       # ever interpolated into the run: string itself, which is what keeps a
@@ -70,29 +95,19 @@
         'run': |
           set -euo pipefail
 
-          # Candidate issue numbers: every #NNN in the title or body, plus
-          # the leading number a branch name embeds (docs/32-agents-md -> 32,
-          # fix/24-pr-validation -> 24). A false positive (a pull request
-          # number, or a branch with no leading number) is filtered a line
-          # down, when `gh issue view` reports it is not an issue at all.
-          numbers=$(
-            {
-              printf '%s\n%s\n' "${PR_TITLE}" "${PR_BODY}" | grep -oE '#[0-9]+' | tr -d '#'
-              printf '%s\n' "${PR_HEAD_REF}" | grep -oE '(^|/)[0-9]+' | grep -oE '[0-9]+'
-            } | sort -un
-          )
+          numbers=$(node scripts/claim-issue.ts \
+            --title "${PR_TITLE}" --body "${PR_BODY}" --branch "${PR_HEAD_REF}")
 
           if [ -z "${numbers}" ]; then
-            echo "No issue number found in the title, body or branch name; nothing to claim."
+            echo "No issue is closed, fixed or resolved by this pull request, and its branch names none either; nothing to claim."
             exit 0
           fi
 
-          claim_or_release() {
-            local number="$1"
-            local json
+          claim() {
+            local number="$1" json
 
-            if ! json=$(gh issue view "${number}" --repo "${REPO}" --json labels,parent 2>/dev/null); then
-              echo "#${number} is not an issue in ${REPO} (probably a pull request number); skipping."
+            if ! json=$(gh issue view "${number}" --repo "${REPO}" --json labels,parent 2>&1); then
+              echo "::warning::#${number}: gh issue view failed: ${json}"
               return 0
             fi
 
@@ -101,34 +116,59 @@
             has_ready=$(jq -r '[.labels[].name] | any(. == "status: ready-for-agent")' <<<"${json}")
             parent=$(jq -r '.parent.number // empty' <<<"${json}")
 
-            if [ "${PR_ACTION}" = "closed" ]; then
-              if [ "${has_in_progress}" = "true" ]; then
-                gh issue edit "${number}" --repo "${REPO}" --remove-label 'status: in-progress'
-                echo "#${number}: released (status: in-progress removed)."
-              else
-                echo "#${number}: already released."
-              fi
+            if [ "${has_in_progress}" != "true" ]; then
+              gh issue edit "${number}" --repo "${REPO}" --add-label 'status: in-progress'
+              echo "#${number}: claimed (status: in-progress added)."
             else
-              if [ "${has_in_progress}" != "true" ]; then
-                gh issue edit "${number}" --repo "${REPO}" --add-label 'status: in-progress'
-                echo "#${number}: claimed (status: in-progress added)."
-              else
-                echo "#${number}: already claimed."
-              fi
-              if [ "${has_ready}" = "true" ]; then
-                gh issue edit "${number}" --repo "${REPO}" --remove-label 'status: ready-for-agent'
-                echo "#${number}: status: ready-for-agent removed."
-              fi
+              echo "#${number}: already claimed."
+            fi
+            if [ "${has_ready}" = "true" ]; then
+              gh issue edit "${number}" --repo "${REPO}" --remove-label 'status: ready-for-agent'
+              echo "#${number}: status: ready-for-agent removed."
             fi
 
             if [ -n "${parent}" ]; then
-              claim_or_release "${parent}"
+              local parent_json
+              if parent_json=$(gh issue view "${parent}" --repo "${REPO}" --json labels 2>&1); then
+                local parent_in_progress
+                parent_in_progress=$(jq -r '[.labels[].name] | any(. == "status: in-progress")' <<<"${parent_json}")
+                if [ "${parent_in_progress}" != "true" ]; then
+                  gh issue edit "${parent}" --repo "${REPO}" --add-label 'status: in-progress'
+                  echo "#${number}: claimed its parent #${parent} too (status: in-progress added)."
+                fi
+              else
+                echo "::warning::#${number}: gh issue view of parent #${parent} failed: ${parent_json}"
+              fi
+            fi
+          }
+
+          # Never claims or releases a parent here: only the candidates
+          # themselves. See this file's header comment.
+          release() {
+            local number="$1" json
+
+            if ! json=$(gh issue view "${number}" --repo "${REPO}" --json labels 2>&1); then
+              echo "::warning::#${number}: gh issue view failed: ${json}"
+              return 0
+            fi
+
+            local has_in_progress
+            has_in_progress=$(jq -r '[.labels[].name] | any(. == "status: in-progress")' <<<"${json}")
+            if [ "${has_in_progress}" = "true" ]; then
+              gh issue edit "${number}" --repo "${REPO}" --remove-label 'status: in-progress'
+              echo "#${number}: released (status: in-progress removed)."
+            else
+              echo "#${number}: already released."
             fi
           }
 
           while IFS= read -r number; do
             [ -n "${number}" ] || continue
-            claim_or_release "${number}"
+            if [ "${PR_ACTION}" = "closed" ]; then
+              release "${number}"
+            else
+              claim "${number}"
+            fi
           done <<<"${numbers}"
 
           echo "::notice::Labels only. The project board's Status field needs a token scope GITHUB_TOKEN does not have; update it by hand, or see add-to-project.yml for the one app token this repository trusts with project writes."

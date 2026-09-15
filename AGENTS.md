@@ -162,13 +162,24 @@ under pressure.
    shows work in progress that nobody holds.
 
 This is the procedure; it is not the guarantee. `.github/workflows/claim-issue.yml`
-claims (and releases) the issue a pull request names by its title, body or
-branch name, so a claim an agent forgot corrects itself. That workflow can
-only add and remove labels: setting the project board's own field needs a
-token scope the default `GITHUB_TOKEN` does not carry, so a board left out of
-step with its labels needs a human or an app-token workflow to fix, and the
-claim workflow says so in its own log rather than claiming a fix it cannot
-make. It is non-gating: it never joins `Pipeline Complete`.
+claims (and releases) the issue a pull request names, so a claim an agent
+forgot corrects itself. It reads a claim only where GitHub itself would read
+one: a closing keyword (`closes`, `fixes`, `resolves`, and their
+inflections) immediately naming an issue, or the branch name's leading
+number. A number merely mentioned ("follows #115", "blocked by #39") is
+never a claim; reading it as one is the exact shape of a real incident. On
+claim, the parent is claimed too, if it has one and is not already claimed.
+**On release, only the issue the pull request itself names is released,
+never its parent**: one child pull request closing is not evidence the
+whole epic is done, so the parent's status is a human's call, or a later
+workflow's that checks every child.
+
+That workflow can only add and remove labels: setting the project board's
+own field needs a token scope the default `GITHUB_TOKEN` does not carry, so
+a board left out of step with its labels needs a human or an app-token
+workflow to fix, and the claim workflow says so in its own log rather than
+claiming a fix it cannot make. It is non-gating: it never joins
+`Pipeline Complete`.
 
 ## Repository skills
 
