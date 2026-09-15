@@ -25,13 +25,18 @@ export default defineConfig({
       //
       // Measured 2026-09-15, after AGENTS.md's script-list gate
       // (scripts/lint-agents.ts) landed on top of the linking step (#39,
-      // issue #32). Recomputed against that base; see the measurement this
-      // replaces in git history for the number before either landed.
+      // issue #32). Two runs of one tree, identical both times: statements
+      // 1500/1515, branches 872/907, functions 244/244, lines 1381/1396.
+      // The new gate's own file sits at 96%/94.73%/100%/95.83%, in the same
+      // range as several already-landed gates (scripts/lint-boundaries.ts,
+      // scripts/lint-manifests.ts); its one uncovered line is the same
+      // one-line command guard at the bottom of every gate that a
+      // same-process test cannot exercise.
       thresholds: {
-        statements: 99.06,
-        branches: 96.17,
+        statements: 99,
+        branches: 96.14,
         functions: 100,
-        lines: 98.97,
+        lines: 98.92,
       },
     },
   },
