@@ -1,5 +1,6 @@
 package dev.jorisjonkers.deploykit.emf.cli;
 
+import dev.jorisjonkers.deploykit.emf.syntax.values.ProjectIntentValueConverters;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -10,6 +11,7 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
 
 /**
  * Reads a parsed model as the JSON value the parity contract compares: every feature named as the
@@ -45,13 +47,21 @@ public final class IntentJson {
     private static Object value(EObject owner, EStructuralFeature feature) {
         Object value = owner.eGet(feature);
         if (feature instanceof EReference reference && !reference.isContainment()) {
-            // A reference is written as the name that linked it: the identifier of what it points at.
-            return EcoreUtil.getID((EObject) value);
+            // A reference is written as the name that linked it: the identifier of what it points at, or,
+            // where it points into a document that was not read with this one, the name as written.
+            EObject target = (EObject) value;
+            return target.eIsProxy() ? written(owner, reference) : EcoreUtil.getID(target);
         }
         if (feature.isMany()) {
             return many(feature, (List<?>) value);
         }
         return single(value);
+    }
+
+    /** The name a document wrote for {@code reference}, without the quotes that are only syntax. */
+    private static String written(EObject owner, EReference reference) {
+        return ProjectIntentValueConverters.unquote(NodeModelUtils.getTokenText(
+                NodeModelUtils.findNodesForFeature(owner, reference).get(0)));
     }
 
     private static Object many(EStructuralFeature feature, List<?> values) {

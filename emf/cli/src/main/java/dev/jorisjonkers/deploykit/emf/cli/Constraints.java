@@ -31,30 +31,34 @@ public final class Constraints {
 
     private Constraints() {}
 
-    /** Evaluates {@code document} against the constraints at {@code constraints}, in document order. */
+    /**
+     * Evaluates {@code document} against the constraints at {@code constraints}, in document order. An
+     * invariant may read the other documents of the resource set the document was read into.
+     */
     public static List<dev.jorisjonkers.deploykit.emf.cli.Diagnostic> check(EObject document, URI constraints) {
         CompleteOCLStandaloneSetup.doSetup();
         EPackage metamodel = document.eClass().getEPackage();
         EValidator previous = EValidator.Registry.INSTANCE.getEValidator(metamodel);
         EValidator.Registry.INSTANCE.put(metamodel, new CompleteOCLEObjectValidator(metamodel, constraints));
         try {
-            return refusals(Diagnostician.INSTANCE.validate(document));
+            // Validation walks the document's own containment, so every refusal points into its file.
+            return refusals(document.eResource().getURI().lastSegment(), Diagnostician.INSTANCE.validate(document));
         } finally {
             EValidator.Registry.INSTANCE.put(metamodel, previous);
         }
     }
 
-    private static List<dev.jorisjonkers.deploykit.emf.cli.Diagnostic> refusals(Diagnostic diagnostic) {
+    private static List<dev.jorisjonkers.deploykit.emf.cli.Diagnostic> refusals(String file, Diagnostic diagnostic) {
         List<dev.jorisjonkers.deploykit.emf.cli.Diagnostic> refusals = new ArrayList<>();
         Matcher violated = VIOLATED.matcher(diagnostic.getMessage());
         if (violated.find()) {
             // A violation carries the object it refused as its first datum.
             EObject refused = (EObject) diagnostic.getData().get(0);
             refusals.add(new dev.jorisjonkers.deploykit.emf.cli.Diagnostic(
-                    violated.group(1), Pointer.of(refused), diagnostic.getMessage()));
+                    violated.group(1), file, Pointer.of(refused), diagnostic.getMessage()));
         }
         for (Diagnostic child : diagnostic.getChildren()) {
-            refusals.addAll(refusals(child));
+            refusals.addAll(refusals(file, child));
         }
         return refusals;
     }

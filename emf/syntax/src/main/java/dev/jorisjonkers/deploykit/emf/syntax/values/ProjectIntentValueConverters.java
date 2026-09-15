@@ -43,7 +43,7 @@ public class ProjectIntentValueConverters extends DefaultTerminalConverters {
     }
 
     /** The text of a quoted scalar without its quotes; a plain scalar unchanged. */
-    static String unquote(String text) {
+    public static String unquote(String text) {
         boolean quoted = text.length() > 1
                 && (text.charAt(0) == '"' || text.charAt(0) == '\'')
                 && text.charAt(text.length() - 1) == text.charAt(0);

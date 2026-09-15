@@ -28,18 +28,18 @@ function capture(text: string, pattern: RegExp, what: string): string {
 
 type Pair = readonly [string, string];
 
-/** The `classDiagram` block of chapter 10: classes, their attributes, its edges. */
-function mermaidModel(): {
+/** The `classDiagram` block of a chapter: classes, their attributes, its edges. */
+function mermaidModel(chapter = "10-project-intent"): {
   classes: Record<string, string[]>;
   comps: Pair[];
   deps: Pair[];
   assocs: Pair[];
 } {
-  const md = read(join(spec, "10-project-intent.md"));
+  const md = read(join(spec, `${chapter}.md`));
   const body = capture(
     md,
     /```mermaid\nclassDiagram\n([\s\S]*?)\n```/,
-    "the class diagram in chapter 10",
+    `the class diagram in ${chapter}`,
   );
   const classes: Record<string, string[]> = {};
   for (const m of body.matchAll(/ {4}class (\w+) \{([\s\S]*?)\n {4}\}/g)) {
@@ -122,6 +122,15 @@ test("only the relations that span layers are left undrawn", () => {
     "a reference the model resolves is drawn as an association",
   ).toStrictEqual([["Route", "Surface"]]);
   expect(edges).toBe(comps.length + deps.length + assocs.length - undrawn);
+});
+
+test("the Platform Intent drawing is exactly its mermaid, every relation drawn", () => {
+  const { classes, comps, deps, assocs } = mermaidModel("14-platform-intent");
+  const { boxes, edges } = svgModel("14-platform-intent-model.drawio.svg");
+  expect(Object.keys(boxes).sort()).toStrictEqual(Object.keys(classes).sort());
+  for (const [name, rows] of Object.entries(classes))
+    expect(boxes[name], `${name}: attributes differ`).toStrictEqual(rows);
+  expect(edges).toBe(comps.length + deps.length + assocs.length);
 });
 
 test("no drawing carries an enumeration box", () => {

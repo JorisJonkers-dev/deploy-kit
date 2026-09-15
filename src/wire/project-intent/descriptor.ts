@@ -4,6 +4,7 @@
 // through Zod's own JSON Schema, and normalised into the contract's shape,
 // which is neither format's.
 import { z } from "zod";
+import { platformIntent } from "../platform-intent/schema.ts";
 import { projectIntent } from "./schema.ts";
 
 export interface DescriptorFeature {
@@ -102,10 +103,17 @@ function feature(
   };
 }
 
-/** The descriptor of the Project Intent metamodel, as the wire schemas declare it. */
+/** The descriptor of the source metamodel, Project Intent and Platform Intent, as the wire schemas declare it. */
 export function descriptor(): Descriptor {
-  const schema = z.toJSONSchema(projectIntent, { io: "input" }) as Node;
-  const definitions = schema["$defs"] as Record<string, Node>;
+  // Both authored documents make one source metamodel: a vocabulary both use,
+  // such as Audience, is one definition under one name.
+  const definitions = Object.assign(
+    {},
+    ...[projectIntent, platformIntent].map(
+      (document) =>
+        (z.toJSONSchema(document, { io: "input" }) as Node)["$defs"],
+    ),
+  ) as Record<string, Node>;
   const classes: DescriptorClass[] = [];
   const vocabularies: DescriptorVocabulary[] = [];
 

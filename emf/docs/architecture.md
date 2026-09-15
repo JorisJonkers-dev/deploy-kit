@@ -136,14 +136,27 @@ offending object, computed from its containment chain: each containing feature's
 name, and the index for a many-valued feature. Validation reports every failed
 invariant, never only the first.
 
-Two consequences of evaluating OCL over Ecore, both recorded here because they
+The constraints a Platform document and the project files beside it answer
+together are invariants in the same file. Eclipse OCL binds one Complete OCL
+document to a package for the thread that first loads it, so a second file for
+the same package is never evaluated. Such an invariant reads the other
+documents through `allInstances()`, whose extent is the resource set a document
+was read into, and holds trivially over a document read alone. The pipeline
+reads each file of a set alone first, and reads the set together only once
+every file holds, so the second reading refuses exactly what the documents
+break together. A diagnostic names the file its path points into.
+
+Three consequences of evaluating OCL over Ecore, all recorded here because they
 shaped the metamodel. The constraints import the metamodel by its `nsURI`, not
 by file, so they bind to the classes the parser instantiates rather than to a
 second copy. And EMF reads an unset enumeration as its first literal, so a
 vocabulary an invariant tests for absence carries a literal with no spelling:
-`Engine::absent` is what an unset `engine` reads as, a document cannot write it,
-and the descriptor leaves it out because a literal the language cannot write is
-not part of the vocabulary.
+`Engine::absent` is what an unset `engine` reads as, and `Audience::absent`
+what a route's unset `audience` does; a document cannot write either, and the
+descriptor leaves them out because a literal the language cannot write is not
+part of the vocabulary. And the Platform classes live in the Project Intent
+package, because a tier's proxy is an Application a project file declares, and
+one package is what lets that be an Ecore reference.
 
 The constraint ledger's OCL column lives in `emf/`: a table mapping each
 `CONS-NNN` id to the OCL invariant that enforces it. `parity/` fails when a
@@ -161,18 +174,30 @@ The grammar imports the hand-written source metamodel, so the parser produces
 instances of the graded metamodel directly. A union in the model is a union in
 the grammar: a probe is HTTP or TCP, a probe policy is a block or the word
 `none`, and a grant is keyed by its engine, which a grant that has one writes
-first. The language binds the `.yml` extension, because EMF resolves a resource
-factory by the last extension alone; which document a file holds is the file
-name's to say, and that lands with the Platform document. There is no inferred syntax
-metamodel and no mapping step between parsing and validation.
+first. Both languages bind the `.yml` extension, because EMF resolves a resource
+factory by the last extension alone, so which document a file holds is the
+file name's to say: the pipeline creates a `platform.intent.yml` through the
+Platform language's resource factory and a `*.project.yml` through the project
+language's, into one resource set. The Platform grammar inherits the project
+grammar, its terminals, block tokens and scalars included, and adds only its
+own rules. There is no inferred syntax metamodel and no mapping step between
+parsing and validation.
+
+A plain scalar holds no colon: the lexer cannot tell `sha256:6f1c` from a key
+without looking past the colon, so a value that carries one, a digest or a URL,
+is quoted in the authored files.
 
 A route's and a scrape's `process` and `surface` are cross-references, linked by
 a scope provider that offers the Processes of the Application holding them and the
 surfaces the linked Process provides. A name that links to nothing becomes the
 specification's code, `E_UNKNOWN_PROCESS` or `E_UNKNOWN_SURFACE`, at the pointer
 of the route or scrape; a surface whose Process did not link is not reported as
-well. A dependency edge's names reach other documents and stay names until the
-composed union links them.
+well. A tier's `traefik` is the one name that reaches another document: it links to
+an Application any project file of the set declares, and one that links to
+nothing is `E_UNKNOWN_TIER_PROXY` at the tier. A Platform document read alone
+leaves it unlinked, and its intent writes the name as authored. A dependency
+edge's names reach other documents and stay names until the composed union
+links them.
 
 Indentation is not the grammar's concern: a token source turns the block
 structure into the synthetic `BEGIN` and `END` tokens the rules read, and folds

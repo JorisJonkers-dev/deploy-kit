@@ -1,8 +1,10 @@
 package dev.jorisjonkers.deploykit.emf.cli;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -54,6 +56,7 @@ class PipelineTest {
         assertThat(parsed.diagnostics())
                 .allSatisfy(diagnostic -> {
                     assertThat(diagnostic.code()).isEqualTo(Diagnostic.SCHEMA);
+                    assertThat(diagnostic.document()).isEqualTo("notes.project.yml");
                     assertThat(diagnostic.path()).isEmpty();
                     assertThat(diagnostic.message()).startsWith("line ");
                 })
@@ -77,9 +80,9 @@ class PipelineTest {
         Parsed parsed = Pipeline.intent(file(directory, routed));
 
         assertThat(parsed.diagnostics())
-                .extracting(Diagnostic::code, Diagnostic::path)
+                .extracting(Diagnostic::code, Diagnostic::document, Diagnostic::path)
                 .containsExactly(org.assertj.core.groups.Tuple.tuple(
-                        "E_UNKNOWN_SURFACE", "/applications/0/exposure/0/routes/0"));
+                        "E_UNKNOWN_SURFACE", "notes.project.yml", "/applications/0/exposure/0/routes/0"));
     }
 
     @Test
@@ -89,5 +92,11 @@ class PipelineTest {
         assertThat(parsed.diagnostics())
                 .extracting(Diagnostic::message)
                 .contains("notes.project.yml holds no document");
+    }
+
+    @Test
+    void aFileThatCannotBeReadIsAnErrorRatherThanARefusal(@TempDir Path directory) {
+        assertThatThrownBy(() -> Pipeline.intent(directory.resolve("missing.project.yml")))
+                .isInstanceOf(UncheckedIOException.class);
     }
 }

@@ -97,7 +97,7 @@ describe("the descriptor", () => {
       name: "AlertClass",
       literals: ["business-hours", "urgent", "page"],
     });
-    expect(descriptor().vocabularies).toHaveLength(17);
+    expect(descriptor().vocabularies).toHaveLength(22);
   });
 });
 

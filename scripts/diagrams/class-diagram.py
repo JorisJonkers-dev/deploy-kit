@@ -33,9 +33,11 @@ Layout rules, in the order they matter:
      unreadable twice.
 
 Usage:
-    python3 scripts/diagrams/class-diagram.py out.drawio
+    python3 scripts/diagrams/class-diagram.py [chapter] out.drawio
     /Applications/draw.io.app/Contents/MacOS/draw.io -x -f svg -e -b 10 \
-        -o spec/v1/diagrams/10-project-intent-model.drawio.svg out.drawio
+        -o spec/v1/diagrams/<chapter>-model.drawio.svg out.drawio
+
+`chapter` is `10-project-intent` (the default) or `14-platform-intent`.
 
 CHILDREN below is the only hand-maintained part: it fixes the tree parent of
 each node and the sibling order. Sibling order is chosen so that cross-links
@@ -44,7 +46,9 @@ without adding it here fails loudly.
 """
 import re, sys, xml.etree.ElementTree as ET
 
-MD = "spec/v1/10-project-intent.md"
+CHAPTER = sys.argv[1] if len(sys.argv) > 2 else "10-project-intent"
+OUT = sys.argv[-1]
+MD = f"spec/v1/{CHAPTER}.md"
 src = open(MD).read()
 body = re.search(r"```mermaid\nclassDiagram\n(.*?)\n```", src, re.S).group(1)
 
@@ -75,7 +79,7 @@ for line in body.split("\n"):
 # The tree. Sibling order puts cross-link partners next to each other:
 # Surface is Process's last child and Route is Exposure's first, so the two
 # `resolves by name` edges and `Route -> Audience` all land between neighbours.
-CHILDREN = {
+TREES = {"10-project-intent": {
     "Project": ["Application"],
     "Application": ["Observability", "Grant", "Process", "Exposure"],
     "Observability": ["Scrape"],
@@ -89,8 +93,24 @@ CHILDREN = {
     "Placement": ["GpuRequest", "DiskRequest"],
     "EnvFile": ["Placeholder"],
     "Exposure": ["Route"],
-}
-placed = {"Project"}
+}, "14-platform-intent": {
+    "Platform": [
+        "PlatformMetadata", "Substrate", "Bootstrap", "Tier", "DurabilityPolicies",
+        "EnginePolicies", "MonitorCadence", "ProbeCadence", "EphemeralPolicy", "Provider",
+    ],
+    "Bootstrap": ["FluxSource", "VaultState"],
+    "DurabilityPolicies": ["DurabilityPolicy"],
+    "DurabilityPolicy": ["OffClusterCopy"],
+    "EnginePolicies": ["EnginePolicy"],
+}}
+NAMES = {"10-project-intent": "Project Intent - the layer-1 model",
+         "14-platform-intent": "Platform Intent - the model"}
+# the layer palette of spec/v1/diagrams/README.md
+FILL, WASH, STROKE = {"10-project-intent": ("#dbeafe", "#f4f8ff", "#1e40af"),
+                      "14-platform-intent": ("#e0e7ff", "#f5f6ff", "#4338ca")}[CHAPTER]
+CHILDREN = TREES[CHAPTER]
+ROOT = next(iter(CHILDREN))
+placed = {ROOT}
 for p, ks in CHILDREN.items():
     for k in ks:
         assert k in nodes, f"unknown node {k}"
@@ -106,7 +126,7 @@ def setdepth(n, d):
     depth[n] = d
     for c in CHILDREN.get(n, []):
         setdepth(c, d + 1)
-setdepth("Project", 0)
+setdepth(ROOT, 0)
 maxd = max(depth.values())
 
 def height(n):
@@ -123,7 +143,7 @@ def layout(n):
     for c in ks:
         layout(c)
     x[n] = (x[ks[0]] + x[ks[-1]]) / 2.0
-layout("Project")
+layout(ROOT)
 
 tree = {(p, k) for p, ks in CHILDREN.items() for k in ks}
 cx = lambda n: x[n] + W / 2.0
@@ -151,10 +171,10 @@ def lane_y(p):
 
 LANE_C = ("swimlane;html=0;childLayout=stackLayout;horizontal=1;startSize=36;horizontalStack=0;"
           "resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;"
-          "fillColor=#dbeafe;swimlaneFillColor=#f4f8ff;strokeColor=#1e40af;strokeWidth=1.5;"
+          f"fillColor={FILL};swimlaneFillColor={WASH};strokeColor={STROKE};strokeWidth=1.5;"
           "fontFamily=Helvetica;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;")
 LANE_E = LANE_C.replace("startSize=36", "startSize=54").replace(
-    "fillColor=#dbeafe;swimlaneFillColor=#f4f8ff;strokeColor=#1e40af",
+    f"fillColor={FILL};swimlaneFillColor={WASH};strokeColor={STROKE}",
     "fillColor=#f5f3ff;swimlaneFillColor=#fdfcff;strokeColor=#6d28d9")
 ATTR = ("text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;"
         "spacingLeft=8;spacingRight=4;overflow=hidden;fontFamily=Helvetica;fontSize=11;")
@@ -305,9 +325,9 @@ for t, (ly, labels) in deep.items():
     ET.SubElement(c, "mxGeometry", {"x": str(int(cx(t) - 130)), "y": str(int(ly + 12)),
                                     "width": "260", "height": "18", "as": "geometry"})
 
-open(sys.argv[1], "w").write(
+open(OUT, "w").write(
     '<mxfile host="Electron" agent="scripts/diagrams/class-diagram.py" version="29.0.3">'
-    f'<diagram name="Project Intent - the layer-1 model" id="0">'
+    f'<diagram name="{NAMES[CHAPTER]}" id="0">'
     f'{ET.tostring(model, encoding="unicode")}</diagram></mxfile>')
 print(f"nodes={len(nodes)} depth={maxd} size={int(cursor[0])}x{int(FLOOR)} "
       f"lanes/row={stack_at} cross={len(cross)} notes="

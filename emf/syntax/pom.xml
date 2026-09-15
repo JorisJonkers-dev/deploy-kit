@@ -32,6 +32,8 @@
               <excludes>
                 <exclude>dev.jorisjonkers.deploykit.emf.syntax.ProjectIntent*</exclude>
                 <exclude>dev.jorisjonkers.deploykit.emf.syntax.AbstractProjectIntent*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.PlatformIntent*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.AbstractPlatformIntent*</exclude>
                 <exclude>dev.jorisjonkers.deploykit.emf.syntax.parser.*</exclude>
                 <exclude>dev.jorisjonkers.deploykit.emf.syntax.parser.antlr.*</exclude>
                 <exclude>dev.jorisjonkers.deploykit.emf.syntax.parser.antlr.internal.*</exclude>
@@ -49,6 +51,8 @@
               <excludes>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/ProjectIntent*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractProjectIntent*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/PlatformIntent*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractPlatformIntent*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/parser/**</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/serializer/**</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/services/**</exclude>
@@ -63,6 +67,8 @@
               <excludes>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/ProjectIntent*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractProjectIntent*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/PlatformIntent*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractPlatformIntent*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/parser/**</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/serializer/**</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/services/**</exclude>
@@ -79,6 +85,7 @@
         <configuration>
           <excludedClasses>
             <param>dev.jorisjonkers.deploykit.emf.syntax.*ProjectIntent*</param>
+            <param>dev.jorisjonkers.deploykit.emf.syntax.*PlatformIntent*</param>
             <param>dev.jorisjonkers.deploykit.emf.syntax.parser.antlr.lexer.*</param>
             <param>dev.jorisjonkers.deploykit.emf.syntax.parser.antlr.internal.*</param>
             <param>dev.jorisjonkers.deploykit.emf.syntax.parser.*</param>

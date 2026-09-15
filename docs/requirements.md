@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **29** rows. The compiler's behaviours join it as they land.
+This ledger holds **31** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -46,9 +46,11 @@ This ledger holds **29** rows. The compiler's behaviours join it as they land.
 | REQ-021 | An authored Project Intent file parses to its committed intent oracle byte for byte, and YAML outside the one-document, anchor-free subset or a field outside the language is refused with a diagnostic rather than guessed at | [test/model/project-intent.test.ts](../test/model/project-intent.test.ts) |
 | REQ-022 | Every module under `src/` is mutation-tested, and a surviving mutant that takes the score below the measured threshold fails the build | [test/mutation-contract.test.ts](../test/mutation-contract.test.ts) |
 | REQ-023 | The Project Intent metamodel's structure is committed as a descriptor both implementations are held to, and the JSON Schema an editor completes a project file against regenerates from the metamodel without a diff | [test/model/descriptor.test.ts](../test/model/descriptor.test.ts) |
-| REQ-024 | A Project Intent document that breaks a model constraint is refused with the code and the JSON Pointer its committed diagnostics oracle names, and every refusal fixture carries one | [test/model/refusals.test.ts](../test/model/refusals.test.ts) |
+| REQ-024 | A Project Intent document, or a set of intent documents read together, that breaks a model constraint is refused with the code, the document and the JSON Pointer its committed diagnostics oracle names, and every refusal fixture carries one | [test/model/refusals.test.ts](../test/model/refusals.test.ts) |
 | REQ-025 | Every file a pull request changes falls into a named shape bucket (production code, tests, specification, decision records, documentation, examples, tooling, CI, generated), and a file no rule claims fails the bucket test rather than silently joining one | [test/change-buckets.test.ts](../test/change-buckets.test.ts) |
 | REQ-026 | A pull request's shape-and-coverage comment is updated in place on a second push, rather than posted again | [test/pr-report.test.ts](../test/pr-report.test.ts) |
 | REQ-027 | A pull request's release candidate version sorts above the current release and below any version release-please could choose next | [test/rc-version.test.ts](../test/rc-version.test.ts) |
 | REQ-028 | A citation to a decision record marked superseded is checked for its successor in the same sentence, a term the model retired is checked outside a quotation, and a stated count is checked against the real collection it claims to count | [test/meaning-contract.test.ts](../test/meaning-contract.test.ts) |
 | REQ-029 | A route's and a scrape's `process` and `surface` link to the Process and surface they name inside their Application, and a name that links to nothing is refused with `E_UNKNOWN_PROCESS` or `E_UNKNOWN_SURFACE` at the pointer of the route or scrape | [test/model/links.test.ts](../test/model/links.test.ts) |
+| REQ-030 | An authored Platform Intent file parses to its committed intent oracle byte for byte, and a tier that carries `authenticated` with no `forwardAuth` endpoint is refused with `E_NO_FORWARD_AUTH_ENDPOINT` at the tier | [test/model/platform-intent.test.ts](../test/model/platform-intent.test.ts) |
+| REQ-031 | A Platform document and the Project documents read with it are checked together, and a tier proxy, audience, engine, durability class or at-rest secret delivery the Platform cannot satisfy is refused in the document that must change | [test/model/intent-set.test.ts](../test/model/intent-set.test.ts) |

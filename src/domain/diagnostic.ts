@@ -1,5 +1,7 @@
 export interface Diagnostic {
   readonly code: string;
+  /** The authored file the path points into, where more than one is read together. */
+  readonly document?: string;
   readonly path: string;
   readonly message: string;
   readonly hint: string;

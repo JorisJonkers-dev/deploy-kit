@@ -1,9 +1,15 @@
-// REQ-024 (docs/requirements.md): a document that breaks a rule is refused with
-// the code and the path its committed diagnostics oracle names.
-import { readFileSync, readdirSync } from "node:fs";
+// REQ-024 (docs/requirements.md): a document, or a set of documents read
+// together, that breaks a rule is refused with the code, the document and the
+// path its committed diagnostics oracle names.
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { canonicalJson, parseProjectIntent } from "../../src/index.ts";
+import {
+  canonicalJson,
+  checkIntentSet,
+  parseProjectIntent,
+  type AuthoredFile,
+} from "../../src/index.ts";
 
 const REFUSALS = join(
   import.meta.dirname,
@@ -15,10 +21,29 @@ const REFUSALS = join(
   "refusals",
 );
 
+const isCase = (name: string): boolean =>
+  statSync(join(REFUSALS, name), { throwIfNoEntry: false })?.isDirectory() ===
+  true;
+
+/** A fixture is one project file, or a directory of documents read together. */
 const fixtures = readdirSync(REFUSALS)
-  .filter((name) => name.endsWith(".project.yml"))
+  .filter((name) => name.endsWith(".project.yml") || isCase(name))
   .map((name) => name.replace(".project.yml", ""))
   .sort();
+
+/** The authored files a fixture holds, by the names its oracle calls them. */
+const filesOf = (stem: string): AuthoredFile[] =>
+  isCase(stem)
+    ? readdirSync(join(REFUSALS, stem)).map((name) => ({
+        name,
+        text: readFileSync(join(REFUSALS, stem, name), "utf8"),
+      }))
+    : [
+        {
+          name: `${stem}.project.yml`,
+          text: readFileSync(join(REFUSALS, `${stem}.project.yml`), "utf8"),
+        },
+      ];
 
 const read = (name: string): string =>
   readFileSync(join(REFUSALS, name), "utf8");
@@ -108,11 +133,17 @@ describe("the refusal fixtures", () => {
       "engine-without-durability",
       "env-cannot-reload",
       "illegal-delivery-for-access",
+      "no-durability-policy",
+      "no-engine-policy",
+      "no-forward-auth-endpoint",
+      "no-tier-for-audience",
       "non-kv-delivery",
       "scrape-unknown-process",
+      "secrets-at-rest-required",
       "unknown-surface",
+      "unknown-tier-proxy",
     ]);
-    expect(refused).toHaveLength(10);
+    expect(refused).toHaveLength(16);
     expect(
       fixtures.length - refused.length,
       "the accepted counterpart and the vocabulary case carry no oracle",
@@ -120,18 +151,21 @@ describe("the refusal fixtures", () => {
   });
 
   it.each(refused)(
-    "%s is refused with the codes and paths its oracle names",
+    "%s is refused with the codes, documents and paths its oracle names",
     (stem) => {
-      const result = parseProjectIntent(read(`${stem}.project.yml`));
-      const pairs = result.ok
+      const result = checkIntentSet(filesOf(stem));
+      const entries = result.ok
         ? []
         : result.diagnostics
-            .map(({ code, path }) => ({ code, path }))
+            .map(({ code, document, path }) => ({ code, document, path }))
             .sort((a, b) =>
-              `${a.code}${a.path}` < `${b.code}${b.path}` ? -1 : 1,
+              `${a.code}${a.document}${a.path}` <
+              `${b.code}${b.document}${b.path}`
+                ? -1
+                : 1,
             );
 
-      expect(canonicalJson(pairs)).toBe(oracle(stem));
+      expect(canonicalJson(entries)).toBe(oracle(stem));
     },
   );
 
@@ -143,7 +177,7 @@ describe("the refusal fixtures", () => {
   });
 
   it.each(refused)("%s says what it refused and how to fix it", (stem) => {
-    const result = parseProjectIntent(read(`${stem}.project.yml`));
+    const result = checkIntentSet(filesOf(stem));
     const diagnostics = result.ok ? [] : result.diagnostics;
 
     expect(diagnostics).not.toHaveLength(0);

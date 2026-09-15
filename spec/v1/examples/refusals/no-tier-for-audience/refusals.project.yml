@@ -1,0 +1,40 @@
+# The project file this case's Platform document is read beside.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: api
+    exposure:
+      - name: public
+        host: api.jorisjonkers.dev
+        audience: authenticated
+        routes:
+          - { path: /, match: prefix, process: api, surface: http }
+    processes:
+      - name: api
+        lifecycle: application
+        image: api
+        runtime: node
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 25m }
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+        startupBudget: 20s
+        cutover: rolling
+  - id: edge-proxy
+    processes:
+      - name: edge-proxy
+        lifecycle: application
+        image: traefik
+        runtime: none
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 8080 }
+        startupBudget: 30s
+        cutover: rolling

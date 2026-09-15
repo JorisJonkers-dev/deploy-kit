@@ -47,6 +47,7 @@ class ConstraintsTest {
         assertThat(parsed.intent()).isEmpty();
         assertThat(parsed.diagnostics()).singleElement().satisfies(diagnostic -> {
             assertThat(diagnostic.code()).isEqualTo("E_ALERT_CLASS_WITHOUT_SIGNAL");
+            assertThat(diagnostic.document()).isEqualTo("unwired.project.yml");
             assertThat(diagnostic.path()).isEqualTo("/applications/0/observability");
             assertThat(diagnostic.message()).contains("E_ALERT_CLASS_WITHOUT_SIGNAL");
         });

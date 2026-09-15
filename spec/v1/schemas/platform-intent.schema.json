@@ -1,0 +1,448 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/Platform",
+  "$defs": {
+    "Platform": {
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "type": "string",
+          "const": "intent.jorisjonkers.dev/v1"
+        },
+        "kind": {
+          "type": "string",
+          "const": "Platform"
+        },
+        "schemaVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "metadata": {
+          "$ref": "#/$defs/PlatformMetadata"
+        },
+        "substrate": {
+          "$ref": "#/$defs/Substrate"
+        },
+        "bootstrap": {
+          "$ref": "#/$defs/Bootstrap"
+        },
+        "tiers": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Tier"
+          }
+        },
+        "durability": {
+          "$ref": "#/$defs/DurabilityPolicies"
+        },
+        "engines": {
+          "$ref": "#/$defs/EnginePolicies"
+        },
+        "monitors": {
+          "$ref": "#/$defs/MonitorCadence"
+        },
+        "hardening": {
+          "$ref": "#/$defs/HardeningClass"
+        },
+        "probes": {
+          "$ref": "#/$defs/ProbeCadence"
+        },
+        "ephemeral": {
+          "$ref": "#/$defs/EphemeralPolicy"
+        },
+        "providers": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Provider"
+          }
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "schemaVersion",
+        "owner",
+        "metadata",
+        "substrate",
+        "bootstrap",
+        "tiers",
+        "durability",
+        "engines",
+        "monitors",
+        "hardening",
+        "probes",
+        "ephemeral"
+      ],
+      "additionalProperties": false
+    },
+    "PlatformMetadata": {
+      "type": "object",
+      "properties": {
+        "cluster": {
+          "type": "string",
+          "minLength": 1
+        },
+        "project": {
+          "type": "string",
+          "minLength": 1
+        },
+        "nodeContract": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "cluster",
+        "project",
+        "nodeContract"
+      ],
+      "additionalProperties": false
+    },
+    "Substrate": {
+      "type": "object",
+      "properties": {
+        "kubernetesVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "datastore": {
+          "$ref": "#/$defs/Datastore"
+        },
+        "serverCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "secretsEncryption": {
+          "type": "boolean"
+        },
+        "cni": {
+          "type": "string",
+          "minLength": 1
+        },
+        "networkPolicyController": {
+          "$ref": "#/$defs/PolicyController"
+        }
+      },
+      "required": [
+        "kubernetesVersion",
+        "datastore",
+        "serverCount",
+        "secretsEncryption",
+        "cni",
+        "networkPolicyController"
+      ],
+      "additionalProperties": false
+    },
+    "Datastore": {
+      "type": "string",
+      "enum": [
+        "sqlite",
+        "etcd"
+      ]
+    },
+    "PolicyController": {
+      "type": "string",
+      "enum": [
+        "none",
+        "embedded",
+        "cni"
+      ]
+    },
+    "Bootstrap": {
+      "type": "object",
+      "properties": {
+        "flux": {
+          "$ref": "#/$defs/FluxSource"
+        },
+        "vault": {
+          "$ref": "#/$defs/VaultState"
+        },
+        "crds": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "flux",
+        "vault",
+        "crds"
+      ],
+      "additionalProperties": false
+    },
+    "FluxSource": {
+      "type": "object",
+      "properties": {
+        "sourceRef": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "sourceRef"
+      ],
+      "additionalProperties": false
+    },
+    "VaultState": {
+      "type": "object",
+      "properties": {
+        "unsealed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "unsealed"
+      ],
+      "additionalProperties": false
+    },
+    "Tier": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "audiences": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Audience"
+          }
+        },
+        "listener": {
+          "$ref": "#/$defs/Listener"
+        },
+        "certificates": {
+          "$ref": "#/$defs/CertificateSource"
+        },
+        "forwardAuth": {
+          "type": "string",
+          "minLength": 1
+        },
+        "traefik": {
+          "type": "string",
+          "minLength": 1,
+          "reference": "Application"
+        }
+      },
+      "required": [
+        "name",
+        "audiences",
+        "listener",
+        "certificates",
+        "traefik"
+      ],
+      "additionalProperties": false
+    },
+    "Audience": {
+      "type": "string",
+      "enum": [
+        "anonymous",
+        "authenticated",
+        "internal",
+        "lan"
+      ]
+    },
+    "Listener": {
+      "type": "string",
+      "enum": [
+        "tls",
+        "plain"
+      ]
+    },
+    "CertificateSource": {
+      "type": "string",
+      "enum": [
+        "acme",
+        "none"
+      ]
+    },
+    "DurabilityPolicies": {
+      "type": "object",
+      "properties": {
+        "reconstructible": {
+          "$ref": "#/$defs/DurabilityPolicy"
+        },
+        "recoverable": {
+          "$ref": "#/$defs/DurabilityPolicy"
+        },
+        "irreplaceable": {
+          "$ref": "#/$defs/DurabilityPolicy"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DurabilityPolicy": {
+      "type": "object",
+      "properties": {
+        "schedule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retain": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "offCluster": {
+          "$ref": "#/$defs/OffClusterCopy"
+        }
+      },
+      "additionalProperties": false
+    },
+    "OffClusterCopy": {
+      "type": "object",
+      "properties": {
+        "destination": {
+          "type": "string",
+          "minLength": 1
+        },
+        "credential": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "destination",
+        "credential"
+      ],
+      "additionalProperties": false
+    },
+    "EnginePolicies": {
+      "type": "object",
+      "properties": {
+        "postgres": {
+          "$ref": "#/$defs/EnginePolicy"
+        },
+        "rabbitmq": {
+          "$ref": "#/$defs/EnginePolicy"
+        },
+        "valkey": {
+          "$ref": "#/$defs/EnginePolicy"
+        },
+        "files": {
+          "$ref": "#/$defs/EnginePolicy"
+        }
+      },
+      "additionalProperties": false
+    },
+    "EnginePolicy": {
+      "type": "object",
+      "properties": {
+        "backup": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "backup"
+      ],
+      "additionalProperties": false
+    },
+    "MonitorCadence": {
+      "type": "object",
+      "properties": {
+        "interval": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeout": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "interval",
+        "timeout"
+      ],
+      "additionalProperties": false
+    },
+    "HardeningClass": {
+      "type": "string",
+      "enum": [
+        "restricted"
+      ]
+    },
+    "ProbeCadence": {
+      "type": "object",
+      "properties": {
+        "periodSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "periodSeconds",
+        "timeoutSeconds",
+        "failureThreshold"
+      ],
+      "additionalProperties": false
+    },
+    "EphemeralPolicy": {
+      "type": "object",
+      "properties": {
+        "sizeLimit": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "sizeLimit"
+      ],
+      "additionalProperties": false
+    },
+    "Provider": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "address": {
+          "type": "string",
+          "minLength": 1
+        },
+        "surfaces": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "entry": "ProviderSurface"
+        }
+      },
+      "required": [
+        "name",
+        "address",
+        "surfaces"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

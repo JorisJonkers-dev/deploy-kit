@@ -250,7 +250,7 @@ target metamodel holding both, because a model-to-text template reads one model.
 | oracle | where | compared as | binds |
 |---|---|---|---|
 | the parsed Project Intent (validation) | `spec/v1/examples/<case>/expected/intent.json` | canonical JSON, byte for byte | both |
-| the diagnostics of a refused case (errors) | `<input>.diagnostics.json` beside the refused input in `refusals/` or `negative/` | a set of `(code, path)` pairs | both |
+| the diagnostics of a refused case (errors) | `<input>.diagnostics.json` beside the refused input, or the refused set of documents, in `refusals/` or `negative/` | a set of `(code, document, path)` triples | both |
 | the resolved dependency edges (dependency resolution) | `spec/v1/examples/<case>/expected/dependencies.json` | canonical JSON, byte for byte | both |
 | the Deliverable Set (generated resources) | `spec/v1/examples/<case>/rendered/` | the existing golden tree, byte for byte | both |
 | the source metamodel's structure | `spec/v1/examples/expected/descriptor.json` | canonical JSON, byte for byte | both |
@@ -276,10 +276,16 @@ optional field is absent, never `null`.
 **A path** is an RFC 6901 JSON Pointer into the canonical intent document,
 `/applications/0/observability/alertClass`. A diagnostic about a derived value
 points at the authored value it derives from. Messages and hints are free per
-implementation; the code and the path are the contract.
+implementation; the code, the document and the path are the contract.
+
+**A set of documents** is read together when a refused case is a directory: its
+`platform.intent.yml` and every `*.project.yml` in it. A diagnostic names the
+`document` its path points into, by file name, so a check across documents
+refuses at the element the author must change, whichever file holds it. A
+refused single file names itself.
 
 **The descriptor** lists every class of the source metamodel (Project Intent
-and the platform data it is resolved against) with its features, each
+and the Platform Intent it is resolved against) with its features, each
 feature's type and multiplicity, and every closed vocabulary with its literals.
 Target structures are compared through what they generate, not structurally.
 The TypeScript side builds it from the Zod schemas with Zod's native
