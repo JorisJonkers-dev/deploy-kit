@@ -6,6 +6,7 @@
   },
   "mutate": ["src/**/*.ts", "!src/cli/boundary.ts"],
   "coverageAnalysis": "perTest",
+  "ignorePatterns": ["/.claude", "/.agents"],
   "reporters": ["clear-text", "progress", "json"],
   "jsonReporter": {
     "fileName": "reports/mutation/mutation.json"

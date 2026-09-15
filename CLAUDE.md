@@ -1,92 +1,29 @@
 # Agent contract
 
-The estate-wide conventions live in one place and are **not duplicated here**:
+@AGENTS.md
 
-**https://github.com/JorisJonkers-dev/workspace/blob/main/CLAUDE.md**
+## Claude-specific notes
 
-Read it before doing anything non-trivial in this repository. It covers the
-things that most often go wrong, including:
+Everything above is the one agent contract every tool in this repository
+reads; nothing repository-specific lives twice.
 
-- **Pull request labels.** The estate uses a prefixed taxonomy: `type:`,
-  `area:`, `component:`, `priority:`, `status:`. Plain `bug` / `enhancement` /
-  `documentation` do **not** exist, and `gh pr create` fails with
-  `'bug' not found`. Run `gh label list --repo <owner>/<repo>` once before
-  passing `--label`.
-- **Verify the value, not the command.** An exit code, a `Ready` condition or
-  an accepted object is not evidence that a consumer sees what you intended.
-- Traps around workflow runs, `zsh` word-splitting, and detached submodule
-  HEADs.
-
-Duplicating that content into every repository guarantees the copies drift, so
-this file stays a pointer. Add repo-specific guidance below.
-
----
-
-## This repository
-
-`deploy-kit` holds the deployment model, its decision record, and (as it lands)
-the compiler that renders it.
-
-**ADRs justify; `spec/v1` is normative.** An ADR carries no field lists, no
-error-code tables and no worked YAML: those live in the chapter its
-`normative:` pointer names. Where the two disagree, the spec wins and the ADR is
-what gets fixed.
-
-Before changing anything under `docs/adr/` or `spec/v1/`:
-
-- Read [`docs/adr/README.md`](docs/adr/README.md) for the register, the citation
-  rule and the domain table, and `docs/adr/model/0003`–`0006` for the model's
-  premises.
-- `docs/adr/` carries **one directory per decision domain**: `model/` (v1 model,
-  pointers into `spec/v1`), `architecture/` (the compiler's own structure,
-  pointers into `docs/architecture.md`), `deferred/` (not linted). Numbers run
-  in one estate-wide sequence, so never reuse a number from another domain.
-- Run `npm run lint:adrs`. It enforces frontmatter schema, register integrity,
-  qualified citations (a bare `ADR-` token outside a link fails), normative
-  anchors resolving against real headings in `spec/v1`, and content shape.
-- A **decision** names only **premises** in `rests-on`. A decision-to-decision
-  dependency is prose, not frontmatter.
-- A `claim:` other than `settled` requires an `owner:`.
-- Adding a `## ` heading to a chapter that an ADR points at, or renaming one,
-  breaks the anchor check. Change both together.
-
-Delivery mechanics and co-testing are **defined separately**: see
-[`docs/adr/deferred/README.md`](docs/adr/deferred/README.md). Do not specify an
-applier, a prune pass, a field manager or a co-test gate in `spec/v1`; state the
-model-level rule and point at the deferred set.
-
-### The model-driven implementation under `emf/`
-
-The MDE course requires the compiler to be built with Ecore, Xtext, OCL,
-QVT-Operational and Acceleo, so `emf/` holds the model-driven implementation:
-a second, hand-written Java implementation beside the TypeScript production
-implementation (Maven and Tycho, JDK 21, no Eclipse IDE to build, but
-loadable in Eclipse for the course's examiners). It is deprecated
-from the day it lands and deleted at its sunset:
-
-- **The root stays TypeScript.** Every pom, module, check, ledger and decision
-  of the Java side lives under `emf/`. The root references it only from CI
-  (the `emf` job, the `emf` ADR lint step and CodeQL's `java-kotlin` entry),
-  `test/emf-wiring.test.ts` with its ledger rows, the `emf` domain in
-  `scripts/lint-adrs.ts` and its test, the release-please and Renovate
-  configuration, and
-  [`docs/architecture.md#the-parity-contract`](docs/architecture.md#the-parity-contract).
-- **Never generate one implementation from the other.** Both are tested,
-  separately, against committed oracle files under `spec/v1/examples/`.
-- **A model change lands in both implementations** and in the oracle files,
-  in one pull request.
-- EMF decisions live in [`emf/docs/adr/`](emf/docs/adr/README.md), numbered
-  from the root's sequence. Check both registers before taking a number, and
-  lint with `node scripts/lint-adrs.ts emf`.
-
-`deploy-config-schema` is the repository this one replaces. It stays alive and
-authoritative until `deploy-kit` can render the estate; do not treat it as dead.
-
-### MDE coursework material
-
-`docs/mde/` holds a university course's reports, lecture decks and background
-reading. Every PDF there has a Markdown conversion beside it, with its figures
-in a sibling `-images/` directory. **Start from
-[`docs/mde/INDEX.md`](docs/mde/INDEX.md)**: it says which document covers which
-topic, down to the section anchor and the PDF page, so open one section of one
-`.md` rather than reading a PDF end to end. Some of these run to 400 pages.
+- **Skills load from `.claude/skills`**, a symlink to `.agents/skills`
+  (`git ls-files -s .claude/skills` reads mode `120000`). This session
+  confirmed the symlink exists and resolves on disk; it did not confirm the
+  Claude Code skill loader itself discovers a skill through a symlinked
+  directory rather than a real one; that needs a live check by whoever next
+  opens this repository in Claude Code.
+- **`.claude/settings.json`** is this repository's permission allowlist: its
+  npm scripts, read-only `git` and `gh`, and nothing that installs a
+  package, runs arbitrary code, or writes remote state, save the one label
+  write `.github/workflows/claim-issue.yml` performs on GitHub's own side,
+  outside Claude Code's permission surface entirely. It also enables the
+  `mattpocock-skills`, `typescript-lsp` and `drawio` plugins this repository
+  uses.
+- **`.mcp.json`** holds `context7`, for library documentation lookups.
+- **`docs/agents/`** configures the `mattpocock-skills` engineering skills
+  (`triage`, `to-tickets`, `to-spec`, and the rest) for this repository: which
+  issue tracker they read and write, which triage label strings map to the
+  five canonical roles, and how they should consume `CONTEXT.md` and
+  `docs/adr/`. It was written by the `setup-matt-pocock-skills` skill's own
+  convention, not by hand.

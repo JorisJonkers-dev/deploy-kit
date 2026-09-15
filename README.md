@@ -91,11 +91,12 @@ npm run verify      # lint, format, typecheck, ADR contract, tests + coverage
 `npm run lint:adrs` alone runs the decision-record contract, and `npm test`
 runs the suite without enforcing coverage. `npm run test:coverage` (part of
 `npm run verify`) enforces the ratchet in `vitest.config.ts`: statements
-99.06%, branches 96.17%, functions 100%, lines 98.97%.
+99.15%, branches 96.49%, functions 100%, lines 99.08%.
 
 ## Conventions
 
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): Conventional Commits, PR flow
 - [`VERSIONING.md`](VERSIONING.md): the versioning contract
 - [`SECURITY.md`](SECURITY.md): reporting
-- [`CLAUDE.md`](CLAUDE.md): agent contract
+- [`AGENTS.md`](AGENTS.md): the one agent contract every tool reads;
+  [`CLAUDE.md`](CLAUDE.md) imports it and adds Claude-specific notes only

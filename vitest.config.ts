@@ -23,19 +23,22 @@ export default defineConfig({
       // A ratchet, per docs/adr/architecture/0101-coverage-is-a-ratchet.md:
       // set from what the suite reaches, and only ever raised.
       //
-      // Measured 2026-09-15, after the meaning lint (scripts/lint-meaning.ts)
-      // landed on top of the pull request report and release candidate
-      // publish (issues #33/#34). Two runs of one tree, identical both
-      // times: statements 1437/1451, branches 836/870, functions 222/222,
-      // lines 1324/1338. What is left uncovered is the one-line command
-      // guard at the bottom of each gate and the branches for a tool that
-      // cannot be started at all.
-      // Raised with the linking step (#39), which lands at 100%.
+      // Measured 2026-09-15, after AGENTS.md's script-list gate
+      // (scripts/lint-agents.ts) and the claim-issue candidate extraction
+      // (scripts/claim-issue.ts) landed on top of the linking step (#39),
+      // the hierarchy-rename cleanup (#119), and the Platform Intent
+      // reader (#120) (issue #32). Two runs of one tree, identical both
+      // times: statements 1650/1664, branches 937/971, functions 288/288,
+      // lines 1514/1528. Both new gate scripts cover their own entrypoint
+      // guard too: a same-process module reload drives it, the way
+      // test/package-contents-contract.test.ts and
+      // test/secret-scan-contract.test.ts already do for theirs, so neither
+      // leaves anything on the table for the ratchet to absorb.
       thresholds: {
-        statements: 99.06,
-        branches: 96.17,
+        statements: 99.15,
+        branches: 96.49,
         functions: 100,
-        lines: 98.97,
+        lines: 99.08,
       },
     },
   },

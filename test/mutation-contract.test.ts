@@ -9,6 +9,7 @@ interface StrykerConfig {
   readonly mutate: readonly string[];
   readonly thresholds: { readonly break: number };
   readonly vitest: { readonly configFile: string };
+  readonly ignorePatterns: readonly string[];
 }
 
 const config = JSON.parse(
@@ -60,5 +61,13 @@ describe("the mutation gate", () => {
             runner.includes('"test/model/**/*.test.ts"')),
         file,
       ).toBe(true);
+  });
+
+  it("ignores .claude and .agents, so the sandbox copy never touches the .claude/skills symlink", () => {
+    // Stryker's sandbox copy once died here: "EISDIR: illegal operation on a
+    // directory, copyfile '.../.claude/skills' -> '.../.stryker-tmp/.../.claude/skills'",
+    // because copyfile refuses a symlink that points at a directory.
+    expect(config.ignorePatterns).toContain("/.claude");
+    expect(config.ignorePatterns).toContain("/.agents");
   });
 });

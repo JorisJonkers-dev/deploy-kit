@@ -333,7 +333,7 @@ lists cases says so rather than skipping it silently.
 
 ## Gates
 
-Eighteen gates hold the structure, and each exists because its absence has already
+Nineteen gates hold the structure, and each exists because its absence has already
 cost something in the generation this compiler replaces. Each runs as its own
 CI job, aggregated by one required check that fails when any gate job fails,
 is cancelled, or is skipped
@@ -355,6 +355,7 @@ proves the two never drift apart.
 | rules | `npm run lint:rules` | a [rule ledger](architecture-rules.md) row whose enforcer no longer exists, whose fixture no longer asserts on its witness, or that is pending with no ticket and no reason, and a rule the ruleset or the lint configuration enforces that no row claims |
 | codes | `npm run lint:codes` | a specification `E_` code no test exercises and no ticket holds pending, a pending code a test already exercises, and a code used in the tree that no chapter defines |
 | docs | `npm run lint:docs` | a script, path, coverage number or Node version README.md or CONTRIBUTING.md name that no longer matches the repository |
+| agents | `npm run lint:agents` | a script `package.json` gains that AGENTS.md does not name verbatim |
 | meaning | `npm run lint:meaning` | a citation to a superseded decision with no successor in the same sentence, a retired term used outside a quotation, a stated count that no longer matches what it counts |
 | tests | `npm run test:coverage` | behaviour, plus the coverage ratchet |
 | package contents | `node scripts/check-package-contents.ts` | `npm pack` shipping a file outside `docs/adr/` and `spec/`, the boundary the package's `files` field states but does not enforce on its own |
@@ -363,9 +364,9 @@ proves the two never drift apart.
 | code scanning | CodeQL, called from `ci.yml` as the `codeql` job | any finding, of any severity, in JavaScript, TypeScript, workflow logic or the Java under `emf/`; a wrong one is filtered in `.github/codeql/codeql-config.yml` with its reason |
 | model-driven build | `./mvnw -B -ntp verify` in `emf/` | every gate the [model-driven implementation](../emf/docs/architecture.md#gates) holds itself to: toolchain versions, compiler warnings, tests, coverage and mutation floors, formatting |
 
-Decisions, links, manifests, requirements, rules, codes, docs and meaning
-share one CI job, `contracts`: all eight check a document against a rule
-rather than code against a graph.
+Decisions, links, manifests, requirements, rules, codes, docs, agents and
+meaning share one CI job, `contracts`: all nine check a document against a
+rule rather than code against a graph.
 Boundaries runs alone as `architecture`, because it is the one gate that
 speaks for `docs/architecture.md` itself rather than for a document beside it.
 The model-driven build runs alone as `emf`, on its own JDK and Maven, and is

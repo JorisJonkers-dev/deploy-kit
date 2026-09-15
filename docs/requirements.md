@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **31** rows. The compiler's behaviours join it as they land.
+This ledger holds **32** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -54,3 +54,4 @@ This ledger holds **31** rows. The compiler's behaviours join it as they land.
 | REQ-029 | A route's and a scrape's `process` and `surface` link to the Process and surface they name inside their Application, and a name that links to nothing is refused with `E_UNKNOWN_PROCESS` or `E_UNKNOWN_SURFACE` at the pointer of the route or scrape | [test/model/links.test.ts](../test/model/links.test.ts) |
 | REQ-030 | An authored Platform Intent file parses to its committed intent oracle byte for byte, and a tier that carries `authenticated` with no `forwardAuth` endpoint is refused with `E_NO_FORWARD_AUTH_ENDPOINT` at the tier | [test/model/platform-intent.test.ts](../test/model/platform-intent.test.ts) |
 | REQ-031 | A Platform document and the Project documents read with it are checked together, and a tier proxy, audience, engine, durability class or at-rest secret delivery the Platform cannot satisfy is refused in the document that must change | [test/model/intent-set.test.ts](../test/model/intent-set.test.ts) |
+| REQ-032 | AGENTS.md names every npm script package.json defines, verbatim, so a script added there cannot go undocumented | [test/agents-contract.test.ts](../test/agents-contract.test.ts) |
