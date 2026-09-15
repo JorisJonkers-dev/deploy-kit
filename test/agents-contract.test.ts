@@ -11,7 +11,7 @@
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { lintAgents, main, namesScript } from "../scripts/lint-agents.ts";
 import { collect } from "./support/collect.ts";
 import { temporary } from "./setup.ts";
@@ -157,5 +157,30 @@ describe("the command", () => {
     );
     expect(run.status).toBe(1);
     expect(run.stderr).toContain("script 'gone'");
+  });
+});
+
+describe("the entrypoint guard", () => {
+  // This file is small enough that its own bottom-of-file guard, left
+  // uncovered as every other gate leaves its own, would be a large enough
+  // share of the file to pull the suite under the ratchet. Reloading the
+  // module with `process.argv` set to its own path drives the guard for
+  // real, in this process, so v8 sees the line the subprocess test above
+  // proves but coverage otherwise never reaches; it also exercises the
+  // `output` parameter's default value, which every other in-process call
+  // in this file supplies explicitly.
+  it("runs main and sets process.exitCode when Node starts this module", async () => {
+    const modulePath = join(REPOSITORY, "scripts", "lint-agents.ts");
+    const originalArgv = process.argv;
+    const originalExitCode = process.exitCode;
+    process.argv = [process.argv[0] ?? "node", modulePath];
+    vi.resetModules();
+    try {
+      await import("../scripts/lint-agents.ts");
+      expect(process.exitCode).toBe(0);
+    } finally {
+      process.argv = originalArgv;
+      process.exitCode = originalExitCode;
+    }
   });
 });
