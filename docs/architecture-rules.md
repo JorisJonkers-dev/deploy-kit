@@ -35,10 +35,10 @@ has to outlive every opinion about where the rule belongs.
 
 Eleven, the set [issue #21](https://github.com/JorisJonkers-dev/deploy-kit/issues/21)
 named, each normalised to one word. None was added and none dropped: what this
-repository's own enforcement changed is which families have members today
-(`layering`, `purity`, `graph`, `dependencies`, `tests`, `toolchain` and
-`gates`) and which are entirely pending until the compiler exists (`naming`,
-`cli`, `registry`, `diagnostics`). A family declared here and used by no rule
+repository's own enforcement changed is which families have enforced members
+today (`layering`, `purity`, `graph`, `dependencies`, `naming`, `tests`,
+`toolchain`, `diagnostics` and `gates`) and which are entirely pending until the
+compiler exists (`cli` and `registry`). A family declared here and used by no rule
 fails the gate, so the taxonomy cannot grow entries nothing stands behind.
 
 | family | covers |
@@ -57,7 +57,7 @@ fails the gate, so the taxonomy cannot grow entries nothing stands behind.
 
 ## Rules
 
-This ledger holds **69** rules, **11** of them pending.
+This ledger holds **69** rules, **5** of them pending.
 
 A row is enforced or pending, never both. An enforced row names its enforcer as
 `kind:value`: `depcruise:` a rule in
@@ -93,13 +93,13 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-015 | graph | No orphan module: every module but an entry point is imported by something | `depcruise:no-orphans` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `no-orphans` |
 | RULE-016 | graph | Every module is reachable from an entry point, which is the half a coverage gate cannot see | `depcruise:unreachable-from-an-entry-point` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `unreachable-from-an-entry-point` |
 | RULE-017 | graph | Every relative import in shipped code resolves to a file on disk; a bare specifier is the package manager's and the type checker's to answer for | `depcruise:no-unresolvable-import` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `no-unresolvable-import` |
-| RULE-018 | graph | No cycle between directories, which a module-level cycle check cannot see | pending (#105): needs a collapsed-graph pass over `src/`, which the module-level cycle check cannot express | pending |
-| RULE-019 | graph | No computed dynamic import: a specifier the graph cannot read is an edge no gate can check | pending (#105): an AST check over `src/`, and `no-restricted-syntax` already carries RULE-012 | pending |
+| RULE-018 | graph | No cycle between directories, which a module-level cycle check cannot see | `depcruise:no-circular-folders` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `no-circular-folders` |
+| RULE-019 | graph | No computed dynamic import: a specifier the graph cannot read is an edge no gate can check | `eslint:deploy-kit/no-computed-dynamic-import` | [test/code-rules.test.ts](../test/code-rules.test.ts) `RULE-019: a dynamic import names its module literally` |
 | RULE-020 | dependencies | Shipped code never imports a devDependency | `depcruise:no-dev-dependency-in-src` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `no-dev-dependency-in-src` |
 | RULE-021 | dependencies | No deprecated Node builtin: a deprecated import is a migration already overdue | `depcruise:not-to-deprecated-core` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `not-to-deprecated-core` |
 | RULE-022 | dependencies | No package an architecture decision already rejected: the Kubernetes client, a second JSON Schema validator, a Zod-to-JSON-Schema converter, or a text template engine | `depcruise:no-denied-dependency` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `no-denied-dependency` |
-| RULE-023 | dependencies | A Node builtin is imported under its `node:` prefix | pending (#105): no configured lint rule reads an import specifier's prefix | pending |
-| RULE-024 | naming | A module file is named in kebab-case | pending (#105): no configured lint rule reads file names | pending |
+| RULE-023 | dependencies | A Node builtin is imported under its `node:` prefix | `eslint:deploy-kit/node-builtin-prefix` | [test/code-rules.test.ts](../test/code-rules.test.ts) `RULE-023: import "node:` |
+| RULE-024 | naming | A module file is named in kebab-case | `eslint:deploy-kit/kebab-case-filename` | [test/code-rules.test.ts](../test/code-rules.test.ts) `is not named in kebab-case` |
 | RULE-025 | naming | No `I`-prefixed interface name: the interface is the noun, and the implementation carries the adjective | `eslint:@typescript-eslint/naming-convention` | [test/seams.test.ts](../test/seams.test.ts) `RULE-025 refuses an I-prefixed interface` |
 | RULE-026 | naming | A type-only import is written `import type`, so erasure is visible in the file rather than inferred | `eslint:@typescript-eslint/consistent-type-imports` | [test/seams.test.ts](../test/seams.test.ts) `RULE-026 refuses a type-only import` |
 | RULE-027 | tests | No committed `.only`: a focused test is a suite that is green for the wrong reason | `eslint:vitest/no-focused-tests` | [test/harness.test.ts](../test/harness.test.ts) `vitest/no-focused-tests` |
@@ -108,7 +108,7 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-030 | tests | No fixed sleep through a timer global: slow when it passes, flaky when the machine is busy | `eslint:no-restricted-globals` | [test/harness.test.ts](../test/harness.test.ts) `no-restricted-globals` |
 | RULE-031 | tests | No fixed sleep through the timers module either, which is the same defect under another import | `eslint:no-restricted-imports` | [test/harness.test.ts](../test/harness.test.ts) `no-restricted-imports` |
 | RULE-032 | tests | No test reaches the network: the capability is removed, and using it fails the test that tried | `file:test/setup.ts` | [test/harness.test.ts](../test/harness.test.ts) `tried to reach` |
-| RULE-033 | tests | A test never imports another test: a shared fixture belongs in `test/support/` | pending (#105): wants a graph pass over `test/`, which the boundary gate does not run | pending |
+| RULE-033 | tests | A test never imports another test: a shared fixture belongs in `test/support/` | `eslint:deploy-kit/no-test-imports-test` | [test/code-rules.test.ts](../test/code-rules.test.ts) `a shared fixture belongs in test/support/` |
 | RULE-034 | tests | The rendered tree is compared byte for byte against a committed golden tree, and a double render inside one process and in a fresh one agrees with it | pending (n/a): there is no renderer to render anything, and issue #21 puts the golden tree out of scope until one exists | pending |
 | RULE-035 | toolchain | A TypeScript suppression carries a description and may never silence a whole file | `eslint:@typescript-eslint/ban-ts-comment` | [test/eslint-rules.test.ts](../test/eslint-rules.test.ts) `@typescript-eslint/ban-ts-comment` |
 | RULE-036 | toolchain | No `any`: a value the compiler cannot describe is a check nobody runs | `eslint:@typescript-eslint/no-explicit-any` | [test/eslint-rules.test.ts](../test/eslint-rules.test.ts) `@typescript-eslint/no-explicit-any` |
@@ -117,9 +117,9 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-039 | toolchain | The recommended and `strictTypeChecked` presets apply to every TypeScript file with type information, so a floating promise or an empty catch fails lint without this repository naming either rule | `file:eslint.config.js` | [test/eslint-rules.test.ts](../test/eslint-rules.test.ts) `@typescript-eslint/no-floating-promises` |
 | RULE-040 | toolchain | Coverage is a ratchet over an explicit include list, and no ignore comment exempts a line from it | `file:vitest.config.ts` | [test/harness.test.ts](../test/harness.test.ts) `an ignore is slack nobody decided` |
 | RULE-041 | toolchain | No default export outside a tool configuration file | `eslint:no-restricted-exports` | [test/seams.test.ts](../test/seams.test.ts) `RULE-041 refuses a default export` |
-| RULE-042 | toolchain | Shipped code is ESM, and the one CommonJS file is the dependency-cruiser configuration that cannot be anything else | pending (#105): stated by `type: module`; no configured rule refuses a second CommonJS file | pending |
+| RULE-042 | toolchain | Shipped code is ESM, and the one CommonJS file is the dependency-cruiser configuration that cannot be anything else | `eslint:deploy-kit/esm-only` | [test/code-rules.test.ts](../test/code-rules.test.ts) `is CommonJS; this package is ESM` |
 | RULE-043 | toolchain | Generated artifacts are committed, and CI fails when regenerating one produces a diff | `file:src/wire/project-intent/json-schema.ts` | [test/model/descriptor.test.ts](../test/model/descriptor.test.ts) `regenerates without a diff` |
-| RULE-044 | cli | The CLI prints help on `--help` and `-h`, data on stdout and diagnostics on stderr, emits only data under `--json`, maps failures through one exit-code enum, honours `NO_COLOR`, and never prompts | pending (#105): each clause needs a process-level test, and the CLI ring does not exist yet | pending |
+| RULE-044 | cli | The CLI prints help on `--help` and `-h`, data on stdout and diagnostics on stderr, emits only data under `--json`, maps failures through one exit-code enum, honours `NO_COLOR`, and never prompts | pending (n/a): each clause needs a process-level test, and no ticket has brought the CLI ring yet | pending |
 | RULE-045 | registry | Every registered adapter satisfies the adapter port, attributes every Deliverable to itself, and renders deterministically | pending (#97): the adapter contract suite arrives with the first adapter | pending |
 | RULE-046 | registry | Every estate-wide invariant is registered with its code, its spec anchor and its test, so an unregistered one is detectable rather than merely absent | pending (#44): the invariant registry is that ticket's deliverable | pending |
 | RULE-047 | diagnostics | Every diagnostic carries a code, a document path, a message and a non-empty hint, enforced by its type rather than by review | pending (#38): the `Diagnostic` type is the enforcement, and it lands with the first parser | pending |
