@@ -55,6 +55,20 @@ repository holding three Applications rather than three repositories with three
 publish workflows) and a project never spans repositories, so composition unions
 fragments and never has to union a project (chapter 40).
 
+**A composition fixture that stands in for an already-published fragment does
+not carry `.project.yml`.** `spec/v1/examples/negative/*/intent*/` holds
+documents fed directly to composition to exercise an invariant at the union
+(chapter 40), never rendered and never read out of a `platform/` tree. The
+suffix above names a file a publish step reads from a project's own
+repository; putting it on a fixture that is published by nothing and has no
+`platform/` tree to sit in would claim a layout that does not exist. The
+difference is deliberate: a directory under `spec/v1/examples/<project>/` is a
+worked project meant to render, and one under `spec/v1/examples/negative/` is
+meant to make composition fail, at least one of them
+(`duplicate-process-name`) before a union of two fragments ever runs. A test
+that discovers project files by the `.project.yml` suffix is meant to find
+only the former, and must keep finding only the former.
+
 The split that matters is not file-level but concern-level. A secret's **access**
 is declared in the project file, beside the `dependsOn` edge that motivates it; the
 **environment variable** that carries it is a placeholder in the env file. Each
