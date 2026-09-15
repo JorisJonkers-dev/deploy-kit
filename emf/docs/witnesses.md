@@ -10,8 +10,8 @@ names the JUnit test that proves the same behaviour here
 has no witness here, when a witness names an id that is not a model row, or
 when it names a test method that does not exist.
 
-This list holds **0** witnesses. No model behaviour row exists yet; the first
-lands with #38.
+This list holds **1** witness.
 
 | id | JUnit test |
 |---|---|
+| REQ-021 | `ParityTest#theParsedIntentEqualsTheCommittedOracle` |

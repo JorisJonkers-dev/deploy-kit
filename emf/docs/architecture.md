@@ -83,7 +83,7 @@ Tycho configuration and the target platform.
 | `syntax/` | the Xtext grammar for the authored YAML subset, and the generated editor bundles that run the OCL validators | Task 1 |
 | `resolve/` | the QVTo transformation from Project Intent and Platform Intent to the Resolved Deployment | Task 2 |
 | `render/` | the Acceleo 4 templates from a Resolved Deployment model to the Deliverable Set's files | Task 3 |
-| `cli/` | the pipeline entry point: files in, canonical JSON, diagnostics and rendered files out | Task 1 onward |
+| `cli/` | the pipeline entry point: files in, the parsed intent, diagnostics and rendered files out | Task 1 onward |
 | `parity/` | JUnit suites asserting each stage against the committed oracles, and the witness ledger check | Task 1 onward |
 
 A module may depend on the modules above it in this table and on nothing
@@ -112,7 +112,9 @@ Cross-document references, including those from a Project into the Platform
 document, are Ecore references, not strings.
 
 Typed Java for each metamodel is generated from its `.genmodel` during the
-Maven build into `target/`, and never committed.
+Maven build into `target/`, and never committed: an MWE2 workflow runs EMF's
+`EcoreGenerator` in `generate-sources`, and the generated packages are left out
+of formatting, coverage and mutation.
 
 The descriptor exporter walks the source `EPackage` reflectively and writes the
 descriptor the parity contract fixes. It is the only place the Ecore structure
@@ -146,6 +148,14 @@ refuses anything outside the subset with a diagnostic rather than a guess.
 The grammar imports the hand-written source metamodel, so the parser produces
 instances of the graded metamodel directly. There is no inferred syntax
 metamodel and no mapping step between parsing and validation.
+
+Indentation is not the grammar's concern: a token source turns the block
+structure into the synthetic `BEGIN` and `END` tokens the rules read. A line
+indented further than the one before it opens a block, a dash opens one around
+the item that follows it, and a flow collection opens and closes one on a single
+line, so `{ path: /, match: prefix }` and the same keys written as an indented
+block parse through one rule. The rules themselves are unordered groups, because
+the order of keys in a mapping is not meaning.
 
 The generated editor is configured to run the OCL validators and to mark each
 constraint violation on the source line it concerns, with the diagnostic code as
