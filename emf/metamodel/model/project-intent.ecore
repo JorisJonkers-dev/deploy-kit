@@ -2,8 +2,9 @@
 <!--
   The Project Intent source metamodel, written by hand (docs/adr/emf/0109).
   Names are CONTEXT.md's, and every feature is named as the authored YAML key
-  it holds, so the canonical intent is read off the model reflectively. It
-  covers what the minimal example uses; the rest of chapter 10 lands with #84.
+  it holds, so the canonical intent is read off the model reflectively. A
+  union in the language is a union here: a probe is HTTP or TCP, a probe
+  policy is a block or `none`, and a grant is keyed by its engine.
 -->
 <ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="projectintent" nsURI="https://jorisjonkers.dev/deploy-kit/project-intent/1"
@@ -20,6 +21,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="observability" eType="#//Observability" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="exposure" upperBound="-1" eType="#//Exposure" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="secrets" upperBound="-1" eType="#//Grant" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//Process" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Observability">
@@ -35,7 +37,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="host" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="audience" lowerBound="1" eType="#//Audience"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="contentPolicy" lowerBound="1" eType="#//ContentPolicy"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="contentPolicy" eType="#//ContentPolicy"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="routes" lowerBound="1" upperBound="-1" eType="#//Route" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Route">
@@ -43,16 +45,26 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="match" lowerBound="1" eType="#//Match"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="process" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="surface" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="audience" eType="#//Audience"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="redirectTo" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Process">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="lifecycle" lowerBound="1" eType="#//Lifecycle"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="runtime" lowerBound="1" eType="#//Runtime"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="engine" eType="#//Engine"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="provides" upperBound="-1" eType="#//SurfacePort" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="placement" lowerBound="1" eType="#//Placement" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="probes" eType="#//Probes" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="startupBudget" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="writablePaths" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="sidecars" upperBound="-1" eType="#//Sidecar" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dependsOn" upperBound="-1" eType="#//DependencyEdge" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="assets" upperBound="-1" eType="#//Asset" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="probes" eType="#//ProbePolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="volumes" upperBound="-1" eType="#//Volume" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="replicas" eType="#//Capacity" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="secrets" upperBound="-1" eType="#//Grant" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="startupBudget" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cutover" lowerBound="1" eType="#//Cutover"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="SurfacePort" instanceClassName="java.util.Map$Entry">
@@ -62,14 +74,85 @@
   <eClassifiers xsi:type="ecore:EClass" name="Placement">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="arch" upperBound="-1" eType="#//Arch"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="site" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="disk" eType="#//DiskRequest" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="gpu" eType="#//GpuRequest" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="capabilities" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="Probes">
+  <eClassifiers xsi:type="ecore:EClass" name="DiskRequest">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="media" lowerBound="1" upperBound="-1" eType="#//Media"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="GpuRequest">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="class" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Sidecar">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="DependencyEdge">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="application" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="surface" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="required" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Asset">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="from" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ProbePolicy" abstract="true"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Probes" eSuperTypes="#//ProbePolicy">
     <eStructuralFeatures xsi:type="ecore:EReference" name="readiness" eType="#//Probe" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="liveness" eType="#//Probe" containment="true"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="Probe">
+  <eClassifiers xsi:type="ecore:EClass" name="NoProbes" eSuperTypes="#//ProbePolicy">
+    <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+      <details key="scalar" value="none"/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Probe" abstract="true"/>
+  <eClassifiers xsi:type="ecore:EClass" name="HttpProbe" eSuperTypes="#//Probe">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="TcpProbe" eSuperTypes="#//Probe">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="tcp" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Volume">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="claim" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="size" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="durability" lowerBound="1" eType="#//DurabilityClass"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Capacity">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="count" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="reason" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Grant" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="delivery" lowerBound="1" eType="#//Delivery"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="mountAt" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="fileMode" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="rotation" eType="#//Rotation" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="KvGrant" eSuperTypes="#//Grant">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="keys" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="access" lowerBound="1" eType="#//AccessTier"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="DatabaseGrant" eSuperTypes="#//Grant">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="engine" lowerBound="1" eType="#//DatabaseEngine"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="role" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="TransitGrant" eSuperTypes="#//Grant">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="engine" lowerBound="1" eType="#//TransitEngine"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="operations" lowerBound="1" upperBound="-1" eType="#//TransitOp"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Rotation">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="tolerates" lowerBound="1" eType="#//Tolerance"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="maxAge" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Lifecycle">
     <eLiterals name="application" literal="application"/>
@@ -82,9 +165,29 @@
     <eLiterals name="static" value="3" literal="static"/>
     <eLiterals name="none" value="4" literal="none"/>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Engine">
+    <eLiterals name="postgres" literal="postgres"/>
+    <eLiterals name="rabbitmq" value="1" literal="rabbitmq"/>
+    <eLiterals name="valkey" value="2" literal="valkey"/>
+    <eLiterals name="files" value="3" literal="files"/>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Cutover">
     <eLiterals name="rolling" literal="rolling"/>
     <eLiterals name="recreate" value="1" literal="recreate"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="DurabilityClass">
+    <eLiterals name="reconstructible" literal="reconstructible"/>
+    <eLiterals name="recoverable" value="1" literal="recoverable"/>
+    <eLiterals name="irreplaceable" value="2" literal="irreplaceable"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Arch">
+    <eLiterals name="amd64" literal="amd64"/>
+    <eLiterals name="arm64" value="1" literal="arm64"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Media">
+    <eLiterals name="nvme" literal="nvme"/>
+    <eLiterals name="ssd" value="1" literal="ssd"/>
+    <eLiterals name="hdd" value="2" literal="hdd"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="AlertClass">
     <eLiterals name="businessHours" literal="business-hours"/>
@@ -105,5 +208,33 @@
   <eClassifiers xsi:type="ecore:EEnum" name="Match">
     <eLiterals name="prefix" literal="prefix"/>
     <eLiterals name="exact" value="1" literal="exact"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="DatabaseEngine">
+    <eLiterals name="database" literal="database"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="TransitEngine">
+    <eLiterals name="transit" literal="transit"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="AccessTier">
+    <eLiterals name="read" literal="read"/>
+    <eLiterals name="selfRenew" value="1" literal="self-renew"/>
+    <eLiterals name="selfRoll" value="2" literal="self-roll"/>
+    <eLiterals name="custody" value="3" literal="custody"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="TransitOp">
+    <eLiterals name="sign" literal="sign"/>
+    <eLiterals name="verify" value="1" literal="verify"/>
+    <eLiterals name="encrypt" value="2" literal="encrypt"/>
+    <eLiterals name="decrypt" value="3" literal="decrypt"/>
+    <eLiterals name="rotate" value="4" literal="rotate"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Delivery">
+    <eLiterals name="env" literal="env"/>
+    <eLiterals name="file" value="1" literal="file"/>
+    <eLiterals name="self" value="2" literal="self"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Tolerance">
+    <eLiterals name="restart" literal="restart"/>
+    <eLiterals name="reload" value="1" literal="reload"/>
   </eClassifiers>
 </ecore:EPackage>

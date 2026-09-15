@@ -20,7 +20,9 @@ public class ProjectIntentTokenSource extends BlockTokenSource {
             InternalProjectIntentParser.RULE_FLOW_END,
             InternalProjectIntentParser.RULE_LIST_BEGIN,
             InternalProjectIntentParser.RULE_LIST_END,
-            InternalProjectIntentParser.RULE_FLOW_SEP);
+            InternalProjectIntentParser.RULE_FLOW_SEP,
+            InternalProjectIntentParser.RULE_FOLD,
+            InternalProjectIntentParser.RULE_SCALAR);
 
     public ProjectIntentTokenSource(TokenSource delegate) {
         super(delegate, TYPES);

@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.jorisjonkers.deploykit.emf.cli.Parsed;
 import dev.jorisjonkers.deploykit.emf.cli.Pipeline;
+import dev.jorisjonkers.deploykit.emf.metamodel.descriptor.Descriptor;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -43,11 +45,17 @@ class ParityTest {
     }
 
     @Test
+    void theMetamodelsStructureEqualsTheCommittedDescriptor() throws IOException {
+        assertThat(CanonicalJson.write(Descriptor.of(ProjectIntentPackage.eINSTANCE)))
+                .isEqualTo(read(repository().resolve("spec/v1/examples/expected/descriptor.json")));
+    }
+
+    @Test
     void oneChangedFieldNoLongerMatchesTheOracle() throws IOException {
         Path directory = casesWithAnIntentOracle().get(0);
         Path project = projectFile(directory);
         Path changed = Files.createTempDirectory("parity").resolve(project.getFileName());
-        Files.writeString(changed, read(project).replace("cpu: 50m", "cpu: 60m"));
+        Files.writeString(changed, read(project).replace("owner: joris", "owner: someone-else"));
 
         assertThat(CanonicalJson.write(Pipeline.intent(changed).intent()))
                 .isNotEqualTo(read(directory.resolve("expected/intent.json")));

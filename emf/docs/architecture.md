@@ -118,7 +118,10 @@ of formatting, coverage and mutation.
 
 The descriptor exporter walks the source `EPackage` reflectively and writes the
 descriptor the parity contract fixes. It is the only place the Ecore structure
-is compared with anything.
+is compared with anything. Two shapes it normalises: an abstract class is a
+union, so it is not listed and a feature that points at one names its concrete
+classes; and a map entry is not a class, so the feature that holds the entries
+is a map.
 
 ## Constraints
 
@@ -146,11 +149,17 @@ subset those files use, with indentation handled by synthetic block tokens, and
 refuses anything outside the subset with a diagnostic rather than a guess.
 
 The grammar imports the hand-written source metamodel, so the parser produces
-instances of the graded metamodel directly. There is no inferred syntax
+instances of the graded metamodel directly. A union in the model is a union in
+the grammar: a probe is HTTP or TCP, a probe policy is a block or the word
+`none`, and a grant is keyed by its engine, which a grant that has one writes
+first. The language binds the `.yml` extension, because EMF resolves a resource
+factory by the last extension alone; which document a file holds is the file
+name's to say, and that lands with the Platform document. There is no inferred syntax
 metamodel and no mapping step between parsing and validation.
 
 Indentation is not the grammar's concern: a token source turns the block
-structure into the synthetic `BEGIN` and `END` tokens the rules read. A line
+structure into the synthetic `BEGIN` and `END` tokens the rules read, and folds
+a scalar written over several lines into one token. A line
 indented further than the one before it opens a block, a dash opens one around
 the item that follows it, and a flow collection opens and closes one on a single
 line, so `{ path: /, match: prefix }` and the same keys written as an indented

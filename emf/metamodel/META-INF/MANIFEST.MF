@@ -5,7 +5,8 @@ Bundle-SymbolicName: dev.jorisjonkers.deploykit.emf.metamodel;singleton:=true
 Bundle-Version: 0.1.0.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-21
 Automatic-Module-Name: dev.jorisjonkers.deploykit.emf.metamodel
-Export-Package: dev.jorisjonkers.deploykit.emf.metamodel.projectintent,
+Export-Package: dev.jorisjonkers.deploykit.emf.metamodel.descriptor,
+ dev.jorisjonkers.deploykit.emf.metamodel.projectintent,
  dev.jorisjonkers.deploykit.emf.metamodel.projectintent.impl,
  dev.jorisjonkers.deploykit.emf.metamodel.projectintent.util
 Require-Bundle: org.eclipse.emf.ecore;visibility:=reexport,

@@ -27,6 +27,8 @@
 
 # The data model's own semver, not the toolkit's
 # (docs/adr/model/0039-artifact-schema-versioning.md).
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
 schemaVersion: 1.0.0
 
 project: data              # namespace derives: data-system
@@ -171,7 +173,6 @@ applications:
         # the owner states the stop-then-start they already have.
         cutover: recreate
 
-        stateful: true
         volumes:
           - claim: postgres-data
             mountAt: /var/lib/postgresql/data
@@ -325,7 +326,6 @@ applications:
         # would be E_CUTOVER_UNHONOURABLE, not a silent Recreate.
         cutover: recreate
 
-        stateful: true
         volumes:
           - claim: rabbitmq-data
             mountAt: /var/lib/rabbitmq
@@ -382,7 +382,6 @@ applications:
         # stop-then-start costs a cold cache and nothing else.
         cutover: recreate
 
-        stateful: true
         volumes:
           - claim: valkey-data
             mountAt: /data

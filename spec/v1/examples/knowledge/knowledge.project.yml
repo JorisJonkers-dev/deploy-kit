@@ -22,6 +22,8 @@
 
 # The data model's own semver, not the toolkit's
 # (docs/adr/model/0039-artifact-schema-versioning.md).
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
 schemaVersion: 1.0.0
 
 project: knowledge
@@ -283,7 +285,6 @@ applications:
         # docs/adr/model/0078-engine-is-process-vocabulary.md).
         engine: files
 
-        stateful: true
         volumes:
           - claim: knowledge-vault-clone
             mountAt: /var/lib/knowledge-vault

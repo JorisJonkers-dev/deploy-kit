@@ -1,0 +1,835 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/Project",
+  "$defs": {
+    "Project": {
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "type": "string",
+          "const": "intent.jorisjonkers.dev/v1"
+        },
+        "kind": {
+          "type": "string",
+          "const": "Project"
+        },
+        "schemaVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "project": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "applications": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Application"
+          }
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "schemaVersion",
+        "project",
+        "owner",
+        "applications"
+      ],
+      "additionalProperties": false
+    },
+    "Application": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observability": {
+          "$ref": "#/$defs/Observability"
+        },
+        "exposure": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Exposure"
+          }
+        },
+        "secrets": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/KvGrant"
+              },
+              {
+                "$ref": "#/$defs/DatabaseGrant"
+              },
+              {
+                "$ref": "#/$defs/TransitGrant"
+              }
+            ]
+          }
+        },
+        "processes": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Process"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "processes"
+      ],
+      "additionalProperties": false
+    },
+    "Observability": {
+      "type": "object",
+      "properties": {
+        "alertClass": {
+          "$ref": "#/$defs/AlertClass"
+        },
+        "scrape": {
+          "$ref": "#/$defs/Scrape"
+        }
+      },
+      "required": [
+        "alertClass",
+        "scrape"
+      ],
+      "additionalProperties": false
+    },
+    "AlertClass": {
+      "type": "string",
+      "enum": [
+        "business-hours",
+        "urgent",
+        "page"
+      ]
+    },
+    "Scrape": {
+      "type": "object",
+      "properties": {
+        "process": {
+          "type": "string",
+          "minLength": 1
+        },
+        "surface": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "process",
+        "surface",
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "Exposure": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "host": {
+          "type": "string",
+          "minLength": 1
+        },
+        "audience": {
+          "$ref": "#/$defs/Audience"
+        },
+        "contentPolicy": {
+          "$ref": "#/$defs/ContentPolicy"
+        },
+        "routes": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Route"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "host",
+        "audience",
+        "routes"
+      ],
+      "additionalProperties": false
+    },
+    "Audience": {
+      "type": "string",
+      "enum": [
+        "anonymous",
+        "authenticated",
+        "internal",
+        "lan"
+      ]
+    },
+    "ContentPolicy": {
+      "type": "string",
+      "enum": [
+        "strict",
+        "admin",
+        "workflow"
+      ]
+    },
+    "Route": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "match": {
+          "$ref": "#/$defs/Match"
+        },
+        "process": {
+          "type": "string",
+          "minLength": 1
+        },
+        "surface": {
+          "type": "string",
+          "minLength": 1
+        },
+        "audience": {
+          "$ref": "#/$defs/Audience"
+        },
+        "redirectTo": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "path",
+        "match",
+        "process",
+        "surface"
+      ],
+      "additionalProperties": false
+    },
+    "Match": {
+      "type": "string",
+      "enum": [
+        "prefix",
+        "exact"
+      ]
+    },
+    "KvGrant": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "keys": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "access": {
+          "$ref": "#/$defs/AccessTier"
+        },
+        "delivery": {
+          "$ref": "#/$defs/Delivery"
+        },
+        "mountAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fileMode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rotation": {
+          "$ref": "#/$defs/Rotation"
+        }
+      },
+      "required": [
+        "path",
+        "keys",
+        "access",
+        "delivery"
+      ],
+      "additionalProperties": false
+    },
+    "AccessTier": {
+      "type": "string",
+      "enum": [
+        "read",
+        "self-renew",
+        "self-roll",
+        "custody"
+      ]
+    },
+    "Delivery": {
+      "type": "string",
+      "enum": [
+        "env",
+        "file",
+        "self"
+      ]
+    },
+    "Rotation": {
+      "type": "object",
+      "properties": {
+        "tolerates": {
+          "$ref": "#/$defs/Tolerance"
+        },
+        "maxAge": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "tolerates"
+      ],
+      "additionalProperties": false
+    },
+    "Tolerance": {
+      "type": "string",
+      "enum": [
+        "restart",
+        "reload"
+      ]
+    },
+    "DatabaseGrant": {
+      "type": "object",
+      "properties": {
+        "engine": {
+          "$ref": "#/$defs/DatabaseEngine"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "delivery": {
+          "$ref": "#/$defs/Delivery"
+        },
+        "mountAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fileMode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rotation": {
+          "$ref": "#/$defs/Rotation"
+        }
+      },
+      "required": [
+        "engine",
+        "role",
+        "delivery"
+      ],
+      "additionalProperties": false
+    },
+    "DatabaseEngine": {
+      "type": "string",
+      "enum": [
+        "database"
+      ]
+    },
+    "TransitGrant": {
+      "type": "object",
+      "properties": {
+        "engine": {
+          "$ref": "#/$defs/TransitEngine"
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operations": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TransitOp"
+          }
+        },
+        "delivery": {
+          "$ref": "#/$defs/Delivery"
+        },
+        "mountAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fileMode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rotation": {
+          "$ref": "#/$defs/Rotation"
+        }
+      },
+      "required": [
+        "engine",
+        "key",
+        "operations",
+        "delivery"
+      ],
+      "additionalProperties": false
+    },
+    "TransitEngine": {
+      "type": "string",
+      "enum": [
+        "transit"
+      ]
+    },
+    "TransitOp": {
+      "type": "string",
+      "enum": [
+        "sign",
+        "verify",
+        "encrypt",
+        "decrypt",
+        "rotate"
+      ]
+    },
+    "Process": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/Lifecycle"
+        },
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runtime": {
+          "$ref": "#/$defs/Runtime"
+        },
+        "engine": {
+          "$ref": "#/$defs/Engine"
+        },
+        "provides": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          }
+        },
+        "placement": {
+          "$ref": "#/$defs/Placement"
+        },
+        "writablePaths": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "sidecars": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Sidecar"
+          }
+        },
+        "dependsOn": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DependencyEdge"
+          }
+        },
+        "assets": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Asset"
+          }
+        },
+        "probes": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NoProbes"
+            },
+            {
+              "$ref": "#/$defs/Probes"
+            }
+          ]
+        },
+        "volumes": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Volume"
+          }
+        },
+        "replicas": {
+          "$ref": "#/$defs/Capacity"
+        },
+        "secrets": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/KvGrant"
+              },
+              {
+                "$ref": "#/$defs/DatabaseGrant"
+              },
+              {
+                "$ref": "#/$defs/TransitGrant"
+              }
+            ]
+          }
+        },
+        "startupBudget": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cutover": {
+          "$ref": "#/$defs/Cutover"
+        }
+      },
+      "required": [
+        "name",
+        "lifecycle",
+        "image",
+        "runtime",
+        "placement",
+        "cutover"
+      ],
+      "additionalProperties": false
+    },
+    "Lifecycle": {
+      "type": "string",
+      "enum": [
+        "application",
+        "job"
+      ]
+    },
+    "Runtime": {
+      "type": "string",
+      "enum": [
+        "jvm",
+        "python",
+        "node",
+        "static",
+        "none"
+      ]
+    },
+    "Engine": {
+      "type": "string",
+      "enum": [
+        "postgres",
+        "rabbitmq",
+        "valkey",
+        "files"
+      ]
+    },
+    "Placement": {
+      "type": "object",
+      "properties": {
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu": {
+          "type": "string",
+          "minLength": 1
+        },
+        "arch": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Arch"
+          }
+        },
+        "site": {
+          "type": "string",
+          "minLength": 1
+        },
+        "disk": {
+          "$ref": "#/$defs/DiskRequest"
+        },
+        "gpu": {
+          "$ref": "#/$defs/GpuRequest"
+        },
+        "capabilities": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "memory",
+        "cpu"
+      ],
+      "additionalProperties": false
+    },
+    "Arch": {
+      "type": "string",
+      "enum": [
+        "amd64",
+        "arm64"
+      ]
+    },
+    "DiskRequest": {
+      "type": "object",
+      "properties": {
+        "media": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Media"
+          }
+        }
+      },
+      "required": [
+        "media"
+      ],
+      "additionalProperties": false
+    },
+    "Media": {
+      "type": "string",
+      "enum": [
+        "nvme",
+        "ssd",
+        "hdd"
+      ]
+    },
+    "GpuRequest": {
+      "type": "object",
+      "properties": {
+        "class": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "class",
+        "memory"
+      ],
+      "additionalProperties": false
+    },
+    "Sidecar": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "name",
+        "image",
+        "memory",
+        "cpu"
+      ],
+      "additionalProperties": false
+    },
+    "DependencyEdge": {
+      "type": "object",
+      "properties": {
+        "application": {
+          "type": "string",
+          "minLength": 1
+        },
+        "surface": {
+          "type": "string",
+          "minLength": 1
+        },
+        "required": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "application",
+        "surface"
+      ],
+      "additionalProperties": false
+    },
+    "Asset": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mountAt": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "from",
+        "mountAt"
+      ],
+      "additionalProperties": false
+    },
+    "NoProbes": {
+      "type": "string",
+      "const": "none"
+    },
+    "Probes": {
+      "type": "object",
+      "properties": {
+        "readiness": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HttpProbe"
+            },
+            {
+              "$ref": "#/$defs/TcpProbe"
+            }
+          ]
+        },
+        "liveness": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HttpProbe"
+            },
+            {
+              "$ref": "#/$defs/TcpProbe"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "HttpProbe": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      },
+      "required": [
+        "path",
+        "port"
+      ],
+      "additionalProperties": false
+    },
+    "TcpProbe": {
+      "type": "object",
+      "properties": {
+        "tcp": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      },
+      "required": [
+        "tcp"
+      ],
+      "additionalProperties": false
+    },
+    "Volume": {
+      "type": "object",
+      "properties": {
+        "claim": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mountAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "size": {
+          "type": "string",
+          "minLength": 1
+        },
+        "durability": {
+          "$ref": "#/$defs/DurabilityClass"
+        }
+      },
+      "required": [
+        "claim",
+        "mountAt",
+        "durability"
+      ],
+      "additionalProperties": false
+    },
+    "DurabilityClass": {
+      "type": "string",
+      "enum": [
+        "reconstructible",
+        "recoverable",
+        "irreplaceable"
+      ]
+    },
+    "Capacity": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 9007199254740991
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "count",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "Cutover": {
+      "type": "string",
+      "enum": [
+        "rolling",
+        "recreate"
+      ]
+    }
+  }
+}

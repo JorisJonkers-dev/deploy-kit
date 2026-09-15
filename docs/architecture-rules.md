@@ -57,7 +57,7 @@ fails the gate, so the taxonomy cannot grow entries nothing stands behind.
 
 ## Rules
 
-This ledger holds **64** rules, **12** of them pending.
+This ledger holds **64** rules, **11** of them pending.
 
 A row is enforced or pending, never both. An enforced row names its enforcer as
 `kind:value`: `depcruise:` a rule in
@@ -118,7 +118,7 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-040 | toolchain | Coverage is a ratchet over an explicit include list, and no ignore comment exempts a line from it | `file:vitest.config.ts` | [test/harness.test.ts](../test/harness.test.ts) `an ignore is slack nobody decided` |
 | RULE-041 | toolchain | No default export outside a tool configuration file | `eslint:no-restricted-exports` | [test/seams.test.ts](../test/seams.test.ts) `RULE-041 refuses a default export` |
 | RULE-042 | toolchain | Shipped code is ESM, and the one CommonJS file is the dependency-cruiser configuration that cannot be anything else | pending (#105): stated by `type: module`; no configured rule refuses a second CommonJS file | pending |
-| RULE-043 | toolchain | Generated artifacts are committed, and CI fails when regenerating one produces a diff | pending (#38): the first generator is the JSON Schema #38 derives from the Project Intent metamodel, and its diff check lands with it | pending |
+| RULE-043 | toolchain | Generated artifacts are committed, and CI fails when regenerating one produces a diff | `file:src/wire/project-intent/json-schema.ts` | [test/model/descriptor.test.ts](../test/model/descriptor.test.ts) `regenerates without a diff` |
 | RULE-044 | cli | The CLI prints help on `--help` and `-h`, data on stdout and diagnostics on stderr, emits only data under `--json`, maps failures through one exit-code enum, honours `NO_COLOR`, and never prompts | pending (#105): each clause needs a process-level test, and the CLI ring does not exist yet | pending |
 | RULE-045 | registry | Every registered adapter satisfies the adapter port, attributes every Deliverable to itself, and renders deterministically | pending (#97): the adapter contract suite arrives with the first adapter | pending |
 | RULE-046 | registry | Every estate-wide invariant is registered with its code, its spec anchor and its test, so an unregistered one is detectable rather than merely absent | pending (#44): the invariant registry is that ticket's deliverable | pending |

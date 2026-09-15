@@ -284,7 +284,20 @@ feature's type and multiplicity, and every closed vocabulary with its literals.
 Target structures are compared through what they generate, not structurally.
 The TypeScript side builds it from the Zod schemas with Zod's native
 `z.toJSONSchema()` and a normaliser; the descriptor's shape is fixed here, not
-by either source format.
+by either source format:
+
+- `classes`, sorted by name. Each carries its `name` and its `features`, sorted
+  by name; a class the language writes as one word carries that word as
+  `scalar`.
+- A **feature** carries its `name`, the `types` it admits sorted by name,
+  whether it is `required`, whether it holds `many` values, and whether it is a
+  `map` keyed by string. A type is a class name, a vocabulary name, or one of
+  `string`, `int` and `boolean`.
+- A union is not a class: a feature whose value may be one of several classes
+  names them all, so an abstract class on one side and a union on the other
+  describe the same model.
+- `vocabularies`, sorted by name, each with its `literals` in the order the
+  model declares them.
 
 **The constraint ledger** gives every model constraint a `CONS-NNN` id, the
 diagnostic code it emits, the check that enforces it in `src/`, and a refused
