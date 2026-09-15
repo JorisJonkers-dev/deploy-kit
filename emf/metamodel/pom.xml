@@ -13,4 +13,80 @@
   <artifactId>dev.jorisjonkers.deploykit.emf.metamodel</artifactId>
   <packaging>eclipse-plugin</packaging>
   <name>deploy-kit model-driven metamodel</name>
+
+  <build>
+    <plugins>
+      <!-- Generates the metamodel's Java from its genmodel before compiling; the output is build output. -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>generate-metamodel</id>
+            <phase>generate-sources</phase>
+            <goals><goal>java</goal></goals>
+          </execution>
+        </executions>
+        <configuration>
+          <mainClass>org.eclipse.emf.mwe2.launch.runtime.Mwe2Launcher</mainClass>
+          <arguments>
+            <argument>/${project.basedir}/src/main/java/dev/jorisjonkers/deploykit/emf/metamodel/GenerateProjectIntent.mwe2</argument>
+            <argument>-p</argument>
+            <argument>rootPath=/${project.basedir}/..</argument>
+          </arguments>
+          <classpathScope>compile</classpathScope>
+          <cleanupDaemonThreads>false</cleanupDaemonThreads>
+          <additionalClasspathElements>
+            <additionalClasspathElement>${project.basedir}/src/main/java</additionalClasspathElement>
+          </additionalClasspathElements>
+        </configuration>
+      </plugin>
+      <!--
+        Generated code is build output, not code anyone wrote here, so coverage
+        and mutation leave it out (docs/adr/emf/0115). The agent takes class
+        names and the report takes file paths, and in both a `*` reaches across
+        package separators, so each generated package is named.
+      -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <configuration>
+              <excludes>
+                <exclude>dev.jorisjonkers.deploykit.emf.metamodel.projectintent.*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.metamodel.projectintent.impl.*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.metamodel.projectintent.util.*</exclude>
+              </excludes>
+            </configuration>
+          </execution>
+          <execution>
+            <id>report</id>
+            <configuration>
+              <excludes>
+                <exclude>dev/jorisjonkers/deploykit/emf/metamodel/projectintent/**</exclude>
+              </excludes>
+            </configuration>
+          </execution>
+          <execution>
+            <id>coverage-floor</id>
+            <configuration>
+              <excludes>
+                <exclude>dev/jorisjonkers/deploykit/emf/metamodel/projectintent/**</exclude>
+              </excludes>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.pitest</groupId>
+        <artifactId>pitest-maven</artifactId>
+        <configuration>
+          <excludedClasses><param>dev.jorisjonkers.deploykit.emf.metamodel.projectintent.*</param></excludedClasses>
+          <failWhenNoMutations>false</failWhenNoMutations>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 </project>

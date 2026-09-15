@@ -57,7 +57,7 @@ fails the gate, so the taxonomy cannot grow entries nothing stands behind.
 
 ## Rules
 
-This ledger holds **63** rules, **12** of them pending.
+This ledger holds **64** rules, **12** of them pending.
 
 A row is enforced or pending, never both. An enforced row names its enforcer as
 `kind:value`: `depcruise:` a rule in
@@ -139,6 +139,7 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-061 | gates | A workflow step that runs the Maven wrapper runs it in a directory holding a POM and the wrapper, and the model-driven reactor names only modules on disk | `file:test/emf-wiring.test.ts` | [test/emf-wiring.test.ts](../test/emf-wiring.test.ts) `which names a POM that does not exist` |
 | RULE-062 | gates | CodeQL analyses the model-driven implementation's Java without a build, ignoring build output and generated sources | `file:.github/codeql/codeql-config.yml` | [test/emf-wiring.test.ts](../test/emf-wiring.test.ts) `'language': 'java-kotlin'` |
 | RULE-063 | gates | A CodeQL finding of any severity fails `Pipeline Complete`, unless the finding is filtered in the CodeQL configuration | `file:.github/workflows/codeql.yml` | [test/pipeline-wiring.test.ts](../test/pipeline-wiring.test.ts) `'name': 'Fail on any finding'` |
+| RULE-064 | gates | Every module under `src/` is mutated, and a mutation score below the measured break threshold fails the build | `file:stryker.config.json` | [test/mutation-contract.test.ts](../test/mutation-contract.test.ts) `"break": 100` |
 
 ## Considered and rejected
 

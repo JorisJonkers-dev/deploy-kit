@@ -58,6 +58,10 @@ __pycache__/
 # these; the template did not ignore them.
 coverage/
 .nyc_output/
+
+# Mutation testing: Stryker's report and its sandbox copies of the tree.
+reports/
+.stryker-tmp/
 *.lcov
 
 # Build and tool caches

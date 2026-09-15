@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: deploy-kit model-driven pipeline
+Bundle-SymbolicName: dev.jorisjonkers.deploykit.emf.cli;singleton:=true
+Bundle-Version: 0.1.0.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-21
+Automatic-Module-Name: dev.jorisjonkers.deploykit.emf.cli
+Export-Package: dev.jorisjonkers.deploykit.emf.cli
+Require-Bundle: dev.jorisjonkers.deploykit.emf.metamodel,
+ dev.jorisjonkers.deploykit.emf.syntax,
+ org.eclipse.emf.ecore,
+ org.eclipse.xtext

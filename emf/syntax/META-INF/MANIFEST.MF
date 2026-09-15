@@ -5,7 +5,12 @@ Bundle-SymbolicName: dev.jorisjonkers.deploykit.emf.syntax;singleton:=true
 Bundle-Version: 0.1.0.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-21
 Automatic-Module-Name: dev.jorisjonkers.deploykit.emf.syntax
-Require-Bundle: org.eclipse.xtext,
+Export-Package: dev.jorisjonkers.deploykit.emf.syntax,
+ dev.jorisjonkers.deploykit.emf.syntax.blocks,
+ dev.jorisjonkers.deploykit.emf.syntax.parser.antlr,
+ dev.jorisjonkers.deploykit.emf.syntax.services
+Require-Bundle: dev.jorisjonkers.deploykit.emf.metamodel,
+ org.eclipse.xtext,
  org.eclipse.xtext.util,
  org.eclipse.xtext.xbase.lib,
  org.eclipse.emf.ecore,

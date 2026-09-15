@@ -1,6 +1,8 @@
 # Generated
 CHANGELOG.md
 coverage/
+reports/
+.stryker-tmp/
 **/target/
 dist/
 node_modules/

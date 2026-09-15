@@ -17,40 +17,76 @@
   <build>
     <plugins>
       <!--
-        Every class the Xtext generator writes is build output, not code anyone
-        wrote here, so coverage and mutation leave it out (docs/adr/emf/0115).
-        The globs name what the generator writes for this grammar.
+        Generated code is build output, not code anyone wrote here, so coverage
+        and mutation leave it out (docs/adr/emf/0115). The agent takes class
+        names and the report takes file paths, and in both a `*` reaches across
+        package separators, so each generated package is named.
       -->
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
-        <configuration>
-          <excludes>
-                <exclude>dev/jorisjonkers/deploykit/emf/syntax/*Skeleton*</exclude>
-                <exclude>dev/jorisjonkers/deploykit/emf/syntax/skeleton/**</exclude>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <configuration>
+              <excludes>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.ProjectIntent*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.AbstractProjectIntent*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.parser.*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.parser.antlr.*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.parser.antlr.internal.*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.parser.antlr.lexer.*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.serializer.*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.services.*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.scoping.*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.validation.*</exclude>
+              </excludes>
+            </configuration>
+          </execution>
+          <execution>
+            <id>report</id>
+            <configuration>
+              <excludes>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/ProjectIntent*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractProjectIntent*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/parser/**</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/serializer/**</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/services/**</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/scoping/**</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/validation/**</exclude>
-          </excludes>
-        </configuration>
+              </excludes>
+            </configuration>
+          </execution>
+          <execution>
+            <id>coverage-floor</id>
+            <configuration>
+              <excludes>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/ProjectIntent*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractProjectIntent*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/parser/**</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/serializer/**</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/services/**</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/scoping/**</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/validation/**</exclude>
+              </excludes>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.pitest</groupId>
         <artifactId>pitest-maven</artifactId>
         <configuration>
           <excludedClasses>
-          <param>dev.jorisjonkers.deploykit.emf.syntax.*Skeleton*</param>
-          <param>dev.jorisjonkers.deploykit.emf.syntax.skeleton.*</param>
-          <param>dev.jorisjonkers.deploykit.emf.syntax.parser.*</param>
-          <param>dev.jorisjonkers.deploykit.emf.syntax.serializer.*</param>
-          <param>dev.jorisjonkers.deploykit.emf.syntax.services.*</param>
-          <param>dev.jorisjonkers.deploykit.emf.syntax.scoping.*</param>
-          <param>dev.jorisjonkers.deploykit.emf.syntax.validation.*</param>
+            <param>dev.jorisjonkers.deploykit.emf.syntax.*ProjectIntent*</param>
+            <param>dev.jorisjonkers.deploykit.emf.syntax.parser.antlr.lexer.*</param>
+            <param>dev.jorisjonkers.deploykit.emf.syntax.parser.antlr.internal.*</param>
+            <param>dev.jorisjonkers.deploykit.emf.syntax.parser.*</param>
+            <param>dev.jorisjonkers.deploykit.emf.syntax.serializer.*</param>
+            <param>dev.jorisjonkers.deploykit.emf.syntax.services.*</param>
+            <param>dev.jorisjonkers.deploykit.emf.syntax.scoping.*</param>
+            <param>dev.jorisjonkers.deploykit.emf.syntax.validation.*</param>
           </excludedClasses>
-          <!-- Until the syntax ticket adds hand-written code, nothing is left to mutate. -->
-          <failWhenNoMutations>false</failWhenNoMutations>
         </configuration>
       </plugin>
       <!-- Runs the Xtext generator before compiling; its output is build output. -->
@@ -67,7 +103,7 @@
         <configuration>
           <mainClass>org.eclipse.emf.mwe2.launch.runtime.Mwe2Launcher</mainClass>
           <arguments>
-            <argument>/${project.basedir}/src/main/java/dev/jorisjonkers/deploykit/emf/syntax/GenerateSkeleton.mwe2</argument>
+            <argument>/${project.basedir}/src/main/java/dev/jorisjonkers/deploykit/emf/syntax/GenerateProjectIntent.mwe2</argument>
             <argument>-p</argument>
             <argument>rootPath=/${project.basedir}/..</argument>
           </arguments>
