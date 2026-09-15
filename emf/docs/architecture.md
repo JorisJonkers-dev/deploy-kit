@@ -166,6 +166,14 @@ factory by the last extension alone; which document a file holds is the file
 name's to say, and that lands with the Platform document. There is no inferred syntax
 metamodel and no mapping step between parsing and validation.
 
+A route's and a scrape's `process` and `surface` are cross-references, linked by
+a scope provider that offers the Processes of the Application holding them and the
+surfaces the linked Process provides. A name that links to nothing becomes the
+specification's code, `E_UNKNOWN_PROCESS` or `E_UNKNOWN_SURFACE`, at the pointer
+of the route or scrape; a surface whose Process did not link is not reported as
+well. A dependency edge's names reach other documents and stay names until the
+composed union links them.
+
 Indentation is not the grammar's concern: a token source turns the block
 structure into the synthetic `BEGIN` and `END` tokens the rules read, and folds
 a scalar written over several lines into one token. A line

@@ -30,15 +30,26 @@ export interface Application {
   readonly processes: readonly Process[];
 }
 
+/** A port a Process listens on, named once, in its `provides`. */
+export interface Surface {
+  readonly name: string;
+  readonly port: number;
+}
+
+/** A Process and one of its surfaces, resolved from the names a document writes. */
 export interface SurfaceRef {
-  readonly process: string;
-  readonly surface: string;
+  readonly process: Process;
+  readonly surface: Surface;
+}
+
+export interface Scrape extends SurfaceRef {
+  readonly path: string;
 }
 
 export interface Observability {
   readonly alertClass: AlertClass;
   /** Whole or absent in the model: a document with a class and no signal is refused. */
-  readonly scrape?: SurfaceRef & { readonly path: string };
+  readonly scrape?: Scrape;
 }
 
 export interface Exposure {
@@ -139,7 +150,7 @@ export interface Process {
   readonly image: string;
   readonly runtime: Runtime;
   readonly engine?: Engine;
-  readonly provides: ReadonlyMap<string, number>;
+  readonly surfaces: readonly Surface[];
   readonly placement: Placement;
   readonly writablePaths: readonly string[];
   readonly sidecars: readonly Sidecar[];

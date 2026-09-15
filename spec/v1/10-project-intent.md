@@ -1245,12 +1245,19 @@ gap, not an argument for a field.
 | two exposures declare the same `host` | `E_DUPLICATE_HOST` |
 | two exposures of one Application share a `name` | `E_DUPLICATE_EXPOSURE_NAME` |
 | two routes of one exposure share the same `path` + `match` pair | `E_DUPLICATE_ROUTE_MATCH` |
+| a route names a Process its Application does not have | `E_UNKNOWN_PROCESS` |
 | a route's `{process, surface}` pair names no surface that Process provides | `E_UNKNOWN_SURFACE` |
 
 `E_DUPLICATE_HOST` is evaluated at composition over the whole union, Registered
 Unmanaged Surfaces included, because a name the estate already answers on is taken
-whether or not this model deploys what answers (chapter 40). The other three are
+whether or not this model deploys what answers (chapter 40). The other four are
 scoped to a single document and are refused as soon as the fragment is read.
+
+A route's `process` and `surface` are **references**, not strings: reading the
+document links each to the Process and the surface it names, inside the one
+Application that holds the route, and a name that links to nothing is refused at
+the route's own path. When the Process does not resolve, the surface is not
+reported as well: there is no Process to look it up in.
 
 `E_DUPLICATE_EXPOSURE_NAME` has had an implementation and an error code for longer
 than it has had a definition: nothing said what a name was, or whether an
@@ -1303,7 +1310,11 @@ section at all.
 
 `scrape` names a **surface, not a port**, the same way a route does
 ([Exposure](#exposure)). The port is already declared once in `provides`, and a
-second statement of it would be a second declaring site for one fact. The path
+second statement of it would be a second declaring site for one fact. Its
+`process` and `surface` are references linked the same way a route's are: a
+scrape naming a Process its Application does not have is `E_UNKNOWN_PROCESS`, and
+one naming a surface that Process does not provide is `E_UNKNOWN_SURFACE`, both
+at the scrape's path. The path
 genuinely varies ( `/actuator/prometheus`, `/api/actuator/prometheus`,
 `/metrics`) so it is authored, and a platform that guessed would collect
 nothing and report success.
@@ -1857,6 +1868,18 @@ already told them, and the lines reaching them made the model harder to read.
 | `Tolerance` | `Rotation.tolerates` | `restart`, `reload` |
 | `PlaceholderKind` | `Placeholder.kind` | `secret`, `dependency`, `exposure`, `identity` |
 
+### Absent or `none`
+
+One convention decides how a document opts out of something, and it depends on
+which mistake is worse. **Where forgetting a block is harmless, absence is the
+opt-out**: an Application with no `observability` block wants no monitoring, and
+there is no `none` to write, because a forgotten alert is a gap someone notices.
+**Where forgetting a block is dangerous, `none` must be written**: a Process with
+no listener declares `probes: none`, because a forgotten probe block would let a
+Process that serves traffic start without anyone checking it. The metamodel
+encodes both: `observability` is optional, and `probes` is either a block or the
+word `none`.
+
 Three carry a constraint the list alone does not state. `AccessTier` is `kv`-only
 except for `read`, and `TransitOp` applies to a `transit` grant only
 ([Access tiers](#access-tiers)). `AlertClass` has no `none` member: an Application
@@ -2132,7 +2155,7 @@ classDiagram
 
     Application "1" *-- "0..*" Exposure : exposure
     Exposure "1" *-- "1..*" Route : routes
-    Route ..> Surface : resolves by name
+    Route --> Surface : surface
     DependencyEdge ..> Surface : resolves by name
 
     Process "1" *-- "1..*" EnvFile : env per process

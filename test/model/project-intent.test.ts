@@ -94,8 +94,29 @@ describe("parseProjectIntent", () => {
     expect(result.ok && canonicalJson(result.value.document)).not.toBe(ORACLE);
   });
 
-  it("maps the minimal case into the domain model", () => {
+  it("maps the minimal case into the domain model, with its references resolved", () => {
     const result = parseProjectIntent(MINIMAL);
+    const surface = { name: "http", port: 8080 };
+    const process = {
+      name: "notes-api",
+      lifecycle: "application",
+      image: "notes-api",
+      runtime: "node",
+      surfaces: [surface],
+      placement: { memory: "256Mi", cpu: "50m", arch: [], capabilities: [] },
+      writablePaths: [],
+      sidecars: [],
+      dependencies: [],
+      assets: [],
+      volumes: [],
+      grants: [],
+      probes: {
+        readiness: { path: "/healthz/ready", port: 8080 },
+        liveness: { path: "/healthz/live", port: 8080 },
+      },
+      startupBudget: "20s",
+      cutover: "rolling",
+    };
 
     expect(result.ok && result.value.project).toStrictEqual({
       name: "notes",
@@ -105,7 +126,7 @@ describe("parseProjectIntent", () => {
           id: "notes",
           observability: {
             alertClass: "business-hours",
-            scrape: { process: "notes-api", surface: "http", path: "/metrics" },
+            scrape: { process, surface, path: "/metrics" },
           },
           grants: [],
           exposures: [
@@ -114,46 +135,30 @@ describe("parseProjectIntent", () => {
               host: "notes.jorisjonkers.dev",
               audience: "anonymous",
               contentPolicy: "strict",
-              routes: [
-                {
-                  path: "/",
-                  match: "prefix",
-                  process: "notes-api",
-                  surface: "http",
-                },
-              ],
+              routes: [{ path: "/", match: "prefix", process, surface }],
             },
           ],
-          processes: [
-            {
-              name: "notes-api",
-              lifecycle: "application",
-              image: "notes-api",
-              runtime: "node",
-              provides: new Map([["http", 8080]]),
-              placement: {
-                memory: "256Mi",
-                cpu: "50m",
-                arch: [],
-                capabilities: [],
-              },
-              writablePaths: [],
-              sidecars: [],
-              dependencies: [],
-              assets: [],
-              volumes: [],
-              grants: [],
-              probes: {
-                readiness: { path: "/healthz/ready", port: 8080 },
-                liveness: { path: "/healthz/live", port: 8080 },
-              },
-              startupBudget: "20s",
-              cutover: "rolling",
-            },
-          ],
+          processes: [process],
         },
       ],
     });
+  });
+
+  it("links a route and a scrape to the very Process and surface the Application holds", () => {
+    const result = parseProjectIntent(MINIMAL);
+    const application = result.ok
+      ? result.value.project.applications[0]
+      : undefined;
+    const process = application?.processes[0];
+
+    expect(application?.exposures[0]?.routes[0]?.process).toBe(process);
+    expect(application?.exposures[0]?.routes[0]?.surface).toBe(
+      process?.surfaces[0],
+    );
+    expect(application?.observability?.scrape?.process).toBe(process);
+    expect(application?.observability?.scrape?.surface).toBe(
+      process?.surfaces[0],
+    );
   });
 
   it("maps an absent block to an empty one, and leaves an absent optional field absent", () => {
@@ -172,7 +177,7 @@ describe("parseProjectIntent", () => {
             lifecycle: "job",
             image: "worker",
             runtime: "none",
-            provides: new Map(),
+            surfaces: [],
             placement: {
               memory: "64Mi",
               cpu: "10m",

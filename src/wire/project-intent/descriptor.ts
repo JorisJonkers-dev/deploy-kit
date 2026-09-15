@@ -12,6 +12,10 @@ export interface DescriptorFeature {
   readonly required: boolean;
   readonly many: boolean;
   readonly map: boolean;
+  /** Whether the value links to a model element rather than holding one. */
+  readonly reference: boolean;
+  /** The name of what one entry of a map is, where the feature is a map. */
+  readonly entry?: string;
 }
 
 export interface DescriptorClass {
@@ -59,6 +63,16 @@ function feature(
   node: Node,
   required: boolean,
 ): DescriptorFeature {
+  const reference = node["reference"];
+  if (typeof reference === "string")
+    return {
+      name,
+      types: [reference],
+      required,
+      many: false,
+      map: false,
+      reference: true,
+    };
   if (node["type"] === "array")
     return {
       name,
@@ -66,6 +80,7 @@ function feature(
       required,
       many: true,
       map: false,
+      reference: false,
     };
   if (node["type"] === "object")
     return {
@@ -74,8 +89,17 @@ function feature(
       required,
       many: false,
       map: true,
+      reference: false,
+      entry: String(node["entry"]),
     };
-  return { name, types: typesOf(node), required, many: false, map: false };
+  return {
+    name,
+    types: typesOf(node),
+    required,
+    many: false,
+    map: false,
+    reference: false,
+  };
 }
 
 /** The descriptor of the Project Intent metamodel, as the wire schemas declare it. */

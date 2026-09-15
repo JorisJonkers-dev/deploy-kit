@@ -7,7 +7,9 @@ import java.util.Map;
 import org.eclipse.emf.common.util.Enumerator;
 import org.eclipse.emf.ecore.EAnnotation;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.emf.ecore.util.EcoreUtil;
 
 /**
  * Reads a parsed model as the JSON value the parity contract compares: every feature named as the
@@ -42,6 +44,10 @@ public final class IntentJson {
 
     private static Object value(EObject owner, EStructuralFeature feature) {
         Object value = owner.eGet(feature);
+        if (feature instanceof EReference reference && !reference.isContainment()) {
+            // A reference is written as the name that linked it: the identifier of what it points at.
+            return EcoreUtil.getID((EObject) value);
+        }
         if (feature.isMany()) {
             return many(feature, (List<?>) value);
         }

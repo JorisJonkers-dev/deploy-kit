@@ -175,7 +175,7 @@ class BlockTokenSourceTest {
 
     @Test
     void everyCharacterOfTheFileIsCoveredByExactlyOneToken() {
-        String source = "a: >-\n  one\n  two\n\nb:\n  c: 2\n";
+        String source = "a: >-\n  one\n  two\n\nb:\n  c: 2\nd: { e: 1, f: [x, y] }\n";
         int next = 0;
 
         for (Token token : tokens(source)) {

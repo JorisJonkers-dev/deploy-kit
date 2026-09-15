@@ -61,6 +61,28 @@ class PipelineTest {
     }
 
     @Test
+    void aNameThatLinksToNothingIsRefusedAtThePointerOfWhatWroteIt(@TempDir Path directory) throws IOException {
+        String routed = MINIMAL.replace("applications:\n  - id: notes\n", """
+                applications:
+                  - id: notes
+                    exposure:
+                      - name: public
+                        host: notes.jorisjonkers.dev
+                        audience: lan
+                        routes:
+                          - { path: /, match: prefix, process: notes-api, surface: https }
+                """)
+                .replace("    runtime: node\n", "    runtime: node\n        provides: { http: 8080 }\n");
+
+        Parsed parsed = Pipeline.intent(file(directory, routed));
+
+        assertThat(parsed.diagnostics())
+                .extracting(Diagnostic::code, Diagnostic::path)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(
+                        "E_UNKNOWN_SURFACE", "/applications/0/exposure/0/routes/0"));
+    }
+
+    @Test
     void anEmptyDocumentIsRefused(@TempDir Path directory) throws IOException {
         Parsed parsed = Pipeline.intent(file(directory, ""));
 

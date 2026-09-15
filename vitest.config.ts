@@ -30,11 +30,12 @@ export default defineConfig({
       // lines 1324/1338. What is left uncovered is the one-line command
       // guard at the bottom of each gate and the branches for a tool that
       // cannot be started at all.
+      // Raised with the linking step (#39), which lands at 100%.
       thresholds: {
-        statements: 99.03,
-        branches: 96.09,
+        statements: 99.06,
+        branches: 96.17,
         functions: 100,
-        lines: 98.95,
+        lines: 98.97,
       },
     },
   },

@@ -109,8 +109,10 @@ describe("the refusal fixtures", () => {
       "env-cannot-reload",
       "illegal-delivery-for-access",
       "non-kv-delivery",
+      "scrape-unknown-process",
+      "unknown-surface",
     ]);
-    expect(refused).toHaveLength(8);
+    expect(refused).toHaveLength(10);
     expect(
       fixtures.length - refused.length,
       "the accepted counterpart and the vocabulary case carry no oracle",

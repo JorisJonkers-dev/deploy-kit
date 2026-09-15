@@ -290,8 +290,11 @@ by either source format:
   by name; a class the language writes as one word carries that word as
   `scalar`.
 - A **feature** carries its `name`, the `types` it admits sorted by name,
-  whether it is `required`, whether it holds `many` values, and whether it is a
-  `map` keyed by string. A type is a class name, a vocabulary name, or one of
+  whether it is `required`, whether it holds `many` values, whether it is a
+  `map` keyed by string, and whether it is a `reference`: a name the document
+  writes that links to a model element, whose one type is the element's class.
+  A map also names what one of its entries is, as `entry`, so a reference can
+  point at a map's entries. A type is a class name, a vocabulary name, or one of
   `string`, `int` and `boolean`.
 - A union is not a class: a feature whose value may be one of several classes
   names them all, so an abstract class on one side and a union on the other
