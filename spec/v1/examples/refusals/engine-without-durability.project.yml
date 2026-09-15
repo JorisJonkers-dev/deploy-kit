@@ -1,0 +1,38 @@
+# REFUSED: E_ENGINE_WITHOUT_DURABILITY
+#
+# `engine` names what the process is where the platform has to treat it
+# specially, and what it keys the backup method off. This Process declares one
+# over a volume whose durability derives no backup, so the engine names a method
+# nothing asks for (spec/v1/10-project-intent.md #process).
+#
+# Its counterpart is durability-without-engine.project.yml: the same pair with
+# the other half missing.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: engine-without-durability
+    processes:
+      - name: engine-without-durability-store
+        lifecycle: application
+        image: engine-without-durability-store
+        runtime: static
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: recreate
+        engine: valkey
+        volumes:
+          - claim: engine-without-durability-data
+            mountAt: /data
+            size: 1Gi
+            durability: reconstructible

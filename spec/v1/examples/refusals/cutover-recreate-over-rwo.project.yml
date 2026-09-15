@@ -15,7 +15,6 @@ apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
 schemaVersion: 1.0.0
 
-expect: accepted
 
 project: refusals
 owner: joris
@@ -29,7 +28,6 @@ applications:
         lifecycle: application
         image: recreate-over-rwo-store
         runtime: static
-        engine: valkey
 
         provides:
           redis: 6379

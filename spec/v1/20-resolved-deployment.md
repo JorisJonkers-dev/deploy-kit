@@ -138,7 +138,7 @@ field's placement link to this anchor rather than copying rows.
 | process `name` | Application | unique, checked | unique within the **project**; `E_DUPLICATE_PROCESS_NAME`, and it names the derived identity |
 | `provides` surface names and ports | Application | no contention | declared on the Process, because a port is a property of a process; written once, there |
 | `dependsOn` edges | Application | no contention | provider, surface, necessity ([chapter 16](16-dependencies.md#dependency-edges)) |
-| `image`, `runtime`, `lifecycle`, `stateful` | Application | no contention | what the Process is |
+| `image`, `runtime`, `lifecycle` | Application | no contention | what the Process is |
 | env files, `assets` | Application | no contention | per Process; derived values appear only as placeholders |
 | `secrets` grants: `path`, `keys`, `access`, `delivery`, `rotation` | Application | no contention to declare | per Application and never raised; the *path* is arbitrated (below), what an Application asks of a path is its own |
 | `exposure[].name` | Application | unique, checked | required; unique **within the Application**, `E_DUPLICATE_EXPOSURE_NAME` at composition. It is the half `${exposure:<application>.<name>#url}` addresses |
@@ -184,7 +184,7 @@ field's placement link to this anchor rather than copying rows.
 | container probe timings | derived | - | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Platform Intent's probe policy ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)) |
 | `progressDeadlineSeconds` | derived | - | from `startupBudget` |
 | rollout strategy, surge, unavailability | derived | - | from `cutover` and `volumes`; `cutover: rolling` over an RWO volume is `E_CUTOVER_UNHONOURABLE`, not a silent downgrade |
-| object kind | derived | - | from `lifecycle`, `stateful` and `volumes` |
+| object kind | derived | - | from `lifecycle` and `volumes` |
 | the Application's release-gate deadline | derived | - | `max` over the Application's Processes of `progressDeadlineSeconds` ([The release gate](#the-release-gate)) |
 | the object label set | derived | - | fixed, from Process name, Application Id and the images lock ([chapter 10](10-project-intent.md#the-label-set)) |
 | Secret and VSO sync objects | derived | - | from grants with `delivery: env` or `file`, plus `rolloutRestartTargets` from `rotation`; a grant with `delivery: self` and `tolerates: reload` derives **no** restart target, which is what makes its rotation zero-downtime ([chapter 10](10-project-intent.md#zero-downtime-rotation)) |

@@ -5,7 +5,11 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    include: ["test/model/**/*.test.ts", "test/canonical-json.test.ts"],
+    include: [
+      "test/model/**/*.test.ts",
+      "test/canonical-json.test.ts",
+      "test/simplification-contract.test.ts",
+    ],
     setupFiles: ["./test/setup.ts"],
     restoreMocks: true,
     unstubEnvs: true,

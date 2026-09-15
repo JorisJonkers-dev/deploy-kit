@@ -69,9 +69,14 @@ public final class Descriptor {
     private static Map<String, Object> vocabulary(EEnum vocabulary) {
         Map<String, Object> json = new LinkedHashMap<>();
         json.put("name", vocabulary.getName());
+        // A literal with no spelling is the model's way of saying "unset", which is
+        // not a value the language can write and not part of the vocabulary.
         json.put(
                 "literals",
-                vocabulary.getELiterals().stream().map(EEnumLiteral::getLiteral).toList());
+                vocabulary.getELiterals().stream()
+                        .map(EEnumLiteral::getLiteral)
+                        .filter(literal -> !literal.isEmpty())
+                        .toList());
         return json;
     }
 

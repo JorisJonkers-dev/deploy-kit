@@ -9,17 +9,36 @@ one defect so the refusal has a single cause.
 | fixture | expects | why |
 |---|---|---|
 | [`alert-class-without-signal.project.yml`](alert-class-without-signal.project.yml) | `E_ALERT_CLASS_WITHOUT_SIGNAL` | an `observability` block carrying a class and no `scrape`. A class states how loudly to wake someone and means nothing without a signal to wake them about ([chapter 10](../../10-project-intent.md#observability)) |
-| [`alert-class-unknown.project.yml`](alert-class-unknown.project.yml) | schema validation | a value outside the closed `AlertClass` vocabulary, refused before composition runs, so no new error code carries it |
+| [`alert-class-unknown.project.yml`](alert-class-unknown.project.yml) | schema validation | a value outside the closed `AlertClass` vocabulary, refused before any rule runs, so no error code carries it |
 | [`cutover-rolling-over-rwo.project.yml`](cutover-rolling-over-rwo.project.yml) | `E_CUTOVER_UNHONOURABLE` | `cutover: rolling` over an RWO volume, which cannot surge ([chapter 10](../../10-project-intent.md#cutover-is-declared-not-promised)) |
 | [`cutover-recreate-over-rwo.project.yml`](cutover-recreate-over-rwo.project.yml) | accepted | the same Process and storage with the cutover it can honour, the pair that makes the refusal above meaningful |
+| [`engine-without-durability.project.yml`](engine-without-durability.project.yml) | `E_ENGINE_WITHOUT_DURABILITY` | an `engine` over a volume whose durability derives no backup, so it names a method nothing asks for ([chapter 10](../../10-project-intent.md#process)) |
+| [`durability-without-engine.project.yml`](durability-without-engine.project.yml) | `E_DURABILITY_WITHOUT_ENGINE` | a volume that asks for a backup on a Process that names no engine, so the method would have to be guessed ([chapter 10](../../10-project-intent.md#process)) |
+| [`env-cannot-reload.project.yml`](env-cannot-reload.project.yml) | `E_ENV_CANNOT_RELOAD` | a grant delivered as an environment variable that tolerates a reload, which the process cannot see ([chapter 10](../../10-project-intent.md#zero-downtime-rotation)) |
+| [`illegal-delivery-for-access.project.yml`](illegal-delivery-for-access.project.yml) | `E_ILLEGAL_DELIVERY_FOR_ACCESS` | `custody` asked for as a file: there is nothing to project at render time ([chapter 10](../../10-project-intent.md#which-tier-may-use-which-delivery)) |
+| [`non-kv-delivery.project.yml`](non-kv-delivery.project.yml) | `E_NON_KV_DELIVERY` | a transit grant delivered as an environment variable, when a transit key is used rather than read ([chapter 10](../../10-project-intent.md#delivery)) |
+| [`duplicate-route-match.project.yml`](duplicate-route-match.project.yml) | `E_DUPLICATE_ROUTE_MATCH` | two routes of one exposure sharing a `path` and a `match`, which derived precedence cannot order ([chapter 10](../../10-project-intent.md#what-is-checked)) |
+
+Every refused fixture carries a committed `<name>.diagnostics.json` beside it:
+the set of `(code, path)` pairs the model emits, where the path is the RFC 6901
+JSON Pointer of the object refused. Both implementations are held to that file
+([the parity contract](../../../../docs/architecture.md#the-parity-contract)),
+and it replaces the `expect:` header these fixtures used to carry.
+
+`alert-class-unknown.project.yml` carries no diagnostics oracle. A value outside
+a closed vocabulary is refused by each implementation's own front end, before a
+rule runs: the production parser can point at the field, and the model-driven
+parser refuses the token. The code is the same and the place it can name is not,
+so the case is not a parity oracle.
 
 There is no fixture for "no monitoring". An Application that wants none omits the
 `observability` block, which is an accepted input and appears in the worked set
 as `platform-valkey` rather than here.
 
-These are **fixtures, not proof of rendered behaviour.** The compiler does not
-exist yet, so `test/simplification-contract.test.ts` asserts them at the layer
-that does: the shape of the input.
+These are **fixtures, not proof of rendered behaviour.** No renderer exists yet,
+so what is proven is the refusal itself: `test/model/refusals.test.ts` runs each
+through the production parser, and `emf/parity`'s `ParityTest` runs each through
+the model-driven one, both against the committed diagnostics.
 
 Two things therefore remain **unproven until a renderer exists**, and are named
 as blockers rather than described as verified:
@@ -31,5 +50,3 @@ as blockers rather than described as verified:
   surface it points at, and that a block missing its `scrape` is refused at
   composition rather than merely being absent from the input.
 
-The `expect:` key is fixture metadata. It is not part of the Project schema, and
-no accepted worked example carries it.

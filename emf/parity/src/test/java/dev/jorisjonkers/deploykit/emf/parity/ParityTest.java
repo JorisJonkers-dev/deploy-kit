@@ -11,7 +11,10 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -42,6 +45,31 @@ class ParityTest {
 
         assertThat(parsed.diagnostics()).isEmpty();
         assertThat(CanonicalJson.write(parsed.intent())).isEqualTo(read(directory.resolve("expected/intent.json")));
+    }
+
+    private static List<Path> refusalsWithADiagnosticsOracle() {
+        Path refusals = repository().resolve("spec/v1/examples/refusals");
+        try (Stream<Path> files = Files.list(refusals)) {
+            return files.filter(path -> path.getFileName().toString().endsWith(".diagnostics.json"))
+                    .sorted()
+                    .toList();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("refusalsWithADiagnosticsOracle")
+    void aRefusedDocumentEqualsItsCommittedDiagnostics(Path oracle) throws IOException {
+        String stem = oracle.getFileName().toString().replace(".diagnostics.json", "");
+        Parsed parsed = Pipeline.intent(oracle.resolveSibling(stem + ".project.yml"));
+
+        assertThat(CanonicalJson.write(parsed.diagnostics().stream()
+                        .map(diagnostic ->
+                                (Object) new TreeMap<>(Map.of("code", diagnostic.code(), "path", diagnostic.path())))
+                        .sorted(Comparator.comparing(Object::toString))
+                        .toList()))
+                .isEqualTo(read(oracle));
     }
 
     @Test

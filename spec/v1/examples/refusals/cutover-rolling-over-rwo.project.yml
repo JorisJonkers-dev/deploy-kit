@@ -17,7 +17,6 @@ apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
 schemaVersion: 1.0.0
 
-expect: E_CUTOVER_UNHONOURABLE
 
 project: refusals
 owner: joris
@@ -31,7 +30,6 @@ applications:
         lifecycle: application
         image: rolling-over-rwo-store
         runtime: static
-        engine: valkey
 
         provides:
           redis: 6379

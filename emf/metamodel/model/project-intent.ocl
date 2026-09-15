@@ -1,0 +1,66 @@
+-- The document-level constraints of the Project Intent model, in the graded
+-- constraint language (docs/adr/emf/0110). An invariant is named by the
+-- diagnostic code it emits, and its context is the object the diagnostic points
+-- at, so a violation maps to a (code, path) pair without a lookup table.
+--
+-- Constraints that need more than one document belong to composition.
+
+-- The registered package, not the file: the constraints must bind to the same
+-- classes the parser instantiates.
+import 'https://jorisjonkers.dev/deploy-kit/project-intent/1'
+
+package projectintent
+
+context Observability
+	-- The block is whole or absent: a class states how loudly to wake someone,
+	-- and means nothing without a signal to wake them about.
+	inv E_ALERT_CLASS_WITHOUT_SIGNAL: scrape <> null
+
+context Process
+	-- A volume cannot attach to the surge a rolling cutover needs, and a silent
+	-- downgrade is what makes an owner believe in continuity they do not have.
+	inv E_CUTOVER_UNHONOURABLE: cutover = Cutover::rolling implies volumes->isEmpty()
+
+	-- The engine keys the backup method, so it names one nothing asks for when no
+	-- volume derives a backup. `Engine::absent` is the literal a document cannot
+	-- write: EMF reads an unset enumeration as its first literal, so the model
+	-- gives absence one of its own.
+	inv E_ENGINE_WITHOUT_DURABILITY:
+		engine <> Engine::absent implies
+			volumes->exists(durability = DurabilityClass::recoverable or durability = DurabilityClass::irreplaceable)
+
+context Volume
+	-- The backup method comes from the Process's engine, and a guessed backup is
+	-- the kind nobody finds out about until a restore.
+	inv E_DURABILITY_WITHOUT_ENGINE:
+		(durability = DurabilityClass::recoverable or durability = DurabilityClass::irreplaceable) implies
+			oclContainer().oclAsType(Process).engine <> Engine::absent
+
+context Rotation
+	-- An environment variable is read once, when the process starts.
+	inv E_ENV_CANNOT_RELOAD:
+		tolerates = Tolerance::reload implies oclContainer().oclAsType(Grant).delivery <> Delivery::env
+
+context KvGrant
+	-- Custody creates and deletes paths at runtime, and a renewal tier holds no
+	-- capability on its path: neither has anything to project.
+	inv E_ILLEGAL_DELIVERY_FOR_ACCESS:
+		not ((access = AccessTier::custody and (delivery = Delivery::env or delivery = Delivery::file))
+			or (access = AccessTier::selfRenew and delivery = Delivery::env))
+
+context TransitGrant
+	-- A transit key is used, never read: there is no value to write anywhere.
+	inv E_NON_KV_DELIVERY: delivery = Delivery::selfDelivery
+
+context DatabaseGrant
+	-- A database credential is minted per lease and re-read at runtime.
+	inv E_NON_KV_DELIVERY: delivery = Delivery::selfDelivery
+
+context Route
+	-- Precedence is derived, and two routes sharing a path and a match cannot be
+	-- ordered by it.
+	inv E_DUPLICATE_ROUTE_MATCH:
+		oclContainer().oclAsType(Exposure).routes
+			->select(r | r.path = self.path and r.match = self.match)->first() = self
+
+endpackage

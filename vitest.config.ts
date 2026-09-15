@@ -23,15 +23,16 @@ export default defineConfig({
       // A ratchet, per docs/adr/architecture/0101-coverage-is-a-ratchet.md:
       // set from what the suite reaches, and only ever raised.
       //
-      // Measured 2026-09-15, with the Project Intent metamodel under src/ at
-      // 100%: statements 98.6%, branches 93.8%, functions 100%, lines 98.51%. What is left uncovered is the one-line command guard at the
+      // Measured 2026-09-15, with the Project Intent metamodel and its rules
+      // under src/ at 100%: statements 98.67%, branches 94.3%, functions 100%,
+      // lines 98.58%. What is left uncovered is the one-line command guard at the
       // bottom of each gate and the branches for a tool that cannot be started
       // at all.
       thresholds: {
-        statements: 98.6,
-        branches: 93.8,
+        statements: 98.67,
+        branches: 94.3,
         functions: 100,
-        lines: 98.51,
+        lines: 98.58,
       },
     },
   },

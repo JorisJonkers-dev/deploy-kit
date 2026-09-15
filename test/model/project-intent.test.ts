@@ -314,6 +314,14 @@ describe("parseProjectIntent", () => {
     ]);
   });
 
+  it("accepts a grant that declares no rotation", () => {
+    const text = withApplications(
+      `  - id: batch\n    processes:\n${PROCESS}        secrets:\n          - path: secret/data/batch\n            keys: [password]\n            access: read\n            delivery: env\n`,
+    );
+
+    expect(parseProjectIntent(text).ok).toBe(true);
+  });
+
   it("gives every diagnostic a hint", () => {
     const diagnostics = ["", `${HEADER}applications: []\n`].flatMap((text) => {
       const result = parseProjectIntent(text);

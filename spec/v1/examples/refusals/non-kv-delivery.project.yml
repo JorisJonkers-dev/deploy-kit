@@ -1,0 +1,35 @@
+# REFUSED: E_NON_KV_DELIVERY
+#
+# A transit key is used, never read: the engine signs and rotates on the
+# caller's behalf, and there is no value to write into a variable or a file. Its
+# only legal delivery is `self`
+# (spec/v1/10-project-intent.md #delivery).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: non-kv-delivery
+    processes:
+      - name: non-kv-delivery-api
+        lifecycle: application
+        image: non-kv-delivery-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: rolling
+        secrets:
+          - engine: transit
+            key: non-kv-delivery-jwt
+            operations: [sign]
+            delivery: env
+            rotation: { tolerates: restart }

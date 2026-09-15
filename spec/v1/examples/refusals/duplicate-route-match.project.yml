@@ -1,0 +1,37 @@
+# REFUSED: E_DUPLICATE_ROUTE_MATCH
+#
+# Route precedence is derived: exact before prefix, longer prefix before
+# shorter. Two routes sharing a path and a match cannot be ordered by that rule,
+# so the pair is refused rather than resolved by document order
+# (spec/v1/10-project-intent.md #what-is-checked).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: duplicate-route-match
+    exposure:
+      - name: public
+        host: duplicate-route-match.jorisjonkers.dev
+        audience: anonymous
+        contentPolicy: strict
+        routes:
+          - { path: /api, match: prefix, process: duplicate-route-match-api, surface: http }
+          - { path: /api, match: prefix, process: duplicate-route-match-api, surface: http }
+    processes:
+      - name: duplicate-route-match-api
+        lifecycle: application
+        image: duplicate-route-match-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: rolling

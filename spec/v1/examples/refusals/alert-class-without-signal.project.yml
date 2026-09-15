@@ -12,7 +12,6 @@ apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
 schemaVersion: 1.0.0
 
-expect: E_ALERT_CLASS_WITHOUT_SIGNAL
 
 project: refusals
 owner: joris

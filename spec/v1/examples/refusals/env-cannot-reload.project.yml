@@ -1,0 +1,34 @@
+# REFUSED: E_ENV_CANNOT_RELOAD
+#
+# An environment variable is read once, when the process starts. A grant that
+# delivers one and tolerates a reload rather than a restart promises a rotation
+# the process cannot see (spec/v1/10-project-intent.md #zero-downtime-rotation).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: env-cannot-reload
+    processes:
+      - name: env-cannot-reload-api
+        lifecycle: application
+        image: env-cannot-reload-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: rolling
+        secrets:
+          - path: secret/data/refusals/env-cannot-reload
+            keys: [password]
+            access: read
+            delivery: env
+            rotation: { tolerates: reload }
