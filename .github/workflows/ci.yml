@@ -292,6 +292,98 @@
         'if': 'always()'
         'run': 'emf/scripts/summary.sh >> "$GITHUB_STEP_SUMMARY"'
 
+  # Two jobs land here together, for issue #33. Neither gates: neither joins
+  # `pipeline-complete`'s `needs` below, per
+  # docs/adr/architecture/0102-the-gate-grows-with-the-code.md's own rule
+  # that only a gate belongs in that list.
+  #
+  # `coverage-baseline` runs on a push to main only: it stages the coverage
+  # `tests` just measured, wrapped with the commit it came from, and caches
+  # it keyed by that commit. `pr-report` restores whatever the most recent
+  # such cache holds (GitHub resolves `restore-keys` to the newest matching
+  # entry, and a pull request can read a cache its base branch saved) as the
+  # baseline scripts/pr-report.ts compares the branch against; with no cache
+  # yet, or none reachable, scripts/lib/pr-comment.ts says so rather than
+  # showing a false zero difference.
+  'coverage-baseline':
+    'name': 'Coverage Baseline'
+    'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 15
+    'if': "${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}"
+    'permissions':
+      'contents': 'read'
+    'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+      - 'uses': './.github/actions/setup'
+
+      - 'name': 'Test with coverage'
+        'run': 'npm run test:coverage'
+
+      - 'name': 'Stage the baseline coverage summary'
+        'shell': 'bash'
+        'run': |
+          set -euo pipefail
+          mkdir -p .coverage-baseline
+          node -e "
+            const fs = require('node:fs');
+            const total = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8')).total;
+            fs.writeFileSync(
+              '.coverage-baseline/coverage-summary.json',
+              JSON.stringify({ commit: process.env.GITHUB_SHA, coverage: total }),
+            );
+          "
+
+      - 'name': 'Cache the main coverage baseline'
+        'uses': 'actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9' # v6.1.0
+        'with':
+          'path': '.coverage-baseline'
+          'key': 'coverage-main-${{ github.sha }}'
+
+  # Comment each pull request's shape and coverage (issue #33). Runs the
+  # coverage suite a second time, independent of the `tests` gate above, so
+  # this can read the report even when `tests` fails the ratchet; that step
+  # tolerates its own failure (`continue-on-error`) because the ratchet is
+  # already enforced there, not here. scripts/pr-report.ts itself never
+  # returns non-zero, so the last step's own `continue-on-error` is a second,
+  # redundant guarantee that a `gh api` failure (a fork's read-only token,
+  # most often) cannot fail this job either.
+  'pr-report':
+    'name': 'PR Report'
+    'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 15
+    'if': "${{ github.event_name == 'pull_request' }}"
+    'permissions':
+      'contents': 'read'
+      'pull-requests': 'write'
+    'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+        'with':
+          'fetch-depth': '0'
+      - 'uses': './.github/actions/setup'
+
+      - 'name': 'Test with coverage'
+        'continue-on-error': true
+        'run': 'npm run test:coverage'
+
+      - 'name': 'Restore the main coverage baseline'
+        'uses': 'actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9' # v6.1.0
+        'with':
+          'path': '.coverage-baseline'
+          'key': 'coverage-main-not-a-real-key'
+          'restore-keys': 'coverage-main-'
+
+      - 'name': "Comment the pull request's shape and coverage"
+        'continue-on-error': true
+        'shell': 'bash'
+        'env':
+          'GH_TOKEN': '${{ github.token }}'
+          'PR_NUMBER': '${{ github.event.pull_request.number }}'
+        'run': |
+          set -euo pipefail
+          upstream="refs/remotes/origin/${GITHUB_BASE_REF}"
+          base_sha=$(git merge-base "${upstream}" "${GITHUB_SHA}")
+          PR_BASE_SHA="${base_sha}" PR_HEAD_SHA="${GITHUB_SHA}" npm run report:pr
+
   'pipeline-complete':
     'name': 'Pipeline Complete'
     'runs-on': 'ubuntu-latest'
