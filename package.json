@@ -1,7 +1,7 @@
 {
   "name": "@jorisjonkers-dev/deploy-kit",
   "version": "0.2.0",
-  "description": "Deployment toolkit: the Service Intent model, its decision record, and the compiler that renders it.",
+  "description": "Deployment toolkit: the Project Intent model, its decision record, and the compiler that renders it.",
   "type": "module",
   "license": "LicenseRef-JorisJonkers-Proprietary-1.0",
   "engines": {
@@ -22,6 +22,7 @@
     "lint:rules": "node scripts/lint-rules.ts",
     "lint:codes": "node scripts/lint-codes.ts",
     "lint:docs": "node scripts/lint-docs.ts",
+    "lint:meaning": "node scripts/lint-meaning.ts",
     "lint:secrets": "node scripts/lint-secrets.ts",
     "report:pr": "node scripts/pr-report.ts",
     "publish:rc": "node scripts/rc-publish.ts",
@@ -31,7 +32,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:mutation": "stryker run",
-    "verify": "npm run lint && npm run format:check && npm run typecheck && npm run lint:adrs && npm run lint:links && npm run lint:manifests && npm run lint:requirements && npm run lint:rules && npm run lint:codes && npm run lint:docs && npm run lint:secrets && npm run lint:boundaries && npm run test:coverage"
+    "verify": "npm run lint && npm run format:check && npm run typecheck && npm run lint:adrs && npm run lint:links && npm run lint:manifests && npm run lint:requirements && npm run lint:rules && npm run lint:codes && npm run lint:docs && npm run lint:meaning && npm run lint:secrets && npm run lint:boundaries && npm run test:coverage"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

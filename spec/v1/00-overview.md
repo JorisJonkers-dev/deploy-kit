@@ -1,6 +1,6 @@
-# deploy-config-schema v1: specification index
+# deploy-kit v1: specification index
 
-This branch holds the v1 specification. The decisions that justify it live in
+This repository holds the v1 specification. The decisions that justify it live in
 [`docs/adr/`](../../docs/adr/README.md); the vocabulary lives in
 [`CONTEXT.md`](../../CONTEXT.md). None of the three restates the others: the
 glossary defines terms, the ADRs record why, and **these chapters are
@@ -153,7 +153,7 @@ complete interface between the two scopes.
 
 | demand | decided in | what any delivery definition must do |
 |---|---|---|
-| Release Unit atomicity | [0060](../../docs/adr/model/0060-release-unit.md) | no member's new version receives traffic until every member's new version is healthy; if any member fails its budget, none switch and the old versions keep serving |
+| Release Unit atomicity | [0060](../../docs/adr/model/0060-release-unit.md), superseded by [0062](../../docs/adr/model/0062-application-is-the-release-unit.md) | no member's new version receives traffic until every member's new version is healthy; if any member fails its budget, none switch and the old versions keep serving |
 | Durability Class gating | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | no destructive operation proceeds automatically against a volume declared `recoverable` or `irreplaceable` |
 | Pinned inputs only | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | render from recorded digests (Intent, Platform Intent, locks, ClusterState), never from live cluster state |
 
@@ -178,9 +178,8 @@ regardless of any delivery decision.
 The register is [`docs/adr/README.md`](../../docs/adr/README.md). It is not
 reproduced here, and there is no second table.
 
-It carries the premises (0001–0007, 0009) and the decisions (0010–0040,
-0052–0057, 0059–0060) that make up v1, each with its claim, `settled`, `open`
-or `accepted-untested`, and its `normative:` pointer naming the section of
+It carries every premise and decision that makes up v1, each with its claim,
+`settled`, `open` or `accepted-untested`, and its `normative:` pointer naming the section of
 these chapters where its detail lives. A `claim: open` means decided in
 direction and untested; its owner and settling test are in the ADR file, never
 here. The delivery and co-testing decisions have their own inventory at
@@ -307,7 +306,8 @@ through, with the deciding ADR named.
 3. **Label prefix retirement.** Node facts are authored once and generate the
    contract ([0056](../../docs/adr/model/0056-node-facts-single-source.md)), and
    placement is declared as capabilities rather than labels
-   ([0017](../../docs/adr/model/0017-placement-by-capability.md)), so retiring a
+   ([0017](../../docs/adr/model/0017-placement-by-capability.md), superseded by
+   [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)), so retiring a
    prefix costs no edit in any project repository. The live nodes still carry
    two: 110 labels across 7 nodes, 55 under `platform.jorisjonkers.dev/*` and
    the same 55 under `personal-stack/*`, named after an archived repository that

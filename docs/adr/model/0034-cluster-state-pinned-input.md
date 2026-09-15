@@ -89,7 +89,8 @@ every historical lock un-re-renderable and every drift report unclassifiable.
   requires one) before placement follows the data.
 - Between captures the estate renders against facts that may already be stale:
   paid by anyone diagnosing a render that is correct as of its snapshot.
-- Placement against a bound PV ([0017](0017-placement-by-capability.md)) and
+- Placement against a bound PV ([0017](0017-placement-by-capability.md),
+  superseded by [0061](0061-placement-is-hard-dimensions.md)) and
   capacity-informed replicas become expressible without the spec contradicting
   itself: paid by joris in the chapter 10 and 20 rewrite.
 - Reproducibility in chapters 20 and 30 becomes conditional on identical digests

@@ -65,7 +65,7 @@ AUTH_LOGIN_URL=${exposure:auth.public#url}/login
 7. **The authored proxy vocabulary is closed and is exactly two fields**:
    `contentPolicy` on an exposure, `redirectTo` on a route. There is **no**
    provider-shaped passthrough, no raw middleware reference, no headers block.
-   Layer 1 carries no mechanism; a Traefik middleware name in Service Intent
+   Layer 1 carries no mechanism; a Traefik middleware name in Project Intent
    would be one.
 8. **`redirectTo` is a path, never a regex.** Both live cases are
    exact-root-to-subpath. The renderer produces the `redirectRegex` form;

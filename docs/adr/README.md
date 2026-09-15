@@ -11,10 +11,8 @@ rebuild commit lands they are recoverable with
 
 **ADRs justify; `spec/v1` is normative.** Where an ADR and its `normative:`
 pointer disagree, the spec wins and the ADR is what gets fixed. The `spec/v1`
-chapters have **not yet been rewritten** to carry the anchors this register
-names: that is the follow-up spec rewrite, tracked in
-`review/REBUILD-MANIFEST.md`; `scripts/lint-adrs.ts` stays non-blocking until
-it lands.
+chapters now carry the anchors this register names, and `scripts/lint-adrs.ts`
+runs as a blocking gate in CI.
 
 The set was amended on 2026-09-07 for placement and project-authored intent:
 `size` became a set of hard `placement` dimensions matched against node

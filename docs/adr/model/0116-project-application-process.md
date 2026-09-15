@@ -54,7 +54,7 @@ rendered file is still `workload.yaml` and a Kubernetes `Service` is still a
 | option | cost if taken | why rejected |
 |---|---|---|
 | Keep Domain, Service and Workload | No rename | Service collides with the rendered Kubernetes object and four other meanings; Domain collides with hostnames |
-| ReleaseGroup containing Services | Names the release guarantee directly | "Group" suggests independently releasable members, which is the superseded Release Unit ([0060](0060-release-unit.md)); "service" then sits at a level that is not independently released |
+| ReleaseGroup containing Services | Names the release guarantee directly | "Group" suggests independently releasable members, which is the superseded Release Unit ([0060](0060-release-unit.md), superseded by [0062](0062-application-is-the-release-unit.md)); "service" then sits at a level that is not independently released |
 | Application containing Components | Matches OAM and Backstage | "Component" does not say the thing runs, and Backstage uses it for libraries too |
 | Application containing Workloads | Keeps half the vocabulary | Workload stays jargon with opposite meanings in Kubernetes and Score |
 
