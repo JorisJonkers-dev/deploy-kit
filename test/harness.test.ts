@@ -8,9 +8,9 @@
 // exempts a line from it (see "coverage ignore comments" below).
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { ESLint } from "eslint";
 import { describe, expect, it } from "vitest";
 import { temporary } from "./setup.ts";
+import { repositoryEslint } from "./support/eslint.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..");
 
@@ -44,17 +44,7 @@ describe("the lint rules for test files", { timeout: 120_000 }, () => {
   // refuse it; admitting that one path to the default project is the only
   // thing this changes about the repository's own config.
   const PROBE = "test/probe.test.ts";
-  const eslint = new ESLint({
-    cwd: REPOSITORY,
-    overrideConfig: {
-      languageOptions: {
-        parserOptions: {
-          projectService: { allowDefaultProject: ["*.js", "*.cjs", PROBE] },
-          tsconfigRootDir: REPOSITORY,
-        },
-      },
-    },
-  });
+  const eslint = repositoryEslint([PROBE]);
   const HEADER = 'import { expect, it } from "vitest";\n';
 
   async function rulesFiredOn(source: string): Promise<(string | null)[]> {

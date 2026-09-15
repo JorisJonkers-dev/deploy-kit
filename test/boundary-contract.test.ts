@@ -136,6 +136,19 @@ describe("the boundary lint", () => {
     expect(output).toMatch(/domain-is-pure/);
   });
 
+  it("fails two directories that import each other, with no module cycle between them", () => {
+    const { code, output } = cruise({
+      "src/wire/a.ts": mod(["../domain/b.js"]),
+      "src/domain/b.ts": mod(),
+      "src/domain/c.ts": mod(["../wire/d.js"]),
+      "src/wire/d.ts": mod(),
+      "src/cli/index.ts": mod(["../wire/a.js", "../domain/c.js"]),
+    });
+    expect(code).not.toBe(0);
+    expect(output).toMatch(/no-circular-folders/);
+    expect(output).not.toMatch(/no-circular\b(?!-)/);
+  });
+
   it("fails one adapter reading another", () => {
     const { code, output } = cruise({
       "src/adapters/vso/render.ts": mod(),

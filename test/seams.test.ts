@@ -2,8 +2,8 @@
 // RULE-041, each proved on a probe in a ring it forbids and shown silent in a
 // ring it allows.
 import { join } from "node:path";
-import { ESLint } from "eslint";
 import { describe, expect, it } from "vitest";
+import { repositoryEslint } from "./support/eslint.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..");
 const PROBES = [
@@ -17,17 +17,7 @@ const PROBES = [
   "tool.config.ts",
 ];
 
-const eslint = new ESLint({
-  cwd: REPOSITORY,
-  overrideConfig: {
-    languageOptions: {
-      parserOptions: {
-        projectService: { allowDefaultProject: ["*.js", "*.cjs", ...PROBES] },
-        tsconfigRootDir: REPOSITORY,
-      },
-    },
-  },
-});
+const eslint = repositoryEslint(PROBES);
 
 async function fired(path: string, source: string): Promise<string[]> {
   const [result] = await eslint.lintText(source, {
