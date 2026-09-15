@@ -154,6 +154,12 @@
       - 'name': 'Docs contract'
         'run': 'npm run lint:docs'
 
+      # AGENTS.md names every npm script verbatim: a script added to
+      # package.json with no matching line here fails the moment it lands.
+      # See AGENTS.md#every-npm-script and test/agents-contract.test.ts.
+      - 'name': 'Agents contract'
+        'run': 'npm run lint:agents'
+
       # A citation to a decision record marked superseded, unless its
       # successor is linked in the same sentence; a term the model retired
       # still read as current outside a quotation; a stated count that no

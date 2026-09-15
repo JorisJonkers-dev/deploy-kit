@@ -1,0 +1,57 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run lint)",
+      "Bash(npm run lint:fix)",
+      "Bash(npm run lint:adrs)",
+      "Bash(npm run lint:links)",
+      "Bash(npm run lint:manifests)",
+      "Bash(npm run lint:boundaries)",
+      "Bash(npm run lint:requirements)",
+      "Bash(npm run lint:rules)",
+      "Bash(npm run lint:codes)",
+      "Bash(npm run lint:docs)",
+      "Bash(npm run lint:agents)",
+      "Bash(npm run lint:meaning)",
+      "Bash(npm run lint:secrets)",
+      "Bash(npm run format)",
+      "Bash(npm run format:check)",
+      "Bash(npm run typecheck)",
+      "Bash(npm test)",
+      "Bash(npm run test:coverage)",
+      "Bash(npm run test:mutation)",
+      "Bash(npm run verify)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git blame:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh label list:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh issue edit * --add-label \"status: in-progress\" --remove-label \"status: ready-for-agent\")",
+      "Bash(gh issue edit * --remove-label \"status: in-progress\")"
+    ]
+  },
+  "enabledPlugins": {
+    "mattpocock-skills@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "drawio@drawio": true
+  },
+  "extraKnownMarketplaces": {
+    "drawio": {
+      "source": {
+        "source": "github",
+        "repo": "jgraph/drawio-mcp"
+      }
+    }
+  }
+}
