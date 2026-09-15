@@ -3,7 +3,7 @@ tier: premise
 status: proposed
 claim: settled
 date: 2026-08-31
-normative: spec/v1/00-overview.md#the-meta-model
+normative: spec/v1/00-overview.md#the-three-model-pipeline
 ---
 
 # Three layers, with the middle layer as a contract
@@ -51,6 +51,14 @@ it carries its own schema and its own version
 the Intent plus the pinned inputs, the cluster-state snapshot among them
 ([0034](0034-cluster-state-pinned-input.md)), and it is the sole input the
 deliverable layer's adapters accept ([0053](0053-adapter-port-contract.md)).
+
+**The name, amended 2026-09-15.** This decision was filed as "the three-layer
+meta-model", and that name claims something the decision does not. The three
+layers are three **models**, each written in its own language and joined to
+the next by a transformation; no layer is a type model of the layer below it,
+which is what a metamodel requires. The arrangement is the **three-model
+pipeline**, "metamodel" is kept for a language definition, and the decision
+itself, its H1 and everything else in this record are unchanged.
 
 ## Alternatives
 

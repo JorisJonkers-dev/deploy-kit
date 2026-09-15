@@ -156,9 +156,13 @@ for the k3s flag that sets them
 ([chapter 14](14-platform-intent.md#substrate-facts),
 [0057](../../docs/adr/model/0057-datastore-and-restore.md),
 [0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)). So
-are the durability, observability, probe and ephemeral policies that earlier
-drafts of this chapter tabulated here; chapter 14 is their normative home, and
-this chapter keeps only what setup and restore need from them.
+are the durability policy, the monitor cadence, and the probe and ephemeral
+policies that earlier drafts of this chapter tabulated here. There is no
+observability policy to record: the Platform document carries one monitor
+cadence and nothing else, and receivers, severities and rules belong to the
+monitoring stack ([chapter 14](14-platform-intent.md#monitor-cadence)). Chapter
+14 is their normative home, and this chapter keeps only what setup and restore
+need from them.
 
 Recording a fact does not choose it. A one-server SQLite cluster stays a
 one-server SQLite cluster; it stops being an assumption each reader re-derives
@@ -229,7 +233,7 @@ without acquiring an owner. v1 makes it mechanical
 
 > The pinned Platform Intent carries `secretsEncryption`. The renderer refuses
 > any `secrets[]` entry with `delivery: env` or `delivery: file` against a
-> context that does not advertise `secretsEncryption: true`, with
+> Platform Intent that does not advertise `secretsEncryption: true`, with
 > `E_SECRETS_AT_REST_REQUIRED`.
 
 Reading a pinned input rather than the live cluster keeps the check inside
@@ -252,7 +256,7 @@ Ticked by: enable the flag, then
 `sudo strings <datastore file> | grep <sentinel>` returning nothing while
 `kubectl get secret canary` still returns the value, the datastore file being
 the one the [platform facts](#platform-facts-and-restore) record. Then the
-context is republished with `secretsEncryption: true` and re-pinned. Owner:
+Platform Intent is republished with `secretsEncryption: true` and re-pinned. Owner:
 joris. Blocks: `delivery: env` and `delivery: file` only.
 
 The encryption key file becomes restore-critical: a backup without
@@ -327,7 +331,9 @@ derived (`<project>-system`), so no step below names one.
 1. Add the Application to its project file, whose shape is
    [chapter 10](10-project-intent.md#two-artefacts). The file header carries
    `project` and `owner`, the only field raised to the project; the Application
-   carries `id`, `alertClass`, `secrets[]` and its Processes; each Process
+   carries `id`, an optional `observability` block, whole or absent
+   ([chapter 10](10-project-intent.md#observability)), `secrets[]` and its
+   Processes; each Process
    carries its `image`, the ports it `provides`, and its `placement`. Process
    names are unique within the project (`E_DUPLICATE_PROCESS_NAME`), because the
    ServiceAccount and the Vault role are the Process name alone

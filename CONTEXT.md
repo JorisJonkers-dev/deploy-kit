@@ -11,12 +11,26 @@ It is also the naming authority for code. A type, a folder or a diagnostic that
 names one of these concepts uses the word below, unchanged, so that a reviewer
 moving between a chapter and a module never translates.
 
-## The three layers
+## The three-model pipeline
 
-Deployment configuration is split into three layers, and the middle one is a
-contract ([0003](docs/adr/model/0003-three-layer-meta-model.md), normative in
-[chapter 00](spec/v1/00-overview.md#the-meta-model)). **Layer 1 contains no
-mechanisms; layer 3 contains no decisions.**
+**Three-model pipeline**: the arrangement of the whole model. Deployment
+configuration is split into three layers, and the middle one is a contract
+([0003](docs/adr/model/0003-three-model-pipeline.md), normative in
+[chapter 00](spec/v1/00-overview.md#the-three-model-pipeline)). **Layer 1
+contains no mechanisms; layer 3 contains no decisions.** Each layer is a
+**model**, and each is joined to the next by a transformation. The layers are
+stages of one pipeline, not metalevels: no layer is a type model of the one
+below it. So the arrangement is not a "meta-model", a name this record used to
+carry and has retired; say *three-model pipeline*, and say *layer 1*, *layer 2*
+and *layer 3* for its members.
+
+**Metamodel**: the definition of the language a model is written in, and
+nothing else. A metamodel is a model whose instances are models, so the word is
+never used for a layer, a document, an abstraction level or the pipeline as a
+whole. The production implementation declares its languages as wire schemas;
+the model-driven implementation under `emf/` has two hand-written Ecore
+metamodels, a source and a target, and generates the Deliverable Set as files
+with no metamodel of its own. One word, `metamodel`, unhyphenated.
 
 **Project Intent**: layer 1. What a project's repository authors by hand:
 requirements, never mechanisms. Two kinds of file, a project file and one env file
@@ -101,15 +115,18 @@ bin-packing ([0061](docs/adr/model/0061-placement-is-hard-dimensions.md)).
 
 **Capability**: a named node property a Process may require.
 
-**Hardening Class**: the pod security posture a Process takes, with named
-exceptions each carrying a reason
-([0016](docs/adr/model/0016-pod-hardening.md)).
+**Hardening Class**: the pod security posture every Process takes, declared
+once by the platform and authored by none of them. It has no exception surface:
+a Process states the paths it must write, and an image that cannot meet the
+class is refused ([0016](docs/adr/model/0016-pod-hardening.md)).
 
 **Runtime Profile**: the profile selected by `runtime`, from which observability
 and runtime environment variables are derived. Writing one of its keys by hand
 is a build error.
 
-**Alert Class**: how an alert on this Application should be delivered
+**Alert Class**: how urgently a signal about this Application should wake
+someone. Urgency only: which receiver, which channel and which severity mapping
+belong to the monitoring stack that reads the projection, never to this model
 ([0021](docs/adr/model/0021-observability-scrape-and-alert-class.md)).
 
 **Grant**: declared access to a Secret Store path, its keys, its access tier
@@ -238,7 +255,7 @@ described observed context and the content is authored intent
 
 **Deployment.** Ambiguous between the Kubernetes kind and the estate's old
 `deployment.jorisjonkers.dev` documents, which is the confusion
-[0003](docs/adr/model/0003-three-layer-meta-model.md) exists to end. Say
+[0003](docs/adr/model/0003-three-model-pipeline.md) exists to end. Say
 Resolved Deployment, or say the Kubernetes kind.
 
 **Reload.** A secret's `rotation.tolerates: reload`, and nothing else: the

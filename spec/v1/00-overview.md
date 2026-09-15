@@ -72,10 +72,20 @@ registered adapters do not: five of the six emit Kubernetes kinds and the sixth
 emits Vault configuration, which is why the swap is a v2 migration rather than
 an undo once repositories author against a shipped v1.
 
-## The meta-model
+## The three-model pipeline
 
 Deployment configuration is split into three layers, and the middle one is a
-contract ([0003](../../docs/adr/model/0003-three-layer-meta-model.md)).
+contract ([0003](../../docs/adr/model/0003-three-model-pipeline.md)).
+
+The three layers are **three models**, each written in its own language and
+joined to the next by a transformation. They are **not metalevels**: no layer is
+a type model of the layer below it, and calling the arrangement a "meta-model"
+claims a relation the layers do not have. A metamodel needs the type-model-of
+relation applied twice, which is what separates it from a model of a model; the
+layers here are stages of one modelling pipeline, and a modelling layer is a
+different thing from an abstraction layer. This specification therefore keeps
+**metamodel** for a language definition and calls the arrangement itself the
+three-model pipeline.
 
 | Layer | Name | Authored | Owns |
 |---|---|---|---|
@@ -111,9 +121,9 @@ time reads live cluster state. Reproducibility is therefore conditional and
 true: identical inputs *including* `clusterStateDigest` produce a byte-identical
 tree, so a differing render with identical digests is a defect, never weather.
 
-![The meta-model](diagrams/00-overview-meta-model.drawio.svg)
+![The three-model pipeline](diagrams/00-overview-three-model-pipeline.drawio.svg)
 
-<sub>[Diagram source](#the-meta-model) · edit by opening the SVG in draw.io</sub>
+<sub>[Diagram source](#the-three-model-pipeline) · edit by opening the SVG in draw.io</sub>
 
 ## Programme scope
 
@@ -235,8 +245,8 @@ parse-checked in CI.
 
 | path | what it shows |
 |---|---|
-| `examples/projects/{auth,knowledge,data}.yml` | Project Intent, one file per project: two-level secret grants, `probes: none` stated explicitly, TCP probes, `placement` dimensions, declared `writablePaths`, `durability` per volume, and the `auth` pair as two Processes of one Application |
-| `examples/{knowledge-api,knowledge-ingest-worker,auth-api,platform-postgres}.base.env` | env files, one set **per Process**, threaded with `${dependency:…}` and `${secret:<granted-path>#<key>}` placeholders whose paths byte-match a granted path |
+| `examples/{auth,knowledge,data,minimal}/<project>.project.yml` | Project Intent, one file per project: two-level secret grants, `probes: none` stated explicitly, TCP probes, `placement` dimensions, declared `writablePaths`, `durability` per volume, and the `auth` pair as two Processes of one Application |
+| `examples/{auth,knowledge,data,minimal}/env/<process>/base.env` | env files, one set **per Process** in a directory named for it, threaded with `${dependency:…}` and `${secret:<granted-path>#<key>}` placeholders whose paths byte-match a granted path |
 | `examples/workflows/project-publish-fragment.yml` | publish on merge, `oras push` then `oras resolve`, read back |
 | `examples/workflows/compose.yml` | pull participants, assert the estate-wide invariants, **prove the gate can fail** |
 | `examples/negative/duplicate-application-id/` | a negative fixture, so an invariant that stops running is detectable |
@@ -413,15 +423,15 @@ a plain diff. **Where the two disagree the SVG is the diagram and the mermaid is
 what gets fixed**, the same precedence this repository uses between a chapter and
 an ADR.
 
-### The meta-model
+### The three-model pipeline
 
 ```mermaid
 flowchart TB
     subgraph AUTH["layer 1, hand-authored: Project Intent in each owning repository, Platform Intent in the platform's"]
-        a1["projects/&lt;project&gt;.yml<br/>applications, processes, placement, hardening,<br/>durability, probes, exposure, secrets"]
+        a1["platform/&lt;project&gt;.project.yml<br/>applications, processes, placement,<br/>writable paths, durability, probes,<br/>exposure, observability, secrets"]
         a2["env/&lt;process&gt;/*.env<br/>one set per Process"]
         a3["assets<br/>declarative, never executable"]
-        a5["platform.yml<br/>tiers, durability policy, engines,<br/>receivers, cadences, providers, bootstrap set"]
+        a5["platform.intent.yml<br/>substrate facts, bootstrap set,<br/>tiers, durability policy, hardening,<br/>cadences, engines, providers"]
     end
 
     a1 --> FR["Intent Fragments<br/>every authored document, published by digest"]

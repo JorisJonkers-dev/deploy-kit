@@ -29,8 +29,11 @@ lands, the **compiler** that turns that model into deployable artifacts.
 
 ## The shape of the model
 
-Three layers, and the middle one is a contract
-([0003](docs/adr/model/0003-three-layer-meta-model.md)):
+**The three-model pipeline**: three models, each joined to the next by a
+transformation, with the middle one as a contract
+([0003](docs/adr/model/0003-three-model-pipeline.md)). They are stages of a
+pipeline, not metalevels, which is why "metamodel" here means a language
+definition and nothing else ([`CONTEXT.md`](CONTEXT.md#the-three-model-pipeline)):
 
 1. **Project Intent**: hand-authored, requirements only. What an application owner
    knows and nobody else does: its cold-start budget, what its data is worth,

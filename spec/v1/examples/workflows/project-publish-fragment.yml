@@ -7,7 +7,7 @@
 #                                                            -> verify digest
 #
 # ONE PROJECT FILE IS ONE FRAGMENT (docs/adr/model/0063-intent-authored-per-project.md).
-# This repository holds one, platform/knowledge.yml, so it publishes one
+# This repository holds one, platform/knowledge.project.yml, so it publishes one
 # fragment; a repository holding several project files runs these steps once per
 # file, and a project never spans repositories, so no fragment is ever a partial
 # project.
@@ -84,7 +84,7 @@ jobs:
           # Estate-wide invariants cannot be checked here and are
           # composition's job.
           npx --no-install deploy-config-schema intent validate \
-            --project platform/knowledge.yml \
+            --project platform/knowledge.project.yml \
             --env-dir platform/env \
             --strict
 
@@ -99,7 +99,7 @@ jobs:
           # one directory per Process is unambiguous across every Application the
           # file declares (docs/adr/model/0024-identity-per-process.md).
           npx --no-install deploy-config-schema intent pack \
-            --project platform/knowledge.yml \
+            --project platform/knowledge.project.yml \
             --env-dir platform/env \
             --out fragment/
 

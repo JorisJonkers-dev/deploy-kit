@@ -2,7 +2,7 @@
 
 What a renderer must produce from
 [`../auth.project.yml`](../auth.project.yml) and
-[`../env/auth-api.base.env`](../env/auth-api.base.env), rendered by hand against
+[`../env/auth-api/base.env`](../env/auth-api/base.env), rendered by hand against
 the model as decided: chapter 10 (intent), chapter 16 (identity, edges, policy),
 chapter 20 (the derivations), chapter 30 (adapters and attribution), and the
 two amendments in `review/PLACEMENT-DOMAIN-MANIFEST.md` and

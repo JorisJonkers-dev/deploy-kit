@@ -33,7 +33,7 @@ difference to enter. One serializer makes determinism one module's
 responsibility, and the double-render check then has one place to fail.
 
 The typed object model earns its place for a second reason, which is stronger.
-Layer 3 contains no decisions ([0003](../model/0003-three-layer-meta-model.md)),
+Layer 3 contains no decisions ([0003](../model/0003-three-model-pipeline.md)),
 and a string builder cannot be held to that: any field can be written, including
 one no chapter assigns. A narrow object model declaring only the fields this
 estate sets turns the rule into a compile error: an adapter cannot set what the

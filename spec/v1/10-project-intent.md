@@ -37,8 +37,16 @@ Layer 1 is authored as two kinds of file:
 
 | file | owns |
 |---|---|
-| `platform/<project>.yml` | one project: its `owner`, and every Application in it: processes, surfaces, dependencies, exposure, probes, volumes, placement, hardening, and secret **access** |
+| `platform/<project>.project.yml` | one project: its `owner`, and every Application in it: processes, surfaces, dependencies, exposure, probes, volumes, placement, hardening, and secret **access** |
 | `platform/env/<process>/base.env` + `platform/env/<process>/<cluster>.env` | every environment variable that **that Process** receives |
+
+Both paths are normative, and the worked examples follow them. The
+`.project.yml` suffix names the `kind` the file carries, `Project`, so a
+`platform/` tree holding several project files beside its `env/` tree says which
+files a publish step reads without a convention nobody wrote down. A Process's
+env files live in **a directory named for the Process**, never in one file per
+Process named after it: the overlay `<cluster>.env` has to sit beside its
+`base.env`, and a flat `<process>.base.env` leaves the overlay nowhere to go.
 
 One file is one project and one Intent Fragment
 ([0063](../../docs/adr/model/0063-intent-authored-per-project.md)). A repository may
@@ -61,7 +69,7 @@ schemaVersion: 1.0.0
 
 The `apiVersion` deliberately does not reuse `deployment.jorisjonkers.dev`, which
 three mutually incompatible documents already share: the defect
-[0003](../../docs/adr/model/0003-three-layer-meta-model.md) exists to fix. Each layer
+[0003](../../docs/adr/model/0003-three-model-pipeline.md) exists to fix. Each layer
 gets its own namespace. `kind` names the authored document (one project holding
 many Applications) while chapter 40's `IntentFragment` is the envelope that
 publishes it. `schemaVersion` is the **data model's own semver**, not the
@@ -459,8 +467,8 @@ The key set is closed. It exists because a self-delivering Process has to wire
 its own Vault client, and one of the values it wires (the role name) is
 derived: written as a literal it is the same staleness class as the
 `serviceAccountName()` defect, where a hand-maintained name and a derived one
-disagreed and nothing noticed. Writing a derived value as a literal is a
-Writing a derived value as a literal is a build error, and so is writing a Runtime Profile key at all: `OTEL_*` and
+disagreed and nothing noticed. Writing a derived value as a literal is a build
+error, and so is writing a Runtime Profile key at all: `OTEL_*` and
 `PYROSCOPE_*` come from `runtime`, and an exceptional value is not a layer-1
 concept: there is no `overrides` field to put it in. Ten `OTEL_*` variables are
 byte-identical today across `auth-api`,
@@ -1312,7 +1320,7 @@ anything.
 From `scrape` the model derives the **ServiceMonitor or PodMonitor**: its
 target, its port name and its path are the declared surface and path, and the
 cadence is the one estate-wide value in the Platform document
-([chapter 14](14-platform-intent.md#probe-and-ephemeral-policy)). Nothing about
+([chapter 14](14-platform-intent.md#monitor-cadence)). Nothing about
 that needs a monitoring stack's opinion, so it stays a Deliverable like any
 other and takes part in the derivation map's properties
 ([chapter 16](16-dependencies.md#the-derivation-map)).
@@ -1633,7 +1641,7 @@ comparison, one rule over one string, which is the property that made the join
 checkable in the first place.
 
 ```yaml
-# platform/knowledge.yml
+# platform/knowledge.project.yml
 - path: secret/data/platform/postgres/kb
   keys: [user, password]
 ```
@@ -1726,7 +1734,7 @@ this chapter owns:
 | `delivery: env` with `rotation.tolerates: reload` | `E_ENV_CANNOT_RELOAD` | schema |
 | an illegal access × delivery cell | `E_ILLEGAL_DELIVERY_FOR_ACCESS` | schema |
 | a non-KV grant with `delivery: env` or `file` | `E_NON_KV_DELIVERY` | schema |
-| `delivery: env` or `file` against a Context without `secretsEncryption` | `E_SECRETS_AT_REST_REQUIRED` | render |
+| `delivery: env` or `file` against a Platform Intent without `secretsEncryption` | `E_SECRETS_AT_REST_REQUIRED` | render |
 
 `keys: ['*']` has no error code because it is not in the grammar: a document
 carrying it fails schema validation. `E_ROLL_AFFECTS_OTHER_READERS` is the check
@@ -1955,9 +1963,9 @@ way: contention decides who arbitrates, not who authors
 | example | what it exercises |
 |---|---|
 | [`minimal/notes.project.yml`](examples/minimal/notes.project.yml) + [`env`](examples/minimal/env/notes-api/base.env) | **read this first.** One project, one Application, one Process, and no field that is not required: 26 authored lines reaching 10 objects, with no grant, no volume and no gap row. It is also the only set that renders on today's pinned inputs, because it holds nothing the secrets-at-rest gate can refuse: see [`minimal/README.md`](examples/minimal/README.md) |
-| [`knowledge/knowledge.project.yml`](examples/knowledge/knowledge.project.yml) + [`env`](examples/knowledge/env/knowledge-api.base.env) + [`worker env`](examples/knowledge/env/knowledge-ingest-worker.base.env) | two Processes, two runtimes and therefore two identities, `probes: none` and no `provides` on the worker, grants at **both** levels, a split Subtree path, a `0400` file secret, an `irreplaceable` volume |
-| [`auth/auth.project.yml`](examples/auth/auth.project.yml) + [`env`](examples/auth/env/auth-api.base.env) | one Application, two Processes switching atomically; `delivery: self` with `tolerates: reload`, a `self-roll` transit grant taking no placeholder, and the writable paths that retired its hardening exception |
-| [`data/data.project.yml`](examples/data/data.project.yml) + [`env`](examples/data/env/platform-postgres.base.env) | three Applications releasing independently in one project, third-party images, a `disk` dimension, TCP probes, and a surface eight Applications consume |
+| [`knowledge/knowledge.project.yml`](examples/knowledge/knowledge.project.yml) + [`env`](examples/knowledge/env/knowledge-api/base.env) + [`worker env`](examples/knowledge/env/knowledge-ingest-worker/base.env) | two Processes, two runtimes and therefore two identities, `probes: none` and no `provides` on the worker, grants at **both** levels, a split Subtree path, a `0400` file secret, an `irreplaceable` volume |
+| [`auth/auth.project.yml`](examples/auth/auth.project.yml) + [`env`](examples/auth/env/auth-api/base.env) | one Application, two Processes switching atomically; `delivery: self` with `tolerates: reload`, a `self-roll` transit grant taking no placeholder, and the writable paths that retired its hardening exception |
+| [`data/data.project.yml`](examples/data/data.project.yml) + [`env`](examples/data/env/postgres/base.env) | three Applications releasing independently in one project, third-party images, a `disk` dimension, TCP probes, and a surface eight Applications consume |
 
 The env-file-to-`secrets` cross-check runs over the three larger sets; the
 minimal one has no grant and no placeholder, which is the base case. `knowledge-api` has

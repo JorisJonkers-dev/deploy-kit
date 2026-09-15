@@ -39,7 +39,7 @@ The model already names the layers, and the code that renders it kept its own
 unrelated shape. The generation being replaced put resolution inside the
 renderer, and the estate paid for it in vocabulary: three mutually incompatible
 documents all claiming `deployment.jorisjonkers.dev/v2`, with no word for which
-one was wrong ([0003](../model/0003-three-layer-meta-model.md)). Naming the
+one was wrong ([0003](../model/0003-three-model-pipeline.md)). Naming the
 folders after the layers is not decoration. It means a reviewer reading
 [chapter 20](../../../spec/v1/20-resolved-deployment.md) and a reviewer reading
 `src/domain/resolved/` are looking at the same thing, and a rule that lands in

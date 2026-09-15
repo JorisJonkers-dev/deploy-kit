@@ -60,7 +60,7 @@ is derived and the other is authored.
 |---|---|---|
 | A `releaseWith` field, valid only within the project file | The deleted field worn narrower: the schema keeps a coupling name plus a rule that its target is in the same file, and two Applications in one file get a second way to say "together" | The file-scope rule is the Application boundary spelled out longhand; it adds a record without adding a fact, and the record can disagree with the boundary |
 | Co-location implies atomicity: every Application in a project file releases as one | Adding an unrelated Application to `media.yml` silently couples its rollout to nine others, and nothing in the file says so | The trap: coupling acquired by editing an unrelated line, discoverable only when a held release blocks an Application its owner never coupled |
-| A `components` level between Application and Process | A third authoring level whose only job is grouping Processes, and every field must then be assigned to Application, component or Process | Fails [0003](0003-three-layer-meta-model.md)'s two deciding questions, the level records no decision, and Application is already that grouping |
+| A `components` level between Application and Process | A third authoring level whose only job is grouping Processes, and every field must then be assigned to Application, component or Process | Fails [0003](0003-three-model-pipeline.md)'s two deciding questions, the level records no decision, and Application is already that grouping |
 
 ## Reversibility
 Undo cost today: reintroduce an Application-level coupling field and split the merged
