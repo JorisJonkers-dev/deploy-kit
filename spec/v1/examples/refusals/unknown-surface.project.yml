@@ -1,0 +1,37 @@
+# REFUSED: E_UNKNOWN_SURFACE
+#
+# A route names a Process and a surface, and the surface is resolved against
+# what that Process `provides`. This one names `https`, which the Process never
+# declares: the port is written once, by the Process that listens on it, and a
+# route that names anything else points at nothing
+# (spec/v1/10-project-intent.md #what-is-checked).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: unknown-surface
+    exposure:
+      - name: public
+        host: unknown-surface.jorisjonkers.dev
+        audience: anonymous
+        contentPolicy: strict
+        routes:
+          - { path: /, match: prefix, process: unknown-surface-api, surface: https }
+    processes:
+      - name: unknown-surface-api
+        lifecycle: application
+        image: unknown-surface-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: rolling

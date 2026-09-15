@@ -48,6 +48,8 @@ describe("the descriptor", () => {
       required: false,
       many: false,
       map: true,
+      reference: false,
+      entry: "Surface",
     });
     expect(feature("secrets")).toStrictEqual({
       name: "secrets",
@@ -55,7 +57,27 @@ describe("the descriptor", () => {
       required: false,
       many: true,
       map: false,
+      reference: false,
     });
+  });
+
+  it("records a name the model links as a reference to its target", () => {
+    const { classes } = descriptor();
+    const features = (owner: string) =>
+      classes
+        .find(({ name }) => name === owner)
+        ?.features.filter(({ reference }) => reference)
+        .map(({ name, types }) => [name, types]);
+
+    expect(features("Route")).toStrictEqual([
+      ["process", ["Process"]],
+      ["surface", ["Surface"]],
+    ]);
+    expect(features("Scrape")).toStrictEqual([
+      ["process", ["Process"]],
+      ["surface", ["Surface"]],
+    ]);
+    expect(features("DependencyEdge")).toStrictEqual([]);
   });
 
   it("carries a class written as one word as that word", () => {

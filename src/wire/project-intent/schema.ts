@@ -46,6 +46,11 @@ const tolerance = z.enum(TOLERANCES).meta({ id: "Tolerance" });
 const transitOp = z.enum(TRANSIT_OPERATIONS).meta({ id: "TransitOp" });
 
 const text = z.string().min(1);
+
+// A name that links to a model element when the document is read. The meta is
+// what the descriptor records the reference by; the authored value stays the name.
+const processReference = text.meta({ reference: "Process" });
+const surfaceReference = text.meta({ reference: "Surface" });
 const port = z.int().min(1).max(65535);
 
 const httpProbe = z
@@ -160,7 +165,7 @@ const process = z
     image: text,
     runtime: runtime,
     engine: engine.exactOptional(),
-    provides: z.record(text, port).exactOptional(),
+    provides: z.record(text, port).meta({ entry: "Surface" }).exactOptional(),
     placement,
     writablePaths: z.array(text).min(1).exactOptional(),
     sidecars: z.array(sidecar).min(1).exactOptional(),
@@ -179,8 +184,8 @@ const route = z
   .strictObject({
     path: text,
     match: match,
-    process: text,
-    surface: text,
+    process: processReference,
+    surface: surfaceReference,
     audience: audience.exactOptional(),
     redirectTo: text.exactOptional(),
   })
@@ -197,7 +202,11 @@ const exposure = z
   .meta({ id: "Exposure" });
 
 const scrape = z
-  .strictObject({ process: text, surface: text, path: text })
+  .strictObject({
+    process: processReference,
+    surface: surfaceReference,
+    path: text,
+  })
   .meta({ id: "Scrape" });
 
 // `scrape` is optional in the shape, not in the model: a block carrying a class

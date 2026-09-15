@@ -82,9 +82,12 @@ public class BlockTokenSource implements TokenSource {
             afterDash = false;
             flowDepth++;
             pending.add(marker(types.begin(), token));
+            // The brace stays in the stream as whitespace, so every character still has its token.
+            pending.add(hidden(token));
         } else if (types.closesFlow(token.getType())) {
             flowDepth--;
             pending.add(marker(types.end(), token));
+            pending.add(hidden(token));
         } else {
             if (afterDash) {
                 afterDash = false;

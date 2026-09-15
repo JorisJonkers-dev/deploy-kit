@@ -119,11 +119,13 @@
       "properties": {
         "process": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "reference": "Process"
         },
         "surface": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "reference": "Surface"
         },
         "path": {
           "type": "string",
@@ -199,11 +201,13 @@
         },
         "process": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "reference": "Process"
         },
         "surface": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "reference": "Surface"
         },
         "audience": {
           "$ref": "#/$defs/Audience"
@@ -433,7 +437,8 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 65535
-          }
+          },
+          "entry": "Surface"
         },
         "placement": {
           "$ref": "#/$defs/Placement"

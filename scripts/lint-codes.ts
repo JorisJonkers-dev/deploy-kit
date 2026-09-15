@@ -46,11 +46,6 @@ export const RETIRED: Readonly<Record<string, string>> = {
 
 export const PENDING: readonly Pending[] = [
   {
-    ticket: "#39",
-    reason: "a reference resolved by name, which needs the linking step",
-    codes: ["E_UNKNOWN_SURFACE"],
-  },
-  {
     ticket: "#41",
     reason: "a reference into the Platform document, which needs its metamodel",
     codes: [

@@ -60,10 +60,23 @@ class DescriptorTest {
 
     @Test
     void aMapEntryIsAMapRatherThanAClassOfItsOwn() {
-        assertThat(entries("classes").stream().map(entry -> entry.get("name"))).doesNotContain("SurfacePort");
+        assertThat(entries("classes").stream().map(entry -> entry.get("name"))).doesNotContain("Surface");
         assertThat(feature("Process", "provides"))
                 .isEqualTo(Map.of(
-                        "name", "provides", "types", List.of("int"), "required", false, "many", false, "map", true));
+                        "name",
+                        "provides",
+                        "types",
+                        List.of("int"),
+                        "required",
+                        false,
+                        "many",
+                        false,
+                        "map",
+                        true,
+                        "reference",
+                        false,
+                        "entry",
+                        "Surface"));
     }
 
     @Test
@@ -79,12 +92,35 @@ class DescriptorTest {
                         "many",
                         true,
                         "map",
+                        false,
+                        "reference",
                         false));
         assertThat(feature("Process", "startupBudget").get("types")).isEqualTo(List.of("string"));
         assertThat(feature("Process", "cutover").get("types")).isEqualTo(List.of("Cutover"));
         assertThat(feature("DependencyEdge", "required").get("types")).isEqualTo(List.of("boolean"));
         assertThat(feature("HttpProbe", "port").get("types")).isEqualTo(List.of("int"));
         assertThat(feature("Exposure", "contentPolicy").get("required")).isEqualTo(false);
+    }
+
+    @Test
+    void aNameTheModelLinksIsAReferenceToItsTarget() {
+        assertThat(feature("Route", "process"))
+                .isEqualTo(Map.of(
+                        "name",
+                        "process",
+                        "types",
+                        List.of("Process"),
+                        "required",
+                        true,
+                        "many",
+                        false,
+                        "map",
+                        false,
+                        "reference",
+                        true));
+        assertThat(feature("Scrape", "surface").get("types")).isEqualTo(List.of("Surface"));
+        assertThat(feature("Scrape", "surface").get("reference")).isEqualTo(true);
+        assertThat(feature("DependencyEdge", "surface").get("reference")).isEqualTo(false);
     }
 
     @Test

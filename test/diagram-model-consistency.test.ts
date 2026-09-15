@@ -33,6 +33,7 @@ function mermaidModel(): {
   classes: Record<string, string[]>;
   comps: Pair[];
   deps: Pair[];
+  assocs: Pair[];
 } {
   const md = read(join(spec, "10-project-intent.md"));
   const body = capture(
@@ -55,7 +56,11 @@ function mermaidModel(): {
     m[1] ?? "",
     m[2] ?? "",
   ]);
-  return { classes, comps, deps };
+  const assocs = [...body.matchAll(/(\w+) --> (\w+) :/g)].map((m): Pair => [
+    m[1] ?? "",
+    m[2] ?? "",
+  ]);
+  return { classes, comps, deps, assocs };
 }
 
 /** The boxes of a committed SVG, read out of its embedded draw.io payload. */
@@ -106,13 +111,17 @@ test("the class diagram draws exactly the mermaid's classes and attributes", () 
 });
 
 test("only the relations that span layers are left undrawn", () => {
-  const { comps, deps } = mermaidModel();
+  const { comps, deps, assocs } = mermaidModel();
   const { edges } = svgModel("10-project-intent-model.drawio.svg");
   // Placeholder reaches Grant and Exposure across four layers. Those two are
   // stated in the chapter instead; everything else is on the drawing.
   const undrawn = deps.filter(([from]) => from === "Placeholder").length;
   expect(undrawn, "the set of undrawn relations changed").toBe(2);
-  expect(edges).toBe(comps.length + deps.length - undrawn);
+  expect(
+    assocs,
+    "a reference the model resolves is drawn as an association",
+  ).toStrictEqual([["Route", "Surface"]]);
+  expect(edges).toBe(comps.length + deps.length + assocs.length - undrawn);
 });
 
 test("no drawing carries an enumeration box", () => {

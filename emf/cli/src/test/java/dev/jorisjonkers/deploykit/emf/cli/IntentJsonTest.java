@@ -5,10 +5,12 @@ import static org.assertj.core.api.Assertions.entry;
 
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.HttpProbe;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Lifecycle;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Match;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Placement;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Probes;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Process;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentFactory;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Route;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -64,6 +66,20 @@ class IntentJsonTest {
                 .contains(
                         entry("startupBudget", "20s"),
                         entry("probes", Map.of("readiness", Map.of("path", "/healthz/ready", "port", 8080))));
+    }
+
+    @Test
+    void aReferenceIsWrittenAsTheNameItLinked() {
+        Process process = process();
+        process.getProvides().put("http", 8080);
+        Route route = MODEL.createRoute();
+        route.setPath("/");
+        route.setMatch(Match.PREFIX);
+        route.setProcess(process);
+        route.setSurface(process.getProvides().get(0));
+
+        assertThat(IntentJson.of(route))
+                .contains(entry("process", "notes-api"), entry("surface", "http"), entry("match", "prefix"));
     }
 
     @Test
