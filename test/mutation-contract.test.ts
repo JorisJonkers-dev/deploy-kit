@@ -7,6 +7,7 @@ const REPOSITORY = join(import.meta.dirname, "..");
 
 interface StrykerConfig {
   readonly mutate: readonly string[];
+  readonly reporters: readonly string[];
   readonly thresholds: { readonly break: number };
   readonly vitest: { readonly configFile: string };
   readonly ignorePatterns: readonly string[];
@@ -38,6 +39,43 @@ describe("the mutation gate", () => {
     expect(text).toContain('"break": 100');
     expect(config.thresholds.break).toBe(100);
     expect(config.mutate).toContain("src/**/*.ts");
+  });
+
+  // docs/adr/architecture/0120: scripts/ does not join the scope yet because
+  // two of its own gates cannot be exercised inside Stryker's sandbox (a
+  // git-index read, and a subprocess-only smoke test). A change that widens
+  // `mutate` should widen this assertion in the same pull request as 0120's
+  // successor.
+  it("does not mutate scripts/ until its own gates are sandbox-safe", () => {
+    expect(config.mutate).toStrictEqual([
+      "src/**/*.ts",
+      "!src/cli/boundary.ts",
+    ]);
+  });
+
+  // The report is uploaded as a CI artifact so a survivor or a timeout is
+  // inspectable without reproducing the run locally, and html is what a
+  // person reads; json and clear-text are what the other two checks read.
+  it("reports in html as well as json and clear-text", () => {
+    expect(config.reporters).toStrictEqual([
+      "clear-text",
+      "progress",
+      "json",
+      "html",
+    ]);
+  });
+
+  it("uploads the html report as a CI artifact, even when the mutation step fails", () => {
+    const workflow = readFileSync(
+      join(REPOSITORY, ".github", "workflows", "ci.yml"),
+      "utf8",
+    );
+    const mutationJob =
+      workflow.split("'mutation':\n")[1]?.split("\n\n")[0] ?? "";
+
+    expect(mutationJob).toContain("actions/upload-artifact@");
+    expect(mutationJob).toContain("'if': 'always()'");
+    expect(mutationJob).toContain("'path': 'reports/mutation'");
   });
 
   it("runs every test file that imports from src/", () => {
