@@ -23,26 +23,18 @@ export default defineConfig({
       // A ratchet, per docs/adr/architecture/0101-coverage-is-a-ratchet.md:
       // set from what the suite reaches, and only ever raised.
       //
-      // Measured 2026-09-15, after the pull request report
-      // (scripts/pr-report.ts, issue #33) and the release candidate publish
-      // (scripts/rc-publish.ts, issue #34) landed alongside the pure
-      // scripts/lib modules each reads: change buckets (including emf/'s own
-      // nine-bucket mapping), coverage summaries, lcov, patch coverage, the
-      // comment itself, and the version and eligibility rule. Every one of
-      // those, and the two CLI scripts themselves, reaches full branch
-      // coverage through a real git fixture repository and stand-in
-      // `gh`/`npm` binaries, the same shape scripts/lint-secrets.ts already
-      // uses for gitleaks; all four metrics rose over the Project Intent
-      // metamodel's 98.67 / 94.3 / 100 / 98.58. Two runs of one tree,
-      // identical both times: statements 1292/1305, branches 777/809,
-      // functions 192/192, lines 1192/1205. What is left uncovered is the
-      // one-line command guard at the bottom of each pre-existing gate and
-      // the branches for a tool that cannot be started at all.
+      // Measured 2026-09-15, after the meaning lint (scripts/lint-meaning.ts)
+      // landed on top of the pull request report and release candidate
+      // publish (issues #33/#34). Two runs of one tree, identical both
+      // times: statements 1437/1451, branches 836/870, functions 222/222,
+      // lines 1324/1338. What is left uncovered is the one-line command
+      // guard at the bottom of each gate and the branches for a tool that
+      // cannot be started at all.
       thresholds: {
-        statements: 99,
-        branches: 96.04,
+        statements: 99.03,
+        branches: 96.09,
         functions: 100,
-        lines: 98.92,
+        lines: 98.95,
       },
     },
   },

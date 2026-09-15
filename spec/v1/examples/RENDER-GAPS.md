@@ -1,6 +1,6 @@
 # What the render surface says the model still owes
 
-Rendered by hand from the three worked projects, against the sixteen registered
+Rendered by hand from the three worked projects, against the six registered
 adapters. Every row is something a renderer must produce and cannot produce from
 intent as declared today. Read `auth/rendered/README.md`,
 `knowledge/rendered/README.md` and `data/rendered/README.md` for the per-file

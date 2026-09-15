@@ -35,7 +35,7 @@ defined. Three demands, all decided in the model rather than in the parked work:
 
 | demand | decided in | what it requires of any delivery mechanism |
 |---|---|---|
-| **Release Unit atomicity** | [0060](../../docs/adr/model/0060-release-unit.md) | no member's new version receives traffic until every member's new version is healthy; one failing member holds the whole unit |
+| **Release Unit atomicity** | [0060](../../docs/adr/model/0060-release-unit.md), superseded by [0062](../../docs/adr/model/0062-application-is-the-release-unit.md) | no member's new version receives traffic until every member's new version is healthy; one failing member holds the whole unit |
 | **Durability Class gating** | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | a destructive operation against a volume declared `recoverable` or `irreplaceable` is refused and reported, never performed; only the owning Application can state that class |
 | **Pinned inputs only** | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | what is applied is rendered from a named lock (Intent, Platform Intent, images lock, ClusterState snapshot), never from a live read at render time |
 

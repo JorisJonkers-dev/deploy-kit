@@ -68,7 +68,8 @@ between people, and build only the first set until there is a second person.
 
 ## Reversibility
 Undo cost today: edit this file and re-examine the six decisions whose
-`rests-on` names it: [0013](0013-blueprint-packs-pinned-checkout.md),
+`rests-on` names it: [0013](0013-blueprint-packs-pinned-checkout.md)
+(superseded by [0096](0096-the-foundation-is-declared.md)),
 [0037](0037-composition-oci-fragments.md),
 [0038](0038-participants-list-staleness.md),
 [0049](../deferred/0049-aggregator-owned-tests.md), [0050](../deferred/0050-exercises-and-deploys.md),
