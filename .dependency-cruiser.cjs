@@ -81,6 +81,17 @@ module.exports = {
       to: { circular: true },
     },
     {
+      name: "no-circular-folders",
+      severity: "error",
+      scope: "folder",
+      comment:
+        "Two directories that import each other are one directory in two places: " +
+        "a module-level cycle check passes them, because no single module closes " +
+        "the loop.",
+      from: {},
+      to: { circular: true },
+    },
+    {
       name: "no-orphans",
       severity: "error",
       comment:

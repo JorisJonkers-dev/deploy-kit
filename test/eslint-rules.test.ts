@@ -11,8 +11,8 @@
 // row cites, so deleting a case below fails the rule ledger rather than
 // quietly leaving a row unproven.
 import { join } from "node:path";
-import { ESLint } from "eslint";
 import { describe, expect, it } from "vitest";
+import { repositoryEslint } from "./support/eslint.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..");
 
@@ -22,17 +22,7 @@ describe("the lint rules for every file", { timeout: 120_000 }, () => {
   // project service would refuse it; admitting that one path to the default
   // project is the only thing this changes about the repository's own config.
   const PROBE = "scripts/probe.ts";
-  const eslint = new ESLint({
-    cwd: REPOSITORY,
-    overrideConfig: {
-      languageOptions: {
-        parserOptions: {
-          projectService: { allowDefaultProject: ["*.js", "*.cjs", PROBE] },
-          tsconfigRootDir: REPOSITORY,
-        },
-      },
-    },
-  });
+  const eslint = repositoryEslint([PROBE]);
 
   async function rulesFiredOn(source: string): Promise<(string | null)[]> {
     const [result] = await eslint.lintText(source, {

@@ -3,6 +3,7 @@ import vitest from "@vitest/eslint-plugin";
 import { defineConfig } from "eslint/config";
 import globals from "globals";
 import tseslint from "typescript-eslint";
+import { plugin as deployKit } from "./scripts/lib/eslint-rules.ts";
 
 const SLEEP = "Use a fake timer or wait on a condition, not a fixed delay";
 
@@ -208,9 +209,33 @@ export default defineConfig(
     },
   },
   {
+    // RULE-023, RULE-024 and RULE-042: every module this repository writes.
+    files: ["**/*.ts", "**/*.js", "**/*.cjs"],
+    plugins: { "deploy-kit": deployKit },
+    rules: {
+      "deploy-kit/node-builtin-prefix": "error",
+      "deploy-kit/kebab-case-filename": "error",
+      "deploy-kit/esm-only": "error",
+    },
+  },
+  {
+    // RULE-019: shipped code names every module it loads.
+    files: ["src/**/*.ts"],
+    rules: { "deploy-kit/no-computed-dynamic-import": "error" },
+  },
+  {
+    // RULE-033: a shared fixture lives in test/support/, never in a test.
+    files: ["test/**/*.ts", "**/*.test.ts"],
+    rules: { "deploy-kit/no-test-imports-test": "error" },
+  },
+  {
     // dependency-cruiser reads only CommonJS config, so this is the one
-    // CommonJS file in an ESM package.
+    // CommonJS file in an ESM package, and RULE-042's one exemption.
     files: ["**/*.cjs"],
     languageOptions: { sourceType: "commonjs" },
+  },
+  {
+    files: [".dependency-cruiser.cjs"],
+    rules: { "deploy-kit/esm-only": "off" },
   },
 );
