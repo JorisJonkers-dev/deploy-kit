@@ -7,9 +7,12 @@
   "mutate": ["src/**/*.ts", "!src/cli/boundary.ts"],
   "coverageAnalysis": "perTest",
   "ignorePatterns": ["/.claude", "/.agents"],
-  "reporters": ["clear-text", "progress", "json"],
+  "reporters": ["clear-text", "progress", "json", "html"],
   "jsonReporter": {
     "fileName": "reports/mutation/mutation.json"
+  },
+  "htmlReporter": {
+    "fileName": "reports/mutation/mutation.html"
   },
   "tempDirName": ".stryker-tmp",
   "thresholds": {
