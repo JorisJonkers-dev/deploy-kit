@@ -1,0 +1,134 @@
+# Claims the issue a pull request names (by title, body, or branch name) when
+# it opens, and releases it when the pull request closes, so a claim an agent
+# forgot to make by hand (AGENTS.md#claiming-a-ticket) corrects itself rather
+# than leaving the board showing work in progress that nobody holds. Per
+# issue #32's own acceptance criterion: "the workflow does it for an agent
+# that forgot."
+#
+# Non-gating by design: this job carries no bearing on Pipeline Complete
+# (ci.yml). Only a gate belongs in that job's `needs` list, per
+# docs/adr/architecture/0102-the-gate-grows-with-the-code.md, and a label
+# sync is not a gate.
+#
+# What this can do: add and remove the two labels the claim procedure names,
+# on the issue a pull request references and on its parent, using the
+# `issues: write` permission below.
+#
+# What this cannot do: touch the project board's own Status field. Setting a
+# ProjectV2 item field needs the `project` scope, which the default
+# GITHUB_TOKEN never carries no matter what the `permissions:` block below
+# says; only a GitHub App installation token or a PAT with that scope can
+# (see add-to-project.yml's PROJECT_AUTOMATION_APP_* secrets for the one
+# place this repository holds such a token). This workflow does not reuse
+# that token: the permission allowlist's one admitted write is the label
+# change, not a board write, and a board left out of step with its labels
+# needs a human, or a future app-token workflow, to fix. The job says so in
+# its own log rather than claiming a fix it cannot make.
+'name': 'Claim Issue'
+
+'on':
+  'pull_request':
+    'types':
+      - 'opened'
+      - 'reopened'
+      - 'edited'
+      - 'synchronize'
+      - 'closed'
+
+'permissions':
+  'contents': 'read'
+  'issues': 'write'
+  'pull-requests': 'read'
+
+'concurrency':
+  'group': 'claim-issue-${{ github.event.pull_request.number }}'
+  'cancel-in-progress': false
+
+'jobs':
+  'claim':
+    'name': 'Claim or release'
+    'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 5
+    'permissions':
+      'contents': 'read'
+      'issues': 'write'
+      'pull-requests': 'read'
+    'steps':
+      # Untrusted pull request fields (title, body, branch name) arrive only
+      # as environment variables here, read by the shell as "${VAR}"; none is
+      # ever interpolated into the run: string itself, which is what keeps a
+      # crafted title or branch name from being executed rather than parsed.
+      - 'name': 'Claim or release the issues this pull request names'
+        'shell': 'bash'
+        'env':
+          'GH_TOKEN': '${{ github.token }}'
+          'REPO': '${{ github.repository }}'
+          'PR_TITLE': '${{ github.event.pull_request.title }}'
+          'PR_BODY': '${{ github.event.pull_request.body }}'
+          'PR_HEAD_REF': '${{ github.event.pull_request.head.ref }}'
+          'PR_ACTION': '${{ github.event.action }}'
+        'run': |
+          set -euo pipefail
+
+          # Candidate issue numbers: every #NNN in the title or body, plus
+          # the leading number a branch name embeds (docs/32-agents-md -> 32,
+          # fix/24-pr-validation -> 24). A false positive (a pull request
+          # number, or a branch with no leading number) is filtered a line
+          # down, when `gh issue view` reports it is not an issue at all.
+          numbers=$(
+            {
+              printf '%s\n%s\n' "${PR_TITLE}" "${PR_BODY}" | grep -oE '#[0-9]+' | tr -d '#'
+              printf '%s\n' "${PR_HEAD_REF}" | grep -oE '(^|/)[0-9]+' | grep -oE '[0-9]+'
+            } | sort -un
+          )
+
+          if [ -z "${numbers}" ]; then
+            echo "No issue number found in the title, body or branch name; nothing to claim."
+            exit 0
+          fi
+
+          claim_or_release() {
+            local number="$1"
+            local json
+
+            if ! json=$(gh issue view "${number}" --repo "${REPO}" --json labels,parent 2>/dev/null); then
+              echo "#${number} is not an issue in ${REPO} (probably a pull request number); skipping."
+              return 0
+            fi
+
+            local has_in_progress has_ready parent
+            has_in_progress=$(jq -r '[.labels[].name] | any(. == "status: in-progress")' <<<"${json}")
+            has_ready=$(jq -r '[.labels[].name] | any(. == "status: ready-for-agent")' <<<"${json}")
+            parent=$(jq -r '.parent.number // empty' <<<"${json}")
+
+            if [ "${PR_ACTION}" = "closed" ]; then
+              if [ "${has_in_progress}" = "true" ]; then
+                gh issue edit "${number}" --repo "${REPO}" --remove-label 'status: in-progress'
+                echo "#${number}: released (status: in-progress removed)."
+              else
+                echo "#${number}: already released."
+              fi
+            else
+              if [ "${has_in_progress}" != "true" ]; then
+                gh issue edit "${number}" --repo "${REPO}" --add-label 'status: in-progress'
+                echo "#${number}: claimed (status: in-progress added)."
+              else
+                echo "#${number}: already claimed."
+              fi
+              if [ "${has_ready}" = "true" ]; then
+                gh issue edit "${number}" --repo "${REPO}" --remove-label 'status: ready-for-agent'
+                echo "#${number}: status: ready-for-agent removed."
+              fi
+            fi
+
+            if [ -n "${parent}" ]; then
+              claim_or_release "${parent}"
+            fi
+          }
+
+          while IFS= read -r number; do
+            [ -n "${number}" ] || continue
+            claim_or_release "${number}"
+          done <<<"${numbers}"
+
+          echo "::notice::Labels only. The project board's Status field needs a token scope GITHUB_TOKEN does not have; update it by hand, or see add-to-project.yml for the one app token this repository trusts with project writes."
