@@ -333,7 +333,7 @@ lists cases says so rather than skipping it silently.
 
 ## Gates
 
-Nineteen gates hold the structure, and each exists because its absence has already
+Twenty gates hold the structure, and each exists because its absence has already
 cost something in the generation this compiler replaces. Each runs as its own
 CI job, aggregated by one required check that fails when any gate job fails,
 is cancelled, or is skipped

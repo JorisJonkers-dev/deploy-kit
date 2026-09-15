@@ -11,15 +11,24 @@ rests-on: ["0001"]
 
 ## Rests on
 
-Two consecutive `npm run test:mutation` runs over `src/**/*.ts` (37 modules
-excluded down to 13 by `!src/cli/boundary.ts`, which
+Two consecutive `npm run test:mutation` runs over `src/**/*.ts` (21 modules
+today; `!src/cli/boundary.ts`, which
 [0117](0117-the-process-lives-in-one-boundary-file.md) already excludes from
-coverage) report the same 608 generated mutants, 2 of them ignored on a named
-reason, 606 scored, 606 killed, 0 survived, 0 timed out, 0 uncovered, for a
-score of 100.00 both times. False if: a third run over the same commit reports
-a different total, a survivor, or a timeout. Settled by: the two runs recorded
-below, and by any later re-run of `npm run test:mutation` on an unchanged
-`src/` disagreeing with them.
+coverage, excludes nothing yet because that file does not exist) report the
+same 868 generated mutants, 2 of them ignored on a named reason, 866 scored,
+866 killed, 0 survived, 0 timed out, 0 uncovered, for a score of 100.00 both
+times. False if: a third run over the same commit reports a different total,
+a survivor, or a timeout. Settled by: the two runs recorded below, and by any
+later re-run of `npm run test:mutation` on an unchanged `src/` disagreeing
+with them.
+
+> **Re-measured 2026-09-15.** #120 landed the Platform document's parser
+> between the first measurement and this one, adding eight modules under
+> `src/application/`, `src/domain/platform-intent/` and
+> `src/wire/{intent-set,platform-intent}/` plus `src/wire/schema-diagnostics.ts`.
+> The original measurement (13 modules, 608 mutants, 606 scored) is superseded
+> by the numbers below; the two ignored mutants, the break score, and the
+> scope decision are unchanged.
 
 ## Why
 
@@ -32,10 +41,10 @@ could give.
 on the same commit:
 
 ```
-Run 1: 608 mutants, 2 ignored, 606 scored, 606 killed, 0 survived,
-       0 timeout, 0 no coverage, score 100.00, 36s (Stryker), 39.4s wall
-Run 2: 608 mutants, 2 ignored, 606 scored, 606 killed, 0 survived,
-       0 timeout, 0 no coverage, score 100.00, 26s (Stryker), 28.6s wall
+Run 1: 868 mutants, 2 ignored, 866 scored, 866 killed, 0 survived,
+       0 timeout, 0 no coverage, score 100.00, 26s (Stryker), 33.0s wall
+Run 2: 868 mutants, 2 ignored, 866 scored, 866 killed, 0 survived,
+       0 timeout, 0 no coverage, score 100.00, 27s (Stryker), 28.6s wall
 ```
 
 Identical mutant counts and identical outcomes on every mutant; the only
@@ -82,9 +91,10 @@ sandbox surfaces rather than anything about the gate scripts' logic:
    neither of which exists in Stryker's sandbox." It is not unique to
    `oracles.test.ts`; it is a property of every script that scans the tracked
    tree, and five of `scripts/`'s own contract tests have that property.
-2. Excluding those five and running the rest (37 files, 3,558 mutants, about
-   5.9 times `src/`'s 608) got to 1,250 mutants tested, 160 survived (about
-   12.8%), 7 timed out, before the run was stopped. `coverageAnalysis:
+2. Excluding those five and running the rest (37 files, 3,558 mutants, taken
+   against `src/`'s pre-#120 13 modules, so most of the 3,558 came from
+   `scripts/`) got to 1,250 mutants tested, 160 survived (about 12.8%), 7
+   timed out, before the run was stopped. `coverageAnalysis:
    "perTest"` attributes a mutant only to a test that reaches it in the same
    process; several of `scripts/`'s own suites (`test/pr-report.test.ts`,
    `test/pr-title-contract.test.ts`, `test/rc-publish.test.ts`,
@@ -110,7 +120,7 @@ is this ticket's work; both are named here so the next attempt starts from a
 diagnosis instead of repeating this one. Until then, `scripts/` stays out, and
 `RULE-064` keeps naming `src/` alone.
 
-**The three-minute observation, and the ten-minute trigger.** `src/`'s two
+**The four-minute observation, and the ten-minute trigger.** `src/`'s two
 runs took under 40 seconds wall-clock, nowhere near the roughly ten-minute
 mark issue #31 names for moving to incremental mode on pull requests with a
 full scheduled run. The partial `scripts/`-included run was still short of
