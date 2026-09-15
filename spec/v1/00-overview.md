@@ -208,7 +208,7 @@ repository already uses between a chapter and an ADR.
 | Chapter | Covers | Diagram |
 |---|---|---|
 | [`10-project-intent.md`](10-project-intent.md) | Application, Process, and every layer-1 field by concern: identity, configuration, assets, probes, storage and durability, hardening and size, placement, exposure, observability, secrets and grants, release units | drawn |
-| [`14-platform-intent.md`](14-platform-intent.md) | the second authored document: substrate facts, the bootstrap set, the declared foundation, tiers as edge facts, durability policy, engines as images, providers, and no observability policy, which the observability application owns | none |
+| [`14-platform-intent.md`](14-platform-intent.md) | the second authored document: substrate facts, the bootstrap set, the declared foundation, tiers as edge facts, durability policy, engines as images, providers, and no observability policy, which the observability application owns | drawn |
 | [`16-dependencies.md`](16-dependencies.md) | dependency edges, per-Process identity, derived network policy, the derivation map | drawn |
 | [`20-resolved-deployment.md`](20-resolved-deployment.md) | the Resolved Deployment, the authority table in one place, the pinned input set including ClusterState, derived mechanics, the one capacity exception, the Reconcile Unit, publish-back | drawn |
 | [`30-deliverables.md`](30-deliverables.md) | adapters, the adapter port, attribution, ledgers, coverage re-derived from the registry | drawn |

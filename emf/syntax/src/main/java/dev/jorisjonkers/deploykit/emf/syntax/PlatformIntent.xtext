@@ -1,0 +1,135 @@
+grammar dev.jorisjonkers.deploykit.emf.syntax.PlatformIntent with dev.jorisjonkers.deploykit.emf.syntax.ProjectIntent
+	hidden(WS, SL_COMMENT)
+
+import "https://jorisjonkers.dev/deploy-kit/project-intent/1"
+import "http://www.eclipse.org/emf/2002/Ecore" as ecore
+
+// The Platform document, in the YAML subset the project language reads: its
+// terminals, its block tokens and its scalars are inherited, and only the
+// document's own rules are here. A policy keyed by a closed vocabulary is a
+// block with one optional key per literal, so a missing policy is an absent key.
+
+Platform returns Platform:
+	(('apiVersion' ':' apiVersion=Text)
+	& ('kind' ':' kind=Text)
+	& ('schemaVersion' ':' schemaVersion=Text)
+	& ('owner' ':' owner=Text)
+	& ('metadata' ':' BEGIN metadata=PlatformMetadata END)
+	& ('substrate' ':' BEGIN substrate=Substrate END)
+	& ('bootstrap' ':' BEGIN bootstrap=Bootstrap END)
+	& ('tiers' ':' BEGIN (DASH BEGIN tiers+=Tier END)+ END)
+	& ('durability' ':' BEGIN durability=DurabilityPolicies END)
+	& ('engines' ':' BEGIN engines=EnginePolicies END)
+	& ('monitors' ':' BEGIN monitors=MonitorCadence END)
+	& ('hardening' ':' hardening=HardeningClass)
+	& ('probes' ':' BEGIN probes=ProbeCadence END)
+	& ('ephemeral' ':' BEGIN ephemeral=EphemeralPolicy END)
+	& ('providers' ':' BEGIN (DASH BEGIN providers+=Provider END)+ END)?);
+
+PlatformMetadata returns PlatformMetadata:
+	(('cluster' ':' cluster=Text)
+	& ('project' ':' project=Text)
+	& ('nodeContract' ':' nodeContract=Text));
+
+Substrate returns Substrate:
+	(('kubernetesVersion' ':' kubernetesVersion=Text)
+	& ('datastore' ':' datastore=Datastore)
+	& ('serverCount' ':' serverCount=Port)
+	& ('secretsEncryption' ':' secretsEncryption=Bool)
+	& ('cni' ':' cni=Text)
+	& ('networkPolicyController' ':' networkPolicyController=PolicyController));
+
+Bootstrap returns Bootstrap:
+	(('flux' ':' BEGIN flux=FluxSource END)
+	& ('vault' ':' BEGIN vault=VaultState END)
+	& ('crds' ':' BEGIN (DASH BEGIN crds+=Text END | crds+=Text)+ END));
+
+FluxSource returns FluxSource:
+	'sourceRef' ':' sourceRef=Text;
+
+VaultState returns VaultState:
+	'unsealed' ':' unsealed=Bool;
+
+// A tier's proxy is an Application a project file declares: a reference into
+// another document, linked across the set of documents read together.
+Tier returns Tier:
+	(('name' ':' name=Text)
+	& ('audiences' ':' BEGIN (DASH BEGIN audiences+=Audience END | audiences+=Audience)+ END)
+	& ('listener' ':' listener=Listener)
+	& ('certificates' ':' certificates=CertificateSource)
+	& ('forwardAuth' ':' forwardAuth=Text)?
+	& ('traefik' ':' traefik=[Application|Text]));
+
+DurabilityPolicies returns DurabilityPolicies:
+	{DurabilityPolicies}
+	(('reconstructible' ':' BEGIN reconstructible=DurabilityPolicy END)?
+	& ('recoverable' ':' BEGIN recoverable=DurabilityPolicy END)?
+	& ('irreplaceable' ':' BEGIN irreplaceable=DurabilityPolicy END)?);
+
+DurabilityPolicy returns DurabilityPolicy:
+	{DurabilityPolicy}
+	(('schedule' ':' schedule=Text)?
+	& ('retain' ':' retain=Port)?
+	& ('offCluster' ':' BEGIN offCluster=OffClusterCopy END)?);
+
+OffClusterCopy returns OffClusterCopy:
+	(('destination' ':' destination=Text)
+	& ('credential' ':' credential=Text));
+
+EnginePolicies returns EnginePolicies:
+	{EnginePolicies}
+	(('postgres' ':' BEGIN postgres=EnginePolicy END)?
+	& ('rabbitmq' ':' BEGIN rabbitmq=EnginePolicy END)?
+	& ('valkey' ':' BEGIN valkey=EnginePolicy END)?
+	& ('files' ':' BEGIN files=EnginePolicy END)?);
+
+EnginePolicy returns EnginePolicy:
+	'backup' ':' backup=Text;
+
+MonitorCadence returns MonitorCadence:
+	(('interval' ':' interval=Text)
+	& ('timeout' ':' timeout=Text));
+
+ProbeCadence returns ProbeCadence:
+	(('periodSeconds' ':' periodSeconds=Port)
+	& ('timeoutSeconds' ':' timeoutSeconds=Port)
+	& ('failureThreshold' ':' failureThreshold=Port));
+
+EphemeralPolicy returns EphemeralPolicy:
+	'sizeLimit' ':' sizeLimit=Text;
+
+Provider returns Provider:
+	(('name' ':' name=Text)
+	& ('address' ':' address=Text)
+	& ('surfaces' ':' BEGIN surfaces+=ProviderSurface+ END));
+
+ProviderSurface returns ProviderSurface:
+	key=Text ':' value=Port;
+
+// Every keyword this document adds is also a scalar, as the project language's are.
+@Override
+Text returns ecore::EString:
+	SCALAR | STRING | INT | Keyword | PlatformKeyword;
+
+PlatformKeyword:
+	'acme' | 'address' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cluster' | 'cni' |
+	'crds' | 'credential' | 'datastore' | 'destination' | 'embedded' | 'engines' | 'ephemeral' | 'etcd' |
+	'failureThreshold' | 'flux' | 'forwardAuth' | 'hardening' | 'interval' | 'kubernetesVersion' | 'listener' | 'metadata' |
+	'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'periodSeconds' | 'plain' | 'providers' | 'restricted' |
+	'retain' | 'schedule' | 'secretsEncryption' | 'serverCount' | 'sizeLimit' | 'sourceRef' | 'sqlite' | 'substrate' |
+	'surfaces' | 'tiers' | 'timeout' | 'timeoutSeconds' | 'tls' | 'traefik' | 'unsealed' | 'vault';
+
+enum Datastore returns Datastore:
+	sqlite='sqlite' | etcd='etcd';
+
+enum PolicyController returns PolicyController:
+	none='none' | embedded='embedded' | cni='cni';
+
+enum Listener returns Listener:
+	tls='tls' | plain='plain';
+
+enum CertificateSource returns CertificateSource:
+	acme='acme' | none='none';
+
+enum HardeningClass returns HardeningClass:
+	restricted='restricted';

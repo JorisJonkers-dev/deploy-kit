@@ -1,0 +1,40 @@
+# The project file this case's Platform document is read beside.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: store
+    processes:
+      - name: store
+        lifecycle: application
+        image: postgres
+        runtime: none
+        engine: postgres
+        provides:
+          postgres: 5432
+        placement: { memory: 256Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 5432 }
+        startupBudget: 60s
+        cutover: recreate
+        volumes:
+          - claim: store-data
+            mountAt: /var/lib/postgresql/data
+            size: 1Gi
+            durability: irreplaceable
+  - id: edge-proxy
+    processes:
+      - name: edge-proxy
+        lifecycle: application
+        image: traefik
+        runtime: none
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 8080 }
+        startupBudget: 30s
+        cutover: rolling

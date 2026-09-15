@@ -9,6 +9,7 @@ import type {
   Project,
 } from "../../domain/project-intent/model.ts";
 import { link, type Linked } from "./link.ts";
+import { schemaDiagnostics } from "../schema-diagnostics.ts";
 import { ruleDiagnostics } from "./rules.ts";
 import { projectIntent, type ProjectIntentDocument } from "./schema.ts";
 
@@ -16,9 +17,6 @@ type WireApplication = ProjectIntentDocument["applications"][number];
 type WireProcess = WireApplication["processes"][number];
 type WirePlacement = WireProcess["placement"];
 type WireDependency = NonNullable<WireProcess["dependsOn"]>[number];
-
-const escape = (segment: PropertyKey): string =>
-  String(segment).replaceAll("~", "~0").replaceAll("/", "~1");
 
 /** A dependency is required unless the document says it is not. */
 function toDependency(edge: WireDependency): Dependency {
@@ -142,12 +140,10 @@ export function validateProjectIntent(
   if (!parsed.success)
     return {
       ok: false,
-      diagnostics: parsed.error.issues.map((issue): Diagnostic => ({
-        code: "schema",
-        path: issue.path.map((segment) => `/${escape(segment)}`).join(""),
-        message: issue.message,
-        hint: "Correct the field against spec/v1/10-project-intent.md.",
-      })),
+      diagnostics: schemaDiagnostics(
+        parsed.error,
+        "spec/v1/10-project-intent.md",
+      ),
     };
   const { project, owner, applications } = parsed.data;
   const mapped = applications.map((application, index) =>

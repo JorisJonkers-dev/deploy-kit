@@ -54,6 +54,11 @@ const cases = readdirSync(EXAMPLES, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name)
   .filter((name) => readdirSync(join(EXAMPLES, name)).includes("expected"))
+  .filter((name) =>
+    readdirSync(join(EXAMPLES, name)).some((file) =>
+      file.endsWith(".project.yml"),
+    ),
+  )
   .sort();
 
 const projectFile = (directory: string): string => {
@@ -325,6 +330,14 @@ describe("parseProjectIntent", () => {
     );
 
     expect(parseProjectIntent(text).ok).toBe(true);
+  });
+
+  it("points a schema failure at the chapter that defines the field", () => {
+    const result = parseProjectIntent(`${HEADER}applications: []\n`);
+
+    expect(!result.ok && result.diagnostics[0]?.hint).toBe(
+      "Correct the field against spec/v1/10-project-intent.md.",
+    );
   });
 
   it("gives every diagnostic a hint", () => {

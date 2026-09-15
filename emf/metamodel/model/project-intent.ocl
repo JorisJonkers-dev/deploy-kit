@@ -3,7 +3,14 @@
 -- diagnostic code it emits, and its context is the object the diagnostic points
 -- at, so a violation maps to a (code, path) pair without a lookup table.
 --
--- Constraints that need more than one document belong to composition.
+-- Constraints that need every project at once belong to composition.
+--
+-- The constraints a Platform document and the project files read beside it
+-- answer together are here too, because Eclipse OCL binds one Complete OCL
+-- document to a package for the thread that loads it. They read the other
+-- documents through `allInstances()`, whose extent is the resource set a
+-- document was read into, and hold trivially over a document read alone: a
+-- `forAll` over no Platform is true, and an `exists` is guarded by one.
 
 -- The registered package, not the file: the constraints must bind to the same
 -- classes the parser instantiates.
@@ -62,5 +69,53 @@ context Route
 	inv E_DUPLICATE_ROUTE_MATCH:
 		oclContainer().oclAsType(Exposure).routes
 			->select(r | r.path = self.path and r.match = self.match)->first() = self
+
+context Tier
+	-- An authenticated route reaches the proxy with nothing to ask whether the
+	-- visitor is allowed in unless the tier names the endpoint that decides.
+	inv E_NO_FORWARD_AUTH_ENDPOINT:
+		audiences->includes(Audience::authenticated) implies forwardAuth <> null
+
+-- Across documents (spec/v1/14-platform-intent.md#the-model). An invariant sits
+-- on the object the author must change, which is why most are on a project's
+-- classes. A tier's proxy that names no declared Application is
+-- E_UNKNOWN_TIER_PROXY, and is a link that does not resolve rather than an
+-- invariant: the reference is an Ecore reference, and the linker finds it has
+-- no target.
+
+context Exposure
+	-- A route's audience is the only way it reaches a tier.
+	inv E_NO_TIER_FOR_AUDIENCE:
+		Tier.allInstances()->notEmpty() implies Tier.allInstances()->exists(audiences->includes(self.audience))
+
+context Route
+	-- A route that writes its own audience reaches the tier carrying that one.
+	-- `Audience::absent` is what an unset audience reads as.
+	inv E_NO_TIER_FOR_AUDIENCE:
+		(audience <> Audience::absent and Tier.allInstances()->notEmpty())
+			implies Tier.allInstances()->exists(audiences->includes(self.audience))
+
+context Process
+	-- The backup method is the image the platform names for the engine.
+	inv E_NO_ENGINE_POLICY:
+		EnginePolicies.allInstances()->forAll(policies |
+			(engine = Engine::postgres implies policies.postgres <> null)
+			and (engine = Engine::rabbitmq implies policies.rabbitmq <> null)
+			and (engine = Engine::valkey implies policies.valkey <> null)
+			and (engine = Engine::files implies policies.files <> null))
+
+context Volume
+	-- A Durability Class names a guarantee only a platform policy keeps.
+	inv E_NO_DURABILITY_POLICY:
+		DurabilityPolicies.allInstances()->forAll(policies |
+			(durability = DurabilityClass::reconstructible implies policies.reconstructible <> null)
+			and (durability = DurabilityClass::recoverable implies policies.recoverable <> null)
+			and (durability = DurabilityClass::irreplaceable implies policies.irreplaceable <> null))
+
+context Grant
+	-- A secret written into the cluster is readable on disk unless the platform
+	-- encrypts secrets at rest.
+	inv E_SECRETS_AT_REST_REQUIRED:
+		delivery <> Delivery::selfDelivery implies Substrate.allInstances()->forAll(secretsEncryption)
 
 endpackage
