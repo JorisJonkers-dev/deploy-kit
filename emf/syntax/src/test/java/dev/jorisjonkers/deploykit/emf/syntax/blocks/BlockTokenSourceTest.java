@@ -15,6 +15,17 @@ import org.junit.jupiter.api.Test;
 /** The block structure the grammar reads, as the tokens this source produces for authored YAML. */
 class BlockTokenSourceTest {
 
+    /** Every token of {@code text}, hidden ones included. */
+    private static List<Token> tokens(String text) {
+        ProjectIntentTokenSource source =
+                new ProjectIntentTokenSource(new InternalProjectIntentLexer(new ANTLRStringStream(text)));
+        List<Token> tokens = new ArrayList<>();
+        for (Token token = source.nextToken(); token.getType() != Token.EOF; token = source.nextToken()) {
+            tokens.add(token);
+        }
+        return tokens;
+    }
+
     /** Every significant token of {@code text}, as "BEGIN", "END" or its own text. */
     private static List<String> blocks(String text) {
         ProjectIntentTokenSource source =
@@ -112,6 +123,70 @@ class BlockTokenSourceTest {
     @Test
     void aCommentLineOpensNoBlock() {
         assertThat(blocks("a: 1\n      # a comment, indented\nb: 2\n")).containsExactly("a", ":", "1", "b", ":", "2");
+    }
+
+    @Test
+    void aFoldedScalarIsOneValueWithItsLinesJoinedBySpaces() {
+        assertThat(blocks("a: >-\n  one line\n  and another\nb: 2\n"))
+                .containsExactly("a", ":", "one line and another", "b", ":", "2");
+    }
+
+    @Test
+    void aLiteralScalarKeepsItsLineBreaks() {
+        assertThat(blocks("a: |-\n  one line\n  and another\n")).containsExactly("a", ":", "one line\nand another");
+    }
+
+    @Test
+    void aFoldWithoutAChompKeepsTheClosingLineBreak() {
+        assertThat(blocks("a: >\n  one line\n")).containsExactly("a", ":", "one line\n");
+    }
+
+    @Test
+    void aBlankLineInsideAFoldedScalarIsNotRead() {
+        assertThat(blocks("a: >-\n  one\n\n  two\n")).containsExactly("a", ":", "one two");
+    }
+
+    @Test
+    void aBlankLineInsideALiteralScalarIsKept() {
+        assertThat(blocks("a: |-\n  one\n\n  two\n")).containsExactly("a", ":", "one\n\ntwo");
+    }
+
+    @Test
+    void whatFollowsAFoldedScalarIsReadAsUsual() {
+        assertThat(blocks("a: >-\n  one\n  # not a comment, part of the scalar\nb:\n  c: 2\n"))
+                .containsExactly(
+                        "a", ":", "one # not a comment, part of the scalar", "b", ":", "BEGIN", "c", ":", "2", "END");
+    }
+
+    @Test
+    void aFoldedScalarSitsWhereItsMarkerSatAndCoversItsWholeBlock() {
+        String source = "a: >-\n  one line\n  and another\nb: 2\n";
+
+        CommonToken folded = (CommonToken) tokens(source).stream()
+                .filter(token -> "one line and another".equals(token.getText()))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(folded.getLine()).isEqualTo(1);
+        assertThat(folded.getCharPositionInLine()).isEqualTo(3);
+        assertThat(folded.getStartIndex()).isEqualTo(source.indexOf('>'));
+        assertThat(folded.getStopIndex()).isEqualTo(source.indexOf("another") + "another".length() - 1);
+    }
+
+    @Test
+    void everyCharacterOfTheFileIsCoveredByExactlyOneToken() {
+        String source = "a: >-\n  one\n  two\n\nb:\n  c: 2\n";
+        int next = 0;
+
+        for (Token token : tokens(source)) {
+            CommonToken common = (CommonToken) token;
+            if (!token.getText().isEmpty()) {
+                assertThat(common.getStartIndex()).as(token.getText()).isEqualTo(next);
+                next = common.getStopIndex() + 1;
+            }
+        }
+
+        assertThat(next).isEqualTo(source.length());
     }
 
     @Test

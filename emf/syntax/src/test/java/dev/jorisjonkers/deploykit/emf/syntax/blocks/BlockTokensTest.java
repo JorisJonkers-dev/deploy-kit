@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 /** Which token types open and close a flow collection. */
 class BlockTokensTest {
 
-    private static final BlockTokens TYPES = new BlockTokens(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    private static final BlockTokens TYPES = new BlockTokens(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
 
     @Test
     void aBraceAndABracketOpenAndCloseAFlowCollection() {
@@ -37,5 +37,7 @@ class BlockTokensTest {
         assertThat(TYPES.listBegin()).isEqualTo(8);
         assertThat(TYPES.listEnd()).isEqualTo(9);
         assertThat(TYPES.separator()).isEqualTo(10);
+        assertThat(TYPES.fold()).isEqualTo(11);
+        assertThat(TYPES.scalar()).isEqualTo(12);
     }
 }

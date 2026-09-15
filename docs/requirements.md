@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **22** rows. The compiler's behaviours join it as they land.
+This ledger holds **23** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -45,3 +45,4 @@ This ledger holds **22** rows. The compiler's behaviours join it as they land.
 | REQ-020 | The production implementation's canonical JSON writer sorts keys by UTF-16 code units, formats numbers as ECMAScript does, and refuses null, non-finite numbers, non-JSON values and lone surrogates, on the same cases as the model-driven writer | [test/canonical-json.test.ts](../test/canonical-json.test.ts) |
 | REQ-021 | An authored Project Intent file parses to its committed intent oracle byte for byte, and YAML outside the one-document, anchor-free subset or a field outside the language is refused with a diagnostic rather than guessed at | [test/model/project-intent.test.ts](../test/model/project-intent.test.ts) |
 | REQ-022 | Every module under `src/` is mutation-tested, and a surviving mutant that takes the score below the measured threshold fails the build | [test/mutation-contract.test.ts](../test/mutation-contract.test.ts) |
+| REQ-023 | The Project Intent metamodel's structure is committed as a descriptor both implementations are held to, and the JSON Schema an editor completes a project file against regenerates from the metamodel without a diff | [test/model/descriptor.test.ts](../test/model/descriptor.test.ts) |
