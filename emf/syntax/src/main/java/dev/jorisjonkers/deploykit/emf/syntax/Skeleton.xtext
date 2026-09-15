@@ -1,9 +1,0 @@
-grammar dev.jorisjonkers.deploykit.emf.syntax.Skeleton with org.eclipse.xtext.common.Terminals
-
-generate skeleton "https://jorisjonkers.dev/deploy-kit/emf/syntax/skeleton"
-
-Document:
-	entries+=Entry*;
-
-Entry:
-	key=ID ':' value=STRING;

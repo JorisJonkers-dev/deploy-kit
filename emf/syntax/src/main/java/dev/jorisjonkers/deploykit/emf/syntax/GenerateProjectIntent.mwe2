@@ -1,0 +1,54 @@
+module dev.jorisjonkers.deploykit.emf.syntax.GenerateProjectIntent
+
+import org.eclipse.emf.mwe.utils.*
+import org.eclipse.xtext.xtext.generator.*
+import org.eclipse.xtext.xtext.generator.model.project.*
+
+var rootPath = ".."
+var generated = "${rootPath}/syntax/target/generated-sources/xtext"
+
+// Every generated file lands under target/ except the two stubs the generator
+// writes once and this tree then owns: the runtime module and the standalone
+// setup, in src/main/java (emf/docs/architecture.md#concrete-syntax).
+Workflow {
+	bean = StandaloneSetup {
+		scanClassPath = true
+		projectMapping = {
+			projectName = "dev.jorisjonkers.deploykit.emf.metamodel"
+			path = "${rootPath}/metamodel"
+		}
+		projectMapping = { projectName = "syntax" path = "${rootPath}/syntax" }
+	}
+	component = XtextGenerator {
+		configuration = {
+			project = StandardProjectConfig {
+				baseName = "syntax"
+				rootPath = rootPath
+				runtime = {
+					root = "${rootPath}/syntax"
+					src = "${rootPath}/syntax/src/main/java"
+					srcGen = generated
+					ecoreModel = "${generated}-model"
+				}
+				runtimeTest = { enabled = false }
+				eclipsePlugin = { enabled = false }
+				createEclipseMetaData = false
+			}
+			code = {
+				encoding = "UTF-8"
+				lineDelimiter = "\n"
+				preferXtendStubs = false
+			}
+		}
+		language = StandardLanguage {
+			name = "dev.jorisjonkers.deploykit.emf.syntax.ProjectIntent"
+			grammarUri = "classpath:/dev/jorisjonkers/deploykit/emf/syntax/ProjectIntent.xtext"
+			fileExtensions = "yml"
+			referencedResource = "platform:/resource/dev.jorisjonkers.deploykit.emf.metamodel/model/project-intent.genmodel"
+			serializer = { generateStub = false }
+			validator = { generateStub = false }
+			scopeProvider = { generateStub = false }
+			generator = { generateStub = false }
+		}
+	}
+}

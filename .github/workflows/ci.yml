@@ -169,6 +169,21 @@
       - 'name': 'Test'
         'run': 'npm run test:coverage'
 
+  # Every module under src/, mutated; a surviving mutant below the break
+  # threshold in stryker.config.json fails the job. The threshold is the
+  # measured score and only rises, like the coverage ratchet.
+  'mutation':
+    'name': 'Mutation'
+    'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 20
+    'permissions':
+      'contents': 'read'
+    'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+      - 'uses': './.github/actions/setup'
+      - 'name': 'Mutation'
+        'run': 'npm run test:mutation'
+
   'package-contents':
     'name': 'Package contents'
     'runs-on': 'ubuntu-latest'
@@ -290,6 +305,7 @@
       - 'architecture'
       - 'contracts'
       - 'tests'
+      - 'mutation'
       - 'package-contents'
       - 'actionlint'
       - 'secret-scan'

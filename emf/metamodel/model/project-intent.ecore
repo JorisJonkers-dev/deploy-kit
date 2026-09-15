@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The Project Intent source metamodel, written by hand (docs/adr/emf/0109).
+  Names are CONTEXT.md's, and every feature is named as the authored YAML key
+  it holds, so the canonical intent is read off the model reflectively. It
+  covers what the minimal example uses; the rest of chapter 10 lands with #84.
+-->
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="projectintent" nsURI="https://jorisjonkers.dev/deploy-kit/project-intent/1"
+    nsPrefix="projectintent">
+  <eClassifiers xsi:type="ecore:EClass" name="Project">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="apiVersion" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="schemaVersion" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="project" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="owner" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="applications" lowerBound="1" upperBound="-1" eType="#//Application" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Application">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="observability" eType="#//Observability" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="exposure" upperBound="-1" eType="#//Exposure" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//Process" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Observability">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="alertClass" lowerBound="1" eType="#//AlertClass"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="scrape" lowerBound="1" eType="#//Scrape" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Scrape">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="process" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="surface" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Exposure">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="host" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="audience" lowerBound="1" eType="#//Audience"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="contentPolicy" lowerBound="1" eType="#//ContentPolicy"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="routes" lowerBound="1" upperBound="-1" eType="#//Route" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Route">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="match" lowerBound="1" eType="#//Match"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="process" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="surface" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Process">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="lifecycle" lowerBound="1" eType="#//Lifecycle"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="runtime" lowerBound="1" eType="#//Runtime"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="provides" upperBound="-1" eType="#//SurfacePort" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="placement" lowerBound="1" eType="#//Placement" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="probes" eType="#//Probes" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="startupBudget" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cutover" lowerBound="1" eType="#//Cutover"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SurfacePort" instanceClassName="java.util.Map$Entry">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Placement">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Probes">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="readiness" eType="#//Probe" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="liveness" eType="#//Probe" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Probe">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Lifecycle">
+    <eLiterals name="application" literal="application"/>
+    <eLiterals name="job" value="1" literal="job"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Runtime">
+    <eLiterals name="jvm" literal="jvm"/>
+    <eLiterals name="python" value="1" literal="python"/>
+    <eLiterals name="node" value="2" literal="node"/>
+    <eLiterals name="static" value="3" literal="static"/>
+    <eLiterals name="none" value="4" literal="none"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Cutover">
+    <eLiterals name="rolling" literal="rolling"/>
+    <eLiterals name="recreate" value="1" literal="recreate"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="AlertClass">
+    <eLiterals name="businessHours" literal="business-hours"/>
+    <eLiterals name="urgent" value="1" literal="urgent"/>
+    <eLiterals name="page" value="2" literal="page"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Audience">
+    <eLiterals name="anonymous" literal="anonymous"/>
+    <eLiterals name="authenticated" value="1" literal="authenticated"/>
+    <eLiterals name="internal" value="2" literal="internal"/>
+    <eLiterals name="lan" value="3" literal="lan"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="ContentPolicy">
+    <eLiterals name="strict" literal="strict"/>
+    <eLiterals name="admin" value="1" literal="admin"/>
+    <eLiterals name="workflow" value="2" literal="workflow"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Match">
+    <eLiterals name="prefix" literal="prefix"/>
+    <eLiterals name="exact" value="1" literal="exact"/>
+  </eClassifiers>
+</ecore:EPackage>

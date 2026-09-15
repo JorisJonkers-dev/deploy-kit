@@ -17,8 +17,9 @@ import org.eclipse.ocl.xtext.completeocl.CompleteOCLStandaloneSetup;
 import org.eclipse.ocl.xtext.completeocl.validation.CompleteOCLEObjectValidator;
 import org.junit.jupiter.api.Test;
 
-// Walking skeleton (#81): Ecore and Complete OCL run headless. Deleted by the
-// Task 1 metamodel ticket, whose suite covers both.
+// Walking skeleton (#81): Complete OCL runs headless. The Ecore half went with
+// the Project Intent metamodel (#83); this half is deleted by the ticket that
+// gives the metamodel its constraints (#85).
 class SkeletonTest {
 
     private static final Path MODEL = Path.of("model").toAbsolutePath();
@@ -45,19 +46,6 @@ class SkeletonTest {
 
     private static EObject load(ResourceSet resources, String file) {
         return resources.getResource(uri(file), true).getContents().get(0);
-    }
-
-    @Test
-    void anEcoreMetamodelLoadsAndAnInstanceValidates() {
-        OCL ocl = ocl();
-        EPackage skeleton = register(ocl.getResourceSet());
-
-        assertThat(skeleton.getEClassifiers()).extracting("name").containsExactly("Project", "Application");
-        assertThat(Diagnostician.INSTANCE
-                        .validate(load(ocl.getResourceSet(), "notes.xmi"))
-                        .getSeverity())
-                .isEqualTo(Diagnostic.OK);
-        ocl.dispose();
     }
 
     @Test

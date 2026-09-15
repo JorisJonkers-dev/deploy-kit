@@ -15,7 +15,7 @@ coverage=$(cat ./*/target/site/jacoco/jacoco.csv 2>/dev/null | awk -F, '
   END {if (missed + covered) printf "%.1f%%", 100 * covered / (missed + covered); else print "n/a"}')
 
 mutation=$(cat ./*/target/pit-reports/mutations.xml 2>/dev/null | awk '
-  {total += gsub(/<mutation /, "&"); killed += gsub(/status=.KILLED./, "&")}
+  {total += gsub(/<mutation /, "&"); killed += gsub(/status=.KILLED./, "&") + gsub(/status=.TIMED_OUT./, "&")}
   END {if (total) printf "%.1f%% (%d of %d)", 100 * killed / total, killed, total; else print "n/a"}')
 
 echo "**Model-driven build:** ${tests} tests, line coverage ${coverage}, mutation score ${mutation}"

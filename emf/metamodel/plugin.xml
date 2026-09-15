@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.0"?>
+<!-- Registers the generated package in Eclipse, so the examiners' editors resolve the metamodel by its nsURI. -->
+<plugin>
+   <extension point="org.eclipse.emf.ecore.generated_package">
+      <package
+            uri="https://jorisjonkers.dev/deploy-kit/project-intent/1"
+            class="dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage"
+            genModel="model/project-intent.genmodel"/>
+   </extension>
+</plugin>

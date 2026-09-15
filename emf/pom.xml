@@ -18,6 +18,7 @@
   <modules>
     <module>metamodel</module>
     <module>syntax</module>
+    <module>cli</module>
     <module>resolve</module>
     <module>render</module>
     <module>parity</module>

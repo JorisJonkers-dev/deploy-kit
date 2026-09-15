@@ -5,7 +5,14 @@ Bundle-SymbolicName: dev.jorisjonkers.deploykit.emf.metamodel;singleton:=true
 Bundle-Version: 0.1.0.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-21
 Automatic-Module-Name: dev.jorisjonkers.deploykit.emf.metamodel
-Require-Bundle: org.eclipse.emf.ecore,
+Export-Package: dev.jorisjonkers.deploykit.emf.metamodel.projectintent,
+ dev.jorisjonkers.deploykit.emf.metamodel.projectintent.impl,
+ dev.jorisjonkers.deploykit.emf.metamodel.projectintent.util
+Require-Bundle: org.eclipse.emf.ecore;visibility:=reexport,
  org.eclipse.emf.ecore.xmi,
  org.eclipse.ocl.pivot,
- org.eclipse.ocl.xtext.completeocl
+ org.eclipse.ocl.xtext.completeocl,
+ org.eclipse.emf.mwe2.launch,
+ org.eclipse.emf.mwe.utils,
+ org.eclipse.emf.mwe2.lib,
+ org.eclipse.emf.codegen.ecore

@@ -17,6 +17,7 @@ export default defineConfig(
       "dist/**",
       "node_modules/**",
       "reports/**",
+      ".stryker-tmp/**",
       // Maven build output from the model-driven implementation under emf/.
       "**/target/**",
     ],

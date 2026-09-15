@@ -1,0 +1,135 @@
+grammar dev.jorisjonkers.deploykit.emf.syntax.ProjectIntent hidden(WS, SL_COMMENT)
+
+import "https://jorisjonkers.dev/deploy-kit/project-intent/1"
+import "http://www.eclipse.org/emf/2002/Ecore" as ecore
+
+// The YAML subset the authored project files use. Block structure arrives as
+// the synthetic BEGIN and END tokens the blocks package produces, so an
+// indented block and a flow mapping parse through one rule.
+
+Project returns Project:
+	(('apiVersion' ':' apiVersion=Text)
+	& ('kind' ':' kind=Text)
+	& ('schemaVersion' ':' schemaVersion=Text)
+	& ('project' ':' project=Text)
+	& ('owner' ':' owner=Text)
+	& ('applications' ':' BEGIN (DASH BEGIN applications+=Application END)+ END));
+
+Application returns Application:
+	(('id' ':' id=Text)
+	& ('observability' ':' BEGIN observability=Observability END)?
+	& ('exposure' ':' BEGIN (DASH BEGIN exposure+=Exposure END)+ END)?
+	& ('processes' ':' BEGIN (DASH BEGIN processes+=Process END)+ END));
+
+Observability returns Observability:
+	(('alertClass' ':' alertClass=AlertClass)
+	& ('scrape' ':' BEGIN scrape=Scrape END));
+
+Scrape returns Scrape:
+	(('process' ':' process=Text)
+	& ('surface' ':' surface=Text)
+	& ('path' ':' path=Text));
+
+Exposure returns Exposure:
+	(('name' ':' name=Text)
+	& ('host' ':' host=Text)
+	& ('audience' ':' audience=Audience)
+	& ('contentPolicy' ':' contentPolicy=ContentPolicy)
+	& ('routes' ':' BEGIN (DASH BEGIN routes+=Route END)+ END));
+
+Route returns Route:
+	(('path' ':' path=Text)
+	& ('match' ':' match=Match)
+	& ('process' ':' process=Text)
+	& ('surface' ':' surface=Text));
+
+Process returns Process:
+	(('name' ':' name=Text)
+	& ('lifecycle' ':' lifecycle=Lifecycle)
+	& ('image' ':' image=Text)
+	& ('runtime' ':' runtime=Runtime)
+	& ('provides' ':' BEGIN provides+=SurfacePort+ END)?
+	& ('placement' ':' BEGIN placement=Placement END)
+	& ('probes' ':' BEGIN probes=Probes END)?
+	& ('startupBudget' ':' startupBudget=Text)?
+	& ('cutover' ':' cutover=Cutover));
+
+SurfacePort returns SurfacePort:
+	key=Text ':' value=Port;
+
+Placement returns Placement:
+	(('memory' ':' memory=Text)
+	& ('cpu' ':' cpu=Text));
+
+Probes returns Probes:
+	(('readiness' ':' BEGIN readiness=Probe END)?
+	& ('liveness' ':' BEGIN liveness=Probe END)?);
+
+Probe returns Probe:
+	(('path' ':' path=Text)
+	& ('port' ':' port=Port));
+
+Port returns ecore::EInt:
+	INT;
+
+// A scalar, quoted or not. Every keyword above is also a scalar, so a value
+// that happens to read like a key is still a value.
+Text returns ecore::EString:
+	SCALAR | STRING | INT | Keyword;
+
+Keyword:
+	'apiVersion' | 'kind' | 'schemaVersion' | 'project' | 'owner' | 'applications' | 'id' | 'observability' |
+	'exposure' | 'processes' | 'alertClass' | 'scrape' | 'name' | 'host' | 'audience' | 'contentPolicy' |
+	'routes' | 'match' | 'lifecycle' | 'image' | 'runtime' | 'provides' | 'placement' | 'probes' |
+	'startupBudget' | 'cutover' | 'memory' | 'cpu' | 'readiness' | 'liveness' | 'path' | 'port' |
+	'process' | 'surface' |
+	'application' | 'job' | 'jvm' | 'python' | 'node' | 'static' | 'none' | 'rolling' | 'recreate' |
+	'business-hours' | 'urgent' | 'page' | 'anonymous' | 'authenticated' | 'internal' | 'lan' |
+	'strict' | 'admin' | 'workflow' | 'prefix' | 'exact';
+
+enum Lifecycle returns Lifecycle:
+	application='application' | job='job';
+
+enum Runtime returns Runtime:
+	jvm='jvm' | python='python' | node='node' | static='static' | none='none';
+
+enum Cutover returns Cutover:
+	rolling='rolling' | recreate='recreate';
+
+enum AlertClass returns AlertClass:
+	businessHours='business-hours' | urgent='urgent' | page='page';
+
+enum Audience returns Audience:
+	anonymous='anonymous' | authenticated='authenticated' | internal='internal' | lan='lan';
+
+enum ContentPolicy returns ContentPolicy:
+	strict='strict' | admin='admin' | workflow='workflow';
+
+enum Match returns Match:
+	prefix='prefix' | exact='exact';
+
+terminal BEGIN: 'synthetic:BEGIN';
+terminal END: 'synthetic:END';
+
+// The block markers the token source rewrites: a dash opens a sequence item,
+// and a flow collection opens and closes a block on one line. The parser never
+// sees FLOW_ or LIST_ tokens; they arrive as BEGIN and END.
+terminal DASH: '-';
+terminal FLOW_BEGIN: '{';
+terminal FLOW_END: '}';
+terminal FLOW_SEP: ',';
+terminal LIST_BEGIN: '[';
+terminal LIST_END: ']';
+
+terminal INT returns ecore::EInt: ('0'..'9')+;
+
+terminal SCALAR:
+	!(' ' | '\t' | '\r' | '\n' | ':' | ',' | '{' | '}' | '[' | ']' | '#' | '"' | "'" | '-')
+	(!(' ' | '\t' | '\r' | '\n' | ':' | ',' | '{' | '}' | '[' | ']' | '#'))*;
+
+terminal STRING:
+	'"' !('"')* '"' | "'" !("'")* "'";
+
+terminal SL_COMMENT: '#' !('\n' | '\r')*;
+
+terminal WS: (' ' | '\t' | '\r' | '\n')+;

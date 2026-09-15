@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: deploy-kit model-driven parity
+Bundle-SymbolicName: dev.jorisjonkers.deploykit.emf.parity;singleton:=true
+Bundle-Version: 0.1.0.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-21
+Automatic-Module-Name: dev.jorisjonkers.deploykit.emf.parity
+Export-Package: dev.jorisjonkers.deploykit.emf.parity
+Require-Bundle: dev.jorisjonkers.deploykit.emf.cli
