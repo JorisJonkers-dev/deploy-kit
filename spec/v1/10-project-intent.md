@@ -268,7 +268,7 @@ the others.
 `name` and `instance` are both the Process name rather than one naming the
 Application, because the selector must match exactly one controller's pods. A
 `name` of the Application and an `instance` of the Process would read better and
-would make every Process of a multi-Process Service selector-ambiguous the
+would make every Process of a multi-Process Application selector-ambiguous the
 moment anything selected on `name` alone.
 
 No `app.kubernetes.io/version`. A version label would have to come from the
