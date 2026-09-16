@@ -39,7 +39,10 @@
     <assertj.version>3.27.7</assertj.version>
     <archunit.version>1.5.0</archunit.version>
 
+    <kotlin.version>2.3.21</kotlin.version>
+
     <palantir-java-format.version>2.98.0</palantir-java-format.version>
+    <ktlint.version>1.7.1</ktlint.version>
     <jacoco.version>0.8.15</jacoco.version>
     <pitest.version>1.30.0</pitest.version>
     <pitest-junit5.version>1.2.3</pitest-junit5.version>
@@ -64,6 +67,11 @@
         <groupId>com.tngtech.archunit</groupId>
         <artifactId>archunit-junit5</artifactId>
         <version>${archunit.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jetbrains.kotlin</groupId>
+        <artifactId>kotlin-stdlib</artifactId>
+        <version>${kotlin.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -91,6 +99,7 @@
         <plugin><groupId>org.eclipse.tycho</groupId><artifactId>tycho-bnd-plugin</artifactId><version>${tycho.version}</version></plugin>
         <plugin><groupId>org.eclipse.tycho</groupId><artifactId>tycho-source-plugin</artifactId><version>${tycho.version}</version></plugin>
         <plugin><groupId>org.codehaus.mojo</groupId><artifactId>exec-maven-plugin</artifactId><version>3.6.4</version></plugin>
+        <plugin><groupId>org.jetbrains.kotlin</groupId><artifactId>kotlin-maven-plugin</artifactId><version>${kotlin.version}</version></plugin>
       </plugins>
     </pluginManagement>
 
@@ -166,6 +175,11 @@
             <palantirJavaFormat><version>${palantir-java-format.version}</version></palantirJavaFormat>
             <removeUnusedImports/>
           </java>
+          <!-- The test tier is Kotlin (docs/adr/emf/0121), and the estate's Kotlin repositories run ktlint. -->
+          <kotlin>
+            <includes><include>src/*/kotlin/**/*.kt</include></includes>
+            <ktlint><version>${ktlint.version}</version></ktlint>
+          </kotlin>
         </configuration>
         <executions>
           <execution>

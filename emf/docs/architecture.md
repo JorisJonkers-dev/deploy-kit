@@ -108,7 +108,9 @@ Every module of `bundles/` is Java, without exception. Ecore generates Java,
 Xtext's runtime hooks are Java, and a bundle compiles through Tycho's JDT
 compiler against a target platform holding no Kotlin unit, so a language other
 than Java is a bundle's problem before it is anything else. `tests/` carries
-none of those constraints.
+none of those constraints and is Kotlin, the estate's JVM language, with the
+test idiom its other repositories run: JUnit 5, AssertJ, ArchUnit, and a test
+function named as a sentence in backticks.
 
 ## Metamodels
 
@@ -290,7 +292,8 @@ proving nothing.
 
 A behaviour ledger row whose behaviour is the model's own is proved in both
 implementations. `emf/docs/witnesses.md` lists, for each such `REQ-NNN` id, the
-JUnit test that proves it here. `tests/parity` fails when a model row in
+JUnit test that proves it here, in whichever language its module is written.
+`tests/parity` fails when a model row in
 `docs/requirements.md` has no witness in that file, or a witness names a test
 that does not exist or an id that no row carries.
 
@@ -309,14 +312,15 @@ hold ([0115](adr/emf/0115-the-emf-gates-are-estate-shaped.md)):
 | gate | plugin | fails when |
 |---|---|---|
 | toolchain | `maven-enforcer-plugin` | the JDK is not 21, Maven is not 3.9, a plugin version is unpinned, dependency versions do not converge outside a bundle, or anything declares a distribution target |
-| compile | `maven-compiler-plugin`, or `tycho-compiler-plugin` in a bundle | any `-Xlint:all` warning, or in a bundle any warning the JDT compiler reports |
+| compile | `maven-compiler-plugin`, `tycho-compiler-plugin` in a bundle, or `kotlin-maven-plugin` in the test tier | any `-Xlint:all` warning, in a bundle any warning the JDT compiler reports, and in the test tier any warning `kotlinc` reports |
 | tests | `maven-surefire-plugin` | a JUnit test fails, including the ArchUnit module rules and the ledger checks |
-| format | `spotless-maven-plugin` | Java source differs from palantir-java-format; `./mvnw spotless:apply` fixes it |
+| format | `spotless-maven-plugin` | Java source differs from palantir-java-format, or Kotlin source from ktlint; `./mvnw spotless:apply` fixes either |
 | coverage | `jacoco-maven-plugin` | line or branch coverage of a module's hand-written classes falls below the floor in `emf/pom.xml` |
 | mutation | `pitest-maven` | the mutation score of a module's hand-written classes falls below the threshold in `emf/pom.xml` |
 
 Every rule these gates enforce is listed in [the rule ledger](rules.md), and
-every model behaviour's Java proof in [the witness list](witnesses.md).
+every model behaviour's JUnit proof in [the witness list](witnesses.md), in
+whichever language its module is written.
 
 CodeQL analyses the Java under `emf/` as `java-kotlin` with no build, ignoring
 build output and generated sources; `test/emf-wiring.test.ts` at the root holds
