@@ -260,9 +260,9 @@ Its `src/main` holds `CanonicalJson` and `Ledgers`, neither of which touches EMF
 
 > **Proposed, not landed:**
 > [0120](adr/emf/0120-parity-crosses-the-cli-file-interface.md) moves the suites
-> onto the pipeline's file interface — arguments and input files in; an exit
-> code, diagnostics, the parsed intent, the descriptor and the rendered tree out
-> — so the module holds no EMF type and builds as a plain jar. What follows once
+> onto the pipeline's file interface (arguments and input files in; an exit
+> code, diagnostics, the parsed intent, the descriptor and the rendered tree
+> out), so the module holds no EMF type and builds as a plain jar. What follows once
 > it lands: a value a parity case asserts on is a value the pipeline writes, and
 > a derivation with no output file is not evidence.
 
