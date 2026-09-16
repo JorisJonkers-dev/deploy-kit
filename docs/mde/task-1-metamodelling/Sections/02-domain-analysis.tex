@@ -57,88 +57,25 @@ may run beside the old one during a cutover. These have no counterpart in a
 structural architecture notation, and they are where the interesting derivations
 live.
 
-\subsection{Notation: Why the Metamodels Are Drawn as Class Diagrams}
+\subsection{Notation}
 \label{sec:notation}
 
-The Task 0 feedback asked why UML class diagrams are used rather than a
-structural notation such as a deployment or component diagram. The two answer
-different questions, and this project needs both answers.
+The Task 0 feedback asked why UML class diagrams are used, and suggested
+ArchiMate or the C4 model as alternatives or as additions.
 
-A metamodel defines the \emph{abstract syntax} of a language: which concepts
-exist, which properties they carry, and how they may be connected. Ecore, the
-metamodelling language used here, is an implementation of EMOF, and EMOF is
-itself defined in terms of classes, attributes, references and multiplicities.
-A class diagram is therefore not one of several ways to picture an Ecore
-package; it is the notation whose constructs correspond one-to-one to the
-constructs the metamodel is built from. A deployment diagram, by contrast, shows
-\emph{one} arrangement of artifacts on nodes. It is an instance-level notation,
-so it can illustrate a model of this language, but it cannot define the
-language.
+For the metamodels themselves the class diagram is not really a choice.
+A metamodel defines a language's abstract syntax, Ecore implements EMOF, and
+EMOF is classes, attributes, references and multiplicities, so a class diagram
+is the notation whose constructs correspond one-to-one to what the metamodel is
+built from. ArchiMate and C4 describe a system, not a language, so neither can
+define one.
 
-The distinction matters because this project has models at both levels. The
-class diagrams in Sections~\ref{sec:sourcemetamodel}
-and~\ref{sec:targetmetamodel} define the two languages. A deployment-style
-picture of one estate would be a rendering of a \emph{model}, at the level the
-example models in Section~\ref{sec:examplemodels} occupy, and that is where
-ArchiMate and C4 become relevant.
-
-\subsection{Relation to ArchiMate and the C4 Model}
-\label{sec:archimate}
-
-Both notations were examined, and the comparison is worth reporting because it
-is a check on the vocabulary: if the language named its concepts differently
-from the notations practitioners already use, that would be evidence the naming
-was wrong.
-
-\begin{table}[!htbp]
-\centering
-\small
-\begin{tabular}{>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}p{0.34\linewidth}>{\raggedright\arraybackslash}p{0.34\linewidth}}
-\hline
-\textbf{This language} & \textbf{ArchiMate} & \textbf{C4 model} \\
-\hline
-Process & Application Component, deployed as an Artifact assigned to a Node &
-  Container (a separately deployable, runnable unit) \\
-Application & Application Collaboration, or a Grouping & no direct counterpart \\
-Project & Grouping & Software System \\
-Surface (a named port) & Application or Technology Interface & no first-class concept \\
-Dependency edge & Serving relationship & a relationship between containers \\
-Node contract & Node, with properties & Deployment Node \\
-Exposure and Route & partially Path and Communication Network & shown as a relationship only \\
-Placement dimension & no counterpart & no counterpart \\
-Durability class & no counterpart & no counterpart \\
-Secret grant & no counterpart & no counterpart \\
-Probe, startup budget, cutover & no counterpart & no counterpart \\
-\hline
-\end{tabular}
-\caption{The Source Language's Concepts Against ArchiMate and the C4 Model}
-\label{tab:archimate}
-\end{table}
-
-Two conclusions follow from Table~\ref{tab:archimate}. The first is
-reassuring: for every structural concept, both notations have an element with
-essentially the same meaning, and the names agree. A process is a C4 container
-and an ArchiMate application component deployed as an artifact; a dependency is
-a serving relationship. Nothing in the structural half of the language is
-invented.
-
-The second conclusion is the reason neither notation is adopted as the source
-language. The lower half of Table~\ref{tab:archimate} is empty on both sides.
-ArchiMate and C4 describe how a system is arranged; they do not describe what an
-application requires of the platform that runs it. Placement dimensions,
-durability classes, secret grants, probes, startup budgets and cutover
-requirements have no elements in either notation, and those concepts are
-precisely what the generated files are derived from. Expressing them would mean
-attaching free-form properties to ArchiMate elements, which gives up the one
-thing a metamodel is for: a closed vocabulary that a constraint can be written
-against. Section~\ref{sec:alternatives} records this as the rejected
-alternative it is.
-
-Where both notations remain useful is as a \emph{view} of a model rather than as
-the model itself. An ArchiMate technology-layer view or a C4 deployment diagram
-of an estate is derivable from a resolved model, because a resolved model
-contains every fact such a view needs: which process runs where, which
-application serves which hostname, and which process depends on which. That
-derivation is a second model-to-text transformation over the same target
-metamodel, and it is recorded as possible future work rather than promised
-here, in keeping with the scope discipline of Section~\ref{sec:introduction}.
+For the \emph{models} the suggestion is a good one, and this report takes it
+up. A resolved model is an arrangement of processes on machines, which is
+exactly what a deployment view is for, and the resolved model contains every
+fact such a view needs: which process runs where, which application answers on
+which hostname, and which process depends on which. Section
+\ref{sec:examplemodels} shows one example model that way rather than only as
+text, and generating an ArchiMate technology view or a C4 deployment diagram
+from a resolved model is a second model-to-text transformation over the same
+target metamodel, which Task 3 could add at little cost.

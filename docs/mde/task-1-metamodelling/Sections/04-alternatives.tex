@@ -23,16 +23,6 @@ Two stages, resolution private to the generator &
   reviewed nowhere. \\
 A third metamodel for the generated files &
   The target syntax already has a schema; a third metamodel restates it. \\
-ArchiMate as the source language &
-  Covers the structural half and has no element for the operational half;
-  expressing it means free-form properties, which gives up the closed
-  vocabulary. \\
-C4 model as the source language &
-  Same gap, and it is a diagramming convention rather than a language with an
-  abstract syntax to instantiate. \\
-UML deployment or component diagram as the source language &
-  An instance-level notation: it describes one arrangement, not the language
-  every arrangement is written in. \\
 A grammar first, with the metamodel inferred &
   Puts the concrete syntax in charge of the concepts; the same language has to
   be readable from two syntaxes. \\
@@ -47,36 +37,6 @@ An override mechanism for derived values &
 \caption{Alternatives Encountered and the Reason Each Was Rejected}
 \label{tab:alternatives}
 \end{table}
-
-\subsection{ArchiMate and the C4 Model as the Source Language}
-
-This is the alternative the Task 0 feedback proposed, and it was the most
-seriously considered. ArchiMate is a full modelling language with a defined
-metamodel, so unlike a diagramming convention it could in principle be
-instantiated and transformed. The comparison in Section~\ref{sec:archimate}
-shows why it is not used here: every structural concept maps cleanly, and every
-operational concept maps to nothing.
-
-The decisive point is what happens when the gap is filled. ArchiMate's
-extension mechanism is properties: key-value pairs attached to elements. A
-durability class expressed as a property is a string, so no constraint can
-require that a process holding a recoverable volume also names what its data is,
-and no transformation can enumerate the classes exhaustively. The project's
-constraints are its main contribution, and they are written against closed
-vocabularies. Adopting ArchiMate would mean writing those constraints against
-property names instead, which is the free-form-string alternative in a different
-form.
-
-The C4 model is rejected for an additional reason: it is a set of diagram
-conventions at four levels of abstraction, not a language with an abstract
-syntax. There is no C4 metamodel to instantiate, so a C4 source language would
-mean first inventing one.
-
-Neither notation is discarded, though. Both remain good \emph{output}
-notations, and Section~\ref{sec:archimate} records that an ArchiMate technology
-view or a C4 deployment diagram is derivable from the resolved model by a second
-model-to-text transformation, because the resolved model already contains every
-fact such a view needs.
 
 \subsection{A Third Metamodel for the Generated Files}
 

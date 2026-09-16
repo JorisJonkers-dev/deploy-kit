@@ -19,11 +19,11 @@ a whole: it carries an identifier that is unique across the estate, the
 processes released together, the hostnames it is reachable at, the secrets it
 holds, and, optionally, how its failures should be alerted.
 
-% Each figure is cut from the one mermaid block that mirrors the metamodel, by
-% scripts/diagrams/class-diagram.py, so no part can drift from the whole.
+% Every figure is cut from the one mermaid block that mirrors the metamodel,
+% by scripts/diagrams/class-diagram.py, so no part can drift from the whole.
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.96\linewidth, keepaspectratio]{Figures/s-app}
+\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/s-app}
 \caption{The Project Document: the Application and What Belongs to It}
 \label{fig:sourcemetamodel}
 \end{figure}
@@ -37,23 +37,38 @@ rather than to one of its processes are kept on the application: a hostname
 fronts several processes and picks between them by path, so exposure cannot sit
 on a process without being written twice.
 
-Figures~\ref{fig:sourceprocess1} and~\ref{fig:sourceprocess2} show what hangs
-off a \texttt{Process}. It is split in two because the whole is wider than a
-printed page; both halves are cut from the same source as
-Figure~\ref{fig:sourcemetamodel}, so no half can disagree with the whole.
 
-\begin{figure}[p]
+A \texttt{Process} carries almost every operational concern, so it is shown in
+four figures rather than one: Figure~\ref{fig:sourceprocess1} its capacity,
+helpers and health, Figure~\ref{fig:sourceplacement} what it needs from a
+machine, Figure~\ref{fig:sourceprocess2} its storage and files, and
+Figure~\ref{fig:sourceprocess3} its configuration, dependencies and the ports
+it offers. All four are cut from the same source as
+Figure~\ref{fig:sourcemetamodel}.
+
+\begin{figure}[!htbp]
 \centering
-\includegraphics[angle=90, height=0.90\textheight, keepaspectratio]{Figures/s-proc1}
-\caption{A Process: Capacity, Helpers, Health and What It Needs From a Machine}
+\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/s-proc-a}
+\caption{A Process: Capacity, Helpers and Health}
 \label{fig:sourceprocess1}
 \end{figure}
-
-\begin{figure}[p]
+\begin{figure}[!htbp]
 \centering
-\includegraphics[angle=90, height=0.90\textheight, keepaspectratio]{Figures/s-proc2}
-\caption{A Process: Storage, Configuration, Dependencies and the Ports It Offers}
+\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/s-place}
+\caption{A Process: What It Needs From a Machine}
+\label{fig:sourceplacement}
+\end{figure}
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/s-proc-b}
+\caption{A Process: Storage and Files}
 \label{fig:sourceprocess2}
+\end{figure}
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/s-proc-c}
+\caption{A Process: Configuration, Dependencies and the Ports It Offers}
+\label{fig:sourceprocess3}
 \end{figure}
 
 Table~\ref{tab:sourceclasses} lists the classes and what each one is for.

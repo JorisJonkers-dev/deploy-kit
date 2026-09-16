@@ -54,6 +54,29 @@ cannot honour; a secret delivery that the cluster's encryption setting forbids;
 a durability class with no engine to back it up; and an exposure whose audience
 no edge tier serves.
 
+\subsection{A Resolved Model as a Deployment View}
+
+Figure~\ref{fig:deploymentview} shows the \texttt{knowledge} example's resolved
+model the way a deployment diagram would draw it: two processes placed on two
+machines, the volume one of them is bound to, the edge tier and hostname in
+front, and the two platform services they depend on. Nothing in the picture is
+new information. Every box and every arrow is read straight out of the resolved
+model, which is the point: the model is complete enough that a deployment view
+is a rendering of it rather than a separate document somebody keeps in step by
+hand.
+
+This is the part of the Task 0 feedback that is worth acting on. A structural
+notation is the right one for an arrangement, and generating this view from the
+target metamodel is another model-to-text transformation, no different in kind
+from the one that generates the deployment files.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\linewidth, keepaspectratio]{Figures/deployment-view}
+\caption{The knowledge Example's Resolved Model, as a Deployment View}
+\label{fig:deploymentview}
+\end{figure}
+
 \subsection{Example Target Models}
 
 A hand-written target model accompanies the minimal example: the resolved model

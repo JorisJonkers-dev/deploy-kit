@@ -39,38 +39,38 @@ the generator.
 
 \subsection{Structure}
 
-The metamodel is shown in four figures, each cut from one source by the same
-script that cuts the source metamodel's figures. Figure~\ref{fig:targetframe}
-is the estate-wide frame, Figure~\ref{fig:targetapp} one resolved application,
-and Figures~\ref{fig:targetprocess1} and~\ref{fig:targetprocess2} the two
-halves of a resolved process.
+The metamodel is shown in five figures, each cut from one source by the same
+script that cuts the source metamodel's figures.
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.96\linewidth, keepaspectratio]{Figures/t-frame}
+\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/t-frame}
 \caption{The Estate-Wide Frame: Provenance, the Path Plan and the Units}
 \label{fig:targetframe}
 \end{figure}
-
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.96\linewidth, keepaspectratio]{Figures/t-app}
+\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/t-app}
 \caption{A Resolved Application: Its Release Gate and Its Exposure}
 \label{fig:targetapp}
 \end{figure}
-
-\begin{figure}[p]
+\begin{figure}[!htbp]
 \centering
-\includegraphics[angle=90, height=0.90\textheight, keepaspectratio]{Figures/t-proc1}
-\caption{A Resolved Process: Health, Placement and Storage}
+\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/t-proc-a}
+\caption{A Resolved Process: Health and Placement}
 \label{fig:targetprocess1}
 \end{figure}
-
-\begin{figure}[p]
+\begin{figure}[!htbp]
 \centering
-\includegraphics[angle=90, height=0.90\textheight, keepaspectratio]{Figures/t-proc2}
-\caption{A Resolved Process: Secrets, Dependencies, Writable Paths and Configuration}
+\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/t-proc-b}
+\caption{A Resolved Process: Storage, Secrets and Dependencies}
 \label{fig:targetprocess2}
+\end{figure}
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/t-proc-c}
+\caption{A Resolved Process: Writable Paths and Configuration}
+\label{fig:targetprocess3}
 \end{figure}
 
 The root is a \texttt{ResolvedDeployment} covering the whole estate, because
