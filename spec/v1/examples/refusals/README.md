@@ -37,7 +37,7 @@ as `platform-valkey` rather than here.
 
 These are **fixtures, not proof of rendered behaviour.** No renderer exists yet,
 so what is proven is the refusal itself: `test/model/refusals.test.ts` runs each
-through the production parser, and `emf/parity`'s `ParityTest` runs each through
+through the production parser, and `emf/tests/parity`'s `ParityTest` runs each through
 the model-driven one, both against the committed diagnostics.
 
 Two things therefore remain **unproven until a renderer exists**, and are named
