@@ -145,8 +145,8 @@ class LinkingTest {
             engines: {}
             monitors: { interval: 30s, timeout: 10s }
             hardening: restricted
-            probes: { periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 3 }
-            ephemeral: { sizeLimit: 64Mi }
+            probes: { period: 10s, timeout: 5s, failures: 3 }
+            ephemeral: { size: 64Mi }
             """;
 
     /** A Platform document read into the same resource set as {@link #DOCUMENT}, its tier naming {@code proxy}. */

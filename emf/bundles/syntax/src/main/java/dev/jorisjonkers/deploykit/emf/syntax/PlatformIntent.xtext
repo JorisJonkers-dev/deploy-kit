@@ -91,12 +91,12 @@ MonitorCadence returns MonitorCadence:
 	& ('timeout' ':' timeout=Text));
 
 ProbeCadence returns ProbeCadence:
-	(('periodSeconds' ':' periodSeconds=Port)
-	& ('timeoutSeconds' ':' timeoutSeconds=Port)
-	& ('failureThreshold' ':' failureThreshold=Port));
+	(('period' ':' period=Text)
+	& ('timeout' ':' timeout=Text)
+	& ('failures' ':' failures=Port));
 
 EphemeralPolicy returns EphemeralPolicy:
-	'sizeLimit' ':' sizeLimit=Text;
+	'size' ':' size=Text;
 
 Provider returns Provider:
 	(('name' ':' name=Text)
@@ -114,10 +114,10 @@ Text returns ecore::EString:
 PlatformKeyword:
 	'acme' | 'address' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cluster' | 'cni' |
 	'crds' | 'credential' | 'datastore' | 'destination' | 'embedded' | 'engines' | 'ephemeral' | 'etcd' |
-	'failureThreshold' | 'flux' | 'forwardAuth' | 'hardening' | 'interval' | 'kubernetesVersion' | 'listener' | 'metadata' |
-	'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'periodSeconds' | 'plain' | 'providers' | 'restricted' |
-	'retain' | 'schedule' | 'secretsEncryption' | 'serverCount' | 'sizeLimit' | 'sourceRef' | 'sqlite' | 'substrate' |
-	'surfaces' | 'tiers' | 'timeout' | 'timeoutSeconds' | 'tls' | 'traefik' | 'unsealed' | 'vault';
+	'failures' | 'flux' | 'forwardAuth' | 'hardening' | 'interval' | 'kubernetesVersion' | 'listener' | 'metadata' |
+	'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'providers' | 'restricted' |
+	'retain' | 'schedule' | 'secretsEncryption' | 'serverCount' | 'size' | 'sourceRef' | 'sqlite' | 'substrate' |
+	'surfaces' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'vault';
 
 enum Datastore returns Datastore:
 	sqlite='sqlite' | etcd='etcd';

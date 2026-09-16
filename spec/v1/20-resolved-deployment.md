@@ -179,7 +179,7 @@ field's placement link to this anchor rather than copying rows.
 | requests and limits | derived | - | from `placement.memory` and `placement.cpu`: memory request equals memory limit, cpu request with no cpu limit |
 | `securityContext` | derived | - | from the one platform `hardening` posture and the Process's declared `writablePaths`; no Process authors a control and no exception relaxes one |
 | `automountServiceAccountToken` | derived | - | `true` only where a grant carries `delivery: self`; the pod authenticates in that case and in no other ([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)) |
-| the `emptyDir` per writable path, and its `sizeLimit` | derived | - | one mount per declared path, sized from the Platform Intent's ephemeral default ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)) |
+| the ephemeral mount per writable path, and its size | derived | - | one mount per declared path, sized from the Platform Intent's ephemeral `size` ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)) |
 | `runAsUser`, `runAsGroup`, `fsGroup` | derived | - | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Process holds a volume ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)) |
 | container probe timings | derived | - | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Platform Intent's probe policy ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)) |
 | `progressDeadlineSeconds` | derived | - | from `startupBudget` |

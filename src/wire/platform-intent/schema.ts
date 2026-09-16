@@ -102,15 +102,11 @@ const monitorCadence = z
   .meta({ id: "MonitorCadence" });
 
 const probeCadence = z
-  .strictObject({
-    periodSeconds: count,
-    timeoutSeconds: count,
-    failureThreshold: count,
-  })
+  .strictObject({ period: text, timeout: text, failures: count })
   .meta({ id: "ProbeCadence" });
 
 const ephemeralPolicy = z
-  .strictObject({ sizeLimit: text })
+  .strictObject({ size: text })
   .meta({ id: "EphemeralPolicy" });
 
 const provider = z

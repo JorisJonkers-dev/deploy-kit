@@ -602,7 +602,7 @@ choosing ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)):
 |---|---|
 | the startup probe's **target** | the **liveness** declaration: its `path` + `port`, or its `tcp` port |
 | the startup probe's period and failure threshold | `startupBudget`, as before |
-| readiness and liveness `periodSeconds`, `timeoutSeconds`, `failureThreshold` | the Platform Intent's probe policy, named on every rendered probe |
+| the readiness and liveness cadence | the Platform Intent's probe policy: its `period`, `timeout` and `failures`, carried on every rendered probe |
 | `initialDelaySeconds` | `0` on readiness and liveness, because the startup probe already gates both |
 
 **The startup probe targets liveness, not readiness.** Exceeding a startup
@@ -792,7 +792,7 @@ immutable, and the paths a process writes are mounted. A writable path is
 therefore **not** a relaxation of the control: a mounted tmpfs is not the same
 thing as a pod running as root, and only one of the two is expressible here.
 
-`sizeLimit` is **not** authored per path. Ephemeral storage is finite node disk
+The ephemeral `size` is **not** authored per path. Ephemeral storage is finite node disk
 and therefore contended
 ([0004](../../docs/adr/model/0004-contention-decides-authority.md)), so the
 Platform Intent carries one default that covers every case the estate has. There
