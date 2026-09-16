@@ -265,7 +265,7 @@ The file is an object with one `applications` entry per Application, each an
 The edge's own fields are fixed by the first case that has one.
 
 **The canonical writers** are `src/infrastructure/canonical-json.ts` and
-`emf/metamodel`'s `CanonicalJson`, held to the same cases. An oracle file is exactly
+`emf/bundles/metamodel`'s `CanonicalJson`, held to the same cases. An oracle file is exactly
 its canonical text, with no final newline, and a test fails any committed oracle
 that is not byte-identical to its own canonicalisation.
 

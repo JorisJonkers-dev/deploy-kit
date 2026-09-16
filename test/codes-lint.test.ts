@@ -69,9 +69,9 @@ describe("codeErrors", () => {
     const result = codeErrors(
       {
         "spec/v1/10-intent.md": chapter(ALPHA, BETA, GAMMA),
-        "emf/parity/src/test/java/X.java": ALPHA,
+        "emf/tests/parity/src/test/java/X.java": ALPHA,
         "spec/v1/examples/refusals/x.diagnostics.json": `[{"code":"${BETA}"}]`,
-        "emf/parity/src/main/java/Y.java": GAMMA,
+        "emf/tests/parity/src/main/java/Y.java": GAMMA,
       },
       [pending("#1", GAMMA)],
     );

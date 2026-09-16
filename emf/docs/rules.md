@@ -25,11 +25,11 @@ This ledger holds **17** rules.
 | EMF-007 | Java source is formatted with palantir-java-format, checked in `verify` | `pom.xml` | `<palantirJavaFormat>` |
 | EMF-008 | Line and branch coverage stay at or above the measured floor, in every module | `pom.xml` | `<counter>BRANCH</counter>` |
 | EMF-009 | The mutation score stays at or above the measured threshold, in every module | `pom.xml` | `<mutationThreshold>${emf.mutation.threshold}</mutationThreshold>` |
-| EMF-010 | A module depends only on the modules above it in the architecture's module table | `parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/ArchitectureTest.java` | `MODULES_DEPEND_ONLY_ON_MODULES_ABOVE_THEM` |
-| EMF-011 | No dependency cycle between modules | `parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/ArchitectureTest.java` | `MODULES_HAVE_NO_CYCLES` |
+| EMF-010 | A module depends only on the modules above it in the architecture's module table | `tests/parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/ArchitectureTest.java` | `MODULES_DEPEND_ONLY_ON_MODULES_ABOVE_THEM` |
+| EMF-011 | No dependency cycle between modules | `tests/parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/ArchitectureTest.java` | `MODULES_HAVE_NO_CYCLES` |
 | EMF-012 | The Maven distribution the wrapper downloads is pinned by checksum | `.mvn/wrapper/maven-wrapper.properties` | `distributionSha256Sum=` |
-| EMF-013 | Every model behaviour has a Java witness | `parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/LedgersTest.java` | `Ledgers.checkWitnesses(repository)` |
-| EMF-014 | Every rule in this ledger is still enforced by its named file | `parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/LedgersTest.java` | `Ledgers.checkRules(repository)` |
+| EMF-013 | Every model behaviour has a Java witness | `tests/parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/LedgersTest.java` | `Ledgers.checkWitnesses(repository)` |
+| EMF-014 | Every rule in this ledger is still enforced by its named file | `tests/parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/LedgersTest.java` | `Ledgers.checkRules(repository)` |
 | EMF-015 | Every warning the JDT compiler reports in a Tycho bundle fails the build | `pom.xml` | `<failOnWarning>true</failOnWarning>` |
-| EMF-016 | The target platform resolves from one dated release build and names every unit at an exact version | `parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/TargetPlatformTest.java` | `EVERY_UNIT_IS_PINNED` |
-| EMF-017 | The module rules run over the classes the build wrote, never over an import that holds no module | `parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/ArchitectureTest.java` | `ModuleRules.modulesMissingFrom(classes)` |
+| EMF-016 | The target platform resolves from one dated release build and names every unit at an exact version | `tests/parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/TargetPlatformTest.java` | `EVERY_UNIT_IS_PINNED` |
+| EMF-017 | The module rules run over the classes the build wrote, never over an import that holds no module | `tests/parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/ArchitectureTest.java` | `ModuleRules.modulesMissingFrom(classes)` |

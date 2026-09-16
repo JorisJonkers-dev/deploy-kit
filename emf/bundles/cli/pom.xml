@@ -8,6 +8,7 @@
     <groupId>dev.jorisjonkers.deploykit.emf</groupId>
     <artifactId>emf-parent</artifactId>
     <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
   </parent>
 
   <artifactId>dev.jorisjonkers.deploykit.emf.cli</artifactId>

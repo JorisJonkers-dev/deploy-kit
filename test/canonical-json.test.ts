@@ -1,4 +1,4 @@
-// REQ-020 (docs/requirements.md). The same cases as emf/metamodel CanonicalJsonTest.
+// REQ-020 (docs/requirements.md). The same cases as emf/bundles/metamodel CanonicalJsonTest.
 import { describe, expect, it } from "vitest";
 import { canonicalJson } from "../src/index.ts";
 
