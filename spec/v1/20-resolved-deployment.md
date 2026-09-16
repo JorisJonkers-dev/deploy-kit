@@ -943,7 +943,11 @@ processes:
     hardening: restricted
     identityToken: false
     placement:
-      eligibleNodes: [enschede-t1000-1, enschede-rx7900xtx-1]
+      # Wide, because nothing narrows it: this Process declares no arch, no
+      # capability and no disk medium, so every node holding 256Mi, 50m and a
+      # disk of at least 20GiB is eligible.
+      eligibleNodes: [enschede-t1000-1, enschede-rx7900xtx-1, enschede-gtx-960m-1,
+                      enschede-pi-1, enschede-pi-2, enschede-pi-3, frankfurt-contabo-1]
       boundTo: enschede-t1000-1
       from: cluster-state            # PV knowledge-vault-clone is bound there
     volumes:
@@ -1008,7 +1012,17 @@ binding, and the input the binding was read from.
 function of the `cluster-state` digest recorded above, and `from:` names the
 pinned input it read. `eligibleNodes` beside it comes from a different pinned
 input, the node contract, and would not change if the collector never ran
-again. Re-rendering with the same digests reproduces both byte for byte; a
+again.
+
+The worker's eligible set is the whole estate, and that is the honest answer
+rather than a weak one: eligibility is what the declared dimensions exclude,
+and this Process declares nothing that excludes a node. What pins it is the
+binding, a different fact from a different input. An earlier draft of this
+block showed two nodes, which is exactly the set a `disk: {media: [nvme]}`
+dimension produces against the node contract, in a projection that also
+authored that dimension and should not have.
+
+Re-rendering with the same digests reproduces both byte for byte; a
 rebound volume produces a different digest and therefore a new lock, which
 someone lands deliberately.
 
