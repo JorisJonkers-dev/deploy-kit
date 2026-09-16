@@ -62,6 +62,44 @@ A refusal names the document it points into as well as the path, because the
 object at fault can sit in either: a proxy nothing declares is the tier's, and an
 audience nothing carries is the exposure's.
 
+## Where a vocabulary lives
+
+A vocabulary is a closed set of literals a field may hold: `Engine`,
+`AlertClass`, `HardeningClass`, `Datastore`, and the rest this specification
+enumerates. One rule decides which authored document declares a vocabulary's
+literals, applied per vocabulary rather than per document: **fixed in the
+metamodel, in Project Intent, when either a model derivation branches on which
+literal was named, or the literal is the Application's own authored intent, a
+fact only its owner could state, for a reader past this model's edge to act on;
+defined by the platform, or by whatever reads the projection past this model's
+edge, only where neither holds, because the literal names a platform fact no
+Process or Application could state for itself.**
+
+`Engine`'s literals stay fixed by the first branch: `engine: postgres` derives
+a database catalog no other engine derives, and answers an Asset's change
+response differently than `engine: rabbitmq` does
+([0078](../../docs/adr/model/0078-engine-is-process-vocabulary.md)). What each
+literal *does*, the backup method, is still the platform's to state, in
+`engines` above; only the set of names is Project Intent's.
+
+`AlertClass`'s literals stay fixed by the second branch. No derivation in this
+model reads which of `business-hours`, `urgent` or `page` an Application chose:
+the value is carried into the published projection unread. But an Application
+authors its own `alertClass` exactly as it authors `engine`, and what the
+literal means, the severity and the receiver, is decided by the monitoring
+stack that reads the projection, past this model's edge, not by this metamodel
+([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)).
+0079 keeps the vocabulary in Intent for that reason: once the rule catalog, the
+cadence and the receiver table were deleted from this specification, they
+followed the stack that evaluates them, but the urgency vocabulary stayed,
+because it is the Application's own claim about itself, not the stack's.
+
+Either way, a reference a Project Intent field makes into a platform-defined
+set is checked as an invariant, the same way `Tier.traefik` is checked against
+the Applications a project file declares ([Tiers](#tiers)): a literal this
+document assigns no policy to is refused at the point the two documents are
+read together, never accepted and left to fail silently downstream.
+
 ## What it does not contain
 
 Three things a reader might expect here live elsewhere, each for a reason.
