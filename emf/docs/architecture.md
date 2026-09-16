@@ -60,8 +60,9 @@ naming the bundles it requires, and `eclipse-plugin` packaging. A manifest
 switches on the parent's `bundle` profile, which runs the module's tests
 through Maven Surefire on a plain classpath, outside OSGi, so every tool is
 exercised through the standalone API a command-line run uses. A module that
-needs no p2 bundle stays a plain jar. Every module is a bundle today, `parity/`
-included, for the reason [Parity](#parity) records.
+needs no p2 bundle stays a plain jar, declaring its own test libraries because
+the `bundle` profile does not activate for it. `parity/` is the one such
+module, for the reason [Parity](#parity) records.
 
 The first change to this tree is the **EMF scaffold**: the Maven reactor, the
 wrapper, the gates and the `emf` CI job, with no EMF dependency and one module,
@@ -251,20 +252,32 @@ are template decisions made to match the oracle, not presentation.
 against the committed oracles, the ledger checks, and the module rules. It is
 built and run by Maven only, and no examiner opens it.
 
-Today it reaches the pipeline through Java: `ParityTest` calls `Pipeline`,
-`Parsed` and `Diagnostic` from `cli/` and `Descriptor` and `ProjectIntentPackage`
-from `metamodel/`. Those types resolve from p2, so the module carries a
-`META-INF/MANIFEST.MF` and `eclipse-plugin` packaging, and the sentence in
-[Toolchain](#toolchain) about a module that needs no p2 bundle does not reach it.
-Its `src/main` holds `CanonicalJson` and `Ledgers`, neither of which touches EMF.
+It reaches the pipeline through the pipeline's own interface, and through nothing
+else ([0120](adr/emf/0120-parity-crosses-the-cli-file-interface.md)): arguments
+and input files in; an exit code, diagnostics, the parsed intent, the descriptor
+and the rendered tree out. A run of the build leaves those files under the build
+output of the module that wrote them, one directory per case, mirroring
+`spec/v1/examples/` so a written file and its oracle are obviously a pair:
+`cli/target/parity/<case>/` holds `intent.json` or `diagnostics.json` beside the
+`exit` the run ended on, and `metamodel/target/parity/` holds `descriptor.json`.
+None of them is committed.
 
-> **Proposed, not landed:**
-> [0120](adr/emf/0120-parity-crosses-the-cli-file-interface.md) moves the suites
-> onto the pipeline's file interface — arguments and input files in; an exit
-> code, diagnostics, the parsed intent, the descriptor and the rendered tree out
-> — so the module holds no EMF type and builds as a plain jar. What follows once
-> it lands: a value a parity case asserts on is a value the pipeline writes, and
-> a derivation with no output file is not evidence.
+So the module holds no EMF type, needs no p2 bundle, and builds as a plain jar
+with no `META-INF/MANIFEST.MF` and no `build.properties`. Its `src/main` holds
+`Ledgers`; the canonical JSON writer sits in `metamodel/`, the lowest module that
+writes a canonical file, because the pipeline writes what the suite used to
+serialise. A value a parity case asserts on is a value the pipeline writes, and a
+derivation with no output file is not evidence.
+
+Two things follow from depending on no module, and both are enforced rather than
+remembered. A case asserts its file exists before comparing it, so a file the run
+owes and did not write fails as a missing file rather than as a skipped case,
+which is a different absence from a case with no committed oracle, and that one
+is listed as not yet a parity case. And nothing puts the other modules' classes on this module's
+classpath, so `ArchitectureTest` reads their class directories by path and
+`EMF-017` fails an import that holds no module: `withOptionalLayers` would
+otherwise excuse every empty layer and let `EMF-010` and `EMF-011` pass while
+proving nothing.
 
 ## Witnesses
 

@@ -11,10 +11,26 @@
   </parent>
 
   <artifactId>dev.jorisjonkers.deploykit.emf.parity</artifactId>
-  <packaging>eclipse-plugin</packaging>
+  <!--
+    A plain jar: the suites decide every case from the files a run leaves behind, so the module holds
+    no EMF type and resolves nothing from the target platform (docs/adr/emf/0120). It carries no
+    META-INF/MANIFEST.MF, so the parent's `bundle` profile does not activate and its test libraries
+    are declared here instead.
+  -->
+  <packaging>jar</packaging>
   <name>deploy-kit model-driven parity</name>
 
   <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>com.tngtech.archunit</groupId>
       <artifactId>archunit-junit5</artifactId>

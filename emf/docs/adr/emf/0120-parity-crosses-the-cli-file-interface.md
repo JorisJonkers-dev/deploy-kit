@@ -48,11 +48,14 @@ a case that passes in CI is a case either of them can reproduce.
 Losing every p2 dependency is also what lets the module be written in a language
 the target platform does not carry, which is
 [0121](0121-bundles-and-tests-are-separate-tiers.md)'s subject. This decision
-stands on its own — the drift it closes is live today — but that is the order the
+stands on its own (the drift it closes is live today), but that is the order the
 two are taken in.
 
-The module keeps its `src/main`: `CanonicalJson` and `Ledgers` are helpers the
-suites call, not tests, and neither touches EMF. Only the test sources change.
+The module keeps `Ledgers` in its `src/main`: it is a helper the suites call,
+not a test, and it touches no EMF. `CanonicalJson` does not stay: the pipeline
+now writes what the suite used to serialise, so the writer moves down to
+`metamodel/`, the lowest module that writes a canonical file, and the suites
+compare bytes instead of serialising anything.
 
 It costs the ability to assert on anything the pipeline does not write. That is
 the point: a value worth asserting on is a value worth emitting, and one that
@@ -85,9 +88,12 @@ once: never; deleted with `emf/`.
   this decision mandates, leaves the importer with parity's own classes; every
   other layer is then empty, `withOptionalLayers(true)` excuses it, and
   `EMF-010` and `EMF-011` pass while proving nothing. The suite reads the
-  class directories the build wrote, by path, **and** asserts the imported set
-  is non-empty, so an empty import fails loudly instead of passing. Paid in the
-  same pull request, and shown by a fixture that empties the import.
+  class directories the build wrote, by path, **and** asserts every module whose
+  classes the build wrote is in the import, so an empty import fails loudly
+  instead of passing. A module with no class of its own yet, which `resolve/`
+  and `render/` are until their stage lands, is empty in the tree rather than
+  missing from the import, and is not reported. Paid in the same pull request,
+  as `EMF-017`, and shown by a fixture that empties the import.
 - A module that declares no dependency is ordered by its position in the
   reactor alone, so `-T`, `-pl` or an IDE can run the suite before the bundles
   wrote their classes and output files. Each case asserts its expected output
