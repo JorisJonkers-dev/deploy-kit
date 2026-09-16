@@ -48,7 +48,7 @@ a case that passes in CI is a case either of them can reproduce.
 Losing every p2 dependency is also what lets the module be written in a language
 the target platform does not carry, which is
 [0121](0121-bundles-and-tests-are-separate-tiers.md)'s subject. This decision
-stands on its own — the drift it closes is live today — but that is the order the
+stands on its own (the drift it closes is live today), but that is the order the
 two are taken in.
 
 The module keeps its `src/main`: `CanonicalJson` and `Ledgers` are helpers the
