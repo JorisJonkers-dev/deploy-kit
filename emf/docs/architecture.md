@@ -59,8 +59,9 @@ A module that needs a p2 bundle is an Eclipse bundle: a `META-INF/MANIFEST.MF`
 naming the bundles it requires, and `eclipse-plugin` packaging. A manifest
 switches on the parent's `bundle` profile, which runs the module's tests
 through Maven Surefire on a plain classpath, outside OSGi, so every tool is
-exercised through the standalone API a command-line run uses. Modules that
-need no p2 bundle, like `parity/`, stay plain jars.
+exercised through the standalone API a command-line run uses. A module that
+needs no p2 bundle stays a plain jar. Every module is a bundle today, `parity/`
+included, for the reason [Parity](#parity) records.
 
 The first change to this tree is the **EMF scaffold**: the Maven reactor, the
 wrapper, the gates and the `emf` CI job, with no EMF dependency and one module,
@@ -88,6 +89,18 @@ Tycho configuration and the target platform.
 
 A module may depend on the modules above it in this table and on nothing
 below.
+
+Every module is Java. Ecore generates Java, Xtext's runtime hooks are Java, and
+a bundle compiles through Tycho's JDT compiler against a target platform holding
+no Kotlin unit, so a language other than Java is a bundle's problem before it is
+anything else.
+
+> **Proposed, not landed:**
+> [0122](adr/emf/0122-bundles-and-tests-are-separate-tiers.md) splits these six
+> into `bundles/` for what Tycho builds and Eclipse imports and `tests/` for what
+> only Maven runs, and makes the second tier Kotlin. Until the moving pull
+> request lands, the flat list above is the tree, and the Java sentence above
+> holds over all of it.
 
 ## Metamodels
 
@@ -231,6 +244,27 @@ transformation covers a case, a template test reads a hand-written Resolved
 Deployment model kept inside `emf/`; it is test input, never an oracle. Output is compared byte for byte with the
 committed `rendered/` tree, so whitespace, key order and the `GENERATED` header
 are template decisions made to match the oracle, not presentation.
+
+## Parity
+
+`parity/` holds this repository's own evidence: the suites that assert each stage
+against the committed oracles, the ledger checks, and the module rules. It is
+built and run by Maven only, and no examiner opens it.
+
+Today it reaches the pipeline through Java: `ParityTest` calls `Pipeline`,
+`Parsed` and `Diagnostic` from `cli/` and `Descriptor` and `ProjectIntentPackage`
+from `metamodel/`. Those types resolve from p2, so the module carries a
+`META-INF/MANIFEST.MF` and `eclipse-plugin` packaging, and the sentence in
+[Toolchain](#toolchain) about a module that needs no p2 bundle does not reach it.
+Its `src/main` holds `CanonicalJson` and `Ledgers`, neither of which touches EMF.
+
+> **Proposed, not landed:**
+> [0121](adr/emf/0121-parity-crosses-the-cli-file-interface.md) moves the suites
+> onto the pipeline's file interface (arguments and input files in; an exit
+> code, diagnostics, the parsed intent, the descriptor and the rendered tree
+> out), so the module holds no EMF type and builds as a plain jar. What follows once
+> it lands: a value a parity case asserts on is a value the pipeline writes, and
+> a derivation with no output file is not evidence.
 
 ## Witnesses
 
