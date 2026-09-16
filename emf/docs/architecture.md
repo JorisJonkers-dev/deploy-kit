@@ -60,8 +60,11 @@ naming the bundles it requires, and `eclipse-plugin` packaging. A manifest
 switches on the parent's `bundle` profile, which runs the module's tests
 through Maven Surefire on a plain classpath, outside OSGi, so every tool is
 exercised through the standalone API a command-line run uses. A module that
-needs no p2 bundle stays a plain jar. Every module is a bundle today, `parity/`
-included, for the reason [Parity](#parity) records.
+needs no p2 bundle stays a plain jar, declaring its own test libraries because
+the `bundle` profile does not activate for it. `tests/parity` is the one such
+module, for the reason [Parity](#parity) records. The profile activates on a
+module's `META-INF/MANIFEST.MF` rather than on the tier it sits in, and stays
+that way: the directory is documentation, the manifest is the fact.
 
 The first change to this tree is the **EMF scaffold**: the Maven reactor, the
 wrapper, the gates and the `emf` CI job, with no EMF dependency and one module,
@@ -75,32 +78,39 @@ whose suite covers that tool.
 
 ## Modules
 
-One Maven module per pipeline stage, under one parent `pom.xml` that owns the
-Tycho configuration and the target platform.
+Two tiers, under one parent `pom.xml` that owns the Tycho configuration and the
+target platform. `bundles/` holds one Maven module per pipeline stage: what
+Tycho builds against `emf.target`, and what an examiner imports into Eclipse.
+`tests/` holds what Maven alone builds and runs, and what no examiner opens
+([0122](adr/emf/0122-bundles-and-tests-are-separate-tiers.md)). The boundary
+answers the question a flat list left every reader to work out from a
+`pom.xml`: is this file graded, and will a teacher open it.
+
+The directories keep their short names. Tycho's convention is a directory named
+for the bundle's symbolic name, but Eclipse names an imported Maven project from
+its `artifactId` regardless, so the long names would buy a match nobody reads
+and cost every path in the tree.
 
 | module | holds | graded in |
 |---|---|---|
-| `metamodel/` | the source and target `.ecore` and `.genmodel`, Complete OCL `.ocl` for the source metamodel, the descriptor exporter | Task 1 |
-| `syntax/` | the Xtext grammar for the authored YAML subset, and the generated editor bundles that run the OCL validators | Task 1 |
-| `resolve/` | the QVTo transformation from Project Intent and Platform Intent to the Resolved Deployment | Task 2 |
-| `render/` | the Acceleo 4 templates from a Resolved Deployment model to the Deliverable Set's files | Task 3 |
-| `cli/` | the pipeline entry point: files in, the parsed intent, diagnostics and rendered files out | Task 1 onward |
-| `parity/` | JUnit suites asserting each stage against the committed oracles, and the witness ledger check | Task 1 onward |
+| `bundles/metamodel` | the source and target `.ecore` and `.genmodel`, Complete OCL `.ocl` for the source metamodel, the descriptor exporter, and the canonical JSON writer both it and `cli` write through | Task 1 |
+| `bundles/syntax` | the Xtext grammar for the authored YAML subset, and the generated editor bundles that run the OCL validators | Task 1 |
+| `bundles/resolve` | the QVTo transformation from Project Intent and Platform Intent to the Resolved Deployment | Task 2 |
+| `bundles/render` | the Acceleo 4 templates from a Resolved Deployment model to the Deliverable Set's files | Task 3 |
+| `bundles/cli` | the pipeline entry point: files in, the parsed intent, diagnostics and rendered files out | Task 1 onward |
+| `tests/parity` | JUnit suites asserting each stage against the committed oracles, and the witness ledger check | no task grades it |
 
 A module may depend on the modules above it in this table and on nothing
-below.
+below. `tests/parity` depends on no module at all: it reads the files a run
+leaves behind, which is what [Parity](#parity) records.
 
-Every module is Java. Ecore generates Java, Xtext's runtime hooks are Java, and
-a bundle compiles through Tycho's JDT compiler against a target platform holding
-no Kotlin unit, so a language other than Java is a bundle's problem before it is
-anything else.
-
-> **Proposed, not landed:**
-> [0122](adr/emf/0122-bundles-and-tests-are-separate-tiers.md) splits these six
-> into `bundles/` for what Tycho builds and Eclipse imports and `tests/` for what
-> only Maven runs, and makes the second tier Kotlin. Until the moving pull
-> request lands, the flat list above is the tree, and the Java sentence above
-> holds over all of it.
+Every module of `bundles/` is Java, without exception. Ecore generates Java,
+Xtext's runtime hooks are Java, and a bundle compiles through Tycho's JDT
+compiler against a target platform holding no Kotlin unit, so a language other
+than Java is a bundle's problem before it is anything else. `tests/` carries
+none of those constraints and is Kotlin, the estate's JVM language, with the
+test idiom its other repositories run: JUnit 5, AssertJ, ArchUnit, and a test
+function named as a sentence in backticks.
 
 ## Metamodels
 
@@ -172,7 +182,7 @@ package, because a tier's proxy is an Application a project file declares, and
 one package is what lets that be an Ecore reference.
 
 The constraint ledger's OCL column lives in `emf/`: a table mapping each
-`CONS-NNN` id to the OCL invariant that enforces it. `parity/` fails when a
+`CONS-NNN` id to the OCL invariant that enforces it. `tests/parity` fails when a
 ledger constraint has no invariant, or an invariant names a code no ledger row
 carries.
 
@@ -247,30 +257,43 @@ are template decisions made to match the oracle, not presentation.
 
 ## Parity
 
-`parity/` holds this repository's own evidence: the suites that assert each stage
+`tests/parity` holds this repository's own evidence: the suites that assert each stage
 against the committed oracles, the ledger checks, and the module rules. It is
 built and run by Maven only, and no examiner opens it.
 
-Today it reaches the pipeline through Java: `ParityTest` calls `Pipeline`,
-`Parsed` and `Diagnostic` from `cli/` and `Descriptor` and `ProjectIntentPackage`
-from `metamodel/`. Those types resolve from p2, so the module carries a
-`META-INF/MANIFEST.MF` and `eclipse-plugin` packaging, and the sentence in
-[Toolchain](#toolchain) about a module that needs no p2 bundle does not reach it.
-Its `src/main` holds `CanonicalJson` and `Ledgers`, neither of which touches EMF.
+It reaches the pipeline through the pipeline's own interface, and through nothing
+else ([0121](adr/emf/0121-parity-crosses-the-cli-file-interface.md)): arguments
+and input files in; an exit code, diagnostics, the parsed intent, the descriptor
+and the rendered tree out. A run of the build leaves those files under the build
+output of the module that wrote them, one directory per case, mirroring
+`spec/v1/examples/` so a written file and its oracle are obviously a pair:
+`bundles/cli/target/parity/<case>/` holds `intent.json` or `diagnostics.json` beside the
+`exit` the run ended on, and `bundles/metamodel/target/parity/` holds `descriptor.json`.
+None of them is committed.
 
-> **Proposed, not landed:**
-> [0121](adr/emf/0121-parity-crosses-the-cli-file-interface.md) moves the suites
-> onto the pipeline's file interface (arguments and input files in; an exit
-> code, diagnostics, the parsed intent, the descriptor and the rendered tree
-> out), so the module holds no EMF type and builds as a plain jar. What follows once
-> it lands: a value a parity case asserts on is a value the pipeline writes, and
-> a derivation with no output file is not evidence.
+So the module holds no EMF type, needs no p2 bundle, and builds as a plain jar
+with no `META-INF/MANIFEST.MF` and no `build.properties`. Its `src/main` holds
+`Ledgers`; the canonical JSON writer sits in `bundles/metamodel`, the lowest module that
+writes a canonical file, because the pipeline writes what the suite used to
+serialise. A value a parity case asserts on is a value the pipeline writes, and a
+derivation with no output file is not evidence.
+
+Two things follow from depending on no module, and both are enforced rather than
+remembered. A case asserts its file exists before comparing it, so a file the run
+owes and did not write fails as a missing file rather than as a skipped case,
+which is a different absence from a case with no committed oracle, and that one
+is listed as not yet a parity case. And nothing puts the other modules' classes on this module's
+classpath, so `ArchitectureTest` reads their class directories by path and
+`EMF-017` fails an import that holds no module: `withOptionalLayers` would
+otherwise excuse every empty layer and let `EMF-010` and `EMF-011` pass while
+proving nothing.
 
 ## Witnesses
 
 A behaviour ledger row whose behaviour is the model's own is proved in both
 implementations. `emf/docs/witnesses.md` lists, for each such `REQ-NNN` id, the
-JUnit test that proves it here. `parity/` fails when a model row in
+JUnit test that proves it here, in whichever language its module is written.
+`tests/parity` fails when a model row in
 `docs/requirements.md` has no witness in that file, or a witness names a test
 that does not exist or an id that no row carries.
 
@@ -289,14 +312,15 @@ hold ([0115](adr/emf/0115-the-emf-gates-are-estate-shaped.md)):
 | gate | plugin | fails when |
 |---|---|---|
 | toolchain | `maven-enforcer-plugin` | the JDK is not 21, Maven is not 3.9, a plugin version is unpinned, dependency versions do not converge outside a bundle, or anything declares a distribution target |
-| compile | `maven-compiler-plugin`, or `tycho-compiler-plugin` in a bundle | any `-Xlint:all` warning, or in a bundle any warning the JDT compiler reports |
+| compile | `maven-compiler-plugin`, `tycho-compiler-plugin` in a bundle, or `kotlin-maven-plugin` in the test tier | any `-Xlint:all` warning, in a bundle any warning the JDT compiler reports, and in the test tier any warning `kotlinc` reports |
 | tests | `maven-surefire-plugin` | a JUnit test fails, including the ArchUnit module rules and the ledger checks |
-| format | `spotless-maven-plugin` | Java source differs from palantir-java-format; `./mvnw spotless:apply` fixes it |
+| format | `spotless-maven-plugin` | Java source differs from palantir-java-format, or Kotlin source from ktlint; `./mvnw spotless:apply` fixes either |
 | coverage | `jacoco-maven-plugin` | line or branch coverage of a module's hand-written classes falls below the floor in `emf/pom.xml` |
 | mutation | `pitest-maven` | the mutation score of a module's hand-written classes falls below the threshold in `emf/pom.xml` |
 
 Every rule these gates enforce is listed in [the rule ledger](rules.md), and
-every model behaviour's Java proof in [the witness list](witnesses.md).
+every model behaviour's JUnit proof in [the witness list](witnesses.md), in
+whichever language its module is written.
 
 CodeQL analyses the Java under `emf/` as `java-kotlin` with no build, ignoring
 build output and generated sources; `test/emf-wiring.test.ts` at the root holds

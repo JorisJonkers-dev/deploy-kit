@@ -26,7 +26,7 @@ const CODE = /(?<![A-Z0-9_])E_[A-Z][A-Z0-9_]*[A-Z0-9](?![A-Z0-9_])/g;
 const CHAPTER = /^spec\/v1\/\d\d-[^/]+\.md$/;
 const EXERCISING = [
   /^test\//,
-  /^emf\/[^/]+\/src\/test\//,
+  /^emf\/[^/]+\/[^/]+\/src\/test\//,
   /\.diagnostics\.json$/,
 ];
 const OUT_OF_SCOPE = [
