@@ -1,0 +1,9 @@
+# LaTeX build artefacts. The report PDF itself is committed: it is the
+# artefact that was submitted.
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz

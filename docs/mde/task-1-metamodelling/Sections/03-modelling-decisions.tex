@@ -1,0 +1,96 @@
+\section{Modelling Decisions}
+\label{sec:decisions}
+
+Seven decisions shape both metamodels. Each is stated with the observation that
+forced it, because in every case the alternative had already been tried in the
+estate's hand-maintained configuration.
+
+\subsection{Three Model Stages, Two Metamodels}
+
+The pipeline has three stages: an authored model, a resolved model, and the
+generated text. Only the first two are given metamodels. The generated files are
+text in a target syntax that already has a schema of its own, so giving them a
+third metamodel would restate that schema without adding a constraint the
+project could check.
+
+The three stages are deliberately \emph{not} described as metalevels. No stage
+is a type model of the stage below it, so calling the arrangement a metamodel
+hierarchy would claim an \texttt{instanceOf} relation that does not hold. They
+are stages of one transformation pipeline, and the word metamodel is reserved
+for a language definition.
+
+\subsection{The Layer Rule}
+
+The rule that makes the middle stage worth having: \textbf{the authored model
+contains no mechanisms, and the generated text contains no decisions.} Every
+value is assignable to exactly one stage by two questions. Must a human author
+it? And does it record a decision, or merely serialise one?
+
+The counter-experiment is on record. An earlier two-stage arrangement, with
+resolution private to the generator, produced three mutually incompatible
+documents all claiming the same version identifier, because a two-stage
+vocabulary could not say which of the three was the authoring shape. The middle
+model exists so that a decision has one place to live and one name.
+
+\subsection{Contention Decides Authority}
+
+A value is decided by the platform if and only if it must be unique across the
+estate or draws on a shared finite resource; every other value is declared by
+the application and carried through untouched. One question replaces a
+per-field negotiation.
+
+The rule required one refinement that is worth reporting, because the naive
+reading is wrong. Contention decides who \emph{arbitrates}, not who
+\emph{authors}. Memory and CPU are draws on a finite pool, so a
+who-authors reading would forbid an application from stating them, which leaves
+every process with no reservation at all. The application therefore states its
+requirement and the platform arbitrates it against what the machines publish.
+The accepted cost is named rather than hidden: nothing today stops an author
+overstating the requirement, because the arbitration is an eligibility test
+against one machine rather than a sum across the estate.
+
+\subsection{Derivation Is Total, and There Is No Override}
+
+Every value the platform decides is a function of the authored model and the
+platform's own facts. A derived value has exactly one declaring site, so the
+metamodel carries no override mechanism and no exception vocabulary.
+
+This decision was taken against evidence that initially argued for a hatch: one
+process carried a hand-set deadline three times smaller than its neighbours,
+justified by the observation that it starts in seconds rather than minutes. That
+is not a value only its owner could know; it is evidence that one rule over the
+startup budget was wrong for a whole class of process. The correct response is a
+rule that reads an input the process already declares. Keeping the hatch would
+have hidden a wrong derivation behind a per-process reason, where removing it
+makes the same error visible as a wrong result for the entire class.
+
+\subsection{Values Name Model Concepts, Never Target Fields}
+
+No attribute of the source metamodel, and no attribute of the target metamodel,
+is named after a field of the generated syntax. A process declares whether it
+may be taken down during a cutover, not a rollout strategy; it declares the
+paths it must write, not a security context. The target metamodel records the
+platform's decisions in the same vocabulary, and the generators are the only
+place a target field name is spelled.
+
+This is what keeps the target metamodel a model rather than an object tree with
+extra steps, and it is checked directly: no key of either metamodel may be a
+field name of the target syntax.
+
+\subsection{Closed Vocabularies}
+
+Wherever an attribute admits a fixed set of values, the set is closed in the
+metamodel rather than typed as a string. The estate supplies the argument: one
+existing field was typed as a free-form string, every application wrote the same
+value into it, and not one of those values was correct. A field that is wrong in
+every observed case at no cost is a comment, not a declaration, and closing the
+vocabulary is what turns it back into one.
+
+\subsection{Structure Carries Atomicity; the Graph Carries Order}
+
+Two groupings are needed, and deriving one from the other was tried and
+rejected. What must be released together is \emph{structural}: the processes of
+one application switch together, or none of them switches. What must be applied
+before what is \emph{derived} from the dependency graph. Deriving atomicity from
+the graph instead takes the transitive closure of every edge and turns the whole
+estate into one unit, which would make every change estate-wide.

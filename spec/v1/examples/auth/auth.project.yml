@@ -215,7 +215,7 @@ applications:
 
         # The paths this process must write. Nothing is implicit: a mount nobody
         # declared would appear in every image, including those that never
-        # write. sizeLimit is platform-assigned from one Platform document default.
+        # write. The ephemeral size is platform-assigned from one Platform document default.
         writablePaths: [/tmp]
 
         dependsOn:

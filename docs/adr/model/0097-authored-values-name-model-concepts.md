@@ -14,6 +14,18 @@ rests-on: ["0005"]
 > Service is Application, Workload is Process, and Service Intent is Project
 > Intent. The decision is unchanged.
 
+> **Amended 2026-09-16.** The Platform Intent's own probe and ephemeral blocks
+> broke this decision and the settling grep did not catch them: `periodSeconds`,
+> `timeoutSeconds`, `failureThreshold` and `sizeLimit` are Kubernetes field
+> names, authored in the one document whose header claims it names none. They
+> are now `period`, `timeout`, `failures` and `size`, with `period` and
+> `timeout` carried as Durations like `monitors` already carries them, so the
+> unit lives in the value rather than in the name. The decision is unchanged; it
+> is applied where it had not been. The settling test is strengthened: the grep
+> covers the Resolved Deployment's own keys too, because layer 2 records
+> decisions in model words for the same reason layer 1 states requirements in
+> them ([#42](https://github.com/JorisJonkers-dev/deploy-kit/issues/42)).
+
 ## Rests on
 Every value a human writes in either authored document can be named for what it
 means in the model, and mapping that name to the substrate's field is a

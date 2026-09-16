@@ -29,7 +29,7 @@ snapshots; unequal digests mean it is not pinnable.
 Chapter 20 declares at `spec/v1/20-resolved-deployment.md:8-11`, as "the
 load-bearing property of the whole specification", that *"Every assignment is a
 pure function of Project Intent, the pinned Platform Intent, and the pinned
-locks"*, then breaks it in its own normative `ResolvedService` example. At
+locks"*, then breaks it in its own normative `ResolvedApplication` example. At
 `:246-249`, under `assigned:`, sits `observed: {node: enschede-t1000-1, because:
 knowledge-vault-clone PV is bound here, moveRequires: state-move-plan}`, while
 `inputDigests` at `:217` is `{intent, imagesLock}` with `contextRef` alongside

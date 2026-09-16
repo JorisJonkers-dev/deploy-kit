@@ -46,7 +46,14 @@ without adding it here fails loudly.
 """
 import re, sys, xml.etree.ElementTree as ET
 
+# `chapter` may name one class after a colon, and then any number of classes to
+# leave out after a minus: `20-resolved-deployment:ResolvedProcess-ResolvedGrant`.
+# The drawing is that class's own subtree with the named subtrees cut out of it,
+# which is how a diagram too wide for a printed page is split without a second
+# source: the mermaid stays one block and every part is cut from it.
 CHAPTER = sys.argv[1] if len(sys.argv) > 2 else "10-project-intent"
+CHAPTER, _, SUBTREE = CHAPTER.partition(":")
+SUBTREE, *DROPPED = SUBTREE.split("-")
 OUT = sys.argv[-1]
 MD = f"spec/v1/{CHAPTER}.md"
 src = open(MD).read()
@@ -102,13 +109,54 @@ TREES = {"10-project-intent": {
     "DurabilityPolicies": ["DurabilityPolicy"],
     "DurabilityPolicy": ["OffClusterCopy"],
     "EnginePolicies": ["EnginePolicy"],
+}, "20-resolved-deployment": {
+    # Sibling order puts GateMember next to ResolvedProbe, so the one
+    # cross-link on the drawing joins two neighbours.
+    "ResolvedDeployment": [
+        "Provenance", "PathAssignment", "ReconcileUnit", "ResolvedApplication",
+    ],
+    "Provenance": ["InputDigest"],
+    "ResolvedApplication": ["ReleaseGate", "ResolvedProcess", "ResolvedExposure"],
+    "ReleaseGate": ["GateMember"],
+    "ResolvedProcess": [
+        "ResolvedProbe", "StartupProbe", "ResolvedPlacement", "ResolvedVolume",
+        "ResolvedGrant", "ResolvedEdge", "WritablePath", "EnvEntry",
+    ],
+    "ResolvedVolume": ["BackupPlan"],
+    "ResolvedEdge": ["PolicyPeer"],
+    "ResolvedExposure": ["ResolvedRoute"],
+    "ResolvedRoute": ["MiddlewareStep"],
 }}
 NAMES = {"10-project-intent": "Project Intent - the layer-1 model",
-         "14-platform-intent": "Platform Intent - the model"}
+         "14-platform-intent": "Platform Intent - the model",
+         "20-resolved-deployment": "Resolved Deployment - the layer-2 model"}
 # the layer palette of spec/v1/diagrams/README.md
 FILL, WASH, STROKE = {"10-project-intent": ("#dbeafe", "#f4f8ff", "#1e40af"),
-                      "14-platform-intent": ("#e0e7ff", "#f5f6ff", "#4338ca")}[CHAPTER]
+                      "14-platform-intent": ("#e0e7ff", "#f5f6ff", "#4338ca"),
+                      "20-resolved-deployment": ("#fef3c7", "#fffbf0", "#b45309")}[CHAPTER]
 CHILDREN = TREES[CHAPTER]
+
+if SUBTREE:
+    assert SUBTREE in nodes, f"unknown node {SUBTREE}"
+    for name in DROPPED:
+        assert name in nodes, f"unknown node {name}"
+    kept, frontier = {SUBTREE}, [SUBTREE]
+    while frontier:
+        for child in CHILDREN.get(frontier.pop(), []):
+            if child in DROPPED:
+                continue
+            kept.add(child)
+            frontier.append(child)
+    CHILDREN = {
+        p: [k for k in ks if k in kept]
+        for p, ks in ({SUBTREE: CHILDREN.get(SUBTREE, [])} | CHILDREN).items()
+        if p in kept
+    }
+    nodes = {n: d for n, d in nodes.items() if n in kept}
+    comp = [e for e in comp if e[0] in kept and e[1] in kept]
+    dep = [e for e in dep if e[0] in kept and e[1] in kept]
+    assoc = [e for e in assoc if e[0] in kept and e[1] in kept]
+
 ROOT = next(iter(CHILDREN))
 placed = {ROOT}
 for p, ks in CHILDREN.items():

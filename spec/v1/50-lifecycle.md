@@ -236,7 +236,7 @@ it is decided in `docs/adr/`; everything inside it is decided separately.
 
 1. ~~**Release Unit atomicity is untested.**~~ It is
    [0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md)'s own
-   settling test, a switchover mechanism written against a `ResolvedService`
+   settling test, a switchover mechanism written against a `ResolvedApplication`
    projection alone, and is recorded there. [0060](../../docs/adr/model/0060-release-unit.md),
    which this item used to cite, is superseded; the unit is the Application
    ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)).

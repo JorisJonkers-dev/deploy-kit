@@ -1,0 +1,67 @@
+% Project Task 1: metamodelling
+% Model Driven Engineering, University of Twente
+%
+% Always compile twice, to get the table of contents and references right.
+\documentclass[10pt, a4paper, oneside]{article}
+\usepackage[left=2cm, right=2cm, top=2.5cm, bottom=3cm]{geometry}
+\usepackage{color}          % So you can use colors
+\usepackage{amsmath}        % For all kinds of math symbols
+\usepackage{graphicx}       % Package to include photos and graphs
+\usepackage{float}          % Helps in positioning floats
+\usepackage[justification=centering]{caption}  % To center the captions
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage{listings}
+\usepackage{nameref}
+\setlength{\parindent}{0pt} % When you do not want indentation for your paragraphs.
+\setlength{\parskip}{5pt}   % For space between paragraphs.
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!55!black,
+  citecolor=blue!55!black,
+  urlcolor=blue!55!black,
+  linktoc=all,
+  bookmarksnumbered=true,
+}
+
+% Heading and list layout. This is a short report, so the headings stay small
+% and the spacing around them tight. The Overleaf instance carries no titlesec
+% or enumitem, so both are reproduced with the kernel's own commands.
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{\z@}%
+  {-2.2ex \@plus -0.6ex \@minus -.2ex}{0.6ex \@plus.2ex}%
+  {\normalfont\large\bfseries}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
+  {-1.8ex \@plus -0.5ex \@minus -.2ex}{0.4ex \@plus.2ex}%
+  {\normalfont\normalsize\bfseries}}
+\def\@listI{\leftmargin\leftmargini
+  \parsep 0pt \topsep 3pt \itemsep 1pt}
+\let\@listi\@listI
+\makeatother
+
+\begin{document}
+%==== FRONT PART====
+\include{Title/titlepage}
+\pagenumbering{roman}
+\tableofcontents
+
+%==== MAIN PART ====
+\newpage
+\pagenumbering{arabic}
+\input{Sections/01-introduction}
+\input{Sections/02-domain-analysis}
+\input{Sections/03-modelling-decisions}
+\input{Sections/04-alternatives}
+\input{Sections/05-source-metamodel}
+\input{Sections/06-target-metamodel}
+\input{Sections/07-example-models}
+
+%==== END OF ALL ===
+\end{document}

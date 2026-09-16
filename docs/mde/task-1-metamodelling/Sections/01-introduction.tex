@@ -1,0 +1,61 @@
+\section{Introduction and Scope}
+\label{sec:introduction}
+
+Task 0 selected the code-generation problem: generate a complete Kubernetes
+deployment set from one abstract model of what an application needs, rather
+than from hand-maintained YAML in which the same fact is written down several
+times. This report covers Task 1, the metamodelling step. It describes the
+domain, the modelling decisions and the alternatives that were considered, then
+presents the two metamodels and the example models that instantiate them.
+
+\subsection{Response to the Task 0 Feedback}
+
+The feedback on Task 0 raised three points, and each changed something in this
+report.
+
+\textbf{Scope.} The warning was to be careful with scope, and it was
+justified: the original proposal carried three metamodels and an open-ended set
+of generated resources. The scope is now fixed by three statements. The pipeline
+has \emph{two} metamodels, not three (Section~\ref{sec:decisions}): the
+Deliverable Set is generated text, so it is not given a metamodel of its own.
+The generated resources are a \emph{closed} set of six generators, listed in
+Section~\ref{sec:targetmetamodel}, and adding a seventh is a recorded decision
+rather than a new feature. The estate modelled is a \emph{single} cluster, so
+every rule that would only become visible at a second cluster is recorded as an
+assumption instead of being designed for.
+
+\textbf{Notation.} The question was why UML class diagrams rather than a
+deployment or component diagram, and whether ArchiMate or the C4 model would
+serve. Section~\ref{sec:notation} answers both: a class diagram is the notation
+for a language's abstract syntax and the others describe systems rather than
+languages, so they cannot replace it for the metamodels; but for the example
+\emph{models} a deployment view is the better picture, and
+Section~\ref{sec:examplemodels} now carries one.
+
+\subsection{What Is In Scope and What Is Not}
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.46\linewidth}>{\raggedright\arraybackslash}p{0.46\linewidth}}
+\hline
+\textbf{In scope} & \textbf{Out of scope} \\
+\hline
+Two metamodels: the authored source language, and the resolved target model. &
+  A metamodel of the generated files. They are text, and are compared as text. \\
+A closed set of six generators for one cluster. &
+  Additional target platforms, and a second cluster. \\
+Validation of a source model, and the constraints that refuse an invalid one. &
+  Applying the generated files to a cluster, which is a separate concern. \\
+Dependency resolution between applications. &
+  Runtime behaviour, scaling decisions and monitoring rules. \\
+\hline
+\end{tabular}
+\caption{Scope of the Project After the Task 0 Feedback}
+\label{tab:scope}
+\end{table}
+
+The last exclusion is the one that most affects the report's claims. This
+project generates a deployment set; it does not deploy it. Every statement about
+correctness in this report is therefore a statement about the generated model
+and the generated files, never about a running cluster.
