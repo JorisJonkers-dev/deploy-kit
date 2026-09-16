@@ -2,35 +2,44 @@ package dev.jorisjonkers.deploykit.emf.parity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.jorisjonkers.deploykit.emf.cli.Diagnostic;
-import dev.jorisjonkers.deploykit.emf.cli.Parsed;
-import dev.jorisjonkers.deploykit.emf.cli.Pipeline;
-import dev.jorisjonkers.deploykit.emf.metamodel.descriptor.Descriptor;
-import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * Every case under {@code spec/v1/examples/} that carries an intent oracle, run through the pipeline
- * entry and compared with the committed file byte for byte (docs/architecture.md#the-parity-contract).
+ * Every case under {@code spec/v1/examples/} that carries an oracle, decided from what a run of the
+ * pipeline left behind and compared with the committed file byte for byte
+ * (docs/architecture.md#the-parity-contract).
+ *
+ * <p>The suite calls nothing and holds no EMF type
+ * (docs/adr/emf/0120-parity-crosses-the-cli-file-interface.md): the pipeline's interface here is
+ * arguments and input files in, an exit code and output files out. A file a case needs and the run
+ * did not write fails as a missing file, never as a skipped case.
  */
 class ParityTest {
 
+    /** Where a run of the pipeline leaves the parsed intent and the diagnostics, under {@code emf/}. */
+    private static final String PIPELINE_OUTPUT = "emf/cli/target/parity";
+
+    /** Where a run of the build leaves the source metamodel's descriptor, under {@code emf/}. */
+    private static final String METAMODEL_OUTPUT = "emf/metamodel/target/parity";
+
+    private static final String INTENT = "intent.json";
+    private static final String DIAGNOSTICS = "diagnostics.json";
+    private static final String DESCRIPTOR = "descriptor.json";
+    private static final String EXIT = "exit";
+
     private static List<Path> casesWithAnIntentOracle() {
-        Path examples = repository().resolve("spec/v1/examples");
+        Path examples = examples();
         try (Stream<Path> tree = Files.walk(examples)) {
-            return tree.filter(path -> path.endsWith("expected/intent.json"))
+            return tree.filter(path -> path.endsWith("expected/" + INTENT))
                     .map(path -> path.getParent().getParent())
                     .sorted()
                     .toList();
@@ -42,16 +51,17 @@ class ParityTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("casesWithAnIntentOracle")
     void theParsedIntentEqualsTheCommittedOracle(Path directory) throws IOException {
-        Parsed parsed = Pipeline.intent(intentFile(directory));
+        Path written = output(PIPELINE_OUTPUT, directory);
 
-        assertThat(parsed.diagnostics()).isEmpty();
-        assertThat(CanonicalJson.write(parsed.intent())).isEqualTo(read(directory.resolve("expected/intent.json")));
+        assertThat(left(written, EXIT)).isEqualTo("0");
+        assertThat(left(written, INTENT))
+                .isEqualTo(read(directory.resolve("expected").resolve(INTENT)));
     }
 
     private static List<Path> refusalsWithADiagnosticsOracle() {
-        Path refusals = repository().resolve("spec/v1/examples/refusals");
+        Path refusals = examples().resolve("refusals");
         try (Stream<Path> files = Files.list(refusals)) {
-            return files.filter(path -> path.getFileName().toString().endsWith(".diagnostics.json"))
+            return files.filter(path -> path.getFileName().toString().endsWith("." + DIAGNOSTICS))
                     .sorted()
                     .toList();
         } catch (IOException e) {
@@ -62,57 +72,54 @@ class ParityTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("refusalsWithADiagnosticsOracle")
     void aRefusedDocumentEqualsItsCommittedDiagnostics(Path oracle) throws IOException {
-        String stem = oracle.getFileName().toString().replace(".diagnostics.json", "");
-        Path set = oracle.resolveSibling(stem);
-        // A directory is a set of documents read together; a file beside the oracle is read alone.
-        List<Diagnostic> diagnostics = Files.isDirectory(set)
-                ? Pipeline.check(files(set))
-                : Pipeline.intent(oracle.resolveSibling(stem + ".project.yml")).diagnostics();
+        String stem = oracle.getFileName().toString().replace("." + DIAGNOSTICS, "");
+        Path written = output(PIPELINE_OUTPUT, oracle.resolveSibling(stem));
 
-        assertThat(CanonicalJson.write(diagnostics.stream()
-                        .map(diagnostic -> (Object) new TreeMap<>(Map.of(
-                                "code", diagnostic.code(),
-                                "document", diagnostic.document(),
-                                "path", diagnostic.path())))
-                        .sorted(Comparator.comparing(Object::toString))
-                        .toList()))
-                .isEqualTo(read(oracle));
+        assertThat(left(written, EXIT)).isEqualTo("1");
+        assertThat(left(written, DIAGNOSTICS)).isEqualTo(read(oracle));
     }
 
     @Test
     void theMetamodelsStructureEqualsTheCommittedDescriptor() throws IOException {
-        assertThat(CanonicalJson.write(Descriptor.of(ProjectIntentPackage.eINSTANCE)))
-                .isEqualTo(read(repository().resolve("spec/v1/examples/expected/descriptor.json")));
+        Path written = repository().resolve(METAMODEL_OUTPUT);
+
+        assertThat(left(written, DESCRIPTOR))
+                .isEqualTo(read(examples().resolve("expected").resolve(DESCRIPTOR)));
     }
 
     @Test
     void oneChangedFieldNoLongerMatchesTheOracle() throws IOException {
         Path directory = casesWithAnIntentOracle().get(0);
-        Path project = intentFile(directory);
-        Path changed = Files.createTempDirectory("parity").resolve(project.getFileName());
-        Files.writeString(changed, read(project).replace("owner: joris", "owner: someone-else"));
+        String written = left(output(PIPELINE_OUTPUT, directory), INTENT);
+        String changed = written.replace("\"owner\":\"joris\"", "\"owner\":\"someone-else\"");
 
-        assertThat(CanonicalJson.write(Pipeline.intent(changed).intent()))
-                .isNotEqualTo(read(directory.resolve("expected/intent.json")));
+        assertThat(changed).isNotEqualTo(written);
+        assertThat(changed).isNotEqualTo(read(directory.resolve("expected").resolve(INTENT)));
     }
 
-    /** The one authored document of a case: its project file, or its Platform document. */
-    private static Path intentFile(Path directory) throws IOException {
-        return files(directory).stream()
-                .filter(path -> path.getFileName().toString().endsWith(".project.yml")
-                        || path.getFileName().toString().equals("platform.intent.yml"))
-                .findFirst()
-                .orElseThrow();
+    /** Where the run left a case's files: the output tree mirrors the example tree, case for case. */
+    private static Path output(String root, Path directory) {
+        return repository().resolve(root).resolve(examples().relativize(directory));
     }
 
-    private static List<Path> files(Path directory) throws IOException {
-        try (Stream<Path> files = Files.list(directory)) {
-            return files.filter(Files::isRegularFile).sorted().toList();
-        }
+    /**
+     * A file the run owes, read. Its absence is the pipeline failing to write what it owes, which is
+     * a different thing from a case with no committed oracle, and is reported as the missing file.
+     */
+    private static String left(Path directory, String name) throws IOException {
+        Path file = directory.resolve(name);
+        assertThat(file)
+                .as("%s: a run of the pipeline leaves this file behind, and did not", file)
+                .exists();
+        return read(file);
     }
 
     private static String read(Path path) throws IOException {
         return Files.readString(path, StandardCharsets.UTF_8);
+    }
+
+    private static Path examples() {
+        return repository().resolve("spec/v1/examples");
     }
 
     private static Path repository() {

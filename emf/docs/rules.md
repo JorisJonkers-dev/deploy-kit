@@ -12,7 +12,7 @@ literal in that file that does the enforcing. `Ledgers.checkRules` in
 its literal, so a gate cannot be removed while its row stays. That the rule
 fires is shown once, by breaking it, in the pull request that adds it.
 
-This ledger holds **16** rules.
+This ledger holds **17** rules.
 
 | id | rule | enforcer | witness |
 |---|---|---|---|
@@ -32,3 +32,4 @@ This ledger holds **16** rules.
 | EMF-014 | Every rule in this ledger is still enforced by its named file | `parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/LedgersTest.java` | `Ledgers.checkRules(repository)` |
 | EMF-015 | Every warning the JDT compiler reports in a Tycho bundle fails the build | `pom.xml` | `<failOnWarning>true</failOnWarning>` |
 | EMF-016 | The target platform resolves from one dated release build and names every unit at an exact version | `parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/TargetPlatformTest.java` | `EVERY_UNIT_IS_PINNED` |
+| EMF-017 | The module rules run over the classes the build wrote, never over an import that holds no module | `parity/src/test/java/dev/jorisjonkers/deploykit/emf/parity/ArchitectureTest.java` | `ModuleRules.modulesMissingFrom(classes)` |
