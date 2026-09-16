@@ -376,39 +376,37 @@
     "ProbeCadence": {
       "type": "object",
       "properties": {
-        "periodSeconds": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 9007199254740991
+        "period": {
+          "type": "string",
+          "minLength": 1
         },
-        "timeoutSeconds": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 9007199254740991
+        "timeout": {
+          "type": "string",
+          "minLength": 1
         },
-        "failureThreshold": {
+        "failures": {
           "type": "integer",
           "minimum": 1,
           "maximum": 9007199254740991
         }
       },
       "required": [
-        "periodSeconds",
-        "timeoutSeconds",
-        "failureThreshold"
+        "period",
+        "timeout",
+        "failures"
       ],
       "additionalProperties": false
     },
     "EphemeralPolicy": {
       "type": "object",
       "properties": {
-        "sizeLimit": {
+        "size": {
           "type": "string",
           "minLength": 1
         }
       },
       "required": [
-        "sizeLimit"
+        "size"
       ],
       "additionalProperties": false
     },

@@ -197,6 +197,7 @@ delivery work it underpins.
 | # | title | claim |
 |---|---|---|
 | [0056](model/0056-node-facts-single-source.md) | Node facts are authored once; nix imports them | settled |
+| [0123](model/0123-a-node-publishes-media-no-process-may-ask-for.md) | A node publishes storage media no Process may ask for | settled |
 | [0057](model/0057-datastore-and-restore.md) | Datastore, server count, and restore are recorded platform facts | open |
 
 ### Release and programme

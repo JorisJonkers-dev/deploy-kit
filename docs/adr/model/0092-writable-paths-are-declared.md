@@ -52,7 +52,7 @@ meant: the image's filesystem is immutable, and what a process writes is
 mounted. Putting a mounted tmpfs in the same list as a pod running as root would
 be a category error.
 
-`sizeLimit` is platform-assigned. Ephemeral storage is finite node disk, so by
+The ephemeral `size` is platform-assigned. Ephemeral storage is finite node disk, so by
 [0004](0004-contention-decides-authority.md) the size is contended and the
 Platform Intent carries one default, the same shape as probe cadence and scrape
 timing. Authoring a size per path was the alternative and it is 0081's shape,

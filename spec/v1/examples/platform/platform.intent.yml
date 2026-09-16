@@ -102,14 +102,14 @@ hardening: restricted
 # One cadence for every rendered probe
 # (docs/adr/model/0088-startup-probe-targets-liveness.md).
 probes:
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 3
+  period: 10s
+  timeout: 5s
+  failures: 3
 
 # The ephemeral default for a declared writable path
 # (docs/adr/model/0092-writable-paths-are-declared.md).
 ephemeral:
-  sizeLimit: 64Mi
+  size: 64Mi
 
 # Things the estate runs and does not deploy, that an Application depends on. A fact
 # with an address, resolvable by an edge -- not a hole, so no review date

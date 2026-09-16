@@ -86,7 +86,7 @@ contributes routes and exposures to both; it owns neither object.
 | `PodDisruptionBudget` | the `kubernetes` adapter builds one from an availability field | **not derivable.** `minAvailable` is ungraded and no `replicas` assignment exists; a PDB over a single-replica Deployment blocks every node drain (**G-32**). |
 | `PrometheusRule` | nothing in this model | **correctly none.** PromQL, severity and receivers belong to the monitoring stack, which reads `alertClass` from the projection. |
 | `Role` / `RoleBinding` per Process | per-Process identity | **none.** No `rbac` adapter. It is also what keeps the two Secret boundaries apart in a shared namespace (**G-24**). |
-| `resolved.yml` (the `ResolvedService` projection) | publish-back | central composition; not part of a Deliverable Set. |
+| `resolved.yml` (the `ResolvedApplication` projection) | publish-back | central composition; not part of a Deliverable Set. |
 
 Estate-scoped objects this project contributes rows to but does not render: the
 edge catalogs, now Assets of the declared Traefik Applications in the platform edge

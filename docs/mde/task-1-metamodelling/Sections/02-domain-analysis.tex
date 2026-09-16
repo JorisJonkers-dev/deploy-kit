@@ -1,0 +1,81 @@
+\section{Domain Analysis}
+\label{sec:domainanalysis}
+
+The domain is the deployment configuration of a small production estate: one
+Kubernetes cluster of seven nodes, ten namespaces, and roughly thirty
+long-running processes belonging to about twenty applications. The estate is
+real and its current configuration is hand-maintained, which is what makes it
+usable as evidence: every concept below was extracted from configuration that
+exists, and several modelling decisions are justified by a defect the existing
+configuration already has.
+
+\subsection{Where the Repetition Is}
+
+Four observations from the existing configuration drive the whole language.
+
+\textbf{One fact is written down many times.} The hostname of one application
+appears in seven authoritative places across three repositories, and two
+conformance tests exist for no purpose other than detecting when the seven
+disagree. A port appears in the container specification, in the service, in the
+probe and in the monitoring rule. The guard was cheaper to write than the fix,
+which is the situation a generated deployment set removes.
+
+\textbf{One derivation is performed many times by hand.} Four deployments carry
+the same rollout block, arrived at independently, with the reasoning recorded in
+comments that no tool can read. Comments record that a recreate strategy opened
+a zero-pod window, and that a JVM cold start needs a startup budget an order of
+magnitude larger than a static bundle's. That is a rule about a class of
+process, expressed four times as a constant.
+
+\textbf{Values are stated in the wrong vocabulary.} The existing configuration
+declares mechanisms, not requirements: a rollout strategy rather than whether
+the application may be taken down during a cutover, a node label rather than
+what the process needs from a machine. A process whose author forgets to declare
+a recreate strategy over a volume that cannot be attached twice appears to work
+on a one-node cluster and fails the first time a second node exists.
+
+\textbf{Some values cannot be written by one application at all.} A hostname
+must be unique across the estate; a graphics card is held by one process at a
+time; the edge is a shared, finite resource. These values are contended, and no
+application can decide them from inside its own repository.
+
+\subsection{The Concepts the Domain Requires}
+
+The analysis produces two groups of concepts, and the split between them is the
+main modelling decision of the project (Section~\ref{sec:decisions}).
+
+The \emph{structural} concepts are the ones a reader would expect: a project
+groups applications, an application groups the processes released together,
+a process offers named ports and depends on the ports of others, and an
+application is reachable at a hostname whose paths route to its processes.
+
+The \emph{operational} concepts are the ones that carry most of the generated
+output: what a process needs from a machine, what its data is worth if it is
+lost, which secrets it may read and how it receives them, what answers a health
+check, how long a cold start may legitimately take, and whether a new version
+may run beside the old one during a cutover. These have no counterpart in a
+structural architecture notation, and they are where the interesting derivations
+live.
+
+\subsection{Notation}
+\label{sec:notation}
+
+The Task 0 feedback asked why UML class diagrams are used, and suggested
+ArchiMate or the C4 model as alternatives or as additions.
+
+For the metamodels themselves the class diagram is not really a choice.
+A metamodel defines a language's abstract syntax, Ecore implements EMOF, and
+EMOF is classes, attributes, references and multiplicities, so a class diagram
+is the notation whose constructs correspond one-to-one to what the metamodel is
+built from. ArchiMate and C4 describe a system, not a language, so neither can
+define one.
+
+For the \emph{models} the suggestion is a good one, and this report takes it
+up. A resolved model is an arrangement of processes on machines, which is
+exactly what a deployment view is for, and the resolved model contains every
+fact such a view needs: which process runs where, which application answers on
+which hostname, and which process depends on which. Section
+\ref{sec:examplemodels} shows one example model that way rather than only as
+text, and generating an ArchiMate technology view or a C4 deployment diagram
+from a resolved model is a second model-to-text transformation over the same
+target metamodel, which Task 3 could add at little cost.

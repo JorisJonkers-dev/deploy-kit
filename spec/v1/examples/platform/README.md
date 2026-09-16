@@ -1,5 +1,7 @@
 # The worked Platform Intent
 
+Two documents sit here, because the Platform document names the second by
+digest and neither is readable without the other.
 [`platform.intent.yml`](platform.intent.yml) is the second authored document
 ([chapter 14](../../14-platform-intent.md)), what the estate offers, published
 as an Intent Fragment by digest like any project and composed with the three
@@ -34,7 +36,28 @@ Both are the gates working.
 **Not here, deliberately.** The foundation (Vault, VSO, the two Traefik
 instances, Prometheus, Gatus) is declared as Applications in project files the
 platform owns ([0096](../../../../docs/adr/model/0096-the-foundation-is-declared.md));
-those files are the next worked example to write. The node contract is its own
-pinned input, named above by digest
-([0056](../../../../docs/adr/model/0056-node-facts-single-source.md)). Hostnames
+those files are the next worked example to write. Hostnames
 nobody deploys and nobody depends on are a ledger, not a Platform fact.
+
+## The node contract
+
+[`node-contract.yml`](node-contract.yml) is the second pinned input this
+directory holds: the generated document that publishes what each node can hold,
+named by `metadata.nodeContract` above
+([chapter 60](../../60-setup.md#node-facts),
+[0056](../../../../docs/adr/model/0056-node-facts-single-source.md)). It is the
+other half of every placement comparison. A Process declares hard dimensions and
+layer 2 matches them against exactly these facts, never against a live cluster
+([0061](../../../../docs/adr/model/0061-placement-is-hard-dimensions.md)).
+
+What it takes from chapter 60, and what is the example's own, is stated in its
+own header. The short version: the seven nodes, their totals, disks, cards and
+every capability count are the chapter's; the seven reserves, the two GPU
+memory figures and which node carries four of the capabilities are the
+example's, because the chapter gives the count and not the node.
+
+One value is worth reading twice. Three nodes publish `media: sdcard`, which is
+not a medium any Process may ask for: the contract's vocabulary is deliberately
+the wider one, because a contract that rounds a fact to the nearest admissible
+word is a contract nobody can check against the machine
+([0123](../../../../docs/adr/model/0123-a-node-publishes-media-no-process-may-ask-for.md)).

@@ -321,8 +321,15 @@ row has no witness there.
 
 **Whichever implementation lands a case first commits its reviewed oracle,
 and the other matches it.** The first oracles are written by hand: `minimal`'s
-parsed intent and dependency edges. The first `resolved.json` lands with the
-Resolved Deployment metamodel that gives it a shape (#42).
+parsed intent and dependency edges, and `minimal`'s and `knowledge`'s
+`resolved.json` beside the metamodel that gives them a shape.
+
+A `resolved.json` is held to the chapter as well as to the metamodel.
+[Chapter 20](../spec/v1/20-resolved-deployment.md#worked-example-knowledges-projection)'s
+worked projection shows part of `knowledge`'s, with its digests elided, and a
+test requires everything the chapter shows to appear in the oracle with the same
+value. The chapter is the readable half and the oracle is the complete one;
+neither may say something the other contradicts.
 
 An oracle file changes in the pull request that changes the behaviour it
 records, and both implementations go red together until both are fixed. CI

@@ -314,9 +314,20 @@ ephemeral size for a declared writable path
 ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)):
 
 ```yaml
-probes:    {periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 3}
-ephemeral: {sizeLimit: 64Mi}
+probes:    {period: 10s, timeout: 5s, failures: 3}
+ephemeral: {size: 64Mi}
 ```
+
+Both blocks name model concepts, not the target's fields
+([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)). They
+did not always: until this amendment they were written `periodSeconds`,
+`timeoutSeconds`, `failureThreshold` and `sizeLimit`, which are the Kubernetes
+probe and volume field names, in the one document whose own rule is that no
+authored value carries a target's spelling. `period` and `timeout` are
+Durations, written as `monitors` above already writes them, so the unit is in
+the value rather than in the name and the estate has one way to write ten
+seconds. The `kubernetes` adapter is where the target's spelling is produced,
+and it is the only place it appears.
 
 ## Providers
 
@@ -453,12 +464,12 @@ classDiagram
         +Duration timeout
     }
     class ProbeCadence {
-        +int periodSeconds
-        +int timeoutSeconds
-        +int failureThreshold
+        +Duration period
+        +Duration timeout
+        +int failures
     }
     class EphemeralPolicy {
-        +Quantity sizeLimit
+        +Quantity size
     }
     class Provider {
         +string name

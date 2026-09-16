@@ -20,7 +20,7 @@ three inputs (the member list, each member's readiness reference, and one
 deadline), and all three are derivable from declared intent. False if: a
 candidate mechanism needs an input no declaration carries, or needs an applied
 object to exist before it can gate. Settled by: writing the switchover
-mechanism against a `ResolvedService` projection alone, with no object added to
+mechanism against a `ResolvedApplication` projection alone, with no object added to
 the rendered tree.
 
 ## Why

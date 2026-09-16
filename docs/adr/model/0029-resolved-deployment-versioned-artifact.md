@@ -9,6 +9,11 @@ rests-on: ["0003"]
 
 # The Resolved Deployment is a versioned, reviewable artifact
 
+> **Amended 2026-09-16.** The schema exists here now, so the settling test runs
+> here. Its `Settled by` named `deploy-config-schema`'s schema and an `ajv`
+> invocation against it; it names the Resolved Deployment metamodel and the
+> committed oracles instead. The decision is unchanged.
+
 > **Amended 2026-09-14.** Vocabulary renamed by
 > [0116](0116-project-application-process.md): Domain is now Project,
 > Service is Application, Workload is Process, and Service Intent is Project
@@ -19,8 +24,10 @@ rests-on: ["0003"]
 > paired with their consumers are deleted ([0098](0098-one-publication-path.md)).
 > The Resolved Deployment also carries the path plan
 > ([0070](0070-path-authority-is-layer-2.md)), the release gate's inputs
-> ([0071](0071-release-gate-inputs-are-layer-2.md)), the override records and the
-> per-Process image digests that were once a separate image-metadata document.
+> ([0071](0071-release-gate-inputs-are-layer-2.md)) and the per-Process image
+> digests that were once a separate image-metadata document. There are no
+> override records: the hatch closed, and the one local exception is a named
+> field ([chapter 20](../../../spec/v1/20-resolved-deployment.md#no-overrides)).
 
 ## Rests on
 
@@ -29,10 +36,14 @@ versioned schema, is byte-stable for identical pinned inputs, so a diff between
 two renders shows exactly the platform decisions that changed and nothing else.
 False if: two renders of the same Intent against the same pinned context and
 locks differ (map ordering, timestamps, absolute paths), because a diff
-carrying that noise is not a review surface. Settled by: render one Application
-twice from the same lock and context into `/tmp/a` and `/tmp/b`, then
-`diff -r /tmp/a /tmp/b` (empty settles it) and
-`ajv validate -s schemas/deployment.schema.json -d /tmp/a/<application>.yml`.
+carrying that noise is not a review surface. Settled by: `npm test`, which
+validates every committed `spec/v1/examples/<case>/expected/resolved.json`
+against the Resolved Deployment metamodel and holds `knowledge`'s to chapter
+20's worked projection; plus, once a renderer exists, rendering one Application
+twice from the same pinned inputs into `/tmp/a` and `/tmp/b` and finding
+`diff -r /tmp/a /tmp/b` empty. The first half runs in this repository today; it
+used to name `deploy-config-schema`'s `schemas/deployment.schema.json`, which is
+the schema this model replaces.
 
 ## Why
 

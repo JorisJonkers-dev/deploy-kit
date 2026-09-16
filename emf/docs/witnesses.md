@@ -13,7 +13,15 @@ reads both.
 has no witness here, when a witness names an id that is not a model row, or
 when it names a test method that does not exist.
 
-This list holds **6** witnesses.
+A model behaviour this implementation cannot prove **yet** is listed as pending
+below, with the ticket that lands it. It is the same state the
+[rule ledger](rules.md) already carries for a rule not enforced yet: a row that
+is visibly owed, rather than one quietly dropped. A pending row still has to
+name a real model row, it may not also be witnessed, and its count is stated
+beside the witness count, so the gate keeps its teeth while the work is
+outstanding.
+
+This list holds **6** witnesses, and **3** pending.
 
 | id | JUnit test |
 |---|---|
@@ -23,3 +31,11 @@ This list holds **6** witnesses.
 | REQ-029 | `LinkingTest#aRouteAndAScrapeLinkToTheVeryProcessAndSurfaceTheirApplicationHolds` |
 | REQ-030 | `PlatformIntentTest#aPlatformDocumentParsesAndATierWithoutItsEndpointIsRefused` |
 | REQ-031 | `IntentSetTest#theWorkedEstateIsRefusedExactlyWhereThePlatformDocumentSaysItWillBe` |
+
+## Pending
+
+| id | why no witness yet | ticket |
+|---|---|---|
+| REQ-033 | the Resolved Deployment has no Ecore metamodel here to validate against | #87 |
+| REQ-034 | nothing under `emf/` reads the node contract yet | #87 |
+| REQ-035 | `resolved.json` binds the production implementation only today, and this implementation's target model is test input rather than an oracle ([the parity contract](../../docs/architecture.md#the-parity-contract)) | #87 |

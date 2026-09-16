@@ -30,7 +30,7 @@ The previous formulation was absolute and was falsified by its own chapter.
 `spec/v1/20-resolved-deployment.md:8-11` declared, as "the load-bearing property
 of the whole specification", that *"Every assignment is a pure function of
 Project Intent, the pinned Platform Intent, and the pinned locks."* Yet the same
-chapter's normative `ResolvedService` example (`:246-249`) carries an observed PV
+chapter's normative `ResolvedApplication` example (`:246-249`) carries an observed PV
 binding (`node: enschede-t1000-1`, `because: knowledge-vault-clone PV is bound
 here`) while `inputDigests` is `{intent, imagesLock}` with `contextRef`
 alongside (`:216`): the binding is in none of the pinned inputs and is read from
