@@ -14,7 +14,7 @@ import kotlin.streams.asSequence
  * (docs/architecture.md#the-parity-contract).
  *
  * The suite calls nothing and holds no EMF type
- * (docs/adr/emf/0120-parity-crosses-the-cli-file-interface.md): the pipeline's interface here is
+ * (docs/adr/emf/0121-parity-crosses-the-cli-file-interface.md): the pipeline's interface here is
  * arguments and input files in, an exit code and output files out. A file a case needs and the run
  * did not write fails as a missing file, never as a skipped case.
  */

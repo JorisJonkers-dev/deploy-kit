@@ -15,7 +15,7 @@ import java.util.stream.Stream;
  * What a run of the pipeline leaves behind: for every case under {@code spec/v1/examples/}, the
  * parsed intent or the diagnostics that refused it, in the canonical JSON the oracles are committed
  * in, and the exit code the run ended on
- * (docs/adr/emf/0120-parity-crosses-the-cli-file-interface.md).
+ * (docs/adr/emf/0121-parity-crosses-the-cli-file-interface.md).
  *
  * <p>The output tree mirrors the example tree: a case at {@code auth/} writes {@code auth/}, and a
  * refusal whose oracle is {@code refusals/unknown-surface.diagnostics.json} writes {@code

@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test
  * This suite depends on no module, so it reads the class directories the build wrote by path and
  * asserts every module the build wrote arrived: an empty import would leave every layer optional and
  * let both rules pass while proving nothing
- * (docs/adr/emf/0120-parity-crosses-the-cli-file-interface.md). Each rule is shown firing on a
+ * (docs/adr/emf/0121-parity-crosses-the-cli-file-interface.md). Each rule is shown firing on a
  * fixture that breaks it, beside the run that holds the tree to it.
  */
 @AnalyzeClasses(

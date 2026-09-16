@@ -175,7 +175,7 @@
             <palantirJavaFormat><version>${palantir-java-format.version}</version></palantirJavaFormat>
             <removeUnusedImports/>
           </java>
-          <!-- The test tier is Kotlin (docs/adr/emf/0121), and the estate's Kotlin repositories run ktlint. -->
+          <!-- The test tier is Kotlin (docs/adr/emf/0122), and the estate's Kotlin repositories run ktlint. -->
           <kotlin>
             <includes><include>src/*/kotlin/**/*.kt</include></includes>
             <ktlint><version>${ktlint.version}</version></ktlint>

@@ -28,7 +28,7 @@ oracle files under `spec/v1/examples/` that both are tested against, separately.
 
 This table says which artefact lives where and which course task grades
 it, so the split tree
-([0121](docs/adr/emf/0121-bundles-and-tests-are-separate-tiers.md))
+([0122](docs/adr/emf/0122-bundles-and-tests-are-separate-tiers.md))
 answers the navigation question without a search.
 
 | artefact | lives in | graded in | how an examiner opens it |

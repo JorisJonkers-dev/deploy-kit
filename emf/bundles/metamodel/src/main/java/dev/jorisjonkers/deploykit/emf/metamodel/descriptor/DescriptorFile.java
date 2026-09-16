@@ -10,7 +10,7 @@ import java.nio.file.Path;
 /**
  * The source metamodel's descriptor, written where a run of the build leaves it: the same reflective
  * walk {@link Descriptor} performs, in the canonical JSON the oracle is committed in
- * (docs/adr/emf/0120-parity-crosses-the-cli-file-interface.md). The file is named for its oracle,
+ * (docs/adr/emf/0121-parity-crosses-the-cli-file-interface.md). The file is named for its oracle,
  * {@code spec/v1/examples/expected/descriptor.json}, so the two are obviously a pair.
  */
 public final class DescriptorFile {

@@ -44,7 +44,7 @@ Undo cost today: nothing exists. Becomes irreversible once: never; deleted with
 - A model behaviour row lands with a JUnit witness or the `emf` job fails. Paid
   by its author, in the same pull request.
 - **Amended when the test tier was ported to Kotlin
-  ([0121](0121-bundles-and-tests-are-separate-tiers.md)).** This decision said
+  ([0122](0122-bundles-and-tests-are-separate-tiers.md)).** This decision said
   "Java" because every module was Java when it was taken. The rule is unchanged:
   a witness is a JUnit test, in whichever language its module is written. Three
   of the six witnesses are now Kotlin functions of `tests/parity` and three are

@@ -82,7 +82,7 @@ Two tiers, under one parent `pom.xml` that owns the Tycho configuration and the
 target platform. `bundles/` holds one Maven module per pipeline stage: what
 Tycho builds against `emf.target`, and what an examiner imports into Eclipse.
 `tests/` holds what Maven alone builds and runs, and what no examiner opens
-([0121](adr/emf/0121-bundles-and-tests-are-separate-tiers.md)). The boundary
+([0122](adr/emf/0122-bundles-and-tests-are-separate-tiers.md)). The boundary
 answers the question a flat list left every reader to work out from a
 `pom.xml`: is this file graded, and will a teacher open it.
 
@@ -262,7 +262,7 @@ against the committed oracles, the ledger checks, and the module rules. It is
 built and run by Maven only, and no examiner opens it.
 
 It reaches the pipeline through the pipeline's own interface, and through nothing
-else ([0120](adr/emf/0120-parity-crosses-the-cli-file-interface.md)): arguments
+else ([0121](adr/emf/0121-parity-crosses-the-cli-file-interface.md)): arguments
 and input files in; an exit code, diagnostics, the parsed intent, the descriptor
 and the rendered tree out. A run of the build leaves those files under the build
 output of the module that wrote them, one directory per case, mirroring

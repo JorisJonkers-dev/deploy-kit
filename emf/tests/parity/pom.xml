@@ -14,9 +14,9 @@
   <artifactId>dev.jorisjonkers.deploykit.emf.parity</artifactId>
   <!--
     A plain jar: the suites decide every case from the files a run leaves behind, so the module holds
-    no EMF type and resolves nothing from the target platform (docs/adr/emf/0120). It carries no
+    no EMF type and resolves nothing from the target platform (docs/adr/emf/0121). It carries no
     META-INF/MANIFEST.MF, so the parent's `bundle` profile does not activate and its test libraries
-    are declared here instead. It is the test tier, so it is Kotlin (docs/adr/emf/0121).
+    are declared here instead. It is the test tier, so it is Kotlin (docs/adr/emf/0122).
   -->
   <packaging>jar</packaging>
   <name>deploy-kit model-driven parity</name>
@@ -79,7 +79,7 @@
             here and neither can be observed from a test, so removing the call
             is an equivalent mutation rather than an uncovered one. Excluding
             them is what keeps the threshold of docs/adr/emf/0115 at the number
-            it holds over Java, which docs/adr/emf/0121 requires a decision of
+            it holds over Java, which docs/adr/emf/0122 requires a decision of
             its own to lower.
           -->
           <avoidCallsTo>
