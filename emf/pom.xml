@@ -99,6 +99,37 @@
         <plugin><groupId>org.eclipse.tycho</groupId><artifactId>tycho-bnd-plugin</artifactId><version>${tycho.version}</version></plugin>
         <plugin><groupId>org.eclipse.tycho</groupId><artifactId>tycho-source-plugin</artifactId><version>${tycho.version}</version></plugin>
         <plugin><groupId>org.codehaus.mojo</groupId><artifactId>exec-maven-plugin</artifactId><version>3.6.4</version></plugin>
+        <!--
+          m2e reads this and Maven ignores it. Without it an Eclipse import
+          reports "Plugin execution not covered by lifecycle configuration"
+          against every `exec-maven-plugin` execution, which is both metamodel
+          generators, and a grader meets a red workspace before reading a line
+          of the model (#132). `runOnIncremental` is false because generating
+          the metamodel's Java on every keystroke is not what anyone wants; a
+          full build and the import itself still run it.
+        -->
+        <plugin>
+          <groupId>org.eclipse.m2e</groupId>
+          <artifactId>lifecycle-mapping</artifactId>
+          <version>1.0.0</version>
+          <configuration>
+            <lifecycleMappingMetadata>
+              <pluginExecutions>
+                <pluginExecution>
+                  <pluginExecutionFilter>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <versionRange>[3.0.0,)</versionRange>
+                    <goals><goal>java</goal></goals>
+                  </pluginExecutionFilter>
+                  <action>
+                    <execute><runOnIncremental>false</runOnIncremental></execute>
+                  </action>
+                </pluginExecution>
+              </pluginExecutions>
+            </lifecycleMappingMetadata>
+          </configuration>
+        </plugin>
         <plugin><groupId>org.jetbrains.kotlin</groupId><artifactId>kotlin-maven-plugin</artifactId><version>${kotlin.version}</version></plugin>
       </plugins>
     </pluginManagement>
