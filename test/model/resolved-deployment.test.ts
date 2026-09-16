@@ -131,6 +131,39 @@ describe("the four defects it carried", () => {
   });
 });
 
+/** A committed projection oracle. */
+const oracleOf = (name: string): unknown =>
+  JSON.parse(
+    readFileSync(
+      join(
+        import.meta.dirname,
+        "..",
+        "..",
+        "spec",
+        "v1",
+        "examples",
+        name,
+        "expected",
+        "resolved.json",
+      ),
+      "utf8",
+    ),
+  );
+
+/** Every key a document writes, at any depth. */
+function written(node: unknown, found = new Set<string>()): Set<string> {
+  if (Array.isArray(node)) {
+    for (const entry of node) written(entry, found);
+    return found;
+  }
+  if (typeof node !== "object" || node === null) return found;
+  for (const [key, value] of Object.entries(node)) {
+    found.add(key);
+    written(value, found);
+  }
+  return found;
+}
+
 describe("the metamodel's own keys", () => {
   /** Every property name the schema declares, at any depth. */
   function keysOf(node: unknown, found = new Set<string>()): Set<string> {
@@ -183,6 +216,10 @@ describe("the metamodel's own keys", () => {
     const declared = new Set([
       ...keysOf(z.toJSONSchema(resolvedDeployment, { io: "input" })),
       ...keysOf(z.toJSONSchema(resolvedApplicationDocument, { io: "input" })),
+      // The committed oracles too, so the check covers what was written and
+      // not only what the schema would have allowed.
+      ...written(oracleOf("minimal")),
+      ...written(oracleOf("knowledge")),
     ]);
 
     expect([...declared].filter((key) => target.includes(key))).toStrictEqual(
