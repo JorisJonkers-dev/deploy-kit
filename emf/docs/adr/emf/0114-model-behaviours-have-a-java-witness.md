@@ -17,7 +17,7 @@ validation, resolution and rendering can each be proved by a JUnit test here,
 and that a list inside `emf/` can be checked against the root ledger without
 the root knowing about it. False if: a model behaviour row can only be proved
 in one implementation, or keeping the list requires a column in the root
-ledger. Settled by: the witness check in `emf/parity` green, and failing on a
+ledger. Settled by: the witness check in `emf/tests/parity` green, and failing on a
 fixture that removes one witness.
 
 ## Why

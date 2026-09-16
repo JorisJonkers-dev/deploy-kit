@@ -26,10 +26,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 class ParityTest {
 
     /** Where a run of the pipeline leaves the parsed intent and the diagnostics, under {@code emf/}. */
-    private static final String PIPELINE_OUTPUT = "emf/cli/target/parity";
+    private static final String PIPELINE_OUTPUT = "emf/bundles/cli/target/parity";
 
     /** Where a run of the build leaves the source metamodel's descriptor, under {@code emf/}. */
-    private static final String METAMODEL_OUTPUT = "emf/metamodel/target/parity";
+    private static final String METAMODEL_OUTPUT = "emf/bundles/metamodel/target/parity";
 
     private static final String INTENT = "intent.json";
     private static final String DIAGNOSTICS = "diagnostics.json";

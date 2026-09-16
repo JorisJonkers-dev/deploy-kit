@@ -44,8 +44,8 @@ class LedgersTest {
     @Test
     void aWitnessMustNameAModelRowAndARealTestOnce(@TempDir Path root) throws IOException {
         write(root, "docs/requirements.md", MODEL_ROW + "\n" + GATE_ROW);
-        write(root, "emf/parity/src/test/java/x/ParseTest.java", "class ParseTest { void parses() {} }");
-        write(root, "emf/parity/src/main/java/x/ParseTest.java", "class ParseTest { void missing() {} }");
+        write(root, "emf/tests/parity/src/test/java/x/ParseTest.java", "class ParseTest { void parses() {} }");
+        write(root, "emf/tests/parity/src/main/java/x/ParseTest.java", "class ParseTest { void missing() {} }");
         write(
                 root,
                 "emf/docs/witnesses.md",

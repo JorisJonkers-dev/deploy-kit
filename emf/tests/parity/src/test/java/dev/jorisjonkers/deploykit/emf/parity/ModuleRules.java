@@ -119,6 +119,6 @@ final class ModuleRules {
         while (!Files.isRegularFile(dir.resolve("emf/pom.xml"))) {
             dir = dir.getParent();
         }
-        return dir.resolve("emf");
+        return dir.resolve("emf").resolve("bundles");
     }
 }

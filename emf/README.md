@@ -24,6 +24,22 @@ oracle files under `spec/v1/examples/` that both are tested against, separately.
 | [docs/architecture.md](docs/architecture.md) | the structure: toolchain, modules, how each stage meets the contract |
 | [docs/adr/README.md](docs/adr/README.md) | the decisions that shaped it, and the register |
 
+## Where each artefact lives
+
+This table says which artefact lives where and which course task grades
+it, so the split tree
+([0121](docs/adr/emf/0121-bundles-and-tests-are-separate-tiers.md))
+answers the navigation question without a search.
+
+| artefact | lives in | graded in | how an examiner opens it |
+|---|---|---|---|
+| the two Ecore metamodels and their OCL | `emf/bundles/metamodel` | Task 1 | imported in step 2; `model/skeleton.ecore` and `model/skeleton.ocl` open and validate as step 3 describes |
+| the Xtext grammar and generated editor | `emf/bundles/syntax` | Task 1 | imported in step 2; the generated editor reports OCL constraint violations while a source file is edited in it |
+| the QVTo transformation | `emf/bundles/resolve` | Task 2 | imported in step 2; `identity.launch` runs it, as step 4 describes |
+| the Acceleo templates | `emf/bundles/render` | Task 3 | imported in step 2; `file.launch` runs them, as step 4 describes |
+| the pipeline entry point | `emf/bundles/cli` | Task 1 onward | imported in step 2, alongside the rest |
+| the parity suite | `emf/tests/parity` | no task grades it | it is Maven-only; no examiner opens it |
+
 ## Building
 
 ```sh
@@ -41,7 +57,9 @@ and Acceleo 4 SDKs installed from the same release:
 
 1. Open `emf/emf.target` and choose **Set as Active Target Platform**.
 2. **File > Import > Maven > Existing Maven Projects**, with `emf/` as the
-   root directory, and import every module.
+   root directory. The importer walks the whole tree, so that one root
+   still finds the five bundles nested under `emf/bundles/` and the parity
+   suite nested under `emf/tests/parity`; import every module.
 3. In `dev.jorisjonkers.deploykit.emf.metamodel`, open `model/skeleton.ecore`.
    Open `model/empty.xmi` with the Sample Reflective Ecore Model Editor, load
    `model/skeleton.ocl` through **OCL > Load Document**, and validate: the

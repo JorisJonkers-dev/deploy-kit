@@ -23,7 +23,7 @@ OCL invariant evaluated standalone, and that each refused case yields the same
 set of `(code, path)` pairs from OCL as from Zod. False if: a ledger constraint
 needs Java code outside OCL, or the containment chain cannot produce the JSON
 Pointer the TypeScript side reports. Settled by: every refused case's
-diagnostics parity green in `emf/parity`, and the ledger check finding an
+diagnostics parity green in `emf/tests/parity`, and the ledger check finding an
 invariant for every `CONS-NNN` row.
 
 ## Why
