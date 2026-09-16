@@ -8,21 +8,33 @@ Kubernetes resources or vendor fields.
 The project objective is to define this abstract model and the transformations
 that turn it into a complete set of deployment YAML and JSON files.
 
-For each release, CI gives the generator three inputs: the Project Intent
-model, per-process environment files and an image lock that maps image names
-to pinned digests. It also receives versioned platform data, including naming
-and label rules, defaults, ingress and storage classes, the alert catalogue
-and cluster capabilities. The generator uses only these inputs. It does not
-read live cluster state or access secret values.
+For each release the generator is given a closed set of inputs, every one of
+them carried by digest: each project's own model with its per-process
+environment files, one platform document stating what the estate offers, a
+contract publishing what each machine can hold, an image lock mapping image
+names to pinned digests, and a snapshot of the few cluster facts nothing else
+can supply, such as which machine already holds a volume. The generator reads
+these and nothing else. It does not read live cluster state and it does not
+access secret values.
 
 A model-to-model transformation turns these inputs into a \emph{Resolved
 Deployment}. This complete, non-text model contains exact resource names,
 namespaces, paths, image digests, replicas, resources, probes, ports, addresses,
-policy peers, routes, secret references and monitoring rules. Renderers
-only turn this model into files and make no deployment decisions.
+policy peers, routes, secret references and monitor targets. Renderers only
+turn this model into files and make no deployment decisions.
 
-The model-to-text step generates a \emph{Deliverable Set} for each application.
-It contains a \texttt{kustomization.yaml}, Kubernetes YAML files and policy JSON
-files. After validation, release CI applies the Kubernetes resources with
-\texttt{kubectl apply -k}. Platform facts come from one central, versioned
-source, so every repository uses the same platform definition.
+The model-to-text step generates one \emph{Deliverable Set} for the estate:
+Kubernetes YAML, policy JSON and the index files that group them, laid out per
+project and application by a plan the resolved model carries, so every file's
+path is a decision recorded in the model rather than one a generator makes
+while writing. Six generators produce it, each run once over the whole
+composed input rather than once per application, which is what lets a value
+one application derives from another be computed in one place.
+
+How that set reaches a cluster is deliberately outside this project. The model
+states what should be true and what must be applied before what; whether a
+pipeline applies it directly or a cluster-side reconciler consumes the
+pipeline's published output is a separate decision, and the specification is
+written so that either can be chosen without changing it. Platform facts come
+from one central, versioned source, so every repository resolves against the
+same platform definition.
