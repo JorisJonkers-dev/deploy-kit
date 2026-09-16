@@ -16,12 +16,16 @@
     A plain jar: the suites decide every case from the files a run leaves behind, so the module holds
     no EMF type and resolves nothing from the target platform (docs/adr/emf/0120). It carries no
     META-INF/MANIFEST.MF, so the parent's `bundle` profile does not activate and its test libraries
-    are declared here instead.
+    are declared here instead. It is the test tier, so it is Kotlin (docs/adr/emf/0121).
   -->
   <packaging>jar</packaging>
   <name>deploy-kit model-driven parity</name>
 
   <dependencies>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-stdlib</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
@@ -38,4 +42,52 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <build>
+    <sourceDirectory>src/main/kotlin</sourceDirectory>
+    <testSourceDirectory>src/test/kotlin</testSourceDirectory>
+    <plugins>
+      <plugin>
+        <groupId>org.jetbrains.kotlin</groupId>
+        <artifactId>kotlin-maven-plugin</artifactId>
+        <configuration>
+          <jvmTarget>${maven.compiler.release}</jvmTarget>
+          <!-- EMF-006's rule, in the compiler this tier uses: a warning fails the build. -->
+          <args><arg>-Werror</arg></args>
+        </configuration>
+        <executions>
+          <execution>
+            <id>compile</id>
+            <phase>compile</phase>
+            <goals><goal>compile</goal></goals>
+          </execution>
+          <execution>
+            <id>test-compile</id>
+            <phase>test-compile</phase>
+            <goals><goal>test-compile</goal></goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.pitest</groupId>
+        <artifactId>pitest-maven</artifactId>
+        <configuration>
+          <!--
+            `kotlinc` emits a null check for every platform type crossing into
+            Kotlin, and a `closeFinally` for every `use`. Neither is written
+            here and neither can be observed from a test, so removing the call
+            is an equivalent mutation rather than an uncovered one. Excluding
+            them is what keeps the threshold of docs/adr/emf/0115 at the number
+            it holds over Java, which docs/adr/emf/0121 requires a decision of
+            its own to lower.
+          -->
+          <avoidCallsTo>
+            <avoidCallsTo>kotlin.jvm.internal.Intrinsics</avoidCallsTo>
+            <avoidCallsTo>kotlin.jdk7.AutoCloseableKt</avoidCallsTo>
+          </avoidCallsTo>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 </project>
