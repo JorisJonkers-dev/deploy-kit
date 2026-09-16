@@ -58,6 +58,96 @@ class LedgersTest {
             )
     }
 
+    @Test
+    fun `a model behaviour listed as pending needs no witness`(
+        @TempDir root: Path,
+    ) {
+        write(root, "docs/requirements.md", "$MODEL_ROW\n$GATE_ROW")
+        write(
+            root,
+            "emf/docs/witnesses.md",
+            listOf(
+                "This list holds **0** witnesses, and **1** pending.",
+                "| $MODEL | nothing here reads it yet | #87 |",
+            ).joinToString("\n"),
+        )
+
+        assertThat(Ledgers.checkWitnesses(root)).isEmpty()
+    }
+
+    @Test
+    fun `a row that is both witnessed and pending fails`(
+        @TempDir root: Path,
+    ) {
+        write(root, "docs/requirements.md", MODEL_ROW)
+        write(root, "emf/tests/parity/src/test/kotlin/x/ParseTest.kt", "class ParseTest { fun `parses`() {} }")
+        write(
+            root,
+            "emf/docs/witnesses.md",
+            listOf(
+                "This list holds **1** witnesses, and **1** pending.",
+                "| $MODEL | `ParseTest#parses` |",
+                "| $MODEL | also pending | #87 |",
+            ).joinToString("\n"),
+        )
+
+        assertThat(Ledgers.checkWitnesses(root)).containsExactly("$MODEL: is both witnessed and pending")
+    }
+
+    @Test
+    fun `a row pending twice fails`(
+        @TempDir root: Path,
+    ) {
+        write(root, "docs/requirements.md", MODEL_ROW)
+        write(
+            root,
+            "emf/docs/witnesses.md",
+            listOf(
+                "This list holds **0** witnesses, and **2** pending.",
+                "| $MODEL | not yet | #87 |",
+                "| $MODEL | still not yet | #87 |",
+            ).joinToString("\n"),
+        )
+
+        assertThat(Ledgers.checkWitnesses(root)).containsExactly("$MODEL: pending twice")
+    }
+
+    @Test
+    fun `a pending row naming no model row fails, and the real row stays owed`(
+        @TempDir root: Path,
+    ) {
+        write(root, "docs/requirements.md", MODEL_ROW)
+        write(
+            root,
+            "emf/docs/witnesses.md",
+            listOf(
+                "This list holds **0** witnesses, and **1** pending.",
+                "| $UNKNOWN | not a model row | #87 |",
+            ).joinToString("\n"),
+        )
+
+        assertThat(Ledgers.checkWitnesses(root))
+            .containsExactly(
+                "$UNKNOWN: is pending and names no model behaviour row in docs/requirements.md",
+                "$MODEL: is a model behaviour with no witness in emf/docs/witnesses.md",
+            )
+    }
+
+    @Test
+    fun `a pending row with no stated pending count fails`(
+        @TempDir root: Path,
+    ) {
+        write(root, "docs/requirements.md", MODEL_ROW)
+        write(
+            root,
+            "emf/docs/witnesses.md",
+            "This list holds **0** witnesses.\n| $MODEL | not yet | #87 |",
+        )
+
+        assertThat(Ledgers.checkWitnesses(root))
+            .containsExactly("emf/docs/witnesses.md: states no pending count but holds 1")
+    }
+
     /** A Java witness is read the same way, so the rule is the module's language and not the suite's. */
     @Test
     fun `a witness naming a java test in a bundle is found`(

@@ -13,12 +13,20 @@ import kotlin.streams.asSequence
 object Ledgers {
     private val REQUIREMENT_ROW = Regex("""^\|\s*(REQ-\d{3})\s*\|.*\[[^]]*]\(\.\./([^)]+)\)\s*\|\s*$""")
     private val WITNESS_ROW = Regex("""^\|\s*(REQ-\d{3})\s*\|\s*`([A-Za-z0-9_]+)#([^`]+)`\s*\|\s*$""")
+    private val PENDING_ROW = Regex("""^\|\s*(REQ-\d{3})\s*\|\s*([^|]+?)\s*\|\s*(#\d+)\s*\|\s*$""")
     private val RULE_ROW = Regex("""^\|\s*(EMF-\d{3})\s*\|\s*[^|]+\|\s*`([^`]+)`\s*\|\s*`([^`]+)`\s*\|\s*$""")
     private val STATED = Regex("""holds \*\*(\d+)\*\*""")
+    private val STATED_PENDING = Regex("""\*\*(\d+)\*\* pending""")
 
     /**
      * The witness list: every behaviour ledger row proved by a test under `test/model/` names a JUnit
      * test here, and every witness names a real model row and a real test method.
+     *
+     * A model row this implementation cannot prove yet is listed as **pending** with the ticket that
+     * lands it, the same state the rule ledger already carries for a rule not enforced yet
+     * (docs/adr/emf/0114). A pending row satisfies the witness check and nothing else: it still has
+     * to name a real model row, it may not also be witnessed, and its count is stated separately, so
+     * a behaviour cannot leave the gate quietly.
      */
     fun checkWitnesses(repository: Path): List<String> {
         val errors = mutableListOf<String>()
@@ -43,12 +51,27 @@ object Ledgers {
                 errors.add("$id: names $type#$method, which is not a test in emf/")
             }
         }
+        val pending = linkedMapOf<String, String>()
+        for (line in text) {
+            val row = PENDING_ROW.matchEntire(line) ?: continue
+            val (id, _, ticket) = row.destructured
+            if (pending.put(id, ticket) != null) {
+                errors.add("$id: pending twice")
+            }
+            if (id !in modelRows) {
+                errors.add("$id: is pending and names no model behaviour row in docs/requirements.md")
+            }
+            if (id in listed) {
+                errors.add("$id: is both witnessed and pending")
+            }
+        }
         for (id in modelRows) {
-            if (id !in listed) {
+            if (id !in listed && id !in pending) {
                 errors.add("$id: is a model behaviour with no witness in emf/docs/witnesses.md")
             }
         }
         checkStatedCount(text, listed.size, "emf/docs/witnesses.md", errors)
+        checkStatedPending(text, pending.size, errors)
         return errors
     }
 
@@ -78,6 +101,22 @@ object Ledgers {
         }
         checkStatedCount(text, rows, "emf/docs/rules.md", errors)
         return errors
+    }
+
+    /** The pending count is stated beside the witness count, so neither can drift unnoticed. */
+    private fun checkStatedPending(
+        text: List<String>,
+        rows: Int,
+        errors: MutableList<String>,
+    ) {
+        val stated = STATED_PENDING.find(text.joinToString("\n"))
+        if (stated == null) {
+            if (rows != 0) {
+                errors.add("emf/docs/witnesses.md: states no pending count but holds $rows")
+            }
+        } else if (stated.groupValues[1] != rows.toString()) {
+            errors.add("emf/docs/witnesses.md: states ${stated.groupValues[1]} pending but holds $rows")
+        }
     }
 
     private fun checkStatedCount(

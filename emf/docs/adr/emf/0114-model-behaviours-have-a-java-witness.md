@@ -10,6 +10,23 @@ rests-on: ["0106"]
 
 # Every model behaviour in the behaviour ledger has a JUnit witness, listed inside `emf/`
 
+
+> **Amended 2026-09-16.** The list gains a **pending** state. This record's own
+> `False if` named the case that arrived: a model behaviour row this
+> implementation cannot prove yet. `REQ-033`, `REQ-034` and `REQ-035` are layer-2
+> and node-contract behaviours whose Ecore half lands with
+> [#87](https://github.com/JorisJonkers-dev/deploy-kit/issues/87), and until it
+> does there is no target metamodel here to validate against. The alternatives
+> were to drop the rows from the gate, which loses them, or to witness them
+> against a test that proves something else, which is the gate reporting an
+> agreement nobody established. A pending row names its ticket, still has to
+> name a real model row, may not also be witnessed, and is counted separately,
+> so what is owed stays visible. It is the state the
+> [rule ledger](../../rules.md) already carries for a rule not enforced yet
+> ([0104](../../../../docs/adr/architecture/0104-every-enforced-rule-has-an-id-a-row-and-a-fixture.md)).
+> The decision is unchanged: a model behaviour is proved in both
+> implementations, and a pending row is a dated promise rather than an exemption.
+
 ## Rests on
 Resting on [0106](0106-the-model-is-expressible-in-the-emf-toolchain.md), the
 claim is that the behaviours a unit test proves in `src/` about parsing,
