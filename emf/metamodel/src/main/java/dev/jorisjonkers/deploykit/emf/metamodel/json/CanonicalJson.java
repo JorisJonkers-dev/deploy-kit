@@ -1,4 +1,4 @@
-package dev.jorisjonkers.deploykit.emf.parity;
+package dev.jorisjonkers.deploykit.emf.metamodel.json;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
