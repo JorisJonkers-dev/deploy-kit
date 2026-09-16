@@ -55,11 +55,20 @@ bundles `emf.target` pins.
 For examiners, in Eclipse Modeling Tools 2026-06 with the OCL, QVT-Operational
 and Acceleo 4 SDKs installed from the same release:
 
+0. Run `./mvnw verify` once, from `emf/`, before importing anything. Each
+   metamodel's typed Java is generated into `target/generated-sources/emf/`,
+   which `build.properties` names as a source folder, and on a clean clone that
+   directory does not exist yet: import first and the workspace opens with
+   every reference to a generated package unresolved. One terminal build is
+   what makes the import land clean.
 1. Open `emf/emf.target` and choose **Set as Active Target Platform**.
 2. **File > Import > Maven > Existing Maven Projects**, with `emf/` as the
    root directory. The importer walks the whole tree, so that one root
    still finds the five bundles nested under `emf/bundles/` and the parity
-   suite nested under `emf/tests/parity`; import every module.
+   suite nested under `emf/tests/parity`; import every module. Five of the six
+   are `eclipse-plugin` packaging, which m2e maps through the Tycho
+   configurator: accept the connector if the importer offers to install one,
+   and restart when it asks.
 3. In `dev.jorisjonkers.deploykit.emf.metamodel`, open `model/skeleton.ecore`.
    Open `model/empty.xmi` with the Sample Reflective Ecore Model Editor, load
    `model/skeleton.ocl` through **OCL > Load Document**, and validate: the
