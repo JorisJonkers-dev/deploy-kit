@@ -136,6 +136,24 @@ class LedgersTest {
     }
 
     @Test
+    fun `a pending count that drifts fails`(
+        @TempDir root: Path,
+    ) {
+        write(root, "docs/requirements.md", MODEL_ROW)
+        write(
+            root,
+            "emf/docs/witnesses.md",
+            listOf(
+                "This list holds **0** witnesses, and **2** pending.",
+                "| $MODEL | not yet | #87 |",
+            ).joinToString("\n"),
+        )
+
+        assertThat(Ledgers.checkWitnesses(root))
+            .containsExactly("emf/docs/witnesses.md: states 2 pending but holds 1")
+    }
+
+    @Test
     fun `a pending row with no stated pending count fails`(
         @TempDir root: Path,
     ) {
