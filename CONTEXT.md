@@ -205,7 +205,7 @@ then treated as an input like any other.
 must be unique across the estate or draws on a shared finite resource
 ([0004](docs/adr/model/0004-contention-decides-authority.md)).
 
-**ResolvedService**: the projection of the Resolved Deployment belonging to one
+**ResolvedApplication**: the projection of the Resolved Deployment belonging to one
 Application, obtained by filtering and published back to its repository
 ([0033](docs/adr/model/0033-assignments-published-back.md)).
 
@@ -277,7 +277,9 @@ is not a deploy.
 
 **Service.** Retired as a model word: the level is **Application**
 ([0116](docs/adr/model/0116-project-application-process.md)). Say *Service*
-only for the Kubernetes `Service` object a Deliverable contains.
+only for the Kubernetes `Service` object a Deliverable contains. The layer-2
+projection followed the same rename: the kind is **ResolvedApplication**, and
+`ResolvedService` is retired with the word it was built from.
 
 **Workload.** Retired as a model word: the level is **Process**. A rendered
 `workload.yaml` keeps the name, because layer 3 spells what the target calls

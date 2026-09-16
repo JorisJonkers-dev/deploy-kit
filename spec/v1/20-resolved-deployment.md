@@ -19,13 +19,13 @@ apiVersion: resolved.jorisjonkers.dev/v1
 kind: ResolvedDeployment     # one document, the whole composed estate
 ---
 apiVersion: resolved.jorisjonkers.dev/v1
-kind: ResolvedService        # the projection published back to one repository
+kind: ResolvedApplication        # the projection published back to one repository
 ```
 
 `ResolvedDeployment` covers the whole composed estate because assignments are
 not separable: the tier carrying each host, the Reconcile Unit DAG, inbound-edge
 derivations and the reader set of a Secret Store path are global properties
-([chapter 16](16-dependencies.md)). `ResolvedService` is a **projection**: the
+([chapter 16](16-dependencies.md)). `ResolvedApplication` is a **projection**: the
 slice belonging to one Application, obtained by filtering and never computed
 separately, so the two cannot disagree about what was decided.
 
@@ -744,7 +744,7 @@ consumer is ever added; only the number of consumers does.
 
 Because contended values are platform-arbitrated, an Application owner cannot read
 their own node placement or Secret Store paths out of their own repository.
-Composition therefore writes each Application's `ResolvedService` projection into
+Composition therefore writes each Application's `ResolvedApplication` projection into
 that Application's repository as a generated file (
 `platform/resolved.yml`) and opens a pull request when it changes
 ([0033](../../docs/adr/model/0033-assignments-published-back.md)).
@@ -797,7 +797,7 @@ arrives as a review request.
 # applications/knowledge/platform/resolved.yml
 # GENERATED. Never hand-edit. Written by compose; guarded by a drift check.
 apiVersion: resolved.jorisjonkers.dev/v1
-kind: ResolvedService
+kind: ResolvedApplication
 project: knowledge
 application: knowledge
 

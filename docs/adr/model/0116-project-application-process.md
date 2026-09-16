@@ -9,6 +9,14 @@ rests-on: ["0003"]
 
 # The authored hierarchy is Project, Application and Process, named for a reader who does not work with deployments
 
+> **Amended 2026-09-16.** The rename reached layer 2: the projection kind is
+> `ResolvedApplication`, not `ResolvedService`. One document kind was still
+> built from the retired word, which left `CONTEXT.md` retiring *Service* and
+> defining `ResolvedService` four entries apart. The decision is unchanged; it
+> is applied where it had not yet been. The rename is free because no oracle
+> file names the kind: the first `resolved.json` lands with the metamodel that
+> gives it a shape ([#42](https://github.com/JorisJonkers-dev/deploy-kit/issues/42)).
+
 ## Rests on
 The three levels of layer 1 are fixed by the model rather than by any
 substrate ([0003](0003-three-model-pipeline.md)): one authored file with one
