@@ -8,4 +8,12 @@
             class="dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage"
             genModel="model/project-intent.genmodel"/>
    </extension>
+   <extension point="org.eclipse.emf.ecore.generated_package">
+      <!-- @generated resolved-deployment -->
+      <package
+            uri="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1"
+            class="dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeploymentPackage"
+            genModel="model/resolved-deployment.genmodel"/>
+   </extension>
+
 </plugin>

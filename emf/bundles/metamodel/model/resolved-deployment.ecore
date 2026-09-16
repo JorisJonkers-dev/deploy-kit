@@ -1,0 +1,343 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The Resolved Deployment target metamodel, written by hand (docs/adr/emf/0109).
+
+  It holds two halves in one package, and that is deliberate
+  (emf/docs/architecture.md#metamodels). The first half is every decision
+  layer 2 takes, in the words CONTEXT.md gives them. The second is the typed
+  resources the Acceleo templates walk, with the path each one is written to.
+  The production implementation keeps those two apart, because nothing there
+  reads them together; a model-to-text template reads one model, so here they
+  are one package. That difference is why the parity contract compares the two
+  implementations through dependency edges and generated files rather than
+  through `resolved.json`.
+
+  Every value in the first half is a decision someone could review. Every value
+  in the second is a spelling of one, and no name there appears in the first.
+-->
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="resolveddeployment" nsURI="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1"
+    nsPrefix="resolveddeployment">
+
+  <!-- ==================================================== the decisions -->
+
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedDeployment">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="apiVersion" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="provenance" lowerBound="1" eType="#//Provenance" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="applications" lowerBound="1" upperBound="-1" eType="#//ResolvedApplication" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="reconcileUnits" lowerBound="1" upperBound="-1" eType="#//ReconcileUnit" containment="true"/>
+    <!-- Layer 2 assigns every output path (docs/adr/model/0070). -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="deliverables" lowerBound="1" upperBound="-1" eType="#//Deliverable" containment="true"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="Provenance">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="renderHash" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="schemaPackageIntegrity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="inputDigests" lowerBound="1" upperBound="-1" eType="#//InputDigest" containment="true"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="InputDigest">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="input" lowerBound="1" eType="#//PinnedInput"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="digest" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ReconcileUnit">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" iD="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- An arrow means: must be Ready first. A reference, never a string. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="after" upperBound="-1" eType="#//ReconcileUnit"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedApplication">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" iD="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="project" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="alertClass" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="reconcileUnit" lowerBound="1" eType="#//ReconcileUnit"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="releaseGate" lowerBound="1" eType="#//ReleaseGate" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="exposure" upperBound="-1" eType="#//ResolvedExposure" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess" containment="true"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ReleaseGate">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="deadline" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="members" lowerBound="1" upperBound="-1" eType="#//GateMember" containment="true"/>
+  </eClassifiers>
+
+  <!-- A Process declaring `probes: none` publishes no readiness and is no member. -->
+  <eClassifiers xsi:type="ecore:EClass" name="GateMember">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="readiness" lowerBound="1" eType="#//ProbeTarget" containment="true"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedProcess">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" iD="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="uid" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="gid" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cutover" lowerBound="1" eType="#//Cutover"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="deadline" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="replicas" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="hardening" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- True only where a grant carries `delivery: self` (docs/adr/model/0087). -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="identityToken" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="component" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="readiness" eType="#//ResolvedProbe" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="liveness" eType="#//ResolvedProbe" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="startup" eType="#//StartupProbe" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="surfaces" upperBound="-1" eType="#//ResolvedSurface" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="placement" lowerBound="1" eType="#//ResolvedPlacement" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="volumes" upperBound="-1" eType="#//ResolvedVolume" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="secrets" upperBound="-1" eType="#//ResolvedGrant" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dependencies" upperBound="-1" eType="#//ResolvedEdge" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="writablePaths" upperBound="-1" eType="#//WritablePath" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="environment" upperBound="-1" eType="#//EnvEntry" containment="true"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedSurface">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+
+  <!-- A probe answers on a path and a port, or on a port alone. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ProbeTarget" abstract="true"/>
+
+  <eClassifiers xsi:type="ecore:EClass" name="HttpTarget" eSuperTypes="#//ProbeTarget">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="TcpTarget" eSuperTypes="#//ProbeTarget">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="tcp" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+
+  <!-- Readiness and liveness take the Platform document's cadence. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedProbe">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="target" lowerBound="1" eType="#//ProbeTarget" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="period" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="failures" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+
+  <!--
+    Its own class, because its cadence derives from a different input: the
+    Process's own `startupBudget`, where the other two take the estate's
+    cadence (docs/adr/model/0088).
+  -->
+  <eClassifiers xsi:type="ecore:EClass" name="StartupProbe">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="target" lowerBound="1" eType="#//ProbeTarget" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="period" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="failures" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedPlacement">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="eligibleNodes" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- A bound volume pins a Process; the binding is read from the snapshot. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="boundTo" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="from" eType="#//PinnedInput"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedVolume">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="claim" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="size" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="durability" lowerBound="1" eType="#//DurabilityClass"/>
+    <!-- `reconstructible` earns none, which is the absence rather than a class. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="backup" eType="#//BackupPlan" containment="true"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="BackupPlan">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="schedule" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="retain" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="offCluster" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="method" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedGrant">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="keys" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="access" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="delivery" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="restartTargets" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!--
+    A resolved dependency edge: the provider, the surface, the address the
+    consumer is given and the peers the policy allows. This is the half of
+    resolution both implementations must agree on before either renders, and
+    it is exported as the parity contract's `dependencies.json`.
+  -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedEdge">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="application" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="surface" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="address" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="peers" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="PolicyPeer">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="process" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="WritablePath">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="size" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="EnvEntry">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedExposure">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="host" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="tier" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="routes" lowerBound="1" upperBound="-1" eType="#//ResolvedRoute" containment="true"/>
+  </eClassifiers>
+
+  <!--
+    The middleware chain hangs off the route, not off the host: it derives from
+    the tier, the audience and the content policy, and a route may override the
+    audience, so an anonymous path inside an authenticated host derives a chain
+    with no forward-auth.
+  -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedRoute">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="match" lowerBound="1" eType="#//Match"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="audience" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Specificity alone, smallest evaluated first (docs/adr/model/0093). -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="precedence" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="surface" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="middleware" upperBound="-1" eType="#//MiddlewareStep" containment="true"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="MiddlewareStep">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//MiddlewareKind"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="contentPolicy" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="endpoint" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="redirectTo" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- ============================================ the generated resources -->
+
+  <!--
+    One class per resource family of the project proposal's generated-resources
+    table, each carrying the path it is written to. A template walks these; it
+    decides nothing, so no attribute here is a value a reviewer would argue
+    with, only the spelling of one decided above.
+  -->
+  <eClassifiers xsi:type="ecore:EClass" name="Deliverable" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" iD="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="adapter" lowerBound="1" eType="#//AdapterName"/>
+  </eClassifiers>
+
+  <!-- A named cluster partition for the project. -->
+  <eClassifiers xsi:type="ecore:EClass" name="NamespaceFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- An index file listing what to deploy. -->
+  <eClassifiers xsi:type="ecore:EClass" name="IndexFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="resources" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!--
+    The definitions that run a Process, give it an identity and keep enough
+    instances available during maintenance: the controller and its Service, the
+    identity it runs as, and the budget a drain honours.
+  -->
+  <eClassifiers xsi:type="ecore:EClass" name="WorkloadFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="controller" lowerBound="1" eType="#//ControllerKind"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="strategy" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="disruptionBudget" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="IdentityFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
+  </eClassifiers>
+
+  <!-- Firewall rules allowing the declared connections and blocking the rest. -->
+  <eClassifiers xsi:type="ecore:EClass" name="NetworkPolicyFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="ingress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="egress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
+  </eClassifiers>
+
+  <!-- Web proxy rules sending each address and path to the right Process. -->
+  <eClassifiers xsi:type="ecore:EClass" name="IngressRouteFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="exposure" lowerBound="1" eType="#//ResolvedExposure"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="entryPoint" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="certificateResolver" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- Where metrics are collected, and how often. -->
+  <eClassifiers xsi:type="ecore:EClass" name="MonitorFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="surface" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="scrapePath" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- The permissions granting each Process only its allowed secrets. -->
+  <eClassifiers xsi:type="ecore:EClass" name="SecretFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="grants" lowerBound="1" upperBound="-1" eType="#//ResolvedGrant"/>
+  </eClassifiers>
+
+  <!-- ==================================================== vocabularies -->
+
+  <eClassifiers xsi:type="ecore:EEnum" name="PinnedInput">
+    <eLiterals name="intentFragment" literal="intent-fragment"/>
+    <eLiterals name="platformIntent" value="1" literal="platform-intent"/>
+    <eLiterals name="nodeContract" value="2" literal="node-contract"/>
+    <eLiterals name="imagesLock" value="3" literal="images-lock"/>
+    <eLiterals name="clusterState" value="4" literal="cluster-state"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EEnum" name="Cutover">
+    <eLiterals name="rolling" literal="rolling"/>
+    <eLiterals name="recreate" value="1" literal="recreate"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EEnum" name="Match">
+    <eLiterals name="prefix" literal="prefix"/>
+    <eLiterals name="exact" value="1" literal="exact"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EEnum" name="DurabilityClass">
+    <eLiterals name="reconstructible" literal="reconstructible"/>
+    <eLiterals name="recoverable" value="1" literal="recoverable"/>
+    <eLiterals name="irreplaceable" value="2" literal="irreplaceable"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EEnum" name="MiddlewareKind">
+    <eLiterals name="forwardAuth" literal="forward-auth"/>
+    <eLiterals name="securityHeaders" value="1" literal="security-headers"/>
+    <eLiterals name="redirect" value="2" literal="redirect"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EEnum" name="AdapterName">
+    <eLiterals name="kubernetes" literal="kubernetes"/>
+    <eLiterals name="networking" value="1" literal="networking"/>
+    <eLiterals name="prometheus" value="2" literal="prometheus"/>
+    <eLiterals name="traefik" value="3" literal="traefik"/>
+    <eLiterals name="vaultPolicy" value="4" literal="vault-policy"/>
+    <eLiterals name="vso" value="5" literal="vso"/>
+  </eClassifiers>
+
+  <!-- The kind derives from `lifecycle` and `volumes`; the template spells it. -->
+  <eClassifiers xsi:type="ecore:EEnum" name="ControllerKind">
+    <eLiterals name="deployment" literal="Deployment"/>
+    <eLiterals name="statefulSet" value="1" literal="StatefulSet"/>
+    <eLiterals name="cronJob" value="2" literal="CronJob"/>
+  </eClassifiers>
+
+</ecore:EPackage>
