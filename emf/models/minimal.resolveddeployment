@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The `minimal` case as a Resolved Deployment model, written and reviewed by
+  hand (issue #87).
+
+  It is NOT an oracle. `spec/v1/examples/minimal/expected/resolved.json` binds
+  the production implementation only, because the two implementations shape
+  layer 2 differently on purpose (emf/docs/architecture.md#metamodels). This
+  file is what the Acceleo templates are first run against (#94) and what the
+  QVT-Operational tracer must produce (#90), so it is the target half of both
+  tracers before either exists.
+
+  Every value here is derivable from `spec/v1/examples/minimal/notes.project.yml`
+  and the pinned Platform document and node contract beside it. The digests are
+  fixtures: nothing computes a render hash yet.
+-->
+<resolveddeployment:ResolvedDeployment
+    xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1"
+    apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+
+  <provenance renderHash="sha256:a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4"
+      schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+    <inputDigests input="intent-fragment" name="notes" digest="sha256:1122334411223344112233441122334411223344112233441122334411223344"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:9a8b7c6d9a8b7c6d9a8b7c6d9a8b7c6d9a8b7c6d9a8b7c6d9a8b7c6d9a8b7c6d"/>
+    <inputDigests input="node-contract" name="production" digest="sha256:6f1c2a8e6f1c2a8e6f1c2a8e6f1c2a8e6f1c2a8e6f1c2a8e6f1c2a8e6f1c2a8e"/>
+    <inputDigests input="images-lock" name="estate" digest="sha256:0f1e2d3c0f1e2d3c0f1e2d3c0f1e2d3c0f1e2d3c0f1e2d3c0f1e2d3c0f1e2d3c"/>
+    <inputDigests input="cluster-state" name="production" digest="sha256:4b5a69784b5a69784b5a69784b5a69784b5a69784b5a69784b5a69784b5a6978"/>
+  </provenance>
+
+  <!-- notes holds no dependency and no grant, so its unit follows nothing. -->
+  <reconcileUnits name="apps-notes"/>
+
+  <applications id="notes" project="notes" namespace="notes-system"
+      alertClass="business-hours" reconcileUnit="//@reconcileUnits.0">
+    <releaseGate deadline="60s">
+      <members process="//@applications.0/@processes.0">
+        <readiness xsi:type="resolveddeployment:HttpTarget" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            path="/healthz/ready" port="8080"/>
+      </members>
+    </releaseGate>
+
+    <exposure name="public" host="notes.jorisjonkers.dev" tier="public-frankfurt">
+      <!-- One prefix route, so precedence is 1 and nothing competes with it. -->
+      <routes path="/" match="prefix" audience="anonymous" precedence="1"
+          process="//@applications.0/@processes.0" surface="http">
+        <!-- Anonymous, so no forward-auth; `contentPolicy: strict` is authored. -->
+        <middleware kind="security-headers" contentPolicy="strict"/>
+      </routes>
+    </exposure>
+
+    <processes name="notes-api" identity="notes-api"
+        image="ghcr.io/jorisjonkers-dev/notes/notes-api@sha256:9c1e5a4b7d2f8e3a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a"
+        uid="1000" gid="1000" cutover="rolling" deadline="60s" replicas="1"
+        memory="256Mi" cpu="50m" hardening="restricted" identityToken="false"
+        component="node">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            path="/healthz/ready" port="8080"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            path="/healthz/live" port="8080"/>
+      </liveness>
+      <!-- 5s x 4 is the 20s budget the Process declares. -->
+      <startup period="5s" failures="4">
+        <target xsi:type="resolveddeployment:HttpTarget" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            path="/healthz/live" port="8080"/>
+      </startup>
+      <surfaces name="http" port="8080"/>
+      <!--
+        Nothing narrows the set: this Process declares no arch, no capability,
+        no disk medium and holds no volume, so every node the contract
+        publishes is eligible.
+      -->
+      <placement eligibleNodes="enschede-t1000-1 enschede-rx7900xtx-1 enschede-gtx-960m-1 enschede-pi-1 enschede-pi-2 enschede-pi-3 frankfurt-contabo-1"/>
+      <environment name="DEPLOYMENT_ENVIRONMENT" value="production"/>
+      <environment name="NODE_ENV" value="production"/>
+      <environment name="NOTES_PAGE_SIZE" value="50"/>
+      <environment name="OTEL_EXPORTER_OTLP_ENDPOINT" value="http://otel-collector.utility-system.svc.cluster.local:4317"/>
+      <environment name="OTEL_SERVICE_NAME" value="notes-api"/>
+      <environment name="PORT" value="8080"/>
+    </processes>
+  </applications>
+
+  <!--
+    One entry per file the templates write, each with the path layer 2 assigned
+    it. These are the paths under spec/v1/examples/minimal/rendered/.
+  -->
+  <deliverables xsi:type="resolveddeployment:NamespaceFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      path="namespace.yaml" adapter="kubernetes" namespace="notes-system"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      path="kustomization.yaml" adapter="kubernetes" resources="namespace.yaml apps/notes"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      path="apps/notes/kustomization.yaml" adapter="kubernetes" namespace="notes-system"
+      resources="workload.yaml serviceaccount.yaml servicemonitor.yaml networkpolicy.yaml"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      path="apps/notes/workload.yaml" adapter="kubernetes" process="//@applications.0/@processes.0"
+      controller="Deployment" strategy="RollingUpdate"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      path="apps/notes/serviceaccount.yaml" adapter="kubernetes" process="//@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:MonitorFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      path="apps/notes/servicemonitor.yaml" adapter="prometheus" process="//@applications.0/@processes.0"
+      surface="http" scrapePath="/metrics" interval="30s"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      path="apps/notes/networkpolicy.yaml" adapter="networking" process="//@applications.0/@processes.0">
+    <!-- The edge and the metrics stack reach it; nothing else does. -->
+    <ingress namespace="kube-system" process="traefik-public" port="8080"/>
+    <ingress namespace="utility-system" process="prometheus" port="8080"/>
+    <egress namespace="kube-system" process="kube-dns" port="53"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IngressRouteFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      path="edge/ingressroutes.yaml" adapter="traefik" exposure="//@applications.0/@exposure.0"
+      entryPoint="websecure" certificateResolver="letsencrypt"/>
+</resolveddeployment:ResolvedDeployment>

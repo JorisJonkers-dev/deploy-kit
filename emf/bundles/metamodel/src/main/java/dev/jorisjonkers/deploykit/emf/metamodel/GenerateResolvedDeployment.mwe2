@@ -1,0 +1,21 @@
+module dev.jorisjonkers.deploykit.emf.metamodel.GenerateResolvedDeployment
+
+import org.eclipse.emf.mwe.utils.*
+import org.eclipse.emf.mwe2.ecore.*
+
+var rootPath = ".."
+var project = "dev.jorisjonkers.deploykit.emf.metamodel"
+
+// The genmodel's Java, written under target/ and never committed
+// (emf/docs/architecture.md#metamodels).
+Workflow {
+	bean = StandaloneSetup {
+		scanClassPath = true
+		projectMapping = { projectName = project path = "${rootPath}/metamodel" }
+	}
+	component = EcoreGenerator {
+		genModel = "platform:/resource/${project}/model/resolved-deployment.genmodel"
+		srcPath = "platform:/resource/${project}/target/generated-sources/emf"
+		lineDelimiter = "\n"
+	}
+}

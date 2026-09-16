@@ -100,6 +100,14 @@ and cost every path in the tree.
 | `bundles/cli` | the pipeline entry point: files in, the parsed intent, diagnostics and rendered files out | Task 1 onward |
 | `tests/parity` | JUnit suites asserting each stage against the committed oracles, and the witness ledger check | no task grades it |
 
+Beside the two tiers sits `models/`, which is neither: hand-written example
+models, in the target metamodel's own XMI. They belong to no module because
+two use them from opposite ends. `minimal.resolveddeployment` is what the
+Acceleo templates are first run against and what the QVT-Operational
+transformation must produce, so it is the target half of both tracers before
+either exists. It is **not an oracle**: `resolved.json` binds the production
+implementation only, for the reason [Metamodels](#metamodels) gives.
+
 A module may depend on the modules above it in this table and on nothing
 below. `tests/parity` depends on no module at all: it reads the files a run
 leaves behind, which is what [Parity](#parity) records.
@@ -138,6 +146,13 @@ Typed Java for each metamodel is generated from its `.genmodel` during the
 Maven build into `target/`, and never committed: an MWE2 workflow runs EMF's
 `EcoreGenerator` in `generate-sources`, and the generated packages are left out
 of formatting, coverage and mutation.
+
+The target metamodel holds the two halves in one package: every decision
+layer 2 takes, and one class per resource family of the project proposal's
+generated-resources table, each carrying the path it is written to. A template
+walks the second half and decides nothing, so no name in it appears in the
+first: a `WorkloadFile` carries the controller kind and the strategy that spell
+a Process's `cutover`, and the `cutover` itself stays on the Process.
 
 The descriptor exporter walks the source `EPackage` reflectively and writes the
 descriptor the parity contract fixes. It is the only place the Ecore structure
