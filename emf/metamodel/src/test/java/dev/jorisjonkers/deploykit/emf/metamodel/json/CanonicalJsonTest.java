@@ -1,4 +1,4 @@
-package dev.jorisjonkers.deploykit.emf.parity;
+package dev.jorisjonkers.deploykit.emf.metamodel.json;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
