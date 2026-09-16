@@ -182,7 +182,6 @@ field's placement link to this anchor rather than copying rows.
 | `exposure[].routes`: `path`, `match`, `process`, `surface`, `redirectTo` | Application | no contention | which of the Application's own Processes serves which path of the host. The surface must be one that Process `provides` (`E_UNKNOWN_SURFACE`); no two routes may share a `path` + `match` pair (`E_DUPLICATE_ROUTE_MATCH`); `redirectTo` is a path, never a regex |
 | `probes`, `startupBudget`, `cutover` | Application | no contention | what only the Application knows about its own start, health and cutover; `cutover` is required and has no default |
 | `hardening` | platform | no contention | one estate-wide posture, `restricted`. A Process authors no hardening at all: it declares the paths it must write, and an image that cannot meet the class is `E_HARDENING_UNMET` ([0016](../../docs/adr/model/0016-pod-hardening.md)) |
-| `volumes[].durability` | Application | no contention | what the data is worth cannot be observed |
 | `placement.memory`, `placement.cpu` | Application | pool, stated | required on every Process; the Application states the requirement, the platform arbitrates it against node allocatable |
 | `placement.gpu` | Application | pool, stated | `class` and `memory`, matched against the node contract's `gpus[].class` and `gpus[].memory_mib`; a card is held by one Process at a time |
 | `placement.disk` | Application | pool, stated | a `media` set; it filters the first placement and the PV binding wins thereafter: `E_DISK_BINDING_CONFLICT` |
@@ -331,10 +330,24 @@ where it is an observed fact captured once and digested
 state, and it may not be read ad hoc. Anything a future assignment needs is
 first a schema change to a pinned input, and only then a feature.
 
-The artifact carries what makes it reproducible, reusing the fields
-`artifact-contract.schema.json` already defines: `renderHash`, `inputDigests`
-(`intent`, `imagesLock`, `clusterState`), `contextRef` as an OCI digest,
-`adapterCompat.digest`, and `schemaPackageIntegrity`.
+The artifact carries what makes it reproducible: `renderHash`,
+`schemaPackageIntegrity`, and **one digest per pinned input**, each named and
+classified by which input it is. The set is the set this section opened with:
+every Intent Fragment (each project file, and the Platform document), the node
+contract the Platform document names, the images lock, and the ClusterState
+snapshot. One entry per fragment rather than one `intent` digest for all of
+them, because the claim is that re-rendering from *these* inputs reproduces this
+tree, and a single digest over the union cannot say which fragment moved.
+
+Two fields the previous generation carried are gone.
+`contextRef`, an OCI digest of a published context bundle, named a second
+publication path that [0098](../../docs/adr/model/0098-one-publication-path.md)
+deleted: a repository publishes its Intent Fragment and nothing else.
+`adapterCompat.digest` paired publish-time producers with their consumers, and
+those producers are deleted with it ([chapter 30](30-deliverables.md#adapters)),
+so the field padded `renderHash` with a digest over a map that no longer exists.
+A digest of something nothing reads makes `renderHash` change for a reason no
+input explains, which is the opposite of the second property below.
 
 Two properties follow, and both are conditional on the whole digest set:
 
@@ -766,7 +779,12 @@ cannot be one Application is not a missing feature; it is evidence the Applicati
 boundary is drawn wrong.
 
 The derived unit has one consumer in v1: the Flux `Kustomization` DAG, whose
-`dependsOn` edges and health timeout class are this derivation's output. What a
+`dependsOn` edges are this derivation's output. The health timeout class that
+sentence used to name with them is deleted
+([0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md),
+[There is no health timeout class](#derived-mechanics)); what an applier waits
+on per Application is the release gate's deadline, and what it waits on between
+units is this ordering. What a
 push-based applier would do with the same ordering (apply its slice layer by
 layer) belongs to the separately-defined delivery work in
 [docs/adr/deferred/](../../docs/adr/deferred/README.md), along with everything
@@ -833,109 +851,204 @@ arrives as a review request.
 apiVersion: resolved.jorisjonkers.dev/v1
 kind: ResolvedApplication
 project: knowledge
-application: knowledge
+id: knowledge
 
 provenance:
   renderHash: sha256:…
-  contextRef: ghcr.io/jorisjonkers-dev/cluster-deploy-context-public@sha256:…
-  inputDigests:
-    intent: sha256:…                   # the knowledge project file
-    imagesLock: sha256:…
-    clusterState: sha256:…             # the snapshot the bindings below were read from
+  schemaPackageIntegrity: sha256:…
+  inputDigests:                        # one entry per pinned input, named
+    - {input: intent-fragment, name: knowledge, digest: sha256:…}
+    - {input: intent-fragment, name: auth, digest: sha256:…}
+    - {input: intent-fragment, name: data, digest: sha256:…}
+    # … one per project in the composed union, the Platform document included
+    - {input: platform-intent, name: jorisjonkers.dev, digest: sha256:…}
+    - {input: node-contract, name: production, digest: sha256:…}
+    - {input: images-lock, name: estate, digest: sha256:…}
+    - {input: cluster-state, name: production, digest: sha256:…}
 
-assigned:
-  namespace: knowledge-system          # <project>-system, derived, not arbitrated
-  reconcileUnit: apps-knowledge
-  reconcileAfter: [apps-core, apps-data, apps-vso-secrets]
-  healthTimeoutClass: stateful         # 10m, strongest class across the two Processes
+namespace: knowledge-system          # <project>-system, derived, not arbitrated
+reconcileUnit: apps-knowledge
+reconcileAfter: [apps-core, apps-data, apps-vso-secrets]
 
-  exposure:                            # on the Application: one host, its routes
-    public:
-      host: knowledge.jorisjonkers.dev # authored; carried through untouched
-      tier: public-frankfurt           # arbitrated: the tier carrying `authenticated`
-      middleware: [forward-auth]       # derived from audience + tier; the
-                                       # anonymous routes render without it
-      routes:                          # five authored, two shown
-        - {path: /mcp, match: exact,  process: knowledge-api, surface: http, audience: anonymous}
-        - {path: /,    match: prefix, process: knowledge-api, surface: http}
+releaseGate:                         # the inputs, not an object (0071)
+  deadline: 1800s                    # max over the members
+  members:
+    - {process: knowledge-api, readiness: {path: /api/actuator/health/readiness, port: 8080}}
+  # knowledge-ingest-worker declares `probes: none`, so it publishes no
+  # readiness signal and cannot be gated. It is not a member. An Application
+  # whose Processes ALL declare `probes: none` is
+  # E_RELEASE_UNIT_NO_READINESS at composition.
 
-  processes:
-    knowledge-api:
-      serviceAccount: knowledge-api    # the Process name alone
-      objectKind: Deployment
-      image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-api@sha256:1ad39d5…
-      probes:
-        readiness: {path: /api/actuator/health/readiness, port: 8080, periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 3}
-        liveness:  {path: /api/actuator/health/liveness, port: 8080, periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 3}
-        startup:   {path: /api/actuator/health/liveness, port: 8080, periodSeconds: 5, failureThreshold: 120}
-      strategy: {type: RollingUpdate, maxSurge: 1, maxUnavailable: 0}
-      progressDeadlineSeconds: 1800
-      resources:                       # memory request == limit; cpu request, no cpu limit
-        requests: {memory: 768Mi, cpu: 250m}
-        limits:   {memory: 768Mi}
-      securityContext:                 # from hardening: restricted, no exceptions
-        runAsNonRoot: true
-        readOnlyRootFilesystem: true
-        capabilities: {drop: [ALL]}
-        seccompProfile: {type: RuntimeDefault}
-      placement:
-        declared: {memory: 768Mi, cpu: 250m, capabilities: [public-ingress]}
-        eligibleNodes: [frankfurt-contabo-1]   # the one node advertising public-ingress
-        nodeSelector:
-          platform.jorisjonkers.dev/capability-public-ingress: "true"
-      secretObjects:
-        - {kind: VaultStaticSecret, path: secret/data/platform/postgres/kb}
+exposure:                            # on the Application: one host, its routes
+  - name: public
+    host: knowledge.jorisjonkers.dev # authored; carried through untouched
+    tier: public-frankfurt           # arbitrated: the tier carrying `authenticated`
+    routes:                          # five authored, two shown
+      - path: /mcp
+        match: exact
+        process: knowledge-api
+        surface: http
+        audience: anonymous          # the route's override
+        precedence: 1
+        middleware:                  # no forward-auth: the audience is anonymous
+          - {kind: security-headers} # the baseline: this Application names no profile
+      - path: /
+        match: prefix
+        process: knowledge-api
+        surface: http
+        audience: authenticated      # the Application's, carried onto the route
+        precedence: 3
+        middleware:
+          - {kind: forward-auth, endpoint: 'http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward'}
+          - {kind: security-headers}
 
-    knowledge-ingest-worker:
-      serviceAccount: knowledge-ingest-worker
-      objectKind: Deployment
-      strategy: {type: Recreate}       # forced: RWO volume
-      resources:
-        requests: {memory: 512Mi, cpu: 100m}
-        limits:   {memory: 512Mi}
-      placement:
-        declared: {memory: 512Mi, cpu: 100m, disk: {media: [nvme], size: 100Gi}}
-        eligibleNodes: [enschede-t1000-1, enschede-rx7900xtx-1]
-        boundTo: enschede-t1000-1
-        from: clusterState             # PV knowledge-vault-clone is bound there
-        moveRequires: state-move-plan
+processes:
+  - name: knowledge-api
+    identity: knowledge-api          # the Process name alone
+    image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-api@sha256:1ad39d5…
+    uid: 1000
+    gid: 1000
+    cutover: rolling                 # granted: this Process holds no volume
+    deadline: 1800s                  # startupBudget × 3
+    replicas: 1
+    memory: 768Mi                    # request and limit alike; the shape is derived
+    cpu: 250m                        # request only
+    hardening: restricted
+    identityToken: false             # no grant carries `delivery: self`
+    readiness: {path: /api/actuator/health/readiness, port: 8080, period: 10s, timeout: 5s, failures: 3}
+    liveness:  {path: /api/actuator/health/liveness,  port: 8080, period: 10s, timeout: 5s, failures: 3}
+    startup:   {path: /api/actuator/health/liveness,  port: 8080, period: 5s,  failures: 120}
+    writablePaths:
+      - {path: /tmp, size: 64Mi}     # the Platform document's ephemeral size
+    placement:
+      eligibleNodes: [frankfurt-contabo-1]   # the one node advertising public-ingress
+    secrets:
+      - {path: secret/data/platform/postgres/kb, access: read, delivery: env}
+      - {path: secret/data/platform/rabbitmq,    access: read, delivery: env}
+      - {path: secret/data/knowledge-system/mcp-bearer, access: read, delivery: env}
+    dependencies:
+      - {application: platform-postgres, surface: postgres, address: 'platform-postgres.data-system.svc.cluster.local:5432'}
+      - {application: platform-rabbitmq, surface: amqp,     address: 'platform-rabbitmq.data-system.svc.cluster.local:5672'}
+
+  - name: knowledge-ingest-worker
+    identity: knowledge-ingest-worker
+    image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-ingest-worker@sha256:8b0c41e…
+    uid: 1000
+    gid: 1000
+    cutover: recreate                # granted: forced by the volume below
+    deadline: 360s
+    replicas: 1
+    memory: 256Mi
+    cpu: 50m
+    hardening: restricted
+    identityToken: false
+    placement:
+      eligibleNodes: [enschede-t1000-1, enschede-rx7900xtx-1]
+      boundTo: enschede-t1000-1
+      from: cluster-state            # PV knowledge-vault-clone is bound there
+    volumes:
+      - claim: knowledge-vault-clone
+        size: 20Gi                   # the authored size, carried through
+        durability: irreplaceable
+        backup:
+          schedule: '45 2 * * *'     # the platform's policy for the class
+          retain: 90
+          offCluster: 's3://backup-storage/jorisjonkers-dev'
+          method: ghcr.io/jorisjonkers-dev/platform/file-backup@sha256:…
+    secrets:
+      - {path: secret/data/platform/postgres/kb, access: read, delivery: env}
+      - {path: secret/data/platform/rabbitmq,    access: read, delivery: env}
+      - {path: secret/data/knowledge-system/vault-deploy-key, access: read, delivery: file}
+    dependencies:
+      - {application: platform-rabbitmq, surface: amqp,     address: 'platform-rabbitmq.data-system.svc.cluster.local:5672'}
+      - {application: platform-postgres, surface: postgres, address: 'platform-postgres.data-system.svc.cluster.local:5432'}
 ```
 
-Four things in that block are worth reading closely.
+Six things in that block are worth reading closely.
 
-`exposure` sits beside `processes:`, not inside one, because it belongs to the
-Application ([0018](../../docs/adr/model/0018-exposure-by-audience.md)): a host fronts
-Processes, and the routes under it are how it picks between them. The projection
-records the entry even though the owner authored `host` and every route
-themselves, because the two lines they did not write are the ones worth a pull
-request: `tier` and `middleware`, which change when the platform's edge changes
-and not when the `knowledge` repository does. A route carrying `audience:
-anonymous` derives a different chain from the same host, which is the whole
-purpose of the override.
+**Every key names a model concept.** There is no `objectKind`, no
+`strategy: {type: RollingUpdate, maxSurge: 1, maxUnavailable: 0}`, no
+`resources.requests`, no `securityContext`, no `nodeSelector` label key and no
+`secretObjects[].kind`. Layer 2 records that this Process was granted a
+`rolling` cutover, that it takes the `restricted` posture, and that it needs
+768Mi and 250m; the `kubernetes` adapter is where those become a strategy
+block, a security context and a resource block, exactly as Traefik's spellings
+belong to the `traefik` adapter
+([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md),
+[chapter 30](30-deliverables.md#adapters)). A reviewer who wants the rendered
+spelling reads the Deliverable, which is one artifact away.
 
-`placement.declared` echoes back what the Process authored, beside what the
-platform did with it. That is the whole of [Authority](#authority)'s first
-reading on one screen: the requirement is the Application's, the eligible set and
-the binding are the platform's, and the diff shows both moving. Where the two
-disagree (a `disk` dimension the bound node no longer satisfies) composition
-fails with `E_DISK_BINDING_CONFLICT` rather than re-placing.
+**`releaseGate` replaced the health timeout class.** The projection used to
+carry `healthTimeoutClass: stateful`, a second derivation over the same
+`startupBudget` that `deadline` already derives from, and the two disagreed:
+the class gave up at ten minutes on an Application the model says may
+legitimately take thirty. One input has one derivation
+([0005](../../docs/adr/model/0005-derivation-is-total.md)), and the
+Application-scoped number a switchover waits on is the gate's
+([The release gate](#the-release-gate)).
 
-`placement.boundTo` sits under `assigned:` because it *is* an assignment (a
-pure function of the `clusterState` digest recorded above) and `from:` names
-the pinned input it read. `eligibleNodes` beside it comes from a different
-pinned input, the node contract, and would not change if the collector never ran
+**Provenance is one digest per pinned input.** Every fragment is named, not
+folded into one `intent` digest, and neither `contextRef` nor
+`adapterCompat.digest` appears: both named machinery
+[0098](../../docs/adr/model/0098-one-publication-path.md) deleted
+([Pinned inputs](#pinned-inputs)).
+
+**The worker declares what chapter 10 says it declares.** `memory: 256Mi` and
+`cpu: 50m`, and **no disk dimension at all**. An earlier draft of this block
+showed `disk: {media: [nvme], size: 100Gi}` under `declared:`, which was wrong
+twice over: the numbers were not the ones the project file carries, and a
+`placement.disk` dimension filters which nodes may hold a claim without saying
+how large the claim is. The size is the volume's own authored `size`, 20Gi,
+and it appears under `volumes`, once
+([0081](../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md)).
+`placement` here carries only what the platform decided: the eligible set, the
+binding, and the input the binding was read from.
+
+**`boundTo` sits under `placement` because it *is* an assignment**, a pure
+function of the `cluster-state` digest recorded above, and `from:` names the
+pinned input it read. `eligibleNodes` beside it comes from a different pinned
+input, the node contract, and would not change if the collector never ran
 again. Re-rendering with the same digests reproduces both byte for byte; a
-rebound volume produces a different `clusterStateDigest` and therefore a new
-lock, which someone lands deliberately.
+rebound volume produces a different digest and therefore a new lock, which
+someone lands deliberately.
 
-Two identities appear because `knowledge` has two Processes
+**Two identities appear because `knowledge` has two Processes**
 ([chapter 16](16-dependencies.md#process-identity)), and each is named for its
 Process alone: `knowledge-system.knowledge-api`, never
-`knowledge-system.knowledge-knowledge-api`. There is no Application prefix, and no
-collapsing rule for a single-Process Application, an Application with one Process
-shows that Process's name, which may or may not equal the Application id. The
-uniqueness the prefix used to guarantee now comes from the project file, where
-two Processes may not share a name (`E_DUPLICATE_PROCESS_NAME`).
+`knowledge-system.knowledge-knowledge-api`. There is no Application prefix, and
+no collapsing rule for a single-Process Application: an Application with one
+Process shows that Process's name, which may or may not equal the Application
+id. The uniqueness the prefix used to guarantee now comes from the project
+file, where two Processes may not share a name
+(`E_DUPLICATE_PROCESS_NAME`).
+
+Two smaller points. `exposure` sits beside `processes:`, not inside one,
+because it belongs to the Application
+([0018](../../docs/adr/model/0018-exposure-by-audience.md)): a host fronts
+Processes, and the routes under it are how it picks between them. The
+projection records the entry although the owner authored `host` and every route
+themselves, because the two things they did not write are the ones worth a pull
+request: `tier` and `middleware`, which change when the platform's edge changes
+and not when the `knowledge` repository does.
+
+**The chain hangs off the route, not off the host.** It derives from the tier,
+the audience and `contentPolicy`, and a route may override the audience
+([chapter 10](10-project-intent.md#exposure)), so two routes on one host derive
+two different chains: `/mcp` is anonymous and renders no `forward-auth`, while
+`/` keeps the Application's `authenticated` and does. Putting the chain on the
+exposure would make the common case (an anonymous path inside an authenticated
+host) inexpressible, which is the case the per-route override exists for.
+`security-headers` carries no `contentPolicy` here because `knowledge` names no
+profile, so the chain takes the tier's baseline; an Application that writes
+`contentPolicy: admin` gets that profile named on the step.
+
+And `precedence` is an ordinal over specificity alone, smallest evaluated
+first: `exact` before `prefix`, longer prefix before shorter
+([0093](../../docs/adr/model/0093-route-precedence-is-derived.md)). The three
+exact routes share precedence 1, which is not a missing tie-break: two exact
+paths cannot both match one request, so no order between them decides anything.
+The prefixes are ordered, `/mcp/` at 2 ahead of `/` at 3, and that ordering is
+the one thing a proxy used to decide by sorting rule names.
 
 ## Open in this chapter
 
@@ -1005,49 +1118,6 @@ a plain diff. **Where the two disagree the SVG is the diagram and the mermaid is
 what gets fixed**, the same precedence this repository uses between a chapter and
 an ADR.
 
-### The Resolved Deployment: pinned inputs and outputs
-
-```mermaid
-flowchart LR
-    subgraph IN["Pinned inputs: each carried by digest"]
-        i1["Intent Fragment<br/>this project's file + env/"]
-        i2["Platform Intent<br/>contextRef + node contract<br/>(site, allocatable, gpus, disks)"]
-        i3["images lock"]
-        i4["ClusterState snapshot<br/>clusterStateDigest<br/>(PV bindings, current placements)"]
-        i5["Intent Fragments<br/>of every other project"]
-    end
-
-    RD["ResolvedDeployment<br/>one document, whole estate"]
-
-    subgraph OUT["Outputs"]
-        o1["Deliverable Set<br/>layer 3, per adapter"]
-        o2["ResolvedService<br/>per-Application projection"]
-        o3["renderHash<br/>+ inputDigests"]
-    end
-
-    i1 --> RD
-    i2 --> RD
-    i3 --> RD
-    i4 --> RD
-    i5 --> RD
-    RD --> o1
-    RD --> o2
-    RD --> o3
-    o2 -.->|"published back as a pull request"| i1
-```
-
-### The Reconcile Unit DAG
-
-```mermaid
-flowchart LR
-    core["apps-core"] --> vso["apps-vso-secrets"]
-    core --> data["apps-data"]
-    core --> sl["apps-stateless"]
-    data --> know["apps-knowledge"]
-    vso --> know
-    know --> agents["apps-agents"]
-    vso --> agents
-```
 ### The Resolved Deployment model
 
 ```mermaid
@@ -1210,3 +1280,48 @@ classDiagram
 
 ```
 
+### The Resolved Deployment: pinned inputs and outputs
+
+```mermaid
+flowchart LR
+    subgraph IN["Pinned inputs: each carried by digest"]
+        i1["Intent Fragment<br/>this project's file + env/"]
+        i2["Intent Fragments<br/>of every other project"]
+        i3["Platform Intent<br/>tiers, policies, engines, providers"]
+        i4["node contract<br/>site, allocatable, gpus, disks"]
+        i5["images lock<br/>digests, uid, gid"]
+        i6["ClusterState snapshot<br/>PV bindings, current placements"]
+    end
+
+    RD["ResolvedDeployment<br/>one document, whole estate"]
+
+    subgraph OUT["Outputs"]
+        o1["Deliverable Set<br/>layer 3, per adapter"]
+        o2["ResolvedApplication<br/>the per-Application projection"]
+        o3["renderHash + inputDigests"]
+    end
+
+    i1 --> RD
+    i2 --> RD
+    i3 --> RD
+    i4 --> RD
+    i5 --> RD
+    i6 --> RD
+    RD --> o1
+    RD --> o2
+    RD --> o3
+    o2 -.->|"published back as a pull request"| i1
+```
+
+### The Reconcile Unit DAG
+
+```mermaid
+flowchart LR
+    core["apps-core"] --> vso["apps-vso-secrets"]
+    core --> data["apps-data"]
+    core --> sl["apps-stateless"]
+    data --> know["apps-knowledge"]
+    vso --> know
+    know --> agents["apps-agents"]
+    vso --> agents
+```
