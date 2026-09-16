@@ -1,0 +1,63 @@
+\section{Example Models}
+\label{sec:examplemodels}
+
+Four example models instantiate the source metamodel, and each is chosen to
+exercise something the metamodel claims. They are committed beside the
+metamodels, together with the expected result of parsing each one, so that the
+examples are checked rather than illustrative.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.16\linewidth}>{\raggedright\arraybackslash}p{0.76\linewidth}}
+\hline
+\textbf{Example} & \textbf{What it exercises} \\
+\hline
+minimal & The smallest complete model: one project, one application, one
+  process, and nothing that is not required. Everything absent from it is
+  either derived or refused, which makes it the model that shows what the
+  language forces an author to say. \\
+auth & Two processes in one application, so the release gate has more than one
+  member and the gate's deadline is a maximum over members rather than a single
+  value. \\
+data & Several applications in one project sharing a namespace, with storage
+  and the backup plans their durability classes earn. \\
+knowledge & Dependencies across applications, secrets, a volume already bound
+  to a machine, and an exposure whose routes carry different audiences. \\
+\hline
+\end{tabular}
+\caption{The Example Models and What Each One Exercises}
+\label{tab:examples}
+\end{table}
+
+\subsection{The Minimal Model}
+
+The minimal model is the one to read first. It declares a project with one
+application and one process, and it is shorter than the file the same deployment
+needs today by roughly an order of magnitude. What it does \emph{not} declare is
+the point: no rollout strategy, no resource limits, no security context, no
+labels, no selector, no namespace, no probe timings, no instance count. Each of
+those either derives from something the model does declare, or is platform
+policy, or is refused outright.
+
+\subsection{Refused Models}
+
+Alongside the valid examples, a set of deliberately invalid models is
+committed, one per constraint, each with the diagnostic it must produce. A
+constraint that has only ever been satisfied is not evidence that it fires, so
+each constraint is paired with a model that violates it.
+
+The refused set covers, among others: a route naming a surface its process does
+not offer; two routes on one hostname claiming the same path; an alert class
+with nothing to collect metrics from; a process declaring a cutover its storage
+cannot honour; a secret delivery that the cluster's encryption setting forbids;
+a durability class with no engine to back it up; and an exposure whose audience
+no edge tier serves.
+
+\subsection{Example Target Models}
+
+A hand-written target model accompanies the minimal example: the resolved model
+that the Task 2 transformation must produce from it, written and reviewed by
+hand rather than generated. It is the expected output of the transformation and
+the input the Task 3 templates are first run against, which is what lets both
+tasks be checked before either is complete.

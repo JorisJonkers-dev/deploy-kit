@@ -1,0 +1,122 @@
+\section{Alternatives Considered}
+\label{sec:alternatives}
+
+Table~\ref{tab:alternatives} lists the alternatives encountered while building
+the metamodels, with the reason each was rejected. The four discussed in prose
+below are the ones where the rejection is not obvious.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.30\linewidth}>{\raggedright\arraybackslash}p{0.62\linewidth}}
+\hline
+\textbf{Alternative} & \textbf{Why it was rejected} \\
+\hline
+Template the target files directly (Helm, Kustomize overlays) &
+  No abstract model, so no constraint can be written and no fact can be derived
+  once; the repetition the project exists to remove stays. \\
+Annotate the target files with extra fields &
+  Tried in the estate: the authoring shape and the resolved shape end up sharing
+  one name, and no vocabulary can say which document is wrong. \\
+Two stages, resolution private to the generator &
+  The generator then takes decisions that appear in no model and can be
+  reviewed nowhere. \\
+A third metamodel for the generated files &
+  The target syntax already has a schema; a third metamodel restates it. \\
+ArchiMate as the source language &
+  Covers the structural half and has no element for the operational half;
+  expressing it means free-form properties, which gives up the closed
+  vocabulary. \\
+C4 model as the source language &
+  Same gap, and it is a diagramming convention rather than a language with an
+  abstract syntax to instantiate. \\
+UML deployment or component diagram as the source language &
+  An instance-level notation: it describes one arrangement, not the language
+  every arrangement is written in. \\
+A grammar first, with the metamodel inferred &
+  Puts the concrete syntax in charge of the concepts; the same language has to
+  be readable from two syntaxes. \\
+Free-form strings instead of closed vocabularies &
+  Tried in the estate: the one free-form field was wrong in every observed
+  case. \\
+An override mechanism for derived values &
+  Hides a wrong derivation behind a per-process reason instead of exposing it
+  for the whole class. \\
+\hline
+\end{tabular}
+\caption{Alternatives Encountered and the Reason Each Was Rejected}
+\label{tab:alternatives}
+\end{table}
+
+\subsection{ArchiMate and the C4 Model as the Source Language}
+
+This is the alternative the Task 0 feedback proposed, and it was the most
+seriously considered. ArchiMate is a full modelling language with a defined
+metamodel, so unlike a diagramming convention it could in principle be
+instantiated and transformed. The comparison in Section~\ref{sec:archimate}
+shows why it is not used here: every structural concept maps cleanly, and every
+operational concept maps to nothing.
+
+The decisive point is what happens when the gap is filled. ArchiMate's
+extension mechanism is properties: key-value pairs attached to elements. A
+durability class expressed as a property is a string, so no constraint can
+require that a process holding a recoverable volume also names what its data is,
+and no transformation can enumerate the classes exhaustively. The project's
+constraints are its main contribution, and they are written against closed
+vocabularies. Adopting ArchiMate would mean writing those constraints against
+property names instead, which is the free-form-string alternative in a different
+form.
+
+The C4 model is rejected for an additional reason: it is a set of diagram
+conventions at four levels of abstraction, not a language with an abstract
+syntax. There is no C4 metamodel to instantiate, so a C4 source language would
+mean first inventing one.
+
+Neither notation is discarded, though. Both remain good \emph{output}
+notations, and Section~\ref{sec:archimate} records that an ArchiMate technology
+view or a C4 deployment diagram is derivable from the resolved model by a second
+model-to-text transformation, because the resolved model already contains every
+fact such a view needs.
+
+\subsection{A Third Metamodel for the Generated Files}
+
+The Task 0 proposal carried three metamodels, one per stage of the pipeline.
+It was reduced to two, and this is the clearest scope reduction the feedback
+produced.
+
+The argument for a third metamodel is that it would let the generation step be
+checked structurally rather than as text. The argument against it is that the
+target syntax is already schema-defined, so the third metamodel would be a
+hand-maintained restatement of a schema that exists, with a drift problem of its
+own and no constraint that the second metamodel cannot already express. The
+generated files are therefore compared as text against reviewed expected output,
+and the typed target resources live inside the second metamodel, where the
+generation templates can walk them.
+
+\subsection{Grammar First or Metamodel First}
+
+The source language has a textual concrete syntax, so the language could have
+been defined by a grammar with the metamodel inferred from it. It was defined
+the other way round: the metamodel first, with the grammar as one syntax over
+it.
+
+The reason is that the same source model must be readable from two concrete
+syntaxes, and the production implementation parses a different serialisation of
+the same language. If the grammar were in charge, the two would agree only by
+coincidence. With the metamodel in charge, both syntaxes are checked against one
+structure, and that structure is exported as a machine-readable description that
+both implementations are held to.
+
+\subsection{One Resolved Model, or One Per Application}
+
+The resolved model covers the whole estate in one document, rather than being
+produced per application. Some of what it records cannot be computed for one
+application alone: which shared edge carries a hostname, the order in which
+units are applied, and what an application derives from the applications that
+depend on \emph{it}. Producing a per-application model directly would either
+recompute those properties inconsistently or omit them.
+
+What an application's own repository receives is therefore a \emph{projection}:
+the slice belonging to that application, obtained by filtering the estate-wide
+model rather than by a separate computation, so the two cannot disagree about
+what was decided.

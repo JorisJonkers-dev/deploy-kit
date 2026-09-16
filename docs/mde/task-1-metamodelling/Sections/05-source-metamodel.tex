@@ -1,0 +1,111 @@
+\section{The Source Metamodel}
+\label{sec:sourcemetamodel}
+
+The source language is authored in two documents that together form one
+metamodel. A \emph{project} document is written by the owner of a group of
+applications and states what those applications need. A single \emph{platform}
+document is written once for the estate and states what the estate offers. The
+split follows directly from the contention rule of Section~\ref{sec:decisions}:
+a value that must be unique across the estate, or that draws on a shared finite
+resource, is stated in the platform document, and everything else is stated by
+the application that needs it.
+
+\subsection{The Project Document}
+
+Figure~\ref{fig:sourcemetamodel} shows the project half of the source
+metamodel. Its root is a \texttt{Project}, which carries an owner and the
+applications it groups. An \texttt{Application} is the unit that is released as
+a whole: it carries an identifier that is unique across the estate, the
+processes released together, the hostnames it is reachable at, the secrets it
+holds, and, optionally, how its failures should be alerted.
+
+% Each figure is cut from the one mermaid block that mirrors the metamodel, by
+% scripts/diagrams/class-diagram.py, so no part can drift from the whole.
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.96\linewidth, keepaspectratio]{Figures/s-app}
+\caption{The Project Document: the Application and What Belongs to It}
+\label{fig:sourcemetamodel}
+\end{figure}
+
+A \texttt{Process} is the level at which almost every operational concern sits.
+It names the image it runs, what kind of thing it is, which named ports it
+offers, what it needs from a machine, which paths it must write, what answers a
+health check, what its volumes are worth, and whether a new version may run
+beside the old one during a cutover. The concerns that belong to the application
+rather than to one of its processes are kept on the application: a hostname
+fronts several processes and picks between them by path, so exposure cannot sit
+on a process without being written twice.
+
+Figures~\ref{fig:sourceprocess1} and~\ref{fig:sourceprocess2} show what hangs
+off a \texttt{Process}. It is split in two because the whole is wider than a
+printed page; both halves are cut from the same source as
+Figure~\ref{fig:sourcemetamodel}, so no half can disagree with the whole.
+
+\begin{figure}[p]
+\centering
+\includegraphics[angle=90, height=0.90\textheight, keepaspectratio]{Figures/s-proc1}
+\caption{A Process: Capacity, Helpers, Health and What It Needs From a Machine}
+\label{fig:sourceprocess1}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[angle=90, height=0.90\textheight, keepaspectratio]{Figures/s-proc2}
+\caption{A Process: Storage, Configuration, Dependencies and the Ports It Offers}
+\label{fig:sourceprocess2}
+\end{figure}
+
+Table~\ref{tab:sourceclasses} lists the classes and what each one is for.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}p{0.70\linewidth}}
+\hline
+\textbf{Class} & \textbf{What it represents} \\
+\hline
+Project & The authored unit: an owner and the applications the document groups. \\
+Application & What is released as a whole, identified uniquely across the estate. \\
+Process & One containerised process: image, kind, ports, needs and health. \\
+Surface & A named port a process offers, declared once. \\
+Exposure & A hostname the application is reachable at, and who may reach it. \\
+Route & A path on that hostname, and the process and surface that serve it. \\
+Placement & What a process needs from a machine, as hard requirements. \\
+Volume & Storage a process holds, with what its data is worth if lost. \\
+Probe & What answers readiness or liveness for a process. \\
+Dependency & An edge to another application's named surface. \\
+Grant & A secret a process may read, how it is delivered, and its rotation. \\
+Asset & A file a process needs that is configuration rather than code. \\
+Observability & Where metrics are collected and how urgently failures alert. \\
+Sidecar & A helper process sharing the main process's lifetime. \\
+Capacity & A count above one, with the reason it is not derived. \\
+\hline
+\end{tabular}
+\caption{Classes of the Project Document}
+\label{tab:sourceclasses}
+\end{table}
+
+\subsection{The Platform Document}
+
+The platform document carries the facts and policies that no single application
+may decide: what the cluster is, where the edge terminates and which audiences
+each edge tier serves, one backup policy per durability class, one backup method
+per engine, one hardening posture, one probe cadence, one monitoring cadence,
+and the services the estate runs without deploying them.
+
+\subsection{Closed Vocabularies}
+
+Wherever an attribute admits a fixed set of values, the metamodel declares an
+enumeration. The project document contributes vocabularies for the kind of a
+process, its runtime, its engine, its cutover requirement, a volume's durability
+class, machine architecture and storage medium, alert urgency, the audience of
+an exposure, a content policy, a path match, a secret's access tier and
+delivery, and a rotation tolerance. The platform document contributes
+vocabularies for the cluster's datastore and policy controller, an edge tier's
+listener and certificate source, and the hardening class.
+
+The enumerations are the surface most of the constraints are written against,
+which is the argument of Section~\ref{sec:alternatives} against free-form
+properties: a constraint can enumerate an enumeration exhaustively, and cannot
+enumerate a string.
