@@ -13,6 +13,7 @@ import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeplo
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedEdge;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedProcess;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,6 +45,23 @@ class ResolvedDeploymentTest {
     /** The repository root, from the module's own directory. */
     private static final Path REPOSITORY =
             Path.of("..", "..", "..").toAbsolutePath().normalize();
+
+    /**
+     * The committed source descriptor, as text. A field rather than a local because CodeQL analyses
+     * this file without the generated sources under `target/`, which `.github/codeql/codeql-config.yml`
+     * excludes: a local whose only read sits inside an expression over a generated type reads as
+     * never read.
+     */
+    private static final String DESCRIPTOR = descriptor();
+
+    private static String descriptor() {
+        try {
+            return Files.readString(
+                    REPOSITORY.resolve("spec/v1/examples/expected/descriptor.json"), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
 
     private static ResolvedDeployment minimal() {
         ResourceSet resources = new ResourceSetImpl();
@@ -90,16 +108,15 @@ class ResolvedDeploymentTest {
         // The project proposal's generated-resources table, one row per family:
         // a namespace and indexes, workload resources with their identity,
         // network policy, edge routing, monitoring, and secret resources.
-        Set<String> concrete = ResolvedDeploymentPackage.eINSTANCE.getEClassifiers().stream()
-                .filter(EClass.class::isInstance)
-                .map(EClass.class::cast)
-                .filter(type -> !type.isAbstract())
-                .filter(type ->
-                        ResolvedDeploymentPackage.eINSTANCE.getDeliverable().isSuperTypeOf(type))
-                .map(EClassifier::getName)
-                .collect(Collectors.toSet());
-
-        assertThat(concrete)
+        assertThat(ResolvedDeploymentPackage.eINSTANCE.getEClassifiers().stream()
+                        .filter(EClass.class::isInstance)
+                        .map(EClass.class::cast)
+                        .filter(type -> !type.isAbstract())
+                        .filter(type -> ResolvedDeploymentPackage.eINSTANCE
+                                .getDeliverable()
+                                .isSuperTypeOf(type))
+                        .map(EClassifier::getName)
+                        .collect(Collectors.toSet()))
                 .containsExactlyInAnyOrder(
                         "NamespaceFile",
                         "IndexFile",
@@ -197,17 +214,13 @@ class ResolvedDeploymentTest {
      * has to match, and the two shape layer 2 differently on purpose.
      */
     @Test
-    void noClassOfTheTargetPackageReachesTheDescriptor() throws IOException {
-        String descriptor = Files.readString(
-                REPOSITORY.resolve("spec/v1/examples/expected/descriptor.json"), StandardCharsets.UTF_8);
-
-        Set<String> named = ResolvedDeploymentPackage.eINSTANCE.getEClassifiers().stream()
-                .map(EClassifier::getName)
-                .filter(name -> descriptor.contains("\"name\":\"" + name + "\""))
-                .collect(Collectors.toSet());
-
+    void noClassOfTheTargetPackageReachesTheDescriptor() {
         // Cutover, Match and DurabilityClass are the source metamodel's own
         // vocabularies, carried here by the same names on purpose.
-        assertThat(named).containsExactlyInAnyOrder("Cutover", "Match", "DurabilityClass");
+        assertThat(ResolvedDeploymentPackage.eINSTANCE.getEClassifiers().stream()
+                        .map(EClassifier::getName)
+                        .filter(name -> DESCRIPTOR.contains("\"name\":\"" + name + "\""))
+                        .collect(Collectors.toSet()))
+                .containsExactlyInAnyOrder("Cutover", "Match", "DurabilityClass");
     }
 }
