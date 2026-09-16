@@ -36,6 +36,6 @@ This list holds **6** witnesses, and **3** pending.
 
 | id | why no witness yet | ticket |
 |---|---|---|
-| REQ-033 | the Resolved Deployment has no Ecore metamodel here to validate against | #87 |
-| REQ-034 | nothing under `emf/` reads the node contract yet | #87 |
-| REQ-035 | `resolved.json` binds the production implementation only today, and this implementation's target model is test input rather than an oracle ([the parity contract](../../docs/architecture.md#the-parity-contract)) | #87 |
+| REQ-033 | the target metamodel exists here now (#87), but nothing produces a model to validate: the hand-written `minimal` model is input, and the first model this implementation *derives* comes out of the QVT-Operational tracer | #90 |
+| REQ-034 | nothing under `emf/` reads the node contract until placement is resolved against it | #91 |
+| REQ-035 | `resolved.json` binds the production implementation only, so the shared claim is the rendered tree, and nothing renders here yet ([the parity contract](../../docs/architecture.md#the-parity-contract)) | #94 |
