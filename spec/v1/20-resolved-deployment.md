@@ -48,6 +48,40 @@ directory name. This repository already contains one resolved tree (
 .github/ package.json` returns nothing. The decision is therefore the emission
 **and** the gate: render, validate, diff, review.
 
+## The model
+
+![The Resolved Deployment model](diagrams/20-resolved-deployment-model.drawio.svg)
+
+<sub>[Diagram source](#the-resolved-deployment-model) · edit by opening the SVG in draw.io</sub>
+
+The layer-2 model records every decision in the words
+[`CONTEXT.md`](../../CONTEXT.md) defines, and no field of it is named after a
+Kubernetes or Traefik field: a Process carries the `cutover` it was granted, not
+a rollout strategy, and the `hardening` posture with the paths it must write,
+not a security context. Each Adapter is the one place its own target vocabulary
+is spelled ([chapter 30](30-deliverables.md#adapters)).
+
+Two relations the drawing does not carry are stated here instead, because a line
+that long is what makes the drawing unreadable
+([the diagram conventions](diagrams/README.md)). A `ResolvedRoute` names the
+Process and the surface it serves, resolved against that Application's own
+Processes. A `PathAssignment` names the Adapter that owns the path and, where
+the path is an Application's or a project's rather than the estate's, the
+element it belongs to.
+
+A `ResolvedApplication` is both the element the estate-wide document contains
+and the document published back to one repository
+([Publish back](#publish-back)). Standing alone it carries its own
+`provenance`; nested, it does not, because the enclosing document's provenance
+already covers it. That is what keeps the projection a filtering rather than a
+second computation.
+
+The startup probe is its own class rather than a third `ResolvedProbe`, because
+its cadence derives from a different input: readiness and liveness take the
+Platform Intent's probe cadence, while the startup probe's period and failure
+count derive from the Process's own `startupBudget` and its target from the
+liveness declaration ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)).
+
 ![The Resolved Deployment: pinned inputs and outputs](diagrams/20-resolved-deployment-io.drawio.svg)
 
 <sub>[Diagram source](#the-resolved-deployment-pinned-inputs-and-outputs) · edit by opening the SVG in draw.io</sub>
@@ -1014,3 +1048,165 @@ flowchart LR
     know --> agents["apps-agents"]
     vso --> agents
 ```
+### The Resolved Deployment model
+
+```mermaid
+classDiagram
+    direction LR
+
+    class ResolvedDeployment {
+        +ApiVersion apiVersion
+        +Kind kind
+    }
+    class Provenance {
+        +Digest renderHash
+        +Digest schemaPackageIntegrity
+    }
+    class InputDigest {
+        +PinnedInput input
+        +string name
+        +Digest digest
+    }
+    class PathAssignment {
+        +Path path
+        +AdapterName adapter
+        +PathScope scope
+    }
+    class ReconcileUnit {
+        +UnitName name
+        +UnitName[] after
+    }
+    class ResolvedApplication {
+        +ApplicationId id
+        +ProjectName project
+        +Namespace namespace
+        +UnitName reconcileUnit
+        +UnitName[] reconcileAfter
+        +AlertClass alertClass
+    }
+    class ReleaseGate {
+        +Duration deadline
+    }
+    class GateMember {
+        +string process
+    }
+    class ResolvedProcess {
+        +string name
+        +Identity identity
+        +ImageRef image
+        +int uid
+        +int gid
+        +Cutover cutover
+        +Duration deadline
+        +int replicas
+        +Quantity memory
+        +Quantity cpu
+        +HardeningClass hardening
+        +bool identityToken
+    }
+    class ResolvedProbe {
+        +Path path
+        +int port
+        +int tcp
+        +Duration period
+        +Duration timeout
+        +int failures
+    }
+    class StartupProbe {
+        +Path path
+        +int port
+        +int tcp
+        +Duration period
+        +int failures
+    }
+    class ResolvedPlacement {
+        +NodeName[] eligibleNodes
+        +NodeName boundTo
+        +PinnedInput from
+    }
+    class ResolvedVolume {
+        +string claim
+        +Quantity size
+        +DurabilityClass durability
+    }
+    class BackupPlan {
+        +Schedule schedule
+        +int retain
+        +Uri offCluster
+        +ImageRef method
+    }
+    class ResolvedGrant {
+        +VaultPath path
+        +string[] keys
+        +AccessTier access
+        +Delivery delivery
+        +string[] restartTargets
+    }
+    class ResolvedEdge {
+        +ApplicationId application
+        +string surface
+        +Address address
+    }
+    class PolicyPeer {
+        +Namespace namespace
+        +string process
+        +int port
+    }
+    class WritablePath {
+        +Path path
+        +Quantity size
+    }
+    class EnvEntry {
+        +string name
+        +string value
+    }
+    class ResolvedExposure {
+        +ExposureName name
+        +Fqdn host
+        +TierName tier
+    }
+    class MiddlewareStep {
+        +MiddlewareKind kind
+        +ContentPolicy contentPolicy
+        +Url endpoint
+        +Path redirectTo
+    }
+    class ResolvedRoute {
+        +Path path
+        +Match match
+        +string process
+        +string surface
+        +Audience audience
+        +int precedence
+    }
+
+    ResolvedDeployment "1" *-- "1" Provenance : provenance
+    ResolvedDeployment "1" *-- "1..*" PathAssignment : pathPlan
+    ResolvedDeployment "1" *-- "1..*" ReconcileUnit : reconcileUnits
+    ResolvedDeployment "1" *-- "1..*" ResolvedApplication : applications
+    Provenance "1" *-- "1..*" InputDigest : inputDigests
+
+    ResolvedApplication "1" *-- "1" ReleaseGate : releaseGate
+    ResolvedApplication "1" *-- "1..*" ResolvedProcess : processes
+    ResolvedApplication "1" *-- "0..*" ResolvedExposure : exposure
+    ReleaseGate "1" *-- "1..*" GateMember : members
+
+    ResolvedProcess "1" *-- "0..1" ResolvedProbe : readiness
+    ResolvedProcess "1" *-- "0..1" ResolvedProbe : liveness
+    ResolvedProcess "1" *-- "0..1" StartupProbe : startup
+    ResolvedProcess "1" *-- "1" ResolvedPlacement : placement
+    ResolvedProcess "1" *-- "0..*" ResolvedVolume : volumes
+    ResolvedProcess "1" *-- "0..*" ResolvedGrant : secrets
+    ResolvedProcess "1" *-- "0..*" ResolvedEdge : dependencies
+    ResolvedProcess "1" *-- "0..*" WritablePath : writablePaths
+    ResolvedProcess "1" *-- "0..*" EnvEntry : environment
+    ResolvedVolume "1" *-- "0..1" BackupPlan : backup
+    ResolvedEdge "1" *-- "0..*" PolicyPeer : peers
+
+    ResolvedExposure "1" *-- "1..*" ResolvedRoute : routes
+    ResolvedRoute "1" *-- "0..*" MiddlewareStep : middleware
+
+    GateMember ..> ResolvedProbe : reads readiness
+
+```
+
