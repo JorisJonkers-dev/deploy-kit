@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **33** rows. The compiler's behaviours join it as they land.
+This ledger holds **34** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -56,3 +56,4 @@ This ledger holds **33** rows. The compiler's behaviours join it as they land.
 | REQ-031 | A Platform document and the Project documents read with it are checked together, and a tier proxy, audience, engine, durability class or at-rest secret delivery the Platform cannot satisfy is refused in the document that must change | [test/model/intent-set.test.ts](../test/model/intent-set.test.ts) |
 | REQ-032 | AGENTS.md names every npm script package.json defines, verbatim, so a script added there cannot go undocumented | [test/agents-contract.test.ts](../test/agents-contract.test.ts) |
 | REQ-033 | Chapter 20's worked projection validates against the Resolved Deployment metamodel, no key of that metamodel is a Kubernetes or Traefik field name, and each of the four defects the projection carried is refused if it is put back | [test/model/resolved-deployment.test.ts](../test/model/resolved-deployment.test.ts) |
+| REQ-034 | The node contract publishes the seven nodes chapter 60 enumerates, with the capability counts it states, and a storage medium a node may hold that no Process may ask for | [test/model/node-contract.test.ts](../test/model/node-contract.test.ts) |

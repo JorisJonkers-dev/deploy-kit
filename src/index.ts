@@ -21,7 +21,12 @@ export {
   platformIntentJsonSchema,
   projectIntentJsonSchema,
 } from "./wire/project-intent/json-schema.ts";
+export type * from "./domain/node-contract/vocabularies.ts";
 export type * from "./domain/resolved-deployment/vocabularies.ts";
+export {
+  nodeContract,
+  type NodeContractDocument,
+} from "./wire/node-contract/schema.ts";
 export {
   resolvedApplicationDocument,
   resolvedDeployment,
