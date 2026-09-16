@@ -26,7 +26,7 @@ says nothing about which of them a course examiner ever opens. Five of them are
 the graded artefacts: the metamodels, the grammar, the transformation, the
 templates and the pipeline that runs them. One, `parity/`, is this
 repository's own evidence, built and run only by Maven, and by
-[0120](0120-parity-crosses-the-cli-file-interface.md) it holds no EMF type at
+[0121](0121-parity-crosses-the-cli-file-interface.md) it holds no EMF type at
 all. Two audiences, two toolchains, one flat list.
 
 The split names them: `bundles/` for what Tycho builds against `emf.target`

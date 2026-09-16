@@ -96,7 +96,7 @@ no Kotlin unit, so a language other than Java is a bundle's problem before it is
 anything else.
 
 > **Proposed, not landed:**
-> [0121](adr/emf/0121-bundles-and-tests-are-separate-tiers.md) splits these six
+> [0122](adr/emf/0122-bundles-and-tests-are-separate-tiers.md) splits these six
 > into `bundles/` for what Tycho builds and Eclipse imports and `tests/` for what
 > only Maven runs, and makes the second tier Kotlin. Until the moving pull
 > request lands, the flat list above is the tree, and the Java sentence above
@@ -259,7 +259,7 @@ from `metamodel/`. Those types resolve from p2, so the module carries a
 Its `src/main` holds `CanonicalJson` and `Ledgers`, neither of which touches EMF.
 
 > **Proposed, not landed:**
-> [0120](adr/emf/0120-parity-crosses-the-cli-file-interface.md) moves the suites
+> [0121](adr/emf/0121-parity-crosses-the-cli-file-interface.md) moves the suites
 > onto the pipeline's file interface (arguments and input files in; an exit
 > code, diagnostics, the parsed intent, the descriptor and the rendered tree
 > out), so the module holds no EMF type and builds as a plain jar. What follows once
