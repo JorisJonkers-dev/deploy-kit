@@ -333,3 +333,215 @@ describe("the committed oracles", () => {
     ).toStrictEqual(new Set(processes.map((p) => p.name)));
   });
 });
+
+describe("the metamodel names every class the chapter draws", () => {
+  const defsOf = (schema: z.ZodType): string[] =>
+    Object.keys(
+      (z.toJSONSchema(schema, { io: "input" }) as { $defs?: object })[
+        "$defs"
+      ] ?? {},
+    ).sort();
+
+  /** Every class the chapter's mermaid block declares. */
+  function drawn(): string[] {
+    const chapter = readFileSync(CHAPTER, "utf8");
+    const body = /```mermaid\nclassDiagram\n([\s\S]*?)\n```/.exec(chapter)?.[1];
+    expect(body, "the class diagram moved").toBeDefined();
+    return [...(body ?? "").matchAll(/ {4}class (\w+) \{/g)]
+      .map((match) => match[1] ?? "")
+      .sort();
+  }
+
+  it("declares an id for every class chapter 20 draws", () => {
+    // The drawing and the schema are two statements of one structure. A class
+    // renamed in one and not the other is the drift this pair exists to catch.
+    const declared = new Set(defsOf(resolvedDeployment));
+
+    expect(drawn().filter((name) => !declared.has(name))).toStrictEqual([]);
+  });
+
+  it("names the classes the drawing leaves out, and nothing else", () => {
+    // A probe is one box on the drawing and a union of two shapes here; the
+    // closed vocabularies are not drawn at all, per the diagram conventions.
+    const extra = defsOf(resolvedDeployment).filter(
+      (name) => !drawn().includes(name),
+    );
+
+    expect(extra).toStrictEqual([
+      "AccessTier",
+      "AdapterName",
+      "AlertClass",
+      "Audience",
+      "ContentPolicy",
+      "Cutover",
+      "Delivery",
+      "DurabilityClass",
+      "HardeningClass",
+      "Match",
+      "MiddlewareKind",
+      "PathScope",
+      "PinnedInput",
+      "ResolvedHttpProbe",
+      "ResolvedTcpProbe",
+    ]);
+  });
+
+  it("gives the published projection its own id", () => {
+    expect(defsOf(resolvedApplicationDocument)).toContain(
+      "ResolvedApplicationDocument",
+    );
+  });
+});
+
+describe("the metamodel refuses", () => {
+  const withProcess = (change: Record<string, unknown>): unknown => {
+    const document = workedProjection() as {
+      processes: Record<string, unknown>[];
+    };
+    Object.assign(document.processes[0] as object, change);
+    return document;
+  };
+  const refused = (document: unknown): boolean =>
+    !resolvedApplicationDocument.safeParse(document).success;
+
+  it.each([
+    ["a digest with no algorithm", "1ad39d5c"],
+    ["a digest whose hex is not hex", "sha256:ZZZZ"],
+    ["a digest with something before it", "see sha256:1ad39d5c"],
+    ["a digest with something after it", "sha256:1ad39d5c and more"],
+  ])("%s", (_name, renderHash) => {
+    const document = withDefect((it) => {
+      Object.assign(it["provenance"] as object, { renderHash });
+    });
+
+    expect(refused(document)).toBe(true);
+  });
+
+  it.each([
+    ["1800s", true],
+    ["30ms", true],
+    ["2h", true],
+    ["1800", false],
+    ["30x", false],
+    ["s", false],
+    ["x30s", false],
+    ["30s later", false],
+  ])("reads the duration %s as valid: %s", (deadline, valid) => {
+    expect(refused(withProcess({ deadline }))).toBe(!valid);
+  });
+
+  it("a replica count below one", () => {
+    expect(refused(withProcess({ replicas: 0 }))).toBe(true);
+  });
+
+  it("a release gate with no members", () => {
+    const document = withDefect((it) => {
+      Object.assign(it["releaseGate"] as object, { members: [] });
+    });
+
+    expect(refused(document)).toBe(true);
+  });
+});
+
+describe("the estate-wide document", () => {
+  /** Two applications, two units and two path assignments: the shape of an estate. */
+  function estate(): unknown {
+    const {
+      apiVersion: _a,
+      kind: _k,
+      provenance,
+      ...one
+    } = workedProjection() as Record<string, unknown>;
+    return {
+      apiVersion: "resolved.jorisjonkers.dev/v1",
+      kind: "ResolvedDeployment",
+      provenance,
+      pathPlan: [
+        {
+          path: "apps/knowledge/workload.yaml",
+          adapter: "kubernetes",
+          scope: "application",
+        },
+        { path: "namespace.yaml", adapter: "kubernetes", scope: "project" },
+      ],
+      reconcileUnits: [
+        { name: "apps-core" },
+        { name: "apps-knowledge", after: ["apps-core"] },
+      ],
+      applications: [one, { ...one, id: "knowledge-two" }],
+    };
+  }
+
+  it("holds more than one application, unit and path", () => {
+    const result = resolvedDeployment.safeParse(estate());
+
+    expect(result.error?.issues ?? []).toStrictEqual([]);
+  });
+
+  it("holds at least one of each", () => {
+    for (const empty of ["pathPlan", "reconcileUnits", "applications"]) {
+      const document = estate() as Record<string, unknown>;
+      document[empty] = [];
+
+      expect(
+        resolvedDeployment.safeParse(document).success,
+        `${empty} may not be empty`,
+      ).toBe(false);
+    }
+  });
+
+  it("is not a projection, and a projection is not it", () => {
+    expect(resolvedApplicationDocument.safeParse(estate()).success).toBe(false);
+    expect(resolvedDeployment.safeParse(workedProjection()).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("a Process answering on a port rather than a path", () => {
+  it("carries a tcp probe wherever an http one may go", () => {
+    // Both worked examples answer readiness on a path, so the other half of
+    // the probe union would otherwise never be exercised.
+    const document = workedProjection() as {
+      releaseGate: { members: { readiness: unknown }[] };
+      processes: Record<string, unknown>[];
+    };
+    const process = document.processes[0] as Record<string, unknown>;
+    process["readiness"] = {
+      tcp: 5432,
+      period: "10s",
+      timeout: "5s",
+      failures: 3,
+    };
+    process["liveness"] = {
+      tcp: 5432,
+      period: "10s",
+      timeout: "5s",
+      failures: 3,
+    };
+    process["startup"] = { tcp: 5432, period: "5s", failures: 120 };
+    const member = document.releaseGate.members[0];
+    if (member !== undefined) member.readiness = { tcp: 5432 };
+
+    const result = resolvedApplicationDocument.safeParse(document);
+
+    expect(result.error?.issues ?? []).toStrictEqual([]);
+  });
+
+  it("refuses a probe that names both a port and a path", () => {
+    const document = withDefect((it) => {
+      const process = (it["processes"] as Record<string, unknown>[])[0];
+      if (process !== undefined)
+        process["readiness"] = {
+          tcp: 5432,
+          path: "/healthz",
+          port: 8080,
+          period: "10s",
+          timeout: "5s",
+          failures: 3,
+        };
+    });
+
+    expect(resolvedApplicationDocument.safeParse(document).success).toBe(false);
+  });
+});

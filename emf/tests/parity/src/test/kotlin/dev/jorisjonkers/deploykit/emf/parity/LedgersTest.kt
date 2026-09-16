@@ -103,7 +103,9 @@ class LedgersTest {
             root,
             "emf/docs/witnesses.md",
             listOf(
-                "This list holds **0** witnesses, and **2** pending.",
+                // One pending id, listed twice: the count is of ids, the way the
+                // witness count is, so the duplicate is the only complaint.
+                "This list holds **0** witnesses, and **1** pending.",
                 "| $MODEL | not yet | #87 |",
                 "| $MODEL | still not yet | #87 |",
             ).joinToString("\n"),

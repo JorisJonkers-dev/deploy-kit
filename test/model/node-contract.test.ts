@@ -8,6 +8,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
+import { z } from "zod";
 import { describe, expect, it } from "vitest";
 import { MEDIA } from "../../src/domain/project-intent/vocabularies.ts";
 import { NODE_MEDIA } from "../../src/domain/node-contract/vocabularies.ts";
@@ -136,5 +137,72 @@ describe("the schema refuses", () => {
       nodeContract.safeParse(mutated("site: frankfurt", "reserve: 512Mi"))
         .success,
     ).toBe(false);
+  });
+});
+
+describe("the schema's own classes", () => {
+  it("names one id per class, and no more", () => {
+    // The ids are what a reader of the chapter's published-facts table meets,
+    // so they are stated here rather than left to whatever Zod infers.
+    const defs = z.toJSONSchema(nodeContract, { io: "input" }) as {
+      $defs?: object;
+    };
+
+    expect(Object.keys(defs["$defs"] ?? {}).sort()).toStrictEqual([
+      "Allocatable",
+      "Arch",
+      "Disk",
+      "Gpu",
+      "Node",
+      "NodeContract",
+      "NodeMedium",
+    ]);
+  });
+});
+
+describe("the schema refuses, one field at a time", () => {
+  const refused = (from: string, to: string): boolean =>
+    !nodeContract.safeParse(mutated(from, to)).success;
+
+  it.each([
+    ["a quantity in a unit it does not know", "cpu: 5750m", "cpu: 5750x"],
+    ["a quantity with no number", "cpu: 5750m", "cpu: m"],
+    ["a quantity with something around it", "cpu: 5750m", "cpu: about 5750m"],
+    ["a memory quantity that is prose", "memory: 3840Mi", "memory: lots"],
+  ])("%s", (_name, from, to) => {
+    expect(refused(from, to)).toBe(true);
+  });
+
+  it.each([
+    ["10.20.30", true],
+    ["v1.0.0", false],
+    ["1.0.0-rc.1", false],
+    ["1.0", false],
+    ["one", false],
+  ])("reads schemaVersion %s as valid: %s", (version, valid) => {
+    expect(refused("schemaVersion: 1.0.0", `schemaVersion: "${version}"`)).toBe(
+      !valid,
+    );
+  });
+
+  it("reads a quantity with no unit, which is what bytes are written as", () => {
+    // Quoted, because YAML reads a bare number as a number and the contract
+    // carries every quantity as a string.
+    expect(refused("memory: 3840Mi", 'memory: "4026531840"')).toBe(false);
+  });
+
+  it("a contract that publishes no node", () => {
+    const document = nodeContract.parse(worked()) as { nodes: unknown[] };
+    document.nodes = [];
+
+    expect(nodeContract.safeParse(document).success).toBe(false);
+  });
+
+  it("a node with no eligible disk size", () => {
+    expect(refused("usable_gib: 64", "usable_gib: 0")).toBe(true);
+  });
+
+  it("a card with no memory", () => {
+    expect(refused("memory_mib: 2048", "memory_mib: 0")).toBe(true);
   });
 });
