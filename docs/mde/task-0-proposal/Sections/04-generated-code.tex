@@ -1,8 +1,10 @@
 \section{Generated Code}
 \label{sec:generatedcode}
 
-The generator creates one versioned Deliverable Set per application.
-Table~\ref{tab:generated_resources} lists its resources and how they are derived.
+The generators create one versioned Deliverable Set for the estate, laid out
+per project and application by the path plan the resolved model carries.
+Table~\ref{tab:generated_resources} lists its resources and how they are
+derived.
 
 \begin{table}[!htbp]
 \centering
@@ -30,7 +32,8 @@ Secret resources &
 \end{table}
 
 The transformation computes limits, startup probes, route precedence and policy
-peers. For \texttt{auth}, about 90 source lines produce ten files with about 890
+peers. For \texttt{auth}, 96 declared lines produce eleven files of about 620
 lines. The repository contains hand-written expected files, which are used to
-check the generated result. CI receives one Kustomize entry point for the
-complete bundle.
+check the generated result. The tree carries one index entry point at its root,
+so the whole estate is applied through a single reference rather than one per
+application.
