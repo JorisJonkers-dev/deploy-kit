@@ -190,3 +190,109 @@ describe("the metamodel's own keys", () => {
     );
   });
 });
+
+describe("the committed oracles", () => {
+  const ORACLES = ["minimal", "knowledge"] as const;
+  const oracle = (name: string): unknown =>
+    JSON.parse(
+      readFileSync(
+        join(
+          import.meta.dirname,
+          "..",
+          "..",
+          "spec",
+          "v1",
+          "examples",
+          name,
+          "expected",
+          "resolved.json",
+        ),
+        "utf8",
+      ),
+    );
+
+  it.each(ORACLES)("%s validates against the metamodel", (name) => {
+    const result = resolvedApplicationDocument.safeParse(oracle(name));
+
+    expect(result.error?.issues ?? []).toStrictEqual([]);
+  });
+
+  /** Everything `part` states, `whole` states too. An array may hold more. */
+  function states(part: unknown, whole: unknown, at = ""): string[] {
+    if (Array.isArray(part))
+      return Array.isArray(whole)
+        ? part.flatMap((entry, index) =>
+            whole.some((candidate) => states(entry, candidate).length === 0)
+              ? []
+              : [
+                  `${at}/${String(index)} is in the chapter and in no oracle entry`,
+                ],
+          )
+        : [`${at} is a list in the chapter and not in the oracle`];
+    if (typeof part === "object" && part !== null) {
+      if (typeof whole !== "object" || whole === null)
+        return [`${at} is an object in the chapter and not in the oracle`];
+      const held = whole as Record<string, unknown>;
+      return Object.entries(part).flatMap(([key, value]) =>
+        key in held
+          ? states(value, held[key], `${at}/${key}`)
+          : [`${at}/${key} is in the chapter and not in the oracle`],
+      );
+    }
+    // A digest the chapter elides stands for whatever the oracle records: the
+    // ellipsis is the chapter being readable, not the two disagreeing.
+    if (typeof part === "string" && part.includes(DIGEST))
+      return typeof whole === "string"
+        ? []
+        : [`${at} is a digest in the chapter and not in the oracle`];
+    return part === whole ? [] : [`${at}: ${String(part)} != ${String(whole)}`];
+  }
+
+  it("says the same thing as chapter 20's worked projection", () => {
+    // The chapter shows two of five routes and elides its digests, so it is a
+    // subset of the oracle rather than a copy of it. Everything it does show
+    // must agree, which is what stops the two drifting.
+    const { provenance: _, ...chapter } = workedProjection() as Record<
+      string,
+      unknown
+    >;
+    const { provenance: __, ...committed } = oracle("knowledge") as Record<
+      string,
+      unknown
+    >;
+
+    expect(states(chapter, committed)).toStrictEqual([]);
+  });
+
+  it("exports the resolved edges knowledge's dependency oracle carries", () => {
+    const edges = JSON.parse(
+      readFileSync(
+        join(
+          import.meta.dirname,
+          "..",
+          "..",
+          "spec",
+          "v1",
+          "examples",
+          "knowledge",
+          "expected",
+          "dependencies.json",
+        ),
+        "utf8",
+      ),
+    ) as { applications: { id: string; edges: { consumer: string }[] }[] };
+    const processes = (
+      oracle("knowledge") as {
+        processes: { name: string; dependencies?: unknown[] }[];
+      }
+    ).processes;
+
+    expect(edges.applications.map(({ id }) => id)).toStrictEqual(["knowledge"]);
+    expect(edges.applications[0]?.edges).toHaveLength(
+      processes.reduce((total, p) => total + (p.dependencies?.length ?? 0), 0),
+    );
+    expect(
+      new Set(edges.applications[0]?.edges.map((e) => e.consumer)),
+    ).toStrictEqual(new Set(processes.map((p) => p.name)));
+  });
+});
