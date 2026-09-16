@@ -189,4 +189,25 @@ class ResolvedDeploymentTest {
                         + "\"consumer\":\"knowledge-api\",\"surface\":\"smtp\"}],"
                         + "\"id\":\"knowledge\"}]}");
     }
+
+    /**
+     * The descriptor covers the source metamodel only: target structures are compared through what
+     * they generate, not structurally (docs/architecture.md#the-parity-contract). A target class
+     * reaching the descriptor would put this implementation's shape into an oracle the other one
+     * has to match, and the two shape layer 2 differently on purpose.
+     */
+    @Test
+    void noClassOfTheTargetPackageReachesTheDescriptor() throws IOException {
+        String descriptor = Files.readString(
+                REPOSITORY.resolve("spec/v1/examples/expected/descriptor.json"), StandardCharsets.UTF_8);
+
+        Set<String> named = ResolvedDeploymentPackage.eINSTANCE.getEClassifiers().stream()
+                .map(EClassifier::getName)
+                .filter(name -> descriptor.contains("\"name\":\"" + name + "\""))
+                .collect(Collectors.toSet());
+
+        // Cutover, Match and DurabilityClass are the source metamodel's own
+        // vocabularies, carried here by the same names on purpose.
+        assertThat(named).containsExactlyInAnyOrder("Cutover", "Match", "DurabilityClass");
+    }
 }
