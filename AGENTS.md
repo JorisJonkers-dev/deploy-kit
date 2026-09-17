@@ -286,4 +286,7 @@ figures in a sibling `-images/` directory. **Start from
 [`docs/mde/INDEX.md`](docs/mde/INDEX.md)**: it says which document covers
 which topic, down to the section anchor and the PDF page, so open one section
 of one `.md` rather than reading a PDF end to end. Some of these run to 400
-pages.
+pages. What each project task requires and hands in is in
+[`docs/mde/assignment.md`](docs/mde/assignment.md), the course's own task
+text; [`docs/mde/README.md`](docs/mde/README.md) says which report directory
+mirrors which task.

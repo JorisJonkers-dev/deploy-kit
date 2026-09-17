@@ -20,12 +20,19 @@ Where to find each topic across the lecture decks and the background reading, do
 | MDA: PIM, PSM, platform | [MDA Guide concepts](background/lecture-0/mda-guide-rev-2.0.md#3basic-concepts-of-mda) · [platform](background/lecture-0/mda-guide-rev-2.0.md#platform) · [PIM and PSM](background/lecture-0/mda-guide-rev-2.0.md#platform-specific-and-independent-models) · [lecture 0 MDA](lectures/lecture-0-introduction.md#model-driven-architecture) · [platform-independent modelling](lectures/lecture-0-introduction.md#platform-independent-modelling) |
 | Model transformation (M2M and M2T) | [lecture 0](lectures/lecture-0-introduction.md#what-is-a-model-transformation) · [how to transform](lectures/lecture-0-introduction.md#how-to-transform) · [MDA transformation pattern](background/lecture-0/mda-guide-rev-2.0.md#example-transformation-pattern) · [MDA transformation and execution](background/lecture-0/mda-guide-rev-2.0.md#4-mda-model-transformation-and-execution) · [Bézivin & Gerbé](background/lecture-0/towards-a-precise-definition-of-the-omg-mda-framework.md#55-what-is-a-transformation) · [mapping functions](background/lecture-0/model-driven-development-guest-editors-introduction.md#mapping-functions) |
 | Code generation | [lecture 0](lectures/lecture-0-introduction.md#code-generation) · [where MDE is useful](lectures/lecture-0-introduction.md#in-which-projects-is-mde-useful) · [Eclipse OCL code-generation tutorial](background/lecture-2/eclipse-ocl-6.6-documentation.md#44-code-generation-tutorial) |
-| Metamodels versus grammars; designing a DSL | [modelware vs grammarware](background/lecture-1/a-tutorial-on-metamodelling-for-grammar-researchers.md#4-modelware-versus-grammarware) · [mapping metamodels to grammars](background/lecture-1/a-tutorial-on-metamodelling-for-grammar-researchers.md#44-mapping-metamodels-to-grammars) · [metamodelling process](background/lecture-1/a-tutorial-on-metamodelling-for-grammar-researchers.md#31-metamodelling-process) · [worked DSL examples](background/lecture-1/a-tutorial-on-metamodelling-for-grammar-researchers.md#5-examples) · [are metamodels language definitions?](background/lecture-1/matters-of-metamodeling.md#5-are-metamodels-language-definitions) |
+| Metamodels versus grammars; designing a DSL | [modelware vs grammarware](background/lecture-1/a-tutorial-on-metamodelling-for-grammar-researchers.md#4-modelware-versus-grammarware) · [mapping metamodels to grammars](background/lecture-1/a-tutorial-on-metamodelling-for-grammar-researchers.md#44-mapping-metamodels-to-grammars) · [metamodelling process](background/lecture-1/a-tutorial-on-metamodelling-for-grammar-researchers.md#31-metamodelling-process) · [worked DSL examples](background/lecture-1/a-tutorial-on-metamodelling-for-grammar-researchers.md#5-examples) · [are metamodels language definitions?](background/lecture-1/matters-of-metamodeling.md#5-are-metamodels-language-definitions) · [lecture 3: DSLs in MDE](lectures/lecture-3-domain-specific-languages-and-xtext.md#domain-specific-languages-in-mde) · [defining a DSML](lectures/lecture-3-domain-specific-languages-and-xtext.md#defining-dsmls-dsls-in-mde) · [Mernik et al., design patterns](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#24-design) |
 | OCL: invariants, pre/post-conditions, types | [lecture 2 invariants](lectures/lecture-2-object-constraint-language.md#invariants) · [pre/post](lectures/lecture-2-object-constraint-language.md#pre--and-post-conditions) · [OCL types](lectures/lecture-2-object-constraint-language.md#ocl-types) · [spec §7 language](background/lecture-2/object-constraint-language-2.4-specification.md#7-ocl-language-description) · [spec: invariant placement](background/lecture-2/object-constraint-language-2.4-specification.md#126-invariant) · [spec: precondition](background/lecture-2/object-constraint-language-2.4-specification.md#127-precondition) |
 | OCL collections, iterators, standard library | [lecture 2 collections](lectures/lecture-2-object-constraint-language.md#operations-on-collections) · [iterators](lectures/lecture-2-object-constraint-language.md#iterators-on-collections) · [spec §7.6](background/lecture-2/object-constraint-language-2.4-specification.md#76-collection-operations) · [spec standard library](background/lecture-2/object-constraint-language-2.4-specification.md#11-ocl-standard-library) · [predefined iterators](background/lecture-2/object-constraint-language-2.4-specification.md#118-predefined-iterator-expressions) · [Eclipse library reference](background/lecture-2/eclipse-ocl-6.6-documentation.md#chapter-3-the-ocl-standard-library) |
 | OCL in Eclipse: OCLinEcore, validation, console | [lecture 2](lectures/lecture-2-object-constraint-language.md#ocl-support-in-eclipse) · [OCLinEcore editor](lectures/lecture-2-object-constraint-language.md#oclinecore-editor) · [validation](lectures/lecture-2-object-constraint-language.md#validation) · [console](lectures/lecture-2-object-constraint-language.md#interactive-ocl-console) · [OCLinEcore language](background/lecture-2/eclipse-ocl-6.6-documentation.md#23-the-oclinecore-language) · [OCLinEcore tutorial](background/lecture-2/eclipse-ocl-6.6-documentation.md#41-oclinecore-tutorial) · [validation tutorial](background/lecture-2/eclipse-ocl-6.6-documentation.md#46-validation-tutorial) |
 | OCL formal definition: abstract syntax and semantics | [abstract syntax](background/lecture-2/object-constraint-language-2.4-specification.md#8-abstract-syntax) · [concrete syntax](background/lecture-2/object-constraint-language-2.4-specification.md#9-concrete-syntax) · [semantics](background/lecture-2/object-constraint-language-2.4-specification.md#10-semantics-described-using-uml) · [Essential OCL for metamodelling](background/lecture-2/object-constraint-language-2.4-specification.md#13-the-basic-ocl-and-essential-ocl) |
 | State of MDE research, tooling limits, adoption | [grand challenges: technical](background/lecture-0/grand-challenges-in-model-driven-engineering.md#3-technical-challenges) · [tool and implementation challenges](background/lecture-0/grand-challenges-in-model-driven-engineering.md#33-tool-and-implementation-challenges) · [social and community](background/lecture-0/grand-challenges-in-model-driven-engineering.md#4-social-and-community-challenges) · [Bézivin open issues](background/lecture-1/on-the-unification-power-of-models.md#52-some-open-research-issues-in-mde) · [Kent 2002, Model Driven Engineering](background/lecture-0/integrated-formal-methods-ifm-2002-proceedings.md#model-driven-engineering) · [visual modelling adoption](background/lecture-0/present-and-ulterior-software-engineering.md#how-to-make-visual-modeling-more-attractive-to-software-developers) |
+| When to build a DSL, and how: decision, analysis, design, implementation | [decision patterns](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#22-decision) · [analysis](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#23-analysis) · [design](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#24-design) · [implementation](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#25-implementation) · [development support](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#3-dsl-development-support) · [lecture 3: what a DSL is](lectures/lecture-3-domain-specific-languages-and-xtext.md#domain-specific-languages-dsls) · [DSL versus GPL](lectures/lecture-3-domain-specific-languages-and-xtext.md#weird-comparison) |
+| A DSL as a coordinated set of models: abstract syntax, concrete syntax, semantics | [lecture 3](lectures/lecture-3-domain-specific-languages-and-xtext.md#dsl-as-a-set-of-models) · [coordinated set](lectures/lecture-3-domain-specific-languages-and-xtext.md#dsl-as-a-coordinated-set-of-models) · [concrete syntax](lectures/lecture-3-domain-specific-languages-and-xtext.md#concrete-syntax) · [semantics definition](lectures/lecture-3-domain-specific-languages-and-xtext.md#semantics-definition) · [Kurtev et al., DSLs and models](background/lecture-3/model-based-dsl-frameworks.md#25-dsls-and-models) · [technical spaces](background/lecture-3/model-based-dsl-frameworks.md#26-technical-spaces) |
+| Textual concrete syntax: Xtext, EMFText, TCS | [Xtext](lectures/lecture-3-domain-specific-languages-and-xtext.md#xtext) · [default workflow](lectures/lecture-3-domain-specific-languages-and-xtext.md#xtext-workflow-default) · [workflow from an Ecore metamodel](lectures/lecture-3-domain-specific-languages-and-xtext.md#xtext-workflow-with-ecore-model) · [default grammar](lectures/lecture-3-domain-specific-languages-and-xtext.md#default-grammar) · [modifying the grammar](lectures/lecture-3-domain-specific-languages-and-xtext.md#modify-the-grammar) · [concrete syntax as a model](lectures/lecture-3-domain-specific-languages-and-xtext.md#concrete-syntax-as-a-model) · [EMFText](lectures/lecture-3-domain-specific-languages-and-xtext.md#concrete-syntax-as-model-in-emftext) · [TCS](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#3-tcs-bridging-metamodels-and-grammars) · [TCS in AMMA](background/lecture-3/model-based-dsl-frameworks.md#43-tcs-language-for-defining-concrete-syntaxes) · [classification of textual-syntax mapping approaches](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#classification-of-concrete-textual-syntax-mapping-approaches) · [metamodel syntactic sheets](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#metamodel-syntactic-sheets-an-approach-for-defining-textual-concrete-syntaxes) · [textual modelling inside graphical modelling](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#textual-modelling-embedded-into-graphical-modelling) · [deriving and refining a textual syntax](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#derivation-and-refinement-of-textual-syntax-for-models) |
+| Interpreting a model versus compiling it | [executing models](lectures/lecture-3-domain-specific-languages-and-xtext.md#executing-models-in-mde) · [compiling models](lectures/lecture-3-domain-specific-languages-and-xtext.md#compiling-models-in-mde) · [several steps](lectures/lecture-3-domain-specific-languages-and-xtext.md#compiling-models-in-mde-several-steps-may-be-necessary) · [interpreter and compiler patterns](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#25-implementation) |
+| The abstraction gap, and domain concepts | [lecture 3](lectures/lecture-3-domain-specific-languages-and-xtext.md#abstraction-gap) · [abstractness versus concreteness](lectures/lecture-3-domain-specific-languages-and-xtext.md#abstractness-versus-concreteness) · [modelling as the next step](lectures/lecture-3-domain-specific-languages-and-xtext.md#next-abstraction-step-modelling) · [worked domain: vehicles](lectures/lecture-3-domain-specific-languages-and-xtext.md#problem-domain-vehicles) |
+| Model-to-text languages (Task 3) | [Epsilon Generation Language](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#the-epsilon-generation-language) · [lecture 0: code generation](lectures/lecture-0-introduction.md#code-generation) |
+| Choosing a transformation language (Task 2) | [comparison of three transformation languages](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#comparison-of-three-model-transformation-languages) · [higher-order transformations](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#on-the-use-of-higher-order-model-transformations) · [ATL in AMMA](background/lecture-3/model-based-dsl-frameworks.md#44-atl-model-transformation-language) |
 | Microservices (the domain of this repository's model) | [yesterday, today, tomorrow](background/lecture-0/present-and-ulterior-software-engineering.md#microservices-yesterday-today-and-tomorrow) |
 
 ## Documents
@@ -230,6 +237,52 @@ Why metamodels need constraints, OCL invariants and pre/post-conditions, the OCL
 | 38 | [PRACTICAL SESSION PREPARATION](lectures/lecture-2-object-constraint-language.md#practical-session-preparation) |
 | 39 | [TAKE-HOME MESSAGES](lectures/lecture-2-object-constraint-language.md#take-home-messages) |
 | 40 | [REFERENCES](lectures/lecture-2-object-constraint-language.md#references) |
+
+</details>
+
+### Lecture 3 — Domain-specific languages, and textual concrete syntax
+
+[`lectures/lecture-3-domain-specific-languages-and-xtext.md`](lectures/lecture-3-domain-specific-languages-and-xtext.md) · [PDF](lectures/lecture-3-domain-specific-languages-and-xtext.pdf) · 42 pages
+
+The abstraction gap between a problem domain and the computation domain, and the domain-specific language as the way to close it: what a DSL is, how it compares with a general-purpose language, and the two ways a model is given meaning — interpreted, or compiled through one or more transformation steps. Then the DSL as a coordinated set of models (abstract syntax, concrete syntax, semantics definition, each an instance of its own metamodel), concrete syntax as a model, and Xtext in practice: the default workflow, the workflow that starts from an existing Ecore metamodel, the generated default grammar, how to modify it, and a worked SQL example.
+
+<details><summary>Sections</summary>
+
+| Page | Section |
+|---:|---|
+| 2 | [IN THIS PRESENTATION:](lectures/lecture-3-domain-specific-languages-and-xtext.md#in-this-presentation) |
+| 3 | [ABSTRACTION GAP](lectures/lecture-3-domain-specific-languages-and-xtext.md#abstraction-gap) |
+| 6 | [ABSTRACTNESS VERSUS CONCRETENESS](lectures/lecture-3-domain-specific-languages-and-xtext.md#abstractness-versus-concreteness) |
+| 8 | [NEXT ABSTRACTION STEP: MODELLING](lectures/lecture-3-domain-specific-languages-and-xtext.md#next-abstraction-step-modelling) |
+| 9 | [PROBLEM DOMAIN: VEHICLES](lectures/lecture-3-domain-specific-languages-and-xtext.md#problem-domain-vehicles) |
+| 10 | [DOMAIN SPECIFIC LANGUAGES (DSLS)](lectures/lecture-3-domain-specific-languages-and-xtext.md#domain-specific-languages-dsls) |
+| 11 | [WEIRD COMPARISON](lectures/lecture-3-domain-specific-languages-and-xtext.md#weird-comparison) |
+| 12 | [DOMAIN-SPECIFIC LANGUAGES IN MDE](lectures/lecture-3-domain-specific-languages-and-xtext.md#domain-specific-languages-in-mde) |
+| 13 | [EXECUTING MODELS IN MDE](lectures/lecture-3-domain-specific-languages-and-xtext.md#executing-models-in-mde) |
+| 15 | [COMPILING MODELS IN MDE](lectures/lecture-3-domain-specific-languages-and-xtext.md#compiling-models-in-mde) |
+| 16 | [COMPILING MODELS IN MDE SEVERAL STEPS MAY BE NECESSARY](lectures/lecture-3-domain-specific-languages-and-xtext.md#compiling-models-in-mde-several-steps-may-be-necessary) |
+| 17 | [ROLE OF DSLS IN MDE](lectures/lecture-3-domain-specific-languages-and-xtext.md#role-of-dsls-in-mde) |
+| 18 | [DEFINING DSMLS (DSLS) IN MDE](lectures/lecture-3-domain-specific-languages-and-xtext.md#defining-dsmls-dsls-in-mde) |
+| 19 | [DSL AS A SET OF MODELS](lectures/lecture-3-domain-specific-languages-and-xtext.md#dsl-as-a-set-of-models) |
+| 20 | [CONCRETE SYNTAX](lectures/lecture-3-domain-specific-languages-and-xtext.md#concrete-syntax) |
+| 22 | [SEMANTICS DEFINITION](lectures/lecture-3-domain-specific-languages-and-xtext.md#semantics-definition) |
+| 24 | [TAKE HOME MESSAGES](lectures/lecture-3-domain-specific-languages-and-xtext.md#take-home-messages) |
+| 25 | [REFERENCES](lectures/lecture-3-domain-specific-languages-and-xtext.md#references) |
+| 27 | [WHAT DO WE KNOW SO FAR?](lectures/lecture-3-domain-specific-languages-and-xtext.md#what-do-we-know-so-far) |
+| 28 | [DSL AS A COORDINATED SET OF MODELS](lectures/lecture-3-domain-specific-languages-and-xtext.md#dsl-as-a-coordinated-set-of-models) |
+| 29 | [CONCRETE SYNTAX AS A MODEL](lectures/lecture-3-domain-specific-languages-and-xtext.md#concrete-syntax-as-a-model) |
+| 30 | [CONCRETE SYNTAX AS MODEL (IN EMFTEXT)](lectures/lecture-3-domain-specific-languages-and-xtext.md#concrete-syntax-as-model-in-emftext) |
+| 32 | [XTEXT](lectures/lecture-3-domain-specific-languages-and-xtext.md#xtext) |
+| 33 | [XTEXT WORKFLOW (DEFAULT)](lectures/lecture-3-domain-specific-languages-and-xtext.md#xtext-workflow-default) |
+| 33 | [USED IN THE TUTORIALS](lectures/lecture-3-domain-specific-languages-and-xtext.md#used-in-the-tutorials) |
+| 34 | [XTEXT WORKFLOW WITH ECORE MODEL](lectures/lecture-3-domain-specific-languages-and-xtext.md#xtext-workflow-with-ecore-model) |
+| 35 | [EXAMPLE: START WITH A METAMODEL (ONLY FRAGMENT IS SHOWN)](lectures/lecture-3-domain-specific-languages-and-xtext.md#example-start-with-a-metamodel-only-fragment-is-shown) |
+| 36 | [PROCEDURE TO DEFINE CONCRETE SYNTAX OF ECORE METAMODEL](lectures/lecture-3-domain-specific-languages-and-xtext.md#procedure-to-define-concrete-syntax-of-ecore-metamodel) |
+| 36 | [DEFAULT GRAMMAR](lectures/lecture-3-domain-specific-languages-and-xtext.md#default-grammar) |
+| 38 | [DEFAULT GRAMMAR (CONT.)](lectures/lecture-3-domain-specific-languages-and-xtext.md#default-grammar-cont) |
+| 39 | [MODIFY THE GRAMMAR](lectures/lecture-3-domain-specific-languages-and-xtext.md#modify-the-grammar) |
+| 40 | [EXAMPLE .SQL FILE](lectures/lecture-3-domain-specific-languages-and-xtext.md#example-sql-file) |
+| 41 | [TAKE-HOME MESSAGES](lectures/lecture-3-domain-specific-languages-and-xtext.md#take-home-messages) |
 
 </details>
 
@@ -747,5 +800,189 @@ The tool manual: Essential OCL, OCLinEcore, Complete OCL and the standard librar
 | 219 | [8.2. Extension points](background/lecture-2/eclipse-ocl-6.6-documentation.md#82-extension-points) |
 | 220 | [Chapter 9. Building the OCL Project](background/lecture-2/eclipse-ocl-6.6-documentation.md#chapter-9-building-the-ocl-project) |
 | 220 | [9.1. GenModel GenAnnotations](background/lecture-2/eclipse-ocl-6.6-documentation.md#91-genmodel-genannotations) |
+
+</details>
+
+### Mernik, Heering & Sloane — When and How to Develop Domain-Specific Languages (2005)
+
+[`background/lecture-3/when-and-how-to-develop-domain-specific-languages.md`](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md) · [PDF](background/lecture-3/when-and-how-to-develop-domain-specific-languages.pdf) · 29 pages
+
+The survey behind lecture 3's "when is a DSL worth it" argument. It collects patterns for each phase of DSL development — **decision** (the reasons a DSL gets built at all, from notation to task automation), **analysis** (informal or formal domain analysis), **design** (language exploitation versus invention, informal versus formal specification) and **implementation** (interpreter, compiler/application generator, preprocessor, embedding, extensible compiler, COTS) — and closes with the tooling that supports each and the open problems. The implementation section is the one to read before choosing between interpreting a model and compiling it.
+
+<details><summary>Sections</summary>
+
+| Page | Section |
+|---:|---|
+| 2 | [1. INTRODUCTION](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#1-introduction) |
+| 2 | [1.1. General](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#11-general) |
+| 3 | [1.2. Executability of DSLs](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#12-executability-of-dsls) |
+| 3 | [1.3. DSLs as Enablers of Reuse](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#13-dsls-as-enablers-of-reuse) |
+| 3 | [1.4. Scope of This Article](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#14-scope-of-this-article) |
+| 3 | [1.5. Literature](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#15-literature) |
+| 5 | [2. DSL PATTERNS](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#2-dsl-patterns) |
+| 5 | [2.1. Pattern classification](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#21-pattern-classification) |
+| 5 | [2.2. Decision](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#22-decision) |
+| 5 | [2.3. Analysis](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#23-analysis) |
+| 5 | [2.4. Design](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#24-design) |
+| 5 | [2.5. Implementation](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#25-implementation) |
+| 18 | [2.6. Comparison With Other Classifications](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#26-comparison-with-other-classifications) |
+| 19 | [3. DSL DEVELOPMENT SUPPORT](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#3-dsl-development-support) |
+| 19 | [3.1. Design and Implementation Support](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#31-design-and-implementation-support) |
+| 20 | [3.2. Analysis Support](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#32-analysis-support) |
+| 21 | [4. CONCLUSIONS AND OPEN PROBLEMS](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#4-conclusions-and-open-problems) |
+| 24 | [ACKNOWLEDGMENTS](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#acknowledgments) |
+| 24 | [REFERENCES](background/lecture-3/when-and-how-to-develop-domain-specific-languages.md#references) |
+
+</details>
+
+### Kurtev, Bézivin, Jouault & Valduriez — Model-based DSL frameworks (2006)
+
+[`background/lecture-3/model-based-dsl-frameworks.md`](background/lecture-3/model-based-dsl-frameworks.md) · [PDF](background/lecture-3/model-based-dsl-frameworks.pdf) · 14 pages
+
+Basic MDE principles stated as definitions (model organization, model utilization, technical space) and then applied to DSL engineering: six case studies, the problems they share, and AMMA as an answer — KM3 for metamodel definition, TCS for concrete syntax, ATL for transformation. This is the paper that frames a DSL as a coordinated set of models rather than as a grammar, which is the framing lecture 3 uses.
+
+<details><summary>Sections</summary>
+
+| Page | Section |
+|---:|---|
+| 1 | [Abstract](background/lecture-3/model-based-dsl-frameworks.md#abstract) |
+| 1 | [1. Introduction](background/lecture-3/model-based-dsl-frameworks.md#1-introduction) |
+| 1 | [2. Definitions](background/lecture-3/model-based-dsl-frameworks.md#2-definitions) |
+| 2 | [2.1 Model Organization Definition](background/lecture-3/model-based-dsl-frameworks.md#21-model-organization-definition) |
+| 2 | [2.2 Model Utilization Definition](background/lecture-3/model-based-dsl-frameworks.md#22-model-utilization-definition) |
+| 3 | [2.3 Relations between Organization and Utilization of a Model](background/lecture-3/model-based-dsl-frameworks.md#23-relations-between-organization-and-utilization-of-a-model) |
+| 3 | [2.4 Domain Specific Languages](background/lecture-3/model-based-dsl-frameworks.md#24-domain-specific-languages) |
+| 4 | [2.5 DSLs and Models](background/lecture-3/model-based-dsl-frameworks.md#25-dsls-and-models) |
+| 4 | [2.6 Technical Spaces](background/lecture-3/model-based-dsl-frameworks.md#26-technical-spaces) |
+| 5 | [3. Case Studies and Problems](background/lecture-3/model-based-dsl-frameworks.md#3-case-studies-and-problems) |
+| 5 | [3.1 Telephony Languages](background/lecture-3/model-based-dsl-frameworks.md#31-telephony-languages) |
+| 5 | [3.2 Querying Program Source Code](background/lecture-3/model-based-dsl-frameworks.md#32-querying-program-source-code) |
+| 5 | [3.3 PIM to PSM Transformations](background/lecture-3/model-based-dsl-frameworks.md#33-pim-to-psm-transformations) |
+| 5 | [3.4 Sensor Data Stream Processing](background/lecture-3/model-based-dsl-frameworks.md#34-sensor-data-stream-processing) |
+| 6 | [3.5 Bug Tracking](background/lecture-3/model-based-dsl-frameworks.md#35-bug-tracking) |
+| 6 | [3.6 Contract Management](background/lecture-3/model-based-dsl-frameworks.md#36-contract-management) |
+| 6 | [3.7 Problem Identification](background/lecture-3/model-based-dsl-frameworks.md#37-problem-identification) |
+| 6 | [4. Solutions](background/lecture-3/model-based-dsl-frameworks.md#4-solutions) |
+| 7 | [4.1 The Overall Structure of AMMA](background/lecture-3/model-based-dsl-frameworks.md#41-the-overall-structure-of-amma) |
+| 8 | [4.2 KM3: Metamodel Definition Language](background/lecture-3/model-based-dsl-frameworks.md#42-km3-metamodel-definition-language) |
+| 9 | [4.3 TCS: Language for Defining Concrete Syntaxes](background/lecture-3/model-based-dsl-frameworks.md#43-tcs-language-for-defining-concrete-syntaxes) |
+| 9 | [4.4 ATL: Model Transformation Language](background/lecture-3/model-based-dsl-frameworks.md#44-atl-model-transformation-language) |
+| 10 | [4.5 Using AMMA to Solve Problems](background/lecture-3/model-based-dsl-frameworks.md#45-using-amma-to-solve-problems) |
+| 11 | [5. Related Work](background/lecture-3/model-based-dsl-frameworks.md#5-related-work) |
+| 12 | [6. Conclusions](background/lecture-3/model-based-dsl-frameworks.md#6-conclusions) |
+| 12 | [Acknowledgements](background/lecture-3/model-based-dsl-frameworks.md#acknowledgements) |
+| 12 | [References](background/lecture-3/model-based-dsl-frameworks.md#references) |
+
+</details>
+
+### Jouault, Bézivin & Kurtev — TCS: a DSL for the Specification of Textual Concrete Syntaxes in Model Engineering (2006)
+
+[`background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md`](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md) · [PDF](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.pdf) · 6 pages
+
+Concrete syntax attached to a metamodel, in both directions: one TCS specification yields both a parser (text to model) and a serialiser (model to text), instead of a grammar plus a hand-written visitor. Short, and the closest published relative of what Xtext does from an existing Ecore metamodel.
+
+<details><summary>Sections</summary>
+
+| Page | Section |
+|---:|---|
+| 1 | [Abstract](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#abstract) |
+| 1 | [1. Introduction](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#1-introduction) |
+| 2 | [2. Background](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#2-background) |
+| 2 | [2.1 Domain Specific Languages](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#21-domain-specific-languages) |
+| 2 | [2.2 The AMMA Framework](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#22-the-amma-framework) |
+| 3 | [2.3 Basic KM3 Concepts](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#23-basic-km3-concepts) |
+| 3 | [3. TCS: Bridging Metamodels and Grammars](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#3-tcs-bridging-metamodels-and-grammars) |
+| 3 | [3.1 Overview](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#31-overview) |
+| 3 | [3.2 Running Example: SPL](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#32-running-example-spl) |
+| 3 | [Listing 1. Simple SPL program](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#listing-1-simple-spl-program) |
+| 4 | [3.3 Basic Constructs](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#33-basic-constructs) |
+| 4 | [3.4 Additional Constructs](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#34-additional-constructs) |
+| 5 | [3.5 Specific Constructs for Model to Text](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#35-specific-constructs-for-model-to-text) |
+| 5 | [4. Implementation Issues](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#4-implementation-issues) |
+| 5 | [5. Related Work](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#5-related-work) |
+| 6 | [6. Conclusion](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#6-conclusion) |
+| 6 | [Acknowledgments](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#acknowledgments) |
+| 6 | [References](background/lecture-3/tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.md#references) |
+
+</details>
+
+### Model Driven Architecture — Foundations and Applications, ECMDA-FA 2008 proceedings (LNCS 5095)
+
+[`background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md`](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md) · [PDF](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.pdf) · 457 pages
+
+457-page conference proceedings, thirty papers across model management, executable models, concrete syntaxes, aspects, validation and an industrial session. For lecture 3 the *Concrete Syntaxes* group is the point of the volume: textual modelling embedded into graphical modelling (p. 165), a classification of textual-syntax mapping approaches (p. 181, the survey that places Xtext, TCS and EMFText against each other), metamodel syntactic sheets (p. 197) and graphical rendering with SVG (p. 212). *The Epsilon Generation Language* (p. 13) is a model-to-text language, so it is also the volume's Task 3 paper.
+
+<details><summary>Papers</summary>
+
+| Page | Paper |
+|---:|---|
+| 13 | [The Epsilon Generation Language](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#the-epsilon-generation-language) |
+| 29 | [Constructing and Visualizing Transformation Chains](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#constructing-and-visualizing-transformation-chains) |
+| 45 | [Towards Roundtrip Engineering - A Template-Based Reverse Engineering Approach](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#towards-roundtrip-engineering---a-template-based-reverse-engineering-approach) |
+| 60 | [Annotation Framework Validation Using Domain Models](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#annotation-framework-validation-using-domain-models) |
+| 75 | [Prototyping Visual Interpreters and Debuggers for Domain-Specific Modelling Languages](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#prototyping-visual-interpreters-and-debuggers-for-domain-specific-modelling-languages) |
+| 91 | [Data Flow Analysis of UML Action Semantics for Executable Models](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#data-flow-analysis-of-uml-action-semantics-for-executable-models) |
+| 106 | [From UML Activities to TAAL - Towards Behaviour-Preserving Model Transformations](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#from-uml-activities-to-taal---towards-behaviour-preserving-model-transformations) |
+| 122 | [A Practical MDA Approach for Autonomic Profiling and Performance Assessment](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#a-practical-mda-approach-for-autonomic-profiling-and-performance-assessment) |
+| 133 | [Ladder Metamodeling and PLC Program Validation through Time Petri Nets ⋆](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#ladder-metamodeling-and-plc-program-validation-through-time-petri-nets) |
+| 149 | [Array OL Descriptions of Repetitive Structures in VHDL](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#array-ol-descriptions-of-repetitive-structures-in-vhdl) |
+| 165 | [Textual Modelling Embedded into Graphical Modelling](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#textual-modelling-embedded-into-graphical-modelling) |
+| 181 | [Classification of Concrete Textual Syntax Mapping Approaches](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#classification-of-concrete-textual-syntax-mapping-approaches) |
+| 197 | [Metamodel Syntactic Sheets: An Approach for Defining Textual Concrete Syntaxes](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#metamodel-syntactic-sheets-an-approach-for-defining-textual-concrete-syntaxes) |
+| 212 | [Graphical Concrete Syntax Rendering with SVG](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#graphical-concrete-syntax-rendering-with-svg) |
+| 227 | [Semantics Preservation of Sequence Diagram Aspects](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#semantics-preservation-of-sequence-diagram-aspects) |
+| 243 | [Generic Reusable Concern Compositions ⋆](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#generic-reusable-concern-compositions) |
+| 258 | [Modeling Human Aspects of Business Processes - A View-Based, Model-Driven Approach](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#modeling-human-aspects-of-business-processes---a-view-based-model-driven-approach) |
+| 274 | [A Semantics-Based Aspect Language for Interactions with the Arbitrary Events Symbol](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#a-semantics-based-aspect-language-for-interactions-with-the-arbitrary-events-symbol) |
+| 290 | [Model-Driven Platform-Specific Testing through Configurable Simulations](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#model-driven-platform-specific-testing-through-configurable-simulations) |
+| 306 | [Testing Metamodels](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#testing-metamodels) |
+| 322 | [A Metamodeling Approach for Reasoning about Requirements](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#a-metamodeling-approach-for-reasoning-about-requirements) |
+| 338 | [Model-Driven Security in Practice: An Industrial Experience ⋆](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#model-driven-security-in-practice-an-industrial-experience) |
+| 350 | [Supporting the UML State Machine Diagrams at Runtime](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#supporting-the-uml-state-machine-diagrams-at-runtime) |
+| 361 | [Model-Based Generation of Interlocking Controller Software from Control Tables](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#model-based-generation-of-interlocking-controller-software-from-control-tables) |
+| 373 | [Model-Driven Simulation of a Maritime Surveillance System](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#model-driven-simulation-of-a-maritime-surveillance-system) |
+| 381 | [Towards Utilizing Model-Driven Engineering of Composite Applications for Business Performance Analysis](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#towards-utilizing-model-driven-engineering-of-composite-applications-for-business-performance-analysis) |
+| 393 | [From Business Architecture to SOA Realization Using MDD](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#from-business-architecture-to-soa-realization-using-mdd) |
+| 405 | [Realizing an MDA and SOA Marriage for the Development of Mobile Services](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#realizing-an-mda-and-soa-marriage-for-the-development-of-mobile-services) |
+| 418 | [A Survey about the Intent to Use Visual Defect Annotations for Software Models](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#a-survey-about-the-intent-to-use-visual-defect-annotations-for-software-models) |
+| 431 | [MDA-Based Methodologies: An Analytical Survey](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#mda-based-methodologies-an-analytical-survey) |
+| 444 | [Where Is the Proof? - A Review of Experiences from Applying MDE in Industry](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.md#where-is-the-proof---a-review-of-experiences-from-applying-mde-in-industry) |
+
+</details>
+
+### Model Driven Architecture — Foundations and Applications, ECMDA-FA 2009 proceedings (LNCS 5562)
+
+[`background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md`](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md) · [PDF](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.pdf) · 349 pages
+
+349-page conference proceedings, twenty-four papers, the next year's edition and the one held in Enschede. Relevant here: *Derivation and Refinement of Textual Syntax for Models* (p. 126), which is the Xtext-style question of getting a concrete syntax out of an existing metamodel and then improving it; *A Hybrid Graphical and Textual Notation and Editor for UML Actions* (p. 249); *Comparison of Three Model Transformation Languages* (p. 14), for the Task 2 choice between ATL and QVT; and *A Domain Specific Language for Extracting Models in Software Modernization* (p. 94).
+
+<details><summary>Papers</summary>
+
+| Page | Paper |
+|---:|---|
+| 13 | [Creating Embedded Platforms with MDA: Where's the Sweet Spot?](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#creating-embedded-platforms-with-mda-wheres-the-sweet-spot) |
+| 14 | [Comparison of Three Model Transformation Languages](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#comparison-of-three-model-transformation-languages) |
+| 30 | [On the Use of Higher-Order Model Transformations](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#on-the-use-of-higher-order-model-transformations) |
+| 46 | [Managing Model Adaptation by Precise Detection of Metamodel Changes](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#managing-model-adaptation-by-precise-detection-of-metamodel-changes) |
+| 62 | [A Pattern Mining Approach Using QVT](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#a-pattern-mining-approach-using-qvt) |
+| 78 | [A Language-Theoretic View on Guidelines and Consistency Rules of UML](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#a-language-theoretic-view-on-guidelines-and-consistency-rules-of-uml) |
+| 94 | [A Domain Specific Language for Extracting Models in Software Modernization](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#a-domain-specific-language-for-extracting-models-in-software-modernization) |
+| 110 | [Challenges in Combining SysML and MARTE for Model-Based Design of Embedded Systems](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#challenges-in-combining-sysml-and-marte-for-model-based-design-of-embedded-systems) |
+| 126 | [Derivation and Refinement of Textual Syntax for Models](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#derivation-and-refinement-of-textual-syntax-for-models) |
+| 142 | [Uniform Random Generation of Huge Metamodel Instances](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#uniform-random-generation-of-huge-metamodel-instances) |
+| 158 | [Establishing Correspondences between Models with the Epsilon Comparison Language](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#establishing-correspondences-between-models-with-the-epsilon-comparison-language) |
+| 170 | [Dependent and Conflicting Change Operations of Process Models](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#dependent-and-conflicting-change-operations-of-process-models) |
+| 186 | [Enabling Automated Traceability Maintenance through the Upkeep of Traceability Relations](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#enabling-automated-traceability-maintenance-through-the-upkeep-of-traceability-relations) |
+| 202 | [Temporal Extensions of OCL Revisited](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#temporal-extensions-of-ocl-revisited) |
+| 218 | [An MDA-Based Approach for Behaviour Modelling of Context-Aware Mobile Applications ∗](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#an-mda-based-approach-for-behaviour-modelling-of-context-aware-mobile-applications) |
+| 233 | [A Model Driven Approach to the Analysis of Timeliness Properties](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#a-model-driven-approach-to-the-analysis-of-timeliness-properties) |
+| 249 | [A Hybrid Graphical and Textual Notation and Editor for UML Actions](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#a-hybrid-graphical-and-textual-notation-and-editor-for-uml-actions) |
+| 265 | [Mapping Requirement Models to Mathematical Models in Control System Development](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#mapping-requirement-models-to-mathematical-models-in-control-system-development) |
+| 277 | [On Study Results: Round Trip Engineering of Space Systems](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#on-study-results-round-trip-engineering-of-space-systems) |
+| 289 | [MoPCoM/MARTE Process Applied to a Cognitive Radio System Design and Analysis](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#mopcommarte-process-applied-to-a-cognitive-radio-system-design-and-analysis) |
+| 301 | [Managing Flexibility: Modeling Binding-Times in Simulink](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#managing-flexibility-modeling-binding-times-in-simulink) |
+| 313 | [Experiences of Developing a Network Modeling Tool Using the Eclipse Environment](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#experiences-of-developing-a-network-modeling-tool-using-the-eclipse-environment) |
+| 325 | [MBT4Chor: A Model-Based Testing Approach for Service Choreographies](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#mbt4chor-a-model-based-testing-approach-for-service-choreographies) |
+| 337 | [Model-Based Interoperability of Heterogeneous Information Systems: An Industrial Case Study](background/lecture-3/model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.md#model-based-interoperability-of-heterogeneous-information-systems-an-industrial-case-study) |
 
 </details>

@@ -19,6 +19,10 @@ One directory per deadline, named after the course's own task numbering.
 | `task-2-transformations/` | 2026-10-16 | Task 2 — the model-to-model transformation from **Project Intent** (resolved against the Platform document) to **Resolved Deployment**, its rules and limitations, evidence it runs | — | not started |
 | `task-3-code-generation/` | 2026-10-30 | Task 3 — the model-to-text transformation from **Resolved Deployment** to the Deliverable Set, the generated code, evidence it loads | — | not started |
 
+What each task requires, and what it hands in, is in
+[`assignment.md`](assignment.md): the course's own task text for a
+code-generation project, task by task, with the deadlines above.
+
 Each task delivers an EMF artefact, and the table above says which directory
 documents it. What the artefact *is* lives in
 [`emf/docs/architecture.md`](../../emf/docs/architecture.md#modules), whose
@@ -30,7 +34,8 @@ in its row above when its Overleaf project exists.
 
 ## Course material
 
-Two further directories hold what the course hands out, kept for reference while
+[`assignment.md`](assignment.md) holds the assignment text itself. Two further
+directories hold what the course hands out, kept for reference while
 the reports are written and not material of this repository:
 [`lectures/`](lectures/) for the slide decks and
 [`background/`](background/) for the reading set per lecture. Both carry a README

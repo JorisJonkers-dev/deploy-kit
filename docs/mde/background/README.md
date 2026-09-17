@@ -36,6 +36,22 @@ pages across all the course material.
 | `object-constraint-language-2.4-specification.pdf` | Object Management Group. *Object Constraint Language, version 2.4*. OMG document formal/2014-02-03, 2014. |
 | `eclipse-ocl-6.6-documentation.pdf` | Damus, C., Sánchez-Barbudo Herrera, A., Uhl, A., Willink, E. et al. *Eclipse OCL 6.6.0 Documentation*, 2018. |
 
+## [`lecture-3/`](lecture-3/) — domain-specific languages, and textual concrete syntax
+
+| File | Source |
+|---|---|
+| `when-and-how-to-develop-domain-specific-languages.pdf` | Mernik, M., Heering, J. and Sloane, A. M. *When and how to develop domain-specific languages*. ACM Computing Surveys 37(4), 2005. |
+| `model-based-dsl-frameworks.pdf` | Kurtev, I., Bézivin, J., Jouault, F. and Valduriez, P. *Model-based DSL frameworks*. OOPSLA 2006 companion. |
+| `tcs-a-dsl-for-the-specification-of-textual-concrete-syntaxes-in-model-engineering.pdf` | Jouault, F., Bézivin, J. and Kurtev, I. *TCS: a DSL for the specification of textual concrete syntaxes in model engineering*. GPCE 2006. |
+| `model-driven-architecture-foundations-and-applications-ecmda-fa-2008-proceedings.pdf` | Schieferdecker, I. and Hartman, A. (eds.). *Model Driven Architecture — Foundations and Applications*, ECMDA-FA 2008. LNCS 5095, Springer. |
+| `model-driven-architecture-foundations-and-applications-ecmda-fa-2009-proceedings.pdf` | Paige, R. F., Hartman, A. and Rensink, A. (eds.). *Model Driven Architecture — Foundations and Applications*, ECMDA-FA 2009. LNCS 5562, Springer. |
+
+The lecture also hands out Paige, Kolovos and Polack, *A tutorial on
+metamodelling for grammar researchers*, which lecture 1 already handed out. It is
+not duplicated here: read
+[`lecture-1/a-tutorial-on-metamodelling-for-grammar-researchers.pdf`](lecture-1/a-tutorial-on-metamodelling-for-grammar-researchers.pdf),
+whose §4 on modelware versus grammarware is what lecture 3 draws on.
+
 These are course hand-outs, kept for reference while the reports are written.
 They are third-party works under their publishers' terms, not material of this
 repository.

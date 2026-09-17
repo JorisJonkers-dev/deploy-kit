@@ -10,6 +10,7 @@ it.
 | `lecture-0-introduction.pdf` | Introduction to model-driven engineering | 31 August 2026 |
 | `lecture-1-models-and-metamodels.pdf` | Models and metamodels | 31 August 2026 |
 | `lecture-2-object-constraint-language.pdf` | The Object Constraint Language | 7 September 2026 |
+| `lecture-3-domain-specific-languages-and-xtext.pdf` | Domain-specific languages, and textual concrete syntax with Xtext | 14 September 2026 |
 
 Each deck has a Markdown conversion beside it (`<name>.md`, figures in
 `<name>-images/`). [`../INDEX.md`](../INDEX.md) maps topics to sections and
