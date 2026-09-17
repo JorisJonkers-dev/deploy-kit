@@ -280,10 +280,22 @@ as dead.
 
 ## MDE coursework material
 
-`docs/mde/` holds a university course's reports, lecture decks and background
-reading. Every PDF there has a Markdown conversion beside it, with its
-figures in a sibling `-images/` directory. **Start from
-[`docs/mde/INDEX.md`](docs/mde/INDEX.md)**: it says which document covers
-which topic, down to the section anchor and the PDF page, so open one section
-of one `.md` rather than reading a PDF end to end. Some of these run to 400
-pages.
+`docs/mde/` holds a university course's reports: one directory per task, plus
+[`docs/mde/assignment.md`](docs/mde/assignment.md), the course's own task text,
+which says what each task requires and hands in.
+[`docs/mde/README.md`](docs/mde/README.md) says which directory mirrors which
+task.
+
+The course's own hand-outs (the lecture decks, the background reading and the
+index over them) are **not in this repository**. They are third-party works, so
+they live in the private repository `JorisJonkers-dev/mde-course-material`,
+mounted as a submodule at `docs/mde/course-material/`. With access,
+`git submodule update --init docs/mde/course-material` fetches them; without it
+the directory is empty, and nothing here depends on it. No gate reads the
+submodule, and CI does not initialise it.
+
+Once initialised, **start from `docs/mde/course-material/INDEX.md`**: it says
+which document covers which topic, down to the section anchor and the PDF page,
+so open one section of one `.md` rather than reading a PDF end to end. Some of
+these run to 400 pages. Never copy that material into this repository, and never
+quote it at length in a tracked file here.

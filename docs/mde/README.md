@@ -12,29 +12,45 @@ reviewer can read without an Overleaf account.
 
 One directory per deadline, named after the course's own task numbering.
 
-| Directory | Deliverable | Overleaf project | State |
-|---|---|---|---|
-| [`task-0-proposal/`](task-0-proposal/) | Task 0 — project description, the proposal that must be approved before work starts | `6aa2ba0c3920baa59ec20901` | re-mirrored 2026-09-14, after the simplification in #102 |
-| `task-1-metamodelling/` | Task 1 — domain analysis and modelling decisions for the two metamodels, **Project Intent** (source) and **Resolved Deployment** (target), their diagrams and example models | — | not started |
-| `task-2-transformations/` | Task 2 — the model-to-model transformation from **Project Intent** (resolved against the Platform document) to **Resolved Deployment**, its rules and limitations, evidence it runs | — | not started |
-| `task-3-code-generation/` | Task 3 — the model-to-text transformation from **Resolved Deployment** to the Deliverable Set, the generated code, evidence it loads | — | not started |
+| Directory | Due | Deliverable | Overleaf project | State |
+|---|---|---|---|---|
+| [`task-0-proposal/`](task-0-proposal/) | approved | Task 0 — project description, the proposal that must be approved before work starts | `6aa2ba0c3920baa59ec20901` | re-mirrored 2026-09-16, after the delivery and output-layout corrections in #56 |
+| [`task-1-metamodelling/`](task-1-metamodelling/) | 2026-09-25 | Task 1 — domain analysis and modelling decisions for the two metamodels, **Project Intent** (source) and **Resolved Deployment** (target), their diagrams and example models | `6aaa9f1d3920baa59ec267f7` | drafted; both metamodels exist as Ecore under [`emf/bundles/metamodel/model/`](../../emf/bundles/metamodel/model/) |
+| `task-2-transformations/` | 2026-10-16 | Task 2 — the model-to-model transformation from **Project Intent** (resolved against the Platform document) to **Resolved Deployment**, its rules and limitations, evidence it runs | — | not started |
+| `task-3-code-generation/` | 2026-10-30 | Task 3 — the model-to-text transformation from **Resolved Deployment** to the Deliverable Set, the generated code, evidence it loads | — | not started |
+
+Each task delivers an EMF artefact, and the table above says which directory
+documents it. What the artefact *is* lives in
+[`emf/docs/architecture.md`](../../emf/docs/architecture.md#modules), whose
+module table carries the same task numbering, so the two are read together and
+neither restates the other.
 
 Add a new report as a sibling directory with the same internal shape, and fill
 in its row above when its Overleaf project exists.
 
 ## Course material
 
-Two further directories hold what the course hands out, kept for reference while
-the reports are written and not material of this repository:
-[`lectures/`](lectures/) for the slide decks and
-[`background/`](background/) for the reading set per lecture. Both carry a README
-naming every file, because the names publishers and lecture exports ship with
-say nothing at a glance.
+What the course hands out is **not in this repository**. The slide decks, the
+background reading per lecture and the index over them live in the private
+repository `JorisJonkers-dev/mde-course-material`, mounted here as a submodule at
+`docs/mde/course-material/`. They are third-party works under their publishers'
+and the course staff's terms, so they are not ours to publish; the reports in
+this directory are the author's own work and stay public.
 
-Every PDF has a Markdown conversion beside it — `<name>.md`, figures in
-`<name>-images/` — produced with docling. **[`INDEX.md`](INDEX.md) maps topics
-to documents, sections and PDF pages**; read it first, then open only the
-section it points at.
+With access, fetch them in place:
+
+```bash
+git submodule update --init docs/mde/course-material
+```
+
+The submodule then holds `lectures/` for the decks, `background/` for the reading
+set per lecture, and `INDEX.md`, which maps topics to documents, sections and PDF
+pages. Read that index first; several of those documents run to 200-400 pages.
+Every PDF has a Markdown conversion beside it, `<name>.md`, with figures in
+`<name>-images/`, produced with docling.
+
+Without access the directory stays empty and nothing else in this repository
+depends on it: no gate reads it, and CI does not initialise submodules.
 
 ## Layout of a report directory
 
