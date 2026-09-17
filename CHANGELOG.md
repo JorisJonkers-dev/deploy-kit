@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.3.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.2.0...v0.3.0) (2026-09-17)
+
+
+### Features
+
+* **ci:** comment each pull request's shape and publish a release candidate ([#116](https://github.com/JorisJonkers-dev/deploy-kit/issues/116)) ([4ff3284](https://github.com/JorisJonkers-dev/deploy-kit/commit/4ff3284362669dc887db9adc2ceda23e66c683f8))
+* give the Resolved Deployment and the node contract their metamodels ([#135](https://github.com/JorisJonkers-dev/deploy-kit/issues/135)) ([179cbe8](https://github.com/JorisJonkers-dev/deploy-kit/commit/179cbe85f4945ee19cb9ff8e49c8a3d01d4fb24e))
+* link a route's and a scrape's names to the Process and surface they mean ([#118](https://github.com/JorisJonkers-dev/deploy-kit/issues/118)) ([da54c8e](https://github.com/JorisJonkers-dev/deploy-kit/commit/da54c8e1713da109a6e80f30699fb5c92dd8b99c))
+* parse the minimal project intent in both implementations and match its oracle ([#112](https://github.com/JorisJonkers-dev/deploy-kit/issues/112)) ([506619b](https://github.com/JorisJonkers-dev/deploy-kit/commit/506619be73ab1e197552c7489e1fee1970a4044a))
+* read the Platform document and refuse what it and the project files break together ([#120](https://github.com/JorisJonkers-dev/deploy-kit/issues/120)) ([ede5e91](https://github.com/JorisJonkers-dev/deploy-kit/commit/ede5e91c64f0b847b31923254daeb0a51d41bafc)), closes [#41](https://github.com/JorisJonkers-dev/deploy-kit/issues/41)
+* refuse a broken document with the code and pointer both implementations agree on ([#114](https://github.com/JorisJonkers-dev/deploy-kit/issues/114)) ([dede1fa](https://github.com/JorisJonkers-dev/deploy-kit/commit/dede1fa6ba7fc291ae46cb0d8286ad1a1fadafba))
+* run the secret scan locally, not only in CI ([#74](https://github.com/JorisJonkers-dev/deploy-kit/issues/74)) ([ec9746b](https://github.com/JorisJonkers-dev/deploy-kit/commit/ec9746b3e438933166d9e848510dc0ac95f92d54))
+* widen the Project Intent metamodel to every worked example, with its descriptor and JSON Schema ([#113](https://github.com/JorisJonkers-dev/deploy-kit/issues/113)) ([76919ca](https://github.com/JorisJonkers-dev/deploy-kit/commit/76919ca9b3f04f2ffade6856c47ab2e56e57f36f))
+
+
+### Bug Fixes
+
+* restore the external names the hierarchy rename rewrote ([#107](https://github.com/JorisJonkers-dev/deploy-kit/issues/107)) ([4dbaa43](https://github.com/JorisJonkers-dev/deploy-kit/commit/4dbaa43eb3b920354f194d7786fc369941a95402))
+
 ## [0.2.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.1.0...v0.2.0) (2026-09-14)
 
 
