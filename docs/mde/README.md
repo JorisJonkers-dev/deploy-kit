@@ -30,17 +30,27 @@ in its row above when its Overleaf project exists.
 
 ## Course material
 
-Two further directories hold what the course hands out, kept for reference while
-the reports are written and not material of this repository:
-[`lectures/`](lectures/) for the slide decks and
-[`background/`](background/) for the reading set per lecture. Both carry a README
-naming every file, because the names publishers and lecture exports ship with
-say nothing at a glance.
+What the course hands out is **not in this repository**. The slide decks, the
+background reading per lecture and the index over them live in the private
+repository `JorisJonkers-dev/mde-course-material`, mounted here as a submodule at
+`docs/mde/course-material/`. They are third-party works under their publishers'
+and the course staff's terms, so they are not ours to publish; the reports in
+this directory are the author's own work and stay public.
 
-Every PDF has a Markdown conversion beside it — `<name>.md`, figures in
-`<name>-images/` — produced with docling. **[`INDEX.md`](INDEX.md) maps topics
-to documents, sections and PDF pages**; read it first, then open only the
-section it points at.
+With access, fetch them in place:
+
+```bash
+git submodule update --init docs/mde/course-material
+```
+
+The submodule then holds `lectures/` for the decks, `background/` for the reading
+set per lecture, and `INDEX.md`, which maps topics to documents, sections and PDF
+pages. Read that index first; several of those documents run to 200-400 pages.
+Every PDF has a Markdown conversion beside it, `<name>.md`, with figures in
+`<name>-images/`, produced with docling.
+
+Without access the directory stays empty and nothing else in this repository
+depends on it: no gate reads it, and CI does not initialise submodules.
 
 ## Layout of a report directory
 

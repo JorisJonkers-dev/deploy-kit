@@ -48,6 +48,7 @@ describe("bucketOf", () => {
   it("places a root tooling file by its exact name", () => {
     expect(bucketOf("package.json")).toBe("tooling");
     expect(bucketOf(".nvmrc")).toBe("tooling");
+    expect(bucketOf(".gitmodules")).toBe("tooling");
   });
 
   it("prefers decision records over the wider documentation bucket", () => {

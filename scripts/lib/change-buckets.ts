@@ -53,6 +53,7 @@ const ROOT_TOOLING_FILES = new Set([
   ".editorconfig",
   ".gitignore",
   ".gitattributes",
+  ".gitmodules",
   ".gitleaks.toml",
   ".npmrc",
   ".mcp.json",
