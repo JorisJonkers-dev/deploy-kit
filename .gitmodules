@@ -1,0 +1,3 @@
+[submodule "docs/mde/course-material"]
+	path = docs/mde/course-material
+	url = https://github.com/JorisJonkers-dev/mde-course-material.git
