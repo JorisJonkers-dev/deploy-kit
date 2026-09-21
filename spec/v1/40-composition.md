@@ -50,7 +50,7 @@ metadata:
 spec:
   schemaVersion: 1.0.0
   project: knowledge                 # exactly one; the project file's header
-  owner: joris                      # the only field raised to the project
+  owner: joris                      # the project's own, and not shared
   contains:
     applications: [knowledge]
     secretSubtrees: [knowledge-system/]

@@ -13,7 +13,7 @@
 schemaVersion: 1.0.0
 
 # One file per project, one file one Intent Fragment
-# (docs/adr/model/0063-intent-authored-per-project.md). `owner` is the only field the
+# (docs/adr/model/0063-intent-authored-per-project.md). `owner` is the field the
 # header raises.
 project: knowledge
 owner: joris

@@ -37,8 +37,10 @@ Layer 1 is authored as two kinds of file:
 
 | file | owns |
 |---|---|
-| `platform/<project>.project.yml` | one project: its `owner`, and every Application in it: processes, surfaces, dependencies, exposure, probes, volumes, placement, hardening, and secret **access** |
+| `platform/<project>.project.yml` | one project: its `owner`, and every Application in it: processes, surfaces, dependencies, exposure, probes, volumes, placement, hardening, and secret **access**, each declared at whichever of the three levels shares it ([Shared intent](#shared-intent)) |
 | `platform/env/<process>/base.env` + `platform/env/<process>/<cluster>.env` | every environment variable that **that Process** receives |
+| `platform/env/_project/base.env` + `platform/env/_project/<cluster>.env` | every environment variable **every Process of the project** receives |
+| `platform/env/_applications/<application>/base.env` + `.../<cluster>.env` | every environment variable **every Process of that Application** receives |
 
 Both paths are normative, and the worked examples follow them. The
 `.project.yml` suffix names the `kind` the file carries, `Project`, so a
@@ -47,6 +49,12 @@ files a publish step reads without a convention nobody wrote down. A Process's
 env files live in **a directory named for the Process**, never in one file per
 Process named after it: the overlay `<cluster>.env` has to sit beside its
 `base.env`, and a flat `<process>.base.env` leaves the overlay nowhere to go.
+
+The two shared scopes are directories beside the Processes' own, named
+`_project` and `_applications`. The leading underscore is what keeps them
+unambiguous: a Process name is a Kubernetes object name, so it is a DNS-1123
+label and can never begin with one. A directory under `platform/env/` whose
+name begins with `_` is therefore a scope, and any other is a Process.
 
 One file is one project and one Intent Fragment
 ([0063](../../docs/adr/model/0063-intent-authored-per-project.md)). A repository may
@@ -106,7 +114,7 @@ It carries the classes and how they compose, and nothing else. The closed
 vocabularies an attribute's type names are tabulated under
 [The closed vocabularies](#the-closed-vocabularies) rather than drawn: as boxes
 they added a line each and told a reader nothing the type name had not. The two
-relations that reach across more than one layer are not drawn either. A
+relations that reach across layers are not drawn either. A
 `Placeholder` byte-matches a granted path and an exposure placeholder addresses
 `application.name`; both are stated where they are enforced, under
 [Validation](#validation).
@@ -120,11 +128,153 @@ graded by
 [0064](../../docs/adr/model/0064-sidecars-are-process-vocabulary.md). `placement` is not among them: it is graded by
 [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md) and specified in
 full below, and it is the only composite on the Process that is **required**.
-Env files hang off the **Process**, not the Application
-([0011](../../docs/adr/model/0011-configuration-env-files-per-process.md)), and so
-does `provides`: a port is a property of a process. `exposure` hangs off the
+`provides` hangs off the **Process**: a port is a property of a process. So do
+the eight families of [Shared Intent](#shared-intent), in the drawing, and that
+is a decision about the drawing rather than about the model: each of them may be
+declared at the Project or an Application too, and drawing three copies of `secrets`
+and three of `placement` said nothing the level table does not. The drawing is
+the Process's shape, which is the shape every one of them ends up in
+([The effective intent](#the-effective-intent)). Env files keep their own level
+rule, per Process and per scope
+([0011](../../docs/adr/model/0011-configuration-env-files-per-process.md)),
+because they are files rather than fields. `exposure` hangs off the
 **Application**, because a hostname is a property of the product rather than of any
 one process, and one hostname routes into two of them.
+
+## Shared intent
+
+Eight of the things a Process holds are not facts about that program. They are
+facts about the product it belongs to, or about the project that owns it, and
+declaring them per Process is how they drift. Those eight are **Shared Intent**,
+and each may be declared at the **Project** header, on an **Application**, or on a
+**Process** ([0124](../../docs/adr/model/0124-shared-intent-descends-to-the-process.md)):
+
+| family | what a shared declaration means | where the family is specified |
+|---|---|---|
+| `secrets` | every Process below the level holds the grant | [Secrets](#secrets) |
+| `env` | every Process below the level receives the variables | [Configuration](#configuration) |
+| `dependsOn` | every Process below the level gets the edge, and the egress it derives | [Dependencies](#dependencies) |
+| `assets` | the file is mounted into every Process below the level | [Assets](#assets) |
+| `writablePaths` | every Process below the level may write the path | [Writable paths are declared, not exempted](#writable-paths-are-declared-not-exempted) |
+| `placement` | every Process below the level requires those node dimensions | [Placement](#placement) |
+| `cutover` | every Process below the level cuts over that way | [Cutover is declared, not promised](#cutover-is-declared-not-promised) |
+| `startupBudget` | every Process below the level gets that budget | [Rollout](#rollout) |
+
+Nothing else is shared. `id`, `observability` and `exposure` are the Application's
+own; `owner` and `project` are the project's; `name`, `image`, `lifecycle`,
+`runtime`, `engine`, `provides`, `sidecars`, `probes`, `volumes` and `replicas`
+identify the Process and are declared on it. An `image` shared between two
+Processes is one Process, and a `probes` block shared between two Processes
+asserts that two programs answer the same URL.
+
+### Sharing merges, and a duplicate is refused
+
+A Process's **effective** declaration of a family is every level above it merged
+with its own. Lists extend each other: an Application that holds six grants where its
+sibling holds two is the normal case, and the two they share are written once,
+above both. Where two levels declare **the same thing**, the **lowest**
+declaration is the one that holds, because the lower level is the more specific
+statement of it.
+
+Restating the same thing **identically** at two levels is duplication, and it is
+refused: `E_SHARED_DECLARATION_DUPLICATED`, reported at both declarations. What
+counts as the same thing is the family's own identity:
+
+| family | one declaration is identified by | merging two levels gives |
+|---|---|---|
+| `secrets` | the **derived** read path ([Secrets](#secrets)), so a `kv` grant and a `database` grant never collide | every path either level grants; the lower grant's access, delivery and rotation where both grant a path |
+| `env` | the variable name, within one Cluster Target | every variable either scope sets; the lower scope's value where both set one |
+| `dependsOn` | `{application, surface}`, `required` excluded | every edge either level declares; the lower edge's `required` where both declare one |
+| `assets` | `mountAt`: two files cannot arrive at one path | every mount either level declares; the lower Asset's `from` where both mount a path |
+| `writablePaths` | the path | the union of the paths |
+| `placement` | the key: `arch`, `site`, `disk`, `gpu` or `capabilities`, each separately | every key either level sets; the lower value where both set one |
+| `cutover` | the family, which is one value | the lowest level's value |
+| `startupBudget` | the family, which is one value | the lowest level's value |
+
+There is no removal syntax. A Process that must not hold a shared declaration at
+all is evidence the declaration was never shared, and it moves down a level; the
+lower level replaces a shared declaration, it never deletes one.
+
+**Refusing the identical restatement is what keeps the effective set readable.** A
+lower declaration that changes nothing is either a copy that will drift from the
+one above it or an author who misread the level, and in both cases it is the one
+case where a reader cannot tell by looking whether a value holds or is shadowed.
+Refuse it, and every lower declaration means something: it always differs from
+what it replaces, visibly, at the place it is written.
+
+**This is not the `overrides` field.** That field was a second declaring site for
+a value the model **derives**, and it stays deleted, with `replicas: {count,
+reason}` as the sole exception
+([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md),
+[No overrides](#no-overrides)). Nothing here overrides a derived value. A lower
+level of Shared Intent is the same field, written at the level it belongs to, in
+the vocabulary it already has: there is no `overrides` key, no exception map and
+no second spelling of anything.
+
+### A quantity is never shared
+
+`memory` and `cpu` may **not** be declared above the Process:
+`E_SHARED_QUANTITY`, at the declaration. Every other `placement` key describes
+the node a pod needs, which is naturally a property of a product. A quantity is
+per container, and eligibility **sums** every container's
+([Eligibility sums](#sidecars)), so a shared quantity would be a number added
+once per Process and meaning something different each time.
+
+The consequence is that `placement` is the one family whose legal keys depend on
+the level it is written at, and the one whose completeness is checked after the
+levels are unioned rather than by the schema: a Process whose effective
+`placement` has no `memory` or no `cpu` is `E_PLACEMENT_INCOMPLETE`. `cutover`
+is checked the same way and for the same reason, because it is required on every
+Process and may now be answered above one: a Process with no effective `cutover`
+is `E_CUTOVER_MISSING`.
+
+### Why the project level exists
+
+[0022](../../docs/adr/model/0022-grants-live-on-the-application.md), superseded by
+[0124](../../docs/adr/model/0124-shared-intent-descends-to-the-process.md),
+refused a project level, and the refusal was about grants alone: a project-level
+grant hands every Application in the file a reader slot on a path it may not need,
+and a read grant covers the whole document
+([0009](../../docs/adr/model/0009-vault-read-is-per-path.md)). That argument is
+unchanged and it is now an argument about what an author should put at the
+project level rather than about whether the level exists. The widening is
+visible where it is written, because the Applications that receive it are listed in
+the same file, and `E_ROLL_AFFECTS_OTHER_READERS` (chapter 40) computes over the
+readers of a path whatever level granted it. The other seven families carry no
+such argument at all.
+
+The levels are an access boundary **only** for `secrets`, and only because
+identity is per Process
+([0024](../../docs/adr/model/0024-identity-per-process.md)). A project-level
+grant reaches three principals because three Processes hold it, not because a
+project is one: there is no project ServiceAccount and no project Vault role.
+
+## The effective intent
+
+The **Effective Intent** is Project Intent with every shared declaration lowered
+onto the Processes that hold it. In it, the Project holds `project` and `owner`,
+an Application holds `id`, `observability` and `exposure`, and a Process holds
+everything it runs with. It is the only shape anything downstream reads
+([0125](../../docs/adr/model/0125-the-effective-intent-is-a-lowering.md)):
+composition, every derivation of [chapter 16](16-dependencies.md), and
+resolution into layer 2 all read lowered Processes, so no derivation unions
+levels for itself.
+
+The lowering is a step, not an accessor. It runs after a document's own
+constraints, because a duplication diagnostic has to point at the two
+declarations an author wrote, and before composition, because composition's
+invariants are about what Processes hold: a reader set computed over authored
+levels under-reports
+([Grant unit](#grant-unit), `E_ROLL_AFFECTS_OTHER_READERS` in chapter 40).
+
+Nobody authors the Effective Intent and nothing publishes it. It carries no
+`schemaVersion` and no digest of its own: the pinned-input chain runs from the
+authored documents
+([0006](../../docs/adr/model/0006-pinned-inputs.md)), and the Intent Fragment a
+project publishes is the authored file
+([0037](../../docs/adr/model/0037-composition-oci-fragments.md)). A compiler
+must be able to **print** it, because a reviewer reading one Process block now
+under-counts what that Process holds at three levels rather than two.
 
 ## Application identity
 
@@ -134,7 +284,7 @@ exactly one field to it, and lists the Applications it holds
 
 ```yaml
 project: auth                 # the file header; one project per file
-owner: joris                 # the only field raised to the project
+owner: joris                 # who is notified, for every Application in the file
 applications:
   - id: auth                 # the referencable identity; namespace auth-system
     processes:
@@ -218,10 +368,12 @@ plus per-Process identity ([0024](../../docs/adr/model/0024-identity-per-process
 | field | level | required | notes |
 |---|---|---|---|
 | `project` | file header | yes | One project per file. The namespace is `<project>-system`; the project also owns the Secret Subtree and is the unit of Intent Fragment publication ([0037](../../docs/adr/model/0037-composition-oci-fragments.md), [0063](../../docs/adr/model/0063-intent-authored-per-project.md)). |
-| `owner` | file header | yes | Who is notified. The **only** field raised to the project; an Application needing a different owner needs its own project. |
+| `owner` | file header | yes | Who is notified. Not shared and not inherited: it is the project's, and an Application needing a different owner needs its own project. |
+| the eight Shared Intent families | file header | no | `secrets`, `env`, `dependsOn`, `assets`, `writablePaths`, `placement`, `cutover`, `startupBudget`, each held by every Process in the file ([Shared intent](#shared-intent)). `memory` and `cpu` are refused here: `E_SHARED_QUANTITY`. |
 | `id` | Application | yes | The one referencable identity, estate-unique. The repository or product name. |
 | `observability` | Application | no | `{alertClass, scrape {process, surface, path}}`, whole or absent. Absent means no monitoring is rendered. Urgency, never routing ([0021](../../docs/adr/model/0021-observability-scrape-and-alert-class.md)). Never raised to the project: a project would then page as loudly as its loudest member. See [Observability](#observability). |
 | `processes` | Application | yes | One or more. They switch together. |
+| the eight Shared Intent families | Application | no | The same eight, held by every Process of this Application ([Shared intent](#shared-intent)). The level a family is written at is an author's choice about where the fact belongs, never about what it means. |
 | `exposure` | Application | no | The hostnames this Application serves and how each routes into its Processes. On the Application, not the Process: one hostname fronts two processes in the live `auth` case. An Application nothing reaches from outside declares none. See [Exposure](#exposure). |
 
 Uniqueness cannot be had by construction, only by check: the id encodes neither
@@ -433,10 +585,17 @@ dependsOn:
   - {application: auth-api, surface: http, required: false}
 ```
 
-Declared per Process, so network policy is precise: within `knowledge`, the API
+Declared at whichever level needs the edge, and the reason to keep declaring it
+per Process is that network policy is precise: within `knowledge`, the API
 reaches Postgres while the ingest worker reaches RabbitMQ, and neither inherits
 the other's egress ([0020](../../docs/adr/model/0020-dependency-edges-carry-surface.md),
-[0035](../../docs/adr/model/0035-network-policy-default-deny.md)). The Application's edge
+[0035](../../docs/adr/model/0035-network-policy-default-deny.md)). An edge shared
+up a level is a real widening for exactly that reason, and it is the right
+declaration where every Process of the Application genuinely talks to the thing:
+`stalwart` and `stalwart-provisioner` both reach `platform-postgres`. An edge
+declared at two levels merges, identified by `{application, surface}`: the lower
+declaration's `required` holds, and the same edge declared identically twice is
+`E_SHARED_DECLARATION_DUPLICATED`. The Application's edge
 set is the union, and that union drives the Reconcile Unit DAG
 ([0032](../../docs/adr/model/0032-reconcile-unit-derived.md)). Chapter 16 covers what an
 edge derives, inbound as well as outbound.
@@ -450,6 +609,20 @@ Configuration is authored as dotenv, **per Process**
 ([0011](../../docs/adr/model/0011-configuration-env-files-per-process.md)), because
 Processes of one Application do not share an environment: `knowledge-api` and
 `knowledge-ingest-worker` overlap on the RabbitMQ coordinates and on nothing else.
+They do overlap, though, and `env` is one of the eight Shared Intent families, so
+there are two shared **scopes** beside the per-Process one
+([Two artefacts](#two-artefacts)):
+
+| scope | directory | received by |
+|---|---|---|
+| project | `platform/env/_project/` | every Process in the file |
+| Application | `platform/env/_applications/<application>/` | every Process of that Application |
+| Process | `platform/env/<process>/` | that Process |
+
+A scope is a directory rather than a block in the project file because these are
+files, and a file is what a dotenv is. Each scope holds the same pair a Process's
+own does, a `base.env` and one overlay per Cluster Target, so a shared variable
+that differs per cluster says so where it is written.
 
 ```
 # platform/env/knowledge-api/base.env
@@ -460,8 +633,16 @@ DB_USER=${secret:secret/data/platform/postgres/kb#user}
 ```
 
 `base.env` carries everything that does not vary; one overlay per Cluster Target
-(`platform/env/<process>/<cluster>.env`) carries only what differs, overlay
-winning key by key. With one cluster the overlay is usually empty, which is
+(`<cluster>.env` beside it) carries only what differs, overlay
+winning key by key. **The overlay is the only place a key is written twice.**
+Across scopes the rule is the same one every Shared Intent family follows
+([Sharing merges, and a duplicate is refused](#sharing-merges-and-a-duplicate-is-refused)):
+a Process's effective environment is the three scopes merged, per Cluster Target,
+the narrower scope's value holds for a variable two scopes set, and the same
+variable set to the same value in two scopes is
+`E_SHARED_DECLARATION_DUPLICATED`. So `DB_HOST` on the project scope and
+`DB_HOST` in one Process's `base.env` is that Process reading a different
+database, said where a reader sees it; the same line copied into both is refused. With one cluster the overlay is usually empty, which is
 already what `stalwart-provisioner` half-invented, its `production.env` and
 `staging.env` being byte-identical.
 
@@ -487,7 +668,10 @@ error, and so is writing a Runtime Profile key at all: `OTEL_*` and
 concept: there is no `overrides` field to put it in. Ten `OTEL_*` variables are
 byte-identical today across `auth-api`,
 `agents-api` and `knowledge-api` except `OTEL_SERVICE_NAME`, sixty duplicated
-lines that leave the project repositories under this rule.
+lines that leave the project repositories under this rule. What a Runtime Profile
+does not cover and several Processes still share is what the project and
+Application scopes are for: written once, in one file, rather than once per Process
+directory.
 
 Placeholders are named-source references and never a template language: no
 conditionals, no arithmetic. The placeholder names the source; the key names the
@@ -510,6 +694,13 @@ assets:
   - from: config/postgresql.conf
     mountAt: /etc/postgresql/postgresql.conf
 ```
+
+An Asset is Shared Intent, so the same block may sit on the project header or an
+Application: a CA bundle or a shared logging configuration mounted into every
+Process is one declaration rather than one per Process. Two Assets reaching one `mountAt` are one
+declaration, so the lower level's `from` is the file that arrives there, and the
+same `from` mounted at the same path by two levels is
+`E_SHARED_DECLARATION_DUPLICATED`.
 
 **Change propagation is unconditional and there is no `onChange` field**
 ([0094](../../docs/adr/model/0094-asset-change-restarts-unconditionally.md)).
@@ -738,7 +929,9 @@ chapter 60.
 
 One required-by-default field per Process, added before the first production
 apply because the retrofit gets strictly more expensive every week
-([0016](../../docs/adr/model/0016-pod-hardening.md)).
+([0016](../../docs/adr/model/0016-pod-hardening.md)). Like the other seven
+families of [Shared Intent](#shared-intent), it may be declared above the Process
+and reaches every Process below.
 
 ```yaml
 writablePaths: [/var/cache/nginx, /var/run]
@@ -803,6 +996,14 @@ Nothing is implicit. `/tmp` is not supplied unless it is declared (a mount
 nobody asked for would appear in every static image that never writes) and the
 worked `auth` project claiming that "the render supplies `/tmp` as an `emptyDir`"
 described behaviour no chapter specified.
+
+`writablePaths` is Shared Intent, and the level it is written at is still a
+declaration rather than an exemption: `/tmp` on an Application whose Processes all
+run the `jvm` profile is the same statement made once. It is not an inheritance
+of a relaxation, because there is no relaxation to inherit: every path is a mount
+and `readOnlyRootFilesystem` stays `true` at every level. The paths merge, and one path declared at two
+levels is `E_SHARED_DECLARATION_DUPLICATED`: a mount stated twice is a copy, not
+a narrower statement, because a path is its own whole value.
 
 This is what retired the estate's last two exceptions. nginx declaring
 `writablePaths: [/var/cache/nginx, /var/run]` meets the `restricted` class
@@ -889,6 +1090,20 @@ placement:
 Six dimensions and a flat capability set, all of them **hard**
 ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). `memory` and `cpu`
 are required on every Process; every other term defaults to *any node*.
+
+`placement` is Shared Intent, and it is the one family whose **legal keys depend
+on the level**. The five node dimensions (`arch`, `site`, `disk`, `gpu`,
+`capabilities`) describe the node a pod needs, which is naturally a property of a
+product: `arch: [arm64]` and `site: enschede` on the Application say it once for
+every Process. `memory` and `cpu` are per container and eligibility sums them
+([Eligibility sums](#sidecars)), so above the Process they are refused,
+`E_SHARED_QUANTITY`, and a Process whose effective block lacks either is
+`E_PLACEMENT_INCOMPLETE`
+([A quantity is never shared](#a-quantity-is-never-shared)). Each key merges
+separately: `site: enschede` on the Application and `site: home` on one Process is
+that Process pinned elsewhere, `site` above and `arch` below is two declarations
+of two things, and `site: enschede` in both places is
+`E_SHARED_DECLARATION_DUPLICATED`.
 
 | dimension | required | shape | matched against, in the pinned node contract |
 |---|---|---|---|
@@ -1382,13 +1597,15 @@ model does not read. A Process with no listener continues to say `probes: none`.
 
 ## Secrets
 
-A `secrets` list declares what a Process may do to a Secret Store path. It sits
-at **whichever level the secret is shared**: on the Application when every Process
-holds it, on a Process when only that one does
-([0022](../../docs/adr/model/0022-grants-live-on-the-application.md)).
+A `secrets` list declares what a Process may do to a Secret Store path. It is
+one of the eight Shared Intent families, so it sits at **whichever level the
+secret is shared**: the project header when every Process in the file holds it,
+an Application when every Process of that Application does, a Process when only that one
+does ([0124](../../docs/adr/model/0124-shared-intent-descends-to-the-process.md),
+superseding [0022](../../docs/adr/model/0022-grants-live-on-the-application.md)).
 
 ```yaml
-# on the Application: every Process gets these
+# on the Application: every Process of it gets these
 secrets:
   - path: secret/data/platform/postgres/kb
     keys: [user, password]
@@ -1444,20 +1661,28 @@ credential is actually read from, which is what R20 recorded as missing: the
 declared thing and the readable thing were different, and no policy covered the
 second.
 
-There is a third level the list does **not** have: the project header. A
-project-level grant would hand every Application in the file a reader slot on a path
-it may not need, and a read grant covers the whole document
-([0009](../../docs/adr/model/0009-vault-read-is-per-path.md)), so the widening would be
-real rather than notional. `secrets` stays per Application and per Process
-([0063](../../docs/adr/model/0063-intent-authored-per-project.md)).
+**A project-level grant widens by whole documents.** It hands every Application in
+the file a reader slot on a path it may not need, and a read grant covers the
+whole document ([0009](../../docs/adr/model/0009-vault-read-is-per-path.md)), so
+the widening is real rather than notional. That is an argument about what belongs
+at the project level, not about whether the level exists: the Applications that
+receive the grant are listed in the same file, and
+`E_ROLL_AFFECTS_OTHER_READERS` (chapter 40) computes over the readers of a path
+whatever level granted it
+([Why the project level exists](#why-the-project-level-exists)).
 
-A Process's effective set is the Application-level list plus its own. There is no
-override or removal syntax: a Process that must *not* hold a shared secret is
-evidence the secret was never shared, and it moves down a level. Sharing is the
-common case and duplication is what drifts: `knowledge` holds six grants across
-two Processes and two are identical for both.
+A Process's effective set is every level's list merged with its own by the
+[lowering](#the-effective-intent), identified by the **derived** read path. Lists
+extend each other, which is the point: `knowledge` holds six grants across two
+Processes and two are identical for both, so those two are written once above
+both and each Process keeps the four that are its own. Where both levels grant one
+path, the lower grant holds, so a Process that needs `custody` of a path the
+Application reads says so on the Process and nothing else changes. The same grant
+written identically at two levels is `E_SHARED_DECLARATION_DUPLICATED`. There is
+no removal syntax: a Process that must *not* hold a shared secret at all is
+evidence the secret was never shared, and it moves down a level.
 
-The two levels are an access boundary **only** because identity is per Process.
+The levels are an access boundary **only** because identity is per Process.
 The ServiceAccount and Vault role are derived as the **Process name alone** (
 `auth-system.auth-api`, never `auth-system.auth-auth-api`) unique within the
 project file ([0024](../../docs/adr/model/0024-identity-per-process.md), specified in
@@ -1778,12 +2003,25 @@ Derived from these plus `placement` and `volumes`: rollout strategy,
 surge and unavailability, startup probe period and threshold, the progress
 deadline, and the health-gate deadline the Application's switchover waits on.
 
+Both are Shared Intent. `cutover` on the Application is the natural declaration,
+because the Application is the release unit
+([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)) and its
+Processes switch together: answering the question once for the unit that switches
+is what the level is for. `startupBudget` shares less often, because a budget is
+usually measured per image, and it shares honestly where two Processes run the
+same runtime cold start.
+
 ### Cutover is declared, not promised
 
-`cutover` is **required on every Process** and has **no default**. It is the
-owner's answer to one question (must the next revision keep serving while it
-cuts over?) and requiring the answer is what keeps the availability consequence
-visible in every declaration instead of implicit in a boolean nobody reads:
+`cutover` is **required on every Process** and has **no default**. Required is
+not the same as written on the Process: the answer may be given once, at the
+project header or on the Application, and it is then the answer for every Process
+below ([Shared intent](#shared-intent)). What is refused is a Process with no
+answer at all, `E_CUTOVER_MISSING`, checked on the effective shape rather than by
+the schema. It is the owner's answer to one question (must the next revision keep
+serving while it cuts over?) and requiring the answer is what keeps the
+availability consequence visible in every declaration instead of implicit in a
+boolean nobody reads:
 
 | value | means | validation |
 |---|---|---|
@@ -2175,7 +2413,6 @@ classDiagram
     Process "1" *-- "1..*" EnvFile : env per process
     EnvFile "1" *-- "0..*" Placeholder : resolves
 
-    Application "1" *-- "0..*" Grant : secrets
     Process "1" *-- "0..*" Grant : secrets
     Grant "1" *-- "0..1" Rotation : rotation
     Placeholder ..> Grant : byte-matches

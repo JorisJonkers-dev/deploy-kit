@@ -51,7 +51,9 @@ The derivation is available and exact, because the fourteen-node Flux
 `platform-postgres` and `platform-rabbitmq`; `apps-agents` depends on
 `apps-knowledge` because the agent applications consume `knowledge`, and on
 `apps-vso-secrets` because they claim credentials
-([0022](0022-grants-live-on-the-application.md)); everything depends on `apps-core`.
+([0022](0022-grants-live-on-the-application.md), superseded by
+[0124](0124-shared-intent-descends-to-the-process.md)); everything depends on
+`apps-core`.
 The derived unit now has two consumers. For class B, the pack-delivered
 foundation, it stays a Flux `Kustomization` with a `dependsOn` graph. For class
 A it is the apply order: an aggregator applies its slice layer by layer in

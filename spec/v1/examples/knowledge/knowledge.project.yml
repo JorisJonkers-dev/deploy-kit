@@ -27,7 +27,8 @@ kind: Project
 schemaVersion: 1.0.0
 
 project: knowledge
-owner: joris              # the only field raised to the project header
+owner: joris              # the project's own; this file shares no intent
+                          # at the header (docs/adr/model/0124-shared-intent-descends-to-the-process.md)
 
 applications:
   # =============================================================== knowledge
@@ -52,16 +53,20 @@ applications:
     # (docs/adr/model/0032-reconcile-unit-derived.md), and the later unit waits rather
     # than being held.
 
-    # Shared grants. Both Processes read the same Postgres and RabbitMQ
-    # credentials, so declaring them once here is the difference between one
-    # edit and two when a key is added. An Application-level grant is held by every
-    # Process, including ones added later; a grant that must NOT be shared
-    # moves down a level, and there is no removal syntax
-    # (docs/adr/model/0022-grants-live-on-the-application.md).
+    # Shared grants, one of the eight Shared Intent families
+    # (docs/adr/model/0124-shared-intent-descends-to-the-process.md, superseding
+    # docs/adr/model/0022-grants-live-on-the-application.md). Both Processes read
+    # the same Postgres and RabbitMQ credentials, so declaring them once here is
+    # the difference between one edit and two when a key is added. A shared grant
+    # is held by every Process below it, including ones added later; a Process
+    # that needs different terms on one of these paths says so on the Process,
+    # and a Process that must not hold one at all is evidence it was never
+    # shared, so it moves down a level. There is no removal syntax.
     #
-    # `secrets` stays on the Application and is never raised to the project header: a
-    # project-level grant would hand every Application in the file a reader slot on
-    # the whole path (docs/adr/model/0009-vault-read-is-per-path.md).
+    # `secrets` could be raised to the project header, and is not: a
+    # project-level grant would hand every Application in the file a reader slot
+    # on the whole path (docs/adr/model/0009-vault-read-is-per-path.md), and this
+    # project's reader set is this Application's two Processes.
     #
     # `delivery: env` and `delivery: file` render a Kubernetes Secret, so both
     # are refused unless the pinned Platform document advertises
@@ -225,7 +230,7 @@ applications:
         # is an access boundary only because identity is per Process -- this
         # pod authenticates as `knowledge-api` and the worker as
         # `knowledge-ingest-worker`, each bound to exactly its own effective
-        # grant set, which is the Application-level list plus this one
+        # grant set, which is every level's list merged with this one
         # (docs/adr/model/0024-identity-per-process.md).
         secrets:
           - path: secret/data/knowledge-system/mcp-bearer

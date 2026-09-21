@@ -88,14 +88,16 @@ for line in body.split("\n"):
 # `resolves by name` edges and `Route -> Audience` all land between neighbours.
 TREES = {"10-project-intent": {
     "Project": ["Application"],
-    "Application": ["Observability", "Grant", "Process", "Exposure"],
+    "Application": ["Observability", "Process", "Exposure"],
     "Observability": ["Scrape"],
     "Grant": ["Rotation"],
+    # Shared Intent is drawn on the Process alone: the levels it may also be
+    # declared at are the chapter's level table, not copies of one box.
     # Surface stays last, and Route stays Exposure's first, so the two
     # `resolves by name` cross-links land between neighbours.
     "Process": [
         "Capacity", "Sidecar", "Probe", "Asset", "Volume", "Placement",
-        "EnvFile", "DependencyEdge", "Surface",
+        "Grant", "EnvFile", "DependencyEdge", "Surface",
     ],
     "Placement": ["GpuRequest", "DiskRequest"],
     "EnvFile": ["Placeholder"],

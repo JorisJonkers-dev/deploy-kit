@@ -14,7 +14,7 @@ kind: Project
 schemaVersion: 1.0.0
 
 project: notes # the namespace derives: notes-system
-owner: joris # the only field raised to the project header
+owner: joris # the project's own; this project shares no intent below it
 
 applications:
   - id: notes
