@@ -11,6 +11,7 @@ import type {
   Project,
   SharedIntent,
 } from "../../domain/project-intent/model.ts";
+import { sameDeclaration } from "../../domain/project-intent/declaration.ts";
 import type { EnvScope, ScopedEnv } from "./env.ts";
 import { link, type Linked } from "./link.ts";
 import { schemaDiagnostics } from "../schema-diagnostics.ts";
@@ -68,8 +69,14 @@ function byScope(env: readonly ScopedEnv[]): ScopedEnvFiles {
 
 /** A variable is one declaration within one Cluster Target, so this is what a
  * scope below restates rather than replaces. */
-const entryTerms = (cluster: string | undefined, entry: EnvVariable): string =>
-  JSON.stringify([cluster ?? null, entry.name, entry.value]);
+const entryTerms = (
+  cluster: string | undefined,
+  entry: EnvVariable,
+): unknown => [cluster, entry];
+
+/** Whether any of `wider` states the same variable, in the same Cluster Target. */
+const restates = (wider: readonly unknown[], one: unknown): boolean =>
+  wider.some((above) => sameDeclaration(above, one));
 
 /**
  * Every variable a narrower scope restates unchanged from a wider one. The
@@ -80,38 +87,39 @@ function envDuplicates(
   env: readonly ScopedEnv[],
   document: ProjectIntentDocument,
 ): readonly Diagnostic[] {
+  // What a scope names: an Application, a Process, or the project itself.
+  const named = (scope: EnvScope): string =>
+    scope.level === "project"
+      ? document.project
+      : scope.level === "application"
+        ? scope.id
+        : scope.name;
   const of = (level: EnvScope["level"], key?: string) =>
     env.filter(
       ({ scope }) =>
-        scope.level === level &&
-        (key === undefined ||
-          (scope.level === "application" && scope.id === key) ||
-          (scope.level === "process" && scope.name === key)),
+        scope.level === level && (key === undefined || named(scope) === key),
     );
   const refusals: Diagnostic[] = [];
   for (const application of document.applications)
     for (const process of application.processes) {
       const above = [
         ...of("application", application.id),
-        ...of("project"),
+        ...of("project", document.project),
       ].flatMap(({ file }) =>
         file.entries.map((entry) => entryTerms(file.cluster, entry)),
       );
-      const wider = new Set(above);
       for (const { path, file } of of("process", process.name))
         for (const entry of file.entries)
-          if (wider.has(entryTerms(file.cluster, entry)))
+          if (restates(above, entryTerms(file.cluster, entry)))
             refusals.push(duplicateEnv(path, entry.name));
     }
   // An Application scope against the project header, the same way.
-  const project = new Set(
-    of("project").flatMap(({ file }) =>
-      file.entries.map((entry) => entryTerms(file.cluster, entry)),
-    ),
+  const project = of("project", document.project).flatMap(({ file }) =>
+    file.entries.map((entry) => entryTerms(file.cluster, entry)),
   );
   for (const { path, file } of of("application"))
     for (const entry of file.entries)
-      if (project.has(entryTerms(file.cluster, entry)))
+      if (restates(project, entryTerms(file.cluster, entry)))
         refusals.push(duplicateEnv(path, entry.name));
   return refusals;
 }
@@ -287,7 +295,7 @@ export interface ValidatedProjectIntent {
 
 export function validateProjectIntent(
   value: unknown,
-  env: readonly ScopedEnv[] = [],
+  env: readonly ScopedEnv[],
 ): Result<ValidatedProjectIntent> {
   const parsed = projectIntent.safeParse(value);
   if (!parsed.success)

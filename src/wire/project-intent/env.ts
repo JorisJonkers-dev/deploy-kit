@@ -29,6 +29,7 @@ export interface ScopedEnv {
 
 const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const OPENS = "${";
+const SUFFIX = ".env";
 const PROJECT_SCOPE = "_project";
 const APPLICATION_SCOPE = "_applications";
 
@@ -39,17 +40,12 @@ const refusal = (path: string, line: number, message: string): Diagnostic => ({
   hint: "Write NAME=value, one per line, where a value is a literal or one ${kind:source} placeholder.",
 });
 
-function splitOnce(inner: string): [string, string] {
-  const colon = inner.indexOf(":");
-  return colon < 0
-    ? [inner, ""]
-    : [inner.slice(0, colon), inner.slice(colon + 1)];
-}
-
 function readValue(raw: string): EnvValue | undefined {
   if (raw.startsWith(OPENS) && raw.endsWith("}")) {
-    // Split once: a source may hold colons, and the kind may hold none.
-    const [named, source] = splitOnce(raw.slice(OPENS.length, -1));
+    // Split once: a source may hold colons, and a kind holds none.
+    const inner = raw.slice(OPENS.length, -1);
+    const [named, ...rest] = inner.split(":");
+    const source = rest.join(":");
     const kind = PLACEHOLDER_KINDS.find((one) => one === named);
     if (kind === undefined || source.length === 0 || source.includes("}"))
       return undefined;
@@ -110,7 +106,7 @@ export function readEnvFile(source: EnvSource): Result<EnvFile> {
 
 /** `base.env` does not vary, so it names no Cluster Target. */
 function clusterOf(path: string): string | undefined {
-  const file = path.slice(path.lastIndexOf("/") + 1).replace(/\.env$/, "");
+  const file = path.slice(path.lastIndexOf("/") + 1, -SUFFIX.length);
   return file === "base" ? undefined : file;
 }
 
@@ -141,17 +137,17 @@ export function readEnv(
 export function scopeOf(path: string): EnvScope | undefined {
   const segments = path.split("/");
   const env = segments.lastIndexOf("env");
-  if (env < 0 || !path.endsWith(".env")) return undefined;
-  // A scope is a directory, so the file is always one segment deeper than it,
-  // and one deeper again where the Application scope names which Application.
-  const rest = segments.slice(env + 1);
-  const [first, second] = rest;
+  if (env < 0 || !path.endsWith(SUFFIX)) return undefined;
+  // A scope is the directories between `env/` and the file itself: one of
+  // them, except the Application scope, which names which Application.
+  const scope = segments.slice(env + 1, -1).join("/");
+  if (scope === PROJECT_SCOPE) return { level: "project" };
+  if (scope.length === 0) return undefined;
+  const [first, ...deeper] = scope.split("/");
+  const [id, deeperStill] = deeper;
   if (first === APPLICATION_SCOPE)
-    return rest.length === 3 && second !== undefined
-      ? { level: "application", id: second }
-      : undefined;
-  if (rest.length !== 2 || first === undefined) return undefined;
-  return first === PROJECT_SCOPE
-    ? { level: "project" }
-    : { level: "process", name: first };
+    return id === undefined || deeperStill !== undefined
+      ? undefined
+      : { level: "application", id };
+  return deeper.length === 0 ? { level: "process", name: scope } : undefined;
 }
