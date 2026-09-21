@@ -5,11 +5,16 @@
   it holds, so the canonical intent is read off the model reflectively. A
   union in the language is a union here: a probe is HTTP or TCP, a probe
   policy is a block or `none`, and a grant is keyed by its engine.
+
+  SharedIntent is seven of the eight families of
+  spec/v1/10-project-intent.md#shared-intent; the eighth, `env`, is authored as
+  dotenv files beside the document. EffectiveProject and EffectiveApplication are
+  what the lowering writes (docs/adr/model/0125).
 -->
 <ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="projectintent" nsURI="https://jorisjonkers.dev/deploy-kit/project-intent/1"
     nsPrefix="projectintent">
-  <eClassifiers xsi:type="ecore:EClass" name="Project">
+  <eClassifiers xsi:type="ecore:EClass" name="Project" eSuperTypes="#//SharedIntent">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="apiVersion" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="schemaVersion" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -17,11 +22,10 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="owner" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="applications" lowerBound="1" upperBound="-1" eType="#//Application" containment="true"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="Application">
+  <eClassifiers xsi:type="ecore:EClass" name="Application" eSuperTypes="#//SharedIntent">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" iD="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="observability" eType="#//Observability" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="exposure" upperBound="-1" eType="#//Exposure" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="secrets" upperBound="-1" eType="#//Grant" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//Process" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Observability">
@@ -48,32 +52,54 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="audience" eType="#//Audience"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="redirectTo" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="Process">
+  <eClassifiers xsi:type="ecore:EClass" name="SharedIntent" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="secrets" upperBound="-1" eType="#//Grant" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dependsOn" upperBound="-1" eType="#//DependencyEdge" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="assets" upperBound="-1" eType="#//Asset" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="writablePaths" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="placement" eType="#//Placement" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="startupBudget" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="cutover" eType="#//Cutover"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Process" eSuperTypes="#//SharedIntent">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" iD="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="lifecycle" lowerBound="1" eType="#//Lifecycle"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="runtime" lowerBound="1" eType="#//Runtime"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="engine" eType="#//Engine"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="provides" upperBound="-1" eType="#//Surface" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="placement" lowerBound="1" eType="#//Placement" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="writablePaths" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="sidecars" upperBound="-1" eType="#//Sidecar" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="dependsOn" upperBound="-1" eType="#//DependencyEdge" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="assets" upperBound="-1" eType="#//Asset" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="probes" eType="#//ProbePolicy" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="volumes" upperBound="-1" eType="#//Volume" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="replicas" eType="#//Capacity" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="secrets" upperBound="-1" eType="#//Grant" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="startupBudget" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cutover" lowerBound="1" eType="#//Cutover"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="EffectiveProject">
+    <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+      <details key="authored" value="no"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="apiVersion" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="schemaVersion" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="project" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="owner" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="applications" lowerBound="1" upperBound="-1" eType="#//EffectiveApplication" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="EffectiveApplication">
+    <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+      <details key="authored" value="no"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="observability" eType="#//Observability" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="exposure" upperBound="-1" eType="#//Exposure" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//Process" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Surface" instanceClassName="java.util.Map$Entry">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" iD="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Placement">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="memory" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="cpu" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="arch" upperBound="-1" eType="#//Arch"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="site" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="disk" eType="#//DiskRequest" containment="true"/>
@@ -176,8 +202,12 @@
     <eLiterals name="files" value="4" literal="files"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Cutover">
-    <eLiterals name="rolling" literal="rolling"/>
-    <eLiterals name="recreate" value="1" literal="recreate"/>
+    <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+      <details key="absent" value="absent"/>
+    </eAnnotations>
+    <eLiterals name="absent" literal=""/>
+    <eLiterals name="rolling" value="1" literal="rolling"/>
+    <eLiterals name="recreate" value="2" literal="recreate"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="DurabilityClass">
     <eLiterals name="reconstructible" literal="reconstructible"/>

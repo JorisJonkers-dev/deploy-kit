@@ -21,7 +21,9 @@ import org.eclipse.emf.ecore.EStructuralFeature;
  *
  * <p>The shape is neither Ecore's nor the wire schema's. An abstract class is the union of what can
  * stand in its place, so it is not listed and a feature that points at one names its concrete
- * classes. A map entry is not a class either: the feature that holds the entries is a map.
+ * classes. A map entry is not a class either: the feature that holds the entries is a map. And a
+ * class nobody authors is not listed: the lowered Project and Application are what a transformation
+ * writes (docs/adr/model/0125).
  */
 public final class Descriptor {
 
@@ -59,7 +61,12 @@ public final class Descriptor {
 
     /** Whether a class is one the descriptor lists: an abstract class is a union, a map entry a map. */
     private static boolean isListed(EClass owner) {
-        return !owner.isAbstract() && !isMapEntry(owner);
+        return !owner.isAbstract() && !isMapEntry(owner) && isAuthored(owner);
+    }
+
+    private static boolean isAuthored(EClass owner) {
+        return owner.getEAnnotation(JSON) == null
+                || !"no".equals(owner.getEAnnotation(JSON).getDetails().get("authored"));
     }
 
     private static boolean isMapEntry(EClassifier classifier) {

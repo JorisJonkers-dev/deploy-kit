@@ -253,7 +253,7 @@ target metamodel holding both, because a model-to-text template reads one model.
 | the diagnostics of a refused case (errors) | `<input>.diagnostics.json` beside the refused input, or the refused set of documents, in `refusals/` or `negative/` | a set of `(code, document, path)` triples | both |
 | the resolved dependency edges (dependency resolution) | `spec/v1/examples/<case>/expected/dependencies.json` | canonical JSON, byte for byte | both |
 | the Deliverable Set (generated resources) | `spec/v1/examples/<case>/rendered/` | the existing golden tree, byte for byte | both |
-| the source metamodel's structure | `spec/v1/examples/expected/descriptor.json` | canonical JSON, byte for byte | both |
+| the source metamodel's **authored** structure | `spec/v1/examples/expected/descriptor.json` | canonical JSON, byte for byte | both |
 | the Resolved Deployment | `spec/v1/examples/<case>/expected/resolved.json` | canonical JSON, byte for byte | production only |
 
 **The dependency edges** are, per Application, every dependency edge after
@@ -263,6 +263,14 @@ part of resolution both implementations must agree on before either renders.
 The file is an object with one `applications` entry per Application, each an
 `id` and its `edges`; an Application with no dependency carries an empty list.
 The edge's own fields are fixed by the first case that has one.
+
+**The descriptor fixes the authored shape**, which is every class a document
+holds. A shape a transformation writes and nobody authors is left out of it: the
+Effective Intent's Project and Application are the two today
+([0125](adr/model/0125-the-effective-intent-is-a-lowering.md)), and what holds
+them equal is the same thing that holds every other stage equal, the oracles
+downstream of the lowering. An implementation that declared a lowered class where
+the other did not would still render the same tree or fail the rendered oracle.
 
 **The canonical writers** are `src/infrastructure/canonical-json.ts` and
 `emf/bundles/metamodel`'s `CanonicalJson`, held to the same cases. An oracle file is exactly

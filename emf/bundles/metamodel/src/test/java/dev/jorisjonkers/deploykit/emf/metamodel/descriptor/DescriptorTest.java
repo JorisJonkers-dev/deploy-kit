@@ -50,6 +50,18 @@ class DescriptorTest {
     }
 
     @Test
+    void aClassNobodyAuthorsIsNoPartOfTheAuthoredShape() {
+        List<String> classes = entries("classes").stream()
+                .map(entry -> (String) entry.get("name"))
+                .toList();
+
+        assertThat(classes).doesNotContain("EffectiveProject", "EffectiveApplication");
+        // A class carrying the same annotation for another reason stays listed.
+        assertThat(named("classes", "NoProbes").get("scalar")).isEqualTo("none");
+        assertThat(classes).contains("NoProbes", "Application");
+    }
+
+    @Test
     void anAbstractClassIsAUnionRatherThanAClassOfItsOwn() {
         assertThat(entries("classes").stream().map(entry -> entry.get("name")))
                 .doesNotContain("Grant", "Probe", "ProbePolicy");

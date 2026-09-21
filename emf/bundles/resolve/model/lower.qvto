@@ -1,0 +1,257 @@
+-- The lowering (spec/v1/10-project-intent.md#the-effective-intent,
+-- docs/adr/model/0125). Source and target are the same metamodel: the shapes
+-- differ only in that EffectiveProject and EffectiveApplication carry no
+-- SharedIntent. Total, because every refusal it depends on fires before it.
+modeltype PI uses 'https://jorisjonkers.dev/deploy-kit/project-intent/1';
+
+transformation lower(in source : PI, out target : PI);
+
+main() {
+	source.rootObjects()[Project]->map lower();
+}
+
+mapping Project::lower() : EffectiveProject {
+	apiVersion := self.apiVersion;
+	kind := self.kind;
+	schemaVersion := self.schemaVersion;
+	project := self.project;
+	owner := self.owner;
+	applications := self.applications->map lower(self);
+}
+
+mapping Application::lower(in prj : Project) : EffectiveApplication {
+	id := self.id;
+	-- The Processes first: `resolveone` below can only find a copy once it exists.
+	processes := self.processes->map lower(self, prj);
+	observability := self.observability.map copy();
+	exposure := self.exposure->map copy();
+}
+
+mapping Process::lower(in app : Application, in prj : Project) : Process {
+	init {
+		-- lowest level first, which is what decides every merge below
+		var levels : Sequence(Placement) :=
+			Sequence{self.placement, app.placement, prj.placement}->select(p | p <> null);
+		var quantities : Sequence(Placement) :=
+			Sequence{self.placement}->select(p | p <> null);
+		var withArch : Sequence(Placement) := levels->select(p | p.arch->notEmpty());
+		var withSite : Sequence(Placement) := levels->select(p | p.site <> null);
+		var withDisk : Sequence(Placement) := levels->select(p | p.disk <> null);
+		var withGpu : Sequence(Placement) := levels->select(p | p.gpu <> null);
+		var withCapabilities : Sequence(Placement) :=
+			levels->select(p | p.capabilities->notEmpty());
+		var budgets : Sequence(String) :=
+			Sequence{self.startupBudget, app.startupBudget, prj.startupBudget}
+				->select(b | b <> null);
+		var cutovers : Sequence(Cutover) :=
+			Sequence{self.cutover, app.cutover, prj.cutover}
+				->select(c | c <> Cutover::absent);
+	}
+
+	-- what identifies the Process, and is shared by nothing
+	name := self.name;
+	lifecycle := self.lifecycle;
+	image := self.image;
+	runtime := self.runtime;
+	engine := self.engine;
+	provides := self.provides->map copy();
+	sidecars := self.sidecars->map copy();
+	probes := self.probes.map copy();
+	volumes := self.volumes->map copy();
+	replicas := self.replicas.map copy();
+
+	-- Every copy is keyed on its Process: a mapping's result is cached per source
+	-- object, and a containment feature would move one shared copy to the last
+	-- Process that asked for it.
+	secrets := mergeGrants(mergeGrants(self.secrets, app.secrets), prj.secrets)
+		->map copyFor(self);
+	dependsOn := mergeEdges(mergeEdges(self.dependsOn, app.dependsOn), prj.dependsOn)
+		->map copyFor(self);
+	assets := mergeAssets(mergeAssets(self.assets, app.assets), prj.assets)
+		->map copyFor(self);
+	-- a path is its own whole value, so the union is the merge
+	writablePaths := self.writablePaths
+		->union(app.writablePaths)->union(prj.writablePaths)->asOrderedSet()->asSequence();
+
+	-- the single values, from the lowest level that declared one
+	startupBudget := if budgets->isEmpty() then null else budgets->first() endif;
+	cutover := if cutovers->isEmpty() then Cutover::absent else cutovers->first() endif;
+
+	-- Key by key: each dimension from the lowest level that set it, the
+	-- quantities from the Process and nowhere else.
+	placement := if levels->isEmpty() then null else object Placement {
+		memory := if quantities->isEmpty() then null else quantities->first().memory endif;
+		cpu := if quantities->isEmpty() then null else quantities->first().cpu endif;
+		arch := if withArch->isEmpty() then Sequence{} else withArch->first().arch endif;
+		site := if withSite->isEmpty() then null else withSite->first().site endif;
+		disk := if withDisk->isEmpty() then null
+			else withDisk->first().disk.map copyFor(self) endif;
+		gpu := if withGpu->isEmpty() then null
+			else withGpu->first().gpu.map copyFor(self) endif;
+		capabilities := if withCapabilities->isEmpty() then Sequence{}
+			else withCapabilities->first().capabilities endif;
+	} endif;
+}
+
+-- The derived read path is the identity, so a `kv` grant and a `database` grant
+-- never collide. One boolean rather than a query per kind: a query redeclared on
+-- each subclass binds statically here, and every grant answered with the base.
+query sameGrant(one : Grant, other : Grant) : Boolean =
+	(one.oclIsKindOf(KvGrant) and other.oclIsKindOf(KvGrant)
+		and one.oclAsType(KvGrant).path = other.oclAsType(KvGrant).path)
+	or (one.oclIsKindOf(DatabaseGrant) and other.oclIsKindOf(DatabaseGrant)
+		and one.oclAsType(DatabaseGrant).role = other.oclAsType(DatabaseGrant).role)
+	or (one.oclIsKindOf(TransitGrant) and other.oclIsKindOf(TransitGrant)
+		and one.oclAsType(TransitGrant).key = other.oclAsType(TransitGrant).key);
+
+-- `own` and `shared` rather than `lower`: a parameter named `lower` shadows the
+-- transformation itself, and every call on it then resolves against the module.
+query mergeGrants(own : Collection(Grant), shared : Collection(Grant)) : Sequence(Grant) =
+	own->asSequence()->union(
+		shared->asSequence()->select(g | own->forAll(m | not sameGrant(m, g))));
+
+-- `required` is excluded: the same edge declared twice is the same declaration.
+query mergeEdges(own : Collection(DependencyEdge), shared : Collection(DependencyEdge))
+		: Sequence(DependencyEdge) =
+	own->asSequence()->union(
+		shared->asSequence()->select(e |
+			own->forAll(m | m.application <> e.application or m.surface <> e.surface)));
+
+-- Two files cannot arrive at one path, so the mount is the identity.
+query mergeAssets(own : Collection(Asset), shared : Collection(Asset)) : Sequence(Asset) =
+	own->asSequence()->union(
+		shared->asSequence()->select(a | own->forAll(m | m.mountAt <> a.mountAt)));
+
+-- A contained object has one container, so everything below is copied rather
+-- than referenced: the lowered model holds no pointer into the authored one.
+
+mapping Observability::copy() : Observability {
+	alertClass := self.alertClass;
+	scrape := self.scrape.map copy();
+}
+
+mapping Scrape::copy() : Scrape {
+	path := self.path;
+	process := self.process.resolveone(Process);
+	surface := self.surface.resolveone(Surface);
+}
+
+mapping Exposure::copy() : Exposure {
+	name := self.name;
+	host := self.host;
+	audience := self.audience;
+	contentPolicy := self.contentPolicy;
+	routes := self.routes->map copy();
+}
+
+mapping Route::copy() : Route {
+	path := self.path;
+	match := self.match;
+	process := self.process.resolveone(Process);
+	surface := self.surface.resolveone(Surface);
+	audience := self.audience;
+	redirectTo := self.redirectTo;
+}
+
+mapping Surface::copy() : Surface {
+	key := self.key;
+	value := self.value;
+}
+
+mapping Sidecar::copy() : Sidecar {
+	name := self.name;
+	image := self.image;
+	memory := self.memory;
+	cpu := self.cpu;
+}
+
+mapping DiskRequest::copyFor(in owner : Process) : DiskRequest {
+	media := self.media;
+}
+
+mapping GpuRequest::copyFor(in owner : Process) : GpuRequest {
+	_class := self._class;
+	memory := self.memory;
+}
+
+mapping DependencyEdge::copyFor(in owner : Process) : DependencyEdge {
+	application := self.application;
+	surface := self.surface;
+	required := self.required;
+}
+
+mapping Asset::copyFor(in owner : Process) : Asset {
+	_from := self._from;
+	mountAt := self.mountAt;
+}
+
+mapping Volume::copy() : Volume {
+	claim := self.claim;
+	mountAt := self.mountAt;
+	size := self.size;
+	durability := self.durability;
+}
+
+mapping Capacity::copy() : Capacity {
+	count := self.count;
+	reason := self.reason;
+}
+
+mapping ProbePolicy::copy() : ProbePolicy
+	disjuncts Probes::copy, NoProbes::copy {}
+
+mapping Probes::copy() : Probes {
+	readiness := self.readiness.map copy();
+	liveness := self.liveness.map copy();
+}
+
+mapping NoProbes::copy() : NoProbes {}
+
+mapping Probe::copy() : Probe
+	disjuncts HttpProbe::copy, TcpProbe::copy {}
+
+mapping HttpProbe::copy() : HttpProbe {
+	path := self.path;
+	port := self.port;
+}
+
+mapping TcpProbe::copy() : TcpProbe {
+	tcp := self.tcp;
+}
+
+mapping Grant::copyFor(in owner : Process) : Grant
+	disjuncts KvGrant::copyFor, DatabaseGrant::copyFor, TransitGrant::copyFor {}
+
+mapping KvGrant::copyFor(in owner : Process) : KvGrant {
+	path := self.path;
+	keys := self.keys;
+	_access := self._access;
+	delivery := self.delivery;
+	mountAt := self.mountAt;
+	fileMode := self.fileMode;
+	rotation := self.rotation.map copyFor(owner);
+}
+
+mapping DatabaseGrant::copyFor(in owner : Process) : DatabaseGrant {
+	engine := self.engine;
+	role := self.role;
+	delivery := self.delivery;
+	mountAt := self.mountAt;
+	fileMode := self.fileMode;
+	rotation := self.rotation.map copyFor(owner);
+}
+
+mapping TransitGrant::copyFor(in owner : Process) : TransitGrant {
+	engine := self.engine;
+	key := self.key;
+	operations := self.operations;
+	delivery := self.delivery;
+	mountAt := self.mountAt;
+	fileMode := self.fileMode;
+	rotation := self.rotation.map copyFor(owner);
+}
+
+mapping Rotation::copyFor(in owner : Process) : Rotation {
+	tolerates := self.tolerates;
+	maxAge := self.maxAge;
+}

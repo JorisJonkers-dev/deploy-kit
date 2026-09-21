@@ -36,7 +36,8 @@ class IntentJsonTest {
         Map<String, Object> intent = IntentJson.of(process());
 
         assertThat(intent).contains(entry("name", "notes-api"), entry("image", "notes-api"));
-        assertThat(intent).containsKey("cutover");
+        // `runtime` is required and holds `jvm`, its first literal, which nothing set.
+        assertThat(intent).containsKey("runtime");
     }
 
     @Test
@@ -46,7 +47,8 @@ class IntentJsonTest {
 
     @Test
     void anOptionalFeatureTheDocumentLeftOutIsAbsent() {
-        assertThat(IntentJson.of(process())).doesNotContainKeys("startupBudget", "probes", "provides");
+        // `cutover` is among them since it became Shared Intent (docs/adr/model/0124).
+        assertThat(IntentJson.of(process())).doesNotContainKeys("startupBudget", "probes", "provides", "cutover");
     }
 
     @Test

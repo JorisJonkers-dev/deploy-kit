@@ -15,6 +15,13 @@ Project returns Project:
 	& ('schemaVersion' ':' schemaVersion=Text)
 	& ('project' ':' project=Text)
 	& ('owner' ':' owner=Text)
+	& ('secrets' ':' BEGIN (DASH BEGIN secrets+=Grant END)+ END)?
+	& ('dependsOn' ':' BEGIN (DASH BEGIN dependsOn+=DependencyEdge END)+ END)?
+	& ('assets' ':' BEGIN (DASH BEGIN assets+=Asset END)+ END)?
+	& ('writablePaths' ':' BEGIN (DASH BEGIN writablePaths+=Text END | writablePaths+=Text)+ END)?
+	& ('placement' ':' BEGIN placement=Placement END)?
+	& ('startupBudget' ':' startupBudget=Text)?
+	& ('cutover' ':' cutover=Cutover)?
 	& ('applications' ':' BEGIN (DASH BEGIN applications+=Application END)+ END));
 
 Application returns Application:
@@ -22,6 +29,12 @@ Application returns Application:
 	& ('observability' ':' BEGIN observability=Observability END)?
 	& ('exposure' ':' BEGIN (DASH BEGIN exposure+=Exposure END)+ END)?
 	& ('secrets' ':' BEGIN (DASH BEGIN secrets+=Grant END)+ END)?
+	& ('dependsOn' ':' BEGIN (DASH BEGIN dependsOn+=DependencyEdge END)+ END)?
+	& ('assets' ':' BEGIN (DASH BEGIN assets+=Asset END)+ END)?
+	& ('writablePaths' ':' BEGIN (DASH BEGIN writablePaths+=Text END | writablePaths+=Text)+ END)?
+	& ('placement' ':' BEGIN placement=Placement END)?
+	& ('startupBudget' ':' startupBudget=Text)?
+	& ('cutover' ':' cutover=Cutover)?
 	& ('processes' ':' BEGIN (DASH BEGIN processes+=Process END)+ END));
 
 Observability returns Observability:
@@ -55,7 +68,7 @@ Process returns Process:
 	& ('runtime' ':' runtime=Runtime)
 	& ('engine' ':' engine=Engine)?
 	& ('provides' ':' BEGIN provides+=Surface+ END)?
-	& ('placement' ':' BEGIN placement=Placement END)
+	& ('placement' ':' BEGIN placement=Placement END)?
 	& ('writablePaths' ':' BEGIN (DASH BEGIN writablePaths+=Text END | writablePaths+=Text)+ END)?
 	& ('sidecars' ':' BEGIN (DASH BEGIN sidecars+=Sidecar END)+ END)?
 	& ('dependsOn' ':' BEGIN (DASH BEGIN dependsOn+=DependencyEdge END)+ END)?
@@ -65,14 +78,14 @@ Process returns Process:
 	& ('replicas' ':' BEGIN replicas=Capacity END)?
 	& ('secrets' ':' BEGIN (DASH BEGIN secrets+=Grant END)+ END)?
 	& ('startupBudget' ':' startupBudget=Text)?
-	& ('cutover' ':' cutover=Cutover));
+	& ('cutover' ':' cutover=Cutover)?);
 
 Surface returns Surface:
 	key=Text ':' value=Port;
 
 Placement returns Placement:
-	(('memory' ':' memory=Text)
-	& ('cpu' ':' cpu=Text)
+	(('memory' ':' memory=Text)?
+	& ('cpu' ':' cpu=Text)?
 	& ('arch' ':' BEGIN (DASH BEGIN arch+=Arch END | arch+=Arch)+ END)?
 	& ('site' ':' site=Text)?
 	& ('disk' ':' BEGIN disk=DiskRequest END)?
