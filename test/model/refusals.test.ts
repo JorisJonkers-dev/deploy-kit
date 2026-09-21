@@ -2,7 +2,7 @@
 // together, that breaks a rule is refused with the code, the document and the
 // path its committed diagnostics oracle names.
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   canonicalJson,
@@ -34,10 +34,15 @@ const fixtures = readdirSync(REFUSALS)
 /** The authored files a fixture holds, by the names its oracle calls them. */
 const filesOf = (stem: string): AuthoredFile[] =>
   isCase(stem)
-    ? readdirSync(join(REFUSALS, stem)).map((name) => ({
-        name,
-        text: readFileSync(join(REFUSALS, stem, name), "utf8"),
-      }))
+    ? readdirSync(join(REFUSALS, stem), {
+        recursive: true,
+        encoding: "utf8",
+      })
+        .filter((name) => statSync(join(REFUSALS, stem, name)).isFile())
+        .map((name) => ({
+          name: name.split(sep).join("/"),
+          text: readFileSync(join(REFUSALS, stem, name), "utf8"),
+        }))
     : [
         {
           name: `${stem}.project.yml`,
