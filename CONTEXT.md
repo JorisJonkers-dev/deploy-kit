@@ -54,12 +54,29 @@ artifact ([chapter 20](spec/v1/20-resolved-deployment.md)).
 ## Layer 1: what a human authors
 
 **Project**: the authored document, and the unit of publication. One project
-file holds one project's `owner` and every Application in it. A project never spans
-repositories ([0063](docs/adr/model/0063-intent-authored-per-project.md)).
+file holds one project's `owner`, every Application in it, and any Shared Intent
+the whole file holds. A project never spans repositories
+([0063](docs/adr/model/0063-intent-authored-per-project.md)).
 
 **Application**: the release unit, and the thing an owner reasons about. Holds one
-or more Processes, its exposure and its shared grants
+or more Processes, its observability, its exposure, and any Shared Intent its
+Processes share
 ([0062](docs/adr/model/0062-application-is-the-release-unit.md)).
+
+**Shared Intent**: the eight things a Process holds that are a property of its
+product or its project rather than of that program: `secrets`, `env`,
+`dependsOn`, `assets`, `writablePaths`, `placement`, `cutover` and
+`startupBudget`. Each may be declared at the Project, an Application or a Process,
+and a declaration reaches every Process below it. Lists extend each other, the
+lowest declaration of one thing holds, and an identical restatement at two levels
+is refused
+([0124](docs/adr/model/0124-shared-intent-descends-to-the-process.md)).
+
+**Effective Intent**: Project Intent with every Shared Intent declaration
+lowered onto the Processes that hold it, so the Project and the Application hold
+only what defines them. The only layer-1 shape anything downstream reads; nobody
+authors it and nothing publishes it
+([0125](docs/adr/model/0125-the-effective-intent-is-a-lowering.md)).
 
 **Process**: one program to run, with its own image, lifecycle, env file set,
 probes, volumes, placement and hardening. A port is a property of a process, so
@@ -130,12 +147,26 @@ belong to the monitoring stack that reads the projection, never to this model
 ([0021](docs/adr/model/0021-observability-scrape-and-alert-class.md)).
 
 **Grant**: declared access to a Secret Store path, its keys, its access tier
-and its delivery mode. Lives on the Application, or on a Process when it is
-specific to one ([0022](docs/adr/model/0022-grants-live-on-the-application.md),
+and its delivery mode. One of the eight Shared Intent families, so it lives at
+whichever level shares it
+([0124](docs/adr/model/0124-shared-intent-descends-to-the-process.md), superseding
+[0022](docs/adr/model/0022-grants-live-on-the-application.md),
 [0023](docs/adr/model/0023-grant-unit-is-the-path.md)).
 
-**Placeholder**: an env-file entry naming what should be substituted rather
-than carrying a value. A secret placeholder byte-matches a granted path
+**Env File**: one authored dotenv file, its Cluster Target and its variables.
+`base.env` names no target, because it is what does not vary; an overlay beside
+it names one. The directory holding it is the scope it reaches: the project, one
+Application, or one Process
+([0011](docs/adr/model/0011-configuration-env-files-per-process.md),
+[0124](docs/adr/model/0124-shared-intent-descends-to-the-process.md)).
+
+**Env Variable**: one `NAME=value` a process reads from its environment. Its
+value is a literal or one Placeholder, never a literal holding one. The rendered
+entry is layer 3's, and is an **Env Entry** there.
+
+**Placeholder**: an Env Variable's value where it names what should be
+substituted rather than carrying it: `dependency`, `secret`, `exposure` or
+`identity`, and a source. A secret placeholder byte-matches a granted path
 ([0027](docs/adr/model/0027-secret-reference-join-key.md)).
 
 **Capacity exception**: the sole local exception to a derived value:

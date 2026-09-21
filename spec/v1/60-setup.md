@@ -332,7 +332,7 @@ derived (`<project>-system`), so no step below names one.
 
 1. Add the Application to its project file, whose shape is
    [chapter 10](10-project-intent.md#two-artefacts). The file header carries
-   `project` and `owner`, the only field raised to the project; the Application
+   `project` and `owner`, which is the project's own; the Application
    carries `id`, an optional `observability` block, whole or absent
    ([chapter 10](10-project-intent.md#observability)), `secrets[]` and its
    Processes; each Process

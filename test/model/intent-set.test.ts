@@ -112,6 +112,38 @@ describe("checkIntentSet", () => {
     ).toStrictEqual(["notes"]);
   });
 
+  it("reads the env files under the project's own env/ directory, and no other", () => {
+    const platform = {
+      ...read("platform/platform.intent.yml"),
+      text: read("platform/platform.intent.yml")
+        .text.replace("secretsEncryption: false", "secretsEncryption: true")
+        .replace("traefik: traefik-public", "traefik: notes")
+        .replace("traefik: traefik-lan", "traefik: notes"),
+    };
+    const result = checkIntentSet([
+      platform,
+      read("minimal/notes.project.yml"),
+      read("minimal/env/notes-api/base.env"),
+      // Neither reaches `minimal`: one names a scope it has no Process for,
+      // the other sits in no `env/` directory at all.
+      { name: "other/env/nope/base.env", text: "A=1\n" },
+      { name: "minimal/notes.env", text: "A=1\n" },
+      // A file under the project's own `env/` that is not an env file at all.
+      { name: "minimal/env/notes-api/README.md", text: "# notes-api\n" },
+    ]);
+
+    expect(
+      refusalsOf([platform, read("minimal/notes.project.yml")]),
+    ).toStrictEqual([]);
+    expect(result.ok).toBe(true);
+    expect(
+      result.ok &&
+        result.value.projects[0]?.applications[0]?.processes[0]?.env.flatMap(
+          ({ entries }) => entries.map(({ name }) => name),
+        ),
+    ).toStrictEqual(["NODE_ENV", "NOTES_PAGE_SIZE"]);
+  });
+
   it("names the document a single file's refusal belongs to, and runs no rule across documents until every file parses", () => {
     const broken = { name: "broken.project.yml", text: "kind: Project\n" };
     const platform = read("platform/platform.intent.yml");

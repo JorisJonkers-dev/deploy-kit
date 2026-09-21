@@ -216,7 +216,9 @@ class ResolvedDeploymentTest {
     @Test
     void noClassOfTheTargetPackageReachesTheDescriptor() {
         // Cutover, Match and DurabilityClass are the source metamodel's own
-        // vocabularies, carried here by the same names on purpose.
+        // vocabularies, carried here by the same names on purpose. Nothing else
+        // shares a name: layer 1 has EnvVariable where layer 2 has EnvEntry,
+        // because an author sets a variable and a render writes an entry.
         assertThat(ResolvedDeploymentPackage.eINSTANCE.getEClassifiers().stream()
                         .map(EClassifier::getName)
                         .filter(name -> DESCRIPTOR.contains("\"name\":\"" + name + "\""))

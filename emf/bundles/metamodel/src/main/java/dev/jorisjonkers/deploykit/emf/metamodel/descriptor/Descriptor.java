@@ -5,11 +5,13 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.eclipse.emf.ecore.EAnnotation;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EEnum;
 import org.eclipse.emf.ecore.EEnumLiteral;
+import org.eclipse.emf.ecore.EModelElement;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
@@ -21,7 +23,9 @@ import org.eclipse.emf.ecore.EStructuralFeature;
  *
  * <p>The shape is neither Ecore's nor the wire schema's. An abstract class is the union of what can
  * stand in its place, so it is not listed and a feature that points at one names its concrete
- * classes. A map entry is not a class either: the feature that holds the entries is a map.
+ * classes. A map entry is not a class either: the feature that holds the entries is a map. And a
+ * class nobody authors is not listed: the lowered Project and Application are what a transformation
+ * writes (docs/adr/model/0125).
  */
 public final class Descriptor {
 
@@ -59,7 +63,18 @@ public final class Descriptor {
 
     /** Whether a class is one the descriptor lists: an abstract class is a union, a map entry a map. */
     private static boolean isListed(EClass owner) {
-        return !owner.isAbstract() && !isMapEntry(owner);
+        return !owner.isAbstract() && !isMapEntry(owner) && !"no".equals(detail(owner, "authored"));
+    }
+
+    /** The descriptor spells a class as its document spells it, and `env` is a directory beside one. */
+    private static boolean isInTheDocument(EStructuralFeature feature) {
+        return !"no".equals(detail(feature, "document"));
+    }
+
+    /** What this element's JSON annotation says under {@code key}, or nothing where it carries none. */
+    private static String detail(EModelElement element, String key) {
+        EAnnotation json = element.getEAnnotation(JSON);
+        return json == null ? null : json.getDetails().get(key);
     }
 
     private static boolean isMapEntry(EClassifier classifier) {
@@ -86,20 +101,15 @@ public final class Descriptor {
         json.put(
                 "features",
                 owner.getEAllStructuralFeatures().stream()
+                        .filter(Descriptor::isInTheDocument)
                         .sorted(Comparator.comparing(EStructuralFeature::getName))
                         .map(Descriptor::feature)
                         .toList());
-        String scalar = scalar(owner);
+        String scalar = detail(owner, "scalar");
         if (scalar != null) {
             json.put("scalar", scalar);
         }
         return json;
-    }
-
-    private static String scalar(EClass owner) {
-        return owner.getEAnnotation(JSON) == null
-                ? null
-                : owner.getEAnnotation(JSON).getDetails().get("scalar");
     }
 
     private static Map<String, Object> feature(EStructuralFeature feature) {

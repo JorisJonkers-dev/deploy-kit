@@ -7,4 +7,5 @@ Bundle-RequiredExecutionEnvironment: JavaSE-21
 Automatic-Module-Name: dev.jorisjonkers.deploykit.emf.resolve
 Require-Bundle: org.eclipse.emf.ecore,
  org.eclipse.emf.ecore.xmi,
- org.eclipse.m2m.qvt.oml
+ org.eclipse.m2m.qvt.oml,
+ dev.jorisjonkers.deploykit.emf.metamodel

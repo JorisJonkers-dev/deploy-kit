@@ -47,6 +47,18 @@ Intent is Project Intent (0116). Every ADR that used the old words carries an
 amendment note and was renamed where its file name used them; no decision
 changed.
 
+The set was amended on 2026-09-21 for shared intent: the eight things a Process
+holds that are a property of its product or its project (`secrets`, `env`,
+`dependsOn`, `assets`, `writablePaths`, `placement`, `cutover`,
+`startupBudget`) may be declared at the Project header, on an Application or on a
+Process, a declaration descends to every Process below it, lists extend each
+other, the lower level's declaration of one thing holds, and an identical
+restatement at two levels is refused as a duplicate (0124). The union is
+computed once, by a model-to-model lowering onto the Process, and everything
+downstream reads the lowered shape (0125). 0022 is superseded by that
+amendment and kept for the record; 0063 is amended in place, because `owner` is
+no longer the only field the project header carries.
+
 Tier-0 **premises** carry one falsifiable claim each; tier-1 **decisions** name
 the premises they stand on in `rests-on`. A `claim: open` means decided in
 direction, untested: its owner and settling test are in the file.
@@ -104,6 +116,8 @@ delivery work it underpins.
 | [0063](model/0063-intent-authored-per-project.md) | Intent is authored one file per project | settled |
 | [0116](model/0116-project-application-process.md) | The authored hierarchy is Project, Application and Process, named for a reader who does not work with deployments | settled |
 | [0064](model/0064-sidecars-are-process-vocabulary.md) | A Process may hold sidecars, and a sidecar carries what a container carries | settled |
+| [0124](model/0124-shared-intent-descends-to-the-process.md) | Everything a Process holds may be declared at Project, Application or Process, and a declaration descends to every Process below it | settled |
+| [0125](model/0125-the-effective-intent-is-a-lowering.md) | Shared intent is lowered onto the Process by a model-to-model step, and the Effective Intent is the only shape anything downstream reads | settled |
 
 ### Process-declared runtime intent
 | # | title | claim |
@@ -137,7 +151,7 @@ delivery work it underpins.
 ### Secrets
 | # | title | claim |
 |---|---|---|
-| [0022](model/0022-grants-live-on-the-application.md) | Secret grants live on the Application document, at two levels | settled |
+| [0022](model/0022-grants-live-on-the-application.md) | Secret grants live on the Application document, at two levels | superseded by [0124](model/0124-shared-intent-descends-to-the-process.md) |
 | [0023](model/0023-grant-unit-is-the-path.md) | The grant unit is the path; the subtree splits per reader set | open |
 | [0024](model/0024-identity-per-process.md) | Processes hold their own identity | settled |
 | [0087](model/0087-token-mounted-only-for-delivery-self.md) | A ServiceAccount token is mounted only where the pod itself authenticates | settled |

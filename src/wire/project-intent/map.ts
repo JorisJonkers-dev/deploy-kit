@@ -2,12 +2,17 @@ import type { Diagnostic, Result } from "../../domain/diagnostic.ts";
 import type {
   Application,
   Dependency,
+  EnvVariable,
+  EnvFile,
   Exposure,
   Observability,
   Placement,
   Process,
   Project,
+  SharedIntent,
 } from "../../domain/project-intent/model.ts";
+import { sameDeclaration } from "../../domain/project-intent/declaration.ts";
+import type { EnvScope, ScopedEnv } from "./env.ts";
 import { link, type Linked } from "./link.ts";
 import { schemaDiagnostics } from "../schema-diagnostics.ts";
 import { ruleDiagnostics } from "./rules.ts";
@@ -15,8 +20,19 @@ import { projectIntent, type ProjectIntentDocument } from "./schema.ts";
 
 type WireApplication = ProjectIntentDocument["applications"][number];
 type WireProcess = WireApplication["processes"][number];
-type WirePlacement = WireProcess["placement"];
+type WirePlacement = NonNullable<WireProcess["placement"]>;
 type WireDependency = NonNullable<WireProcess["dependsOn"]>[number];
+/** The keys any of the three levels may carry, in the authored spelling. */
+type WireShared = Pick<
+  WireProcess,
+  | "secrets"
+  | "dependsOn"
+  | "assets"
+  | "writablePaths"
+  | "placement"
+  | "startupBudget"
+  | "cutover"
+>;
 
 /** A dependency is required unless the document says it is not. */
 function toDependency(edge: WireDependency): Dependency {
@@ -29,33 +45,161 @@ function toPlacement(placement: WirePlacement): Placement {
   return { ...rest, arch: arch ?? [], capabilities: capabilities ?? [] };
 }
 
-function toProcess(process: WireProcess): Process {
+/** The env files each scope directory holds, by the level it names. */
+interface ScopedEnvFiles {
+  readonly project: readonly EnvFile[];
+  readonly applications: ReadonlyMap<string, readonly EnvFile[]>;
+  readonly processes: ReadonlyMap<string, readonly EnvFile[]>;
+}
+
+function byScope(env: readonly ScopedEnv[]): ScopedEnvFiles {
+  const applications = new Map<string, EnvFile[]>();
+  const processes = new Map<string, EnvFile[]>();
+  const project: EnvFile[] = [];
+  for (const { scope, file } of env) {
+    if (scope.level === "project") project.push(file);
+    else {
+      const at = scope.level === "application" ? applications : processes;
+      const key = scope.level === "application" ? scope.id : scope.name;
+      at.set(key, [...(at.get(key) ?? []), file]);
+    }
+  }
+  return { project, applications, processes };
+}
+
+/** A variable is one declaration within one Cluster Target, so this is what a
+ * scope below restates rather than replaces. */
+const entryTerms = (
+  cluster: string | undefined,
+  entry: EnvVariable,
+): unknown => [cluster, entry];
+
+/** Whether any of `wider` states the same variable, in the same Cluster Target. */
+const restates = (wider: readonly unknown[], one: unknown): boolean =>
+  wider.some((above) => sameDeclaration(above, one));
+
+/**
+ * Every variable a narrower scope restates unchanged from a wider one. The
+ * refusal sits on the lower file, which is the one an author deletes a line
+ * from, and names the variable, which is the declaration.
+ */
+function envDuplicates(
+  env: readonly ScopedEnv[],
+  document: ProjectIntentDocument,
+): readonly Diagnostic[] {
+  // What a scope names: an Application, a Process, or the project itself.
+  const named = (scope: EnvScope): string =>
+    scope.level === "project"
+      ? document.project
+      : scope.level === "application"
+        ? scope.id
+        : scope.name;
+  const of = (level: EnvScope["level"], key?: string) =>
+    env.filter(
+      ({ scope }) =>
+        scope.level === level && (key === undefined || named(scope) === key),
+    );
+  const refusals: Diagnostic[] = [];
+  for (const application of document.applications)
+    for (const process of application.processes) {
+      const above = [
+        ...of("application", application.id),
+        ...of("project", document.project),
+      ].flatMap(({ file }) =>
+        file.entries.map((entry) => entryTerms(file.cluster, entry)),
+      );
+      for (const { path, file } of of("process", process.name))
+        for (const entry of file.entries)
+          if (restates(above, entryTerms(file.cluster, entry)))
+            refusals.push(duplicateEnv(path, entry.name));
+    }
+  // An Application scope against the project header, the same way.
+  const project = of("project", document.project).flatMap(({ file }) =>
+    file.entries.map((entry) => entryTerms(file.cluster, entry)),
+  );
+  for (const { path, file } of of("application"))
+    for (const entry of file.entries)
+      if (restates(project, entryTerms(file.cluster, entry)))
+        refusals.push(duplicateEnv(path, entry.name));
+  return refusals;
+}
+
+const duplicateEnv = (path: string, name: string): Diagnostic => ({
+  code: "E_SHARED_DECLARATION_DUPLICATED",
+  path,
+  message: `${name} is set again, to the same value, by a scope above this one`,
+  hint: "Delete this line, or change it: a narrower scope replaces a wider one, and a restatement does nothing.",
+});
+
+/** Every scope directory that names no Application and no Process. */
+export function unknownScopes(
+  env: readonly ScopedEnv[],
+  document: ProjectIntentDocument,
+): readonly ScopedEnv[] {
+  const applications = new Set(document.applications.map(({ id }) => id));
+  const processes = new Set(
+    document.applications.flatMap(({ processes }) =>
+      processes.map(({ name }) => name),
+    ),
+  );
+  return env.filter(
+    ({ scope }) =>
+      (scope.level === "application" && !applications.has(scope.id)) ||
+      (scope.level === "process" && !processes.has(scope.name)),
+  );
+}
+
+/** What one level declares. Nothing is merged here; the lowering does that. */
+function toSharedIntent(
+  level: WireShared,
+  env: readonly EnvFile[],
+): SharedIntent {
+  const {
+    secrets,
+    dependsOn,
+    assets,
+    writablePaths,
+    placement,
+    startupBudget,
+    cutover,
+  } = level;
+  return {
+    grants: secrets ?? [],
+    dependencies: (dependsOn ?? []).map(toDependency),
+    assets: assets ?? [],
+    writablePaths: writablePaths ?? [],
+    env,
+    ...(placement === undefined ? {} : { placement: toPlacement(placement) }),
+    ...(startupBudget === undefined ? {} : { startupBudget }),
+    ...(cutover === undefined ? {} : { cutover }),
+  };
+}
+
+function toProcess(process: WireProcess, env: ScopedEnvFiles): Process {
   const {
     provides,
     probes,
-    writablePaths,
     sidecars,
-    dependsOn,
-    assets,
     volumes,
-    secrets,
-    placement,
+    secrets: _secrets,
+    dependsOn: _dependsOn,
+    assets: _assets,
+    writablePaths: _writablePaths,
+    placement: _placement,
+    startupBudget: _startupBudget,
+    cutover: _cutover,
     ...rest
   } = process;
   return {
     ...rest,
+    ...toSharedIntent(process, env.processes.get(process.name) ?? []),
     surfaces: Object.entries(provides ?? {}).map(([name, port]) => ({
       name,
       port,
     })),
-    placement: toPlacement(placement),
-    writablePaths: writablePaths ?? [],
     sidecars: sidecars ?? [],
-    dependencies: (dependsOn ?? []).map(toDependency),
-    assets: assets ?? [],
     probes: probes ?? {},
     volumes: volumes ?? [],
-    grants: secrets ?? [],
   };
 }
 
@@ -65,11 +209,24 @@ type Resolved = Extract<Linked, { readonly ok: true }>;
 function toApplication(
   application: WireApplication,
   at: string,
+  env: ScopedEnvFiles,
 ):
   | { readonly application: Application; readonly refusals: readonly [] }
   | { readonly refusals: readonly Diagnostic[] } {
-  const { exposure, processes, secrets, observability, ...rest } = application;
-  const linked = processes.map(toProcess);
+  const {
+    exposure,
+    processes,
+    observability,
+    secrets: _secrets,
+    dependsOn: _dependsOn,
+    assets: _assets,
+    writablePaths: _writablePaths,
+    placement: _placement,
+    startupBudget: _startupBudget,
+    cutover: _cutover,
+    ...rest
+  } = application;
+  const linked = processes.map((process) => toProcess(process, env));
   const exposures = exposure ?? [];
 
   const linkedExposures = exposures.map((wire, index) => ({
@@ -113,6 +270,10 @@ function toApplication(
   return {
     application: {
       ...rest,
+      ...toSharedIntent(
+        application,
+        env.applications.get(application.id) ?? [],
+      ),
       ...(monitoring === undefined ? {} : { observability: monitoring }),
       exposures: linkedExposures.map(({ wire, routes }): Exposure => ({
         ...wire,
@@ -121,7 +282,6 @@ function toApplication(
           ...resolved(result),
         })),
       })),
-      grants: secrets ?? [],
       processes: linked,
     },
     refusals: [],
@@ -135,6 +295,7 @@ export interface ValidatedProjectIntent {
 
 export function validateProjectIntent(
   value: unknown,
+  env: readonly ScopedEnv[],
 ): Result<ValidatedProjectIntent> {
   const parsed = projectIntent.safeParse(value);
   if (!parsed.success)
@@ -146,12 +307,20 @@ export function validateProjectIntent(
       ),
     };
   const { project, owner, applications } = parsed.data;
+  const scoped = byScope(env);
   const mapped = applications.map((application, index) =>
-    toApplication(application, `/applications/${index}`),
+    toApplication(application, `/applications/${index}`, scoped),
   );
   const refusals = [
     ...ruleDiagnostics(parsed.data),
     ...mapped.flatMap(({ refusals: unlinked }) => unlinked),
+    ...envDuplicates(env, parsed.data),
+    ...unknownScopes(env, parsed.data).map(({ path }) => ({
+      code: "E_UNKNOWN_ENV_SCOPE",
+      path,
+      message: "this scope directory names nothing the project file declares",
+      hint: "A directory is how a variable reaches a level: name an Application or a Process the project file declares.",
+    })),
   ];
   if (refusals.length > 0) return { ok: false, diagnostics: refusals };
   return {
@@ -161,6 +330,7 @@ export function validateProjectIntent(
       project: {
         name: project,
         owner,
+        ...toSharedIntent(parsed.data, scoped.project),
         // With no refusal left, every Application linked.
         applications: mapped.map(
           (result) =>

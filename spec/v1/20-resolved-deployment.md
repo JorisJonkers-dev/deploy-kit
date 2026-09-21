@@ -166,7 +166,7 @@ field's placement link to this anchor rather than copying rows.
 | field | authority | placed by | note |
 |---|---|---|---|
 | `project` | Application | no contention | the file header, and the unit of fragment publication ([0063](../../docs/adr/model/0063-intent-authored-per-project.md)); the namespace derives from it |
-| `owner` | Application | no contention | the only field raised to the project header; notification target, never routing |
+| `owner` | Application | no contention | the project's own field, shared with nothing below it; notification target, never routing |
 | `id` | Application | unique, checked | estate-unique; `E_DUPLICATE_APPLICATION_ID` at composition. It is also the atomic release boundary ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)) |
 | `observability` `{alertClass, scrape}` | Application | no contention | urgency and the surface that carries the signal, per Application and never raised: a project would page as loudly as its loudest member. Absent means no monitoring ([chapter 10](10-project-intent.md#observability)) |
 | process `name` | Application | unique, checked | unique within the **project**; `E_DUPLICATE_PROCESS_NAME`, and it names the derived identity |

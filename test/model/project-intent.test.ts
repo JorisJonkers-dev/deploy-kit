@@ -108,6 +108,7 @@ describe("parseProjectIntent", () => {
       image: "notes-api",
       runtime: "node",
       surfaces: [surface],
+      env: [],
       placement: { memory: "256Mi", cpu: "50m", arch: [], capabilities: [] },
       writablePaths: [],
       sidecars: [],
@@ -123,9 +124,16 @@ describe("parseProjectIntent", () => {
       cutover: "rolling",
     };
 
+    // Neither level declares Shared Intent here, so each holds the empty list an
+    // absent block maps to, exactly as a Process does.
     expect(result.ok && result.value.project).toStrictEqual({
       name: "notes",
       owner: "joris",
+      assets: [],
+      dependencies: [],
+      env: [],
+      grants: [],
+      writablePaths: [],
       applications: [
         {
           id: "notes",
@@ -133,7 +141,11 @@ describe("parseProjectIntent", () => {
             alertClass: "business-hours",
             scrape: { process, surface, path: "/metrics" },
           },
+          assets: [],
+          dependencies: [],
+          env: [],
           grants: [],
+          writablePaths: [],
           exposures: [
             {
               name: "public",
@@ -175,7 +187,11 @@ describe("parseProjectIntent", () => {
       {
         id: "batch",
         exposures: [],
+        assets: [],
+        dependencies: [],
+        env: [],
         grants: [],
+        writablePaths: [],
         processes: [
           {
             name: "worker",
@@ -183,6 +199,7 @@ describe("parseProjectIntent", () => {
             image: "worker",
             runtime: "none",
             surfaces: [],
+            env: [],
             placement: {
               memory: "64Mi",
               cpu: "10m",

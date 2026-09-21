@@ -4,10 +4,18 @@ export {
   type IntentSet,
 } from "./application/check-intent-set.ts";
 export { parsePlatformIntent } from "./application/parse-platform-intent.ts";
-export { parseProjectIntent } from "./application/parse-project-intent.ts";
+export {
+  parseProjectIntent,
+  type ParsedProjectIntent,
+} from "./application/parse-project-intent.ts";
 export type * from "./domain/platform-intent/model.ts";
 export type { Diagnostic, Result } from "./domain/diagnostic.ts";
 export type * from "./domain/project-intent/model.ts";
+export type {
+  EnvScope,
+  EnvSource,
+  ScopedEnv,
+} from "./wire/project-intent/env.ts";
 export { descriptor } from "./wire/project-intent/descriptor.ts";
 export type {
   Descriptor,

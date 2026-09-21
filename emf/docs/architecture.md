@@ -95,7 +95,7 @@ and cost every path in the tree.
 |---|---|---|
 | `bundles/metamodel` | the source and target `.ecore` and `.genmodel`, Complete OCL `.ocl` for the source metamodel, the descriptor exporter, and the canonical JSON writer both it and `cli` write through | Task 1 |
 | `bundles/syntax` | the Xtext grammar for the authored YAML subset, and the generated editor bundles that run the OCL validators | Task 1 |
-| `bundles/resolve` | the QVTo transformation from Project Intent and Platform Intent to the Resolved Deployment | Task 2 |
+| `bundles/resolve` | the QVTo transformations: the lowering onto the Process, and Project Intent with Platform Intent to the Resolved Deployment | Task 2 |
 | `bundles/render` | the Acceleo 4 templates from a Resolved Deployment model to the Deliverable Set's files | Task 3 |
 | `bundles/cli` | the pipeline entry point: files in, the parsed intent, diagnostics and rendered files out | Task 1 onward |
 | `tests/parity` | JUnit suites asserting each stage against the committed oracles, and the witness ledger check | no task grades it |
@@ -128,7 +128,7 @@ are committed `.ecore` XMI, with names taken unchanged from
 
 | metamodel | role | holds |
 |---|---|---|
-| Project Intent | source | the authored Project, Application and Process with everything layer 1 declares, and the Platform document the source is resolved against |
+| Project Intent | source | the authored Project, Application and Process with everything layer 1 declares, the lowered pair the Effective Intent is written in, and the Platform document the source is resolved against |
 | Resolved Deployment | target | every derived value of layer 2 together with the typed Kubernetes and extension resources, identities and output paths the templates write |
 
 The Deliverable Set is not a metamodel: it is the files Acceleo generates from
@@ -156,10 +156,13 @@ a Process's `cutover`, and the `cutover` itself stays on the Process.
 
 The descriptor exporter walks the source `EPackage` reflectively and writes the
 descriptor the parity contract fixes. It is the only place the Ecore structure
-is compared with anything. Two shapes it normalises: an abstract class is a
+is compared with anything. Three shapes it normalises: an abstract class is a
 union, so it is not listed and a feature that points at one names its concrete
-classes; and a map entry is not a class, so the feature that holds the entries
-is a map.
+classes; a map entry is not a class, so the feature that holds the entries
+is a map; and a class annotated `authored=no` is no part of the authored shape,
+so it is not listed either. The last is what keeps `EffectiveProject` and
+`EffectiveApplication` out of the descriptor: they are what the lowering writes,
+and no document holds one.
 
 ## Constraints
 
@@ -253,9 +256,24 @@ CI builds it but never runs it.
 
 ## Transformation
 
-A QVT-Operational transformation derives a Resolved Deployment model from the
-parsed Project Intent model, run through the standalone transformation
-executor. Every derivation `spec/v1/20-resolved-deployment.md` names is a mapping
+Two QVT-Operational transformations, both run through the standalone
+transformation executor.
+
+**The lowering** comes first and stays inside layer 1: Shared Intent declared at
+the Project or an Application is merged onto the Processes that hold it, and what
+comes out is the Effective Intent, in which `EffectiveProject` and
+`EffectiveApplication` carry no Shared Intent at all and the Process carries all
+of it ([0125](../../docs/adr/model/0125-the-effective-intent-is-a-lowering.md)).
+Source and target are the same metamodel, because the shapes differ by two
+classes and a Process is a Process in both. It runs after the constraints and
+before composition, and it has no error path: a duplicate is refused before it,
+so the mapping is total. Lists extend each other keyed by the family's own
+identity, the lowest declaration of one thing holds, and a quantity comes from
+the Process, which is the whole of what it does.
+
+**The resolution** derives a Resolved Deployment model from the lowered Project
+Intent model. It reads the Effective Intent and never the authored shape, which
+is what keeps a derivation from having to union three levels for itself. Every derivation `spec/v1/20-resolved-deployment.md` names is a mapping
 or a helper in it; a derived value with no mapping is a gap a parity case
 exposes, through the dependency edges or the generated files. The resolved
 dependency edges are exported from the target model as canonical JSON and

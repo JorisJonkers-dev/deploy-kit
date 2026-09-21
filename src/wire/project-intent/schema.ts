@@ -18,6 +18,7 @@ import {
   LIFECYCLES,
   MATCHES,
   MEDIA,
+  PLACEHOLDER_KINDS,
   RUNTIMES,
   TOLERANCES,
   TRANSIT_OPERATIONS,
@@ -44,6 +45,10 @@ const media = z.enum(MEDIA).meta({ id: "Media" });
 const runtime = z.enum(RUNTIMES).meta({ id: "Runtime" });
 const tolerance = z.enum(TOLERANCES).meta({ id: "Tolerance" });
 const transitOp = z.enum(TRANSIT_OPERATIONS).meta({ id: "TransitOp" });
+
+const placeholderKind = z
+  .enum(PLACEHOLDER_KINDS)
+  .meta({ id: "PlaceholderKind" });
 
 const text = z.string().min(1);
 
@@ -117,10 +122,12 @@ const gpuRequest = z
   .strictObject({ class: text, memory: text })
   .meta({ id: "GpuRequest" });
 
+// `memory` and `cpu` are optional in the shape: a block above a Process carries
+// dimensions only, and E_PLACEMENT_INCOMPLETE refuses a merge without them.
 const placement = z
   .strictObject({
-    memory: text,
-    cpu: text,
+    memory: text.exactOptional(),
+    cpu: text.exactOptional(),
     arch: z.array(arch).min(1).exactOptional(),
     site: text.exactOptional(),
     disk: diskRequest.exactOptional(),
@@ -158,6 +165,18 @@ const capacity = z
   .strictObject({ count: z.int().min(2), reason: text })
   .meta({ id: "Capacity" });
 
+// Spread into each of the three levels rather than nested under a key: the level
+// a family is written at is not itself a field an author writes.
+const sharedIntent = {
+  secrets: z.array(grant).min(1).exactOptional(),
+  dependsOn: z.array(dependencyEdge).min(1).exactOptional(),
+  assets: z.array(asset).min(1).exactOptional(),
+  writablePaths: z.array(text).min(1).exactOptional(),
+  placement: placement.exactOptional(),
+  startupBudget: text.exactOptional(),
+  cutover: cutover.exactOptional(),
+};
+
 const process = z
   .strictObject({
     name: text,
@@ -166,17 +185,11 @@ const process = z
     runtime: runtime,
     engine: engine.exactOptional(),
     provides: z.record(text, port).meta({ entry: "Surface" }).exactOptional(),
-    placement,
-    writablePaths: z.array(text).min(1).exactOptional(),
     sidecars: z.array(sidecar).min(1).exactOptional(),
-    dependsOn: z.array(dependencyEdge).min(1).exactOptional(),
-    assets: z.array(asset).min(1).exactOptional(),
     probes: z.union([noProbes, probes]).exactOptional(),
     volumes: z.array(volume).min(1).exactOptional(),
     replicas: capacity.exactOptional(),
-    secrets: z.array(grant).min(1).exactOptional(),
-    startupBudget: text.exactOptional(),
-    cutover: cutover,
+    ...sharedIntent,
   })
   .meta({ id: "Process" });
 
@@ -220,7 +233,7 @@ const application = z
     id: text,
     observability: observability.exactOptional(),
     exposure: z.array(exposure).min(1).exactOptional(),
-    secrets: z.array(grant).min(1).exactOptional(),
+    ...sharedIntent,
     processes: z.array(process).min(1),
   })
   .meta({ id: "Application" });
@@ -232,8 +245,33 @@ export const projectIntent = z
     schemaVersion: z.string().regex(/^\d+\.\d+\.\d+$/),
     project: text,
     owner: text,
+    ...sharedIntent,
     applications: z.array(application).min(1),
   })
   .meta({ id: "Project" });
 
 export type ProjectIntentDocument = z.output<typeof projectIntent>;
+
+// The other authored artefact. It is dotenv rather than YAML, so its shape is
+// declared for the descriptor and for nothing else: what a file may hold is
+// spec/v1/10-project-intent.md#the-dotenv-subset-that-is-read, enforced by the
+// reader, and what it does hold is the committed env oracle.
+const envLiteral = z.strictObject({ text: z.string() }).meta({
+  id: "EnvLiteral",
+});
+
+const placeholder = z
+  .strictObject({ kind: placeholderKind, source: text })
+  .meta({ id: "Placeholder" });
+
+const envVariable = z
+  .strictObject({ name: text, value: z.union([envLiteral, placeholder]) })
+  .meta({ id: "EnvVariable" });
+
+export const envFile = z
+  .strictObject({
+    cluster: text.exactOptional(),
+    // An overlay that carries only comments holds no entry, and is still a file.
+    entries: z.array(envVariable).exactOptional(),
+  })
+  .meta({ id: "EnvFile" });

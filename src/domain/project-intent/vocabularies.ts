@@ -38,11 +38,18 @@ export const TRANSIT_OPERATIONS = [
 ] as const;
 export const DELIVERIES = ["env", "file", "self"] as const;
 export const TOLERANCES = ["restart", "reload"] as const;
+export const PLACEHOLDER_KINDS = [
+  "secret",
+  "dependency",
+  "exposure",
+  "identity",
+] as const;
 
 export type Lifecycle = (typeof LIFECYCLES)[number];
 export type Runtime = (typeof RUNTIMES)[number];
 export type Engine = (typeof ENGINES)[number];
 export type Cutover = (typeof CUTOVERS)[number];
+export type PlaceholderKind = (typeof PLACEHOLDER_KINDS)[number];
 export type DurabilityClass = (typeof DURABILITY_CLASSES)[number];
 export type Arch = (typeof ARCHITECTURES)[number];
 export type Medium = (typeof MEDIA)[number];

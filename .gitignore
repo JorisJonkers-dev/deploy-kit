@@ -5,6 +5,8 @@ out/
 target/
 .gradle/
 node_modules/
+# Tycho writes one beside each bundle's pom.xml during a Maven build.
+.tycho-consumer-pom.xml
 
 # Vendored CI actions tree: the shared reusable workflows check the github-workflows repo out
 # into .github-workflows/ beside the sources. It is CI machinery, not this project's code, so it

@@ -155,9 +155,10 @@ namespaces and to nothing finer, so two Pods presenting one ServiceAccount token
 are one principal holding the union of the policies bound to it. Two things
 follow. Deriving the account from the Application Id (which
 `src/adapters/kubernetes.ts:665-669` does today, and which the previous version
-of this chapter drew as `id --> ServiceAccount`) makes the two grant levels of
-[0022](../../docs/adr/model/0022-grants-live-on-the-application.md) documentation rather
-than a boundary. Under it, `knowledge-api`, which serves anonymous paths from
+of this chapter drew as `id --> ServiceAccount`) makes the grant levels of
+[0022](../../docs/adr/model/0022-grants-live-on-the-application.md), now the three
+of [0124](../../docs/adr/model/0124-shared-intent-descends-to-the-process.md),
+documentation rather than a boundary. Under it, `knowledge-api`, which serves anonymous paths from
 the public internet, authenticated as the principal holding `read` on
 `secret/data/knowledge-system/vault-deploy-key`, the `0400` deploy key only the
 ingest worker declares. And because the binding's other half is the namespace,
@@ -167,10 +168,12 @@ narrowed by living in it. What separates two Processes is the ServiceAccount
 name alone, which is exactly why its uniqueness is checked across the whole
 project rather than within one Application.
 
-A Process's **effective grant set** is the Application-level `secrets` list plus
-its own. Layer 2 flattens that set per Process before deriving policy, so a
-Application-level grant renders one policy statement per Process that holds it,
-never one shared statement. Renaming a Process renames its identity: role,
+A Process's **effective grant set** is every level's `secrets` list merged with
+its own, computed once by the lowering
+([chapter 10](10-project-intent.md#the-effective-intent),
+[0125](../../docs/adr/model/0125-the-effective-intent-is-a-lowering.md)). Layer 2
+reads the lowered Process, so a shared grant renders one policy statement per
+Process that holds it, never one shared statement. Renaming a Process renames its identity: role,
 policy and bindings churn, and the new identity must be granted before it
 starts.
 

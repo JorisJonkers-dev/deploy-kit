@@ -3,7 +3,9 @@
 -- diagnostic code it emits, and its context is the object the diagnostic points
 -- at, so a violation maps to a (code, path) pair without a lookup table.
 --
--- Constraints that need every project at once belong to composition.
+-- Constraints that need every project at once belong to composition. The Shared
+-- Intent invariants are not among them: a declaration and the level above it are
+-- always in one document, because a project never spans files.
 --
 -- The constraints a Platform document and the project files read beside it
 -- answer together are here too, because Eclipse OCL binds one Complete OCL
@@ -26,7 +28,10 @@ context Observability
 context Process
 	-- A volume cannot attach to the surge a rolling cutover needs, and a silent
 	-- downgrade is what makes an owner believe in continuity they do not have.
-	inv E_CUTOVER_UNHONOURABLE: cutover = Cutover::rolling implies volumes->isEmpty()
+	-- The effective answer: an RWO volume under an Application declaring
+	-- `rolling` is the same defect written one level up.
+	inv E_CUTOVER_UNHONOURABLE:
+		effectiveCutover = Cutover::rolling implies volumes->isEmpty()
 
 	-- The engine keys the backup method, so it names one nothing asks for when no
 	-- volume derives a backup. `Engine::absent` is the literal a document cannot
@@ -117,5 +122,141 @@ context Grant
 	-- encrypts secrets at rest.
 	inv E_SECRETS_AT_REST_REQUIRED:
 		delivery <> Delivery::selfDelivery implies Substrate.allInstances()->forAll(secretsEncryption)
+
+-- Shared Intent (spec/v1/10-project-intent.md#shared-intent). Every invariant
+-- below sits on the lower declaration, and on the object that has one where the
+-- family has an object at all: a grant, an edge, an asset.
+
+context SharedIntent
+	-- The chain is two hops, Project > Application > Process, so this enumerates
+	-- rather than closes over it.
+	def: levelsAbove : OrderedSet(SharedIntent) =
+		if self.oclIsKindOf(Process) and oclContainer().oclIsKindOf(Application)
+		then OrderedSet{oclContainer().oclAsType(SharedIntent),
+			oclContainer().oclContainer().oclAsType(SharedIntent)}
+		else
+			if self.oclIsKindOf(Application)
+			then OrderedSet{oclContainer().oclAsType(SharedIntent)}
+			else OrderedSet{}
+			endif
+		endif
+
+	-- `absent` when no level answered.
+	def: effectiveCutover : Cutover =
+		if cutover <> Cutover::absent then cutover
+		else
+			let answered : OrderedSet(SharedIntent) =
+				levelsAbove->select(l | l.cutover <> Cutover::absent) in
+			if answered->isEmpty() then Cutover::absent else answered->first().cutover endif
+		endif
+
+context Placement
+	-- Eligibility sums every container's quantity, so a shared one means
+	-- something different for each Process that holds it.
+	inv E_SHARED_QUANTITY:
+		(memory <> null or cpu <> null) implies oclContainer().oclIsKindOf(Process)
+
+context SharedIntent
+	-- The families with no object of their own share one invariant, because they
+	-- share the one context an invariant can point at. Each `placement` key
+	-- counts separately: `site` above and `arch` below is two declarations of
+	-- two things.
+	inv E_SHARED_DECLARATION_DUPLICATED:
+		levelsAbove->forAll(above |
+			(startupBudget <> null implies startupBudget <> above.startupBudget)
+			and (cutover <> Cutover::absent implies cutover <> above.cutover)
+			and writablePaths->excludesAll(above.writablePaths)
+			and ((placement <> null and above.placement <> null) implies
+				(placement.arch->notEmpty() implies placement.arch <> above.placement.arch)
+				and (placement.site <> null implies placement.site <> above.placement.site)
+				and (placement.capabilities->notEmpty() implies
+					placement.capabilities <> above.placement.capabilities)
+				and (placement.disk <> null implies
+					above.placement.disk = null
+						or placement.disk.media <> above.placement.disk.media)
+				and (placement.gpu <> null implies
+					above.placement.gpu = null
+						or placement.gpu.memory <> above.placement.gpu.memory
+						or placement.gpu._'class' <> above.placement.gpu._'class')))
+
+context EnvVariable
+	-- A variable is one declaration within one Cluster Target, and the value is
+	-- a term: a scope below setting it differently is that level's version of it.
+	inv E_SHARED_DECLARATION_DUPLICATED:
+		let mine : EnvFile = oclContainer().oclAsType(EnvFile) in
+		mine.oclContainer().oclAsType(SharedIntent).levelsAbove->forAll(above |
+			above.env->select(f | f.cluster = mine.cluster)->forAll(other |
+				other.entries->forAll(entry |
+					not (entry.name = name and sameValue(entry.value, value)))))
+
+context EnvVariable
+	-- A literal equals a literal with the same text, and a placeholder equals a
+	-- placeholder naming the same source.
+	def: sameValue(one : EnvValue, other : EnvValue) : Boolean =
+		(one.oclIsKindOf(EnvLiteral) and other.oclIsKindOf(EnvLiteral)
+			and one.oclAsType(EnvLiteral).text = other.oclAsType(EnvLiteral).text)
+		or (one.oclIsKindOf(Placeholder) and other.oclIsKindOf(Placeholder)
+			and one.oclAsType(Placeholder).kind = other.oclAsType(Placeholder).kind
+			and one.oclAsType(Placeholder).source = other.oclAsType(Placeholder).source)
+
+context DependencyEdge
+	-- `required` is included: an edge differing in it is a replacement.
+	inv E_SHARED_DECLARATION_DUPLICATED:
+		oclContainer().oclAsType(SharedIntent).levelsAbove->forAll(above |
+			above.dependsOn->forAll(other |
+				not (application = other.application and surface = other.surface
+					and required = other.required)))
+
+context Asset
+	-- The mount is the identity: two files cannot arrive at one path.
+	inv E_SHARED_DECLARATION_DUPLICATED:
+		oclContainer().oclAsType(SharedIntent).levelsAbove->forAll(above |
+			above.assets->forAll(other | not (mountAt = other.mountAt and from = other.from)))
+
+context Grant
+	-- A grant states its rotation or states none, and either way the restatement
+	-- has to match for the second declaration to be a duplicate.
+	def: sameRotationAs(other : Grant) : Boolean =
+		if rotation = null or other.rotation = null then rotation = other.rotation
+		else rotation.tolerates = other.rotation.tolerates
+			and rotation.maxAge = other.rotation.maxAge
+		endif
+
+context KvGrant
+	-- The derived read path is the identity; equal terms make it a duplicate
+	-- rather than a replacement.
+	inv E_SHARED_DECLARATION_DUPLICATED:
+		oclContainer().oclAsType(SharedIntent).levelsAbove->forAll(above |
+			above.secrets->selectByKind(KvGrant)->forAll(other |
+				not (path = other.path and access = other.access and keys = other.keys
+					and delivery = other.delivery and mountAt = other.mountAt
+					and fileMode = other.fileMode and sameRotationAs(other))))
+
+context DatabaseGrant
+	-- The derived read path is `database/creds/<role>`, so the role is the identity.
+	inv E_SHARED_DECLARATION_DUPLICATED:
+		oclContainer().oclAsType(SharedIntent).levelsAbove->forAll(above |
+			above.secrets->selectByKind(DatabaseGrant)->forAll(other |
+				not (role = other.role and delivery = other.delivery
+					and mountAt = other.mountAt and fileMode = other.fileMode
+					and sameRotationAs(other))))
+
+context TransitGrant
+	-- One derived read path per operation, so key and operations are the identity.
+	inv E_SHARED_DECLARATION_DUPLICATED:
+		oclContainer().oclAsType(SharedIntent).levelsAbove->forAll(above |
+			above.secrets->selectByKind(TransitGrant)->forAll(other |
+				not (key = other.key and operations = other.operations
+					and delivery = other.delivery and mountAt = other.mountAt
+					and fileMode = other.fileMode and sameRotationAs(other))))
+
+context Process
+	-- A quantity is never shared, so nothing above the Process supplies one.
+	inv E_PLACEMENT_INCOMPLETE:
+		placement <> null and placement.memory <> null and placement.cpu <> null
+
+	-- Required on every Process, and answerable above one, so what is refused is
+	-- a Process no level answers for.
+	inv E_CUTOVER_MISSING: effectiveCutover <> Cutover::absent
 
 endpackage

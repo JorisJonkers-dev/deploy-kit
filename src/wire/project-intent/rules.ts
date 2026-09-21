@@ -6,11 +6,26 @@
 // takes as its context. A rule that needs more than one document belongs to
 // composition, not here.
 import type { Diagnostic } from "../../domain/diagnostic.ts";
+import {
+  declared,
+  sameDeclaration,
+} from "../../domain/project-intent/declaration.ts";
 import type { ProjectIntentDocument } from "./schema.ts";
 
 type Application = ProjectIntentDocument["applications"][number];
 type Process = Application["processes"][number];
 type Grant = NonNullable<Process["secrets"]>[number];
+/** Any of the three levels Shared Intent may be declared at. */
+type Level = Pick<
+  Process,
+  | "secrets"
+  | "dependsOn"
+  | "assets"
+  | "writablePaths"
+  | "placement"
+  | "startupBudget"
+  | "cutover"
+>;
 
 interface Refusal {
   readonly code: string;
@@ -58,10 +73,135 @@ function grantRefusals(grant: Grant, at: string): Refusal[] {
   return refusals;
 }
 
-function processRefusals(process: Process, at: string): Refusal[] {
+// -- Shared Intent (spec/v1/10-project-intent.md#shared-intent). Every refusal
+// below sits on the lower declaration: the one an author deletes to fix it.
+
+/** The node dimensions, which is what a level above a Process may share. */
+const DIMENSIONS = ["arch", "site", "disk", "gpu", "capabilities"] as const;
+
+const duplicate = (path: string, what: string): Refusal => ({
+  code: "E_SHARED_DECLARATION_DUPLICATED",
+  path,
+  message: `${what} is declared again, unchanged, at a level above this one`,
+  hint: "Delete this copy, or change it: a lower declaration replaces the one above, and a restatement does nothing.",
+});
+
+/** Every duplicate this level restates from a level above it. */
+function duplicateRefusals(
+  level: Level,
+  above: readonly Level[],
+  at: string,
+): Refusal[] {
   const refusals: Refusal[] = [];
+  const from = <T>(pick: (one: Level) => readonly T[] | undefined): T[] =>
+    above.flatMap((one) => [...declared(pick(one))]);
+
+  const grants = from((one) => one.secrets);
+  for (const [index, grant] of declared(level.secrets).entries())
+    if (grants.some((above) => sameDeclaration(above, grant)))
+      refusals.push(duplicate(`${at}/secrets/${index}`, "this grant"));
+
+  const edges = from((one) => one.dependsOn);
+  for (const [index, edge] of declared(level.dependsOn).entries())
+    if (edges.some((above) => sameDeclaration(above, edge)))
+      refusals.push(duplicate(`${at}/dependsOn/${index}`, "this edge"));
+
+  const assets = from((one) => one.assets);
+  for (const [index, asset] of declared(level.assets).entries())
+    if (assets.some((above) => sameDeclaration(above, asset)))
+      refusals.push(duplicate(`${at}/assets/${index}`, "this asset"));
+
+  // The families with no object of their own share one refusal, at their level:
+  // it is the object an invariant takes as its context, so a refusal each would
+  // be several diagnostics at one pointer.
+  const paths = new Set(from((one) => one.writablePaths));
+  const restated = [
+    ...declared(level.writablePaths).filter((written) => paths.has(written)),
+    ...(level.startupBudget !== undefined &&
+    above.some((one) => one.startupBudget === level.startupBudget)
+      ? ["startupBudget"]
+      : []),
+    ...(level.cutover !== undefined &&
+    above.some((one) => one.cutover === level.cutover)
+      ? ["cutover"]
+      : []),
+    // Each dimension separately, which is what makes `site` above and `arch`
+    // below two declarations of two things.
+    ...DIMENSIONS.filter((key) => {
+      const value = level.placement?.[key];
+      return (
+        value !== undefined &&
+        above.some((one) => sameDeclaration(one.placement?.[key], value))
+      );
+    }),
+  ];
+  if (restated.length > 0) refusals.push(duplicate(at, restated.join(", ")));
+  return refusals;
+}
+
+/** Eligibility sums every container's quantity, so a shared one is refused. */
+function quantityRefusals(level: Level, at: string): Refusal[] {
+  const placement = level.placement;
+  if (placement === undefined) return [];
+  const written = (["memory", "cpu"] as const).filter(
+    (key) => placement[key] !== undefined,
+  );
+  if (written.length === 0) return [];
+  return [
+    {
+      code: "E_SHARED_QUANTITY",
+      path: `${at}/placement`,
+      message: `${written.join(" and ")} is per container and cannot be shared`,
+      hint: "Write the quantity on each Process: eligibility sums the Process and its sidecars.",
+    },
+  ];
+}
+
+/** Either may be answered above the Process, so what is refused is no answer. */
+function completenessRefusals(
+  process: Process,
+  above: readonly Level[],
+  at: string,
+): Refusal[] {
+  const refusals: Refusal[] = [];
+  const levels = [process, ...above];
+  if (!levels.some((level) => level.cutover !== undefined))
+    refusals.push({
+      code: "E_CUTOVER_MISSING",
+      path: at,
+      message:
+        "no level answers whether this Process keeps serving as it cuts over",
+      hint: "Declare `cutover` on the Process, its Application or the project header.",
+    });
+  const own = process.placement;
+  const missing = (["memory", "cpu"] as const).filter(
+    (key) => own?.[key] === undefined,
+  );
+  if (missing.length > 0)
+    refusals.push({
+      code: "E_PLACEMENT_INCOMPLETE",
+      path: at,
+      message: `this Process declares no ${missing.join(" and no ")}, and a quantity is never shared`,
+      hint: "Declare the quantities in the Process's own `placement` block: only the node dimensions can come from a level above.",
+    });
+  return refusals;
+}
+
+function processRefusals(
+  process: Process,
+  above: readonly Level[],
+  at: string,
+): Refusal[] {
+  const refusals: Refusal[] = [
+    ...duplicateRefusals(process, above, at),
+    ...completenessRefusals(process, above, at),
+  ];
   const volumes = process.volumes ?? [];
-  if (process.cutover === "rolling" && volumes.length > 0)
+  // The effective answer: it may come from a level above.
+  const cutover = [process, ...above].find(
+    (level) => level.cutover !== undefined,
+  )?.cutover;
+  if (cutover === "rolling" && volumes.length > 0)
     refusals.push({
       code: "E_CUTOVER_UNHONOURABLE",
       path: at,
@@ -90,8 +230,15 @@ function processRefusals(process: Process, at: string): Refusal[] {
   return refusals;
 }
 
-function applicationRefusals(application: Application, at: string): Refusal[] {
-  const refusals: Refusal[] = [];
+function applicationRefusals(
+  application: Application,
+  project: ProjectIntentDocument,
+  at: string,
+): Refusal[] {
+  const refusals: Refusal[] = [
+    ...duplicateRefusals(application, [project], at),
+    ...quantityRefusals(application, at),
+  ];
   if (
     application.observability !== undefined &&
     application.observability.scrape === undefined
@@ -120,7 +267,13 @@ function applicationRefusals(application: Application, at: string): Refusal[] {
   for (const [index, grant] of (application.secrets ?? []).entries())
     refusals.push(...grantRefusals(grant, `${at}/secrets/${index}`));
   for (const [index, process] of application.processes.entries())
-    refusals.push(...processRefusals(process, `${at}/processes/${index}`));
+    refusals.push(
+      ...processRefusals(
+        process,
+        [application, project],
+        `${at}/processes/${index}`,
+      ),
+    );
   return refusals;
 }
 
@@ -128,7 +281,13 @@ function applicationRefusals(application: Application, at: string): Refusal[] {
 export function ruleDiagnostics(
   document: ProjectIntentDocument,
 ): readonly Diagnostic[] {
-  return document.applications.flatMap((application, index) =>
-    applicationRefusals(application, `/applications/${index}`),
-  );
+  return [
+    ...quantityRefusals(document, ""),
+    ...(document.secrets ?? []).flatMap((grant, index) =>
+      grantRefusals(grant, `/secrets/${index}`),
+    ),
+    ...document.applications.flatMap((application, index) =>
+      applicationRefusals(application, document, `/applications/${index}`),
+    ),
+  ];
 }

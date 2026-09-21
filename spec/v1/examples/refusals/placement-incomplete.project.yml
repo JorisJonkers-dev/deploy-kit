@@ -1,0 +1,30 @@
+# REFUSED: E_PLACEMENT_INCOMPLETE
+#
+# The Application shares the node dimensions, which is what a `placement` block above
+# a Process is for, and the Process declares neither quantity. A quantity is never
+# shared, so nothing above the Process could have supplied one and the merge
+# leaves the block incomplete
+# (spec/v1/10-project-intent.md #a-quantity-is-never-shared).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: placement-incomplete
+    placement:
+      arch: [arm64]
+      site: enschede
+    processes:
+      - name: placement-incomplete-api
+        lifecycle: application
+        image: placement-incomplete-api
+        runtime: node
+        provides:
+          http: 8080
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: rolling

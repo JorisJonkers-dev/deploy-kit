@@ -44,3 +44,4 @@ taking a number, check both registers.
 | [0115](emf/0115-the-emf-gates-are-estate-shaped.md) | The model-driven build carries the gates the estate's JVM repositories enforce, plus Java-shaped equivalents, and measures its thresholds | open |
 | [0121](emf/0121-parity-crosses-the-cli-file-interface.md) | The parity suite reaches the pipeline through its file interface, and holds no EMF type | open |
 | [0122](emf/0122-bundles-and-tests-are-separate-tiers.md) | The tree splits into an Eclipse bundle tier and a test tier, and only the bundle tier is Java | open |
+| [0126](emf/0126-the-env-files-are-read-not-parsed-by-xtext.md) | The env files are read by a hand-written reader, not by a second Xtext grammar | settled |

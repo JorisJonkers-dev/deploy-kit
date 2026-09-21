@@ -14,9 +14,15 @@ rests-on: ["0001"]
 > Service is Application, Workload is Process, and Service Intent is Project
 > Intent. The decision is unchanged.
 
+> **Amended 2026-09-21.** `owner` is no longer the only field the project header
+> carries: [0124](0124-shared-intent-descends-to-the-process.md) raises the eight
+> Shared Intent families to it, on terms it records, and the `alertClass` half of
+> the Alternatives row below still holds. Intent is still authored one file per
+> project, which is what this record decides.
+
 One file per project, holding many Applications, and one file is one Intent
 Fragment. A repository may hold several project files; a project never spans
-repositories. `owner` is the only field raised to the project header, and
+repositories. `owner` is the field this record raises to the project header, and
 namespace derives from `project` as `<project>-system`.
 
 ## Rests on

@@ -17,7 +17,8 @@ rests-on: ["0009"]
 The ServiceAccount and the Vault Kubernetes auth role are derived **per
 Process** and named for the Process alone: `auth-system.auth-api`, never
 `auth-system.auth-auth-api`. The policy bound to a Process's role is exactly
-its effective grant set ([0022](0022-grants-live-on-the-application.md)) (never a
+its effective grant set ([0022](0022-grants-live-on-the-application.md),
+superseded by [0124](0124-shared-intent-descends-to-the-process.md)) (never a
 sibling's) and no author writes an identity name
 ([0030](0030-runtime-mechanics-derived.md)).
 
@@ -58,8 +59,10 @@ authenticated as the principal holding `read` on that SSH private key, and
 below the path, so the identity is the only place that boundary can exist.
 
 Splitting the identity makes [0022](0022-grants-live-on-the-application.md)'s levels
-mean something: Application-level *is* shared, Process-level *is not*, both enforced
-by the token the Pod presents, and the dead-grant and unauthorised-reference
+mean something, and its successor
+[0124](0124-shared-intent-descends-to-the-process.md)'s three the same way: a
+shared level *is* shared, the Process level *is not*, both enforced by the token
+the Pod presents, and the dead-grant and unauthorised-reference
 checks ([0027](0027-secret-reference-join-key.md)) gain a subject: the Process.
 
 The derived name is the Process's own. Under project files

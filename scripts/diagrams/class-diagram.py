@@ -88,17 +88,15 @@ for line in body.split("\n"):
 # `resolves by name` edges and `Route -> Audience` all land between neighbours.
 TREES = {"10-project-intent": {
     "Project": ["Application"],
-    "Application": ["Observability", "Grant", "Process", "Exposure"],
+    "Application": ["Observability", "Process", "Exposure"],
     "Observability": ["Scrape"],
-    "Grant": ["Rotation"],
-    # Surface stays last, and Route stays Exposure's first, so the two
-    # `resolves by name` cross-links land between neighbours.
-    "Process": [
-        "Capacity", "Sidecar", "Probe", "Asset", "Volume", "Placement",
-        "EnvFile", "DependencyEdge", "Surface",
-    ],
-    "Placement": ["GpuRequest", "DiskRequest"],
-    "EnvFile": ["Placeholder"],
+    # No Shared Intent family is drawn. Eight of them at three levels each is
+    # more relations than a reader can hold, and drawing them at one level
+    # would say the level is where they live. The levels are the chapter's own
+    # table and each family's own section.
+    # Surface stays last, and Route stays Exposure's first, so the one
+    # cross-link lands between neighbours.
+    "Process": ["Capacity", "Sidecar", "Probe", "Volume", "Surface"],
     "Exposure": ["Route"],
 }, "14-platform-intent": {
     "Platform": [
@@ -235,9 +233,10 @@ E_ENUM = BASE + ("strokeColor=#6d28d9;fontColor=#6d28d9;dashed=1;dashPattern=8 4
                  "endFill=0;endSize=10;exitX=0.5;exitY=1;exitDx=0;exitDy=0;"
                  "entryX=0.5;entryY=0;entryDx=0;entryDy=0;")
 
-# a relation spanning two layers or more is not drawn; the chapter states it
+# a relation between two layers is not drawn; the chapter states it. The router
+# below places a non-tree edge along one row, so both ends must sit on that row.
 dep = [(a, b, l) for a, b, l in dep
-       if (a, b) in tree or abs(depth[a] - depth[b]) < 2]
+       if (a, b) in tree or depth[a] == depth[b]]
 
 model = ET.Element("mxGraphModel", {
     "dx": "0", "dy": "0", "grid": "0", "gridSize": "10", "guides": "1", "tooltips": "1",

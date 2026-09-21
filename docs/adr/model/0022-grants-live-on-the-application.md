@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+superseded-by: 0124
 claim: settled
 date: 2026-08-31
 normative: spec/v1/10-project-intent.md#secrets
@@ -23,6 +23,19 @@ shared, and it moves down a level. What an entry names is decided elsewhere
 ([0023](0023-grant-unit-is-the-path.md), [0025](0025-access-tiers-derive-policy.md),
 [0026](0026-delivery-env-file-self.md)); this fixes only where grants live and
 what nesting means.
+
+> **Superseded by [0124](0124-shared-intent-descends-to-the-process.md) on
+> 2026-09-21.** The rule this record settled for `secrets` alone now holds for
+> eight families at three levels: a declaration at the Project, an Application or a
+> Process descends to every Process below it, lists extend each other, the lower
+> level's declaration of one path holds, and an identical restatement is refused
+> as a duplicate. Everything below stays true of grants,
+> including the sentence the decision turns on, that the levels are an access
+> boundary only because identity is per Process
+> ([0024](0024-identity-per-process.md)). What changed is that the project level
+> exists, on the terms 0124 records, and that the union is computed once by a
+> lowering ([0125](0125-the-effective-intent-is-a-lowering.md)) rather than by
+> each reader.
 
 ## Rests on
 

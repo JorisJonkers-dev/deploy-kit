@@ -1,0 +1,43 @@
+# REFUSED: E_SHARED_DECLARATION_DUPLICATED
+#
+# The Application restates, unchanged, a grant the project header already declares.
+# A lower declaration replaces the one above it, so one that changes nothing is
+# either a copy that will drift or an author who misread the level, and it is the
+# one case where a reader cannot tell by looking whether a value holds or is
+# shadowed
+# (spec/v1/10-project-intent.md #sharing-merges-and-a-duplicate-is-refused).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+secrets:
+  - path: secret/data/refusals/shared
+    keys: [token]
+    access: read
+    delivery: env
+    rotation: { tolerates: restart }
+cutover: rolling
+applications:
+  - id: shared-declaration-duplicated
+    secrets:
+      - path: secret/data/refusals/shared
+        keys: [token]
+        access: read
+        delivery: env
+        rotation: { tolerates: restart }
+    processes:
+      - name: shared-declaration-duplicated-api
+        lifecycle: application
+        image: shared-declaration-duplicated-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
