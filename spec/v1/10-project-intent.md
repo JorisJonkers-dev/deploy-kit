@@ -110,11 +110,24 @@ The diagram is embedded rather than kept as a separate `.mmd`. A standalone
 `.mmd` does not render on GitHub, so it would be invisible in exactly the review
 this chapter exists for.
 
-It carries the classes and how they compose, and nothing else. The closed
-vocabularies an attribute's type names are tabulated under
+It carries the levels, what each one is made of, and nothing else. Three things
+are deliberately absent.
+
+The **closed vocabularies** an attribute's type names are tabulated under
 [The closed vocabularies](#the-closed-vocabularies) rather than drawn: as boxes
-they added a line each and told a reader nothing the type name had not. The two
-relations that reach across layers are not drawn either. A
+they added a line each and told a reader nothing the type name had not.
+
+**No Shared Intent family is drawn at all**: not `secrets`, not `env`, not
+`dependsOn`, `assets`, `writablePaths`, `placement`, `cutover` or
+`startupBudget`. Eight families, each declarable at three levels, is more
+relations than a drawing can carry and still be read; and drawing each one at a
+single level would say the level is where it lives, which is the one thing that
+is not true of them. They are [tabulated](#shared-intent) instead, and each has
+its own section. What the drawing is for is the part that *is* structural: which
+level holds which, and what a Process is made of that no other level may
+declare.
+
+The **relations that reach across layers** are not drawn either. A
 `Placeholder` byte-matches a granted path and an exposure placeholder addresses
 `application.name`; both are stated where they are enforced, under
 [Validation](#validation).
@@ -131,23 +144,11 @@ full below. It is the one composite an **effective** Process cannot be without,
 and the one an authored Process may leave to a level above it, because the node
 dimensions are shared and the quantities are not
 ([A quantity is never shared](#a-quantity-is-never-shared)).
-`provides` hangs off the **Process**: a port is a property of a process. So do
-the eight families of [Shared Intent](#shared-intent), in the drawing, and that
-is a decision about the drawing rather than about the model: each of them may be
-declared at the Project or an Application too, and drawing three copies of `secrets`
-and three of `placement` said nothing the level table does not. Each family is
-**one** relation from the Process for the same reason: an `EnvVariable` and the
-union its value is (an `EnvLiteral` or a `Placeholder`) are two more rows and two
-more layers for a structure the [dotenv
-subset](#the-dotenv-subset-that-is-read) states exactly, so the drawing carries
-`EnvFile` and the one relation that leaves it. The drawing is
-the Process's shape, which is the shape every one of them ends up in
-([The effective intent](#the-effective-intent)). Env files keep their own level
-rule, per Process and per scope
-([0011](../../docs/adr/model/0011-configuration-env-files-per-process.md)),
-because they are files rather than fields. `exposure` hangs off the
-**Application**, because a hostname is a property of the product rather than of any
-one process, and one hostname routes into two of them.
+`provides` hangs off the **Process**, and is drawn: a port is a property of a
+process and of nothing above it. `exposure` hangs off the **Application**, because
+a hostname is a property of the product rather than of any one process, and one
+hostname routes into two of them. Those two are in the drawing precisely because
+they are *not* shared, which is what the drawing is now about.
 
 ## Shared intent
 
@@ -2335,9 +2336,6 @@ classDiagram
         +ImageAlias image
         +Runtime runtime
         +Engine engine
-        +Duration startupBudget
-        +Cutover cutover
-        +Path[] writablePaths
     }
     class Capacity {
         +int count
@@ -2352,11 +2350,6 @@ classDiagram
         +ImageAlias image
         +Quantity memory
         +Quantity cpu
-    }
-    class DependencyEdge {
-        +ApplicationId application
-        +string surface
-        +bool required
     }
     class Exposure {
         +ExposureName name
@@ -2377,60 +2370,16 @@ classDiagram
         +int port
         +int tcp
     }
-    class Asset {
-        +Path from
-        +Path mountAt
-        +map substitute
-    }
     class Volume {
         +string claim
         +Path mountAt
         +Quantity size
         +DurabilityClass durability
     }
-    class Placement {
-        +Quantity memory
-        +Quantity cpu
-        +Arch[] arch
-        +Site site
-        +Capability[] capabilities
-    }
-    class DiskRequest {
-        +Media[] media
-    }
-    class GpuRequest {
-        +GpuClassName class
-        +Quantity memory
-    }
     class Scrape {
         +string process
         +string surface
         +Path path
-    }
-    class EnvFile {
-        +ClusterTarget cluster
-        +EnvVariable[] entries
-    }
-    class Placeholder {
-        +PlaceholderKind kind
-        +string source
-    }
-
-    class Grant {
-        +SecretEngine engine
-        +VaultPath path
-        +string[] keys
-        +AccessTier access
-        +string role
-        +string key
-        +TransitOp[] operations
-        +Delivery delivery
-        +Path mountAt
-        +FileMode fileMode
-    }
-    class Rotation {
-        +Tolerance tolerates
-        +Duration maxAge
     }
 
     Project "1" *-- "1..*" Application : applications
@@ -2438,30 +2387,15 @@ classDiagram
 
     Process "1" *-- "0..*" Surface : provides
     Process "1" *-- "0..*" Sidecar : sidecars
-    Process "1" *-- "0..*" DependencyEdge : dependsOn
     Process "1" *-- "0..1" Probe : readiness
     Process "1" *-- "0..1" Probe : liveness
-    Process "1" *-- "0..*" Asset : assets
     Process "1" *-- "0..*" Volume : volumes
-    Process "1" *-- "0..1" Placement : placement
     Application "1" *-- "0..1" Observability : observability
     Observability "1" *-- "1" Scrape : scrape
     Process "1" *-- "0..1" Capacity : replicas
 
-    Placement "1" *-- "0..1" DiskRequest : disk
-    Placement "1" *-- "0..1" GpuRequest : gpu
-
     Application "1" *-- "0..*" Exposure : exposure
     Exposure "1" *-- "1..*" Route : routes
     Route --> Surface : surface
-    DependencyEdge ..> Surface : resolves by name
-
-    Process "1" *-- "0..*" EnvFile : env
-    EnvFile "1" *-- "0..*" Placeholder : resolves
-
-    Process "1" *-- "0..*" Grant : secrets
-    Grant "1" *-- "0..1" Rotation : rotation
-    Placeholder ..> Grant : byte-matches
-    Placeholder ..> Exposure : addresses application.name
 
 ```

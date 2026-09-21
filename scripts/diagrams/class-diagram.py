@@ -90,17 +90,13 @@ TREES = {"10-project-intent": {
     "Project": ["Application"],
     "Application": ["Observability", "Process", "Exposure"],
     "Observability": ["Scrape"],
-    "Grant": ["Rotation"],
-    # Shared Intent is drawn on the Process alone: the levels it may also be
-    # declared at are the chapter's level table, not copies of one box.
-    # Surface stays last, and Route stays Exposure's first, so the two
-    # `resolves by name` cross-links land between neighbours.
-    "Process": [
-        "Capacity", "Sidecar", "Probe", "Asset", "Volume", "Placement",
-        "Grant", "EnvFile", "DependencyEdge", "Surface",
-    ],
-    "Placement": ["GpuRequest", "DiskRequest"],
-    "EnvFile": ["Placeholder"],
+    # No Shared Intent family is drawn. Eight of them at three levels each is
+    # more relations than a reader can hold, and drawing them at one level
+    # would say the level is where they live. The levels are the chapter's own
+    # table and each family's own section.
+    # Surface stays last, and Route stays Exposure's first, so the one
+    # cross-link lands between neighbours.
+    "Process": ["Capacity", "Sidecar", "Probe", "Volume", "Surface"],
     "Exposure": ["Route"],
 }, "14-platform-intent": {
     "Platform": [

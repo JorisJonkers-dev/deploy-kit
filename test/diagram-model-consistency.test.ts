@@ -110,18 +110,54 @@ test("the class diagram draws exactly the mermaid's classes and attributes", () 
     expect(boxes[name], `${name}: attributes differ`).toStrictEqual(rows);
 });
 
-test("only the relations that span layers are left undrawn", () => {
+/**
+ * Every class that exists only to carry a Shared Intent family. None is drawn:
+ * eight families at three levels each is more relations than a drawing can
+ * carry, and drawing one at a single level would say the level is where it
+ * lives (spec/v1/10-project-intent.md#the-model).
+ */
+const SHARED_INTENT_CLASSES = [
+  "Grant",
+  "Rotation",
+  "EnvFile",
+  "Placeholder",
+  "DependencyEdge",
+  "Asset",
+  "Placement",
+  "DiskRequest",
+  "GpuRequest",
+];
+
+/** The three families that are attributes of the Process rather than classes. */
+const SHARED_INTENT_ATTRIBUTES = ["writablePaths", "cutover", "startupBudget"];
+
+test("the drawing carries every relation the mermaid states", () => {
   const { comps, deps, assocs } = mermaidModel();
   const { edges } = svgModel("10-project-intent-model.drawio.svg");
-  // Placeholder reaches Grant and Exposure across four layers. Those two are
-  // stated in the chapter instead; everything else is on the drawing.
-  const undrawn = deps.filter(([from]) => from === "Placeholder").length;
-  expect(undrawn, "the set of undrawn relations changed").toBe(2);
+  expect(
+    deps,
+    "a relation the mermaid states and the router cannot place has nowhere to go",
+  ).toStrictEqual([]);
   expect(
     assocs,
     "a reference the model resolves is drawn as an association",
   ).toStrictEqual([["Route", "Surface"]]);
-  expect(edges).toBe(comps.length + deps.length + assocs.length - undrawn);
+  expect(edges).toBe(comps.length + assocs.length);
+});
+
+test("no Shared Intent family reaches the drawing, at any level", () => {
+  const { classes, comps, assocs } = mermaidModel();
+  const drawn = new Set([...comps, ...assocs].flat());
+  for (const family of SHARED_INTENT_CLASSES)
+    expect(
+      drawn.has(family) || family in classes,
+      `${family} carries a Shared Intent family and is drawn`,
+    ).toBe(false);
+  for (const attribute of SHARED_INTENT_ATTRIBUTES)
+    expect(
+      classes["Process"]?.some((row) => row.endsWith(` ${attribute}`)),
+      `Process.${attribute} is a Shared Intent family and is drawn`,
+    ).toBe(false);
 });
 
 test("the Platform Intent drawing is exactly its mermaid, every relation drawn", () => {
@@ -143,6 +179,17 @@ test("no drawing carries an enumeration box", () => {
     ).not.toContain("«enumeration»");
 });
 
+/**
+ * A word the chapter uses for a union the model splits. The table names the
+ * union; the descriptor lists what the model actually has.
+ */
+const UNIONS: Record<string, readonly string[]> = {
+  // `Grant` is abstract, so its features sit on the three concrete grants.
+  Grant: ["KvGrant", "DatabaseGrant", "TransitGrant"],
+  // One word for the `engine` discriminator, which the model splits per engine.
+  SecretEngine: ["DatabaseEngine", "TransitEngine"],
+};
+
 test("every closed vocabulary names an attribute that exists", () => {
   const md = read(join(spec, "10-project-intent.md"));
   const table = capture(
@@ -150,26 +197,40 @@ test("every closed vocabulary names an attribute that exists", () => {
     /## The closed vocabularies\n([\s\S]*?)\n## /,
     "the closed vocabularies table",
   );
-  const { classes } = mermaidModel();
+  // The descriptor and not the drawing: no Shared Intent family is drawn, and
+  // half these vocabularies type one.
+  const descriptor = JSON.parse(
+    read(join(spec, "examples", "expected", "descriptor.json")),
+  ) as {
+    classes: { name: string; features: { name: string }[] }[];
+    vocabularies: { name: string }[];
+  };
+  const vocabularies = new Set(descriptor.vocabularies.map(({ name }) => name));
+  const features = new Map(
+    descriptor.classes.map(({ name, features: own }) => [
+      name,
+      new Set(own.map((feature) => feature.name)),
+    ]),
+  );
   let rows = 0;
   for (const m of table.matchAll(/^\| `(\w+)` \| ([^|]+) \|/gm)) {
     rows += 1;
     const vocab = m[1] ?? "";
-    const used = Object.values(classes).some((attributes) =>
-      attributes.some(
-        (row) => (row.split(" ")[0] ?? "").replace(/\[\]$/, "") === vocab,
-      ),
-    );
-    expect(used, `${vocab} is tabulated but types no attribute`).toBe(true);
+    const named = UNIONS[vocab] ?? [vocab];
+    expect(
+      named.some((one) => vocabularies.has(one)),
+      `${vocab} is tabulated but the model carries no such vocabulary`,
+    ).toBe(true);
     for (const ref of (m[2] ?? "").matchAll(/`(\w+)\.(\w+)`/g)) {
       const cls = ref[1] ?? "";
       const attribute = ref[2] ?? "";
+      const carriers = UNIONS[cls] ?? [cls];
       expect(
-        classes[cls],
+        carriers.some((one) => features.has(one)),
         `${vocab} names class ${cls}, which does not exist`,
-      ).toBeDefined();
+      ).toBe(true);
       expect(
-        classes[cls]?.some((row) => row.endsWith(` ${attribute}`)),
+        carriers.some((one) => features.get(one)?.has(attribute) === true),
         `${vocab} names ${cls}.${attribute}, which does not exist`,
       ).toBe(true);
     }
@@ -178,10 +239,14 @@ test("every closed vocabulary names an attribute that exists", () => {
 });
 
 test("a worked example authors no key the model does not carry", () => {
-  const { classes } = mermaidModel();
+  // The descriptor and not the drawing: no Shared Intent family is drawn, and
+  // every one of them is a key a worked example authors.
+  const descriptor = JSON.parse(
+    read(join(spec, "examples", "expected", "descriptor.json")),
+  ) as { classes: { features: { name: string }[] }[] };
   const attributes = new Set(
-    Object.values(classes).flatMap((rows) =>
-      rows.map((row) => row.split(" ").pop() ?? ""),
+    descriptor.classes.flatMap(({ features }) =>
+      features.map(({ name }) => name),
     ),
   );
   // Keys that structure the document rather than name an attribute, plus the
