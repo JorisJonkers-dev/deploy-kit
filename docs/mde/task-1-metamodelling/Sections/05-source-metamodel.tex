@@ -109,6 +109,71 @@ each edge tier serves, one backup policy per durability class, one backup method
 per engine, one hardening posture, one probe cadence, one monitoring cadence,
 and the services the estate runs without deploying them.
 
+It is shown in three figures, cut from its own source by the same script that
+cuts the project half. Figure~\ref{fig:platformfacts} holds the facts about the
+cluster and what must exist before a rendered object can land,
+Figure~\ref{fig:platformedge} the edge and what the estate already runs, and
+Figure~\ref{fig:platformpolicies} the policies: one per durability class, one
+per engine, and the cadences the derivations read.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.78\linewidth, keepaspectratio]{Figures/s-plat-a}
+\caption{The Platform Document: the Cluster and What Must Already Exist}
+\label{fig:platformfacts}
+\end{figure}
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.50\linewidth, keepaspectratio]{Figures/s-plat-b}
+\caption{The Platform Document: the Edge, and What the Estate Already Runs}
+\label{fig:platformedge}
+\end{figure}
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/s-plat-c}
+\caption{The Platform Document: the Policies a Derivation Reads}
+\label{fig:platformpolicies}
+\end{figure}
+
+A fact here is named for what it is and never for how the cluster is told about
+it, which is the rule of Section~\ref{sec:decisions} applied to the document
+that is most tempted to break it. Two of these facts gate a constraint rather
+than feed a derivation: a cluster that does not encrypt secrets at rest refuses
+every delivery that would write one into it, and a durability class or an engine
+with no policy refuses the volume or the process that asked for it
+(Section~\ref{sec:constraints}).
+
+Table~\ref{tab:platformclasses} lists the classes.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}p{0.70\linewidth}}
+\hline
+\textbf{Class} & \textbf{What it represents} \\
+\hline
+Platform & The estate-wide authored document: one per cluster, with its owner and hardening posture. \\
+PlatformMetadata & Which cluster and project the document describes, and the digest of the machine contract it was written against. \\
+Substrate & Facts about the cluster that decide other decisions: its version, datastore, server count, whether secrets are encrypted at rest, and its network plugin and policy controller. \\
+Bootstrap & What must already exist before the first rendered object can land, recorded rather than declared. \\
+FluxSource & The reconciler's source reference, part of that bootstrap set. \\
+VaultState & Whether the secret store is unsealed, the second bootstrap fact. \\
+Tier & Where the edge terminates: the audiences it serves, its listener, its certificate source, the endpoint that decides an authenticated request, and the declared Application that is its proxy. \\
+DurabilityPolicies & The three durability classes' policies, held together so a missing one is visible. \\
+DurabilityPolicy & One class's backup window and retention. \\
+OffClusterCopy & Where an irreplaceable volume's copy goes, and the credential that writes it. \\
+EnginePolicies & The backup method per engine, held together for the same reason. \\
+EnginePolicy & One engine's backup image alias, named and never executable. \\
+MonitorCadence & How often the estate collects metrics, and how long it waits. \\
+ProbeCadence & The estate's one probe cadence: period, timeout and the failures tolerated. \\
+EphemeralPolicy & The size a declared writable path receives. \\
+Provider & Something the estate runs and this model does not deploy, with its address and named surfaces, which a dependency may resolve against. \\
+\hline
+\end{tabular}
+\caption{Classes of the Platform Document}
+\label{tab:platformclasses}
+\end{table}
+
 \subsection{Closed Vocabularies}
 
 Wherever an attribute admits a fixed set of values, the metamodel declares an
