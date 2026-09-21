@@ -1,0 +1,107 @@
+# ACCEPTED, and the counterpart of the four refusals beside it.
+#
+# One declaration of each shape the merge has to get right, so that the refusals
+# are refusals rather than the only thing the rules can see
+# (spec/v1/10-project-intent.md #shared-intent):
+#
+#   * a grant on the project header, held by both Applications;
+#   * a grant on the Application, held by both its Processes, beside a Process-level
+#     one held by neither sibling;
+#   * one path granted at two levels with different terms, where the Process's
+#     `custody` replaces the header's `read` rather than duplicating it;
+#   * node dimensions on the Application and quantities on each Process, which is the
+#     split `placement` exists in two halves for;
+#   * `site` replaced lower down, which is a replacement and not a duplicate
+#     because the value differs;
+#   * `cutover` answered once, on the Application, for a release unit that switches
+#     together;
+#   * `writablePaths` and `dependsOn` extending rather than replacing.
+#
+# `test/model/lowering.test.ts` lowers this file and asserts what each Process
+# ends up holding.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+
+# The project header: every Process in the file holds these.
+secrets:
+  - path: secret/data/refusals/estate-ca
+    keys: [bundle]
+    access: read
+    delivery: file
+    mountAt: /etc/ssl/estate/ca.pem
+    fileMode: "0444"
+    rotation: { tolerates: restart }
+  - path: secret/data/refusals/telemetry
+    keys: [token]
+    access: read
+    delivery: env
+    rotation: { tolerates: restart }
+writablePaths: [/tmp]
+placement:
+  arch: [arm64]
+  site: enschede
+
+applications:
+  - id: shared-intent-merged
+    # Both Processes read this, and neither states it.
+    secrets:
+      - path: secret/data/refusals/queue
+        keys: [user, password]
+        access: read
+        delivery: env
+        rotation: { tolerates: restart }
+    # The Application is the release unit, so the cutover question is answered once.
+    cutover: recreate
+    dependsOn:
+      - { application: platform-rabbitmq, surface: amqp }
+    processes:
+      - name: shared-intent-merged-api
+        lifecycle: application
+        image: shared-intent-merged-api
+        runtime: node
+        provides:
+          http: 8080
+        # The quantities, which no level above may carry, beside the dimensions
+        # the header shares.
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        # Only this Process serves the endpoint that needs it.
+        secrets:
+          - path: secret/data/refusals/bearer
+            keys: [workstation]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+        dependsOn:
+          - { application: platform-postgres, surface: postgres }
+        writablePaths: [/var/cache/api]
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+
+      - name: shared-intent-merged-worker
+        lifecycle: application
+        image: shared-intent-merged-worker
+        runtime: python
+        placement:
+          memory: 64Mi
+          cpu: 10m
+          # A replacement, not a duplicate: this Process runs elsewhere, and
+          # saying so where a reader sees it is the point of the lower level.
+          site: frankfurt
+        # The same path the header grants, with the terms this Process needs.
+        # The lower declaration holds, and nothing is granted twice.
+        secrets:
+          - path: secret/data/refusals/telemetry
+            keys: [token]
+            access: custody
+            delivery: self
+            rotation: { tolerates: restart }
+        probes: none
+        startupBudget: 120s

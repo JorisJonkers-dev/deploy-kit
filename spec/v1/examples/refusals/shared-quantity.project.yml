@@ -1,0 +1,34 @@
+# REFUSED: E_SHARED_QUANTITY
+#
+# The Application shares a `placement` block, which it may, and writes `memory` and
+# `cpu` in it, which it may not. A quantity is per container and eligibility sums
+# every container's, so a shared quantity would be one number added once per
+# Process and meaning something different each time
+# (spec/v1/10-project-intent.md #a-quantity-is-never-shared).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: shared-quantity
+    placement:
+      arch: [arm64]
+      memory: 128Mi
+      cpu: 25m
+    processes:
+      - name: shared-quantity-api
+        lifecycle: application
+        image: shared-quantity-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: rolling

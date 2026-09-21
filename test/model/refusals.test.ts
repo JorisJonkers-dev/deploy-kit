@@ -126,6 +126,7 @@ describe("the refusal fixtures", () => {
     expect(fixtures).toStrictEqual([
       "alert-class-unknown",
       "alert-class-without-signal",
+      "cutover-missing",
       "cutover-recreate-over-rwo",
       "cutover-rolling-over-rwo",
       "duplicate-route-match",
@@ -138,16 +139,20 @@ describe("the refusal fixtures", () => {
       "no-forward-auth-endpoint",
       "no-tier-for-audience",
       "non-kv-delivery",
+      "placement-incomplete",
       "scrape-unknown-process",
       "secrets-at-rest-required",
+      "shared-declaration-duplicated",
+      "shared-intent-merged",
+      "shared-quantity",
       "unknown-surface",
       "unknown-tier-proxy",
     ]);
-    expect(refused).toHaveLength(16);
+    expect(refused).toHaveLength(20);
     expect(
       fixtures.length - refused.length,
-      "the accepted counterpart and the vocabulary case carry no oracle",
-    ).toBe(2);
+      "the two accepted counterparts and the vocabulary case carry no oracle",
+    ).toBe(3);
   });
 
   it.each(refused)(

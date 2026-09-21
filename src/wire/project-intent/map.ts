@@ -7,6 +7,7 @@ import type {
   Placement,
   Process,
   Project,
+  SharedIntent,
 } from "../../domain/project-intent/model.ts";
 import { link, type Linked } from "./link.ts";
 import { schemaDiagnostics } from "../schema-diagnostics.ts";
@@ -15,8 +16,19 @@ import { projectIntent, type ProjectIntentDocument } from "./schema.ts";
 
 type WireApplication = ProjectIntentDocument["applications"][number];
 type WireProcess = WireApplication["processes"][number];
-type WirePlacement = WireProcess["placement"];
+type WirePlacement = NonNullable<WireProcess["placement"]>;
 type WireDependency = NonNullable<WireProcess["dependsOn"]>[number];
+/** The keys any of the three levels may carry, in the authored spelling. */
+type WireShared = Pick<
+  WireProcess,
+  | "secrets"
+  | "dependsOn"
+  | "assets"
+  | "writablePaths"
+  | "placement"
+  | "startupBudget"
+  | "cutover"
+>;
 
 /** A dependency is required unless the document says it is not. */
 function toDependency(edge: WireDependency): Dependency {
@@ -29,33 +41,53 @@ function toPlacement(placement: WirePlacement): Placement {
   return { ...rest, arch: arch ?? [], capabilities: capabilities ?? [] };
 }
 
+/** What one level declares. Nothing is merged here; the lowering does that. */
+function toSharedIntent(level: WireShared): SharedIntent {
+  const {
+    secrets,
+    dependsOn,
+    assets,
+    writablePaths,
+    placement,
+    startupBudget,
+    cutover,
+  } = level;
+  return {
+    grants: secrets ?? [],
+    dependencies: (dependsOn ?? []).map(toDependency),
+    assets: assets ?? [],
+    writablePaths: writablePaths ?? [],
+    ...(placement === undefined ? {} : { placement: toPlacement(placement) }),
+    ...(startupBudget === undefined ? {} : { startupBudget }),
+    ...(cutover === undefined ? {} : { cutover }),
+  };
+}
+
 function toProcess(process: WireProcess): Process {
   const {
     provides,
     probes,
-    writablePaths,
     sidecars,
-    dependsOn,
-    assets,
     volumes,
-    secrets,
-    placement,
+    secrets: _secrets,
+    dependsOn: _dependsOn,
+    assets: _assets,
+    writablePaths: _writablePaths,
+    placement: _placement,
+    startupBudget: _startupBudget,
+    cutover: _cutover,
     ...rest
   } = process;
   return {
     ...rest,
+    ...toSharedIntent(process),
     surfaces: Object.entries(provides ?? {}).map(([name, port]) => ({
       name,
       port,
     })),
-    placement: toPlacement(placement),
-    writablePaths: writablePaths ?? [],
     sidecars: sidecars ?? [],
-    dependencies: (dependsOn ?? []).map(toDependency),
-    assets: assets ?? [],
     probes: probes ?? {},
     volumes: volumes ?? [],
-    grants: secrets ?? [],
   };
 }
 
@@ -68,7 +100,19 @@ function toApplication(
 ):
   | { readonly application: Application; readonly refusals: readonly [] }
   | { readonly refusals: readonly Diagnostic[] } {
-  const { exposure, processes, secrets, observability, ...rest } = application;
+  const {
+    exposure,
+    processes,
+    observability,
+    secrets: _secrets,
+    dependsOn: _dependsOn,
+    assets: _assets,
+    writablePaths: _writablePaths,
+    placement: _placement,
+    startupBudget: _startupBudget,
+    cutover: _cutover,
+    ...rest
+  } = application;
   const linked = processes.map(toProcess);
   const exposures = exposure ?? [];
 
@@ -113,6 +157,7 @@ function toApplication(
   return {
     application: {
       ...rest,
+      ...toSharedIntent(application),
       ...(monitoring === undefined ? {} : { observability: monitoring }),
       exposures: linkedExposures.map(({ wire, routes }): Exposure => ({
         ...wire,
@@ -121,7 +166,6 @@ function toApplication(
           ...resolved(result),
         })),
       })),
-      grants: secrets ?? [],
       processes: linked,
     },
     refusals: [],
@@ -161,6 +205,7 @@ export function validateProjectIntent(
       project: {
         name: project,
         owner,
+        ...toSharedIntent(parsed.data),
         // With no refusal left, every Application linked.
         applications: mapped.map(
           (result) =>

@@ -1,0 +1,29 @@
+# REFUSED: E_CUTOVER_MISSING
+#
+# No level answers whether this Process keeps serving as it cuts over. `cutover`
+# may be answered on the Process, its Application or the project header, and what is
+# refused is a Process with no answer at all: requiring the answer is what keeps
+# the availability consequence visible in every declaration
+# (spec/v1/10-project-intent.md #cutover-is-declared-not-promised).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: cutover-missing
+    processes:
+      - name: cutover-missing-api
+        lifecycle: application
+        image: cutover-missing-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s

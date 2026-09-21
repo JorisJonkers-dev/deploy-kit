@@ -117,10 +117,12 @@ const gpuRequest = z
   .strictObject({ class: text, memory: text })
   .meta({ id: "GpuRequest" });
 
+// `memory` and `cpu` are optional in the shape: a block above a Process carries
+// dimensions only, and E_PLACEMENT_INCOMPLETE refuses a merge without them.
 const placement = z
   .strictObject({
-    memory: text,
-    cpu: text,
+    memory: text.exactOptional(),
+    cpu: text.exactOptional(),
     arch: z.array(arch).min(1).exactOptional(),
     site: text.exactOptional(),
     disk: diskRequest.exactOptional(),
@@ -158,6 +160,18 @@ const capacity = z
   .strictObject({ count: z.int().min(2), reason: text })
   .meta({ id: "Capacity" });
 
+// Spread into each of the three levels rather than nested under a key: the level
+// a family is written at is not itself a field an author writes.
+const sharedIntent = {
+  secrets: z.array(grant).min(1).exactOptional(),
+  dependsOn: z.array(dependencyEdge).min(1).exactOptional(),
+  assets: z.array(asset).min(1).exactOptional(),
+  writablePaths: z.array(text).min(1).exactOptional(),
+  placement: placement.exactOptional(),
+  startupBudget: text.exactOptional(),
+  cutover: cutover.exactOptional(),
+};
+
 const process = z
   .strictObject({
     name: text,
@@ -166,17 +180,11 @@ const process = z
     runtime: runtime,
     engine: engine.exactOptional(),
     provides: z.record(text, port).meta({ entry: "Surface" }).exactOptional(),
-    placement,
-    writablePaths: z.array(text).min(1).exactOptional(),
     sidecars: z.array(sidecar).min(1).exactOptional(),
-    dependsOn: z.array(dependencyEdge).min(1).exactOptional(),
-    assets: z.array(asset).min(1).exactOptional(),
     probes: z.union([noProbes, probes]).exactOptional(),
     volumes: z.array(volume).min(1).exactOptional(),
     replicas: capacity.exactOptional(),
-    secrets: z.array(grant).min(1).exactOptional(),
-    startupBudget: text.exactOptional(),
-    cutover: cutover,
+    ...sharedIntent,
   })
   .meta({ id: "Process" });
 
@@ -220,7 +228,7 @@ const application = z
     id: text,
     observability: observability.exactOptional(),
     exposure: z.array(exposure).min(1).exactOptional(),
-    secrets: z.array(grant).min(1).exactOptional(),
+    ...sharedIntent,
     processes: z.array(process).min(1),
   })
   .meta({ id: "Application" });
@@ -232,6 +240,7 @@ export const projectIntent = z
     schemaVersion: z.string().regex(/^\d+\.\d+\.\d+$/),
     project: text,
     owner: text,
+    ...sharedIntent,
     applications: z.array(application).min(1),
   })
   .meta({ id: "Project" });

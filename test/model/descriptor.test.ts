@@ -136,13 +136,13 @@ describe("the generated JSON Schema", () => {
       $defs: Record<string, { required?: string[] }>;
     };
 
+    // `placement` and `cutover` may be answered above the Process, so what the
+    // schema can require is what identifies it (docs/adr/model/0124).
     expect(schema.$defs["Process"]?.required).toStrictEqual([
       "name",
       "lifecycle",
       "image",
       "runtime",
-      "placement",
-      "cutover",
     ]);
   });
 });

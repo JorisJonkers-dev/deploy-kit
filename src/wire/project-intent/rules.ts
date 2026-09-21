@@ -11,6 +11,18 @@ import type { ProjectIntentDocument } from "./schema.ts";
 type Application = ProjectIntentDocument["applications"][number];
 type Process = Application["processes"][number];
 type Grant = NonNullable<Process["secrets"]>[number];
+type Placement = NonNullable<Process["placement"]>;
+/** Any of the three levels Shared Intent may be declared at. */
+type Level = Pick<
+  Process,
+  | "secrets"
+  | "dependsOn"
+  | "assets"
+  | "writablePaths"
+  | "placement"
+  | "startupBudget"
+  | "cutover"
+>;
 
 interface Refusal {
   readonly code: string;
@@ -58,10 +70,175 @@ function grantRefusals(grant: Grant, at: string): Refusal[] {
   return refusals;
 }
 
-function processRefusals(process: Process, at: string): Refusal[] {
+// -- Shared Intent (spec/v1/10-project-intent.md#shared-intent). Every refusal
+// below sits on the lower declaration: the one an author deletes to fix it.
+
+/** The derived read path, so a `kv` grant and a `database` grant never collide. */
+function grantIdentity(grant: Grant): string {
+  if ("path" in grant) return `secret/data/${grant.path}`;
+  if (grant.engine === "database") return `database/creds/${grant.role}`;
+  return `transit/${grant.key}`;
+}
+
+/** Every term a grant states, so only an identical restatement matches. */
+const grantTerms = (grant: Grant): string =>
+  JSON.stringify([
+    grantIdentity(grant),
+    "keys" in grant ? grant.keys : null,
+    "access" in grant ? grant.access : null,
+    "operations" in grant ? grant.operations : null,
+    grant.delivery,
+    grant.mountAt ?? null,
+    grant.fileMode ?? null,
+    grant.rotation?.tolerates ?? null,
+    grant.rotation?.maxAge ?? null,
+  ]);
+
+const edgeTerms = (edge: NonNullable<Process["dependsOn"]>[number]): string =>
+  JSON.stringify([edge.application, edge.surface, edge.required ?? null]);
+
+const assetTerms = (asset: NonNullable<Process["assets"]>[number]): string =>
+  JSON.stringify([asset.mountAt, asset.from]);
+
+/** The node dimensions, which is what a level above a Process may share. */
+const dimensionTerms = (placement: Placement): string =>
+  JSON.stringify([
+    placement.arch ?? null,
+    placement.site ?? null,
+    placement.disk ?? null,
+    placement.gpu ?? null,
+    placement.capabilities ?? null,
+  ]);
+
+/** A block naming no dimension shares nothing, so two of them never duplicate. */
+const NO_DIMENSIONS = dimensionTerms({});
+
+const duplicate = (path: string, what: string): Refusal => ({
+  code: "E_SHARED_DECLARATION_DUPLICATED",
+  path,
+  message: `${what} is declared again, unchanged, at a level above this one`,
+  hint: "Delete this copy, or change it: a lower declaration replaces the one above, and a restatement does nothing.",
+});
+
+/** Every duplicate this level restates from a level above it. */
+function duplicateRefusals(
+  level: Level,
+  above: readonly Level[],
+  at: string,
+): Refusal[] {
   const refusals: Refusal[] = [];
+  const from = <T>(pick: (one: Level) => readonly T[] | undefined): T[] =>
+    above.flatMap((one) => [...(pick(one) ?? [])]);
+
+  const grants = new Set(from((one) => one.secrets).map(grantTerms));
+  for (const [index, grant] of (level.secrets ?? []).entries())
+    if (grants.has(grantTerms(grant)))
+      refusals.push(duplicate(`${at}/secrets/${index}`, "this grant"));
+
+  const edges = new Set(from((one) => one.dependsOn).map(edgeTerms));
+  for (const [index, edge] of (level.dependsOn ?? []).entries())
+    if (edges.has(edgeTerms(edge)))
+      refusals.push(duplicate(`${at}/dependsOn/${index}`, "this edge"));
+
+  const assets = new Set(from((one) => one.assets).map(assetTerms));
+  for (const [index, asset] of (level.assets ?? []).entries())
+    if (assets.has(assetTerms(asset)))
+      refusals.push(duplicate(`${at}/assets/${index}`, "this asset"));
+
+  // The families with no object of their own are refused at their level.
+  const paths = new Set(from((one) => one.writablePaths));
+  const restated = (level.writablePaths ?? []).filter((written) =>
+    paths.has(written),
+  );
+  if (restated.length > 0) refusals.push(duplicate(at, restated.join(", ")));
+  else if (
+    level.startupBudget !== undefined &&
+    above.some((one) => one.startupBudget === level.startupBudget)
+  )
+    refusals.push(duplicate(at, "this startupBudget"));
+  else if (
+    level.cutover !== undefined &&
+    above.some((one) => one.cutover === level.cutover)
+  )
+    refusals.push(duplicate(at, "this cutover"));
+  else if (level.placement !== undefined) {
+    const dimensions = dimensionTerms(level.placement);
+    if (
+      dimensions !== NO_DIMENSIONS &&
+      above.some(
+        (one) =>
+          one.placement !== undefined &&
+          dimensionTerms(one.placement) === dimensions,
+      )
+    )
+      refusals.push(duplicate(at, "these node dimensions"));
+  }
+  return refusals;
+}
+
+/** Eligibility sums every container's quantity, so a shared one is refused. */
+function quantityRefusals(level: Level, at: string): Refusal[] {
+  const placement = level.placement;
+  if (placement === undefined) return [];
+  const written = (["memory", "cpu"] as const).filter(
+    (key) => placement[key] !== undefined,
+  );
+  if (written.length === 0) return [];
+  return [
+    {
+      code: "E_SHARED_QUANTITY",
+      path: `${at}/placement`,
+      message: `${written.join(" and ")} is per container and cannot be shared`,
+      hint: "Write the quantity on each Process: eligibility sums the Process and its sidecars.",
+    },
+  ];
+}
+
+/** Either may be answered above the Process, so what is refused is no answer. */
+function completenessRefusals(
+  process: Process,
+  above: readonly Level[],
+  at: string,
+): Refusal[] {
+  const refusals: Refusal[] = [];
+  const levels = [process, ...above];
+  if (!levels.some((level) => level.cutover !== undefined))
+    refusals.push({
+      code: "E_CUTOVER_MISSING",
+      path: at,
+      message:
+        "no level answers whether this Process keeps serving as it cuts over",
+      hint: "Declare `cutover` on the Process, its Application or the project header.",
+    });
+  const own = process.placement;
+  const missing = (["memory", "cpu"] as const).filter(
+    (key) => own?.[key] === undefined,
+  );
+  if (missing.length > 0)
+    refusals.push({
+      code: "E_PLACEMENT_INCOMPLETE",
+      path: at,
+      message: `this Process declares no ${missing.join(" and no ")}, and a quantity is never shared`,
+      hint: "Declare the quantities in the Process's own `placement` block: only the node dimensions can come from a level above.",
+    });
+  return refusals;
+}
+
+function processRefusals(
+  process: Process,
+  above: readonly Level[],
+  at: string,
+): Refusal[] {
+  const refusals: Refusal[] = [
+    ...duplicateRefusals(process, above, at),
+    ...completenessRefusals(process, above, at),
+  ];
   const volumes = process.volumes ?? [];
-  if (process.cutover === "rolling" && volumes.length > 0)
+  // The effective answer: it may come from a level above.
+  const cutover = [process, ...above].find(
+    (level) => level.cutover !== undefined,
+  )?.cutover;
+  if (cutover === "rolling" && volumes.length > 0)
     refusals.push({
       code: "E_CUTOVER_UNHONOURABLE",
       path: at,
@@ -90,8 +267,15 @@ function processRefusals(process: Process, at: string): Refusal[] {
   return refusals;
 }
 
-function applicationRefusals(application: Application, at: string): Refusal[] {
-  const refusals: Refusal[] = [];
+function applicationRefusals(
+  application: Application,
+  project: ProjectIntentDocument,
+  at: string,
+): Refusal[] {
+  const refusals: Refusal[] = [
+    ...duplicateRefusals(application, [project], at),
+    ...quantityRefusals(application, at),
+  ];
   if (
     application.observability !== undefined &&
     application.observability.scrape === undefined
@@ -120,7 +304,13 @@ function applicationRefusals(application: Application, at: string): Refusal[] {
   for (const [index, grant] of (application.secrets ?? []).entries())
     refusals.push(...grantRefusals(grant, `${at}/secrets/${index}`));
   for (const [index, process] of application.processes.entries())
-    refusals.push(...processRefusals(process, `${at}/processes/${index}`));
+    refusals.push(
+      ...processRefusals(
+        process,
+        [application, project],
+        `${at}/processes/${index}`,
+      ),
+    );
   return refusals;
 }
 
@@ -128,7 +318,13 @@ function applicationRefusals(application: Application, at: string): Refusal[] {
 export function ruleDiagnostics(
   document: ProjectIntentDocument,
 ): readonly Diagnostic[] {
-  return document.applications.flatMap((application, index) =>
-    applicationRefusals(application, `/applications/${index}`),
-  );
+  return [
+    ...quantityRefusals(document, ""),
+    ...(document.secrets ?? []).flatMap((grant, index) =>
+      grantRefusals(grant, `/secrets/${index}`),
+    ),
+    ...document.applications.flatMap((application, index) =>
+      applicationRefusals(application, document, `/applications/${index}`),
+    ),
+  ];
 }

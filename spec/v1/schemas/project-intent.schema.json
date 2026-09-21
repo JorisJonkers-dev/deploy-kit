@@ -25,41 +25,6 @@
           "type": "string",
           "minLength": 1
         },
-        "applications": {
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Application"
-          }
-        }
-      },
-      "required": [
-        "apiVersion",
-        "kind",
-        "schemaVersion",
-        "project",
-        "owner",
-        "applications"
-      ],
-      "additionalProperties": false
-    },
-    "Application": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "observability": {
-          "$ref": "#/$defs/Observability"
-        },
-        "exposure": {
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Exposure"
-          }
-        },
         "secrets": {
           "minItems": 1,
           "type": "array",
@@ -77,160 +42,55 @@
             ]
           }
         },
-        "processes": {
+        "dependsOn": {
           "minItems": 1,
           "type": "array",
           "items": {
-            "$ref": "#/$defs/Process"
+            "$ref": "#/$defs/DependencyEdge"
+          }
+        },
+        "assets": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Asset"
+          }
+        },
+        "writablePaths": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "placement": {
+          "$ref": "#/$defs/Placement"
+        },
+        "startupBudget": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cutover": {
+          "$ref": "#/$defs/Cutover"
+        },
+        "applications": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Application"
           }
         }
       },
       "required": [
-        "id",
-        "processes"
+        "apiVersion",
+        "kind",
+        "schemaVersion",
+        "project",
+        "owner",
+        "applications"
       ],
       "additionalProperties": false
-    },
-    "Observability": {
-      "type": "object",
-      "properties": {
-        "alertClass": {
-          "$ref": "#/$defs/AlertClass"
-        },
-        "scrape": {
-          "$ref": "#/$defs/Scrape"
-        }
-      },
-      "required": [
-        "alertClass"
-      ],
-      "additionalProperties": false
-    },
-    "AlertClass": {
-      "type": "string",
-      "enum": [
-        "business-hours",
-        "urgent",
-        "page"
-      ]
-    },
-    "Scrape": {
-      "type": "object",
-      "properties": {
-        "process": {
-          "type": "string",
-          "minLength": 1,
-          "reference": "Process"
-        },
-        "surface": {
-          "type": "string",
-          "minLength": 1,
-          "reference": "Surface"
-        },
-        "path": {
-          "type": "string",
-          "minLength": 1
-        }
-      },
-      "required": [
-        "process",
-        "surface",
-        "path"
-      ],
-      "additionalProperties": false
-    },
-    "Exposure": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "minLength": 1
-        },
-        "host": {
-          "type": "string",
-          "minLength": 1
-        },
-        "audience": {
-          "$ref": "#/$defs/Audience"
-        },
-        "contentPolicy": {
-          "$ref": "#/$defs/ContentPolicy"
-        },
-        "routes": {
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Route"
-          }
-        }
-      },
-      "required": [
-        "name",
-        "host",
-        "audience",
-        "routes"
-      ],
-      "additionalProperties": false
-    },
-    "Audience": {
-      "type": "string",
-      "enum": [
-        "anonymous",
-        "authenticated",
-        "internal",
-        "lan"
-      ]
-    },
-    "ContentPolicy": {
-      "type": "string",
-      "enum": [
-        "strict",
-        "admin",
-        "workflow"
-      ]
-    },
-    "Route": {
-      "type": "object",
-      "properties": {
-        "path": {
-          "type": "string",
-          "minLength": 1
-        },
-        "match": {
-          "$ref": "#/$defs/Match"
-        },
-        "process": {
-          "type": "string",
-          "minLength": 1,
-          "reference": "Process"
-        },
-        "surface": {
-          "type": "string",
-          "minLength": 1,
-          "reference": "Surface"
-        },
-        "audience": {
-          "$ref": "#/$defs/Audience"
-        },
-        "redirectTo": {
-          "type": "string",
-          "minLength": 1
-        }
-      },
-      "required": [
-        "path",
-        "match",
-        "process",
-        "surface"
-      ],
-      "additionalProperties": false
-    },
-    "Match": {
-      "type": "string",
-      "enum": [
-        "prefix",
-        "exact"
-      ]
     },
     "KvGrant": {
       "type": "object",
@@ -407,151 +267,44 @@
         "rotate"
       ]
     },
-    "Process": {
+    "DependencyEdge": {
       "type": "object",
       "properties": {
-        "name": {
+        "application": {
           "type": "string",
           "minLength": 1
         },
-        "lifecycle": {
-          "$ref": "#/$defs/Lifecycle"
-        },
-        "image": {
+        "surface": {
           "type": "string",
           "minLength": 1
         },
-        "runtime": {
-          "$ref": "#/$defs/Runtime"
-        },
-        "engine": {
-          "$ref": "#/$defs/Engine"
-        },
-        "provides": {
-          "type": "object",
-          "propertyNames": {
-            "type": "string",
-            "minLength": 1
-          },
-          "additionalProperties": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 65535
-          },
-          "entry": "Surface"
-        },
-        "placement": {
-          "$ref": "#/$defs/Placement"
-        },
-        "writablePaths": {
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "sidecars": {
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Sidecar"
-          }
-        },
-        "dependsOn": {
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/DependencyEdge"
-          }
-        },
-        "assets": {
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Asset"
-          }
-        },
-        "probes": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/NoProbes"
-            },
-            {
-              "$ref": "#/$defs/Probes"
-            }
-          ]
-        },
-        "volumes": {
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Volume"
-          }
-        },
-        "replicas": {
-          "$ref": "#/$defs/Capacity"
-        },
-        "secrets": {
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/KvGrant"
-              },
-              {
-                "$ref": "#/$defs/DatabaseGrant"
-              },
-              {
-                "$ref": "#/$defs/TransitGrant"
-              }
-            ]
-          }
-        },
-        "startupBudget": {
-          "type": "string",
-          "minLength": 1
-        },
-        "cutover": {
-          "$ref": "#/$defs/Cutover"
+        "required": {
+          "type": "boolean"
         }
       },
       "required": [
-        "name",
-        "lifecycle",
-        "image",
-        "runtime",
-        "placement",
-        "cutover"
+        "application",
+        "surface"
       ],
       "additionalProperties": false
     },
-    "Lifecycle": {
-      "type": "string",
-      "enum": [
-        "application",
-        "job"
-      ]
-    },
-    "Runtime": {
-      "type": "string",
-      "enum": [
-        "jvm",
-        "python",
-        "node",
-        "static",
-        "none"
-      ]
-    },
-    "Engine": {
-      "type": "string",
-      "enum": [
-        "postgres",
-        "rabbitmq",
-        "valkey",
-        "files"
-      ]
+    "Asset": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mountAt": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "from",
+        "mountAt"
+      ],
+      "additionalProperties": false
     },
     "Placement": {
       "type": "object",
@@ -590,10 +343,6 @@
           }
         }
       },
-      "required": [
-        "memory",
-        "cpu"
-      ],
       "additionalProperties": false
     },
     "Arch": {
@@ -645,6 +394,378 @@
       ],
       "additionalProperties": false
     },
+    "Cutover": {
+      "type": "string",
+      "enum": [
+        "rolling",
+        "recreate"
+      ]
+    },
+    "Application": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observability": {
+          "$ref": "#/$defs/Observability"
+        },
+        "exposure": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Exposure"
+          }
+        },
+        "secrets": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/KvGrant"
+              },
+              {
+                "$ref": "#/$defs/DatabaseGrant"
+              },
+              {
+                "$ref": "#/$defs/TransitGrant"
+              }
+            ]
+          }
+        },
+        "dependsOn": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DependencyEdge"
+          }
+        },
+        "assets": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Asset"
+          }
+        },
+        "writablePaths": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "placement": {
+          "$ref": "#/$defs/Placement"
+        },
+        "startupBudget": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cutover": {
+          "$ref": "#/$defs/Cutover"
+        },
+        "processes": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Process"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "processes"
+      ],
+      "additionalProperties": false
+    },
+    "Observability": {
+      "type": "object",
+      "properties": {
+        "alertClass": {
+          "$ref": "#/$defs/AlertClass"
+        },
+        "scrape": {
+          "$ref": "#/$defs/Scrape"
+        }
+      },
+      "required": [
+        "alertClass"
+      ],
+      "additionalProperties": false
+    },
+    "AlertClass": {
+      "type": "string",
+      "enum": [
+        "business-hours",
+        "urgent",
+        "page"
+      ]
+    },
+    "Scrape": {
+      "type": "object",
+      "properties": {
+        "process": {
+          "type": "string",
+          "minLength": 1,
+          "reference": "Process"
+        },
+        "surface": {
+          "type": "string",
+          "minLength": 1,
+          "reference": "Surface"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "process",
+        "surface",
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "Exposure": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "host": {
+          "type": "string",
+          "minLength": 1
+        },
+        "audience": {
+          "$ref": "#/$defs/Audience"
+        },
+        "contentPolicy": {
+          "$ref": "#/$defs/ContentPolicy"
+        },
+        "routes": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Route"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "host",
+        "audience",
+        "routes"
+      ],
+      "additionalProperties": false
+    },
+    "Audience": {
+      "type": "string",
+      "enum": [
+        "anonymous",
+        "authenticated",
+        "internal",
+        "lan"
+      ]
+    },
+    "ContentPolicy": {
+      "type": "string",
+      "enum": [
+        "strict",
+        "admin",
+        "workflow"
+      ]
+    },
+    "Route": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "match": {
+          "$ref": "#/$defs/Match"
+        },
+        "process": {
+          "type": "string",
+          "minLength": 1,
+          "reference": "Process"
+        },
+        "surface": {
+          "type": "string",
+          "minLength": 1,
+          "reference": "Surface"
+        },
+        "audience": {
+          "$ref": "#/$defs/Audience"
+        },
+        "redirectTo": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "path",
+        "match",
+        "process",
+        "surface"
+      ],
+      "additionalProperties": false
+    },
+    "Match": {
+      "type": "string",
+      "enum": [
+        "prefix",
+        "exact"
+      ]
+    },
+    "Process": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/Lifecycle"
+        },
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runtime": {
+          "$ref": "#/$defs/Runtime"
+        },
+        "engine": {
+          "$ref": "#/$defs/Engine"
+        },
+        "provides": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "entry": "Surface"
+        },
+        "sidecars": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Sidecar"
+          }
+        },
+        "probes": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NoProbes"
+            },
+            {
+              "$ref": "#/$defs/Probes"
+            }
+          ]
+        },
+        "volumes": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Volume"
+          }
+        },
+        "replicas": {
+          "$ref": "#/$defs/Capacity"
+        },
+        "secrets": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/KvGrant"
+              },
+              {
+                "$ref": "#/$defs/DatabaseGrant"
+              },
+              {
+                "$ref": "#/$defs/TransitGrant"
+              }
+            ]
+          }
+        },
+        "dependsOn": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DependencyEdge"
+          }
+        },
+        "assets": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Asset"
+          }
+        },
+        "writablePaths": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "placement": {
+          "$ref": "#/$defs/Placement"
+        },
+        "startupBudget": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cutover": {
+          "$ref": "#/$defs/Cutover"
+        }
+      },
+      "required": [
+        "name",
+        "lifecycle",
+        "image",
+        "runtime"
+      ],
+      "additionalProperties": false
+    },
+    "Lifecycle": {
+      "type": "string",
+      "enum": [
+        "application",
+        "job"
+      ]
+    },
+    "Runtime": {
+      "type": "string",
+      "enum": [
+        "jvm",
+        "python",
+        "node",
+        "static",
+        "none"
+      ]
+    },
+    "Engine": {
+      "type": "string",
+      "enum": [
+        "postgres",
+        "rabbitmq",
+        "valkey",
+        "files"
+      ]
+    },
     "Sidecar": {
       "type": "object",
       "properties": {
@@ -670,45 +791,6 @@
         "image",
         "memory",
         "cpu"
-      ],
-      "additionalProperties": false
-    },
-    "DependencyEdge": {
-      "type": "object",
-      "properties": {
-        "application": {
-          "type": "string",
-          "minLength": 1
-        },
-        "surface": {
-          "type": "string",
-          "minLength": 1
-        },
-        "required": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "application",
-        "surface"
-      ],
-      "additionalProperties": false
-    },
-    "Asset": {
-      "type": "object",
-      "properties": {
-        "from": {
-          "type": "string",
-          "minLength": 1
-        },
-        "mountAt": {
-          "type": "string",
-          "minLength": 1
-        }
-      },
-      "required": [
-        "from",
-        "mountAt"
       ],
       "additionalProperties": false
     },
@@ -827,13 +909,6 @@
         "reason"
       ],
       "additionalProperties": false
-    },
-    "Cutover": {
-      "type": "string",
-      "enum": [
-        "rolling",
-        "recreate"
-      ]
     }
   }
 }

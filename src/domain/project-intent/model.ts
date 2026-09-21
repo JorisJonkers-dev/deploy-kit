@@ -16,17 +16,28 @@ import type {
   TransitOperation,
 } from "./vocabularies.ts";
 
-export interface Project {
+/** Seven of the eight families of spec/v1/10-project-intent.md#shared-intent;
+ * the eighth, `env`, is authored as dotenv files beside the document. */
+export interface SharedIntent {
+  readonly grants: readonly Grant[];
+  readonly dependencies: readonly Dependency[];
+  readonly assets: readonly Asset[];
+  readonly writablePaths: readonly string[];
+  readonly placement?: Placement;
+  readonly startupBudget?: string;
+  readonly cutover?: Cutover;
+}
+
+export interface Project extends SharedIntent {
   readonly name: string;
   readonly owner: string;
   readonly applications: readonly Application[];
 }
 
-export interface Application {
+export interface Application extends SharedIntent {
   readonly id: string;
   readonly observability?: Observability;
   readonly exposures: readonly Exposure[];
-  readonly grants: readonly Grant[];
   readonly processes: readonly Process[];
 }
 
@@ -104,9 +115,10 @@ export interface TransitGrant extends GrantDelivery {
 
 export type Grant = KvGrant | DatabaseGrant | TransitGrant;
 
+/** A quantity is optional here and required on an {@link EffectiveProcess}. */
 export interface Placement {
-  readonly memory: string;
-  readonly cpu: string;
+  readonly memory?: string;
+  readonly cpu?: string;
   readonly arch: readonly Arch[];
   readonly site?: string;
   readonly disk?: { readonly media: readonly Medium[] };
@@ -144,22 +156,40 @@ export interface Capacity {
   readonly reason: string;
 }
 
-export interface Process {
+export interface Process extends SharedIntent {
   readonly name: string;
   readonly lifecycle: Lifecycle;
   readonly image: string;
   readonly runtime: Runtime;
   readonly engine?: Engine;
   readonly surfaces: readonly Surface[];
-  readonly placement: Placement;
-  readonly writablePaths: readonly string[];
   readonly sidecars: readonly Sidecar[];
-  readonly dependencies: readonly Dependency[];
-  readonly assets: readonly Asset[];
   readonly probes: ProbePolicy;
   readonly volumes: readonly Volume[];
   readonly replicas?: Capacity;
-  readonly grants: readonly Grant[];
-  readonly startupBudget?: string;
+}
+
+export interface CompletePlacement extends Placement {
+  readonly memory: string;
+  readonly cpu: string;
+}
+
+/** The lowered shape, and the only layer-1 one anything downstream reads
+ * (spec/v1/10-project-intent.md#the-effective-intent). */
+export interface EffectiveProject {
+  readonly name: string;
+  readonly owner: string;
+  readonly applications: readonly EffectiveApplication[];
+}
+
+export interface EffectiveApplication {
+  readonly id: string;
+  readonly observability?: Observability;
+  readonly exposures: readonly Exposure[];
+  readonly processes: readonly EffectiveProcess[];
+}
+
+export interface EffectiveProcess extends Process {
+  readonly placement: CompletePlacement;
   readonly cutover: Cutover;
 }
