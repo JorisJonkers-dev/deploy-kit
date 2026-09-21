@@ -127,12 +127,20 @@ could only ever have been a request the platform could not honour. `sidecars` is
 graded by
 [0064](../../docs/adr/model/0064-sidecars-are-process-vocabulary.md). `placement` is not among them: it is graded by
 [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md) and specified in
-full below, and it is the only composite on the Process that is **required**.
+full below. It is the one composite an **effective** Process cannot be without,
+and the one an authored Process may leave to a level above it, because the node
+dimensions are shared and the quantities are not
+([A quantity is never shared](#a-quantity-is-never-shared)).
 `provides` hangs off the **Process**: a port is a property of a process. So do
 the eight families of [Shared Intent](#shared-intent), in the drawing, and that
 is a decision about the drawing rather than about the model: each of them may be
 declared at the Project or an Application too, and drawing three copies of `secrets`
-and three of `placement` said nothing the level table does not. The drawing is
+and three of `placement` said nothing the level table does not. Each family is
+**one** relation from the Process for the same reason: an `EnvVariable` and the
+union its value is (an `EnvLiteral` or a `Placeholder`) are two more rows and two
+more layers for a structure the [dotenv
+subset](#the-dotenv-subset-that-is-read) states exactly, so the drawing carries
+`EnvFile` and the one relation that leaves it. The drawing is
 the Process's shape, which is the shape every one of them ends up in
 ([The effective intent](#the-effective-intent)). Env files keep their own level
 rule, per Process and per scope
@@ -2401,12 +2409,7 @@ classDiagram
     }
     class EnvFile {
         +ClusterTarget cluster
-    }
-    class EnvVariable {
-        +string name
-    }
-    class EnvLiteral {
-        +string text
+        +EnvVariable[] entries
     }
     class Placeholder {
         +PlaceholderKind kind
@@ -2440,7 +2443,7 @@ classDiagram
     Process "1" *-- "0..1" Probe : liveness
     Process "1" *-- "0..*" Asset : assets
     Process "1" *-- "0..*" Volume : volumes
-    Process "1" *-- "1" Placement : placement
+    Process "1" *-- "0..1" Placement : placement
     Application "1" *-- "0..1" Observability : observability
     Observability "1" *-- "1" Scrape : scrape
     Process "1" *-- "0..1" Capacity : replicas
@@ -2454,9 +2457,7 @@ classDiagram
     DependencyEdge ..> Surface : resolves by name
 
     Process "1" *-- "0..*" EnvFile : env
-    EnvFile "1" *-- "0..*" EnvVariable : entries
-    EnvVariable "1" *-- "1" EnvLiteral : value
-    EnvVariable "1" *-- "1" Placeholder : value
+    EnvFile "1" *-- "0..*" Placeholder : resolves
 
     Process "1" *-- "0..*" Grant : secrets
     Grant "1" *-- "0..1" Rotation : rotation

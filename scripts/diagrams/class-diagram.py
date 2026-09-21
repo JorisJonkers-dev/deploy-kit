@@ -100,8 +100,7 @@ TREES = {"10-project-intent": {
         "Grant", "EnvFile", "DependencyEdge", "Surface",
     ],
     "Placement": ["GpuRequest", "DiskRequest"],
-    "EnvFile": ["EnvVariable"],
-    "EnvVariable": ["EnvLiteral", "Placeholder"],
+    "EnvFile": ["Placeholder"],
     "Exposure": ["Route"],
 }, "14-platform-intent": {
     "Platform": [
