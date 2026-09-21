@@ -157,22 +157,27 @@ context Placement
 		(memory <> null or cpu <> null) implies oclContainer().oclIsKindOf(Process)
 
 context SharedIntent
-	-- The families with no object of their own.
+	-- The families with no object of their own share one invariant, because they
+	-- share the one context an invariant can point at. Each `placement` key
+	-- counts separately: `site` above and `arch` below is two declarations of
+	-- two things.
 	inv E_SHARED_DECLARATION_DUPLICATED:
 		levelsAbove->forAll(above |
 			(startupBudget <> null implies startupBudget <> above.startupBudget)
 			and (cutover <> Cutover::absent implies cutover <> above.cutover)
 			and writablePaths->excludesAll(above.writablePaths)
-			-- A block naming no dimension shares nothing, so two never duplicate.
-			and ((placement <> null and above.placement <> null
-					and (placement.arch->notEmpty() or placement.site <> null
-						or placement.disk <> null or placement.gpu <> null
-						or placement.capabilities->notEmpty())) implies
-				not (placement.arch = above.placement.arch
-					and placement.site = above.placement.site
-					and placement.capabilities = above.placement.capabilities
-					and (placement.disk = null) = (above.placement.disk = null)
-					and (placement.gpu = null) = (above.placement.gpu = null))))
+			and ((placement <> null and above.placement <> null) implies
+				(placement.arch->notEmpty() implies placement.arch <> above.placement.arch)
+				and (placement.site <> null implies placement.site <> above.placement.site)
+				and (placement.capabilities->notEmpty() implies
+					placement.capabilities <> above.placement.capabilities)
+				and (placement.disk <> null implies
+					above.placement.disk = null
+						or placement.disk.media <> above.placement.disk.media)
+				and (placement.gpu <> null implies
+					above.placement.gpu = null
+						or placement.gpu.memory <> above.placement.gpu.memory
+						or placement.gpu._'class' <> above.placement.gpu._'class')))
 
 context DependencyEdge
 	-- `required` is included: an edge differing in it is a replacement.
@@ -188,6 +193,15 @@ context Asset
 		oclContainer().oclAsType(SharedIntent).levelsAbove->forAll(above |
 			above.assets->forAll(other | not (mountAt = other.mountAt and from = other.from)))
 
+context Grant
+	-- A grant states its rotation or states none, and either way the restatement
+	-- has to match for the second declaration to be a duplicate.
+	def: sameRotationAs(other : Grant) : Boolean =
+		if rotation = null or other.rotation = null then rotation = other.rotation
+		else rotation.tolerates = other.rotation.tolerates
+			and rotation.maxAge = other.rotation.maxAge
+		endif
+
 context KvGrant
 	-- The derived read path is the identity; equal terms make it a duplicate
 	-- rather than a replacement.
@@ -196,7 +210,7 @@ context KvGrant
 			above.secrets->selectByKind(KvGrant)->forAll(other |
 				not (path = other.path and access = other.access and keys = other.keys
 					and delivery = other.delivery and mountAt = other.mountAt
-					and fileMode = other.fileMode)))
+					and fileMode = other.fileMode and sameRotationAs(other))))
 
 context DatabaseGrant
 	-- The derived read path is `database/creds/<role>`, so the role is the identity.
@@ -204,7 +218,8 @@ context DatabaseGrant
 		oclContainer().oclAsType(SharedIntent).levelsAbove->forAll(above |
 			above.secrets->selectByKind(DatabaseGrant)->forAll(other |
 				not (role = other.role and delivery = other.delivery
-					and mountAt = other.mountAt and fileMode = other.fileMode)))
+					and mountAt = other.mountAt and fileMode = other.fileMode
+					and sameRotationAs(other))))
 
 context TransitGrant
 	-- One derived read path per operation, so key and operations are the identity.
@@ -213,7 +228,7 @@ context TransitGrant
 			above.secrets->selectByKind(TransitGrant)->forAll(other |
 				not (key = other.key and operations = other.operations
 					and delivery = other.delivery and mountAt = other.mountAt
-					and fileMode = other.fileMode)))
+					and fileMode = other.fileMode and sameRotationAs(other))))
 
 context Process
 	-- A quantity is never shared, so nothing above the Process supplies one.

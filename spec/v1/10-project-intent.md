@@ -177,17 +177,25 @@ declaration is the one that holds, because the lower level is the more specific
 statement of it.
 
 Restating the same thing **identically** at two levels is duplication, and it is
-refused: `E_SHARED_DECLARATION_DUPLICATED`, reported at both declarations. What
-counts as the same thing is the family's own identity:
+refused: `E_SHARED_DECLARATION_DUPLICATED`, **at the lower declaration**, which
+is the one an author deletes to fix it. A family with an object of its own (a
+grant, an edge, an Asset) is refused at that object; the families that have none
+share one refusal at the level that wrote them, naming each of them, because the
+level is the only thing a pointer can name.
+
+What counts as the same thing is the family's own identity, and **an identity
+plus equal terms** is what makes a second declaration a duplicate rather than a
+replacement: a grant on the same path with a different `access` or `rotation` is
+that Process's version of the grant, not a copy of it.
 
 | family | one declaration is identified by | merging two levels gives |
 |---|---|---|
 | `secrets` | the **derived** read path ([Secrets](#secrets)), so a `kv` grant and a `database` grant never collide | every path either level grants; the lower grant's access, delivery and rotation where both grant a path |
 | `env` | the variable name, within one Cluster Target | every variable either scope sets; the lower scope's value where both set one |
-| `dependsOn` | `{application, surface}`, `required` excluded | every edge either level declares; the lower edge's `required` where both declare one |
+| `dependsOn` | `{application, surface}`; `required` is a term rather than part of the identity, so an edge that differs in it is a replacement | every edge either level declares; the lower edge's `required` where both declare one |
 | `assets` | `mountAt`: two files cannot arrive at one path | every mount either level declares; the lower Asset's `from` where both mount a path |
 | `writablePaths` | the path | the union of the paths |
-| `placement` | the key: `arch`, `site`, `disk`, `gpu` or `capabilities`, each separately | every key either level sets; the lower value where both set one |
+| `placement` | the key: `arch`, `site`, `disk`, `gpu` or `capabilities`, each separately and by value | every key either level sets; the lower value where both set one |
 | `cutover` | the family, which is one value | the lowest level's value |
 | `startupBudget` | the family, which is one value | the lowest level's value |
 

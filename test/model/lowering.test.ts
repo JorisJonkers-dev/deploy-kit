@@ -413,18 +413,63 @@ describe("the duplicate a lower level restates", () => {
   });
 
   it("is refused for a grant of any engine the Process restates", () => {
-    const grant =
-      "[{engine: transit, key: jwt, operations: [sign], delivery: self}]";
+    const at = "/applications/0/processes/0/secrets/0";
+    const restated = (grant: string) =>
+      refusals(
+        `${HEADER}secrets: [${grant}]\napplications:\n  - id: a\n${PROCESS}        secrets: [${grant}]\n`,
+      );
+
+    expect(
+      restated(
+        "{engine: transit, key: jwt, operations: [sign], delivery: self}",
+      ),
+    ).toStrictEqual([["E_SHARED_DECLARATION_DUPLICATED", at]]);
+    expect(
+      restated("{engine: database, role: kb, delivery: self}"),
+    ).toStrictEqual([["E_SHARED_DECLARATION_DUPLICATED", at]]);
+  });
+});
+
+/** What a document's refusals say, which is where the families are named. */
+function messages(document: string): string[] {
+  const result = parseProjectIntent(document);
+  return result.ok ? [] : result.diagnostics.map(({ message }) => message);
+}
+
+describe("the duplicate, per key and without a short circuit", () => {
+  it("names every family the level restates, not one and then stops", () => {
+    const document = `${HEADER}writablePaths: [/tmp]\ncutover: recreate\nstartupBudget: 20s\napplications:\n  - id: a\n${PROCESS}        writablePaths: [/tmp]\n        startupBudget: 20s\n`;
+
+    expect(refusals(document)).toStrictEqual([
+      ["E_SHARED_DECLARATION_DUPLICATED", "/applications/0/processes/0"],
+    ]);
+    expect(messages(document)[0]).toContain("/tmp, startupBudget, cutover");
+  });
+
+  it("refuses a restated placement key even where the rest of the block differs", () => {
+    expect(
+      refusals(
+        `${HEADER}placement: {site: enschede, arch: [arm64]}\napplications:\n  - id: a\n    placement: {site: enschede}\n${PROCESS}`,
+      ),
+    ).toStrictEqual([["E_SHARED_DECLARATION_DUPLICATED", "/applications/0"]]);
+  });
+
+  it("accepts a key whose value differs, however much of the block matches", () => {
+    expect(
+      refusals(
+        `${HEADER}placement: {disk: {media: [hdd]}}\napplications:\n  - id: a\n    placement: {disk: {media: [nvme]}}\n${PROCESS}`,
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("accepts a grant restated with different terms, which is a replacement", () => {
+    const grant = (access: string) =>
+      `[{path: secret/data/p/t, keys: [token], access: ${access}, delivery: self}]`;
 
     expect(
       refusals(
-        `${HEADER}secrets: ${grant}\napplications:\n  - id: a\n${PROCESS}        secrets: ${grant}\n`,
+        `${HEADER}secrets: ${grant("read")}\napplications:\n  - id: a\n${PROCESS}        secrets: ${grant("custody")}\n`,
       ),
-    ).toStrictEqual([
-      [
-        "E_SHARED_DECLARATION_DUPLICATED",
-        "/applications/0/processes/0/secrets/0",
-      ],
-    ]);
+    ).toStrictEqual([]);
   });
 });

@@ -11,7 +11,6 @@ import type { ProjectIntentDocument } from "./schema.ts";
 type Application = ProjectIntentDocument["applications"][number];
 type Process = Application["processes"][number];
 type Grant = NonNullable<Process["secrets"]>[number];
-type Placement = NonNullable<Process["placement"]>;
 /** Any of the three levels Shared Intent may be declared at. */
 type Level = Pick<
   Process,
@@ -101,17 +100,7 @@ const assetTerms = (asset: NonNullable<Process["assets"]>[number]): string =>
   JSON.stringify([asset.mountAt, asset.from]);
 
 /** The node dimensions, which is what a level above a Process may share. */
-const dimensionTerms = (placement: Placement): string =>
-  JSON.stringify([
-    placement.arch ?? null,
-    placement.site ?? null,
-    placement.disk ?? null,
-    placement.gpu ?? null,
-    placement.capabilities ?? null,
-  ]);
-
-/** A block naming no dimension shares nothing, so two of them never duplicate. */
-const NO_DIMENSIONS = dimensionTerms({});
+const DIMENSIONS = ["arch", "site", "disk", "gpu", "capabilities"] as const;
 
 const duplicate = (path: string, what: string): Refusal => ({
   code: "E_SHARED_DECLARATION_DUPLICATED",
@@ -145,34 +134,35 @@ function duplicateRefusals(
     if (assets.has(assetTerms(asset)))
       refusals.push(duplicate(`${at}/assets/${index}`, "this asset"));
 
-  // The families with no object of their own are refused at their level.
+  // The families with no object of their own share one refusal, at their level:
+  // it is the object an invariant takes as its context, so a refusal each would
+  // be several diagnostics at one pointer.
   const paths = new Set(from((one) => one.writablePaths));
-  const restated = (level.writablePaths ?? []).filter((written) =>
-    paths.has(written),
-  );
-  if (restated.length > 0) refusals.push(duplicate(at, restated.join(", ")));
-  else if (
-    level.startupBudget !== undefined &&
+  const restated = [
+    ...(level.writablePaths ?? []).filter((written) => paths.has(written)),
+    ...(level.startupBudget !== undefined &&
     above.some((one) => one.startupBudget === level.startupBudget)
-  )
-    refusals.push(duplicate(at, "this startupBudget"));
-  else if (
-    level.cutover !== undefined &&
+      ? ["startupBudget"]
+      : []),
+    ...(level.cutover !== undefined &&
     above.some((one) => one.cutover === level.cutover)
-  )
-    refusals.push(duplicate(at, "this cutover"));
-  else if (level.placement !== undefined) {
-    const dimensions = dimensionTerms(level.placement);
-    if (
-      dimensions !== NO_DIMENSIONS &&
-      above.some(
-        (one) =>
-          one.placement !== undefined &&
-          dimensionTerms(one.placement) === dimensions,
-      )
-    )
-      refusals.push(duplicate(at, "these node dimensions"));
-  }
+      ? ["cutover"]
+      : []),
+    // Each dimension separately, which is what makes `site` above and `arch`
+    // below two declarations of two things.
+    ...DIMENSIONS.filter((key) => {
+      const value = level.placement?.[key];
+      return (
+        value !== undefined &&
+        above.some(
+          (one) =>
+            JSON.stringify(one.placement?.[key] ?? null) ===
+            JSON.stringify(value),
+        )
+      );
+    }),
+  ];
+  if (restated.length > 0) refusals.push(duplicate(at, restated.join(", ")));
   return refusals;
 }
 
