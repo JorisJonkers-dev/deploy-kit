@@ -1,0 +1,152 @@
+\section{The Concrete Syntax and the Constraints}
+\label{sec:constraints}
+
+The metamodels of Section~\ref{sec:sourcemetamodel} and
+Section~\ref{sec:targetmetamodel} define what can be said. Two things are needed
+before a model can be written down and trusted: a concrete syntax an author
+types, and the constraints that refuse a model the abstract syntax alone would
+admit.
+
+\subsection{The Concrete Syntax}
+
+The source language has a textual concrete syntax, defined by an Xtext grammar
+over the metamodel rather than the other way round
+(Section~\ref{sec:alternatives}). There are two grammars, one per authored
+document, and both import the registered metamodel package and return its
+classes: a rule never declares a type of its own, so no concept can enter the
+language through the syntax without existing in the metamodel first.
+
+The syntax is the YAML subset the estate's files already use, which keeps the
+authored documents readable by the tools that read them today. Three properties
+of the grammar are worth reporting, because each is a consequence of that
+choice.
+
+\textbf{Indentation is tokenised, not parsed.} Block structure reaches the
+parser as synthetic \texttt{BEGIN} and \texttt{END} tokens produced ahead of it,
+so an indented block, a flow mapping and a flow sequence all parse through one
+rule rather than three.
+
+\textbf{Keys are unordered.} Every rule is an unordered group, because the order
+of keys in a mapping carries no meaning. Writing the rules as sequences would
+make the grammar refuse documents the model accepts.
+
+\textbf{Names are references.} Where a route names the process and the surface
+it serves, the grammar declares a cross-reference rather than a string, so the
+name is resolved by the linker against the declared objects. A name with no
+target is a link that does not resolve, which is why a scrape naming an
+undeclared process (\texttt{E\_UNKNOWN\_PROCESS}) and a tier naming an
+undeclared proxy (\texttt{E\_UNKNOWN\_TIER\_PROXY}) are not invariants in
+Table~\ref{tab:constraints}: the linker has already found them.
+
+The editor is the generated Xtext one, with the constraints below loaded into
+it: the Complete OCL document binds to the same registered package the parser
+instantiates, so an invariant is evaluated against the objects the editor has
+just built, and a violation is reported in the editor rather than at render
+time.
+
+\subsection{The Constraints}
+
+Fifteen invariants are written in Complete OCL against the source metamodel,
+carrying thirteen distinct diagnostic codes: two codes each sit on two contexts,
+because the same defect is reachable from two classes.
+
+The document follows one naming rule, which is what makes a diagnostic
+self-locating: \textbf{an invariant is named by the code it emits, and its
+context is the object the diagnostic points at.} A violation is therefore a
+\texttt{(code, path)} pair with no lookup table in between, where the path is
+the RFC 6901 JSON Pointer of the refused object.
+
+\begin{table}[!htbp]
+\centering
+\footnotesize
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.35\linewidth}>{\raggedright\arraybackslash}p{0.14\linewidth}>{\raggedright\arraybackslash}p{0.43\linewidth}}
+\hline
+\textbf{Code} & \textbf{Context} & \textbf{What it refuses} \\
+\hline
+E\_ALERT\_CLASS\_WITHOUT\_SIGNAL & Observability & A class stating how loudly to wake someone, with no signal to wake them about. \\
+E\_CUTOVER\_UNHONOURABLE & Process & A rolling cutover over storage that cannot attach twice, which no rollout can honour. \\
+E\_ENGINE\_WITHOUT\_DURABILITY & Process & A backup method named where no volume's durability class asks for one. \\
+E\_DURABILITY\_WITHOUT\_ENGINE & Volume & A volume asking for a backup whose method would have to be guessed. \\
+E\_ENV\_CANNOT\_RELOAD & Rotation & A secret that tolerates a reload, delivered as an environment variable, which is read once at start. \\
+E\_ILLEGAL\_DELIVERY\_FOR\_ACCESS & KvGrant & A delivery the access tier has nothing to project at render time. \\
+E\_NON\_KV\_DELIVERY & TransitGrant, DatabaseGrant & A grant delivered as a value, where the credential is used or minted rather than read. \\
+E\_DUPLICATE\_ROUTE\_MATCH & Route & Two routes of one exposure sharing a path and a match, which derived precedence cannot order. \\
+E\_NO\_FORWARD\_AUTH\_ENDPOINT & Tier & A tier serving authenticated visitors with nothing named to decide whether one is allowed in. \\
+E\_NO\_TIER\_FOR\_AUDIENCE & Exposure, Route & An audience no declared edge tier serves, so the route reaches no edge. \\
+E\_NO\_ENGINE\_POLICY & Process & An engine the platform declares no backup method for. \\
+E\_NO\_DURABILITY\_POLICY & Volume & A durability class the platform declares no policy for. \\
+E\_SECRETS\_AT\_REST\_REQUIRED & Grant & A secret written into a cluster that does not encrypt secrets at rest. \\
+\hline
+\end{tabular}
+\caption{The Constraints, Their Context and What Each Refuses}
+\label{tab:constraints}
+\end{table}
+
+The last four read facts from the Platform document while sitting on a class of
+the project document. That placement is deliberate: an invariant sits on the
+object whose author must change something, and it is a project file, not the
+platform, that has to be edited when a volume asks for a guarantee the estate
+does not keep. They reach the other document through \texttt{allInstances()},
+whose extent is the resource set the document was read into, and each is guarded
+so that it holds trivially when a project file is read on its own:
+
+\begin{lstlisting}[basicstyle=\footnotesize\ttfamily, frame=single, captionpos=b,
+                   caption={E\_NO\_TIER\_FOR\_AUDIENCE, guarded so a project file read alone still validates},
+                   label={lst:notier}]
+context Exposure
+    inv E_NO_TIER_FOR_AUDIENCE:
+        Tier.allInstances()->notEmpty() implies
+            Tier.allInstances()->exists(audiences->includes(self.audience))
+\end{lstlisting}
+
+One modelling detail shows up in several invariants and is worth naming, because
+it is a property of EMF rather than of the domain. EMF reads an unset
+enumeration attribute as its first literal, so an optional enumeration cannot be
+distinguished from one written with its first value. Each such vocabulary
+therefore carries a literal of its own for absence, \texttt{absent}, which a
+document cannot write, and the invariants test against it rather than against
+\texttt{null}.
+
+Constraints that need every project document at once, such as two applications
+claiming one identifier, are not in this document. They belong to the
+composition step, where the union of the authored documents exists, and they are
+checked there against the fixtures in the negative set.
+
+\subsection{Every Constraint Has a Fixture}
+
+A constraint that has only ever been satisfied is not evidence that it fires.
+Each code in Table~\ref{tab:constraints} is therefore paired with a committed
+model that violates it, and with a committed oracle file naming the set of
+\texttt{(code, path)} pairs that model must produce. The four cross-document
+codes are fixtures of two files, a project document and the platform document it
+contradicts, because one file alone cannot express the defect.
+
+The pairing is checked rather than asserted: each refused model is run through
+the parser and validated, and the diagnostics it produces are compared with the
+oracle. The accepted examples of Section~\ref{sec:examplemodels} prove the
+language can express the estate; these prove it refuses what it says it refuses.
+
+\subsection{The Second Implementation}
+
+The same source language is declared a second time, by hand, in the TypeScript
+production implementation this repository exists to build. Neither declaration
+is generated from the other, and neither is the oracle for the other: each is
+tested on its own against the committed oracle files, and agreement between the
+two follows from both agreeing with the oracle.
+
+They are compared on the four things the project proposal names: validation, so
+the parsed model of each accepted example matches one committed canonical JSON
+document; dependency resolution, so the resolved edges match a second; errors,
+so each refused model produces the same set of \texttt{(code, document, path)}
+triples; and generated resources, so the generated tree matches the committed
+one byte for byte. They are required to agree on nothing else, and in one
+respect they deliberately differ: the production implementation keeps the
+resolved model and the typed target objects apart, while the model-driven
+implementation holds both in the one target metamodel of
+Section~\ref{sec:targetmetamodel}, because a model-to-text template reads one
+model.
+
+Two independent declarations of one language, held to shared oracles, is also
+what makes the metamodel falsifiable in a way a single implementation cannot be:
+a concept that only one of them can express is a concept the model has not
+actually pinned down.
