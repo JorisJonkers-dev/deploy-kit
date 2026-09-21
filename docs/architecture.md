@@ -254,6 +254,7 @@ target metamodel holding both, because a model-to-text template reads one model.
 | the resolved dependency edges (dependency resolution) | `spec/v1/examples/<case>/expected/dependencies.json` | canonical JSON, byte for byte | both |
 | the Deliverable Set (generated resources) | `spec/v1/examples/<case>/rendered/` | the existing golden tree, byte for byte | both |
 | the source metamodel's **authored** structure | `spec/v1/examples/expected/descriptor.json` | canonical JSON, byte for byte | both |
+| the Effective Intent (the lowering) | `spec/v1/examples/<case>/expected/effective.json` | canonical JSON, byte for byte | both |
 | the Resolved Deployment | `spec/v1/examples/<case>/expected/resolved.json` | canonical JSON, byte for byte | production only |
 
 **The dependency edges** are, per Application, every dependency edge after
@@ -264,8 +265,17 @@ The file is an object with one `applications` entry per Application, each an
 `id` and its `edges`; an Application with no dependency carries an empty list.
 The edge's own fields are fixed by the first case that has one.
 
+**The Effective Intent** is what the lowering writes
+([chapter 10](../spec/v1/10-project-intent.md#the-effective-intent)): the
+authored document and the env files beside it, merged onto the Processes that
+hold them. It is the one oracle that covers the env files at all, because they
+are not part of the document `intent.json` fixes, and it is where the two
+implementations' readers meet.
+
 **The descriptor fixes the authored shape**, which is every class a document
-holds. A shape a transformation writes and nobody authors is left out of it: the
+holds. `env` is the one feature it leaves out of a class: an env file is a
+directory beside the document rather than a key in it, so its own classes are
+listed and the feature that would carry them is not. A shape a transformation writes and nobody authors is left out of it: the
 Effective Intent's Project and Application are the two today
 ([0125](adr/model/0125-the-effective-intent-is-a-lowering.md)), and what holds
 them equal is the same thing that holds every other stage equal, the oracles

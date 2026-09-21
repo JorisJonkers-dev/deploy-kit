@@ -632,6 +632,11 @@ files, and a file is what a dotenv is. Each scope holds the same pair a Process'
 own does, a `base.env` and one overlay per Cluster Target, so a shared variable
 that differs per cluster says so where it is written.
 
+A scope directory that names no Application and no Process the project file
+declares is `E_UNKNOWN_ENV_SCOPE`, at the file. A directory is how a variable
+reaches a level, so a misspelt one is a file every build reads and no Process
+receives, which is the failure this refusal exists to make loud.
+
 ```
 # platform/env/knowledge-api/base.env
 SPRING_PROFILES_ACTIVE=prod
@@ -685,6 +690,31 @@ Placeholders are named-source references and never a template language: no
 conditionals, no arithmetic. The placeholder names the source; the key names the
 variable. That is what lets `knowledge` write `DB_HOST` and `n8n` write
 `DB_POSTGRESDB_HOST` from the same Postgres.
+
+### The dotenv subset that is read
+
+An env file is a model artefact and not a blob the renderer passes through, so
+the subset it may use is fixed here and anything outside it is refused rather
+than interpreted, exactly as the YAML subset is
+([Two artefacts](#two-artefacts)):
+
+- a line is a comment (`#` first, after any indentation), blank, or one
+  assignment;
+- an assignment is `NAME=value`, where `NAME` matches `[A-Za-z_][A-Za-z0-9_]*`:
+  the shape a process can actually read from its environment;
+- a value is **either** a literal **or** exactly one placeholder, never a
+  literal with a placeholder inside it. `${secret:…}/db` is refused, because a
+  value half-derived is a value no renderer can partition
+  ([Delivery](#delivery)): a `${secret:…}` key becomes an `envFrom` secretRef
+  entry, and there is no such thing as half an entry;
+- a literal carries no `#`, which is a comment wherever it appears;
+- there is no quoting, no `export`, no line continuation and no multi-line
+  value. Each is a dotenv dialect rather than dotenv, and a value that needs
+  one is a value that wants to be an [Asset](#assets).
+
+A variable named twice in one file is refused for the same reason a variable
+named in two scopes is, and by the same code: the second line changes nothing a
+reader can see, and which one holds would take evaluating the file.
 
 A derived value is *forbidden* as a literal rather than *defaulted*, because a
 permitted override is indistinguishable from a stale copy. The renderer partitions
@@ -2371,7 +2401,12 @@ classDiagram
     }
     class EnvFile {
         +ClusterTarget cluster
-        +dotenv entries
+    }
+    class EnvVariable {
+        +string name
+    }
+    class EnvLiteral {
+        +string text
     }
     class Placeholder {
         +PlaceholderKind kind
@@ -2418,8 +2453,10 @@ classDiagram
     Route --> Surface : surface
     DependencyEdge ..> Surface : resolves by name
 
-    Process "1" *-- "1..*" EnvFile : env per process
-    EnvFile "1" *-- "0..*" Placeholder : resolves
+    Process "1" *-- "0..*" EnvFile : env
+    EnvFile "1" *-- "0..*" EnvVariable : entries
+    EnvVariable "1" *-- "1" EnvLiteral : value
+    EnvVariable "1" *-- "1" Placeholder : value
 
     Process "1" *-- "0..*" Grant : secrets
     Grant "1" *-- "0..1" Rotation : rotation

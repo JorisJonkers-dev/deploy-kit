@@ -5,6 +5,7 @@ import {
   validateProjectIntent,
   type ValidatedProjectIntent,
 } from "../wire/project-intent/map.ts";
+import { readEnv, type EnvSource } from "../wire/project-intent/env.ts";
 import { readYaml } from "../wire/project-intent/read.ts";
 
 /** Every stage downstream reads `effective`, never the authored levels. */
@@ -13,10 +14,15 @@ export interface ParsedProjectIntent extends ValidatedProjectIntent {
 }
 
 /** The lowering runs after the document's own rules and before composition. */
-export function parseProjectIntent(text: string): Result<ParsedProjectIntent> {
+export function parseProjectIntent(
+  text: string,
+  env: readonly EnvSource[] = [],
+): Result<ParsedProjectIntent> {
   const read = readYaml(text);
   if (!read.ok) return read;
-  const validated = validateProjectIntent(read.value);
+  const scoped = readEnv(env);
+  if (!scoped.ok) return scoped;
+  const validated = validateProjectIntent(read.value, scoped.value);
   if (!validated.ok) return validated;
   return {
     ok: true,

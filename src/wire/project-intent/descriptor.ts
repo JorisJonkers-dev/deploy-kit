@@ -5,7 +5,7 @@
 // which is neither format's.
 import { z } from "zod";
 import { platformIntent } from "../platform-intent/schema.ts";
-import { projectIntent } from "./schema.ts";
+import { envFile, projectIntent } from "./schema.ts";
 
 export interface DescriptorFeature {
   readonly name: string;
@@ -105,11 +105,11 @@ function feature(
 
 /** The descriptor of the source metamodel, Project Intent and Platform Intent, as the wire schemas declare it. */
 export function descriptor(): Descriptor {
-  // Both authored documents make one source metamodel: a vocabulary both use,
-  // such as Audience, is one definition under one name.
+  // Every authored artefact makes one source metamodel: a vocabulary two of them
+  // use, such as Audience, is one definition under one name.
   const definitions = Object.assign(
     {},
-    ...[projectIntent, platformIntent].map(
+    ...[projectIntent, platformIntent, envFile].map(
       (document) =>
         (z.toJSONSchema(document, { io: "input" }) as Node)["$defs"],
     ),

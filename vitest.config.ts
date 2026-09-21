@@ -36,9 +36,9 @@ export default defineConfig({
       // leaves anything on the table for the ratchet to absorb.
       thresholds: {
         statements: 99.25,
-        branches: 96.86,
+        branches: 97.02,
         functions: 100,
-        lines: 99.18,
+        lines: 99.23,
       },
     },
   },

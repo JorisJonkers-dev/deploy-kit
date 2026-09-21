@@ -18,6 +18,7 @@ import {
   LIFECYCLES,
   MATCHES,
   MEDIA,
+  PLACEHOLDER_KINDS,
   RUNTIMES,
   TOLERANCES,
   TRANSIT_OPERATIONS,
@@ -44,6 +45,10 @@ const media = z.enum(MEDIA).meta({ id: "Media" });
 const runtime = z.enum(RUNTIMES).meta({ id: "Runtime" });
 const tolerance = z.enum(TOLERANCES).meta({ id: "Tolerance" });
 const transitOp = z.enum(TRANSIT_OPERATIONS).meta({ id: "TransitOp" });
+
+const placeholderKind = z
+  .enum(PLACEHOLDER_KINDS)
+  .meta({ id: "PlaceholderKind" });
 
 const text = z.string().min(1);
 
@@ -246,3 +251,27 @@ export const projectIntent = z
   .meta({ id: "Project" });
 
 export type ProjectIntentDocument = z.output<typeof projectIntent>;
+
+// The other authored artefact. It is dotenv rather than YAML, so its shape is
+// declared for the descriptor and for nothing else: what a file may hold is
+// spec/v1/10-project-intent.md#the-dotenv-subset-that-is-read, enforced by the
+// reader, and what it does hold is the committed env oracle.
+const envLiteral = z.strictObject({ text: z.string() }).meta({
+  id: "EnvLiteral",
+});
+
+const placeholder = z
+  .strictObject({ kind: placeholderKind, source: text })
+  .meta({ id: "Placeholder" });
+
+const envVariable = z
+  .strictObject({ name: text, value: z.union([envLiteral, placeholder]) })
+  .meta({ id: "EnvVariable" });
+
+export const envFile = z
+  .strictObject({
+    cluster: text.exactOptional(),
+    // An overlay that carries only comments holds no entry, and is still a file.
+    entries: z.array(envVariable).exactOptional(),
+  })
+  .meta({ id: "EnvFile" });

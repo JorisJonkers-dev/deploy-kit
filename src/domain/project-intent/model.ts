@@ -11,18 +11,19 @@ import type {
   Lifecycle,
   Match,
   Medium,
+  PlaceholderKind,
   Runtime,
   Tolerance,
   TransitOperation,
 } from "./vocabularies.ts";
 
-/** Seven of the eight families of spec/v1/10-project-intent.md#shared-intent;
- * the eighth, `env`, is authored as dotenv files beside the document. */
+/** The eight families of spec/v1/10-project-intent.md#shared-intent. */
 export interface SharedIntent {
   readonly grants: readonly Grant[];
   readonly dependencies: readonly Dependency[];
   readonly assets: readonly Asset[];
   readonly writablePaths: readonly string[];
+  readonly env: readonly EnvFile[];
   readonly placement?: Placement;
   readonly startupBudget?: string;
   readonly cutover?: Cutover;
@@ -142,6 +143,29 @@ export interface Dependency {
 export interface Asset {
   readonly from: string;
   readonly mountAt: string;
+}
+
+/** One authored dotenv file. `cluster` absent is `base.env`, which does not vary. */
+export interface EnvFile {
+  readonly cluster?: string;
+  readonly entries: readonly EnvVariable[];
+}
+
+export interface EnvVariable {
+  readonly name: string;
+  readonly value: EnvValue;
+}
+
+/** A value is a literal or one placeholder, never a literal holding one. */
+export type EnvValue = EnvLiteral | Placeholder;
+
+export interface EnvLiteral {
+  readonly text: string;
+}
+
+export interface Placeholder {
+  readonly kind: PlaceholderKind;
+  readonly source: string;
 }
 
 export interface Volume {

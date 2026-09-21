@@ -5,6 +5,8 @@ import type {
   Asset,
   CompletePlacement,
   Dependency,
+  EnvVariable,
+  EnvFile,
   EffectiveApplication,
   EffectiveProcess,
   EffectiveProject,
@@ -27,6 +29,35 @@ const dependencyIdentity = (edge: Dependency): string =>
   `${edge.application}#${edge.surface}`;
 
 const assetIdentity = (asset: Asset): string => asset.mountAt;
+
+/** A variable is one declaration within one Cluster Target, and not across two. */
+const entryIdentity =
+  (cluster: string | undefined) =>
+  (entry: EnvVariable): string =>
+    `${cluster ?? ""}\u0000${entry.name}`;
+
+/**
+ * One file per Cluster Target, its entries extended by every scope above. Base
+ * and overlay stay apart: which of them holds is a question only a render for a
+ * named cluster can answer.
+ */
+function mergeEnv(levels: readonly SharedIntent[]): readonly EnvFile[] {
+  const clusters = [
+    ...new Set(
+      levels.flatMap((level) => level.env.map(({ cluster }) => cluster)),
+    ),
+  ];
+  return clusters.map((cluster) => ({
+    ...(cluster === undefined ? {} : { cluster }),
+    entries: levels
+      .map((level): readonly EnvVariable[] =>
+        level.env
+          .filter((file) => file.cluster === cluster)
+          .flatMap(({ entries }) => entries),
+      )
+      .reduce((lower, upper) => extend(lower, upper, entryIdentity(cluster))),
+  }));
+}
 
 /** The lower list, extended by what the upper one names and it does not. */
 function extend<T>(
@@ -88,6 +119,7 @@ function merge(levels: readonly SharedIntent[]): SharedIntent {
       .reduce((lower, upper) => extend(lower, upper, assetIdentity)),
     // A path is its own whole value, so the union is the merge.
     writablePaths: [...new Set(levels.flatMap((level) => level.writablePaths))],
+    env: mergeEnv(levels),
     ...(placement === undefined ? {} : { placement }),
     ...(startupBudget === undefined ? {} : { startupBudget }),
     ...(cutover === undefined ? {} : { cutover }),

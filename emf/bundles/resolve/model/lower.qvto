@@ -72,6 +72,11 @@ mapping Process::lower(in app : Application, in prj : Project) : Process {
 	-- a path is its own whole value, so the union is the merge
 	writablePaths := self.writablePaths
 		->union(app.writablePaths)->union(prj.writablePaths)->asOrderedSet()->asSequence();
+	-- One file per Cluster Target, its entries extended by every scope above.
+	-- Base and overlay stay apart: which of them holds is a question only a
+	-- render for a named cluster can answer.
+	env := clustersOf(self.env->union(app.env)->union(prj.env))
+		->collect(c | self.map envFor(c, app, prj));
 
 	-- the single values, from the lowest level that declared one
 	startupBudget := if budgets->isEmpty() then null else budgets->first() endif;
@@ -91,6 +96,46 @@ mapping Process::lower(in app : Application, in prj : Project) : Process {
 		capabilities := if withCapabilities->isEmpty() then Sequence{}
 			else withCapabilities->first().capabilities endif;
 	} endif;
+}
+
+-- The Cluster Targets any scope names, `null` among them where a `base.env`
+-- does. `asOrderedSet` keeps the order the scopes were read in.
+query clustersOf(files : Collection(EnvFile)) : Sequence(String) =
+	files->collect(f | f.cluster)->asOrderedSet()->asSequence();
+
+query entriesIn(files : Collection(EnvFile), cluster : String) : Sequence(EnvVariable) =
+	files->select(f | f.cluster = cluster)->collect(f | f.entries)->asSequence();
+
+query mergeEntries(own : Collection(EnvVariable), shared : Collection(EnvVariable))
+		: Sequence(EnvVariable) =
+	own->asSequence()->union(
+		shared->asSequence()->select(e | own->forAll(m | m.name <> e.name)));
+
+mapping Process::envFor(in cluster : String, in app : Application, in prj : Project)
+		: EnvFile {
+	result.cluster := cluster;
+	entries := mergeEntries(
+			mergeEntries(entriesIn(self.env, cluster), entriesIn(app.env, cluster)),
+			entriesIn(prj.env, cluster))
+		->map copyFor(self);
+}
+
+mapping EnvVariable::copyFor(in owner : Process) : EnvVariable {
+	name := self.name;
+	value := self.value.map copyFor(owner);
+}
+
+mapping EnvValue::copyFor(in owner : Process) : EnvValue
+	disjuncts EnvLiteral::copyFor, Placeholder::copyFor {}
+
+mapping EnvLiteral::copyFor(in owner : Process) : EnvLiteral {
+	text := self.text;
+}
+
+mapping Placeholder::copyFor(in owner : Process) : Placeholder {
+	kind := self.kind;
+	-- Qualified: bare `source` is this transformation's input model parameter.
+	result.source := self.source;
 }
 
 -- The derived read path is the identity, so a `kv` grant and a `database` grant

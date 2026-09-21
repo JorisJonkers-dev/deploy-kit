@@ -148,6 +148,7 @@ const EMPTY: SharedIntent = {
   dependencies: [],
   assets: [],
   writablePaths: [],
+  env: [],
 };
 
 function lowered(

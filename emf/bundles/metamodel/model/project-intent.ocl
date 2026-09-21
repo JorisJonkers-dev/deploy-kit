@@ -179,6 +179,26 @@ context SharedIntent
 						or placement.gpu.memory <> above.placement.gpu.memory
 						or placement.gpu._'class' <> above.placement.gpu._'class')))
 
+context EnvVariable
+	-- A variable is one declaration within one Cluster Target, and the value is
+	-- a term: a scope below setting it differently is that level's version of it.
+	inv E_SHARED_DECLARATION_DUPLICATED:
+		let mine : EnvFile = oclContainer().oclAsType(EnvFile) in
+		mine.oclContainer().oclAsType(SharedIntent).levelsAbove->forAll(above |
+			above.env->select(f | f.cluster = mine.cluster)->forAll(other |
+				other.entries->forAll(entry |
+					not (entry.name = name and sameValue(entry.value, value)))))
+
+context EnvVariable
+	-- A literal equals a literal with the same text, and a placeholder equals a
+	-- placeholder naming the same source.
+	def: sameValue(one : EnvValue, other : EnvValue) : Boolean =
+		(one.oclIsKindOf(EnvLiteral) and other.oclIsKindOf(EnvLiteral)
+			and one.oclAsType(EnvLiteral).text = other.oclAsType(EnvLiteral).text)
+		or (one.oclIsKindOf(Placeholder) and other.oclIsKindOf(Placeholder)
+			and one.oclAsType(Placeholder).kind = other.oclAsType(Placeholder).kind
+			and one.oclAsType(Placeholder).source = other.oclAsType(Placeholder).source)
+
 context DependencyEdge
 	-- `required` is included: an edge differing in it is a replacement.
 	inv E_SHARED_DECLARATION_DUPLICATED:

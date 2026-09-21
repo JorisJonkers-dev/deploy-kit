@@ -153,8 +153,20 @@ whichever level shares it
 [0022](docs/adr/model/0022-grants-live-on-the-application.md),
 [0023](docs/adr/model/0023-grant-unit-is-the-path.md)).
 
-**Placeholder**: an env-file entry naming what should be substituted rather
-than carrying a value. A secret placeholder byte-matches a granted path
+**Env File**: one authored dotenv file, its Cluster Target and its variables.
+`base.env` names no target, because it is what does not vary; an overlay beside
+it names one. The directory holding it is the scope it reaches: the project, one
+Application, or one Process
+([0011](docs/adr/model/0011-configuration-env-files-per-process.md),
+[0124](docs/adr/model/0124-shared-intent-descends-to-the-process.md)).
+
+**Env Variable**: one `NAME=value` a process reads from its environment. Its
+value is a literal or one Placeholder, never a literal holding one. The rendered
+entry is layer 3's, and is an **Env Entry** there.
+
+**Placeholder**: an Env Variable's value where it names what should be
+substituted rather than carrying it: `dependency`, `secret`, `exposure` or
+`identity`, and a source. A secret placeholder byte-matches a granted path
 ([0027](docs/adr/model/0027-secret-reference-join-key.md)).
 
 **Capacity exception**: the sole local exception to a derived value:

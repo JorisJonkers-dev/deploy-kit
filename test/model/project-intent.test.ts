@@ -108,6 +108,7 @@ describe("parseProjectIntent", () => {
       image: "notes-api",
       runtime: "node",
       surfaces: [surface],
+      env: [],
       placement: { memory: "256Mi", cpu: "50m", arch: [], capabilities: [] },
       writablePaths: [],
       sidecars: [],
@@ -130,6 +131,7 @@ describe("parseProjectIntent", () => {
       owner: "joris",
       assets: [],
       dependencies: [],
+      env: [],
       grants: [],
       writablePaths: [],
       applications: [
@@ -141,6 +143,7 @@ describe("parseProjectIntent", () => {
           },
           assets: [],
           dependencies: [],
+          env: [],
           grants: [],
           writablePaths: [],
           exposures: [
@@ -186,6 +189,7 @@ describe("parseProjectIntent", () => {
         exposures: [],
         assets: [],
         dependencies: [],
+        env: [],
         grants: [],
         writablePaths: [],
         processes: [
@@ -195,6 +199,7 @@ describe("parseProjectIntent", () => {
             image: "worker",
             runtime: "none",
             surfaces: [],
+            env: [],
             placement: {
               memory: "64Mi",
               cpu: "10m",

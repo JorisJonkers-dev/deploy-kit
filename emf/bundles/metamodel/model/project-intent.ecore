@@ -6,10 +6,11 @@
   union in the language is a union here: a probe is HTTP or TCP, a probe
   policy is a block or `none`, and a grant is keyed by its engine.
 
-  SharedIntent is seven of the eight families of
-  spec/v1/10-project-intent.md#shared-intent; the eighth, `env`, is authored as
-  dotenv files beside the document. EffectiveProject and EffectiveApplication are
-  what the lowering writes (docs/adr/model/0125).
+  SharedIntent is the eight families of
+  spec/v1/10-project-intent.md#shared-intent. `env` is the one authored beside
+  the document rather than in it, in dotenv files a second grammar parses.
+  EffectiveProject and EffectiveApplication are what the lowering writes
+  (docs/adr/model/0125).
 -->
 <ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="projectintent" nsURI="https://jorisjonkers.dev/deploy-kit/project-intent/1"
@@ -57,6 +58,11 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="dependsOn" upperBound="-1" eType="#//DependencyEdge" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="assets" upperBound="-1" eType="#//Asset" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="writablePaths" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="env" upperBound="-1" eType="#//EnvFile" containment="true">
+      <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+        <details key="document" value="no"/>
+      </eAnnotations>
+    </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="placement" eType="#//Placement" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="startupBudget" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="cutover" eType="#//Cutover"/>
@@ -123,6 +129,22 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="application" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="surface" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="required" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="EnvFile">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="cluster" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="entries" upperBound="-1" eType="#//EnvVariable" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="EnvVariable">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="value" lowerBound="1" eType="#//EnvValue" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="EnvValue" abstract="true"/>
+  <eClassifiers xsi:type="ecore:EClass" name="EnvLiteral" eSuperTypes="#//EnvValue">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="text" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Placeholder" eSuperTypes="#//EnvValue">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//PlaceholderKind"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="source" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Asset">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="from" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -200,6 +222,12 @@
     <eLiterals name="rabbitmq" value="2" literal="rabbitmq"/>
     <eLiterals name="valkey" value="3" literal="valkey"/>
     <eLiterals name="files" value="4" literal="files"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="PlaceholderKind">
+    <eLiterals name="secret" literal="secret"/>
+    <eLiterals name="dependency" value="1" literal="dependency"/>
+    <eLiterals name="exposure" value="2" literal="exposure"/>
+    <eLiterals name="identity" value="3" literal="identity"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Cutover">
     <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">

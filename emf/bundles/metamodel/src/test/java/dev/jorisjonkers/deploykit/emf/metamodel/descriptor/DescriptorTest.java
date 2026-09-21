@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import org.eclipse.emf.ecore.EDataType;
 import org.eclipse.emf.ecore.EPackage;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.junit.jupiter.api.Test;
 
@@ -59,6 +60,18 @@ class DescriptorTest {
         // A class carrying the same annotation for another reason stays listed.
         assertThat(named("classes", "NoProbes").get("scalar")).isEqualTo("none");
         assertThat(classes).contains("NoProbes", "Application");
+    }
+
+    @Test
+    void aFeatureNoDocumentSpellsIsNoPartOfTheDocumentsShape() {
+        // `env` is a directory beside the document, so it is on the class and
+        // not in the descriptor, while every other shared family is in both.
+        assertThat(ProjectIntentPackage.eINSTANCE.getProcess().getEAllStructuralFeatures())
+                .extracting(EStructuralFeature::getName)
+                .contains("env", "secrets");
+        assertThat(named("classes", "Process").get("features").toString())
+                .doesNotContain("\"env\"")
+                .contains("secrets");
     }
 
     @Test
