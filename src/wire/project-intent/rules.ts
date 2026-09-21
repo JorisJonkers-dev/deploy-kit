@@ -6,6 +6,10 @@
 // takes as its context. A rule that needs more than one document belongs to
 // composition, not here.
 import type { Diagnostic } from "../../domain/diagnostic.ts";
+import {
+  declared,
+  sameDeclaration,
+} from "../../domain/project-intent/declaration.ts";
 import type { ProjectIntentDocument } from "./schema.ts";
 
 type Application = ProjectIntentDocument["applications"][number];
@@ -72,33 +76,6 @@ function grantRefusals(grant: Grant, at: string): Refusal[] {
 // -- Shared Intent (spec/v1/10-project-intent.md#shared-intent). Every refusal
 // below sits on the lower declaration: the one an author deletes to fix it.
 
-/** The derived read path, so a `kv` grant and a `database` grant never collide. */
-function grantIdentity(grant: Grant): string {
-  if ("path" in grant) return `secret/data/${grant.path}`;
-  if (grant.engine === "database") return `database/creds/${grant.role}`;
-  return `transit/${grant.key}`;
-}
-
-/** Every term a grant states, so only an identical restatement matches. */
-const grantTerms = (grant: Grant): string =>
-  JSON.stringify([
-    grantIdentity(grant),
-    "keys" in grant ? grant.keys : null,
-    "access" in grant ? grant.access : null,
-    "operations" in grant ? grant.operations : null,
-    grant.delivery,
-    grant.mountAt ?? null,
-    grant.fileMode ?? null,
-    grant.rotation?.tolerates ?? null,
-    grant.rotation?.maxAge ?? null,
-  ]);
-
-const edgeTerms = (edge: NonNullable<Process["dependsOn"]>[number]): string =>
-  JSON.stringify([edge.application, edge.surface, edge.required ?? null]);
-
-const assetTerms = (asset: NonNullable<Process["assets"]>[number]): string =>
-  JSON.stringify([asset.mountAt, asset.from]);
-
 /** The node dimensions, which is what a level above a Process may share. */
 const DIMENSIONS = ["arch", "site", "disk", "gpu", "capabilities"] as const;
 
@@ -117,21 +94,21 @@ function duplicateRefusals(
 ): Refusal[] {
   const refusals: Refusal[] = [];
   const from = <T>(pick: (one: Level) => readonly T[] | undefined): T[] =>
-    above.flatMap((one) => [...(pick(one) ?? [])]);
+    above.flatMap((one) => [...declared(pick(one))]);
 
-  const grants = new Set(from((one) => one.secrets).map(grantTerms));
-  for (const [index, grant] of (level.secrets ?? []).entries())
-    if (grants.has(grantTerms(grant)))
+  const grants = from((one) => one.secrets);
+  for (const [index, grant] of declared(level.secrets).entries())
+    if (grants.some((above) => sameDeclaration(above, grant)))
       refusals.push(duplicate(`${at}/secrets/${index}`, "this grant"));
 
-  const edges = new Set(from((one) => one.dependsOn).map(edgeTerms));
-  for (const [index, edge] of (level.dependsOn ?? []).entries())
-    if (edges.has(edgeTerms(edge)))
+  const edges = from((one) => one.dependsOn);
+  for (const [index, edge] of declared(level.dependsOn).entries())
+    if (edges.some((above) => sameDeclaration(above, edge)))
       refusals.push(duplicate(`${at}/dependsOn/${index}`, "this edge"));
 
-  const assets = new Set(from((one) => one.assets).map(assetTerms));
-  for (const [index, asset] of (level.assets ?? []).entries())
-    if (assets.has(assetTerms(asset)))
+  const assets = from((one) => one.assets);
+  for (const [index, asset] of declared(level.assets).entries())
+    if (assets.some((above) => sameDeclaration(above, asset)))
       refusals.push(duplicate(`${at}/assets/${index}`, "this asset"));
 
   // The families with no object of their own share one refusal, at their level:
@@ -139,7 +116,7 @@ function duplicateRefusals(
   // be several diagnostics at one pointer.
   const paths = new Set(from((one) => one.writablePaths));
   const restated = [
-    ...(level.writablePaths ?? []).filter((written) => paths.has(written)),
+    ...declared(level.writablePaths).filter((written) => paths.has(written)),
     ...(level.startupBudget !== undefined &&
     above.some((one) => one.startupBudget === level.startupBudget)
       ? ["startupBudget"]
@@ -154,11 +131,7 @@ function duplicateRefusals(
       const value = level.placement?.[key];
       return (
         value !== undefined &&
-        above.some(
-          (one) =>
-            JSON.stringify(one.placement?.[key] ?? null) ===
-            JSON.stringify(value),
-        )
+        above.some((one) => sameDeclaration(one.placement?.[key], value))
       );
     }),
   ];

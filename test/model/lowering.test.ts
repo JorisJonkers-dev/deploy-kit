@@ -474,3 +474,302 @@ describe("the duplicate, per key and without a short circuit", () => {
     ).toStrictEqual([]);
   });
 });
+
+// Each term a family's identity is built from has to matter on its own,
+// otherwise a replacement reads as a duplicate or two declarations collide.
+
+describe("what makes two declarations the same one", () => {
+  it("keeps three engines apart even where they name the same string", () => {
+    const merged = lowered(
+      {
+        grants: [
+          { path: "x", keys: ["k"], access: "read", delivery: "env" },
+          { engine: "database", role: "x", delivery: "self" },
+          {
+            engine: "transit",
+            key: "x",
+            operations: ["sign"],
+            delivery: "self",
+          },
+        ],
+      },
+      {},
+      {},
+    );
+
+    // One identity each: `secret/data/x`, `database/creds/x` and `transit/x`.
+    expect(merged.grants).toHaveLength(3);
+  });
+
+  /** A complete `kv` grant, and the one term each case varies. */
+  const grant = (change: Partial<Record<string, string>> = {}) => {
+    const terms: Record<string, string> = {
+      path: "secret/data/p/t",
+      keys: "[k]",
+      access: "read",
+      delivery: "file",
+      mountAt: "/run/t",
+      fileMode: "'0400'",
+      rotation: "{tolerates: restart, maxAge: 30d}",
+      ...change,
+    };
+    const body = Object.entries(terms)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join(", ");
+    return `[{${body}}]`;
+  };
+
+  const twoLevels = (above: string, below: string) =>
+    `${HEADER}secrets: ${above}\napplications:\n  - id: a\n${PROCESS}        secrets: ${below}\n`;
+
+  it.each([
+    ["keys", { keys: "[other]" }],
+    ["access", { access: "self-roll" }],
+    ["delivery", { delivery: "self" }],
+    ["mountAt", { mountAt: "/run/other" }],
+    ["fileMode", { fileMode: "'0444'" }],
+    ["rotation.tolerates", { rotation: "{tolerates: reload, maxAge: 30d}" }],
+    ["rotation.maxAge", { rotation: "{tolerates: restart, maxAge: 60d}" }],
+  ])("reads a grant differing only in %s as a replacement", (_term, change) => {
+    expect(refusals(twoLevels(grant(), grant(change)))).toStrictEqual([]);
+  });
+
+  it("reads a grant restated with every term unchanged as a duplicate", () => {
+    expect(refusals(twoLevels(grant(), grant()))).toStrictEqual([
+      [
+        "E_SHARED_DECLARATION_DUPLICATED",
+        "/applications/0/processes/0/secrets/0",
+      ],
+    ]);
+  });
+
+  it("reads an edge differing only in `required` as a replacement", () => {
+    const edge = (required: string) =>
+      `[{application: q, surface: amqp${required}}]`;
+
+    expect(
+      refusals(
+        `${HEADER}dependsOn: ${edge("")}\napplications:\n  - id: a\n${PROCESS}        dependsOn: ${edge(", required: false")}\n`,
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("reads an Asset differing only in `from` as a replacement", () => {
+    expect(
+      refusals(
+        `${HEADER}assets: [{from: a.conf, mountAt: /etc/c.conf}]\napplications:\n  - id: a\n${PROCESS}        assets: [{from: b.conf, mountAt: /etc/c.conf}]\n`,
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it.each([
+    ["arch", "arch: [arm64]", "arch: [amd64]"],
+    ["site", "site: enschede", "site: frankfurt"],
+    ["disk", "disk: {media: [nvme]}", "disk: {media: [ssd]}"],
+    [
+      "gpu",
+      "gpu: {class: transcode, memory: 4Gi}",
+      "gpu: {class: transcode, memory: 8Gi}",
+    ],
+    ["capabilities", "capabilities: [a]", "capabilities: [b]"],
+  ])("counts `%s` on its own, by value", (_key, same, different) => {
+    const at = (above: string, below: string) =>
+      `${HEADER}placement: {${above}}\napplications:\n  - id: a\n    placement: {${below}}\n${PROCESS}`;
+
+    expect(refusals(at(same, same))).toStrictEqual([
+      ["E_SHARED_DECLARATION_DUPLICATED", "/applications/0"],
+    ]);
+    expect(refusals(at(same, different))).toStrictEqual([]);
+  });
+});
+
+describe("what a refusal says", () => {
+  const only = (document: string) => {
+    const result = parseProjectIntent(document);
+    if (result.ok) throw new Error("the document was accepted");
+    return result.diagnostics[0];
+  };
+
+  it("names the quantity a level above the Process may not share", () => {
+    const refusal = only(
+      `${HEADER}placement: {memory: 64Mi, cpu: 10m}\napplications:\n  - id: a\n${PROCESS}`,
+    );
+
+    expect(refusal?.message).toBe(
+      "memory and cpu is per container and cannot be shared",
+    );
+    expect(refusal?.hint).toBe(
+      "Write the quantity on each Process: eligibility sums the Process and its sidecars.",
+    );
+  });
+
+  it("names the quantities the merge did not produce", () => {
+    const refusal = only(
+      `${HEADER}applications:\n  - id: a\n    processes:\n      - name: w\n        lifecycle: job\n        image: w\n        runtime: none\n        cutover: recreate\n`,
+    );
+
+    expect(refusal?.message).toBe(
+      "this Process declares no memory and no cpu, and a quantity is never shared",
+    );
+    expect(refusal?.hint).toBe(
+      "Declare the quantities in the Process's own `placement` block: only the node dimensions can come from a level above.",
+    );
+  });
+
+  it("names what a level restated, and how to fix it", () => {
+    const refusal = only(
+      `${HEADER}cutover: recreate\napplications:\n  - id: a\n    cutover: recreate\n${PROCESS}`,
+    );
+
+    expect(refusal?.message).toBe(
+      "cutover is declared again, unchanged, at a level above this one",
+    );
+    expect(refusal?.hint).toBe(
+      "Delete this copy, or change it: a lower declaration replaces the one above, and a restatement does nothing.",
+    );
+  });
+
+  it("says which Process no level answers the cutover question for", () => {
+    const refusal = only(
+      `${HEADER}applications:\n  - id: a\n    processes:\n      - name: w\n        lifecycle: job\n        image: w\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n`,
+    );
+
+    expect(refusal?.message).toBe(
+      "no level answers whether this Process keeps serving as it cuts over",
+    );
+    expect(refusal?.hint).toBe(
+      "Declare `cutover` on the Process, its Application or the project header.",
+    );
+  });
+});
+
+describe("what the lowered shape carries, and what it leaves out", () => {
+  it("writes no key for a scalar family no level declared", () => {
+    // `placement` and `cutover` are always keys of an effective Process, which
+    // is what the type says; `startupBudget` is the one that may be absent.
+    expect(Object.keys(lowered({}, {}, {}))).not.toContain("startupBudget");
+    expect(Object.keys(lowered({ startupBudget: "20s" }, {}, {}))).toContain(
+      "startupBudget",
+    );
+  });
+
+  it("writes a base file with no Cluster Target, and an overlay with one", () => {
+    const process = lowered(
+      {},
+      {},
+      {
+        env: [
+          { entries: [{ name: "A", value: { text: "1" } }] },
+          {
+            cluster: "production",
+            entries: [{ name: "A", value: { text: "2" } }],
+          },
+        ],
+      },
+    );
+
+    expect(process.env).toStrictEqual([
+      { entries: [{ name: "A", value: { text: "1" } }] },
+      {
+        cluster: "production",
+        entries: [{ name: "A", value: { text: "2" } }],
+      },
+    ]);
+  });
+
+  it("keeps an overlay's variables out of the base file, and the other way round", () => {
+    const process = lowered(
+      { env: [{ entries: [{ name: "SHARED", value: { text: "1" } }] }] },
+      {},
+      {
+        env: [
+          {
+            cluster: "production",
+            entries: [{ name: "ONLY_THERE", value: { text: "2" } }],
+          },
+        ],
+      },
+    );
+
+    expect(
+      process.env.map(({ cluster, entries }) => [
+        cluster,
+        entries.map(({ name }) => name),
+      ]),
+      // Lowest level first, so the Process's own overlay leads.
+    ).toStrictEqual([
+      ["production", ["ONLY_THERE"]],
+      [undefined, ["SHARED"]],
+    ]);
+  });
+});
+
+describe("a refusal that reads the effective answer, not the written one", () => {
+  it("refuses a rolling cutover declared above a Process holding a volume", () => {
+    const document = `${HEADER}cutover: rolling\napplications:\n  - id: a\n    processes:\n      - name: w\n        lifecycle: application\n        image: w\n        runtime: none\n        engine: files\n        placement: {memory: 64Mi, cpu: 10m}\n        volumes:\n          - {claim: c, mountAt: /var/lib/c, size: 1Gi, durability: irreplaceable}\n`;
+
+    expect(refusals(document)).toStrictEqual([
+      ["E_CUTOVER_UNHONOURABLE", "/applications/0/processes/0"],
+    ]);
+  });
+
+  it("refuses a grant the project header states badly, at the header", () => {
+    expect(
+      refusals(
+        `${HEADER}secrets: [{engine: transit, key: j, operations: [sign], delivery: env}]\napplications:\n  - id: a\n${PROCESS}`,
+      ),
+    ).toStrictEqual([["E_NON_KV_DELIVERY", "/secrets/0"]]);
+  });
+
+  it("reads a key stated by one level above and not the other", () => {
+    // `.some`, not `.every`: the project states `site` and the Application
+    // states nothing, and the Process restating it is still a duplicate.
+    const process = PROCESS.replace(
+      "        placement: {memory: 64Mi, cpu: 10m}\n",
+      "        placement: {memory: 64Mi, cpu: 10m, site: enschede}\n",
+    );
+
+    expect(
+      refusals(
+        `${HEADER}placement: {site: enschede}\napplications:\n  - id: a\n${process}`,
+      ),
+    ).toStrictEqual([
+      ["E_SHARED_DECLARATION_DUPLICATED", "/applications/0/processes/0"],
+    ]);
+  });
+});
+
+describe("what a duplicate of each family says", () => {
+  const says = (document: string): string | undefined => {
+    const result = parseProjectIntent(document);
+    return result.ok ? undefined : result.diagnostics[0]?.message;
+  };
+
+  it("names the grant, the edge and the Asset it refused", () => {
+    const grant =
+      "[{path: secret/data/p/t, keys: [k], access: read, delivery: env}]";
+    expect(
+      says(
+        `${HEADER}secrets: ${grant}\napplications:\n  - id: a\n${PROCESS}        secrets: ${grant}\n`,
+      ),
+    ).toBe(
+      "this grant is declared again, unchanged, at a level above this one",
+    );
+
+    const edge = "[{application: q, surface: amqp}]";
+    expect(
+      says(
+        `${HEADER}dependsOn: ${edge}\napplications:\n  - id: a\n${PROCESS}        dependsOn: ${edge}\n`,
+      ),
+    ).toBe("this edge is declared again, unchanged, at a level above this one");
+
+    const asset = "[{from: c.conf, mountAt: /etc/c.conf}]";
+    expect(
+      says(
+        `${HEADER}assets: ${asset}\napplications:\n  - id: a\n${PROCESS}        assets: ${asset}\n`,
+      ),
+    ).toBe(
+      "this asset is declared again, unchanged, at a level above this one",
+    );
+  });
+});
