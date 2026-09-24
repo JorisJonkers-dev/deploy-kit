@@ -47,7 +47,9 @@ an Application declared in a project file the platform owns.
 
 A Platform document is checked on its own and together with the project files
 read beside it. On its own, a tier that carries `authenticated` needs its
-`forwardAuth` ([Tiers](#tiers)). Together, every reference one makes into the
+`forwardAuth` ([Tiers](#tiers)), and the `handover` ledger puts no Project on
+both delivery paths (`E_HANDOVER_BOTH_PATHS`,
+[chapter 60](60-setup.md#handing-over-one-project-at-a-time)). Together, every reference one makes into the
 other resolves and every policy one asks for the other offers:
 
 | condition | error |
@@ -60,6 +62,7 @@ other resolves and every policy one asks for the other offers:
 | a name in `delivery.machinery` names an Application no project file read beside it declares | `E_UNKNOWN_MACHINERY` |
 | an Application moves its schema with a changelog and the platform declares no `migration` policy | `E_NO_MIGRATION_POLICY` |
 | an Application's cutover is `continuous` and the platform declares no `delivery` policy | `E_NO_DELIVERY_POLICY` |
+| a project file names a project the `handover` ledger puts on neither delivery path | `E_HANDOVER_UNLISTED` |
 
 A refusal names the document it points into as well as the path, because the
 object at fault can sit in either: a proxy nothing declares is the tier's, and an
@@ -545,6 +548,11 @@ classDiagram
     class EphemeralPolicy {
         +Quantity size
     }
+    class HandoverLedger {
+        +Date retireBy
+        +ProjectName[] legacy
+        +ProjectName[] estate
+    }
     class DeliveryPolicy {
         +ApplicationId[] machinery
     }
@@ -577,6 +585,7 @@ classDiagram
     Platform "1" *-- "0..1" MigrationPolicy : migration
     Platform "1" *-- "0..1" DeliveryPolicy : delivery
     DeliveryPolicy "1" *-- "1" AnalysisPolicy : analysis
+    Platform "1" *-- "0..1" HandoverLedger : handover
     Platform "1" *-- "0..*" Provider : providers
     Bootstrap "1" *-- "1" FluxSource : flux
     FluxSource "1" *-- "1" RenderedArtifacts : artifacts

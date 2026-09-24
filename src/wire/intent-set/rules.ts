@@ -148,6 +148,28 @@ function runnerRefusals(
   );
 }
 
+/** While the handover lasts, every Project is on one path the ledger names. */
+function handoverRefusals(
+  project: ProjectIntentDocument,
+  platform: PlatformIntentDocument,
+): Omit<Diagnostic, "document">[] {
+  const { handover } = platform;
+  if (handover === undefined) return [];
+  const onPath =
+    handover.legacy?.includes(project.project) === true ||
+    handover.estate?.includes(project.project) === true;
+  return onPath
+    ? []
+    : [
+        {
+          code: "E_HANDOVER_UNLISTED",
+          path: "",
+          message: `the handover ledger puts project ${project.project} on no delivery path`,
+          hint: "Name the Project in the Platform document's `handover.legacy` or `handover.estate`.",
+        },
+      ];
+}
+
 /** A continuous Application is gated, and the gate analyses at the platform's cadence. */
 function deliveryRefusals(
   project: ProjectIntentDocument,
@@ -197,6 +219,7 @@ function projectRefusals(
   refusals.push(...credentialsRefusals(project.dependsOn, "", estate));
   refusals.push(...runnerRefusals(project, platform));
   refusals.push(...deliveryRefusals(project, platform));
+  refusals.push(...handoverRefusals(project, platform));
   for (const [a, application] of project.applications.entries()) {
     const at = `/applications/${a}`;
     for (const [e, exposure] of (application.exposure ?? []).entries()) {

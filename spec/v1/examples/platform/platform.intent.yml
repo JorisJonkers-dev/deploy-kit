@@ -141,6 +141,15 @@ delivery:
     iterations: 4
     threshold: 3
 
+# Which delivery path each Project is on while the estate moves off
+# fleet-infra's deploy/production branch, one Project at a time
+# (spec/v1/60-setup.md#handing-over-one-project-at-a-time). No Project is on
+# both, and after retireBy the old path is removed.
+handover:
+  retireBy: 2027-03-31
+  legacy: [auth, data, knowledge, notes]
+  estate: [delivery]
+
 # Things the estate runs and does not deploy, that an Application depends on. A fact
 # with an address, resolvable by an edge -- not a hole, so no review date
 # (docs/adr/model/0090-edges-resolve-against-the-register.md).

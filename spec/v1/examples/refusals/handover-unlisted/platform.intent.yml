@@ -1,0 +1,58 @@
+# The Platform document this case's project file is read beside. It offers
+# what the case needs and nothing it tests.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Platform
+schemaVersion: 1.0.0
+owner: joris
+metadata:
+  cluster: refusals
+  project: refusals.jorisjonkers.dev
+  nodeContract: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+substrate:
+  kubernetesVersion: v1.31.4+k3s1
+  datastore: sqlite
+  serverCount: 1
+  secretsEncryption: false
+  cni: flannel
+  networkPolicyController: embedded
+bootstrap:
+  flux:
+    sourceRef: flux-system/platform
+    artifacts:
+      repository: ghcr.io/jorisjonkers-dev/render
+      signer:
+        issuer: "https://token.actions.githubusercontent.com"
+        subject: "https://github.com/JorisJonkers-dev/estate/.github/workflows/compose.yml@refs/heads/main"
+  vault:
+    unsealed: true
+  crds:
+    - traefik.io/v1alpha1
+tiers:
+  - name: lan
+    audiences: [lan]
+    listener: plain
+    certificates: none
+    traefik: edge-proxy
+delivery:
+  machinery: [edge-proxy]
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+handover:
+  retireBy: 2027-03-31
+  legacy: [media]
+  estate: [delivery]
+durability:
+  reconstructible: {}
+  recoverable: { schedule: "15 3 * * *", retain: 14 }
+  irreplaceable: { schedule: "45 2 * * *", retain: 90 }
+engines:
+  postgres: { backup: postgres-backup }
+monitors:
+  interval: 30s
+  timeout: 10s
+hardening: restricted
+probes: { period: 10s, timeout: 5s, failures: 3 }
+ephemeral: { size: 64Mi }

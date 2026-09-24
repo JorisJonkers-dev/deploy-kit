@@ -94,6 +94,11 @@ context Route
 		oclContainer().oclAsType(Exposure).routes
 			->select(r | r.path = self.path and r.match = self.match)->first() = self
 
+context HandoverLedger
+	-- A Project is on one delivery path at a time: two would each apply it.
+	inv E_HANDOVER_BOTH_PATHS:
+		legacy->forAll(project | not estate->includes(project))
+
 context Tier
 	-- An authenticated route reaches the proxy with nothing to ask whether the
 	-- visitor is allowed in unless the tier names the endpoint that decides.
@@ -352,5 +357,13 @@ context Credentials
 		let edge : DependencyEdge = oclContainer().oclAsType(DependencyEdge) in
 		(Platform.allInstances()->notEmpty() and Application.allInstances().id->includes(edge.application))
 			implies Application.allInstances()->exists(a | a.id = edge.application and a.ownsDatabases)
+
+context Project
+	-- While the estate moves off the old path, every Project read beside the
+	-- Platform document is on exactly one of them, named in its ledger.
+	inv E_HANDOVER_UNLISTED:
+		Platform.allInstances()->forAll(handover = null
+			or handover.legacy->includes(self.project)
+			or handover.estate->includes(self.project))
 
 endpackage

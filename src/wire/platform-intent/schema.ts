@@ -144,6 +144,18 @@ const deliveryPolicy = z
   })
   .meta({ id: "DeliveryPolicy" });
 
+// Which delivery path each Project is on while the estate moves off the old
+// one (spec/v1/60-setup.md#handing-over-one-project-at-a-time): `legacy` is
+// still delivered by the old path, `estate` by its pin, and `retireBy` is the
+// date after which the old path is removed.
+const handoverLedger = z
+  .strictObject({
+    retireBy: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    legacy: z.array(text).min(1).exactOptional(),
+    estate: z.array(text).min(1).exactOptional(),
+  })
+  .meta({ id: "HandoverLedger" });
+
 const provider = z
   .strictObject({
     name: text,
@@ -170,6 +182,7 @@ export const platformIntent = z
     ephemeral: ephemeralPolicy,
     migration: migrationPolicy.exactOptional(),
     delivery: deliveryPolicy.exactOptional(),
+    handover: handoverLedger.exactOptional(),
     providers: z.array(provider).min(1).exactOptional(),
   })
   .meta({ id: "Platform" });

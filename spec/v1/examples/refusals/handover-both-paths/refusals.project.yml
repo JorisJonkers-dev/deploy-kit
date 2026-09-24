@@ -1,0 +1,24 @@
+# REFUSED: E_HANDOVER_BOTH_PATHS, in the Platform document beside this file
+#
+# The ledger puts `refusals` on both delivery paths, so two sources would each
+# apply it (spec/v1/60-setup.md#handing-over-one-project-at-a-time).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: edge-proxy
+    processes:
+      - name: edge-proxy
+        lifecycle: application
+        image: traefik
+        runtime: none
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 8080 }
+        startupBudget: 30s
+        cutover: interrupted

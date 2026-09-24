@@ -268,8 +268,13 @@ jobs:
           echo "$GH_TOKEN" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
 
           : > moved.txt
+          # A Project the handover ledger still puts on the old path is
+          # composed and checked, never delivered: fleet-infra applies it
+          # until its handover step (spec/v1/60-setup.md#handing-over-one-project-at-a-time).
+          LEGACY=" $(platform 'handover.legacy // [] | join(" ")') "
           for dir in rendered/*/; do
             project="$(basename "$dir")"
+            case "$LEGACY" in *" ${project} "*) echo "${project}: legacy"; continue ;; esac
             source="projects/${project}/source.yaml"
 
             # A Project seen for the first time gets its pinned source, derived
