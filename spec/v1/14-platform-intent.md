@@ -153,6 +153,11 @@ enumerated here so that growing it is a decision:
 bootstrap:
   flux:
     sourceRef: flux-system/platform          # the source that pulls the tree
+    artifacts:                               # where each Project's render is fetched from
+      repository: ghcr.io/jorisjonkers-dev/render
+      signer:                                # the keyless identity Flux verifies against
+        issuer: "https://token.actions.githubusercontent.com"
+        subject: "https://github.com/JorisJonkers-dev/estate/.github/workflows/compose.yml@refs/heads/main"
   vault:
     unsealed: true                           # unseal is out of band
   crds:                                      # cluster-scoped schema, pinned
@@ -164,7 +169,7 @@ bootstrap:
 | in the set | why it cannot be declared |
 |---|---|
 | k3s itself | it is what applies |
-| the Flux source | it pulls the tree that everything else is in |
+| the Flux source | it pulls the tree that everything else is in, and it trusts only artifacts from `artifacts.repository` signed by `artifacts.signer` ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)) |
 | Vault's unseal | a secret the model must never hold |
 | the CRDs the estate uses | cluster-scoped schema that must exist before any object of that kind can apply; the components that *use* them are declared Applications |
 
@@ -486,6 +491,13 @@ classDiagram
     class FluxSource {
         +string sourceRef
     }
+    class RenderArtifacts {
+        +string repository
+    }
+    class ArtifactSigner {
+        +string issuer
+        +string subject
+    }
     class VaultState {
         +bool unsealed
     }
@@ -565,6 +577,8 @@ classDiagram
     DeliveryPolicy "1" *-- "1" AnalysisPolicy : analysis
     Platform "1" *-- "0..*" Provider : providers
     Bootstrap "1" *-- "1" FluxSource : flux
+    FluxSource "1" *-- "1" RenderArtifacts : artifacts
+    RenderArtifacts "1" *-- "1" ArtifactSigner : signer
     Bootstrap "1" *-- "1" VaultState : vault
     DurabilityPolicies "1" *-- "0..3" DurabilityPolicy : per class
     DurabilityPolicy "1" *-- "0..1" OffClusterCopy : offCluster

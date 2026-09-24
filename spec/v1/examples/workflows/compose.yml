@@ -1,15 +1,25 @@
-# deploy-config-schema/.github/workflows/compose.yml  (or its own repository)
+# estate/.github/workflows/compose.yml
 #
 # Composes every published Intent Fragment into one ComposedIntent, asserts the
-# estate-wide invariants, and publishes the result with its lock. Composition
-# is part of the model (docs/adr/model/0037-composition-oci-fragments.md), which is
-# why this workflow stays in the spec while the deploy workflows do not.
+# estate-wide invariants, publishes the result with its lock, then renders and
+# delivers: one signed OCI artifact per Project, and one pin commit moving each
+# Project whose render changed. Composition and delivery are both part of the
+# model (docs/adr/model/0037-composition-oci-fragments.md,
+# docs/adr/model/0133-a-project-is-delivered-as-a-signed-artifact-pinned-by-digest.md).
 #
 #   fragment publishes -> repository_dispatch -> pull all participants
 #                                             -> verify + union
 #                                             -> assert the invariants
 #                                             -> prove the gate can fail
 #                                             -> publish ComposedIntent + lock
+#                                             -> render, one artifact per Project
+#                                             -> sign keyless, read back, verify
+#                                             -> commit the moved pins [ci skip]
+#
+# The pin commit is the deploy: Flux fetches each Project's OCIRepository by
+# the digest this workflow writes, and verifies it against this workflow's own
+# OIDC identity, which the Platform document records as
+# bootstrap.flux.artifacts.signer (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
 #
 # Triggered by the publish, NOT by a schedule. The estate measured Actions
 # crons at four to seven runs per repo per day regardless of the declared
@@ -40,9 +50,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      contents: read
+      contents: write         # the pin commit, and nothing else, writes
       packages: write
-      id-token: write
+      id-token: write         # the keyless signature's identity
     outputs:
       composed-digest: ${{ steps.publish.outputs.digest }}
     steps:
@@ -226,3 +236,83 @@ jobs:
           oras pull "ghcr.io/${{ github.repository_owner }}/composed@${{ steps.publish.outputs.digest }}" \
             --output check/
           npx --no-install deploy-config-schema compose verify --composed check/
+
+      - uses: sigstore/cosign-installer@v3
+        if: ${{ !cancelled() }}
+
+      - name: Render, and publish one signed artifact per Project
+        id: render
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LOCK: ${{ steps.publish.outputs.digest }}
+        run: |
+          # The render is a function of the composed intent and the pinned
+          # inputs alone, so its renderHash names what reproduces it. One
+          # directory per Project; each Reconcile Unit applies its own path
+          # inside its Project's artifact.
+          npx --no-install deploy-config-schema render \
+            --composed check/ \
+            --context-ref "${{ vars.CONTEXT_REF }}" \
+            --out rendered/
+          REPOSITORY="$(npx --no-install deploy-config-schema platform get \
+            --context-ref "${{ vars.CONTEXT_REF }}" bootstrap.flux.artifacts.repository)"
+          echo "$GH_TOKEN" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+          : > moved.txt
+          for dir in rendered/*/; do
+            project="$(basename "$dir")"
+            RENDER_HASH="$(cat "$dir/RENDER_HASH")"
+            ( cd "$dir" && oras push "${REPOSITORY}/${project}:latest" \
+                --annotation "dev.jorisjonkers.render-hash=${RENDER_HASH}" \
+                --annotation "dev.jorisjonkers.lock-digest=${LOCK}" \
+                --annotation "org.opencontainers.image.revision=${{ github.sha }}" \
+                . )
+            DIGEST="$(oras resolve "${REPOSITORY}/${project}:latest")"
+
+            # Keyless: the identity is this run's OIDC token, so no signing key
+            # exists to store, rotate or leak.
+            cosign sign --yes "${REPOSITORY}/${project}@${DIGEST}"
+
+            # A render that did not change pushes the same digest and moves no
+            # pin, so another Project's publish never redeploys this one.
+            PINNED="$(yq '.spec.ref.digest' "projects/${project}/source.yaml")"
+            if [ "$PINNED" != "$DIGEST" ]; then
+              echo "${project} ${DIGEST}" >> moved.txt
+            fi
+          done
+          echo "repository=${REPOSITORY}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the value, not the command
+        if: ${{ !cancelled() }}
+        env:
+          REPOSITORY: ${{ steps.render.outputs.repository }}
+        run: |
+          # A push and a signature that succeeded are not evidence Flux will
+          # accept what it fetches. Verify each moved artifact the way Flux
+          # will: by digest, against this workflow's identity.
+          while read -r project digest; do
+            cosign verify "${REPOSITORY}/${project}@${digest}" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              --certificate-identity "https://github.com/${{ github.workflow_ref }}" \
+              > /dev/null
+            echo "verified ${project}@${digest}"
+          done < moved.txt
+
+      - name: Commit the moved pins
+        if: ${{ !cancelled() }}
+        run: |
+          # The deploy. One commit moves every Project whose digest changed;
+          # the estate's git history is its deploy log. [ci skip] keeps this
+          # commit from starting a composition of its own. A rollback is a
+          # revert in the application repository, which moves the pin forward
+          # again; reverting this commit directly is break-glass.
+          test -s moved.txt || { echo "no render changed; nothing to deploy"; exit 0; }
+          while read -r project digest; do
+            yq -i ".spec.ref.digest = \"${digest}\"" "projects/${project}/source.yaml"
+          done < moved.txt
+          git config user.name "estate-composition"
+          git config user.email "estate-composition@users.noreply.github.com"
+          git add projects/
+          git commit -m "chore(deploy): $(cut -d' ' -f1 moved.txt | paste -sd, -) [ci skip]"
+          git push origin HEAD:main

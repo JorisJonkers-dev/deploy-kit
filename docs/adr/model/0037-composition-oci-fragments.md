@@ -9,6 +9,13 @@ rests-on: ["0001", "0005"]
 
 # Declarations compose from published OCI fragments
 
+> **Amended 2026-09-24.** A fragment is published only after its repository's
+> images are built, with every alias it names resolved to a digest in the
+> fragment's own share of the images lock
+> ([0133](0133-a-project-is-delivered-as-a-signed-artifact-pinned-by-digest.md)).
+> Composition's own output is now one signed artifact per Project, pinned by
+> digest. The decision to compose from published fragments is unchanged.
+
 > **Amended 2026-09-14.** Vocabulary renamed by
 > [0116](0116-project-application-process.md): Domain is now Project,
 > Service is Application, Workload is Process, and Service Intent is Project

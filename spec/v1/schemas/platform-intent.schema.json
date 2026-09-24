@@ -192,10 +192,49 @@
         "sourceRef": {
           "type": "string",
           "minLength": 1
+        },
+        "artifacts": {
+          "$ref": "#/$defs/RenderArtifacts"
         }
       },
       "required": [
-        "sourceRef"
+        "sourceRef",
+        "artifacts"
+      ],
+      "additionalProperties": false
+    },
+    "RenderArtifacts": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "signer": {
+          "$ref": "#/$defs/ArtifactSigner"
+        }
+      },
+      "required": [
+        "repository",
+        "signer"
+      ],
+      "additionalProperties": false
+    },
+    "ArtifactSigner": {
+      "type": "object",
+      "properties": {
+        "issuer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "issuer",
+        "subject"
       ],
       "additionalProperties": false
     },

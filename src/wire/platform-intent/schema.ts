@@ -43,9 +43,23 @@ const substrate = z
   })
   .meta({ id: "Substrate" });
 
+// Where each Project's render is published and who signs it
+// (spec/v1/55-delivery.md#rendered-artifacts-and-pins): one artifact per
+// Project under `repository`, verified keyless against the signer's identity.
+const renderArtifacts = z
+  .strictObject({
+    repository: text,
+    signer: z
+      .strictObject({ issuer: text, subject: text })
+      .meta({ id: "ArtifactSigner" }),
+  })
+  .meta({ id: "RenderArtifacts" });
+
 const bootstrap = z
   .strictObject({
-    flux: z.strictObject({ sourceRef: text }).meta({ id: "FluxSource" }),
+    flux: z
+      .strictObject({ sourceRef: text, artifacts: renderArtifacts })
+      .meta({ id: "FluxSource" }),
     vault: z.strictObject({ unsealed: z.boolean() }).meta({ id: "VaultState" }),
     crds: z.array(text).min(1),
   })

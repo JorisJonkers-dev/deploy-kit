@@ -1,8 +1,9 @@
 # applications/knowledge/.github/workflows/publish-fragment.yml
 #
-# Publishes this repository's Intent Fragment when platform intent changes.
+# Publishes this repository's Intent Fragment once its images are built.
 #
-#   merge to main (platform/**) -> validate -> build fragment -> oras push
+#   images built on main -> validate -> resolve image digests -> build fragment
+#                                                            -> oras push
 #                                                            -> oras resolve
 #                                                            -> verify digest
 #
@@ -12,14 +13,17 @@
 # file, and a project never spans repositories, so no fragment is ever a partial
 # project.
 #
-# Fires independently of any image release. That is deliberate: a change to the
-# project file, an env file or a secret grant produces no image, and the unit of
-# composition is the FRAGMENT, not the image
-# (docs/adr/model/0037-composition-oci-fragments.md). Tying this to a version tag
-# would let intent-only changes sit unpublished until the participant tripped
-# its staleness bound (docs/adr/model/0038-participants-list-staleness.md). Whether
-# and how such a change is co-tested against other units before it reaches a
-# cluster is defined separately from the model: see docs/adr/deferred/README.md.
+# Fires AFTER this repository's image build on main, never beside it. A
+# fragment names only images that exist: every alias it names is resolved to a
+# digest, a UID and a GID in the fragment's own share of the images lock, so a
+# composition never renders a reference nothing can pull
+# (docs/adr/model/0133-a-project-is-delivered-as-a-signed-artifact-pinned-by-digest.md,
+# amending docs/adr/model/0037-composition-oci-fragments.md). The image build
+# runs on every merge to main, so an intent-only change still publishes, a few
+# minutes later, and never waits for a version tag
+# (docs/adr/model/0038-participants-list-staleness.md). Whether and how a change
+# is co-tested against other units before it reaches a cluster stays parked:
+# see docs/adr/deferred/README.md.
 #
 # ONE job, many steps. Jobs are billed by the minute rounded up, so splitting a
 # fast pipeline across parallel jobs multiplies its cost while the work stays
@@ -28,11 +32,10 @@
 name: Publish Intent Fragment
 
 on:
-  push:
+  workflow_run:
+    workflows: [Build images]
+    types: [completed]
     branches: [main]
-    paths:
-      - 'platform/**'
-      - '.github/workflows/publish-fragment.yml'
   workflow_dispatch:
 
 permissions: {}
@@ -44,6 +47,8 @@ concurrency:
 jobs:
   publish:
     name: Validate and publish
+    # Only a build that succeeded has images to name.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -55,6 +60,9 @@ jobs:
       digest: ${{ steps.resolve.outputs.digest }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The commit the images were built from, not whatever main is now.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Install the toolkit at this repository's pinned version
         run: |
@@ -88,6 +96,21 @@ jobs:
             --env-dir platform/env \
             --strict
 
+      - name: Resolve every image this project names
+        if: ${{ !cancelled() }}
+        run: |
+          # The fragment's own share of the images lock: each alias the project
+          # file names, resolved to the digest the build just pushed, with the
+          # numeric UID and GID the image runs as
+          # (docs/adr/model/0082-images-lock-carries-uid-and-gid.md). A tag in
+          # this file would be a mutable input, so it holds digests only, and
+          # an alias with no image yet fails here rather than at pod start.
+          npx --no-install deploy-config-schema intent lock-images \
+            --project platform/knowledge.project.yml \
+            --registry "ghcr.io/${{ github.repository_owner }}" \
+            --commit "${{ github.event.workflow_run.head_sha || github.sha }}" \
+            --out images.lock
+
       - name: Build the fragment tree
         if: ${{ !cancelled() }}
         run: |
@@ -101,6 +124,7 @@ jobs:
           npx --no-install deploy-config-schema intent pack \
             --project platform/knowledge.project.yml \
             --env-dir platform/env \
+            --images images.lock \
             --out fragment/
 
           # inputsSha covers AUTHORED inputs only, never generated output.

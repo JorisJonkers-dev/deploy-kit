@@ -363,6 +363,17 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="FluxSource">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="sourceRef" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="artifacts" lowerBound="1" eType="#//RenderArtifacts" containment="true"/>
+  </eClassifiers>
+  <!-- Where each Project's render is published, one artifact per Project, and the
+       keyless identity Flux verifies it against (spec/v1/55-delivery.md#rendered-artifacts-and-pins). -->
+  <eClassifiers xsi:type="ecore:EClass" name="RenderArtifacts">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="repository" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="signer" lowerBound="1" eType="#//ArtifactSigner" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ArtifactSigner">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="issuer" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="subject" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="VaultState">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="unsealed" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>

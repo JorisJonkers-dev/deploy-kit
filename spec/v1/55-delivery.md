@@ -43,7 +43,8 @@ What is not in scope:
 - **Co-testing**, whether one Application's tests gate another's deploy. It
   stays parked in [`docs/adr/deferred/`](../../docs/adr/deferred/README.md).
 - **Image admission**: verifying an image's signature when a pod is admitted. A
-  recorded gap with an owner, not a decision.
+  recorded gap with an owner, not a decision
+  ([Rendered artifacts and pins](#rendered-artifacts-and-pins)).
 - **A second cluster.** The estate is one cluster
   ([0001](../../docs/adr/model/0001-estate-scale-and-ownership.md)).
 - **Writing the Vault policy and auth roles.** They are Deliverables of the
@@ -55,9 +56,61 @@ What is not in scope:
 
 Each Project's render is one OCI artifact, signed, and named by digest. A deploy
 is a commit that changes which digest a Project's source points at: the
-estate's git history is its deploy log, and no rendered YAML is committed
-anywhere. Specified in full by
-[#154](https://github.com/JorisJonkers-dev/deploy-kit/issues/154).
+estate's git history is its deploy log, and no rendered Deliverable is committed
+anywhere ([0133](../../docs/adr/model/0133-a-project-is-delivered-as-a-signed-artifact-pinned-by-digest.md)).
+
+```text
+ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Project
+  dev.jorisjonkers.render-hash   sha256:…          the Resolved Deployment's renderHash
+  dev.jorisjonkers.lock-digest   sha256:…          the composition lock it was rendered from
+```
+
+- **One artifact per Project.** Composition renders the estate once and
+  publishes each Project's share of the rendered tree as one artifact at
+  `<repository>/<project>`, where `repository` is the Platform document's
+  `bootstrap.flux.artifacts.repository`
+  ([chapter 14](14-platform-intent.md#the-bootstrap-set)). Each of the Project's
+  Reconcile Units applies its own path inside it
+  ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)).
+- **Signed keyless, and annotated.** The artifact is signed by the composition
+  workflow's own OIDC identity, the Platform document's
+  `bootstrap.flux.artifacts.signer`, so no signing key exists to leak or rotate.
+  It carries the render hash and the composition lock digest, so an artifact
+  names the inputs that reproduce it.
+- **An unchanged render is an unchanged artifact.** An artifact holds its
+  Project's render and nothing else, so a composition that renders a Project
+  byte for byte as before publishes the same digest and moves no pin: another
+  Project's fragment never redeploys this one.
+- **The pin.** The estate repository holds one committed Flux source per
+  Project, an `OCIRepository` naming `<repository>/<project>` by `ref.digest`
+  and verifying keyless against the signer. After publishing, composition
+  commits to the estate repository's `main` a change to `ref.digest` for each
+  Project whose digest moved, marked `[ci skip]` so the commit starts no
+  composition of its own. That commit is the deploy. The source objects and the
+  Reconcile Units' Kustomizations are the only committed objects, derived from
+  the Platform document and the Reconcile Unit DAG; the Deliverables themselves
+  exist only inside artifacts.
+- **Flux verifies before it applies.** An artifact whose signature does not
+  verify against the signer is never applied: its source reports the failure,
+  and what was running keeps running.
+- **A fragment names only images that exist.** An application repository
+  publishes its Intent Fragment only after its images are built and pushed, with
+  every image alias it names resolved to a digest, a UID and a GID in the
+  fragment's own contribution to the images lock. A composition therefore never
+  renders a reference nothing can pull. This amends
+  [0037](../../docs/adr/model/0037-composition-oci-fragments.md), whose fragment
+  was published independently of any image build.
+- **Rollback is a revert in the application repository.** The revert publishes
+  a fragment, which composes a render, which moves the pin forward to the old
+  content: the deploy log only grows. Reverting a pin commit directly is
+  **break-glass**, for when composition itself cannot run. It puts the estate on
+  a render its current inputs no longer produce, so the next composition moves
+  it back unless the inputs are reverted as well.
+
+**Image admission** is the recorded gap in [Scope](#scope): nothing verifies an
+image's signature when a pod is admitted, only the render's when it is fetched.
+The owner is joris, and the policy that closes it is part of the estate's
+delivery machinery ([#148](https://github.com/JorisJonkers-dev/deploy-kit/issues/148)).
 
 ## Switchover
 
