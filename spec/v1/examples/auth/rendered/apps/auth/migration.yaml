@@ -1,8 +1,10 @@
 # GENERATED. Never hand-edit.
 #
 # The migration identity, the migration of this revision, and the down that
-# undoes it (spec/v1/55-delivery.md#failure-and-undo). The down is rendered
-# suspended: nothing runs it but the Release Gate, and only while the release is
+# undoes it (spec/v1/55-delivery.md#failure-and-undo). Both Jobs are named for
+# the revision, rendered suspended and created once: Flux never updates them,
+# so the Release Gate is the only writer of `suspend`. It starts the migration
+# once the compatibility proof holds, and the down only while the release is
 # held, every new copy is at zero, every primary runs the serving revision, and
 # the release holds no non-transactional changeset.
 ---
@@ -21,25 +23,26 @@ metadata:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: auth-migration
+  name: auth-migration-9d2c4e6a8b0d
   namespace: auth-system
   labels:
     app.kubernetes.io/name: auth-migration
-    app.kubernetes.io/instance: auth-migration
+    app.kubernetes.io/instance: auth-migration-9d2c4e6a8b0d
     app.kubernetes.io/part-of: auth
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: migration
   annotations:
-    # A Job's template is immutable; a new revision replaces it.
-    kustomize.toolkit.fluxcd.io/force: enabled
+    # Created once, never updated: the Release Gate alone writes `suspend`.
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
 spec:
+  suspend: true               # started by the Release Gate once the proof holds
   backoffLimit: 0             # never retried within a revision; a failure holds the release
   activeDeadlineSeconds: 600  # the Platform document's migration deadline
   template:
     metadata:
       labels:
         app.kubernetes.io/name: auth-migration
-        app.kubernetes.io/instance: auth-migration
+        app.kubernetes.io/instance: auth-migration-9d2c4e6a8b0d
         app.kubernetes.io/part-of: auth
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: migration
@@ -56,12 +59,15 @@ spec:
       containers:
       - name: migration
         image: ghcr.io/jorisjonkers-dev/auth/auth-migration@sha256:4e8a1c2b6d0f3e5a7c9b1d3f5e7a9c0b2d4f6e8a0c2b4d6f8e0a2c4b6d8f0e2a
+        # `up`: the changelog, then a tagDatabase changeset of the runner's own,
+        # named for this revision, so the next release's down has a row to
+        # return to even when this one changes no schema.
         args:
-        - update
-        # Tag the database with the revision it now serves, so the down of the
-        # next release has a point to return to.
-        - --tag=sha256:9d2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a
+        - up
+        - --revision=sha256:9d2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a
         env:
+        - name: VAULT_ADDR
+          value: http://vault.utility-system.svc.cluster.local:8200
         - name: VAULT_ROLE
           value: auth-migration
         - name: DATABASE_CREDENTIAL_PATH
@@ -82,16 +88,16 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: auth-migration-down
+  name: auth-migration-down-9d2c4e6a8b0d
   namespace: auth-system
   labels:
     app.kubernetes.io/name: auth-migration-down
-    app.kubernetes.io/instance: auth-migration-down
+    app.kubernetes.io/instance: auth-migration-down-9d2c4e6a8b0d
     app.kubernetes.io/part-of: auth
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: migration
   annotations:
-    kustomize.toolkit.fluxcd.io/force: enabled
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
 spec:
   suspend: true               # the Release Gate alone unsuspends it
   backoffLimit: 0             # a failed down is reported, never retried
@@ -100,7 +106,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: auth-migration-down
-        app.kubernetes.io/instance: auth-migration-down
+        app.kubernetes.io/instance: auth-migration-down-9d2c4e6a8b0d
         app.kubernetes.io/part-of: auth
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: migration
@@ -117,11 +123,14 @@ spec:
       containers:
       - name: migration
         image: ghcr.io/jorisjonkers-dev/auth/auth-migration@sha256:4e8a1c2b6d0f3e5a7c9b1d3f5e7a9c0b2d4f6e8a0c2b4d6f8e0a2c4b6d8f0e2a
+        # `down`: back to the tag of the serving revision, the migration's
+        # testedAgainst.
         args:
-        - rollback
-        # The serving revision: the migration's testedAgainst.
-        - --tag=sha256:5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d
+        - down
+        - --to=sha256:5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d
         env:
+        - name: VAULT_ADDR
+          value: http://vault.utility-system.svc.cluster.local:8200
         - name: VAULT_ROLE
           value: auth-migration
         - name: DATABASE_CREDENTIAL_PATH

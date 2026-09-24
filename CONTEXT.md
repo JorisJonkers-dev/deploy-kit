@@ -131,16 +131,16 @@ resources, which every managed migration builds on
 **Compatibility proof**: what an application's CI proves before its fragment
 publishes a changelog: the serving revision's own test suite passes against the
 newly migrated schema, every changeset rolls back, and a non-transactional
-changeset stands alone. The fragment records the serving revision it ran
-against as `testedAgainst` ([chapter 55](spec/v1/55-delivery.md#migration-safety)).
+changeset stands alone. The fragment records which serving revision it was run
+against ([chapter 55](spec/v1/55-delivery.md#migration-safety)).
 
 **Expand, then contract**: removing something from a schema in two releases:
 version N stops using it and only N+1 removes it. The compatibility proof is
 what enforces it ([chapter 55](spec/v1/55-delivery.md#migration-safety)).
 
-**Down**: the rollback of a held release's migration to the tag of the serving
-revision, rendered as a suspended Job the Release Gate alone may unsuspend, and
-only while nothing new serves ([chapter 55](spec/v1/55-delivery.md#failure-and-undo)).
+**Down**: the rollback of a held release's migration to the serving revision,
+which only the Release Gate may start, and only while nothing new serves
+([chapter 55](spec/v1/55-delivery.md#failure-and-undo)).
 
 **Prepare Process**: a Process with `lifecycle: prepare`: idempotent,
 forward-only setup that runs to completion after the migration and before an

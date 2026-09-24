@@ -354,6 +354,8 @@ and the platform owns its runner: every Application declaring
 ([chapter 10](10-project-intent.md#migration)). The deadline and the requests
 are the platform's too, because the runner is its image and a migration's length
 is bounded estate-wide: a backfill that needs longer is split across releases.
+The runner's contract, its `up` and `down` commands and how it reads its
+credential, is [chapter 55](55-delivery.md#failure-and-undo)'s.
 
 The block is optional. A Platform document without it offers no runner, and a
 changelog read beside it is `E_NO_MIGRATION_POLICY`.

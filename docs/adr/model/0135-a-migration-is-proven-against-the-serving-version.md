@@ -39,6 +39,13 @@ serving tag, with no member promoted.
 
 ## Why
 
+**It extends two decisions.** A migration is declared on the Application and
+runs before its new version starts
+([0130](0130-migration-is-declared-on-the-application.md)); the Release Gate
+decides from layer-2 data when a new version may start
+([0132](0132-the-release-gate-answers-the-switch.md)). This record adds what
+the gate must know about the migration to start it, and to undo it.
+
 **The model cannot read a changelog.** Whether a changeset is compatible with
 the serving version depends on what that version's code does with the schema,
 which only its own tests know. The model's part is to require the proof, record

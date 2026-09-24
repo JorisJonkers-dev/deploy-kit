@@ -178,7 +178,7 @@ two questions, from the Resolved Deployment and nothing else
 
 | question | asked | the gate answers yes when |
 |---|---|---|
-| may this member's new version start? | once per member per revision, before its new version scales up | the Application's migration and every prepare Process for this revision have completed ([Release order](#release-order)), and the revision the compatibility proof was run against is the one serving ([Migration safety](#migration-safety)) |
+| may this member's new version start? | once per member per revision, before its new version scales up | the Application's migration and every prepare Process for this revision have completed ([Release order](#release-order)); the migration itself was started only once its compatibility proof held ([Migration safety](#migration-safety)) |
 | may this member be promoted? | after the member's own analysis passes | every member of the Application has passed its analysis for this revision: the barrier |
 
 It reads the Application's release-gate inputs (its members, their readiness,
@@ -209,7 +209,9 @@ its own release, and an edge proxy on a host port cannot run two copies.
 ## Held releases
 
 A release that fails leaves the Application **held**: the old version keeps
-serving while the pin names the new one. It fails when a member does not pass
+serving while the pin names the new one. It is held before anything runs when
+its compatibility proof names a revision that no longer serves
+([Migration safety](#migration-safety)). It fails when a member does not pass
 its analysis within the gate deadline, when the barrier does not open within it,
 or when a migration or prepare step fails before any new version starts.
 
@@ -266,12 +268,20 @@ the migration's `testedAgainst` and `nonTransactional`
 nothing serving, carries no `testedAgainst`, and has nothing to be compatible
 with.
 
-**The gate holds a proof that went stale.** The Release Gate lets a new version
-start only while every primary of the Application runs the revision named by
-`testedAgainst` ([The Release Gate](#the-release-gate)). If another release
-landed in between, the proof was run against a version that no longer serves,
-and the release is held until a fragment proven against the current one is
-published.
+**The serving revision is published back.** Application CI learns which
+revision serves from the projection published back to its repository
+([chapter 20](20-resolved-deployment.md#publish-back)): its `revision` is what
+the proof records, and its image digests name the commit whose test suite runs.
+
+**The gate holds a proof that went stale, before anything runs.** The Release
+Gate starts a release's migration, and so everything after it, only while every
+primary of the Application runs the revision named by `testedAgainst`. If
+another release landed in between, the proof was run against a version that no
+longer serves, and the release is held with the schema untouched until a
+fragment proven against the current one is published. A first release on this
+path, with nothing serving under the model, carries no `testedAgainst` and
+starts unchecked: there is nothing to be compatible with, and nothing to undo
+to.
 
 ## Release order
 
@@ -279,7 +289,8 @@ A release of one Application runs in three steps, each gated on the one before,
 all while the old version still serves:
 
 1. **Migration up**, if the Application declares a changelog
-   ([Migrations](#migrations)).
+   ([Migrations](#migrations)), started only once its compatibility proof holds
+   ([Migration safety](#migration-safety)).
 2. **Every prepare Process, in parallel**
    ([chapter 10](10-project-intent.md#prepare-processes)). Each runs to completion
    within its `startupBudget`, once per Application revision, and is never retried
@@ -298,17 +309,30 @@ undone:
 
 | fails | what serves afterwards | the migration |
 |---|---|---|
-| **the migration itself** | the old version; no new version ever started | Liquibase rolls back the failing changeset's own transaction; the earlier changesets of the release stay, each proven compatible, and are undone by the down if the conditions below hold |
+| **the migration itself** | the old version; no new version ever started | Liquibase rolls back the failing changeset's own transaction and records nothing for it; the earlier changesets of the release stay, each proven compatible, and are undone by the down if the conditions below hold. A failing non-transactional changeset leaves partial state no rollback can repair, and is never undone automatically |
 | **a prepare Process** | the old version; no new version ever started | undone by the down, if the conditions below hold |
 | **analysis, or the barrier** | the old version; Flagger scales every member's new copy back to zero | undone by the down, if the conditions below hold |
 | **promotion** | a mix: some members' primaries run the new version | **never undone automatically**: a promoted member needs the new schema. An urgent alert fires, and the fix is forward |
 
-**The down.** After a migration succeeds, the migration tags the database with
-the Application revision it migrated for. The render carries, beside the
-migration's own Job, a **suspended** Job template, `<application>-migration-down`,
-that rolls the database back to the tag of the serving revision, `testedAgainst`.
-Nothing runs it on a schedule and nothing applies it unsuspended: the Release
-Gate unsuspends it, and only when **all** of these hold:
+**The runner's contract.** The platform's runner takes two commands. `up`
+applies the changelog and then a `tagDatabase` changeset of its own, named for
+the Application revision, so every revision has its own row and its own tag
+even when it changes no schema. `down` rolls the database back to a named tag.
+Both run as the migration identity, which reads its owner credential from Vault
+itself, as a `delivery: self` Process does
+([chapter 10](10-project-intent.md#delivery)).
+
+**Two Jobs per revision, both created suspended.** The render carries, per
+Application revision, `<application>-migration-<revision>`, which runs `up`,
+and `<application>-migration-down-<revision>`, which runs `down` to the tag of
+`testedAgainst`. Both are rendered with `suspend: true` and applied **once**:
+Flux creates each Job if it is absent and never updates it afterwards, so the
+Release Gate is the only writer of `suspend` from then on, and no field has two
+writers. The gate unsuspends the up Job when the proof holds
+([Migration safety](#migration-safety)). A release with no `testedAgainst`
+renders no down, because there is no tag to return to: a held first release is
+never undone automatically. The gate unsuspends the down only when **all** of
+these hold:
 
 - the Application is [held](#held-releases);
 - every member's new copy is at zero replicas;
@@ -319,7 +343,8 @@ When any of them does not hold, the gate undoes nothing and raises an **urgent**
 alert naming the Application, the tag it would roll back to and the condition
 that failed. A down that fails is reported the same way and never retried.
 Undoing is never a side effect of a new pin: the down runs against the release
-that failed, before anything replaces it.
+that failed, before anything replaces it, and a revision's Jobs leave the render
+with the revision.
 
 ## Secret rotation
 

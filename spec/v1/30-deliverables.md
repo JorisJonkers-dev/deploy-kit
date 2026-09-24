@@ -57,7 +57,7 @@ one of them is a **central** adapter running once over the composed union:
 
 | adapter | subsystem | emits |
 |---|---|---|
-| `kubernetes` | processes | per Application: the controller, `Service`, `ServiceAccount`, `ConfigMap` (including every inbound-derived Asset) `PersistentVolumeClaim`, `PodDisruptionBudget` above one replica, the backup and sweep `CronJob`, `Namespace` per project, and the kustomize `Kustomization` per directory |
+| `kubernetes` | processes | per Application: the controller, `Service`, `ServiceAccount`, `ConfigMap` (including every inbound-derived Asset) `PersistentVolumeClaim`, `PodDisruptionBudget` above one replica, the backup and sweep `CronJob`, the migration identity with its per-revision migration `Job` and suspended down `Job` ([chapter 55](../../spec/v1/55-delivery.md#failure-and-undo)), `Namespace` per project, and the kustomize `Kustomization` per directory |
 | `networking` | policy | every `NetworkPolicy` ([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)) |
 | `prometheus` | monitoring | one `ServiceMonitor` or `PodMonitor` per Application that declares `observability`, from the named surface and the Platform document's cadence. No `PrometheusRule`: PromQL is the monitoring stack's ([chapter 10](../../spec/v1/10-project-intent.md#observability)) |
 | `traefik` | edge | one `IngressRoute` set and one `Middleware` set **per tier** the Platform document declares ([0076](../../docs/adr/model/0076-middleware-has-one-producer.md), [0098](../../docs/adr/model/0098-one-publication-path.md)) |
