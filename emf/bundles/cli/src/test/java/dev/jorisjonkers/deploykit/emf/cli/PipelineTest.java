@@ -29,7 +29,7 @@ class PipelineTest {
                     placement:
                       memory: 256Mi
                       cpu: 50m
-                    cutover: rolling
+                    cutover: continuous
             """;
 
     private static Path file(Path directory, String text) throws IOException {

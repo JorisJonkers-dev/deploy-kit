@@ -626,8 +626,9 @@ in [docs/adr/deferred/](../../docs/adr/deferred/README.md).
 
 Configuration is authored as dotenv, **per Process**
 ([0011](../../docs/adr/model/0011-configuration-env-files-per-process.md)), because
-Processes of one Application do not share an environment: `knowledge-api` and
-`knowledge-ingest-worker` overlap on the RabbitMQ coordinates and on nothing else.
+Processes do not share an environment: `knowledge-api` and
+`knowledge-ingest-worker` overlap on the database and RabbitMQ coordinates and
+credentials, and on nothing else.
 They do overlap, though, and `env` is one of the eight Shared Intent families, so
 there are two shared **scopes** beside the per-Process one
 ([Two artefacts](#two-artefacts)):
@@ -2045,12 +2046,13 @@ one of them.
 
 ```yaml
 startupBudget: 600s     # knowledge-api: JVM cold start measured at ~250-300s
-cutover: rolling        # required: continuity during the cutover, or an accepted stop-then-start
+cutover: continuous     # required: continuity during the cutover, or an accepted stop-then-start
 ```
 
-Derived from these plus `placement` and `volumes`: rollout strategy,
-surge and unavailability, startup probe period and threshold, the progress
-deadline, and the health-gate deadline the Application's switchover waits on.
+Derived from these plus `placement` and `volumes`: the switchover (blue/green or
+stop-start, [chapter 55](55-delivery.md#switchover)) and its rollout strategy,
+startup probe period and threshold, the progress deadline, and the health-gate
+deadline the Application's switchover waits on.
 
 Both are Shared Intent. `cutover` on the Application is the natural declaration,
 because the Application is the release unit
@@ -2074,22 +2076,34 @@ boolean nobody reads:
 
 | value | means | validation |
 |---|---|---|
-| `rolling` | the next revision must keep serving capacity throughout its cutover | refused where declared storage prevents a surge, including an **`ReadWriteOnce`** volume: `E_CUTOVER_UNHONOURABLE` |
-| `recreate` | the owner accepts a stop-then-start cutover | accepted for any storage; the adapter derives the safe strategy |
+| `continuous` | the next revision must keep serving throughout its cutover: it starts beside the old one and takes traffic only once every member of its Application has passed analysis, a **blue/green** switchover | refused over storage that cannot hold a second copy, including an **`ReadWriteOnce`** volume: `E_CUTOVER_UNHONOURABLE`; eligible only on a node that fits two copies of the Process ([chapter 20](20-resolved-deployment.md#layer-2-does-not-assign-a-node)) |
+| `interrupted` | the owner accepts a stop-then-start cutover | accepted for any storage; the adapter derives the safe strategy |
 
-The two values are the whole vocabulary, and the Kubernetes spellings (
-`RollingUpdate`, `Recreate`, `maxSurge`, `maxUnavailable`) are derived by the
-adapter and appear nowhere in layer 1
-([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)).
+The two values name the owner's promise, not a mechanism: the Kubernetes and
+Flagger spellings (`RollingUpdate`, `Recreate`, `maxSurge`, a Canary) are
+derived by the adapters and appear nowhere in layer 1
+([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md),
+[0128](../../docs/adr/model/0128-cutover-names-the-promise.md)). They were
+`rolling` and `recreate` until 2026-09-24, and `rolling` named a Kubernetes
+strategy the switchover no longer is.
 
-An RWO volume cannot attach to two pods at once, so a `rolling` cutover over one
-is a promise the substrate cannot keep. Refusing it is the point: the old
+An RWO volume cannot attach to two pods at once, so a `continuous` cutover over
+one is a promise the substrate cannot keep. Refusing it is the point: the old
 `zeroDowntime: true` could ask for continuity while the derived strategy was
 `Recreate`, and the contradiction was silent: the Process rendered, reported
 success, and simply stopped serving during every roll
 ([0030](../../docs/adr/model/0030-runtime-mechanics-derived.md)). A Process
-whose storage forces `recreate` now says so, and a Process with no such storage
-says `rolling` only if its owner actually requires continuity.
+whose storage forces `interrupted` now says so, and a Process with no such
+storage says `continuous` only if its owner actually requires continuity.
+
+**One Application, one answer.** The Processes of an Application switch as one
+([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)), so every
+`lifecycle: application` Process of one Application has the same effective
+`cutover`. Mixed, the interrupted member's gap sits inside a unit that promised
+to keep serving, and neither answer is true of the unit:
+`E_RELEASE_UNIT_MIXED_CUTOVER`, at the Application. The part that cannot keep
+serving (the one holding storage, as a rule) becomes an Application of its own;
+`knowledge-ingest` is the worked case.
 
 ## Capacity
 
@@ -2154,7 +2168,7 @@ already told them, and the lines reaching them made the model harder to read.
 | `Lifecycle` | `Process.lifecycle` | `application`, `job` |
 | `Runtime` | `Process.runtime` | `jvm`, `python`, `node`, `static`, `none` |
 | `Engine` | `Process.engine` | `postgres`, `rabbitmq`, `valkey`, `files` |
-| `Cutover` | `Process.cutover` | `rolling`, `recreate` |
+| `Cutover` | `Process.cutover` | `continuous`, `interrupted` |
 | `DurabilityClass` | `Volume.durability` | `reconstructible`, `recoverable`, `irreplaceable` |
 | `Arch` | `Placement.arch` | `amd64`, `arm64` |
 | `Media` | `DiskRequest.media` | `nvme`, `ssd`, `hdd` |
@@ -2290,7 +2304,7 @@ way: contention decides who arbitrates, not who authors
 | example | what it exercises |
 |---|---|
 | [`minimal/notes.project.yml`](examples/minimal/notes.project.yml) + [`env`](examples/minimal/env/notes-api/base.env) | **read this first.** One project, one Application, one Process, and no field that is not required: 26 authored lines reaching 10 objects, with no grant, no volume and no gap row. It is also the only set that renders on today's pinned inputs, because it holds nothing the secrets-at-rest gate can refuse: see [`minimal/README.md`](examples/minimal/README.md) |
-| [`knowledge/knowledge.project.yml`](examples/knowledge/knowledge.project.yml) + [`env`](examples/knowledge/env/knowledge-api/base.env) + [`worker env`](examples/knowledge/env/knowledge-ingest-worker/base.env) | two Processes, two runtimes and therefore two identities, `probes: none` and no `provides` on the worker, grants at **both** levels, a split Subtree path, a `0400` file secret, an `irreplaceable` volume |
+| [`knowledge/knowledge.project.yml`](examples/knowledge/knowledge.project.yml) + [`env`](examples/knowledge/env/knowledge-api/base.env) + [`worker env`](examples/knowledge/env/knowledge-ingest-worker/base.env) | two Applications because their cutovers differ (`continuous` and `interrupted`), two runtimes and therefore two identities, `probes: none` and no `provides` on the worker, grants and env shared at the project header and granted on a Process, a split Subtree path, a `0400` file secret, an `irreplaceable` volume |
 | [`auth/auth.project.yml`](examples/auth/auth.project.yml) + [`env`](examples/auth/env/auth-api/base.env) | one Application, two Processes switching atomically; `delivery: self` with `tolerates: reload`, a `self-roll` transit grant taking no placeholder, and the writable paths that retired its hardening exception |
 | [`data/data.project.yml`](examples/data/data.project.yml) + [`env`](examples/data/env/postgres/base.env) | three Applications releasing independently in one project, third-party images, a `disk` dimension, TCP probes, and a surface eight Applications consume |
 

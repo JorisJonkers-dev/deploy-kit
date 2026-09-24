@@ -18,4 +18,4 @@ applications:
         probes:
           readiness: { tcp: 8080 }
         startupBudget: 30s
-        cutover: rolling
+        cutover: continuous

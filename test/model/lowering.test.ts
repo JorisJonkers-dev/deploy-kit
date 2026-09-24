@@ -106,7 +106,7 @@ describe("lowerProject", () => {
 
     expect(
       Object.values(processesByName).map((process) => process.cutover),
-    ).toStrictEqual(["recreate", "recreate"]);
+    ).toStrictEqual(["interrupted", "interrupted"]);
   });
 
   it("extends the paths a Process may write, and the edges it may open", () => {
@@ -319,7 +319,7 @@ const PROCESS = `    processes:
         image: w
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
-        cutover: recreate
+        cutover: interrupted
 `;
 
 /** The codes and pointers a document is refused with, in reading order. */
@@ -352,11 +352,11 @@ describe("the duplicate a lower level restates", () => {
   it("is refused at every level that restates the cutover", () => {
     expect(
       refusals(
-        `${HEADER}cutover: recreate\napplications:\n  - id: a\n    cutover: recreate\n${PROCESS}`,
+        `${HEADER}cutover: interrupted\napplications:\n  - id: a\n    cutover: interrupted\n${PROCESS}`,
       ),
     ).toStrictEqual([
       ["E_SHARED_DECLARATION_DUPLICATED", "/applications/0"],
-      // The Process restates it too: `PROCESS` carries `cutover: recreate`.
+      // The Process restates it too: `PROCESS` carries `cutover: interrupted`.
       ["E_SHARED_DECLARATION_DUPLICATED", "/applications/0/processes/0"],
     ]);
   });
@@ -439,7 +439,7 @@ function messages(document: string): string[] {
 
 describe("the duplicate, per key and without a short circuit", () => {
   it("names every family the level restates, not one and then stops", () => {
-    const document = `${HEADER}writablePaths: [/tmp]\ncutover: recreate\nstartupBudget: 20s\napplications:\n  - id: a\n${PROCESS}        writablePaths: [/tmp]\n        startupBudget: 20s\n`;
+    const document = `${HEADER}writablePaths: [/tmp]\ncutover: interrupted\nstartupBudget: 20s\napplications:\n  - id: a\n${PROCESS}        writablePaths: [/tmp]\n        startupBudget: 20s\n`;
 
     expect(refusals(document)).toStrictEqual([
       ["E_SHARED_DECLARATION_DUPLICATED", "/applications/0/processes/0"],
@@ -605,7 +605,7 @@ describe("what a refusal says", () => {
 
   it("names the quantities the merge did not produce", () => {
     const refusal = only(
-      `${HEADER}applications:\n  - id: a\n    processes:\n      - name: w\n        lifecycle: job\n        image: w\n        runtime: none\n        cutover: recreate\n`,
+      `${HEADER}applications:\n  - id: a\n    processes:\n      - name: w\n        lifecycle: job\n        image: w\n        runtime: none\n        cutover: interrupted\n`,
     );
 
     expect(refusal?.message).toBe(
@@ -618,7 +618,7 @@ describe("what a refusal says", () => {
 
   it("names what a level restated, and how to fix it", () => {
     const refusal = only(
-      `${HEADER}cutover: recreate\napplications:\n  - id: a\n    cutover: recreate\n${PROCESS}`,
+      `${HEADER}cutover: interrupted\napplications:\n  - id: a\n    cutover: interrupted\n${PROCESS}`,
     );
 
     expect(refusal?.message).toBe(
@@ -705,8 +705,8 @@ describe("what the lowered shape carries, and what it leaves out", () => {
 });
 
 describe("a refusal that reads the effective answer, not the written one", () => {
-  it("refuses a rolling cutover declared above a Process holding a volume", () => {
-    const document = `${HEADER}cutover: rolling\napplications:\n  - id: a\n    processes:\n      - name: w\n        lifecycle: application\n        image: w\n        runtime: none\n        engine: files\n        placement: {memory: 64Mi, cpu: 10m}\n        volumes:\n          - {claim: c, mountAt: /var/lib/c, size: 1Gi, durability: irreplaceable}\n`;
+  it("refuses a continuous cutover declared above a Process holding a volume", () => {
+    const document = `${HEADER}cutover: continuous\napplications:\n  - id: a\n    processes:\n      - name: w\n        lifecycle: application\n        image: w\n        runtime: none\n        engine: files\n        placement: {memory: 64Mi, cpu: 10m}\n        volumes:\n          - {claim: c, mountAt: /var/lib/c, size: 1Gi, durability: irreplaceable}\n`;
 
     expect(refusals(document)).toStrictEqual([
       ["E_CUTOVER_UNHONOURABLE", "/applications/0/processes/0"],

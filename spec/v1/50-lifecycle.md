@@ -120,10 +120,17 @@ Every term in that rule is already defined elsewhere in the model:
 | **switch** | the moment traffic reaches the new versions rather than the old | the delivery mechanism performs it; the model states when it may happen |
 
 A Process declaring `probes: none` publishes no readiness signal and so cannot
-contribute to the gate. An Application must therefore declare readiness on at least
-one Process: `E_RELEASE_UNIT_NO_READINESS`, a composition-time
+contribute to the gate. A `continuous` Application must therefore declare
+readiness on at least one Process: `E_RELEASE_UNIT_NO_READINESS`, a composition-time
 check in [chapter 40](40-composition.md#versioning)'s estate-wide invariants,
 not something a delivery mechanism discovers at apply time.
+
+An `interrupted` Application has no gate: its Processes stop before their new
+versions start, so there is no moment at which a new version waits while an old
+one serves ([0128](../../docs/adr/model/0128-cutover-names-the-promise.md)). And
+an Application's Processes answer the cutover question alike, because they switch
+as one: `E_RELEASE_UNIT_MIXED_CUTOVER`
+([chapter 10](10-project-intent.md#cutover-is-declared-not-promised)).
 
 **Held, not partial.** A member that fails its budget does not switch on its
 own, and does not let its neighbours switch either: the whole unit holds and

@@ -6,8 +6,8 @@
 //    absent. A declared class names a scrape surface that its own Process
 //    provides, and no project file carries monitoring policy.
 // 2. Cutover: `zeroDowntime` is gone, every Process declares `cutover`, and a
-//    Process with a volume declares `recreate`, because rolling over an RWO
-//    volume is `E_CUTOVER_UNHONOURABLE`.
+//    Process with a volume declares `interrupted`, because a continuous cutover
+//    over an RWO volume is `E_CUTOVER_UNHONOURABLE`.
 // 3. Overrides: no `overrides` key anywhere, and a `replicas` block always
 //    carries a count above one with a reason.
 // 4. Hardening: no Process or sidecar authors hardening at all.
@@ -70,24 +70,25 @@ test("every worked Process declares cutover, and zeroDowntime is gone", () => {
 
     expect(processes.length, `${file}: no processes parsed`).toBeGreaterThan(0);
     for (const process of processes)
-      expect(["rolling", "recreate"], `${process.name}: cutover`).toContain(
-        process.cutover,
-      );
+      expect(
+        ["continuous", "interrupted"],
+        `${process.name}: cutover`,
+      ).toContain(process.cutover);
     expect(declarationsOf(file), `${file}: zeroDowntime present`).not.toMatch(
       /zeroDowntime/,
     );
   }
 });
 
-test("a Process with a volume declares recreate, because RWO cannot surge", () => {
+test("a Process with a volume declares interrupted, because RWO cannot hold a second copy", () => {
   for (const file of [...projectFiles, ...refusalFiles])
     for (const process of processesOf(file).filter(
       (candidate) => candidate.volumes.length > 0,
     ))
       expect(
         process.cutover,
-        `${process.name}: an RWO volume cannot surge, so rolling is E_CUTOVER_UNHONOURABLE`,
-      ).toBe("recreate");
+        `${process.name}: an RWO volume cannot hold a second copy, so continuous is E_CUTOVER_UNHONOURABLE`,
+      ).toBe("interrupted");
 });
 
 test("no project file carries overrides, and replicas is the sole capacity exception", () => {

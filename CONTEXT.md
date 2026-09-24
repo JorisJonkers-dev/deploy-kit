@@ -102,6 +102,12 @@ serve it.
 **Audience**: who may reach an Exposure. The declared word from which the edge
 mechanism is derived ([0018](docs/adr/model/0018-exposure-by-audience.md)).
 
+**Cutover**: the owner's answer to whether the next revision keeps serving while
+it replaces the old one: `continuous` or `interrupted`. Required, answered alike
+by every Process of one Application, and the input the Switchover derives from
+([chapter 10](spec/v1/10-project-intent.md#cutover-is-declared-not-promised),
+[0128](docs/adr/model/0128-cutover-names-the-promise.md)).
+
 **Probe**: a declared readiness or liveness check.
 
 **Asset**: a file mounted into a Process. Declarative, never executable

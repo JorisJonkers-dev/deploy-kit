@@ -397,8 +397,8 @@
     "Cutover": {
       "type": "string",
       "enum": [
-        "rolling",
-        "recreate"
+        "continuous",
+        "interrupted"
       ]
     },
     "Application": {

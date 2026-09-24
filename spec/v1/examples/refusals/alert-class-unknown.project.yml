@@ -46,4 +46,4 @@ applications:
           liveness: { path: /healthz/live, port: 8080 }
 
         startupBudget: 20s
-        cutover: rolling
+        cutover: continuous

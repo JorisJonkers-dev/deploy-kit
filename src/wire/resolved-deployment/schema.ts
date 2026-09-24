@@ -5,7 +5,8 @@
 // (docs/adr/model/0033-assignments-published-back.md).
 //
 // No key here is a Kubernetes or Traefik field name. Layer 2 records the
-// `cutover` a Process was granted, the `hardening` posture it takes and the
+// `cutover` a Process was granted and the `switchover` it derives, the
+// `hardening` posture it takes and the
 // capacity it needs; a rollout strategy, a security context and a resource
 // block are the `kubernetes` adapter's spelling of those decisions
 // (docs/adr/model/0097-authored-values-name-model-concepts.md).
@@ -26,6 +27,7 @@ import {
   MIDDLEWARE_KINDS,
   PATH_SCOPES,
   PINNED_INPUTS,
+  SWITCHOVERS,
 } from "../../domain/resolved-deployment/vocabularies.ts";
 
 const text = z.string().min(1);
@@ -52,6 +54,7 @@ const adapterName = z.enum(ADAPTERS).meta({ id: "AdapterName" });
 const middlewareKind = z.enum(MIDDLEWARE_KINDS).meta({ id: "MiddlewareKind" });
 const pathScope = z.enum(PATH_SCOPES).meta({ id: "PathScope" });
 const pinnedInput = z.enum(PINNED_INPUTS).meta({ id: "PinnedInput" });
+const switchover = z.enum(SWITCHOVERS).meta({ id: "Switchover" });
 
 // ---------------------------------------------------------------- provenance
 
@@ -172,6 +175,8 @@ const resolvedProcess = z
     uid: count,
     gid: count,
     cutover,
+    // Present on a `lifecycle: application` Process; a job has no switchover.
+    switchover: switchover.exactOptional(),
     deadline: duration,
     replicas: z.int().min(1),
     memory: text,
@@ -252,7 +257,9 @@ const application = {
   reconcileUnit: text,
   reconcileAfter: z.array(text).exactOptional(),
   alertClass: alertClass.exactOptional(),
-  releaseGate,
+  // Absent on an `interrupted` Application: it stops before it starts, so no
+  // switch waits on a gate (docs/adr/model/0128).
+  releaseGate: releaseGate.exactOptional(),
   exposure: z.array(resolvedExposure).exactOptional(),
   processes: z.array(resolvedProcess).min(1),
 };

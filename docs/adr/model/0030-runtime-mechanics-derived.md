@@ -9,6 +9,11 @@ rests-on: ["0005"]
 
 # Runtime mechanics are derived from declared intent
 
+> **Amended 2026-09-24.** The `cutover` values are `continuous` and
+> `interrupted`, formerly `rolling` and `recreate`, and `continuous` derives a
+> blue/green switchover ([0128](0128-cutover-names-the-promise.md)). The
+> decision is unchanged.
+
 > **Amended 2026-09-14.** Vocabulary renamed by
 > [0116](0116-project-application-process.md): Domain is now Project,
 > Service is Application, Workload is Process, and Service Intent is Project

@@ -242,13 +242,15 @@ applications:
 
         startupBudget: 600s
 
-        # REQUIRED, and there is no default. `rolling` asks the platform to keep
-        # serving capacity throughout the cutover; `recreate` accepts a
-        # stop-then-start. This Process holds no volume, so a rolling cutover
-        # is honourable and is what its owner asks for. The Kubernetes spellings
-        # -- RollingUpdate, maxSurge, maxUnavailable -- are derived by the
-        # adapter and appear nowhere here.
-        cutover: rolling
+        # REQUIRED, and there is no default. `continuous` asks the platform to
+        # keep serving throughout the cutover, so the new version starts beside
+        # the old one and takes traffic only once every member of the
+        # Application has passed analysis (blue/green); `interrupted` accepts a
+        # stop-then-start. This Process holds no volume, so a continuous cutover
+        # is honourable and is what its owner asks for. The Kubernetes and
+        # Flagger spellings -- RollingUpdate, maxSurge, a Canary -- are derived
+        # by the adapters and appear nowhere here.
+        cutover: continuous
 
         # No `minAvailable`: the field is deleted
         # (docs/adr/model/0089-replicas-derived-no-minavailable.md). Availability
@@ -405,10 +407,11 @@ applications:
                                 # budget is the gate auth-api's 600s dominates
 
         # REQUIRED on every Process. Same value as auth-api, and stated again:
-        # this Process holds no volume either, so a rolling cutover is
+        # this Process holds no volume either, so a continuous cutover is
         # honourable here too. The two Processes switch together because they
-        # are one Application, not because they share a strategy.
-        cutover: rolling
+        # are one Application, and one Application answers the question alike
+        # (E_RELEASE_UNIT_MIXED_CUTOVER otherwise).
+        cutover: continuous
 
         # No `replicas` block: one is the derived count, and one is what this
         # Process wants. The block exists for a count above one with a reason,

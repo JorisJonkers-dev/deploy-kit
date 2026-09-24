@@ -67,7 +67,10 @@ of the model again, specified in
 [0059](model/0059-v1-scope-stopping-rule.md) is superseded by
 [0127](model/0127-delivery-is-part-of-the-model.md), the parked push design in
 [deferred/](deferred/README.md) is retired record by record, and co-testing
-stays parked.
+stays parked. The same day `cutover` became `continuous | interrupted`, answered
+alike across an Application, with `continuous` deriving a blue/green switchover
+([0128](model/0128-cutover-names-the-promise.md)); 0030, 0061 and 0071 carry
+amendment notes.
 
 Tier-0 **premises** carry one falsifiable claim each; tier-1 **decisions** name
 the premises they stand on in `rests-on`. A `claim: open` means decided in
@@ -177,6 +180,7 @@ delivery work it underpins.
 |---|---|---|
 | [0029](model/0029-resolved-deployment-versioned-artifact.md) | The Resolved Deployment is a versioned, reviewable artifact | settled |
 | [0030](model/0030-runtime-mechanics-derived.md) | Runtime mechanics are derived from declared intent | settled |
+| [0128](model/0128-cutover-names-the-promise.md) | `cutover` names the promise, `continuous` or `interrupted`, one Application answers it alike, and `continuous` derives a blue/green switchover | settled |
 | [0031](model/0031-derived-overrides-with-reason.md) | A derived value has one declaring site; capacity is the sole named exception | settled |
 | [0032](model/0032-reconcile-unit-derived.md) | The Reconcile Unit is derived from the dependency graph | settled |
 | [0033](model/0033-assignments-published-back.md) | Assignments are published back to the owning repository | settled |

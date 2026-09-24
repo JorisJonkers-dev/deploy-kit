@@ -1,8 +1,18 @@
 # Rendered output: the `knowledge` project
 
 Hand-executed Deliverable Set for
-[`knowledge.project.yml`](../knowledge.project.yml) and its two env files. One
-project, one Application, two Processes, namespace `knowledge-system`.
+[`knowledge.project.yml`](../knowledge.project.yml) and its env files. One
+project, two Applications of one Process each, namespace `knowledge-system`.
+
+**Split on 2026-09-24.** `knowledge-api` releases continuously and
+`knowledge-ingest-worker` cannot (its ReadWriteOnce volume forces a stop-start
+cutover), and one Application switches as one, so the worker is now Application
+`knowledge-ingest` ([0128](../../../../../docs/adr/model/0128-cutover-names-the-promise.md)).
+Its objects moved to `apps/knowledge-ingest/`; the namespace-wide `default-deny`
+and the two secrets both Applications share moved to the project level
+(`networkpolicy.yaml`, `vso.yaml`), as the `data` project already does. The
+attribution table below predates the split and still names every object under
+`apps/knowledge/`; the objects are the same, only their directory moved.
 
 This is the **goal state**, not what the tree emits today. Every object carries
 `securityContext` from the hardening class and `resources` from `placement`;

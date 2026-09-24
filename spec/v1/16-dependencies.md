@@ -140,7 +140,7 @@ Pod presents is `<project>-system.<process>`. No author writes an identity name
 | project | Application | Processes | derived identity |
 |---|---|---|---|
 | `auth` | `auth` | `auth-api`, `auth-ui` | `auth-system.auth-api`, the identity already live, `VAULT_KUBERNETES_ROLE: auth-api`, and `auth-system.auth-ui` |
-| `knowledge` | `knowledge` | `knowledge-api`, `knowledge-ingest-worker` | `knowledge-system.knowledge-api`, `knowledge-system.knowledge-ingest-worker` |
+| `knowledge` | `knowledge`, `knowledge-ingest` | `knowledge-api`; `knowledge-ingest-worker` | `knowledge-system.knowledge-api`, `knowledge-system.knowledge-ingest-worker` |
 
 A `<application>-<process>` prefix is what the project file makes absurd. Application
 `auth` holds Process `auth-api`, so the prefixed rule would render

@@ -4,7 +4,7 @@
 export const LIFECYCLES = ["application", "job"] as const;
 export const RUNTIMES = ["jvm", "python", "node", "static", "none"] as const;
 export const ENGINES = ["postgres", "rabbitmq", "valkey", "files"] as const;
-export const CUTOVERS = ["rolling", "recreate"] as const;
+export const CUTOVERS = ["continuous", "interrupted"] as const;
 export const DURABILITY_CLASSES = [
   "reconstructible",
   "recoverable",

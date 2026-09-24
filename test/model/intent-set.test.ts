@@ -56,15 +56,17 @@ describe("checkIntentSet", () => {
         document: "data/data.project.yml",
         path: "/applications/0/processes/0/secrets/0",
       },
+      // The two grants both Applications share sit at the project header,
+      // and a header grant is refused where it is written.
       {
         code: "E_SECRETS_AT_REST_REQUIRED",
         document: "knowledge/knowledge.project.yml",
-        path: "/applications/0/secrets/0",
+        path: "/secrets/0",
       },
       {
         code: "E_SECRETS_AT_REST_REQUIRED",
         document: "knowledge/knowledge.project.yml",
-        path: "/applications/0/secrets/1",
+        path: "/secrets/1",
       },
       {
         code: "E_SECRETS_AT_REST_REQUIRED",
@@ -74,7 +76,7 @@ describe("checkIntentSet", () => {
       {
         code: "E_SECRETS_AT_REST_REQUIRED",
         document: "knowledge/knowledge.project.yml",
-        path: "/applications/0/processes/1/secrets/0",
+        path: "/applications/1/processes/0/secrets/0",
       },
     ]);
   });

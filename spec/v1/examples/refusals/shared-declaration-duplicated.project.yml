@@ -18,7 +18,7 @@ secrets:
     access: read
     delivery: env
     rotation: { tolerates: restart }
-cutover: rolling
+cutover: continuous
 applications:
   - id: shared-declaration-duplicated
     secrets:

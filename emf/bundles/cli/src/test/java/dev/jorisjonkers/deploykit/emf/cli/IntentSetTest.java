@@ -33,8 +33,8 @@ class IntentSetTest {
                                 "E_SECRETS_AT_REST_REQUIRED",
                                 "data.project.yml",
                                 "/applications/0/processes/0/secrets/0"),
-                        tuple("E_SECRETS_AT_REST_REQUIRED", "knowledge.project.yml", "/applications/0/secrets/0"),
-                        tuple("E_SECRETS_AT_REST_REQUIRED", "knowledge.project.yml", "/applications/0/secrets/1"),
+                        tuple("E_SECRETS_AT_REST_REQUIRED", "knowledge.project.yml", "/secrets/0"),
+                        tuple("E_SECRETS_AT_REST_REQUIRED", "knowledge.project.yml", "/secrets/1"),
                         tuple(
                                 "E_SECRETS_AT_REST_REQUIRED",
                                 "knowledge.project.yml",
@@ -42,7 +42,7 @@ class IntentSetTest {
                         tuple(
                                 "E_SECRETS_AT_REST_REQUIRED",
                                 "knowledge.project.yml",
-                                "/applications/0/processes/1/secrets/0"));
+                                "/applications/1/processes/0/secrets/0"));
     }
 
     @Test

@@ -51,7 +51,7 @@
 
     <processes name="notes-api" identity="notes-api"
         image="ghcr.io/jorisjonkers-dev/notes/notes-api@sha256:9c1e5a4b7d2f8e3a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a"
-        uid="1000" gid="1000" cutover="rolling" deadline="60s" replicas="1"
+        uid="1000" gid="1000" cutover="continuous" switchover="blue-green" deadline="60s" replicas="1"
         memory="256Mi" cpu="50m" hardening="restricted" identityToken="false"
         component="node">
       <readiness period="10s" timeout="5s" failures="3">

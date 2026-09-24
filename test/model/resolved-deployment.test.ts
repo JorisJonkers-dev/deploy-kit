@@ -111,10 +111,10 @@ describe("the four defects it carried", () => {
     // A placement disk dimension filters which nodes may hold a claim; how
     // large the claim is, is the volume's own authored size.
     const document = withDefect((it) => {
-      const [, worker] = it["processes"] as {
+      const [worker] = it["processes"] as {
         placement: Record<string, unknown>;
       }[];
-      if (worker === undefined) throw new Error("the worker left the example");
+      if (worker === undefined) throw new Error("the api left the example");
       worker.placement["disk"] = { media: ["nvme"], size: "100Gi" };
     });
 
@@ -324,7 +324,12 @@ describe("the committed oracles", () => {
       }
     ).processes;
 
-    expect(edges.applications.map(({ id }) => id)).toStrictEqual(["knowledge"]);
+    // The projection is the `knowledge` Application's; its sibling
+    // `knowledge-ingest` has an entry of its own in the edge oracle.
+    expect(edges.applications.map(({ id }) => id)).toStrictEqual([
+      "knowledge",
+      "knowledge-ingest",
+    ]);
     expect(edges.applications[0]?.edges).toHaveLength(
       processes.reduce((total, p) => total + (p.dependencies?.length ?? 0), 0),
     );
@@ -383,6 +388,7 @@ describe("the metamodel names every class the chapter draws", () => {
       "PinnedInput",
       "ResolvedHttpProbe",
       "ResolvedTcpProbe",
+      "Switchover",
     ]);
   });
 

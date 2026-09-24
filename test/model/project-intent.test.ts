@@ -34,7 +34,7 @@ const PROCESS = `      - name: worker
         image: worker
         runtime: none
         placement: { memory: 64Mi, cpu: 10m }
-        cutover: recreate
+        cutover: interrupted
 `;
 
 const withApplications = (applications: string): string =>
@@ -121,7 +121,7 @@ describe("parseProjectIntent", () => {
         liveness: { path: "/healthz/live", port: 8080 },
       },
       startupBudget: "20s",
-      cutover: "rolling",
+      cutover: "continuous",
     };
 
     // Neither level declares Shared Intent here, so each holds the empty list an
@@ -213,7 +213,7 @@ describe("parseProjectIntent", () => {
             probes: {},
             volumes: [],
             grants: [],
-            cutover: "recreate",
+            cutover: "interrupted",
           },
         ],
       },

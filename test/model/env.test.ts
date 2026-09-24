@@ -160,9 +160,9 @@ describe("the scope a directory names", () => {
 });
 
 describe("the worked knowledge example", () => {
-  it("shares nine variables at the Application scope and none at the project", () => {
+  it("shares nine variables at the project scope, the one both Applications hold", () => {
     const shared = sources().find(
-      ({ path }) => path === "env/_applications/knowledge/base.env",
+      ({ path }) => path === "env/_project/base.env",
     );
     const file = shared === undefined ? undefined : readEnvFile(shared);
 
@@ -179,13 +179,15 @@ describe("the worked knowledge example", () => {
     ]);
   });
 
-  it("gives each Process what it sets plus what its Application shares", () => {
+  it("gives each Process what it sets plus what its project shares", () => {
     const parsed = parseProjectIntent(
       readFileSync(join(KNOWLEDGE, "knowledge.project.yml"), "utf8"),
       sources(),
     );
     const processes = parsed.ok
-      ? lowerProject(parsed.value.project).applications[0]?.processes
+      ? lowerProject(parsed.value.project).applications.flatMap(
+          (application) => application.processes,
+        )
       : undefined;
     const envOf = (name: string): string[] =>
       names(
@@ -232,7 +234,7 @@ applications:
         image: w
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
-        cutover: recreate
+        cutover: interrupted
 `;
 
 /** The codes a document and the env files beside it are refused with. */
@@ -437,7 +439,7 @@ applications:
         image: w
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
-        cutover: recreate
+        cutover: interrupted
   - id: two
     processes:
       - name: two-api
@@ -445,7 +447,7 @@ applications:
         image: w
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
-        cutover: recreate
+        cutover: interrupted
 `;
 
   it("gives a Process the project scope's variables", () => {
@@ -540,7 +542,7 @@ applications:
         image: w
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
-        cutover: recreate
+        cutover: interrupted
   - id: two
     processes:
       - name: two-api
@@ -548,7 +550,7 @@ applications:
         image: w
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
-        cutover: recreate
+        cutover: interrupted
 `;
 
   it("reads one Application's scope as above that Application's Processes only", () => {

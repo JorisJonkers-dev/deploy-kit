@@ -10,8 +10,9 @@ one defect so the refusal has a single cause.
 |---|---|---|
 | [`alert-class-without-signal.project.yml`](alert-class-without-signal.project.yml) | `E_ALERT_CLASS_WITHOUT_SIGNAL` | an `observability` block carrying a class and no `scrape`. A class states how loudly to wake someone and means nothing without a signal to wake them about ([chapter 10](../../10-project-intent.md#observability)) |
 | [`alert-class-unknown.project.yml`](alert-class-unknown.project.yml) | schema validation | a value outside the closed `AlertClass` vocabulary, refused before any rule runs, so no error code carries it |
-| [`cutover-rolling-over-rwo.project.yml`](cutover-rolling-over-rwo.project.yml) | `E_CUTOVER_UNHONOURABLE` | `cutover: rolling` over an RWO volume, which cannot surge ([chapter 10](../../10-project-intent.md#cutover-is-declared-not-promised)) |
-| [`cutover-recreate-over-rwo.project.yml`](cutover-recreate-over-rwo.project.yml) | accepted | the same Process and storage with the cutover it can honour, the pair that makes the refusal above meaningful |
+| [`cutover-continuous-over-rwo.project.yml`](cutover-continuous-over-rwo.project.yml) | `E_CUTOVER_UNHONOURABLE` | `cutover: continuous` over an RWO volume, which cannot hold the second copy a continuous cutover starts ([chapter 10](../../10-project-intent.md#cutover-is-declared-not-promised)) |
+| [`cutover-interrupted-over-rwo.project.yml`](cutover-interrupted-over-rwo.project.yml) | accepted | the same Process and storage with the cutover it can honour, the pair that makes the refusal above meaningful |
+| [`cutover-mixed.project.yml`](cutover-mixed.project.yml) | `E_RELEASE_UNIT_MIXED_CUTOVER` | one Application whose Processes answer the cutover question differently: a continuous API beside an interrupted store. An Application switches as one, so the part that cannot keep serving is an Application of its own ([chapter 10](../../10-project-intent.md#cutover-is-declared-not-promised)) |
 | [`engine-without-durability.project.yml`](engine-without-durability.project.yml) | `E_ENGINE_WITHOUT_DURABILITY` | an `engine` over a volume whose durability derives no backup, so it names a method nothing asks for ([chapter 10](../../10-project-intent.md#process)) |
 | [`durability-without-engine.project.yml`](durability-without-engine.project.yml) | `E_DURABILITY_WITHOUT_ENGINE` | a volume that asks for a backup on a Process that names no engine, so the method would have to be guessed ([chapter 10](../../10-project-intent.md#process)) |
 | [`env-cannot-reload.project.yml`](env-cannot-reload.project.yml) | `E_ENV_CANNOT_RELOAD` | a grant delivered as an environment variable that tolerates a reload, which the process cannot see ([chapter 10](../../10-project-intent.md#zero-downtime-rotation)) |
@@ -48,8 +49,8 @@ the model-driven one, both against the committed diagnostics.
 Two things therefore remain **unproven until a renderer exists**, and are named
 as blockers rather than described as verified:
 
-- that `cutover: recreate` over RWO renders `strategy: {type: Recreate}` with no
-  surge, and that `cutover: rolling` over RWO reaches `E_CUTOVER_UNHONOURABLE`
+- that `cutover: interrupted` over RWO renders `strategy: {type: Recreate}` with no
+  surge, and that `cutover: continuous` over RWO reaches `E_CUTOVER_UNHONOURABLE`
   at build rather than at apply; and
 - that a declared `observability` block renders a `ServiceMonitor` naming the
   surface it points at, and that a block missing its `scrape` is refused at
