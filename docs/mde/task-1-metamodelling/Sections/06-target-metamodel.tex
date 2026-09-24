@@ -23,12 +23,26 @@ precedence of each route; the eligible machines for each process and the machine
 a bound volume already ties it to; the identity of each process and the secret
 paths it may read; the resolved image digest; the derived probe timings, the
 deadline, the instance count and the capacity; the backup plan each volume's
-durability class earns; and the resolved dependency edges with the policy peers
-they permit.
+durability class earns; the resolved dependency edges with the policy peers
+they permit; the \emph{switchover} each process's cutover derives
+(\texttt{blue-green}, \texttt{stop-start}, or \texttt{rolling} for the
+applications that perform a switch); and, where an application moves its schema
+with a changelog, the migration image its changelog was built into and the
+serving revision its compatibility was proven against.
 
 \textbf{Order and atomicity.} The units in which the estate is applied, with the
-edges that say which precedes which, and, per application, the inputs of the
-gate that decides when a new version may receive traffic.
+edges that say which precedes which, and, per application that switches
+blue/green, the inputs of the gate that decides when a new version may receive
+traffic: its members, each member's readiness and the checks it is analysed on,
+the analysis cadence, and the deadline. A release gate holds every member at a
+barrier until all have passed, so the rule that an application switches as one
+is decided here and performed by delivery.
+
+\textbf{Identity of a release.} Each application's \emph{revision}: the digest
+of its own element of the resolved model, the revision itself excluded. It moves
+exactly when a decision about that application moves, and not when some other
+application's does, which is what lets a migration, a gate and a held release
+all name one release of one application.
 
 \textbf{Provenance.} The hash identifying the render, and one digest per pinned
 input: every project document, the platform document, the machine contract, the
@@ -51,7 +65,7 @@ script that cuts the source metamodel's figures.
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/t-app}
-\caption{A Resolved Application: Its Release Gate and Its Exposure}
+\caption{A Resolved Application: Its Release Gate, Its Migration and Its Exposure}
 \label{fig:targetapp}
 \end{figure}
 \begin{figure}[!htbp]
@@ -85,7 +99,19 @@ it does not, because the enclosing document's provenance already covers it. This
 is what makes the projection a filtering of the estate-wide model rather than a
 second computation, so the two cannot disagree.
 
-Below it, a \texttt{ResolvedProcess} carries the per-process decisions, a
+A \texttt{ReleaseGate} carries its \texttt{GateAnalysis} cadence and one
+\texttt{GateMember} per blue/green process, and is absent wherever no process
+switches blue/green: an interrupted application stops before it starts, and an
+application of the delivery machinery rolls in place, so nothing waits on a
+gate. A \texttt{ResolvedMigration} records only
+what varies: the migration image and the revision it was tested against; the
+identity that runs it, the owner role and the deadline are fixed functions of the
+application and the platform document, so recording them would repeat a
+derivation.
+
+Below it, a \texttt{ResolvedProcess} carries the per-process decisions; its
+cutover and switchover are both unset on a prepare process, which runs once and
+cuts over nothing, a
 \texttt{ResolvedExposure} carries the hostname with its tier, middleware chain
 and ordered routes, and the volumes, grants, dependency edges and writable paths
 each carry what the platform decided about them.
@@ -117,8 +143,8 @@ new feature.
 \subsection{No Target Field Names}
 
 The constraint of Section~\ref{sec:decisions} applies most visibly here. The
-resolved model records that a process may not be taken down during a cutover; it
-does not record a rollout strategy. It records the hardening posture and the
+resolved model records that a process switches blue/green; it does not record
+a rollout strategy or a Canary. It records the hardening posture and the
 paths the process must write; it does not record a security context. It records
 the middleware chain as a sequence of named steps; it does not record the target
 proxy's spelling of them. Each generator is the one place its own target

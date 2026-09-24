@@ -34,8 +34,9 @@ make the grammar refuse documents the model accepts.
 it serves, the grammar declares a cross-reference rather than a string, so the
 name is resolved by the linker against the declared objects. A name with no
 target is a link that does not resolve, which is why a scrape naming an
-undeclared process (\texttt{E\_UNKNOWN\_PROCESS}) and a tier naming an
-undeclared proxy (\texttt{E\_UNKNOWN\_TIER\_PROXY}) are not invariants in
+undeclared process (\texttt{E\_UNKNOWN\_PROCESS}), a tier naming an undeclared
+proxy (\texttt{E\_UNKNOWN\_TIER\_PROXY}) and delivery machinery naming an
+undeclared application (\texttt{E\_UNKNOWN\_MACHINERY}) are not invariants in
 Table~\ref{tab:constraints}: the linker has already found them.
 
 The editor is the generated Xtext one, with the constraints below loaded into
@@ -46,9 +47,11 @@ time.
 
 \subsection{The Constraints}
 
-Fifteen invariants are written in Complete OCL against the source metamodel,
-carrying thirteen distinct diagnostic codes: two codes each sit on two contexts,
-because the same defect is reachable from two classes.
+Thirty-four invariants are written in Complete OCL against the source
+metamodel, carrying twenty-six distinct diagnostic codes. Three codes sit on
+more than one context, because the same defect is reachable from several
+classes: a restated shared declaration is checked on each of the seven classes
+that can be restated, and two others on two classes each.
 
 The document follows one naming rule, which is what makes a diagnostic
 self-locating: \textbf{an invariant is named by the code it emits, and its
@@ -59,12 +62,20 @@ the RFC 6901 JSON Pointer of the refused object.
 \begin{table}[!htbp]
 \centering
 \footnotesize
-\begin{tabular}{>{\raggedright\arraybackslash}p{0.35\linewidth}>{\raggedright\arraybackslash}p{0.14\linewidth}>{\raggedright\arraybackslash}p{0.43\linewidth}}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.39\linewidth}>{\raggedright\arraybackslash}p{0.14\linewidth}>{\raggedright\arraybackslash}p{0.39\linewidth}}
 \hline
 \textbf{Code} & \textbf{Context} & \textbf{What it refuses} \\
 \hline
 E\_ALERT\_CLASS\_WITHOUT\_SIGNAL & Observability & A class stating how loudly to wake someone, with no signal to wake them about. \\
-E\_CUTOVER\_UNHONOURABLE & Process & A rolling cutover over storage that cannot attach twice, which no rollout can honour. \\
+E\_CUTOVER\_UNHONOURABLE & Process & A continuous cutover over storage that cannot attach to the second copy a blue/green switchover starts. \\
+E\_CUTOVER\_MISSING & Process & A process no level answers the cutover question for; a prepare process is exempt, because it cuts over nothing. \\
+E\_RELEASE\_UNIT\_MIXED\_CUTOVER & Application & An application whose processes answer the cutover question differently, when it switches as one. \\
+E\_PREPARE\_PROCESS\_SERVES & Process & A prepare process declaring a port, probes, replicas or a cutover, which only a serving process has. \\
+E\_SHARED\_DECLARATION\_DUPLICATED & seven classes & A shared declaration restated unchanged at a lower level, where it changes nothing. \\
+E\_SHARED\_QUANTITY & Placement & A memory or cpu quantity above a process, which means something different for each process holding it. \\
+E\_PLACEMENT\_INCOMPLETE & Process & A process with no quantity of its own, which nothing above it may supply. \\
+E\_OWNER\_ROLE\_GRANTED & DatabaseGrant & The role that changes the schema, granted by hand; it is derived for the migration alone. \\
+E\_MIGRATION\_OWNER\_DUPLICATED & Migration & A second application of one project declaring how the project's database schema moves. \\
 E\_ENGINE\_WITHOUT\_DURABILITY & Process & A backup method named where no volume's durability class asks for one. \\
 E\_DURABILITY\_WITHOUT\_ENGINE & Volume & A volume asking for a backup whose method would have to be guessed. \\
 E\_ENV\_CANNOT\_RELOAD & Rotation & A secret that tolerates a reload, delivered as an environment variable, which is read once at start. \\
@@ -76,14 +87,20 @@ E\_NO\_TIER\_FOR\_AUDIENCE & Exposure, Route & An audience no declared edge tier
 E\_NO\_ENGINE\_POLICY & Process & An engine the platform declares no backup method for. \\
 E\_NO\_DURABILITY\_POLICY & Volume & A durability class the platform declares no policy for. \\
 E\_SECRETS\_AT\_REST\_REQUIRED & Grant & A secret written into a cluster that does not encrypt secrets at rest. \\
+E\_MIGRATION\_UNDECLARED & Application & An application that reaches a database and says nothing about how its schema moves. \\
+E\_MIGRATION\_WITHOUT\_DATABASE & Migration & A migration on an application that reaches no database, decided only where every provider it reaches was read. \\
+E\_CREDENTIALS\_WITHOUT\_DATABASE & Credentials & A rotation override on an edge to a provider that owns no database. \\
+E\_NO\_MIGRATION\_POLICY & Migration & A changelog read beside a platform document that offers no runner to build it on. \\
+E\_NO\_DELIVERY\_POLICY & Application & A continuous application read beside a platform document that offers no cadence to analyse its blue/green switch at. \\
 \hline
 \end{tabular}
 \caption{The Constraints, Their Context and What Each Refuses}
 \label{tab:constraints}
 \end{table}
 
-The last four read facts from the Platform document while sitting on a class of
-the project document. That placement is deliberate: an invariant sits on the
+The last nine read facts from another document while sitting on a class of a
+project document: the platform document, or, for the three migration codes that
+ask whether a provider owns a database, the project file declaring that provider. That placement is deliberate: an invariant sits on the
 object whose author must change something, and it is a project file, not the
 platform, that has to be edited when a volume asks for a guarantee the estate
 does not keep. They reach the other document through \texttt{allInstances()},
@@ -117,9 +134,16 @@ checked there against the fixtures in the negative set.
 A constraint that has only ever been satisfied is not evidence that it fires.
 Each code in Table~\ref{tab:constraints} is therefore paired with a committed
 model that violates it, and with a committed oracle file naming the set of
-\texttt{(code, path)} pairs that model must produce. The four cross-document
+\texttt{(code, path)} pairs that model must produce. The cross-document
 codes are fixtures of two files, a project document and the platform document it
-contradicts, because one file alone cannot express the defect.
+is read beside, because one file alone cannot express the defect.
+
+{\sloppy Each fixture is named after its code, lower-cased and hyphenated, under
+\texttt{spec/v1/examples/refusals/}: \texttt{E\_NO\_DELIVERY\_POLICY} is
+proved by \texttt{no-delivery-policy}. Two are named after the shape they
+refuse instead: \texttt{cutover-continuous-over-rwo} proves
+\texttt{E\_CUTOVER\_UNHONOURABLE}, and \texttt{cutover-mixed} proves
+\texttt{E\_RELEASE\_UNIT\_MIXED\_CUTOVER}.\par}
 
 The pairing is checked rather than asserted: each refused model is run through
 the parser and validated, and the diagnostics it produces are compared with the

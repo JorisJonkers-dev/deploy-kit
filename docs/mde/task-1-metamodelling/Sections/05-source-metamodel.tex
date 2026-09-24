@@ -17,7 +17,17 @@ metamodel. Its root is a \texttt{Project}, which carries an owner and the
 applications it groups. An \texttt{Application} is the unit that is released as
 a whole: it carries an identifier that is unique across the estate, the
 processes released together, the hostnames it is reachable at, the secrets it
-holds, and, optionally, how its failures should be alerted.
+holds, how its database schema moves when a new version replaces the old one,
+and, optionally, how its failures should be alerted.
+
+A \texttt{Migration} is a union of three answers. A \texttt{ManagedMigration}
+names a Liquibase changelog, by its path in the application's repository, that
+the platform's runner applies before any new version starts. A
+\texttt{SelfMigration} says the image migrates its own schema, which is the only
+honest answer for a third-party image. A \texttt{NoMigration} says the
+application moves no schema, because another application of the same project
+does. The answer is required exactly where an application reaches a database,
+and one application of a project moves that project's one database.
 
 % Every figure is cut from the one mermaid block that mirrors the metamodel,
 % by scripts/diagrams/class-diagram.py, so no part can drift from the whole.
@@ -31,8 +41,14 @@ holds, and, optionally, how its failures should be alerted.
 A \texttt{Process} is the level at which almost every operational concern sits.
 It names the image it runs, what kind of thing it is, which named ports it
 offers, what it needs from a machine, which paths it must write, what answers a
-health check, what its volumes are worth, and whether a new version may run
-beside the old one during a cutover. The concerns that belong to the application
+health check, what its volumes are worth, and whether it must keep serving while
+a new version replaces it. That last answer is its \emph{cutover}:
+\texttt{continuous} asks for the new version to start beside the old one and take
+traffic only once every process of the application has passed analysis, and
+\texttt{interrupted} accepts a stop-then-start. A process's kind is one of
+\texttt{application}, \texttt{job}, or \texttt{prepare}: a prepare process is
+forward-only setup, such as a seed, that runs to completion after the migration
+and before the new version starts, and serves nothing. The concerns that belong to the application
 rather than to one of its processes are kept on the application: a hostname
 fronts several processes and picks between them by path, so exposure cannot sit
 on a process without being written twice.
@@ -89,7 +105,9 @@ Route & A path on that hostname, and the process and surface that serve it. \\
 Placement & What a process needs from a machine, as hard requirements. \\
 Volume & Storage a process holds, with what its data is worth if lost. \\
 Probe & What answers readiness or liveness for a process. \\
-Dependency & An edge to another application's named surface. \\
+Dependency & An edge to another application's named surface, carrying, where the provider owns databases, how the credential it derives may rotate. \\
+Credentials & The rotation an application can honour for the database credential its edge derives. \\
+Migration & How the application's schema moves: a Liquibase changelog the platform applies, the image itself, or nothing. \\
 Grant & A secret a process may read, how it is delivered, and its rotation. \\
 Asset & A file a process needs that is configuration rather than code. \\
 Observability & Where metrics are collected and how urgently failures alert. \\
@@ -107,14 +125,19 @@ The platform document carries the facts and policies that no single application
 may decide: what the cluster is, where the edge terminates and which audiences
 each edge tier serves, one backup policy per durability class, one backup method
 per engine, one hardening posture, one probe cadence, one monitoring cadence,
-and the services the estate runs without deploying them.
+the services the estate runs without deploying them, the runner every managed
+migration builds on, and how a release is switched: which applications perform
+the switch and are never switched by it, and the cadence at which a new version
+is analysed.
 
-It is shown in three figures, cut from its own source by the same script that
+It is shown in four figures, cut from its own source by the same script that
 cuts the project half. Figure~\ref{fig:platformfacts} holds the facts about the
 cluster and what must exist before a rendered object can land,
 Figure~\ref{fig:platformedge} the edge and what the estate already runs, and
 Figure~\ref{fig:platformpolicies} the policies: one per durability class, one
-per engine, and the cadences the derivations read.
+per engine, and the cadences the derivations read. Figure~\ref{fig:platformdelivery}
+holds what delivery reads: the migration runner and its terms, and the delivery
+machinery with its analysis cadence.
 
 \begin{figure}[!htbp]
 \centering
@@ -133,6 +156,12 @@ per engine, and the cadences the derivations read.
 \includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/s-plat-c}
 \caption{The Platform Document: the Policies a Derivation Reads}
 \label{fig:platformpolicies}
+\end{figure}
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.62\linewidth, keepaspectratio]{Figures/s-plat-d}
+\caption{The Platform Document: What Delivery Reads}
+\label{fig:platformdelivery}
 \end{figure}
 
 A fact here is named for what it is and never for how the cluster is told about
@@ -168,6 +197,9 @@ MonitorCadence & How often the estate collects metrics, and how long it waits. \
 ProbeCadence & The estate's one probe cadence: period, timeout and the failures tolerated. \\
 EphemeralPolicy & The size a declared writable path receives. \\
 Provider & Something the estate runs and this model does not deploy, with its address and named surfaces, which a dependency may resolve against. \\
+MigrationPolicy & The runner image alias every managed migration builds on, with the deadline and resources its run takes. \\
+DeliveryPolicy & The applications that perform a switch and are never switched by one, linked across documents like a tier's proxy. \\
+AnalysisPolicy & How often a new version is checked, how many passing checks promote it, and how many failing ones roll it back. \\
 \hline
 \end{tabular}
 \caption{Classes of the Platform Document}
@@ -178,7 +210,8 @@ Provider & Something the estate runs and this model does not deploy, with its ad
 
 Wherever an attribute admits a fixed set of values, the metamodel declares an
 enumeration. The project document contributes vocabularies for the kind of a
-process, its runtime, its engine, its cutover requirement, a volume's durability
+process (\texttt{application}, \texttt{job}, \texttt{prepare}), its runtime, its
+engine, its cutover (\texttt{continuous} or \texttt{interrupted}), a volume's durability
 class, machine architecture and storage medium, alert urgency, the audience of
 an exposure, a content policy, a path match, a secret's access tier and
 delivery, and a rotation tolerance. The platform document contributes
