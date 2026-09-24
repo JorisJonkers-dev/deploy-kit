@@ -1,0 +1,38 @@
+# REFUSED: E_MIGRATION_WITHOUT_DATABASE
+#
+# `api` declares how its schema moves, and derives no database: its only edge is
+# to `edge-proxy`, which owns none. There is no schema to move
+# (spec/v1/10-project-intent.md#migration).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: edge-proxy
+    processes:
+      - name: edge-proxy
+        lifecycle: application
+        image: traefik
+        runtime: none
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 8080 }
+        startupBudget: 30s
+        cutover: continuous
+  - id: api
+    migration:
+      changelog: db/changelog.yml
+    processes:
+      - name: api
+        lifecycle: application
+        image: api
+        runtime: node
+        placement: { memory: 128Mi, cpu: 25m }
+        startupBudget: 20s
+        cutover: continuous
+        dependsOn:
+          - { application: edge-proxy, surface: http }

@@ -218,3 +218,88 @@ describe("checkIntentSet", () => {
     ]);
   });
 });
+
+// REQ-031, the migration half (spec/v1/10-project-intent.md#migration): whether
+// an Application derives a database is read across the documents, and decided
+// only where every provider it reaches was read.
+describe("the migration rules across documents", () => {
+  const platform = read("refusals/migration-undeclared/platform.intent.yml");
+  const withPolicy: AuthoredFile = {
+    name: platform.name,
+    text: `${platform.text}migration: {runner: r, deadline: 10m, memory: 1Mi, cpu: 1m}\n`,
+  };
+  const HEADER = `apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: p
+owner: o
+`;
+  const PROXY = `  - id: edge-proxy
+    processes:
+      - {name: edge-proxy, lifecycle: application, image: t, runtime: none, placement: {memory: 1Mi, cpu: 1m}, cutover: continuous}
+`;
+  const process = (name: string, extra = ""): string =>
+    `      - {name: ${name}, lifecycle: application, image: ${name}, runtime: none, placement: {memory: 1Mi, cpu: 1m}, cutover: interrupted${extra}}\n`;
+  const check = (applications: string, header = HEADER) =>
+    refusalsOf([
+      withPolicy,
+      {
+        name: "p.project.yml",
+        text: `${header}applications:\n${PROXY}${applications}`,
+      },
+    ]);
+
+  it("refuses a changelog on an Application that reaches nothing", () => {
+    expect(
+      check(
+        `  - id: api\n    migration: {changelog: c}\n    processes:\n${process("api")}`,
+      ),
+    ).toStrictEqual([
+      {
+        code: "E_MIGRATION_WITHOUT_DATABASE",
+        document: "p.project.yml",
+        path: "/applications/1/migration",
+      },
+    ]);
+  });
+
+  it("decides nothing while a provider the Application reaches was not read", () => {
+    const edges =
+      ", dependsOn: [{application: edge-proxy, surface: http}, {application: elsewhere, surface: s}]";
+
+    expect(
+      check(
+        `  - id: api\n    migration: {changelog: c}\n    processes:\n${process("api", edges)}`,
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("counts a provider as a database when any one of its Processes is", () => {
+    const store = `  - id: store
+    processes:
+      - {name: store, lifecycle: application, image: s, runtime: none, engine: postgres, placement: {memory: 1Mi, cpu: 1m}, cutover: interrupted, volumes: [{claim: d, mountAt: /d, size: 1Gi, durability: recoverable}]}
+      - {name: exporter, lifecycle: application, image: e, runtime: none, placement: {memory: 1Mi, cpu: 1m}, cutover: interrupted}
+`;
+    const api = `  - id: api\n    processes:\n${process("api", ", dependsOn: [{application: store, surface: postgres}]")}`;
+
+    expect(check(`${store}${api}`)).toStrictEqual([
+      {
+        code: "E_MIGRATION_UNDECLARED",
+        document: "p.project.yml",
+        path: "/applications/2",
+      },
+    ]);
+  });
+
+  it("refuses credentials on an edge the project header shares, at the header", () => {
+    const header = `${HEADER}dependsOn: [{application: edge-proxy, surface: http, credentials: {rotation: {tolerates: restart}}}]\n`;
+
+    expect(
+      check(`  - id: api\n    processes:\n${process("api")}`, header),
+    ).toContainEqual({
+      code: "E_CREDENTIALS_WITHOUT_DATABASE",
+      document: "p.project.yml",
+      path: "/dependsOn/0/credentials",
+    });
+  });
+});

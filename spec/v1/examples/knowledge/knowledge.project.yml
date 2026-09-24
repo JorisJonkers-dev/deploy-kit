@@ -78,6 +78,13 @@ secrets:
 applications:
   # =============================================================== knowledge
   - id: knowledge
+    # REQUIRED: knowledge-api's edge to platform-postgres derives the project's
+    # database, knowledge_db. This Application moves its schema, with a
+    # Liquibase YAML changelog the platform's runner applies before the new
+    # version starts (spec/v1/10-project-intent.md#migration).
+    migration:
+      changelog: knowledge-api/src/main/resources/db/changelog.yml
+
     # Per Application; never raised to the project. The api Process publishes for
     # the Application, and the ingest worker publishes nothing of its own.
     observability:
@@ -250,6 +257,11 @@ applications:
     # stops before it starts, and an Application switches as one. It has no
     # `observability` block and no exposure: it publishes nothing and listens on
     # nothing.
+    #
+    # It reads the project's database too, and one Application of a project
+    # moves that schema: `knowledge` does, so this one declares that it moves
+    # none. A second changelog here would be E_MIGRATION_OWNER_DUPLICATED.
+    migration: none
     processes:
       - name: knowledge-ingest-worker
         lifecycle: application

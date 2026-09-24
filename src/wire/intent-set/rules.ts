@@ -35,9 +35,121 @@ function grantRefusals(
   );
 }
 
+/** What every project file read together says about who provides what. */
+interface Estate {
+  /** Every Application some project file declares. */
+  readonly declared: ReadonlySet<string>;
+  /** The Applications whose engine owns databases, whose consumers derive one. */
+  readonly databases: ReadonlySet<string>;
+}
+
+type Edge = NonNullable<Application["dependsOn"]>[number];
+
+/** Every edge an Application's Processes hold: their own and every level's above. */
+const edgesOf = (
+  application: Application,
+  project: ProjectIntentDocument,
+): readonly Edge[] => [
+  ...(project.dependsOn ?? []),
+  ...(application.dependsOn ?? []),
+  ...application.processes.flatMap((process) => process.dependsOn ?? []),
+];
+
+/** `credentials` on an edge whose provider was read and owns no database. */
+function credentialsRefusals(
+  edges: readonly Edge[] | undefined,
+  at: string,
+  estate: Estate,
+): Omit<Diagnostic, "document">[] {
+  // Stryker disable next-line ArrayDeclaration: an element that is no edge has
+  // no `credentials`, so a non-empty fallback refuses nothing either.
+  return (edges ?? []).flatMap((edge, e) =>
+    edge.credentials !== undefined &&
+    estate.declared.has(edge.application) &&
+    !estate.databases.has(edge.application)
+      ? [
+          {
+            code: "E_CREDENTIALS_WITHOUT_DATABASE",
+            path: `${at}/dependsOn/${e}/credentials`,
+            message: `${edge.application} owns no database, so this edge derives no credential to rotate`,
+            hint: "Delete `credentials`: it only shapes the credential an edge to a database derives.",
+          },
+        ]
+      : [],
+  );
+}
+
+/**
+ * An Application that derives a database answers how its schema moves, and one
+ * that derives none does not (spec/v1/10-project-intent.md#migration). Decided
+ * only where every edge's provider is among the files read, because a provider
+ * outside the set could be either.
+ */
+function migrationRefusals(
+  project: ProjectIntentDocument,
+  estate: Estate,
+): Omit<Diagnostic, "document">[] {
+  const refusals: Omit<Diagnostic, "document">[] = [];
+  for (const [a, application] of project.applications.entries()) {
+    const at = `/applications/${a}`;
+    const edges = edgesOf(application, project);
+    const consumes = edges.some((edge) =>
+      estate.databases.has(edge.application),
+    );
+    const decided = edges.every((edge) =>
+      estate.declared.has(edge.application),
+    );
+    if (consumes && application.migration === undefined)
+      refusals.push({
+        code: "E_MIGRATION_UNDECLARED",
+        path: at,
+        message:
+          "this Application derives a database, and no answer says how its schema moves",
+        hint: "Declare `migration: {changelog: <path>}`, `migration: self`, or `migration: none`.",
+      });
+    if (decided && !consumes && application.migration !== undefined)
+      refusals.push({
+        code: "E_MIGRATION_WITHOUT_DATABASE",
+        path: `${at}/migration`,
+        message:
+          "this Application derives no database, so there is no schema to move",
+        hint: "Delete `migration`, or declare the edge to the database this Application uses.",
+      });
+    refusals.push(
+      ...credentialsRefusals(application.dependsOn, at, estate),
+      ...application.processes.flatMap((process, p) =>
+        credentialsRefusals(process.dependsOn, `${at}/processes/${p}`, estate),
+      ),
+    );
+  }
+  return refusals;
+}
+
+/** A managed migration builds on the platform's runner, so the platform must offer one. */
+function runnerRefusals(
+  project: ProjectIntentDocument,
+  platform: PlatformIntentDocument,
+): Omit<Diagnostic, "document">[] {
+  if (platform.migration !== undefined) return [];
+  return project.applications.flatMap((application, a) =>
+    typeof application.migration === "object"
+      ? [
+          {
+            code: "E_NO_MIGRATION_POLICY",
+            path: `/applications/${a}/migration`,
+            message:
+              "the platform offers no migration runner for this changelog to build on",
+            hint: "Declare the Platform document's `migration` policy: its runner, deadline and resources.",
+          },
+        ]
+      : [],
+  );
+}
+
 function projectRefusals(
   project: ProjectIntentDocument,
   platform: PlatformIntentDocument,
+  estate: Estate,
 ): Omit<Diagnostic, "document">[] {
   const carried = new Set(platform.tiers.flatMap(({ audiences }) => audiences));
   const refusals: Omit<Diagnostic, "document">[] = [];
@@ -54,6 +166,9 @@ function projectRefusals(
   // A grant at the project header reaches every Process below it, so it is
   // refused where it is written, exactly as one on an Application or a Process.
   refusals.push(...grantRefusals(project.secrets ?? [], "", platform));
+  refusals.push(...migrationRefusals(project, estate));
+  refusals.push(...credentialsRefusals(project.dependsOn, "", estate));
+  refusals.push(...runnerRefusals(project, platform));
   for (const [a, application] of project.applications.entries()) {
     const at = `/applications/${a}`;
     for (const [e, exposure] of (application.exposure ?? []).entries()) {
@@ -105,6 +220,20 @@ export function setDiagnostics(
       document.applications.map(({ id }) => id),
     ),
   );
+  const estate: Estate = {
+    declared,
+    databases: new Set(
+      projects.flatMap(({ document }) =>
+        document.applications
+          .filter((application) =>
+            application.processes.some(
+              (process) => process.engine === "postgres",
+            ),
+          )
+          .map(({ id }) => id),
+      ),
+    ),
+  };
   const proxies = platform.document.tiers.flatMap((tier, index) =>
     declared.has(tier.traefik)
       ? []
@@ -121,7 +250,7 @@ export function setDiagnostics(
   return [
     ...proxies,
     ...projects.flatMap(({ name, document }) =>
-      projectRefusals(document, platform.document).map((refusal) => ({
+      projectRefusals(document, platform.document, estate).map((refusal) => ({
         ...refusal,
         document: name,
       })),

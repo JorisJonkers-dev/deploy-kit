@@ -66,6 +66,15 @@ applications:
   # (docs/adr/model/0032-reconcile-unit-derived.md).
   - id: auth
 
+    # REQUIRED, because auth-api's edge to platform-postgres derives a database
+    # (spec/v1/10-project-intent.md#migration). One estate-wide system moves
+    # every managed schema: a Liquibase YAML changelog, applied by the
+    # platform's runner before the new version starts, while the old one still
+    # serves. The path is the repository's own layout, from its root; the
+    # runner image, its identity, the owner role and the deadline are derived.
+    migration:
+      changelog: auth-api/src/main/resources/db/changelog/db.changelog-master.yaml
+
     # Whole or absent. The class states urgency and the scrape names the surface
     # that carries the signal, both on the Application, because both are facts about
     # the Application rather than about one of its two containers. auth-api

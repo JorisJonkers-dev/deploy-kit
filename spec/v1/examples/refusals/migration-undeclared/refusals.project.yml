@@ -1,0 +1,53 @@
+# REFUSED: E_MIGRATION_UNDECLARED
+#
+# `api`'s edge to `store`, whose engine is postgres, derives the project's
+# database, and `api` does not say how that database's schema moves
+# (spec/v1/10-project-intent.md#migration). The answer is required and has no
+# default: a managed changelog, `self`, or `none`.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: edge-proxy
+    processes:
+      - name: edge-proxy
+        lifecycle: application
+        image: traefik
+        runtime: none
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 8080 }
+        startupBudget: 30s
+        cutover: continuous
+  - id: store
+    processes:
+      - name: store
+        lifecycle: application
+        image: postgres
+        runtime: none
+        engine: postgres
+        provides:
+          postgres: 5432
+        placement: { memory: 256Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 5432 }
+        startupBudget: 30s
+        cutover: interrupted
+        volumes:
+          - { claim: store-data, mountAt: /var/lib/postgresql, size: 1Gi, durability: recoverable }
+  - id: api
+    processes:
+      - name: api
+        lifecycle: application
+        image: api
+        runtime: node
+        placement: { memory: 128Mi, cpu: 25m }
+        startupBudget: 20s
+        cutover: continuous
+        dependsOn:
+          - { application: store, surface: postgres }

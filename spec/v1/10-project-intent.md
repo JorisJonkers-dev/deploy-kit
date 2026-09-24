@@ -2105,6 +2105,70 @@ to keep serving, and neither answer is true of the unit:
 serving (the one holding storage, as a rule) becomes an Application of its own;
 `knowledge-ingest` is the worked case.
 
+## Migration
+
+```yaml
+migration:
+  changelog: knowledge-api/src/main/resources/db/changelog.yml   # from the repository root
+# or
+migration: self      # the image migrates its own schema at startup
+# or
+migration: none      # this Application moves no schema
+```
+
+`migration` is an Application field, and it is how the Application's schema
+moves when its new version replaces the old one
+([0130](../../docs/adr/model/0130-migration-is-declared-on-the-application.md)).
+When the migration runs, and what undoes it, is
+[chapter 55](55-delivery.md#migrations)'s; this section is what an author
+writes.
+
+| form | means | what is derived |
+|---|---|---|
+| `{changelog: <path>}` | the platform's runner applies a **Liquibase YAML changelog**, the one migration system of the estate | the migration image (`FROM` the Platform document's runner, plus the changelog), the migration identity `<application>-migration`, which alone holds the owner role, the deadline and the requests ([chapter 14](14-platform-intent.md#migration-policy)) |
+| `self` | a third-party image migrates its own schema at startup | the owner role for the Application's Processes; `startupBudget` must cover the migration, and nothing checks the schema contract |
+| `none` | the Application reads a database whose schema another Application of its project moves, or no schema at all | nothing |
+
+The path is relative to the **repository root**, because the changelog lives
+where the application keeps it, and a project with several Applications keeps
+several. It must exist and parse when the Intent Fragment is published.
+
+**The rules**, each at the object an author changes:
+
+- **Required where a database is derived, refused elsewhere.** An Application
+  whose Processes reach a provider whose engine owns databases derives the
+  project's database ([chapter 16](16-dependencies.md#the-database-catalog)), and
+  must answer: `E_MIGRATION_UNDECLARED`. An Application that derives none has no
+  schema to move: `E_MIGRATION_WITHOUT_DATABASE`. Both are decided across the
+  documents read together, and only where every provider the Application reaches
+  was read, because a provider outside the set could be either.
+- **One Application of a project moves its schema.** A project has one database,
+  and every consuming Application reads it; a second `changelog` or `self` in one
+  project file is `E_MIGRATION_OWNER_DUPLICATED`, and the others say `none`.
+- **The owner role is never granted by hand.** It changes the schema, and it is
+  derived for the migration alone: a `database` grant naming `<project>-owner`
+  is `E_OWNER_ROLE_GRANTED`. An application Process reads its data through the
+  credential its database edge derives.
+- **A changelog needs a runner.** A Platform document offering no migration
+  policy cannot build one: `E_NO_MIGRATION_POLICY`.
+- **A missing changelog** is `E_CHANGELOG_MISSING`, raised where the fragment is
+  published, because only the repository holds the file.
+
+**The credential an edge derives.** An edge to a provider whose engine owns
+databases derives the consuming Process's data-only credential: the project's
+data role, delivered `self`, tolerating a `reload`. An application whose client
+cannot re-read a rotated credential says so on the edge, and says nothing else:
+
+```yaml
+dependsOn:
+  - application: platform-postgres
+    surface: postgres
+    credentials: {rotation: {tolerates: restart}}
+```
+
+`credentials` on an edge to a provider that owns no database derives nothing,
+and is `E_CREDENTIALS_WITHOUT_DATABASE`.
+
 ## Capacity
 
 ```yaml
@@ -2228,6 +2292,7 @@ declaring site is fixed:
 | a field coupling the release of two Applications | one Application, or two that release independently ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)) |
 | an image tag or digest | the images lock |
 | a `ports` list, or a port as a string | an integer at its point of use |
+| a migration image, a migration Job, an owner or data role name | derived from `migration`, the project and the Platform document's migration policy |
 | `RollingUpdate`, `maxSurge`, a Canary, `progressDeadlineSeconds` | the adapters' spelling of the switchover and deadline derived from `cutover`, `startupBudget` and the declared volumes |
 | `statefulset` / `deployment` | derived from `lifecycle` + volumes |
 | a liveness probe with no path | state it, or use `tcp`, or `probes: none` |
@@ -2346,6 +2411,9 @@ classDiagram
     class Application {
         +ApplicationId id
     }
+    class Migration {
+        +Path changelog
+    }
     class Observability {
         +AlertClass alertClass
     }
@@ -2409,6 +2477,7 @@ classDiagram
     Process "1" *-- "0..1" Probe : readiness
     Process "1" *-- "0..1" Probe : liveness
     Process "1" *-- "0..*" Volume : volumes
+    Application "1" *-- "0..1" Migration : migration
     Application "1" *-- "0..1" Observability : observability
     Observability "1" *-- "1" Scrape : scrape
     Process "1" *-- "0..1" Capacity : replicas

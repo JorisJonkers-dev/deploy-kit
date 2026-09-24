@@ -150,6 +150,9 @@ function lowerApplication(
 ): EffectiveApplication {
   return {
     id: application.id,
+    ...(application.migration === undefined
+      ? {}
+      : { migration: application.migration }),
     ...(application.observability === undefined
       ? {}
       : { observability: application.observability }),

@@ -50,6 +50,9 @@ function toPlatform(document: PlatformIntentDocument): Platform {
       ]),
     ),
     hardening,
+    ...(document.migration === undefined
+      ? {}
+      : { migration: document.migration }),
     providers: (document.providers ?? []).map((provider) => ({
       ...provider,
       surfaces: new Map(Object.entries(provider.surfaces)),

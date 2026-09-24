@@ -270,4 +270,70 @@ context Process
 	-- a Process no level answers for.
 	inv E_CUTOVER_MISSING: effectiveCutover <> Cutover::absent
 
+-- Migration (spec/v1/10-project-intent.md#migration). A project's database has
+-- one owner role, which only its migration holds, and one Application of the
+-- project moves its schema.
+
+context SharedIntent
+	-- The project a declaration belongs to, from any of the three levels.
+	def: projectName : String =
+		if self.oclIsKindOf(Project) then self.oclAsType(Project).project
+		else
+			if self.oclIsKindOf(Application) then oclContainer().oclAsType(Project).project
+			else oclContainer().oclContainer().oclAsType(Project).project
+			endif
+		endif
+
+context DatabaseGrant
+	-- The owner role changes the schema, and is derived for the migration alone.
+	inv E_OWNER_ROLE_GRANTED:
+		role <> oclContainer().oclAsType(SharedIntent).projectName.concat('-owner')
+
+context Migration
+	-- A second Application of one project declaring how the schema moves.
+	inv E_MIGRATION_OWNER_DUPLICATED:
+		let application : Application = oclContainer().oclAsType(Application) in
+		self.oclIsKindOf(NoMigration)
+			or application.oclContainer().oclAsType(Project).applications
+				->select(a | a.migration <> null and not a.migration.oclIsKindOf(NoMigration))
+				->first() = application
+
+context Application
+	-- Every provider an Application's Processes reach, from every level.
+	def: edgeTargets : Set(String) =
+		oclContainer().oclAsType(Project).dependsOn.application->asSet()
+			->union(dependsOn.application->asSet())
+			->union(processes.dependsOn.application->asSet())
+
+	-- The Applications whose engine owns databases, among the documents read.
+	def: databaseIds : Set(String) =
+		Application.allInstances()->select(a | a.processes->exists(engine = Engine::postgres)).id->asSet()
+
+	def: derivesDatabase : Boolean = edgeTargets->exists(t | databaseIds->includes(t))
+
+	-- Across documents: an Application whose edge reaches a database answers how
+	-- its schema moves.
+	inv E_MIGRATION_UNDECLARED:
+		(Platform.allInstances()->notEmpty() and derivesDatabase) implies migration <> null
+
+context Migration
+	-- Decided only where every provider the Application reaches was read with it.
+	inv E_MIGRATION_WITHOUT_DATABASE:
+		let application : Application = oclContainer().oclAsType(Application) in
+		(Platform.allInstances()->notEmpty()
+			and application.edgeTargets->forAll(t | Application.allInstances().id->includes(t)))
+			implies application.derivesDatabase
+
+	-- A changelog builds on the platform's runner.
+	inv E_NO_MIGRATION_POLICY:
+		self.oclIsKindOf(ManagedMigration) implies Platform.allInstances()->forAll(migration <> null)
+
+context Credentials
+	-- Only an edge to a database derives a credential to rotate.
+	inv E_CREDENTIALS_WITHOUT_DATABASE:
+		let edge : DependencyEdge = oclContainer().oclAsType(DependencyEdge) in
+		(Platform.allInstances()->notEmpty() and Application.allInstances().id->includes(edge.application))
+			implies Application.allInstances()->exists(a |
+				a.id = edge.application and a.processes->exists(engine = Engine::postgres))
+
 endpackage

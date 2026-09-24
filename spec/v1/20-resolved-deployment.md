@@ -662,6 +662,24 @@ inputs ([0006](../../docs/adr/model/0006-pinned-inputs.md)). The element is the
 form `resolved.json` carries, so an implementation whose own model has another
 shape computes the revision over that form, not over its model.
 
+## The migration
+
+An Application declaring `migration: {changelog}`
+([chapter 10](10-project-intent.md#migration)) carries a `migration` block, and
+it records two things only:
+
+| field | derived from |
+|---|---|
+| `runner` | the migration image: the Platform document's runner, by digest, with the Application's changelog built in; carried by the Intent Fragment's images lock |
+| `testedAgainst` | the serving revision the compatibility of this changelog was proven against ([chapter 55](55-delivery.md#failure-and-undo)) |
+
+Everything else about a migration is a fixed function of the Application id,
+the project and the Platform document, so recording it would repeat a
+derivation, not a decision: the identity `<application>-migration`, the owner
+role `<project>-owner`, the database, the deadline and the requests
+([0130](../../docs/adr/model/0130-migration-is-declared-on-the-application.md)).
+An Application declaring `self` or `none` carries no block.
+
 ## The path plan
 
 Layer 2 assigns **every output path**
@@ -907,6 +925,9 @@ provenance:
 namespace: knowledge-system          # <project>-system, derived, not arbitrated
 reconcileUnit: apps-knowledge
 reconcileAfter: [apps-core, apps-data, apps-vso-secrets]
+
+migration:                           # it declares a changelog (chapter 10)
+  runner: ghcr.io/jorisjonkers-dev/knowledge/knowledge-migration@sha256:…
 
 releaseGate:                         # the inputs, not an object (0071)
   deadline: 1800s                    # max over the members
@@ -1227,6 +1248,10 @@ classDiagram
     class ReleaseGate {
         +Duration deadline
     }
+    class ResolvedMigration {
+        +ImageRef runner
+        +Digest testedAgainst
+    }
     class GateMember {
         +string process
     }
@@ -1328,6 +1353,7 @@ classDiagram
     Provenance "1" *-- "1..*" InputDigest : inputDigests
 
     ResolvedApplication "1" *-- "0..1" ReleaseGate : releaseGate
+    ResolvedApplication "1" *-- "0..1" ResolvedMigration : migration
     ResolvedApplication "1" *-- "1..*" ResolvedProcess : processes
     ResolvedApplication "1" *-- "0..*" ResolvedExposure : exposure
     ReleaseGate "1" *-- "1..*" GateMember : members

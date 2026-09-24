@@ -38,6 +38,21 @@ describe("parsePlatformIntent", () => {
     expect(result.ok && canonicalJson(result.value.document)).not.toBe(ORACLE);
   });
 
+  it("maps the migration policy where it is offered, and leaves it absent where it is not", () => {
+    const offered = parsePlatformIntent(WORKED);
+    const withheld = parsePlatformIntent(
+      WORKED.replace(/\nmigration:\n( {2}.*\n)+/, "\n"),
+    );
+
+    expect(offered.ok && offered.value.platform.migration).toStrictEqual({
+      runner: "liquibase-runner",
+      deadline: "10m",
+      memory: "256Mi",
+      cpu: "100m",
+    });
+    expect(withheld.ok && "migration" in withheld.value.platform).toBe(false);
+  });
+
   it("maps the worked document into the domain model", () => {
     const result = parsePlatformIntent(WORKED);
     const platform = result.ok ? result.value.platform : undefined;

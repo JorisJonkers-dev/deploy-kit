@@ -100,8 +100,13 @@ The first row of that table has a producer
 ([0080](../../docs/adr/model/0080-database-catalog-is-derived-data.md)). For a
 provider Process whose [`engine`](10-project-intent.md#process) is a datastore
 that owns databases, the inbound edge set derives a **catalog**: one entry per
-consuming Application naming its database, its owning user, and the Vault role that
-issues that user's credentials.
+consuming **project** naming its database and two Vault roles, the **owner**
+role that changes the schema and the **data** role that reads and writes it
+([0130](../../docs/adr/model/0130-migration-is-declared-on-the-application.md),
+amending [0080](../../docs/adr/model/0080-database-catalog-is-derived-data.md)'s one entry per consuming Application). Every consuming
+Application of a project reads the project's one database; the owner role is
+derived for the Application that moves the schema, and only for it
+([chapter 10](10-project-intent.md#migration)).
 
 The catalog is **data, not a procedure**. It renders as a `ConfigMap` and the
 platform's engine catalog supplies the image and command that applies it, the

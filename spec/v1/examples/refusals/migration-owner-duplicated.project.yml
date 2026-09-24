@@ -1,0 +1,33 @@
+# REFUSED: E_MIGRATION_OWNER_DUPLICATED
+#
+# One project, one database, two Applications each declaring that they move its
+# schema. One Application of a project moves the schema and holds the owner
+# role; every other consumer reads the data it defines and declares
+# `migration: none` (spec/v1/10-project-intent.md#migration).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: api
+    migration:
+      changelog: api/db/changelog.yml
+    processes:
+      - name: api
+        lifecycle: application
+        image: api
+        runtime: node
+        placement: { memory: 128Mi, cpu: 25m }
+        cutover: continuous
+  - id: worker
+    migration:
+      changelog: worker/db/changelog.yml
+    processes:
+      - name: worker
+        lifecycle: application
+        image: worker
+        runtime: node
+        placement: { memory: 128Mi, cpu: 25m }
+        cutover: interrupted

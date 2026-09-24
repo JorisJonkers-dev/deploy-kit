@@ -61,8 +61,17 @@
     <!-- Absent on an `interrupted` Application: it stops before it starts, so no
          switch waits on a gate (docs/adr/model/0128). -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="releaseGate" eType="#//ReleaseGate" containment="true"/>
+    <!-- Present where the Application moves its schema with a changelog. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="migration" eType="#//ResolvedMigration" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="exposure" upperBound="-1" eType="#//ResolvedExposure" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess" containment="true"/>
+  </eClassifiers>
+
+  <!-- The runner image the changelog was built into, and the serving revision its
+       compatibility was proven against (spec/v1/20-resolved-deployment.md#the-migration). -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedMigration">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="runner" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="testedAgainst" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="ReleaseGate">

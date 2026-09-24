@@ -109,6 +109,13 @@ const ephemeralPolicy = z
   .strictObject({ size: text })
   .meta({ id: "EphemeralPolicy" });
 
+// The platform's migration runner and its terms (spec/v1/14-platform-intent.md#migration-policy):
+// an image alias every managed changelog builds on, the deadline a migration
+// has, and what its Job requests.
+const migrationPolicy = z
+  .strictObject({ runner: text, deadline: text, memory: text, cpu: text })
+  .meta({ id: "MigrationPolicy" });
+
 const provider = z
   .strictObject({
     name: text,
@@ -133,6 +140,7 @@ export const platformIntent = z
     hardening: hardeningClass,
     probes: probeCadence,
     ephemeral: ephemeralPolicy,
+    migration: migrationPolicy.exactOptional(),
     providers: z.array(provider).min(1).exactOptional(),
   })
   .meta({ id: "Platform" });

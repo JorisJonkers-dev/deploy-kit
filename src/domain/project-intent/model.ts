@@ -35,8 +35,12 @@ export interface Project extends SharedIntent {
   readonly applications: readonly Application[];
 }
 
+/** How an Application's schema moves (spec/v1/10-project-intent.md#migration). */
+export type Migration = "self" | "none" | { readonly changelog: string };
+
 export interface Application extends SharedIntent {
   readonly id: string;
+  readonly migration?: Migration;
   readonly observability?: Observability;
   readonly exposures: readonly Exposure[];
   readonly processes: readonly Process[];
@@ -138,6 +142,8 @@ export interface Dependency {
   readonly application: string;
   readonly surface: string;
   readonly required: boolean;
+  /** Only on an edge to a database: how its derived credential rotates. */
+  readonly credentials?: { readonly rotation: Rotation };
 }
 
 export interface Asset {
@@ -208,6 +214,7 @@ export interface EffectiveProject {
 
 export interface EffectiveApplication {
   readonly id: string;
+  readonly migration?: Migration;
   readonly observability?: Observability;
   readonly exposures: readonly Exposure[];
   readonly processes: readonly EffectiveProcess[];

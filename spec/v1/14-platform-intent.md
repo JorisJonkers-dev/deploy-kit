@@ -329,6 +329,27 @@ the value rather than in the name and the estate has one way to write ten
 seconds. The `kubernetes` adapter is where the target's spelling is produced,
 and it is the only place it appears.
 
+## Migration policy
+
+```yaml
+migration:
+  runner: liquibase-runner   # an image alias, resolved to a digest by the images lock
+  deadline: 10m
+  memory: 256Mi
+  cpu: 100m
+```
+
+The estate has one migration system, Liquibase with YAML changelogs
+([0130](../../docs/adr/model/0130-migration-is-declared-on-the-application.md)),
+and the platform owns its runner: every Application declaring
+`migration: {changelog}` builds its migration image `FROM` this runner's digest
+([chapter 10](10-project-intent.md#migration)). The deadline and the requests
+are the platform's too, because the runner is its image and a migration's length
+is bounded estate-wide: a backfill that needs longer is split across releases.
+
+The block is optional. A Platform document without it offers no runner, and a
+changelog read beside it is `E_NO_MIGRATION_POLICY`.
+
 ## Providers
 
 Things the estate runs and this model does not deploy, that an Application may
@@ -471,6 +492,12 @@ classDiagram
     class EphemeralPolicy {
         +Quantity size
     }
+    class MigrationPolicy {
+        +ImageAlias runner
+        +Duration deadline
+        +Quantity memory
+        +Quantity cpu
+    }
     class Provider {
         +string name
         +string address
@@ -486,6 +513,7 @@ classDiagram
     Platform "1" *-- "1" MonitorCadence : monitors
     Platform "1" *-- "1" ProbeCadence : probes
     Platform "1" *-- "1" EphemeralPolicy : ephemeral
+    Platform "1" *-- "0..1" MigrationPolicy : migration
     Platform "1" *-- "0..*" Provider : providers
     Bootstrap "1" *-- "1" FluxSource : flux
     Bootstrap "1" *-- "1" VaultState : vault

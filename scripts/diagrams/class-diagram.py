@@ -88,7 +88,7 @@ for line in body.split("\n"):
 # `resolves by name` edges and `Route -> Audience` all land between neighbours.
 TREES = {"10-project-intent": {
     "Project": ["Application"],
-    "Application": ["Observability", "Process", "Exposure"],
+    "Application": ["Migration", "Observability", "Process", "Exposure"],
     "Observability": ["Scrape"],
     # No Shared Intent family is drawn. Eight of them at three levels each is
     # more relations than a reader can hold, and drawing them at one level
@@ -101,7 +101,8 @@ TREES = {"10-project-intent": {
 }, "14-platform-intent": {
     "Platform": [
         "PlatformMetadata", "Substrate", "Bootstrap", "Tier", "DurabilityPolicies",
-        "EnginePolicies", "MonitorCadence", "ProbeCadence", "EphemeralPolicy", "Provider",
+        "EnginePolicies", "MonitorCadence", "ProbeCadence", "EphemeralPolicy",
+        "MigrationPolicy", "Provider",
     ],
     "Bootstrap": ["FluxSource", "VaultState"],
     "DurabilityPolicies": ["DurabilityPolicy"],
@@ -114,7 +115,9 @@ TREES = {"10-project-intent": {
         "Provenance", "PathAssignment", "ReconcileUnit", "ResolvedApplication",
     ],
     "Provenance": ["InputDigest"],
-    "ResolvedApplication": ["ReleaseGate", "ResolvedProcess", "ResolvedExposure"],
+    "ResolvedApplication": [
+        "ReleaseGate", "ResolvedMigration", "ResolvedProcess", "ResolvedExposure",
+    ],
     "ReleaseGate": ["GateMember"],
     "ResolvedProcess": [
         "ResolvedProbe", "StartupProbe", "ResolvedPlacement", "ResolvedVolume",

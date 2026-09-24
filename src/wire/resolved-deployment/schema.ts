@@ -250,6 +250,14 @@ const releaseGate = z
   })
   .meta({ id: "ReleaseGate" });
 
+// What layer 2 records of a migration (spec/v1/20-resolved-deployment.md#the-migration):
+// the runner image the Application's changelog was built into, and the serving
+// revision its compatibility was proven against. Everything else about it is a
+// fixed function of the Application id and the Platform document.
+const resolvedMigration = z
+  .strictObject({ runner: text, testedAgainst: digest.exactOptional() })
+  .meta({ id: "ResolvedMigration" });
+
 const application = {
   id: text,
   // The digest of this element, itself and the provenance excluded
@@ -263,6 +271,8 @@ const application = {
   // Absent on an `interrupted` Application: it stops before it starts, so no
   // switch waits on a gate (docs/adr/model/0128-cutover-names-the-promise.md).
   releaseGate: releaseGate.exactOptional(),
+  // Present where the Application moves its schema with a changelog.
+  migration: resolvedMigration.exactOptional(),
   exposure: z.array(resolvedExposure).exactOptional(),
   processes: z.array(resolvedProcess).min(1),
 };

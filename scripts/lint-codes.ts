@@ -96,6 +96,12 @@ export const PENDING: readonly Pending[] = [
     ],
   },
   {
+    ticket: "#148",
+    reason:
+      "a refusal where an Intent Fragment is published, which needs the repository the changelog lives in",
+    codes: ["E_CHANGELOG_MISSING"],
+  },
+  {
     ticket: "#97",
     reason:
       "a refusal while rendering, which needs the adapters and the serializer",

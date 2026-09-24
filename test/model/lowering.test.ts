@@ -732,6 +732,32 @@ describe("a refusal that reads the effective answer, not the written one", () =>
     ]);
   });
 
+  it("refuses the owner role granted by hand at every level, where it is written", () => {
+    const owner = "[{engine: database, role: p-owner, delivery: self}]";
+    const document = `${HEADER}secrets: ${owner}\napplications:\n  - id: a\n    secrets: ${owner}\n${PROCESS}        secrets: ${owner}\n`;
+
+    expect(
+      refusals(document).filter(([code]) => code === "E_OWNER_ROLE_GRANTED"),
+    ).toStrictEqual([
+      ["E_OWNER_ROLE_GRANTED", "/secrets/0"],
+      ["E_OWNER_ROLE_GRANTED", "/applications/0/secrets/0"],
+      ["E_OWNER_ROLE_GRANTED", "/applications/0/processes/0/secrets/0"],
+    ]);
+  });
+
+  it("carries an Application's migration onto the effective Application", () => {
+    const parsed = parseProjectIntent(
+      `${HEADER}applications:\n  - id: a\n    migration: {changelog: db/changelog.yml}\n${PROCESS}  - id: b\n${PROCESS.replace("name: w", "name: v").replace("image: w", "image: v")}`,
+    );
+
+    expect(
+      parsed.ok &&
+        parsed.value.effective.applications.map((application) =>
+          "migration" in application ? application.migration : "absent",
+        ),
+    ).toStrictEqual([{ changelog: "db/changelog.yml" }, "absent"]);
+  });
+
   it("refuses a grant the project header states badly, at the header", () => {
     expect(
       refusals(

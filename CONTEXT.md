@@ -108,6 +108,13 @@ by every Process of one Application, and the input the Switchover derives from
 ([chapter 10](spec/v1/10-project-intent.md#cutover-is-declared-not-promised),
 [0128](docs/adr/model/0128-cutover-names-the-promise.md)).
 
+**Migration**: how an Application's database schema moves when its new version
+replaces the old: a Liquibase changelog the platform's runner applies, the image
+itself (`self`), or `none`. Declared on the Application; one Application of a
+project moves the project's database
+([chapter 10](spec/v1/10-project-intent.md#migration),
+[0130](docs/adr/model/0130-migration-is-declared-on-the-application.md)).
+
 **Probe**: a declared readiness or liveness check.
 
 **Asset**: a file mounted into a Process. Declarative, never executable
