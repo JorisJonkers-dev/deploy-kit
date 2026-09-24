@@ -3,8 +3,10 @@ package dev.jorisjonkers.deploykit.emf.metamodel.revision;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ReconcileUnit;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedApplication;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
+import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeploymentFactory;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeploymentPackage;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedProcess;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.Switchover;
@@ -68,6 +70,14 @@ class ApplicationRevisionTest {
         ResolvedApplication unit = notes();
         unit.getReconcileUnit().setName("apps-elsewhere");
         assertThat(ApplicationRevision.of(unit)).isNotEqualTo(recorded);
+
+        // The ordering the Application's unit carries is a decision about it too.
+        ResolvedApplication ordering = notes();
+        ReconcileUnit core = ResolvedDeploymentFactory.eINSTANCE.createReconcileUnit();
+        core.setName("apps-core");
+        ((ResolvedDeployment) ordering.eContainer()).getReconcileUnits().add(core);
+        ordering.getReconcileUnit().getAfter().add(core);
+        assertThat(ApplicationRevision.of(ordering)).isNotEqualTo(recorded);
     }
 
     @Test

@@ -30,7 +30,16 @@ public final class ApplicationRevision {
 
     /** {@code sha256:<hex>} over the canonical JSON of {@code application}. */
     public static String of(ResolvedApplication application) {
-        return "sha256:" + HexFormat.of().formatHex(digest("SHA-256", CanonicalJson.write(json(application))));
+        Map<String, Object> element = json(application);
+        // The Application's reconcile ordering is a decision about it, and it lives on the unit the
+        // element references: the production implementation's element carries it as
+        // `reconcileAfter`, so it is covered here under that name.
+        List<Object> after = new ArrayList<>();
+        for (EObject unit : application.getReconcileUnit().getAfter()) {
+            after.add(EcoreUtil.getID(unit));
+        }
+        element.put("reconcileAfter", after);
+        return "sha256:" + HexFormat.of().formatHex(digest("SHA-256", CanonicalJson.write(element)));
     }
 
     /** {@code text} digested by {@code algorithm}; every Java platform implements SHA-256. */

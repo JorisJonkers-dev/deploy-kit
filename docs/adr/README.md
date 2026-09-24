@@ -187,7 +187,7 @@ delivery work it underpins.
 | [0031](model/0031-derived-overrides-with-reason.md) | A derived value has one declaring site; capacity is the sole named exception | settled |
 | [0032](model/0032-reconcile-unit-derived.md) | The Reconcile Unit is derived from the dependency graph | settled |
 | [0033](model/0033-assignments-published-back.md) | Assignments are published back to the owning repository | settled |
-| [0129](model/0129-the-application-revision-is-the-digest-of-its-element.md) | An Application's revision is the digest of its own element of the Resolved Deployment, and nothing else | settled |
+| [0129](model/0129-the-application-revision-is-the-digest-of-its-element.md) | An Application's revision is the digest of its own element of the Resolved Deployment, and nothing else | open |
 | [0034](model/0034-cluster-state-pinned-input.md) | ClusterState is a pinned, digested input | settled |
 | [0035](model/0035-network-policy-default-deny.md) | Network policy is default-deny, derived from the edge set | settled |
 | [0084](model/0084-render-only-is-the-v1-policy-stage.md) | Render-only is v1's network-policy stage; promotion waits on the CNI | settled |

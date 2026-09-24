@@ -10,11 +10,19 @@ import { join } from "node:path";
 import { parse } from "yaml";
 import { z } from "zod";
 import { describe, expect, it } from "vitest";
-import { applicationRevision } from "../../src/index.ts";
+import {
+  applicationRevision as revisionOf,
+  sha256Hasher,
+} from "../../src/index.ts";
 import {
   resolvedApplicationDocument,
   resolvedDeployment,
 } from "../../src/wire/resolved-deployment/schema.ts";
+
+/** The revision the production Hasher gives an Application's element. */
+const applicationRevision = (
+  application: Readonly<Record<string, unknown>>,
+): string => revisionOf(application, sha256Hasher);
 
 const CHAPTER = join(
   import.meta.dirname,
@@ -670,7 +678,7 @@ describe("a Process answering on a port rather than a path", () => {
   });
 });
 
-// REQ-032 (docs/requirements.md): an Application's revision is the digest of its
+// REQ-038 (docs/requirements.md): an Application's revision is the digest of its
 // own decisions, so it moves exactly when one of them does.
 describe("the Application revision", () => {
   const projection = (name: string): Record<string, unknown> =>
@@ -724,8 +732,25 @@ describe("the Application revision", () => {
     process["replicas"] = 2;
 
     expect(applicationRevision(changed)).not.toBe(before);
-    expect(
-      applicationRevision({ ...projection("minimal"), namespace: "x" }),
-    ).not.toBe(before);
+    // An attribute, a vocabulary value, a nested object and the ordering.
+    for (const edit of [
+      (it: Record<string, unknown>) => {
+        it["namespace"] = "x";
+      },
+      (it: Record<string, unknown>) => {
+        const [first] = it["processes"] as Record<string, unknown>[];
+        if (first !== undefined) first["switchover"] = "stop-start";
+      },
+      (it: Record<string, unknown>) => {
+        (it["releaseGate"] as Record<string, unknown>)["deadline"] = "61s";
+      },
+      (it: Record<string, unknown>) => {
+        it["reconcileAfter"] = ["apps-elsewhere"];
+      },
+    ]) {
+      const edited = projection("minimal");
+      edit(edited);
+      expect(applicationRevision(edited)).not.toBe(before);
+    }
   });
 });

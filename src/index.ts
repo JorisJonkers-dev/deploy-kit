@@ -41,5 +41,7 @@ export {
   type ResolvedApplicationDocument,
   type ResolvedDeploymentDocument,
 } from "./wire/resolved-deployment/schema.ts";
-export { applicationRevision } from "./infrastructure/application-revision.ts";
+export type { Hasher } from "./domain/hasher.ts";
+export { applicationRevision } from "./domain/resolved-deployment/revision.ts";
 export { canonicalJson } from "./infrastructure/canonical-json.ts";
+export { sha256Hasher } from "./infrastructure/sha256-hasher.ts";

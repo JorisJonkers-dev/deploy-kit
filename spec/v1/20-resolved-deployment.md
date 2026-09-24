@@ -658,7 +658,9 @@ Three properties follow from what the digest covers:
 
 A revision is **derived**, never authored, and nothing reads the live cluster to
 compute it: it is a function of the element, which is a function of the pinned
-inputs ([0006](../../docs/adr/model/0006-pinned-inputs.md)).
+inputs ([0006](../../docs/adr/model/0006-pinned-inputs.md)). The element is the
+form `resolved.json` carries, so an implementation whose own model has another
+shape computes the revision over that form, not over its model.
 
 ## The path plan
 

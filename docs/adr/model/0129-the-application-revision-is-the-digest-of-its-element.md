@@ -1,7 +1,8 @@
 ---
 tier: decision
 status: proposed
-claim: settled
+claim: open
+owner: joris
 date: 2026-09-24
 normative: spec/v1/20-resolved-deployment.md#the-application-revision
 rests-on: ["0006"]
@@ -27,9 +28,14 @@ identical revision, on any machine.
 
 **False if:** re-resolving an unchanged Application yields a different revision,
 or a change to any decision about it leaves the revision where it was.
-**Settled by:** both implementations compute the revision of a committed
-projection and match the value it records, and a test in each shows that
-changing any field moves it while changing only the provenance does not.
+**Settled by:** both implementations compute the revision of the same committed
+projection and match the value it records. Today only the production
+implementation reads `resolved.json`; the model-driven one computes it over its
+own Resolved Deployment model, whose shape differs, so the two digests of one
+Application differ until it emits the projection the production implementation
+reads ([#90](https://github.com/JorisJonkers-dev/deploy-kit/issues/90)). A test in
+each already shows that changing any field moves it while changing only the
+provenance does not.
 
 ## Why
 
@@ -66,6 +72,12 @@ database.
 
 ## Consequences
 
+- The revision is computed over the production implementation's element JSON,
+  the form `resolved.json` carries. The model-driven implementation matches it
+  once it emits that projection (#90), which is required before a revision
+  reaches a rendered name both implementations must agree on; until then its
+  `minimal` model's revision is its own and is compared with nothing, paid by
+  joris in #90.
 - Every Resolved Deployment element and projection carries `revision`, and each
   implementation computes it, paid now in both.
 - A revision is 71 characters; anything that must fit a Kubernetes name (a Job)
