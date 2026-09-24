@@ -216,8 +216,7 @@ field's placement link to this anchor rather than copying rows.
 | `runAsUser`, `runAsGroup`, `fsGroup` | derived | - | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Process holds a volume ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)) |
 | container probe timings | derived | - | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Platform Intent's probe policy ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)) |
 | `progressDeadlineSeconds` | derived | - | from `startupBudget` |
-| switchover | derived | - | from `cutover`: `continuous` derives `blue-green`, `interrupted` derives `stop-start` ([chapter 55](55-delivery.md#switchover)); `cutover: continuous` over an RWO volume is `E_CUTOVER_UNHONOURABLE`, not a silent downgrade |
-| rollout strategy, surge, unavailability | derived | - | the `kubernetes` adapter's spelling of the switchover |
+| switchover | derived | - | from `cutover`: `continuous` derives `blue-green`, `interrupted` derives `stop-start` ([chapter 55](55-delivery.md#switchover)), which the adapters spell; `cutover: continuous` over an RWO volume is `E_CUTOVER_UNHONOURABLE`, not a silent downgrade |
 | object kind | derived | - | from `lifecycle` and `volumes` |
 | the Application's release-gate deadline | derived | - | `max` over the Application's Processes of `progressDeadlineSeconds` ([The release gate](#the-release-gate)) |
 | the object label set | derived | - | fixed, from Process name, Application Id and the images lock ([chapter 10](10-project-intent.md#the-label-set)) |
@@ -1210,6 +1209,7 @@ classDiagram
         +int uid
         +int gid
         +Cutover cutover
+        +Switchover switchover
         +Duration deadline
         +int replicas
         +Quantity memory
@@ -1299,7 +1299,7 @@ classDiagram
     ResolvedDeployment "1" *-- "1..*" ResolvedApplication : applications
     Provenance "1" *-- "1..*" InputDigest : inputDigests
 
-    ResolvedApplication "1" *-- "1" ReleaseGate : releaseGate
+    ResolvedApplication "1" *-- "0..1" ReleaseGate : releaseGate
     ResolvedApplication "1" *-- "1..*" ResolvedProcess : processes
     ResolvedApplication "1" *-- "0..*" ResolvedExposure : exposure
     ReleaseGate "1" *-- "1..*" GateMember : members

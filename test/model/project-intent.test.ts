@@ -241,6 +241,19 @@ describe("parseProjectIntent", () => {
     expect(refused(text)).toContainEqual({ code: "schema", path: "", message });
   });
 
+  it.each(["rolling", "recreate"])(
+    "refuses the retired cutover value %s as outside the vocabulary",
+    (retired) => {
+      const codes = refused(
+        withApplications(
+          `  - id: a\n    processes:\n${PROCESS.replace("cutover: interrupted", `cutover: ${retired}`)}`,
+        ),
+      ).map(({ code }) => code);
+
+      expect(codes).toContain("schema");
+    },
+  );
+
   it("refuses malformed YAML and a duplicated key at the document, before the schema runs", () => {
     const batch = `  - id: batch\n    processes:\n${PROCESS}`;
 

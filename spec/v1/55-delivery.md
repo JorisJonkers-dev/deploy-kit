@@ -61,10 +61,31 @@ anywhere. Specified in full by
 
 ## Switchover
 
-A Process whose `cutover` keeps serving releases blue/green: its new version
-starts beside the old one and receives traffic only when every member of its
-Application has passed analysis. Specified in full by
-[#151](https://github.com/JorisJonkers-dev/deploy-kit/issues/151) and
+The **switchover** is how an Application's new version replaces the old one. It
+is derived from the owner's `cutover`
+([chapter 10](10-project-intent.md#cutover-is-declared-not-promised),
+[0128](../../docs/adr/model/0128-cutover-names-the-promise.md)) and recorded per
+Process in the Resolved Deployment
+([chapter 20](20-resolved-deployment.md#derived-mechanics)):
+
+| `cutover` | switchover | what happens |
+|---|---|---|
+| `continuous` | `blue-green` | the new version starts beside the old one; the old keeps serving while the new is analysed, and traffic moves to the new version only once every member of the Application has passed |
+| `interrupted` | `stop-start` | the old version stops, then the new one starts; the owner has accepted the gap |
+
+Three rules hold the table true:
+
+- **One Application, one switchover.** Every `lifecycle: application` Process of
+  an Application answers `cutover` alike, because the Application switches as
+  one (`E_RELEASE_UNIT_MIXED_CUTOVER`).
+- **Room for the second copy.** A `blue-green` Process is eligible only on a node
+  that fits two copies of it, for the length of its analysis
+  ([chapter 20](20-resolved-deployment.md#layer-2-does-not-assign-a-node)).
+- **A job has none.** A `lifecycle: job` Process switches nothing, so it carries
+  no switchover and never waits on a gate.
+
+What gates a `blue-green` switch, the barrier over every member and who answers
+it, is [The Release Gate](#the-release-gate)'s, specified in full by
 [#152](https://github.com/JorisJonkers-dev/deploy-kit/issues/152).
 
 ## The Release Gate

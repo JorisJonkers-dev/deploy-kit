@@ -111,11 +111,11 @@ describe("the four defects it carried", () => {
     // A placement disk dimension filters which nodes may hold a claim; how
     // large the claim is, is the volume's own authored size.
     const document = withDefect((it) => {
-      const [worker] = it["processes"] as {
+      const [api] = it["processes"] as {
         placement: Record<string, unknown>;
       }[];
-      if (worker === undefined) throw new Error("the api left the example");
-      worker.placement["disk"] = { media: ["nvme"], size: "100Gi" };
+      if (api === undefined) throw new Error("the api left the example");
+      api.placement["disk"] = { media: ["nvme"], size: "100Gi" };
     });
 
     expect(resolvedApplicationDocument.safeParse(document).success).toBe(false);
@@ -252,6 +252,67 @@ describe("the committed oracles", () => {
     const result = resolvedApplicationDocument.safeParse(oracle(name));
 
     expect(result.error?.issues ?? []).toStrictEqual([]);
+  });
+
+  /** knowledge's second Application, the one whose cutover is interrupted. */
+  const ingest = (): Record<string, unknown> =>
+    JSON.parse(
+      readFileSync(
+        join(
+          import.meta.dirname,
+          "..",
+          "..",
+          "spec",
+          "v1",
+          "examples",
+          "knowledge",
+          "expected",
+          "resolved.knowledge-ingest.json",
+        ),
+        "utf8",
+      ),
+    ) as Record<string, unknown>;
+
+  it("carries an interrupted Application with a stop-start switchover and no gate", () => {
+    const document = ingest();
+    const result = resolvedApplicationDocument.safeParse(document);
+
+    expect(result.error?.issues ?? []).toStrictEqual([]);
+    expect(document["releaseGate"]).toBeUndefined();
+    expect(
+      (document["processes"] as { switchover?: string }[]).map(
+        ({ switchover }) => switchover,
+      ),
+    ).toStrictEqual(["stop-start"]);
+  });
+
+  it("refuses a switchover its cutover does not derive, and a gate on the wrong side", () => {
+    const wrongSwitchover = ingest();
+    const [worker] = wrongSwitchover["processes"] as Record<string, unknown>[];
+    if (worker === undefined) throw new Error("the worker left the oracle");
+    worker["switchover"] = "blue-green";
+    const gated = {
+      ...ingest(),
+      releaseGate: {
+        deadline: "360s",
+        members: [{ process: "x", readiness: { tcp: 1 } }],
+      },
+    };
+    const { releaseGate: _, ...ungated } = oracle("knowledge") as Record<
+      string,
+      unknown
+    >;
+
+    for (const [document, path] of [
+      [wrongSwitchover, "processes.0.switchover"],
+      [gated, "releaseGate"],
+      [ungated, "releaseGate"],
+    ] as const)
+      expect(
+        resolvedApplicationDocument
+          .safeParse(document)
+          .error?.issues.map((issue) => issue.path.join(".")),
+      ).toStrictEqual([path]);
   });
 
   /** Everything `part` states, `whole` states too. An array may hold more. */

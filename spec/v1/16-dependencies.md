@@ -628,7 +628,7 @@ flowchart LR
         d_exp["exposure, on the Application<br/>name, host (authored FQDN),<br/>audience, contentPolicy,<br/>routes: path, match,<br/>process, surface"]
         d_prb["probes<br/>readiness + liveness"]
         d_bud["startupBudget"]
-        d_cut["cutover<br/>rolling | recreate"]
+        d_cut["cutover<br/>continuous | interrupted"]
         d_life["lifecycle"]
         d_sf["stateful"]
         d_vol["volumes + durability"]

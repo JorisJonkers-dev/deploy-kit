@@ -64,6 +64,17 @@ class PipelineTest {
     }
 
     @Test
+    void theRetiredCutoverValuesAreOutsideTheGrammar(@TempDir Path directory) throws IOException {
+        for (String retired : new String[] {"rolling", "recreate"}) {
+            Parsed parsed =
+                    Pipeline.intent(file(directory, MINIMAL.replace("cutover: continuous", "cutover: " + retired)));
+
+            assertThat(parsed.ok()).as(retired).isFalse();
+            assertThat(parsed.diagnostics()).extracting(Diagnostic::code).containsOnly(Diagnostic.SCHEMA);
+        }
+    }
+
+    @Test
     void aNameThatLinksToNothingIsRefusedAtThePointerOfWhatWroteIt(@TempDir Path directory) throws IOException {
         String routed = MINIMAL.replace("applications:\n  - id: notes\n", """
                 applications:

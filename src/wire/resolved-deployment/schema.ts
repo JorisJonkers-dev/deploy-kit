@@ -244,8 +244,8 @@ const releaseGate = z
     // `max` over the members: the unit waits for its slowest legitimate starter.
     deadline: duration,
     // A Process declaring `probes: none` publishes no readiness signal and is
-    // no member. An Application where every Process does is refused at
-    // composition with E_RELEASE_UNIT_NO_READINESS.
+    // no member. A continuous Application where every Process does is refused
+    // at composition with E_RELEASE_UNIT_NO_READINESS.
     members: z.array(gateMember).min(1),
   })
   .meta({ id: "ReleaseGate" });
@@ -258,14 +258,58 @@ const application = {
   reconcileAfter: z.array(text).exactOptional(),
   alertClass: alertClass.exactOptional(),
   // Absent on an `interrupted` Application: it stops before it starts, so no
-  // switch waits on a gate (docs/adr/model/0128).
+  // switch waits on a gate (docs/adr/model/0128-cutover-names-the-promise.md).
   releaseGate: releaseGate.exactOptional(),
   exposure: z.array(resolvedExposure).exactOptional(),
   processes: z.array(resolvedProcess).min(1),
 };
 
+/** The switchover each `cutover` derives (spec/v1/55-delivery.md#switchover). */
+const SWITCHOVER_OF = {
+  continuous: "blue-green",
+  interrupted: "stop-start",
+} as const;
+
+/**
+ * What a derivation guarantees and the shape alone cannot say: a Process's
+ * switchover is the one its cutover derives, and an Application carries
+ * release-gate inputs exactly when its cutover is `continuous`.
+ */
+function switchoverFollowsCutover(
+  element: {
+    readonly releaseGate?: unknown;
+    readonly processes: readonly {
+      readonly cutover: keyof typeof SWITCHOVER_OF;
+      readonly switchover?: string;
+    }[];
+  },
+  context: z.RefinementCtx,
+): void {
+  for (const [index, process] of element.processes.entries())
+    if (
+      process.switchover !== undefined &&
+      process.switchover !== SWITCHOVER_OF[process.cutover]
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["processes", index, "switchover"],
+        message: `a ${process.cutover} cutover derives the ${SWITCHOVER_OF[process.cutover]} switchover`,
+      });
+  const continuous = element.processes.some(
+    (process) => process.cutover === "continuous",
+  );
+  if (continuous !== (element.releaseGate !== undefined))
+    context.addIssue({
+      code: "custom",
+      path: ["releaseGate"],
+      message:
+        "an Application carries release-gate inputs exactly when its cutover is continuous",
+    });
+}
+
 const resolvedApplication = z
   .strictObject(application)
+  .superRefine(switchoverFollowsCutover)
   .meta({ id: "ResolvedApplication" });
 
 // ------------------------------------------------------------ the documents
@@ -305,6 +349,7 @@ export const resolvedApplicationDocument = z
     provenance,
     ...application,
   })
+  .superRefine(switchoverFollowsCutover)
   .meta({ id: "ResolvedApplicationDocument" });
 
 export type ResolvedDeploymentDocument = z.output<typeof resolvedDeployment>;

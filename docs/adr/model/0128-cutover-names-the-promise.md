@@ -1,7 +1,8 @@
 ---
 tier: decision
 status: proposed
-claim: settled
+claim: open
+owner: joris
 date: 2026-09-24
 normative: spec/v1/10-project-intent.md#cutover-is-declared-not-promised
 rests-on: ["0001", "0005"]
@@ -39,9 +40,10 @@ negotiation.
 **False if:** a worked Process's switchover cannot be read off its `cutover`,
 its lifecycle and its volumes alone, or an Application that switches as one
 can keep its promise with members answering the cutover question differently.
-**Settled by:** derive the switchover for every worked Process in both
-implementations and compare it with the committed Resolved Deployment oracles,
-and refuse the mixed-cutover fixture in both.
+**Settled by:** once the resolvers exist (#92 and its model-driven twin),
+derive the switchover and the release-gate presence for every worked Process in
+both implementations and compare them with the committed Resolved Deployment
+oracles; the mixed-cutover refusal already runs in both.
 
 ## Why
 

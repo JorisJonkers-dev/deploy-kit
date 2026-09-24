@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.jorisjonkers.deploykit.emf.metamodel.descriptor.DependencyEdges;
 import dev.jorisjonkers.deploykit.emf.metamodel.json.CanonicalJson;
+import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.Cutover;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.Deliverable;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.PolicyPeer;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedApplication;
@@ -12,6 +13,7 @@ import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeplo
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeploymentPackage;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedEdge;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedProcess;
+import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.Switchover;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -81,6 +83,25 @@ class ResolvedDeploymentTest {
 
         assertThat(diagnostic.getChildren()).isEmpty();
         assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.OK);
+    }
+
+    @Test
+    void everyProcessSwitchesAsItsCutoverDerivesAndOnlyAContinuousApplicationIsGated() {
+        // spec/v1/55-delivery.md#switchover: `continuous` derives blue-green,
+        // `interrupted` stop-start, and only a continuous Application carries
+        // release-gate inputs.
+        for (ResolvedApplication application : minimal().getApplications()) {
+            boolean continuous =
+                    application.getProcesses().stream().anyMatch(process -> process.getCutover() == Cutover.CONTINUOUS);
+            assertThat(application.getReleaseGate() != null).isEqualTo(continuous);
+            for (ResolvedProcess process : application.getProcesses()) {
+                assertThat(process.getSwitchover())
+                        .isEqualTo(
+                                process.getCutover() == Cutover.CONTINUOUS
+                                        ? Switchover.BLUE_GREEN
+                                        : Switchover.STOP_START);
+            }
+        }
     }
 
     @Test

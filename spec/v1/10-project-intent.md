@@ -762,7 +762,7 @@ the Process.
 There is no `reload`. Nothing in Kubernetes reloads a process, no image in this
 estate watches its own config file, and a reload would need an actor the model
 does not have. The consequence is stated rather than hidden: with `replicas: 1`
-and `Recreate` ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)),
+and an `interrupted` cutover ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)),
 editing one line of `postgresql.conf` takes `platform-postgres` down for a
 restart. That is the true cost of an Asset edit on this substrate, and an author
 who needs it to be cheaper needs a different mechanism than a field.
@@ -2228,7 +2228,7 @@ declaring site is fixed:
 | a field coupling the release of two Applications | one Application, or two that release independently ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)) |
 | an image tag or digest | the images lock |
 | a `ports` list, or a port as a string | an integer at its point of use |
-| `RollingUpdate`, `maxSurge`, `progressDeadlineSeconds` | derived from `cutover`, `startupBudget` and the declared volumes |
+| `RollingUpdate`, `maxSurge`, a Canary, `progressDeadlineSeconds` | the adapters' spelling of the switchover and deadline derived from `cutover`, `startupBudget` and the declared volumes |
 | `statefulset` / `deployment` | derived from `lifecycle` + volumes |
 | a liveness probe with no path | state it, or use `tcp`, or `probes: none` |
 | a Dependency Coordinate as a literal | `${dependency:…}` |

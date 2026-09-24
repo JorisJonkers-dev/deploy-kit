@@ -187,6 +187,15 @@ function completenessRefusals(
   return refusals;
 }
 
+/** The lowest level's answer to the cutover question, or none if no level answers. */
+function effectiveCutover(
+  process: Process,
+  above: readonly Level[],
+): Process["cutover"] {
+  return [process, ...above].find((level) => level.cutover !== undefined)
+    ?.cutover;
+}
+
 function processRefusals(
   process: Process,
   above: readonly Level[],
@@ -198,9 +207,7 @@ function processRefusals(
   ];
   const volumes = process.volumes ?? [];
   // The effective answer: it may come from a level above.
-  const cutover = [process, ...above].find(
-    (level) => level.cutover !== undefined,
-  )?.cutover;
+  const cutover = effectiveCutover(process, above);
   if (cutover === "continuous" && volumes.length > 0)
     refusals.push({
       code: "E_CUTOVER_UNHONOURABLE",
@@ -240,12 +247,7 @@ function mixedCutoverRefusals(
   const answers = new Set(
     application.processes
       .filter((process) => process.lifecycle === "application")
-      .map(
-        (process) =>
-          [process, application, project].find(
-            (level) => level.cutover !== undefined,
-          )?.cutover,
-      )
+      .map((process) => effectiveCutover(process, [application, project]))
       .filter((cutover) => cutover !== undefined),
   );
   if (answers.size < 2) return [];
