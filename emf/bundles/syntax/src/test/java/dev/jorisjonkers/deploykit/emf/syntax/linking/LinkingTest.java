@@ -136,7 +136,13 @@ class LinkingTest {
               cni: flannel
               networkPolicyController: embedded
             bootstrap:
-              flux: { sourceRef: flux-system/platform }
+              flux:
+                sourceRef: flux-system/platform
+                artifacts:
+                  repository: ghcr.io/o/render
+                  signer:
+                    issuer: "https://token.actions.githubusercontent.com"
+                    subject: "https://github.com/o/estate/.github/workflows/compose.yml@refs/heads/main"
               vault: { unsealed: true }
               crds: [traefik.io/v1alpha1]
             tiers:

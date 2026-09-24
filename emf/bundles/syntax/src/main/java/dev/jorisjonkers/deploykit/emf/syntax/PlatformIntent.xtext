@@ -47,7 +47,16 @@ Bootstrap returns Bootstrap:
 	& ('crds' ':' BEGIN (DASH BEGIN crds+=Text END | crds+=Text)+ END));
 
 FluxSource returns FluxSource:
-	'sourceRef' ':' sourceRef=Text;
+	(('sourceRef' ':' sourceRef=Text)
+	& ('artifacts' ':' BEGIN artifacts=RenderedArtifacts END));
+
+RenderedArtifacts returns RenderedArtifacts:
+	(('repository' ':' repository=Text)
+	& ('signer' ':' BEGIN signer=ArtifactSigner END));
+
+ArtifactSigner returns ArtifactSigner:
+	(('issuer' ':' issuer=Text)
+	& ('subject' ':' subject=Text));
 
 VaultState returns VaultState:
 	'unsealed' ':' unsealed=Bool;
@@ -131,11 +140,11 @@ Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword | PlatformKeyword;
 
 PlatformKeyword:
-	'acme' | 'address' | 'analysis' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cluster' | 'cni' |
+	'acme' | 'address' | 'analysis' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cluster' | 'cni' |
 	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'embedded' | 'engines' | 'ephemeral' | 'etcd' |
-	'failures' | 'flux' | 'forwardAuth' | 'hardening' | 'interval' | 'iterations' | 'kubernetesVersion' | 'listener' | 'machinery' | 'metadata' |
+	'failures' | 'flux' | 'forwardAuth' | 'hardening' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'listener' | 'machinery' | 'metadata' |
 	'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'providers' | 'restricted' |
-	'retain' | 'runner' | 'schedule' | 'secretsEncryption' | 'serverCount' | 'size' | 'sourceRef' | 'sqlite' | 'substrate' |
+	'repository' | 'retain' | 'runner' | 'schedule' | 'secretsEncryption' | 'serverCount' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
 	'surfaces' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'vault';
 
 enum Datastore returns Datastore:

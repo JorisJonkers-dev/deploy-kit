@@ -29,7 +29,7 @@ Status of everything in this directory:
 | [0042](0042-apply-before-prune-inventory.md) | delivery | apply first, prune last, from an inventory of rendered kinds | met by the applier: Flux applies, then garbage-collects from its own inventory |
 | [0043](0043-delete-authority-durability-gate.md) | delivery | deletion gated by Durability Class; no automatic PVC deletes | taken up by [#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158): a claim whose class derives a backup is never pruned |
 | [0044](0044-reconcile-cronjob.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)) | delivery | reconciliation as an in-cluster CronJob per aggregator | superseded by [0127](../model/0127-delivery-is-part-of-the-model.md): Flux reconciles continuously |
-| [0045](0045-break-glass-reporting.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)) | delivery | break-glass exists, sticks, and reports itself | superseded by [0127](../model/0127-delivery-is-part-of-the-model.md): break-glass is a pin revert, specified by [#154](https://github.com/JorisJonkers-dev/deploy-kit/issues/154) |
+| [0045](0045-break-glass-reporting.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)) | delivery | break-glass exists, sticks, and reports itself | superseded by [0127](../model/0127-delivery-is-part-of-the-model.md): break-glass is a pin revert ([0133](../model/0133-a-project-is-delivered-as-a-signed-artifact-pinned-by-digest.md), [chapter 55](../../../spec/v1/55-delivery.md#rendered-artifacts-and-pins)) |
 | [0046](0046-distinct-field-managers.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)) | delivery | one field manager per applier, serialised by a lease | superseded by [0127](../model/0127-delivery-is-part-of-the-model.md): one applier; which objects Flagger owns, and the render therefore omits, is [#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158)'s |
 | [0047](0047-namespace-per-deployer.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)) | delivery | a namespace has exactly one deployer | superseded by [0127](../model/0127-delivery-is-part-of-the-model.md): there is one deployer |
 | [0048](0048-class-b-pinning.md) | delivery | the foundation pinned like everything else, live defect today | live defect, fixed regardless; Flagger joins the foundation pinned ([#148](https://github.com/JorisJonkers-dev/deploy-kit/issues/148)) |
@@ -44,8 +44,9 @@ Status of everything in this directory:
   health checks, as one delivery mechanism's reading of the Reconcile Unit DAG
   that [chapter 20](../../../spec/v1/20-resolved-deployment.md#the-reconcile-unit)
   derives ([0098](../model/0098-one-publication-path.md)). **Fate:** taken up by
-  [#154](https://github.com/JorisJonkers-dev/deploy-kit/issues/154), where each
-  Project's pinned source is what a Kustomization applies.
+  [0133](../model/0133-a-project-is-delivered-as-a-signed-artifact-pinned-by-digest.md):
+  each Reconcile Unit's Kustomization applies its own path in its Project's
+  pinned artifact ([chapter 55](../../../spec/v1/55-delivery.md#rendered-artifacts-and-pins)).
 - **Whether a Release Unit may span an ownership boundary.** Moved here from
   [chapter 50](../../../spec/v1/50-lifecycle.md#open-in-this-chapter). **Fate:**
   moot: pull delivery has one deployer, so there is no ownership boundary for a

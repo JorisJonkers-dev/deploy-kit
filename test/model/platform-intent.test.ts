@@ -114,6 +114,17 @@ describe("parsePlatformIntent", () => {
     ).toStrictEqual([{ code: "schema", path: "/tiers/1/listener" }]);
   });
 
+  it("refuses rendered artifacts that name no signer, at the artifacts", () => {
+    // Flux fetches each Project's render from the artifact repository and
+    // verifies its signer, so neither may be missing
+    // (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
+    const unsigned = WORKED.replace(/\n {6}signer:\n( {8}.*\n)+/, "\n");
+
+    expect(refusalsOf(unsigned)).toStrictEqual([
+      { code: "schema", path: "/bootstrap/flux/artifacts/signer" },
+    ]);
+  });
+
   it("refuses YAML outside the subset before the schema runs", () => {
     expect(refusalsOf(`${WORKED}---\n${WORKED}`)).toStrictEqual([
       { code: "schema", path: "" },

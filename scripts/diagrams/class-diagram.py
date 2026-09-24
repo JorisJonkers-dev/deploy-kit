@@ -105,6 +105,8 @@ TREES = {"10-project-intent": {
         "MigrationPolicy", "DeliveryPolicy", "Provider",
     ],
     "Bootstrap": ["FluxSource", "VaultState"],
+    "FluxSource": ["RenderedArtifacts"],
+    "RenderedArtifacts": ["ArtifactSigner"],
     "DurabilityPolicies": ["DurabilityPolicy"],
     "DurabilityPolicy": ["OffClusterCopy"],
     "EnginePolicies": ["EnginePolicy"],
