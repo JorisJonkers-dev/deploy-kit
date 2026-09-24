@@ -1,6 +1,7 @@
 package dev.jorisjonkers.deploykit.emf.syntax.linking;
 
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
+import java.util.Set;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.xtext.diagnostics.DiagnosticMessage;
 import org.eclipse.xtext.diagnostics.Severity;
@@ -20,8 +21,7 @@ public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
     public static final String UNKNOWN_MACHINERY = "E_UNKNOWN_MACHINERY";
 
     /** The codes of names that link into another document, reported only when the documents are read together. */
-    public static final java.util.Set<String> ACROSS_DOCUMENTS =
-            java.util.Set.of(UNKNOWN_TIER_PROXY, UNKNOWN_MACHINERY);
+    public static final Set<String> ACROSS_DOCUMENTS = Set.of(UNKNOWN_TIER_PROXY, UNKNOWN_MACHINERY);
 
     @Override
     public DiagnosticMessage getUnresolvedProxyMessage(ILinkingDiagnosticContext context) {

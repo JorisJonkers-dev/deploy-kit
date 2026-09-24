@@ -238,7 +238,7 @@ describe("the metamodel's own keys", () => {
 });
 
 describe("the committed oracles", () => {
-  const ORACLES = ["minimal", "knowledge"] as const;
+  const ORACLES = ["minimal", "knowledge", "delivery"] as const;
   const oracle = (name: string): unknown =>
     JSON.parse(
       readFileSync(
@@ -261,6 +261,20 @@ describe("the committed oracles", () => {
     const result = resolvedApplicationDocument.safeParse(oracle(name));
 
     expect(result.error?.issues ?? []).toStrictEqual([]);
+  });
+
+  it("carries delivery machinery with a rolling switchover and no gate", () => {
+    // The Release Gate is named in `delivery.machinery`, so its continuous
+    // cutover derives a rolling switchover, never blue/green, and nothing gates
+    // it (spec/v1/55-delivery.md#the-release-gate).
+    const gate = oracle("delivery") as Record<string, unknown>;
+
+    expect(gate["releaseGate"]).toBeUndefined();
+    expect(
+      (gate["processes"] as { cutover?: string; switchover?: string }[]).map(
+        ({ cutover, switchover }) => [cutover, switchover],
+      ),
+    ).toStrictEqual([["continuous", "rolling"]]);
   });
 
   /** knowledge's second Application, the one whose cutover is interrupted. */

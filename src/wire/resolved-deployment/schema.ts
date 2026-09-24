@@ -294,7 +294,6 @@ const application = {
   processes: z.array(resolvedProcess).min(1),
 };
 
-/** The switchover each `cutover` derives (spec/v1/55-delivery.md#switchover). */
 /** The switchovers each `cutover` may derive (spec/v1/55-delivery.md#switchover):
  * `rolling` is the delivery machinery's, which no gate switches. */
 const SWITCHOVERS_OF = {

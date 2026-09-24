@@ -41,9 +41,9 @@ render against a stale one is `E_PARTICIPANT_STALE`.
 
 The Platform document's classes and how they compose. A policy keyed by a
 closed vocabulary is a class with one optional field per literal, so a policy
-the platform does not offer is a field it does not write. One field refers into
-another document: a tier's `traefik` names an Application declared in a project
-file the platform owns.
+the platform does not offer is a field it does not write. Two fields refer into
+another document: a tier's `traefik` and each name in `delivery.machinery` name
+an Application declared in a project file the platform owns.
 
 A Platform document is checked on its own and together with the project files
 read beside it. On its own, a tier that carries `authenticated` needs its
@@ -57,6 +57,9 @@ other resolves and every policy one asks for the other offers:
 | a Process's `engine` has no entry in `engines` | `E_NO_ENGINE_POLICY` |
 | a volume's Durability Class has no entry in `durability` | `E_NO_DURABILITY_POLICY` |
 | a grant delivered as `env` or `file` where `secretsEncryption` is false | `E_SECRETS_AT_REST_REQUIRED` |
+| a name in `delivery.machinery` names an Application no project file read beside it declares | `E_UNKNOWN_MACHINERY` |
+| an Application moves its schema with a changelog and the platform declares no `migration` policy | `E_NO_MIGRATION_POLICY` |
+| an Application's cutover is `continuous` and the platform declares no `delivery` policy | `E_NO_DELIVERY_POLICY` |
 
 A refusal names the document it points into as well as the path, because the
 object at fault can sit in either: a proxy nothing declares is the tier's, and an
@@ -376,8 +379,15 @@ facts, both the platform's:
   often a check runs, how many passing checks promote, and how many failing ones
   roll back. No Application authors its own.
 
-The block is optional. A Platform document without it gates nothing and names no
-machinery.
+The platform owns the machinery's Applications in a project file of its own, the
+worked [`delivery`](examples/delivery/delivery.project.yml) project, whose
+Release Gate projects a `rolling` switchover and no gate
+([`resolved.json`](examples/delivery/expected/resolved.json)).
+
+The block is optional, and a platform that omits it offers no switch that keeps
+serving: a `continuous` Application read beside it is `E_NO_DELIVERY_POLICY`,
+because its blue/green switch has no cadence to be analysed at. A platform whose
+every Application is `interrupted` needs neither the gate nor the block.
 
 ## Providers
 

@@ -84,7 +84,13 @@ describe("parseProjectIntent", () => {
   );
 
   it("covers every worked example", () => {
-    expect(cases).toStrictEqual(["auth", "data", "knowledge", "minimal"]);
+    expect(cases).toStrictEqual([
+      "auth",
+      "data",
+      "delivery",
+      "knowledge",
+      "minimal",
+    ]);
   });
 
   it("parses the minimal case to its committed intent oracle, byte for byte", () => {

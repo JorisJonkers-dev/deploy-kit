@@ -15,8 +15,9 @@ a first-party **Release Gate**. The gate answers the two questions a Canary
 asks: may this member's new version start, and may it be promoted. It answers
 from the Application's release-gate inputs in the Resolved Deployment, holds
 every member at a barrier until all have passed their analysis, and answers no
-whenever it cannot answer. The delivery machinery, Flux, Flagger, the gate and
-the edge proxies, is listed in the Platform document and never gated. Analysis
+whenever it cannot answer. The delivery machinery, Flagger, the gate and the
+edge proxies, is listed in the Platform document and never gated; Flux is in the
+bootstrap set and is never switched at all. Analysis
 cadence is the platform's; the checks derive from each member's Runtime
 Profile. The mechanics are [chapter 55](../../../spec/v1/55-delivery.md#the-release-gate)'s.
 
@@ -74,7 +75,7 @@ opt-out.
 
 | option | cost if taken | why rejected |
 |---|---|---|
-| Keep 0071: inputs in layer 2, nothing reads them | no controller to write | the Release Unit rule stays a promise; members roll independently |
+| Keep [0071](0071-release-gate-inputs-are-layer-2.md): inputs in layer 2, nothing reads them | no controller to write | the Release Unit rule stays a promise; members roll independently |
 | Loadtester scripts rendered into each Canary | ships today, as Blueshell does | executable code in a Deliverable, and a decision read from live objects instead of the model |
 | An edge-level atomic flip through the Gateway API | one flip at the edge | only north-south traffic moves; Process-to-Process traffic still staggers, and the Tier adapter is rewritten |
 | Fail open | releases continue during a gate outage | the barrier and the migration check silently lapse exactly then |

@@ -604,7 +604,7 @@ until every member's new version is healthy
 belongs to delivery: Flagger switches each member, and the Release Gate holds
 them at a barrier ([chapter 55](55-delivery.md#the-release-gate),
 [0132](../../docs/adr/model/0132-the-release-gate-answers-the-switch.md),
-superseding [0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md) (superseded by [0132](../../docs/adr/model/0132-the-release-gate-answers-the-switch.md))).
+superseding [0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md)).
 What the model owes is the gate's **inputs**, derived rather than authored.
 
 Layer 2 therefore carries, per Application a Process of which switches

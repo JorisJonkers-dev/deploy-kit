@@ -1,5 +1,6 @@
 # The Platform document this case's project file is read beside. It offers
-# what the case needs and nothing it tests.
+# what the case needs and nothing it tests: no `delivery` policy, which is the
+# refusal.
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Platform
@@ -29,12 +30,6 @@ tiers:
     listener: plain
     certificates: none
     traefik: edge-proxy
-delivery:
-  machinery: [edge-proxy]
-  analysis:
-    interval: 30s
-    iterations: 4
-    threshold: 3
 durability:
   reconstructible: {}
   recoverable: { schedule: "15 3 * * *", retain: 14 }

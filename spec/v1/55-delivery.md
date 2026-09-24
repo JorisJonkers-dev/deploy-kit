@@ -83,7 +83,9 @@ Four rules hold the table true:
   that fits two copies of it, for the length of its analysis
   ([chapter 20](20-resolved-deployment.md#layer-2-does-not-assign-a-node)).
 - **A worker is a member too.** A `blue-green` Process with no Surface is gated
-  like any other, behind a derived placeholder Service. Its new version consumes
+  like any other. Flagger needs a Service to switch, so the adapter derives one
+  with no port for it; layer 2 carries nothing for that Service, because it
+  follows from a member with no Surface. Its new version consumes
   real work while it is analysed, so a worker that switches continuously must be
   idempotent and must tolerate one version of skew with its siblings.
 - **A job and a prepare step have none.** A `lifecycle: job` or
@@ -130,9 +132,10 @@ checked for readiness alone. Nothing about analysis is authored per Application.
 switch waits, the old versions keep serving, and an alert fires. A release is
 never let through because the thing that would stop it is down.
 
-**Delivery machinery is never gated.** Flux, Flagger, the Release Gate and the
-edge proxies are listed in the Platform document as the delivery machinery
-([chapter 14](14-platform-intent.md#delivery-policy)). Their Processes derive a
+**Delivery machinery is never gated.** Flagger, the Release Gate and the edge
+proxies are listed in the Platform document as the delivery machinery
+([chapter 14](14-platform-intent.md#delivery-policy)); Flux is in the bootstrap
+set, not an Application, so it is never switched at all. Their Processes derive a
 `rolling` switchover when `continuous`, never `blue-green`: a gate cannot gate
 its own release, and an edge proxy on a host port cannot run two copies.
 

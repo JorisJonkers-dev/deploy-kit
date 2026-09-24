@@ -32,11 +32,14 @@ export interface Platform {
 export interface DeliveryPolicy {
   /** The Applications never put through a gate: the ones that perform it. */
   readonly machinery: readonly string[];
-  readonly analysis: {
-    readonly interval: string;
-    readonly iterations: number;
-    readonly threshold: number;
-  };
+  readonly analysis: AnalysisPolicy;
+}
+
+/** How often a blue/green member is checked, how many passes promote, how many failures roll back. */
+export interface AnalysisPolicy {
+  readonly interval: string;
+  readonly iterations: number;
+  readonly threshold: number;
 }
 
 export interface MigrationPolicy {

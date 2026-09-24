@@ -1,0 +1,40 @@
+# REFUSED: E_NO_DELIVERY_POLICY
+#
+# `api` promises a continuous cutover, which derives a blue/green switch the
+# Release Gate analyses at the platform's cadence, and this Platform document
+# offers no `delivery` policy to take it from
+# (spec/v1/14-platform-intent.md#delivery-policy). The edge proxy stops and
+# starts, so it asks for nothing.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: edge-proxy
+    processes:
+      - name: edge-proxy
+        lifecycle: application
+        image: traefik
+        runtime: none
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 8080 }
+        startupBudget: 30s
+        cutover: interrupted
+  - id: api
+    cutover: continuous
+    processes:
+      - name: api
+        lifecycle: application
+        image: api
+        runtime: node
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 25m }
+        probes:
+          readiness: { path: /ready, port: 8080 }
+        startupBudget: 20s

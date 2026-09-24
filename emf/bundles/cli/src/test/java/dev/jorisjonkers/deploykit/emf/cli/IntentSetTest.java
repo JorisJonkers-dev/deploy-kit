@@ -19,6 +19,7 @@ class IntentSetTest {
             Examples.of("platform/platform.intent.yml"),
             Examples.of("auth/auth.project.yml"),
             Examples.of("data/data.project.yml"),
+            Examples.of("delivery/delivery.project.yml"),
             Examples.of("knowledge/knowledge.project.yml"),
             Examples.of("minimal/notes.project.yml"));
 
@@ -29,8 +30,6 @@ class IntentSetTest {
                 .containsExactlyInAnyOrder(
                         tuple("E_UNKNOWN_TIER_PROXY", "platform.intent.yml", "/tiers/0"),
                         tuple("E_UNKNOWN_TIER_PROXY", "platform.intent.yml", "/tiers/1"),
-                        tuple("E_UNKNOWN_MACHINERY", "platform.intent.yml", "/delivery"),
-                        tuple("E_UNKNOWN_MACHINERY", "platform.intent.yml", "/delivery"),
                         tuple("E_UNKNOWN_MACHINERY", "platform.intent.yml", "/delivery"),
                         tuple("E_UNKNOWN_MACHINERY", "platform.intent.yml", "/delivery"),
                         tuple(

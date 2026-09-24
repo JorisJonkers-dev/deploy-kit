@@ -23,6 +23,7 @@ const WORKED = [
   "platform/platform.intent.yml",
   "auth/auth.project.yml",
   "data/data.project.yml",
+  "delivery/delivery.project.yml",
   "knowledge/knowledge.project.yml",
   "minimal/notes.project.yml",
 ].map(read);
@@ -55,16 +56,8 @@ describe("checkIntentSet", () => {
         document: "platform/platform.intent.yml",
         path: "/tiers/1",
       },
-      {
-        code: "E_UNKNOWN_MACHINERY",
-        document: "platform/platform.intent.yml",
-        path: "/delivery",
-      },
-      {
-        code: "E_UNKNOWN_MACHINERY",
-        document: "platform/platform.intent.yml",
-        path: "/delivery",
-      },
+      // The edge proxies are named as machinery and declared nowhere, as they
+      // are named as tier proxies; `delivery` declares the other two.
       {
         code: "E_UNKNOWN_MACHINERY",
         document: "platform/platform.intent.yml",
@@ -113,7 +106,7 @@ describe("checkIntentSet", () => {
     });
     expect(
       result.ok && result.value.projects.map(({ name }) => name),
-    ).toStrictEqual(["auth", "data", "knowledge", "notes"]);
+    ).toStrictEqual(["auth", "data", "delivery", "knowledge", "notes"]);
   });
 
   it("returns the Platform and the projects when the set breaks nothing", () => {
@@ -232,21 +225,17 @@ describe("checkIntentSet", () => {
     const result = checkIntentSet(WORKED);
     const diagnostics = result.ok ? [] : result.diagnostics;
 
-    expect(diagnostics.map(({ message }) => message).slice(0, 7)).toStrictEqual(
+    expect(diagnostics.map(({ message }) => message).slice(0, 5)).toStrictEqual(
       [
         "no project file declares the Application traefik-public this tier's proxy names",
         "no project file declares the Application traefik-lan this tier's proxy names",
         "no project file declares the Application traefik-public the delivery machinery names",
         "no project file declares the Application traefik-lan the delivery machinery names",
-        "no project file declares the Application flagger the delivery machinery names",
-        "no project file declares the Application release-gate the delivery machinery names",
         "delivery env writes a secret into the cluster, and the platform does not encrypt secrets at rest",
       ],
     );
-    expect(diagnostics.map(({ hint }) => hint).slice(1, 7)).toStrictEqual([
+    expect(diagnostics.map(({ hint }) => hint).slice(1, 5)).toStrictEqual([
       "Declare the proxy Application in a project file the platform owns.",
-      "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
-      "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
       "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
       "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
       "Deliver the secret through the application itself, or enable `secretsEncryption` on the platform.",
@@ -336,5 +325,43 @@ owner: o
       document: "p.project.yml",
       path: "/dependsOn/0/credentials",
     });
+  });
+});
+
+// REQ-031, the delivery half (spec/v1/14-platform-intent.md#delivery-policy): a
+// continuous Application is gated, so it needs the platform's analysis cadence.
+describe("the delivery rule across documents", () => {
+  const platform = read("refusals/no-delivery-policy/platform.intent.yml");
+  const HEADER = `apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: p
+owner: o
+applications:
+  - id: edge-proxy
+    processes:
+      - {name: edge-proxy, lifecycle: application, image: t, runtime: none, placement: {memory: 1Mi, cpu: 1m}, cutover: interrupted}
+`;
+  const process = (name: string, lifecycle: string, cutover: string): string =>
+    `      - {name: ${name}, lifecycle: ${lifecycle}, image: ${name}, runtime: none, placement: {memory: 1Mi, cpu: 1m}, cutover: ${cutover}, probes: {readiness: {tcp: 1}}}\n`;
+  const check = (processes: string) =>
+    refusalsOf([
+      platform,
+      {
+        name: "p.project.yml",
+        text: `${HEADER}  - id: api\n    processes:\n${processes}`,
+      },
+    ]).map(({ code, path }) => `${code} ${path}`);
+
+  it("asks nothing of a job, which switches nothing", () => {
+    expect(check(process("once", "job", "continuous"))).toStrictEqual([]);
+  });
+
+  it("refuses an Application one serving Process of which is continuous", () => {
+    expect(
+      check(
+        `${process("api", "application", "continuous")}${process("once", "job", "interrupted")}`,
+      ),
+    ).toStrictEqual(["E_NO_DELIVERY_POLICY /applications/1"]);
   });
 });

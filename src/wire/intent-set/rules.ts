@@ -6,6 +6,7 @@
 import type { Diagnostic } from "../../domain/diagnostic.ts";
 import { ownsDatabases } from "../../domain/project-intent/migration.ts";
 import type { PlatformIntentDocument } from "../platform-intent/schema.ts";
+import { effectiveCutover } from "../project-intent/rules.ts";
 import type { ProjectIntentDocument } from "../project-intent/schema.ts";
 
 export interface Named<T> {
@@ -147,6 +148,31 @@ function runnerRefusals(
   );
 }
 
+/** A continuous Application is gated, and the gate analyses at the platform's cadence. */
+function deliveryRefusals(
+  project: ProjectIntentDocument,
+  platform: PlatformIntentDocument,
+): Omit<Diagnostic, "document">[] {
+  if (platform.delivery !== undefined) return [];
+  return project.applications.flatMap((application, a) =>
+    application.processes.some(
+      (process) =>
+        process.lifecycle === "application" &&
+        effectiveCutover(process, [application, project]) === "continuous",
+    )
+      ? [
+          {
+            code: "E_NO_DELIVERY_POLICY",
+            path: `/applications/${a}`,
+            message:
+              "the platform offers no analysis cadence for this continuous Application's switch",
+            hint: "Declare the Platform document's `delivery` policy: its machinery and analysis cadence.",
+          },
+        ]
+      : [],
+  );
+}
+
 function projectRefusals(
   project: ProjectIntentDocument,
   platform: PlatformIntentDocument,
@@ -170,6 +196,7 @@ function projectRefusals(
   refusals.push(...migrationRefusals(project, estate));
   refusals.push(...credentialsRefusals(project.dependsOn, "", estate));
   refusals.push(...runnerRefusals(project, platform));
+  refusals.push(...deliveryRefusals(project, platform));
   for (const [a, application] of project.applications.entries()) {
     const at = `/applications/${a}`;
     for (const [e, exposure] of (application.exposure ?? []).entries()) {

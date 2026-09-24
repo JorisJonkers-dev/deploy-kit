@@ -1,0 +1,56 @@
+# The delivery machinery as Project Intent: the Applications that perform a
+# switch and are never switched by one (spec/v1/14-platform-intent.md#delivery-policy).
+#
+# The Platform document names both in `delivery.machinery`, so this file is the
+# one project the platform owns outright. Both Applications answer `continuous`:
+# they must keep serving while they cut over. On any other Application that
+# derives a blue/green switch
+# the Release Gate decides; here it derives a rolling one, because a gate cannot
+# gate its own release, and nothing gates Flagger's
+# (spec/v1/55-delivery.md#the-release-gate). The Release Gate's projection,
+# `expected/resolved.json`, records exactly that: a `rolling` switchover and no
+# release-gate inputs.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: delivery # the namespace derives: delivery-system
+owner: joris
+
+applications:
+  - id: flagger
+    processes:
+      - name: flagger
+        lifecycle: application
+        image: flagger
+        runtime: none
+        provides:
+          http: 8080
+        placement:
+          memory: 64Mi
+          cpu: 10m
+        writablePaths: [/tmp]
+        probes:
+          readiness: { path: /healthz, port: 8080 }
+          liveness: { path: /healthz, port: 8080 }
+        startupBudget: 30s
+        cutover: continuous
+
+  - id: release-gate
+    processes:
+      - name: release-gate
+        lifecycle: application
+        image: release-gate
+        runtime: node
+        provides:
+          http: 8080 # Flagger's webhooks, answered from the projection
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        writablePaths: [/tmp]
+        probes:
+          readiness: { path: /ready, port: 8080 }
+          liveness: { path: /live, port: 8080 }
+        startupBudget: 20s
+        cutover: continuous

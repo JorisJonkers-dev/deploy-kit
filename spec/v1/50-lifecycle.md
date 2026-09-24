@@ -234,9 +234,11 @@ separately"; it is redrawn with the rest of the delivery diagrams in
 ## Open in this chapter
 
 1. ~~**Release Unit atomicity is untested.**~~ It is
-   [0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md) (superseded by [0132](../../docs/adr/model/0132-the-release-gate-answers-the-switch.md))'s own
-   settling test, a switchover mechanism written against a `ResolvedApplication`
-   projection alone, and is recorded there. [0060](../../docs/adr/model/0060-release-unit.md),
+   [0132](../../docs/adr/model/0132-the-release-gate-answers-the-switch.md)'s own
+   settling test, a release forced to fail on one member and observed to promote
+   none, and is recorded there; it was first recorded by
+   [0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md), which
+   it supersedes. [0060](../../docs/adr/model/0060-release-unit.md),
    which this item used to cite, is superseded; the unit is the Application
    ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)).
 2. ~~**Whether a unit may span ownership boundaries.**~~ Moot: pull delivery has

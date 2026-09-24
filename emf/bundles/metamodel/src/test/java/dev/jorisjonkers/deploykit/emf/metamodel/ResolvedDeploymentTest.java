@@ -100,20 +100,21 @@ class ResolvedDeploymentTest {
     }
 
     @Test
-    void everyProcessSwitchesAsItsCutoverDerivesAndOnlyAContinuousApplicationIsGated() {
-        // spec/v1/55-delivery.md#switchover: `continuous` derives blue-green,
-        // `interrupted` stop-start, and only a continuous Application carries
-        // release-gate inputs.
+    void everyProcessSwitchesAsItsCutoverAllowsAndOnlyABlueGreenApplicationIsGated() {
+        // spec/v1/55-delivery.md#switchover: `continuous` derives blue-green, or
+        // rolling on delivery machinery; `interrupted` derives stop-start; and an
+        // Application carries release-gate inputs exactly when a Process of it
+        // switches blue-green.
         for (ResolvedApplication application : minimal().getApplications()) {
-            boolean continuous =
-                    application.getProcesses().stream().anyMatch(process -> process.getCutover() == Cutover.CONTINUOUS);
-            assertThat(application.getReleaseGate() != null).isEqualTo(continuous);
+            boolean gated = application.getProcesses().stream()
+                    .anyMatch(process -> process.getSwitchover() == Switchover.BLUE_GREEN);
+            assertThat(application.getReleaseGate() != null).isEqualTo(gated);
             for (ResolvedProcess process : application.getProcesses()) {
                 assertThat(process.getSwitchover())
-                        .isEqualTo(
+                        .isIn(
                                 process.getCutover() == Cutover.CONTINUOUS
-                                        ? Switchover.BLUE_GREEN
-                                        : Switchover.STOP_START);
+                                        ? List.of(Switchover.BLUE_GREEN, Switchover.ROLLING)
+                                        : List.of(Switchover.STOP_START));
             }
         }
     }

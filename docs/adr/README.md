@@ -83,7 +83,7 @@ became a `prepare` Process, run after the migration and before the new version
 Release Gate now answers the switch from layer-2 data and holds an
 Application's members at a barrier
 ([0132](model/0132-the-release-gate-answers-the-switch.md), superseding
-[0071](model/0071-release-gate-inputs-are-layer-2.md) (superseded by [0132](model/0132-the-release-gate-answers-the-switch.md))).
+[0071](model/0071-release-gate-inputs-are-layer-2.md)).
 
 Tier-0 **premises** carry one falsifiable claim each; tier-1 **decisions** name
 the premises they stand on in `rests-on`. A `claim: open` means decided in

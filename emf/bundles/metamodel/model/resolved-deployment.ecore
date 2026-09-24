@@ -340,7 +340,8 @@
   </eClassifiers>
 
   <!-- How the new version replaces the old (spec/v1/55-delivery.md#switchover):
-       `continuous` derives blue-green, `interrupted` stop-start. -->
+       `continuous` derives blue-green, or rolling on delivery machinery, which no
+       gate switches; `interrupted` derives stop-start. -->
   <eClassifiers xsi:type="ecore:EEnum" name="Switchover">
     <eLiterals name="blueGreen" literal="blue-green"/>
     <eLiterals name="stopStart" value="1" literal="stop-start"/>
