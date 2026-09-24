@@ -216,7 +216,7 @@ field's placement link to this anchor rather than copying rows.
 | `runAsUser`, `runAsGroup`, `fsGroup` | derived | - | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Process holds a volume ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)) |
 | container probe timings | derived | - | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Platform Intent's probe policy ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)) |
 | `progressDeadlineSeconds` | derived | - | from `startupBudget` |
-| rollout strategy, surge, unavailability | derived | - | from `cutover` and `volumes`; `cutover: rolling` over an RWO volume is `E_CUTOVER_UNHONOURABLE`, not a silent downgrade |
+| switchover | derived | - | from `cutover`: `continuous` derives `blue-green`, `interrupted` derives `stop-start` ([chapter 55](55-delivery.md#switchover)), which the adapters spell; `cutover: continuous` over an RWO volume is `E_CUTOVER_UNHONOURABLE`, not a silent downgrade |
 | object kind | derived | - | from `lifecycle` and `volumes` |
 | the Application's release-gate deadline | derived | - | `max` over the Application's Processes of `progressDeadlineSeconds` ([The release gate](#the-release-gate)) |
 | the object label set | derived | - | fixed, from Process name, Application Id and the images lock ([chapter 10](10-project-intent.md#the-label-set)) |
@@ -477,19 +477,23 @@ hand, with the reasoning trapped in comments no tool can read.
 
 Five rules carry most of the weight:
 
-- **Strategy is a function of `cutover` and volumes, not a preference.** A
+- **The switchover is a function of `cutover` and volumes, not a preference.** A
   `ReadWriteOnce` volume cannot attach to two pods at once, so a Process
-  holding one cannot surge, and a Process that declares `cutover: rolling`
-  over one is refused with `E_CUTOVER_UNHONOURABLE` rather than silently
-  rendered as `Recreate`. Estate-wide the split is 21 `Recreate` to 9
-  `RollingUpdate`, and every RWO holder is on the `Recreate` side. The renderer
-  today reads an authored enum (`src/adapters/kubernetes.ts:608`) and inspects
-  no volume, which is a trap: a stateful Process whose author forgets
-  `strategy: recreate` gets `maxSurge: 1` against an RWO volume, appears to work
-  on one node, and wedges the first time a second worker exists. Under
-  `cutover`, that forgetting is impossible: the two declarations are checked
-  against each other at composition, and the contradiction is a build error
-  naming the Process and the volume.
+  holding one cannot run its new version beside its old one, and a Process that
+  declares `cutover: continuous` over one is refused with
+  `E_CUTOVER_UNHONOURABLE` rather than silently derived to a stop-start
+  switchover. Estate-wide the split is 21 `Recreate` to 9 `RollingUpdate`, and
+  every RWO holder is on the `Recreate` side. The renderer being replaced reads
+  an authored enum (`src/adapters/kubernetes.ts:608`) and inspects no volume,
+  which is a trap: a stateful Process whose author forgets `strategy: recreate`
+  gets `maxSurge: 1` against an RWO volume, appears to work on one node, and
+  wedges the first time a second worker exists. Under `cutover`, that forgetting
+  is impossible: the two declarations are checked against each other at
+  composition, and the contradiction is a build error naming the Process and
+  the volume. `continuous` derives a `blue-green` switchover, which also needs
+  room for the second copy: a continuous Process is eligible only on a node
+  that fits two copies of it, sidecars included, or it is
+  `E_PLACEMENT_UNSATISFIABLE` ([Layer 2 does not assign a node](#layer-2-does-not-assign-a-node)).
 - **The progress deadline must exceed the startup budget, strictly.** It derives
   as budget × 3, floored. The current renderer emits `600` against a 600-second
   budget, so a JVM still inside its legitimate startup window is marked
@@ -552,7 +556,13 @@ half: a preference naming `gpu-model-gtx960m`, a label no node advertised, was
 dropped by the scheduler with no event, no warning and no condition, and read
 for months as GPU-aware placement while doing nothing. An eligible set of zero
 is therefore `E_PLACEMENT_UNSATISFIABLE` at build time, not a `Pending` pod at
-apply time. The same reasoning retires a capability advertised by 7 of 7 nodes:
+apply time. A `continuous` Process counts **twice**: its blue/green switchover
+runs the new version beside the old one for the length of its analysis, so a
+node is eligible only if its allocatable fits two copies of the Process and its
+sidecars ([0128](../../docs/adr/model/0128-cutover-names-the-promise.md),
+amending [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)).
+This is still eligibility, a per-Process test, and not bin-packing: a canary that
+cannot schedule would otherwise hit its deadline and read as a failed release. The same reasoning retires a capability advertised by 7 of 7 nodes:
 a filter that never excludes anything teaches authors that filters do nothing.
 
 The case that looks like a node assignment is not a scheduling decision either.
@@ -595,7 +605,7 @@ belongs to delivery ([chapter 55](55-delivery.md#switchover)). What the model ow
 gate's **inputs**, and it owes them as a derivation rather than as an object
 ([0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md)).
 
-Layer 2 therefore carries, per Application:
+Layer 2 therefore carries, per Application whose cutover is `continuous`:
 
 | field | derived from |
 |---|---|
@@ -618,10 +628,14 @@ the Application's behalf: an object no controller consumes is the defect
 `app.kubernetes.io/instance` already is, and rendering a second one would not
 make the gate real.
 
-An Application whose Processes all declare `probes: none` publishes no readiness
-signal and cannot be gated: `E_RELEASE_UNIT_NO_READINESS`, checked at
-composition time ([chapter 40](40-composition.md#completeness)), not discovered
-by a delivery mechanism at apply time.
+An `interrupted` Application carries no gate: its Processes stop before their
+new versions start, so there is no moment at which an old version serves while
+a new one waits, and nothing to hold ([0128](../../docs/adr/model/0128-cutover-names-the-promise.md)).
+
+A `continuous` Application whose Processes all declare `probes: none` publishes
+no readiness signal and cannot be gated: `E_RELEASE_UNIT_NO_READINESS`, checked
+at composition time ([chapter 40](40-composition.md#completeness)), not
+discovered by a delivery mechanism at apply time.
 
 ## The path plan
 
@@ -872,10 +886,8 @@ releaseGate:                         # the inputs, not an object (0071)
   deadline: 1800s                    # max over the members
   members:
     - {process: knowledge-api, readiness: {path: /api/actuator/health/readiness, port: 8080}}
-  # knowledge-ingest-worker declares `probes: none`, so it publishes no
-  # readiness signal and cannot be gated. It is not a member. An Application
-  # whose Processes ALL declare `probes: none` is
-  # E_RELEASE_UNIT_NO_READINESS at composition.
+  # A continuous Application whose Processes ALL declare `probes: none` is
+  # E_RELEASE_UNIT_NO_READINESS at composition: nothing could gate its switch.
 
 exposure:                            # on the Application: one host, its routes
   - name: public
@@ -906,7 +918,8 @@ processes:
     image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-api@sha256:1ad39d5…
     uid: 1000
     gid: 1000
-    cutover: rolling                 # granted: this Process holds no volume
+    cutover: continuous              # granted: this Process holds no volume
+    switchover: blue-green           # derived from the cutover
     deadline: 1800s                  # startupBudget × 3
     replicas: 1
     memory: 768Mi                    # request and limit alike; the shape is derived
@@ -927,13 +940,30 @@ processes:
     dependencies:
       - {application: platform-postgres, surface: postgres, address: 'platform-postgres.data-system.svc.cluster.local:5432'}
       - {application: platform-rabbitmq, surface: amqp,     address: 'platform-rabbitmq.data-system.svc.cluster.local:5672'}
+```
 
+The ingest worker is an Application of its own, `knowledge-ingest`, because its
+cutover is not the API's: its volume forces a stop-start cutover, and one
+Application switches as one ([chapter 10](10-project-intent.md#cutover-is-declared-not-promised)).
+Its projection, abridged to what differs:
+
+```yaml
+kind: ResolvedApplication
+project: knowledge
+id: knowledge-ingest
+namespace: knowledge-system          # the same project, so the same namespace
+reconcileUnit: apps-knowledge
+# No `releaseGate`: an interrupted Application stops before it starts, so there
+# is no traffic switch to gate, and this one publishes no readiness either.
+
+processes:
   - name: knowledge-ingest-worker
     identity: knowledge-ingest-worker
     image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-ingest-worker@sha256:8b0c41e…
     uid: 1000
     gid: 1000
-    cutover: recreate                # granted: forced by the volume below
+    cutover: interrupted             # granted: forced by the volume below
+    switchover: stop-start           # derived from the cutover
     deadline: 360s
     replicas: 1
     memory: 256Mi
@@ -966,13 +996,13 @@ processes:
       - {application: platform-postgres, surface: postgres, address: 'platform-postgres.data-system.svc.cluster.local:5432'}
 ```
 
-Six things in that block are worth reading closely.
+Six things in those blocks are worth reading closely.
 
 **Every key names a model concept.** There is no `objectKind`, no
 `strategy: {type: RollingUpdate, maxSurge: 1, maxUnavailable: 0}`, no
 `resources.requests`, no `securityContext`, no `nodeSelector` label key and no
 `secretObjects[].kind`. Layer 2 records that this Process was granted a
-`rolling` cutover, that it takes the `restricted` posture, and that it needs
+`continuous` cutover and derives a `blue-green` switchover, that it takes the `restricted` posture, and that it needs
 768Mi and 250m; the `kubernetes` adapter is where those become a strategy
 block, a security context and a resource block, exactly as Traefik's spellings
 belong to the `traefik` adapter
@@ -1179,6 +1209,7 @@ classDiagram
         +int uid
         +int gid
         +Cutover cutover
+        +Switchover switchover
         +Duration deadline
         +int replicas
         +Quantity memory
@@ -1268,7 +1299,7 @@ classDiagram
     ResolvedDeployment "1" *-- "1..*" ResolvedApplication : applications
     Provenance "1" *-- "1..*" InputDigest : inputDigests
 
-    ResolvedApplication "1" *-- "1" ReleaseGate : releaseGate
+    ResolvedApplication "1" *-- "0..1" ReleaseGate : releaseGate
     ResolvedApplication "1" *-- "1..*" ResolvedProcess : processes
     ResolvedApplication "1" *-- "0..*" ResolvedExposure : exposure
     ReleaseGate "1" *-- "1..*" GateMember : members

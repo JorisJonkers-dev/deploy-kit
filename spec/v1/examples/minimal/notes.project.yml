@@ -59,8 +59,8 @@ applications:
 
         startupBudget: 20s
 
-        # REQUIRED, no default. No volumes, so a rolling cutover is honourable.
-        cutover: rolling
+        # REQUIRED, no default. No volumes, so a continuous cutover is honourable.
+        cutover: continuous
 
         # No `replicas` block: the derived count is one, and one is what this
         # Process runs. The block is for a count above one, with a reason.

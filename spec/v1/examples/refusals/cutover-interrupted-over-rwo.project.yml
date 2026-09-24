@@ -1,15 +1,15 @@
-# ACCEPTED. The counterpart to cutover-rolling-over-rwo.project.yml.
+# ACCEPTED. The counterpart to cutover-continuous-over-rwo.project.yml.
 #
 # The same Process over the same `ReadWriteOnce` storage, declaring the cutover
 # its storage can honour. The owner accepts stop-then-start, and the adapter
 # derives the safe Kubernetes strategy (`Recreate`, with no surge) from the
-# declared intent and the storage facts. No Kubernetes token appears here:
-# `RollingUpdate`, `maxSurge` and `maxUnavailable` are the adapter's, not the
+# declared intent and the storage facts. No Kubernetes or Flagger token appears
+# here: `RollingUpdate`, `Recreate` and a Canary are the adapter's, not the
 # Application author's (spec/v1/10-project-intent.md #cutover-is-declared-not-promised).
 #
 # Rendering that strategy is renderer proof, and there is no renderer yet. What
 # this fixture proves today is the accepted half of the pair at the fixture
-# layer: recreate over RWO is expressible and valid where rolling is refused.
+# layer: interrupted over RWO is expressible and valid where continuous is refused.
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
@@ -20,13 +20,13 @@ project: refusals
 owner: joris
 
 applications:
-  - id: recreate-over-rwo
+  - id: interrupted-over-rwo
     # No `observability` block: this fixture isolates the cutover defect.
 
     processes:
-      - name: recreate-over-rwo-store
+      - name: interrupted-over-rwo-store
         lifecycle: application
-        image: recreate-over-rwo-store
+        image: interrupted-over-rwo-store
         runtime: static
 
         provides:
@@ -43,10 +43,10 @@ applications:
         startupBudget: 20s
 
         # The honest declaration over storage that cannot surge.
-        cutover: recreate
+        cutover: interrupted
 
         volumes:
-          - claim: recreate-over-rwo-data
+          - claim: interrupted-over-rwo-data
             mountAt: /data
             size: 1Gi
             durability: reconstructible

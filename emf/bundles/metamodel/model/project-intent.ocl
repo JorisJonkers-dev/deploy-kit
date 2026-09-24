@@ -20,18 +20,29 @@ import 'https://jorisjonkers.dev/deploy-kit/project-intent/1'
 
 package projectintent
 
+context Application
+	-- The Release Unit switches as one, so its members answer the cutover
+	-- question alike: an interrupted member's gap inside a unit that promised
+	-- to keep serving makes neither answer true of the unit. Jobs switch
+	-- nothing, and a member no level answers is E_CUTOVER_MISSING's.
+	inv E_RELEASE_UNIT_MIXED_CUTOVER:
+		processes->select(lifecycle = Lifecycle::application
+				and effectiveCutover <> Cutover::absent)
+			->collect(effectiveCutover)->asSet()->size() <= 1
+
 context Observability
 	-- The block is whole or absent: a class states how loudly to wake someone,
 	-- and means nothing without a signal to wake them about.
 	inv E_ALERT_CLASS_WITHOUT_SIGNAL: scrape <> null
 
 context Process
-	-- A volume cannot attach to the surge a rolling cutover needs, and a silent
-	-- downgrade is what makes an owner believe in continuity they do not have.
-	-- The effective answer: an RWO volume under an Application declaring
-	-- `rolling` is the same defect written one level up.
+	-- A volume cannot attach to the second copy a continuous cutover starts
+	-- beside the old one, and a silent downgrade is what makes an owner believe
+	-- in continuity they do not have. The effective answer: an RWO volume under
+	-- an Application declaring `continuous` is the same defect written one
+	-- level up.
 	inv E_CUTOVER_UNHONOURABLE:
-		effectiveCutover = Cutover::rolling implies volumes->isEmpty()
+		effectiveCutover = Cutover::continuous implies volumes->isEmpty()
 
 	-- The engine keys the backup method, so it names one nothing asks for when no
 	-- volume derives a backup. `Engine::absent` is the literal a document cannot

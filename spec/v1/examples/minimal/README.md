@@ -32,7 +32,7 @@ written by anyone:
 | no `hardening` block | the `restricted` class: non-root, read-only root, all capabilities dropped, seccomp `RuntimeDefault` | `securityContext`, pod and container |
 | no grant | `automountServiceAccountToken: false` ([0087](../../../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)) | the pod spec |
 | `probes` + `startupBudget: 20s` | the probe cadence from Platform Intent, a startup probe on the **liveness** endpoint, `progressDeadlineSeconds: 60` ([0088](../../../../docs/adr/model/0088-startup-probe-targets-liveness.md)) | all three probes |
-| `cutover: rolling` | `RollingUpdate`, `maxSurge: 1`, `maxUnavailable: 0`, derived from the declared intent and the absence of volumes | the strategy |
+| `cutover: continuous` | a `blue-green` switchover in the Resolved Deployment ([chapter 55](../../55-delivery.md#switchover)); until the Flagger render lands ([#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158)) the tree spells it `RollingUpdate`, `maxSurge: 1`, `maxUnavailable: 0` | the strategy |
 | `provides: http: 8080` | the port name, the Application, the ingress rules | `Service`, `NetworkPolicy` |
 | `exposure` + `audience: anonymous` | the tier, its middleware chain, and the route priority ([0093](../../../../docs/adr/model/0093-route-precedence-is-derived.md)) | `IngressRoute` |
 | `observability` | a `ServiceMonitor` naming the `http` surface and the Platform document's cadence ([chapter 10](../../10-project-intent.md#observability)) | a `PrometheusRule`: rules, severity and receivers are the monitoring stack's, which reads `alertClass` from the projection |

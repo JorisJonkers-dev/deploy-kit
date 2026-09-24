@@ -166,12 +166,12 @@ applications:
 
         startupBudget: 60s
 
-        # REQUIRED, no default, and `recreate` is the only honourable answer:
+        # REQUIRED, no default, and `interrupted` is the only honourable answer:
         # this Process holds a ReadWriteOnce local-path volume, which cannot
-        # attach to two pods at once. Declaring `rolling` here is
-        # E_CUTOVER_UNHONOURABLE rather than a silent downgrade to Recreate --
+        # attach to two pods at once. Declaring `continuous` here is
+        # E_CUTOVER_UNHONOURABLE rather than a silent downgrade to stop-start --
         # the owner states the stop-then-start they already have.
-        cutover: recreate
+        cutover: interrupted
 
         volumes:
           - claim: postgres-data
@@ -322,9 +322,9 @@ applications:
 
         startupBudget: 120s
 
-        # `recreate`: this Process holds an RWO local-path volume. `rolling`
-        # would be E_CUTOVER_UNHONOURABLE, not a silent Recreate.
-        cutover: recreate
+        # `interrupted`: this Process holds an RWO local-path volume.
+        # `continuous` would be E_CUTOVER_UNHONOURABLE, not a silent stop-start.
+        cutover: interrupted
 
         volumes:
           - claim: rabbitmq-data
@@ -378,9 +378,9 @@ applications:
 
         startupBudget: 30s
 
-        # `recreate`: RWO volume again. The cache is reconstructible, so the
+        # `interrupted`: RWO volume again. The cache is reconstructible, so the
         # stop-then-start costs a cold cache and nothing else.
-        cutover: recreate
+        cutover: interrupted
 
         volumes:
           - claim: valkey-data

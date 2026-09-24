@@ -4,9 +4,7 @@ kind: Kustomization
 resources:
 - configmap.yaml
 - networkpolicy.yaml
-- pvc.yaml
 - serviceaccount.yaml
 - servicemonitor.yaml
 - vso.yaml
 - workload.yaml
-- backup.yaml

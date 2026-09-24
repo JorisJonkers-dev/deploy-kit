@@ -9,6 +9,11 @@ rests-on: ["0005"]
 
 # The release gate is derived into layer 2, and nothing is rendered for it
 
+> **Amended 2026-09-24.** Only a `continuous` Application carries the gate's
+> inputs, and only a `continuous` Application must publish readiness: an
+> `interrupted` one stops before it starts, so nothing waits on a gate
+> ([0128](0128-cutover-names-the-promise.md)).
+
 > **Amended 2026-09-24.** Where this record says delivery is defined
 > separately, delivery is now part of the model
 > ([0127](0127-delivery-is-part-of-the-model.md),

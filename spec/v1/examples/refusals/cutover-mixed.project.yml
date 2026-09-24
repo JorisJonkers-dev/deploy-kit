@@ -1,0 +1,62 @@
+# REFUSED: E_RELEASE_UNIT_MIXED_CUTOVER
+#
+# One Application, two Processes, two answers to the cutover question. The
+# Application is the Release Unit: its Processes switch together or not at all
+# (spec/v1/50-lifecycle.md #release-unit-switchover). A continuous Process
+# starts its new version beside the old one and waits for every member; an
+# interrupted one stops before it starts. Mixed in one Application, the
+# interrupted member's gap is inside a unit that promised to keep serving, so
+# neither answer is true of the unit.
+#
+# The fix is structural: the part that cannot keep serving (here, the one
+# holding storage) becomes an Application of its own, or the whole unit
+# declares `interrupted` (spec/v1/10-project-intent.md
+# #cutover-is-declared-not-promised).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: refusals
+owner: joris
+
+applications:
+  - id: mixed
+    # No `observability` block: this fixture isolates the cutover defect.
+
+    processes:
+      - name: mixed-api
+        lifecycle: application
+        image: mixed-api
+        runtime: static
+        provides:
+          http: 8080
+        placement:
+          memory: 64Mi
+          cpu: 10m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: continuous
+
+      - name: mixed-store
+        lifecycle: application
+        image: mixed-store
+        runtime: static
+        provides:
+          redis: 6379
+        placement:
+          memory: 256Mi
+          cpu: 50m
+        probes:
+          readiness: { tcp: 6379 }
+          liveness: { tcp: 6379 }
+        startupBudget: 20s
+        # The refusal: this member cannot keep serving, and its sibling promised to.
+        cutover: interrupted
+        volumes:
+          - claim: mixed-store-data
+            mountAt: /data
+            size: 1Gi
+            durability: reconstructible

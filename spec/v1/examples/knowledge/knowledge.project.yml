@@ -3,18 +3,21 @@
 #   applications/knowledge/platform/knowledge.project.yml
 #
 # One file per project, one file one Intent Fragment
-# (docs/adr/model/0063-intent-authored-per-project.md). The knowledge project owns one
-# Application today; the namespace derives from the header as knowledge-system,
-# which is the namespace it already runs in.
+# (docs/adr/model/0063-intent-authored-per-project.md). The knowledge project owns two
+# Applications; the namespace derives from the header as knowledge-system,
+# which is the namespace both already run in.
 #
-# Exercises: two Processes on two runtimes and therefore two identities, one
+# Exercises: two Applications because their cutovers differ, two Processes on
+# two runtimes and therefore two identities, one
 # authored hostname whose five routes carry mixed audiences -- four anonymous
 # overrides inside an authenticated host -- `probes: none` for a Process with
-# no listener, grants at BOTH levels, a split Subtree path beside an unsplit
-# one, and an irreplaceable volume.
+# no listener, grants at the project header and on a Process, a split Subtree
+# path beside an unsplit one, and an irreplaceable volume.
 #
-# Companion env files, one per PROCESS
-# (docs/adr/model/0011-configuration-env-files-per-process.md):
+# Companion env files, one per PROCESS, plus the variables both Processes share
+# at the project scope (docs/adr/model/0011-configuration-env-files-per-process.md):
+#   platform/env/_project/base.env
+#     -- reproduced as env/_project/base.env
 #   platform/env/knowledge-api/base.env
 #     -- reproduced as env/knowledge-api/base.env
 #   platform/env/knowledge-ingest-worker/base.env
@@ -27,8 +30,50 @@ kind: Project
 schemaVersion: 1.0.0
 
 project: knowledge
-owner: joris              # the project's own; this file shares no intent
-                          # at the header (docs/adr/model/0124-shared-intent-descends-to-the-process.md)
+owner: joris              # the project's own
+
+# Shared grants, one of the eight Shared Intent families
+# (docs/adr/model/0124-shared-intent-descends-to-the-process.md, superseding
+# docs/adr/model/0022-grants-live-on-the-application.md). Both Processes read
+# the same Postgres and RabbitMQ credentials, so declaring them once here is
+# the difference between one edit and two when a key is added. A shared grant
+# is held by every Process below it, including ones added later; a Process
+# that needs different terms on one of these paths says so on the Process,
+# and a Process that must not hold one at all is evidence it was never
+# shared, so it moves down a level. There is no removal syntax.
+#
+# They sit at the project header because the two Processes are now two
+# Applications. A project-level grant hands every Application in the file a
+# reader slot on the whole path
+# (docs/adr/model/0009-vault-read-is-per-path.md), and that is exactly this
+# file's reader set: both of its Applications, and nothing else.
+#
+# `delivery: env` and `delivery: file` render a Kubernetes Secret, so both
+# are refused unless the pinned Platform document advertises
+# `secretsEncryption: true` -- E_SECRETS_AT_REST_REQUIRED
+# (docs/adr/model/0028-secrets-at-rest-gate.md). Until that flag lands on the
+# pinned k3s version, knowledge cannot ship.
+secrets:
+  # SPLIT PATH, one path per reader set
+  # (docs/adr/model/0023-grant-unit-is-the-path.md). A KV-v2 read returns the
+  # whole document, so the only boundary the store can enforce is the path:
+  # while every consumer's credentials shared secret/data/platform/postgres,
+  # these pods could read auth-api's database password. The reader set here
+  # is knowledge's two Applications; auth-api reads .../postgres/auth.
+  - path: secret/data/platform/postgres/kb
+    keys: [user, password]
+    access: read
+    delivery: env
+    rotation: {tolerates: restart}
+
+  # NOT split. Its reader set is already exactly this project's two
+  # Processes, and the rule is one path per reader SET, not one path per
+  # consumer. It splits on the day a third reader is granted it.
+  - path: secret/data/platform/rabbitmq
+    keys: [rabbitmq.user, rabbitmq.password]
+    access: read
+    delivery: env
+    rotation: {tolerates: restart}
 
 applications:
   # =============================================================== knowledge
@@ -42,64 +87,23 @@ applications:
         surface: http
         path: /api/actuator/prometheus
 
-    # The two Processes below switch together, because they are one Application and
-    # an Application is the unit of atomic release
-    # (docs/adr/model/0062-application-is-the-release-unit.md). Nothing declares that: the
-    # boundary carries it. If the ingest worker misses its startup budget, the
-    # API stays on its old version too, and a rollback takes both back.
+    # One Process, which releases blue/green: its new version starts beside the
+    # old one and takes traffic only once it has passed analysis. The ingest
+    # worker used to be a second Process here, and cannot be: its ReadWriteOnce
+    # volume forces a stop-start cutover, and one Application switches as one
+    # (docs/adr/model/0062-application-is-the-release-unit.md), so a continuous
+    # API and an interrupted worker in one Application is
+    # E_RELEASE_UNIT_MIXED_CUTOVER. The worker is `knowledge-ingest`, below.
     #
     # An Application is still not a Reconcile Unit: `platform-postgres` before
     # `knowledge` is ordering, derived from the edge set
     # (docs/adr/model/0032-reconcile-unit-derived.md), and the later unit waits rather
     # than being held.
 
-    # Shared grants, one of the eight Shared Intent families
-    # (docs/adr/model/0124-shared-intent-descends-to-the-process.md, superseding
-    # docs/adr/model/0022-grants-live-on-the-application.md). Both Processes read
-    # the same Postgres and RabbitMQ credentials, so declaring them once here is
-    # the difference between one edit and two when a key is added. A shared grant
-    # is held by every Process below it, including ones added later; a Process
-    # that needs different terms on one of these paths says so on the Process,
-    # and a Process that must not hold one at all is evidence it was never
-    # shared, so it moves down a level. There is no removal syntax.
-    #
-    # `secrets` could be raised to the project header, and is not: a
-    # project-level grant would hand every Application in the file a reader slot
-    # on the whole path (docs/adr/model/0009-vault-read-is-per-path.md), and this
-    # project's reader set is this Application's two Processes.
-    #
-    # `delivery: env` and `delivery: file` render a Kubernetes Secret, so both
-    # are refused unless the pinned Platform document advertises
-    # `secretsEncryption: true` -- E_SECRETS_AT_REST_REQUIRED
-    # (docs/adr/model/0028-secrets-at-rest-gate.md). Until that flag lands on the
-    # pinned k3s version, knowledge cannot ship.
-    secrets:
-      # SPLIT PATH, one path per reader set
-      # (docs/adr/model/0023-grant-unit-is-the-path.md). A KV-v2 read returns the
-      # whole document, so the only boundary the store can enforce is the path:
-      # while every consumer's credentials shared secret/data/platform/postgres,
-      # these pods could read auth-api's database password. The reader set here
-      # is knowledge's two Processes; auth-api reads .../postgres/auth.
-      - path: secret/data/platform/postgres/kb
-        keys: [user, password]
-        access: read
-        delivery: env
-        rotation: {tolerates: restart}
-
-      # NOT split. Its reader set is already exactly this Application's two
-      # Processes, and the rule is one path per reader SET, not one path per
-      # consumer. It splits on the day a second Application is granted it.
-      - path: secret/data/platform/rabbitmq
-        keys: [rabbitmq.user, rabbitmq.password]
-        access: read
-        delivery: env
-        rotation: {tolerates: restart}
-
     # ONE hostname, ONE Process behind it -- and it still belongs to the
     # Application, because `exposure` says *this hostname routes here* while
     # `provides` says *this process listens on this port*
-    # (review/EXPOSURE-MANIFEST.md). knowledge-ingest-worker declares no
-    # `provides`, so no route can name it and it appears in none below.
+    # (review/EXPOSURE-MANIFEST.md).
     #
     # `host` is the full FQDN, authored. Nothing derives it: the estate also
     # answers on kb.jorisjonkers.dev, `platform-rabbitmq` serves rabbitmq, and
@@ -221,7 +225,7 @@ applications:
 
         # REQUIRED, no default. This Process holds no volume, and its owner
         # requires continuity: the MCP endpoint 503s if a roll opens a gap.
-        cutover: rolling
+        cutover: continuous
 
         # No `replicas` block: the derived count is one. Capacity is the only
         # local exception to a derived value, and this Process needs none.
@@ -239,7 +243,14 @@ applications:
             delivery: env
             rotation: {tolerates: restart}
 
-      # --------------------------------------------- knowledge-ingest-worker
+  # ======================================================== knowledge-ingest
+  - id: knowledge-ingest
+    # An Application of its own because its cutover is not the API's: the
+    # ReadWriteOnce volume below cannot attach to a second copy, so this Process
+    # stops before it starts, and an Application switches as one. It has no
+    # `observability` block and no exposure: it publishes nothing and listens on
+    # nothing.
+    processes:
       - name: knowledge-ingest-worker
         lifecycle: application
         image: knowledge-ingest-worker
@@ -277,12 +288,12 @@ applications:
 
         startupBudget: 120s
 
-        # `recreate`, and it is the only honourable answer: the ReadWriteOnce
+        # `interrupted`, and it is the only honourable answer: the ReadWriteOnce
         # local-path volume below cannot attach to two pods at once, so
-        # `cutover: rolling` here is E_CUTOVER_UNHONOURABLE rather than a
-        # strategy silently derived to Recreate. The owner states the
+        # `cutover: continuous` here is E_CUTOVER_UNHONOURABLE rather than a
+        # strategy silently derived to stop-start. The owner states the
         # stop-then-start that the storage already forces.
-        cutover: recreate
+        cutover: interrupted
 
         # A file-level copy is the backup method for a directory of files, and
         # `irreplaceable` derives one -- so the engine is required here

@@ -1,16 +1,17 @@
 # REFUSED: E_CUTOVER_UNHONOURABLE
 #
-# The Process declares `cutover: rolling`, which is a request for continuity
+# The Process declares `cutover: continuous`, which is a request for continuity
 # through the cutover, and it declares a volume. Every claim on this estate is
 # `ReadWriteOnce` on `local-path`, and an RWO volume cannot attach to two pods
-# at once, so the surge a rolling cutover needs cannot happen.
+# at once, so the second copy a continuous cutover starts beside the old one
+# cannot mount it.
 #
-# The model refuses rather than downgrading silently to `Recreate`. A silent
-# downgrade is what makes an owner believe they have continuity they do not have
+# The model refuses rather than downgrading silently to a stop-start cutover. A
+# silent downgrade is what makes an owner believe they have continuity they do not have
 # (spec/v1/10-project-intent.md #cutover-is-declared-not-promised,
 # spec/v1/20-resolved-deployment.md #authority).
 #
-# Its accepted counterpart is cutover-recreate-over-rwo.project.yml: the same
+# Its accepted counterpart is cutover-interrupted-over-rwo.project.yml: the same
 # Process, the same storage, the honest declaration.
 
 apiVersion: intent.jorisjonkers.dev/v1
@@ -22,13 +23,13 @@ project: refusals
 owner: joris
 
 applications:
-  - id: rolling-over-rwo
+  - id: continuous-over-rwo
     # No `observability` block: this fixture isolates the cutover defect.
 
     processes:
-      - name: rolling-over-rwo-store
+      - name: continuous-over-rwo-store
         lifecycle: application
-        image: rolling-over-rwo-store
+        image: continuous-over-rwo-store
         runtime: static
 
         provides:
@@ -45,10 +46,10 @@ applications:
         startupBudget: 20s
 
         # The refusal: continuity is asked for over storage that cannot surge.
-        cutover: rolling
+        cutover: continuous
 
         volumes:
-          - claim: rolling-over-rwo-data
+          - claim: continuous-over-rwo-data
             mountAt: /data
             size: 1Gi
             durability: reconstructible

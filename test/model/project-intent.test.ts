@@ -34,7 +34,7 @@ const PROCESS = `      - name: worker
         image: worker
         runtime: none
         placement: { memory: 64Mi, cpu: 10m }
-        cutover: recreate
+        cutover: interrupted
 `;
 
 const withApplications = (applications: string): string =>
@@ -121,7 +121,7 @@ describe("parseProjectIntent", () => {
         liveness: { path: "/healthz/live", port: 8080 },
       },
       startupBudget: "20s",
-      cutover: "rolling",
+      cutover: "continuous",
     };
 
     // Neither level declares Shared Intent here, so each holds the empty list an
@@ -213,7 +213,7 @@ describe("parseProjectIntent", () => {
             probes: {},
             volumes: [],
             grants: [],
-            cutover: "recreate",
+            cutover: "interrupted",
           },
         ],
       },
@@ -240,6 +240,19 @@ describe("parseProjectIntent", () => {
   ])("refuses %s rather than interpreting it", (_name, text, message) => {
     expect(refused(text)).toContainEqual({ code: "schema", path: "", message });
   });
+
+  it.each(["rolling", "recreate"])(
+    "refuses the retired cutover value %s as outside the vocabulary",
+    (retired) => {
+      const codes = refused(
+        withApplications(
+          `  - id: a\n    processes:\n${PROCESS.replace("cutover: interrupted", `cutover: ${retired}`)}`,
+        ),
+      ).map(({ code }) => code);
+
+      expect(codes).toContain("schema");
+    },
+  );
 
   it("refuses malformed YAML and a duplicated key at the document, before the schema runs", () => {
     const batch = `  - id: batch\n    processes:\n${PROCESS}`;

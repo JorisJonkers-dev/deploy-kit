@@ -1,0 +1,40 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: knowledge-ingest-worker
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/name: knowledge-ingest-worker
+    app.kubernetes.io/part-of: knowledge-ingest
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  vaultConnectionRef: vso-system/default
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: knowledge-ingest-worker
+    serviceAccount: knowledge-ingest-worker
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: knowledge-system-vault-deploy-key
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/name: knowledge-ingest-worker
+    app.kubernetes.io/part-of: knowledge-ingest
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  vaultAuthRef: knowledge-ingest-worker
+  type: kv-v2
+  mount: secret
+  path: knowledge-system/vault-deploy-key
+  destination:
+    name: knowledge-system-vault-deploy-key
+    create: true
+  refreshAfter: 1h
+  rolloutRestartTargets:
+  - kind: Deployment
+    name: knowledge-ingest-worker

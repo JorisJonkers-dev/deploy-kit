@@ -187,6 +187,15 @@ function completenessRefusals(
   return refusals;
 }
 
+/** The lowest level's answer to the cutover question, or none if no level answers. */
+function effectiveCutover(
+  process: Process,
+  above: readonly Level[],
+): Process["cutover"] {
+  return [process, ...above].find((level) => level.cutover !== undefined)
+    ?.cutover;
+}
+
 function processRefusals(
   process: Process,
   above: readonly Level[],
@@ -198,15 +207,14 @@ function processRefusals(
   ];
   const volumes = process.volumes ?? [];
   // The effective answer: it may come from a level above.
-  const cutover = [process, ...above].find(
-    (level) => level.cutover !== undefined,
-  )?.cutover;
-  if (cutover === "rolling" && volumes.length > 0)
+  const cutover = effectiveCutover(process, above);
+  if (cutover === "continuous" && volumes.length > 0)
     refusals.push({
       code: "E_CUTOVER_UNHONOURABLE",
       path: at,
-      message: "a volume cannot attach to the surge a rolling cutover needs",
-      hint: "Declare `cutover: recreate`, which is what this storage can honour.",
+      message:
+        "a volume cannot attach to the second copy a continuous cutover starts beside the old one",
+      hint: "Declare `cutover: interrupted`, which is what this storage can honour.",
     });
   const backedUp = volumes.filter((volume) => BACKED_UP.has(volume.durability));
   if (process.engine !== undefined && backedUp.length === 0)
@@ -230,6 +238,30 @@ function processRefusals(
   return refusals;
 }
 
+/** The Release Unit switches as one, so its members answer the cutover question alike. */
+function mixedCutoverRefusals(
+  application: Application,
+  project: ProjectIntentDocument,
+  at: string,
+): Refusal[] {
+  const answers = new Set(
+    application.processes
+      .filter((process) => process.lifecycle === "application")
+      .map((process) => effectiveCutover(process, [application, project]))
+      .filter((cutover) => cutover !== undefined),
+  );
+  if (answers.size < 2) return [];
+  return [
+    {
+      code: "E_RELEASE_UNIT_MIXED_CUTOVER",
+      path: at,
+      message:
+        "the Processes of one Application answer the cutover question differently, and they switch as one",
+      hint: "Move the Process that cannot keep serving into an Application of its own, or declare `cutover: interrupted` for the whole Application.",
+    },
+  ];
+}
+
 function applicationRefusals(
   application: Application,
   project: ProjectIntentDocument,
@@ -238,6 +270,7 @@ function applicationRefusals(
   const refusals: Refusal[] = [
     ...duplicateRefusals(application, [project], at),
     ...quantityRefusals(application, at),
+    ...mixedCutoverRefusals(application, project, at),
   ];
   if (
     application.observability !== undefined &&

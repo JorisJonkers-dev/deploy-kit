@@ -30,7 +30,7 @@ class ConstraintsTest {
                     placement:
                       memory: 128Mi
                       cpu: 25m
-                    cutover: rolling
+                    cutover: continuous
             """;
 
     private static Path file(Path directory, String text) throws IOException {
@@ -77,7 +77,7 @@ class ConstraintsTest {
                     placement:
                       memory: 128Mi
                       cpu: 25m
-                    cutover: rolling
+                    cutover: continuous
             """;
 
     @Test

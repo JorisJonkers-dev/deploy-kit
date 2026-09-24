@@ -211,7 +211,7 @@ them; this render puts the warning in `pvc.yaml` where they will meet it.
 
 ## <a id="g-04"></a>G-04: Deployment or StatefulSet, and why this renders Deployment
 
-`platform-postgres` declares `stateful: true`, `cutover: recreate`, and one
+`platform-postgres` declares `stateful: true`, `cutover: interrupted`, and one
 `ReadWriteOnce` volume. Chapter 20 derives the object kind from `lifecycle`,
 `stateful` and `volumes` and states no function over the three.
 
@@ -221,7 +221,7 @@ order:
 - **`Recreate` is forced, not chosen.** A ReadWriteOnce `local-path` volume
   cannot attach to two pods at once, so no surge is possible. Estate-wide the
   split is 21 `Recreate` to 9 `RollingUpdate`, and every RWO holder is on the
-  `Recreate` side. `cutover: recreate` records the same fact from the author's
+  `Recreate` side. `cutover: interrupted` records the same fact from the author's
   side, and the two agree here, and nothing checks that they always will. The
   current renderer reads an authored enum and inspects no volume, which is the
   trap: a stateful Process whose author forgets it gets `maxSurge: 1` against an

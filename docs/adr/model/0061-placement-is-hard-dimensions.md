@@ -10,6 +10,12 @@ rests-on: ["0005"]
 
 # Placement is a set of hard dimensions matched against allocatable
 
+> **Amended 2026-09-24.** A `continuous` Process is eligible only on a node
+> that fits two copies of it, sidecars included, because its blue/green
+> switchover runs the new copy beside the old
+> ([0128](0128-cutover-names-the-promise.md)). Still eligibility, never
+> bin-packing.
+
 > **Amended 2026-09-14.** Vocabulary renamed by
 > [0116](0116-project-application-process.md): Domain is now Project,
 > Service is Application, Workload is Process, and Service Intent is Project

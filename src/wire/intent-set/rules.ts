@@ -51,6 +51,9 @@ function projectRefusals(
       });
   };
 
+  // A grant at the project header reaches every Process below it, so it is
+  // refused where it is written, exactly as one on an Application or a Process.
+  refusals.push(...grantRefusals(project.secrets ?? [], "", platform));
   for (const [a, application] of project.applications.entries()) {
     const at = `/applications/${a}`;
     for (const [e, exposure] of (application.exposure ?? []).entries()) {

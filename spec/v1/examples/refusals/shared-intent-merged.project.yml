@@ -55,7 +55,7 @@ applications:
         delivery: env
         rotation: { tolerates: restart }
     # The Application is the release unit, so the cutover question is answered once.
-    cutover: recreate
+    cutover: interrupted
     dependsOn:
       - { application: platform-rabbitmq, surface: amqp }
     processes:

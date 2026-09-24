@@ -24,7 +24,7 @@ applications:
         probes:
           readiness: { path: /healthz/ready, port: 8080 }
         startupBudget: 20s
-        cutover: rolling
+        cutover: continuous
         secrets:
           - path: secret/data/api
             keys: [token]
@@ -43,4 +43,4 @@ applications:
         probes:
           readiness: { tcp: 8080 }
         startupBudget: 30s
-        cutover: rolling
+        cutover: continuous

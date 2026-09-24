@@ -263,7 +263,7 @@ parse-checked in CI.
 | `examples/workflows/project-publish-fragment.yml` | publish on merge, `oras push` then `oras resolve`, read back |
 | `examples/workflows/compose.yml` | pull participants, assert the estate-wide invariants, **prove the gate can fail** |
 | `examples/negative/duplicate-application-id/` | a negative fixture, so an invariant that stops running is detectable |
-| [`examples/refusals/`](examples/refusals/README.md) | the refusal fixtures: an alert class with no signal, a class outside the vocabulary, and the `rolling`/`recreate` pair over RWO storage |
+| [`examples/refusals/`](examples/refusals/README.md) | the refusal fixtures: an alert class with no signal, a class outside the vocabulary, the `continuous`/`interrupted` pair over RWO storage, and a mixed-cutover Application |
 
 The retired push-delivery examples are not part of this specification.
 `aggregator.yml`, both aggregator workflows, the generated deployer RBAC, the

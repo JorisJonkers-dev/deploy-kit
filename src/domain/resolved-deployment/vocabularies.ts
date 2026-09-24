@@ -12,6 +12,11 @@ export const PINNED_INPUTS = [
   "cluster-state",
 ] as const;
 
+/** How an Application's new version replaces the old one
+ * (spec/v1/55-delivery.md#switchover): `continuous` derives `blue-green`,
+ * `interrupted` derives `stop-start`. */
+export const SWITCHOVERS = ["blue-green", "stop-start"] as const;
+
 /** A step of the middleware chain a route derives. */
 export const MIDDLEWARE_KINDS = [
   "forward-auth",
@@ -33,6 +38,7 @@ export const ADAPTERS = [
 ] as const;
 
 export type PinnedInput = (typeof PINNED_INPUTS)[number];
+export type Switchover = (typeof SWITCHOVERS)[number];
 export type MiddlewareKind = (typeof MIDDLEWARE_KINDS)[number];
 export type PathScope = (typeof PATH_SCOPES)[number];
 export type AdapterName = (typeof ADAPTERS)[number];

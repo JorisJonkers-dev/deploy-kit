@@ -48,7 +48,7 @@ class LoweringTest {
         Application application = MODEL.createApplication();
         application.setId("shared-intent-merged");
         application.getSecrets().add(grant("secret/data/refusals/queue"));
-        application.setCutover(Cutover.RECREATE);
+        application.setCutover(Cutover.INTERRUPTED);
 
         Process api = process("shared-intent-merged-api", "128Mi", "25m");
         api.getSecrets().add(grant("secret/data/refusals/bearer"));
@@ -147,7 +147,7 @@ class LoweringTest {
         EffectiveProject lowered = lower(source());
 
         assertThat(lowered.getApplications().get(0).getProcesses())
-                .allSatisfy(process -> assertThat(process.getCutover()).isEqualTo(Cutover.RECREATE));
+                .allSatisfy(process -> assertThat(process.getCutover()).isEqualTo(Cutover.INTERRUPTED));
     }
 
     @Test

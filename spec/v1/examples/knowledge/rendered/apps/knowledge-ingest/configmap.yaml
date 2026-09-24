@@ -1,0 +1,21 @@
+# GENERATED. Never hand-edit.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: knowledge-ingest-worker-env
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/name: knowledge-ingest-worker
+    app.kubernetes.io/part-of: knowledge-ingest
+    app.kubernetes.io/managed-by: deploy-kit
+data:
+  INGEST_QUEUE: knowledge.ingest
+  INGEST_PREFETCH: '4'
+  LOG_LEVEL: INFO
+  RABBITMQ_HOST: rabbitmq.data-system.svc.cluster.local
+  RABBITMQ_PORT: '5672'
+  DB_HOST: postgres.data-system.svc.cluster.local
+  DB_PORT: '5432'
+  DB_NAME: knowledge_db
+  DEPLOYMENT_ENVIRONMENT: production
+  OTEL_SERVICE_NAME: knowledge-ingest-worker

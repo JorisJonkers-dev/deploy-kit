@@ -160,9 +160,9 @@ describe("the scope a directory names", () => {
 });
 
 describe("the worked knowledge example", () => {
-  it("shares nine variables at the Application scope and none at the project", () => {
+  it("shares nine variables at the project scope, the one both Applications hold", () => {
     const shared = sources().find(
-      ({ path }) => path === "env/_applications/knowledge/base.env",
+      ({ path }) => path === "env/_project/base.env",
     );
     const file = shared === undefined ? undefined : readEnvFile(shared);
 
@@ -179,13 +179,15 @@ describe("the worked knowledge example", () => {
     ]);
   });
 
-  it("gives each Process what it sets plus what its Application shares", () => {
+  it("gives each Process what it sets plus what its project shares", () => {
     const parsed = parseProjectIntent(
       readFileSync(join(KNOWLEDGE, "knowledge.project.yml"), "utf8"),
       sources(),
     );
     const processes = parsed.ok
-      ? lowerProject(parsed.value.project).applications[0]?.processes
+      ? lowerProject(parsed.value.project).applications.flatMap(
+          (application) => application.processes,
+        )
       : undefined;
     const envOf = (name: string): string[] =>
       names(
@@ -232,7 +234,7 @@ applications:
         image: w
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
-        cutover: recreate
+        cutover: interrupted
 `;
 
 /** The codes a document and the env files beside it are refused with. */
@@ -278,6 +280,33 @@ describe("the scope a directory names, against the document beside it", () => {
           ({ entries }) => entries.map(({ name }) => name),
         ),
     ).toStrictEqual(["A"]);
+  });
+
+  it("carries an Application scope onto that Application's Processes and no other", () => {
+    const document = `${DOCUMENT}  - id: b
+    processes:
+      - name: v
+        lifecycle: job
+        image: v
+        runtime: none
+        placement: {memory: 64Mi, cpu: 10m}
+        cutover: interrupted
+`;
+    const parsed = parseProjectIntent(document, [
+      { path: "env/_applications/a/base.env", text: "ONLY_A=1\n" },
+      { path: "env/v/base.env", text: "OWN=1\n" },
+    ]);
+    const names = (index: number): string[] =>
+      parsed.ok
+        ? (parsed.value.effective.applications[
+            index
+          ]?.processes[0]?.env.flatMap(({ entries }) =>
+            entries.map(({ name }) => name),
+          ) ?? [])
+        : [];
+
+    expect(names(0)).toStrictEqual(["ONLY_A"]);
+    expect(names(1)).toStrictEqual(["OWN"]);
   });
 
   it("refuses a narrower scope restating a variable unchanged", () => {
@@ -437,7 +466,7 @@ applications:
         image: w
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
-        cutover: recreate
+        cutover: interrupted
   - id: two
     processes:
       - name: two-api
@@ -445,7 +474,7 @@ applications:
         image: w
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
-        cutover: recreate
+        cutover: interrupted
 `;
 
   it("gives a Process the project scope's variables", () => {
@@ -540,7 +569,7 @@ applications:
         image: w
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
-        cutover: recreate
+        cutover: interrupted
   - id: two
     processes:
       - name: two-api
@@ -548,7 +577,7 @@ applications:
         image: w
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
-        cutover: recreate
+        cutover: interrupted
 `;
 
   it("reads one Application's scope as above that Application's Processes only", () => {

@@ -193,16 +193,16 @@ Text returns ecore::EString:
 Keyword:
 	'access' | 'admin' | 'alertClass' | 'amd64' | 'anonymous' | 'apiVersion' | 'application' | 'applications' |
 	'arch' | 'arm64' | 'assets' | 'audience' | 'authenticated' | 'business-hours' | 'capabilities' | 'claim' |
-	'class' | 'contentPolicy' | 'count' | 'cpu' | 'custody' | 'cutover' | 'database' | 'decrypt' |
+	'class' | 'contentPolicy' | 'continuous' | 'count' | 'cpu' | 'custody' | 'cutover' | 'database' | 'decrypt' |
 	'delivery' | 'dependsOn' | 'disk' | 'durability' | 'encrypt' | 'engine' | 'env' | 'exact' |
 	'exposure' | 'false' | 'file' | 'fileMode' | 'files' | 'from' | 'gpu' | 'hdd' |
-	'host' | 'id' | 'image' | 'internal' | 'irreplaceable' | 'job' | 'jvm' | 'key' |
+	'host' | 'id' | 'image' | 'internal' | 'interrupted' | 'irreplaceable' | 'job' | 'jvm' | 'key' |
 	'keys' | 'kind' | 'kv' | 'lan' | 'lifecycle' | 'liveness' | 'match' | 'maxAge' |
 	'media' | 'memory' | 'mountAt' | 'name' | 'node' | 'none' | 'nvme' | 'observability' |
 	'operations' | 'owner' | 'page' | 'path' | 'placement' | 'port' | 'postgres' | 'prefix' |
 	'probes' | 'process' | 'processes' | 'project' | 'provides' | 'python' | 'rabbitmq' | 'read' |
-	'readiness' | 'reason' | 'reconstructible' | 'recoverable' | 'recreate' | 'redirectTo' | 'reload' | 'replicas' |
-	'required' | 'restart' | 'role' | 'rolling' | 'rotate' | 'rotation' | 'routes' | 'runtime' |
+	'readiness' | 'reason' | 'reconstructible' | 'recoverable' | 'redirectTo' | 'reload' | 'replicas' |
+	'required' | 'restart' | 'role' | 'rotate' | 'rotation' | 'routes' | 'runtime' |
 	'schemaVersion' | 'scrape' | 'secrets' | 'self' | 'self-renew' | 'self-roll' | 'sidecars' | 'sign' |
 	'site' | 'size' | 'ssd' | 'startupBudget' | 'static' | 'strict' | 'surface' | 'tcp' |
 	'tolerates' | 'transit' | 'true' | 'urgent' | 'valkey' | 'verify' | 'volumes' | 'workflow' |
@@ -218,7 +218,7 @@ enum Engine returns Engine:
 	postgres='postgres' | rabbitmq='rabbitmq' | valkey='valkey' | files='files';
 
 enum Cutover returns Cutover:
-	rolling='rolling' | recreate='recreate';
+	continuous='continuous' | interrupted='interrupted';
 
 enum DurabilityClass returns DurabilityClass:
 	reconstructible='reconstructible' | recoverable='recoverable' | irreplaceable='irreplaceable';

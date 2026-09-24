@@ -234,8 +234,8 @@
       <details key="absent" value="absent"/>
     </eAnnotations>
     <eLiterals name="absent" literal=""/>
-    <eLiterals name="rolling" value="1" literal="rolling"/>
-    <eLiterals name="recreate" value="2" literal="recreate"/>
+    <eLiterals name="continuous" value="1" literal="continuous"/>
+    <eLiterals name="interrupted" value="2" literal="interrupted"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="DurabilityClass">
     <eLiterals name="reconstructible" literal="reconstructible"/>

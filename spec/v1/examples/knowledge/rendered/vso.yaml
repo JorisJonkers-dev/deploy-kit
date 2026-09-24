@@ -1,0 +1,47 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: platform-postgres-kb
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  vaultAuthRef: knowledge-api
+  type: kv-v2
+  mount: secret
+  path: platform/postgres/kb
+  destination:
+    name: platform-postgres-kb
+    create: true
+  refreshAfter: 1h
+  rolloutRestartTargets:
+  - kind: Deployment
+    name: knowledge-api
+  - kind: Deployment
+    name: knowledge-ingest-worker
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: platform-rabbitmq
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  vaultAuthRef: knowledge-api
+  type: kv-v2
+  mount: secret
+  path: platform/rabbitmq
+  destination:
+    name: platform-rabbitmq
+    create: true
+  refreshAfter: 1h
+  rolloutRestartTargets:
+  - kind: Deployment
+    name: knowledge-api
+  - kind: Deployment
+    name: knowledge-ingest-worker

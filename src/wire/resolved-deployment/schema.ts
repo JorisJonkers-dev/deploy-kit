@@ -5,7 +5,8 @@
 // (docs/adr/model/0033-assignments-published-back.md).
 //
 // No key here is a Kubernetes or Traefik field name. Layer 2 records the
-// `cutover` a Process was granted, the `hardening` posture it takes and the
+// `cutover` a Process was granted and the `switchover` it derives, the
+// `hardening` posture it takes and the
 // capacity it needs; a rollout strategy, a security context and a resource
 // block are the `kubernetes` adapter's spelling of those decisions
 // (docs/adr/model/0097-authored-values-name-model-concepts.md).
@@ -26,6 +27,7 @@ import {
   MIDDLEWARE_KINDS,
   PATH_SCOPES,
   PINNED_INPUTS,
+  SWITCHOVERS,
 } from "../../domain/resolved-deployment/vocabularies.ts";
 
 const text = z.string().min(1);
@@ -52,6 +54,7 @@ const adapterName = z.enum(ADAPTERS).meta({ id: "AdapterName" });
 const middlewareKind = z.enum(MIDDLEWARE_KINDS).meta({ id: "MiddlewareKind" });
 const pathScope = z.enum(PATH_SCOPES).meta({ id: "PathScope" });
 const pinnedInput = z.enum(PINNED_INPUTS).meta({ id: "PinnedInput" });
+const switchover = z.enum(SWITCHOVERS).meta({ id: "Switchover" });
 
 // ---------------------------------------------------------------- provenance
 
@@ -172,6 +175,8 @@ const resolvedProcess = z
     uid: count,
     gid: count,
     cutover,
+    // Present on a `lifecycle: application` Process; a job has no switchover.
+    switchover: switchover.exactOptional(),
     deadline: duration,
     replicas: z.int().min(1),
     memory: text,
@@ -239,8 +244,8 @@ const releaseGate = z
     // `max` over the members: the unit waits for its slowest legitimate starter.
     deadline: duration,
     // A Process declaring `probes: none` publishes no readiness signal and is
-    // no member. An Application where every Process does is refused at
-    // composition with E_RELEASE_UNIT_NO_READINESS.
+    // no member. A continuous Application where every Process does is refused
+    // at composition with E_RELEASE_UNIT_NO_READINESS.
     members: z.array(gateMember).min(1),
   })
   .meta({ id: "ReleaseGate" });
@@ -252,13 +257,59 @@ const application = {
   reconcileUnit: text,
   reconcileAfter: z.array(text).exactOptional(),
   alertClass: alertClass.exactOptional(),
-  releaseGate,
+  // Absent on an `interrupted` Application: it stops before it starts, so no
+  // switch waits on a gate (docs/adr/model/0128-cutover-names-the-promise.md).
+  releaseGate: releaseGate.exactOptional(),
   exposure: z.array(resolvedExposure).exactOptional(),
   processes: z.array(resolvedProcess).min(1),
 };
 
+/** The switchover each `cutover` derives (spec/v1/55-delivery.md#switchover). */
+const SWITCHOVER_OF = {
+  continuous: "blue-green",
+  interrupted: "stop-start",
+} as const;
+
+/**
+ * What a derivation guarantees and the shape alone cannot say: a Process's
+ * switchover is the one its cutover derives, and an Application carries
+ * release-gate inputs exactly when its cutover is `continuous`.
+ */
+function switchoverFollowsCutover(
+  element: {
+    readonly releaseGate?: unknown;
+    readonly processes: readonly {
+      readonly cutover: keyof typeof SWITCHOVER_OF;
+      readonly switchover?: string;
+    }[];
+  },
+  context: z.RefinementCtx,
+): void {
+  for (const [index, process] of element.processes.entries())
+    if (
+      process.switchover !== undefined &&
+      process.switchover !== SWITCHOVER_OF[process.cutover]
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["processes", index, "switchover"],
+        message: `a ${process.cutover} cutover derives the ${SWITCHOVER_OF[process.cutover]} switchover`,
+      });
+  const continuous = element.processes.some(
+    (process) => process.cutover === "continuous",
+  );
+  if (continuous !== (element.releaseGate !== undefined))
+    context.addIssue({
+      code: "custom",
+      path: ["releaseGate"],
+      message:
+        "an Application carries release-gate inputs exactly when its cutover is continuous",
+    });
+}
+
 const resolvedApplication = z
   .strictObject(application)
+  .superRefine(switchoverFollowsCutover)
   .meta({ id: "ResolvedApplication" });
 
 // ------------------------------------------------------------ the documents
@@ -298,6 +349,7 @@ export const resolvedApplicationDocument = z
     provenance,
     ...application,
   })
+  .superRefine(switchoverFollowsCutover)
   .meta({ id: "ResolvedApplicationDocument" });
 
 export type ResolvedDeploymentDocument = z.output<typeof resolvedDeployment>;

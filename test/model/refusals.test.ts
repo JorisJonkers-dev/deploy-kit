@@ -73,7 +73,7 @@ GRANTS    processes:
         image: worker
         runtime: none
         placement: { memory: 64Mi, cpu: 10m }
-        cutover: recreate
+        cutover: interrupted
 `;
 
 /** The document above with `secrets` on the Application, indented as the file reads. */
@@ -131,9 +131,10 @@ describe("the refusal fixtures", () => {
     expect(fixtures).toStrictEqual([
       "alert-class-unknown",
       "alert-class-without-signal",
+      "cutover-continuous-over-rwo",
+      "cutover-interrupted-over-rwo",
       "cutover-missing",
-      "cutover-recreate-over-rwo",
-      "cutover-rolling-over-rwo",
+      "cutover-mixed",
       "duplicate-route-match",
       "durability-without-engine",
       "engine-without-durability",
@@ -147,13 +148,14 @@ describe("the refusal fixtures", () => {
       "placement-incomplete",
       "scrape-unknown-process",
       "secrets-at-rest-required",
+      "secrets-at-rest-required-at-header",
       "shared-declaration-duplicated",
       "shared-intent-merged",
       "shared-quantity",
       "unknown-surface",
       "unknown-tier-proxy",
     ]);
-    expect(refused).toHaveLength(20);
+    expect(refused).toHaveLength(22);
     expect(
       fixtures.length - refused.length,
       "the two accepted counterparts and the vocabulary case carry no oracle",
@@ -181,9 +183,9 @@ describe("the refusal fixtures", () => {
 
   it("accepts the counterpart that declares the cutover its storage can honour", () => {
     expect(
-      parseProjectIntent(read("cutover-recreate-over-rwo.project.yml")).ok,
+      parseProjectIntent(read("cutover-interrupted-over-rwo.project.yml")).ok,
     ).toBe(true);
-    expect(oracle("cutover-recreate-over-rwo")).toBeUndefined();
+    expect(oracle("cutover-interrupted-over-rwo")).toBeUndefined();
   });
 
   it.each(refused)("%s says what it refused and how to fix it", (stem) => {

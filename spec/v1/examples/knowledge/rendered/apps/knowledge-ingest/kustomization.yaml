@@ -1,0 +1,11 @@
+# GENERATED. Never hand-edit.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- configmap.yaml
+- networkpolicy.yaml
+- pvc.yaml
+- serviceaccount.yaml
+- vso.yaml
+- workload.yaml
+- backup.yaml

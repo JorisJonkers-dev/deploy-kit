@@ -17,7 +17,7 @@ GRANTS    processes:
         image: worker
         runtime: none
         placement: { memory: 64Mi, cpu: 10m }
-        cutover: recreate
+        cutover: interrupted
 `;
 
 const refusalsOf = (text: string): { code: string; path: string }[] => {
@@ -33,8 +33,8 @@ describe("the linking step", () => {
       "GRANTS",
       `    exposure:\n      - name: public\n        host: batch.jorisjonkers.dev\n        audience: lan\n        routes:\n          - { path: /, match: prefix, process: ${process}, surface: ${surface} }\n`,
     ).replace(
-      "        cutover: recreate\n",
-      "        provides: { http: 8080 }\n        cutover: recreate\n",
+      "        cutover: interrupted\n",
+      "        provides: { http: 8080 }\n        cutover: interrupted\n",
     );
 
   const withScrape = (process: string, surface: string): string =>
@@ -42,8 +42,8 @@ describe("the linking step", () => {
       "GRANTS",
       `    observability:\n      alertClass: urgent\n      scrape: { process: ${process}, surface: ${surface}, path: /metrics }\n`,
     ).replace(
-      "        cutover: recreate\n",
-      "        provides: { http: 8080 }\n        cutover: recreate\n",
+      "        cutover: interrupted\n",
+      "        provides: { http: 8080 }\n        cutover: interrupted\n",
     );
 
   it("refuses a route naming a Process the Application does not have, and reports its surface no further", () => {

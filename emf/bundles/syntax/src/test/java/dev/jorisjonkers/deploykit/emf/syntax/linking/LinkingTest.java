@@ -52,7 +52,7 @@ class LinkingTest {
                     runtime: node
                     provides: { http: 8080, metrics: 9090 }
                     placement: { memory: 64Mi, cpu: 10m }
-                    cutover: rolling
+                    cutover: continuous
               - id: elsewhere
                 processes:
                   - name: elsewhere-api
@@ -61,7 +61,7 @@ class LinkingTest {
                     runtime: node
                     provides: { http: 8080 }
                     placement: { memory: 64Mi, cpu: 10m }
-                    cutover: rolling
+                    cutover: continuous
             """;
 
     private static Resource parse(String routeProcess, String routeSurface, String scrapeProcess, String scrapeSurface)

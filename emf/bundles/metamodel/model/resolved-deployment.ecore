@@ -55,7 +55,9 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="alertClass" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="reconcileUnit" lowerBound="1" eType="#//ReconcileUnit"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="releaseGate" lowerBound="1" eType="#//ReleaseGate" containment="true"/>
+    <!-- Absent on an `interrupted` Application: it stops before it starts, so no
+         switch waits on a gate (docs/adr/model/0128). -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="releaseGate" eType="#//ReleaseGate" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="exposure" upperBound="-1" eType="#//ResolvedExposure" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess" containment="true"/>
   </eClassifiers>
@@ -78,6 +80,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="uid" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="gid" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cutover" lowerBound="1" eType="#//Cutover"/>
+    <!-- Set on a `lifecycle: application` Process; a job has no switchover. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="switchover" unsettable="true" eType="#//Switchover"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="deadline" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="replicas" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -303,8 +307,15 @@
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EEnum" name="Cutover">
-    <eLiterals name="rolling" literal="rolling"/>
-    <eLiterals name="recreate" value="1" literal="recreate"/>
+    <eLiterals name="continuous" literal="continuous"/>
+    <eLiterals name="interrupted" value="1" literal="interrupted"/>
+  </eClassifiers>
+
+  <!-- How the new version replaces the old (spec/v1/55-delivery.md#switchover):
+       `continuous` derives blue-green, `interrupted` stop-start. -->
+  <eClassifiers xsi:type="ecore:EEnum" name="Switchover">
+    <eLiterals name="blueGreen" literal="blue-green"/>
+    <eLiterals name="stopStart" value="1" literal="stop-start"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EEnum" name="Match">
