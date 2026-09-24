@@ -1898,8 +1898,8 @@ being hand-declared.
 |---|---|---|
 | `self` | `reload` | **nothing**: the client re-reads; no pod restarts |
 | `file` | `reload` | nothing, for a consumer that watches its projected file |
-| `self` or `file` | `restart` | a rollout |
-| `env` | `restart` | a rollout; `env` cannot do better |
+| `self` or `file` | `restart` | a restart in place, never a release ([Rotation is not a release](#rotation-is-not-a-release)) |
+| `env` | `restart` | a restart in place; `env` cannot do better |
 | `env` | `reload` | refused: `E_ENV_CANNOT_RELOAD` |
 
 `env` is refused rather than degraded because a pod's environment is **fixed for
@@ -1940,8 +1940,8 @@ other way:
 | `restart` | the Process's serving workload is restarted in place; for a `blue-green` Process that is its primary, never a second copy |
 
 Two things in the render keep it that way
-([chapter 55](55-delivery.md#secret-rotation)): every Secret the render asks
-Vault to write is excluded from Flagger's configuration tracking, so a changed
+([chapter 55](55-delivery.md#secret-rotation)): every Secret the render has the
+operator write from Vault is excluded from Flagger's configuration tracking, so a changed
 value never looks like a new revision, and a restart names the workload that is
 serving. A rotation therefore cannot be held, cannot fail a gate and cannot
 leave two versions running; the most it costs is the restart the owner accepted

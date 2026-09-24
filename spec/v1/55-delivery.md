@@ -269,11 +269,13 @@ Rotating a secret is not a release, so it never starts a switchover
 [0134](../../docs/adr/model/0134-rotating-a-secret-is-not-a-release.md)).
 Flagger starts an analysis whenever a Canary's pod template changes, and by
 default it also counts a change to any Secret or ConfigMap the template
-references as one. The render removes that second trigger for the Secrets
-Vault delivers:
+references as one. It also gives the primary its own copies of the Secrets it
+tracks, refreshed only on promotion, so a rotated value would never reach what
+is serving without a release. The render removes both for the Secrets Vault
+delivers:
 
-- **Every Secret the render asks Vault to write is excluded from configuration
-  tracking.** Its destination carries `flagger.app/config-tracking: disabled`,
+- **Every Secret the render has the operator write from Vault is excluded from
+  configuration tracking.** Its destination carries `flagger.app/config-tracking: disabled`,
   so a new value is never a new Canary revision. The exclusion is uniform: it is
   written on every Vault-delivered Secret, not only those a `blue-green` Process
   reads, so a Process that changes switchover does not change how its secrets
@@ -285,11 +287,15 @@ Vault delivers:
   nothing between releases. For every other Process it is `<name>`.
 
 Layer 2 records which Processes a rotation restarts, by Process name
-([chapter 20](20-resolved-deployment.md#derived-mechanics)); the `-primary`
-spelling is the adapter's, because it names a Flagger object rather than a
-model concept. The workloads it names are rendered with the rest of the
-Flagger-ready objects
-([#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158)).
+([chapter 20](20-resolved-deployment.md#authority)); the `-primary` spelling is
+the `vso` adapter's ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)),
+because it names a Flagger object rather than a model concept. Restarting
+`<name>` instead would be worse than useless: it patches the pod template
+Flagger watches, and so starts the very release this section rules out. The
+primaries are rendered with the rest of the Flagger-ready objects
+([#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158)); until
+then the worked trees render no primary, and their restart targets still name
+`<name>`.
 
 ## What the render leaves to Flagger
 

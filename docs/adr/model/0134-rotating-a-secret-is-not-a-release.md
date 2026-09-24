@@ -12,8 +12,8 @@ rests-on: ["0005"]
 
 A new value for a Vault-delivered secret reaches a running Process by reload or
 by a restart in place, as its grant's `rotation.tolerates` says, and never by a
-blue/green release. The render excludes every Secret it asks Vault to write from
-Flagger's configuration tracking, and a restart names the workload that is
+blue/green release. The render excludes every Secret it has the operator write from
+Vault from Flagger's configuration tracking, and a restart names the workload that is
 serving. The rule is
 [chapter 10](../../../spec/v1/10-project-intent.md#rotation-is-not-a-release)'s,
 and its mechanics are
@@ -21,10 +21,11 @@ and its mechanics are
 
 ## Rests on
 
-The derivation is total ([0005](0005-derivation-is-total.md)): whether a change
-is a release follows from what changed. A rotated value changes nothing in
-layer 1 or layer 2, so the Application's revision is unchanged and there is no
-new version to switch to.
+The derivation is total ([0005](0005-derivation-is-total.md)): what a change
+derives follows from what changed, and nothing else. A rotated value is in
+neither layer 1 nor layer 2, so the Application's revision, the digest of its
+element ([0129](0129-the-application-revision-is-the-digest-of-its-element.md)),
+is unchanged, and there is no new version to switch to.
 
 **False if:** rotating a secret a `blue-green` Process reads starts a Canary
 analysis, or leaves two versions of the Application running. **Settled by:**
@@ -42,7 +43,9 @@ nothing it could fail on.
 **Flagger's default would make it one.** Flagger counts a change to a Secret a
 Canary references as a new revision and starts a full analysis. With the
 estate's cadence that is minutes of two copies per rotation, on every Process,
-on every rotation schedule, for no decision.
+on every rotation schedule, for no decision. Worse, it gives the primary its
+own copies of the Secrets it tracks and refreshes them only on promotion, so a
+rotated value could reach what is serving only through a release.
 
 **Uniform exclusion, not per Process.** Marking only the Secrets a `blue-green`
 Process reads would make a Secret's behaviour change when its consumer's
@@ -58,7 +61,7 @@ release on top of either would spend what the owner did not agree to spend.
 |---|---|---|
 | Let Flagger track Secrets, as it does by default | nothing to render | every rotation becomes a full analysis with two copies running, and a failed analysis holds a release nobody made |
 | Exclude only the Secrets `blue-green` Processes read | fewer annotations | a Secret's behaviour would depend on its consumer's switchover |
-| Restart the `<name>` Deployment, as today | no rename | between releases it is Flagger's scaled-down source, so the restart reaches nothing that serves |
+| Restart the `<name>` Deployment, as today | no rename | between releases it is Flagger's scaled-down source, so the restart reaches nothing that serves, and patching its pod template starts a Canary analysis: the release this rule forbids |
 
 ## Reversibility
 

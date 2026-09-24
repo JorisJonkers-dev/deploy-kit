@@ -306,3 +306,11 @@ two disagree about what the same Process asks for.
 Platform document advertises `secretsEncryption: true`, so **none of this project
 ships** on today's inputs. There is no Platform document in the example
 set to check against.
+
+**G-37** `knowledge-api` switches `blue-green`, so a rotation restarts
+`knowledge-api-primary`, not `knowledge-api`
+([chapter 55](../../../55-delivery.md#secret-rotation)). This tree renders no
+Flagger objects yet, so it has no primary, and its `rolloutRestartTargets` still
+name `knowledge-api`. The targets are renamed when the Canary and its primary
+are rendered ([#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158)).
+The destinations already carry `flagger.app/config-tracking: disabled`.
