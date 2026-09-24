@@ -1,10 +1,12 @@
 # Decision register: the v1 model
 
 This set was rebuilt from scratch on 2026-08-31 as the decision surface for the
-v1 goal state, and restructured on 2026-09-07: **how the estate deploys, and
-how co-testing gates a deploy, are defined separately from the model**: those
-thirteen ADRs (0008, 0041–0051, 0058; the numbering gaps below) are parked in
-[deferred/](deferred/README.md) and are not v1 decisions. The previous 19 ADRs
+v1 goal state, and restructured on 2026-09-07, when delivery and co-testing were
+parked in [deferred/](deferred/README.md) (0008, 0041–0051, 0058; the numbering
+gaps below). On 2026-09-24 delivery rejoined the model
+([0127](model/0127-delivery-is-part-of-the-model.md)): Flux pulls a signed,
+pinned render per Project and Flagger switches it, so the parked push design is
+retired and only co-testing stays parked. The previous 19 ADRs
 were deleted; the last commit carrying the old set is `7ea3c4f`, and after the
 rebuild commit lands they are recoverable with
 `git log --diff-filter=D -- docs/adr`.
@@ -59,6 +61,14 @@ downstream reads the lowered shape (0125). 0022 is superseded by that
 amendment and kept for the record; 0063 is amended in place, because `owner` is
 no longer the only field the project header carries.
 
+The set was amended on 2026-09-24 for delivery: how the estate deploys is part
+of the model again, specified in
+[chapter 55](../../spec/v1/55-delivery.md). The finish line of
+[0059](model/0059-v1-scope-stopping-rule.md) is superseded by
+[0127](model/0127-delivery-is-part-of-the-model.md), the parked push design in
+[deferred/](deferred/README.md) is retired record by record, and co-testing
+stays parked.
+
 Tier-0 **premises** carry one falsifiable claim each; tier-1 **decisions** name
 the premises they stand on in `rests-on`. A `claim: open` means decided in
 direction, untested: its owner and settling test are in the file.
@@ -78,7 +88,7 @@ which domain a decision lives in.
 |---|---|---|---|
 | [`model/`](model/) | the v1 model: the layers, composition, derivation, the adapters | `spec/v1/` | yes |
 | [`architecture/`](architecture/) | the compiler's own structure: layering, ports, error model, gates | `docs/architecture.md`, `docs/architecture-rules.md` | yes |
-| [`deferred/`](deferred/README.md) | delivery mechanics and co-testing, defined separately | sections these chapters deliberately lack | no |
+| [`deferred/`](deferred/README.md) | co-testing, still parked, and the delivery records [0127](model/0127-delivery-is-part-of-the-model.md) retired | sections these chapters deliberately lack | no |
 
 The coursework implementation keeps a register of its own at
 [`emf/docs/adr/`](../../emf/docs/adr/README.md), linted by the same script with
@@ -217,7 +227,8 @@ delivery work it underpins.
 ### Release and programme
 | # | title | claim |
 |---|---|---|
-| [0059](model/0059-v1-scope-stopping-rule.md) | v1 has a scope and a stopping rule | open |
+| [0059](model/0059-v1-scope-stopping-rule.md) | v1 has a scope and a stopping rule | superseded by [0127](model/0127-delivery-is-part-of-the-model.md) |
+| [0127](model/0127-delivery-is-part-of-the-model.md) | Delivery is part of the v1 model: Flux pulls a signed, pinned render and Flagger switches what must keep serving | open |
 | [0060](model/0060-release-unit.md) | Several Applications switch as one Release Unit | superseded by [0062](model/0062-application-is-the-release-unit.md) |
 | [0062](model/0062-application-is-the-release-unit.md) | An Application is the unit of atomic release | settled |
 

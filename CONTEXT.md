@@ -273,6 +273,31 @@ registered as a ledger entry rather than ignored
 ([0019](docs/adr/model/0019-registered-unmanaged-surfaces.md)). Something the
 estate *depends on* is a Provider, not an unmanaged surface.
 
+## Delivery: how a render reaches the cluster
+
+**Rendered artifact**: one Project's render, published as a signed OCI artifact
+and named by digest. What the applier fetches, and never committed as files
+([chapter 55](spec/v1/55-delivery.md#rendered-artifacts-and-pins)).
+
+**Pin**: the digest a Project's source points at, and the commit that changes
+it. A deploy is a pin commit applied; the estate's git history is its deploy log
+([chapter 55](spec/v1/55-delivery.md#rendered-artifacts-and-pins)).
+
+**Switchover**: how an Application's new version replaces the old one: its new
+Processes start beside the old and receive traffic only once every member has
+passed analysis, or the old stop before the new start
+([chapter 55](spec/v1/55-delivery.md#switchover)).
+
+**Release Gate**: the first-party controller that answers a switchover's
+questions from the Resolved Deployment: may this Application's new version
+start, and may it be promoted
+([chapter 55](spec/v1/55-delivery.md#the-release-gate)). Not the Kubernetes
+readiness gate.
+
+**Held**: the state of an Application whose release failed: its old version
+keeps serving while the pin names the new one, until a new pin lands
+([chapter 55](spec/v1/55-delivery.md#held-releases)).
+
 ## Words to use carefully
 
 **Fragment.** One meaning now: the **Intent Fragment**, an authored document
@@ -302,9 +327,11 @@ those objects into the rendered bytes (the only model-to-text step). The
 vocabulary keeps the two apart so the act of deciding is still *resolution* or
 *derivation*, never rendering, and an adapter never formats bytes itself.
 
-**Deploy.** Applying Deliverables to a cluster, which is **defined separately**
-from this model ([`docs/adr/deferred/`](docs/adr/deferred/README.md)). A render
-is not a deploy.
+**Deploy.** Applying a render to the cluster: a pin commit names a Project's
+signed render by digest, and Flux, the one applier, pulls and applies it
+([chapter 55](spec/v1/55-delivery.md),
+[0127](docs/adr/model/0127-delivery-is-part-of-the-model.md)). A render is not
+a deploy, and neither is a pin until Flux has applied it.
 
 **Service.** Retired as a model word: the level is **Application**
 ([0116](docs/adr/model/0116-project-application-process.md)). Say *Service*

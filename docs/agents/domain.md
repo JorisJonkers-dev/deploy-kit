@@ -10,8 +10,8 @@ documentation when exploring it. Single context, one layout, no
   meaning; also the naming authority for code.
 - **`docs/adr/`**: read the ADRs that touch the area about to change.
   `docs/adr/model/` decides the v1 model, `docs/adr/architecture/` decides
-  the compiler's own structure, and `docs/adr/deferred/` is parked direction
-  work, not linted and not binding.
+  the compiler's own structure, and `docs/adr/deferred/` is parked co-testing
+  work and the retired push-delivery design, not linted and not binding.
 - **`spec/v1/`**: normative for the model. **Where a spec chapter and an ADR's
   `normative:` pointer disagree, the chapter wins and the ADR is what gets
   fixed.** This is the one rule every other domain document in this
@@ -35,7 +35,7 @@ documentation when exploring it. Single context, one layout, no
 │   └── adr/
 │       ├── model/            ← v1 model decisions, point at spec/v1
 │       ├── architecture/     ← compiler decisions, point at docs/architecture.md
-│       └── deferred/         ← delivery and co-testing, not linted
+│       └── deferred/         ← co-testing and retired delivery, not linted
 └── emf/                       ← a second implementation, with its own
                                   docs/adr/ numbered from the same sequence
 ```

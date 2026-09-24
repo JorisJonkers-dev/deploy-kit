@@ -19,8 +19,8 @@ lands, the **compiler** that turns that model into deployable artifacts.
 | [`docs/adr/`](docs/adr/README.md) | The decision surface, one directory per decision domain. Machine-checked. |
 | [`docs/adr/model/`](docs/adr/model/) | The v1 model: premises carrying falsifiable claims, decisions resting on them. The register counts both. |
 | [`docs/adr/architecture/`](docs/adr/architecture/README.md) | The compiler's own structure. Pointers resolve against `docs/architecture.md`, not `spec/v1`. |
-| [`docs/adr/deferred/`](docs/adr/deferred/README.md) | Delivery and co-testing decisions, defined separately from the model. Direction work, not v1. |
-| [`spec/v1/`](spec/v1/00-overview.md) | The normative specification. Chapters 00–60, including the two authored documents: Project Intent (10) and Platform Intent (14). |
+| [`docs/adr/deferred/`](docs/adr/deferred/README.md) | Co-testing, still parked, and the retired push-delivery design, each record with its fate. Not v1. |
+| [`spec/v1/`](spec/v1/00-overview.md) | The normative specification. Chapters 00–60, delivery (55) among them, including the two authored documents: Project Intent (10) and Platform Intent (14). |
 | [`spec/v1/diagrams/`](spec/v1/diagrams/README.md) | One drawn diagram per chapter, as an SVG with the editable draw.io diagram embedded. One palette; colour carries the layer. |
 | [`spec/v1/examples/minimal/`](spec/v1/examples/minimal/README.md) | The smallest complete Application: one project, one Application, one Process, 26 authored lines reaching 10 objects. |
 | [`spec/v1/examples/`](spec/v1/examples) | Worked examples: real Applications from this estate, written in the model. |
@@ -66,9 +66,12 @@ Three of the eight are currently false as built, and say so.
 
 ## What is deliberately not here
 
-How the estate deploys, and how one unit's tests gate another's deploy, are
-**defined separately** from the model. The model makes exactly three demands on
-whatever delivery mechanism is eventually chosen:
+How one unit's tests gate another's deploy (co-testing) stays parked. How the
+estate deploys is part of the model since 2026-09-24
+([0127](docs/adr/model/0127-delivery-is-part-of-the-model.md)): Flux pulls a
+signed, pinned render per Project and Flagger switches it, as
+[chapter 55](spec/v1/55-delivery.md) specifies. The model's three demands on
+delivery are what that chapter meets:
 
 | Demand | Decided in |
 | --- | --- |
@@ -76,8 +79,7 @@ whatever delivery mechanism is eventually chosen:
 | Destructive operations gated by Durability Class | [0015](docs/adr/model/0015-durability-class-per-volume.md) |
 | Rendering only from pinned, digested inputs | [0006](docs/adr/model/0006-pinned-inputs.md), [0034](docs/adr/model/0034-cluster-state-pinned-input.md) |
 
-Everything else (push or pull, who applies, what prunes) is that definition's
-business. The parked direction work is in
+The parked co-testing work, and the push design delivery retired, are in
 [`docs/adr/deferred/`](docs/adr/deferred/README.md).
 
 ## Local checks

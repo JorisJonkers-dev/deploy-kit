@@ -8,41 +8,26 @@ not at all. A **cross-Application contract** changes in two steps, never one. A
 **lock** names one pinned input set, and a new lock exists exactly when one of
 those inputs changes.
 
-How a change reaches the cluster, who applies, what prunes, what reconciles,
-what tests gate a deploy, is not in this chapter and is not a v1 model
-decision. The next section says where it lives and what the model demands of it.
+How a change reaches the cluster, who applies, what prunes and what reconciles
+is [chapter 55](55-delivery.md)'s. What tests gate a deploy is not a v1 model
+decision. The next section says where each lives.
 
-## Delivery and co-testing are defined separately
+## Delivery is chapter 55's, co-testing stays parked
 
-On 2026-09-07 the owner drew the boundary: *how the estate deploys, and how
-dependency on other units for testing gates a deploy, are defined separately
-from the model.* Thirteen records, the premise 0008, the delivery decisions
-0041–0048 and 0058, and the co-testing decisions 0049–0051, are parked in
-[`docs/adr/deferred/`](../../docs/adr/deferred/README.md) with the worked
-delivery examples this chapter used to carry, now at
-`docs/adr/deferred/examples/`. They are direction work: argued, evidenced,
-reviewed, and **not normative**.
+On 2026-09-07 the owner parked delivery and co-testing outside the model; on
+2026-09-24 delivery rejoined it
+([0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md)). How a
+render reaches the cluster, how an Application's new version replaces the old
+one, and how its schema moves with it are specified in
+[chapter 55](55-delivery.md). That chapter is also how the model's three
+demands (Release Unit atomicity, Durability Class gating, pinned inputs only)
+are met; they are listed there and in
+[chapter 00](00-overview.md#programme-scope), not here.
 
-This chapter therefore specifies no applier, no prune pass, no field manager,
-no deploy RBAC, no break-glass path, no reconcile CronJob and no co-test gate.
-An earlier draft of this chapter specified all of them; that text moved with
-its decisions. v1 is the authoring vocabulary, composition, and the registered
-renderer, delivered by today's Flux pipeline unchanged
-([0059](../../docs/adr/model/0059-v1-scope-stopping-rule.md)).
-
-What the model does fix is the *interface* to whatever delivery is eventually
-defined. Three demands, all decided in the model rather than in the parked work:
-
-| demand | decided in | what it requires of any delivery mechanism |
-|---|---|---|
-| **Release Unit atomicity** | [0060](../../docs/adr/model/0060-release-unit.md), superseded by [0062](../../docs/adr/model/0062-application-is-the-release-unit.md) | no member's new version receives traffic until every member's new version is healthy; one failing member holds the whole unit |
-| **Durability Class gating** | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | a destructive operation against a volume declared `recoverable` or `irreplaceable` is refused and reported, never performed; only the owning Application can state that class |
-| **Pinned inputs only** | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | what is applied is rendered from a named lock (Intent, Platform Intent, images lock, ClusterState snapshot), never from a live read at render time |
-
-A mechanism honouring those three is compatible with this model. Everything
-else it decides, push or pull, who holds cluster credentials, what prunes, how
-often it reconciles, whether a neighbour's tests gate a merge, is its own
-business, and the parked records are the evidence it starts from.
+Co-testing, whether one unit's tests gate another's deploy, stays parked in
+[`docs/adr/deferred/`](../../docs/adr/deferred/README.md), and the retired push
+design sits beside it with each record's fate. This chapter specifies no co-test
+gate.
 
 ## The lock lifecycle
 
@@ -101,8 +86,8 @@ The repair is what makes the diagnostics work:
 
 A lock is not a deployment record. It says what a set of inputs renders to; it
 does not say what is running, where, or under which lock a given live object was
-applied. Those statements belong to the delivery definition
-([deferred](../../docs/adr/deferred/README.md)), and conflating the two is how
+applied. Those statements belong to delivery
+([chapter 55](55-delivery.md#rendered-artifacts-and-pins)), and conflating the two is how
 "the Kustomization is Ready" comes to be read as "the consumer sees what you
 intended".
 
@@ -220,7 +205,7 @@ hostname served by something outside the model is a Registered Unmanaged Surface
 ([0019](../../docs/adr/model/0019-registered-unmanaged-surfaces.md)) rather than an
 absence. Second, the check is about *declarations*, not about running pods:
 whether a consumer at an older lock is still serving is a delivery question, and
-the delivery definition owns any stronger guarantee that wants to read live
+[chapter 55](55-delivery.md) owns any stronger guarantee that wants to read live
 state.
 
 ## The change, end to end
@@ -229,8 +214,10 @@ state.
 
 <sub>[Diagram source](#the-change-end-to-end) · edit by opening the SVG in draw.io</sub>
 
-The dashed box is the boundary this chapter refuses to cross. Everything above
-it is decided in `docs/adr/`; everything inside it is decided separately.
+The dashed box is delivery, which this chapter does not specify: it is
+[chapter 55](55-delivery.md)'s. The drawing still labels it "defined
+separately"; it is redrawn with the rest of the delivery diagrams in
+[#160](https://github.com/JorisJonkers-dev/deploy-kit/issues/160).
 
 ## Open in this chapter
 
@@ -240,10 +227,9 @@ it is decided in `docs/adr/`; everything inside it is decided separately.
    projection alone, and is recorded there. [0060](../../docs/adr/model/0060-release-unit.md),
    which this item used to cite, is superseded; the unit is the Application
    ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)).
-2. ~~**Whether a unit may span ownership boundaries.**~~ Not this chapter's
-   question: whatever ownership boundary a delivery definition introduces is
-   that definition's, and the item belongs in
-   [`docs/adr/deferred/`](../../docs/adr/deferred/README.md), where it now sits.
+2. ~~**Whether a unit may span ownership boundaries.**~~ Moot: pull delivery has
+   one deployer ([0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md)),
+   so there is no ownership boundary for a unit to span.
 3. **How far the contraction check reaches** is a recorded limitation rather
    than an open decision: it is exact over declared edges and silent over
    undeclared ones, so its value is bounded by the completeness of the edge set

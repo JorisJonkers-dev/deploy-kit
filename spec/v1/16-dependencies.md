@@ -92,7 +92,7 @@ chapter's hard dependency on [chapter 40](40-composition.md).
 
 Which test suites exercise a provider together with its consumers is the same
 inbound question. Whether that membership gates anything is not settled in this
-specification, see [Defined separately](#defined-separately).
+specification, see [Delivery and co-testing](#delivery-and-co-testing).
 
 ### The database catalog
 
@@ -553,16 +553,12 @@ dead-declaration property now runs over every declaration in every project file.
 | a secret granted but never referenced | 3 | a `delivery: env` grant with out-degree zero |
 | a `gpu-model-gtx960m` term no node advertises | 3 | out-degree zero, the scheduler dropped the soft term without an event and it rendered nothing; every dimension is now hard, so it is `E_PLACEMENT_UNSATISFIABLE` at build |
 
-## Defined separately
+## Delivery and co-testing
 
-How the estate deploys, and how dependency on other units for testing gates a
-deploy, are defined separately from this model. This chapter derives the edge
-set, the identities and the policy set; it does not say who applies them, in
-what order a pipeline runs, or which suites must pass first. The model's whole
-interface to that work is three demands: all-or-nothing switchover per Application
-([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)), Durability Class
-gating on destructive operations, and rendering from pinned inputs only. The
-parked direction work is in
+This chapter derives the edge set, the identities and the policy set; it does
+not say who applies them or in what order a release runs, which is
+[chapter 55](55-delivery.md)'s. Whether dependency on other units for testing
+gates a deploy is co-testing, and stays parked in
 [docs/adr/deferred/](../../docs/adr/deferred/README.md).
 
 ## Open in this chapter

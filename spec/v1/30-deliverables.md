@@ -81,9 +81,9 @@ rendered as that Application's own Assets by `kubernetes`. Image metadata is a
 **projection of the images lock** and joins the Resolved Deployment artifact set
 ([chapter 20](20-resolved-deployment.md#publish-back)). `flux-root` (one Flux
 `Kustomization` per layer, with `dependsOn` and health checks) is one delivery
-mechanism's reading of the Reconcile Unit DAG, and lives in
-[`docs/adr/deferred/`](../../docs/adr/deferred/README.md) with the rest of
-delivery. `flux-packs` and `flux-source` had nothing left to render once the
+mechanism's reading of the Reconcile Unit DAG, and is taken up by
+[chapter 55](55-delivery.md#rendered-artifacts-and-pins), where each Project's
+pinned source is what a Kustomization applies. `flux-packs` and `flux-source` had nothing left to render once the
 foundation was declared ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)).
 
 A second, unregistered renderer generation exists in the tree being replaced: `src/deployment/render/`, 14 modules and 1,967 lines, reachable from neither
@@ -166,8 +166,9 @@ serializer own key order.
 
 **Rendered, not applied.** Writing a policy into Vault is an act against a live
 system by an identity with privilege, which is delivery
-([`docs/adr/deferred/`](../../docs/adr/deferred/README.md)). This chapter emits
-the documents and attributes them; nothing here says who writes them.
+([chapter 55](55-delivery.md#scope), where who writes them is recorded as not
+yet decided). This chapter emits the documents and attributes them; nothing
+here says who writes them.
 
 **The auth method itself is a platform fixture.** Mounting `kubernetes` auth,
 configuring its JWT issuer and CA, and creating the KV mounts are estate-unique
@@ -334,6 +335,10 @@ before any schedule is committed, because counting files under
 
 <sub>[Diagram source](#the-render-end-to-end) · edit by opening the SVG in draw.io</sub>
 
+The drawing still labels delivery "defined separately"; delivery is
+[chapter 55](55-delivery.md)'s since 2026-09-24, and the drawing is redrawn in
+[#160](https://github.com/JorisJonkers-dev/deploy-kit/issues/160).
+
 `renderHash` is taken over the recorded input digests (every Intent Fragment
 including the Platform document, the images lock, the node contract, the
 ClusterState snapshot), prefixed with the schema package integrity
@@ -363,18 +368,18 @@ needs a decision, not an allowlist entry."*
 | a hand-added file inside the rendered tree | `E_RENDER_OVERWRITE_REFUSED`; the writer refuses to overwrite a file it does not manage, and parity would stay red |
 | a hand-written object of any kind, a raw manifest, a pack file | there is no pass-through ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)); what cannot be declared yet is a ledger entry with a review date |
 
-## Delivery is defined separately
+## Delivery reads this tree
 
-The model's obligation ends at a **complete, attributed, deterministic file
-tree**. What applies that tree to a cluster, the delivery mechanism, apply and
-prune ordering, inventories, field managers, deploy RBAC, break-glass, and whether
-another unit's tests gate a deploy, is **defined separately from the model** and
-is not specified in v1. See [docs/adr/deferred/](../../docs/adr/deferred/README.md).
+The model's rendering obligation ends at a **complete, attributed,
+deterministic file tree**. What applies that tree to a cluster, and how, is
+[chapter 55](55-delivery.md)'s: the tree is published per Project as a signed
+artifact, and one applier pulls it. Whether another unit's tests gate a deploy
+is co-testing, parked in [docs/adr/deferred/](../../docs/adr/deferred/README.md).
 
 One model-level consequence belongs here, because it is what makes coverage
 load-bearing rather than hygiene: **an object the render omits is an object no
-Deliverable Set claims.** Any delivery definition that reconciles a cluster
-towards this tree will treat an unclaimed object as removable, so a coverage gap
+Deliverable Set claims.** The applier reconciles the cluster towards this tree
+and prunes what it no longer claims: to it, an unclaimed object is removable, so a coverage gap
 is a correctness problem in the model, not a tidiness problem downstream. That is
 why the coverage assertion fails the build, why the ledger fails in both
 directions, and why a project that silently fails to publish must show up as a

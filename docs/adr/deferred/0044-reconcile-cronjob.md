@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+superseded-by: 0127
 claim: settled
 date: 2026-08-31
 normative: spec/v1/50-lifecycle.md#reconciliation
@@ -8,6 +8,8 @@ rests-on: ["0008"]
 ---
 
 # Reconciliation is an in-cluster CronJob per Aggregator
+
+> **Retired 2026-09-24** by [0127](../model/0127-delivery-is-part-of-the-model.md): delivery is Flux pulling a signed, pinned render, so this push-design record is superseded rather than taken up. Its fate is in [the inventory](README.md#inventory).
 
 > **Amended 2026-09-14.** Vocabulary renamed by
 > [0116](../model/0116-project-application-process.md): Domain is now Project,
@@ -43,7 +45,7 @@ it says it does, costs no Actions minutes, and is the pattern
 (`spec/v1/examples/rendered/reapply-cronjob.yaml:19-20`) under the merge apply's
 own ServiceAccount, re-applying the lock read from *its own* objects' annotations,
 not the globally newest, which would make the scheduler fight the Aggregators
-and undo a break-glass rollback ([0045](0045-break-glass-reporting.md)).
+and undo a break-glass rollback ([0045](0045-break-glass-reporting.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md))).
 
 The loop renders from the same pinned inputs as the merge deploy, including the
 `clusterStateDigest` of [0034](../model/0034-cluster-state-pinned-input.md). Without it it
@@ -65,7 +67,7 @@ the field-manager name `auth-federation` (`reapply-cronjob.yaml:57`,
 `aggregator-deploy.yml:103`), so server-side apply cannot report a conflict
 between the two writers most likely to collide, the drift property the substrate
 was chosen for. Distinct managers and a serialising Lease come from
-[0046](0046-distinct-field-managers.md); the loop's own failure is silent by
+[0046](0046-distinct-field-managers.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)); the loop's own failure is silent by
 construction, so [0058](0058-delivery-machinery-observability.md) gives it an
 owner and an Alert Class.
 

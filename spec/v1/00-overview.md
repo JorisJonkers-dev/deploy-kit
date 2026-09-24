@@ -7,13 +7,16 @@ glossary defines terms, the ADRs record why, and **these chapters are
 normative**: where a chapter and an ADR disagree, the chapter wins and the ADR
 is what gets fixed.
 
-One boundary runs through the whole document and is stated once here: **how the
-estate deploys, and how dependency on other units for testing gates a deploy,
-are defined separately from the model** (owner decision, 2026-09-07). This
-specification defines the model. The separate definition is scoped in
+One boundary runs through the whole document and is stated once here: **how
+the estate deploys is part of the model, and how dependency on other units for
+testing gates a deploy is not.** Delivery was parked on 2026-09-07 and rejoined
+the model on 2026-09-24
+([0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md)): Flux pulls
+a signed, pinned render per Project and Flagger switches it, as
+[chapter 55](55-delivery.md) specifies. Co-testing stays parked in
 [`docs/adr/deferred/`](../../docs/adr/deferred/README.md), and nothing in these
-chapters specifies push delivery, deploy workflows, pruning, field managers,
-deploy RBAC, break-glass or co-test gating.
+chapters specifies push delivery, field managers, deploy RBAC or co-test
+gating.
 
 ## The estate
 
@@ -58,12 +61,13 @@ edited a field something else owns. No design in this specification may cite
 rescheduling, HA or horizontal scale as justification.
 
 Both retained properties are made real by *how objects are applied*: which
-identity applies, under which field manager. That is delivery, and it is
-defined separately: see
-[`docs/adr/deferred/`](../../docs/adr/deferred/README.md). The model's own
-obligation is narrower and is discharged in these chapters: every Deliverable is
-a serialized object attributed to exactly one adapter, so there is always a
-single answer to "what should own this field".
+identity applies, under which field manager. Delivery has one applier, Flux,
+pulling from inside the cluster, so there is one applying identity for
+everything rendered, and Flagger owns only the objects it generates, which the
+render therefore omits ([chapter 55](55-delivery.md#scope)). The model's own
+obligation is discharged in these chapters: every Deliverable is a serialized
+object attributed to exactly one adapter, so there is always a single answer to
+"what should own this field".
 
 The layer-1 documents (Project Intent and Platform Intent alike) survive a
 substrate swap: neither names a Kubernetes kind, a Traefik field or a k3s flag
@@ -125,13 +129,22 @@ tree, so a differing render with identical digests is a defect, never weather.
 
 <sub>[Diagram source](#the-three-model-pipeline) · edit by opening the SVG in draw.io</sub>
 
+The drawing still labels delivery "defined separately"; delivery is
+[chapter 55](55-delivery.md)'s since 2026-09-24, and the drawing is redrawn with
+the rest of the delivery diagrams in
+[#160](https://github.com/JorisJonkers-dev/deploy-kit/issues/160).
+
 ## Programme scope
 
-v1 is the model ([0059](../../docs/adr/model/0059-v1-scope-stopping-rule.md)): the
-two layer-1 vocabularies, composition, layer-2 derivation, and the registered
-renderer that serializes layer 3. It ships when it renders the live estate, foundation included ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)), from declared intent, and that render is delivered by today's Flux
-installation applying a tree the model rendered. No deferred decision can block
-it.
+v1 is the model and its delivery
+([0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md), superseding
+[0059](../../docs/adr/model/0059-v1-scope-stopping-rule.md)): the two layer-1
+vocabularies, composition, layer-2 derivation, the registered renderer that
+serializes layer 3, and the pull delivery of [chapter 55](55-delivery.md). It
+ships when it renders the live estate, foundation included
+([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)), from declared
+intent, and that render is delivered through per-Project pins and switched by
+Flagger.
 
 The partition is structural rather than enumerated, so it cannot drift:
 `docs/adr/` carries **one directory per decision domain**, and **every ADR in
@@ -147,27 +160,26 @@ pointers name sections of [`docs/architecture.md`](../../docs/architecture.md)
 rather than of these chapters, and nothing in it can change what the model
 means. `scripts/lint-adrs.ts` holds each project to its own normative root.
 
-The model makes exactly three demands on whatever delivery is eventually
-defined. They are model decisions, not delivery ones, and together they are the
-complete interface between the two scopes.
+The model makes three demands of delivery. They were written as the interface to
+a delivery definition that did not yet exist; [chapter 55](55-delivery.md) is
+now how they are met.
 
-| demand | decided in | what any delivery definition must do |
+| demand | decided in | what delivery does |
 |---|---|---|
 | Release Unit atomicity | [0060](../../docs/adr/model/0060-release-unit.md), superseded by [0062](../../docs/adr/model/0062-application-is-the-release-unit.md) | no member's new version receives traffic until every member's new version is healthy; if any member fails its budget, none switch and the old versions keep serving |
 | Durability Class gating | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | no destructive operation proceeds automatically against a volume declared `recoverable` or `irreplaceable` |
 | Pinned inputs only | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | render from recorded digests (Intent, Platform Intent, locks, ClusterState), never from live cluster state |
 
-Anything else the delivery definition chooses, push or pull, who applies, what
-prunes, what reconciles, how co-testing gates, is its own business. A delivery
-definition that needs a fourth demand amends the model first, in one ADR.
-
-**The stopping rule.** The deferred set is taken up only after
+**The stopping rule.** Co-testing stays parked until
 [workspace#45](https://github.com/JorisJonkers-dev/workspace/issues/45) runs and
-the test-substrate measurement exists; that experiment informs the separate
-definition and gates nothing in v1. Review date **2026-11-30**: deferred work
-still unstarted then is cut from planning, not extended. The named failure mode
-this rule exists to prevent is not collapse but partial completion with both
-delivery models live.
+the test-substrate measurement exists; it gates nothing in v1. Review date
+**2026-11-30**: co-testing still unstarted then is cut from planning, not
+extended. The named failure
+mode this rule exists to prevent is not collapse but partial completion with
+both delivery paths live, which is why adoption
+([chapter 60](60-setup.md), specified by
+[#159](https://github.com/JorisJonkers-dev/deploy-kit/issues/159)) is to hand
+Projects over one at a time and retire the old path by a date.
 
 Live-defect fixes ride independently of both scopes: the unpinned foundation
 charts and this repository's own unpinned CI are operational fixes that proceed
@@ -182,10 +194,11 @@ It carries every premise and decision that makes up v1, each with its claim,
 `settled`, `open` or `accepted-untested`, and its `normative:` pointer naming the section of
 these chapters where its detail lives. A `claim: open` means decided in
 direction and untested; its owner and settling test are in the ADR file, never
-here. The delivery and co-testing decisions have their own inventory at
-[`docs/adr/deferred/README.md`](../../docs/adr/deferred/README.md); they are not
-in the register, not linted, and their `normative:` pointers name sections these
-chapters deliberately do not carry.
+here. The co-testing decisions and the retired push-delivery design have their
+own inventory at
+[`docs/adr/deferred/README.md`](../../docs/adr/deferred/README.md), with each
+record's fate; they are not in the register, not linted, and their
+`normative:` pointers name sections these chapters deliberately do not carry.
 
 Citation rule, in the ADRs and in these chapters: never a bare ADR number.
 In-set references are relative links; workspace decisions live in a separate
@@ -213,7 +226,8 @@ repository already uses between a chapter and an ADR.
 | [`20-resolved-deployment.md`](20-resolved-deployment.md) | the Resolved Deployment, the authority table in one place, the pinned input set including ClusterState, derived mechanics, the one capacity exception, the Reconcile Unit, publish-back | drawn |
 | [`30-deliverables.md`](30-deliverables.md) | adapters, the adapter port, attribution, ledgers, coverage re-derived from the registry | drawn |
 | [`40-composition.md`](40-composition.md) | Intent Fragments, participants and the staleness bound, schema versioning and rollout, unmanaged surfaces | drawn |
-| [`50-lifecycle.md`](50-lifecycle.md) | model-level lifecycle: Release Unit switchover, expand/contract for cross-Application contract changes, lock lifecycle, and the statement that delivery mechanics and co-testing are defined separately | drawn |
+| [`50-lifecycle.md`](50-lifecycle.md) | model-level lifecycle: Release Unit switchover, expand/contract for cross-Application contract changes, lock lifecycle | drawn |
+| [`55-delivery.md`](55-delivery.md) | delivery: rendered artifacts and pins, blue/green switchover, the Release Gate, held releases, migrations, release order, failure and undo | not yet |
 | [`60-setup.md`](60-setup.md) | bootstrap order, secrets at rest, CNI selection, node facts, restore, onboarding and adoption | drawn |
 
 **Chapter 16's derivation map is the load-bearing artefact**, and its value is
@@ -251,11 +265,11 @@ parse-checked in CI.
 | `examples/negative/duplicate-application-id/` | a negative fixture, so an invariant that stops running is detectable |
 | [`examples/refusals/`](examples/refusals/README.md) | the refusal fixtures: an alert class with no signal, a class outside the vocabulary, and the `rolling`/`recreate` pair over RWO storage |
 
-Delivery examples are no longer part of this specification. `aggregator.yml`,
-both aggregator workflows, the generated deployer RBAC, the re-apply CronJob and
-the Renovate manager that pinned the aggregator moved to
+The retired push-delivery examples are not part of this specification.
+`aggregator.yml`, both aggregator workflows, the generated deployer RBAC, the
+re-apply CronJob and the Renovate manager that pinned the aggregator stay in
 [`docs/adr/deferred/examples/`](../../docs/adr/deferred/examples/) with the
-decisions they illustrate.
+records they illustrate.
 
 Both remaining workflows are **one job with many steps**, each step carrying
 `if: ${{ !cancelled() }}`. The
@@ -300,7 +314,7 @@ through, with the deciding ADR named.
      then a ConfigMap census (`kubectl get configmap -A -o yaml`) in which no
      data key contains an executable script.
    - **Blocks:** rendering the live estate from intent, which is the settling
-     test of [0059](../../docs/adr/model/0059-v1-scope-stopping-rule.md) itself, so
+     test of [0059](../../docs/adr/model/0059-v1-scope-stopping-rule.md) itself (now [0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md)'s), so
      this blocks v1's own stopping condition.
 
 3. **Label prefix retirement.** Node facts are authored once and generate the
@@ -410,9 +424,10 @@ through, with the deciding ADR named.
   allocatable.
 - ~~**Aggregator CI cost**~~, ~~**whether the test substrate runs Flux for the
   foundation**~~, ~~**the lag bound**~~ and ~~**what replaces
-  `deploy/production`.**~~ All four are delivery or co-testing questions, and
-  both are defined separately from the model: they are carried, with their
-  evidence, in [`docs/adr/deferred/`](../../docs/adr/deferred/README.md).
+  `deploy/production`.**~~ The first three belonged to the retired push design
+  and co-testing, and are carried with their evidence in
+  [`docs/adr/deferred/`](../../docs/adr/deferred/README.md); what replaces
+  `deploy/production` is the per-Project pin of [chapter 55](55-delivery.md).
 
 ## Diagram sources
 

@@ -18,7 +18,7 @@ rests-on: ["0001"]
 
 Overlap on `exercises` never yields two writers of one object, because `deploys`
 is exactly-one per Application and, once a namespace has exactly one deployer
-([0047](0047-namespace-per-deployer.md)), the API server and not only the
+([0047](0047-namespace-per-deployer.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md))), the API server and not only the
 composition check refuses the second applier. False if: `kubectl auth can-i
 --as=system:serviceaccount:deploy-system:deployer-auth-federation -n app-system
 patch deployments` answers `yes` for an Application that Aggregator does not deploy,
@@ -50,7 +50,7 @@ every kind and no `resourceNames`, `aliases.namespace` lets two Applications sha
 namespace, and `deployer-rbac.yaml`'s header declares `deploys: [auth-api,
 auth-ui] -> namespaces auth-system, app-system` while rendering a single Role. A
 per-Application CI check cannot see a shared namespace, so the API-server half is
-real only through [0047](0047-namespace-per-deployer.md).
+real only through [0047](0047-namespace-per-deployer.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)).
 
 Every project needs a default Aggregator, or an Application in nobody's `deploys` list
 cannot deploy at all, and the default cannot come from testing: `jellyfin`,
@@ -64,7 +64,7 @@ has no gate, visible only in [0038](../model/0038-participants-list-staleness.md
 | option | cost if taken | why rejected |
 |---|---|---|
 | One list: the suite that gates an Application also applies it | Zero schema; one key instead of two. Costs the twelve auth classes their second home: `auth-api` may belong to the pairing suite or the federation suite, not both | Forbidding overlap removes gates to protect apply authority; the gates are why the Aggregator exists |
-| Two lists, but let `deploys` overlap and arbitrate at apply time | No composition invariants to build. Every shared object becomes a server-side-apply conflict, hourly, atop the two appliers [0046](0046-distinct-field-managers.md) already serialises | Prune is a label query on `deploy.jorisjonkers.dev/deployer=<aggregator>`; with two deployers the second prunes the first's objects, so overlap is not a conflict but a deletion |
+| Two lists, but let `deploys` overlap and arbitrate at apply time | No composition invariants to build. Every shared object becomes a server-side-apply conflict, hourly, atop the two appliers [0046](0046-distinct-field-managers.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)) already serialises | Prune is a label query on `deploy.jorisjonkers.dev/deployer=<aggregator>`; with two deployers the second prunes the first's objects, so overlap is not a conflict but a deletion |
 | Derive the deployer from `exercises`: most classes wins | Nothing to author; one resolver function | Makes deploy authority a function of test coverage: the seven media applications, at zero classes, resolve to no deployer and become undeployable |
 | Put both lists on the Application (`gatedBy`, `deployedBy`) | Deploy authority reads locally, in one file | A provider never knows its consumers; `auth-api` would be edited whenever any new consumer appeared, the shape [0049](0049-aggregator-owned-tests.md) rejects |
 
@@ -90,7 +90,7 @@ outage, not an edit.
 - A relationship with no Aggregator has no gate and nothing errors, paid by
   whoever reviews the participants list, the one place it shows.
 - Every `aliases.namespace` value becomes a deploy-authority decision, paid by
-  whoever reviews aliases, under [0047](0047-namespace-per-deployer.md).
+  whoever reviews aliases, under [0047](0047-namespace-per-deployer.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)).
 - Reassigning an Application between Aggregators relabels live objects mid-flight; it
   is safe only because the incoming Aggregator applies before the outgoing one
   prunes ([0042](0042-apply-before-prune-inventory.md)), and unsafe in any

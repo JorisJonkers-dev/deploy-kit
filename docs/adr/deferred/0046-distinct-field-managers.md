@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+superseded-by: 0127
 claim: settled
 date: 2026-08-31
 normative: spec/v1/50-lifecycle.md#field-ownership
@@ -8,6 +8,8 @@ rests-on: ["0002"]
 ---
 
 # Every applier has its own field manager, serialised by a lease
+
+> **Retired 2026-09-24** by [0127](../model/0127-delivery-is-part-of-the-model.md): delivery is Flux pulling a signed, pinned render, so this push-design record is superseded rather than taken up. Its fate is in [the inventory](README.md#inventory).
 
 ## Rests on
 
@@ -52,9 +54,9 @@ after verify; whichever process cannot acquire it applies nothing, and for the
 CronJob the next hour is the retry. Both appliers already run under the
 aggregator ServiceAccount on a runner *"inside the cluster"*
 (`spec/v1/50-lifecycle.md:195-198`), so the Lease is reachable from both. Which
-lock the CronJob picks is decided in [0044](0044-reconcile-cronjob.md); this is
+lock the CronJob picks is decided in [0044](0044-reconcile-cronjob.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)); this is
 half of what makes [0002](../model/0002-kubernetes-as-substrate.md)'s second property
-real, and [0047](0047-namespace-per-deployer.md) is the other half.
+real, and [0047](0047-namespace-per-deployer.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)) is the other half.
 
 ## Alternatives
 
@@ -86,5 +88,5 @@ entries, and ownership must be reclaimed field by field.
   and adapter maintainers.
 - A conflict is only a signal if someone reads it, and a break-glass rollback
   now waits on the lease like any applier
-  ([0045](0045-break-glass-reporting.md)), paid by the platform owner, via
+  ([0045](0045-break-glass-reporting.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md))), paid by the platform owner, via
   [0058](0058-delivery-machinery-observability.md).

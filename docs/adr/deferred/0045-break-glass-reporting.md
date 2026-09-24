@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+superseded-by: 0127
 claim: settled
 date: 2026-08-31
 normative: spec/v1/50-lifecycle.md#break-glass
@@ -8,6 +8,8 @@ rests-on: ["0008"]
 ---
 
 # Break-glass exists, sticks, and reports itself
+
+> **Retired 2026-09-24** by [0127](../model/0127-delivery-is-part-of-the-model.md): delivery is Flux pulling a signed, pinned render, so this push-design record is superseded rather than taken up. Its fate is in [the inventory](README.md#inventory).
 
 ## Rests on
 
@@ -22,7 +24,7 @@ off the slice, then `amtool config routes test alertclass=urgent`.
 ## Why
 
 Applying an older lock without tests is necessary for incidents. Under
-[0041](0041-push-delivery-boundary.md) the normal rollback reverts the pin commit, so
+[0041](0041-push-delivery-boundary.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)) the normal rollback reverts the pin commit, so
 the suite re-runs against the previous combination and the rollback is itself tested, 
 but that costs a suite run and a vcluster, which an incident does not have. So a
 `workflow_dispatch` applies a named older lock directly. The estate has precedent for
@@ -32,7 +34,7 @@ both halves of the discipline (`spec/v1/50-lifecycle.md:191-193`):
 check.
 
 The rollback **sticks**, which follows from where the record of what is live lives.
-The reapply CronJob of [0044](0044-reconcile-cronjob.md) re-applies its own applied
+The reapply CronJob of [0044](0044-reconcile-cronjob.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)) re-applies its own applied
 lock, read from its objects' annotations (`deploy.jorisjonkers.dev/lock`,
 `spec/v1/50-lifecycle.md:119`), never the globally newest one: that "would make this
 scheduler fight the Aggregators, and would silently undo a break-glass rollback"
@@ -84,5 +86,5 @@ record of which divergence was deliberate.
   and the pre-flight rehearsal (`spec/v1/60-setup.md:156`) gains a second assertion (the alert fired), paid by joris.
 - The mechanism is group-G scope and inherits the untested premise of
   [0008](0008-tested-equals-deployed-requires-push.md); if push delivery is cut per
-  [0059](../model/0059-v1-scope-stopping-rule.md), Flux's rollback replaces it, paid by joris,
+  [0059](../model/0059-v1-scope-stopping-rule.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)), Flux's rollback replaces it, paid by joris,
   as work built ahead of the experiment that justifies it.

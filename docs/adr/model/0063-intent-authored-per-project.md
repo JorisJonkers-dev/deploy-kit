@@ -54,7 +54,7 @@ namespace comes from `project`, and the Process name and the image are fields
 the author already writes explicitly ([0010](0010-flat-application-identity.md)).
 Nothing remains for it to say. The prohibition on aliasing an Application into
 another deployer's namespace
-([0047](../deferred/0047-namespace-per-deployer.md)) loses its subject matter with
+([0047](../deferred/0047-namespace-per-deployer.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md))) loses its subject matter with
 it: no field can move an Application out of its project's namespace.
 
 A namespace now holds several Applications **by construction**. It is therefore not

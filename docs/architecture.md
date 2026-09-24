@@ -183,8 +183,8 @@ The writer assembles the whole Deliverable set, verifies it (path collision,
 safe relative paths, ledger coverage) and only then writes, into a staging
 directory that is renamed over the target. A failed render leaves the previous
 tree untouched. Deliverables that a render no longer produces are **reported,
-never deleted**: pruning is delivery scope and is defined separately
-([`docs/adr/deferred/`](adr/deferred/README.md)).
+never deleted**: pruning is the applier's, in delivery
+([chapter 55](../spec/v1/55-delivery.md)).
 
 ## Path authority
 

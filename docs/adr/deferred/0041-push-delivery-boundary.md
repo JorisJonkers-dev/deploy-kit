@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+superseded-by: 0127
 claim: open
 owner: joris
 date: 2026-08-31
@@ -9,6 +9,8 @@ rests-on: ["0008"]
 ---
 
 # Class A is pushed by Aggregators; class B stays with Flux
+
+> **Retired 2026-09-24** by [0127](../model/0127-delivery-is-part-of-the-model.md): delivery is Flux pulling a signed, pinned render, so this push-design record is superseded rather than taken up. Its fate is in [the inventory](README.md#inventory).
 
 > **Amended 2026-09-14.** Vocabulary renamed by
 > [0116](../model/0116-project-application-process.md): Domain is now Project,
@@ -50,12 +52,12 @@ render breaks secret delivery for everything.
 What is given up must be stated plainly, because push loses properties pull
 has for free: Flux prunes from a Kustomization inventory and `kubectl` keeps
 none ([0042](0042-apply-before-prune-inventory.md)); continuous reconciliation
-becomes a CronJob per aggregator ([0044](0044-reconcile-cronjob.md)); and no
+becomes a CronJob per aggregator ([0044](0044-reconcile-cronjob.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md))); and no
 single answer to what is live survives. The claim is **open** and conditional:
 it inherits [0008](0008-tested-equals-deployed-requires-push.md), and if
 [workspace#45](https://github.com/JorisJonkers-dev/workspace/issues/45)
 falsifies that premise, scope is cut per
-[0059](../model/0059-v1-scope-stopping-rule.md).
+[0059](../model/0059-v1-scope-stopping-rule.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)).
 
 ## Alternatives
 
@@ -69,7 +71,7 @@ falsifies that premise, scope is cut per
 
 Undo cost today: nothing is built; class A is still Flux-reconciled, so undo
 is this file plus scope notes on [0042](0042-apply-before-prune-inventory.md)
-through [0045](0045-break-glass-reporting.md), roughly a day. Becomes
+through [0045](0045-break-glass-reporting.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)), roughly a day. Becomes
 irreversible once: the Flux Kustomization inventories covering the 364 class-A
 objects are deleted. After that, undo means rebuilding them by hand, with
 nothing pruning class A meanwhile.
@@ -78,7 +80,7 @@ nothing pruning class A meanwhile.
 
 - Pruning and continuous reconciliation stop being free: an inventory and
   delete pass ([0042](0042-apply-before-prune-inventory.md)) plus a CronJob per
-  aggregator ([0044](0044-reconcile-cronjob.md)), paid by joris, twice.
+  aggregator ([0044](0044-reconcile-cronjob.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md))), paid by joris, twice.
 - No single answer to what is live; lag is measured per slice, paid by
   anyone debugging at 03:00.
 - A merge is now required to deploy, against composition's *"no repository

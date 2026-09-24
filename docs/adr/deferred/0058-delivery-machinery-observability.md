@@ -42,7 +42,7 @@ Its failure mode is silence, not noise. The rendered guard runs at
 stops scheduling permanently once it has missed more than 100 start times with no
 deadline set, by setting a condition nothing here watches. Four days of node
 downtime, or one hung run under `Forbid`, and the estate's only continuous drift
-correction ([0044](0044-reconcile-cronjob.md)) stops forever, the cluster
+correction ([0044](0044-reconcile-cronjob.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md))) stops forever, the cluster
 diverges from its lock silently, the exact condition that CronJob exists to make
 impossible. Composition fails the same way from the other side: estate-wide
 fail-closed, so one version-skewed fragment yields no `ComposedIntent`, nothing
@@ -92,4 +92,4 @@ then leaves the thing that deploys everything unwatched, with no habit left.
 - Deliberate maintenance (a suspended CronJob, a dormant participant) pages unless
   silenced first, a ledger entry ([0055](../model/0055-bidirectional-ledgers.md)), paid by the maintainer.
 - A conflict "reported" by `--on-conflict report` (`reapply-cronjob.yaml:58`) becomes
-  a routed alert, not a log line, paid by whoever hand-edited the field ([0046](0046-distinct-field-managers.md)).
+  a routed alert, not a log line, paid by whoever hand-edited the field ([0046](0046-distinct-field-managers.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md))).

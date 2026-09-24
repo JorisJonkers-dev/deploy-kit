@@ -87,7 +87,7 @@ needs a merge in every one of them, the cost this decision was taken to avoid.
   load-bearing rather than hygiene, paid by the estate owner.
 - Composition itself merges nothing: a fragment publishes, composition runs, a
   lock is published. The pull request introduced by
-  [0041](../deferred/0041-push-delivery-boundary.md) is per-relationship rather than
+  [0041](../deferred/0041-push-delivery-boundary.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md)) is per-relationship rather than
   estate-wide and runs that relationship's system tests, it does not record
   pointers; aggregators pin the composed lock rather than individual fragments,
   so the invariants are evaluated exactly once, paid by the aggregator.

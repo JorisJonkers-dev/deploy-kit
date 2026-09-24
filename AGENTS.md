@@ -145,8 +145,9 @@ tool runs it.
   file in CI, or add a root dependency on anything under `emf/`. Push to
   `main` or force-push a shared branch. Edit a version or `CHANGELOG.md` by
   hand. Reverse a settled ADR in place; supersede it instead. Hand-edit a
-  generated file. Specify an applier, a prune pass, a field manager or a
-  co-test gate in `spec/v1`. Cite a bare ADR number. Commit on a detached
+  generated file. Specify a second applier, a push path, a field manager or
+  a co-test gate in `spec/v1` (delivery is Flux pulling a pinned render,
+  [chapter 55](spec/v1/55-delivery.md)). Cite a bare ADR number. Commit on a detached
   HEAD, or to a path the hygiene guard denies. Treat `deploy-config-schema` as
   dead.
 

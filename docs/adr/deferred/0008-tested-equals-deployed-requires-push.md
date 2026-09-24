@@ -10,6 +10,13 @@ decided-in: JorisJonkers-dev/workspace#45
 
 # Tested-equals-deployed cannot be had from pull alone
 
+> **Re-graded 2026-09-24.** The premise held for the pull delivery it was
+> written against, where composition takes effect with no merge to gate. The
+> pull delivery the model adopted ([0127](../model/0127-delivery-is-part-of-the-model.md))
+> deploys only through a pin commit, and that commit is a merge-shaped gate
+> point: whatever co-testing is taken up gates the pin, and push is not
+> required for it. The claim below is kept as it was argued.
+
 > **Amended 2026-09-14.** Vocabulary renamed by
 > [0116](../model/0116-project-application-process.md): Domain is now Project,
 > Service is Application, Workload is Process, and Service Intent is Project
@@ -54,7 +61,7 @@ not be built.
 This premise is therefore decided-in-direction but untested, and proceeding on
 it before #45 runs is exactly the pattern the review flagged. It stays `open`,
 its falsification path is cheap and already filed, and
-[0059](../model/0059-v1-scope-stopping-rule.md) makes group G conditional on the
+[0059](../model/0059-v1-scope-stopping-rule.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)) makes group G conditional on the
 result. A second, independent reason for aggregators (relationships have no
 owner; 12 of the 32 system-tagged classes exercise `auth-api` *with its consumers*), survives whichever way #45 lands and lives in
 [0049](0049-aggregator-owned-tests.md), not here.
@@ -70,11 +77,11 @@ owner; 12 of the 32 system-tagged classes exercise `auth-api` *with its consumer
 ## Reversibility
 
 Undo cost today: one frontmatter edit here plus scope notes on the decisions
-resting on this premise ([0041](0041-push-delivery-boundary.md) through
-[0045](0045-break-glass-reporting.md), plus [0048](0048-class-b-pinning.md),
+resting on this premise ([0041](0041-push-delivery-boundary.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)) through
+[0045](0045-break-glass-reporting.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)), plus [0048](0048-class-b-pinning.md),
 [0051](0051-vcluster-substrate.md) and
 [0058](0058-delivery-machinery-observability.md)) are superseded in scope per
-[0059](../model/0059-v1-scope-stopping-rule.md). No delivery machinery exists yet; the
+[0059](../model/0059-v1-scope-stopping-rule.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)). No delivery machinery exists yet; the
 blast radius is documents, roughly a day. Becomes irreversible once:
 aggregators are the only apply path for derived objects and Flux's class-A
 reconciliation is dismantled, after that, the "existing pipeline" the
@@ -82,8 +89,8 @@ experiment needs is gone and the premise can no longer be tested cheaply.
 
 ## Consequences
 
-- Every decision resting on this premise ([0041](0041-push-delivery-boundary.md)
-  through [0045](0045-break-glass-reporting.md), [0048](0048-class-b-pinning.md),
+- Every decision resting on this premise ([0041](0041-push-delivery-boundary.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md))
+  through [0045](0045-break-glass-reporting.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)), [0048](0048-class-b-pinning.md),
   [0051](0051-vcluster-substrate.md),
   [0058](0058-delivery-machinery-observability.md)) inherits an untested
   foundation until workspace#45 runs, paid by joris, as rework risk across group G.
@@ -91,7 +98,7 @@ experiment needs is gone and the premise can no longer be tested cheaply.
   suite execution against the existing pipeline, paid by joris, an afternoon
   plus one full test run.
 - If #45 falsifies the premise, group G is cut per
-  [0059](../model/0059-v1-scope-stopping-rule.md) and a third of the review's findings
+  [0059](../model/0059-v1-scope-stopping-rule.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)) and a third of the review's findings
   close unbuilt, paid by joris; the afternoon was the price of finding out.
 - If the premise holds, the deployer must be the thing that ran the tests, and
   push machinery (per-aggregator RBAC, inventory, reapply, break-glass)

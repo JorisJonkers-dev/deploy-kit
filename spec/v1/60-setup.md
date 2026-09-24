@@ -3,10 +3,9 @@
 How to stand this up, what facts have to exist before anything renders, and how
 to move ~30 live Applications onto the model without deleting any of them.
 
-Two boundaries apply throughout. **Delivery mechanics and co-testing are defined
-separately** ([chapter 50](50-lifecycle.md#delivery-and-co-testing-are-defined-separately),
-[`docs/adr/deferred/`](../../docs/adr/deferred/README.md)): nothing here
-specifies an applier, a prune pass, deploy RBAC or a test gate. And every
+Two boundaries apply throughout. **Delivery is [chapter 55](55-delivery.md)'s,
+and co-testing stays parked** ([`docs/adr/deferred/`](../../docs/adr/deferred/README.md)):
+nothing here specifies an applier, a prune pass, deploy RBAC or a test gate. And every
 precondition below is either **tickable**, with the observation or command that
 ticks it, or **explicitly blocked**, with an owner and the event that unblocks
 it. An earlier draft of this chapter carried a precondition that could never be
@@ -410,8 +409,10 @@ adoption that is authoring rather than transcription.
 Step 4 is delivery, and it is where adoption is dangerous: a source that prunes
 will delete objects removed from it, so the order in which the old manifests
 leave and the rendered ones arrive decides whether adoption is a no-op or an
-outage. Those ordering rules, and anything that prunes at all, are defined
-separately: [`docs/adr/deferred/`](../../docs/adr/deferred/README.md).
+outage. Those ordering rules, and the handover of one Project at a time from the
+old source to its pin, are this chapter's, specified by
+[#159](https://github.com/JorisJonkers-dev/deploy-kit/issues/159); the pin
+itself is [chapter 55](55-delivery.md#rendered-artifacts-and-pins)'s.
 
 **What adoption leaves behind.** Any live object that no render produces is an
 orphan: attributed to no adapter, and invisible to every later comparison.
@@ -529,9 +530,10 @@ owns it. One item is blocked rather than open, and says so.
   14 days**.
 
 Preconditions belonging to delivery, who applies, what prunes, what
-reconciles, what a break-glass path is, and whether a neighbour's tests gate a
-merge, are deliberately absent from this list. They are defined separately,
-with their evidence, in [`docs/adr/deferred/`](../../docs/adr/deferred/README.md).
+reconciles and what a break-glass path is, are absent from this list: they are
+[chapter 55](55-delivery.md)'s. Whether a neighbour's tests gate a merge is
+co-testing, parked with its evidence in
+[`docs/adr/deferred/`](../../docs/adr/deferred/README.md).
 
 ## Diagram sources
 

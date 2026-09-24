@@ -62,7 +62,7 @@ with a name against it rather than an accident nobody had noticed.
 
 | option | cost if taken | why rejected |
 |---|---|---|
-| Model NixOS hosts as a second deliverable target | a second render port beside [0053](0053-adapter-port-contract.md) whose output is a build and an activation, not a file; every layer-1 concept (probes, policy, grants) needs a nix meaning | an order of magnitude more v1 scope to cover roughly eight hosts, against the stopping rule in [0059](0059-v1-scope-stopping-rule.md) |
+| Model NixOS hosts as a second deliverable target | a second render port beside [0053](0053-adapter-port-contract.md) whose output is a build and an activation, not a file; every layer-1 concept (probes, policy, grants) needs a nix meaning | an order of magnitude more v1 scope to cover roughly eight hosts, against the stopping rule in [0059](0059-v1-scope-stopping-rule.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md)) |
 | Leave the remainder unlisted: Kubernetes-only, silence outside | zero authoring cost; reachability stays hand-authored for un-deployed hosts | no check can fire on a host nobody claims; `wolf` sat public and undeployed with no owner of record, which is the failure this decision exists to make impossible |
 | Register hostnames as prose in a README | cheap to write, and no schema change | prose cannot be diffed against the derived set, so set equality is unassertable and the register rots exactly like the seven-way split did |
 

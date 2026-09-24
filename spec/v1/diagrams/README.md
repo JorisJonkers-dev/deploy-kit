@@ -22,7 +22,7 @@ Colour carries the layer, so a reader can place a box without a legend.
 | `#fef3c7` | `#b45309` | layer 2: a decision the platform made ([chapter 20](../20-resolved-deployment.md)) |
 | `#d1fae5` | `#047857` | layer 3: a serialized Deliverable ([chapter 30](../30-deliverables.md)) |
 | `#fee2e2` | `#b91c1c` | a refusal: an error code, or a render that does not happen |
-| white, dashed border | `#64748b` | defined separately from the model ([`docs/adr/deferred/`](../../../docs/adr/deferred/README.md)) |
+| white, dashed border | `#64748b` | outside the model: co-testing, still parked ([`docs/adr/deferred/`](../../../docs/adr/deferred/README.md)). Drawings older than [chapter 55](../55-delivery.md) still draw delivery this way and label it "defined separately"; [#160](https://github.com/JorisJonkers-dev/deploy-kit/issues/160) redraws them |
 
 Conventions that hold across every drawing:
 
