@@ -1,7 +1,7 @@
 // The closed vocabularies of spec/v1/10-project-intent.md#the-closed-vocabularies.
 // Each is declared here once; the wire schema enumerates from these lists.
 
-export const LIFECYCLES = ["application", "job"] as const;
+export const LIFECYCLES = ["application", "job", "prepare"] as const;
 export const RUNTIMES = ["jvm", "python", "node", "static", "none"] as const;
 export const ENGINES = ["postgres", "rabbitmq", "valkey", "files"] as const;
 export const CUTOVERS = ["continuous", "interrupted"] as const;

@@ -174,7 +174,9 @@ const resolvedProcess = z
     image: text,
     uid: count,
     gid: count,
-    cutover,
+    // Absent on a `lifecycle: prepare` Process: it runs once and cuts over
+    // nothing (docs/adr/model/0131-prepare-processes-are-forward-only-setup.md).
+    cutover: cutover.exactOptional(),
     // Present on a `lifecycle: application` Process; a job has no switchover.
     switchover: switchover.exactOptional(),
     deadline: duration,
@@ -292,22 +294,27 @@ function switchoverFollowsCutover(
   element: {
     readonly releaseGate?: unknown;
     readonly processes: readonly {
-      readonly cutover: keyof typeof SWITCHOVER_OF;
+      readonly cutover?: keyof typeof SWITCHOVER_OF;
       readonly switchover?: string;
     }[];
   },
   context: z.RefinementCtx,
 ): void {
-  for (const [index, process] of element.processes.entries())
-    if (
-      process.switchover !== undefined &&
-      process.switchover !== SWITCHOVER_OF[process.cutover]
-    )
+  for (const [index, process] of element.processes.entries()) {
+    if (process.switchover === undefined) continue;
+    if (process.cutover === undefined)
+      context.addIssue({
+        code: "custom",
+        path: ["processes", index, "switchover"],
+        message: "a Process with no cutover switches nothing",
+      });
+    else if (process.switchover !== SWITCHOVER_OF[process.cutover])
       context.addIssue({
         code: "custom",
         path: ["processes", index, "switchover"],
         message: `a ${process.cutover} cutover derives the ${SWITCHOVER_OF[process.cutover]} switchover`,
       });
+  }
   const continuous = element.processes.some(
     (process) => process.cutover === "continuous",
   );

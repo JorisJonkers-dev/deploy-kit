@@ -138,9 +138,12 @@ function lowerProcess(
   return {
     ...process,
     ...merged,
-    // Both are checked on the authored document, so by here they are present.
+    // Both are checked on the authored document, so by here they are present;
+    // a prepare Process cuts over nothing, so a shared answer does not reach it.
     placement: placement as CompletePlacement,
-    cutover: cutover as EffectiveProcess["cutover"],
+    ...(process.lifecycle === "prepare"
+      ? {}
+      : { cutover: cutover as NonNullable<EffectiveProcess["cutover"]> }),
   };
 }
 

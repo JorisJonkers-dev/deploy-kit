@@ -166,7 +166,10 @@ function completenessRefusals(
 ): Refusal[] {
   const refusals: Refusal[] = [];
   const levels = [process, ...above];
-  if (!levels.some((level) => level.cutover !== undefined))
+  if (
+    process.lifecycle !== "prepare" &&
+    !levels.some((level) => level.cutover !== undefined)
+  )
     refusals.push({
       code: "E_CUTOVER_MISSING",
       path: at,
@@ -197,6 +200,30 @@ function effectiveCutover(
     ?.cutover;
 }
 
+/** What only a Process that serves declares, which a prepare Process does not. */
+function prepareRefusals(process: Process, at: string): Refusal[] {
+  if (process.lifecycle !== "prepare") return [];
+  const serving = (
+    [
+      ["provides", process.provides],
+      ["probes", process.probes],
+      ["replicas", process.replicas],
+      ["cutover", process.cutover],
+    ] as const
+  )
+    .filter(([, value]) => value !== undefined)
+    .map(([key]) => key);
+  if (serving.length === 0) return [];
+  return [
+    {
+      code: "E_PREPARE_PROCESS_SERVES",
+      path: at,
+      message: `a prepare Process runs to completion before the new version starts, and declares ${serving.join(", ")}, which only a serving Process has`,
+      hint: "Delete them: a prepare Process listens on nothing, has no readiness, runs once and cuts over nothing.",
+    },
+  ];
+}
+
 function processRefusals(
   process: Process,
   above: readonly Level[],
@@ -205,10 +232,15 @@ function processRefusals(
   const refusals: Refusal[] = [
     ...duplicateRefusals(process, above, at),
     ...completenessRefusals(process, above, at),
+    ...prepareRefusals(process, at),
   ];
   const volumes = process.volumes ?? [];
-  // The effective answer: it may come from a level above.
-  const cutover = effectiveCutover(process, above);
+  // The effective answer: it may come from a level above. A prepare Process
+  // cuts over nothing, so no answer applies to it.
+  const cutover =
+    process.lifecycle === "prepare"
+      ? undefined
+      : effectiveCutover(process, above);
   if (cutover === "continuous" && volumes.length > 0)
     refusals.push({
       code: "E_CUTOVER_UNHONOURABLE",

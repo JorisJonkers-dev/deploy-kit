@@ -305,7 +305,8 @@ through, with the deciding ADR named.
    may not be executable, so `hermes-bootstrap` (221 lines of shell),
    `n8n-hooks` (499 lines of JavaScript) and the `garage` bootstrap need
    first-party images, and the `alpine:3.21`-plus-ConfigMap pattern retires with
-   them. The fourth, `postgres-init-script`, is decided: it is the derived
+   them. A one-shot bootstrap among them runs as a prepare Process
+   ([chapter 10](10-project-intent.md#prepare-processes)). The fourth, `postgres-init-script`, is decided: it is the derived
    database catalog ([0080](../../docs/adr/model/0080-database-catalog-is-derived-data.md)),
    applied by an engine image on the same rule that makes a backup method an
    image ([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)).

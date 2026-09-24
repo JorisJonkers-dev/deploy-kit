@@ -42,7 +42,8 @@ context Process
 	-- an Application declaring `continuous` is the same defect written one
 	-- level up.
 	inv E_CUTOVER_UNHONOURABLE:
-		effectiveCutover = Cutover::continuous implies volumes->isEmpty()
+		(lifecycle <> Lifecycle::prepare and effectiveCutover = Cutover::continuous)
+			implies volumes->isEmpty()
 
 	-- The engine keys the backup method, so it names one nothing asks for when no
 	-- volume derives a backup. `Engine::absent` is the literal a document cannot
@@ -268,7 +269,14 @@ context Process
 
 	-- Required on every Process, and answerable above one, so what is refused is
 	-- a Process no level answers for.
-	inv E_CUTOVER_MISSING: effectiveCutover <> Cutover::absent
+	inv E_CUTOVER_MISSING:
+		lifecycle = Lifecycle::prepare or effectiveCutover <> Cutover::absent
+
+	-- A prepare Process runs to completion before the new version starts: it
+	-- listens on nothing, has no readiness, runs once and cuts over nothing.
+	inv E_PREPARE_PROCESS_SERVES:
+		lifecycle = Lifecycle::prepare implies
+			(provides->isEmpty() and probes = null and replicas = null and cutover = Cutover::absent)
 
 -- Migration (spec/v1/10-project-intent.md#migration). A project's database has
 -- one owner role, which only its migration holds, and one Application of the

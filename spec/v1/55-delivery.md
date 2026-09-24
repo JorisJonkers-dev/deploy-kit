@@ -81,8 +81,10 @@ Three rules hold the table true:
 - **Room for the second copy.** A `blue-green` Process is eligible only on a node
   that fits two copies of it, for the length of its analysis
   ([chapter 20](20-resolved-deployment.md#layer-2-does-not-assign-a-node)).
-- **A job has none.** A `lifecycle: job` Process switches nothing, so it carries
-  no switchover and never waits on a gate.
+- **A job and a prepare step have none.** A `lifecycle: job` or
+  `lifecycle: prepare` Process switches nothing, so it carries no switchover and
+  never waits on a gate; a prepare Process runs before the switch instead
+  ([Release order](#release-order)).
 
 What gates a `blue-green` switch, the barrier over every member and who answers
 it, is [The Release Gate](#the-release-gate)'s, specified in full by
@@ -123,8 +125,21 @@ specified in full by
 
 ## Release order
 
-Migration first, then any forward-only setup, then the new version. Specified in
-full by [#156](https://github.com/JorisJonkers-dev/deploy-kit/issues/156).
+A release of one Application runs in three steps, each gated on the one before,
+all while the old version still serves:
+
+1. **Migration up**, if the Application declares a changelog
+   ([Migrations](#migrations)).
+2. **Every prepare Process, in parallel**
+   ([chapter 10](10-project-intent.md#prepare-processes)). Each runs to completion
+   within its `startupBudget`, once per Application revision, and is never retried
+   within one; there is no order among them.
+3. **The new version starts**, by the Application's switchover
+   ([Switchover](#switchover)).
+
+A step that fails holds the release: the next step never starts and the old
+version keeps serving. What is undone afterwards, and only the migration ever
+is, is [Failure and undo](#failure-and-undo)'s.
 
 ## Failure and undo
 

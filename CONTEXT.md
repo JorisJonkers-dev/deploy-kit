@@ -128,6 +128,11 @@ derives a credential for it ([chapter 16](spec/v1/16-dependencies.md#the-databas
 resources, which every managed migration builds on
 ([chapter 14](spec/v1/14-platform-intent.md#migration-policy)).
 
+**Prepare Process**: a Process with `lifecycle: prepare`: idempotent,
+forward-only setup that runs to completion after the migration and before an
+Application's new version starts. It serves nothing, has no down, and is not a
+migration ([chapter 10](spec/v1/10-project-intent.md#prepare-processes)).
+
 **Probe**: a declared readiness or liveness check.
 
 **Asset**: a file mounted into a Process. Declarative, never executable

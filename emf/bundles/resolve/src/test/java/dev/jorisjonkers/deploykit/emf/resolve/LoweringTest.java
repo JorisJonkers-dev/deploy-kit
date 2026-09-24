@@ -1,6 +1,7 @@
 package dev.jorisjonkers.deploykit.emf.resolve;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.groups.Tuple.tuple;
 
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Application;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Credentials;
@@ -180,6 +181,23 @@ class LoweringTest {
 
         assertThat(lowered.getApplications().get(0).getProcesses())
                 .allSatisfy(process -> assertThat(process.getCutover()).isEqualTo(Cutover.INTERRUPTED));
+    }
+
+    @Test
+    void aPrepareProcessTakesNoSharedCutoverBecauseItCutsOverNothing() {
+        Project project = source();
+        Process seed = process("seed", "64Mi", "10m");
+        seed.setLifecycle(Lifecycle.PREPARE);
+        project.getApplications().get(0).getProcesses().add(seed);
+
+        EffectiveProject lowered = lower(project);
+
+        assertThat(lowered.getApplications().get(0).getProcesses())
+                .extracting(Process::getName, Process::getCutover)
+                .containsExactly(
+                        tuple("shared-intent-merged-api", Cutover.INTERRUPTED),
+                        tuple("shared-intent-merged-worker", Cutover.INTERRUPTED),
+                        tuple("seed", Cutover.ABSENT));
     }
 
     @Test

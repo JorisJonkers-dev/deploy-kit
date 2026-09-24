@@ -166,7 +166,7 @@ and each may be declared at the **Project** header, on an **Application**, or on
 | `assets` | the file is mounted into every Process below the level | [Assets](#assets) |
 | `writablePaths` | every Process below the level may write the path | [Writable paths are declared, not exempted](#writable-paths-are-declared-not-exempted) |
 | `placement` | every Process below the level requires those node dimensions | [Placement](#placement) |
-| `cutover` | every Process below the level cuts over that way | [Cutover is declared, not promised](#cutover-is-declared-not-promised) |
+| `cutover` | every Process below the level cuts over that way, except a prepare Process, which cuts over nothing | [Cutover is declared, not promised](#cutover-is-declared-not-promised) |
 | `startupBudget` | every Process below the level gets that budget | [Rollout](#rollout) |
 
 Nothing else is shared. `id`, `observability` and `exposure` are the Application's
@@ -513,9 +513,10 @@ Vault role are called (chapter 16).
 `image` is an alias resolved to a digest through the images lock, never a tag,
 never a digest here.
 
-`lifecycle` is `application` or `job`. Not `deployment` / `statefulset` / `job`,
-because those are mechanisms; the object kind derives from `lifecycle` and
-`volumes`.
+`lifecycle` is `application`, `job` or `prepare`. Not `deployment` /
+`statefulset` / `job`, because those are mechanisms; the object kind derives from
+`lifecycle` and `volumes`. `prepare` is forward-only setup that runs before the
+Application's new version starts ([Prepare Processes](#prepare-processes)).
 
 `runtime` selects the Runtime Profile: `jvm`, `python`, `node`, `static`, `none`.
 `none` is correct for a third-party image and injects no profile values at all.
@@ -2064,7 +2065,8 @@ same runtime cold start.
 
 ### Cutover is declared, not promised
 
-`cutover` is **required on every Process** and has **no default**. Required is
+`cutover` is **required on every Process** but a prepare one
+([Prepare Processes](#prepare-processes)) and has **no default**. Required is
 not the same as written on the Process: the answer may be given once, at the
 project header or on the Application, and it is then the answer for every Process
 below ([Shared intent](#shared-intent)). What is refused is a Process with no
@@ -2169,6 +2171,45 @@ dependsOn:
 `credentials` on an edge to a provider that owns no database derives nothing,
 and is `E_CREDENTIALS_WITHOUT_DATABASE`.
 
+## Prepare Processes
+
+```yaml
+processes:
+  - name: auth-seed-clients
+    lifecycle: prepare       # runs to completion before the new version starts
+    image: auth-seed
+    runtime: none
+    placement: {memory: 128Mi, cpu: 50m}
+    startupBudget: 120s      # for a prepare Process: the run deadline
+```
+
+A `prepare` Process is **idempotent, forward-only setup** that must finish
+before an Application's new version starts: registering a client, creating a
+bucket, seeding a row
+([0131](../../docs/adr/model/0131-prepare-processes-are-forward-only-setup.md)).
+It is not a migration: a migration has a down, a schema and an owner role, and is
+declared on the Application ([Migration](#migration)); a prepare step has none of
+them, and nothing undoes it.
+
+- **When it runs.** Once per Application revision, after the migration and in
+  parallel with every other prepare Process of the Application, and before any
+  new version of the Application starts
+  ([chapter 55](55-delivery.md#release-order)). Two steps that must run in order
+  are one image.
+- **Its deadline** is its `startupBudget`, not the three times it a serving
+  Process's progress deadline derives
+  ([chapter 20](20-resolved-deployment.md#derived-mechanics)): the budget is how
+  long the step may take, and there is no readiness to wait for afterwards. A
+  `startupBudget` shared from above reaches it like any other Process, so a
+  JVM cold-start budget written on the Application is also the seed's deadline
+  unless the prepare Process writes its own. With none at any level, it derives
+  the deadline every Process without a budget derives. It is never retried
+  within a revision; a failure holds the release.
+- **What it cannot declare.** It listens on nothing, has no readiness, runs once
+  and cuts over nothing, so `provides`, `probes`, `replicas` and a `cutover` of its
+  own are `E_PREPARE_PROCESS_SERVES`. A `cutover` shared from above does not
+  reach it, and it is not required to have one.
+
 ## Capacity
 
 ```yaml
@@ -2229,7 +2270,7 @@ already told them, and the lines reaching them made the model harder to read.
 
 | vocabulary | named by | values |
 |---|---|---|
-| `Lifecycle` | `Process.lifecycle` | `application`, `job` |
+| `Lifecycle` | `Process.lifecycle` | `application`, `job`, `prepare` |
 | `Runtime` | `Process.runtime` | `jvm`, `python`, `node`, `static`, `none` |
 | `Engine` | `Process.engine` | `postgres`, `rabbitmq`, `valkey`, `files` |
 | `Cutover` | `Process.cutover` | `continuous`, `interrupted` |

@@ -152,6 +152,8 @@ describe("the refusal fixtures", () => {
       "non-kv-delivery",
       "owner-role-granted",
       "placement-incomplete",
+      "prepare-forward-only",
+      "prepare-process-serves",
       "scrape-unknown-process",
       "secrets-at-rest-required",
       "secrets-at-rest-required-at-header",
@@ -161,11 +163,11 @@ describe("the refusal fixtures", () => {
       "unknown-surface",
       "unknown-tier-proxy",
     ]);
-    expect(refused).toHaveLength(28);
+    expect(refused).toHaveLength(29);
     expect(
       fixtures.length - refused.length,
-      "the two accepted counterparts and the vocabulary case carry no oracle",
-    ).toBe(3);
+      "the three accepted counterparts and the vocabulary case carry no oracle",
+    ).toBe(4);
   });
 
   it.each(refused)(
@@ -186,6 +188,25 @@ describe("the refusal fixtures", () => {
       expect(canonicalJson(entries)).toBe(oracle(stem));
     },
   );
+
+  it("accepts a prepare Process that serves nothing, and keeps the shared cutover off it", () => {
+    const result = parseProjectIntent(read("prepare-forward-only.project.yml"));
+    const processes = result.ok
+      ? result.value.effective.applications[0]?.processes
+      : undefined;
+
+    expect(oracle("prepare-forward-only")).toBeUndefined();
+    expect(
+      processes?.map(({ name, lifecycle, cutover }) => ({
+        name,
+        lifecycle,
+        cutover,
+      })),
+    ).toStrictEqual([
+      { name: "api", lifecycle: "application", cutover: "continuous" },
+      { name: "seed", lifecycle: "prepare", cutover: undefined },
+    ]);
+  });
 
   it("accepts the counterpart that declares the cutover its storage can honour", () => {
     expect(

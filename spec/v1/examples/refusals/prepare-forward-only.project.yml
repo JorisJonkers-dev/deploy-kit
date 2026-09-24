@@ -1,0 +1,27 @@
+# ACCEPTED. The counterpart to prepare-process-serves.project.yml.
+#
+# A prepare Process as it is meant to be written: an image, its resources and a
+# run deadline (`startupBudget`), nothing else. The Application's `cutover`
+# reaches `api`, which switches, and not `seed`, which runs to completion
+# before any new version starts (spec/v1/10-project-intent.md#prepare-processes).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: api
+    cutover: continuous
+    processes:
+      - name: api
+        lifecycle: application
+        image: api
+        runtime: node
+        placement: { memory: 128Mi, cpu: 25m }
+      - name: seed
+        lifecycle: prepare
+        image: seed
+        runtime: none
+        placement: { memory: 64Mi, cpu: 10m }
+        startupBudget: 60s

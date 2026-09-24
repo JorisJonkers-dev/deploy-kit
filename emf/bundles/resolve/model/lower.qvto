@@ -93,7 +93,9 @@ mapping Process::lower(in app : Application, in prj : Project) : Process {
 
 	-- the single values, from the lowest level that declared one
 	startupBudget := if budgets->isEmpty() then null else budgets->first() endif;
-	cutover := if cutovers->isEmpty() then Cutover::absent else cutovers->first() endif;
+	-- A prepare Process cuts over nothing, so a shared answer does not reach it.
+	cutover := if self.lifecycle = Lifecycle::prepare or cutovers->isEmpty()
+		then Cutover::absent else cutovers->first() endif;
 
 	-- Key by key: each dimension from the lowest level that set it, the
 	-- quantities from the Process and nowhere else.
