@@ -55,6 +55,9 @@
         "ephemeral": {
           "$ref": "#/$defs/EphemeralPolicy"
         },
+        "migration": {
+          "$ref": "#/$defs/MigrationPolicy"
+        },
         "providers": {
           "minItems": 1,
           "type": "array",
@@ -407,6 +410,34 @@
       },
       "required": [
         "size"
+      ],
+      "additionalProperties": false
+    },
+    "MigrationPolicy": {
+      "type": "object",
+      "properties": {
+        "runner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "deadline": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "runner",
+        "deadline",
+        "memory",
+        "cpu"
       ],
       "additionalProperties": false
     },

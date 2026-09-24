@@ -131,6 +131,7 @@ describe("the refusal fixtures", () => {
     expect(fixtures).toStrictEqual([
       "alert-class-unknown",
       "alert-class-without-signal",
+      "credentials-without-database",
       "cutover-continuous-over-rwo",
       "cutover-interrupted-over-rwo",
       "cutover-missing",
@@ -140,11 +141,16 @@ describe("the refusal fixtures", () => {
       "engine-without-durability",
       "env-cannot-reload",
       "illegal-delivery-for-access",
+      "migration-owner-duplicated",
+      "migration-undeclared",
+      "migration-without-database",
       "no-durability-policy",
       "no-engine-policy",
       "no-forward-auth-endpoint",
+      "no-migration-policy",
       "no-tier-for-audience",
       "non-kv-delivery",
+      "owner-role-granted",
       "placement-incomplete",
       "scrape-unknown-process",
       "secrets-at-rest-required",
@@ -155,7 +161,7 @@ describe("the refusal fixtures", () => {
       "unknown-surface",
       "unknown-tier-proxy",
     ]);
-    expect(refused).toHaveLength(22);
+    expect(refused).toHaveLength(28);
     expect(
       fixtures.length - refused.length,
       "the two accepted counterparts and the vocabulary case carry no oracle",

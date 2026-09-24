@@ -22,7 +22,16 @@ export interface Platform {
   /** The backup image for each engine, keyed by the engine. */
   readonly engines: ReadonlyMap<Engine, string>;
   readonly hardening: HardeningClass;
+  /** The runner every managed migration builds on, and its terms; absent where none is offered. */
+  readonly migration?: MigrationPolicy;
   readonly providers: readonly Provider[];
+}
+
+export interface MigrationPolicy {
+  readonly runner: string;
+  readonly deadline: string;
+  readonly memory: string;
+  readonly cpu: string;
 }
 
 export interface Substrate {

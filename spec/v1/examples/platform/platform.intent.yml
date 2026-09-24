@@ -111,6 +111,16 @@ probes:
 ephemeral:
   size: 64Mi
 
+# The migration runner (spec/v1/14-platform-intent.md#migration-policy). Every
+# Application that moves its schema through a changelog builds its migration
+# image FROM this alias's digest, and its Job takes this deadline and these
+# requests. One system for the estate: Liquibase, YAML changelogs.
+migration:
+  runner: liquibase-runner
+  deadline: 10m
+  memory: 256Mi
+  cpu: 100m
+
 # Things the estate runs and does not deploy, that an Application depends on. A fact
 # with an address, resolvable by an edge -- not a hole, so no review date
 # (docs/adr/model/0090-edges-resolve-against-the-register.md).

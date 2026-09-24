@@ -103,10 +103,22 @@ until a new pin lands. Specified in full by
 
 ## Migrations
 
-An Application that derives a database moves its schema with one estate-wide
-system, before its new version starts, and proves the move safe against the
-version still serving. Specified in full by
-[#155](https://github.com/JorisJonkers-dev/deploy-kit/issues/155) and
+The estate has **one migration system**: Liquibase, with YAML changelogs
+([0130](../../docs/adr/model/0130-migration-is-declared-on-the-application.md)).
+An Application that derives a database answers how its schema moves
+([chapter 10](10-project-intent.md#migration)), and a project's one database has
+one Application that moves it:
+
+| declared | what runs |
+|---|---|
+| `migration: {changelog}` | the migration image, built `FROM` the platform's runner with the changelog in it, runs once per Application revision as the migration identity, which alone holds the owner role, **before any new version of the Application starts** and while the old one still serves |
+| `migration: self` | nothing of the platform's: the image migrates at startup, inside its own `startupBudget`, holding the owner role |
+| `migration: none` | nothing: another Application of the project moves the schema, or there is none |
+
+Because the migration runs while the old version serves, every change it makes
+must be one the old version tolerates. What proves that, and what undoes a
+migration whose release then fails, is [Failure and undo](#failure-and-undo)'s,
+specified in full by
 [#157](https://github.com/JorisJonkers-dev/deploy-kit/issues/157).
 
 ## Release order

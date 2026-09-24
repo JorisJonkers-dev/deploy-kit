@@ -24,6 +24,7 @@ Platform returns Platform:
 	& ('hardening' ':' hardening=HardeningClass)
 	& ('probes' ':' BEGIN probes=ProbeCadence END)
 	& ('ephemeral' ':' BEGIN ephemeral=EphemeralPolicy END)
+	& ('migration' ':' BEGIN migration=MigrationPolicy END)?
 	& ('providers' ':' BEGIN (DASH BEGIN providers+=Provider END)+ END)?);
 
 PlatformMetadata returns PlatformMetadata:
@@ -98,6 +99,12 @@ ProbeCadence returns ProbeCadence:
 EphemeralPolicy returns EphemeralPolicy:
 	'size' ':' size=Text;
 
+MigrationPolicy returns MigrationPolicy:
+	(('runner' ':' runner=Text)
+	& ('deadline' ':' deadline=Text)
+	& ('memory' ':' memory=Text)
+	& ('cpu' ':' cpu=Text));
+
 Provider returns Provider:
 	(('name' ':' name=Text)
 	& ('address' ':' address=Text)
@@ -113,10 +120,10 @@ Text returns ecore::EString:
 
 PlatformKeyword:
 	'acme' | 'address' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cluster' | 'cni' |
-	'crds' | 'credential' | 'datastore' | 'destination' | 'embedded' | 'engines' | 'ephemeral' | 'etcd' |
+	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'embedded' | 'engines' | 'ephemeral' | 'etcd' |
 	'failures' | 'flux' | 'forwardAuth' | 'hardening' | 'interval' | 'kubernetesVersion' | 'listener' | 'metadata' |
 	'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'providers' | 'restricted' |
-	'retain' | 'schedule' | 'secretsEncryption' | 'serverCount' | 'size' | 'sourceRef' | 'sqlite' | 'substrate' |
+	'retain' | 'runner' | 'schedule' | 'secretsEncryption' | 'serverCount' | 'size' | 'sourceRef' | 'sqlite' | 'substrate' |
 	'surfaces' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'vault';
 
 enum Datastore returns Datastore:

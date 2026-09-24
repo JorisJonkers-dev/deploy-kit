@@ -25,7 +25,20 @@ mapping Application::lower(in prj : Project) : EffectiveApplication {
 	processes := self.processes->map lower(self, prj);
 	observability := self.observability.map copy();
 	exposure := self.exposure->map copy();
+	-- How the schema moves defines the Application, so it stays on it.
+	migration := self.migration.map copy();
 }
+
+mapping Migration::copy() : Migration
+	disjuncts ManagedMigration::copy, SelfMigration::copy, NoMigration::copy {}
+
+mapping ManagedMigration::copy() : ManagedMigration {
+	changelog := self.changelog;
+}
+
+mapping SelfMigration::copy() : SelfMigration {}
+
+mapping NoMigration::copy() : NoMigration {}
 
 mapping Process::lower(in app : Application, in prj : Project) : Process {
 	init {
@@ -223,6 +236,11 @@ mapping DependencyEdge::copyFor(in owner : Process) : DependencyEdge {
 	application := self.application;
 	surface := self.surface;
 	required := self.required;
+	credentials := self.credentials.map copyFor(owner);
+}
+
+mapping Credentials::copyFor(in owner : Process) : Credentials {
+	rotation := self.rotation.map copyFor(owner);
 }
 
 mapping Asset::copyFor(in owner : Process) : Asset {

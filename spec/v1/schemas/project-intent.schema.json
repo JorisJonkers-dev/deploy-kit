@@ -280,11 +280,26 @@
         },
         "required": {
           "type": "boolean"
+        },
+        "credentials": {
+          "$ref": "#/$defs/Credentials"
         }
       },
       "required": [
         "application",
         "surface"
+      ],
+      "additionalProperties": false
+    },
+    "Credentials": {
+      "type": "object",
+      "properties": {
+        "rotation": {
+          "$ref": "#/$defs/Rotation"
+        }
+      },
+      "required": [
+        "rotation"
       ],
       "additionalProperties": false
     },
@@ -417,6 +432,19 @@
           "items": {
             "$ref": "#/$defs/Exposure"
           }
+        },
+        "migration": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SelfMigration"
+            },
+            {
+              "$ref": "#/$defs/NoMigration"
+            },
+            {
+              "$ref": "#/$defs/ManagedMigration"
+            }
+          ]
         },
         "secrets": {
           "minItems": 1,
@@ -621,6 +649,27 @@
         "prefix",
         "exact"
       ]
+    },
+    "SelfMigration": {
+      "type": "string",
+      "const": "self"
+    },
+    "NoMigration": {
+      "type": "string",
+      "const": "none"
+    },
+    "ManagedMigration": {
+      "type": "object",
+      "properties": {
+        "changelog": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "changelog"
+      ],
+      "additionalProperties": false
     },
     "Process": {
       "type": "object",

@@ -9,6 +9,12 @@ rests-on: ["0005"]
 
 # The per-consumer database catalog is derived data, and Vault mints the credentials
 
+> **Amended 2026-09-24.** The catalog derives one database per consuming
+> **project**, not per consuming Application, with an owner role derived for the
+> one Application that moves the schema and a data role for every consumer
+> ([0130](0130-migration-is-declared-on-the-application.md)). The decision that
+> the catalog is derived data is unchanged.
+
 > **Amended 2026-09-14.** Vocabulary renamed by
 > [0116](0116-project-application-process.md): Domain is now Project,
 > Service is Application, Workload is Process, and Service Intent is Project

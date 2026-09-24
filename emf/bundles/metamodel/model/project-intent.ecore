@@ -25,9 +25,26 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Application" eSuperTypes="#//SharedIntent">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" iD="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="migration" eType="#//Migration" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="observability" eType="#//Observability" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="exposure" upperBound="-1" eType="#//Exposure" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//Process" containment="true"/>
+  </eClassifiers>
+  <!-- How an Application's schema moves (spec/v1/10-project-intent.md#migration):
+       the platform's runner over a changelog, the image itself, or not at all. -->
+  <eClassifiers xsi:type="ecore:EClass" name="Migration" abstract="true"/>
+  <eClassifiers xsi:type="ecore:EClass" name="ManagedMigration" eSuperTypes="#//Migration">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="changelog" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SelfMigration" eSuperTypes="#//Migration">
+    <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+      <details key="scalar" value="self"/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="NoMigration" eSuperTypes="#//Migration">
+    <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+      <details key="scalar" value="none"/>
+    </eAnnotations>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Observability">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="alertClass" lowerBound="1" eType="#//AlertClass"/>
@@ -95,6 +112,7 @@
       <details key="authored" value="no"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="migration" eType="#//Migration" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="observability" eType="#//Observability" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="exposure" upperBound="-1" eType="#//Exposure" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//Process" containment="true"/>
@@ -129,6 +147,11 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="application" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="surface" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="required" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="credentials" eType="#//Credentials" containment="true"/>
+  </eClassifiers>
+  <!-- Only on an edge to a database: how the credential it derives rotates. -->
+  <eClassifiers xsi:type="ecore:EClass" name="Credentials">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="rotation" lowerBound="1" eType="#//Rotation" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="EnvFile">
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="cluster" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -315,6 +338,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="hardening" lowerBound="1" eType="#//HardeningClass"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="probes" lowerBound="1" eType="#//ProbeCadence" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="ephemeral" lowerBound="1" eType="#//EphemeralPolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="migration" eType="#//MigrationPolicy" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="providers" upperBound="-1" eType="#//Provider" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="PlatformMetadata">
@@ -383,6 +407,14 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="EphemeralPolicy">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="size" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- The runner every managed changelog builds on, and its terms
+       (spec/v1/14-platform-intent.md#migration-policy). -->
+  <eClassifiers xsi:type="ecore:EClass" name="MigrationPolicy">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="runner" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="deadline" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Provider">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

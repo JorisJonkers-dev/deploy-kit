@@ -1,0 +1,36 @@
+# REFUSED: E_CREDENTIALS_WITHOUT_DATABASE
+#
+# `credentials` shapes the rotation of the credential an edge to a database
+# derives, and `edge-proxy` owns no database, so this edge derives none
+# (spec/v1/10-project-intent.md#migration).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: edge-proxy
+    processes:
+      - name: edge-proxy
+        lifecycle: application
+        image: traefik
+        runtime: none
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 8080 }
+        startupBudget: 30s
+        cutover: continuous
+  - id: api
+    processes:
+      - name: api
+        lifecycle: application
+        image: api
+        runtime: node
+        placement: { memory: 128Mi, cpu: 25m }
+        startupBudget: 20s
+        cutover: continuous
+        dependsOn:
+          - { application: edge-proxy, surface: http, credentials: { rotation: { tolerates: restart } } }

@@ -108,6 +108,26 @@ by every Process of one Application, and the input the Switchover derives from
 ([chapter 10](spec/v1/10-project-intent.md#cutover-is-declared-not-promised),
 [0128](docs/adr/model/0128-cutover-names-the-promise.md)).
 
+**Migration**: how an Application's database schema moves when its new version
+replaces the old: a Liquibase changelog the platform's runner applies, the image
+itself (`self`), or `none`. Declared on the Application; one Application of a
+project moves the project's database
+([chapter 10](spec/v1/10-project-intent.md#migration),
+[0130](docs/adr/model/0130-migration-is-declared-on-the-application.md)).
+`migration: self` shares its reading with `delivery: self`: the Process does it
+itself.
+
+**Owner role** and **data role**: the two roles a project's database catalog
+entry derives. The owner role changes the schema and is held by the
+**migration identity** (`<application>-migration`, the identity the platform's
+runner runs as) or, under `migration: self`, by the Application's Processes;
+the data role reads and writes the data, and every consuming Process's edge
+derives a credential for it ([chapter 16](spec/v1/16-dependencies.md#the-database-catalog)).
+
+**Migration policy**: the Platform document's runner image alias, deadline and
+resources, which every managed migration builds on
+([chapter 14](spec/v1/14-platform-intent.md#migration-policy)).
+
 **Probe**: a declared readiness or liveness check.
 
 **Asset**: a file mounted into a Process. Declarative, never executable

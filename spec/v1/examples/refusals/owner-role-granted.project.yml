@@ -1,0 +1,27 @@
+# REFUSED: E_OWNER_ROLE_GRANTED
+#
+# The owner role changes the project's schema, and only the migration holds it:
+# derived for the migration identity, or for the Processes of an Application
+# declaring `migration: self`. Granting it to an application Process by hand is
+# the privilege separation the model exists to keep
+# (spec/v1/10-project-intent.md#migration).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: api
+    processes:
+      - name: api
+        lifecycle: application
+        image: api
+        runtime: node
+        placement: { memory: 128Mi, cpu: 25m }
+        cutover: continuous
+        secrets:
+          - engine: database
+            role: refusals-owner
+            delivery: self
+            rotation: { tolerates: reload }

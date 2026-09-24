@@ -140,13 +140,31 @@ const sidecar = z
   .strictObject({ name: text, image: text, memory: text, cpu: text })
   .meta({ id: "Sidecar" });
 
+// How the credential an edge to a database derives is rotated, where the
+// platform's default (a reload) is more than the application can honour
+// (spec/v1/10-project-intent.md#migration).
+const credentials = z
+  .strictObject({ rotation: rotation })
+  .meta({ id: "Credentials" });
+
 const dependencyEdge = z
   .strictObject({
     application: text,
     surface: text,
     required: z.boolean().exactOptional(),
+    credentials: credentials.exactOptional(),
   })
   .meta({ id: "DependencyEdge" });
+
+// How an Application's schema moves (spec/v1/10-project-intent.md#migration):
+// by the platform's runner over a Liquibase changelog, by the image itself, or
+// not at all.
+const managedMigration = z
+  .strictObject({ changelog: text })
+  .meta({ id: "ManagedMigration" });
+const selfMigration = z.literal("self").meta({ id: "SelfMigration" });
+const noMigration = z.literal("none").meta({ id: "NoMigration" });
+const migration = z.union([selfMigration, noMigration, managedMigration]);
 
 const asset = z
   .strictObject({ from: text, mountAt: text })
@@ -233,6 +251,7 @@ const application = z
     id: text,
     observability: observability.exactOptional(),
     exposure: z.array(exposure).min(1).exactOptional(),
+    migration: migration.exactOptional(),
     ...sharedIntent,
     processes: z.array(process).min(1),
   })

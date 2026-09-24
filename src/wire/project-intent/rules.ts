@@ -10,6 +10,7 @@ import {
   declared,
   sameDeclaration,
 } from "../../domain/project-intent/declaration.ts";
+import { ownerRole } from "../../domain/project-intent/migration.ts";
 import type { ProjectIntentDocument } from "./schema.ts";
 
 type Application = ProjectIntentDocument["applications"][number];
@@ -310,12 +311,63 @@ function applicationRefusals(
   return refusals;
 }
 
+// -- Migration (spec/v1/10-project-intent.md#migration).
+
+/** A database grant naming the owner role, which no Process is given by hand. */
+function ownerRoleRefusals(
+  grants: readonly Grant[] | undefined,
+  project: string,
+  at: string,
+): Refusal[] {
+  return (grants ?? []).flatMap((grant, index) =>
+    "role" in grant && grant.role === ownerRole(project)
+      ? [
+          {
+            code: "E_OWNER_ROLE_GRANTED",
+            path: `${at}/secrets/${index}`,
+            message: `the ${grant.role} role changes the project's schema, and only its migration holds it`,
+            hint: "Delete the grant: an Application declaring `migration` gets the owner role derived, and every other Process reads its data through the credential its database edge derives.",
+          },
+        ]
+      : [],
+  );
+}
+
+/** One Application of a project moves its database's schema, or none does. */
+function migrationOwnerRefusals(document: ProjectIntentDocument): Refusal[] {
+  const moving = document.applications.flatMap((application, index) =>
+    application.migration === undefined || application.migration === "none"
+      ? []
+      : [index],
+  );
+  return moving.slice(1).map((index) => ({
+    code: "E_MIGRATION_OWNER_DUPLICATED",
+    path: `/applications/${index}/migration`,
+    message:
+      "a second Application of this project declares how the project's database schema moves",
+    hint: "Declare `migration: none` here: one Application of a project moves its schema, and the others read the data it defines.",
+  }));
+}
+
 /** Every rule this document breaks, in the order the document reads. */
 export function ruleDiagnostics(
   document: ProjectIntentDocument,
 ): readonly Diagnostic[] {
+  const project = document.project;
   return [
     ...quantityRefusals(document, ""),
+    ...ownerRoleRefusals(document.secrets, project, ""),
+    ...document.applications.flatMap((application, a) => [
+      ...ownerRoleRefusals(application.secrets, project, `/applications/${a}`),
+      ...application.processes.flatMap((process, p) =>
+        ownerRoleRefusals(
+          process.secrets,
+          project,
+          `/applications/${a}/processes/${p}`,
+        ),
+      ),
+    ]),
+    ...migrationOwnerRefusals(document),
     ...(document.secrets ?? []).flatMap((grant, index) =>
       grantRefusals(grant, `/secrets/${index}`),
     ),

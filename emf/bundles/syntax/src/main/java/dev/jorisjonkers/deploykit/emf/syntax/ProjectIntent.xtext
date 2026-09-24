@@ -26,6 +26,7 @@ Project returns Project:
 
 Application returns Application:
 	(('id' ':' id=Text)
+	& ('migration' ':' migration=Migration)?
 	& ('observability' ':' BEGIN observability=Observability END)?
 	& ('exposure' ':' BEGIN (DASH BEGIN exposure+=Exposure END)+ END)?
 	& ('secrets' ':' BEGIN (DASH BEGIN secrets+=Grant END)+ END)?
@@ -108,7 +109,24 @@ Sidecar returns Sidecar:
 DependencyEdge returns DependencyEdge:
 	(('application' ':' application=Text)
 	& ('surface' ':' surface=Text)
-	& ('required' ':' required=Bool)?);
+	& ('required' ':' required=Bool)?
+	& ('credentials' ':' BEGIN credentials=Credentials END)?);
+
+Credentials returns Credentials:
+	'rotation' ':' BEGIN rotation=Rotation END;
+
+// How an Application's schema moves: `self`, `none`, or a changelog block.
+Migration returns Migration:
+	SelfMigration | NoMigration | ManagedMigration;
+
+SelfMigration returns SelfMigration:
+	{SelfMigration} 'self';
+
+NoMigration returns NoMigration:
+	{NoMigration} 'none';
+
+ManagedMigration returns ManagedMigration:
+	BEGIN 'changelog' ':' changelog=Text END;
 
 Asset returns Asset:
 	(('from' ':' from=Text)
@@ -192,13 +210,13 @@ Text returns ecore::EString:
 
 Keyword:
 	'access' | 'admin' | 'alertClass' | 'amd64' | 'anonymous' | 'apiVersion' | 'application' | 'applications' |
-	'arch' | 'arm64' | 'assets' | 'audience' | 'authenticated' | 'business-hours' | 'capabilities' | 'claim' |
-	'class' | 'contentPolicy' | 'continuous' | 'count' | 'cpu' | 'custody' | 'cutover' | 'database' | 'decrypt' |
+	'arch' | 'arm64' | 'assets' | 'audience' | 'authenticated' | 'business-hours' | 'capabilities' | 'changelog' | 'claim' |
+	'class' | 'contentPolicy' | 'continuous' | 'count' | 'cpu' | 'credentials' | 'custody' | 'cutover' | 'database' | 'decrypt' |
 	'delivery' | 'dependsOn' | 'disk' | 'durability' | 'encrypt' | 'engine' | 'env' | 'exact' |
 	'exposure' | 'false' | 'file' | 'fileMode' | 'files' | 'from' | 'gpu' | 'hdd' |
 	'host' | 'id' | 'image' | 'internal' | 'interrupted' | 'irreplaceable' | 'job' | 'jvm' | 'key' |
 	'keys' | 'kind' | 'kv' | 'lan' | 'lifecycle' | 'liveness' | 'match' | 'maxAge' |
-	'media' | 'memory' | 'mountAt' | 'name' | 'node' | 'none' | 'nvme' | 'observability' |
+	'media' | 'memory' | 'migration' | 'mountAt' | 'name' | 'node' | 'none' | 'nvme' | 'observability' |
 	'operations' | 'owner' | 'page' | 'path' | 'placement' | 'port' | 'postgres' | 'prefix' |
 	'probes' | 'process' | 'processes' | 'project' | 'provides' | 'python' | 'rabbitmq' | 'read' |
 	'readiness' | 'reason' | 'reconstructible' | 'recoverable' | 'redirectTo' | 'reload' | 'replicas' |
