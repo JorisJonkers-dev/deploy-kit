@@ -252,7 +252,7 @@ jobs:
           COMPOSED: ${{ steps.publish.outputs.digest }}
         run: |
           # The render is a function of the composed intent and the pinned
-          # inputs alone. One directory per Project, plus `estate/` for the
+          # inputs alone. One directory per Project, plus `_estate/` for the
           # paths the path plan scopes to the estate; each Reconcile Unit
           # applies its own path inside its Project's artifact.
           npx --no-install deploy-config-schema render \
@@ -271,10 +271,14 @@ jobs:
           # A Project the handover ledger still puts on the old path is
           # composed and checked, never delivered: fleet-infra applies it
           # until its handover step (spec/v1/60-setup.md#handing-over-one-project-at-a-time).
-          LEGACY=" $(platform 'handover.legacy // [] | join(" ")') "
+          # The estate-scoped artifact follows once no Project is legacy.
+          LEGACY=" $(platform handover.legacy | tr '\n' ' ') "
           for dir in rendered/*/; do
             project="$(basename "$dir")"
             case "$LEGACY" in *" ${project} "*) echo "${project}: legacy"; continue ;; esac
+            if [ "$project" = "_estate" ] && [ -n "$(echo "$LEGACY" | tr -d ' ')" ]; then
+              echo "_estate: waits for the handover to end"; continue
+            fi
             source="projects/${project}/source.yaml"
 
             # A Project seen for the first time gets its pinned source, derived

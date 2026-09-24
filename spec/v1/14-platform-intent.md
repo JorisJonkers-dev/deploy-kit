@@ -41,9 +41,10 @@ render against a stale one is `E_PARTICIPANT_STALE`.
 
 The Platform document's classes and how they compose. A policy keyed by a
 closed vocabulary is a class with one optional field per literal, so a policy
-the platform does not offer is a field it does not write. Two fields refer into
-another document: a tier's `traefik` and each name in `delivery.machinery` name
-an Application declared in a project file the platform owns.
+the platform does not offer is a field it does not write. Three fields refer
+into another document: a tier's `traefik` and each name in `delivery.machinery`
+name an Application declared in a project file the platform owns, and the
+`handover` ledger names projects.
 
 A Platform document is checked on its own and together with the project files
 read beside it. On its own, a tier that carries `authenticated` needs its
@@ -398,6 +399,23 @@ The block is optional, and a platform that omits it offers no switch that keeps
 serving: a `continuous` Application read beside it is `E_NO_DELIVERY_POLICY`,
 because its blue/green switch has no cadence to be analysed at. A platform whose
 every Application is `interrupted` needs neither the gate nor the block.
+
+## Handover ledger
+
+```yaml
+handover:
+  retireBy: 2027-03-31
+  legacy: [auth, data, knowledge, notes]
+  estate: [delivery]
+```
+
+Which delivery path each Project is on while the estate moves off `fleet-infra`:
+`legacy` is still applied by the old path, `estate` by its pin, and `retireBy` is
+the date the old path is removed. A Project on both is `E_HANDOVER_BOTH_PATHS`,
+checked on this document alone; a project file read beside it and named on
+neither is `E_HANDOVER_UNLISTED`. The steps are
+[chapter 60](60-setup.md#handing-over-one-project-at-a-time)'s. The block is
+optional, and is removed once `legacy` is empty.
 
 ## Providers
 

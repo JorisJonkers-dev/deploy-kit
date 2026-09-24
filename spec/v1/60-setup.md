@@ -442,30 +442,51 @@ handover:
   estate: [delivery]            # delivered by its pin
 ```
 
-- **The ledger is the Platform document's `handover`.** Every Project read
-  beside it is named on exactly one path. A name on both is
+- **The ledger is the Platform document's `handover`**
+  ([chapter 14](14-platform-intent.md#handover-ledger)). A name on both paths is
   `E_HANDOVER_BOTH_PATHS`; a project file on neither is `E_HANDOVER_UNLISTED`.
-  Both are checked whenever the documents are read together, so the ledger
-  cannot drift from the set of projects that exists.
+  A name no project file declares is not refused, because a composition may
+  read a subset of the estate; a Project that retires is removed from the ledger
+  in the same change that retires it.
 - **A `legacy` Project is composed, never delivered.** Its fragment is checked
   against every estate-wide invariant, and its render is diffed against the
   live objects ([Adopting a live Application](#adopting-a-live-application)),
-  but composition publishes no artifact and moves no pin for it.
-- **One step moves one Project.** In one change to the estate repository, the
-  Project's manifests leave `fleet-infra` marked to be orphaned rather than
-  deleted (`kustomize.toolkit.fluxcd.io/prune: disabled`), so the live objects
-  survive their old source disappearing, and the Project moves from
-  `legacy` to `estate` in the ledger. The next composition then publishes its
-  artifact and writes its first pin, and Flux on the estate path adopts the
-  objects that are already running. A step is undone the same way in reverse.
-- **The order** is [the adoption order below](#adoption-order-across-the-estate):
+  but composition publishes no artifact and moves no pin for it. The
+  estate-scoped artifact waits until no Project is `legacy`
+  ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)); until then the old
+  path keeps applying the estate-scoped objects.
+
+**One step moves one Project, in three changes, in this order**, so that at no
+moment do two sources apply it:
+
+1. **Orphan it on the old path.** A `fleet-infra` commit marks every object of
+   the Project `kustomize.toolkit.fluxcd.io/prune: disabled`, and the step waits
+   until the old path has reconciled the mark onto the live objects.
+2. **Remove it from the old path.** A second `fleet-infra` commit deletes the
+   Project's manifests. The live objects stay running, now applied by nothing.
+3. **Move it to the estate path.** The Platform document's ledger moves the
+   Project from `legacy` to `estate`. The next composition publishes its
+   artifact and writes its source and first pin, and the estate path applies
+   objects that already exist. Both paths apply with the same Flux field
+   manager, so the estate path takes the fields over without recreating
+   anything; the prune mark is absent from the render and is dropped on that
+   first apply, so from then on the estate path prunes the Project normally.
+
+**Undoing a step runs the same three changes the other way:** the Project's
+estate source is marked `prune: disabled` and reconciled, its source file is
+removed from the estate repository and the ledger moves it back to `legacy`, and
+only then do its manifests return to `fleet-infra`. Moving the ledger alone
+would leave the last pin applied beside the old path.
+
+- **The order across Projects** is [the adoption order below](#adoption-order-across-the-estate):
   providers before consumers.
-- **`retireBy` ends the old path.** On that date `legacy` must be empty; the
-  Kustomization that applies `fleet-infra`'s `deploy/production` is deleted and
-  the branch is archived. A Project still in `legacy` then is an adoption that
-  has stalled, and the date is moved by a decision recorded in the ledger's own
-  history, never silently. The block itself is removed once `legacy` is empty,
-  and with it both refusals.
+- **`retireBy` ends the old path.** On that date `legacy` must be empty. The
+  Kustomization that applies `fleet-infra`'s `deploy/production` is set to
+  `prune: false` first, so deleting it garbage-collects nothing still running,
+  and is then deleted; the branch is archived. A Project still in `legacy` then
+  is an adoption that has stalled, and the date is moved by a decision recorded
+  in the ledger's own history, never silently. The block itself is removed once
+  `legacy` is empty, and with it both refusals.
 
 ## Adoption order across the estate
 

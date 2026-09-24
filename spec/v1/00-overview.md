@@ -177,8 +177,7 @@ the test-substrate measurement exists; it gates nothing in v1. Review date
 extended. The named failure
 mode this rule exists to prevent is not collapse but partial completion with
 both delivery paths live, which is why adoption
-([chapter 60](60-setup.md), specified by
-[#159](https://github.com/JorisJonkers-dev/deploy-kit/issues/159)) is to hand
+([chapter 60](60-setup.md#handing-over-one-project-at-a-time)) is to hand
 Projects over one at a time and retire the old path by a date.
 
 Live-defect fixes ride independently of both scopes: the unpinned foundation

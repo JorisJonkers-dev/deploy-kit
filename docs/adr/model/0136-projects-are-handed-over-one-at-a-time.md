@@ -68,8 +68,8 @@ decision expires once `legacy` is empty, when the block is removed.
 
 ## Consequences
 
-- Each handover is one reviewed change to the estate repository and one ledger
-  edit, paid per Project by joris.
+- Each handover is three ordered changes, two to `fleet-infra` and one to the
+  ledger, paid per Project by joris.
 - A new project file must be named in the ledger while it exists, paid by its
   author in one line.
 - The `retireBy` date is a commitment: moving it is a recorded decision.
