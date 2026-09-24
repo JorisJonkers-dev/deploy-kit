@@ -146,7 +146,10 @@ major toolkit release, a version number separate from `schemaVersion`
 
 `vso` emits the operator's Kubernetes objects: `VaultConnection`, `VaultAuth`,
 the operator `ServiceAccount` per target namespace, `VaultStaticSecret`,
-`VaultDynamicSecret`. None of those is a policy or an auth role, so until
+`VaultDynamicSecret`. Every destination Secret it asks for is excluded from
+Flagger's configuration tracking, and a restart target names a `blue-green`
+Process's `<name>-primary`, so rotating a value never starts a release
+([chapter 55](55-delivery.md#secret-rotation)). None of those is a policy or an auth role, so until
 [0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md) the policy
 that [0025](../../docs/adr/model/0025-access-tiers-derive-policy.md) derives had
 no output at all, and a derivation with no output is not total

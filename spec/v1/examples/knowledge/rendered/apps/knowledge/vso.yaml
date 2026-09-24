@@ -34,6 +34,8 @@ spec:
   destination:
     name: knowledge-system-mcp-bearer
     create: true
+    annotations:
+      flagger.app/config-tracking: disabled
   refreshAfter: 1h
   rolloutRestartTargets:
   - kind: Deployment

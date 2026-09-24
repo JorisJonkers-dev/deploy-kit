@@ -1898,8 +1898,8 @@ being hand-declared.
 |---|---|---|
 | `self` | `reload` | **nothing**: the client re-reads; no pod restarts |
 | `file` | `reload` | nothing, for a consumer that watches its projected file |
-| `self` or `file` | `restart` | a rollout |
-| `env` | `restart` | a rollout; `env` cannot do better |
+| `self` or `file` | `restart` | a restart in place, never a release ([Rotation is not a release](#rotation-is-not-a-release)) |
+| `env` | `restart` | a restart in place; `env` cannot do better |
 | `env` | `reload` | refused: `E_ENV_CANNOT_RELOAD` |
 
 `env` is refused rather than degraded because a pod's environment is **fixed for
@@ -1922,6 +1922,30 @@ Two gates apply to the two deliveries that persist a Secret:
   the datastore. `self` and `custody` persist nothing and are unaffected.
 - **Non-KV engines take neither.** A `transit/` grant is never materialised into a
   variable or a file, so `self` is its only legal delivery (`E_NON_KV_DELIVERY`).
+
+### Rotation is not a release
+
+**Rotating a Vault-delivered secret never starts a blue/green release**
+([0134](../../docs/adr/model/0134-rotating-a-secret-is-not-a-release.md)). A
+new value is not a new version of the Application: its image, its
+configuration and its revision are all unchanged
+([chapter 20](20-resolved-deployment.md#the-application-revision)), so there is
+nothing for the Release Gate to analyse and nothing to promote. The value
+reaches the running pods the way the grant's `rotation.tolerates` says, and no
+other way:
+
+| `tolerates` | how a rotated value reaches the Process |
+|---|---|
+| `reload` | the Process re-reads it (`self`), or watches its projected file (`file`); no pod restarts |
+| `restart` | the Process's serving workload is restarted in place; for a `blue-green` Process that is its primary, never a second copy |
+
+Two things in the render keep it that way
+([chapter 55](55-delivery.md#secret-rotation)): every Secret the render has the
+operator write from Vault is excluded from Flagger's configuration tracking, so a changed
+value never looks like a new revision, and a restart names the workload that is
+serving. A rotation therefore cannot be held, cannot fail a gate and cannot
+leave two versions running; the most it costs is the restart the owner accepted
+by writing `restart`.
 
 ## Secret references
 

@@ -86,7 +86,9 @@ Application's members at a barrier
 [0071](model/0071-release-gate-inputs-are-layer-2.md)). Each Project's render is
 published as a signed OCI artifact, and a deploy is a commit that moves its pin
 ([0133](model/0133-a-project-is-delivered-as-a-signed-artifact-pinned-by-digest.md),
-amending [0037](model/0037-composition-oci-fragments.md)).
+amending [0037](model/0037-composition-oci-fragments.md)). Rotating a secret is not a
+release, so it never starts a switchover
+([0134](model/0134-rotating-a-secret-is-not-a-release.md)).
 
 Tier-0 **premises** carry one falsifiable claim each; tier-1 **decisions** name
 the premises they stand on in `rests-on`. A `claim: open` means decided in
@@ -227,6 +229,7 @@ delivery work it underpins.
 | [0071](model/0071-release-gate-inputs-are-layer-2.md) | The release gate is derived into layer 2, and nothing is rendered for it | superseded by [0132](model/0132-the-release-gate-answers-the-switch.md) |
 | [0132](model/0132-the-release-gate-answers-the-switch.md) | A first-party Release Gate answers the switch from layer-2 data, holds every member at a barrier, and fails closed | open |
 | [0133](model/0133-a-project-is-delivered-as-a-signed-artifact-pinned-by-digest.md) | A Project is delivered as a signed OCI artifact pinned by digest, and a deploy is a pin commit | open |
+| [0134](model/0134-rotating-a-secret-is-not-a-release.md) | Rotating a secret is not a release, so it never starts a switchover | open |
 | [0072](model/0072-the-label-set-is-fixed.md) | The object label set is fixed, and two of its labels are immutable | settled |
 | [0073](model/0073-vault-policy-is-a-deliverable.md) | The derived Vault policy and auth role are Deliverables of their own adapter | settled |
 | [0074](model/0074-networking-adapter-emits-policy.md) | A networking adapter owns every NetworkPolicy in the estate | settled |

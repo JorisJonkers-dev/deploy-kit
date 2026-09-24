@@ -16,6 +16,8 @@ spec:
   destination:
     name: platform-postgres-kb
     create: true
+    annotations:
+      flagger.app/config-tracking: disabled
   refreshAfter: 1h
   rolloutRestartTargets:
   - kind: Deployment
@@ -39,6 +41,8 @@ spec:
   destination:
     name: platform-rabbitmq
     create: true
+    annotations:
+      flagger.app/config-tracking: disabled
   refreshAfter: 1h
   rolloutRestartTargets:
   - kind: Deployment

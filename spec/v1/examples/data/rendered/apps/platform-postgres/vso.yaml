@@ -36,6 +36,8 @@ spec:
   destination:
     name: platform-postgres-exporter
     create: true
+    annotations:
+      flagger.app/config-tracking: disabled
   refreshAfter: 1h
   rolloutRestartTargets:
   - kind: Deployment
