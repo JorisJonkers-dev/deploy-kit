@@ -12,7 +12,6 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: node
 spec:
-  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -88,24 +87,3 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 5
           failureThreshold: 4
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: notes-api
-  namespace: notes-system
-  labels:
-    app.kubernetes.io/name: notes-api
-    app.kubernetes.io/instance: notes-api
-    app.kubernetes.io/part-of: notes
-    app.kubernetes.io/managed-by: deploy-kit
-    app.kubernetes.io/component: node
-spec:
-  selector:
-    app.kubernetes.io/name: notes-api
-    app.kubernetes.io/instance: notes-api
-  ports:
-  - name: http
-    port: 8080
-    targetPort: http
-    protocol: TCP

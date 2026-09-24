@@ -11,7 +11,7 @@ met rather than a list of them:
 | demand | decided in | how delivery meets it |
 |---|---|---|
 | **Release Unit atomicity** | [0062](../../docs/adr/model/0062-application-is-the-release-unit.md) | [Switchover](#switchover): a barrier over every member of the Application, run by the [Release Gate](#the-release-gate) |
-| **Durability Class gating** | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | no destructive operation proceeds automatically against a volume declared `recoverable` or `irreplaceable`: the applier never prunes such a claim ([#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158)) |
+| **Durability Class gating** | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | no destructive operation proceeds automatically against a volume declared `recoverable` or `irreplaceable`: the applier never prunes such a claim ([chapter 30](30-deliverables.md#flagger-ready-objects)) |
 | **Pinned inputs only** | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | [Rendered artifacts and pins](#rendered-artifacts-and-pins): what is applied is a signed artifact named by digest, rendered from a recorded lock |
 
 ## Scope
@@ -184,7 +184,7 @@ two questions, from the Resolved Deployment and nothing else
 | question | asked | the gate answers yes when |
 |---|---|---|
 | may this member's new version start? | once per member per revision, before its new version scales up | the Application's migration and every prepare Process for this revision have completed ([Release order](#release-order)); the migration itself was started only once its compatibility proof held ([Migration safety](#migration-safety)) |
-| may this member be promoted? | after the member's own analysis passes | every member of the Application has passed its analysis for this revision: the barrier |
+| may this member be promoted? | after the member's own analysis passes | every member of the Application has passed its analysis for this revision, or did not change in it ([What the render leaves to Flagger](#what-the-render-leaves-to-flagger)): the barrier |
 
 It reads the Application's release-gate inputs (its members, their readiness,
 their analysis checks and the gate deadline;
@@ -297,7 +297,10 @@ all while the old version still serves:
    ([Migrations](#migrations)), started only once its compatibility proof holds
    ([Migration safety](#migration-safety)).
 2. **Every prepare Process, in parallel**
-   ([chapter 10](10-project-intent.md#prepare-processes)). Each runs to completion
+   ([chapter 10](10-project-intent.md#prepare-processes)), each rendered as a Job
+   named by the Application revision, created suspended and started by the
+   Release Gate once the migration has completed, exactly as the migration's own
+   Job is ([Failure and undo](#failure-and-undo)). Each runs to completion
    within its `startupBudget`, once per Application revision, and is never retried
    within one; there is no order among them.
 3. **The new version starts**, by the Application's switchover
@@ -381,13 +384,43 @@ the `vso` adapter's ([chapter 30](30-deliverables.md#vault-configuration-is-rend
 because it names a Flagger object rather than a model concept. Restarting
 `<name>` instead would be worse than useless: it patches the pod template
 Flagger watches, and so starts the very release this section rules out. The
-primaries are rendered with the rest of the Flagger-ready objects
-([#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158)); until
-then the worked trees render no primary, and their restart targets still name
-`<name>`.
+primary is Flagger's ([What the render leaves to Flagger](#what-the-render-leaves-to-flagger)).
 
 ## What the render leaves to Flagger
 
-Which objects Flagger generates and the render therefore omits, and what the
-render marks so that Flux and Flagger do not fight over a field. Specified in
-full by [#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158).
+Flux applies the render and Flagger switches `blue-green` Processes, so the two
+must never own the same field
+([0137](../../docs/adr/model/0137-the-render-leaves-flaggers-objects-to-flagger.md)).
+For each `blue-green` Process, the render carries a `Canary` naming its
+Deployment, and Flagger generates the rest:
+
+| Flagger generates | so the render |
+|---|---|
+| the Services `<name>`, `<name>-primary` and `<name>-canary` | renders no Service for the Process; the edge's routes name `<name>`, which Flagger points at the primary |
+| the primary Deployment, `<name>-primary`, promoted into from `<name>` | renders no `replicas` on `<name>`; a capacity exception is a `HorizontalPodAutoscaler` with equal bounds, which Flagger copies to the primary |
+| a copy of every `ConfigMap` and Secret it tracks, for the primary | renders one configuration object per Process, and excludes every Vault-delivered Secret from tracking ([Secret rotation](#secret-rotation)) |
+| the label `app.kubernetes.io/name: <name>-primary` on the primary's pods | selects by `app.kubernetes.io/instance` everywhere but the disruption budget, which selects the primary |
+
+The Canary's analysis runs at the Platform document's cadence and asks the
+Release Gate three questions through webhooks: `confirm-rollout` before the new
+copy starts, `rollout` on each analysis iteration, which the gate answers from
+the member's `checks`, and `confirm-promotion` at the barrier
+([The Release Gate](#the-release-gate)). Each webhook carries the Application,
+the Process and the Application revision, and nothing else: the gate reads the
+rest from the Resolved Deployment.
+
+**A member that did not change starts no analysis.** Flagger analyses a Canary
+only when its target's pod template, or a configuration object it tracks,
+changes; a new Application revision that leaves one member's template as it was
+(an `auth` release that changes `auth-api` alone) starts nothing for that
+member. The gate counts such a member as passed for the revision, because what
+its primary serves is already exactly what the revision renders for it, and the
+barrier waits only on the members that did change. No metric query and no threshold is rendered;
+what a check measures is the gate's. Every rule, with the adapter that keeps it,
+is [chapter 30](30-deliverables.md#flagger-ready-objects)'s.
+
+Two marks keep Flux from undoing what it must not. A migration or prepare Job is
+created once and never updated ([Failure and undo](#failure-and-undo)). A claim
+whose Durability Class derives a backup is never pruned: a Process leaving the
+render does not delete the data it held, which is Durability Class gating kept
+by the applier ([Scope](#scope)).

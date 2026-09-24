@@ -98,10 +98,12 @@
       path="kustomization.yaml" adapter="kubernetes" resources="namespace.yaml apps/notes"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/kustomization.yaml" adapter="kubernetes" namespace="notes-system"
-      resources="workload.yaml serviceaccount.yaml servicemonitor.yaml networkpolicy.yaml"/>
+      resources="workload.yaml canary.yaml serviceaccount.yaml servicemonitor.yaml networkpolicy.yaml"/>
   <deliverables xsi:type="resolveddeployment:WorkloadFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/workload.yaml" adapter="kubernetes" process="//@applications.0/@processes.0"
       controller="Deployment" strategy="RollingUpdate"/>
+  <deliverables xsi:type="resolveddeployment:SwitchoverFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      path="apps/notes/canary.yaml" adapter="kubernetes" process="//@applications.0/@processes.0"/>
   <deliverables xsi:type="resolveddeployment:IdentityFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/serviceaccount.yaml" adapter="kubernetes" process="//@applications.0/@processes.0"/>
   <deliverables xsi:type="resolveddeployment:MonitorFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"

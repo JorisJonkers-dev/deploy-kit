@@ -13,8 +13,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: postgres
-      app.kubernetes.io/instance: platform-postgres
+      app.kubernetes.io/instance: postgres
   policyTypes:
   - Ingress
   - Egress
@@ -25,7 +24,7 @@ spec:
           kubernetes.io/metadata.name: auth-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: auth-api
+          app.kubernetes.io/instance: auth-migration
     ports:
     - protocol: TCP
       port: 5432
@@ -35,7 +34,17 @@ spec:
           kubernetes.io/metadata.name: knowledge-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: knowledge-api
+          app.kubernetes.io/instance: knowledge-migration
+    ports:
+    - protocol: TCP
+      port: 5432
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: auth-system
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: auth-api
     ports:
     - protocol: TCP
       port: 5432
@@ -45,7 +54,17 @@ spec:
           kubernetes.io/metadata.name: knowledge-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: knowledge-ingest-worker
+          app.kubernetes.io/instance: knowledge-api
+    ports:
+    - protocol: TCP
+      port: 5432
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: knowledge-system
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: knowledge-ingest-worker
     ports:
     - protocol: TCP
       port: 5432
@@ -55,7 +74,7 @@ spec:
           kubernetes.io/metadata.name: utility-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: prometheus
+          app.kubernetes.io/instance: prometheus
     ports:
     - protocol: TCP
       port: 9187
@@ -78,7 +97,7 @@ spec:
           kubernetes.io/metadata.name: utility-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: vault
+          app.kubernetes.io/instance: vault
     ports:
     - protocol: TCP
       port: 8200

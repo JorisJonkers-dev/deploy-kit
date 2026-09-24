@@ -1,0 +1,127 @@
+# GENERATED. Never hand-edit.
+#
+# One Canary per blue-green Process (spec/v1/55-delivery.md#what-the-render-leaves-to-flagger).
+# Flagger generates the Services and the primary; every decision is the Release
+# Gate's, asked through the three webhooks, and the cadence is the Platform
+# document's delivery.analysis.
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: auth-api
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-api
+    app.kubernetes.io/instance: auth-api
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: jvm
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: auth-api
+  autoscalerRef:
+    apiVersion: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    name: auth-api
+  progressDeadlineSeconds: 1800
+  service:
+    port: 8081
+    targetPort: http
+    portName: http
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+    - name: may-start
+      type: confirm-rollout
+      url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+      metadata:
+        application: auth
+        process: auth-api
+        revision: "sha256:9d2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a"
+    - name: checks
+      type: rollout
+      url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+      metadata:
+        application: auth
+        process: auth-api
+        revision: "sha256:9d2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a"
+    - name: may-promote
+      type: confirm-promotion
+      url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+      metadata:
+        application: auth
+        process: auth-api
+        revision: "sha256:9d2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a"
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: auth-api
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-api
+    app.kubernetes.io/instance: auth-api
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: jvm
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: auth-api
+  minReplicas: 2
+  maxReplicas: 2
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: auth-ui
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-ui
+    app.kubernetes.io/instance: auth-ui
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: static
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: auth-ui
+  progressDeadlineSeconds: 90
+  service:
+    port: 80
+    targetPort: http
+    portName: http
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+    - name: may-start
+      type: confirm-rollout
+      url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+      metadata:
+        application: auth
+        process: auth-ui
+        revision: "sha256:9d2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a"
+    - name: checks
+      type: rollout
+      url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+      metadata:
+        application: auth
+        process: auth-ui
+        revision: "sha256:9d2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a"
+    - name: may-promote
+      type: confirm-promotion
+      url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+      metadata:
+        application: auth
+        process: auth-ui
+        revision: "sha256:9d2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a"

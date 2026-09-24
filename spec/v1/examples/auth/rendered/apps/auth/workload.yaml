@@ -12,7 +12,6 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: jvm
 spec:
-  replicas: 2
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -144,27 +143,6 @@ spec:
           sizeLimit: 64Mi
       automountServiceAccountToken: true
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: auth-api
-  namespace: auth-system
-  labels:
-    app.kubernetes.io/name: auth-api
-    app.kubernetes.io/instance: auth-api
-    app.kubernetes.io/part-of: auth
-    app.kubernetes.io/managed-by: deploy-kit
-    app.kubernetes.io/component: jvm
-spec:
-  selector:
-    app.kubernetes.io/name: auth-api
-    app.kubernetes.io/instance: auth-api
-  ports:
-  - name: http
-    port: 8081
-    targetPort: http
-    protocol: TCP
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -177,7 +155,6 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: static
 spec:
-  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -257,24 +234,3 @@ spec:
       - name: writable-var-run
         emptyDir:
           sizeLimit: 64Mi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: auth-ui
-  namespace: auth-system
-  labels:
-    app.kubernetes.io/name: auth-ui
-    app.kubernetes.io/instance: auth-ui
-    app.kubernetes.io/part-of: auth
-    app.kubernetes.io/managed-by: deploy-kit
-    app.kubernetes.io/component: static
-spec:
-  selector:
-    app.kubernetes.io/name: auth-ui
-    app.kubernetes.io/instance: auth-ui
-  ports:
-  - name: http
-    port: 80
-    targetPort: http
-    protocol: TCP

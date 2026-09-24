@@ -32,10 +32,10 @@ written by anyone:
 | no `hardening` block | the `restricted` class: non-root, read-only root, all capabilities dropped, seccomp `RuntimeDefault` | `securityContext`, pod and container |
 | no grant | `automountServiceAccountToken: false` ([0087](../../../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)) | the pod spec |
 | `probes` + `startupBudget: 20s` | the probe cadence from Platform Intent, a startup probe on the **liveness** endpoint, `progressDeadlineSeconds: 60` ([0088](../../../../docs/adr/model/0088-startup-probe-targets-liveness.md)) | all three probes |
-| `cutover: continuous` | a `blue-green` switchover in the Resolved Deployment ([chapter 55](../../55-delivery.md#switchover)); until the Flagger render lands ([#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158)) the tree spells it `RollingUpdate`, `maxSurge: 1`, `maxUnavailable: 0` | the strategy |
-| `provides: http: 8080` | the port name, the Application, the ingress rules | `Service`, `NetworkPolicy` |
+| `cutover: continuous` | a `blue-green` switchover in the Resolved Deployment ([chapter 55](../../55-delivery.md#switchover)), rendered as a `Canary` whose webhooks ask the Release Gate; the Deployment carries no `replicas` and no Service is rendered for it, because Flagger generates both ([chapter 30](../../30-deliverables.md#flagger-ready-objects)) | the strategy, the Services |
+| `provides: http: 8080` | the port name, the Application, the ingress rules | the `Canary`'s service port, from which Flagger generates the Services; the `NetworkPolicy` |
 | `exposure` + `audience: anonymous` | the tier, its middleware chain, and the route priority ([0093](../../../../docs/adr/model/0093-route-precedence-is-derived.md)) | `IngressRoute` |
-| `observability` | a `ServiceMonitor` naming the `http` surface and the Platform document's cadence ([chapter 10](../../10-project-intent.md#observability)) | a `PrometheusRule`: rules, severity and receivers are the monitoring stack's, which reads `alertClass` from the projection |
+| `observability` | a `PodMonitor` naming the `http` surface, selecting pods by `instance` so the canary is scraped too, and the Platform document's cadence ([chapter 10](../../10-project-intent.md#observability)) | a `PrometheusRule`: rules, severity and receivers are the monitoring stack's, which reads `alertClass` from the projection |
 | the env file's two literals | the Runtime Profile keys and `PORT`, which are a build error to author | the container's `env` |
 
 ## What is absent, and why

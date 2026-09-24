@@ -1,0 +1,55 @@
+# GENERATED. Never hand-edit.
+#
+# One Canary per blue-green Process (spec/v1/55-delivery.md#what-the-render-leaves-to-flagger).
+# Flagger generates the Services and the primary; every decision is the Release
+# Gate's, asked through the three webhooks, and the cadence is the Platform
+# document's delivery.analysis.
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: notes-api
+  namespace: notes-system
+  labels:
+    app.kubernetes.io/name: notes-api
+    app.kubernetes.io/instance: notes-api
+    app.kubernetes.io/part-of: notes
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: node
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: notes-api
+  progressDeadlineSeconds: 60
+  service:
+    port: 8080
+    targetPort: http
+    portName: http
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+    - name: may-start
+      type: confirm-rollout
+      url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+      metadata:
+        application: notes
+        process: notes-api
+        revision: "sha256:71a1dc0e631fc21e8563c81f863aca8c7be59778d8368a441f0674651f042421"
+    - name: checks
+      type: rollout
+      url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+      metadata:
+        application: notes
+        process: notes-api
+        revision: "sha256:71a1dc0e631fc21e8563c81f863aca8c7be59778d8368a441f0674651f042421"
+    - name: may-promote
+      type: confirm-promotion
+      url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+      metadata:
+        application: notes
+        process: notes-api
+        revision: "sha256:71a1dc0e631fc21e8563c81f863aca8c7be59778d8368a441f0674651f042421"

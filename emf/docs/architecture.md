@@ -152,7 +152,8 @@ layer 2 takes, and one class per resource family of the project proposal's
 generated-resources table, each carrying the path it is written to. A template
 walks the second half and decides nothing, so no name in it appears in the
 first: a `WorkloadFile` carries the controller kind and the strategy that spell
-a Process's `cutover`, and the `cutover` itself stays on the Process.
+a Process's `cutover`, a `SwitchoverFile` is the Canary that switches a
+`blue-green` one, and the `cutover` itself stays on the Process.
 
 The descriptor exporter walks the source `EPackage` reflectively and writes the
 descriptor the parity contract fixes. It is the only place the Ecore structure

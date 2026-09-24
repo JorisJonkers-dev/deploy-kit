@@ -1,0 +1,55 @@
+# GENERATED. Never hand-edit.
+#
+# One Canary per blue-green Process (spec/v1/55-delivery.md#what-the-render-leaves-to-flagger).
+# Flagger generates the Services and the primary; every decision is the Release
+# Gate's, asked through the three webhooks, and the cadence is the Platform
+# document's delivery.analysis.
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: knowledge-api
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/name: knowledge-api
+    app.kubernetes.io/instance: knowledge-api
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: jvm
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: knowledge-api
+  progressDeadlineSeconds: 1800
+  service:
+    port: 8080
+    targetPort: http
+    portName: http
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+    - name: may-start
+      type: confirm-rollout
+      url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+      metadata:
+        application: knowledge
+        process: knowledge-api
+        revision: "sha256:6325500a2c541ed3970d3003aa61fd3fa1e9f98d673c1a2095323b90dc2363df"
+    - name: checks
+      type: rollout
+      url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+      metadata:
+        application: knowledge
+        process: knowledge-api
+        revision: "sha256:6325500a2c541ed3970d3003aa61fd3fa1e9f98d673c1a2095323b90dc2363df"
+    - name: may-promote
+      type: confirm-promotion
+      url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+      metadata:
+        application: knowledge
+        process: knowledge-api
+        revision: "sha256:6325500a2c541ed3970d3003aa61fd3fa1e9f98d673c1a2095323b90dc2363df"

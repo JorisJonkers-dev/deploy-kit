@@ -677,6 +677,8 @@ flowchart LR
         k_res["resolved.yml"]
 
         k_sm["ServiceMonitor / PodMonitor"]
+        k_can["Canary"]
+        k_hpa["HorizontalPodAutoscaler"]
     end
 
     d_dom --> r_ns
@@ -763,6 +765,15 @@ flowchart LR
     r_sa --> k_res
     r_vp --> k_res
     r_bind --> k_res
+
+    d_wl --> k_can
+    d_id --> k_can
+    d_prov --> k_can
+    r_sw --> k_can
+    r_dl --> k_can
+    r_rep --> k_can
+    d_wl --> k_hpa
+    r_rep --> k_hpa
 ```
 
 ### Worked trace: one exposure declaration

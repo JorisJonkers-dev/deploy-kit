@@ -13,7 +13,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: knowledge-api
+      app.kubernetes.io/instance: knowledge-api
   policyTypes:
   - Ingress
   - Egress
@@ -51,7 +51,7 @@ spec:
           kubernetes.io/metadata.name: data-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: postgres
+          app.kubernetes.io/instance: postgres
     ports:
     - protocol: TCP
       port: 5432
@@ -61,7 +61,7 @@ spec:
           kubernetes.io/metadata.name: data-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: rabbitmq
+          app.kubernetes.io/instance: rabbitmq
     ports:
     - protocol: TCP
       port: 5672
@@ -71,7 +71,61 @@ spec:
           kubernetes.io/metadata.name: vault-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: vault
+          app.kubernetes.io/instance: vault
+    ports:
+    - protocol: TCP
+      port: 8200
+---
+# The migration identity reaches the project's database and the Secret Store it
+# reads its owner credential from, and nothing reaches it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: knowledge-migration
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/name: knowledge-migration
+    app.kubernetes.io/instance: knowledge-migration
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: migration
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: knowledge-migration
+  policyTypes:
+  - Ingress
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: data-system
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: utility-system
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: vault
     ports:
     - protocol: TCP
       port: 8200

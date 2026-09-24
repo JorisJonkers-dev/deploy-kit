@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: notes-system
 resources:
   - workload.yaml
+  - canary.yaml
   - serviceaccount.yaml
   - servicemonitor.yaml
   - networkpolicy.yaml

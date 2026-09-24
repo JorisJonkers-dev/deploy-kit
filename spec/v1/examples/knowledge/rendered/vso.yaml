@@ -21,7 +21,7 @@ spec:
   refreshAfter: 1h
   rolloutRestartTargets:
   - kind: Deployment
-    name: knowledge-api
+    name: knowledge-api-primary
   - kind: Deployment
     name: knowledge-ingest-worker
 ---
@@ -46,6 +46,6 @@ spec:
   refreshAfter: 1h
   rolloutRestartTargets:
   - kind: Deployment
-    name: knowledge-api
+    name: knowledge-api-primary
   - kind: Deployment
     name: knowledge-ingest-worker

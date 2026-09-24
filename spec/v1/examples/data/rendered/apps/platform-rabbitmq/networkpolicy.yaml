@@ -13,8 +13,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: rabbitmq
-      app.kubernetes.io/instance: platform-rabbitmq
+      app.kubernetes.io/instance: rabbitmq
   policyTypes:
   - Ingress
   - Egress
@@ -25,7 +24,7 @@ spec:
           kubernetes.io/metadata.name: auth-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: auth-api
+          app.kubernetes.io/instance: auth-api
     ports:
     - protocol: TCP
       port: 5672
@@ -35,7 +34,7 @@ spec:
           kubernetes.io/metadata.name: knowledge-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: knowledge-api
+          app.kubernetes.io/instance: knowledge-api
     ports:
     - protocol: TCP
       port: 5672
@@ -45,7 +44,7 @@ spec:
           kubernetes.io/metadata.name: knowledge-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: knowledge-ingest-worker
+          app.kubernetes.io/instance: knowledge-ingest-worker
     ports:
     - protocol: TCP
       port: 5672
@@ -55,7 +54,7 @@ spec:
           kubernetes.io/metadata.name: kube-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: traefik
+          app.kubernetes.io/instance: traefik
     ports:
     - protocol: TCP
       port: 15672
@@ -65,7 +64,7 @@ spec:
           kubernetes.io/metadata.name: utility-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: prometheus
+          app.kubernetes.io/instance: prometheus
     ports:
     - protocol: TCP
       port: 15692

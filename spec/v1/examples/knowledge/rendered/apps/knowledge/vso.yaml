@@ -39,4 +39,4 @@ spec:
   refreshAfter: 1h
   rolloutRestartTargets:
   - kind: Deployment
-    name: knowledge-api
+    name: knowledge-api-primary
