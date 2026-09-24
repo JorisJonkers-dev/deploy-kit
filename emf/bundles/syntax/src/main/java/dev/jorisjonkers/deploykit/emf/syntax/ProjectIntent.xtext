@@ -217,7 +217,7 @@ Keyword:
 	'host' | 'id' | 'image' | 'internal' | 'interrupted' | 'irreplaceable' | 'job' | 'jvm' | 'key' |
 	'keys' | 'kind' | 'kv' | 'lan' | 'lifecycle' | 'liveness' | 'match' | 'maxAge' |
 	'media' | 'memory' | 'migration' | 'mountAt' | 'name' | 'node' | 'none' | 'nvme' | 'observability' |
-	'operations' | 'owner' | 'page' | 'path' | 'placement' | 'port' | 'postgres' | 'prefix' |
+	'operations' | 'owner' | 'page' | 'path' | 'placement' | 'port' | 'postgres' | 'prefix' | 'prepare' |
 	'probes' | 'process' | 'processes' | 'project' | 'provides' | 'python' | 'rabbitmq' | 'read' |
 	'readiness' | 'reason' | 'reconstructible' | 'recoverable' | 'redirectTo' | 'reload' | 'replicas' |
 	'required' | 'restart' | 'role' | 'rotate' | 'rotation' | 'routes' | 'runtime' |
@@ -227,7 +227,7 @@ Keyword:
 	'writablePaths';
 
 enum Lifecycle returns Lifecycle:
-	application='application' | job='job';
+	application='application' | job='job' | prepare='prepare';
 
 enum Runtime returns Runtime:
 	jvm='jvm' | python='python' | node='node' | static='static' | none='none';

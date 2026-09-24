@@ -215,7 +215,7 @@ field's placement link to this anchor rather than copying rows.
 | the ephemeral mount per writable path, and its size | derived | - | one mount per declared path, sized from the Platform Intent's ephemeral `size` ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)) |
 | `runAsUser`, `runAsGroup`, `fsGroup` | derived | - | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Process holds a volume ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)) |
 | container probe timings | derived | - | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Platform Intent's probe policy ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)) |
-| `progressDeadlineSeconds` | derived | - | from `startupBudget` |
+| `progressDeadlineSeconds` | derived | - | from `startupBudget`; a `prepare` Process's run deadline is its `startupBudget` itself |
 | switchover | derived | - | from `cutover`: `continuous` derives `blue-green`, `interrupted` derives `stop-start` ([chapter 55](55-delivery.md#switchover)), which the adapters spell; `cutover: continuous` over an RWO volume is `E_CUTOVER_UNHONOURABLE`, not a silent downgrade |
 | object kind | derived | - | from `lifecycle` and `volumes` |
 | the Application's release-gate deadline | derived | - | `max` over the Application's Processes of `progressDeadlineSeconds` ([The release gate](#the-release-gate)) |

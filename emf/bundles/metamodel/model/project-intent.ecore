@@ -228,6 +228,7 @@
   <eClassifiers xsi:type="ecore:EEnum" name="Lifecycle">
     <eLiterals name="application" literal="application"/>
     <eLiterals name="job" value="1" literal="job"/>
+    <eLiterals name="prepare" value="2" literal="prepare"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Runtime">
     <eLiterals name="jvm" literal="jvm"/>

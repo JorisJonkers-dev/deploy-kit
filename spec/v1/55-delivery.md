@@ -123,8 +123,21 @@ specified in full by
 
 ## Release order
 
-Migration first, then any forward-only setup, then the new version. Specified in
-full by [#156](https://github.com/JorisJonkers-dev/deploy-kit/issues/156).
+A release of one Application runs in three steps, each gated on the one before,
+all while the old version still serves:
+
+1. **Migration up**, if the Application declares a changelog
+   ([Migrations](#migrations)).
+2. **Every prepare Process, in parallel**
+   ([chapter 10](10-project-intent.md#prepare-processes)). Each runs to completion
+   within its `startupBudget`, once per Application revision, and is never retried
+   within one; there is no order among them.
+3. **The new version starts**, by the Application's switchover
+   ([Switchover](#switchover)).
+
+A step that fails holds the release: the next step never starts and the old
+version keeps serving. What is undone afterwards, and only the migration ever
+is, is [Failure and undo](#failure-and-undo)'s.
 
 ## Failure and undo
 

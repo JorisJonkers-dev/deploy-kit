@@ -222,5 +222,6 @@ export interface EffectiveApplication {
 
 export interface EffectiveProcess extends Process {
   readonly placement: CompletePlacement;
-  readonly cutover: Cutover;
+  /** Absent on a `prepare` Process, which runs to completion and cuts over nothing. */
+  readonly cutover?: Cutover;
 }

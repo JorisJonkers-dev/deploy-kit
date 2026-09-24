@@ -758,6 +758,31 @@ describe("a refusal that reads the effective answer, not the written one", () =>
     ).toStrictEqual([{ changelog: "db/changelog.yml" }, "absent"]);
   });
 
+  it("asks a prepare Process for no cutover, and names what a serving one has when it writes one", () => {
+    const seed = `      - name: seed\n        lifecycle: prepare\n        image: seed\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n`;
+    const alone = `${HEADER}applications:\n  - id: a\n    processes:\n${seed}`;
+    const serving = `${HEADER}applications:\n  - id: a\n    processes:\n${seed}        provides: {http: 8080}\n        replicas: {count: 2, reason: r}\n        cutover: continuous\n`;
+
+    expect(refusals(alone)).toStrictEqual([]);
+    const result = parseProjectIntent(serving);
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, message }) => [code, message]),
+    ).toStrictEqual([
+      [
+        "E_PREPARE_PROCESS_SERVES",
+        "a prepare Process runs to completion before the new version starts, and declares provides, replicas, cutover, which only a serving Process has",
+      ],
+    ]);
+  });
+
+  it("does not hold a prepare Process's volume to a cutover it does not have", () => {
+    const document = `${HEADER}cutover: continuous\napplications:\n  - id: a\n    processes:\n      - name: seed\n        lifecycle: prepare\n        image: seed\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n        volumes:\n          - {claim: c, mountAt: /c, size: 1Gi, durability: reconstructible}\n`;
+
+    expect(refusals(document)).toStrictEqual([]);
+  });
+
   it("refuses a grant the project header states badly, at the header", () => {
     expect(
       refusals(

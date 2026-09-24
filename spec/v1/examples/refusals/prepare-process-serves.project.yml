@@ -1,0 +1,33 @@
+# REFUSED: E_PREPARE_PROCESS_SERVES
+#
+# A prepare Process runs to completion before the Application's new version
+# starts: a bootstrap, a seed. It listens on nothing, has no readiness to gate,
+# runs once and cuts over nothing, so a port, probes, replicas and a cutover of
+# its own are declarations nothing reads (spec/v1/10-project-intent.md#prepare-processes).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: api
+    processes:
+      - name: api
+        lifecycle: application
+        image: api
+        runtime: node
+        placement: { memory: 128Mi, cpu: 25m }
+        cutover: continuous
+      - name: seed
+        lifecycle: prepare
+        image: seed
+        runtime: none
+        placement: { memory: 64Mi, cpu: 10m }
+        startupBudget: 60s
+        # The refusal: what only a serving Process has.
+        provides:
+          http: 8080
+        probes:
+          readiness: { path: /ready, port: 8080 }
+        cutover: continuous

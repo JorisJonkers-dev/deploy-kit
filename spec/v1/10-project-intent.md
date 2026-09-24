@@ -513,9 +513,10 @@ Vault role are called (chapter 16).
 `image` is an alias resolved to a digest through the images lock, never a tag,
 never a digest here.
 
-`lifecycle` is `application` or `job`. Not `deployment` / `statefulset` / `job`,
-because those are mechanisms; the object kind derives from `lifecycle` and
-`volumes`.
+`lifecycle` is `application`, `job` or `prepare`. Not `deployment` /
+`statefulset` / `job`, because those are mechanisms; the object kind derives from
+`lifecycle` and `volumes`. `prepare` is forward-only setup that runs before the
+Application's new version starts ([Prepare Processes](#prepare-processes)).
 
 `runtime` selects the Runtime Profile: `jvm`, `python`, `node`, `static`, `none`.
 `none` is correct for a third-party image and injects no profile values at all.
@@ -2169,6 +2170,39 @@ dependsOn:
 `credentials` on an edge to a provider that owns no database derives nothing,
 and is `E_CREDENTIALS_WITHOUT_DATABASE`.
 
+## Prepare Processes
+
+```yaml
+processes:
+  - name: auth-seed-clients
+    lifecycle: prepare       # runs to completion before the new version starts
+    image: auth-seed
+    runtime: none
+    placement: {memory: 128Mi, cpu: 50m}
+    startupBudget: 120s      # for a prepare Process: the run deadline
+```
+
+A `prepare` Process is **idempotent, forward-only setup** that must finish
+before an Application's new version starts: registering a client, creating a
+bucket, seeding a row
+([0131](../../docs/adr/model/0131-prepare-processes-are-forward-only-setup.md)).
+It is not a migration: a migration has a down, a schema and an owner role, and is
+declared on the Application ([Migration](#migration)); a prepare step has none of
+them, and nothing undoes it.
+
+- **When it runs.** Once per Application revision, after the migration and in
+  parallel with every other prepare Process of the Application, and before any
+  new version of the Application starts
+  ([chapter 55](55-delivery.md#release-order)). Two steps that must run in order
+  are one image.
+- **Its deadline** is its `startupBudget`, not three times it: the budget is how
+  long the step may take, and there is no readiness to wait for afterwards. It is
+  never retried within a revision; a failure holds the release.
+- **What it cannot declare.** It listens on nothing, has no readiness, runs once
+  and cuts over nothing, so `provides`, `probes`, `replicas` and a `cutover` of its
+  own are `E_PREPARE_PROCESS_SERVES`. A `cutover` shared from above does not
+  reach it, and it is not required to have one.
+
 ## Capacity
 
 ```yaml
@@ -2229,7 +2263,7 @@ already told them, and the lines reaching them made the model harder to read.
 
 | vocabulary | named by | values |
 |---|---|---|
-| `Lifecycle` | `Process.lifecycle` | `application`, `job` |
+| `Lifecycle` | `Process.lifecycle` | `application`, `job`, `prepare` |
 | `Runtime` | `Process.runtime` | `jvm`, `python`, `node`, `static`, `none` |
 | `Engine` | `Process.engine` | `postgres`, `rabbitmq`, `valkey`, `files` |
 | `Cutover` | `Process.cutover` | `continuous`, `interrupted` |
