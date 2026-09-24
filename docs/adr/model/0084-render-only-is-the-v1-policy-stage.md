@@ -34,7 +34,7 @@ promotion is.
 
 Saying so explicitly matters because the alternative readings are both bad. Making
 v1 depend on a CNI lab evaluation puts a hardware-and-experiment task on the
-critical path of a model, which is what [0059](0059-v1-scope-stopping-rule.md)'s
+critical path of a model, which is what [0059](0059-v1-scope-stopping-rule.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md))'s
 stopping rule exists to prevent. And emitting policies with a selector that
 matches nothing (a tree that looks complete) would mean the audit stage
 compares observed flows against objects that were never in force, which is worse
@@ -48,7 +48,7 @@ recorded stage with an exit criterion instead of an unnumbered gap row.
 ## Alternatives
 | option | cost if taken | why rejected |
 |---|---|---|
-| Block v1 on 0036 | Default-deny is real rather than rendered when v1 ships | Puts a CNI lab evaluation on a model's critical path, which 0059's stopping rule refuses |
+| Block v1 on 0036 | Default-deny is real rather than rendered when v1 ships | Puts a CNI lab evaluation on a model's critical path, which the stopping rule of [0059](0059-v1-scope-stopping-rule.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md)) refuses |
 | Emit policies selecting nothing until promoted | The tree looks complete from day one | A policy that selects nothing is a policy that lies, and the audit diff would be against objects never in force |
 | Ship enforcing, per namespace, starting with an empty one | Real enforcement, incrementally | The first non-empty namespace is `data-system`, whose five consumers are exactly what an audit stage exists to discover safely |
 

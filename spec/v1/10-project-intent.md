@@ -372,7 +372,8 @@ Unit:
 | failure | the later unit waits | nothing switches |
 
 The Application says **what** must hold, never **how** it is achieved. The mechanism (
-what applies the change, in what order, behind what gate) is defined separately.
+what applies the change, in what order, behind what gate) is derived, and
+[chapter 55](55-delivery.md) specifies it.
 
 **A namespace holds several Applications by construction, so it is not a trust
 boundary.** This was once a footnote to an exception; it is now the normal case
@@ -409,7 +410,7 @@ raised where a reader can see both declarations at once.
 No field can move an Application out of its project's namespace, so the old question of
 whether an Application may name a namespace some other applier owns has lost its
 subject matter: see
-[Delivery and co-testing are defined separately](#delivery-and-co-testing-are-defined-separately).
+[Delivery is derived, and co-testing stays parked](#delivery-is-derived-and-co-testing-stays-parked).
 
 ## The label set
 
@@ -618,7 +619,8 @@ set is the union, and that union drives the Reconcile Unit DAG
 edge derives, inbound as well as outbound.
 
 An edge says one Process needs another to run. It says nothing about which
-suites must pass before either may ship: that is defined separately.
+suites must pass before either may ship: that is co-testing, which stays parked
+in [docs/adr/deferred/](../../docs/adr/deferred/README.md).
 
 ## Configuration
 
@@ -2223,17 +2225,19 @@ declaring site is fixed:
 | a route tier, an `authMode`, a middleware name, a headers block, a `redirectRegex` | derived from `audience` and the tier; the authored proxy vocabulary is `contentPolicy` and `redirectTo`, and nothing else |
 | a `volumeClaimTemplate` | declare the claim cluster-side |
 | an executable Asset | an image |
-| a deploy workflow, applier or gate | not a model concern: see below |
+| a deploy workflow, applier or gate | delivery's, derived: see below |
 
-## Delivery and co-testing are defined separately
+## Delivery is derived, and co-testing stays parked
 
-How a change reaches the cluster, and how dependency on other units for testing
-gates a deploy, are **defined separately from this model**. No field in this
-chapter names an applier, a workflow, a field manager, a pruning rule, a
-break-glass path or a co-test suite, and none may be added. The parked direction
-work lives in [docs/adr/deferred/](../../docs/adr/deferred/README.md).
+How a change reaches the cluster is [chapter 55](55-delivery.md)'s, and nothing
+about it is authored here. No field in this chapter names an applier, a
+workflow, a field manager, a pruning rule or a co-test suite, and none may be
+added: the applier, the switch and the pins are derived from what this chapter
+does declare ([0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md)).
+Whether one unit's tests gate another's deploy stays parked in
+[docs/adr/deferred/](../../docs/adr/deferred/README.md).
 
-The model's complete interface to that work is three demands, all decided here:
+The declarations delivery reads are these:
 
 1. **Application atomicity**: no Process of an Application switches until every Process
    of that Application is healthy

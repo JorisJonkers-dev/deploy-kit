@@ -10,6 +10,8 @@ rests-on: ["0008"]
 
 # Class A is pushed by Aggregators; class B stays with Flux
 
+> **Retired 2026-09-24** by [0127](../model/0127-delivery-is-part-of-the-model.md): delivery is Flux pulling a signed, pinned render, so this push-design record is superseded rather than taken up. Its fate is in [the inventory](README.md#inventory).
+
 > **Amended 2026-09-14.** Vocabulary renamed by
 > [0116](../model/0116-project-application-process.md): Domain is now Project,
 > Service is Application, Workload is Process, and Service Intent is Project
@@ -55,7 +57,7 @@ single answer to what is live survives. The claim is **open** and conditional:
 it inherits [0008](0008-tested-equals-deployed-requires-push.md), and if
 [workspace#45](https://github.com/JorisJonkers-dev/workspace/issues/45)
 falsifies that premise, scope is cut per
-[0059](../model/0059-v1-scope-stopping-rule.md).
+[0059](../model/0059-v1-scope-stopping-rule.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)).
 
 ## Alternatives
 

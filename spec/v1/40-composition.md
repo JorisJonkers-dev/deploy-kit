@@ -26,7 +26,7 @@ composition ([0037](../../docs/adr/model/0037-composition-oci-fragments.md)), an
 why this chapter is a hard dependency of chapters 16, 20 and 30.
 
 Two properties left this list on 2026-09-07. **Co-test membership** moved out
-with the delivery and co-testing split; see
+with co-testing, which stays parked; see
 [docs/adr/deferred/README.md](../../docs/adr/deferred/README.md). **Release Unit
 membership** moved out because an Application is now itself the unit of atomic release
 ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md), superseding
@@ -449,10 +449,9 @@ perfectly reproducible. The absence is indistinguishable from a retirement.
 At the model level that means: an unpublished project reaches whatever consumes
 the `ComposedIntent` as an *intentional* absence. Composition is the only place
 that can tell the difference, because it is the only place holding the
-enumeration of what was expected. What a delivery mechanism then does with an
-absent project (including whether it removes objects), is defined separately
-([docs/adr/deferred/README.md](../../docs/adr/deferred/README.md)); the model's
-obligation is to refuse to emit the render in the first place.
+enumeration of what was expected. The applier prunes what a render no longer
+claims ([chapter 55](55-delivery.md)), so the model's obligation is to refuse to
+emit the render in the first place.
 
 ## Versioning
 
@@ -564,8 +563,7 @@ one file.
 Under the range, most releases open no consumer PR at all: only a model change
 moves the pin, so a bump becomes rare, and correspondingly less rehearsed.
 Rollout of anything other than a version pin, including how a composed lock
-reaches a cluster, is defined separately
-([docs/adr/deferred/README.md](../../docs/adr/deferred/README.md)).
+reaches a cluster, is [chapter 55](55-delivery.md#rendered-artifacts-and-pins)'s.
 
 ## Unmanaged surfaces
 
@@ -714,23 +712,13 @@ nothing like its processes is not a divergence to be recorded: Application
 things are called. A rename lands in every referring project file, or composition
 fails.
 
-## Delivery and co-testing are defined separately
+## Delivery and co-testing
 
 Composition ends at two published artefacts: the `ComposedIntent` and its lock.
 What consumes that lock, how objects reach a cluster, which identity applies
-them, what is removed and when, and how a dependency on another unit for testing
-gates a deploy are **not specified here and not specified anywhere in this
-version of the model**. They are defined separately; the parked direction work
-is [docs/adr/deferred/README.md](../../docs/adr/deferred/README.md).
-
-The model makes exactly three demands on whatever that definition turns out to
-be: all-or-nothing switchover of an Application's Processes
-([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)), destructive
-operations gated by Durability Class
-([0015](../../docs/adr/model/0015-durability-class-per-volume.md)), and rendering from
-pinned inputs only
-([0006](../../docs/adr/model/0006-pinned-inputs.md),
-[0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)).
+them and what is removed and when are [chapter 55](55-delivery.md)'s. Whether a
+dependency on another unit for testing gates a deploy is co-testing, which
+stays parked in [docs/adr/deferred/README.md](../../docs/adr/deferred/README.md).
 
 ## Open in this chapter
 

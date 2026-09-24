@@ -9,6 +9,8 @@ rests-on: ["0008"]
 
 # Reconciliation is an in-cluster CronJob per Aggregator
 
+> **Retired 2026-09-24** by [0127](../model/0127-delivery-is-part-of-the-model.md): delivery is Flux pulling a signed, pinned render, so this push-design record is superseded rather than taken up. Its fate is in [the inventory](README.md#inventory).
+
 > **Amended 2026-09-14.** Vocabulary renamed by
 > [0116](../model/0116-project-application-process.md): Domain is now Project,
 > Service is Application, Workload is Process, and Service Intent is Project

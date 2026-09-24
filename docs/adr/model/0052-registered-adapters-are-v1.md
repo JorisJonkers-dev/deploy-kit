@@ -114,4 +114,4 @@ module then fails to compile, and the revert becomes a rewrite.
 - `E_PATH_COLLISION` stays unimplemented, and is now the sole guard against a
   second adapter claiming `pdb.yaml` that [0054](0054-adapter-attribution.md)
   needs: paid by the toolkit maintainer, within
-  [0059](0059-v1-scope-stopping-rule.md)'s budget.
+  [0059](0059-v1-scope-stopping-rule.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md))'s budget.

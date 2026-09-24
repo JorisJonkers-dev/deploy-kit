@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+superseded-by: 0127
 claim: open
 owner: joris
 date: 2026-09-07
@@ -9,6 +9,13 @@ rests-on: ["0001"]
 ---
 
 # v1 has a scope and a stopping rule
+
+> **Superseded 2026-09-24** by
+> [0127](0127-delivery-is-part-of-the-model.md): delivery is part of the v1
+> model, and v1 ships when the live estate is delivered through per-Project pins
+> and Flagger rather than by an unchanged Flux tree. The `claim: open` records
+> the state this record was in when it was replaced; 0127 carries the question
+> now.
 
 > **Amended 2026-09-14.** Vocabulary renamed by
 > [0116](0116-project-application-process.md): Domain is now Project,

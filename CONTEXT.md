@@ -302,9 +302,11 @@ those objects into the rendered bytes (the only model-to-text step). The
 vocabulary keeps the two apart so the act of deciding is still *resolution* or
 *derivation*, never rendering, and an adapter never formats bytes itself.
 
-**Deploy.** Applying Deliverables to a cluster, which is **defined separately**
-from this model ([`docs/adr/deferred/`](docs/adr/deferred/README.md)). A render
-is not a deploy.
+**Deploy.** Applying a render to the cluster: a pin commit names a Project's
+signed render by digest, and Flux, the one applier, pulls and applies it
+([chapter 55](spec/v1/55-delivery.md),
+[0127](docs/adr/model/0127-delivery-is-part-of-the-model.md)). A render is not
+a deploy, and neither is a pin until Flux has applied it.
 
 **Service.** Retired as a model word: the level is **Application**
 ([0116](docs/adr/model/0116-project-application-process.md)). Say *Service*

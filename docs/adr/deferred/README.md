@@ -1,59 +1,52 @@
-# Deferred: delivery and co-testing
+# Deferred: co-testing, and the retired delivery design
 
-These thirteen ADRs are **not part of the v1 model**. On 2026-09-07 the owner
-split them out: *how the estate deploys, and how dependency on other units for
-testing gates a deploy, are defined separately from the model.* They are
-parked here as direction work (argued, evidenced, reviewed) for the separate
-delivery-and-testing definition to take up, amend, or discard.
+On 2026-09-07 the owner split delivery and co-testing out of the model. On
+2026-09-24 delivery rejoined it
+([0127](../model/0127-delivery-is-part-of-the-model.md), specified in
+[chapter 55](../../../spec/v1/55-delivery.md)): Flux pulls a signed, pinned
+render per Project and Flagger switches it. The parked design here was a push,
+and most of it existed to make a second applier coexist with Flux, so it is
+retired record by record rather than taken up. **Co-testing stays parked.**
 
 Status of everything in this directory:
 
 - Not in the model register ([../README.md](../README.md)), not linted, not
-  normative. Their `normative:` pointers name spec sections the v1 spec will
-  **not** carry; the future delivery definition owns those.
-- The model's complete interface to this work is three demands, all decided in
-  the model: all-or-nothing [Release Unit](../model/0060-release-unit.md)
-  (superseded by [0062](../model/0062-application-is-the-release-unit.md))
-  cutover, destructive operations gated by
-  [Durability Class](../model/0015-durability-class-per-volume.md), and rendering
-  only from [pinned inputs](../model/0006-pinned-inputs.md).
-- The experiment that informs whether push delivery is needed at all is
-  [workspace#45](https://github.com/JorisJonkers-dev/workspace/issues/45)
-  (write the caller for the existing system-test workflows); see
-  [0008](0008-tested-equals-deployed-requires-push.md). It gates nothing in v1.
-- Two items here describe **live defects whose fixes proceed regardless** of
-  any delivery decision: the unpinned foundation charts in
-  [0048](0048-class-b-pinning.md), and this repository's own unpinned CI.
+  normative. A record here is evidence, and the **fate** column below says what
+  became of it.
+- Co-testing, if it is ever taken up, gates the pin commit: that commit is the
+  merge-shaped gate point [0008](0008-tested-equals-deployed-requires-push.md)
+  argued pull delivery could not provide. The experiment that informs it is
+  still [workspace#45](https://github.com/JorisJonkers-dev/workspace/issues/45).
+- One item describes a **live defect whose fix proceeds regardless**: the
+  unpinned foundation charts in [0048](0048-class-b-pinning.md).
 
 ## Inventory
 
-| # | decides | one line |
-|---|---|---|
-| [0008](0008-tested-equals-deployed-requires-push.md) | premise | tested-equals-deployed cannot be had from pull alone: untested, falsifiable via workspace#45 |
-| [0041](0041-push-delivery-boundary.md) | delivery | class A pushed by aggregators, class B stays with Flux |
-| [0042](0042-apply-before-prune-inventory.md) | delivery | apply first, prune last, from an inventory of rendered kinds |
-| [0043](0043-delete-authority-durability-gate.md) | delivery | deletion gated by Durability Class; no automatic PVC deletes |
-| [0044](0044-reconcile-cronjob.md) | delivery | reconciliation as an in-cluster CronJob per aggregator |
-| [0045](0045-break-glass-reporting.md) | delivery | break-glass exists, sticks, and reports itself |
-| [0046](0046-distinct-field-managers.md) | delivery | one field manager per applier, serialised by a lease |
-| [0047](0047-namespace-per-deployer.md) | delivery | a namespace has exactly one deployer |
-| [0048](0048-class-b-pinning.md) | delivery | the foundation pinned like everything else, live defect today |
-| [0049](0049-aggregator-owned-tests.md) | co-testing | system tests owned by the project that understands the relationship |
-| [0050](0050-exercises-and-deploys.md) | co-testing | exercises many-to-many, deploys exactly-one |
-| [0051](0051-vcluster-substrate.md) | co-testing | the test substrate is measured before it gates |
-| [0058](0058-delivery-machinery-observability.md) | delivery | the delivery machinery watches itself |
+| # | decides | one line | fate |
+|---|---|---|---|
+| [0008](0008-tested-equals-deployed-requires-push.md) | premise | tested-equals-deployed cannot be had from pull alone: untested, falsifiable via workspace#45 | re-graded: the pin commit is a gate point pull delivery has, so push is not required; stays parked with co-testing |
+| [0041](0041-push-delivery-boundary.md) | delivery | class A pushed by aggregators, class B stays with Flux | superseded by [0127](../model/0127-delivery-is-part-of-the-model.md): one applier, pulling |
+| [0042](0042-apply-before-prune-inventory.md) | delivery | apply first, prune last, from an inventory of rendered kinds | met by the applier: Flux applies, then garbage-collects from its own inventory |
+| [0043](0043-delete-authority-durability-gate.md) | delivery | deletion gated by Durability Class; no automatic PVC deletes | taken up by [#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158): a claim whose class derives a backup is never pruned |
+| [0044](0044-reconcile-cronjob.md) | delivery | reconciliation as an in-cluster CronJob per aggregator | superseded by [0127](../model/0127-delivery-is-part-of-the-model.md): Flux reconciles continuously |
+| [0045](0045-break-glass-reporting.md) | delivery | break-glass exists, sticks, and reports itself | superseded by [0127](../model/0127-delivery-is-part-of-the-model.md): break-glass is a pin revert, specified by [#154](https://github.com/JorisJonkers-dev/deploy-kit/issues/154) |
+| [0046](0046-distinct-field-managers.md) | delivery | one field manager per applier, serialised by a lease | superseded by [0127](../model/0127-delivery-is-part-of-the-model.md): one applier; the Flux and Flagger field split is [#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158)'s |
+| [0047](0047-namespace-per-deployer.md) | delivery | a namespace has exactly one deployer | superseded by [0127](../model/0127-delivery-is-part-of-the-model.md): there is one deployer |
+| [0048](0048-class-b-pinning.md) | delivery | the foundation pinned like everything else, live defect today | live defect, fixed regardless; Flagger joins the foundation pinned ([#148](https://github.com/JorisJonkers-dev/deploy-kit/issues/148)) |
+| [0049](0049-aggregator-owned-tests.md) | co-testing | system tests owned by the project that understands the relationship | parked |
+| [0050](0050-exercises-and-deploys.md) | co-testing | exercises many-to-many, deploys exactly-one | parked |
+| [0051](0051-vcluster-substrate.md) | co-testing | the test substrate is measured before it gates | parked |
+| [0058](0058-delivery-machinery-observability.md) | delivery | the delivery machinery watches itself | taken up in part by [#152](https://github.com/JorisJonkers-dev/deploy-kit/issues/152): the Release Gate reports held releases |
 
 ## Joined this set on 2026-09-08
 
 - **`flux-root`**: one Flux `Kustomization` per layer, with `dependsOn` and
-  health checks. It is one delivery mechanism's reading of the Reconcile Unit
-  DAG that [chapter 20](../../../spec/v1/20-resolved-deployment.md#the-reconcile-unit)
-  derives, so it is delivery's to define
-  ([0098](../model/0098-one-publication-path.md)). The model emits the kustomize
-  groupings and the ordering; until this set defines otherwise, the bootstrap
-  Flux source applies the tree those groupings describe.
-- **Whether a Release Unit may span an ownership boundary.** An Application belongs to
-  at most one unit and membership is estate-wide; whether a unit may cross
-  whatever ownership boundary a delivery definition introduces is that
-  definition's question, moved here from
-  [chapter 50](../../../spec/v1/50-lifecycle.md#open-in-this-chapter).
+  health checks, as one delivery mechanism's reading of the Reconcile Unit DAG
+  that [chapter 20](../../../spec/v1/20-resolved-deployment.md#the-reconcile-unit)
+  derives ([0098](../model/0098-one-publication-path.md)). **Fate:** taken up by
+  [#154](https://github.com/JorisJonkers-dev/deploy-kit/issues/154), where each
+  Project's pinned source is what a Kustomization applies.
+- **Whether a Release Unit may span an ownership boundary.** Moved here from
+  [chapter 50](../../../spec/v1/50-lifecycle.md#open-in-this-chapter). **Fate:**
+  moot: pull delivery has one deployer, so there is no ownership boundary for a
+  unit to span.

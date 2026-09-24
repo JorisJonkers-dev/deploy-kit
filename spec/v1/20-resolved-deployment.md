@@ -591,7 +591,7 @@ rather than discovered as a 500 at the edge.
 An Application is the Release Unit, and no member's new version receives traffic
 until every member's new version is healthy
 ([chapter 50](50-lifecycle.md#release-unit-switchover)). *Performing* the switch
-belongs to delivery, which is defined separately. What the model owes is the
+belongs to delivery ([chapter 55](55-delivery.md#switchover)). What the model owes is the
 gate's **inputs**, and it owes them as a derivation rather than as an object
 ([0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md)).
 
@@ -784,13 +784,11 @@ sentence used to name with them is deleted
 ([0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md),
 [There is no health timeout class](#derived-mechanics)); what an applier waits
 on per Application is the release gate's deadline, and what it waits on between
-units is this ordering. What a
-push-based applier would do with the same ordering (apply its slice layer by
-layer) belongs to the separately-defined delivery work in
-[docs/adr/deferred/](../../docs/adr/deferred/README.md), along with everything
-else about how objects reach a cluster, and with the mechanism that makes a
-Application's switchover all-or-nothing. The derivation does not change if that
-consumer is ever added; only the number of consumers does.
+units is this ordering. How objects reach a cluster, and the mechanism that makes
+an Application's switchover all-or-nothing, are [chapter 55](55-delivery.md)'s;
+the push design that would have read this ordering a second way is retired
+([0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md)). The
+derivation does not change with its consumers; only their number does.
 
 ## Publish back
 

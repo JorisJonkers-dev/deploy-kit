@@ -9,6 +9,8 @@ rests-on: ["0008"]
 
 # Break-glass exists, sticks, and reports itself
 
+> **Retired 2026-09-24** by [0127](../model/0127-delivery-is-part-of-the-model.md): delivery is Flux pulling a signed, pinned render, so this push-design record is superseded rather than taken up. Its fate is in [the inventory](README.md#inventory).
+
 ## Rests on
 
 Because the applied lock is read from the objects' own annotations, an untested
@@ -84,5 +86,5 @@ record of which divergence was deliberate.
   and the pre-flight rehearsal (`spec/v1/60-setup.md:156`) gains a second assertion (the alert fired), paid by joris.
 - The mechanism is group-G scope and inherits the untested premise of
   [0008](0008-tested-equals-deployed-requires-push.md); if push delivery is cut per
-  [0059](../model/0059-v1-scope-stopping-rule.md), Flux's rollback replaces it, paid by joris,
+  [0059](../model/0059-v1-scope-stopping-rule.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)), Flux's rollback replaces it, paid by joris,
   as work built ahead of the experiment that justifies it.

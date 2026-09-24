@@ -54,7 +54,7 @@ an imagined organisation.
 
 The premise is dated, not permanent. A 24-month horizon is long enough to build
 and operate v1 (the stopping rule in
-[0059](0059-v1-scope-stopping-rule.md) fits inside it) and short enough that the
+[0059](0059-v1-scope-stopping-rule.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md)) fits inside it) and short enough that the
 assumption is re-checked before it silently rots. RED-006's direction stands as
 the working rule until the horizon or a falsifying observation: separate the
 invariants that catch the maintainer's own mistakes from the ones that arbitrate
@@ -73,7 +73,7 @@ Undo cost today: edit this file and re-examine the six decisions whose
 [0037](0037-composition-oci-fragments.md),
 [0038](0038-participants-list-staleness.md),
 [0049](../deferred/0049-aggregator-owned-tests.md), [0050](../deferred/0050-exercises-and-deploys.md),
-[0059](0059-v1-scope-stopping-rule.md), a day of review, no code, no cluster
+[0059](0059-v1-scope-stopping-rule.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md)), a day of review, no code, no cluster
 change. Becomes irreversible once: mechanisms sized to this premise are live in
 production and a real second maintainer or second cluster exists; from that
 point the premise cannot be quietly re-worded: each dependent decision must be

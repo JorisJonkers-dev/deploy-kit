@@ -9,6 +9,8 @@ rests-on: ["0002"]
 
 # Every applier has its own field manager, serialised by a lease
 
+> **Retired 2026-09-24** by [0127](../model/0127-delivery-is-part-of-the-model.md): delivery is Flux pulling a signed, pinned render, so this push-design record is superseded rather than taken up. Its fate is in [the inventory](README.md#inventory).
+
 ## Rests on
 
 Two writers of one object cannot silently overwrite each other when their
