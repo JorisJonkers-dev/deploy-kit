@@ -41,8 +41,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: auth-api
-      app.kubernetes.io/instance: auth
+      app.kubernetes.io/instance: auth-api
   policyTypes:
   - Ingress
   - Egress
@@ -53,7 +52,7 @@ spec:
           kubernetes.io/metadata.name: kube-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: traefik
+          app.kubernetes.io/instance: traefik
     ports:
     - protocol: TCP
       port: 8081
@@ -63,7 +62,7 @@ spec:
           kubernetes.io/metadata.name: utility-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: prometheus
+          app.kubernetes.io/instance: prometheus
     ports:
     - protocol: TCP
       port: 8081
@@ -86,7 +85,7 @@ spec:
           kubernetes.io/metadata.name: data-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: postgres
+          app.kubernetes.io/instance: postgres
     ports:
     - protocol: TCP
       port: 5432
@@ -96,7 +95,7 @@ spec:
           kubernetes.io/metadata.name: data-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: valkey
+          app.kubernetes.io/instance: valkey
     ports:
     - protocol: TCP
       port: 6379
@@ -106,7 +105,7 @@ spec:
           kubernetes.io/metadata.name: data-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: rabbitmq
+          app.kubernetes.io/instance: rabbitmq
     ports:
     - protocol: TCP
       port: 5672
@@ -116,7 +115,7 @@ spec:
           kubernetes.io/metadata.name: utility-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: vault
+          app.kubernetes.io/instance: vault
     ports:
     - protocol: TCP
       port: 8200
@@ -135,8 +134,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: auth-ui
-      app.kubernetes.io/instance: auth
+      app.kubernetes.io/instance: auth-ui
   policyTypes:
   - Ingress
   - Egress
@@ -147,7 +145,7 @@ spec:
           kubernetes.io/metadata.name: kube-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: traefik
+          app.kubernetes.io/instance: traefik
     ports:
     - protocol: TCP
       port: 80

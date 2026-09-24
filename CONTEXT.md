@@ -345,6 +345,10 @@ only once every member has passed analysis; stop-start, where the old stop
 before the new start; or rolling, pod by pod with no gate, for delivery
 machinery alone ([chapter 55](spec/v1/55-delivery.md#switchover)).
 
+**Primary**: the copy of a `blue-green` Process that serves between releases,
+promoted into by Flagger once the barrier opens; the render never writes it
+([chapter 55](spec/v1/55-delivery.md#what-the-render-leaves-to-flagger)).
+
 **Release Gate**: the first-party controller that answers a switchover's
 questions from the Resolved Deployment, per member: may this member's new
 version start, and may it be promoted

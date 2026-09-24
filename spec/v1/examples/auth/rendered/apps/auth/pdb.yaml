@@ -13,6 +13,6 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: auth-api
-      app.kubernetes.io/instance: auth-api
+      # The primary: Flagger rewrites this label on the Deployment it promotes into.
+      app.kubernetes.io/name: auth-api-primary
   maxUnavailable: 1

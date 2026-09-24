@@ -69,8 +69,10 @@ contributes routes and exposures to both; it owns neither object.
 | `apps/knowledge/serviceaccount.yaml` | `kubernetes` | process `name` × 2, `project` | none (the adapter names one account after the *Application*: **G-09**) |
 | `apps/knowledge/configmap.yaml` | `kubernetes` | env files, `dependsOn`, the `provides` port, Cluster Target, process `name` | 15 of the 16 Runtime Profile keys (**G-13**); the database name spelling (**G-12**); change propagation on edit (**G-10**) |
 | `apps/knowledge/pvc.yaml` | `kubernetes` | `volumes[].claim`, `volumes[].durability`, `stateful` | `resources.requests.storage`: **the object does not apply without it** (**G-15**); the durability annotation key (**G-14**) |
-| `apps/knowledge/servicemonitor.yaml` | `prometheus` | `observability.scrape {process, surface, path}`, `provides` | cadence from the Platform document |
+| `apps/knowledge/servicemonitor.yaml` | `prometheus` (a `PodMonitor`) | `observability.scrape {process, surface, path}`, `provides` | cadence from the Platform document |
 | `apps/knowledge/networkpolicy.yaml` | `networking`, **not registered** (**G-16**) | `dependsOn`, `provides`, `exposure`, `scrape`, effective grant set, baseline | egress to anything outside the estate, the worker's git remote (**G-20**); ingress from consumers absent from the union (**G-18**); whether a namespace catch-all is emitted (**G-17**) |
+| `apps/knowledge/canary.yaml` | `kubernetes` | `cutover: continuous`, the Platform document's `delivery.analysis`, the Application revision | none; the Services and the primary are Flagger's ([chapter 30](../../../30-deliverables.md#flagger-ready-objects)) |
+| `apps/knowledge/migration.yaml` | `kubernetes` | `migration.changelog`, the Platform document's `migration` policy, the Application revision and the migration's `testedAgainst` | the owner credential's Vault role, which no adapter writes yet. The file holds the migration identity, this revision's migration, and the suspended down that only the Release Gate runs ([chapter 55](../../../55-delivery.md#failure-and-undo)) |
 | `apps/knowledge/vso.yaml` | `vso` | `secrets` at both levels, `delivery`, `rotation`, process `name` | Secret/object naming (**G-21**); which identity reads a shared path (**G-23**); the Kubernetes auth mount name |
 | `apps/knowledge/kustomization.yaml` | `kubernetes` | the emitted file set | ownership of `vso.yaml` (**G-25**) |
 | `edge/ingressroutes.yaml` | `traefik`, for the tier each route's audience selects | the Application's `exposure`: authored `host`, the exposure `audience` and five routes, four overriding it to `anonymous`, each naming `knowledge-api` and its `http` surface | - |
@@ -307,10 +309,7 @@ Platform document advertises `secretsEncryption: true`, so **none of this projec
 ships** on today's inputs. There is no Platform document in the example
 set to check against.
 
-**G-37** `knowledge-api` switches `blue-green`, so a rotation restarts
-`knowledge-api-primary`, not `knowledge-api`
-([chapter 55](../../../55-delivery.md#secret-rotation)). This tree renders no
-Flagger objects yet, so it has no primary, and its `rolloutRestartTargets` still
-name `knowledge-api`. The targets are renamed when the Canary and its primary
-are rendered ([#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158)).
-The destinations already carry `flagger.app/config-tracking: disabled`.
+**G-37** ~~The restart targets name `knowledge-api`.~~ **Closed**: they name
+`knowledge-api-primary`, the Deployment Flagger promotes into
+([chapter 55](../../../55-delivery.md#secret-rotation)), now that `canary.yaml`
+renders the Canary.

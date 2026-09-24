@@ -1,0 +1,149 @@
+# GENERATED. Never hand-edit.
+#
+# The migration identity, the migration of this revision, and the down that
+# undoes it (spec/v1/55-delivery.md#failure-and-undo). Both Jobs are named for
+# the revision, rendered suspended and created once: Flux never updates them,
+# so the Release Gate is the only writer of `suspend`. It starts the migration
+# once the compatibility proof holds, and the down only while the release is
+# held, every new copy is at zero, every primary runs the serving revision, and
+# the release holds no non-transactional changeset.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: knowledge-migration
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/name: knowledge-migration
+    app.kubernetes.io/instance: knowledge-migration
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: migration
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: knowledge-migration-6325500a2c54
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/name: knowledge-migration
+    app.kubernetes.io/instance: knowledge-migration-6325500a2c54
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: migration
+  annotations:
+    # Created once, never updated: the Release Gate alone writes `suspend`.
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  suspend: true               # started by the Release Gate once the proof holds
+  backoffLimit: 0             # never retried within a revision; a failure holds the release
+  activeDeadlineSeconds: 600  # the Platform document's migration deadline
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: knowledge-migration
+        app.kubernetes.io/instance: knowledge-migration-6325500a2c54
+        app.kubernetes.io/part-of: knowledge
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: migration
+    spec:
+      serviceAccountName: knowledge-migration
+      automountServiceAccountToken: true  # the runner reads its owner credential itself
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: migration
+        image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-migration@sha256:c0a4e1b2c0a4e1b2c0a4e1b2c0a4e1b2c0a4e1b2c0a4e1b2c0a4e1b2c0a4e1b2
+        # `up`: the changelog, then a tagDatabase changeset of the runner's own,
+        # named for this revision, so the next release's down has a row to
+        # return to even when this one changes no schema.
+        args:
+        - up
+        - --revision=sha256:6325500a2c541ed3970d3003aa61fd3fa1e9f98d673c1a2095323b90dc2363df
+        env:
+        - name: VAULT_ADDR
+          value: http://vault.utility-system.svc.cluster.local:8200
+        - name: VAULT_ROLE
+          value: knowledge-migration
+        - name: DATABASE_CREDENTIAL_PATH
+          value: database/creds/knowledge-owner
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 100m
+          limits:
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: knowledge-migration-down-6325500a2c54
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/name: knowledge-migration-down
+    app.kubernetes.io/instance: knowledge-migration-down-6325500a2c54
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: migration
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  suspend: true               # the Release Gate alone unsuspends it
+  backoffLimit: 0             # a failed down is reported, never retried
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: knowledge-migration-down
+        app.kubernetes.io/instance: knowledge-migration-down-6325500a2c54
+        app.kubernetes.io/part-of: knowledge
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: migration
+    spec:
+      serviceAccountName: knowledge-migration
+      automountServiceAccountToken: true
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: migration
+        image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-migration@sha256:c0a4e1b2c0a4e1b2c0a4e1b2c0a4e1b2c0a4e1b2c0a4e1b2c0a4e1b2c0a4e1b2
+        # `down`: back to the tag of the serving revision, the migration's
+        # testedAgainst.
+        args:
+        - down
+        - --to=sha256:5a1f0c7e5a1f0c7e5a1f0c7e5a1f0c7e5a1f0c7e5a1f0c7e5a1f0c7e5a1f0c7e
+        env:
+        - name: VAULT_ADDR
+          value: http://vault.utility-system.svc.cluster.local:8200
+        - name: VAULT_ROLE
+          value: knowledge-migration
+        - name: DATABASE_CREDENTIAL_PATH
+          value: database/creds/knowledge-owner
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 100m
+          limits:
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL

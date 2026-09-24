@@ -12,6 +12,8 @@ metadata:
     app.kubernetes.io/component: python
   annotations:
     deploy-kit.jorisjonkers.dev/durability: irreplaceable
+    # A backed-up class: removing it from the render never deletes the claim.
+    kustomize.toolkit.fluxcd.io/prune: disabled
 spec:
   accessModes:
   - ReadWriteOnce

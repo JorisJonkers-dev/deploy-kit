@@ -57,7 +57,7 @@ one of them is a **central** adapter running once over the composed union:
 
 | adapter | subsystem | emits |
 |---|---|---|
-| `kubernetes` | processes | per Application: the controller, `Service`, `ServiceAccount`, `ConfigMap` (including every inbound-derived Asset) `PersistentVolumeClaim`, `PodDisruptionBudget` above one replica, the backup and sweep `CronJob`, the migration identity with its per-revision migration `Job` and suspended down `Job` ([chapter 55](../../spec/v1/55-delivery.md#failure-and-undo)), `Namespace` per project, and the kustomize `Kustomization` per directory |
+| `kubernetes` | processes | per Application: the controller, `Service` (none for a `blue-green` Process, whose Services Flagger generates), the `Canary` of each `blue-green` Process with its `HorizontalPodAutoscaler` where it declares `replicas` ([Flagger-ready objects](#flagger-ready-objects)), `ServiceAccount`, `ConfigMap` (including every inbound-derived Asset) `PersistentVolumeClaim`, `PodDisruptionBudget` above one replica, the backup and sweep `CronJob`, the migration identity with its per-revision migration `Job` and suspended down `Job` ([chapter 55](../../spec/v1/55-delivery.md#failure-and-undo)), `Namespace` per project, and the kustomize `Kustomization` per directory |
 | `networking` | policy | every `NetworkPolicy` ([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)) |
 | `prometheus` | monitoring | one `ServiceMonitor` or `PodMonitor` per Application that declares `observability`, from the named surface and the Platform document's cadence. No `PrometheusRule`: PromQL is the monitoring stack's ([chapter 10](../../spec/v1/10-project-intent.md#observability)) |
 | `traefik` | edge | one `IngressRoute` set and one `Middleware` set **per tier** the Platform document declares ([0076](../../docs/adr/model/0076-middleware-has-one-producer.md), [0098](../../docs/adr/model/0098-one-publication-path.md)) |
@@ -370,6 +370,27 @@ needs a decision, not an allowlist entry."*
 | a path outside the gitops root, or containing `..` | `E_UNSAFE_OUTPUT_PATH` |
 | a hand-added file inside the rendered tree | `E_RENDER_OVERWRITE_REFUSED`; the writer refuses to overwrite a file it does not manage, and parity would stay red |
 | a hand-written object of any kind, a raw manifest, a pack file | there is no pass-through ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)); what cannot be declared yet is a ledger entry with a review date |
+
+## Flagger-ready objects
+
+A `blue-green` Process is switched by Flagger
+([chapter 55](55-delivery.md#what-the-render-leaves-to-flagger)), and Flagger
+generates objects of its own and rewrites a label on the ones it copies. Every
+adapter renders so that Flux and Flagger never own the same field
+([0137](../../docs/adr/model/0137-the-render-leaves-flaggers-objects-to-flagger.md)):
+
+| rule | adapter | why |
+|---|---|---|
+| one `Canary` per `blue-green` Process, its cadence the Platform document's `delivery.analysis` and its three webhooks the Release Gate's | `kubernetes` | the Canary is how Flagger is told to switch the Process, and the gate is who decides |
+| no `Service` named `<name>`, `<name>-primary` or `<name>-canary` for such a Process | `kubernetes` | Flagger generates all three; a rendered one would have two owners |
+| no `replicas` on its Deployment; a `replicas` declaration becomes a `HorizontalPodAutoscaler` with `minReplicas` equal to `maxReplicas`, named by the Canary | `kubernetes` | Flagger scales the Deployment it watches to zero and owns the primary's count, so a count in the render is a field Flux would reset |
+| a `PodDisruptionBudget` selects `app.kubernetes.io/name: <name>-primary` | `kubernetes` | the primary is what serves between releases; the budget protects it, not the scaled-down source |
+| every other selector names `app.kubernetes.io/instance`, never `app.kubernetes.io/name` | `networking`, `prometheus` | Flagger rewrites `app.kubernetes.io/name` on the primary and copies `instance` unchanged, so an `instance` selector matches the primary and the canary alike |
+| a scraped `blue-green` Process is scraped by a `PodMonitor` | `prometheus` | the Services are Flagger's, and the canary's pods must be scraped for the Release Gate's checks |
+| one configuration object per Process | `kubernetes` | Flagger tracks a changed `ConfigMap` as a new revision of every Canary that reads it; one per Process keeps a change to one Process from releasing another |
+| a restart target names `<name>-primary` | `vso` | [chapter 55](55-delivery.md#secret-rotation) |
+| the migration and prepare Jobs are named by Application revision and created once | `kubernetes` | [chapter 55](55-delivery.md#failure-and-undo) |
+| a claim whose Durability Class derives a backup carries `kustomize.toolkit.fluxcd.io/prune: disabled` | `kubernetes` | removing a Process from the render never deletes the data it held ([chapter 55](55-delivery.md#what-the-render-leaves-to-flagger)) |
 
 ## Delivery reads this tree
 

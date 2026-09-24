@@ -13,8 +13,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: valkey
-      app.kubernetes.io/instance: platform-valkey
+      app.kubernetes.io/instance: valkey
   policyTypes:
   - Ingress
   - Egress
@@ -25,7 +24,7 @@ spec:
           kubernetes.io/metadata.name: auth-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: auth-api
+          app.kubernetes.io/instance: auth-api
     ports:
     - protocol: TCP
       port: 6379

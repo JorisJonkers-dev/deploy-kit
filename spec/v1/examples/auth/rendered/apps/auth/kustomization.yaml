@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: auth-system
 resources:
 - workload.yaml
+- canary.yaml
 - serviceaccount.yaml
 - pdb.yaml
 - servicemonitor.yaml

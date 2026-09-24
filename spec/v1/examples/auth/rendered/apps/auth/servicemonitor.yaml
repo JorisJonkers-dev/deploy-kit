@@ -1,6 +1,6 @@
 # GENERATED. Never hand-edit.
 apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
+kind: PodMonitor
 metadata:
   name: auth-api
   namespace: auth-system
@@ -12,14 +12,15 @@ metadata:
     app.kubernetes.io/component: jvm
     release: metrics-stack
 spec:
+  # Pods, not a Service: Flagger generates the Services, and the canary's
+  # pods must be scraped for the Release Gate's checks.
   selector:
     matchLabels:
-      app.kubernetes.io/name: auth-api
       app.kubernetes.io/instance: auth-api
   namespaceSelector:
     matchNames:
     - auth-system
-  endpoints:
+  podMetricsEndpoints:
   - port: http
     path: /api/actuator/prometheus
     interval: 30s

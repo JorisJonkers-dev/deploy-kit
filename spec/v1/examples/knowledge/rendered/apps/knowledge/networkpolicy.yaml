@@ -13,7 +13,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: knowledge-api
+      app.kubernetes.io/instance: knowledge-api
   policyTypes:
   - Ingress
   - Egress
@@ -51,7 +51,7 @@ spec:
           kubernetes.io/metadata.name: data-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: postgres
+          app.kubernetes.io/instance: postgres
     ports:
     - protocol: TCP
       port: 5432
@@ -61,7 +61,7 @@ spec:
           kubernetes.io/metadata.name: data-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: rabbitmq
+          app.kubernetes.io/instance: rabbitmq
     ports:
     - protocol: TCP
       port: 5672
@@ -71,7 +71,7 @@ spec:
           kubernetes.io/metadata.name: vault-system
       podSelector:
         matchLabels:
-          app.kubernetes.io/name: vault
+          app.kubernetes.io/instance: vault
     ports:
     - protocol: TCP
       port: 8200

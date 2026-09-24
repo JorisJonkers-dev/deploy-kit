@@ -1,6 +1,6 @@
 # GENERATED. Never hand-edit.
 apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
+kind: PodMonitor
 metadata:
   name: notes-api
   namespace: notes-system
@@ -12,14 +12,15 @@ metadata:
     app.kubernetes.io/component: node
     release: metrics-stack
 spec:
+  # Pods, not a Service: Flagger generates the Services, and the canary's
+  # pods must be scraped for the Release Gate's checks.
   selector:
     matchLabels:
-      app.kubernetes.io/name: notes-api
       app.kubernetes.io/instance: notes-api
   namespaceSelector:
     matchNames:
     - notes-system
-  endpoints:
+  podMetricsEndpoints:
   - port: http
     path: /metrics
     interval: 30s

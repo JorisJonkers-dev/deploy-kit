@@ -11,7 +11,7 @@ met rather than a list of them:
 | demand | decided in | how delivery meets it |
 |---|---|---|
 | **Release Unit atomicity** | [0062](../../docs/adr/model/0062-application-is-the-release-unit.md) | [Switchover](#switchover): a barrier over every member of the Application, run by the [Release Gate](#the-release-gate) |
-| **Durability Class gating** | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | no destructive operation proceeds automatically against a volume declared `recoverable` or `irreplaceable`: the applier never prunes such a claim ([#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158)) |
+| **Durability Class gating** | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | no destructive operation proceeds automatically against a volume declared `recoverable` or `irreplaceable`: the applier never prunes such a claim ([What the render leaves to Flagger](#what-the-render-leaves-to-flagger)) |
 | **Pinned inputs only** | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | [Rendered artifacts and pins](#rendered-artifacts-and-pins): what is applied is a signed artifact named by digest, rendered from a recorded lock |
 
 ## Scope
@@ -381,13 +381,35 @@ the `vso` adapter's ([chapter 30](30-deliverables.md#vault-configuration-is-rend
 because it names a Flagger object rather than a model concept. Restarting
 `<name>` instead would be worse than useless: it patches the pod template
 Flagger watches, and so starts the very release this section rules out. The
-primaries are rendered with the rest of the Flagger-ready objects
-([#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158)); until
-then the worked trees render no primary, and their restart targets still name
-`<name>`.
+primary is Flagger's ([What the render leaves to Flagger](#what-the-render-leaves-to-flagger)).
 
 ## What the render leaves to Flagger
 
-Which objects Flagger generates and the render therefore omits, and what the
-render marks so that Flux and Flagger do not fight over a field. Specified in
-full by [#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158).
+Flux applies the render and Flagger switches `blue-green` Processes, so the two
+must never own the same field
+([0137](../../docs/adr/model/0137-the-render-leaves-flaggers-objects-to-flagger.md)).
+For each `blue-green` Process, the render carries a `Canary` naming its
+Deployment, and Flagger generates the rest:
+
+| Flagger generates | so the render |
+|---|---|
+| the Services `<name>`, `<name>-primary` and `<name>-canary` | renders no Service for the Process; the edge's routes name `<name>`, which Flagger points at the primary |
+| the primary Deployment, `<name>-primary`, promoted into from `<name>` | renders no `replicas` on `<name>`; a capacity exception is a `HorizontalPodAutoscaler` with equal bounds, which Flagger copies to the primary |
+| a copy of every `ConfigMap` and Secret it tracks, for the primary | renders one configuration object per Process, and excludes every Vault-delivered Secret from tracking ([Secret rotation](#secret-rotation)) |
+| the label `app.kubernetes.io/name: <name>-primary` on the primary's pods | selects by `app.kubernetes.io/instance` everywhere but the disruption budget, which selects the primary |
+
+The Canary's analysis runs at the Platform document's cadence and asks the
+Release Gate three questions through webhooks: `confirm-rollout` before the new
+copy starts, `rollout` on each analysis iteration, which the gate answers from
+the member's `checks`, and `confirm-promotion` at the barrier
+([The Release Gate](#the-release-gate)). Each webhook carries the Application,
+the Process and the Application revision, and nothing else: the gate reads the
+rest from the Resolved Deployment. No metric query and no threshold is rendered;
+what a check measures is the gate's. Every rule, with the adapter that keeps it,
+is [chapter 30](30-deliverables.md#flagger-ready-objects)'s.
+
+Two marks keep Flux from undoing what it must not. A migration or prepare Job is
+created once and never updated ([Failure and undo](#failure-and-undo)). A claim
+whose Durability Class derives a backup is never pruned: a Process leaving the
+render does not delete the data it held, which is Durability Class gating kept
+by the applier ([Scope](#scope)).
