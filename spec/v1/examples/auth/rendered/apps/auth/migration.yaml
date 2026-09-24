@@ -1,0 +1,140 @@
+# GENERATED. Never hand-edit.
+#
+# The migration identity, the migration of this revision, and the down that
+# undoes it (spec/v1/55-delivery.md#failure-and-undo). The down is rendered
+# suspended: nothing runs it but the Release Gate, and only while the release is
+# held, every new copy is at zero, every primary runs the serving revision, and
+# the release holds no non-transactional changeset.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: auth-migration
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-migration
+    app.kubernetes.io/instance: auth-migration
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: migration
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: auth-migration
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-migration
+    app.kubernetes.io/instance: auth-migration
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: migration
+  annotations:
+    # A Job's template is immutable; a new revision replaces it.
+    kustomize.toolkit.fluxcd.io/force: enabled
+spec:
+  backoffLimit: 0             # never retried within a revision; a failure holds the release
+  activeDeadlineSeconds: 600  # the Platform document's migration deadline
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: auth-migration
+        app.kubernetes.io/instance: auth-migration
+        app.kubernetes.io/part-of: auth
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: migration
+    spec:
+      serviceAccountName: auth-migration
+      automountServiceAccountToken: true  # the runner reads its owner credential itself
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: migration
+        image: ghcr.io/jorisjonkers-dev/auth/auth-migration@sha256:4e8a1c2b6d0f3e5a7c9b1d3f5e7a9c0b2d4f6e8a0c2b4d6f8e0a2c4b6d8f0e2a
+        args:
+        - update
+        # Tag the database with the revision it now serves, so the down of the
+        # next release has a point to return to.
+        - --tag=sha256:9d2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a
+        env:
+        - name: VAULT_ROLE
+          value: auth-migration
+        - name: DATABASE_CREDENTIAL_PATH
+          value: database/creds/auth-owner
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 100m
+          limits:
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: auth-migration-down
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-migration-down
+    app.kubernetes.io/instance: auth-migration-down
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: migration
+  annotations:
+    kustomize.toolkit.fluxcd.io/force: enabled
+spec:
+  suspend: true               # the Release Gate alone unsuspends it
+  backoffLimit: 0             # a failed down is reported, never retried
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: auth-migration-down
+        app.kubernetes.io/instance: auth-migration-down
+        app.kubernetes.io/part-of: auth
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: migration
+    spec:
+      serviceAccountName: auth-migration
+      automountServiceAccountToken: true
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: migration
+        image: ghcr.io/jorisjonkers-dev/auth/auth-migration@sha256:4e8a1c2b6d0f3e5a7c9b1d3f5e7a9c0b2d4f6e8a0c2b4d6f8e0a2c4b6d8f0e2a
+        args:
+        - rollback
+        # The serving revision: the migration's testedAgainst.
+        - --tag=sha256:5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d
+        env:
+        - name: VAULT_ROLE
+          value: auth-migration
+        - name: DATABASE_CREDENTIAL_PATH
+          value: database/creds/auth-owner
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 100m
+          limits:
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL

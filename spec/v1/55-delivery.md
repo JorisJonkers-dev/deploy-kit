@@ -32,6 +32,7 @@ What is in scope, and the section that specifies each:
 | what gates the switch, and who answers | [The Release Gate](#the-release-gate) |
 | what a failed release leaves behind | [Held releases](#held-releases) |
 | how a schema moves with its Application | [Migrations](#migrations) |
+| what proves a migration safe to run while the old version serves | [Migration safety](#migration-safety) |
 | what runs before a new version starts, in what order | [Release order](#release-order) |
 | what undoes a failed migration, and when it may | [Failure and undo](#failure-and-undo) |
 | why rotating a secret is not a release | [Secret rotation](#secret-rotation) |
@@ -177,7 +178,7 @@ two questions, from the Resolved Deployment and nothing else
 
 | question | asked | the gate answers yes when |
 |---|---|---|
-| may this member's new version start? | once per member per revision, before its new version scales up | the Application's migration and every prepare Process for this revision have completed ([Release order](#release-order)), and the revision the compatibility proof was run against is the one serving ([Failure and undo](#failure-and-undo)) |
+| may this member's new version start? | once per member per revision, before its new version scales up | the Application's migration and every prepare Process for this revision have completed ([Release order](#release-order)), and the revision the compatibility proof was run against is the one serving ([Migration safety](#migration-safety)) |
 | may this member be promoted? | after the member's own analysis passes | every member of the Application has passed its analysis for this revision: the barrier |
 
 It reads the Application's release-gate inputs (its members, their readiness,
@@ -233,10 +234,44 @@ one Application that moves it:
 | `migration: none` | nothing: another Application of the project moves the schema, or there is none |
 
 Because the migration runs while the old version serves, every change it makes
-must be one the old version tolerates. What proves that, and what undoes a
-migration whose release then fails, is [Failure and undo](#failure-and-undo)'s,
-specified in full by
-[#157](https://github.com/JorisJonkers-dev/deploy-kit/issues/157).
+must be one the old version tolerates. What proves that is
+[Migration safety](#migration-safety); what undoes a migration whose release
+then fails is [Failure and undo](#failure-and-undo).
+
+## Migration safety
+
+A migration is safe when the version still serving keeps working against the
+schema it leaves behind. The model cannot read a changelog to decide that, so it
+is proven where the changelog and both versions exist, the application's own
+CI, and the proof travels with the Intent Fragment
+([0135](../../docs/adr/model/0135-a-migration-is-proven-against-the-serving-version.md)).
+Three obligations, each a gate on publishing the fragment:
+
+| obligation | what it runs | what it catches |
+|---|---|---|
+| **serving-version compatibility** | the serving revision's own test suite, against a database the new changelog has just migrated | a change the old version cannot survive: a dropped or renamed column it still reads, a new `NOT NULL` column it never writes |
+| **reversibility** | Liquibase `update-testing-rollback`: every changeset applied, rolled back and applied again | a changeset with no working rollback, which a down could not undo |
+| **a non-transactional changeset stands alone** | a check that a changeset marked `runInTransaction: false` is the only changeset in its release | a partial failure no rollback can repair, bundled with changes that could have been undone |
+
+The first obligation is what makes **expand, then contract** mechanical rather
+than a convention. A column, table or row shape leaves the schema in two
+releases: version N stops using it, and only N+1, whose serving version is N,
+may remove it. Removing it one release early fails the compatibility test,
+because N's own suite still reads it.
+
+The fragment records the proof: the serving revision the suite ran against, and
+whether the release holds a non-transactional changeset. Layer 2 carries both as
+the migration's `testedAgainst` and `nonTransactional`
+([chapter 20](20-resolved-deployment.md#the-migration)). A first release, with
+nothing serving, carries no `testedAgainst`, and has nothing to be compatible
+with.
+
+**The gate holds a proof that went stale.** The Release Gate lets a new version
+start only while every primary of the Application runs the revision named by
+`testedAgainst` ([The Release Gate](#the-release-gate)). If another release
+landed in between, the proof was run against a version that no longer serves,
+and the release is held until a fragment proven against the current one is
+published.
 
 ## Release order
 
@@ -258,9 +293,33 @@ is, is [Failure and undo](#failure-and-undo)'s.
 
 ## Failure and undo
 
-What each failure leaves serving, and the only conditions under which a
-migration is undone automatically. Specified in full by
-[#157](https://github.com/JorisJonkers-dev/deploy-kit/issues/157).
+What each failure leaves serving, and whether the migration that already ran is
+undone:
+
+| fails | what serves afterwards | the migration |
+|---|---|---|
+| **the migration itself** | the old version; no new version ever started | Liquibase rolls back the failing changeset's own transaction; the earlier changesets of the release stay, each proven compatible, and are undone by the down if the conditions below hold |
+| **a prepare Process** | the old version; no new version ever started | undone by the down, if the conditions below hold |
+| **analysis, or the barrier** | the old version; Flagger scales every member's new copy back to zero | undone by the down, if the conditions below hold |
+| **promotion** | a mix: some members' primaries run the new version | **never undone automatically**: a promoted member needs the new schema. An urgent alert fires, and the fix is forward |
+
+**The down.** After a migration succeeds, the migration tags the database with
+the Application revision it migrated for. The render carries, beside the
+migration's own Job, a **suspended** Job template, `<application>-migration-down`,
+that rolls the database back to the tag of the serving revision, `testedAgainst`.
+Nothing runs it on a schedule and nothing applies it unsuspended: the Release
+Gate unsuspends it, and only when **all** of these hold:
+
+- the Application is [held](#held-releases);
+- every member's new copy is at zero replicas;
+- every member's primary runs the revision `testedAgainst` names;
+- the release holds no non-transactional changeset (`nonTransactional: false`).
+
+When any of them does not hold, the gate undoes nothing and raises an **urgent**
+alert naming the Application, the tag it would roll back to and the condition
+that failed. A down that fails is reported the same way and never retried.
+Undoing is never a side effect of a new pin: the down runs against the release
+that failed, before anything replaces it.
 
 ## Secret rotation
 

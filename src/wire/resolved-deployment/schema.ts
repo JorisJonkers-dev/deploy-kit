@@ -268,11 +268,18 @@ const releaseGate = z
   .meta({ id: "ReleaseGate" });
 
 // What layer 2 records of a migration (spec/v1/20-resolved-deployment.md#the-migration):
-// the runner image the Application's changelog was built into, and the serving
-// revision its compatibility was proven against. Everything else about it is a
+// the runner image the Application's changelog was built into, the serving
+// revision its compatibility was proven against (absent on a first release,
+// when nothing serves), and whether the release holds a changeset that cannot
+// run in a transaction, which no automatic undo may touch
+// (spec/v1/55-delivery.md#failure-and-undo). Everything else about it is a
 // fixed function of the Application id and the Platform document.
 const resolvedMigration = z
-  .strictObject({ runner: text, testedAgainst: digest.exactOptional() })
+  .strictObject({
+    runner: text,
+    testedAgainst: digest.exactOptional(),
+    nonTransactional: z.boolean(),
+  })
   .meta({ id: "ResolvedMigration" });
 
 const application = {

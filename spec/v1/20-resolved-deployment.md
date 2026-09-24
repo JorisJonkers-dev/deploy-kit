@@ -671,12 +671,13 @@ shape computes the revision over that form, not over its model.
 
 An Application declaring `migration: {changelog}`
 ([chapter 10](10-project-intent.md#migration)) carries a `migration` block, and
-it records two things only:
+it records three things only:
 
 | field | derived from |
 |---|---|
 | `runner` | the migration image: the Platform document's runner, by digest, with the Application's changelog built in; carried by the Intent Fragment's images lock |
-| `testedAgainst` | the serving revision the compatibility of this changelog was proven against ([chapter 55](55-delivery.md#failure-and-undo)) |
+| `testedAgainst` | the serving revision the compatibility of this changelog was proven against, recorded by the Intent Fragment's compatibility proof; absent on a first release, when nothing serves ([chapter 55](55-delivery.md#migration-safety)) |
+| `nonTransactional` | whether the release holds a changeset that cannot run in a transaction, recorded by the same proof; such a release is never undone automatically ([chapter 55](55-delivery.md#failure-and-undo)) |
 
 Everything else about a migration is a fixed function of the Application id,
 the project and the Platform document, so recording it would repeat a
@@ -933,6 +934,8 @@ reconcileAfter: [apps-core, apps-data, apps-vso-secrets]
 
 migration:                           # it declares a changelog (chapter 10)
   runner: ghcr.io/jorisjonkers-dev/knowledge/knowledge-migration@sha256:…
+  testedAgainst: sha256:…            # the serving revision the proof ran against
+  nonTransactional: false            # so a held release may be undone automatically
 
 releaseGate:                         # what the Release Gate reads (0132)
   deadline: 1800s                    # max over the members
@@ -1259,6 +1262,7 @@ classDiagram
     class ResolvedMigration {
         +ImageRef runner
         +Digest testedAgainst
+        +bool nonTransactional
     }
     class GateMember {
         +string process
