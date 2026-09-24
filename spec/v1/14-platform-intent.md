@@ -169,7 +169,7 @@ bootstrap:
 | in the set | why it cannot be declared |
 |---|---|
 | k3s itself | it is what applies |
-| the Flux source | it pulls the tree that everything else is in, and it trusts only artifacts from `artifacts.repository` signed by `artifacts.signer` ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)) |
+| the Flux source | `sourceRef` pulls the estate repository, which holds every Project's pinned source; `artifacts` says where those sources fetch each Project's render and whose keyless signature they accept ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)) |
 | Vault's unseal | a secret the model must never hold |
 | the CRDs the estate uses | cluster-scoped schema that must exist before any object of that kind can apply; the components that *use* them are declared Applications |
 
@@ -491,7 +491,7 @@ classDiagram
     class FluxSource {
         +string sourceRef
     }
-    class RenderArtifacts {
+    class RenderedArtifacts {
         +string repository
     }
     class ArtifactSigner {
@@ -577,8 +577,8 @@ classDiagram
     DeliveryPolicy "1" *-- "1" AnalysisPolicy : analysis
     Platform "1" *-- "0..*" Provider : providers
     Bootstrap "1" *-- "1" FluxSource : flux
-    FluxSource "1" *-- "1" RenderArtifacts : artifacts
-    RenderArtifacts "1" *-- "1" ArtifactSigner : signer
+    FluxSource "1" *-- "1" RenderedArtifacts : artifacts
+    RenderedArtifacts "1" *-- "1" ArtifactSigner : signer
     Bootstrap "1" *-- "1" VaultState : vault
     DurabilityPolicies "1" *-- "0..3" DurabilityPolicy : per class
     DurabilityPolicy "1" *-- "0..1" OffClusterCopy : offCluster

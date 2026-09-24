@@ -145,10 +145,13 @@ individually reporting healthy), into a visibly held release, paid for by
 whoever shipped the failing member.
 
 **Rollback is unit-scoped.** Reverting one member means reverting the unit, and
-what a revert targets is a lock: the previous lock is the whole coherent input
-set, so a unit-scoped rollback is a lock-scoped operation. The cost is a larger
-rollback scope than a single Application, and the benefit is that the scope is
-consistent: there is no state in which half a unit has been reverted.
+what a revert targets is the Application's own inputs: a revert in its
+repository publishes a fragment, which composes a render, which moves its
+Project's pin forward to the old content
+([chapter 55](55-delivery.md#rendered-artifacts-and-pins)). The cost is a larger
+rollback scope than a single Process, and the benefit is that the scope is
+consistent: there is no state in which half a unit has been reverted. Moving a
+pin back by hand is break-glass, not a rollback.
 
 **A Release Unit is not a Reconcile Unit.**
 
@@ -273,7 +276,7 @@ flowchart LR
     P1 -->|no| H["hold the Application<br/>old versions keep serving"]
     P2 -->|no| H
     K -->|yes| SW["switch all Processes together"]
-    H --> RB["fix forward, or revert the Application<br/>to the previous lock"]
+    H --> RB["fix forward, or revert the Application<br/>in its own repository"]
 ```
 
 ### The change, end to end

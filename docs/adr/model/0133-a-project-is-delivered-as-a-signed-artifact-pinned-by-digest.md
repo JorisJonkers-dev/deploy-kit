@@ -45,8 +45,8 @@ what the pinned inputs produce.
 
 **One artifact per Project, not per estate.** A Project is the unit of
 authorship and of a namespace. One estate-wide artifact would move every pin on
-every fragment publish; per Project, a render that did not change keeps its
-digest, and an unrelated publish deploys nothing.
+every fragment publish; per Project, a render whose content did not change
+publishes nothing, and an unrelated publish deploys nothing.
 
 **Keyless, because a key is a secret.** A signing key must be stored, rotated
 and kept out of logs. The workflow's OIDC identity is issued per run and names
@@ -55,8 +55,8 @@ Flux needs to check.
 
 **The pin is a commit, because the history is then the deploy log.** Who
 deployed what, and when, is `git log` on one file per Project, and a revert is a
-commit like any other. `[ci skip]` keeps the pin commit from starting a
-composition of its own.
+commit like any other. `[ci skip]` keeps the estate repository's push checks off
+a commit that only moves digests.
 
 **Fragments after images.** A fragment published before its images exist
 names a digest nothing can pull, and the render built from it fails at pod

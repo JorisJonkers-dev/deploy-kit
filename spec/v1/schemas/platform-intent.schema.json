@@ -194,7 +194,7 @@
           "minLength": 1
         },
         "artifacts": {
-          "$ref": "#/$defs/RenderArtifacts"
+          "$ref": "#/$defs/RenderedArtifacts"
         }
       },
       "required": [
@@ -203,7 +203,7 @@
       ],
       "additionalProperties": false
     },
-    "RenderArtifacts": {
+    "RenderedArtifacts": {
       "type": "object",
       "properties": {
         "repository": {

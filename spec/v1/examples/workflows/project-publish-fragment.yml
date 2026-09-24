@@ -27,8 +27,9 @@
 #
 # ONE job, many steps. Jobs are billed by the minute rounded up, so splitting a
 # fast pipeline across parallel jobs multiplies its cost while the work stays
-# identical. Each step carries `if: ${{ !cancelled() }}` so a single failure
-# still surfaces the rest.
+# identical. Each check carries `if: ${{ !cancelled() }}` so a single failure
+# still surfaces the rest; the push runs only when every check succeeded, so a
+# failed validation or an image that does not resolve publishes nothing.
 name: Publish Intent Fragment
 
 on:
@@ -143,7 +144,7 @@ jobs:
 
       - name: Push and resolve
         id: resolve
-        if: ${{ !cancelled() }}
+        if: ${{ success() }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -151,7 +152,7 @@ jobs:
           echo "$GH_TOKEN" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
 
           ( cd fragment && oras push "$REF" \
-              --annotation "org.opencontainers.image.revision=${{ github.sha }}" \
+              --annotation "org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha || github.sha }}" \
               --annotation "dev.jorisjonkers.inputs-sha=$(cat INPUTS_SHA)" \
               . )
 
@@ -163,7 +164,7 @@ jobs:
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
 
       - name: Verify the value, not the command
-        if: ${{ !cancelled() }}
+        if: ${{ success() }}
         run: |
           # A successful push is not evidence that a consumer can read what we
           # meant. Pull it back by digest and check the content.

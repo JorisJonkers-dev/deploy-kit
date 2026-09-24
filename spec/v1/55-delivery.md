@@ -61,8 +61,9 @@ anywhere ([0133](../../docs/adr/model/0133-a-project-is-delivered-as-a-signed-ar
 
 ```text
 ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Project
+  dev.jorisjonkers.content-hash  sha256:…          this Project's share of the rendered tree
   dev.jorisjonkers.render-hash   sha256:…          the Resolved Deployment's renderHash
-  dev.jorisjonkers.lock-digest   sha256:…          the composition lock it was rendered from
+  dev.jorisjonkers.lock-digest   sha256:…          the composed artifact carrying the lock
 ```
 
 - **One artifact per Project.** Composition renders the estate once and
@@ -71,28 +72,40 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   `bootstrap.flux.artifacts.repository`
   ([chapter 14](14-platform-intent.md#the-bootstrap-set)). Each of the Project's
   Reconcile Units applies its own path inside it
-  ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)).
+  ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)). The paths the
+  path plan scopes to the estate rather than to a Project
+  ([chapter 20](20-resolved-deployment.md#the-path-plan)) form one more artifact,
+  `<repository>/estate`, published and pinned exactly like a Project's.
 - **Signed keyless, and annotated.** The artifact is signed by the composition
   workflow's own OIDC identity, the Platform document's
   `bootstrap.flux.artifacts.signer`, so no signing key exists to leak or rotate.
-  It carries the render hash and the composition lock digest, so an artifact
-  names the inputs that reproduce it.
-- **An unchanged render is an unchanged artifact.** An artifact holds its
-  Project's render and nothing else, so a composition that renders a Project
-  byte for byte as before publishes the same digest and moves no pin: another
-  Project's fragment never redeploys this one.
+  It carries the render hash and the digest of the composed artifact that holds
+  the lock, so an artifact names the inputs that reproduce it, and the content
+  hash of the files it holds.
+- **An unchanged render publishes nothing.** The files an artifact holds are its
+  Project's share of the rendered tree and nothing else. A composition that
+  renders a Project whose content hash equals the pinned artifact's publishes
+  no artifact and moves no pin, so another Project's fragment never redeploys
+  this one; the pinned artifact keeps naming the composition that first
+  produced its content.
 - **The pin.** The estate repository holds one committed Flux source per
-  Project, an `OCIRepository` naming `<repository>/<project>` by `ref.digest`
-  and verifying keyless against the signer. After publishing, composition
-  commits to the estate repository's `main` a change to `ref.digest` for each
-  Project whose digest moved, marked `[ci skip]` so the commit starts no
-  composition of its own. That commit is the deploy. The source objects and the
-  Reconcile Units' Kustomizations are the only committed objects, derived from
-  the Platform document and the Reconcile Unit DAG; the Deliverables themselves
-  exist only inside artifacts.
+  Project, `projects/<project>/source.yaml`: an `OCIRepository` naming
+  `<repository>/<project>` by `ref.digest` and verifying keyless against the
+  signer, with one Kustomization per Reconcile Unit of the Project applying its
+  path. Composition writes the file the first time a Project composes, from the
+  Platform document and the Reconcile Unit DAG, and afterwards changes only its
+  `ref.digest`. Removing a retired Project's file is a handover step, not a pin
+  ([chapter 60](60-setup.md)). After publishing, composition commits to the
+  estate repository's `main` the moved `ref.digest` of every Project whose
+  artifact changed, marked `[ci skip]` so the estate repository's push checks
+  do not run on a commit that only moves digests. That commit is the deploy.
+  These files are the only committed objects; the Deliverables themselves exist
+  only inside artifacts.
 - **Flux verifies before it applies.** An artifact whose signature does not
   verify against the signer is never applied: its source reports the failure,
-  and what was running keeps running.
+  and what was running keeps running. Composition verifies each artifact the
+  same way, against the Platform document's signer, before it commits a pin,
+  and a composition that failed any step before it commits no pin at all.
 - **A fragment names only images that exist.** An application repository
   publishes its Intent Fragment only after its images are built and pushed, with
   every image alias it names resolved to a digest, a UID and a GID in the

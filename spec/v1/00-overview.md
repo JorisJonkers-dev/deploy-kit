@@ -260,8 +260,8 @@ parse-checked in CI.
 |---|---|
 | `examples/{auth,knowledge,data,minimal}/<project>.project.yml` | Project Intent, one file per project: two-level secret grants, `probes: none` stated explicitly, TCP probes, `placement` dimensions, declared `writablePaths`, `durability` per volume, and the `auth` pair as two Processes of one Application |
 | `examples/{auth,knowledge,data,minimal}/env/<process>/base.env` | env files, one set **per Process** in a directory named for it, threaded with `${dependency:…}` and `${secret:<granted-path>#<key>}` placeholders whose paths byte-match a granted path |
-| `examples/workflows/project-publish-fragment.yml` | publish on merge, `oras push` then `oras resolve`, read back |
-| `examples/workflows/compose.yml` | pull participants, assert the estate-wide invariants, **prove the gate can fail** |
+| `examples/workflows/project-publish-fragment.yml` | publish after the image build, with every image digest resolved, `oras push` then `oras resolve`, read back |
+| `examples/workflows/compose.yml` | pull participants, assert the estate-wide invariants, **prove the gate can fail**, then publish one signed artifact per Project and commit the moved pins |
 | `examples/negative/duplicate-application-id/` | a negative fixture, so an invariant that stops running is detectable |
 | [`examples/refusals/`](examples/refusals/README.md) | the refusal fixtures: an alert class with no signal, a class outside the vocabulary, the `continuous`/`interrupted` pair over RWO storage, and a mixed-cutover Application |
 
@@ -411,9 +411,10 @@ through, with the deciding ADR named.
   repository-scoped and a fragment declares the projects it contributes to, so
   splitting a multi-project repository is a convenience, never a prerequisite.
 - ~~**Fragment publication trigger**~~ and ~~**who runs composition.**~~ Decided
-  by [0037](../../docs/adr/model/0037-composition-oci-fragments.md): fragments publish
-  on merge, independently of any image release; composition runs on any publish
-  and merges nothing.
+  by [0037](../../docs/adr/model/0037-composition-oci-fragments.md): composition
+  runs on any publish and merges nothing. Fragments publish on merge, after the
+  repository's images are built, as amended by
+  [0133](../../docs/adr/model/0133-a-project-is-delivered-as-a-signed-artifact-pinned-by-digest.md).
 - ~~**The `resolved.yml` drift check's failure mode.**~~ Decided by
   [0033](../../docs/adr/model/0033-assignments-published-back.md): the file is
   generated, never hand-edited, and its drift check fails the build in the

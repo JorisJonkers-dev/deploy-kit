@@ -48,9 +48,9 @@ Bootstrap returns Bootstrap:
 
 FluxSource returns FluxSource:
 	(('sourceRef' ':' sourceRef=Text)
-	& ('artifacts' ':' BEGIN artifacts=RenderArtifacts END));
+	& ('artifacts' ':' BEGIN artifacts=RenderedArtifacts END));
 
-RenderArtifacts returns RenderArtifacts:
+RenderedArtifacts returns RenderedArtifacts:
 	(('repository' ':' repository=Text)
 	& ('signer' ':' BEGIN signer=ArtifactSigner END));
 

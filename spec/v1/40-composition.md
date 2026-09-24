@@ -83,12 +83,18 @@ A fragment carries:
   table every `placement` is matched against
   ([0056](../../docs/adr/model/0056-node-facts-single-source.md))
 - Registered Unmanaged Surfaces the project is responsible for
+- its share of the images lock: every image alias the project file names,
+  resolved to the digest its repository's build pushed, with the UID and GID it
+  runs as ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md))
 
-A fragment publishes **on merge to the default branch, independently of any image
-release**. An intent-only change (a changed exposure, a secret grant, a
-dependency edge, a raised `placement.memory`) produces no image, and tying
-publication to a version tag would leave such a change unpublished behind a
-staleness window. The worked workflow is
+A fragment publishes **after its repository's images are built**, on every merge
+to the default branch, with every alias it names already resolved
+([0133](../../docs/adr/model/0133-a-project-is-delivered-as-a-signed-artifact-pinned-by-digest.md),
+amending [0037](../../docs/adr/model/0037-composition-oci-fragments.md)). A
+fragment therefore never names an image nothing can pull, and an intent-only
+change (a changed exposure, a secret grant, a dependency edge, a raised
+`placement.memory`) still publishes on its own merge, a build later, rather than
+waiting behind a version tag and a staleness window. The worked workflow is
 [`examples/workflows/project-publish-fragment.yml`](examples/workflows/project-publish-fragment.yml).
 
 ### Publication, and why the lock is an output
