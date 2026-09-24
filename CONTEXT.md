@@ -320,16 +320,22 @@ and named by digest. What the applier fetches, and never committed as files
 it. A deploy is a pin commit applied; the estate's git history is its deploy log
 ([chapter 55](spec/v1/55-delivery.md#rendered-artifacts-and-pins)).
 
-**Switchover**: how an Application's new version replaces the old one: its new
-Processes start beside the old and receive traffic only once every member has
-passed analysis, or the old stop before the new start
-([chapter 55](spec/v1/55-delivery.md#switchover)).
+**Switchover**: how an Application's new version replaces the old one:
+blue/green, where its new Processes start beside the old and receive traffic
+only once every member has passed analysis; stop-start, where the old stop
+before the new start; or rolling, pod by pod with no gate, for delivery
+machinery alone ([chapter 55](spec/v1/55-delivery.md#switchover)).
 
 **Release Gate**: the first-party controller that answers a switchover's
-questions from the Resolved Deployment: may this Application's new version
-start, and may it be promoted
+questions from the Resolved Deployment, per member: may this member's new
+version start, and may it be promoted
 ([chapter 55](spec/v1/55-delivery.md#the-release-gate)). Not the Kubernetes
 readiness gate.
+
+**Delivery machinery**: the Applications that perform a switch and are never
+switched by one: the Release Gate, Flagger and the edge proxies, listed in the
+Platform document. Their continuous Processes roll in place
+([chapter 14](spec/v1/14-platform-intent.md#delivery-policy)).
 
 **Held**: the state of an Application whose release failed: its old version
 keeps serving while the pin names the new one, until a new pin lands

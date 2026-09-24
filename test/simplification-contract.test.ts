@@ -32,6 +32,7 @@ const projectFiles = [
   "auth/auth.project.yml",
   "knowledge/knowledge.project.yml",
   "data/data.project.yml",
+  "delivery/delivery.project.yml",
   "minimal/notes.project.yml",
 ].map((file) => join(examples, file));
 

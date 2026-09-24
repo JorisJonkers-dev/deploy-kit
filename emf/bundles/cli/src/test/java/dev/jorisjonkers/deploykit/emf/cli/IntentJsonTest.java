@@ -3,6 +3,9 @@ package dev.jorisjonkers.deploykit.emf.cli;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.AnalysisPolicy;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Application;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.DeliveryPolicy;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.HttpProbe;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Lifecycle;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Match;
@@ -11,6 +14,7 @@ import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Probes;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Process;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentFactory;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Route;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -49,6 +53,24 @@ class IntentJsonTest {
     void anOptionalFeatureTheDocumentLeftOutIsAbsent() {
         // `cutover` is among them since it became Shared Intent (docs/adr/model/0124).
         assertThat(IntentJson.of(process())).doesNotContainKeys("startupBudget", "probes", "provides", "cutover");
+    }
+
+    @Test
+    void aListOfLinkedNamesIsWrittenAsTheIdentifiersTheyLinkTo() {
+        // The delivery machinery, linked across the documents read together.
+        DeliveryPolicy delivery = MODEL.createDeliveryPolicy();
+        AnalysisPolicy analysis = MODEL.createAnalysisPolicy();
+        analysis.setInterval("30s");
+        analysis.setIterations(4);
+        analysis.setThreshold(3);
+        delivery.setAnalysis(analysis);
+        for (String id : new String[] {"flagger", "release-gate"}) {
+            Application application = MODEL.createApplication();
+            application.setId(id);
+            delivery.getMachinery().add(application);
+        }
+
+        assertThat(IntentJson.of(delivery)).contains(entry("machinery", List.of("flagger", "release-gate")));
     }
 
     @Test

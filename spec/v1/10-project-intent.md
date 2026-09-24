@@ -2078,7 +2078,7 @@ boolean nobody reads:
 
 | value | means | validation |
 |---|---|---|
-| `continuous` | the next revision must keep serving throughout its cutover: it starts beside the old one and takes traffic only once every member of its Application has passed analysis, a **blue/green** switchover | refused over storage that cannot hold a second copy, including an **`ReadWriteOnce`** volume: `E_CUTOVER_UNHONOURABLE`; eligible only on a node that fits two copies of the Process ([chapter 20](20-resolved-deployment.md#layer-2-does-not-assign-a-node)) |
+| `continuous` | the next revision must keep serving throughout its cutover: it starts beside the old one and takes traffic only once every member of its Application has passed analysis, a **blue/green** switchover; on delivery machinery, which cannot gate itself, a **rolling** one ([chapter 55](55-delivery.md#switchover)) | refused over storage that cannot hold a second copy, including an **`ReadWriteOnce`** volume: `E_CUTOVER_UNHONOURABLE`; eligible only on a node that fits two copies of the Process ([chapter 20](20-resolved-deployment.md#layer-2-does-not-assign-a-node)) |
 | `interrupted` | the owner accepts a stop-then-start cutover | accepted for any storage; the adapter derives the safe strategy |
 
 The two values name the owner's promise, not a mechanism: the Kubernetes and
@@ -2086,8 +2086,9 @@ Flagger spellings (`RollingUpdate`, `Recreate`, `maxSurge`, a Canary) are
 derived by the adapters and appear nowhere in layer 1
 ([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md),
 [0128](../../docs/adr/model/0128-cutover-names-the-promise.md)). They were
-`rolling` and `recreate` until 2026-09-24, and `rolling` named a Kubernetes
-strategy the switchover no longer is.
+`rolling` and `recreate` until 2026-09-24, and an authored `rolling` named a
+Kubernetes strategy the owner has no business choosing; the `rolling`
+switchover a machinery Process derives is the platform's, never authored.
 
 An RWO volume cannot attach to two pods at once, so a `continuous` cutover over
 one is a promise the substrate cannot keep. Refusing it is the point: the old

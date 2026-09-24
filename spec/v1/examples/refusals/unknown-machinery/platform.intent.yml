@@ -29,12 +29,6 @@ tiers:
     listener: plain
     certificates: none
     traefik: edge-proxy
-delivery:
-  machinery: [edge-proxy]
-  analysis:
-    interval: 30s
-    iterations: 4
-    threshold: 3
 durability:
   reconstructible: {}
   recoverable: { schedule: "15 3 * * *", retain: 14 }
@@ -47,3 +41,9 @@ monitors:
 hardening: restricted
 probes: { period: 10s, timeout: 5s, failures: 3 }
 ephemeral: { size: 64Mi }
+
+# The refusal: `release-gate` is named as delivery machinery, and no project
+# file declares it (spec/v1/14-platform-intent.md#delivery-policy).
+delivery:
+  machinery: [edge-proxy, release-gate]
+  analysis: { interval: 30s, iterations: 4, threshold: 3 }

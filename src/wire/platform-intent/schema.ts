@@ -116,6 +116,20 @@ const migrationPolicy = z
   .strictObject({ runner: text, deadline: text, memory: text, cpu: text })
   .meta({ id: "MigrationPolicy" });
 
+// How the platform switches a release (spec/v1/14-platform-intent.md#delivery-policy):
+// the Applications that perform the switch and are never switched by it, and
+// the cadence every analysis runs at.
+const analysisPolicy = z
+  .strictObject({ interval: text, iterations: count, threshold: count })
+  .meta({ id: "AnalysisPolicy" });
+
+const deliveryPolicy = z
+  .strictObject({
+    machinery: z.array(text.meta({ reference: "Application" })).min(1),
+    analysis: analysisPolicy,
+  })
+  .meta({ id: "DeliveryPolicy" });
+
 const provider = z
   .strictObject({
     name: text,
@@ -141,6 +155,7 @@ export const platformIntent = z
     probes: probeCadence,
     ephemeral: ephemeralPolicy,
     migration: migrationPolicy.exactOptional(),
+    delivery: deliveryPolicy.exactOptional(),
     providers: z.array(provider).min(1).exactOptional(),
   })
   .meta({ id: "Platform" });

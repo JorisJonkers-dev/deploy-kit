@@ -26,6 +26,7 @@ import {
   ADAPTERS,
   MIDDLEWARE_KINDS,
   PATH_SCOPES,
+  ANALYSIS_CHECKS,
   PINNED_INPUTS,
   SWITCHOVERS,
 } from "../../domain/resolved-deployment/vocabularies.ts";
@@ -237,14 +238,28 @@ const resolvedExposure = z
 
 // ------------------------------------------------------------ an Application
 
+// What a member is analysed on, beside its readiness: the checks its Runtime
+// Profile's HTTP server metrics allow (spec/v1/55-delivery.md#the-release-gate).
+const analysisCheck = z.enum(ANALYSIS_CHECKS).meta({ id: "AnalysisCheck" });
+
 const gateMember = z
-  .strictObject({ process: text, readiness: probeTarget })
+  .strictObject({
+    process: text,
+    readiness: probeTarget,
+    checks: z.array(analysisCheck).exactOptional(),
+  })
   .meta({ id: "GateMember" });
+
+// The Platform document's cadence, carried so the projection is all the gate reads.
+const gateAnalysis = z
+  .strictObject({ interval: duration, iterations: count, threshold: count })
+  .meta({ id: "GateAnalysis" });
 
 const releaseGate = z
   .strictObject({
     // `max` over the members: the unit waits for its slowest legitimate starter.
     deadline: duration,
+    analysis: gateAnalysis,
     // A Process declaring `probes: none` publishes no readiness signal and is
     // no member. A continuous Application where every Process does is refused
     // at composition with E_RELEASE_UNIT_NO_READINESS.
@@ -279,22 +294,23 @@ const application = {
   processes: z.array(resolvedProcess).min(1),
 };
 
-/** The switchover each `cutover` derives (spec/v1/55-delivery.md#switchover). */
-const SWITCHOVER_OF = {
-  continuous: "blue-green",
-  interrupted: "stop-start",
-} as const;
+/** The switchovers each `cutover` may derive (spec/v1/55-delivery.md#switchover):
+ * `rolling` is the delivery machinery's, which no gate switches. */
+const SWITCHOVERS_OF = {
+  continuous: ["blue-green", "rolling"],
+  interrupted: ["stop-start"],
+} as const satisfies Record<string, readonly string[]>;
 
 /**
  * What a derivation guarantees and the shape alone cannot say: a Process's
- * switchover is the one its cutover derives, and an Application carries
- * release-gate inputs exactly when its cutover is `continuous`.
+ * switchover is one its cutover derives, and an Application carries
+ * release-gate inputs exactly when a Process of it switches blue/green.
  */
 function switchoverFollowsCutover(
   element: {
     readonly releaseGate?: unknown;
     readonly processes: readonly {
-      readonly cutover?: keyof typeof SWITCHOVER_OF;
+      readonly cutover?: keyof typeof SWITCHOVERS_OF;
       readonly switchover?: string;
     }[];
   },
@@ -302,28 +318,31 @@ function switchoverFollowsCutover(
 ): void {
   for (const [index, process] of element.processes.entries()) {
     if (process.switchover === undefined) continue;
-    if (process.cutover === undefined)
+    if (process.cutover === undefined) {
       context.addIssue({
         code: "custom",
         path: ["processes", index, "switchover"],
         message: "a Process with no cutover switches nothing",
       });
-    else if (process.switchover !== SWITCHOVER_OF[process.cutover])
+      continue;
+    }
+    const allowed: readonly string[] = SWITCHOVERS_OF[process.cutover];
+    if (!allowed.includes(process.switchover))
       context.addIssue({
         code: "custom",
         path: ["processes", index, "switchover"],
-        message: `a ${process.cutover} cutover derives the ${SWITCHOVER_OF[process.cutover]} switchover`,
+        message: `a ${process.cutover} cutover derives the ${allowed.join(" or ")} switchover`,
       });
   }
-  const continuous = element.processes.some(
-    (process) => process.cutover === "continuous",
+  const gated = element.processes.some(
+    (process) => process.switchover === "blue-green",
   );
-  if (continuous !== (element.releaseGate !== undefined))
+  if (gated !== (element.releaseGate !== undefined))
     context.addIssue({
       code: "custom",
       path: ["releaseGate"],
       message:
-        "an Application carries release-gate inputs exactly when its cutover is continuous",
+        "an Application carries release-gate inputs exactly when a Process of it switches blue-green",
     });
 }
 

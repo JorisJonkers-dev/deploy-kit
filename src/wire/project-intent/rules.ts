@@ -192,7 +192,7 @@ function completenessRefusals(
 }
 
 /** The lowest level's answer to the cutover question, or none if no level answers. */
-function effectiveCutover(
+export function effectiveCutover(
   process: Process,
   above: readonly Level[],
 ): Process["cutover"] {

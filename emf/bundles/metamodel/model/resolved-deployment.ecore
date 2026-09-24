@@ -76,13 +76,28 @@
 
   <eClassifiers xsi:type="ecore:EClass" name="ReleaseGate">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="deadline" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The Platform document's cadence, carried so the projection is all the gate reads. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="analysis" lowerBound="1" eType="#//GateAnalysis" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="members" lowerBound="1" upperBound="-1" eType="#//GateMember" containment="true"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="GateAnalysis">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="iterations" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="threshold" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+
+  <!-- What a member is analysed on beside its readiness, from its Runtime Profile. -->
+  <eClassifiers xsi:type="ecore:EEnum" name="AnalysisCheck">
+    <eLiterals name="errorRate" literal="error-rate"/>
+    <eLiterals name="latency" value="1" literal="latency"/>
   </eClassifiers>
 
   <!-- A Process declaring `probes: none` publishes no readiness and is no member. -->
   <eClassifiers xsi:type="ecore:EClass" name="GateMember">
     <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="readiness" lowerBound="1" eType="#//ProbeTarget" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="checks" upperBound="-1" eType="#//AnalysisCheck"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedProcess">
@@ -325,10 +340,12 @@
   </eClassifiers>
 
   <!-- How the new version replaces the old (spec/v1/55-delivery.md#switchover):
-       `continuous` derives blue-green, `interrupted` stop-start. -->
+       `continuous` derives blue-green, or rolling on delivery machinery, which no
+       gate switches; `interrupted` derives stop-start. -->
   <eClassifiers xsi:type="ecore:EEnum" name="Switchover">
     <eLiterals name="blueGreen" literal="blue-green"/>
     <eLiterals name="stopStart" value="1" literal="stop-start"/>
+    <eLiterals name="rolling" value="2" literal="rolling"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EEnum" name="Match">

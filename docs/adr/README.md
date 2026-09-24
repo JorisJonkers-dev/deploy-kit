@@ -71,7 +71,7 @@ stays parked. The same day `cutover` became `continuous | interrupted`, answered
 alike across an Application, with `continuous` deriving a blue/green switchover
 ([0128](model/0128-cutover-names-the-promise.md)); [0030](model/0030-runtime-mechanics-derived.md),
 [0061](model/0061-placement-is-hard-dimensions.md) and
-[0071](model/0071-release-gate-inputs-are-layer-2.md) carry amendment notes. An Application's element of the Resolved Deployment
+[0071](model/0071-release-gate-inputs-are-layer-2.md) (superseded by [0132](model/0132-the-release-gate-answers-the-switch.md)) carry amendment notes. An Application's element of the Resolved Deployment
 gained its revision, the digest delivery names a release by
 ([0129](model/0129-the-application-revision-is-the-digest-of-its-element.md)),
 and an Application declares how its schema moves, with one Liquibase system and
@@ -79,7 +79,11 @@ one database per project
 ([0130](model/0130-migration-is-declared-on-the-application.md), amending
 [0080](model/0080-database-catalog-is-derived-data.md)). Forward-only setup
 became a `prepare` Process, run after the migration and before the new version
-([0131](model/0131-prepare-processes-are-forward-only-setup.md)).
+([0131](model/0131-prepare-processes-are-forward-only-setup.md)). A first-party
+Release Gate now answers the switch from layer-2 data and holds an
+Application's members at a barrier
+([0132](model/0132-the-release-gate-answers-the-switch.md), superseding
+[0071](model/0071-release-gate-inputs-are-layer-2.md)).
 
 Tier-0 **premises** carry one falsifiable claim each; tier-1 **decisions** name
 the premises they stand on in `rests-on`. A `claim: open` means decided in
@@ -217,7 +221,8 @@ delivery work it underpins.
 | [0054](model/0054-adapter-attribution.md) | Every Deliverable is attributed to exactly one Adapter | settled |
 | [0055](model/0055-bidirectional-ledgers.md) | Every accepted hole is a bidirectional ledger | settled |
 | [0070](model/0070-path-authority-is-layer-2.md) | Layer 2 assigns every output path; layer 3 serialises what it is handed | settled |
-| [0071](model/0071-release-gate-inputs-are-layer-2.md) | The release gate is derived into layer 2, and nothing is rendered for it | settled |
+| [0071](model/0071-release-gate-inputs-are-layer-2.md) | The release gate is derived into layer 2, and nothing is rendered for it | superseded by [0132](model/0132-the-release-gate-answers-the-switch.md) |
+| [0132](model/0132-the-release-gate-answers-the-switch.md) | A first-party Release Gate answers the switch from layer-2 data, holds every member at a barrier, and fails closed | open |
 | [0072](model/0072-the-label-set-is-fixed.md) | The object label set is fixed, and two of its labels are immutable | settled |
 | [0073](model/0073-vault-policy-is-a-deliverable.md) | The derived Vault policy and auth role are Deliverables of their own adapter | settled |
 | [0074](model/0074-networking-adapter-emits-policy.md) | A networking adapter owns every NetworkPolicy in the estate | settled |

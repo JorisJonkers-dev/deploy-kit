@@ -49,8 +49,18 @@ public final class IntentJson {
         if (feature instanceof EReference reference && !reference.isContainment()) {
             // A reference is written as the name that linked it: the identifier of what it points at, or,
             // where it points into a document that was not read with this one, the name as written.
+            if (reference.isMany()) {
+                // A list of names, each the one its own position wrote.
+                List<Object> names = new ArrayList<>();
+                List<?> targets = (List<?>) value;
+                for (int index = 0; index < targets.size(); index++) {
+                    EObject target = (EObject) targets.get(index);
+                    names.add(target.eIsProxy() ? written(owner, reference, index) : EcoreUtil.getID(target));
+                }
+                return names;
+            }
             EObject target = (EObject) value;
-            return target.eIsProxy() ? written(owner, reference) : EcoreUtil.getID(target);
+            return target.eIsProxy() ? written(owner, reference, 0) : EcoreUtil.getID(target);
         }
         if (feature.isMany()) {
             return many(feature, (List<?>) value);
@@ -58,10 +68,10 @@ public final class IntentJson {
         return single(value);
     }
 
-    /** The name a document wrote for {@code reference}, without the quotes that are only syntax. */
-    private static String written(EObject owner, EReference reference) {
+    /** The name a document wrote at {@code index} of {@code reference}, without the quotes that are only syntax. */
+    private static String written(EObject owner, EReference reference, int index) {
         return ProjectIntentValueConverters.unquote(NodeModelUtils.getTokenText(
-                NodeModelUtils.findNodesForFeature(owner, reference).get(0)));
+                NodeModelUtils.findNodesForFeature(owner, reference).get(index)));
     }
 
     private static Object many(EStructuralFeature feature, List<?> values) {

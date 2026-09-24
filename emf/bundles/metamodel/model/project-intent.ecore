@@ -340,6 +340,7 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="probes" lowerBound="1" eType="#//ProbeCadence" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="ephemeral" lowerBound="1" eType="#//EphemeralPolicy" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="migration" eType="#//MigrationPolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="delivery" eType="#//DeliveryPolicy" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="providers" upperBound="-1" eType="#//Provider" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="PlatformMetadata">
@@ -411,6 +412,18 @@
   </eClassifiers>
   <!-- The runner every managed changelog builds on, and its terms
        (spec/v1/14-platform-intent.md#migration-policy). -->
+  <!-- How a release is switched (spec/v1/14-platform-intent.md#delivery-policy):
+       the Applications that perform the switch and are never switched by it,
+       linked across the documents read together, and the analysis cadence. -->
+  <eClassifiers xsi:type="ecore:EClass" name="DeliveryPolicy">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="machinery" lowerBound="1" upperBound="-1" eType="#//Application"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="analysis" lowerBound="1" eType="#//AnalysisPolicy" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AnalysisPolicy">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="iterations" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="threshold" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="MigrationPolicy">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="runner" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="deadline" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

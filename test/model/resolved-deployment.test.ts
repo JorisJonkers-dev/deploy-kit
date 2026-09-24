@@ -238,7 +238,7 @@ describe("the metamodel's own keys", () => {
 });
 
 describe("the committed oracles", () => {
-  const ORACLES = ["minimal", "knowledge"] as const;
+  const ORACLES = ["minimal", "knowledge", "delivery"] as const;
   const oracle = (name: string): unknown =>
     JSON.parse(
       readFileSync(
@@ -261,6 +261,20 @@ describe("the committed oracles", () => {
     const result = resolvedApplicationDocument.safeParse(oracle(name));
 
     expect(result.error?.issues ?? []).toStrictEqual([]);
+  });
+
+  it("carries delivery machinery with a rolling switchover and no gate", () => {
+    // The Release Gate is named in `delivery.machinery`, so its continuous
+    // cutover derives a rolling switchover, never blue/green, and nothing gates
+    // it (spec/v1/55-delivery.md#the-release-gate).
+    const gate = oracle("delivery") as Record<string, unknown>;
+
+    expect(gate["releaseGate"]).toBeUndefined();
+    expect(
+      (gate["processes"] as { cutover?: string; switchover?: string }[]).map(
+        ({ cutover, switchover }) => [cutover, switchover],
+      ),
+    ).toStrictEqual([["continuous", "rolling"]]);
   });
 
   /** knowledge's second Application, the one whose cutover is interrupted. */
@@ -299,7 +313,7 @@ describe("the committed oracles", () => {
     const wrong = ingest();
     const [worker] = wrong["processes"] as Record<string, unknown>[];
     if (worker === undefined) throw new Error("the worker left the oracle");
-    worker["switchover"] = "blue-green";
+    worker["switchover"] = "rolling";
 
     expect(
       resolvedApplicationDocument
@@ -311,6 +325,23 @@ describe("the committed oracles", () => {
         message: "a interrupted cutover derives the stop-start switchover",
       },
     ]);
+  });
+
+  it("names every switchover a continuous cutover may derive when it refuses one", () => {
+    const knowledge = oracle("knowledge") as Record<string, unknown>;
+    const [api] = knowledge["processes"] as Record<string, unknown>[];
+    if (api === undefined) throw new Error("the api left the oracle");
+
+    expect(
+      resolvedApplicationDocument
+        .safeParse({
+          ...knowledge,
+          processes: [{ ...api, switchover: "stop-start" }],
+        })
+        .error?.issues.map(({ message }) => message),
+    ).toContain(
+      "a continuous cutover derives the blue-green or rolling switchover",
+    );
   });
 
   it("says why when a gate is on the wrong side", () => {
@@ -327,7 +358,7 @@ describe("the committed oracles", () => {
       {
         code: "custom",
         message:
-          "an Application carries release-gate inputs exactly when its cutover is continuous",
+          "an Application carries release-gate inputs exactly when a Process of it switches blue-green",
       },
     ]);
   });
@@ -389,11 +420,12 @@ describe("the committed oracles", () => {
     const wrongSwitchover = ingest();
     const [worker] = wrongSwitchover["processes"] as Record<string, unknown>[];
     if (worker === undefined) throw new Error("the worker left the oracle");
-    worker["switchover"] = "blue-green";
+    worker["switchover"] = "rolling";
     const gated = {
       ...ingest(),
       releaseGate: {
         deadline: "360s",
+        analysis: { interval: "30s", iterations: 4, threshold: 3 },
         members: [{ process: "x", readiness: { tcp: 1 } }],
       },
     };
@@ -536,6 +568,7 @@ describe("the metamodel names every class the chapter draws", () => {
       "AccessTier",
       "AdapterName",
       "AlertClass",
+      "AnalysisCheck",
       "Audience",
       "ContentPolicy",
       "Cutover",

@@ -30,6 +30,13 @@ context Application
 				and effectiveCutover <> Cutover::absent)
 			->collect(effectiveCutover)->asSet()->size() <= 1
 
+	-- A continuous Application switches blue/green, and the gate analyses the
+	-- switch at the platform's cadence, so the platform must offer one.
+	inv E_NO_DELIVERY_POLICY:
+		processes->exists(lifecycle = Lifecycle::application
+				and effectiveCutover = Cutover::continuous)
+			implies Platform.allInstances()->forAll(delivery <> null)
+
 context Observability
 	-- The block is whole or absent: a class states how loudly to wake someone,
 	-- and means nothing without a signal to wake them about.

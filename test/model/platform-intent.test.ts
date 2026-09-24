@@ -51,6 +51,14 @@ describe("parsePlatformIntent", () => {
       cpu: "100m",
     });
     expect(withheld.ok && "migration" in withheld.value.platform).toBe(false);
+    const ungated = parsePlatformIntent(
+      WORKED.replace(/\ndelivery:\n( {2}.*\n)+/, "\n"),
+    );
+    expect(offered.ok && offered.value.platform.delivery).toStrictEqual({
+      machinery: ["traefik-public", "traefik-lan", "flagger", "release-gate"],
+      analysis: { interval: "30s", iterations: 4, threshold: 3 },
+    });
+    expect(ungated.ok && "delivery" in ungated.value.platform).toBe(false);
   });
 
   it("maps the worked document into the domain model", () => {

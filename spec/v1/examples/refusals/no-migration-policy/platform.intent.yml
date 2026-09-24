@@ -1,9 +1,5 @@
-# REFUSED: E_SECRETS_AT_REST_REQUIRED
-#
-# A grant delivered as an environment variable writes the secret into a
-# Kubernetes Secret, and this platform does not encrypt secrets at rest. The
-# grant would leave the value readable on disk
-# (spec/v1/14-platform-intent.md #substrate-facts).
+# The Platform document this case's project file is read beside. It offers
+# what the case needs and nothing it tests.
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Platform
@@ -33,6 +29,12 @@ tiers:
     listener: plain
     certificates: none
     traefik: edge-proxy
+delivery:
+  machinery: [edge-proxy]
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
 durability:
   reconstructible: {}
   recoverable: { schedule: "15 3 * * *", retain: 14 }

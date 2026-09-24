@@ -102,12 +102,13 @@ TREES = {"10-project-intent": {
     "Platform": [
         "PlatformMetadata", "Substrate", "Bootstrap", "Tier", "DurabilityPolicies",
         "EnginePolicies", "MonitorCadence", "ProbeCadence", "EphemeralPolicy",
-        "MigrationPolicy", "Provider",
+        "MigrationPolicy", "DeliveryPolicy", "Provider",
     ],
     "Bootstrap": ["FluxSource", "VaultState"],
     "DurabilityPolicies": ["DurabilityPolicy"],
     "DurabilityPolicy": ["OffClusterCopy"],
     "EnginePolicies": ["EnginePolicy"],
+    "DeliveryPolicy": ["AnalysisPolicy"],
 }, "20-resolved-deployment": {
     # Sibling order puts GateMember next to ResolvedProbe, so the one
     # cross-link on the drawing joins two neighbours.
@@ -118,7 +119,7 @@ TREES = {"10-project-intent": {
     "ResolvedApplication": [
         "ReleaseGate", "ResolvedMigration", "ResolvedProcess", "ResolvedExposure",
     ],
-    "ReleaseGate": ["GateMember"],
+    "ReleaseGate": ["GateAnalysis", "GateMember"],
     "ResolvedProcess": [
         "ResolvedProbe", "StartupProbe", "ResolvedPlacement", "ResolvedVolume",
         "ResolvedGrant", "ResolvedEdge", "WritablePath", "EnvEntry",

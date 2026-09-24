@@ -216,7 +216,7 @@ field's placement link to this anchor rather than copying rows.
 | `runAsUser`, `runAsGroup`, `fsGroup` | derived | - | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Process holds a volume ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)) |
 | container probe timings | derived | - | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Platform Intent's probe policy ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)) |
 | `progressDeadlineSeconds` | derived | - | from `startupBudget`; a `prepare` Process's run deadline is its `startupBudget` itself |
-| switchover | derived | - | from `cutover`: `continuous` derives `blue-green`, `interrupted` derives `stop-start` ([chapter 55](55-delivery.md#switchover)), which the adapters spell; `cutover: continuous` over an RWO volume is `E_CUTOVER_UNHONOURABLE`, not a silent downgrade |
+| switchover | derived | - | from `cutover` and the delivery machinery: `continuous` derives `blue-green`, or `rolling` on the machinery, and `interrupted` derives `stop-start` ([chapter 55](55-delivery.md#switchover)), which the adapters spell; `cutover: continuous` over an RWO volume is `E_CUTOVER_UNHONOURABLE`, not a silent downgrade |
 | object kind | derived | - | from `lifecycle` and `volumes` |
 | the Application's release-gate deadline | derived | - | `max` over the Application's Processes of `progressDeadlineSeconds` ([The release gate](#the-release-gate)) |
 | the object label set | derived | - | fixed, from Process name, Application Id and the images lock ([chapter 10](10-project-intent.md#the-label-set)) |
@@ -601,16 +601,21 @@ rather than discovered as a 500 at the edge.
 An Application is the Release Unit, and no member's new version receives traffic
 until every member's new version is healthy
 ([chapter 50](50-lifecycle.md#release-unit-switchover)). *Performing* the switch
-belongs to delivery ([chapter 55](55-delivery.md#switchover)). What the model owes is the
-gate's **inputs**, and it owes them as a derivation rather than as an object
-([0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md)).
+belongs to delivery: Flagger switches each member, and the Release Gate holds
+them at a barrier ([chapter 55](55-delivery.md#the-release-gate),
+[0132](../../docs/adr/model/0132-the-release-gate-answers-the-switch.md),
+superseding [0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md)).
+What the model owes is the gate's **inputs**, derived rather than authored.
 
-Layer 2 therefore carries, per Application whose cutover is `continuous`:
+Layer 2 therefore carries, per Application a Process of which switches
+`blue-green`:
 
 | field | derived from |
 |---|---|
-| the member list | the Application's `lifecycle: application` Processes; membership is structural, and a job or a prepare Process switches nothing, so neither is a member |
+| the member list | the Application's `blue-green` Processes; membership is structural, and a job or a prepare Process switches nothing, so neither is a member |
 | each member's readiness reference | that Process's `probes.readiness`: its `path` + `port`, or its `tcp` port |
+| each member's analysis checks | its Runtime Profile: `error-rate` and `latency` where the profile exposes HTTP server metrics (`jvm`, `node`, `python`), none where it does not (`static`, `none`) |
+| the analysis cadence | the Platform document's `delivery.analysis` ([chapter 14](14-platform-intent.md#delivery-policy)) |
 | the gate deadline | `max` over the members of `progressDeadlineSeconds`, itself `startupBudget × 3` |
 
 `max` is the reading "held, not partial" requires: the unit waits for its
@@ -619,18 +624,18 @@ and 30 seconds on `auth-ui`, so its gate deadline is 1800 seconds: the API's,
 because a UI that is ready in 30 seconds must still not receive traffic while
 the API it talks to is inside its own legitimate startup window.
 
-**Nothing is rendered for the gate.** The inputs live in the Resolved
-Deployment and in each Application's projection, which is where decisions live and
-where a delivery mechanism reading a pinned lock already looks
-([0006](../../docs/adr/model/0006-pinned-inputs.md)). Layer 3 emits the fixed
-label set ([chapter 10](10-project-intent.md#the-label-set)) and nothing else on
-the Application's behalf: an object no controller consumes is the defect
-`app.kubernetes.io/instance` already is, and rendering a second one would not
-make the gate real.
+**The inputs are all the gate reads.** They live in the Resolved Deployment and in
+each Application's projection, which is where decisions live and where a
+controller reading a pinned lock already looks
+([0006](../../docs/adr/model/0006-pinned-inputs.md)). What is rendered for the
+gate is a Canary per member naming the gate's endpoint, and nothing that decides
+([chapter 55](55-delivery.md#what-the-render-leaves-to-flagger)).
 
 An `interrupted` Application carries no gate: its Processes stop before their
 new versions start, so there is no moment at which an old version serves while
 a new one waits, and nothing to hold ([0128](../../docs/adr/model/0128-cutover-names-the-promise.md)).
+Neither does an Application of the delivery machinery, whose Processes switch
+`rolling`.
 
 A `continuous` Application whose Processes all declare `probes: none` publishes
 no readiness signal and cannot be gated: `E_RELEASE_UNIT_NO_READINESS`, checked
@@ -838,7 +843,7 @@ boundary is drawn wrong.
 The derived unit has one consumer in v1: the Flux `Kustomization` DAG, whose
 `dependsOn` edges are this derivation's output. The health timeout class that
 sentence used to name with them is deleted
-([0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md),
+([0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md) (superseded by [0132](../../docs/adr/model/0132-the-release-gate-answers-the-switch.md)),
 [There is no health timeout class](#derived-mechanics)); what an applier waits
 on per Application is the release gate's deadline, and what it waits on between
 units is this ordering. How objects reach a cluster, and the mechanism that makes
@@ -929,10 +934,13 @@ reconcileAfter: [apps-core, apps-data, apps-vso-secrets]
 migration:                           # it declares a changelog (chapter 10)
   runner: ghcr.io/jorisjonkers-dev/knowledge/knowledge-migration@sha256:…
 
-releaseGate:                         # the inputs, not an object (0071)
+releaseGate:                         # what the Release Gate reads (0132)
   deadline: 1800s                    # max over the members
+  analysis: {interval: 30s, iterations: 4, threshold: 3}   # the Platform document's cadence
   members:
-    - {process: knowledge-api, readiness: {path: /api/actuator/health/readiness, port: 8080}}
+    - process: knowledge-api
+      readiness: {path: /api/actuator/health/readiness, port: 8080}
+      checks: [error-rate, latency]  # the jvm profile exposes HTTP server metrics
   # A continuous Application whose Processes ALL declare `probes: none` is
   # E_RELEASE_UNIT_NO_READINESS at composition: nothing could gate its switch.
 
@@ -1254,6 +1262,12 @@ classDiagram
     }
     class GateMember {
         +string process
+        +AnalysisCheck[] checks
+    }
+    class GateAnalysis {
+        +Duration interval
+        +int iterations
+        +int threshold
     }
     class ResolvedProcess {
         +string name
@@ -1356,6 +1370,7 @@ classDiagram
     ResolvedApplication "1" *-- "0..1" ResolvedMigration : migration
     ResolvedApplication "1" *-- "1..*" ResolvedProcess : processes
     ResolvedApplication "1" *-- "0..*" ResolvedExposure : exposure
+    ReleaseGate "1" *-- "1" GateAnalysis : analysis
     ReleaseGate "1" *-- "1..*" GateMember : members
 
     ResolvedProcess "1" *-- "0..1" ResolvedProbe : readiness

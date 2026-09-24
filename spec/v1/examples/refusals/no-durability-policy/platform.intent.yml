@@ -33,6 +33,12 @@ tiers:
     listener: plain
     certificates: none
     traefik: edge-proxy
+delivery:
+  machinery: [edge-proxy]
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
 durability:
   reconstructible: {}
   recoverable: { schedule: "15 3 * * *", retain: 14 }
