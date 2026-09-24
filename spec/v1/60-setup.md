@@ -5,7 +5,11 @@ to move ~30 live Applications onto the model without deleting any of them.
 
 Two boundaries apply throughout. **Delivery is [chapter 55](55-delivery.md)'s,
 and co-testing stays parked** ([`docs/adr/deferred/`](../../docs/adr/deferred/README.md)):
-nothing here specifies an applier, a prune pass, deploy RBAC or a test gate. And every
+nothing here specifies an applier, deploy RBAC or a test gate, and the one
+rule about pruning, that a handed-over Project's objects are orphaned by the old
+path rather than deleted
+([Handing over one Project at a time](#handing-over-one-project-at-a-time)), is
+a handover rule, not a prune pass. And every
 precondition below is either **tickable**, with the observation or command that
 ticks it, or **explicitly blocked**, with an owner and the event that unblocks
 it. An earlier draft of this chapter carried a precondition that could never be
@@ -410,9 +414,9 @@ Step 4 is delivery, and it is where adoption is dangerous: a source that prunes
 will delete objects removed from it, so the order in which the old manifests
 leave and the rendered ones arrive decides whether adoption is a no-op or an
 outage. Those ordering rules, and the handover of one Project at a time from the
-old source to its pin, are this chapter's, specified by
-[#159](https://github.com/JorisJonkers-dev/deploy-kit/issues/159); the pin
-itself is [chapter 55](55-delivery.md#rendered-artifacts-and-pins)'s.
+old source to its pin, are
+[Handing over one Project at a time](#handing-over-one-project-at-a-time); the
+pin itself is [chapter 55](55-delivery.md#rendered-artifacts-and-pins)'s.
 
 **What adoption leaves behind.** Any live object that no render produces is an
 orphan: attributed to no adapter, and invisible to every later comparison.
@@ -420,6 +424,69 @@ Expect the ledger to grow during adoption and shrink as adapters become total.
 That growth is the coverage assertion's problem
 ([chapter 30](30-deliverables.md#coverage)), and it is the honest cost of
 adopting an estate that was hand-written first.
+
+## Handing over one Project at a time
+
+The estate is delivered today from `fleet-infra`'s `deploy/production` branch,
+the **old path**. It moves to the estate repository's pins, the **estate path**,
+one Project per step, and **no Project is ever delivered by both**
+([0136](../../docs/adr/model/0136-projects-are-handed-over-one-at-a-time.md)).
+Two sources applying one Project would each prune what the other adds, so the
+handover is a ledger, not a convention:
+
+```yaml
+# platform.intent.yml
+handover:
+  retireBy: 2027-03-31          # after it, the old path is removed
+  legacy: [auth, data, knowledge, notes]   # still delivered by fleet-infra
+  estate: [delivery]            # delivered by its pin
+```
+
+- **The ledger is the Platform document's `handover`**
+  ([chapter 14](14-platform-intent.md#handover-ledger)). A name on both paths is
+  `E_HANDOVER_BOTH_PATHS`; a project file on neither is `E_HANDOVER_UNLISTED`.
+  A name no project file declares is not refused, because a composition may
+  read a subset of the estate; a Project that retires is removed from the ledger
+  in the same change that retires it.
+- **A `legacy` Project is composed, never delivered.** Its fragment is checked
+  against every estate-wide invariant, and its render is diffed against the
+  live objects ([Adopting a live Application](#adopting-a-live-application)),
+  but composition publishes no artifact and moves no pin for it. The
+  estate-scoped artifact waits until no Project is `legacy`
+  ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)); until then the old
+  path keeps applying the estate-scoped objects.
+
+**One step moves one Project, in three changes, in this order**, so that at no
+moment do two sources apply it:
+
+1. **Orphan it on the old path.** A `fleet-infra` commit marks every object of
+   the Project `kustomize.toolkit.fluxcd.io/prune: disabled`, and the step waits
+   until the old path has reconciled the mark onto the live objects.
+2. **Remove it from the old path.** A second `fleet-infra` commit deletes the
+   Project's manifests. The live objects stay running, now applied by nothing.
+3. **Move it to the estate path.** The Platform document's ledger moves the
+   Project from `legacy` to `estate`. The next composition publishes its
+   artifact and writes its source and first pin, and the estate path applies
+   objects that already exist. Both paths apply with the same Flux field
+   manager, so the estate path takes the fields over without recreating
+   anything; the prune mark is absent from the render and is dropped on that
+   first apply, so from then on the estate path prunes the Project normally.
+
+**Undoing a step runs the same three changes the other way:** the Project's
+estate source is marked `prune: disabled` and reconciled, its source file is
+removed from the estate repository and the ledger moves it back to `legacy`, and
+only then do its manifests return to `fleet-infra`. Moving the ledger alone
+would leave the last pin applied beside the old path.
+
+- **The order across Projects** is [the adoption order below](#adoption-order-across-the-estate):
+  providers before consumers.
+- **`retireBy` ends the old path.** On that date `legacy` must be empty. The
+  Kustomization that applies `fleet-infra`'s `deploy/production` is set to
+  `prune: false` first, so deleting it garbage-collects nothing still running,
+  and is then deleted; the branch is archived. A Project still in `legacy` then
+  is an adoption that has stalled, and the date is moved by a decision recorded
+  in the ledger's own history, never silently. The block itself is removed once
+  `legacy` is empty, and with it both refusals.
 
 ## Adoption order across the estate
 

@@ -334,6 +334,11 @@ and named by digest. What the applier fetches, and never committed as files
 it. A deploy is a pin commit applied; the estate's git history is its deploy log
 ([chapter 55](spec/v1/55-delivery.md#rendered-artifacts-and-pins)).
 
+**Handover ledger**: the Platform document's record of which delivery path each
+Project is on while the estate moves off `fleet-infra`: the **old path** or the
+**estate path**, never both, until a retirement date ends the old one
+([chapter 60](spec/v1/60-setup.md#handing-over-one-project-at-a-time)).
+
 **Switchover**: how an Application's new version replaces the old one:
 blue/green, where its new Processes start beside the old and receive traffic
 only once every member has passed analysis; stop-start, where the old stop

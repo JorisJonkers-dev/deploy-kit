@@ -102,7 +102,7 @@ TREES = {"10-project-intent": {
     "Platform": [
         "PlatformMetadata", "Substrate", "Bootstrap", "Tier", "DurabilityPolicies",
         "EnginePolicies", "MonitorCadence", "ProbeCadence", "EphemeralPolicy",
-        "MigrationPolicy", "DeliveryPolicy", "Provider",
+        "MigrationPolicy", "DeliveryPolicy", "HandoverLedger", "Provider",
     ],
     "Bootstrap": ["FluxSource", "VaultState"],
     "FluxSource": ["RenderedArtifacts"],

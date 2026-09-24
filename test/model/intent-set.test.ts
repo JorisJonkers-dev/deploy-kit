@@ -365,3 +365,45 @@ applications:
     ).toStrictEqual(["E_NO_DELIVERY_POLICY /applications/1"]);
   });
 });
+
+// REQ-031, the handover half (spec/v1/60-setup.md#handing-over-one-project-at-a-time):
+// while the ledger lasts, every project read beside it is on one path it names.
+describe("the handover rule across documents", () => {
+  const platform = read("refusals/handover-unlisted/platform.intent.yml");
+  const project = read("refusals/handover-unlisted/refusals.project.yml");
+  const withLedger = (lists: string): AuthoredFile => ({
+    name: platform.name,
+    text: platform.text.replace(
+      /\nhandover:\n( {2}.*\n)+/,
+      `\nhandover:\n  retireBy: 2027-03-31\n${lists}`,
+    ),
+  });
+
+  it("accepts a project on the old path alone, or on the estate path alone", () => {
+    expect(
+      refusalsOf([withLedger("  legacy: [refusals]\n"), project]),
+    ).toStrictEqual([]);
+    expect(
+      refusalsOf([withLedger("  estate: [refusals]\n"), project]),
+    ).toStrictEqual([]);
+  });
+
+  it("refuses a project a ledger with only an old path leaves off it", () => {
+    expect(
+      refusalsOf([withLedger("  legacy: [media]\n"), project]).map(
+        ({ code }) => code,
+      ),
+    ).toStrictEqual(["E_HANDOVER_UNLISTED"]);
+  });
+
+  it("refuses a project on neither path, at the project file", () => {
+    expect(
+      refusalsOf([
+        withLedger("  legacy: [media]\n  estate: [delivery]\n"),
+        project,
+      ]),
+    ).toStrictEqual([
+      { code: "E_HANDOVER_UNLISTED", document: project.name, path: "" },
+    ]);
+  });
+});

@@ -31,6 +31,23 @@ function forwardAuthRefusals(document: PlatformIntentDocument): Diagnostic[] {
   );
 }
 
+/** A Project is on one delivery path at a time, never on both. */
+function handoverRefusals(document: PlatformIntentDocument): Diagnostic[] {
+  const legacy = new Set(document.handover?.legacy);
+  const both =
+    document.handover?.estate?.filter((project) => legacy.has(project)) ?? [];
+  return both.length === 0
+    ? []
+    : [
+        {
+          code: "E_HANDOVER_BOTH_PATHS",
+          path: "/handover",
+          message: `the handover ledger puts ${both.join(", ")} on both delivery paths`,
+          hint: "Keep each Project in `legacy` until its handover, then move it to `estate`.",
+        },
+      ];
+}
+
 function toPlatform(document: PlatformIntentDocument): Platform {
   const { owner, metadata, substrate, tiers, durability, engines, hardening } =
     document;
@@ -73,7 +90,10 @@ export function validatePlatformIntent(
         "spec/v1/14-platform-intent.md",
       ),
     };
-  const refusals = forwardAuthRefusals(parsed.data);
+  const refusals = [
+    ...forwardAuthRefusals(parsed.data),
+    ...handoverRefusals(parsed.data),
+  ];
   if (refusals.length > 0) return { ok: false, diagnostics: refusals };
   return {
     ok: true,

@@ -37,7 +37,7 @@ What is in scope, and the section that specifies each:
 | what undoes a failed migration, and when it may | [Failure and undo](#failure-and-undo) |
 | why rotating a secret is not a release | [Secret rotation](#secret-rotation) |
 | what the render leaves to Flagger | [What the render leaves to Flagger](#what-the-render-leaves-to-flagger) |
-| how a Project moves off the old path | [chapter 60](60-setup.md), specified by [#159](https://github.com/JorisJonkers-dev/deploy-kit/issues/159) |
+| how a Project moves off the old path | [chapter 60](60-setup.md#handing-over-one-project-at-a-time) |
 
 What is not in scope:
 
@@ -67,8 +67,8 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   dev.jorisjonkers.lock-digest   sha256:…          the composed artifact carrying the lock
 ```
 
-- **One artifact per Project.** Composition renders the estate once and
-  publishes each Project's share of the rendered tree as one artifact at
+- **One artifact per delivered Project.** Composition renders the estate once
+  and publishes each Project's share of the rendered tree as one artifact at
   `<repository>/<project>`, where `repository` is the Platform document's
   `bootstrap.flux.artifacts.repository`
   ([chapter 14](14-platform-intent.md#the-bootstrap-set)). Each of the Project's
@@ -76,7 +76,11 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)). The paths the
   path plan scopes to the estate rather than to a Project
   ([chapter 20](20-resolved-deployment.md#the-path-plan)) form one more artifact,
-  `<repository>/estate`, published and pinned exactly like a Project's.
+  `<repository>/_estate`, published and pinned exactly like a Project's; the
+  underscore keeps it from ever naming a Project. While the estate is handed
+  over, a Project still on the old path is rendered and checked but not
+  published, and the `_estate` artifact is published only once no Project is
+  ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)).
 - **Signed keyless, and annotated.** The artifact is signed by the composition
   workflow's own OIDC identity, the Platform document's
   `bootstrap.flux.artifacts.signer`, so no signing key exists to leak or rotate.
@@ -95,8 +99,9 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   signer, with one Kustomization per Reconcile Unit of the Project applying its
   path. Composition writes the file the first time a Project composes, from the
   Platform document and the Reconcile Unit DAG, and afterwards changes only its
-  `ref.digest`. Removing a retired Project's file is a handover step, not a pin
-  ([chapter 60](60-setup.md)). After publishing, composition commits to the
+  `ref.digest`. Removing a Project's file takes it off the estate path, which
+  only a handover step reversed or a Project's retirement does
+  ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)). After publishing, composition commits to the
   estate repository's `main` the moved `ref.digest` of every Project whose
   artifact changed, marked `[ci skip]` so the estate repository's push checks
   do not run on a commit that only moves digests. That commit is the deploy.

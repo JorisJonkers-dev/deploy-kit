@@ -26,6 +26,7 @@ Platform returns Platform:
 	& ('ephemeral' ':' BEGIN ephemeral=EphemeralPolicy END)
 	& ('migration' ':' BEGIN migration=MigrationPolicy END)?
 	& ('delivery' ':' BEGIN delivery=DeliveryPolicy END)?
+	& ('handover' ':' BEGIN handover=HandoverLedger END)?
 	& ('providers' ':' BEGIN (DASH BEGIN providers+=Provider END)+ END)?);
 
 PlatformMetadata returns PlatformMetadata:
@@ -45,6 +46,11 @@ Bootstrap returns Bootstrap:
 	(('flux' ':' BEGIN flux=FluxSource END)
 	& ('vault' ':' BEGIN vault=VaultState END)
 	& ('crds' ':' BEGIN (DASH BEGIN crds+=Text END | crds+=Text)+ END));
+
+HandoverLedger returns HandoverLedger:
+	(('retireBy' ':' retireBy=Text)
+	& ('legacy' ':' BEGIN (DASH BEGIN legacy+=Text END | legacy+=Text)+ END)?
+	& ('estate' ':' BEGIN (DASH BEGIN estate+=Text END | estate+=Text)+ END)?);
 
 FluxSource returns FluxSource:
 	(('sourceRef' ':' sourceRef=Text)
@@ -141,9 +147,9 @@ Text returns ecore::EString:
 
 PlatformKeyword:
 	'acme' | 'address' | 'analysis' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cluster' | 'cni' |
-	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'embedded' | 'engines' | 'ephemeral' | 'etcd' |
-	'failures' | 'flux' | 'forwardAuth' | 'hardening' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'listener' | 'machinery' | 'metadata' |
-	'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'providers' | 'restricted' |
+	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'embedded' | 'engines' | 'ephemeral' | 'estate' | 'etcd' |
+	'failures' | 'flux' | 'forwardAuth' | 'handover' | 'hardening' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
+	'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'providers' | 'restricted' | 'retireBy' |
 	'repository' | 'retain' | 'runner' | 'schedule' | 'secretsEncryption' | 'serverCount' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
 	'surfaces' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'vault';
 
