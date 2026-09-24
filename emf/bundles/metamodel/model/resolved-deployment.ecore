@@ -51,6 +51,9 @@
 
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedApplication">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" iD="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The digest of this element, itself excluded
+         (spec/v1/20-resolved-deployment.md#the-application-revision). -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="revision" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="project" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="alertClass" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

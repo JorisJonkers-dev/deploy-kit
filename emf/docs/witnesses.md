@@ -21,7 +21,7 @@ name a real model row, it may not also be witnessed, and its count is stated
 beside the witness count, so the gate keeps its teeth while the work is
 outstanding.
 
-This list holds **8** witnesses, and **3** pending.
+This list holds **9** witnesses, and **3** pending.
 
 | id | JUnit test |
 |---|---|
@@ -33,6 +33,7 @@ This list holds **8** witnesses, and **3** pending.
 | REQ-031 | `IntentSetTest#theWorkedEstateIsRefusedExactlyWhereThePlatformDocumentSaysItWillBe` |
 | REQ-036 | `LoweringTest#everyProcessHoldsTheGrantsOfEveryLevelAboveItExtendedByItsOwn` |
 | REQ-037 | `EnvFilesTest#readsALiteralAPlaceholderCommentsAndBlankLines` |
+| REQ-038 | `ApplicationRevisionTest#theRevisionMovesExactlyWhenADecisionAboutTheApplicationDoes` |
 
 ## Pending
 

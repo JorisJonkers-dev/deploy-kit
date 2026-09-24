@@ -11,9 +11,18 @@ import { parse } from "yaml";
 import { z } from "zod";
 import { describe, expect, it } from "vitest";
 import {
+  applicationRevision as revisionOf,
+  sha256Hasher,
+} from "../../src/index.ts";
+import {
   resolvedApplicationDocument,
   resolvedDeployment,
 } from "../../src/wire/resolved-deployment/schema.ts";
+
+/** The revision the production Hasher gives an Application's element. */
+const applicationRevision = (
+  application: Readonly<Record<string, unknown>>,
+): string => revisionOf(application, sha256Hasher);
 
 const CHAPTER = join(
   import.meta.dirname,
@@ -666,5 +675,82 @@ describe("a Process answering on a port rather than a path", () => {
     });
 
     expect(resolvedApplicationDocument.safeParse(document).success).toBe(false);
+  });
+});
+
+// REQ-038 (docs/requirements.md): an Application's revision is the digest of its
+// own decisions, so it moves exactly when one of them does.
+describe("the Application revision", () => {
+  const projection = (name: string): Record<string, unknown> =>
+    structuredClone(oracleOf(name)) as Record<string, unknown>;
+
+  it.each([
+    "minimal/expected/resolved.json",
+    "knowledge/expected/resolved.json",
+    "knowledge/expected/resolved.knowledge-ingest.json",
+  ])("is what %s records", (file) => {
+    const committed = JSON.parse(
+      readFileSync(
+        join(import.meta.dirname, "..", "..", "spec", "v1", "examples", file),
+        "utf8",
+      ),
+    ) as Record<string, unknown>;
+
+    expect(committed["revision"]).toBe(applicationRevision(committed));
+  });
+
+  it("is a sha256 digest", () => {
+    expect(applicationRevision(projection("minimal"))).toMatch(
+      /^sha256:[0-9a-f]{64}$/,
+    );
+  });
+
+  it("does not move when nothing about the Application does", () => {
+    const one = projection("minimal");
+    const other = projection("minimal");
+    // A different render of an unchanged Application: another input moved, so
+    // the provenance did, and the revision it carried is not an input to itself.
+    Object.assign(other["provenance"] as object, { renderHash: DIGEST });
+    other["revision"] = DIGEST;
+
+    expect(applicationRevision(other)).toBe(applicationRevision(one));
+  });
+
+  it("does not depend on the document the element is published in", () => {
+    const { apiVersion: _, kind: __, ...element } = projection("minimal");
+
+    expect(applicationRevision(element)).toBe(
+      applicationRevision(projection("minimal")),
+    );
+  });
+
+  it("moves when any decision about the Application does", () => {
+    const before = applicationRevision(projection("minimal"));
+    const changed = projection("minimal");
+    const [process] = changed["processes"] as Record<string, unknown>[];
+    if (process === undefined) throw new Error("minimal has a Process");
+    process["replicas"] = 2;
+
+    expect(applicationRevision(changed)).not.toBe(before);
+    // An attribute, a vocabulary value, a nested object and the ordering.
+    for (const edit of [
+      (it: Record<string, unknown>) => {
+        it["namespace"] = "x";
+      },
+      (it: Record<string, unknown>) => {
+        const [first] = it["processes"] as Record<string, unknown>[];
+        if (first !== undefined) first["switchover"] = "stop-start";
+      },
+      (it: Record<string, unknown>) => {
+        (it["releaseGate"] as Record<string, unknown>)["deadline"] = "61s";
+      },
+      (it: Record<string, unknown>) => {
+        it["reconcileAfter"] = ["apps-elsewhere"];
+      },
+    ]) {
+      const edited = projection("minimal");
+      edit(edited);
+      expect(applicationRevision(edited)).not.toBe(before);
+    }
   });
 });
