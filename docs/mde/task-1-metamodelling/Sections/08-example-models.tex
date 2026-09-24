@@ -17,13 +17,17 @@ minimal & The smallest complete model: one project, one application, one
   process, and nothing that is not required. Everything absent from it is
   either derived or refused, which makes it the model that shows what the
   language forces an author to say. \\
-auth & Two processes in one application, so the release gate has more than one
-  member and the gate's deadline is a maximum over members rather than a single
-  value. \\
+auth & Two processes in one application, both continuous, so the release gate
+  has more than one member and the gate's deadline is a maximum over members
+  rather than a single value; and a managed migration, because the application
+  reaches a database. \\
 data & Several applications in one project sharing a namespace, with storage
   and the backup plans their durability classes earn. \\
-knowledge & Dependencies across applications, secrets, a volume already bound
-  to a machine, and an exposure whose routes carry different audiences. \\
+knowledge & Two applications in one project because their cutovers differ: a
+  continuous API that moves the project's schema with a changelog, and an
+  interrupted worker bound to a volume that declares no migration of its own.
+  Dependencies across applications, secrets shared at the project header, and
+  an exposure whose routes carry different audiences. \\
 \hline
 \end{tabular}
 \caption{The Example Models and What Each One Exercises}
@@ -50,15 +54,18 @@ each constraint is paired with a model that violates it.
 The refused set covers, among others: a route naming a surface its process does
 not offer; two routes on one hostname claiming the same path; an alert class
 with nothing to collect metrics from; a process declaring a cutover its storage
-cannot honour; a secret delivery that the cluster's encryption setting forbids;
-a durability class with no engine to back it up; and an exposure whose audience
-no edge tier serves.
+cannot honour; an application whose processes answer the cutover question
+differently; a prepare process that declares a port; an application that
+reaches a database and does not say how its schema moves, and one that says so
+without reaching one; a secret delivery that the cluster's encryption setting
+forbids; a durability class with no engine to back it up; and an exposure whose
+audience no edge tier serves.
 
 \subsection{A Resolved Model as a Deployment View}
 
 Figure~\ref{fig:deploymentview} shows the \texttt{knowledge} example's resolved
-model the way a deployment diagram would draw it: two processes placed on two
-machines, the volume one of them is bound to, the edge tier and hostname in
+model the way a deployment diagram would draw it: the project's two processes,
+now two applications, placed on two machines, the volume one of them is bound to, the edge tier and hostname in
 front, and the two platform services they depend on. Nothing in the picture is
 new information. Every box and every arrow is read straight out of the resolved
 model, which is the point: the model is complete enough that a deployment view
