@@ -295,6 +295,12 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="disruptionBudget" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
+  <!-- What Flagger switches a blue-green Process by: its Canary, whose webhooks
+       ask the Release Gate (spec/v1/30-deliverables.md#flagger-ready-objects). -->
+  <eClassifiers xsi:type="ecore:EClass" name="SwitchoverFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
+  </eClassifiers>
+
   <eClassifiers xsi:type="ecore:EClass" name="IdentityFile" eSuperTypes="#//Deliverable">
     <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
   </eClassifiers>
