@@ -72,6 +72,9 @@
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedMigration">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="runner" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="testedAgainst" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Whether the release holds a changeset that cannot run in a transaction:
+         no automatic undo touches such a release (spec/v1/55-delivery.md#failure-and-undo). -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="nonTransactional" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="ReleaseGate">

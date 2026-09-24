@@ -2146,9 +2146,10 @@ migration: none      # this Application moves no schema
 `migration` is an Application field, and it is how the Application's schema
 moves when its new version replaces the old one
 ([0130](../../docs/adr/model/0130-migration-is-declared-on-the-application.md)).
-When the migration runs, and what undoes it, is
-[chapter 55](55-delivery.md#migrations)'s; this section is what an author
-writes.
+When the migration runs is [chapter 55](55-delivery.md#migrations)'s, what
+proves it safe is [chapter 55](55-delivery.md#migration-safety)'s, and what
+undoes it is [chapter 55](55-delivery.md#failure-and-undo)'s; this section is
+what an author writes.
 
 | form | means | what is derived |
 |---|---|---|

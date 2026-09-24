@@ -8,3 +8,4 @@ resources:
 - pdb.yaml
 - servicemonitor.yaml
 - networkpolicy.yaml
+- migration.yaml

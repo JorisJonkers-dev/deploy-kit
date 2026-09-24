@@ -86,6 +86,10 @@ A fragment carries:
 - its share of the images lock: every image alias the project file names,
   resolved to the digest its repository's build pushed, with the UID and GID it
   runs as ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md))
+- for an Application that declares a changelog, its compatibility proof: the
+  serving revision the proof ran against, and whether the release holds a
+  non-transactional changeset
+  ([chapter 55](55-delivery.md#migration-safety))
 
 A fragment publishes **after its repository's images are built**, on every merge
 to the default branch, with every alias it names already resolved
