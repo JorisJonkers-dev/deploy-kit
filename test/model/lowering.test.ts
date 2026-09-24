@@ -713,6 +713,25 @@ describe("a refusal that reads the effective answer, not the written one", () =>
     ]);
   });
 
+  it("refuses an Application whose members answer the cutover question differently", () => {
+    // The Application's answer reaches `b`; `a` writes its own.
+    const document = `${HEADER}applications:\n  - id: a\n    cutover: interrupted\n    processes:\n      - name: a\n        lifecycle: application\n        image: a\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n        cutover: continuous\n      - name: b\n        lifecycle: application\n        image: b\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n`;
+
+    expect(refusals(document)).toStrictEqual([
+      ["E_RELEASE_UNIT_MIXED_CUTOVER", "/applications/0"],
+    ]);
+  });
+
+  it("does not count a job, or a member no level answers, as a second answer", () => {
+    const withJob = `${HEADER}applications:\n  - id: a\n    processes:\n      - name: a\n        lifecycle: application\n        image: a\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n        cutover: continuous\n      - name: j\n        lifecycle: job\n        image: j\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n        cutover: interrupted\n`;
+    const unanswered = `${HEADER}applications:\n  - id: a\n    processes:\n      - name: a\n        lifecycle: application\n        image: a\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n        cutover: continuous\n      - name: b\n        lifecycle: application\n        image: b\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n`;
+
+    expect(refusals(withJob)).toStrictEqual([]);
+    expect(refusals(unanswered)).toStrictEqual([
+      ["E_CUTOVER_MISSING", "/applications/0/processes/1"],
+    ]);
+  });
+
   it("refuses a grant the project header states badly, at the header", () => {
     expect(
       refusals(

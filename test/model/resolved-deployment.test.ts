@@ -286,6 +286,61 @@ describe("the committed oracles", () => {
     ).toStrictEqual(["stop-start"]);
   });
 
+  it("says which switchover a cutover derives when it refuses one", () => {
+    const wrong = ingest();
+    const [worker] = wrong["processes"] as Record<string, unknown>[];
+    if (worker === undefined) throw new Error("the worker left the oracle");
+    worker["switchover"] = "blue-green";
+
+    expect(
+      resolvedApplicationDocument
+        .safeParse(wrong)
+        .error?.issues.map(({ code, message }) => ({ code, message })),
+    ).toStrictEqual([
+      {
+        code: "custom",
+        message: "a interrupted cutover derives the stop-start switchover",
+      },
+    ]);
+  });
+
+  it("says why when a gate is on the wrong side", () => {
+    const { releaseGate: _, ...ungated } = oracle("knowledge") as Record<
+      string,
+      unknown
+    >;
+
+    expect(
+      resolvedApplicationDocument
+        .safeParse(ungated)
+        .error?.issues.map(({ code, message }) => ({ code, message })),
+    ).toStrictEqual([
+      {
+        code: "custom",
+        message:
+          "an Application carries release-gate inputs exactly when its cutover is continuous",
+      },
+    ]);
+  });
+
+  it("accepts a Process with no switchover, and a gate held by one continuous member", () => {
+    // A job switches nothing, so it carries no switchover; the gate follows the
+    // Application's continuous members, not every Process of it.
+    const knowledge = oracle("knowledge") as Record<string, unknown>;
+    const [api] = knowledge["processes"] as Record<string, unknown>[];
+    if (api === undefined) throw new Error("the api left the oracle");
+    const { switchover: _, ...job } = {
+      ...api,
+      name: "job",
+      cutover: "interrupted",
+    };
+    const withJob = { ...knowledge, processes: [api, job] };
+
+    expect(
+      resolvedApplicationDocument.safeParse(withJob).error?.issues ?? [],
+    ).toStrictEqual([]);
+  });
+
   it("refuses a switchover its cutover does not derive, and a gate on the wrong side", () => {
     const wrongSwitchover = ingest();
     const [worker] = wrongSwitchover["processes"] as Record<string, unknown>[];

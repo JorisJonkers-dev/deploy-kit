@@ -282,6 +282,33 @@ describe("the scope a directory names, against the document beside it", () => {
     ).toStrictEqual(["A"]);
   });
 
+  it("carries an Application scope onto that Application's Processes and no other", () => {
+    const document = `${DOCUMENT}  - id: b
+    processes:
+      - name: v
+        lifecycle: job
+        image: v
+        runtime: none
+        placement: {memory: 64Mi, cpu: 10m}
+        cutover: interrupted
+`;
+    const parsed = parseProjectIntent(document, [
+      { path: "env/_applications/a/base.env", text: "ONLY_A=1\n" },
+      { path: "env/v/base.env", text: "OWN=1\n" },
+    ]);
+    const names = (index: number): string[] =>
+      parsed.ok
+        ? (parsed.value.effective.applications[
+            index
+          ]?.processes[0]?.env.flatMap(({ entries }) =>
+            entries.map(({ name }) => name),
+          ) ?? [])
+        : [];
+
+    expect(names(0)).toStrictEqual(["ONLY_A"]);
+    expect(names(1)).toStrictEqual(["OWN"]);
+  });
+
   it("refuses a narrower scope restating a variable unchanged", () => {
     expect(
       refused([
