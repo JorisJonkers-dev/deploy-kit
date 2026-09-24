@@ -264,8 +264,32 @@ migration is undone automatically. Specified in full by
 
 ## Secret rotation
 
-Rotating a secret is not a release, so it never starts a switchover. Specified in
-full by [#153](https://github.com/JorisJonkers-dev/deploy-kit/issues/153).
+Rotating a secret is not a release, so it never starts a switchover
+([chapter 10](10-project-intent.md#rotation-is-not-a-release),
+[0134](../../docs/adr/model/0134-rotating-a-secret-is-not-a-release.md)).
+Flagger starts an analysis whenever a Canary's pod template changes, and by
+default it also counts a change to any Secret or ConfigMap the template
+references as one. The render removes that second trigger for the Secrets
+Vault delivers:
+
+- **Every Secret the render asks Vault to write is excluded from configuration
+  tracking.** Its destination carries `flagger.app/config-tracking: disabled`,
+  so a new value is never a new Canary revision. The exclusion is uniform: it is
+  written on every Vault-delivered Secret, not only those a `blue-green` Process
+  reads, so a Process that changes switchover does not change how its secrets
+  behave.
+- **A restart names what is serving.** Where a grant tolerates only `restart`,
+  the Process's serving workload is restarted in place. For a `blue-green`
+  Process that is `<name>-primary`, the Deployment Flagger promotes into; the
+  Deployment named `<name>` is Flagger's source of new versions and serves
+  nothing between releases. For every other Process it is `<name>`.
+
+Layer 2 records which Processes a rotation restarts, by Process name
+([chapter 20](20-resolved-deployment.md#derived-mechanics)); the `-primary`
+spelling is the adapter's, because it names a Flagger object rather than a
+model concept. The workloads it names are rendered with the rest of the
+Flagger-ready objects
+([#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158)).
 
 ## What the render leaves to Flagger
 
