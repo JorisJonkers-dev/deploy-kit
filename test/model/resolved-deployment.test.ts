@@ -329,11 +329,12 @@ describe("the committed oracles", () => {
     const knowledge = oracle("knowledge") as Record<string, unknown>;
     const [api] = knowledge["processes"] as Record<string, unknown>[];
     if (api === undefined) throw new Error("the api left the oracle");
-    const { switchover: _, ...job } = {
+    const job: Record<string, unknown> = {
       ...api,
       name: "job",
       cutover: "interrupted",
     };
+    delete job["switchover"];
     const withJob = { ...knowledge, processes: [api, job] };
 
     expect(
