@@ -129,10 +129,9 @@ tree, so a differing render with identical digests is a defect, never weather.
 
 <sub>[Diagram source](#the-three-model-pipeline) · edit by opening the SVG in draw.io</sub>
 
-The drawing still labels delivery "defined separately"; delivery is
-[chapter 55](55-delivery.md)'s since 2026-09-24, and the drawing is redrawn with
-the rest of the delivery diagrams in
-[#160](https://github.com/JorisJonkers-dev/deploy-kit/issues/160).
+Delivery is [chapter 55](55-delivery.md)'s: the render leaves as signed
+artifacts, a pin commit deploys it, and Flux applies it while Flagger and the
+Release Gate switch what must keep serving.
 
 ## Programme scope
 
@@ -467,11 +466,11 @@ flowchart TB
     RES --> RS["resolved.yml<br/>published back per Application"]
     RES --> DS["layer 3, Deliverable Set<br/>six registered adapters, run once centrally,<br/>one attributed adapter per file"]
 
-    DS --> DEL["delivery, DEFINED SEPARATELY<br/>docs/adr/deferred/<br/>must honour Release Unit atomicity,<br/>Durability Class gates,<br/>pinned inputs only"]
-    DEL --> K["the cluster"]
+    DS --> RA["Rendered artifacts<br/>one per Project, signed keyless, named by digest"]
+    RA --> PIN["pin commit, [ci skip]<br/>the estate repository's main: the deploy log"]
+    PIN --> FX["Flux<br/>pulls the pinned artifact, verifies its signer, applies it"]
+    FX --> K["the cluster"]
+    FG["Flagger + the Release Gate<br/>the gate reads layer 2 and holds every<br/>blue-green member behind one barrier"] --> K
 
     RS -.->|"an owner reads their own assignments"| AUTH
-
-    classDef separate stroke-width:2px,stroke-dasharray:6 4;
-    class DEL separate;
 ```

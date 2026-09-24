@@ -288,6 +288,16 @@ path, with nothing serving under the model, carries no `testedAgainst` and
 starts unchecked: there is nothing to be compatible with, and nothing to undo
 to.
 
+## A release, end to end
+
+From a merge in an application repository to the new revision serving, with
+every place a release can stop. Each red box is a stop: nothing after it runs,
+and the old version keeps serving except where a member was already promoted.
+
+![A release, end to end](diagrams/55-release-sequence.drawio.svg)
+
+<sub>[Diagram source](#the-release-end-to-end) · edit by opening the SVG in draw.io</sub>
+
 ## Release order
 
 A release of one Application runs in three steps, each gated on the one before,
@@ -424,3 +434,33 @@ created once and never updated ([Failure and undo](#failure-and-undo)). A claim
 whose Durability Class derives a backup is never pruned: a Process leaving the
 render does not delete the data it held, which is Durability Class gating kept
 by the applier ([Scope](#scope)).
+
+## Diagram sources
+
+The diagram above is drawn in draw.io and committed as an SVG with the editable
+diagram embedded, so opening the `.svg` in draw.io recovers the drawing. The
+mermaid below is the same structure in text. **Where the two disagree the SVG is
+the diagram and the mermaid is what gets fixed.**
+
+### The release, end to end
+
+```mermaid
+flowchart TB
+    S1["a change merges in the application repository<br/>its images build and are pushed"] --> D1{"a changelog? then the<br/>compatibility proof passes?"}
+    D1 -->|yes| S2["the Intent Fragment publishes<br/>every image by digest, the proof recorded"]
+    D1 -->|no| F1["no fragment publishes<br/>nothing changed anywhere"]
+    S2 --> D2{"composition: every<br/>estate-wide invariant holds?"}
+    D2 -->|yes| S3["render; one signed artifact per changed Project;<br/>the pin commit lands on main [ci skip]"]
+    D2 -->|no| F2["no lock: nothing renders<br/>E_ codes name what to fix"]
+    S3 --> D3{"Flux: the artifact verifies<br/>against the signer?"}
+    D3 -->|yes| D4{"the Release Gate: every primary<br/>runs testedAgainst?"}
+    D3 -->|no| F3["not applied: its source reports it<br/>what was running keeps running"]
+    D4 -->|yes| D5{"migration up, then every<br/>prepare Process: complete?"}
+    D4 -->|no| F4["held before anything runs<br/>the schema is untouched"]
+    D5 -->|yes| D6{"each changed member passes its<br/>analysis, and the barrier opens in time?"}
+    D5 -->|no| F5["held: the old version serves;<br/>the down runs if nothing new serves"]
+    D6 -->|no| F5
+    D6 -->|yes| D7{"every member<br/>promotes?"}
+    D7 -->|yes| S4["the new revision serves"]
+    D7 -->|no| F7["urgent alert: a promoted member<br/>needs the new schema; fix forward"]
+```

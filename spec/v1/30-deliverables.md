@@ -338,9 +338,8 @@ before any schedule is committed, because counting files under
 
 <sub>[Diagram source](#the-render-end-to-end) · edit by opening the SVG in draw.io</sub>
 
-The drawing still labels delivery "defined separately"; delivery is
-[chapter 55](55-delivery.md)'s since 2026-09-24, and the drawing is redrawn in
-[#160](https://github.com/JorisJonkers-dev/deploy-kit/issues/160).
+The Deliverable Set leaves the render as Rendered artifacts, one per Project,
+which [chapter 55](55-delivery.md#rendered-artifacts-and-pins) delivers.
 
 `renderHash` is taken over the recorded input digests (every Intent Fragment
 including the Platform document, the images lock, the node contract, the
@@ -461,5 +460,5 @@ flowchart LR
       COL --> L["coverage assertion<br/>vs bootstrap set + ledgers"]
     end
     IF --> RD
-    T --> X["delivery<br/>defined separately"]
+    T --> X["Rendered artifacts<br/>one per Project, signed, pinned by digest<br/>(chapter 55)"]
 ```

@@ -229,10 +229,9 @@ state.
 
 <sub>[Diagram source](#the-change-end-to-end) · edit by opening the SVG in draw.io</sub>
 
-The dashed box is delivery, which this chapter does not specify: it is
-[chapter 55](55-delivery.md)'s. The drawing still labels it "defined
-separately"; it is redrawn with the rest of the delivery diagrams in
-[#160](https://github.com/JorisJonkers-dev/deploy-kit/issues/160).
+How a pin reaches the cluster and how the switch is gated is
+[chapter 55](55-delivery.md)'s; the whole release, with every place it can stop,
+is its [release diagram](55-delivery.md#a-release-end-to-end).
 
 ## Open in this chapter
 
@@ -267,15 +266,15 @@ an ADR.
 
 ```mermaid
 flowchart LR
-    N["new lock renders<br/>every Process of the Application"] --> A1["auth-api<br/>new version starts"]
-    N --> A2["auth-ui<br/>new version starts"]
-    A1 --> P1{"readiness<br/>within budget?"}
-    A2 --> P2{"readiness<br/>within budget?"}
-    P1 -->|yes| K{"every Process<br/>ready?"}
+    N["a new pin lands<br/>every member of the Application"] --> A1["auth-api<br/>its canary starts beside the primary"]
+    N --> A2["auth-ui<br/>its canary starts beside the primary"]
+    A1 --> P1{"analysis passes<br/>within the gate deadline?"}
+    A2 --> P2{"analysis passes<br/>within the gate deadline?"}
+    P1 -->|yes| K{"the barrier:<br/>every member passed?"}
     P2 -->|yes| K
-    P1 -->|no| H["hold the Application<br/>old versions keep serving"]
+    P1 -->|no| H["hold the Application<br/>the primaries keep serving"]
     P2 -->|no| H
-    K -->|yes| SW["switch all Processes together"]
+    K -->|yes| SW["promote every member into its primary"]
     H --> RB["fix forward, or revert the Application<br/>in its own repository"]
 ```
 
@@ -283,16 +282,15 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    I["Intent change merged<br/>one Project repository"] --> F["Intent Fragment republished<br/>OCI, by digest"]
+    I["Intent change merged<br/>one Project repository; its images build"] --> F["Intent Fragment republished<br/>after the build, every image by digest"]
     X["Platform document republished<br/>tiers, policies, providers"] --> C
     F --> C["composition<br/>union + estate-wide invariants"]
     S["ClusterState snapshot changes<br/>PV rebinds, node joins or leaves"] --> C
     C --> L["new lock<br/>fragments + context + images + clusterStateDigest"]
-    L --> R["render<br/>registered adapters, renderHash"]
-    R --> G{"Application has more<br/>than one Process?"}
-    G -->|"no"| D["delivery and co-testing<br/>defined separately<br/>docs/adr/deferred/"]
-    G -->|"yes"| U["all-or-nothing switchover<br/>gated on every Process ready"]
+    L --> R["render and publish<br/>one signed artifact per Project,<br/>the pin moved [ci skip]"]
+    R --> G{"cutover<br/>continuous?"}
+    G -->|"no: stop-start"| D["Flux has applied the pin<br/>the new revision serves, or the<br/>Application is held"]
+    G -->|"yes"| U["blue/green: Flagger + the Release Gate<br/>every member behind one barrier"]
     U --> D
     C -.->|"E_CONTRACT_TOO_EARLY"| B["no lock.<br/>Nothing renders."]
-    style D stroke-width:2px,stroke-dasharray:6 4;
 ```
