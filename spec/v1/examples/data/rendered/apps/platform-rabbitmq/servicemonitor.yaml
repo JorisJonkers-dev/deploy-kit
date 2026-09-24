@@ -14,7 +14,6 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: rabbitmq
       app.kubernetes.io/instance: rabbitmq
   namespaceSelector:
     matchNames:

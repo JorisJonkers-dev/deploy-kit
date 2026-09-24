@@ -441,6 +441,14 @@ Application, because the selector must match exactly one controller's pods. A
 would make every Process of a multi-Process Application selector-ambiguous the
 moment anything selected on `name` alone.
 
+Flagger rewrites one of them. When it promotes a `blue-green` Process, the
+Deployment it promotes into, and that Deployment's pods, carry
+`app.kubernetes.io/name: <name>-primary`, while `instance` is copied unchanged.
+That is why every selector the render writes names `instance`, except a
+`blue-green` Process's disruption budget, which selects the primary by `name`
+([chapter 30](30-deliverables.md#flagger-ready-objects)). The set itself stays
+fixed: the rewrite is Flagger's, on an object the render never writes.
+
 No `app.kubernetes.io/version`. A version label would have to come from the
 images lock, so it changes on every image bump, for a label that no selector
 may use and that the image digest already states exactly, on the object, where

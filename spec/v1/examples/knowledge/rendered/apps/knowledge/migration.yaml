@@ -42,7 +42,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: knowledge-migration
-        app.kubernetes.io/instance: knowledge-migration-6325500a2c54
+        app.kubernetes.io/instance: knowledge-migration
         app.kubernetes.io/part-of: knowledge
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: migration
@@ -106,7 +106,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: knowledge-migration-down
-        app.kubernetes.io/instance: knowledge-migration-down-6325500a2c54
+        app.kubernetes.io/instance: knowledge-migration
         app.kubernetes.io/part-of: knowledge
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: migration

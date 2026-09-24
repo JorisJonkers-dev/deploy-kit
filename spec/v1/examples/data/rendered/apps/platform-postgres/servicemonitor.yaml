@@ -14,7 +14,6 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: postgres
       app.kubernetes.io/instance: postgres
   namespaceSelector:
     matchNames:

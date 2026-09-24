@@ -42,7 +42,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: auth-migration
-        app.kubernetes.io/instance: auth-migration-9d2c4e6a8b0d
+        app.kubernetes.io/instance: auth-migration
         app.kubernetes.io/part-of: auth
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: migration
@@ -106,7 +106,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: auth-migration-down
-        app.kubernetes.io/instance: auth-migration-down-9d2c4e6a8b0d
+        app.kubernetes.io/instance: auth-migration
         app.kubernetes.io/part-of: auth
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: migration

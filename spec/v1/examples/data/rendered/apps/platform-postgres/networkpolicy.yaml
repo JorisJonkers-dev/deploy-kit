@@ -24,6 +24,26 @@ spec:
           kubernetes.io/metadata.name: auth-system
       podSelector:
         matchLabels:
+          app.kubernetes.io/instance: auth-migration
+    ports:
+    - protocol: TCP
+      port: 5432
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: knowledge-system
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: knowledge-migration
+    ports:
+    - protocol: TCP
+      port: 5432
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: auth-system
+      podSelector:
+        matchLabels:
           app.kubernetes.io/instance: auth-api
     ports:
     - protocol: TCP

@@ -12,7 +12,7 @@ metadata:
     app.kubernetes.io/component: jvm
     release: metrics-stack
 spec:
-  jobLabel: app.kubernetes.io/name
+  jobLabel: app.kubernetes.io/instance
   # Pods, not a Service: Flagger generates the Services, and the canary's
   # pods must be scraped for the Release Gate's checks.
   selector:
