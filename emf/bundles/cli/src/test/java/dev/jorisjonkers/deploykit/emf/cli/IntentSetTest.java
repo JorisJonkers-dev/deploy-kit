@@ -29,6 +29,10 @@ class IntentSetTest {
                 .containsExactlyInAnyOrder(
                         tuple("E_UNKNOWN_TIER_PROXY", "platform.intent.yml", "/tiers/0"),
                         tuple("E_UNKNOWN_TIER_PROXY", "platform.intent.yml", "/tiers/1"),
+                        tuple("E_UNKNOWN_MACHINERY", "platform.intent.yml", "/delivery"),
+                        tuple("E_UNKNOWN_MACHINERY", "platform.intent.yml", "/delivery"),
+                        tuple("E_UNKNOWN_MACHINERY", "platform.intent.yml", "/delivery"),
+                        tuple("E_UNKNOWN_MACHINERY", "platform.intent.yml", "/delivery"),
                         tuple(
                                 "E_SECRETS_AT_REST_REQUIRED",
                                 "data.project.yml",
@@ -58,7 +62,10 @@ class IntentSetTest {
                 Examples.read("platform/platform.intent.yml")
                         .replace("secretsEncryption: false", "secretsEncryption: true")
                         .replace("traefik: traefik-public", "traefik: notes")
-                        .replace("traefik: traefik-lan", "traefik: notes"));
+                        .replace("traefik: traefik-lan", "traefik: notes")
+                        .replace(
+                                "machinery: [traefik-public, traefik-lan, flagger, release-gate]",
+                                "machinery: [notes]"));
 
         assertThat(Pipeline.check(List.of(platform, Examples.of("minimal/notes.project.yml"))))
                 .isEmpty();
@@ -91,7 +98,10 @@ class IntentSetTest {
                         .replaceFirst("\n\\s+forwardAuth: [^\n]*", "")
                         .replace("secretsEncryption: false", "secretsEncryption: true")
                         .replace("traefik: traefik-public", "traefik: knowledge")
-                        .replace("traefik: traefik-lan", "traefik: knowledge"));
+                        .replace("traefik: traefik-lan", "traefik: knowledge")
+                        .replace(
+                                "machinery: [traefik-public, traefik-lan, flagger, release-gate]",
+                                "machinery: [knowledge]"));
         Path knowledge = Examples.write(
                 directory,
                 "knowledge.project.yml",

@@ -24,7 +24,19 @@ export interface Platform {
   readonly hardening: HardeningClass;
   /** The runner every managed migration builds on, and its terms; absent where none is offered. */
   readonly migration?: MigrationPolicy;
+  /** The Applications that perform a switch, and the cadence it is analysed at. */
+  readonly delivery?: DeliveryPolicy;
   readonly providers: readonly Provider[];
+}
+
+export interface DeliveryPolicy {
+  /** The Applications never put through a gate: the ones that perform it. */
+  readonly machinery: readonly string[];
+  readonly analysis: {
+    readonly interval: string;
+    readonly iterations: number;
+    readonly threshold: number;
+  };
 }
 
 export interface MigrationPolicy {

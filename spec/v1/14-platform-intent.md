@@ -350,6 +350,35 @@ is bounded estate-wide: a backfill that needs longer is split across releases.
 The block is optional. A Platform document without it offers no runner, and a
 changelog read beside it is `E_NO_MIGRATION_POLICY`.
 
+## Delivery policy
+
+```yaml
+delivery:
+  machinery: [traefik-public, traefik-lan, flagger, release-gate]
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+```
+
+How a release is switched ([chapter 55](55-delivery.md#the-release-gate),
+[0132](../../docs/adr/model/0132-the-release-gate-answers-the-switch.md)). Two
+facts, both the platform's:
+
+- **`machinery`** names the Applications that perform a switch: the Release
+  Gate, Flagger, and the edge proxies. They are never gated, because a gate
+  cannot gate its own release and a proxy bound to a host port cannot run two
+  copies, so their `continuous` Processes derive a `rolling` switchover rather
+  than `blue-green`. Each name links to an Application a project file declares,
+  as a tier's proxy does: `E_UNKNOWN_MACHINERY` otherwise. Flux is not among
+  them: it is in the bootstrap set, not an Application.
+- **`analysis`** is the cadence every `blue-green` member is analysed at: how
+  often a check runs, how many passing checks promote, and how many failing ones
+  roll back. No Application authors its own.
+
+The block is optional. A Platform document without it gates nothing and names no
+machinery.
+
 ## Providers
 
 Things the estate runs and this model does not deploy, that an Application may
@@ -492,6 +521,14 @@ classDiagram
     class EphemeralPolicy {
         +Quantity size
     }
+    class DeliveryPolicy {
+        +ApplicationId[] machinery
+    }
+    class AnalysisPolicy {
+        +Duration interval
+        +int iterations
+        +int threshold
+    }
     class MigrationPolicy {
         +ImageAlias runner
         +Duration deadline
@@ -514,6 +551,8 @@ classDiagram
     Platform "1" *-- "1" ProbeCadence : probes
     Platform "1" *-- "1" EphemeralPolicy : ephemeral
     Platform "1" *-- "0..1" MigrationPolicy : migration
+    Platform "1" *-- "0..1" DeliveryPolicy : delivery
+    DeliveryPolicy "1" *-- "1" AnalysisPolicy : analysis
     Platform "1" *-- "0..*" Provider : providers
     Bootstrap "1" *-- "1" FluxSource : flux
     Bootstrap "1" *-- "1" VaultState : vault

@@ -25,6 +25,7 @@ Platform returns Platform:
 	& ('probes' ':' BEGIN probes=ProbeCadence END)
 	& ('ephemeral' ':' BEGIN ephemeral=EphemeralPolicy END)
 	& ('migration' ':' BEGIN migration=MigrationPolicy END)?
+	& ('delivery' ':' BEGIN delivery=DeliveryPolicy END)?
 	& ('providers' ':' BEGIN (DASH BEGIN providers+=Provider END)+ END)?);
 
 PlatformMetadata returns PlatformMetadata:
@@ -99,6 +100,17 @@ ProbeCadence returns ProbeCadence:
 EphemeralPolicy returns EphemeralPolicy:
 	'size' ':' size=Text;
 
+// The machinery names Applications a project file declares, linked across the
+// documents read together, as a tier's proxy is.
+DeliveryPolicy returns DeliveryPolicy:
+	(('machinery' ':' BEGIN (DASH BEGIN machinery+=[Application|Text] END | machinery+=[Application|Text])+ END)
+	& ('analysis' ':' BEGIN analysis=AnalysisPolicy END));
+
+AnalysisPolicy returns AnalysisPolicy:
+	(('interval' ':' interval=Text)
+	& ('iterations' ':' iterations=Port)
+	& ('threshold' ':' threshold=Port));
+
 MigrationPolicy returns MigrationPolicy:
 	(('runner' ':' runner=Text)
 	& ('deadline' ':' deadline=Text)
@@ -119,12 +131,12 @@ Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword | PlatformKeyword;
 
 PlatformKeyword:
-	'acme' | 'address' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cluster' | 'cni' |
+	'acme' | 'address' | 'analysis' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cluster' | 'cni' |
 	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'embedded' | 'engines' | 'ephemeral' | 'etcd' |
-	'failures' | 'flux' | 'forwardAuth' | 'hardening' | 'interval' | 'kubernetesVersion' | 'listener' | 'metadata' |
+	'failures' | 'flux' | 'forwardAuth' | 'hardening' | 'interval' | 'iterations' | 'kubernetesVersion' | 'listener' | 'machinery' | 'metadata' |
 	'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'providers' | 'restricted' |
 	'retain' | 'runner' | 'schedule' | 'secretsEncryption' | 'serverCount' | 'size' | 'sourceRef' | 'sqlite' | 'substrate' |
-	'surfaces' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'vault';
+	'surfaces' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'vault';
 
 enum Datastore returns Datastore:
 	sqlite='sqlite' | etcd='etcd';

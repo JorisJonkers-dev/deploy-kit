@@ -160,10 +160,11 @@ describe("the refusal fixtures", () => {
       "shared-declaration-duplicated",
       "shared-intent-merged",
       "shared-quantity",
+      "unknown-machinery",
       "unknown-surface",
       "unknown-tier-proxy",
     ]);
-    expect(refused).toHaveLength(29);
+    expect(refused).toHaveLength(30);
     expect(
       fixtures.length - refused.length,
       "the three accepted counterparts and the vocabulary case carry no oracle",

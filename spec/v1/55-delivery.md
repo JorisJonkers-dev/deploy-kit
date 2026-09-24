@@ -71,9 +71,10 @@ Process in the Resolved Deployment
 | `cutover` | switchover | what happens |
 |---|---|---|
 | `continuous` | `blue-green` | the new version starts beside the old one; the old keeps serving while the new is analysed, and traffic moves to the new version only once every member of the Application has passed |
+| `continuous`, on delivery machinery | `rolling` | the new version replaces the old one pod by pod, with no gate: the machinery that performs a switchover cannot be switched by itself ([The Release Gate](#the-release-gate)) |
 | `interrupted` | `stop-start` | the old version stops, then the new one starts; the owner has accepted the gap |
 
-Three rules hold the table true:
+Four rules hold the table true:
 
 - **One Application, one switchover.** Every `lifecycle: application` Process of
   an Application answers `cutover` alike, because the Application switches as
@@ -81,27 +82,72 @@ Three rules hold the table true:
 - **Room for the second copy.** A `blue-green` Process is eligible only on a node
   that fits two copies of it, for the length of its analysis
   ([chapter 20](20-resolved-deployment.md#layer-2-does-not-assign-a-node)).
+- **A worker is a member too.** A `blue-green` Process with no Surface is gated
+  like any other, behind a derived placeholder Service. Its new version consumes
+  real work while it is analysed, so a worker that switches continuously must be
+  idempotent and must tolerate one version of skew with its siblings.
 - **A job and a prepare step have none.** A `lifecycle: job` or
   `lifecycle: prepare` Process switches nothing, so it carries no switchover and
   never waits on a gate; a prepare Process runs before the switch instead
   ([Release order](#release-order)).
 
-What gates a `blue-green` switch, the barrier over every member and who answers
-it, is [The Release Gate](#the-release-gate)'s, specified in full by
-[#152](https://github.com/JorisJonkers-dev/deploy-kit/issues/152).
+**The barrier, then the promotion.** A `blue-green` Application's members start
+their new versions independently and are analysed independently. None is
+promoted until **every** member has passed its analysis: that is the barrier,
+and it is the Release Unit rule
+([chapter 50](50-lifecycle.md#release-unit-switchover)) made mechanical. Once the
+barrier opens, each member is promoted on its own, seconds apart, so members of
+one Application must tolerate the old and the new version of each other for
+that window. A single-instant switch across Processes does not exist: traffic
+between Processes goes through their own Services, and no edge flip moves it.
 
 ## The Release Gate
 
-A first-party controller answers the switch's questions from the Resolved
-Deployment: may this Application's new version start, and may it be promoted.
-Specified in full by
-[#152](https://github.com/JorisJonkers-dev/deploy-kit/issues/152).
+The **Release Gate** is the first-party controller that answers the switchover's
+two questions, from the Resolved Deployment and nothing else
+([0132](../../docs/adr/model/0132-the-release-gate-answers-the-switch.md)):
+
+| question | asked | the gate answers yes when |
+|---|---|---|
+| may this member's new version start? | once per member per revision, before its new version scales up | the Application's migration and every prepare Process for this revision have completed ([Release order](#release-order)), and the revision the compatibility proof was run against is the one serving ([Failure and undo](#failure-and-undo)) |
+| may this member be promoted? | after the member's own analysis passes | every member of the Application has passed its analysis for this revision: the barrier |
+
+It reads the Application's release-gate inputs (its members, their readiness,
+their analysis checks and the gate deadline;
+[chapter 20](20-resolved-deployment.md#the-release-gate)), and names the release
+by its [Application revision](20-resolved-deployment.md#the-application-revision).
+No executable code is rendered for it: a Canary names the gate's endpoint, and
+the decision is the gate's, from data.
+
+**Analysis** is the platform's. Its cadence (interval, iterations, threshold) is
+the Platform document's `delivery.analysis`
+([chapter 14](14-platform-intent.md#delivery-policy)), and the checks a member
+is analysed on derive from its Runtime Profile: a profile that exposes HTTP
+server metrics is checked for error rate and latency, and one that does not is
+checked for readiness alone. Nothing about analysis is authored per Application.
+
+**The gate fails closed.** When the gate cannot answer, it answers no: every
+switch waits, the old versions keep serving, and an alert fires. A release is
+never let through because the thing that would stop it is down.
+
+**Delivery machinery is never gated.** Flux, Flagger, the Release Gate and the
+edge proxies are listed in the Platform document as the delivery machinery
+([chapter 14](14-platform-intent.md#delivery-policy)). Their Processes derive a
+`rolling` switchover when `continuous`, never `blue-green`: a gate cannot gate
+its own release, and an edge proxy on a host port cannot run two copies.
 
 ## Held releases
 
-A release that fails leaves the old version serving and is reported as held
-until a new pin lands. Specified in full by
-[#152](https://github.com/JorisJonkers-dev/deploy-kit/issues/152).
+A release that fails leaves the Application **held**: the old version keeps
+serving while the pin names the new one. It fails when a member does not pass
+its analysis within the gate deadline, when the barrier does not open within it,
+or when a migration or prepare step fails before any new version starts.
+
+The Release Gate reports a held Application as the pair (serving revision,
+pinned revision) and alerts until a new pin lands, whether that is a fix forward
+or a revert in the application repository. Nothing reverts the pin
+automatically: the old version is already serving, and an automatic revert would
+race the fix.
 
 ## Migrations
 

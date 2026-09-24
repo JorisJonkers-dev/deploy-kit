@@ -109,7 +109,12 @@ carries the authoring rules; this section is the lifecycle view.
 
 **The Application is the unit of switchover.** The rule: no member's new version receives
 traffic until every member's new version is healthy; if any member fails its
-budget, none switch and the old versions keep serving.
+budget, none switch and the old versions keep serving. Performed, it is a
+**barrier then a staggered promotion**: every member is analysed, none is
+promoted until all have passed, and then each is promoted on its own, seconds
+apart, so the members of one Application tolerate one version of skew for that
+window ([chapter 55](55-delivery.md#switchover),
+[0132](../../docs/adr/model/0132-the-release-gate-answers-the-switch.md)).
 
 Every term in that rule is already defined elsewhere in the model:
 
@@ -229,7 +234,7 @@ separately"; it is redrawn with the rest of the delivery diagrams in
 ## Open in this chapter
 
 1. ~~**Release Unit atomicity is untested.**~~ It is
-   [0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md)'s own
+   [0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md) (superseded by [0132](../../docs/adr/model/0132-the-release-gate-answers-the-switch.md))'s own
    settling test, a switchover mechanism written against a `ResolvedApplication`
    projection alone, and is recorded there. [0060](../../docs/adr/model/0060-release-unit.md),
    which this item used to cite, is superseded; the unit is the Application

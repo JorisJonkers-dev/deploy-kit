@@ -24,7 +24,7 @@ rests-on: ["0003"]
 > paired with their consumers are deleted ([0098](0098-one-publication-path.md)).
 > The Resolved Deployment also carries the path plan
 > ([0070](0070-path-authority-is-layer-2.md)), the release gate's inputs
-> ([0071](0071-release-gate-inputs-are-layer-2.md)) and the per-Process image
+> ([0071](0071-release-gate-inputs-are-layer-2.md) (superseded by [0132](0132-the-release-gate-answers-the-switch.md))) and the per-Process image
 > digests that were once a separate image-metadata document. There are no
 > override records: the hatch closed, and the one local exception is a named
 > field ([chapter 20](../../../spec/v1/20-resolved-deployment.md#no-overrides)).

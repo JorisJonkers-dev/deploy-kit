@@ -151,6 +151,11 @@ class LinkingTest {
 
     /** A Platform document read into the same resource set as {@link #DOCUMENT}, its tier naming {@code proxy}. */
     private static Resource platform(String proxy) throws IOException {
+        return platform(proxy, "");
+    }
+
+    /** The same, with {@code extra} appended to the document: a block the tier tests do not need. */
+    private static Resource platform(String proxy, String extra) throws IOException {
         Resource project = parse("links-api", "http", "links-api", "metrics");
         Resource platform = new PlatformIntentStandaloneSetup()
                 .createInjectorAndDoEMFRegistration()
@@ -158,7 +163,8 @@ class LinkingTest {
                 .createResource(URI.createURI("memory:/platform.intent.yml"));
         project.getResourceSet().getResources().add(platform);
         platform.load(
-                new ByteArrayInputStream(PLATFORM.replace("PROXY", proxy).getBytes(StandardCharsets.UTF_8)), Map.of());
+                new ByteArrayInputStream((PLATFORM.replace("PROXY", proxy) + extra).getBytes(StandardCharsets.UTF_8)),
+                Map.of());
         EcoreUtil2.resolveAll(platform);
         return platform;
     }
@@ -177,5 +183,15 @@ class LinkingTest {
     void aTiersProxyThatNoDocumentDeclaresIsUnknown() throws IOException {
         assertThat(codes(platform("traefik-lan")))
                 .containsExactly("E_UNKNOWN_TIER_PROXY no project file declares the Application traefik-lan");
+    }
+
+    @Test
+    void theDeliveryMachineryLinksToDeclaredApplicationsAndReportsEachOneThatIsNot() throws IOException {
+        String delivery = "delivery: { machinery: [elsewhere, gone], "
+                + "analysis: { interval: 30s, iterations: 4, threshold: 3 } }\n";
+
+        assertThat(codes(platform("elsewhere", delivery)))
+                .containsExactly(
+                        "E_UNKNOWN_MACHINERY no project file declares the Application gone the delivery machinery names");
     }
 }

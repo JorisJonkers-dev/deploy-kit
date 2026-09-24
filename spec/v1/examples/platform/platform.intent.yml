@@ -121,6 +121,17 @@ migration:
   memory: 256Mi
   cpu: 100m
 
+# How a release is switched (spec/v1/14-platform-intent.md#delivery-policy).
+# The machinery performs the switch and is never switched by it: a gate cannot
+# gate its own release, and an edge proxy on a host port cannot run two copies.
+# The analysis cadence is the platform's, one for every blue/green member.
+delivery:
+  machinery: [traefik-public, traefik-lan, flagger, release-gate]
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+
 # Things the estate runs and does not deploy, that an Application depends on. A fact
 # with an address, resolvable by an edge -- not a hole, so no review date
 # (docs/adr/model/0090-edges-resolve-against-the-register.md).

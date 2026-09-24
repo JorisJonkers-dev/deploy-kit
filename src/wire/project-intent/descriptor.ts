@@ -74,15 +74,28 @@ function feature(
       map: false,
       reference: true,
     };
-  if (node["type"] === "array")
-    return {
-      name,
-      types: typesOf(node["items"] as Node),
-      required,
-      many: true,
-      map: false,
-      reference: false,
-    };
+  if (node["type"] === "array") {
+    // A list of names, each linking to a model element, is a many reference.
+    const items = node["items"] as Node;
+    const target = items["reference"];
+    return typeof target === "string"
+      ? {
+          name,
+          types: [target],
+          required,
+          many: true,
+          map: false,
+          reference: true,
+        }
+      : {
+          name,
+          types: typesOf(items),
+          required,
+          many: true,
+          map: false,
+          reference: false,
+        };
+  }
   if (node["type"] === "object")
     return {
       name,

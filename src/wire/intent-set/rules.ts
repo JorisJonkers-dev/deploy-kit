@@ -244,8 +244,24 @@ export function setDiagnostics(
           },
         ],
   );
+  // The machinery names Applications a project file declares, as a proxy does.
+  const machinery = (platform.document.delivery?.machinery ?? []).flatMap(
+    (name) =>
+      declared.has(name)
+        ? []
+        : [
+            {
+              code: "E_UNKNOWN_MACHINERY",
+              document: platform.name,
+              path: "/delivery",
+              message: `no project file declares the Application ${name} the delivery machinery names`,
+              hint: "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
+            },
+          ],
+  );
   return [
     ...proxies,
+    ...machinery,
     ...projects.flatMap(({ name, document }) =>
       projectRefusals(document, platform.document, estate).map((refusal) => ({
         ...refusal,

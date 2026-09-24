@@ -13,9 +13,12 @@ export const PINNED_INPUTS = [
 ] as const;
 
 /** How an Application's new version replaces the old one
- * (spec/v1/55-delivery.md#switchover): `continuous` derives `blue-green`,
- * `interrupted` derives `stop-start`. */
-export const SWITCHOVERS = ["blue-green", "stop-start"] as const;
+ * (spec/v1/55-delivery.md#switchover): `continuous` derives `blue-green`, or
+ * `rolling` on the delivery machinery, and `interrupted` derives `stop-start`. */
+export const SWITCHOVERS = ["blue-green", "rolling", "stop-start"] as const;
+
+/** What a gate member is analysed on beyond readiness, from its Runtime Profile. */
+export const ANALYSIS_CHECKS = ["error-rate", "latency"] as const;
 
 /** A step of the middleware chain a route derives. */
 export const MIDDLEWARE_KINDS = [
@@ -39,6 +42,7 @@ export const ADAPTERS = [
 
 export type PinnedInput = (typeof PINNED_INPUTS)[number];
 export type Switchover = (typeof SWITCHOVERS)[number];
+export type AnalysisCheck = (typeof ANALYSIS_CHECKS)[number];
 export type MiddlewareKind = (typeof MIDDLEWARE_KINDS)[number];
 export type PathScope = (typeof PATH_SCOPES)[number];
 export type AdapterName = (typeof ADAPTERS)[number];

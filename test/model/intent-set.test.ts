@@ -27,6 +27,10 @@ const WORKED = [
   "minimal/notes.project.yml",
 ].map(read);
 
+/** The worked Platform document's delivery machinery, which no worked project declares. */
+const MACHINERY =
+  "machinery: [traefik-public, traefik-lan, flagger, release-gate]";
+
 const refusalsOf = (files: readonly AuthoredFile[]) => {
   const result = checkIntentSet(files);
   return result.ok
@@ -50,6 +54,26 @@ describe("checkIntentSet", () => {
         code: "E_UNKNOWN_TIER_PROXY",
         document: "platform/platform.intent.yml",
         path: "/tiers/1",
+      },
+      {
+        code: "E_UNKNOWN_MACHINERY",
+        document: "platform/platform.intent.yml",
+        path: "/delivery",
+      },
+      {
+        code: "E_UNKNOWN_MACHINERY",
+        document: "platform/platform.intent.yml",
+        path: "/delivery",
+      },
+      {
+        code: "E_UNKNOWN_MACHINERY",
+        document: "platform/platform.intent.yml",
+        path: "/delivery",
+      },
+      {
+        code: "E_UNKNOWN_MACHINERY",
+        document: "platform/platform.intent.yml",
+        path: "/delivery",
       },
       {
         code: "E_SECRETS_AT_REST_REQUIRED",
@@ -101,7 +125,8 @@ describe("checkIntentSet", () => {
       text: encrypted.text
         .replace("secretsEncryption: false", "secretsEncryption: true")
         .replace("traefik: traefik-public", "traefik: notes")
-        .replace("traefik: traefik-lan", "traefik: notes"),
+        .replace("traefik: traefik-lan", "traefik: notes")
+        .replace(MACHINERY, "machinery: [notes]"),
     };
     const result = checkIntentSet([
       platform,
@@ -120,7 +145,8 @@ describe("checkIntentSet", () => {
       text: read("platform/platform.intent.yml")
         .text.replace("secretsEncryption: false", "secretsEncryption: true")
         .replace("traefik: traefik-public", "traefik: notes")
-        .replace("traefik: traefik-lan", "traefik: notes"),
+        .replace("traefik: traefik-lan", "traefik: notes")
+        .replace(MACHINERY, "machinery: [notes]"),
     };
     const result = checkIntentSet([
       platform,
@@ -181,7 +207,8 @@ describe("checkIntentSet", () => {
         .replace(/\n\s+forwardAuth: [^\n]*/, "")
         .replace("secretsEncryption: false", "secretsEncryption: true")
         .replace("traefik: traefik-public", "traefik: knowledge")
-        .replace("traefik: traefik-lan", "traefik: knowledge"),
+        .replace("traefik: traefik-lan", "traefik: knowledge")
+        .replace(MACHINERY, "machinery: [knowledge]"),
     };
     const knowledge = read("knowledge/knowledge.project.yml");
     const lanExposure = {
@@ -205,15 +232,23 @@ describe("checkIntentSet", () => {
     const result = checkIntentSet(WORKED);
     const diagnostics = result.ok ? [] : result.diagnostics;
 
-    expect(diagnostics.map(({ message }) => message).slice(0, 3)).toStrictEqual(
+    expect(diagnostics.map(({ message }) => message).slice(0, 7)).toStrictEqual(
       [
         "no project file declares the Application traefik-public this tier's proxy names",
         "no project file declares the Application traefik-lan this tier's proxy names",
+        "no project file declares the Application traefik-public the delivery machinery names",
+        "no project file declares the Application traefik-lan the delivery machinery names",
+        "no project file declares the Application flagger the delivery machinery names",
+        "no project file declares the Application release-gate the delivery machinery names",
         "delivery env writes a secret into the cluster, and the platform does not encrypt secrets at rest",
       ],
     );
-    expect(diagnostics.map(({ hint }) => hint).slice(1, 3)).toStrictEqual([
+    expect(diagnostics.map(({ hint }) => hint).slice(1, 7)).toStrictEqual([
       "Declare the proxy Application in a project file the platform owns.",
+      "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
+      "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
+      "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
+      "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
       "Deliver the secret through the application itself, or enable `secretsEncryption` on the platform.",
     ]);
   });

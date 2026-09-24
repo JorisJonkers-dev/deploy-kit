@@ -331,6 +331,11 @@ start, and may it be promoted
 ([chapter 55](spec/v1/55-delivery.md#the-release-gate)). Not the Kubernetes
 readiness gate.
 
+**Delivery machinery**: the Applications that perform a switch and are never
+switched by one: the Release Gate, Flagger and the edge proxies, listed in the
+Platform document. Their continuous Processes roll in place
+([chapter 14](spec/v1/14-platform-intent.md#delivery-policy)).
+
 **Held**: the state of an Application whose release failed: its old version
 keeps serving while the pin names the new one, until a new pin lands
 ([chapter 55](spec/v1/55-delivery.md#held-releases)).

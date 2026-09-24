@@ -138,7 +138,7 @@ public final class Pipeline {
         List<Diagnostic> unlinked = new ArrayList<>();
         for (Resource.Diagnostic error : resource.getErrors()) {
             XtextLinkingDiagnostic linking = (XtextLinkingDiagnostic) error;
-            if (UnlinkedNames.UNKNOWN_TIER_PROXY.equals(linking.getCode()) == together) {
+            if (UnlinkedNames.ACROSS_DOCUMENTS.contains(linking.getCode()) == together) {
                 EObject owner = resource.getEObject(linking.getUriToProblem().fragment());
                 unlinked.add(new Diagnostic(
                         linking.getCode(), resource.getURI().lastSegment(), Pointer.of(owner), linking.getMessage()));

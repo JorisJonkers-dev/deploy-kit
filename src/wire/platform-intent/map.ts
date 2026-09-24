@@ -53,6 +53,7 @@ function toPlatform(document: PlatformIntentDocument): Platform {
     ...(document.migration === undefined
       ? {}
       : { migration: document.migration }),
+    ...(document.delivery === undefined ? {} : { delivery: document.delivery }),
     providers: (document.providers ?? []).map((provider) => ({
       ...provider,
       surfaces: new Map(Object.entries(provider.surfaces)),

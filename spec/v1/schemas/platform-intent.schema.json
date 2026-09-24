@@ -58,6 +58,9 @@
         "migration": {
           "$ref": "#/$defs/MigrationPolicy"
         },
+        "delivery": {
+          "$ref": "#/$defs/DeliveryPolicy"
+        },
         "providers": {
           "minItems": 1,
           "type": "array",
@@ -438,6 +441,53 @@
         "deadline",
         "memory",
         "cpu"
+      ],
+      "additionalProperties": false
+    },
+    "DeliveryPolicy": {
+      "type": "object",
+      "properties": {
+        "machinery": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "reference": "Application"
+          }
+        },
+        "analysis": {
+          "$ref": "#/$defs/AnalysisPolicy"
+        }
+      },
+      "required": [
+        "machinery",
+        "analysis"
+      ],
+      "additionalProperties": false
+    },
+    "AnalysisPolicy": {
+      "type": "object",
+      "properties": {
+        "interval": {
+          "type": "string",
+          "minLength": 1
+        },
+        "iterations": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "interval",
+        "iterations",
+        "threshold"
       ],
       "additionalProperties": false
     },

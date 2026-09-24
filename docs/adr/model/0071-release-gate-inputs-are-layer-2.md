@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+superseded-by: 0132
 claim: settled
 date: 2026-09-07
 normative: spec/v1/20-resolved-deployment.md#the-release-gate
@@ -8,6 +8,11 @@ rests-on: ["0005"]
 ---
 
 # The release gate is derived into layer 2, and nothing is rendered for it
+
+> **Superseded 2026-09-24** by
+> [0132](0132-the-release-gate-answers-the-switch.md): the inputs stay in layer 2
+> and gain each member's analysis, and a first-party Release Gate now reads them,
+> with a Canary per member rendered to ask it.
 
 > **Amended 2026-09-24.** Only a `continuous` Application carries the gate's
 > inputs, and only a `continuous` Application must publish readiness: an
