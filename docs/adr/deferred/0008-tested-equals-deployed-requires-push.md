@@ -10,6 +10,13 @@ decided-in: JorisJonkers-dev/workspace#45
 
 # Tested-equals-deployed cannot be had from pull alone
 
+> **Re-graded 2026-09-24.** The premise held for the pull delivery it was
+> written against, where composition takes effect with no merge to gate. The
+> pull delivery the model adopted ([0127](../model/0127-delivery-is-part-of-the-model.md))
+> deploys only through a pin commit, and that commit is a merge-shaped gate
+> point: whatever co-testing is taken up gates the pin, and push is not
+> required for it. The claim below is kept as it was argued.
+
 > **Amended 2026-09-14.** Vocabulary renamed by
 > [0116](../model/0116-project-application-process.md): Domain is now Project,
 > Service is Application, Workload is Process, and Service Intent is Project
@@ -70,8 +77,8 @@ owner; 12 of the 32 system-tagged classes exercise `auth-api` *with its consumer
 ## Reversibility
 
 Undo cost today: one frontmatter edit here plus scope notes on the decisions
-resting on this premise ([0041](0041-push-delivery-boundary.md) through
-[0045](0045-break-glass-reporting.md), plus [0048](0048-class-b-pinning.md),
+resting on this premise ([0041](0041-push-delivery-boundary.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)) through
+[0045](0045-break-glass-reporting.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)), plus [0048](0048-class-b-pinning.md),
 [0051](0051-vcluster-substrate.md) and
 [0058](0058-delivery-machinery-observability.md)) are superseded in scope per
 [0059](../model/0059-v1-scope-stopping-rule.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)). No delivery machinery exists yet; the
@@ -82,8 +89,8 @@ experiment needs is gone and the premise can no longer be tested cheaply.
 
 ## Consequences
 
-- Every decision resting on this premise ([0041](0041-push-delivery-boundary.md)
-  through [0045](0045-break-glass-reporting.md), [0048](0048-class-b-pinning.md),
+- Every decision resting on this premise ([0041](0041-push-delivery-boundary.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md))
+  through [0045](0045-break-glass-reporting.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)), [0048](0048-class-b-pinning.md),
   [0051](0051-vcluster-substrate.md),
   [0058](0058-delivery-machinery-observability.md)) inherits an untested
   foundation until workspace#45 runs, paid by joris, as rework risk across group G.

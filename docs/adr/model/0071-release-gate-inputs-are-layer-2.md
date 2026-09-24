@@ -9,6 +9,11 @@ rests-on: ["0005"]
 
 # The release gate is derived into layer 2, and nothing is rendered for it
 
+> **Amended 2026-09-24.** Where this record says delivery is defined
+> separately, delivery is now part of the model
+> ([0127](0127-delivery-is-part-of-the-model.md),
+> [chapter 55](../../../spec/v1/55-delivery.md)). The decision is unchanged.
+
 > **Amended 2026-09-14.** Vocabulary renamed by
 > [0116](0116-project-application-process.md): Domain is now Project,
 > Service is Application, Workload is Process, and Service Intent is Project

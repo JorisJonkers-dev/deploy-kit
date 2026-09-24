@@ -84,7 +84,7 @@ its registry, `local-path` defaults) rather than the k3s API, or once the gate s
 
 - The gate design stays open until one number exists; per-relationship slices
   versus full estate is decided by measurement, paid by the programme schedule
-- If the run misses ≤15 min or ≤4 GB, [0041](0041-push-delivery-boundary.md)'s
+- If the run misses ≤15 min or ≤4 GB, [0041](0041-push-delivery-boundary.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md))'s
   CI-cost consequence reprices and the gate is re-cut, paid by whoever owns the
   aggregator workflows
 - The runner host must hold a k3d cluster plus 18 HelmReleases; it stops being a

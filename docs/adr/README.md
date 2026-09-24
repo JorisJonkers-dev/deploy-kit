@@ -63,9 +63,11 @@ no longer the only field the project header carries.
 
 The set was amended on 2026-09-24 for delivery: how the estate deploys is part
 of the model again, specified in
-[chapter 55](../../spec/v1/55-delivery.md) (0127). 0059's finish line is
-superseded by it; the parked push design in [deferred/](deferred/README.md) is
-retired record by record, and co-testing stays parked.
+[chapter 55](../../spec/v1/55-delivery.md). The finish line of
+[0059](model/0059-v1-scope-stopping-rule.md) is superseded by
+[0127](model/0127-delivery-is-part-of-the-model.md), the parked push design in
+[deferred/](deferred/README.md) is retired record by record, and co-testing
+stays parked.
 
 Tier-0 **premises** carry one falsifiable claim each; tier-1 **decisions** name
 the premises they stand on in `rests-on`. A `claim: open` means decided in
@@ -226,7 +228,7 @@ delivery work it underpins.
 | # | title | claim |
 |---|---|---|
 | [0059](model/0059-v1-scope-stopping-rule.md) | v1 has a scope and a stopping rule | superseded by [0127](model/0127-delivery-is-part-of-the-model.md) |
-| [0127](model/0127-delivery-is-part-of-the-model.md) | Delivery is part of the v1 model: Flux pulls a signed, pinned render and Flagger switches it | open |
+| [0127](model/0127-delivery-is-part-of-the-model.md) | Delivery is part of the v1 model: Flux pulls a signed, pinned render and Flagger switches what must keep serving | open |
 | [0060](model/0060-release-unit.md) | Several Applications switch as one Release Unit | superseded by [0062](model/0062-application-is-the-release-unit.md) |
 | [0062](model/0062-application-is-the-release-unit.md) | An Application is the unit of atomic release | settled |
 

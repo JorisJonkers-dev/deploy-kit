@@ -62,8 +62,9 @@ rescheduling, HA or horizontal scale as justification.
 
 Both retained properties are made real by *how objects are applied*: which
 identity applies, under which field manager. Delivery has one applier, Flux,
-pulling from inside the cluster, so there is one identity and one field owner
-for everything rendered ([chapter 55](55-delivery.md#scope)). The model's own
+pulling from inside the cluster, so there is one applying identity for
+everything rendered, and Flagger owns only the objects it generates, which the
+render therefore omits ([chapter 55](55-delivery.md#scope)). The model's own
 obligation is discharged in these chapters: every Deliverable is a serialized
 object attributed to exactly one adapter, so there is always a single answer to
 "what should own this field".
@@ -128,6 +129,11 @@ tree, so a differing render with identical digests is a defect, never weather.
 
 <sub>[Diagram source](#the-three-model-pipeline) · edit by opening the SVG in draw.io</sub>
 
+The drawing still labels delivery "defined separately"; delivery is
+[chapter 55](55-delivery.md)'s since 2026-09-24, and the drawing is redrawn with
+the rest of the delivery diagrams in
+[#160](https://github.com/JorisJonkers-dev/deploy-kit/issues/160).
+
 ## Programme scope
 
 v1 is the model and its delivery
@@ -166,10 +172,14 @@ now how they are met.
 
 **The stopping rule.** Co-testing stays parked until
 [workspace#45](https://github.com/JorisJonkers-dev/workspace/issues/45) runs and
-the test-substrate measurement exists; it gates nothing in v1. The named failure
+the test-substrate measurement exists; it gates nothing in v1. Review date
+**2026-11-30**: co-testing still unstarted then is cut from planning, not
+extended. The named failure
 mode this rule exists to prevent is not collapse but partial completion with
-both delivery paths live, which is why [chapter 55](55-delivery.md) hands
-Projects over one at a time and retires the old path by a date.
+both delivery paths live, which is why adoption
+([chapter 60](60-setup.md), specified by
+[#159](https://github.com/JorisJonkers-dev/deploy-kit/issues/159)) is to hand
+Projects over one at a time and retire the old path by a date.
 
 Live-defect fixes ride independently of both scopes: the unpinned foundation
 charts and this repository's own unpinned CI are operational fixes that proceed

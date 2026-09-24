@@ -41,7 +41,7 @@ The inventory was wrong both ways. `50-lifecycle.md:105` reads `prev = kubectl
 get -l deploy.jorisjonkers.dev/deployer=<aggregator>`, no resource type, so
 kubectl returns one namespace's default set, no custom resources, while the
 deployer's declared reach spans two namespaces (`deployer-rbac.yaml:8`) and the
-file emits a Role in `auth-system` only ([0047](0047-namespace-per-deployer.md)).
+file emits a Role in `auth-system` only ([0047](0047-namespace-per-deployer.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md))).
 `IngressRoute` and `VaultStaticSecret` are never in `prev`, so a withdrawn
 hostname stays served (both Traefiks set `allowCrossNamespace: true`) and a
 withdrawn grant leaves VSO refreshing an unaudited Secret.
@@ -69,7 +69,7 @@ in the inventory means seen, not deleted:
 | Keep prune-before-apply | Free, and it does avoid the overlap window. Costs a delete-then-create on every rename or reassignment, where a conflict-failed or timed-out apply leaves the old object gone and nothing in its place; recovery is a re-run at best, and nothing at all where the deleted object backed an `irreplaceable` claim | Buys a transient duplicate and pays with a hole; inverts the one ordering Flux got right, for no property the estate needs |
 | Keep the bare `kubectl get -l` inventory, treat the rest as orphans | Zero build cost. `IngressRoute` and `VaultStaticSecret` stay unprunable forever: a withdrawn hostname remains publicly served and a withdrawn grant keeps refreshing a Secret, both invisible to the delete pass and indistinguishable from the adoption orphans the chapter trains readers to expect | Silently blind on exactly the two kinds carrying exposure and credentials |
 | Enumerate the kinds by hand in the workflow, beside the Role | An hour now; a second hand-maintained list that diverges the moment an adapter emits a new kind, and diverges silently: a missing kind is an object never pruned, with no error anywhere | The same duplication that produced the current defect, doubled |
-| Discover kinds at runtime (`kubectl api-resources`, prune everything labelled) | Always complete, never drifts. Widens the delete surface from what this deployer renders to every kind the API server serves, class-B and Flux-owned objects included; one mislabelled object anywhere becomes deletable | Contradicts the bounded delete authority of [0043](0043-delete-authority-durability-gate.md) and the one-deployer rule of [0047](0047-namespace-per-deployer.md) |
+| Discover kinds at runtime (`kubectl api-resources`, prune everything labelled) | Always complete, never drifts. Widens the delete surface from what this deployer renders to every kind the API server serves, class-B and Flux-owned objects included; one mislabelled object anywhere becomes deletable | Contradicts the bounded delete authority of [0043](0043-delete-authority-durability-gate.md) and the one-deployer rule of [0047](0047-namespace-per-deployer.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)) |
 
 ## Reversibility
 

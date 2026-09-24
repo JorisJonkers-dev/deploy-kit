@@ -8,7 +8,7 @@ normative: spec/v1/55-delivery.md#scope
 rests-on: ["0001", "0002", "0006"]
 ---
 
-# Delivery is part of the v1 model: Flux pulls a signed, pinned render and Flagger switches it
+# Delivery is part of the v1 model: Flux pulls a signed, pinned render and Flagger switches what must keep serving
 
 How the estate deploys stops being "defined separately". It is specified in
 [chapter 55](../../../spec/v1/55-delivery.md): Flux pulls each Project's render
@@ -20,14 +20,14 @@ join the model on the same footing.
 This supersedes [0059](0059-v1-scope-stopping-rule.md). v1 ships when the live
 estate renders from declared intent **and is delivered through per-Project pins
 and Flagger**, not when it is delivered by an unchanged Flux tree. The
-directory partition 0059 introduced survives: `docs/adr/deferred/` now holds
+directory partition [0059](0059-v1-scope-stopping-rule.md) introduced survives: `docs/adr/deferred/` now holds
 co-testing and the delivery records this decision retires, each with its fate
 stated in [its inventory](../deferred/README.md).
 
 ## Rests on
 
 One maintainer and one cluster ([0001](0001-estate-scale-and-ownership.md)), so
-a single in-cluster applier with a single field owner is enough, and nothing
+a single in-cluster applier is enough, and nothing
 here arbitrates between people. Kubernetes is kept for its API server as an
 authorisation boundary and for server-side-apply field ownership
 ([0002](0002-kubernetes-as-substrate.md)): pull delivery keeps the deploy
@@ -52,8 +52,8 @@ model's scope honest and left its most visible promise untested.
 **Pull, not push.** The parked design was a push: Aggregators applying the
 derived objects with their own credentials, a reconcile CronJob per
 Aggregator, field managers per applier, a Lease to serialise them, and a
-break-glass workflow ([0041](../deferred/0041-push-delivery-boundary.md) to
-[0047](../deferred/0047-namespace-per-deployer.md)). Most of that machinery
+break-glass workflow ([0041](../deferred/0041-push-delivery-boundary.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md)) to
+[0047](../deferred/0047-namespace-per-deployer.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md))). Most of that machinery
 exists to make two appliers coexist. A pinned render pulled by the one applier
 the estate already runs needs none of it: Flux reconciles continuously, prunes
 after it applies, and owns every field it applies, and the pin commit is the
@@ -88,15 +88,18 @@ estate-wide.
 ## Consequences
 
 - [0059](0059-v1-scope-stopping-rule.md) is superseded; its finish line moves
-  and its 2026-11-30 review of the deferred set is replaced by this record's
-  settling test, paid by joris, who owns the date.
-- [0041](../deferred/0041-push-delivery-boundary.md),
-  [0044](../deferred/0044-reconcile-cronjob.md),
-  [0045](../deferred/0045-break-glass-reporting.md),
-  [0046](../deferred/0046-distinct-field-managers.md) and
-  [0047](../deferred/0047-namespace-per-deployer.md) are retired rather than
-  taken up; co-testing (0049–0051) stays parked, and its premise is re-graded
-  against the pin commit, paid by whoever takes co-testing up.
+  and its 2026-11-30 review now covers co-testing alone, paid by joris, who
+  owns the date.
+- [0041](../deferred/0041-push-delivery-boundary.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md)),
+  [0044](../deferred/0044-reconcile-cronjob.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md)),
+  [0045](../deferred/0045-break-glass-reporting.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md)),
+  [0046](../deferred/0046-distinct-field-managers.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md)) and
+  [0047](../deferred/0047-namespace-per-deployer.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md)) are retired rather than
+  taken up; co-testing ([0049](../deferred/0049-aggregator-owned-tests.md) to [0051](../deferred/0051-vcluster-substrate.md)) stays parked, with its
+  2026-11-30 review date, and its premise
+  [0008](../deferred/0008-tested-equals-deployed-requires-push.md) is re-graded
+  now: the pin commit is the gate point it said pull delivery lacked, paid by
+  whoever takes co-testing up, who gates the pin rather than a push.
 - The estate gains three things it must run: Flagger, the Release Gate, and an
   estate repository that composes, renders and pins, paid by joris, in
   [#148](https://github.com/JorisJonkers-dev/deploy-kit/issues/148).

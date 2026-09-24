@@ -273,6 +273,31 @@ registered as a ledger entry rather than ignored
 ([0019](docs/adr/model/0019-registered-unmanaged-surfaces.md)). Something the
 estate *depends on* is a Provider, not an unmanaged surface.
 
+## Delivery: how a render reaches the cluster
+
+**Rendered artifact**: one Project's render, published as a signed OCI artifact
+and named by digest. What the applier fetches, and never committed as files
+([chapter 55](spec/v1/55-delivery.md#rendered-artifacts-and-pins)).
+
+**Pin**: the digest a Project's source points at, and the commit that changes
+it. A deploy is a pin commit applied; the estate's git history is its deploy log
+([chapter 55](spec/v1/55-delivery.md#rendered-artifacts-and-pins)).
+
+**Switchover**: how an Application's new version replaces the old one: its new
+Processes start beside the old and receive traffic only once every member has
+passed analysis, or the old stop before the new start
+([chapter 55](spec/v1/55-delivery.md#switchover)).
+
+**Release Gate**: the first-party controller that answers a switchover's
+questions from the Resolved Deployment: may this Application's new version
+start, and may it be promoted
+([chapter 55](spec/v1/55-delivery.md#the-release-gate)). Not the Kubernetes
+readiness gate.
+
+**Held**: the state of an Application whose release failed: its old version
+keeps serving while the pin names the new one, until a new pin lands
+([chapter 55](spec/v1/55-delivery.md#held-releases)).
+
 ## Words to use carefully
 
 **Fragment.** One meaning now: the **Intent Fragment**, an authored document

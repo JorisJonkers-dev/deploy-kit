@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+superseded-by: 0127
 claim: settled
 date: 2026-08-31
 normative: spec/v1/50-lifecycle.md#break-glass
@@ -24,7 +24,7 @@ off the slice, then `amtool config routes test alertclass=urgent`.
 ## Why
 
 Applying an older lock without tests is necessary for incidents. Under
-[0041](0041-push-delivery-boundary.md) the normal rollback reverts the pin commit, so
+[0041](0041-push-delivery-boundary.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)) the normal rollback reverts the pin commit, so
 the suite re-runs against the previous combination and the rollback is itself tested, 
 but that costs a suite run and a vcluster, which an incident does not have. So a
 `workflow_dispatch` applies a named older lock directly. The estate has precedent for
@@ -34,7 +34,7 @@ both halves of the discipline (`spec/v1/50-lifecycle.md:191-193`):
 check.
 
 The rollback **sticks**, which follows from where the record of what is live lives.
-The reapply CronJob of [0044](0044-reconcile-cronjob.md) re-applies its own applied
+The reapply CronJob of [0044](0044-reconcile-cronjob.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)) re-applies its own applied
 lock, read from its objects' annotations (`deploy.jorisjonkers.dev/lock`,
 `spec/v1/50-lifecycle.md:119`), never the globally newest one: that "would make this
 scheduler fight the Aggregators, and would silently undo a break-glass rollback"

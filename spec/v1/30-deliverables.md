@@ -335,6 +335,10 @@ before any schedule is committed, because counting files under
 
 <sub>[Diagram source](#the-render-end-to-end) · edit by opening the SVG in draw.io</sub>
 
+The drawing still labels delivery "defined separately"; delivery is
+[chapter 55](55-delivery.md)'s since 2026-09-24, and the drawing is redrawn in
+[#160](https://github.com/JorisJonkers-dev/deploy-kit/issues/160).
+
 `renderHash` is taken over the recorded input digests (every Intent Fragment
 including the Platform document, the images lock, the node contract, the
 ClusterState snapshot), prefixed with the schema package integrity
@@ -375,7 +379,7 @@ is co-testing, parked in [docs/adr/deferred/](../../docs/adr/deferred/README.md)
 One model-level consequence belongs here, because it is what makes coverage
 load-bearing rather than hygiene: **an object the render omits is an object no
 Deliverable Set claims.** The applier reconciles the cluster towards this tree
-and prunes what it no longer claims, so it treats an unclaimed object as removable, so a coverage gap
+and prunes what it no longer claims: to it, an unclaimed object is removable, so a coverage gap
 is a correctness problem in the model, not a tidiness problem downstream. That is
 why the coverage assertion fails the build, why the ledger fails in both
 directions, and why a project that silently fails to publish must show up as a

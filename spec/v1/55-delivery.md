@@ -11,15 +11,16 @@ met rather than a list of them:
 | demand | decided in | how delivery meets it |
 |---|---|---|
 | **Release Unit atomicity** | [0062](../../docs/adr/model/0062-application-is-the-release-unit.md) | [Switchover](#switchover): a barrier over every member of the Application, run by the [Release Gate](#the-release-gate) |
-| **Durability Class gating** | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | the applier never prunes a claim whose class derives a backup |
+| **Durability Class gating** | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | no destructive operation proceeds automatically against a volume declared `recoverable` or `irreplaceable`: the applier never prunes such a claim ([#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158)) |
 | **Pinned inputs only** | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | [Rendered artifacts and pins](#rendered-artifacts-and-pins): what is applied is a signed artifact named by digest, rendered from a recorded lock |
 
 ## Scope
 
 Delivery is **pull**. Flux applies a render it fetches, and Flagger switches an
 Application's Processes from the old version to the new one. Nothing pushes to
-the cluster, so there is one applier, one field owner for what it applies, and
-no deploy credential outside the cluster
+the cluster, so there is one applier, no deploy credential outside the
+cluster, and Flagger owns only the objects it generates, which the render
+therefore omits
 ([0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md)).
 
 What is in scope, and the section that specifies each:
@@ -33,6 +34,9 @@ What is in scope, and the section that specifies each:
 | how a schema moves with its Application | [Migrations](#migrations) |
 | what runs before a new version starts, in what order | [Release order](#release-order) |
 | what undoes a failed migration, and when it may | [Failure and undo](#failure-and-undo) |
+| why rotating a secret is not a release | [Secret rotation](#secret-rotation) |
+| what the render leaves to Flagger | [What the render leaves to Flagger](#what-the-render-leaves-to-flagger) |
+| how a Project moves off the old path | [chapter 60](60-setup.md), specified by [#159](https://github.com/JorisJonkers-dev/deploy-kit/issues/159) |
 
 What is not in scope:
 
@@ -65,7 +69,7 @@ Application has passed analysis. Specified in full by
 
 ## The Release Gate
 
-A first-party service answers the switch's questions from the Resolved
+A first-party controller answers the switch's questions from the Resolved
 Deployment: may this Application's new version start, and may it be promoted.
 Specified in full by
 [#152](https://github.com/JorisJonkers-dev/deploy-kit/issues/152).
@@ -94,3 +98,14 @@ full by [#156](https://github.com/JorisJonkers-dev/deploy-kit/issues/156).
 What each failure leaves serving, and the only conditions under which a
 migration is undone automatically. Specified in full by
 [#157](https://github.com/JorisJonkers-dev/deploy-kit/issues/157).
+
+## Secret rotation
+
+Rotating a secret is not a release, so it never starts a switchover. Specified in
+full by [#153](https://github.com/JorisJonkers-dev/deploy-kit/issues/153).
+
+## What the render leaves to Flagger
+
+Which objects Flagger generates and the render therefore omits, and what the
+render marks so that Flux and Flagger do not fight over a field. Specified in
+full by [#158](https://github.com/JorisJonkers-dev/deploy-kit/issues/158).

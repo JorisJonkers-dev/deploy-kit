@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+superseded-by: 0127
 claim: settled
 date: 2026-08-31
 normative: spec/v1/50-lifecycle.md#deploy-authority
@@ -63,7 +63,7 @@ adapter renders one Role and RoleBinding per namespace in that set;
 one that does with `E_NAMESPACE_FOREIGN_DEPLOYER`, alias surviving as a rename
 inside one deployer's own namespaces. This is the other half of making
 [0002](../model/0002-kubernetes-as-substrate.md)'s first property real;
-[0046](0046-distinct-field-managers.md) is the half for the drift signal.
+[0046](0046-distinct-field-managers.md) (superseded by [0127](../model/0127-delivery-is-part-of-the-model.md)) is the half for the drift signal.
 
 ## Alternatives
 

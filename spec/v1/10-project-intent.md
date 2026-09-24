@@ -372,8 +372,8 @@ Unit:
 | failure | the later unit waits | nothing switches |
 
 The Application says **what** must hold, never **how** it is achieved. The mechanism (
-what applies the change, in what order, behind what gate) is derived, and
-[chapter 55](55-delivery.md) specifies it.
+what applies the change, in what order, behind what gate) is
+[chapter 55](55-delivery.md)'s.
 
 **A namespace holds several Applications by construction, so it is not a trust
 boundary.** This was once a footnote to an exception; it is now the normal case
@@ -410,7 +410,7 @@ raised where a reader can see both declarations at once.
 No field can move an Application out of its project's namespace, so the old question of
 whether an Application may name a namespace some other applier owns has lost its
 subject matter: see
-[Delivery is derived, and co-testing stays parked](#delivery-is-derived-and-co-testing-stays-parked).
+[Delivery reads these declarations, and co-testing stays parked](#delivery-reads-these-declarations-and-co-testing-stays-parked).
 
 ## The label set
 
@@ -2227,13 +2227,14 @@ declaring site is fixed:
 | an executable Asset | an image |
 | a deploy workflow, applier or gate | delivery's, derived: see below |
 
-## Delivery is derived, and co-testing stays parked
+## Delivery reads these declarations, and co-testing stays parked
 
 How a change reaches the cluster is [chapter 55](55-delivery.md)'s, and nothing
 about it is authored here. No field in this chapter names an applier, a
 workflow, a field manager, a pruning rule or a co-test suite, and none may be
-added: the applier, the switch and the pins are derived from what this chapter
-does declare ([0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md)).
+added: the applier, the switch and the pins are fixed by
+[chapter 55](55-delivery.md), and read what this chapter does declare
+([0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md)).
 Whether one unit's tests gate another's deploy stays parked in
 [docs/adr/deferred/](../../docs/adr/deferred/README.md).
 

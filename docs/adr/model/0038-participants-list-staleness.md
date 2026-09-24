@@ -88,7 +88,7 @@ estate's only enumeration of expected projects, with nothing left to rebuild it.
   red compose rather than a silent restore.
 - One stale participant blocks every aggregator, including the one shipping the
   fix (OPS-009); the remaining lever is break-glass with an older lock under
-  [0045](../deferred/0045-break-glass-reporting.md), paid by every other project owner.
+  [0045](../deferred/0045-break-glass-reporting.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md)), paid by every other project owner.
 - A project that genuinely publishes less often than weekly must carry an
   override with a written reason, paid by that project's owner.
 - Dormancy costs a reason and a review date and is reviewed as a ledger entry,
