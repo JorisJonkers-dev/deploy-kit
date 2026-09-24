@@ -637,6 +637,29 @@ no readiness signal and cannot be gated: `E_RELEASE_UNIT_NO_READINESS`, checked
 at composition time ([chapter 40](40-composition.md#completeness)), not
 discovered by a delivery mechanism at apply time.
 
+## The Application revision
+
+Every Application's element of the Resolved Deployment carries its **revision**:
+the `sha256` digest of the element's canonical JSON (RFC 8785, the form every
+oracle file is written in), with the revision itself left out ([0129](../../docs/adr/model/0129-the-application-revision-is-the-digest-of-its-element.md)).
+It is the identity of one release of one Application, and it is what delivery
+names that release by ([chapter 55](55-delivery.md)): a migration Job, the tag a
+database is marked with after its migration, the Canary annotation the Release
+Gate reads, and the pair a held release is reported as (serving revision,
+pinned revision).
+
+Three properties follow from what the digest covers:
+
+| property | because |
+|---|---|
+| it moves when any decision about the Application moves | every field of the element is covered: an image digest, a grant, a route, a deadline, a switchover |
+| it does not move when only another Application does | the provenance, which names every pinned input of the estate, is not part of the element; neither are a projection's `apiVersion` and `kind` |
+| it is the same in the estate-wide document and in the published projection | the projection is the element plus a provenance and a document header, none of which is covered |
+
+A revision is **derived**, never authored, and nothing reads the live cluster to
+compute it: it is a function of the element, which is a function of the pinned
+inputs ([0006](../../docs/adr/model/0006-pinned-inputs.md)).
+
 ## The path plan
 
 Layer 2 assigns **every output path**
@@ -864,6 +887,7 @@ apiVersion: resolved.jorisjonkers.dev/v1
 kind: ResolvedApplication
 project: knowledge
 id: knowledge
+revision: sha256:…                   # the Application revision: this element's digest
 
 provenance:
   renderHash: sha256:…
@@ -951,6 +975,7 @@ Its projection, abridged to what differs:
 kind: ResolvedApplication
 project: knowledge
 id: knowledge-ingest
+revision: sha256:…
 namespace: knowledge-system          # the same project, so the same namespace
 reconcileUnit: apps-knowledge
 # No `releaseGate`: an interrupted Application stops before it starts, so there
@@ -1190,6 +1215,7 @@ classDiagram
     }
     class ResolvedApplication {
         +ApplicationId id
+        +Digest revision
         +ProjectName project
         +Namespace namespace
         +UnitName reconcileUnit

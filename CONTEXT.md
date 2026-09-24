@@ -254,6 +254,12 @@ receives traffic until every member's new version is healthy
 ([0060](docs/adr/model/0060-release-unit.md), superseded by
 [0062](docs/adr/model/0062-application-is-the-release-unit.md)).
 
+**Application revision**: the digest of one Application's element of the
+Resolved Deployment, itself excluded: the identity of one release of one
+Application, which moves exactly when a decision about that Application does
+([chapter 20](spec/v1/20-resolved-deployment.md#the-application-revision)).
+Not the `renderHash`, which moves when any input of the estate does.
+
 **`renderHash`**: the hash identifying a render. A function of the recorded
 input digests alone, so if it changes at least one input changed.
 

@@ -252,6 +252,9 @@ const releaseGate = z
 
 const application = {
   id: text,
+  // The digest of this element, itself and the provenance excluded
+  // (spec/v1/20-resolved-deployment.md#the-application-revision).
+  revision: digest,
   project: text,
   namespace: text,
   reconcileUnit: text,

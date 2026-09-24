@@ -41,4 +41,5 @@ export {
   type ResolvedApplicationDocument,
   type ResolvedDeploymentDocument,
 } from "./wire/resolved-deployment/schema.ts";
+export { applicationRevision } from "./infrastructure/application-revision.ts";
 export { canonicalJson } from "./infrastructure/canonical-json.ts";

@@ -31,7 +31,7 @@
   <!-- notes holds no dependency and no grant, so its unit follows nothing. -->
   <reconcileUnits name="apps-notes"/>
 
-  <applications id="notes" project="notes" namespace="notes-system"
+  <applications id="notes" revision="sha256:2b913f80c530ffaa6d4f7acd91694bb868b953d7343944f94419e999f65c72e7" project="notes" namespace="notes-system"
       alertClass="business-hours" reconcileUnit="//@reconcileUnits.0">
     <releaseGate deadline="60s">
       <members process="//@applications.0/@processes.0">
