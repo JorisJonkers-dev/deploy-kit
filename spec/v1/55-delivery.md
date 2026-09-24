@@ -81,8 +81,10 @@ Three rules hold the table true:
 - **Room for the second copy.** A `blue-green` Process is eligible only on a node
   that fits two copies of it, for the length of its analysis
   ([chapter 20](20-resolved-deployment.md#layer-2-does-not-assign-a-node)).
-- **A job has none.** A `lifecycle: job` Process switches nothing, so it carries
-  no switchover and never waits on a gate.
+- **A job and a prepare step have none.** A `lifecycle: job` or
+  `lifecycle: prepare` Process switches nothing, so it carries no switchover and
+  never waits on a gate; a prepare Process runs before the switch instead
+  ([Release order](#release-order)).
 
 What gates a `blue-green` switch, the barrier over every member and who answers
 it, is [The Release Gate](#the-release-gate)'s, specified in full by

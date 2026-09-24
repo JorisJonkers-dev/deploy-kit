@@ -168,7 +168,7 @@ delivery work it underpins.
 | [0020](model/0020-dependency-edges-carry-surface.md) | A dependency edge names the provider, the surface, and necessity | settled |
 | [0080](model/0080-database-catalog-is-derived-data.md) | The per-consumer database catalog is derived data, and Vault mints the credentials | settled, amended by [0130](model/0130-migration-is-declared-on-the-application.md) |
 | [0130](model/0130-migration-is-declared-on-the-application.md) | Migration is declared on the Application: one Liquibase system, one database per project, and one Application that moves it | open |
-| [0131](model/0131-prepare-processes-are-forward-only-setup.md) | A prepare Process is forward-only setup that runs after the migration and before the new version, and serves nothing | settled |
+| [0131](model/0131-prepare-processes-are-forward-only-setup.md) | A prepare Process is forward-only setup that runs after the migration and before the new version, and serves nothing | open |
 | [0021](model/0021-observability-scrape-and-alert-class.md) | Observability is a scrape surface plus an Alert Class | settled |
 | [0079](model/0079-alert-class-derives-from-a-rule-catalog.md) | An Alert Class derives rules from a platform catalog, and a class without a signal is refused | settled |
 

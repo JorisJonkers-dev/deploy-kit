@@ -86,6 +86,20 @@ class ResolvedDeploymentTest {
     }
 
     @Test
+    void aPrepareProcessCarriesNoCutoverAndStillValidates() {
+        // spec/v1/10-project-intent.md#prepare-processes: a prepare Process runs
+        // once and cuts over nothing, so layer 2 leaves both unset.
+        ResolvedDeployment deployment = minimal();
+        ResolvedProcess process =
+                deployment.getApplications().get(0).getProcesses().get(0);
+        process.unsetCutover();
+        process.unsetSwitchover();
+
+        assertThat(process.isSetCutover()).isFalse();
+        assertThat(Diagnostician.INSTANCE.validate(deployment).getSeverity()).isEqualTo(Diagnostic.OK);
+    }
+
+    @Test
     void everyProcessSwitchesAsItsCutoverDerivesAndOnlyAContinuousApplicationIsGated() {
         // spec/v1/55-delivery.md#switchover: `continuous` derives blue-green,
         // `interrupted` stop-start, and only a continuous Application carries

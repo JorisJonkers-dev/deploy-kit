@@ -1,7 +1,8 @@
 ---
 tier: decision
 status: proposed
-claim: settled
+claim: open
+owner: joris
 date: 2026-09-24
 normative: spec/v1/10-project-intent.md#prepare-processes
 rests-on: ["0005"]
@@ -24,10 +25,10 @@ Process renders as, when it runs and how long it may take follow from its
 lifecycle and its `startupBudget`, so nothing about the run is authored.
 
 **False if:** a setup step in the estate must run between two others, or must
-be undone when a release fails. **Settled by:** the estate's one-shot setup
-steps (the garage bootstrap, the hermes bootstrap, the Vault auth setup) each
-written as one idempotent prepare Process, with no ordering between them and no
-undo.
+be undone when a release fails. **Settled by:** the one-shot bootstraps
+[chapter 00's open item 2](../../../spec/v1/00-overview.md#open-items) names
+(`hermes-bootstrap` and the `garage` bootstrap) each written as one idempotent
+prepare Process, with no ordering between them and no undo.
 
 ## Why
 
@@ -63,8 +64,9 @@ and their old ConfigMap scripts are deleted.
 
 ## Consequences
 
-- The three ConfigMap-hosted bootstrap scripts become images run as prepare
-  Processes, paid by joris, as chapter 00's open item on executable Assets
-  already requires.
+- The ConfigMap-hosted bootstrap scripts become images run as prepare
+  Processes, paid by joris, as
+  [chapter 00's open item 2](../../../spec/v1/00-overview.md#open-items) on
+  executable Assets already requires.
 - A failed prepare step holds the release and nothing is undone, paid by the
   author, who must keep every step idempotent.

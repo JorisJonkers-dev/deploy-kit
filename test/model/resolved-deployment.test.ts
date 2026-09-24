@@ -351,6 +351,40 @@ describe("the committed oracles", () => {
     ).toStrictEqual([]);
   });
 
+  it("accepts a prepare Process with neither a cutover nor a switchover, and refuses a switchover on one", () => {
+    // A prepare Process runs once and cuts over nothing, so layer 2 carries
+    // neither for it (spec/v1/10-project-intent.md#prepare-processes).
+    const knowledge = oracle("knowledge") as Record<string, unknown>;
+    const [api] = knowledge["processes"] as Record<string, unknown>[];
+    if (api === undefined) throw new Error("the api left the oracle");
+    const prepare: Record<string, unknown> = { ...api, name: "seed" };
+    delete prepare["cutover"];
+    delete prepare["switchover"];
+    const switched = { ...prepare, switchover: "stop-start" };
+
+    expect(
+      resolvedApplicationDocument.safeParse({
+        ...knowledge,
+        processes: [api, prepare],
+      }).error?.issues ?? [],
+    ).toStrictEqual([]);
+    expect(
+      resolvedApplicationDocument
+        .safeParse({ ...knowledge, processes: [api, switched] })
+        .error?.issues.map(({ code, path, message }) => ({
+          code,
+          path: path.join("."),
+          message,
+        })),
+    ).toStrictEqual([
+      {
+        code: "custom",
+        path: "processes.1.switchover",
+        message: "a Process with no cutover switches nothing",
+      },
+    ]);
+  });
+
   it("refuses a switchover its cutover does not derive, and a gate on the wrong side", () => {
     const wrongSwitchover = ingest();
     const [worker] = wrongSwitchover["processes"] as Record<string, unknown>[];

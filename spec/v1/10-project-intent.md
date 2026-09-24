@@ -166,7 +166,7 @@ and each may be declared at the **Project** header, on an **Application**, or on
 | `assets` | the file is mounted into every Process below the level | [Assets](#assets) |
 | `writablePaths` | every Process below the level may write the path | [Writable paths are declared, not exempted](#writable-paths-are-declared-not-exempted) |
 | `placement` | every Process below the level requires those node dimensions | [Placement](#placement) |
-| `cutover` | every Process below the level cuts over that way | [Cutover is declared, not promised](#cutover-is-declared-not-promised) |
+| `cutover` | every Process below the level cuts over that way, except a prepare Process, which cuts over nothing | [Cutover is declared, not promised](#cutover-is-declared-not-promised) |
 | `startupBudget` | every Process below the level gets that budget | [Rollout](#rollout) |
 
 Nothing else is shared. `id`, `observability` and `exposure` are the Application's
@@ -2065,7 +2065,8 @@ same runtime cold start.
 
 ### Cutover is declared, not promised
 
-`cutover` is **required on every Process** and has **no default**. Required is
+`cutover` is **required on every Process** but a prepare one
+([Prepare Processes](#prepare-processes)) and has **no default**. Required is
 not the same as written on the Process: the answer may be given once, at the
 project header or on the Application, and it is then the answer for every Process
 below ([Shared intent](#shared-intent)). What is refused is a Process with no
@@ -2195,9 +2196,15 @@ them, and nothing undoes it.
   new version of the Application starts
   ([chapter 55](55-delivery.md#release-order)). Two steps that must run in order
   are one image.
-- **Its deadline** is its `startupBudget`, not three times it: the budget is how
-  long the step may take, and there is no readiness to wait for afterwards. It is
-  never retried within a revision; a failure holds the release.
+- **Its deadline** is its `startupBudget`, not the three times it a serving
+  Process's progress deadline derives
+  ([chapter 20](20-resolved-deployment.md#derived-mechanics)): the budget is how
+  long the step may take, and there is no readiness to wait for afterwards. A
+  `startupBudget` shared from above reaches it like any other Process, so a
+  JVM cold-start budget written on the Application is also the seed's deadline
+  unless the prepare Process writes its own. With none at any level, it derives
+  the deadline every Process without a budget derives. It is never retried
+  within a revision; a failure holds the release.
 - **What it cannot declare.** It listens on nothing, has no readiness, runs once
   and cuts over nothing, so `provides`, `probes`, `replicas` and a `cutover` of its
   own are `E_PREPARE_PROCESS_SERVES`. A `cutover` shared from above does not

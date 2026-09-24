@@ -91,7 +91,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="uid" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="gid" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cutover" lowerBound="1" eType="#//Cutover"/>
+    <!-- Unset on a `lifecycle: prepare` Process: it runs once and cuts over nothing. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cutover" unsettable="true" eType="#//Cutover"/>
     <!-- Set on a `lifecycle: application` Process; a job has no switchover. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="switchover" unsettable="true" eType="#//Switchover"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="deadline" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

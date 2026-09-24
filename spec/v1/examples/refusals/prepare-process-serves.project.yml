@@ -30,4 +30,8 @@ applications:
           http: 8080
         probes:
           readiness: { path: /ready, port: 8080 }
+        replicas:
+          count: 2
+          reason: >-
+            A step that runs once has no second copy to spread.
         cutover: continuous
