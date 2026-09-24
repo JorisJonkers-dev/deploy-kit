@@ -306,8 +306,11 @@ context Application
 			->union(processes.dependsOn.application->asSet())
 
 	-- The Applications whose engine owns databases, among the documents read.
+	-- Whether this Application's engine owns databases, whose consumers derive one.
+	def: ownsDatabases : Boolean = processes->exists(engine = Engine::postgres)
+
 	def: databaseIds : Set(String) =
-		Application.allInstances()->select(a | a.processes->exists(engine = Engine::postgres)).id->asSet()
+		Application.allInstances()->select(a | a.ownsDatabases).id->asSet()
 
 	def: derivesDatabase : Boolean = edgeTargets->exists(t | databaseIds->includes(t))
 
@@ -333,7 +336,6 @@ context Credentials
 	inv E_CREDENTIALS_WITHOUT_DATABASE:
 		let edge : DependencyEdge = oclContainer().oclAsType(DependencyEdge) in
 		(Platform.allInstances()->notEmpty() and Application.allInstances().id->includes(edge.application))
-			implies Application.allInstances()->exists(a |
-				a.id = edge.application and a.processes->exists(engine = Engine::postgres))
+			implies Application.allInstances()->exists(a | a.id = edge.application and a.ownsDatabases)
 
 endpackage

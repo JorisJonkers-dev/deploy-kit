@@ -10,6 +10,7 @@ import {
   declared,
   sameDeclaration,
 } from "../../domain/project-intent/declaration.ts";
+import { ownerRole } from "../../domain/project-intent/migration.ts";
 import type { ProjectIntentDocument } from "./schema.ts";
 
 type Application = ProjectIntentDocument["applications"][number];
@@ -311,9 +312,6 @@ function applicationRefusals(
 }
 
 // -- Migration (spec/v1/10-project-intent.md#migration).
-
-/** The role that may change a project's schema, which only the migration holds. */
-export const ownerRole = (project: string): string => `${project}-owner`;
 
 /** A database grant naming the owner role, which no Process is given by hand. */
 function ownerRoleRefusals(

@@ -112,6 +112,7 @@
       <details key="authored" value="no"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="migration" eType="#//Migration" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="observability" eType="#//Observability" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="exposure" upperBound="-1" eType="#//Exposure" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//Process" containment="true"/>

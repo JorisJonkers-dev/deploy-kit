@@ -3,16 +3,21 @@ package dev.jorisjonkers.deploykit.emf.resolve;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Application;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Credentials;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Cutover;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.DependencyEdge;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.EffectiveApplication;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.EffectiveProject;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.KvGrant;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Lifecycle;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ManagedMigration;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Placement;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Process;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentFactory;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Rotation;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Tolerance;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
@@ -143,6 +148,33 @@ class LoweringTest {
     }
 
     @Test
+    void theMigrationStaysOnTheApplicationAndAnEdgeKeepsItsCredentials() {
+        Project project = source();
+        Application application = project.getApplications().get(0);
+        ManagedMigration migration = MODEL.createManagedMigration();
+        migration.setChangelog("db/changelog.yml");
+        application.setMigration(migration);
+        DependencyEdge edge = MODEL.createDependencyEdge();
+        edge.setApplication("platform-postgres");
+        edge.setSurface("postgres");
+        Credentials credentials = MODEL.createCredentials();
+        Rotation rotation = MODEL.createRotation();
+        rotation.setTolerates(Tolerance.RESTART);
+        credentials.setRotation(rotation);
+        edge.setCredentials(credentials);
+        application.getProcesses().get(0).getDependsOn().add(edge);
+
+        EffectiveApplication lowered = lower(project).getApplications().get(0);
+
+        assertThat(((ManagedMigration) lowered.getMigration()).getChangelog()).isEqualTo("db/changelog.yml");
+        assertThat(lowered.getProcesses().get(0).getDependsOn())
+                .singleElement()
+                .satisfies(
+                        copy -> assertThat(copy.getCredentials().getRotation().getTolerates())
+                                .isEqualTo(Tolerance.RESTART));
+    }
+
+    @Test
     void theCutoverQuestionIsAnsweredOnceForTheReleaseUnitThatSwitchesTogether() {
         EffectiveProject lowered = lower(source());
 
@@ -161,6 +193,6 @@ class LoweringTest {
         // No SharedIntent at all, which is what makes the wrong level unreadable.
         assertThat(ProjectIntentPackage.eINSTANCE.getEffectiveApplication().getEAllStructuralFeatures())
                 .extracting(feature -> feature.getName())
-                .containsExactlyInAnyOrder("id", "observability", "exposure", "processes");
+                .containsExactlyInAnyOrder("id", "migration", "observability", "exposure", "processes");
     }
 }

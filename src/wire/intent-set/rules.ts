@@ -4,6 +4,7 @@
 // names the document it points into, because the object at fault can sit in
 // either.
 import type { Diagnostic } from "../../domain/diagnostic.ts";
+import { ownsDatabases } from "../../domain/project-intent/migration.ts";
 import type { PlatformIntentDocument } from "../platform-intent/schema.ts";
 import type { ProjectIntentDocument } from "../project-intent/schema.ts";
 
@@ -225,11 +226,7 @@ export function setDiagnostics(
     databases: new Set(
       projects.flatMap(({ document }) =>
         document.applications
-          .filter((application) =>
-            application.processes.some(
-              (process) => process.engine === "postgres",
-            ),
-          )
+          .filter((application) => application.processes.some(ownsDatabases))
           .map(({ id }) => id),
       ),
     ),

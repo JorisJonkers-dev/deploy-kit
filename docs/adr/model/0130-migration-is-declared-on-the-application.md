@@ -59,6 +59,14 @@ Applications when their cutovers differed
 second database it does not have. The live estate has one database per project,
 so the catalog follows the project, and one Application of it moves the schema.
 
+**The credential an edge derives, with one override.** An edge to a provider
+that owns databases derives the consuming Process's data-only credential,
+delivered `self` and tolerating a reload by default. The one thing an
+application may say about it is that its client cannot reload: the edge carries
+`credentials: {rotation}`, and nothing else, because the delivery of a minted
+credential is fixed (a non-KV grant is always `self`) and its path and role are
+the catalog's.
+
 **The owner role is derived, never granted.** An application Process that can
 alter the schema is the privilege a separate migration identity exists to
 withhold, so a hand-written grant of it is refused rather than tolerated.
@@ -69,8 +77,9 @@ withhold, so a hand-written grant of it is refused rather than tolerated.
 |---|---|---|
 | A migration as a `prepare` Process holding the owner role | the Process machinery (env files, identity, placement) stays authorable for the runner | the discriminator is a combination of fields, and forward-only setup with no down looks the same |
 | Per-tool runners (Flyway, Atlas, Prisma) chosen per Application | no porting | every proof, undo and linter written once per tool |
-| One database per consuming Application, as 0080 had it | no amendment | wrong for the live estate: two Applications of one project share one database |
+| One database per consuming Application, as [0080](0080-database-catalog-is-derived-data.md) had it | no amendment | wrong for the live estate: two Applications of one project share one database |
 | The owner role granted by hand where needed | less derivation | the separation it exists for becomes a convention nobody checks |
+| A full grant authored on the edge (delivery, path, role) | the author sees every term | the role and path are the catalog's, and a minted credential's delivery is fixed; only the rotation tolerance is the application's to know |
 
 ## Reversibility
 
@@ -89,3 +98,6 @@ revision tags: moving off Liquibase then means porting every changelog again.
   one line per such Application.
 - `self` migrations have no compatibility proof and no undo, a gap paid by the
   owner of every third-party image that migrates itself.
+- A project whose Applications reach two database providers is not modelled:
+  one database per project assumes one provider, which the estate's one
+  Postgres satisfies, and the day a second appears this record is re-opened.

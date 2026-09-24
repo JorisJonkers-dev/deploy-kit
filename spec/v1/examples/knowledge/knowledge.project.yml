@@ -54,6 +54,10 @@ owner: joris              # the project's own
 # (docs/adr/model/0028-secrets-at-rest-gate.md). Until that flag lands on the
 # pinned k3s version, knowledge cannot ship.
 secrets:
+  # Hand-written for now. Once the resolver derives the data credential from
+  # the edge to platform-postgres (#92), this grant is what that derivation
+  # replaces, and it goes.
+  #
   # SPLIT PATH, one path per reader set
   # (docs/adr/model/0023-grant-unit-is-the-path.md). A KV-v2 read returns the
   # whole document, so the only boundary the store can enforce is the path:
