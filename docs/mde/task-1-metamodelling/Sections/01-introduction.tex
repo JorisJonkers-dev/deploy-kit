@@ -1,23 +1,41 @@
 \section{Purpose of the Project}
 \label{sec:introduction}
 
-\subsection{Goals}
+\subsection{Motivation and Goals}
 
-The project generates the Kubernetes deployment files for one cluster from an
-abstract model of what each application needs. Authors state requirements, such
-as whether a process may be unavailable during an upgrade. The platform derives
-the settings that implement them, such as the rollout strategy. Each fact is
-then written once, instead of being copied into several files and repositories
-that drift apart (Section~\ref{sec:domainanalysis}).
+Today each application's repository holds its own hand-written Kubernetes
+files. Writing them by hand is hard because services are related: an
+application's address, its ports and the services it depends on appear in the
+files of several applications, and a change to one service means edits in the
+others. Spread over many repositories, these copies drift apart. Gathering all
+files in one central repository removes the copies, but separates each
+deployment from the application it belongs to and from the people who
+maintain it.
+
+The project takes a third route. Each application keeps a short deployment
+document in its own repository, written in a domain-specific language. The
+document exposes only what the application should care about: how it must be
+deployed. It states requirements that hold on any machine, such as how much
+memory and CPU a process needs and whether it needs a graphics card, instead of
+naming machines. It also states how the application is reached, by hostname and
+path, next to the application instead of in a separate router repository. The
+parts all applications share, such as the cluster's policies and entry points,
+are written once, in a platform document.
+
+The language makes deployments specifiable and configurable while it enforces
+the cluster's standards. Deployment behaviour that every application needs,
+such as blue/green switching, monitoring and backups, is derived once and
+reused, instead of copied into each application's files. A model
+transformation turns the documents into a resolved model, and code generation
+turns the resolved model into the Kubernetes files.
 
 Task 1 defines the two metamodels this needs, in Ecore. The \emph{source
 metamodel} is the language an author writes. The \emph{target metamodel}
 describes the \emph{resolved model}, which records every value the platform
 derives. OCL constraints reject invalid source models, an Xtext grammar gives
 the source language a textual syntax, and example models show that both
-metamodels work. Task 2 will transform source models into resolved models with
-QVT-Operational, and Task 3 will generate the files from resolved models with
-Acceleo.
+metamodels work. Task 2 will implement the transformation with
+QVT-Operational, and Task 3 the code generation with Acceleo.
 
 \subsection{Refinement of Task 0}
 

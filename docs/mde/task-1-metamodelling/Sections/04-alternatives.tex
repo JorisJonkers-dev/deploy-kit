@@ -1,7 +1,20 @@
+\section{Alternatives and Justification}
+\label{sec:alternatives}
+
+The starting point is how the cluster is configured today: Kubernetes files
+written by hand in each application's repository. The related values between
+services make these files hard to keep consistent, and each application repeats
+the same deployment behaviour. The other alternatives either keep these
+problems or move them elsewhere. This section first compares them
+(Section~\ref{sec:alternativesconsidered}), and then gives the decisions of the
+chosen solution in general terms (Section~\ref{sec:decisions}).
+Section~\ref{sec:design} describes the resulting classes in detail.
+
 \subsection{Alternatives Considered}
 \label{sec:alternativesconsidered}
 
-Table~\ref{tab:alternatives} lists the rejected alternatives.
+Table~\ref{tab:alternatives} lists the rejected alternatives, starting with
+the ways of writing the Kubernetes files directly.
 
 \begin{table}[!htbp]
 \centering
@@ -10,6 +23,12 @@ Table~\ref{tab:alternatives} lists the rejected alternatives.
 \hline
 \textbf{Alternative} & \textbf{Why it was rejected} \\
 \hline
+Hand-written Kubernetes files in each application's repository &
+  Related values, such as addresses and ports, are copied between repositories
+  and drift apart. Every application repeats the same deployment behaviour. \\
+All Kubernetes files in one central repository &
+  Removes the copies, but separates each deployment from the application it
+  belongs to and from the people who maintain it. \\
 Template the target files directly (Helm, Kustomize overlays) &
   No abstract model supports constraints or shared derivations. Repeated values
   remain. \\
