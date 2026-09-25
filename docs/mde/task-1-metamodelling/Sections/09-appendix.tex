@@ -7,6 +7,17 @@ Three examples, each shown as its input, its state in between and its output,
 cut down to what the example is meant to show. The complete files, and every
 other example, are in the hand-in archive (Appendix~\ref{sec:handin}).
 
+\textbf{Every model is shown as YAML.} The XMI and JSON files are hard to read
+as they are, and both convert to YAML mechanically, so each is shown in that one
+form. An XMI element becomes a mapping, its attributes become fields, and its
+children become a field named by the feature that holds them, a list exactly
+where the metamodel's feature is many-valued; \texttt{xsi:type} becomes
+\texttt{type}, a reference written as an XMI path becomes the name of the object
+it points at, and a map's key/value entries become the mapping they are. JSON
+needs nothing but its own nesting. Nothing is added and nothing is dropped, so
+an input, its resolved model and its diagnostics all read in the same notation
+as the project file an author writes.
+
 \subsection{The Minimal Model, End to End}
 \label{sec:appendix-minimal}
 
@@ -46,31 +57,55 @@ applications:
         cutover: continuous
 \end{lstlisting}
 
-The parser turns it into an instance of the source metamodel. The same instance,
-serialised as XMI, is what Eclipse opens without the grammar; attributes that
-hold their default value, such as \texttt{lifecycle: application}, are not
-written.
+The parser turns it into an instance of the source metamodel. The file on disk is
+that instance in XMI, which Eclipse opens without the grammar; below it is shown
+as YAML. EMF writes no attribute that holds its default value, which is why
+\texttt{lifecycle: application} and \texttt{alertClass: business-hours} do not
+appear.
 
-\begin{lstlisting}[caption={Input as a model: \texttt{minimal/intent.xmi}}, label={lst:minimal-xmi}, language=xmi]
-<projectintent:Project apiVersion="intent.jorisjonkers.dev/v1" kind="Project"
-    schemaVersion="1.0.0" project="notes" owner="joris">
-  <applications id="notes">
-    <observability>
-      <scrape process="notes-api" surface="http" path="/metrics"/>
-    </observability>
-    <exposure name="public" host="notes.jorisjonkers.dev" audience="anonymous" contentPolicy="strict">
-      <routes path="/" process="notes-api" surface="http"/>
-    </exposure>
-    <processes startupBudget="20s" cutover="continuous" name="notes-api" image="notes-api" runtime="node">
-      <placement memory="256Mi" cpu="50m"/>
-      <provides key="http" value="8080"/>
-      <probes xsi:type="projectintent:Probes">
-        <readiness xsi:type="projectintent:HttpProbe" path="/healthz/ready" port="8080"/>
-        <liveness xsi:type="projectintent:HttpProbe" path="/healthz/live" port="8080"/>
-      </probes>
-    </processes>
-  </applications>
-</projectintent:Project>
+\begin{lstlisting}[caption={Input as a model: \texttt{minimal/intent.xmi}, shown as YAML}, label={lst:minimal-xmi}, language=yaml]
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: notes
+owner: joris
+applications:
+- id: notes
+  observability:
+    scrape:
+      process: notes-api
+      surface: http
+      path: /metrics
+  exposure:
+  - name: public
+    host: notes.jorisjonkers.dev
+    audience: anonymous
+    contentPolicy: strict
+    routes:
+    - path: /
+      process: notes-api
+      surface: http
+  processes:
+  - name: notes-api
+    startupBudget: 20s
+    cutover: continuous
+    image: notes-api
+    runtime: node
+    placement:
+      memory: 256Mi
+      cpu: 50m
+    provides:
+      http: 8080
+    probes:
+      type: Probes
+      readiness:
+        type: HttpProbe
+        path: /healthz/ready
+        port: 8080
+      liveness:
+        type: HttpProbe
+        path: /healthz/live
+        port: 8080
 \end{lstlisting}
 
 In between is the resolved model: an instance of the target metamodel, written
@@ -78,32 +113,68 @@ by hand as the result the Task 2 transformation must produce. Every value in it
 is either carried from the input or decided by the platform, and nothing in it
 names a Kubernetes field.
 
-\begin{lstlisting}[caption={In between: \texttt{minimal.resolveddeployment}, the application}, label={lst:minimal-resolved}, language=xmi]
-<applications id="notes" revision="sha256:..." project="notes"
-    namespace="notes-system" alertClass="business-hours" reconcileUnit="//@reconcileUnits.0">
-  <releaseGate deadline="60s">
-    <analysis interval="30s" iterations="4" threshold="3"/>
-    <members process="//@applications.0/@processes.0">
-      <readiness xsi:type="resolveddeployment:HttpTarget" path="/healthz/ready" port="8080"/>
-      <checks>error-rate</checks>
-      <checks>latency</checks>
-    </members>
-  </releaseGate>
-  <exposure name="public" host="notes.jorisjonkers.dev" tier="public-frankfurt">
-    <routes path="/" match="prefix" audience="anonymous" precedence="1"
-        process="//@applications.0/@processes.0" surface="http">
-      <middleware kind="security-headers" contentPolicy="strict"/>
-    </routes>
-  </exposure>
-  <processes name="notes-api" identity="notes-api" image="ghcr.io/.../notes-api@sha256:9c1e..."
-      uid="1000" gid="1000" cutover="continuous" switchover="blue-green" deadline="60s"
-      replicas="1" memory="256Mi" cpu="50m" hardening="restricted" identityToken="false">
-    <startup period="5s" failures="4">
-      <target xsi:type="resolveddeployment:HttpTarget" path="/healthz/live" port="8080"/>
-    </startup>
-    <placement eligibleNodes="enschede-t1000-1 ... frankfurt-contabo-1"/>
-  </processes>
-</applications>
+\begin{lstlisting}[caption={In between: \texttt{minimal.resolveddeployment}, the application, shown as YAML}, label={lst:minimal-resolved}, language=yaml]
+applications:
+- id: notes
+  project: notes
+  revision: sha256:...
+  namespace: notes-system
+  alertClass: business-hours
+  reconcileUnit: apps-notes
+  releaseGate:
+    deadline: 60s
+    analysis:
+      interval: 30s
+      iterations: 4
+      threshold: 3
+    members:
+    - process: notes-api
+      readiness:
+        type: HttpTarget
+        path: /healthz/ready
+        port: 8080
+      checks:
+      - error-rate
+      - latency
+  exposure:
+  - name: public
+    host: notes.jorisjonkers.dev
+    tier: public-frankfurt
+    routes:
+    - path: /
+      match: prefix
+      audience: anonymous
+      precedence: 1
+      process: notes-api
+      surface: http
+      middleware:
+      - kind: security-headers
+        contentPolicy: strict
+  processes:
+  - name: notes-api
+    identity: notes-api
+    image: ghcr.io/jorisjonkers-dev/notes/notes-api@sha256:9c1e...
+    uid: 1000
+    gid: 1000
+    cutover: continuous
+    switchover: blue-green
+    deadline: 60s
+    replicas: 1
+    memory: 256Mi
+    cpu: 50m
+    hardening: restricted
+    identityToken: false
+    startup:
+      period: 5s
+      failures: 4
+      target:
+        type: HttpTarget
+        path: /healthz/live
+        port: 8080
+    placement:
+      eligibleNodes:
+      - enschede-t1000-1
+      - frankfurt-contabo-1   # and the five between them
 \end{lstlisting}
 
 Table~\ref{tab:minimal-trace} reads the two side by side: what the author wrote,
@@ -188,21 +259,28 @@ In between, the continuous application carries a release gate and a migration;
 the interrupted one carries neither, because it stops before it starts and
 nothing waits on a gate.
 
-\begin{lstlisting}[caption={In between: the two applications' projections, abridged}, label={lst:knowledge-resolved}, language=json]
-{
-  "knowledge": {
-    "migration": { "runner": ".../knowledge-migration@sha256:c0a4...",
-                   "testedAgainst": "sha256:5a1f...", "nonTransactional": false },
-    "releaseGate": { "deadline": "1800s",
-                     "members": [ { "process": "knowledge-api",
-                                    "checks": ["error-rate", "latency"] } ] },
-    "processes": [ { "name": "knowledge-api", "switchover": "blue-green" } ]
-  },
-  "knowledge-ingest": {
-    "processes": [ { "name": "knowledge-ingest-worker", "cutover": "interrupted",
-                     "switchover": "stop-start" } ]
-  }
-}
+\begin{lstlisting}[caption={In between: the two applications' projections, abridged and shown as YAML}, label={lst:knowledge-resolved}, language=yaml]
+- id: knowledge
+  migration:
+    runner: ghcr.io/jorisjonkers-dev/knowledge/knowledge-migration@sha256:c0a4...
+    testedAgainst: sha256:5a1f...
+    nonTransactional: false
+  releaseGate:
+    deadline: 1800s
+    members:
+    - process: knowledge-api
+      checks:
+      - error-rate
+      - latency
+  processes:
+  - name: knowledge-api
+    cutover: continuous
+    switchover: blue-green
+- id: knowledge-ingest
+  processes:
+  - name: knowledge-ingest-worker
+    cutover: interrupted
+    switchover: stop-start
 \end{lstlisting}
 
 In the output, the migration becomes two Jobs named for the revision: the one
@@ -249,9 +327,10 @@ diagnostic names the object at fault by its JSON Pointer.
         cutover: continuous
 \end{lstlisting}
 
-\begin{lstlisting}[caption={Output: \texttt{refusals/prepare-process-serves.diagnostics.json}}, label={lst:refused-output}, language=json]
-[{"code":"E_PREPARE_PROCESS_SERVES","document":"prepare-process-serves.project.yml",
-  "path":"/applications/0/processes/1"}]
+\begin{lstlisting}[caption={Output: \texttt{refusals/prepare-process-serves.diagnostics.json}, shown as YAML}, label={lst:refused-output}, language=yaml]
+- code: E_PREPARE_PROCESS_SERVES
+  document: prepare-process-serves.project.yml
+  path: /applications/0/processes/1
 \end{lstlisting}
 
 \subsection{The Hand-in Archive}
@@ -259,7 +338,9 @@ diagnostic names the object at fault by its JSON Pointer.
 
 The archive handed in with this report holds the metamodels and every model
 referred to here. Table~\ref{tab:handin} lists its layout. Each example has
-the same three stages as the examples above. The resolved model exists as XMI
+the same three stages as the examples above, and every XMI or JSON file sits
+beside its YAML view, named after it with \texttt{.yml} appended and produced by
+the conversion described at the start of this appendix. The resolved model exists as XMI
 for the minimal example and as the production implementation's JSON projection
 for \texttt{minimal}, \texttt{knowledge} and \texttt{delivery}; the others have
 none yet, because producing it is the Task 2 transformation.

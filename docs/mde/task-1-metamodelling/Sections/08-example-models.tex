@@ -57,7 +57,10 @@ beside its parsed form on every build. The hand-written resolved model is
 generated trees and the refused set, are collected in the hand-in archive,
 whose layout is Appendix~\ref{sec:handin}. The concrete syntax is how the models
 are authored; the XMI files are the same models as Ecore instances, for a
-reader who opens them in Eclipse without the grammar.
+reader who opens them in Eclipse without the grammar. Because XMI and JSON are
+hard to read, every such file in the archive and in the appendix is also given
+as YAML, converted mechanically with nothing added or dropped, so every stage
+reads in one notation.
 
 \subsection{The Minimal Model}
 
