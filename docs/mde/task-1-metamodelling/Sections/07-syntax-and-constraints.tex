@@ -37,7 +37,10 @@ target is a link that does not resolve, which is why a scrape naming an
 undeclared process (\texttt{E\_UNKNOWN\_PROCESS}), a tier naming an undeclared
 proxy (\texttt{E\_UNKNOWN\_TIER\_PROXY}) and delivery machinery naming an
 undeclared application (\texttt{E\_UNKNOWN\_MACHINERY}) are not invariants in
-Table~\ref{tab:constraints}: the linker has already found them.
+Table~\ref{tab:constraints}: the linker has already found them. The handover
+ledger's project names are the exception, and are plain strings: a project is
+the document itself, not an object another document can link to, so the ledger
+is checked by an invariant instead.
 
 The editor is the generated Xtext one, with the constraints below loaded into
 it: the Complete OCL document binds to the same registered package the parser
@@ -47,8 +50,8 @@ time.
 
 \subsection{The Constraints}
 
-Thirty-four invariants are written in Complete OCL against the source
-metamodel, carrying twenty-six distinct diagnostic codes. Three codes sit on
+Thirty-six invariants are written in Complete OCL against the source
+metamodel, carrying twenty-eight distinct diagnostic codes. Three codes sit on
 more than one context, because the same defect is reachable from several
 classes: a restated shared declaration is checked on each of the seven classes
 that can be restated, and two others on two classes each.
@@ -83,6 +86,7 @@ E\_ILLEGAL\_DELIVERY\_FOR\_ACCESS & KvGrant & A delivery the access tier has not
 E\_NON\_KV\_DELIVERY & TransitGrant, DatabaseGrant & A grant delivered as a value, where the credential is used or minted rather than read. \\
 E\_DUPLICATE\_ROUTE\_MATCH & Route & Two routes of one exposure sharing a path and a match, which derived precedence cannot order. \\
 E\_NO\_FORWARD\_AUTH\_ENDPOINT & Tier & A tier serving authenticated visitors with nothing named to decide whether one is allowed in. \\
+E\_HANDOVER\_BOTH\_PATHS & HandoverLedger & A project named on both delivery paths at once, which two sources would each apply. \\
 E\_NO\_TIER\_FOR\_AUDIENCE & Exposure, Route & An audience no declared edge tier serves, so the route reaches no edge. \\
 E\_NO\_ENGINE\_POLICY & Process & An engine the platform declares no backup method for. \\
 E\_NO\_DURABILITY\_POLICY & Volume & A durability class the platform declares no policy for. \\
@@ -92,13 +96,14 @@ E\_MIGRATION\_WITHOUT\_DATABASE & Migration & A migration on an application that
 E\_CREDENTIALS\_WITHOUT\_DATABASE & Credentials & A rotation override on an edge to a provider that owns no database. \\
 E\_NO\_MIGRATION\_POLICY & Migration & A changelog read beside a platform document that offers no runner to build it on. \\
 E\_NO\_DELIVERY\_POLICY & Application & A continuous application read beside a platform document that offers no cadence to analyse its blue/green switch at. \\
+E\_HANDOVER\_UNLISTED & Project & A project read beside a handover ledger that names it on neither delivery path. \\
 \hline
 \end{tabular}
 \caption{The Constraints, Their Context and What Each Refuses}
 \label{tab:constraints}
 \end{table}
 
-The last nine read facts from another document while sitting on a class of a
+The last ten read facts from another document while sitting on a class of a
 project document: the platform document, or, for the three migration codes that
 ask whether a provider owns a database, the project file declaring that provider. That placement is deliberate: an invariant sits on the
 object whose author must change something, and it is a project file, not the

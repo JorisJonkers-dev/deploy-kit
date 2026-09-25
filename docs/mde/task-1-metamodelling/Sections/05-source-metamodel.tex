@@ -126,18 +126,22 @@ may decide: what the cluster is, where the edge terminates and which audiences
 each edge tier serves, one backup policy per durability class, one backup method
 per engine, one hardening posture, one probe cadence, one monitoring cadence,
 the services the estate runs without deploying them, the runner every managed
-migration builds on, and how a release is switched: which applications perform
+migration builds on, how a release is switched: which applications perform
 the switch and are never switched by it, and the cadence at which a new version
-is analysed.
+is analysed, where each project's rendered output is published and whose
+signature the cluster accepts on it, and, while the estate moves off its old
+delivery path, which path each project is on.
 
 It is shown in four figures, cut from its own source by the same script that
 cuts the project half. Figure~\ref{fig:platformfacts} holds the facts about the
-cluster and what must exist before a rendered object can land,
+cluster and what must exist before a rendered object can land, including where
+the reconciler fetches each project's rendered output and whose keyless
+signature it verifies,
 Figure~\ref{fig:platformedge} the edge and what the estate already runs, and
 Figure~\ref{fig:platformpolicies} the policies: one per durability class, one
 per engine, and the cadences the derivations read. Figure~\ref{fig:platformdelivery}
-holds what delivery reads: the migration runner and its terms, and the delivery
-machinery with its analysis cadence.
+holds what delivery reads: the migration runner and its terms, the delivery
+machinery with its analysis cadence, and the handover ledger.
 
 \begin{figure}[!htbp]
 \centering
@@ -159,7 +163,7 @@ machinery with its analysis cadence.
 \end{figure}
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.62\linewidth, keepaspectratio]{Figures/s-plat-d}
+\includegraphics[width=0.72\linewidth, keepaspectratio]{Figures/s-plat-d}
 \caption{The Platform Document: What Delivery Reads}
 \label{fig:platformdelivery}
 \end{figure}
@@ -186,6 +190,8 @@ PlatformMetadata & Which cluster and project the document describes, and the dig
 Substrate & Facts about the cluster that decide other decisions: its version, datastore, server count, whether secrets are encrypted at rest, and its network plugin and policy controller. \\
 Bootstrap & What must already exist before the first rendered object can land, recorded rather than declared. \\
 FluxSource & The reconciler's source reference, part of that bootstrap set. \\
+RenderedArtifacts & The registry repository each project's rendered output is published to, one signed artifact per project. \\
+ArtifactSigner & The keyless identity, an issuer and a subject, whose signature the reconciler accepts on a rendered artifact. \\
 VaultState & Whether the secret store is unsealed, the second bootstrap fact. \\
 Tier & Where the edge terminates: the audiences it serves, its listener, its certificate source, the endpoint that decides an authenticated request, and the declared Application that is its proxy. \\
 DurabilityPolicies & The three durability classes' policies, held together so a missing one is visible. \\
@@ -200,6 +206,7 @@ Provider & Something the estate runs and this model does not deploy, with its ad
 MigrationPolicy & The runner image alias every managed migration builds on, with the deadline and resources its run takes. \\
 DeliveryPolicy & The applications that perform a switch and are never switched by one, linked across documents like a tier's proxy. \\
 AnalysisPolicy & How often a new version is checked, how many passing checks promote it, and how many failing ones roll it back. \\
+HandoverLedger & While the estate moves off its old delivery path: the projects still delivered by it, the projects delivered by their pin, and the date the old path is removed. \\
 \hline
 \end{tabular}
 \caption{Classes of the Platform Document}
