@@ -257,7 +257,7 @@ form could not express:
 | a `delivery: env` grant with no matching placeholder | `E_UNBOUND_SECRET_GRANT`, a dead grant, property 3 |
 | a `${secret:…}` placeholder whose path byte-matches no grant | `E_UNAUTHORISED_SECRET_REFERENCE` |
 | `delivery: env` with `rotation.tolerates: reload` | impossible; a pod's environment is fixed for its lifetime |
-| `delivery: env` or `file` on a non-KV engine (`transit/`) | impossible; `self` is the only legal delivery for a key that is never materialised |
+| `delivery: env` or `file` on a non-KV engine (`transit/`, `database/`) | impossible; `self` is the only legal delivery for a key that is never materialised or a credential minted per lease |
 | `access: self-roll` on a path other Applications read, unacknowledged | `E_ROLL_AFFECTS_OTHER_READERS`, computed over the readers of the path |
 | `delivery: env` or `file` where the pinned Platform Intent does not advertise secrets at rest | `E_SECRETS_AT_REST_REQUIRED` ([chapter 60](60-setup.md#secrets-at-rest)) |
 

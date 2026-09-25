@@ -1699,7 +1699,7 @@ defaults to `kv`, so every grant written before this rule stays valid.
 | `role` | `database` | yes | The database role that issues the credential. The read path derives as `database/creds/<role>`. |
 | `key` | `transit` | yes | The transit key name. |
 | `operations` | `transit` | yes | A closed set: `sign`, `verify`, `encrypt`, `decrypt`, `rotate`. Each maps to exactly one Vault path. |
-| `delivery` | all | yes | `env` \| `file` \| `self`; a `transit` grant is `self` only (`E_NON_KV_DELIVERY`). |
+| `delivery` | all | yes | `env` \| `file` \| `self`; a `transit` or `database` grant is `self` only (`E_NON_KV_DELIVERY`). |
 | `mountAt`, `fileMode` | `file` only | Where the projected file lands, and its mode. |
 | `rotation` | all | yes | `tolerates: restart` \| `reload`, plus an optional `maxAge`. |
 
@@ -1928,8 +1928,10 @@ Two gates apply to the two deliveries that persist a Secret:
   specified in chapter 60). Shipping them before the flag lands is a regression
   against what runs today, since the agent-inject path being replaced never touched
   the datastore. `self` and `custody` persist nothing and are unaffected.
-- **Non-KV engines take neither.** A `transit/` grant is never materialised into a
-  variable or a file, so `self` is its only legal delivery (`E_NON_KV_DELIVERY`).
+- **Non-KV engines take neither.** A `transit/` key is never materialised into a
+  variable or a file, and a `database/` credential is minted per lease and
+  re-read at runtime, so `self` is the only legal delivery for both
+  (`E_NON_KV_DELIVERY`, [0138](../../docs/adr/model/0138-a-database-grant-is-delivered-self.md)).
 
 ### Rotation is not a release
 
