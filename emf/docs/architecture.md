@@ -303,7 +303,9 @@ output of the module that wrote them, one directory per case, mirroring
 `spec/v1/examples/` so a written file and its oracle are obviously a pair:
 `bundles/cli/target/parity/<case>/` holds `intent.json` or `diagnostics.json` beside the
 `exit` the run ended on, and `bundles/metamodel/target/parity/` holds `descriptor.json`.
-None of them is committed.
+An accepted case also leaves `intent.xmi`, the same model as an XMI instance of the
+source metamodel, for a reader who opens it in Eclipse without the grammar; no oracle
+compares it, because the parity contract is JSON. None of them is committed.
 
 So the module holds no EMF type, needs no p2 bundle, and builds as a plain jar
 with no `META-INF/MANIFEST.MF` and no `build.properties`. Its `src/main` holds

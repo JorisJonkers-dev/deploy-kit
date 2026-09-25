@@ -1,7 +1,7 @@
 \section{Example Models}
 \label{sec:examplemodels}
 
-Four example models instantiate the source metamodel, and each is chosen to
+Five example models instantiate the source metamodel, and each is chosen to
 exercise something the metamodel claims. They are committed beside the
 metamodels, together with the expected result of parsing each one, so that the
 examples are checked rather than illustrative.
@@ -28,11 +28,36 @@ knowledge & Two applications in one project because their cutovers differ: a
   interrupted worker bound to a volume that declares no migration of its own.
   Dependencies across applications, secrets shared at the project header, and
   an exposure whose routes carry different audiences. \\
+delivery & The platform's own delivery machinery, the Canary controller and the
+  release gate: continuous, and rolled in place rather than switched
+  blue/green, because a gate cannot gate its own release. \\
 \hline
 \end{tabular}
 \caption{The Example Models and What Each One Exercises}
 \label{tab:examples}
 \end{table}
+
+Every example passes through three stages, and each stage is a model or a file
+set of its own: the \emph{input}, an authored project file together with the
+same model as an XMI instance of the source metamodel; the state \emph{in
+between}, the resolved model, an instance of the target metamodel; and the
+\emph{output}, the generated file tree. Appendix~\ref{sec:appendix} shows three
+of them through all three stages, cut down to what each is meant to show: the
+minimal model end to end (Appendix~\ref{sec:appendix-minimal}), the
+\texttt{knowledge} project's two cutovers (Appendix~\ref{sec:appendix-knowledge})
+and one refused model (Appendix~\ref{sec:appendix-refused}).
+
+\textbf{Where the files are.} The metamodels are
+\texttt{emf/bundles/metamodel/model/project-intent.ecore} and
+\texttt{resolved-deployment.ecore}, with the constraints in
+\texttt{project-intent.ocl}. The examples in concrete syntax are under
+\texttt{spec/v1/examples/}, and the pipeline writes each one's XMI instance
+beside its parsed form on every build. The hand-written resolved model is
+\texttt{emf/models/minimal.resolveddeployment}. All of them, together with the
+generated trees and the refused set, are collected in the hand-in archive,
+whose layout is Appendix~\ref{sec:handin}. The concrete syntax is how the models
+are authored; the XMI files are the same models as Ecore instances, for a
+reader who opens them in Eclipse without the grammar.
 
 \subsection{The Minimal Model}
 

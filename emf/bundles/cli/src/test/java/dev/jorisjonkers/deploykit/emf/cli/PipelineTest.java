@@ -39,6 +39,17 @@ class PipelineTest {
     }
 
     @Test
+    void aModelIsWrittenAsXmiWithItsForeignNamesRelativeToTheFileBesideIt() throws IOException {
+        // The Platform document alone: its tiers' proxies name Applications no file read with it
+        // declares, so they stay proxies, and a proxy is written against the authored file, never as
+        // a path on the machine that ran the pipeline.
+        String platform = Pipeline.xmi(Examples.of("platform/platform.intent.yml"));
+
+        assertThat(platform).contains("projectintent:Platform").contains("href=\"platform.intent.yml#");
+        assertThat(platform).doesNotContain("file:");
+    }
+
+    @Test
     void anAuthoredDocumentParsesToItsIntent(@TempDir Path directory) throws IOException {
         Parsed parsed = Pipeline.intent(file(directory, MINIMAL));
 
