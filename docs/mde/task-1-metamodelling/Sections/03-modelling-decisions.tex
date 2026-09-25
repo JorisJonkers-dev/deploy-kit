@@ -5,8 +5,9 @@ Seven decisions define the metamodels.
 
 \subsection{Three Model Stages, Two Metamodels}
 
-The pipeline transforms an authored model into a resolved model, then generates
-text. The first two have metamodels (Section~\ref{sec:thirdmetamodel}).
+Task 2 transforms an authored model into a resolved model. Task 3 generates
+text from the resolved model. Only the authored and resolved models have
+metamodels (Section~\ref{sec:thirdmetamodel}).
 
 These stages are not metalevels. No \texttt{instanceOf} relation connects them.
 
@@ -18,9 +19,9 @@ A \emph{decision} is a platform-computed value, such as eligible machines.
 (Section~\ref{sec:observations}). Generators use the resolved model without
 computing decisions.} The resolved model records computed values.
 
-An earlier two-stage design produced three incompatible documents with one
-version identifier. The resolved model records computed values separately from
-the authored document.
+An earlier two-stage design let the generator compute values internally. It
+produced three incompatible documents with one version identifier. The resolved
+model records computed values separately from the authored document.
 
 \subsection{Shared Values Are Set by the Platform}
 \label{sec:sharedvalues}
@@ -37,15 +38,15 @@ sum reservations across the cluster, so it cannot detect aggregate overcommit.
 The platform derives values from the authored model and platform document.
 There is no override mechanism (Table~\ref{tab:alternatives}).
 
-One process had a shorter hand-set deadline because it started faster. Its
-startup budget already provides the input for a deadline rule.
+One process starts faster and had a shorter hand-set deadline. A rule can
+derive that deadline from its declared startup budget without an override.
 
 \subsection{Requirements Instead of Target Fields}
 \label{sec:naming}
 
 Attributes describe requirements, such as writable paths, instead of target
-fields such as a security context (Section~\ref{sec:observations}). Generators
-contain target field names. A check rejects target field names in metamodel keys.
+fields such as a security context (Section~\ref{sec:observations}). Only
+generators contain target field names.
 
 \subsection{Enumerations Instead of Free-Form Strings}
 \label{sec:enumdecision}

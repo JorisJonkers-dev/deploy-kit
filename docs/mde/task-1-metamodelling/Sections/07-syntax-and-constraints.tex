@@ -1,31 +1,20 @@
-\section{Implementation in EMF}
+\section{Concrete Syntax and Constraints}
 \label{sec:constraints}
 
-Three Eclipse bundles under \texttt{emf/} implement the metamodels. Maven and
-Tycho build them on JDK~21. The \texttt{metamodel} bundle contains Ecore,
-Genmodel and Complete OCL files. The \texttt{syntax} bundle contains two Xtext
-grammars and the editor. The \texttt{cli} bundle parses and validates authored
-files. \texttt{./mvnw verify} tests the bundles without Eclipse.
+The source language has a textual syntax and OCL constraints that reject
+invalid models.
 
 \subsection{The Concrete Syntax}
 
-Two Xtext grammars define the authored syntax (Section~\ref{sec:grammarfirst}).
-Both return registered metamodel classes. The pipeline selects the grammar by
-filename: \texttt{platform.intent.yml} or \texttt{*.project.yml}.
+Authors use the YAML subset found in the existing configuration. Two Xtext
+grammars define this syntax: one for \texttt{platform.intent.yml} and one for
+\texttt{*.project.yml} (Section~\ref{sec:grammarfirst}). Both use source
+metamodel classes. YAML keys may appear in any order.
 
-The syntax uses the YAML subset in the existing configuration.
-
-\textbf{Indentation as tokens.} Preprocessing turns indentation into
-\texttt{BEGIN} and \texttt{END} tokens. One rule then handles blocks and flow
-mappings and sequences.
-
-\textbf{Unordered keys.} Unordered groups accept mappings regardless of key
-order.
-
-\textbf{Names as cross-references.} The linker resolves references from routes
-to processes and surfaces. An undeclared metrics process produces a linking
-error (\texttt{E\_UNKNOWN\_PROCESS}). Handover project identifiers remain
-strings checked by an invariant because projects are separate documents.
+A route refers to a declared process and named port. An undeclared process
+produces a reference error, \texttt{E\_UNKNOWN\_PROCESS}. Handover project
+identifiers remain strings checked by an invariant because projects are
+separate documents.
 
 \subsection{The Constraints}
 
@@ -34,8 +23,8 @@ metamodel. The invariants use 28 distinct codes. Three occur on multiple
 context classes.
 
 \textbf{Each invariant has its diagnostic code as its name and the rejected
-object's class as its context.} Diagnostics identify that object with an RFC
-6901 JSON Pointer. Table~\ref{tab:constraints-sample} samples the scopes.
+object's class as its context.} Its diagnostic identifies the rule and the
+object to fix. Table~\ref{tab:constraints-sample} samples the scopes.
 Appendix~\ref{sec:allconstraints} lists all 28 codes.
 
 \begin{table}[!htbp]
@@ -72,36 +61,13 @@ context Exposure
 
 EMF reads an unset enumeration as its first literal. Optional enumerations use
 an unwritable \texttt{absent} literal, which invariants test instead of
-\texttt{null}.
+\texttt{null}. Constraints over every project document at once, such as unique
+application identifiers, are not part of the OCL constraints.
 
-The pipeline checks constraints requiring all project documents, such as
-duplicate application identifiers, when it combines the documents.
+\subsection{Rejected Example Models}
 
-\subsection{How an Invalid Model Is Reported}
-
-The pipeline processes three stages, stopping after the first stage with errors.
-Each internal diagnostic has a code, document name, object path and message
-(Appendix~\ref{sec:appendix-refused}).
-
-First, parsing reports syntax errors as \texttt{schema}, with a line number.
-
-Second, EMF's \texttt{Diagnostician} applies Complete OCL to each document.
-Invariant names become codes. Containment features and indices form paths.
-The pipeline reports all violations and unresolved references, including
-\texttt{E\_UNKNOWN\_} codes.
-
-Third, if the individual files pass, the pipeline loads their set together and
-checks cross-document constraints and references.
-
-A rejected case writes \texttt{diagnostics.json} and exit code 1. An accepted
-case writes \texttt{intent.json} and exit code 0. The output files store the
-exit code in \texttt{exit}. Diagnostic JSON contains \texttt{code},
-\texttt{document} and \texttt{path}. The internal message is omitted. Both
-outcomes also write XMI for each parsed document:
-\texttt{notes.project.yml} becomes \texttt{notes.project.xmi}. References
-between XMI files use containment paths. The Xtext editor marks OCL violations
-on source lines.
-
-The suite compares five accepted examples and 33 rejection cases in
-\texttt{refusals/} with committed oracles: 18 single files and 15 document sets.
-The production implementation uses the same examples.
+The archive has 33 rejected cases: 18 single project files and 15 sets of a
+platform and project document. Together they cover all 28 invariant codes and
+four unresolved-reference codes. The files in each set are valid separately.
+For invariant violations, Eclipse Validate reports the invariant's name as the
+code (Appendix~\ref{sec:appendix-refused}).

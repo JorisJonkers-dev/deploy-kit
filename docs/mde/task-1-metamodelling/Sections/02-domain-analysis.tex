@@ -13,18 +13,20 @@ repositories. Two tests check those copies for disagreement. A port appears in
 the container specification, service, probe and monitoring rule.
 
 \textbf{Repeated derivations.} Four deployments contain the same rollout block.
-Comments explain that recreate leaves a period without a pod and a JVM needs
-more startup time than a static bundle. A \emph{derivation} computes such values
-from the authored model and cluster policy.
+Comments explain two choices. Recreate stops the old pod before starting the
+new one, leaving an interval without a running pod. A JVM needs more startup
+time than a static bundle. A \emph{derivation} computes these values from the
+authored model and cluster policy.
 
 \textbf{Mechanisms instead of requirements.} The files specify rollout strategies
 and node labels. They do not state whether an upgrade may interrupt service or
-what a process needs from a machine. A volume that cannot attach twice requires
-recreate. The error appears only when a second node is used.
+what a process needs from a machine. A volume that cannot attach to two nodes
+at once requires recreate. A rolling replacement can fail if the new pod starts
+on another node before the old one stops.
 
-\textbf{Shared values.} Hostnames must be unique. One process uses a graphics
-card at a time. The \emph{edge} consists of shared entry points for external
-traffic (Section~\ref{sec:sharedvalues}).
+\textbf{Shared values.} Hostnames must be unique. Only one process can use a
+graphics card at a time. The \emph{edge} consists of shared entry points for
+external traffic (Section~\ref{sec:sharedvalues}).
 
 \subsection{Structural and Operational Concepts}
 
@@ -39,13 +41,6 @@ together during an upgrade.
 \subsection{Notation}
 \label{sec:notation}
 
-The Task 0 feedback suggested ArchiMate or the C4 model instead of, or beside,
-UML class diagrams.
-
-A metamodel defines abstract syntax. Ecore implements EMOF classes, attributes,
-references and multiplicities. Class diagrams show them directly. ArchiMate and
-C4 describe systems.
-
-For a model instance, Figure~\ref{fig:deploymentview} shows a deployment view.
-The resolved model records machines, hostnames and dependencies. Task 3 could
-generate an ArchiMate technology view or C4 deployment diagram from it.
+Ecore implements EMOF classes, attributes, references and multiplicities.
+Class diagrams show those metamodel constructs. A deployment view instead
+shows a model instance, as in Figure~\ref{fig:deploymentview}.

@@ -37,24 +37,23 @@ An override mechanism for derived values &
 
 A third metamodel could support structural output checks, but a maintained copy
 of the target schema could drift. It adds no constraint beyond the resolved
-metamodel. Tests compare generated text with reviewed output and validate it
-against target schemas. The resolved metamodel contains typed resource classes
+metamodel. The resolved metamodel contains typed resource classes
 (Section~\ref{sec:generatedresources}).
 
 \subsection{Grammar First or Metamodel First}
 \label{sec:grammarfirst}
 
-The production implementation parses another serialisation of the source
-language. If the Xtext grammar defined the language, the two syntaxes could
-diverge. Both implementations instead check against the metamodel's exported,
-machine-readable structure.
+Source models have two serialisations: YAML for authors and XMI for Eclipse.
+If the YAML grammar inferred the metamodel, it would determine the concepts in
+both forms. Defining Ecore first gives both serialisations the same classes.
 
 \subsection{One Resolved Model, or One Per Application}
 \label{sec:oneresolved}
 
-The resolved model covers all applications because edge routing, application
-order and reverse dependencies require cluster-wide inputs. Separate
-per-application computations could disagree or omit values.
+The resolved model covers all applications. Edge routing, deployment order and
+reverse dependencies require a cluster-wide view. Reverse dependencies identify
+which applications depend on a given application. Separate per-application
+computations could disagree or omit values.
 
 Each repository receives a \emph{projection}: its application's part of the
 resolved model, selected by filtering.

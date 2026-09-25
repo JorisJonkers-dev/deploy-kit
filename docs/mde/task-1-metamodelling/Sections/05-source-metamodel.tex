@@ -22,8 +22,9 @@ performs one-off setup after migration and before the new version starts. It
 serves no traffic.
 
 An \texttt{Exposure} belongs to an application because its hostname can route
-different paths to different processes. Routes refer to their application's
-\texttt{Surface}. Dependencies refer to another application's \texttt{Surface}.
+different paths to different processes. A \texttt{Surface} is a named port a
+process offers. A route refers to a surface of its own application. A
+dependency refers to a surface of another application.
 
 \begin{table}[!htbp]
 \centering
@@ -74,9 +75,10 @@ Table~\ref{tab:sourceclasses} and their relationships.
 
 The platform document specifies shared cluster facts and policies. For example,
 it states whether secrets are encrypted at rest (Section~\ref{sec:naming}). A
-tier refers to its proxy application. The delivery policy refers to delivery
-applications. Constraints reject secret delivery without encryption and storage
-requests without matching policies (Section~\ref{sec:constraints}).
+tier refers to the application that runs its proxy. The delivery policy refers
+to the \emph{delivery machinery}: applications that switch other applications
+to a new version. Constraints reject secret delivery without encryption and
+storage requests without matching policies (Section~\ref{sec:constraints}).
 
 \begin{table}[!htbp]
 \centering
@@ -104,7 +106,7 @@ ProbeCadence & The cluster's probe timing: period, timeout and the number of fai
 EphemeralPolicy & The size a declared writable path receives. \\
 Provider & A service the cluster runs that this model does not deploy, with its address and named surfaces, which a dependency may refer to. \\
 MigrationPolicy & The runner image alias, deadline and resources for managed migrations. \\
-DeliveryPolicy & The \emph{delivery machinery}: the applications that switch other applications to a new version and are not switched themselves. \\
+DeliveryPolicy & The delivery machinery: the applications that switch other applications to a new version and are not switched themselves. \\
 AnalysisPolicy & How often a new version is checked, how many passing checks promote it, and how many failing ones roll it back. \\
 HandoverLedger & Projects on the old path and projects delivered from pinned artifacts. It also records the old path's removal date. \\
 \hline

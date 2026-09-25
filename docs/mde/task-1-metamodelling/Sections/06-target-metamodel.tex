@@ -47,8 +47,9 @@ applications, the reconcile units and the path plan.
 A \texttt{ResolvedApplication} also forms the projection published to its
 repository. Only that published projection has separate provenance.
 
-\texttt{ReleaseGate} is absent without blue/green switching. Interrupted
-applications stop first. Delivery machinery updates in place.
+\texttt{ReleaseGate} is absent when no process switches blue/green. An
+interrupted application stops before the new version starts. The delivery
+machinery updates in place.
 \texttt{ResolvedMigration} records changesets that cannot run in a transaction
 and cannot be undone automatically. Migration identity, owner role and deadline
 follow from the application and platform document.
@@ -61,7 +62,8 @@ unset for a prepare process, which replaces no running version.
 The \emph{path plan} assigns each generated object to a generator and output
 path (Section~\ref{sec:stagecontent}). Earlier generator-chosen paths duplicated
 a group object across applications and placed a cluster object in an arbitrary
-namespace. The plan checks path collisions before generation.
+namespace. The path plan lets the platform detect output-path collisions
+before generation.
 
 \subsection{The Generated Resources}
 \label{sec:generatedresources}
@@ -76,12 +78,10 @@ classes specify output paths and generators. They include
 \texttt{WorkloadFile}, \texttt{SwitchoverFile}, \texttt{NetworkPolicyFile},
 \texttt{MonitorFile} and \texttt{IngressRouteFile}. The remaining types are
 \texttt{SecretFile}, \texttt{IdentityFile}, \texttt{NamespaceFile} and
-\texttt{IndexFile}. A
-model-to-text template writes each typed resource.
+\texttt{IndexFile}. A model-to-text template writes each typed resource.
 
 \subsection{Keeping Target Field Names Out of the Model}
 
-Under Section~\ref{sec:naming}'s rule, \texttt{SwitchoverFile} records a
-blue/green switch. Its generator writes a Canary. The model also records
-hardening, writable paths and middleware steps instead of target syntax. A
-check confines target field names to generators.
+\texttt{SwitchoverFile} records a blue/green switch
+(Section~\ref{sec:naming}). Its generator writes a Canary. The model also records
+hardening, writable paths and middleware steps instead of target syntax.

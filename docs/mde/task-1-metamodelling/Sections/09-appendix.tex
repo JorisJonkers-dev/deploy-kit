@@ -1,10 +1,8 @@
 \section{Worked Examples}
 \label{sec:appendix}
 
-This appendix gives file paths for three examples. Paths under
-\texttt{examples/} and \texttt{refusals/} are in the archive
-(Appendix~\ref{sec:handin}), and paths under \texttt{spec/v1/examples/} are in
-the repository.
+This appendix gives archive paths for three examples
+(Appendix~\ref{sec:handin}).
 
 \subsection{The Minimal Model, End to End}
 \label{sec:appendix-minimal}
@@ -12,11 +10,9 @@ the repository.
 The input is \texttt{examples/minimal/notes.project.yml}. EMF does not write
 attributes that hold their default value, so \texttt{lifecycle} and
 \texttt{alertClass} are missing from \texttt{notes.project.xmi} beside it.
-Table~\ref{tab:minimal-trace} compares what the author wrote with what the
-hand-written resolved model, \texttt{minimal.resolveddeployment}, derives
-(Section~\ref{sec:examplemodels}). The generated output in
-\texttt{spec/v1/examples/minimal/rendered/} has nine files. In
-\texttt{apps/notes/canary.yaml}, the Canary's values come from the resolved model.
+Table~\ref{tab:minimal-trace} compares the authored values with those recorded
+in the hand-written resolved model, \texttt{minimal.resolveddeployment}
+(Section~\ref{sec:examplemodels}).
 
 \begin{table}[!htbp]
 \centering
@@ -42,26 +38,20 @@ hand-written resolved model, \texttt{minimal.resolveddeployment}, derives
 \label{sec:appendix-knowledge}
 
 The input is \texttt{examples/knowledge/knowledge.project.yml}, with the two
-applications of Table~\ref{tab:examples}. In the production implementation's
-resolved model, under \texttt{spec/v1/examples/knowledge/expected/}, the
-\texttt{continuous} application (\texttt{resolved.json}) has a release gate and
-a migration. The \texttt{interrupted} one
-(\texttt{resolved.knowledge-}\allowbreak\texttt{ingest.json}) has neither
-(Section~\ref{sec:targetmetamodel}). In
-\texttt{rendered/apps/knowledge/migration.yaml}, the migration becomes two Jobs
-named after the revision: one that migrates the schema, and one that would undo
-it. Both are generated suspended, so only the release gate can start them.
+applications of Table~\ref{tab:examples}. In the resolved model, the
+\texttt{continuous} API requires a release gate and its declared migration. The
+\texttt{interrupted} worker has neither: it declares no migration, and its old
+version stops before the new one starts
+(Section~\ref{sec:targetmetamodel}).
 
 \subsection{A Rejected Model}
 \label{sec:appendix-refused}
 
 \texttt{refusals/prepare-process-serves.project.yml} declares a prepare process
-with a port, probes, replicas and a \texttt{cutover}, which only a serving
-process has, and \texttt{prepare-process-serves.project.xmi} is its XMI. Its
-expected diagnostics, \texttt{spec/v1/examples/refusals/}\allowbreak
-\texttt{prepare-process-serves.diagnostics.json}, hold one entry: the code
-\texttt{E\_PREPARE\_PROCESS\_SERVES}, the document, and the path
-\texttt{/applications/0/processes/1}.
+with a port, probes, replicas and a \texttt{cutover}. These belong to serving
+processes. Its XMI is \texttt{prepare-process-serves.project.xmi}.
+Validating that XMI reports \texttt{E\_PREPARE\_PROCESS\_SERVES} on the second
+process of the first application.
 
 \subsection{The Hand-in Archive}
 \label{sec:handin}
@@ -77,12 +67,8 @@ to open it without a registered package. The archive's
 \texttt{project-intent.ecore} embeds the OCL invariants and helpers. Plain
 Validate reports single-document codes. For cross-document sets, open the
 project XMI, add the platform XMI with Load Resource, then select OCL > Load
-Document and load \texttt{model/project-intent.ocl} before validating. The
-platform example is parsed alone, leaving six application references unresolved.
-The archive's genmodels generate model code into its project and other code into
-separate plug-in projects. Only \texttt{minimal} includes a resolved XMI. Task 2
-will produce the others. Generated trees and JSON oracles remain in the
-repository under \texttt{spec/v1/examples/}.
+Document and load \texttt{model/project-intent.ocl} before validating. Only
+\texttt{minimal} includes a resolved XMI. Task 2 will produce the others.
 
 \begin{table}[!htbp]
 \centering
@@ -131,7 +117,7 @@ E\_ENGINE\_WITHOUT\_DURABILITY & Process & A backup engine declared where no vol
 E\_DURABILITY\_WITHOUT\_ENGINE & Volume & A volume that requires a backup, with no engine to state the backup method. \\
 E\_ENV\_CANNOT\_RELOAD & Rotation & A secret that tolerates a reload but is delivered as an environment variable, which is read only at start. \\
 E\_ILLEGAL\_DELIVERY\_FOR\_ACCESS & KvGrant & \texttt{custody} delivered as an environment variable or file, although its paths appear only at runtime. Also \texttt{self-renew} delivered as an environment variable, which its identity cannot read. \\
-E\_NON\_KV\_DELIVERY & TransitGrant, DatabaseGrant & A transit or database grant delivered as an environment variable or file. A transit key never leaves the secret store, and a database credential is issued per lease, so the application fetches both itself. \\
+E\_NON\_KV\_DELIVERY & TransitGrant, DatabaseGrant & A transit or database grant delivered as an environment variable or file. The application requests transit operations from the secret store and fetches database credentials issued per lease. \\
 E\_DUPLICATE\_ROUTE\_MATCH & Route & Two routes of one exposure with the same path and match type, which the derived precedence cannot order. \\
 E\_NO\_FORWARD\_AUTH\_ENDPOINT & Tier & A tier that serves authenticated visitors but declares no endpoint to check whether a visitor may enter. \\
 E\_HANDOVER\_BOTH\_PATHS & HandoverLedger & A project listed on both delivery paths, so two sources would both apply it. \\
