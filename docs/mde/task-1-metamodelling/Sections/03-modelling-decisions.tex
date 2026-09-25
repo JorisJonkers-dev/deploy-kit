@@ -1,9 +1,17 @@
-\section{Modelling Decisions}
+\section{Alternatives and Justification}
+\label{sec:alternatives}
+
+This section justifies the chosen modelling solution in general terms: the
+decisions that shape both metamodels (Section~\ref{sec:decisions}) and the
+alternatives rejected for them (Section~\ref{sec:alternativesconsidered}).
+Section~\ref{sec:design} gives the resulting classes in detail.
+
+\subsection{Chosen Modelling Solution}
 \label{sec:decisions}
 
 Seven decisions define the metamodels.
 
-\subsection{Three Model Stages, Two Metamodels}
+\subsubsection{Three Model Stages, Two Metamodels}
 
 Task 2 transforms an authored model into a resolved model. Task 3 generates
 text from the resolved model. Only the authored and resolved models have
@@ -11,7 +19,7 @@ metamodels (Section~\ref{sec:thirdmetamodel}).
 
 These stages are not metalevels. No \texttt{instanceOf} relation connects them.
 
-\subsection{What Each Stage May Contain}
+\subsubsection{What Each Stage May Contain}
 \label{sec:stagecontent}
 
 A \emph{decision} is a platform-computed value, such as eligible machines.
@@ -23,7 +31,7 @@ An earlier two-stage design let the generator compute values internally. It
 produced three incompatible documents with one version identifier. The resolved
 model records computed values separately from the authored document.
 
-\subsection{Shared Values Are Set by the Platform}
+\subsubsection{Shared Values Are Set by the Platform}
 \label{sec:sharedvalues}
 
 The platform sets cluster-unique values and allocations of shared resources.
@@ -33,7 +41,7 @@ Applications state memory and CPU requirements so processes reserve capacity.
 The platform compares each requirement with individual machines. It does not
 sum reservations across the cluster, so it cannot detect aggregate overcommit.
 
-\subsection{Derived Values Cannot Be Overridden}
+\subsubsection{Derived Values Cannot Be Overridden}
 
 The platform derives values from the authored model and platform document.
 There is no override mechanism (Table~\ref{tab:alternatives}).
@@ -41,20 +49,20 @@ There is no override mechanism (Table~\ref{tab:alternatives}).
 One process starts faster and had a shorter hand-set deadline. A rule can
 derive that deadline from its declared startup budget without an override.
 
-\subsection{Requirements Instead of Target Fields}
+\subsubsection{Requirements Instead of Target Fields}
 \label{sec:naming}
 
 Attributes describe requirements, such as writable paths, instead of target
 fields such as a security context (Section~\ref{sec:observations}). Only
 generators contain target field names.
 
-\subsection{Enumerations Instead of Free-Form Strings}
+\subsubsection{Enumerations Instead of Free-Form Strings}
 \label{sec:enumdecision}
 
 Fixed sets of values use enumerations. Constraints can cover their literals.
 Free-form strings have no finite set to check (Table~\ref{tab:alternatives}).
 
-\subsection{Release Grouping and Deployment Order}
+\subsubsection{Release Grouping and Deployment Order}
 
 An application groups processes released together. The dependency graph
 determines application order. Using that graph for release grouping joined all

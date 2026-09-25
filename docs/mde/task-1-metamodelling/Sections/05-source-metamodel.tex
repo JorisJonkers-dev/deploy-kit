@@ -1,11 +1,43 @@
-\section{The Source Metamodel}
+\section{Solution Design}
+\label{sec:design}
+
+The solution consists of the source metamodel, the target metamodel, the
+concrete syntax and OCL constraints of the source language, and their
+implementation in EMF. Table~\ref{tab:artefacts} says where each is in the
+hand-in archive (Appendix~\ref{sec:handin}).
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.50\linewidth}>{\raggedright\arraybackslash}p{0.14\linewidth}}
+\hline
+\textbf{Artefact} & \textbf{In the hand-in} & \textbf{Section} \\
+\hline
+Source metamodel & \texttt{task-1-metamodelling/}\allowbreak\texttt{model/project-intent.ecore} & \ref{sec:sourcemetamodel} \\
+Target metamodel & \texttt{task-1-metamodelling/}\allowbreak\texttt{model/resolved-deployment.ecore} & \ref{sec:targetmetamodel} \\
+OCL constraints & \texttt{task-1-metamodelling/}\allowbreak\texttt{model/project-intent.ocl} & \ref{sec:constraints} \\
+Concrete syntax & \texttt{implementation/emf/}\allowbreak\texttt{bundles/syntax}, two Xtext grammars & \ref{sec:constraints} \\
+Implementation and tests & \texttt{implementation/emf} & \ref{sec:implementation}, \ref{sec:tests} \\
+\hline
+\end{tabular}
+\caption{The Artefacts of Task 1}
+\label{tab:artefacts}
+\end{table}
+
+Figures~\ref{fig:projectdocument} to~\ref{fig:targetmetamodel} are UML class
+diagrams. Ecore implements the EMOF constructs of classes, attributes,
+references and multiplicities, and a class diagram shows them directly. A
+deployment view shows a model instance instead, as in
+Figure~\ref{fig:deploymentview}.
+
+\subsection{The Source Metamodel}
 \label{sec:sourcemetamodel}
 
 The source metamodel is \texttt{model/project-intent.ecore} in the archive. A
 \emph{project} document specifies application requirements. One \emph{platform}
 document specifies cluster facts and policies (Section~\ref{sec:sharedvalues}).
 
-\subsection{The Project Document}
+\subsubsection{The Project Document}
 
 An application using a database declares a migration. One application migrates
 each project's database. \texttt{Migration} has three subclasses. The platform
@@ -71,7 +103,7 @@ Table~\ref{tab:sourceclasses} and their relationships.
 \end{figure}
 \end{landscape}
 
-\subsection{The Platform Document}
+\subsubsection{The Platform Document}
 
 The platform document specifies shared cluster facts and policies. For example,
 it states whether secrets are encrypted at rest (Section~\ref{sec:naming}). A
@@ -127,7 +159,7 @@ Table~\ref{tab:platformclasses} and their relationships.
 \end{figure}
 \end{landscape}
 
-\subsection{Enumerations}
+\subsubsection{Enumerations}
 
 Figures~\ref{fig:projectdocument} and~\ref{fig:platformdocument} show fixed
 value sets as types such as \texttt{Cutover}, \texttt{DurabilityClass} and

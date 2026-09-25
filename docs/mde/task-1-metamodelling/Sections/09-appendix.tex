@@ -56,11 +56,15 @@ process of the first application.
 \subsection{The Hand-in Archive}
 \label{sec:handin}
 
-The archive is an Eclipse project with OCL and Xtext natures. It contains the
-metamodels, five accepted examples and 33 rejection cases: 18 single files and
-15 document sets. The report is separate from the zip. Table~\ref{tab:handin}
-gives the layout. Each authored YAML file appears beside its parsed XMI, with
-any referenced \texttt{env/} files.
+The archive holds this report as \texttt{report.pdf}, a \texttt{README.md}
+with the steps below, and two folders. The first, \texttt{task-1-metamodelling/}, is an
+Eclipse project with OCL and Xtext natures, imported with File > Import >
+Existing Projects into Workspace. It contains the metamodels, five accepted
+examples and 33 rejected models: 18 single files and 15 document sets.
+\texttt{implementation/} contains the EMF implementation
+(Section~\ref{sec:implementation}) and the examples its tests read.
+Table~\ref{tab:handin} gives the layout. Each authored YAML file appears beside
+its parsed XMI, with any referenced \texttt{env/} files.
 
 Each XMI declares its metamodel in \texttt{xsi:schemaLocation}, allowing Eclipse
 to open it without a registered package. The archive's
@@ -70,6 +74,13 @@ project XMI, add the platform XMI with Load Resource, then select OCL > Load
 Document and load \texttt{model/project-intent.ocl} before validating. Only
 \texttt{minimal} includes a resolved XMI. Task 2 will produce the others.
 
+\texttt{./mvnw verify} in \texttt{implementation/emf} builds the implementation
+and runs its tests; it needs JDK~21. For each example and rejected model it
+writes the parsed model or the diagnostics, and the XMI, under
+\texttt{bundles/cli/}\allowbreak\texttt{target/parity/}. To open the implementation in Eclipse,
+import \texttt{implementation/emf} with File > Import > Existing Maven Projects
+after setting \texttt{emf.target} as the target platform.
+
 \begin{table}[!htbp]
 \centering
 \footnotesize
@@ -77,11 +88,14 @@ Document and load \texttt{model/project-intent.ocl} before validating. Only
 \hline
 \textbf{Path} & \textbf{What it holds} \\
 \hline
-\texttt{model/} & \texttt{project-intent.ecore} with \texttt{project-intent.ocl}, the constraints of Section~\ref{sec:constraints}, and \texttt{resolved-deployment.ecore}, each metamodel with its \texttt{.genmodel} \\
-\texttt{examples/<name>/} & the authored \texttt{*.project.yml}, its \texttt{env/} files, and its XMI, \texttt{*.project.xmi} \\
-\texttt{examples/minimal/} & also \texttt{minimal.resolveddeployment}, the resolved model as an instance of the target metamodel \\
-\texttt{examples/platform/} & the platform document, \texttt{platform.intent.yml}, and its XMI \\
-\texttt{refusals/} & 18 single-file cases and 15 document sets, each with authored files and XMI. \texttt{README.md} gives codes and reproduction steps \\
+\texttt{report.pdf} & this report \\
+\texttt{task-1-metamodelling/model/} & \texttt{project-intent.ecore} with \texttt{project-intent.ocl}, the constraints of Section~\ref{sec:constraints}, and \texttt{resolved-deployment.ecore}, each metamodel with its \texttt{.genmodel} \\
+\texttt{\dots/examples/<name>/} & the authored \texttt{*.project.yml}, its \texttt{env/} files, and its XMI, \texttt{*.project.xmi} \\
+\texttt{\dots/examples/minimal/} & also \texttt{minimal.resolveddeployment}, the resolved model as an instance of the target metamodel \\
+\texttt{\dots/examples/platform/} & the platform document, \texttt{platform.intent.yml}, and its XMI \\
+\texttt{\dots/refusals/} & 18 single-file cases and 15 document sets, each with authored files and XMI. \texttt{README.md} gives codes and reproduction steps \\
+\texttt{implementation/emf/} & the Eclipse plug-in projects of Section~\ref{sec:implementation}, with the Maven build \\
+\texttt{implementation/spec/v1/examples/} & the authored models with their expected results, which the tests read \\
 \hline
 \end{tabular}
 \caption{Layout of the Hand-in Archive}

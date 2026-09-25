@@ -1,10 +1,10 @@
-\section{Concrete Syntax and Constraints}
+\subsection{Concrete Syntax and Constraints}
 \label{sec:constraints}
 
 The source language has a textual syntax and OCL constraints that reject
 invalid models.
 
-\subsection{The Concrete Syntax}
+\subsubsection{The Concrete Syntax}
 
 Authors use the YAML subset found in the existing configuration. Two Xtext
 grammars define this syntax: one for \texttt{platform.intent.yml} and one for
@@ -16,7 +16,7 @@ produces a reference error, \texttt{E\_UNKNOWN\_PROCESS}. Handover project
 identifiers remain strings checked by an invariant because projects are
 separate documents.
 
-\subsection{The Constraints}
+\subsubsection{The Constraints}
 
 Complete OCL defines 36 invariants and 9 \texttt{def} helpers for the source
 metamodel. The invariants use 28 distinct codes. Three occur on multiple
@@ -64,10 +64,36 @@ an unwritable \texttt{absent} literal, which invariants test instead of
 \texttt{null}. Constraints over every project document at once, such as unique
 application identifiers, are not part of the OCL constraints.
 
-\subsection{Rejected Example Models}
+\subsection{Implementation in EMF}
+\label{sec:implementation}
 
-The archive has 33 rejected cases: 18 single project files and 15 sets of a
-platform and project document. Together they cover all 28 invariant codes and
-four unresolved-reference codes. The files in each set are valid separately.
-For invariant violations, Eclipse Validate reports the invariant's name as the
-code (Appendix~\ref{sec:appendix-refused}).
+The artefacts are Eclipse plug-in projects in \texttt{implementation/emf/},
+built by Maven and Tycho on JDK~21. Three projects make up Task 1.
+
+\begin{itemize}
+  \item \texttt{metamodel} holds the two \texttt{.ecore} files, their
+    \texttt{.genmodel} files and the Complete OCL file. The build generates the
+    metamodels' Java classes from the genmodels.
+  \item \texttt{syntax} holds the two Xtext grammars and the generated editor.
+    The editor marks an OCL violation on the line of the authored file that
+    causes it.
+  \item \texttt{cli} holds a program that reads a set of authored files and
+    writes either the parsed model or the \emph{diagnostics} that reject it. A
+    diagnostic holds the code, the file and the path of the rejected object in
+    that file.
+\end{itemize}
+
+The program checks in three steps and stops after the first step that finds an
+error. It parses each file, validates each parsed model against the OCL
+constraints, and then validates the files of a set together, for the
+constraints across documents. It also writes each parsed model as XMI, named
+after its file: \texttt{notes.project.yml} becomes \texttt{notes.project.xmi}.
+
+\texttt{./mvnw verify} in \texttt{implementation/emf} builds the projects and
+runs the tests of Section~\ref{sec:tests}. The projects \texttt{resolve} and
+\texttt{render} contain the start of Tasks 2 and 3.
+
+The hand-in's \texttt{task-1-metamodelling} project holds the metamodels and
+every model as XMI, so the models can be inspected without a build
+(Appendix~\ref{sec:handin}). Its copy of \texttt{project-intent.ecore} embeds
+the OCL invariants, so Eclipse's Validate reports them directly.

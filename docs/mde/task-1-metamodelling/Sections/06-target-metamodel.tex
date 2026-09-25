@@ -1,11 +1,11 @@
-\section{The Target Metamodel}
+\subsection{The Target Metamodel}
 \label{sec:targetmetamodel}
 
 The target metamodel is \texttt{model/resolved-deployment.ecore} in the archive.
 Task 2 produces its instances. Task 3 generates files from them. A resolved
 model records platform decisions, typed resources and output paths.
 
-\subsection{Required Content}
+\subsubsection{Required Content}
 
 Generators use the resolved model (Section~\ref{sec:stagecontent}).
 
@@ -28,7 +28,7 @@ revision to identify the same release.
 platform policy, the machine contract, pinned image digests and observed cluster
 state. Identical inputs must produce identical output.
 
-\subsection{Structure}
+\subsubsection{Structure}
 
 Figure~\ref{fig:targetmetamodel} shows the metamodel. The root class,
 \texttt{ResolvedDeployment}, covers all applications
@@ -57,7 +57,7 @@ follow from the application and platform document.
 The \texttt{cutover} and \texttt{switchover} of a \texttt{ResolvedProcess} are
 unset for a prepare process, which replaces no running version.
 
-\subsection{The Path Plan}
+\subsubsection{The Path Plan}
 
 The \emph{path plan} assigns each generated object to a generator and output
 path (Section~\ref{sec:stagecontent}). Earlier generator-chosen paths duplicated
@@ -65,7 +65,7 @@ a group object across applications and placed a cluster object in an arbitrary
 namespace. The path plan lets the platform detect output-path collisions
 before generation.
 
-\subsection{The Generated Resources}
+\subsubsection{The Generated Resources}
 \label{sec:generatedresources}
 
 Six generators produce workloads, network policy, monitoring, edge routing,
@@ -80,7 +80,7 @@ classes specify output paths and generators. They include
 \texttt{SecretFile}, \texttt{IdentityFile}, \texttt{NamespaceFile} and
 \texttt{IndexFile}. A model-to-text template writes each typed resource.
 
-\subsection{Keeping Target Field Names Out of the Model}
+\subsubsection{Keeping Target Field Names Out of the Model}
 
 \texttt{SwitchoverFile} records a blue/green switch
 (Section~\ref{sec:naming}). Its generator writes a Canary. The model also records

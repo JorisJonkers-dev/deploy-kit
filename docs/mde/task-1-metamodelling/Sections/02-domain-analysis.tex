@@ -1,11 +1,11 @@
-\section{Domain Analysis}
+\subsection{Domain Analysis}
 \label{sec:domainanalysis}
 
 The existing configuration covers one Kubernetes cluster, seven nodes, ten
 namespaces, about thirty processes and twenty applications. It is maintained by
 hand.
 
-\subsection{Observations From the Existing Configuration}
+\subsubsection{Observations From the Existing Configuration}
 \label{sec:observations}
 
 \textbf{Repeated values.} One hostname appears seven times across three
@@ -28,7 +28,7 @@ on another node before the old one stops.
 graphics card at a time. The \emph{edge} consists of shared entry points for
 external traffic (Section~\ref{sec:sharedvalues}).
 
-\subsection{Structural and Operational Concepts}
+\subsubsection{Structural and Operational Concepts}
 
 Structurally, a project groups applications. An application groups processes
 released together. Processes offer and use named ports. Hostname paths lead to
@@ -37,10 +37,3 @@ an application's processes.
 Operational concepts specify machine requirements, data durability, secret
 access and delivery, health checks, startup time and whether versions may run
 together during an upgrade.
-
-\subsection{Notation}
-\label{sec:notation}
-
-Ecore implements EMOF classes, attributes, references and multiplicities.
-Class diagrams show those metamodel constructs. A deployment view instead
-shows a model instance, as in Figure~\ref{fig:deploymentview}.

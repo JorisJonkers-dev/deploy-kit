@@ -1,5 +1,5 @@
-\section{Alternatives Considered}
-\label{sec:alternatives}
+\subsection{Alternatives Considered}
+\label{sec:alternativesconsidered}
 
 Table~\ref{tab:alternatives} lists the rejected alternatives.
 
@@ -32,7 +32,7 @@ An override mechanism for derived values &
 \label{tab:alternatives}
 \end{table}
 
-\subsection{A Third Metamodel for the Generated Files}
+\subsubsection{A Third Metamodel for the Generated Files}
 \label{sec:thirdmetamodel}
 
 A third metamodel could support structural output checks, but a maintained copy
@@ -40,14 +40,14 @@ of the target schema could drift. It adds no constraint beyond the resolved
 metamodel. The resolved metamodel contains typed resource classes
 (Section~\ref{sec:generatedresources}).
 
-\subsection{Grammar First or Metamodel First}
+\subsubsection{Grammar First or Metamodel First}
 \label{sec:grammarfirst}
 
 Source models have two serialisations: YAML for authors and XMI for Eclipse.
 If the YAML grammar inferred the metamodel, it would determine the concepts in
 both forms. Defining Ecore first gives both serialisations the same classes.
 
-\subsection{One Resolved Model, or One Per Application}
+\subsubsection{One Resolved Model, or One Per Application}
 \label{sec:oneresolved}
 
 The resolved model covers all applications. Edge routing, deployment order and

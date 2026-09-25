@@ -1,14 +1,61 @@
-\section{Introduction and Scope}
+\section{Purpose of the Project}
 \label{sec:introduction}
 
-The project generates Kubernetes deployment files from application
-requirements. Task 1 defines two Ecore metamodels: the authored source language
-and the \emph{resolved model}, which records platform-derived values. OCL
-constraints, Xtext syntax and example models accompany them.
-Appendix~\ref{sec:handin} describes the hand-in archive.
+\subsection{Goals}
 
-Table~\ref{tab:scope} sets the scope. Section~\ref{sec:notation} explains the
-diagram notation.
+The project generates the Kubernetes deployment files for one cluster from an
+abstract model of what each application needs. Authors state requirements, such
+as whether a process may be unavailable during an upgrade. The platform derives
+the settings that implement them, such as the rollout strategy. Each fact is
+then written once, instead of being copied into several files and repositories
+that drift apart (Section~\ref{sec:domainanalysis}).
+
+Task 1 defines the two metamodels this needs, in Ecore. The \emph{source
+metamodel} is the language an author writes. The \emph{target metamodel}
+describes the \emph{resolved model}, which records every value the platform
+derives. OCL constraints reject invalid source models, an Xtext grammar gives
+the source language a textual syntax, and example models show that both
+metamodels work. Task 2 will transform source models into resolved models with
+QVT-Operational, and Task 3 will generate the files from resolved models with
+Acceleo.
+
+\subsection{Refinement of Task 0}
+
+Task 1 refines the Task 0 proposal in three ways.
+
+\begin{itemize}
+  \item Task 0 described the target metamodel as typed Kubernetes resources.
+    The target metamodel now records the platform's decisions in the terms of
+    the source language. Typed resource classes state only which file a
+    generator writes at which path, and the files' own fields are not modelled
+    (Sections~\ref{sec:naming} and~\ref{sec:thirdmetamodel}).
+  \item Task 0 treated the platform document as an input beside the model. It
+    is now part of the source metamodel, with its own root class
+    (Section~\ref{sec:sourcemetamodel}), and constraints check a project
+    document against it (Section~\ref{sec:constraints}).
+  \item Task 0 listed ten source classes. The source metamodel adds, among
+    others, a migration per application, named ports, alerting, and
+    declarations shared by all processes of a project or application.
+\end{itemize}
+
+\subsection{Assumptions and Conditions}
+
+\begin{itemize}
+  \item One cluster. The concepts and examples come from its existing,
+    hand-maintained configuration (Section~\ref{sec:domainanalysis}).
+  \item Application owners write project documents. The platform owner writes
+    one platform document per cluster.
+  \item The platform sets every value that must be unique in the cluster or
+    uses a shared, limited resource (Section~\ref{sec:sharedvalues}).
+  \item The generated files are not applied to a cluster. Correctness concerns
+    the resolved model and the generated files.
+  \item The tools are Eclipse Modeling Tools with EMF, OCL and Xtext, built
+    with Maven and Tycho (Section~\ref{sec:implementation}).
+\end{itemize}
+
+\subsection{Scope}
+
+Table~\ref{tab:scope} sets the scope.
 
 \begin{table}[!htbp]
 \centering
@@ -30,6 +77,3 @@ Dependency resolution between applications. &
 \caption{Scope of the Project}
 \label{tab:scope}
 \end{table}
-
-Correctness here concerns the generated model and files, which are not applied
-to a cluster.
