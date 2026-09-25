@@ -5,8 +5,10 @@ import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPacka
 import dev.jorisjonkers.deploykit.emf.syntax.PlatformIntentStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.ProjectIntentStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.linking.UnlinkedNames;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +16,8 @@ import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.emf.ecore.xmi.impl.XMIResourceImpl;
 import org.eclipse.xtext.EcoreUtil2;
 import org.eclipse.xtext.linking.impl.XtextLinkingDiagnostic;
 import org.eclipse.xtext.resource.IResourceFactory;
@@ -44,6 +48,21 @@ public final class Pipeline {
         return refusals.isEmpty()
                 ? Parsed.of(IntentJson.of(resource.getContents().get(0)))
                 : Parsed.refused(refusals);
+    }
+
+    /**
+     * The parsed model of the one authored file at {@code path}, serialised as XMI: the same instance
+     * of the metamodel the constraints are checked on, in the form Eclipse opens without the grammar. A
+     * name that links into another document stays a proxy, because the file is read alone, and is
+     * written relative to the authored file beside it, never as a path on the machine that ran it.
+     */
+    public static String xmi(Path path) throws IOException {
+        Resource model = new XMIResourceImpl(URI.createFileURI(path.toAbsolutePath() + ".xmi"));
+        model.getContents()
+                .add(EcoreUtil.copy(read(List.of(path)).get(0).getContents().get(0)));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        model.save(out, null);
+        return out.toString(StandardCharsets.UTF_8);
     }
 
     /**

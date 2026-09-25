@@ -142,6 +142,21 @@ objects. The set being closed is the scope commitment of
 Section~\ref{sec:introduction}: adding a seventh is a recorded decision, not a
 new feature.
 
+\textbf{The metamodel for the code.} The task asks for a metamodel of the code
+the project generates. Here the generated code is a set of Kubernetes, Flux,
+Flagger, Traefik and Vault files, and this metamodel describes it in two halves.
+The resolved decisions say \emph{what} each file must contain. One typed class
+per resource family (\texttt{WorkloadFile}, \texttt{SwitchoverFile},
+\texttt{NetworkPolicyFile}, \texttt{MonitorFile}, \texttt{IngressRouteFile},
+\texttt{SecretFile}, \texttt{IdentityFile}, \texttt{NamespaceFile} and
+\texttt{IndexFile}) says \emph{which} file is generated, at which path, by which
+generator. The files' own schemas are not modelled a third time: they are
+published by their projects, the generated tree is validated against them, and
+modelling them again would copy five upstream vocabularies into this project
+with nothing to keep them in step. A model-to-text template therefore reads one
+instance of this metamodel and writes one file per typed resource, deciding
+nothing.
+
 \subsection{No Target Field Names}
 
 The constraint of Section~\ref{sec:decisions} applies most visibly here. The

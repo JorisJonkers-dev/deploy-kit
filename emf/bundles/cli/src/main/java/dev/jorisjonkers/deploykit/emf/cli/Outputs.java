@@ -20,12 +20,16 @@ import java.util.stream.Stream;
  * <p>The output tree mirrors the example tree: a case at {@code auth/} writes {@code auth/}, and a
  * refusal whose oracle is {@code refusals/unknown-surface.diagnostics.json} writes {@code
  * refusals/unknown-surface/}, so a written file and its oracle are obviously a pair. A case writes
- * exactly one of {@link #INTENT} and {@link #DIAGNOSTICS}, beside its {@link #EXIT}.
+ * exactly one of {@link #INTENT} and {@link #DIAGNOSTICS}, beside its {@link #EXIT}; an accepted
+ * case also writes its model as {@link #MODEL}, which no oracle compares.
  */
 public final class Outputs {
 
     /** The parsed intent of a case the pipeline accepted. */
     public static final String INTENT = "intent.json";
+
+    /** The parsed intent of an accepted case as an instance of the metamodel, in XMI. */
+    public static final String MODEL = "intent.xmi";
 
     /** The diagnostics of a case the pipeline refused. */
     public static final String DIAGNOSTICS = "diagnostics.json";
@@ -43,7 +47,7 @@ public final class Outputs {
     /** Every case under {@code examples} run through the pipeline, written under {@code out}. */
     public static void write(Path examples, Path out) throws IOException {
         for (Path directory : casesWithAnIntentOracle(examples)) {
-            writeParsed(out.resolve(examples.relativize(directory)), Pipeline.intent(authored(directory)));
+            writeParsed(out.resolve(examples.relativize(directory)), authored(directory));
         }
         for (Path oracle : refusalsWithADiagnosticsOracle(examples)) {
             String stem = oracle.getFileName().toString().replace(DIAGNOSTICS_ORACLE, "");
@@ -53,7 +57,7 @@ public final class Outputs {
             if (Files.isDirectory(set)) {
                 writeDiagnostics(directory, Pipeline.check(documents(set)));
             } else {
-                writeParsed(directory, Pipeline.intent(oracle.resolveSibling(stem + PROJECT)));
+                writeParsed(directory, oracle.resolveSibling(stem + PROJECT));
             }
         }
     }
@@ -94,9 +98,11 @@ public final class Outputs {
         return name.endsWith(PROJECT) || name.equals(PLATFORM);
     }
 
-    private static void writeParsed(Path directory, Parsed parsed) throws IOException {
+    private static void writeParsed(Path directory, Path authored) throws IOException {
+        Parsed parsed = Pipeline.intent(authored);
         if (parsed.ok()) {
             write(directory, INTENT, CanonicalJson.write(parsed.intent()), 0);
+            Files.writeString(directory.resolve(MODEL), Pipeline.xmi(authored), StandardCharsets.UTF_8);
         } else {
             writeDiagnostics(directory, parsed.diagnostics());
         }

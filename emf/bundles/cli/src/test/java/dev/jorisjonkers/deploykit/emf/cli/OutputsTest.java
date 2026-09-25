@@ -47,12 +47,17 @@ class OutputsTest {
                 .containsExactly(
                         "minimal/exit",
                         "minimal/intent.json",
+                        "minimal/intent.xmi",
                         "refusals/no-tier-for-audience/diagnostics.json",
                         "refusals/no-tier-for-audience/exit",
                         "refusals/unknown-surface/diagnostics.json",
                         "refusals/unknown-surface/exit");
         assertThat(read(out.resolve("minimal/exit"))).isEqualTo("0");
         assertThat(read(out.resolve("minimal/intent.json"))).startsWith("{").endsWith("}");
+        // The same model as an instance of the metamodel, which loads back without the grammar.
+        assertThat(read(out.resolve("minimal/intent.xmi")))
+                .contains("projectintent:Project")
+                .contains("project=\"notes\"");
         assertThat(read(out.resolve("refusals/unknown-surface/exit"))).isEqualTo("1");
         assertThat(read(out.resolve("refusals/unknown-surface/diagnostics.json")))
                 .contains("E_UNKNOWN_SURFACE");
@@ -90,7 +95,7 @@ class OutputsTest {
         String name = oracle.getFileName().toString();
         if (oracle.endsWith("expected/intent.json")) {
             String directory = relative(examples, oracle.getParent().getParent());
-            return Stream.of(directory + "/exit", directory + "/intent.json");
+            return Stream.of(directory + "/exit", directory + "/intent.json", directory + "/intent.xmi");
         }
         if (name.endsWith(".diagnostics.json")) {
             String directory = "refusals/" + name.replace(".diagnostics.json", "");
