@@ -104,8 +104,9 @@ A \texttt{ReleaseGate} carries its \texttt{GateAnalysis} cadence and one
 switches blue/green: an interrupted application stops before it starts, and an
 application of the delivery machinery rolls in place, so nothing waits on a
 gate. A \texttt{ResolvedMigration} records only
-what varies: the migration image and the revision it was tested against; the
-identity that runs it, the owner role and the deadline are fixed functions of the
+what varies: the migration image, the revision it was tested against, and
+whether the release holds a changeset that cannot run in a transaction, which no
+automatic undo may touch; the identity that runs it, the owner role and the deadline are fixed functions of the
 application and the platform document, so recording them would repeat a
 derivation.
 
@@ -134,7 +135,8 @@ the complete set of paths is known, which is before any generator runs.
 \subsection{The Generated Resources}
 
 The generation step has a closed set of six generators, one per subsystem: the
-workloads and their supporting objects, the network policy, the monitoring
+workloads and their supporting objects, including the Canary through which a
+blue/green process is switched, the network policy, the monitoring
 objects, the edge routing, the secret-store policies, and the secret delivery
 objects. The set being closed is the scope commitment of
 Section~\ref{sec:introduction}: adding a seventh is a recorded decision, not a
@@ -144,7 +146,9 @@ new feature.
 
 The constraint of Section~\ref{sec:decisions} applies most visibly here. The
 resolved model records that a process switches blue/green; it does not record
-a rollout strategy or a Canary. It records the hardening posture and the
+a rollout strategy or a Canary: the typed resource a generator walks for it is
+a \texttt{SwitchoverFile}, and only the generator spells it as a Canary. It
+records the hardening posture and the
 paths the process must write; it does not record a security context. It records
 the middleware chain as a sequence of named steps; it does not record the target
 proxy's spelling of them. Each generator is the one place its own target
