@@ -20,16 +20,15 @@ import java.util.stream.Stream;
  * <p>The output tree mirrors the example tree: a case at {@code auth/} writes {@code auth/}, and a
  * refusal whose oracle is {@code refusals/unknown-surface.diagnostics.json} writes {@code
  * refusals/unknown-surface/}, so a written file and its oracle are obviously a pair. A case writes
- * exactly one of {@link #INTENT} and {@link #DIAGNOSTICS}, beside its {@link #EXIT}; an accepted
- * case also writes its model as {@link #MODEL}, which no oracle compares.
+ * exactly one of {@link #INTENT} and {@link #DIAGNOSTICS}, beside its {@link #EXIT}. Every case also
+ * writes the model of each document it reads in XMI, named by {@link Pipeline#xmiName}, which no
+ * oracle compares. A set's models link to each other, so a refused case opens in Eclipse and fails
+ * its validation there too.
  */
 public final class Outputs {
 
     /** The parsed intent of a case the pipeline accepted. */
     public static final String INTENT = "intent.json";
-
-    /** The parsed intent of an accepted case as an instance of the metamodel, in XMI. */
-    public static final String MODEL = "intent.xmi";
 
     /** The diagnostics of a case the pipeline refused. */
     public static final String DIAGNOSTICS = "diagnostics.json";
@@ -55,7 +54,9 @@ public final class Outputs {
             Path directory = out.resolve(examples.relativize(set));
             // A directory beside the oracle is a set of documents read together; a file is read alone.
             if (Files.isDirectory(set)) {
-                writeDiagnostics(directory, Pipeline.check(documents(set)));
+                List<Path> documents = documents(set);
+                writeDiagnostics(directory, Pipeline.check(documents));
+                writeModels(directory, documents);
             } else {
                 writeParsed(directory, oracle.resolveSibling(stem + PROJECT));
             }
@@ -102,9 +103,17 @@ public final class Outputs {
         Parsed parsed = Pipeline.intent(authored);
         if (parsed.ok()) {
             write(directory, INTENT, CanonicalJson.write(parsed.intent()), 0);
-            Files.writeString(directory.resolve(MODEL), Pipeline.xmi(authored), StandardCharsets.UTF_8);
         } else {
             writeDiagnostics(directory, parsed.diagnostics());
+        }
+        writeModels(directory, List.of(authored));
+    }
+
+    /** The XMI of each of {@code documents} read together; a file that holds no document has none. */
+    private static void writeModels(Path directory, List<Path> documents) throws IOException {
+        for (Map.Entry<Path, String> model : Pipeline.xmi(documents).entrySet()) {
+            Files.writeString(
+                    directory.resolve(Pipeline.xmiName(model.getKey())), model.getValue(), StandardCharsets.UTF_8);
         }
     }
 

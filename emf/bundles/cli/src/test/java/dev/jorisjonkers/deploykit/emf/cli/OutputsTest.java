@@ -47,15 +47,18 @@ class OutputsTest {
                 .containsExactly(
                         "minimal/exit",
                         "minimal/intent.json",
-                        "minimal/intent.xmi",
+                        "minimal/notes.project.xmi",
                         "refusals/no-tier-for-audience/diagnostics.json",
                         "refusals/no-tier-for-audience/exit",
+                        "refusals/no-tier-for-audience/platform.intent.xmi",
+                        "refusals/no-tier-for-audience/refusals.project.xmi",
                         "refusals/unknown-surface/diagnostics.json",
-                        "refusals/unknown-surface/exit");
+                        "refusals/unknown-surface/exit",
+                        "refusals/unknown-surface/unknown-surface.project.xmi");
         assertThat(read(out.resolve("minimal/exit"))).isEqualTo("0");
         assertThat(read(out.resolve("minimal/intent.json"))).startsWith("{").endsWith("}");
         // The same model as an instance of the metamodel, which loads back without the grammar.
-        assertThat(read(out.resolve("minimal/intent.xmi")))
+        assertThat(read(out.resolve("minimal/notes.project.xmi")))
                 .contains("projectintent:Project")
                 .contains("project=\"notes\"");
         assertThat(read(out.resolve("refusals/unknown-surface/exit"))).isEqualTo("1");
@@ -64,6 +67,24 @@ class OutputsTest {
         assertThat(read(out.resolve("refusals/no-tier-for-audience/exit"))).isEqualTo("1");
         assertThat(read(out.resolve("refusals/no-tier-for-audience/diagnostics.json")))
                 .contains("E_NO_TIER_FOR_AUDIENCE");
+        // A refused model is written too, and a set's documents link to each other's XMI.
+        assertThat(read(out.resolve("refusals/unknown-surface/unknown-surface.project.xmi")))
+                .contains("projectintent:Project");
+        assertThat(read(out.resolve("refusals/no-tier-for-audience/platform.intent.xmi")))
+                .contains("projectintent:Platform")
+                .contains("href=\"refusals.project.xmi#");
+    }
+
+    @Test
+    void aRefusedFileThatHoldsNoDocumentLeavesNoModel(@TempDir Path root) throws IOException {
+        Path examples = root.resolve("examples");
+        Path out = root.resolve("out");
+        touch(examples.resolve("refusals/empty.project.yml"));
+        touch(examples.resolve("refusals/empty.diagnostics.json"));
+
+        Outputs.write(examples, out);
+
+        assertThat(files(out)).containsExactly("refusals/empty/diagnostics.json", "refusals/empty/exit");
     }
 
     @Test
@@ -95,13 +116,40 @@ class OutputsTest {
         String name = oracle.getFileName().toString();
         if (oracle.endsWith("expected/intent.json")) {
             String directory = relative(examples, oracle.getParent().getParent());
-            return Stream.of(directory + "/exit", directory + "/intent.json", directory + "/intent.xmi");
+            Stream<String> models = documents(oracle.getParent().getParent())
+                    .limit(1)
+                    .map(document -> directory + "/" + model(document));
+            return Stream.concat(Stream.of(directory + "/exit", directory + "/intent.json"), models);
         }
         if (name.endsWith(".diagnostics.json")) {
-            String directory = "refusals/" + name.replace(".diagnostics.json", "");
-            return Stream.of(directory + "/diagnostics.json", directory + "/exit");
+            String stem = name.replace(".diagnostics.json", "");
+            String directory = "refusals/" + stem;
+            Path set = oracle.resolveSibling(stem);
+            Stream<String> models = Files.isDirectory(set)
+                    ? documents(set).map(document -> directory + "/" + model(document))
+                    : Stream.of(directory + "/" + stem + ".project.xmi");
+            return Stream.concat(Stream.of(directory + "/diagnostics.json", directory + "/exit"), models);
         }
         return Stream.empty();
+    }
+
+    /** What the XMI of the authored document named {@code document} is called. */
+    private static String model(String document) {
+        return document.replaceFirst("\\.yml$", ".xmi");
+    }
+
+    /** The file names of the authored documents in {@code set}, sorted. */
+    private static Stream<String> documents(Path set) {
+        try (Stream<Path> entries = Files.list(set)) {
+            return entries
+                    .map(path -> path.getFileName().toString())
+                    .filter(name -> name.endsWith(".project.yml") || name.equals("platform.intent.yml"))
+                    .sorted()
+                    .toList()
+                    .stream();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     /** A case the pipeline accepts, copied out of the real examples with an oracle beside it. */
