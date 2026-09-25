@@ -1,81 +1,67 @@
 \section{Domain Analysis}
 \label{sec:domainanalysis}
 
-The domain is the deployment configuration of a small production estate: one
-Kubernetes cluster of seven nodes, ten namespaces, and roughly thirty
-long-running processes belonging to about twenty applications. The estate is
-real and its current configuration is hand-maintained, which is what makes it
-usable as evidence: every concept below was extracted from configuration that
-exists, and several modelling decisions are justified by a defect the existing
-configuration already has.
+The domain is the deployment configuration of a small production environment:
+one Kubernetes cluster of seven nodes, ten namespaces, and about thirty
+long-running processes in about twenty applications. The configuration is
+maintained by hand, and each concept below was taken from it.
 
-\subsection{Where the Repetition Is}
+\subsection{Observations From the Existing Configuration}
+\label{sec:observations}
 
-Four observations from the existing configuration drive the whole language.
+\textbf{Repeated values.} The hostname of one application appears in seven
+places across three repositories, and two tests exist only to detect when these
+copies disagree. A port appears in the container specification, the service,
+the probe and the monitoring rule. Generating the configuration from one model
+makes such tests unnecessary.
 
-\textbf{One fact is written down many times.} The hostname of one application
-appears in seven authoritative places across three repositories, and two
-conformance tests exist for no purpose other than detecting when the seven
-disagree. A port appears in the container specification, in the service, in the
-probe and in the monitoring rule. The guard was cheaper to write than the fix,
-which is the situation a generated deployment set removes.
+\textbf{Derivations repeated by hand.} Four deployments contain the same rollout
+block, each written independently. The reasoning is only in comments: a
+recreate strategy left a period with no running pod, and a JVM cold start needs
+a much larger startup budget than a static bundle. These are rules about a kind
+of process, written four times as constants. Such a rule is a
+\emph{derivation}: it computes a value from the authored model and the
+cluster's policies.
 
-\textbf{One derivation is performed many times by hand.} Four deployments carry
-the same rollout block, arrived at independently, with the reasoning recorded in
-comments that no tool can read. Comments record that a recreate strategy opened
-a zero-pod window, and that a JVM cold start needs a startup budget an order of
-magnitude larger than a static bundle's. That is a rule about a class of
-process, expressed four times as a constant.
+\textbf{Mechanisms instead of requirements.} The existing configuration states
+\emph{mechanisms}, settings of the target syntax: a rollout strategy instead of
+whether the application may be unavailable during an upgrade, and a node label
+instead of what the process needs from a machine. A process whose volume cannot
+be attached twice needs a recreate strategy. Without one, it works on a one-node
+cluster and fails once a second node exists.
 
-\textbf{Values are stated in the wrong vocabulary.} The existing configuration
-declares mechanisms, not requirements: a rollout strategy rather than whether
-the application may be taken down during a cutover, a node label rather than
-what the process needs from a machine. A process whose author forgets to declare
-a recreate strategy over a volume that cannot be attached twice appears to work
-on a one-node cluster and fails the first time a second node exists.
+\textbf{Values shared between applications.} A hostname must be unique in the
+cluster. A graphics card is used by one process at a time. The \emph{edge}, the
+set of entry points for external traffic, is shared and limited. No application
+can set these values from its own repository (Section~\ref{sec:sharedvalues}).
 
-\textbf{Some values cannot be written by one application at all.} A hostname
-must be unique across the estate; a graphics card is held by one process at a
-time; the edge is a shared, finite resource. These values are contended, and no
-application can decide them from inside its own repository.
+\subsection{Structural and Operational Concepts}
 
-\subsection{The Concepts the Domain Requires}
+In the \emph{structural} concepts, a project groups applications, and an
+application groups the processes released together. A process offers named
+ports and uses the ports of others. An application is reachable at a hostname
+whose paths lead to its processes.
 
-The analysis produces two groups of concepts, and the split between them is the
-main modelling decision of the project (Section~\ref{sec:decisions}).
-
-The \emph{structural} concepts are the ones a reader would expect: a project
-groups applications, an application groups the processes released together,
-a process offers named ports and depends on the ports of others, and an
-application is reachable at a hostname whose paths route to its processes.
-
-The \emph{operational} concepts are the ones that carry most of the generated
-output: what a process needs from a machine, what its data is worth if it is
-lost, which secrets it may read and how it receives them, what answers a health
-check, how long a cold start may legitimately take, and whether a new version
-may run beside the old one during a cutover. These have no counterpart in a
-structural architecture notation, and they are where the interesting derivations
-live.
+Most of the generated output comes from the \emph{operational} concepts: what a
+process needs from a machine, what its data is worth if lost, and which secrets
+it may read and how it receives them. They also cover how its health is checked,
+how long a cold start may take, and whether a new version may run beside the old
+one during an upgrade.
 
 \subsection{Notation}
 \label{sec:notation}
 
-The Task 0 feedback asked why UML class diagrams are used, and suggested
-ArchiMate or the C4 model as alternatives or as additions.
+The Task 0 feedback suggested ArchiMate or the C4 model instead of, or beside,
+UML class diagrams.
 
-For the metamodels themselves the class diagram is not really a choice.
-A metamodel defines a language's abstract syntax, Ecore implements EMOF, and
-EMOF is classes, attributes, references and multiplicities, so a class diagram
-is the notation whose constructs correspond one-to-one to what the metamodel is
-built from. ArchiMate and C4 describe a system, not a language, so neither can
-define one.
+A metamodel defines a language's abstract syntax. Ecore implements EMOF, which
+consists of classes, attributes, references and multiplicities, and a class
+diagram shows these constructs directly. ArchiMate and C4 describe systems, so
+neither can define a language.
 
-For the \emph{models} the suggestion is a good one, and this report takes it
-up. A resolved model is an arrangement of processes on machines, which is
-exactly what a deployment view is for, and the resolved model contains every
-fact such a view needs: which process runs where, which application answers on
-which hostname, and which process depends on which. Section
-\ref{sec:examplemodels} shows one example model that way rather than only as
-text, and generating an ArchiMate technology view or a C4 deployment diagram
-from a resolved model is a second model-to-text transformation over the same
-target metamodel, which Task 3 could add at little cost.
+For the \emph{models}, this report follows the suggestion:
+Figure~\ref{fig:deploymentview} draws a resolved model as a deployment view. A
+resolved model records which process runs on which machine, which application is
+reachable at which hostname, and which process depends on which. Task 3 could
+therefore generate an ArchiMate technology view or a C4 deployment diagram from
+it with a second model-to-text transformation.

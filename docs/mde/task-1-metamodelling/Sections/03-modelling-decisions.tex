@@ -1,96 +1,80 @@
 \section{Modelling Decisions}
 \label{sec:decisions}
 
-Seven decisions shape both metamodels. Each is stated with the observation that
-forced it, because in every case the alternative had already been tried in the
-estate's hand-maintained configuration.
+Seven decisions determine both metamodels.
 
 \subsection{Three Model Stages, Two Metamodels}
 
-The pipeline has three stages: an authored model, a resolved model, and the
-generated text. Only the first two are given metamodels. The generated files are
-text in a target syntax that already has a schema of its own, so giving them a
-third metamodel would restate that schema without adding a constraint the
-project could check.
+The pipeline has three stages: the authored model, the resolved model and the
+generated text. Only the first two have metamodels
+(Section~\ref{sec:thirdmetamodel}).
 
-The three stages are deliberately \emph{not} described as metalevels. No stage
-is a type model of the stage below it, so calling the arrangement a metamodel
-hierarchy would claim an \texttt{instanceOf} relation that does not hold. They
-are stages of one transformation pipeline, and the word metamodel is reserved
-for a language definition.
+The stages are \emph{not} metalevels: no stage is a type model of the next, so
+no \texttt{instanceOf} relation holds between them. The word metamodel is used
+only for a language definition.
 
-\subsection{The Layer Rule}
+\subsection{What Each Stage May Contain}
+\label{sec:stagecontent}
 
-The rule that makes the middle stage worth having: \textbf{the authored model
-contains no mechanisms, and the generated text contains no decisions.} Every
-value is assignable to exactly one stage by two questions. Must a human author
-it? And does it record a decision, or merely serialise one?
+A \emph{decision} is a value the platform chooses, such as the machines a
+process may run on. \textbf{The authored model contains no mechanisms
+(Section~\ref{sec:observations}), and the generators make no decisions.} A
+person writes a value only if the platform cannot compute it. The platform
+records every value it computes in the resolved model, and the generators write
+these values in the target syntax.
 
-The counter-experiment is on record. An earlier two-stage arrangement, with
-resolution private to the generator, produced three mutually incompatible
-documents all claiming the same version identifier, because a two-stage
-vocabulary could not say which of the three was the authoring shape. The middle
-model exists so that a decision has one place to live and one name.
+An earlier design with two stages, in which the generator computed values
+internally, produced three incompatible documents with the same version
+identifier. With the resolved model, each computed value is recorded in one
+document, and the authored and resolved documents have different names.
 
-\subsection{Contention Decides Authority}
+\subsection{Shared Values Are Set by the Platform}
+\label{sec:sharedvalues}
 
-A value is decided by the platform if and only if it must be unique across the
-estate or draws on a shared finite resource; every other value is declared by
-the application and carried through untouched. One question replaces a
-per-field negotiation.
+The platform sets a value if and only if it must be unique in the cluster or
+uses a shared, limited resource. The application declares every other value, and
+the transformation copies it unchanged.
 
-The rule required one refinement that is worth reporting, because the naive
-reading is wrong. Contention decides who \emph{arbitrates}, not who
-\emph{authors}. Memory and CPU are draws on a finite pool, so a
-who-authors reading would forbid an application from stating them, which leaves
-every process with no reservation at all. The application therefore states its
-requirement and the platform arbitrates it against what the machines publish.
-The accepted cost is named rather than hidden: nothing today stops an author
-overstating the requirement, because the arbitration is an eligibility test
-against one machine rather than a sum across the estate.
+Memory and CPU are limited, but if applications could not state them, no process
+would reserve any. For these two values, the application therefore states its
+requirement, and the platform checks it against the facts each machine
+publishes. The check compares a requirement with one machine at a time and does
+not add up requirements across the cluster, so an overstated requirement is not
+detected.
 
-\subsection{Derivation Is Total, and There Is No Override}
+\subsection{Derived Values Cannot Be Overridden}
 
-Every value the platform decides is a function of the authored model and the
-platform's own facts. A derived value has exactly one declaring site, so the
-metamodel carries no override mechanism and no exception vocabulary.
+The platform computes each value it sets from the authored model and the
+platform document. Each such value has one definition, so the metamodel has no
+override or exception mechanism (Table~\ref{tab:alternatives}).
 
-This decision was taken against evidence that initially argued for a hatch: one
-process carried a hand-set deadline three times smaller than its neighbours,
-justified by the observation that it starts in seconds rather than minutes. That
-is not a value only its owner could know; it is evidence that one rule over the
-startup budget was wrong for a whole class of process. The correct response is a
-rule that reads an input the process already declares. Keeping the hatch would
-have hidden a wrong derivation behind a per-process reason, where removing it
-makes the same error visible as a wrong result for the entire class.
+One process in the existing configuration seemed to need an override: its
+hand-set deadline was much shorter than its neighbours', because it starts in
+seconds rather than minutes. The process already declares its startup budget, so
+the fix is a deadline rule that uses the startup budget.
 
-\subsection{Values Name Model Concepts, Never Target Fields}
+\subsection{Requirement Names Instead of Target Field Names}
+\label{sec:naming}
 
-No attribute of the source metamodel, and no attribute of the target metamodel,
-is named after a field of the generated syntax. A process declares whether it
-may be taken down during a cutover, not a rollout strategy; it declares the
-paths it must write, not a security context. The target metamodel records the
-platform's decisions in the same vocabulary, and the generators are the only
-place a target field name is spelled.
+No attribute of either metamodel is named after a field of the generated files
+(Section~\ref{sec:observations}). For example, a process declares the paths it
+must write to, not a security context. Only the generators contain target field
+names. If the target metamodel used them, it would only restate the generated
+objects. A check verifies that no metamodel key is a target field name.
 
-This is what keeps the target metamodel a model rather than an object tree with
-extra steps, and it is checked directly: no key of either metamodel may be a
-field name of the target syntax.
+\subsection{Enumerations Instead of Free-Form Strings}
+\label{sec:enumdecision}
 
-\subsection{Closed Vocabularies}
+Where an attribute has a fixed set of values, the metamodel declares an
+enumeration. A constraint can cover every literal of an enumeration, but not
+every value of a string. Table~\ref{tab:alternatives} gives the observation
+from the existing configuration.
 
-Wherever an attribute admits a fixed set of values, the set is closed in the
-metamodel rather than typed as a string. The estate supplies the argument: one
-existing field was typed as a free-form string, every application wrote the same
-value into it, and not one of those values was correct. A field that is wrong in
-every observed case at no cost is a comment, not a declaration, and closing the
-vocabulary is what turns it back into one.
+\subsection{Release Grouping and Deployment Order}
 
-\subsection{Structure Carries Atomicity; the Graph Carries Order}
-
-Two groupings are needed, and deriving one from the other was tried and
-rejected. What must be released together is \emph{structural}: the processes of
-one application switch together, or none of them switches. What must be applied
-before what is \emph{derived} from the dependency graph. Deriving atomicity from
-the graph instead takes the transitive closure of every edge and turns the whole
-estate into one unit, which would make every change estate-wide.
+Two groupings are needed: which processes are released together, and which
+objects are applied before which. The first is \emph{structural}: the processes
+of one application switch to the new version together or not at all. The second
+is \emph{derived} from the dependency graph. Deriving the first from the graph
+was tried and rejected: the transitive closure of the dependency edges joins all
+applications in the cluster into one release unit.

@@ -1,121 +1,71 @@
 \section{Example Models}
 \label{sec:examplemodels}
 
-Five example models instantiate the source metamodel, and each is chosen to
-exercise something the metamodel claims. They are committed beside the
-metamodels, together with the expected result of parsing each one, so that the
-examples are checked rather than illustrative.
+Five example models instantiate the source metamodel, each testing a different
+part of it (Table~\ref{tab:examples}). Appendix~\ref{sec:handin} gives their
+paths, and Section~\ref{sec:constraints} describes the rejected models.
 
 \begin{table}[!htbp]
 \centering
 \small
 \begin{tabular}{>{\raggedright\arraybackslash}p{0.16\linewidth}>{\raggedright\arraybackslash}p{0.76\linewidth}}
 \hline
-\textbf{Example} & \textbf{What it exercises} \\
+\textbf{Example} & \textbf{What it tests} \\
 \hline
 minimal & The smallest complete model: one project, one application, one
-  process, and nothing that is not required. Everything absent from it is
-  either derived or refused, which makes it the model that shows what the
-  language forces an author to say. \\
-auth & Two processes in one application, both continuous, so the release gate
-  has more than one member and the gate's deadline is a maximum over members
-  rather than a single value; and a managed migration, because the application
-  reaches a database. \\
-data & Several applications in one project sharing a namespace, with storage
-  and the backup plans their durability classes earn. \\
-knowledge & Two applications in one project because their cutovers differ: a
-  continuous API that moves the project's schema with a changelog, and an
-  interrupted worker bound to a volume that declares no migration of its own.
-  Dependencies across applications, secrets shared at the project header, and
-  an exposure whose routes carry different audiences. \\
-delivery & The platform's own delivery machinery, the Canary controller and the
-  release gate: continuous, and rolled in place rather than switched
-  blue/green, because a gate cannot gate its own release. \\
+  process, and only required values. \\
+auth & Two \texttt{continuous} processes in one application, so the release gate has two
+  members and its deadline is the maximum over the members. It also has a
+  managed migration, because the application uses a database. \\
+data & Several applications in one project share a namespace. Each volume's
+  durability class determines its backup plan. \\
+knowledge & Two applications in one project, because their \texttt{cutover}
+  values differ: a \texttt{continuous} API that migrates the project's schema
+  with a changelog, and an \texttt{interrupted} worker with a volume and no
+  migration of its own. It also has dependencies between applications, secrets
+  shared at project level, and an exposure whose routes have different
+  audiences. \\
+delivery & Two applications of the delivery machinery: Flagger and the release gate.
+  Their processes are \texttt{continuous} but are updated in place instead of
+  switched blue/green, because the release gate cannot control its own
+  release. \\
 \hline
 \end{tabular}
-\caption{The Example Models and What Each One Exercises}
+\caption{The Example Models and What Each Tests}
 \label{tab:examples}
 \end{table}
 
-Every example passes through three stages, and each stage is a model or a file
-set of its own: the \emph{input}, an authored project file together with the
-same model as an XMI instance of the source metamodel; the state \emph{in
-between}, the resolved model, an instance of the target metamodel; and the
-\emph{output}, the generated file tree. Appendix~\ref{sec:appendix} shows three
-of them through all three stages, cut down to what each is meant to show: the
-minimal model end to end (Appendix~\ref{sec:appendix-minimal}), the
-\texttt{knowledge} project's two cutovers (Appendix~\ref{sec:appendix-knowledge})
-and one refused model (Appendix~\ref{sec:appendix-refused}).
-
-\textbf{Where the files are.} The metamodels are
-\texttt{emf/bundles/metamodel/model/project-intent.ecore} and
-\texttt{resolved-deployment.ecore}, with the constraints in
-\texttt{project-intent.ocl}. The examples in concrete syntax are under
-\texttt{spec/v1/examples/}, and the pipeline writes each one's XMI instance
-beside its parsed form on every build. The hand-written resolved model is
-\texttt{emf/models/minimal.resolveddeployment}. All of them, together with the
-generated trees and the refused set, are collected in the hand-in archive,
-whose layout is Appendix~\ref{sec:handin}. The concrete syntax is how the models
-are authored; the XMI files are the same models as Ecore instances, for a
-reader who opens them in Eclipse without the grammar. Because XMI and JSON are
-hard to read, every such file in the archive and in the appendix is also given
-as YAML, converted mechanically with nothing added or dropped, so every stage
-reads in one notation.
+Each example has three stages: the authored project file, the resolved model,
+and the generated file tree. Appendix~\ref{sec:appendix} follows three examples
+through these stages.
 
 \subsection{The Minimal Model}
 
-The minimal model is the one to read first. It declares a project with one
-application and one process, and it is shorter than the file the same deployment
-needs today by roughly an order of magnitude. What it does \emph{not} declare is
-the point: no rollout strategy, no resource limits, no security context, no
-labels, no selector, no namespace, no probe timings, no instance count. Each of
-those either derives from something the model does declare, or is platform
-policy, or is refused outright.
-
-\subsection{Refused Models}
-
-Alongside the valid examples, a set of deliberately invalid models is
-committed, one per constraint, each with the diagnostic it must produce. A
-constraint that has only ever been satisfied is not evidence that it fires, so
-each constraint is paired with a model that violates it.
-
-The refused set covers, among others: a route naming a surface its process does
-not offer; two routes on one hostname claiming the same path; an alert class
-with nothing to collect metrics from; a process declaring a cutover its storage
-cannot honour; an application whose processes answer the cutover question
-differently; a prepare process that declares a port; an application that
-reaches a database and does not say how its schema moves, and one that says so
-without reaching one; a secret delivery that the cluster's encryption setting
-forbids; a durability class with no engine to back it up; and an exposure whose
-audience no edge tier serves.
+The minimal model is considerably shorter than the current hand-written file for
+the same deployment. It declares no rollout strategy, resource limits, security
+context, labels, selector, namespace, probe timings or instance count. Each of
+these is derived from a declared value, set by platform policy, or rejected, so
+the model shows the minimum an author has to write.
 
 \subsection{A Resolved Model as a Deployment View}
 
 Figure~\ref{fig:deploymentview} shows the \texttt{knowledge} example's resolved
-model the way a deployment diagram would draw it: the project's two processes,
-now two applications, placed on two machines, the volume one of them is bound to, the edge tier and hostname in
-front, and the two platform services they depend on. Nothing in the picture is
-new information. Every box and every arrow is read straight out of the resolved
-model, which is the point: the model is complete enough that a deployment view
-is a rendering of it rather than a separate document somebody keeps in step by
-hand.
-
-This is the part of the Task 0 feedback that is worth acting on. A structural
-notation is the right one for an arrangement, and generating this view from the
-target metamodel is another model-to-text transformation, no different in kind
-from the one that generates the deployment files.
+model as a deployment diagram: the project's two processes on two machines, the
+volume one of them is bound to, the edge tier and hostname in front, and the two
+platform services the processes depend on. Each box and arrow is taken from the
+resolved model (Section~\ref{sec:notation}).
 
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\linewidth, keepaspectratio]{Figures/deployment-view}
-\caption{The knowledge Example's Resolved Model, as a Deployment View}
+\caption{The knowledge Example's Resolved Model as a Deployment View}
 \label{fig:deploymentview}
 \end{figure}
 
 \subsection{Example Target Models}
 
-A hand-written target model accompanies the minimal example: the resolved model
-that the Task 2 transformation must produce from it, written and reviewed by
-hand rather than generated. It is the expected output of the transformation and
-the input the Task 3 templates are first run against, which is what lets both
-tasks be checked before either is complete.
+For the minimal example, the resolved model that the Task 2 transformation must
+produce was written and reviewed by hand, as
+\texttt{minimal.resolveddeployment}. It is the expected output of that
+transformation and the first input for the Task 3 templates, so both tasks can
+be tested before either is complete.
