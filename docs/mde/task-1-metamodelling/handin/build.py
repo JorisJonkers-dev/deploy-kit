@@ -1,31 +1,7 @@
-"""Build the Task 1 hand-in archive from the repository, never by hand.
+"""Build the Task 1 hand-in archive from the repository.
 
-Run from anywhere, after a full `emf` build (`./mvnw clean verify` in `emf/`),
-which leaves the XMI of every example and every refusal under
-`emf/bundles/cli/target/parity/`:
-
-    python3 docs/mde/task-1-metamodelling/handin/build.py
-
-It writes `task-1-metamodelling.zip` beside this script. Entries carry a fixed
-timestamp, so the same repository builds the same archive.
-
-With `--dir [PATH]` it writes the same tree as a folder instead of a zip, by
-default `task-1-metamodelling/` beside this script, to open in Eclipse before
-archiving.
-
-The archive is an Eclipse project, configured as the reviewer's Eclipse leaves
-it (OCL and Xtext natures and builders, UTF-8), holding in `model/` the
-metamodels, their constraints and genmodels, and every model twice: as the authored YAML with the env files it
-names, and beside it as the XMI the pipeline parsed it to (`notes.project.yml`
-and `notes.project.xmi`). Every XML file loses its comments, which no Eclipse
-editor writes, and every model gains the `xsi:schemaLocation` Eclipse writes for
-a dynamic instance, so it opens in the reflective editor with no package
-registered. The source metamodel's copy also carries every Complete OCL
-invariant embedded as an OCL annotation (`oclinecore.py`), so Validate reports
-each code with no document to load; the `.ocl` file stays beside it. The
-archive project is the model plug-in, so the genmodels generate the model code
-into it and the edit, editor and tests code into plug-in projects of their own,
-for Java 21.
+After `(cd emf && ./mvnw clean verify)`, writes task-1-metamodelling.zip, or with
+`--dir [PATH]` the same tree as a folder. See README.md.
 """
 import os, re, shutil, zipfile, glob, sys, tempfile
 import xml.etree.ElementTree as ET
