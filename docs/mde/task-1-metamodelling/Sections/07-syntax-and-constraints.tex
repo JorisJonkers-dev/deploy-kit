@@ -36,8 +36,8 @@ name is resolved by the linker against the declared objects. A name with no
 target is a link that does not resolve, which is why a scrape naming an
 undeclared process (\texttt{E\_UNKNOWN\_PROCESS}), a tier naming an undeclared
 proxy (\texttt{E\_UNKNOWN\_TIER\_PROXY}) and delivery machinery naming an
-undeclared application (\texttt{E\_UNKNOWN\_MACHINERY}) are not invariants in
-Table~\ref{tab:constraints}: the linker has already found them. The handover
+undeclared application (\texttt{E\_UNKNOWN\_MACHINERY}) are not invariants: the
+linker has already found them. The handover
 ledger's project names are the exception, and are plain strings: a project is
 the document itself, not an object another document can link to, so the ledger
 is checked by an invariant instead.
@@ -62,48 +62,28 @@ context is the object the diagnostic points at.} A violation is therefore a
 \texttt{(code, path)} pair with no lookup table in between, where the path is
 the RFC 6901 JSON Pointer of the refused object.
 
+Table~\ref{tab:constraints-sample} shows one constraint of each kind; all
+twenty-eight codes, with the class each sits on, are in
+Appendix~\ref{sec:allconstraints}.
+
 \begin{table}[!htbp]
 \centering
 \footnotesize
-\begin{tabular}{>{\raggedright\arraybackslash}p{0.39\linewidth}>{\raggedright\arraybackslash}p{0.14\linewidth}>{\raggedright\arraybackslash}p{0.39\linewidth}}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.39\linewidth}>{\raggedright\arraybackslash}p{0.15\linewidth}>{\raggedright\arraybackslash}p{0.38\linewidth}}
 \hline
 \textbf{Code} & \textbf{Context} & \textbf{What it refuses} \\
 \hline
-E\_ALERT\_CLASS\_WITHOUT\_SIGNAL & Observability & A class stating how loudly to wake someone, with no signal to wake them about. \\
-E\_CUTOVER\_UNHONOURABLE & Process & A continuous cutover over storage that cannot attach to the second copy a blue/green switchover starts. \\
-E\_CUTOVER\_MISSING & Process & A process no level answers the cutover question for; a prepare process is exempt, because it cuts over nothing. \\
-E\_RELEASE\_UNIT\_MIXED\_CUTOVER & Application & An application whose processes answer the cutover question differently, when it switches as one. \\
-E\_PREPARE\_PROCESS\_SERVES & Process & A prepare process declaring a port, probes, replicas or a cutover, which only a serving process has. \\
-E\_SHARED\_DECLARATION\_DUPLICATED & seven classes & A shared declaration restated unchanged at a lower level, where it changes nothing. \\
-E\_SHARED\_QUANTITY & Placement & A memory or cpu quantity above a process, which means something different for each process holding it. \\
-E\_PLACEMENT\_INCOMPLETE & Process & A process with no quantity of its own, which nothing above it may supply. \\
-E\_OWNER\_ROLE\_GRANTED & DatabaseGrant & The role that changes the schema, granted by hand; it is derived for the migration alone. \\
-E\_MIGRATION\_OWNER\_DUPLICATED & Migration & A second application of one project declaring how the project's database schema moves. \\
-E\_ENGINE\_WITHOUT\_DURABILITY & Process & A backup method named where no volume's durability class asks for one. \\
-E\_DURABILITY\_WITHOUT\_ENGINE & Volume & A volume asking for a backup whose method would have to be guessed. \\
-E\_ENV\_CANNOT\_RELOAD & Rotation & A secret that tolerates a reload, delivered as an environment variable, which is read once at start. \\
-E\_ILLEGAL\_DELIVERY\_FOR\_ACCESS & KvGrant & A delivery the access tier has nothing to project at render time. \\
-E\_NON\_KV\_DELIVERY & TransitGrant, DatabaseGrant & A grant delivered as a value, where the credential is used or minted rather than read. \\
-E\_DUPLICATE\_ROUTE\_MATCH & Route & Two routes of one exposure sharing a path and a match, which derived precedence cannot order. \\
-E\_NO\_FORWARD\_AUTH\_ENDPOINT & Tier & A tier serving authenticated visitors with nothing named to decide whether one is allowed in. \\
-E\_HANDOVER\_BOTH\_PATHS & HandoverLedger & A project named on both delivery paths at once, which two sources would each apply. \\
-E\_NO\_TIER\_FOR\_AUDIENCE & Exposure, Route & An audience no declared edge tier serves, so the route reaches no edge. \\
-E\_NO\_ENGINE\_POLICY & Process & An engine the platform declares no backup method for. \\
-E\_NO\_DURABILITY\_POLICY & Volume & A durability class the platform declares no policy for. \\
-E\_SECRETS\_AT\_REST\_REQUIRED & Grant & A secret written into a cluster that does not encrypt secrets at rest. \\
-E\_MIGRATION\_UNDECLARED & Application & An application that reaches a database and says nothing about how its schema moves. \\
-E\_MIGRATION\_WITHOUT\_DATABASE & Migration & A migration on an application that reaches no database, decided only where every provider it reaches was read. \\
-E\_CREDENTIALS\_WITHOUT\_DATABASE & Credentials & A rotation override on an edge to a provider that owns no database. \\
-E\_NO\_MIGRATION\_POLICY & Migration & A changelog read beside a platform document that offers no runner to build it on. \\
-E\_NO\_DELIVERY\_POLICY & Application & A continuous application read beside a platform document that offers no cadence to analyse its blue/green switch at. \\
-E\_HANDOVER\_UNLISTED & Project & A project read beside a handover ledger that names it on neither delivery path. \\
+E\_CUTOVER\_UNHONOURABLE & Process & One object: a continuous cutover over storage that cannot attach to the second copy a blue/green switchover starts. \\
+E\_RELEASE\_UNIT\_MIXED\_CUTOVER & Application & One document: an application whose processes answer the cutover question differently, when it switches as one. \\
+E\_NO\_FORWARD\_AUTH\_ENDPOINT & Tier & The platform document: a tier serving authenticated visitors with nothing named to decide whether one is allowed in. \\
+E\_NO\_TIER\_FOR\_AUDIENCE & Exposure, Route & Across documents: an audience no edge tier in the platform document serves. \\
 \hline
 \end{tabular}
-\caption{The Constraints, Their Context and What Each Refuses}
-\label{tab:constraints}
+\caption{One Constraint of Each Kind}
+\label{tab:constraints-sample}
 \end{table}
 
-The last ten read facts from another document while sitting on a class of a
+Ten of the constraints read facts from another document while sitting on a class of a
 project document: the platform document, or, for the three migration codes that
 ask whether a provider owns a database, the project file declaring that provider. That placement is deliberate: an invariant sits on the
 object whose author must change something, and it is a project file, not the
@@ -112,7 +92,7 @@ does not keep. They reach the other document through \texttt{allInstances()},
 whose extent is the resource set the document was read into, and each is guarded
 so that it holds trivially when a project file is read on its own:
 
-\begin{lstlisting}[basicstyle=\footnotesize\ttfamily, frame=single, captionpos=b,
+\begin{lstlisting}[style=report, language=ocl, basicstyle=\footnotesize\ttfamily,
                    caption={E\_NO\_TIER\_FOR\_AUDIENCE, guarded so a project file read alone still validates},
                    label={lst:notier}]
 context Exposure
@@ -134,48 +114,11 @@ claiming one identifier, are not in this document. They belong to the
 composition step, where the union of the authored documents exists, and they are
 checked there against the fixtures in the negative set.
 
-\subsection{Every Constraint Has a Fixture}
+Each code is paired with a committed model that violates it and the
+diagnostics that model must produce, and the pairing is checked on every build:
+a constraint that has only ever been satisfied is not evidence that it fires.
+Appendix~\ref{sec:appendix-refused} shows one such pair.
 
-A constraint that has only ever been satisfied is not evidence that it fires.
-Each code in Table~\ref{tab:constraints} is therefore paired with a committed
-model that violates it, and with a committed oracle file naming the set of
-\texttt{(code, path)} pairs that model must produce. The cross-document
-codes are fixtures of two files, a project document and the platform document it
-is read beside, because one file alone cannot express the defect.
-
-{\sloppy Each fixture is named after its code, lower-cased and hyphenated, under
-\texttt{spec/v1/examples/refusals/}: \texttt{E\_NO\_DELIVERY\_POLICY} is
-proved by \texttt{no-delivery-policy}. Two are named after the shape they
-refuse instead: \texttt{cutover-continuous-over-rwo} proves
-\texttt{E\_CUTOVER\_UNHONOURABLE}, and \texttt{cutover-mixed} proves
-\texttt{E\_RELEASE\_UNIT\_MIXED\_CUTOVER}.\par}
-
-The pairing is checked rather than asserted: each refused model is run through
-the parser and validated, and the diagnostics it produces are compared with the
-oracle. The accepted examples of Section~\ref{sec:examplemodels} prove the
-language can express the estate; these prove it refuses what it says it refuses.
-
-\subsection{The Second Implementation}
-
-The same source language is declared a second time, by hand, in the TypeScript
-production implementation this repository exists to build. Neither declaration
-is generated from the other, and neither is the oracle for the other: each is
-tested on its own against the committed oracle files, and agreement between the
-two follows from both agreeing with the oracle.
-
-They are compared on the four things the project proposal names: validation, so
-the parsed model of each accepted example matches one committed canonical JSON
-document; dependency resolution, so the resolved edges match a second; errors,
-so each refused model produces the same set of \texttt{(code, document, path)}
-triples; and generated resources, so the generated tree matches the committed
-one byte for byte. They are required to agree on nothing else, and in one
-respect they deliberately differ: the production implementation keeps the
-resolved model and the typed target objects apart, while the model-driven
-implementation holds both in the one target metamodel of
-Section~\ref{sec:targetmetamodel}, because a model-to-text template reads one
-model.
-
-Two independent declarations of one language, held to shared oracles, is also
-what makes the metamodel falsifiable in a way a single implementation cannot be:
-a concept that only one of them can express is a concept the model has not
-actually pinned down.
+The same language is also declared, by hand, in the project's production
+implementation, and both declarations are held to the same committed example
+files; that comparison is the subject of the later tasks, not of this one.
