@@ -1,20 +1,22 @@
 \section{Worked Examples}
 \label{sec:appendix}
 
-This appendix names the files to read for three examples, in the archive layout
-of Appendix~\ref{sec:handin}.
+This appendix gives file paths for three examples. Paths under
+\texttt{examples/} and \texttt{refusals/} are in the archive
+(Appendix~\ref{sec:handin}), and paths under \texttt{spec/v1/examples/} are in
+the repository.
 
 \subsection{The Minimal Model, End to End}
 \label{sec:appendix-minimal}
 
-The input is \texttt{examples/minimal/1-input/notes.project.yml}. EMF does not
-write attributes that hold their default value, so \texttt{lifecycle} and
-\texttt{alertClass} are missing from \texttt{intent.xmi} beside it.
+The input is \texttt{examples/minimal/notes.project.yml}. EMF does not write
+attributes that hold their default value, so \texttt{lifecycle} and
+\texttt{alertClass} are missing from \texttt{notes.project.xmi} beside it.
 Table~\ref{tab:minimal-trace} compares what the author wrote with what the
-hand-written resolved model derives (Section~\ref{sec:examplemodels}). The
-output in \texttt{3-output/} has nine files. In \texttt{apps/notes/canary.yaml},
-the Canary that switches the process, every value comes from the resolved
-model.
+hand-written resolved model, \texttt{minimal.resolveddeployment}, derives
+(Section~\ref{sec:examplemodels}). The generated output in
+\texttt{spec/v1/examples/minimal/rendered/} has nine files. In
+\texttt{apps/notes/canary.yaml}, the Canary's values come from the resolved model.
 
 \begin{table}[!htbp]
 \centering
@@ -29,7 +31,7 @@ model.
 \texttt{runtime: node} & the checks \texttt{error-rate} and \texttt{latency}, because the profile exposes HTTP server metrics \\
 \texttt{image: notes-api} & the image digest, and the numeric user and group it runs as \\
 \texttt{audience: anonymous} & the edge tier \texttt{public-frankfurt}, and a middleware chain without an authentication check \\
-\texttt{placement} & the machines the process is eligible for: all seven, because nothing narrows the set \\
+\texttt{placement} & all seven machines are eligible, with no further placement restriction \\
 \hline
 \end{tabular}
 \caption{The Minimal Model: Authored and Derived Values}
@@ -39,13 +41,14 @@ model.
 \subsection{Continuous and Interrupted Applications in One Project}
 \label{sec:appendix-knowledge}
 
-The input is \texttt{examples/knowledge/1-input/knowledge.project.yml}, with
-the two applications of Table~\ref{tab:examples}. In \texttt{2-resolved/}, the
+The input is \texttt{examples/knowledge/knowledge.project.yml}, with the two
+applications of Table~\ref{tab:examples}. In the production implementation's
+resolved model, under \texttt{spec/v1/examples/knowledge/expected/}, the
 \texttt{continuous} application (\texttt{resolved.json}) has a release gate and
 a migration. The \texttt{interrupted} one
-(\texttt{resolved.knowledge-ingest.json}) has neither
+(\texttt{resolved.knowledge-}\allowbreak\texttt{ingest.json}) has neither
 (Section~\ref{sec:targetmetamodel}). In
-\texttt{3-output/apps/knowledge/migration.yaml}, the migration becomes two Jobs
+\texttt{rendered/apps/knowledge/migration.yaml}, the migration becomes two Jobs
 named after the revision: one that migrates the schema, and one that would undo
 it. Both are generated suspended, so only the release gate can start them.
 
@@ -54,7 +57,8 @@ it. Both are generated suspended, so only the release gate can start them.
 
 \texttt{refusals/prepare-process-serves.project.yml} declares a prepare process
 with a port, probes, replicas and a \texttt{cutover}, which only a serving
-process has. Its expected diagnostics,
+process has, and \texttt{prepare-process-serves.project.xmi} is its XMI. Its
+expected diagnostics, \texttt{spec/v1/examples/refusals/}\allowbreak
 \texttt{prepare-process-serves.diagnostics.json}, hold one entry: the code
 \texttt{E\_PREPARE\_PROCESS\_SERVES}, the document, and the path
 \texttt{/applications/0/processes/1}.
@@ -62,14 +66,23 @@ process has. Its expected diagnostics,
 \subsection{The Hand-in Archive}
 \label{sec:handin}
 
-The archive handed in with this report contains the report, the metamodels and
-every model mentioned here, copied from the repository by a script.
-Table~\ref{tab:handin} lists its layout. Each XMI or JSON file has a YAML view
-beside it, converted as the archive's \texttt{README.md} describes. A resolved
-model exists as XMI for \texttt{minimal}, and as JSON projections from the
-production implementation for \texttt{minimal}, \texttt{knowledge} and
-\texttt{delivery}. The Task 2
-transformation will produce the others.
+The archive is an Eclipse project with OCL and Xtext natures. It contains the
+metamodels, five accepted examples and 33 rejection cases: 18 single files and
+15 document sets. The report is separate from the zip. Table~\ref{tab:handin}
+gives the layout. Each authored YAML file appears beside its parsed XMI, with
+any referenced \texttt{env/} files.
+
+Each XMI declares its metamodel in \texttt{xsi:schemaLocation}, allowing Eclipse
+to open it without a registered package. The archive's
+\texttt{project-intent.ecore} embeds the OCL invariants and helpers. Plain
+Validate reports single-document codes. For cross-document sets, open the
+project XMI, add the platform XMI with Load Resource, then select OCL > Load
+Document and load \texttt{model/project-intent.ocl} before validating. The
+platform example is parsed alone, leaving six application references unresolved.
+The archive's genmodels generate model code into its project and other code into
+separate plug-in projects. Only \texttt{minimal} includes a resolved XMI. Task 2
+will produce the others. Generated trees and JSON oracles remain in the
+repository under \texttt{spec/v1/examples/}.
 
 \begin{table}[!htbp]
 \centering
@@ -78,27 +91,28 @@ transformation will produce the others.
 \hline
 \textbf{Path} & \textbf{What it holds} \\
 \hline
-\texttt{metamodels/} & \texttt{project-intent.ecore}, \texttt{resolved-deployment.ecore}, and \texttt{project-intent.ocl}, the constraints of Section~\ref{sec:constraints} \\
-\texttt{examples/<name>/1-input/} & the authored files in concrete syntax, \texttt{intent.xmi} (the same model as an instance of the source metamodel) and \texttt{intent.json} (its parsed form) \\
-\texttt{examples/<name>/2-resolved/} & the resolved model: \texttt{minimal.resolveddeployment} as XMI, and \texttt{resolved*.json} projections \\
-\texttt{examples/<name>/3-output/} & the generated file tree \\
-\texttt{examples/platform/} & the Platform document, and its model as XMI \\
-\texttt{refusals/} & every rejected model with the diagnostics it must produce, listed with its code in \texttt{README.md}; a directory is a set of documents read together \\
+\texttt{model/} & \texttt{project-intent.ecore} with \texttt{project-intent.ocl}, the constraints of Section~\ref{sec:constraints}, and \texttt{resolved-deployment.ecore}, each metamodel with its \texttt{.genmodel} \\
+\texttt{examples/<name>/} & the authored \texttt{*.project.yml}, its \texttt{env/} files, and its XMI, \texttt{*.project.xmi} \\
+\texttt{examples/minimal/} & also \texttt{minimal.resolveddeployment}, the resolved model as an instance of the target metamodel \\
+\texttt{examples/platform/} & the platform document, \texttt{platform.intent.yml}, and its XMI \\
+\texttt{refusals/} & 18 single-file cases and 15 document sets, each with authored files and XMI. \texttt{README.md} gives codes and reproduction steps \\
 \hline
 \end{tabular}
 \caption{Layout of the Hand-in Archive}
 \label{tab:handin}
 \end{table}
 
+\clearpage
 \section{All Constraints}
 \label{sec:allconstraints}
 
 Table~\ref{tab:constraints} lists each invariant of
 Section~\ref{sec:constraints} by the code it reports, with its context class.
 
-\begin{table}[!htbp]
+\begin{table}[H]
 \centering
 \footnotesize
+\renewcommand{\arraystretch}{0.8}
 \begin{tabular}{>{\raggedright\arraybackslash}p{0.39\linewidth}>{\raggedright\arraybackslash}p{0.14\linewidth}>{\raggedright\arraybackslash}p{0.39\linewidth}}
 \hline
 \textbf{Code} & \textbf{Context} & \textbf{What it rejects} \\
@@ -116,7 +130,7 @@ E\_MIGRATION\_OWNER\_DUPLICATED & Migration & A second application in one projec
 E\_ENGINE\_WITHOUT\_DURABILITY & Process & A backup engine declared where no volume's durability class requires a backup. \\
 E\_DURABILITY\_WITHOUT\_ENGINE & Volume & A volume that requires a backup, with no engine to state the backup method. \\
 E\_ENV\_CANNOT\_RELOAD & Rotation & A secret that tolerates a reload but is delivered as an environment variable, which is read only at start. \\
-E\_ILLEGAL\_DELIVERY\_FOR\_ACCESS & KvGrant & \texttt{custody} delivered as an environment variable or file, although its paths are only created at runtime, or \texttt{self-renew} delivered as an environment variable, although its identity cannot read the path. \\
+E\_ILLEGAL\_DELIVERY\_FOR\_ACCESS & KvGrant & \texttt{custody} delivered as an environment variable or file, although its paths appear only at runtime. Also \texttt{self-renew} delivered as an environment variable, which its identity cannot read. \\
 E\_NON\_KV\_DELIVERY & TransitGrant, DatabaseGrant & A transit or database grant delivered as an environment variable or file. A transit key never leaves the secret store, and a database credential is issued per lease, so the application fetches both itself. \\
 E\_DUPLICATE\_ROUTE\_MATCH & Route & Two routes of one exposure with the same path and match type, which the derived precedence cannot order. \\
 E\_NO\_FORWARD\_AUTH\_ENDPOINT & Tier & A tier that serves authenticated visitors but declares no endpoint to check whether a visitor may enter. \\

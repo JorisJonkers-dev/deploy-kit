@@ -1,58 +1,42 @@
 \section{Implementation in EMF}
 \label{sec:constraints}
 
-Both metamodels are implemented in three Eclipse bundles under \texttt{emf/},
-built by Maven and Tycho on JDK~21. The \texttt{metamodel} bundle holds the two
-\texttt{.ecore} files, the \texttt{.genmodel} files from which the build
-generates the typed Java, and the Complete OCL file. The \texttt{syntax} bundle
-holds the two Xtext grammars and the generated editor. The \texttt{cli} bundle
-holds the \emph{pipeline}, the program that takes authored files and writes
-either the parsed model or the diagnostics that reject it. \texttt{./mvnw
-verify} builds and tests all bundles without an Eclipse IDE, and the projects
-can also be imported into Eclipse Modeling Tools. A test suite runs every example
-through the pipeline and compares the output with committed expected files.
+Three Eclipse bundles under \texttt{emf/} implement the metamodels. Maven and
+Tycho build them on JDK~21. The \texttt{metamodel} bundle contains Ecore,
+Genmodel and Complete OCL files. The \texttt{syntax} bundle contains two Xtext
+grammars and the editor. The \texttt{cli} bundle parses and validates authored
+files. \texttt{./mvnw verify} tests the bundles without Eclipse.
 
 \subsection{The Concrete Syntax}
 
-Two Xtext grammars define the concrete syntax, one per authored document
-(Section~\ref{sec:grammarfirst}). Both import the registered metamodel package
-and return its classes. No rule declares its own type, so every concept in the
-syntax exists in the metamodel. The pipeline chooses the grammar by file name:
-\texttt{platform.intent.yml} is a platform document, and \texttt{*.project.yml}
-a project document.
+Two Xtext grammars define the authored syntax (Section~\ref{sec:grammarfirst}).
+Both return registered metamodel classes. The pipeline selects the grammar by
+filename: \texttt{platform.intent.yml} or \texttt{*.project.yml}.
 
-The syntax is the subset of YAML that the existing configuration files use, so
-current tools can still read the authored documents.
+The syntax uses the YAML subset in the existing configuration.
 
-\textbf{Indentation as tokens.} A step before the parser turns indentation into
-synthetic \texttt{BEGIN} and \texttt{END} tokens, so an indented block, a flow
-mapping and a flow sequence all parse through one rule instead of three.
+\textbf{Indentation as tokens.} Preprocessing turns indentation into
+\texttt{BEGIN} and \texttt{END} tokens. One rule then handles blocks and flow
+mappings and sequences.
 
-\textbf{Unordered keys.} Each rule is an unordered group, because key order in
-a mapping has no meaning. Rules written as sequences would reject documents the
-metamodel accepts.
+\textbf{Unordered keys.} Unordered groups accept mappings regardless of key
+order.
 
-\textbf{Names as cross-references.} Where a route refers to its process and
-surface, the grammar declares a cross-reference, and the linker resolves the
-name. An unresolved name, such as an undeclared process in a metrics scrape
-(\texttt{E\_UNKNOWN\_PROCESS}), is therefore a linking error, not an invariant
-violation. The
-handover ledger's project names are plain strings, checked by an invariant,
-because a project is a whole document and not an object that can be linked to.
+\textbf{Names as cross-references.} The linker resolves references from routes
+to processes and surfaces. An undeclared metrics process produces a linking
+error (\texttt{E\_UNKNOWN\_PROCESS}). Handover project identifiers remain
+strings checked by an invariant because projects are separate documents.
 
 \subsection{The Constraints}
 
-Thirty-six invariants are written in Complete OCL against the source metamodel,
-with twenty-eight distinct diagnostic codes. Three codes appear on more than one
-context class: the code for a restated shared declaration on seven classes, and
-two other codes on two classes each.
+Complete OCL defines 36 invariants and 9 \texttt{def} helpers for the source
+metamodel. The invariants use 28 distinct codes. Three occur on multiple
+context classes.
 
-The OCL document follows one naming rule: \textbf{an invariant is named after
-the code it reports, and its context is the class of the object the diagnostic
-points to.} A violation is therefore a \texttt{(code, path)} pair that needs no
-lookup table, where the path is the RFC 6901 JSON Pointer of the rejected
-object. Table~\ref{tab:constraints-sample} shows one constraint for each scope,
-and Appendix~\ref{sec:allconstraints} lists all twenty-eight codes.
+\textbf{Each invariant has its diagnostic code as its name and the rejected
+object's class as its context.} Diagnostics identify that object with an RFC
+6901 JSON Pointer. Table~\ref{tab:constraints-sample} samples the scopes.
+Appendix~\ref{sec:allconstraints} lists all 28 codes.
 
 \begin{table}[!htbp]
 \centering
@@ -71,14 +55,11 @@ E\_NO\_TIER\_FOR\_AUDIENCE & Exposure, Route & Across documents: an audience no 
 \label{tab:constraints-sample}
 \end{table}
 
-Ten constraints have a project-document context class but use facts from
-another document: the platform document, or, for the three migration codes that
-check whether a provider has a database, the provider's project file. Each
-invariant is placed on the object whose author must fix it, such as a volume
-that requests a guarantee the cluster does not provide. These constraints reach
-the other document through \texttt{allInstances()}, whose extent is the
-resource set the document was loaded into. A guard makes each hold trivially
-when a project file is loaded alone (Example~\ref{lst:notier}).
+Ten project-context constraints use another document: the platform document or
+a database provider's project file. The invariant's context identifies the
+object to fix. \texttt{allInstances()} searches the loaded resource set. Guards
+skip cross-document checks when a project file is loaded alone
+(Example~\ref{lst:notier}).
 
 \begin{lstlisting}[style=report, language=ocl, basicstyle=\footnotesize\ttfamily,
                    caption={E\_NO\_TIER\_FOR\_AUDIENCE, with a guard for a project file loaded alone},
@@ -89,48 +70,38 @@ context Exposure
             Tier.allInstances()->exists(audiences->includes(self.audience))
 \end{lstlisting}
 
-EMF reads an unset enumeration attribute as its first literal, so an unset
-optional enumeration looks the same as one set to its first value. Each optional
-enumeration therefore has its own literal for absence, \texttt{absent}, which a
-document cannot write, and the invariants test against \texttt{absent} instead
-of \texttt{null}.
+EMF reads an unset enumeration as its first literal. Optional enumerations use
+an unwritable \texttt{absent} literal, which invariants test instead of
+\texttt{null}.
 
-Constraints that need all project documents at once, such as two applications
-with the same identifier, are checked when the documents are combined, not in
-the OCL document.
+The pipeline checks constraints requiring all project documents, such as
+duplicate application identifiers, when it combines the documents.
 
 \subsection{How an Invalid Model Is Reported}
 
-The pipeline reports each error as a diagnostic with four fields: the code, the
-file name, the JSON Pointer of the rejected object, and a message
-(Appendix~\ref{sec:appendix-refused}). The pipeline checks the
-documents in three steps and stops after the first step that finds an error.
+The pipeline processes three stages, stopping after the first stage with errors.
+Each internal diagnostic has a code, document name, object path and message
+(Appendix~\ref{sec:appendix-refused}).
 
-First, the pipeline parses each file. A syntax error gets the code
-\texttt{schema}, with the line number in its message.
+First, parsing reports syntax errors as \texttt{schema}, with a line number.
 
-Second, the pipeline registers the Complete OCL document as the EMF validator of
-the metamodel package and runs EMF's \texttt{Diagnostician} on each parsed
-document. The code of each violation is the invariant's name, read from the
-Eclipse OCL message. The path is built from the rejected object's containment
-chain: the name of each containing feature, with the index for a many-valued
-feature. All violations are reported. A name the linker could not resolve gets
-its \texttt{E\_UNKNOWN\_} code at the pointer of the object that holds it.
+Second, EMF's \texttt{Diagnostician} applies Complete OCL to each document.
+Invariant names become codes. Containment features and indices form paths.
+The pipeline reports all violations and unresolved references, including
+\texttt{E\_UNKNOWN\_} codes.
 
-Third, the pipeline loads the files of a set into one resource set and checks
-them again. The cross-document invariants held trivially when each file was
-checked alone, so this step reports only errors the documents cause together,
-such as a tier whose proxy no project file declares.
+Third, if the individual files pass, the pipeline loads their set together and
+checks cross-document constraints and references.
 
-A rejected run writes \texttt{diagnostics.json} and exits with code 1. An
-accepted file is written as \texttt{intent.json} and \texttt{intent.xmi}, and
-the run exits with code 0. The generated Xtext editor runs the same OCL
-validator and marks each violation on its source line, with the code as the
-message.
+A rejected case writes \texttt{diagnostics.json} and exit code 1. An accepted
+case writes \texttt{intent.json} and exit code 0. The output files store the
+exit code in \texttt{exit}. Diagnostic JSON contains \texttt{code},
+\texttt{document} and \texttt{path}. The internal message is omitted. Both
+outcomes also write XMI for each parsed document:
+\texttt{notes.project.yml} becomes \texttt{notes.project.xmi}. References
+between XMI files use containment paths. The Xtext editor marks OCL violations
+on source lines.
 
-For each code, the test suite also runs a committed model from
-\texttt{refusals/} that violates it, and compares the output with that model's
-expected diagnostics. A constraint tested only on valid models might never
-report an error. The production implementation declares the same language by
-hand and is tested against the same committed example files. Later tasks cover
-that comparison.
+The suite compares five accepted examples and 33 rejection cases in
+\texttt{refusals/} with committed oracles: 18 single files and 15 document sets.
+The production implementation uses the same examples.

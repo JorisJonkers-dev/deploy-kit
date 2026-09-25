@@ -1,9 +1,9 @@
 \section{Example Models}
 \label{sec:examplemodels}
 
-Five example models instantiate the source metamodel, each testing a different
-part of it (Table~\ref{tab:examples}). Appendix~\ref{sec:handin} gives their
-paths, and Section~\ref{sec:constraints} describes the rejected models.
+Table~\ref{tab:examples} lists five accepted source models.
+Appendix~\ref{sec:handin} gives their paths and Section~\ref{sec:constraints}
+describes the rejected cases.
 
 \begin{table}[!htbp]
 \centering
@@ -19,12 +19,11 @@ auth & Two \texttt{continuous} processes in one application, so the release gate
   managed migration, because the application uses a database. \\
 data & Several applications in one project share a namespace. Each volume's
   durability class determines its backup plan. \\
-knowledge & Two applications in one project, because their \texttt{cutover}
-  values differ: a \texttt{continuous} API that migrates the project's schema
-  with a changelog, and an \texttt{interrupted} worker with a volume and no
-  migration of its own. It also has dependencies between applications, secrets
-  shared at project level, and an exposure whose routes have different
-  audiences. \\
+knowledge & Two applications with different \texttt{cutover} values: a
+  \texttt{continuous} API that migrates the project database with a changelog,
+  and an \texttt{interrupted} worker
+  with a volume. The worker has no migration. The example also has dependencies,
+  shared secrets and routes with different audiences. \\
 delivery & Two applications of the delivery machinery: Flagger and the release gate.
   Their processes are \texttt{continuous} but are updated in place instead of
   switched blue/green, because the release gate cannot control its own
@@ -35,25 +34,20 @@ delivery & Two applications of the delivery machinery: Flagger and the release g
 \label{tab:examples}
 \end{table}
 
-Each example has three stages: the authored project file, the resolved model,
-and the generated file tree. Appendix~\ref{sec:appendix} follows three examples
-through these stages.
+Appendix~\ref{sec:appendix} traces three examples through authored, resolved
+and generated stages.
 
 \subsection{The Minimal Model}
 
-The minimal model is considerably shorter than the current hand-written file for
-the same deployment. It declares no rollout strategy, resource limits, security
-context, labels, selector, namespace, probe timings or instance count. Each of
-these is derived from a declared value, set by platform policy, or rejected, so
-the model shows the minimum an author has to write.
+The minimal model omits rollout strategy, resource limits, security context,
+labels, selector, namespace, probe timings and instance count. Platform rules
+derive these values or reject omissions that cannot be derived.
 
 \subsection{A Resolved Model as a Deployment View}
 
-Figure~\ref{fig:deploymentview} shows the \texttt{knowledge} example's resolved
-model as a deployment diagram: the project's two processes on two machines, the
-volume one of them is bound to, the edge tier and hostname in front, and the two
-platform services the processes depend on. Each box and arrow is taken from the
-resolved model (Section~\ref{sec:notation}).
+Figure~\ref{fig:deploymentview} shows the \texttt{knowledge} resolved model as a
+deployment view (Section~\ref{sec:notation}). It includes two processes, their
+machines, a volume, the edge tier, a hostname and two platform services.
 
 \begin{figure}[!htbp]
 \centering
@@ -64,8 +58,5 @@ resolved model (Section~\ref{sec:notation}).
 
 \subsection{Example Target Models}
 
-For the minimal example, the resolved model that the Task 2 transformation must
-produce was written and reviewed by hand, as
-\texttt{minimal.resolveddeployment}. It is the expected output of that
-transformation and the first input for the Task 3 templates, so both tasks can
-be tested before either is complete.
+The hand-written \texttt{minimal.resolveddeployment} is the expected Task 2
+output and an input for testing Task 3 templates.

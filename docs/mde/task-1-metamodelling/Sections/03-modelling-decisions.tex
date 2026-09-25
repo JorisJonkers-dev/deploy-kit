@@ -1,80 +1,60 @@
 \section{Modelling Decisions}
 \label{sec:decisions}
 
-Seven decisions determine both metamodels.
+Seven decisions define the metamodels.
 
 \subsection{Three Model Stages, Two Metamodels}
 
-The pipeline has three stages: the authored model, the resolved model and the
-generated text. Only the first two have metamodels
-(Section~\ref{sec:thirdmetamodel}).
+The pipeline transforms an authored model into a resolved model, then generates
+text. The first two have metamodels (Section~\ref{sec:thirdmetamodel}).
 
-The stages are \emph{not} metalevels: no stage is a type model of the next, so
-no \texttt{instanceOf} relation holds between them. The word metamodel is used
-only for a language definition.
+These stages are not metalevels. No \texttt{instanceOf} relation connects them.
 
 \subsection{What Each Stage May Contain}
 \label{sec:stagecontent}
 
-A \emph{decision} is a value the platform chooses, such as the machines a
-process may run on. \textbf{The authored model contains no mechanisms
-(Section~\ref{sec:observations}), and the generators make no decisions.} A
-person writes a value only if the platform cannot compute it. The platform
-records every value it computes in the resolved model, and the generators write
-these values in the target syntax.
+A \emph{decision} is a platform-computed value, such as eligible machines.
+\textbf{Authors state requirements, not target mechanisms
+(Section~\ref{sec:observations}). Generators use the resolved model without
+computing decisions.} The resolved model records computed values.
 
-An earlier design with two stages, in which the generator computed values
-internally, produced three incompatible documents with the same version
-identifier. With the resolved model, each computed value is recorded in one
-document, and the authored and resolved documents have different names.
+An earlier two-stage design produced three incompatible documents with one
+version identifier. The resolved model records computed values separately from
+the authored document.
 
 \subsection{Shared Values Are Set by the Platform}
 \label{sec:sharedvalues}
 
-The platform sets a value if and only if it must be unique in the cluster or
-uses a shared, limited resource. The application declares every other value, and
-the transformation copies it unchanged.
+The platform sets cluster-unique values and allocations of shared resources.
+Applications declare other values, which the transformation copies unchanged.
 
-Memory and CPU are limited, but if applications could not state them, no process
-would reserve any. For these two values, the application therefore states its
-requirement, and the platform checks it against the facts each machine
-publishes. The check compares a requirement with one machine at a time and does
-not add up requirements across the cluster, so an overstated requirement is not
-detected.
+Applications state memory and CPU requirements so processes reserve capacity.
+The platform compares each requirement with individual machines. It does not
+sum reservations across the cluster, so it cannot detect aggregate overcommit.
 
 \subsection{Derived Values Cannot Be Overridden}
 
-The platform computes each value it sets from the authored model and the
-platform document. Each such value has one definition, so the metamodel has no
-override or exception mechanism (Table~\ref{tab:alternatives}).
+The platform derives values from the authored model and platform document.
+There is no override mechanism (Table~\ref{tab:alternatives}).
 
-One process in the existing configuration seemed to need an override: its
-hand-set deadline was much shorter than its neighbours', because it starts in
-seconds rather than minutes. The process already declares its startup budget, so
-the fix is a deadline rule that uses the startup budget.
+One process had a shorter hand-set deadline because it started faster. Its
+startup budget already provides the input for a deadline rule.
 
-\subsection{Requirement Names Instead of Target Field Names}
+\subsection{Requirements Instead of Target Fields}
 \label{sec:naming}
 
-No attribute of either metamodel is named after a field of the generated files
-(Section~\ref{sec:observations}). For example, a process declares the paths it
-must write to, not a security context. Only the generators contain target field
-names. If the target metamodel used them, it would only restate the generated
-objects. A check verifies that no metamodel key is a target field name.
+Attributes describe requirements, such as writable paths, instead of target
+fields such as a security context (Section~\ref{sec:observations}). Generators
+contain target field names. A check rejects target field names in metamodel keys.
 
 \subsection{Enumerations Instead of Free-Form Strings}
 \label{sec:enumdecision}
 
-Where an attribute has a fixed set of values, the metamodel declares an
-enumeration. A constraint can cover every literal of an enumeration, but not
-every value of a string. Table~\ref{tab:alternatives} gives the observation
-from the existing configuration.
+Fixed sets of values use enumerations. Constraints can cover their literals.
+Free-form strings have no finite set to check (Table~\ref{tab:alternatives}).
 
 \subsection{Release Grouping and Deployment Order}
 
-Two groupings are needed: which processes are released together, and which
-objects are applied before which. The first is \emph{structural}: the processes
-of one application switch to the new version together or not at all. The second
-is \emph{derived} from the dependency graph. Deriving the first from the graph
-was tried and rejected: the transitive closure of the dependency edges joins all
-applications in the cluster into one release unit.
+An application groups processes released together. The dependency graph
+determines application order. Using that graph for release grouping joined all
+applications into one unit through transitive dependencies.

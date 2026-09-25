@@ -1,13 +1,11 @@
 \section{Introduction and Scope}
 \label{sec:introduction}
 
-Task 0 chose the problem: generate all Kubernetes deployment files for a
-cluster from one abstract model of what each application needs. For Task 1, two
-metamodels were built in Ecore: the source language an author writes, and the
-\emph{resolved model}, which adds every value the platform derives. OCL
-constraints and an Xtext syntax complete the source language, and example models
-instantiate both metamodels. Appendix~\ref{sec:handin} describes the archive
-handed in with this report.
+Task 0 proposed generating Kubernetes deployment files from application
+requirements. Task 1 defines two Ecore metamodels: the authored source language
+and the \emph{resolved model}, which records platform-derived values. OCL
+constraints, Xtext syntax and example models accompany them.
+Appendix~\ref{sec:handin} describes the hand-in archive.
 
 The Task 0 feedback led to a smaller scope (Table~\ref{tab:scope}) and to the
 notation of Section~\ref{sec:notation}.
@@ -33,5 +31,5 @@ Dependency resolution between applications. &
 \label{tab:scope}
 \end{table}
 
-Because the generated files are not applied, statements about correctness
-concern only the generated model and files.
+Correctness here concerns the generated model and files, which are not applied
+to a cluster.

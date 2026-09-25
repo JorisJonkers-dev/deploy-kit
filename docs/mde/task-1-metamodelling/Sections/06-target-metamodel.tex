@@ -1,42 +1,32 @@
 \section{The Target Metamodel}
 \label{sec:targetmetamodel}
 
-The target metamodel, \texttt{metamodels/resolved-deployment.ecore} in the
-archive, is the output language of the Task 2 model-to-model transformation and
-the input language of the Task 3 code generation. A target model records the
-platform's decisions in the terms of the source metamodel, with the typed target
-resources and their output paths.
+The target metamodel is \texttt{model/resolved-deployment.ecore} in the archive.
+Task 2 produces its instances. Task 3 generates files from them. A resolved
+model records platform decisions, typed resources and output paths.
 
 \subsection{Required Content}
 
-The generators use only the resolved model, so it records every value a
-generator would otherwise decide (Section~\ref{sec:stagecontent}).
+Generators use the resolved model (Section~\ref{sec:stagecontent}).
 
-\textbf{Decisions.} The model records every value the platform derives for an
-application, a hostname, a process and a volume. Examples are a hostname's edge
-tier and middleware chain, a process's eligible machines, identity, image digest
-and probe timings, a volume's backup plan, and the network-policy peers a
-dependency allows. Each process's \emph{switchover}, the way its new version
-replaces the old, is derived from its \texttt{cutover}: \texttt{blue-green},
-\texttt{stop-start}, or \texttt{rolling} for the delivery machinery.
+\textbf{Decisions.} Derived values include edge tiers, eligible machines,
+process identity, image digests, probe timings, backup plans and network peers.
+\emph{Switchover} specifies how a new process version replaces the old:
+\texttt{blue-green}, \texttt{stop-start} or, for delivery machinery,
+\texttt{rolling}.
 
-\textbf{Order and atomicity.} The model records the \emph{reconcile units}, the
-groups of objects that Flux applies together, and the edges that order them. For
-each blue/green application it records the inputs of its \emph{release gate},
-the controller that determines when a new version may receive traffic: the
-members, their readiness and metric checks, the check interval and the deadline.
+\textbf{Order and atomicity.} \emph{Reconcile units} group objects Flux applies
+together. Dependency edges order these groups. For a blue/green application,
+the \emph{release gate} controls when the new version receives traffic. Its
+inputs include members, checks, an interval and a deadline.
 
-\textbf{Identity of a release.} Each application's \emph{revision} is the digest
-of its element in the resolved model, excluding the revision itself. It changes
-only when a decision about that application changes, so a migration, a release
-gate and a release held after a failure can all refer to one release of one
-application.
+\textbf{Release identity.} An application's \emph{revision} hashes its resolved
+element, excluding the revision field. Migrations and release gates use that
+revision to identify the same release.
 
-\textbf{Provenance.} The model records a hash that identifies the generation
-run, and one digest per input: each project document, the platform document, the
-machine contract, the image lock (the pinned image digests) and a snapshot of
-observed cluster state. Identical digests must produce identical output, so any
-difference is a defect in the generator.
+\textbf{Provenance.} A run hash and input digests identify project documents,
+platform policy, the machine contract, pinned image digests and observed cluster
+state. Identical inputs must produce identical output.
 
 \subsection{Structure}
 
@@ -54,56 +44,44 @@ applications, the reconcile units and the path plan.
 \end{figure}
 \end{landscape}
 
-A \texttt{ResolvedApplication} is both an element of the cluster-wide model and
-the projection published to the application's repository. Only the published
-projection has its own provenance.
+A \texttt{ResolvedApplication} also forms the projection published to its
+repository. Only that published projection has separate provenance.
 
-A \texttt{ReleaseGate} is absent when no process switches blue/green, because an
-\texttt{interrupted} application stops before the new version starts and the
-delivery machinery updates in place. A
-\texttt{ResolvedMigration} records whether the release contains a changeset that
-cannot run in a transaction, which no automatic undo may touch. It does not
-record the migration's identity, owner role and deadline, because these follow
-from the application and the platform document.
+\texttt{ReleaseGate} is absent without blue/green switching. Interrupted
+applications stop first. Delivery machinery updates in place.
+\texttt{ResolvedMigration} records changesets that cannot run in a transaction
+and cannot be undone automatically. Migration identity, owner role and deadline
+follow from the application and platform document.
 
 The \texttt{cutover} and \texttt{switchover} of a \texttt{ResolvedProcess} are
 unset for a prepare process, which replaces no running version.
 
 \subsection{The Path Plan}
 
-The \emph{path plan} records, for each object to be generated, the responsible
-generator and the output path, so no generator chooses a path
-(Section~\ref{sec:stagecontent}). Paths chosen per generator failed in two
-observed cases. An object belonging to a group of applications was emitted
-once per application, at several paths. A cluster-wide object landed in
-whichever namespace its generator used. With the paths in the model, the check
-that no two generators write one path runs before any generator starts.
+The \emph{path plan} assigns each generated object to a generator and output
+path (Section~\ref{sec:stagecontent}). Earlier generator-chosen paths duplicated
+a group object across applications and placed a cluster object in an arbitrary
+namespace. The plan checks path collisions before generation.
 
 \subsection{The Generated Resources}
 \label{sec:generatedresources}
 
-Generation uses a closed set of six generators, one per subsystem
-(Table~\ref{tab:scope}). They produce workloads and their supporting objects,
-network policy, monitoring, edge routing, secret-store policies, and secret
-delivery. The supporting objects include the \emph{Canary}, the object through
-which Flagger switches a blue/green process. Flagger is the tool that moves
-traffic from an old version to a new one.
+Six generators produce workloads, network policy, monitoring, edge routing,
+secret-store policies and secret delivery (Table~\ref{tab:scope}). A
+\emph{Canary} lets Flagger switch traffic to a new version.
 
-\textbf{The metamodel for the code.} The generated code is a set of Kubernetes,
-Flux, Flagger, Traefik and Vault files. The decision classes record \emph{what}
-each file contains. One typed class per resource family records \emph{which}
-file is generated, at which path, by which generator:
+\textbf{Typed resources.} The output consists of Kubernetes, Flux, Flagger,
+Traefik and Vault files. Decision classes specify their content. Typed resource
+classes specify output paths and generators. They include
 \texttt{WorkloadFile}, \texttt{SwitchoverFile}, \texttt{NetworkPolicyFile},
-\texttt{MonitorFile}, \texttt{IngressRouteFile}, \texttt{SecretFile},
-\texttt{IdentityFile}, \texttt{NamespaceFile} and \texttt{IndexFile}. A
-model-to-text template therefore writes one file per typed resource, without
-making decisions.
+\texttt{MonitorFile} and \texttt{IngressRouteFile}. The remaining types are
+\texttt{SecretFile}, \texttt{IdentityFile}, \texttt{NamespaceFile} and
+\texttt{IndexFile}. A
+model-to-text template writes each typed resource.
 
 \subsection{Keeping Target Field Names Out of the Model}
 
-Under the naming rule of Section~\ref{sec:naming}, the resolved model records
-that a process switches blue/green, and its typed resource is a
-\texttt{SwitchoverFile}. Only the generator writes it as a Canary. The model
-records the hardening level and writable paths instead of a security context,
-and the middleware chain as named steps instead of the proxy's syntax. A check
-verifies that each generator's target vocabulary appears only in that generator.
+Under Section~\ref{sec:naming}'s rule, \texttt{SwitchoverFile} records a
+blue/green switch. Its generator writes a Canary. The model also records
+hardening, writable paths and middleware steps instead of target syntax. A
+check confines target field names to generators.

@@ -1,8 +1,7 @@
 \section{Alternatives Considered}
 \label{sec:alternatives}
 
-Table~\ref{tab:alternatives} lists the rejected alternatives. Three need more
-detail.
+Table~\ref{tab:alternatives} lists the rejected alternatives.
 
 \begin{table}[!htbp]
 \centering
@@ -12,26 +11,21 @@ detail.
 \textbf{Alternative} & \textbf{Why it was rejected} \\
 \hline
 Template the target files directly (Helm, Kustomize overlays) &
-  There is no abstract model, so no constraint can be written, no value is
-  derived in one place, and the repeated values remain. \\
+  No abstract model supports constraints or shared derivations. Repeated values
+  remain. \\
 Annotate the target files with extra fields &
-  Tried in the existing configuration: the authored and resolved forms had the
-  same name, so no term could state which document was wrong. \\
+  The existing configuration gave authored and resolved forms the same name.
+  Errors could not identify which form was wrong. \\
 Two stages, with the generator resolving values internally &
-  The generator makes decisions that appear in no model and cannot be
-  reviewed. \\
+  Generator decisions appear in no reviewable model. \\
 A third metamodel for the generated files &
-  The target syntax already has a schema, which a third metamodel would
-  restate. \\
+  It would restate the target schema. \\
 A grammar first, with the metamodel inferred &
-  The concrete syntax would define the concepts, but the language must be
-  readable from two syntaxes. \\
+  Two syntaxes need the same abstract concepts. \\
 Free-form strings instead of enumerations &
-  Tried in the existing configuration: the one free-form field was wrong in
-  every application. \\
+  The existing free-form field was wrong in every application. \\
 An override mechanism for derived values &
-  A wrong derivation stays hidden behind a per-process reason instead of showing
-  for every process of that kind. \\
+  Per-process exceptions would conceal an incorrect general rule. \\
 \hline
 \end{tabular}
 \caption{Alternatives Considered and Why Each Was Rejected}
@@ -41,32 +35,26 @@ An override mechanism for derived values &
 \subsection{A Third Metamodel for the Generated Files}
 \label{sec:thirdmetamodel}
 
-A third metamodel would let the generated output be checked structurally instead
-of as text. As a hand-maintained copy of the target schema, however, it could
-drift, and it would add no constraint beyond those of the second metamodel. The
-generated files are therefore compared as text with reviewed expected output,
-and validated against their own schemas. The typed target resources are classes
-in the second metamodel (Section~\ref{sec:generatedresources}).
+A third metamodel could support structural output checks, but a maintained copy
+of the target schema could drift. It adds no constraint beyond the resolved
+metamodel. Tests compare generated text with reviewed output and validate it
+against target schemas. The resolved metamodel contains typed resource classes
+(Section~\ref{sec:generatedresources}).
 
 \subsection{Grammar First or Metamodel First}
 \label{sec:grammarfirst}
 
-The source language has a textual syntax, so a grammar could have defined it,
-with the metamodel inferred. The production implementation, however, parses a
-different serialisation of the same language. If a grammar defined the language,
-the two syntaxes would agree only by chance. With the metamodel first, both are
-checked against one structure, which is exported as a machine-readable
-description for testing both implementations.
+The production implementation parses another serialisation of the source
+language. If the Xtext grammar defined the language, the two syntaxes could
+diverge. Both implementations instead check against the metamodel's exported,
+machine-readable structure.
 
 \subsection{One Resolved Model, or One Per Application}
 \label{sec:oneresolved}
 
-The resolved model covers all applications in one document, because some values
-cannot be computed for one application alone. Examples are which edge entry
-point serves a hostname, the order in which groups of objects are applied, and
-what an application derives from the applications that depend on \emph{it}. A
-per-application model would compute these inconsistently or omit them.
+The resolved model covers all applications because edge routing, application
+order and reverse dependencies require cluster-wide inputs. Separate
+per-application computations could disagree or omit values.
 
-Each application's repository receives a \emph{projection}: the part of the
-cluster-wide model that belongs to that application. It is obtained by
-filtering rather than by a separate computation, so the two cannot disagree.
+Each repository receives a \emph{projection}: its application's part of the
+resolved model, selected by filtering.
