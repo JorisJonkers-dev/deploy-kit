@@ -3,7 +3,7 @@
 After `(cd emf && ./mvnw clean verify)`, writes task-1-metamodelling.zip, or with
 `--dir [PATH]` the same tree as a folder. See README.md.
 """
-import os, re, shutil, zipfile, glob, sys, tempfile
+import os, re, shutil, subprocess, zipfile, glob, sys, tempfile
 import xml.etree.ElementTree as ET
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from oclinecore import embed
@@ -225,21 +225,33 @@ write(f'{OUT}/.project', f"""<?xml version="1.0" encoding="UTF-8"?>
 write(f'{OUT}/.settings/org.eclipse.core.resources.prefs',
       'eclipse.preferences.version=1\nencoding/<project>=UTF-8\n')
 
+# Beside the models project: the report, and the implementation the models come from, as the
+# repository tracks it (the EMF modules and the examples their build reads), with a README.
+ROOT = os.path.dirname(OUT)
+copy(f'{R}/docs/mde/task-1-metamodelling/main.pdf', f'{ROOT}/report.pdf')
+tracked = subprocess.run(['git', '-C', R, 'ls-files', 'emf', 'spec/v1/examples', 'docs/requirements.md'],
+                         capture_output=True, text=True, check=True).stdout.split()
+for f in tracked:
+    copy(f'{R}/{f}', f'{ROOT}/implementation/{f}')
+os.chmod(f'{ROOT}/implementation/emf/mvnw', 0o755)
+copy(f'{HERE}/hand-in-README.md', f'{ROOT}/README.md')
+
 if '--dir' in sys.argv:
     i = sys.argv.index('--dir')
-    target = sys.argv[i + 1] if len(sys.argv) > i + 1 else os.path.join(HERE, 'task-1-metamodelling')
+    target = sys.argv[i + 1] if len(sys.argv) > i + 1 else os.path.join(HERE, 'hand-in')
     target = os.path.abspath(target)
     shutil.rmtree(target, ignore_errors=True)
-    shutil.copytree(OUT, target)
-    shutil.rmtree(os.path.dirname(OUT))
+    shutil.copytree(ROOT, target)
+    shutil.rmtree(ROOT)
     print(target, sum(len(f) for _, _, f in os.walk(target)), 'files')
     sys.exit(0)
 z = os.path.join(HERE, 'task-1-metamodelling.zip')
-entries = sorted(os.path.join(root, f) for root, _, files in os.walk(OUT) for f in files)
+entries = sorted(os.path.join(root, f) for root, _, files in os.walk(ROOT) for f in files)
 with zipfile.ZipFile(z, 'w', zipfile.ZIP_DEFLATED) as zf:
     for full in entries:
-        info = zipfile.ZipInfo(os.path.relpath(full, os.path.dirname(OUT)), date_time=(2026, 9, 25, 0, 0, 0))
+        info = zipfile.ZipInfo(os.path.relpath(full, ROOT), date_time=(2026, 9, 25, 0, 0, 0))
+        info.external_attr = (os.stat(full).st_mode & 0o777) << 16
         info.compress_type = zipfile.ZIP_DEFLATED
         zf.writestr(info, open(full, 'rb').read())
-shutil.rmtree(os.path.dirname(OUT))
+shutil.rmtree(ROOT)
 print(os.path.relpath(z, R), len(entries), 'files,', os.path.getsize(z), 'bytes')
