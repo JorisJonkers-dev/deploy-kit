@@ -283,9 +283,10 @@ as dead.
 
 `docs/mde/` holds a university course's reports: one directory per task, plus
 [`docs/mde/assignment.md`](docs/mde/assignment.md), the course's own task text,
-which says what each task requires and hands in.
-[`docs/mde/README.md`](docs/mde/README.md) says which directory mirrors which
-task.
+which says what each task requires and hands in, and
+[`docs/mde/practicals.md`](docs/mde/practicals.md), what each practical session
+asks. [`docs/mde/README.md`](docs/mde/README.md) says which directory mirrors
+which task.
 
 The course's own hand-outs (the lecture decks, the background reading and the
 index over them) are **not in this repository**. They are third-party works, so
@@ -295,8 +296,11 @@ mounted as a submodule at `docs/mde/course-material/`. With access,
 the directory is empty, and nothing here depends on it. No gate reads the
 submodule, and CI does not initialise it.
 
-Once initialised, **start from `docs/mde/course-material/INDEX.md`**: it says
-which document covers which topic, down to the section anchor and the PDF page,
-so open one section of one `.md` rather than reading a PDF end to end. Some of
-these run to 400 pages. Never copy that material into this repository, and never
-quote it at length in a tracked file here.
+Once initialised, **start from `docs/mde/course-material/INDEX.md`**, the one
+entry point for the whole course. It lays out the course week by week, gives
+each lecture's slides, recording, reading and practical session, links each task
+to its brief, its report and what to read for it, and says which document covers
+which topic, down to the section anchor and the PDF page. Open one section of one
+`.md` rather than reading a PDF end to end: some of these run to 400 pages.
+Never copy that material into this repository, and never quote it at length in a
+tracked file here.

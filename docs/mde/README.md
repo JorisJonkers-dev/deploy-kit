@@ -44,10 +44,17 @@ git submodule update --init docs/mde/course-material
 ```
 
 The submodule then holds `lectures/` for the decks, `background/` for the reading
-set per lecture, and `INDEX.md`, which maps topics to documents, sections and PDF
-pages. Read that index first; several of those documents run to 200-400 pages.
-Every PDF has a Markdown conversion beside it, `<name>.md`, with figures in
-`<name>-images/`, produced with docling.
+set per lecture, and `INDEX.md`. Read that index first. It is the one entry point
+for the whole course. It gives a week-by-week view of each lecture with its
+slides, recording, reading and practical session, and it links back here to the
+tasks, their reports and the practical sessions. It then maps topics to
+documents, sections and PDF pages; several of those documents run to 200-400
+pages. Every PDF has a Markdown conversion beside it, `<name>.md`, with figures
+in `<name>-images/`, produced with docling.
+
+What the course asks for stays in this repository, because it is the brief the
+reports answer: [`assignment.md`](assignment.md) for the project's tasks, and
+[`practicals.md`](practicals.md) for the six practical sessions.
 
 Without access the directory stays empty and nothing else in this repository
 depends on it: no gate reads it, and CI does not initialise submodules.

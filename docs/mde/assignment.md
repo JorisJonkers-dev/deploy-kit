@@ -37,9 +37,19 @@ approves it.
 > description should be approved by the teacher of the course before you can
 > start your project.
 
-The proposal must also state which of the three project types it is, and detail
-the objectives of the project, "also mentioning the languages/metamodels
-involved".
+The submission page (Canvas, "Project task 0: Project description"):
+
+> In this project task each group submits a project proposal. The proposal will
+> not be graded, but the groups need approval from the teacher in order to start
+> working on the project. There are three types of project, namely Code
+> generation, Interoperability, Model Discovery ('Harvesting'). Indicate the type
+> of your project in your proposal.
+>
+> Each group should submit a PDF file with the project description (task 0
+> deliverable) in which the objectives of the project are detailed, also
+> mentioning the languages/metamodels involved.
+
+So the proposal must also state which of the three project types it is.
 
 Mirror: [`task-0-proposal/`](task-0-proposal/) — approved.
 
@@ -53,6 +63,13 @@ The task, from the project description:
 > properly represent the intended models.
 >
 > Define a metamodel for the code of your choice.
+
+Its deliverables, from the same page:
+
+> - Report describing the domain analysis, the modelling decisions you have
+>   taken, the alternatives you have encountered, the description of the
+>   metamodels and diagrams of the metamodels, and example models.
+> - Metamodels and models as ECore files.
 
 The submission page (Canvas, "Project task 1: Metamodelling"):
 
@@ -117,6 +134,12 @@ The task, from the project description:
 > to instances of your code metamodel. In this task you define and implement a
 > model transformation for this purpose using ATL or QVT OM.
 
+Its deliverables, from the same page:
+
+> - Report describing the transformation, the modelling choices and the possible
+>   limitations of the proposed solution.
+> - Evidence that the transformation works.
+
 The submission page (Canvas, "Project task 2: Model transformations"):
 
 > In this assignment you have to deliver a report and the artefacts (code and
@@ -172,7 +195,9 @@ appendix describing any change to the Task 1 metamodels; the transformation and
 its source and target models ship as Eclipse/EMF projects in the same zip.
 
 Mirror: `task-2-transformations/` — not started. This project uses **QVT
-Operational**, not ATL.
+Operational**, not ATL. The practical session that walks through the QVT
+Operational tooling is
+[session 5 in `practicals.md`](practicals.md#session-5--qvt-om-transformations).
 
 ## Task 3 — Code generation
 
@@ -231,6 +256,15 @@ is this project, which generates deployment manifests instead.
   [*Model-Based Engineering of Collaborative Embedded Systems: Extensions of the SPES Methodology*](https://link.springer.com/book/10.1007/978-3-030-62136-0),
   Springer, 2021.
 
+## Some useful languages
+
+A Canvas page beside the project types lists "some popular languages/notations
+that can be useful for the project": XML, UML, BPMN, SysML, ArchiMate, ER, SQL,
+EPL (Event Processing Language), DRL (Drools Rule Language), RDF, OWL 2,
+OntoUML, RML (RDF Mapping Language) and SHACL.
+
 The course material this assignment draws on is indexed in
 `course-material/INDEX.md`, in the private submodule this repository does not
-publish; see [`README.md`](README.md).
+publish; see [`README.md`](README.md). That index is the entry point for the
+whole course: lectures, reading, practical sessions and these tasks. The
+practical sessions are in [`practicals.md`](practicals.md).
