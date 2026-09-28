@@ -11,11 +11,15 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceImpl;
 import org.eclipse.xtext.EcoreUtil2;
@@ -57,12 +61,67 @@ public final class Pipeline {
      * written relative to the authored file beside it, never as a path on the machine that ran it.
      */
     public static String xmi(Path path) throws IOException {
-        Resource model = new XMIResourceImpl(URI.createFileURI(path.toAbsolutePath() + ".xmi"));
-        model.getContents()
-                .add(EcoreUtil.copy(read(List.of(path)).get(0).getContents().get(0)));
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        model.save(out, null);
-        return out.toString(StandardCharsets.UTF_8);
+        return xmi(List.of(path)).get(path);
+    }
+
+    /**
+     * The parsed models of {@code files} read together, each serialised as XMI as if written beside
+     * its authored file, under the name {@link #xmiName} gives it. A name one file declares and another links to is
+     * written as a reference from one XMI file to the other, so the set loads in Eclipse as it is read
+     * here; a name no file declares stays a proxy against the authored file. A document the pipeline
+     * refuses is written all the same, so its refusal can be reproduced by validating it. A file that
+     * holds no document has no model and is left out.
+     */
+    public static Map<Path, String> xmi(List<Path> files) throws IOException {
+        List<Resource> documents = read(files);
+        EcoreUtil.Copier copier = new EcoreUtil.Copier();
+        ResourceSet models = new ResourceSetImpl();
+        Map<Path, Resource> written = new LinkedHashMap<>();
+        for (int i = 0; i < files.size(); i++) {
+            if (documents.get(i).getContents().isEmpty()) {
+                continue;
+            }
+            Path file = files.get(i);
+            Resource model = new ByPath(URI.createFileURI(
+                    file.toAbsolutePath().resolveSibling(xmiName(file)).toString()));
+            models.getResources().add(model);
+            model.getContents().add(copier.copy(documents.get(i).getContents().get(0)));
+            written.put(file, model);
+        }
+        // Only once every root is copied does a link into another document have a copy to point at.
+        copier.copyReferences();
+        Map<Path, String> xmi = new LinkedHashMap<>();
+        for (Map.Entry<Path, Resource> model : written.entrySet()) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            model.getValue().save(out, null);
+            xmi.put(model.getKey(), out.toString(StandardCharsets.UTF_8));
+        }
+        return xmi;
+    }
+
+    /**
+     * An XMI resource that refers to its objects by containment path, never by ID. An Application's
+     * {@code id} and a Process's {@code name} are both IDs, and one document may give an Application
+     * and its Process the same name, so an ID would not name one object once the file is read back.
+     */
+    static final class ByPath extends XMIResourceImpl {
+        ByPath(URI uri) {
+            super(uri);
+        }
+
+        @Override
+        public String getURIFragment(EObject object) {
+            EObject root = EcoreUtil.getRootContainer(object);
+            return root == object ? "/" : "//" + EcoreUtil.getRelativeURIFragmentPath(root, object);
+        }
+    }
+
+    /**
+     * What the XMI of an authored file is called: its own name with {@code .xmi} for {@code .yml}, so
+     * {@code notes.project.yml} is {@code notes.project.xmi} and the two sort side by side.
+     */
+    public static String xmiName(Path file) {
+        return file.getFileName().toString().replaceFirst("\\.yml$", "") + ".xmi";
     }
 
     /**

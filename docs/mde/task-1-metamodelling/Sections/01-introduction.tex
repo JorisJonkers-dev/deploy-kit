@@ -1,38 +1,79 @@
-\section{Introduction and Scope}
+\section{Purpose of the Project}
 \label{sec:introduction}
 
-Task 0 selected the code-generation problem: generate a complete Kubernetes
-deployment set from one abstract model of what an application needs, rather
-than from hand-maintained YAML in which the same fact is written down several
-times. This report covers Task 1, the metamodelling step. It describes the
-domain, the modelling decisions and the alternatives that were considered, then
-presents the two metamodels and the example models that instantiate them.
+\subsection{Motivation and Goals}
 
-\subsection{Response to the Task 0 Feedback}
+Today each application's repository holds its own hand-written Kubernetes
+files. Writing them by hand is hard because services are related: an
+application's address, its ports and the services it depends on appear in the
+files of several applications, and a change to one service means edits in the
+others. Spread over many repositories, these copies drift apart. Gathering all
+files in one central repository removes the copies, but separates each
+deployment from the application it belongs to and from the people who
+maintain it.
 
-The feedback on Task 0 raised two points, and each changed something in this
-report.
+The project takes a third route. Each application keeps a short deployment
+document in its own repository, written in a domain-specific language. The
+document exposes only what the application should care about: how it must be
+deployed. It states requirements that hold on any machine, such as how much
+memory and CPU a process needs and whether it needs a graphics card, instead of
+naming machines. It also states how the application is reached, by hostname and
+path, next to the application instead of in a separate router repository. The
+parts all applications share, such as the cluster's policies and entry points,
+are written once, in a platform document.
 
-\textbf{Scope.} The warning was to be careful with scope, and it was
-justified: the original proposal carried three metamodels and an open-ended set
-of generated resources. The scope is now fixed by three statements. The pipeline
-has \emph{two} metamodels, not three (Section~\ref{sec:decisions}): the
-Deliverable Set is generated text, so it is not given a metamodel of its own.
-The generated resources are a \emph{closed} set of six generators, listed in
-Section~\ref{sec:targetmetamodel}, and adding a seventh is a recorded decision
-rather than a new feature. The estate modelled is a \emph{single} cluster, so
-every rule that would only become visible at a second cluster is recorded as an
-assumption instead of being designed for.
+The language makes deployments specifiable and configurable while it enforces
+the cluster's standards. Deployment behaviour that every application needs,
+such as blue/green switching, monitoring and backups, is derived once and
+reused, instead of copied into each application's files. A model
+transformation turns the documents into a resolved model, and code generation
+turns the resolved model into the Kubernetes files.
 
-\textbf{Notation.} The question was why UML class diagrams rather than a
-deployment or component diagram, and whether ArchiMate or the C4 model would
-serve. Section~\ref{sec:notation} answers both: a class diagram is the notation
-for a language's abstract syntax and the others describe systems rather than
-languages, so they cannot replace it for the metamodels; but for the example
-\emph{models} a deployment view is the better picture, and
-Section~\ref{sec:examplemodels} now carries one.
+Task 1 defines the two metamodels this needs, in Ecore. The \emph{source
+metamodel} is the language an author writes. The \emph{target metamodel}
+describes the \emph{resolved model}, which records every value the platform
+derives. OCL constraints reject invalid source models, an Xtext grammar gives
+the source language a textual syntax, and example models show that both
+metamodels work. Task 2 will implement the transformation with
+QVT-Operational, and Task 3 the code generation with Acceleo.
 
-\subsection{What Is In Scope and What Is Not}
+\subsection{Refinement of Task 0}
+
+Task 1 refines the Task 0 proposal in three ways.
+
+\begin{itemize}
+  \item Task 0 described the target metamodel as typed Kubernetes resources.
+    The target metamodel now records the platform's decisions in the terms of
+    the source language. Typed resource classes state only which file a
+    generator writes at which path, and the files' own fields are not modelled
+    (Sections~\ref{sec:naming} and~\ref{sec:thirdmetamodel}).
+  \item Task 0 treated the platform document as an input beside the model. It
+    is now part of the source metamodel, with its own root class
+    (Section~\ref{sec:sourcemetamodel}), and constraints check a project
+    document against it (Section~\ref{sec:constraints}).
+  \item Task 0 listed ten source classes. The source metamodel adds, among
+    others, a migration per application, named ports, alerting, and
+    declarations shared by all processes of a project or application.
+\end{itemize}
+
+\subsection{Assumptions and Conditions}
+
+\begin{itemize}
+  \item One cluster. The concepts and examples come from its existing,
+    hand-maintained configuration (Section~\ref{sec:domainanalysis}).
+  \item Application owners write project documents. The platform owner writes
+    one platform document per cluster.
+  \item The platform sets every value that must be unique in the cluster or
+    uses a shared, limited resource (Section~\ref{sec:sharedvalues}).
+  \item The generated files are not applied to a cluster. Correctness concerns
+    the resolved model and the generated files.
+  \item The tools are Eclipse Modeling Tools with EMF, OCL and Xtext, built
+    with Maven and Tycho (Section~\ref{sec:implementation}).
+\end{itemize}
+
+\subsection{Scope}
+
+Table~\ref{tab:scope} sets the scope.
 
 \begin{table}[!htbp]
 \centering
@@ -41,21 +82,16 @@ Section~\ref{sec:examplemodels} now carries one.
 \hline
 \textbf{In scope} & \textbf{Out of scope} \\
 \hline
-Two metamodels: the authored source language, and the resolved target model. &
+Two metamodels: the authored source language, and the resolved model. &
   A metamodel of the generated files. They are text, and are compared as text. \\
-A closed set of six generators for one cluster. &
+A closed set of six generators for one cluster. Adding a generator requires a recorded decision. &
   Additional target platforms, and a second cluster. \\
-Validation of a source model, and the constraints that refuse an invalid one. &
-  Applying the generated files to a cluster, which is a separate concern. \\
+Validation of a source model, and the constraints that reject an invalid one. &
+  Applying the generated files to a cluster. \\
 Dependency resolution between applications. &
   Runtime behaviour, scaling decisions and monitoring rules. \\
 \hline
 \end{tabular}
-\caption{Scope of the Project After the Task 0 Feedback}
+\caption{Scope of the Project}
 \label{tab:scope}
 \end{table}
-
-The last exclusion is the one that most affects the report's claims. This
-project generates a deployment set; it does not deploy it. Every statement about
-correctness in this report is therefore a statement about the generated model
-and the generated files, never about a running cluster.

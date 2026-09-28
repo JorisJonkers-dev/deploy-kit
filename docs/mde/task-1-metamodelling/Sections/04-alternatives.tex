@@ -1,9 +1,20 @@
-\section{Alternatives Considered}
+\section{Alternatives and Justification}
 \label{sec:alternatives}
 
-Table~\ref{tab:alternatives} lists the alternatives encountered while building
-the metamodels, with the reason each was rejected. The three discussed in prose
-below are the ones where the rejection is not obvious.
+The starting point is how the cluster is configured today: Kubernetes files
+written by hand in each application's repository. The related values between
+services make these files hard to keep consistent, and each application repeats
+the same deployment behaviour. The other alternatives either keep these
+problems or move them elsewhere. This section first compares them
+(Section~\ref{sec:alternativesconsidered}), and then gives the decisions of the
+chosen solution in general terms (Section~\ref{sec:decisions}).
+Section~\ref{sec:design} describes the resulting classes in detail.
+
+\subsection{Alternatives Considered}
+\label{sec:alternativesconsidered}
+
+Table~\ref{tab:alternatives} lists the rejected alternatives, starting with
+the ways of writing the Kubernetes files directly.
 
 \begin{table}[!htbp]
 \centering
@@ -12,71 +23,56 @@ below are the ones where the rejection is not obvious.
 \hline
 \textbf{Alternative} & \textbf{Why it was rejected} \\
 \hline
+Hand-written Kubernetes files in each application's repository &
+  Related values, such as addresses and ports, are copied between repositories
+  and drift apart. Every application repeats the same deployment behaviour. \\
+All Kubernetes files in one central repository &
+  Removes the copies, but separates each deployment from the application it
+  belongs to and from the people who maintain it. \\
 Template the target files directly (Helm, Kustomize overlays) &
-  No abstract model, so no constraint can be written and no fact can be derived
-  once; the repetition the project exists to remove stays. \\
+  No abstract model supports constraints or shared derivations. Repeated values
+  remain. \\
 Annotate the target files with extra fields &
-  Tried in the estate: the authoring shape and the resolved shape end up sharing
-  one name, and no vocabulary can say which document is wrong. \\
-Two stages, resolution private to the generator &
-  The generator then takes decisions that appear in no model and can be
-  reviewed nowhere. \\
+  The existing configuration gave authored and resolved forms the same name.
+  Errors could not identify which form was wrong. \\
+Two stages, with the generator resolving values internally &
+  Generator decisions appear in no reviewable model. \\
 A third metamodel for the generated files &
-  The target syntax already has a schema; a third metamodel restates it. \\
+  It would restate the target schema. \\
 A grammar first, with the metamodel inferred &
-  Puts the concrete syntax in charge of the concepts; the same language has to
-  be readable from two syntaxes. \\
-Free-form strings instead of closed vocabularies &
-  Tried in the estate: the one free-form field was wrong in every observed
-  case. \\
+  Two syntaxes need the same abstract concepts. \\
+Free-form strings instead of enumerations &
+  The existing free-form field was wrong in every application. \\
 An override mechanism for derived values &
-  Hides a wrong derivation behind a per-process reason instead of exposing it
-  for the whole class. \\
+  Per-process exceptions would conceal an incorrect general rule. \\
 \hline
 \end{tabular}
-\caption{Alternatives Encountered and the Reason Each Was Rejected}
+\caption{Alternatives Considered and Why Each Was Rejected}
 \label{tab:alternatives}
 \end{table}
 
-\subsection{A Third Metamodel for the Generated Files}
+\subsubsection{A Third Metamodel for the Generated Files}
+\label{sec:thirdmetamodel}
 
-The Task 0 proposal carried three metamodels, one per stage of the pipeline.
-It was reduced to two, and this is the clearest scope reduction the feedback
-produced.
+A third metamodel could support structural output checks, but a maintained copy
+of the target schema could drift. It adds no constraint beyond the resolved
+metamodel. The resolved metamodel contains typed resource classes
+(Section~\ref{sec:generatedresources}).
 
-The argument for a third metamodel is that it would let the generation step be
-checked structurally rather than as text. The argument against it is that the
-target syntax is already schema-defined, so the third metamodel would be a
-hand-maintained restatement of a schema that exists, with a drift problem of its
-own and no constraint that the second metamodel cannot already express. The
-generated files are therefore compared as text against reviewed expected output,
-and the typed target resources live inside the second metamodel, where the
-generation templates can walk them.
+\subsubsection{Grammar First or Metamodel First}
+\label{sec:grammarfirst}
 
-\subsection{Grammar First or Metamodel First}
+Source models have two serialisations: YAML for authors and XMI for Eclipse.
+If the YAML grammar inferred the metamodel, it would determine the concepts in
+both forms. Defining Ecore first gives both serialisations the same classes.
 
-The source language has a textual concrete syntax, so the language could have
-been defined by a grammar with the metamodel inferred from it. It was defined
-the other way round: the metamodel first, with the grammar as one syntax over
-it.
+\subsubsection{One Resolved Model, or One Per Application}
+\label{sec:oneresolved}
 
-The reason is that the same source model must be readable from two concrete
-syntaxes, and the production implementation parses a different serialisation of
-the same language. If the grammar were in charge, the two would agree only by
-coincidence. With the metamodel in charge, both syntaxes are checked against one
-structure, and that structure is exported as a machine-readable description that
-both implementations are held to.
+The resolved model covers all applications. Edge routing, deployment order and
+reverse dependencies require a cluster-wide view. Reverse dependencies identify
+which applications depend on a given application. Separate per-application
+computations could disagree or omit values.
 
-\subsection{One Resolved Model, or One Per Application}
-
-The resolved model covers the whole estate in one document, rather than being
-produced per application. Some of what it records cannot be computed for one
-application alone: which shared edge carries a hostname, the order in which
-units are applied, and what an application derives from the applications that
-depend on \emph{it}. Producing a per-application model directly would either
-recompute those properties inconsistently or omit them.
-
-What an application's own repository receives is therefore a \emph{projection}:
-the slice belonging to that application, obtained by filtering the estate-wide
-model rather than by a separate computation, so the two cannot disagree about
-what was decided.
+Each repository receives a \emph{projection}: its application's part of the
+resolved model, selected by filtering.

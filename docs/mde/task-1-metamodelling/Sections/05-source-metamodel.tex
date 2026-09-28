@@ -1,93 +1,62 @@
-\section{The Source Metamodel}
+\section{Solution Design}
+\label{sec:design}
+
+The solution consists of the source metamodel, the target metamodel, the
+concrete syntax and OCL constraints of the source language, and their
+implementation in EMF. Table~\ref{tab:artefacts} says where each is in the
+hand-in archive (Appendix~\ref{sec:handin}).
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.50\linewidth}>{\raggedright\arraybackslash}p{0.14\linewidth}}
+\hline
+\textbf{Artefact} & \textbf{In the hand-in} & \textbf{Section} \\
+\hline
+Source metamodel & \texttt{task-1-metamodelling/}\allowbreak\texttt{model/project-intent.ecore} & \ref{sec:sourcemetamodel} \\
+Target metamodel & \texttt{task-1-metamodelling/}\allowbreak\texttt{model/resolved-deployment.ecore} & \ref{sec:targetmetamodel} \\
+OCL constraints & \texttt{task-1-metamodelling/}\allowbreak\texttt{model/project-intent.ocl} & \ref{sec:constraints} \\
+Concrete syntax & \texttt{implementation/emf/}\allowbreak\texttt{bundles/syntax}, two Xtext grammars & \ref{sec:constraints} \\
+Implementation and tests & \texttt{implementation/emf} & \ref{sec:implementation}, \ref{sec:tests} \\
+\hline
+\end{tabular}
+\caption{The Artefacts of Task 1}
+\label{tab:artefacts}
+\end{table}
+
+Figures~\ref{fig:projectdocument} to~\ref{fig:targetmetamodel} are UML class
+diagrams. Ecore implements the EMOF constructs of classes, attributes,
+references and multiplicities, and a class diagram shows them directly. A
+deployment view shows a model instance instead, as in
+Figure~\ref{fig:deploymentview}.
+
+\subsection{The Source Metamodel}
 \label{sec:sourcemetamodel}
 
-The source language is authored in two documents that together form one
-metamodel. A \emph{project} document is written by the owner of a group of
-applications and states what those applications need. A single \emph{platform}
-document is written once for the estate and states what the estate offers. The
-split follows directly from the contention rule of Section~\ref{sec:decisions}:
-a value that must be unique across the estate, or that draws on a shared finite
-resource, is stated in the platform document, and everything else is stated by
-the application that needs it.
+The source metamodel is \texttt{model/project-intent.ecore} in the archive. A
+\emph{project} document specifies application requirements. One \emph{platform}
+document specifies cluster facts and policies (Section~\ref{sec:sharedvalues}).
 
-\subsection{The Project Document}
+\subsubsection{The Project Document}
 
-Figure~\ref{fig:sourcemetamodel} shows the project half of the source
-metamodel. Its root is a \texttt{Project}, which carries an owner and the
-applications it groups. An \texttt{Application} is the unit that is released as
-a whole: it carries an identifier that is unique across the estate, the
-processes released together, the hostnames it is reachable at, the secrets it
-holds, how its database schema moves when a new version replaces the old one,
-and, optionally, how its failures should be alerted.
+An application using a database declares a migration. One application migrates
+each project's database. \texttt{Migration} has three subclasses. The platform
+applies a \texttt{ManagedMigration} changelog before the new version starts.
+\texttt{SelfMigration} leaves schema changes to the image.
+\texttt{NoMigration} leaves them to another application.
 
-A \texttt{Migration} is a union of three answers. A \texttt{ManagedMigration}
-names a Liquibase changelog, by its path in the application's repository, that
-the platform's runner applies before any new version starts. A
-\texttt{SelfMigration} says the image migrates its own schema, which is the only
-honest answer for a third-party image. A \texttt{NoMigration} says the
-application moves no schema, because another application of the same project
-does. The answer is required exactly where an application reaches a database,
-and one application of a project moves that project's one database.
+\texttt{cutover} specifies whether service continues during an upgrade. For
+\texttt{continuous}, the new version receives traffic after the application's
+processes pass metric checks. This is a \emph{blue/green} switch. For
+\texttt{interrupted}, the old version stops first. \texttt{lifecycle} is
+\texttt{application}, \texttt{job} or \texttt{prepare}. A \emph{prepare process}
+performs one-off setup after migration and before the new version starts. It
+serves no traffic.
 
-% Every figure is cut from the one mermaid block that mirrors the metamodel,
-% by scripts/diagrams/class-diagram.py, so no part can drift from the whole.
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/s-app}
-\caption{The Project Document: the Application and What Belongs to It}
-\label{fig:sourcemetamodel}
-\end{figure}
-
-A \texttt{Process} is the level at which almost every operational concern sits.
-It names the image it runs, what kind of thing it is, which named ports it
-offers, what it needs from a machine, which paths it must write, what answers a
-health check, what its volumes are worth, and whether it must keep serving while
-a new version replaces it. That last answer is its \emph{cutover}:
-\texttt{continuous} asks for the new version to start beside the old one and take
-traffic only once every process of the application has passed analysis, and
-\texttt{interrupted} accepts a stop-then-start. A process's kind is one of
-\texttt{application}, \texttt{job}, or \texttt{prepare}: a prepare process is
-forward-only setup, such as a seed, that runs to completion after the migration
-and before the new version starts, and serves nothing. The concerns that belong to the application
-rather than to one of its processes are kept on the application: a hostname
-fronts several processes and picks between them by path, so exposure cannot sit
-on a process without being written twice.
-
-
-A \texttt{Process} carries almost every operational concern, so it is shown in
-four figures rather than one: Figure~\ref{fig:sourceprocess1} its capacity,
-helpers and health, Figure~\ref{fig:sourceplacement} what it needs from a
-machine, Figure~\ref{fig:sourceprocess2} its storage and files, and
-Figure~\ref{fig:sourceprocess3} its configuration, dependencies and the ports
-it offers. All four are cut from the same source as
-Figure~\ref{fig:sourcemetamodel}.
-
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/s-proc-a}
-\caption{A Process: Capacity, Helpers and Health}
-\label{fig:sourceprocess1}
-\end{figure}
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/s-place}
-\caption{A Process: What It Needs From a Machine}
-\label{fig:sourceplacement}
-\end{figure}
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/s-proc-b}
-\caption{A Process: Storage and Files}
-\label{fig:sourceprocess2}
-\end{figure}
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/s-proc-c}
-\caption{A Process: Configuration, Dependencies and the Ports It Offers}
-\label{fig:sourceprocess3}
-\end{figure}
-
-Table~\ref{tab:sourceclasses} lists the classes and what each one is for.
+An \texttt{Exposure} belongs to an application because its hostname can route
+different paths to different processes. A \texttt{Surface} is a named port a
+process offers. A route refers to a surface of its own application. A
+dependency refers to a surface of another application.
 
 \begin{table}[!htbp]
 \centering
@@ -96,87 +65,52 @@ Table~\ref{tab:sourceclasses} lists the classes and what each one is for.
 \hline
 \textbf{Class} & \textbf{What it represents} \\
 \hline
-Project & The authored unit: an owner and the applications the document groups. \\
-Application & What is released as a whole, identified uniquely across the estate. \\
+Project & The authored document: an owner and the applications it groups. \\
+Application & A unit released together, with a cluster-unique identifier. \\
 Process & One containerised process: image, kind, ports, needs and health. \\
 Surface & A named port a process offers, declared once. \\
 Exposure & A hostname the application is reachable at, and who may reach it. \\
 Route & A path on that hostname, and the process and surface that serve it. \\
 Placement & What a process needs from a machine, as hard requirements. \\
-Volume & Storage a process holds, with what its data is worth if lost. \\
-Probe & What answers readiness or liveness for a process. \\
-Dependency & An edge to another application's named surface, carrying, where the provider owns databases, how the credential it derives may rotate. \\
-Credentials & The rotation an application can honour for the database credential its edge derives. \\
-Migration & How the application's schema moves: a Liquibase changelog the platform applies, the image itself, or nothing. \\
+Volume & Process storage and its durability class, which sets how loss is handled. \\
+Probe & The endpoint that serves a process's readiness or liveness check. \\
+DependencyEdge & A link to another application's named surface. Where the provider has databases, it states how the derived database credential may rotate. \\
+Credentials & The rotation an application supports for the database credential derived for its dependency. \\
+Migration & How the schema is migrated: by a Liquibase changelog the platform applies, by the image itself, or not at all. \\
 Grant & A secret a process may read, how it is delivered, and its rotation. \\
-Asset & A file a process needs that is configuration rather than code. \\
-Observability & Where metrics are collected and how urgently failures alert. \\
+Asset & A configuration file required by a process. \\
+Observability & Where metrics are collected, and the alert level for failures. \\
 Sidecar & A helper process sharing the main process's lifetime. \\
-Capacity & A count above one, with the reason it is not derived. \\
+Capacity & An instance count above one, with the reason it is not derived. \\
 \hline
 \end{tabular}
 \caption{Classes of the Project Document}
 \label{tab:sourceclasses}
 \end{table}
 
-\subsection{The Platform Document}
+Figure~\ref{fig:projectdocument} shows the classes in
+Table~\ref{tab:sourceclasses} and their relationships.
 
-The platform document carries the facts and policies that no single application
-may decide: what the cluster is, where the edge terminates and which audiences
-each edge tier serves, one backup policy per durability class, one backup method
-per engine, one hardening posture, one probe cadence, one monitoring cadence,
-the services the estate runs without deploying them, the runner every managed
-migration builds on, how a release is switched: which applications perform
-the switch and are never switched by it, and the cadence at which a new version
-is analysed, where each project's rendered output is published and whose
-signature the cluster accepts on it, and, while the estate moves off its old
-delivery path, which path each project is on.
-
-It is shown in four figures, cut from its own source by the same script that
-cuts the project half. Figure~\ref{fig:platformfacts} holds the facts about the
-cluster and what must exist before a rendered object can land, including where
-the reconciler fetches each project's rendered output and whose keyless
-signature it verifies,
-Figure~\ref{fig:platformedge} the edge and what the estate already runs, and
-Figure~\ref{fig:platformpolicies} the policies: one per durability class, one
-per engine, and the cadences the derivations read. Figure~\ref{fig:platformdelivery}
-holds what delivery reads: the migration runner and its terms, the delivery
-machinery with its analysis cadence, and the handover ledger.
-
-\begin{figure}[!htbp]
+% The three class diagrams are drawn by scripts/diagrams/class-diagram.py
+% --report from mermaid blocks: Figures/project-document.md here, and the blocks
+% of spec/v1/14-platform-intent.md and spec/v1/20-resolved-deployment.md.
+\begin{landscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.78\linewidth, keepaspectratio]{Figures/s-plat-a}
-\caption{The Platform Document: the Cluster and What Must Already Exist}
-\label{fig:platformfacts}
+\includegraphics[width=\linewidth, height=0.9\textheight, keepaspectratio]{Figures/project-document}
+\caption{The Project Document}
+\label{fig:projectdocument}
 \end{figure}
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=0.50\linewidth, keepaspectratio]{Figures/s-plat-b}
-\caption{The Platform Document: the Edge, and What the Estate Already Runs}
-\label{fig:platformedge}
-\end{figure}
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/s-plat-c}
-\caption{The Platform Document: the Policies a Derivation Reads}
-\label{fig:platformpolicies}
-\end{figure}
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=0.72\linewidth, keepaspectratio]{Figures/s-plat-d}
-\caption{The Platform Document: What Delivery Reads}
-\label{fig:platformdelivery}
-\end{figure}
+\end{landscape}
 
-A fact here is named for what it is and never for how the cluster is told about
-it, which is the rule of Section~\ref{sec:decisions} applied to the document
-that is most tempted to break it. Two of these facts gate a constraint rather
-than feed a derivation: a cluster that does not encrypt secrets at rest refuses
-every delivery that would write one into it, and a durability class or an engine
-with no policy refuses the volume or the process that asked for it
-(Section~\ref{sec:constraints}).
+\subsubsection{The Platform Document}
 
-Table~\ref{tab:platformclasses} lists the classes.
+The platform document specifies shared cluster facts and policies. For example,
+it states whether secrets are encrypted at rest (Section~\ref{sec:naming}). A
+tier refers to the application that runs its proxy. The delivery policy refers
+to the \emph{delivery machinery}: applications that switch other applications
+to a new version. Constraints reject secret delivery without encryption and
+storage requests without matching policies (Section~\ref{sec:constraints}).
 
 \begin{table}[!htbp]
 \centering
@@ -185,47 +119,48 @@ Table~\ref{tab:platformclasses} lists the classes.
 \hline
 \textbf{Class} & \textbf{What it represents} \\
 \hline
-Platform & The estate-wide authored document: one per cluster, with its owner and hardening posture. \\
-PlatformMetadata & Which cluster and project the document describes, and the digest of the machine contract it was written against. \\
-Substrate & Facts about the cluster that decide other decisions: its version, datastore, server count, whether secrets are encrypted at rest, and its network plugin and policy controller. \\
-Bootstrap & What must already exist before the first rendered object can land, recorded rather than declared. \\
-FluxSource & The reconciler's source reference, part of that bootstrap set. \\
-RenderedArtifacts & The registry repository each project's rendered output is published to, one signed artifact per project. \\
-ArtifactSigner & The keyless identity, an issuer and a subject, whose signature the reconciler accepts on a rendered artifact. \\
+Platform & One document per cluster, with its owner and container security restrictions. \\
+PlatformMetadata & Which cluster and project the document describes, and the digest of the machine contract (the facts each machine publishes) it was written against. \\
+Substrate & Cluster facts that other decisions depend on: its version, datastore, server count, whether secrets are encrypted at rest, and its network plugin and policy controller. \\
+Bootstrap & What must exist before the first generated object can be applied. The document records it, and the generators do not create it. \\
+FluxSource & The source reference of Flux, the tool that fetches the generated files and applies them to the cluster. \\
+RenderedArtifacts & The registry repository each project's generated output is published to, one signed artifact per project. \\
+ArtifactSigner & The keyless identity, an issuer and a subject, whose signature Flux accepts on a published artifact. \\
 VaultState & Whether the secret store is unsealed, the second bootstrap fact. \\
-Tier & Where the edge terminates: the audiences it serves, its listener, its certificate source, the endpoint that decides an authenticated request, and the declared Application that is its proxy. \\
+Tier & An entry point of the edge: its audiences, listener, certificate source, authentication endpoint, and the declared Application that acts as its proxy. \\
 DurabilityPolicies & The three durability classes' policies, held together so a missing one is visible. \\
 DurabilityPolicy & One class's backup window and retention. \\
 OffClusterCopy & Where an irreplaceable volume's copy goes, and the credential that writes it. \\
 EnginePolicies & The backup method per engine, held together for the same reason. \\
-EnginePolicy & One engine's backup image alias, named and never executable. \\
-MonitorCadence & How often the estate collects metrics, and how long it waits. \\
-ProbeCadence & The estate's one probe cadence: period, timeout and the failures tolerated. \\
+EnginePolicy & One engine's backup method: the alias of an image that performs the backup. The document contains no command or script. \\
+MonitorCadence & How often metrics are collected, and the collection timeout. \\
+ProbeCadence & The cluster's probe timing: period, timeout and the number of failures tolerated. \\
 EphemeralPolicy & The size a declared writable path receives. \\
-Provider & Something the estate runs and this model does not deploy, with its address and named surfaces, which a dependency may resolve against. \\
-MigrationPolicy & The runner image alias every managed migration builds on, with the deadline and resources its run takes. \\
-DeliveryPolicy & The applications that perform a switch and are never switched by one, linked across documents like a tier's proxy. \\
+Provider & A service the cluster runs that this model does not deploy, with its address and named surfaces, which a dependency may refer to. \\
+MigrationPolicy & The runner image alias, deadline and resources for managed migrations. \\
+DeliveryPolicy & The delivery machinery: the applications that switch other applications to a new version and are not switched themselves. \\
 AnalysisPolicy & How often a new version is checked, how many passing checks promote it, and how many failing ones roll it back. \\
-HandoverLedger & While the estate moves off its old delivery path: the projects still delivered by it, the projects delivered by their pin, and the date the old path is removed. \\
+HandoverLedger & Projects on the old path and projects delivered from pinned artifacts. It also records the old path's removal date. \\
 \hline
 \end{tabular}
 \caption{Classes of the Platform Document}
 \label{tab:platformclasses}
 \end{table}
 
-\subsection{Closed Vocabularies}
+Figure~\ref{fig:platformdocument} shows the classes in
+Table~\ref{tab:platformclasses} and their relationships.
 
-Wherever an attribute admits a fixed set of values, the metamodel declares an
-enumeration. The project document contributes vocabularies for the kind of a
-process (\texttt{application}, \texttt{job}, \texttt{prepare}), its runtime, its
-engine, its cutover (\texttt{continuous} or \texttt{interrupted}), a volume's durability
-class, machine architecture and storage medium, alert urgency, the audience of
-an exposure, a content policy, a path match, a secret's access tier and
-delivery, and a rotation tolerance. The platform document contributes
-vocabularies for the cluster's datastore and policy controller, an edge tier's
-listener and certificate source, and the hardening class.
+\begin{landscape}
+\begin{figure}[p]
+\centering
+\includegraphics[width=\linewidth, height=0.9\textheight, keepaspectratio]{Figures/platform-document}
+\caption{The Platform Document}
+\label{fig:platformdocument}
+\end{figure}
+\end{landscape}
 
-The enumerations are the surface most of the constraints are written against,
-which is the argument of Section~\ref{sec:alternatives} against free-form
-properties: a constraint can enumerate an enumeration exhaustively, and cannot
-enumerate a string.
+\subsubsection{Enumerations}
+
+Figures~\ref{fig:projectdocument} and~\ref{fig:platformdocument} show fixed
+value sets as types such as \texttt{Cutover}, \texttt{DurabilityClass} and
+\texttt{Listener} (Section~\ref{sec:enumdecision}).

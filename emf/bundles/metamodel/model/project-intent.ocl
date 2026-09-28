@@ -1,21 +1,6 @@
--- The document-level constraints of the Project Intent model, in the graded
--- constraint language (docs/adr/emf/0110). An invariant is named by the
--- diagnostic code it emits, and its context is the object the diagnostic points
--- at, so a violation maps to a (code, path) pair without a lookup table.
---
--- Constraints that need every project at once belong to composition. The Shared
--- Intent invariants are not among them: a declaration and the level above it are
--- always in one document, because a project never spans files.
---
--- The constraints a Platform document and the project files read beside it
--- answer together are here too, because Eclipse OCL binds one Complete OCL
--- document to a package for the thread that loads it. They read the other
--- documents through `allInstances()`, whose extent is the resource set a
--- document was read into, and hold trivially over a document read alone: a
--- `forAll` over no Platform is true, and an `exists` is guarded by one.
+-- Document-level constraints of Project Intent (docs/adr/emf/0110). Each
+-- invariant is named after the diagnostic code it reports.
 
--- The registered package, not the file: the constraints must bind to the same
--- classes the parser instantiates.
 import 'https://jorisjonkers.dev/deploy-kit/project-intent/1'
 
 package projectintent

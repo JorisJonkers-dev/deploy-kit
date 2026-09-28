@@ -3,10 +3,16 @@ package dev.jorisjonkers.deploykit.emf.cli;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Application;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentFactory;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
+import org.eclipse.emf.common.util.URI;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -47,6 +53,47 @@ class PipelineTest {
 
         assertThat(platform).contains("projectintent:Platform").contains("href=\"platform.intent.yml#");
         assertThat(platform).doesNotContain("file:");
+    }
+
+    @Test
+    void aSetIsWrittenAsXmiWhoseDocumentsLinkToEachOther() throws IOException {
+        // The tier's proxy names an Application the project file beside it declares, so read together
+        // the Platform document's XMI refers to the project file's XMI, not to either authored file,
+        // and each XMI is named after its authored file.
+        Path platform = Examples.of("refusals/no-tier-for-audience/platform.intent.yml");
+        Path project = Examples.of("refusals/no-tier-for-audience/refusals.project.yml");
+
+        Map<Path, String> xmi = Pipeline.xmi(List.of(platform, project));
+
+        assertThat(xmi).containsOnlyKeys(platform, project);
+        assertThat(xmi.get(platform))
+                .contains("href=\"refusals.project.xmi#//@applications.1\"")
+                .doesNotContain(".yml#")
+                .doesNotContain("file:");
+        // The Application `api` and its Process `api` share a name, so a link is written as a path,
+        // which names one object when the file is read back, rather than as the ambiguous ID.
+        assertThat(xmi.get(project))
+                .contains("projectintent:Project")
+                .contains("process=\"//@applications.0/@processes.0\"")
+                .doesNotContain("process=\"api\"");
+        assertThat(Pipeline.xmiName(project)).isEqualTo("refusals.project.xmi");
+    }
+
+    @Test
+    void anObjectIsNamedByItsPathFromTheRootNeverByItsId() {
+        Project project = ProjectIntentFactory.eINSTANCE.createProject();
+        Application application = ProjectIntentFactory.eINSTANCE.createApplication();
+        application.setId("notes");
+        project.getApplications().add(application);
+        Pipeline.ByPath names = new Pipeline.ByPath(URI.createURI("notes.project.xmi"));
+
+        assertThat(names.getURIFragment(project)).isEqualTo("/");
+        assertThat(names.getURIFragment(application)).isEqualTo("//@applications.0");
+    }
+
+    @Test
+    void anEmptyDocumentHasNoModelToWrite(@TempDir Path directory) throws IOException {
+        assertThat(Pipeline.xmi(List.of(file(directory, "")))).isEmpty();
     }
 
     @Test

@@ -199,7 +199,8 @@ delivery work it underpins.
 | [0026](model/0026-delivery-env-file-self.md) | Secret delivery is env, file, or self | settled |
 | [0027](model/0027-secret-reference-join-key.md) | A secret placeholder byte-matches a granted path | settled, amended by [0085](model/0085-a-grant-is-a-union-on-engine.md) |
 | [0028](model/0028-secrets-at-rest-gate.md) | Secrets at rest gate env and file delivery | open |
-| [0085](model/0085-a-grant-is-a-union-on-engine.md) | A grant is a discriminated union on engine, and every grant derives a read path | settled |
+| [0085](model/0085-a-grant-is-a-union-on-engine.md) | A grant is a discriminated union on engine, and every grant derives a read path | settled, amended by [0138](model/0138-a-database-grant-is-delivered-self.md) |
+| [0138](model/0138-a-database-grant-is-delivered-self.md) | A database grant is delivered by the application itself, as a transit grant is | open |
 | [0086](model/0086-kv-read-covers-its-metadata-sibling.md) | A KV-v2 read grant covers the document's metadata sibling | settled |
 
 ### Layer 2: derivation and assignment

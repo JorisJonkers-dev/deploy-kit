@@ -44,6 +44,18 @@ public final class IntentJson {
         return feature.isRequired() || owner.eIsSet(feature);
     }
 
+    /**
+     * The name a reference links by: an Application's ID, a Process's name, or a port's key. A Process
+     * and a port are named only within what holds them, so neither is an ID of the document.
+     */
+    private static String nameOf(EObject target) {
+        String id = EcoreUtil.getID(target);
+        return id != null
+                ? id
+                : String.valueOf(target.eGet(
+                        target.eClass().getEStructuralFeature(target instanceof Map.Entry<?, ?> ? "key" : "name")));
+    }
+
     private static Object value(EObject owner, EStructuralFeature feature) {
         Object value = owner.eGet(feature);
         if (feature instanceof EReference reference && !reference.isContainment()) {
@@ -55,12 +67,12 @@ public final class IntentJson {
                 List<?> targets = (List<?>) value;
                 for (int index = 0; index < targets.size(); index++) {
                     EObject target = (EObject) targets.get(index);
-                    names.add(target.eIsProxy() ? written(owner, reference, index) : EcoreUtil.getID(target));
+                    names.add(target.eIsProxy() ? written(owner, reference, index) : nameOf(target));
                 }
                 return names;
             }
             EObject target = (EObject) value;
-            return target.eIsProxy() ? written(owner, reference, 0) : EcoreUtil.getID(target);
+            return target.eIsProxy() ? written(owner, reference, 0) : nameOf(target);
         }
         if (feature.isMany()) {
             return many(feature, (List<?>) value);

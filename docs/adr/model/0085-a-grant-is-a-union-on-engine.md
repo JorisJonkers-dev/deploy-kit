@@ -9,6 +9,11 @@ rests-on: ["0009"]
 
 # A grant is a discriminated union on engine, and every grant derives a read path
 
+> **Amended 2026-09-25.** A `database` grant is delivered `self` only, like a
+> `transit` grant ([0138](0138-a-database-grant-is-delivered-self.md)), so the
+> consequence below that narrows `E_NON_KV_DELIVERY` to `transit` no longer
+> holds. The union and the derived read path are unchanged.
+
 > **Amended 2026-09-14.** Vocabulary renamed by
 > [0116](0116-project-application-process.md): Domain is now Project,
 > Service is Application, Workload is Process, and Service Intent is Project

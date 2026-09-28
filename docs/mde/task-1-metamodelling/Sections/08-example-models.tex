@@ -1,121 +1,162 @@
-\section{Example Models}
+\section{Tests and Evaluation}
+\label{sec:tests}
+
+\subsection{Testing Strategy}
+
+The metamodels are tested by instantiating them. Accepted models show that the
+metamodels represent the intended deployments, and rejected models show that
+the constraints reject invalid ones.
+
+\begin{itemize}
+  \item \textbf{Accepted models.} Five project documents and one platform
+    document instantiate the source metamodel
+    (Section~\ref{sec:examplemodels}). They are modelled on applications of the
+    existing configuration. One hand-written resolved model instantiates the
+    target metamodel.
+  \item \textbf{Rejected models.} Thirty-three models each break one rule
+    (Section~\ref{sec:rejectedmodels}).
+  \item \textbf{Automated checks.} Every build parses each accepted and
+    rejected model with the Xtext grammars, validates it against the OCL
+    constraints, and compares the outcome with a committed expected result: the
+    parsed model for an accepted model, and the codes and object paths for a
+    rejected one (Section~\ref{sec:implementation}). A change to a metamodel,
+    grammar or constraint that alters any outcome fails the build. Further tests
+    check the hand-written resolved model against the target metamodel: it
+    validates, a prepare process has no \texttt{cutover}, only a blue/green
+    application has a release gate, and the path plan assigns a path to every
+    file of the expected output.
+  \item \textbf{Manual checks.} The hand-in holds each model as YAML and XMI.
+    Validating an XMI in Eclipse repeats the check (Appendix~\ref{sec:handin}).
+\end{itemize}
+
+\subsection{Example Models}
 \label{sec:examplemodels}
 
-Five example models instantiate the source metamodel, and each is chosen to
-exercise something the metamodel claims. They are committed beside the
-metamodels, together with the expected result of parsing each one, so that the
-examples are checked rather than illustrative.
+Table~\ref{tab:examples} lists five accepted source models.
+Appendix~\ref{sec:handin} gives their paths.
 
 \begin{table}[!htbp]
 \centering
 \small
 \begin{tabular}{>{\raggedright\arraybackslash}p{0.16\linewidth}>{\raggedright\arraybackslash}p{0.76\linewidth}}
 \hline
-\textbf{Example} & \textbf{What it exercises} \\
+\textbf{Example} & \textbf{What it tests} \\
 \hline
 minimal & The smallest complete model: one project, one application, one
-  process, and nothing that is not required. Everything absent from it is
-  either derived or refused, which makes it the model that shows what the
-  language forces an author to say. \\
-auth & Two processes in one application, both continuous, so the release gate
-  has more than one member and the gate's deadline is a maximum over members
-  rather than a single value; and a managed migration, because the application
-  reaches a database. \\
-data & Several applications in one project sharing a namespace, with storage
-  and the backup plans their durability classes earn. \\
-knowledge & Two applications in one project because their cutovers differ: a
-  continuous API that moves the project's schema with a changelog, and an
-  interrupted worker bound to a volume that declares no migration of its own.
-  Dependencies across applications, secrets shared at the project header, and
-  an exposure whose routes carry different audiences. \\
-delivery & The platform's own delivery machinery, the Canary controller and the
-  release gate: continuous, and rolled in place rather than switched
-  blue/green, because a gate cannot gate its own release. \\
+  process, and only required values. \\
+auth & Two \texttt{continuous} processes in one application, so the release gate has two
+  members and its deadline is the maximum over the members. It also has a
+  managed migration, because the application uses a database. \\
+data & Several applications in one project share a namespace. Each volume's
+  durability class determines its backup plan. \\
+knowledge & Two applications with different \texttt{cutover} values: a
+  \texttt{continuous} API that migrates the project database with a changelog,
+  and an \texttt{interrupted} worker
+  with a volume. The worker has no migration. The example also has dependencies,
+  shared secrets and routes with different audiences. \\
+delivery & Two applications of the delivery machinery: Flagger and the release gate.
+  Their processes are \texttt{continuous} but are updated in place instead of
+  switched blue/green, because the release gate cannot control its own
+  release. \\
 \hline
 \end{tabular}
-\caption{The Example Models and What Each One Exercises}
+\caption{The Example Models and What Each Tests}
 \label{tab:examples}
 \end{table}
 
-Every example passes through three stages, and each stage is a model or a file
-set of its own: the \emph{input}, an authored project file together with the
-same model as an XMI instance of the source metamodel; the state \emph{in
-between}, the resolved model, an instance of the target metamodel; and the
-\emph{output}, the generated file tree. Appendix~\ref{sec:appendix} shows three
-of them through all three stages, cut down to what each is meant to show: the
-minimal model end to end (Appendix~\ref{sec:appendix-minimal}), the
-\texttt{knowledge} project's two cutovers (Appendix~\ref{sec:appendix-knowledge})
-and one refused model (Appendix~\ref{sec:appendix-refused}).
+Appendix~\ref{sec:appendix} describes two accepted examples and one rejected
+case in more detail.
 
-\textbf{Where the files are.} The metamodels are
-\texttt{emf/bundles/metamodel/model/project-intent.ecore} and
-\texttt{resolved-deployment.ecore}, with the constraints in
-\texttt{project-intent.ocl}. The examples in concrete syntax are under
-\texttt{spec/v1/examples/}, and the pipeline writes each one's XMI instance
-beside its parsed form on every build. The hand-written resolved model is
-\texttt{emf/models/minimal.resolveddeployment}. All of them, together with the
-generated trees and the refused set, are collected in the hand-in archive,
-whose layout is Appendix~\ref{sec:handin}. The concrete syntax is how the models
-are authored; the XMI files are the same models as Ecore instances, for a
-reader who opens them in Eclipse without the grammar. Because XMI and JSON are
-hard to read, every such file in the archive and in the appendix is also given
-as YAML, converted mechanically with nothing added or dropped, so every stage
-reads in one notation.
+\subsubsection{The Minimal Model}
 
-\subsection{The Minimal Model}
+The minimal model omits rollout strategy, resource limits, security context,
+labels, selector, namespace, probe timings and instance count. Platform rules
+derive these values or reject omissions that cannot be derived.
 
-The minimal model is the one to read first. It declares a project with one
-application and one process, and it is shorter than the file the same deployment
-needs today by roughly an order of magnitude. What it does \emph{not} declare is
-the point: no rollout strategy, no resource limits, no security context, no
-labels, no selector, no namespace, no probe timings, no instance count. Each of
-those either derives from something the model does declare, or is platform
-policy, or is refused outright.
+\subsubsection{A Resolved Model as a Deployment View}
 
-\subsection{Refused Models}
-
-Alongside the valid examples, a set of deliberately invalid models is
-committed, one per constraint, each with the diagnostic it must produce. A
-constraint that has only ever been satisfied is not evidence that it fires, so
-each constraint is paired with a model that violates it.
-
-The refused set covers, among others: a route naming a surface its process does
-not offer; two routes on one hostname claiming the same path; an alert class
-with nothing to collect metrics from; a process declaring a cutover its storage
-cannot honour; an application whose processes answer the cutover question
-differently; a prepare process that declares a port; an application that
-reaches a database and does not say how its schema moves, and one that says so
-without reaching one; a secret delivery that the cluster's encryption setting
-forbids; a durability class with no engine to back it up; and an exposure whose
-audience no edge tier serves.
-
-\subsection{A Resolved Model as a Deployment View}
-
-Figure~\ref{fig:deploymentview} shows the \texttt{knowledge} example's resolved
-model the way a deployment diagram would draw it: the project's two processes,
-now two applications, placed on two machines, the volume one of them is bound to, the edge tier and hostname in
-front, and the two platform services they depend on. Nothing in the picture is
-new information. Every box and every arrow is read straight out of the resolved
-model, which is the point: the model is complete enough that a deployment view
-is a rendering of it rather than a separate document somebody keeps in step by
-hand.
-
-This is the part of the Task 0 feedback that is worth acting on. A structural
-notation is the right one for an arrangement, and generating this view from the
-target metamodel is another model-to-text transformation, no different in kind
-from the one that generates the deployment files.
+Figure~\ref{fig:deploymentview} shows the \texttt{knowledge} resolved model as a
+deployment view (Section~\ref{sec:design}). It shows two processes on their
+machines, a volume, the edge tier, a hostname and two platform services.
 
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\linewidth, keepaspectratio]{Figures/deployment-view}
-\caption{The knowledge Example's Resolved Model, as a Deployment View}
+\caption{The knowledge Example's Resolved Model as a Deployment View}
 \label{fig:deploymentview}
 \end{figure}
 
-\subsection{Example Target Models}
+\subsubsection{Example Target Models}
 
-A hand-written target model accompanies the minimal example: the resolved model
-that the Task 2 transformation must produce from it, written and reviewed by
-hand rather than generated. It is the expected output of the transformation and
-the input the Task 3 templates are first run against, which is what lets both
-tasks be checked before either is complete.
+The hand-written \texttt{minimal.resolveddeployment} is the expected Task 2
+output and an input for testing Task 3 templates.
+
+\subsection{Rejected Models}
+\label{sec:rejectedmodels}
+
+The archive has 33 rejected models: 18 single project files and 15 pairs of a
+platform document and a project file. Together they cover all 28 constraint
+codes and the four codes of unresolved names. Each file of a pair is valid on
+its own. Validating a rejected model reports the violated invariant, whose name
+is the code (Appendix~\ref{sec:appendix-refused}). The archive's
+\texttt{refusals/README.md} says which file holds each error, and
+Appendix~\ref{sec:allconstraints} says what each code rejects.
+
+\subsection{Evaluation Against the Purpose}
+
+Table~\ref{tab:evaluation} relates each observation of
+Section~\ref{sec:observations} to the part of the metamodels that addresses it,
+and to the models that show it.
+
+\begin{table}[!htbp]
+\centering
+\footnotesize
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}p{0.42\linewidth}>{\raggedright\arraybackslash}p{0.26\linewidth}}
+\hline
+\textbf{Observation} & \textbf{How the metamodels address it} & \textbf{Shown by} \\
+\hline
+Repeated values & A hostname is declared once, on an \texttt{Exposure}, and a port once, on a \texttt{Surface}. Routes and dependencies refer to them by name. & All examples; \texttt{unknown-surface} \\
+Repeated derivations & The resolved model derives switchover, probe timings and deadline from the declared \texttt{cutover} and startup budget. & Table~\ref{tab:minimal-trace} \\
+Mechanisms instead of requirements & \texttt{cutover}, placement and writable paths state requirements. \texttt{E\_CUTOVER\_UNHONOURABLE} rejects a \texttt{continuous} process with a volume only one pod can mount. & \texttt{cutover-continuous-over-rwo} \\
+Shared values & The platform document holds them, and constraints check a project document against it. & The 15 rejected pairs \\
+\hline
+\end{tabular}
+\caption{Observations, How the Metamodels Address Them, and the Models That Show It}
+\label{tab:evaluation}
+\end{table}
+
+\subsection{Limitations}
+\label{sec:limitations}
+
+\begin{itemize}
+  \item The constraints embedded in the archive's \texttt{project-intent.ecore}
+    do not see a second document. A rejected pair is reproduced in Eclipse only
+    with both XMI files and \texttt{project-intent.ocl} loaded.
+  \item Only the minimal example has a resolved model, written by hand. The
+    resolved models of the other examples come from the Task 2 transformation,
+    so the target metamodel is tested less than the source metamodel.
+  \item Memory and CPU are checked per machine, not summed across the cluster
+    (Section~\ref{sec:sharedvalues}).
+  \item Constraints over all project documents at once, such as unique
+    application identifiers, are not in OCL.
+  \item The concrete syntax covers only the YAML subset of the existing
+    configuration.
+  \item The platform example is parsed without the project documents that
+    declare the applications it refers to, so six references in its XMI stay
+    unresolved.
+  \item Figure~\ref{fig:projectdocument} leaves out two dependencies of
+    \texttt{Placeholder}, to \texttt{Grant} and \texttt{Exposure}.
+\end{itemize}
+
+\subsection{Reflection}
+
+Separating the authored and the resolved model kept both metamodels small. The
+source metamodel holds only what an author must write, and the target metamodel
+holds only the platform's decisions. Enumerations, and naming each invariant
+after its code, made the rejected models easy to check, because each reports one
+known code. The constraints across documents were the hardest part: OCL
+evaluates one object at a time, so a rule between a platform document and a
+project file needs \texttt{allInstances()} and a guard, and Eclipse evaluates
+such rules only with the OCL document loaded. Without overrides, a wrong
+derivation rule affects every process of its kind, so the Task 2 transformation
+needs tests for each rule.

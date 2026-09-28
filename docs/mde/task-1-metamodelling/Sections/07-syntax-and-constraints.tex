@@ -1,99 +1,57 @@
-\section{The Concrete Syntax and the Constraints}
+\subsection{Concrete Syntax and Constraints}
 \label{sec:constraints}
 
-The metamodels of Section~\ref{sec:sourcemetamodel} and
-Section~\ref{sec:targetmetamodel} define what can be said. Two things are needed
-before a model can be written down and trusted: a concrete syntax an author
-types, and the constraints that refuse a model the abstract syntax alone would
-admit.
+The source language has a textual syntax and OCL constraints that reject
+invalid models.
 
-\subsection{The Concrete Syntax}
+\subsubsection{The Concrete Syntax}
 
-The source language has a textual concrete syntax, defined by an Xtext grammar
-over the metamodel rather than the other way round
-(Section~\ref{sec:alternatives}). There are two grammars, one per authored
-document, and both import the registered metamodel package and return its
-classes: a rule never declares a type of its own, so no concept can enter the
-language through the syntax without existing in the metamodel first.
+Authors use the YAML subset found in the existing configuration. Two Xtext
+grammars define this syntax: one for \texttt{platform.intent.yml} and one for
+\texttt{*.project.yml} (Section~\ref{sec:grammarfirst}). Both use source
+metamodel classes. YAML keys may appear in any order.
 
-The syntax is the YAML subset the estate's files already use, which keeps the
-authored documents readable by the tools that read them today. Three properties
-of the grammar are worth reporting, because each is a consequence of that
-choice.
+A route refers to a declared process and named port. An undeclared process
+produces a reference error, \texttt{E\_UNKNOWN\_PROCESS}. Handover project
+identifiers remain strings checked by an invariant because projects are
+separate documents.
 
-\textbf{Indentation is tokenised, not parsed.} Block structure reaches the
-parser as synthetic \texttt{BEGIN} and \texttt{END} tokens produced ahead of it,
-so an indented block, a flow mapping and a flow sequence all parse through one
-rule rather than three.
+\subsubsection{The Constraints}
 
-\textbf{Keys are unordered.} Every rule is an unordered group, because the order
-of keys in a mapping carries no meaning. Writing the rules as sequences would
-make the grammar refuse documents the model accepts.
+Complete OCL defines 36 invariants and 9 \texttt{def} helpers for the source
+metamodel. The invariants use 28 distinct codes. Three occur on multiple
+context classes.
 
-\textbf{Names are references.} Where a route names the process and the surface
-it serves, the grammar declares a cross-reference rather than a string, so the
-name is resolved by the linker against the declared objects. A name with no
-target is a link that does not resolve, which is why a scrape naming an
-undeclared process (\texttt{E\_UNKNOWN\_PROCESS}), a tier naming an undeclared
-proxy (\texttt{E\_UNKNOWN\_TIER\_PROXY}) and delivery machinery naming an
-undeclared application (\texttt{E\_UNKNOWN\_MACHINERY}) are not invariants: the
-linker has already found them. The handover
-ledger's project names are the exception, and are plain strings: a project is
-the document itself, not an object another document can link to, so the ledger
-is checked by an invariant instead.
-
-The editor is the generated Xtext one, with the constraints below loaded into
-it: the Complete OCL document binds to the same registered package the parser
-instantiates, so an invariant is evaluated against the objects the editor has
-just built, and a violation is reported in the editor rather than at render
-time.
-
-\subsection{The Constraints}
-
-Thirty-six invariants are written in Complete OCL against the source
-metamodel, carrying twenty-eight distinct diagnostic codes. Three codes sit on
-more than one context, because the same defect is reachable from several
-classes: a restated shared declaration is checked on each of the seven classes
-that can be restated, and two others on two classes each.
-
-The document follows one naming rule, which is what makes a diagnostic
-self-locating: \textbf{an invariant is named by the code it emits, and its
-context is the object the diagnostic points at.} A violation is therefore a
-\texttt{(code, path)} pair with no lookup table in between, where the path is
-the RFC 6901 JSON Pointer of the refused object.
-
-Table~\ref{tab:constraints-sample} shows one constraint of each kind; all
-twenty-eight codes, with the class each sits on, are in
-Appendix~\ref{sec:allconstraints}.
+\textbf{Each invariant has its diagnostic code as its name and the rejected
+object's class as its context.} Its diagnostic identifies the rule and the
+object to fix. Table~\ref{tab:constraints-sample} samples the scopes.
+Appendix~\ref{sec:allconstraints} lists all 28 codes.
 
 \begin{table}[!htbp]
 \centering
 \footnotesize
 \begin{tabular}{>{\raggedright\arraybackslash}p{0.39\linewidth}>{\raggedright\arraybackslash}p{0.15\linewidth}>{\raggedright\arraybackslash}p{0.38\linewidth}}
 \hline
-\textbf{Code} & \textbf{Context} & \textbf{What it refuses} \\
+\textbf{Code} & \textbf{Context} & \textbf{What it rejects} \\
 \hline
-E\_CUTOVER\_UNHONOURABLE & Process & One object: a continuous cutover over storage that cannot attach to the second copy a blue/green switchover starts. \\
-E\_RELEASE\_UNIT\_MIXED\_CUTOVER & Application & One document: an application whose processes answer the cutover question differently, when it switches as one. \\
-E\_NO\_FORWARD\_AUTH\_ENDPOINT & Tier & The platform document: a tier serving authenticated visitors with nothing named to decide whether one is allowed in. \\
+E\_CUTOVER\_UNHONOURABLE & Process & One object: a \texttt{continuous} process whose storage cannot attach to the second copy a blue/green switch starts. \\
+E\_RELEASE\_UNIT\_MIXED\_CUTOVER & Application & One document: an application whose processes have different \texttt{cutover} values, although it switches as one unit. \\
+E\_NO\_FORWARD\_AUTH\_ENDPOINT & Tier & The platform document: a tier that serves authenticated visitors but declares no endpoint to check whether a visitor may enter. \\
 E\_NO\_TIER\_FOR\_AUDIENCE & Exposure, Route & Across documents: an audience no edge tier in the platform document serves. \\
 \hline
 \end{tabular}
-\caption{One Constraint of Each Kind}
+\caption{One Constraint for Each Scope}
 \label{tab:constraints-sample}
 \end{table}
 
-Ten of the constraints read facts from another document while sitting on a class of a
-project document: the platform document, or, for the three migration codes that
-ask whether a provider owns a database, the project file declaring that provider. That placement is deliberate: an invariant sits on the
-object whose author must change something, and it is a project file, not the
-platform, that has to be edited when a volume asks for a guarantee the estate
-does not keep. They reach the other document through \texttt{allInstances()},
-whose extent is the resource set the document was read into, and each is guarded
-so that it holds trivially when a project file is read on its own:
+Ten project-context constraints use another document: the platform document or
+a database provider's project file. The invariant's context identifies the
+object to fix. \texttt{allInstances()} searches the loaded resource set. Guards
+skip cross-document checks when a project file is loaded alone
+(Example~\ref{lst:notier}).
 
 \begin{lstlisting}[style=report, language=ocl, basicstyle=\footnotesize\ttfamily,
-                   caption={E\_NO\_TIER\_FOR\_AUDIENCE, guarded so a project file read alone still validates},
+                   caption={E\_NO\_TIER\_FOR\_AUDIENCE, with a guard for a project file loaded alone},
                    label={lst:notier}]
 context Exposure
     inv E_NO_TIER_FOR_AUDIENCE:
@@ -101,24 +59,41 @@ context Exposure
             Tier.allInstances()->exists(audiences->includes(self.audience))
 \end{lstlisting}
 
-One modelling detail shows up in several invariants and is worth naming, because
-it is a property of EMF rather than of the domain. EMF reads an unset
-enumeration attribute as its first literal, so an optional enumeration cannot be
-distinguished from one written with its first value. Each such vocabulary
-therefore carries a literal of its own for absence, \texttt{absent}, which a
-document cannot write, and the invariants test against it rather than against
-\texttt{null}.
+EMF reads an unset enumeration as its first literal. Optional enumerations use
+an unwritable \texttt{absent} literal, which invariants test instead of
+\texttt{null}. Constraints over every project document at once, such as unique
+application identifiers, are not part of the OCL constraints.
 
-Constraints that need every project document at once, such as two applications
-claiming one identifier, are not in this document. They belong to the
-composition step, where the union of the authored documents exists, and they are
-checked there against the fixtures in the negative set.
+\subsection{Implementation in EMF}
+\label{sec:implementation}
 
-Each code is paired with a committed model that violates it and the
-diagnostics that model must produce, and the pairing is checked on every build:
-a constraint that has only ever been satisfied is not evidence that it fires.
-Appendix~\ref{sec:appendix-refused} shows one such pair.
+The artefacts are Eclipse plug-in projects in \texttt{implementation/emf/},
+built by Maven and Tycho on JDK~21. Three projects make up Task 1.
 
-The same language is also declared, by hand, in the project's production
-implementation, and both declarations are held to the same committed example
-files; that comparison is the subject of the later tasks, not of this one.
+\begin{itemize}
+  \item \texttt{metamodel} holds the two \texttt{.ecore} files, their
+    \texttt{.genmodel} files and the Complete OCL file. The build generates the
+    metamodels' Java classes from the genmodels.
+  \item \texttt{syntax} holds the two Xtext grammars and the generated editor.
+    The editor marks an OCL violation on the line of the authored file that
+    causes it.
+  \item \texttt{cli} holds a program that reads a set of authored files and
+    writes either the parsed model or the \emph{diagnostics} that reject it. A
+    diagnostic holds the code, the file and the path of the rejected object in
+    that file.
+\end{itemize}
+
+The program checks in three steps and stops after the first step that finds an
+error. It parses each file, validates each parsed model against the OCL
+constraints, and then validates the files of a set together, for the
+constraints across documents. It also writes each parsed model as XMI, named
+after its file: \texttt{notes.project.yml} becomes \texttt{notes.project.xmi}.
+
+\texttt{./mvnw verify} in \texttt{implementation/emf} builds the projects and
+runs the tests of Section~\ref{sec:tests}. The projects \texttt{resolve} and
+\texttt{render} contain the start of Tasks 2 and 3.
+
+The hand-in's \texttt{task-1-metamodelling} project holds the metamodels and
+every model as XMI, so the models can be inspected without a build
+(Appendix~\ref{sec:handin}). Its copy of \texttt{project-intent.ecore} embeds
+the OCL invariants, so Eclipse's Validate reports them directly.

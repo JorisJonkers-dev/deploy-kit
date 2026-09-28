@@ -1,349 +1,85 @@
 \section{Worked Examples}
 \label{sec:appendix}
 
-\lstset{style=report}
-
-Three examples, each shown as its input, its state in between and its output,
-cut down to what the example is meant to show. The complete files, and every
-other example, are in the hand-in archive (Appendix~\ref{sec:handin}).
-
-\textbf{Every model is shown as YAML.} The XMI and JSON files are hard to read
-as they are, and both convert to YAML mechanically, so each is shown in that one
-form. An XMI element becomes a mapping, its attributes become fields, and its
-children become a field named by the feature that holds them, a list exactly
-where the metamodel's feature is many-valued; \texttt{xsi:type} becomes
-\texttt{type}, a reference written as an XMI path becomes the name of the object
-it points at, and a map's key/value entries become the mapping they are. JSON
-needs nothing but its own nesting. Nothing is added and nothing is dropped, so
-an input, its resolved model and its diagnostics all read in the same notation
-as the project file an author writes.
+This appendix gives archive paths for three examples
+(Appendix~\ref{sec:handin}).
 
 \subsection{The Minimal Model, End to End}
 \label{sec:appendix-minimal}
 
-The input is one project file in the concrete syntax of
-Section~\ref{sec:constraints}. Comments are removed here; the committed file carries
-one per decision.
-
-\begin{lstlisting}[caption={Input: \texttt{minimal/notes.project.yml}}, label={lst:minimal-input}, language=yaml]
-apiVersion: intent.jorisjonkers.dev/v1
-kind: Project
-schemaVersion: 1.0.0
-project: notes
-owner: joris
-applications:
-  - id: notes
-    observability:
-      alertClass: business-hours
-      scrape: { process: notes-api, surface: http, path: /metrics }
-    exposure:
-      - name: public
-        host: notes.jorisjonkers.dev
-        audience: anonymous
-        contentPolicy: strict
-        routes:
-          - { path: /, match: prefix, process: notes-api, surface: http }
-    processes:
-      - name: notes-api
-        lifecycle: application
-        image: notes-api
-        runtime: node
-        provides: { http: 8080 }
-        placement: { memory: 256Mi, cpu: 50m }
-        probes:
-          readiness: { path: /healthz/ready, port: 8080 }
-          liveness: { path: /healthz/live, port: 8080 }
-        startupBudget: 20s
-        cutover: continuous
-\end{lstlisting}
-
-The parser turns it into an instance of the source metamodel. The file on disk is
-that instance in XMI, which Eclipse opens without the grammar; below it is shown
-as YAML. EMF writes no attribute that holds its default value, which is why
-\texttt{lifecycle: application} and \texttt{alertClass: business-hours} do not
-appear.
-
-\begin{lstlisting}[caption={Input as a model: \texttt{minimal/intent.xmi}, shown as YAML}, label={lst:minimal-xmi}, language=yaml]
-apiVersion: intent.jorisjonkers.dev/v1
-kind: Project
-schemaVersion: 1.0.0
-project: notes
-owner: joris
-applications:
-- id: notes
-  observability:
-    scrape:
-      process: notes-api
-      surface: http
-      path: /metrics
-  exposure:
-  - name: public
-    host: notes.jorisjonkers.dev
-    audience: anonymous
-    contentPolicy: strict
-    routes:
-    - path: /
-      process: notes-api
-      surface: http
-  processes:
-  - name: notes-api
-    startupBudget: 20s
-    cutover: continuous
-    image: notes-api
-    runtime: node
-    placement:
-      memory: 256Mi
-      cpu: 50m
-    provides:
-      http: 8080
-    probes:
-      type: Probes
-      readiness:
-        type: HttpProbe
-        path: /healthz/ready
-        port: 8080
-      liveness:
-        type: HttpProbe
-        path: /healthz/live
-        port: 8080
-\end{lstlisting}
-
-In between is the resolved model: an instance of the target metamodel, written
-by hand as the result the Task 2 transformation must produce. Every value in it
-is either carried from the input or decided by the platform, and nothing in it
-names a Kubernetes field.
-
-\begin{lstlisting}[caption={In between: \texttt{minimal.resolveddeployment}, the application, shown as YAML}, label={lst:minimal-resolved}, language=yaml]
-applications:
-- id: notes
-  project: notes
-  revision: sha256:...
-  namespace: notes-system
-  alertClass: business-hours
-  reconcileUnit: apps-notes
-  releaseGate:
-    deadline: 60s
-    analysis:
-      interval: 30s
-      iterations: 4
-      threshold: 3
-    members:
-    - process: notes-api
-      readiness:
-        type: HttpTarget
-        path: /healthz/ready
-        port: 8080
-      checks:
-      - error-rate
-      - latency
-  exposure:
-  - name: public
-    host: notes.jorisjonkers.dev
-    tier: public-frankfurt
-    routes:
-    - path: /
-      match: prefix
-      audience: anonymous
-      precedence: 1
-      process: notes-api
-      surface: http
-      middleware:
-      - kind: security-headers
-        contentPolicy: strict
-  processes:
-  - name: notes-api
-    identity: notes-api
-    image: ghcr.io/jorisjonkers-dev/notes/notes-api@sha256:9c1e...
-    uid: 1000
-    gid: 1000
-    cutover: continuous
-    switchover: blue-green
-    deadline: 60s
-    replicas: 1
-    memory: 256Mi
-    cpu: 50m
-    hardening: restricted
-    identityToken: false
-    startup:
-      period: 5s
-      failures: 4
-      target:
-        type: HttpTarget
-        path: /healthz/live
-        port: 8080
-    placement:
-      eligibleNodes:
-      - enschede-t1000-1
-      - frankfurt-contabo-1   # and the five between them
-\end{lstlisting}
-
-Table~\ref{tab:minimal-trace} reads the two side by side: what the author wrote,
-and what the platform decided from it.
+The input is \texttt{examples/minimal/notes.project.yml}. EMF does not write
+attributes that hold their default value, so \texttt{lifecycle} and
+\texttt{alertClass} are missing from \texttt{notes.project.xmi} beside it.
+Table~\ref{tab:minimal-trace} compares the authored values with those recorded
+in the hand-written resolved model, \texttt{minimal.resolveddeployment}
+(Section~\ref{sec:examplemodels}).
 
 \begin{table}[!htbp]
 \centering
 \footnotesize
 \begin{tabular}{>{\raggedright\arraybackslash}p{0.30\linewidth}>{\raggedright\arraybackslash}p{0.62\linewidth}}
 \hline
-\textbf{Authored} & \textbf{Decided in the resolved model} \\
+\textbf{Authored} & \textbf{Derived in the resolved model} \\
 \hline
-\texttt{project: notes} & \texttt{namespace="notes-system"}, and the reconcile unit \\
+\texttt{project: notes} & \texttt{namespace="notes-system"}, and the reconcile unit (Section~\ref{sec:targetmetamodel}) \\
 \texttt{cutover: continuous} & \texttt{switchover="blue-green"}, and a \texttt{releaseGate} with this process as its one member \\
 \texttt{startupBudget: 20s} & a startup probe of 4 checks 5 seconds apart, and a deadline of 60 seconds \\
 \texttt{runtime: node} & the checks \texttt{error-rate} and \texttt{latency}, because the profile exposes HTTP server metrics \\
 \texttt{image: notes-api} & the image digest, and the numeric user and group it runs as \\
-\texttt{audience: anonymous} & the edge tier \texttt{public-frankfurt}, and a middleware chain without forward authentication \\
-\texttt{placement} & the machines the process is eligible for: all seven, because nothing narrows the set \\
+\texttt{audience: anonymous} & the edge tier \texttt{public-frankfurt}, and a middleware chain without an authentication check \\
+\texttt{placement} & all seven machines are eligible, with no further placement restriction \\
 \hline
 \end{tabular}
-\caption{The Minimal Model: What Was Authored, and What Was Decided}
+\caption{The Minimal Model: Authored and Derived Values}
 \label{tab:minimal-trace}
 \end{table}
 
-The output is the generated file tree: nine files for this one process. The
-Canary is the object through which the process is switched; every decision in it
-was already in the resolved model, and only the generator spells it.
-
-\begin{lstlisting}[caption={Output: \texttt{minimal/rendered/apps/notes/canary.yaml}, one webhook of three}, label={lst:minimal-output}, language=yaml]
-apiVersion: flagger.app/v1beta1
-kind: Canary
-metadata:
-  name: notes-api
-  namespace: notes-system
-spec:
-  provider: kubernetes
-  targetRef: { apiVersion: apps/v1, kind: Deployment, name: notes-api }
-  progressDeadlineSeconds: 60
-  service: { port: 8080, targetPort: http, portName: http }
-  analysis:
-    interval: 30s
-    iterations: 4
-    threshold: 3
-    webhooks:
-    - name: may-promote
-      type: confirm-promotion
-      url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
-      metadata: { application: notes, process: notes-api, revision: "sha256:..." }
-\end{lstlisting}
-
-\subsection{Two Cutovers in One Project}
+\subsection{Continuous and Interrupted Applications in One Project}
 \label{sec:appendix-knowledge}
 
-The \texttt{knowledge} example shows how one authored question changes the
-shape of the output. Its two applications answer the cutover question
-differently, so they are two applications, and only one of them moves the
-project's schema.
+The input is \texttt{examples/knowledge/knowledge.project.yml}, with the two
+applications of Table~\ref{tab:examples}. In the resolved model, the
+\texttt{continuous} API requires a release gate and its declared migration. The
+\texttt{interrupted} worker has neither: it declares no migration, and its old
+version stops before the new one starts
+(Section~\ref{sec:targetmetamodel}).
 
-\begin{lstlisting}[caption={Input: \texttt{knowledge/knowledge.project.yml}, abridged}, label={lst:knowledge-input}, language=yaml]
-applications:
-  - id: knowledge
-    migration:
-      changelog: knowledge-api/src/main/resources/db/changelog.yml
-    processes:
-      - name: knowledge-api
-        runtime: jvm
-        startupBudget: 600s
-        cutover: continuous
-  - id: knowledge-ingest
-    migration: none
-    processes:
-      - name: knowledge-ingest-worker
-        runtime: python
-        probes: none
-        cutover: interrupted
-        volumes:
-          - { claim: knowledge-vault-clone, size: 20Gi, durability: irreplaceable }
-\end{lstlisting}
-
-In between, the continuous application carries a release gate and a migration;
-the interrupted one carries neither, because it stops before it starts and
-nothing waits on a gate.
-
-\begin{lstlisting}[caption={In between: the two applications' projections, abridged and shown as YAML}, label={lst:knowledge-resolved}, language=yaml]
-- id: knowledge
-  migration:
-    runner: ghcr.io/jorisjonkers-dev/knowledge/knowledge-migration@sha256:c0a4...
-    testedAgainst: sha256:5a1f...
-    nonTransactional: false
-  releaseGate:
-    deadline: 1800s
-    members:
-    - process: knowledge-api
-      checks:
-      - error-rate
-      - latency
-  processes:
-  - name: knowledge-api
-    cutover: continuous
-    switchover: blue-green
-- id: knowledge-ingest
-  processes:
-  - name: knowledge-ingest-worker
-    cutover: interrupted
-    switchover: stop-start
-\end{lstlisting}
-
-In the output, the migration becomes two Jobs named for the revision: the one
-that moves the schema, and the one that would undo it, rendered suspended so
-that only the release gate can start it.
-
-\begin{lstlisting}[caption={Output: \texttt{knowledge/rendered/apps/knowledge/migration.yaml}, the down, abridged}, label={lst:knowledge-output}, language=yaml]
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: knowledge-migration-down-6325500a2c54
-  annotations:
-    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
-spec:
-  suspend: true
-  backoffLimit: 0
-  template:
-    spec:
-      serviceAccountName: knowledge-migration
-      containers:
-      - name: migration
-        image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-migration@sha256:c0a4...
-        args: [down, --to=sha256:5a1f...]
-\end{lstlisting}
-
-\subsection{A Refused Model}
+\subsection{A Rejected Model}
 \label{sec:appendix-refused}
 
-A prepare process runs once before the new version starts, so it serves
-nothing. Declaring what only a serving process has is refused, and the
-diagnostic names the object at fault by its JSON Pointer.
-
-\begin{lstlisting}[caption={Input: \texttt{refusals/prepare-process-serves.project.yml}, the refused process}, label={lst:refused-input}, language=yaml]
-      - name: seed
-        lifecycle: prepare
-        image: seed
-        runtime: none
-        placement: { memory: 64Mi, cpu: 10m }
-        startupBudget: 60s
-        provides: { http: 8080 }
-        probes:
-          readiness: { path: /ready, port: 8080 }
-        replicas: { count: 2, reason: A step that runs once has no second copy to spread. }
-        cutover: continuous
-\end{lstlisting}
-
-\begin{lstlisting}[caption={Output: \texttt{refusals/prepare-process-serves.diagnostics.json}, shown as YAML}, label={lst:refused-output}, language=yaml]
-- code: E_PREPARE_PROCESS_SERVES
-  document: prepare-process-serves.project.yml
-  path: /applications/0/processes/1
-\end{lstlisting}
+\texttt{refusals/prepare-process-serves.project.yml} declares a prepare process
+with a port, probes, replicas and a \texttt{cutover}. These belong to serving
+processes. Its XMI is \texttt{prepare-process-serves.project.xmi}.
+Validating that XMI reports \texttt{E\_PREPARE\_PROCESS\_SERVES} on the second
+process of the first application.
 
 \subsection{The Hand-in Archive}
 \label{sec:handin}
 
-The archive handed in with this report holds the metamodels and every model
-referred to here. Table~\ref{tab:handin} lists its layout. Each example has
-the same three stages as the examples above, and every XMI or JSON file sits
-beside its YAML view, named after it with \texttt{.yml} appended and produced by
-the conversion described at the start of this appendix. The resolved model exists as XMI
-for the minimal example and as the production implementation's JSON projection
-for \texttt{minimal}, \texttt{knowledge} and \texttt{delivery}; the others have
-none yet, because producing it is the Task 2 transformation.
+The archive holds this report as \texttt{report.pdf}, a \texttt{README.md}
+with the steps below, and two folders. The first, \texttt{task-1-metamodelling/}, is an
+Eclipse project with OCL and Xtext natures, imported with File > Import >
+Existing Projects into Workspace. It contains the metamodels, five accepted
+examples and 33 rejected models: 18 single files and 15 document sets.
+\texttt{implementation/} contains the EMF implementation
+(Section~\ref{sec:implementation}) and the examples its tests read.
+Table~\ref{tab:handin} gives the layout. Each authored YAML file appears beside
+its parsed XMI, with any referenced \texttt{env/} files.
+
+Each XMI declares its metamodel in \texttt{xsi:schemaLocation}, allowing Eclipse
+to open it without a registered package. The archive's
+\texttt{project-intent.ecore} embeds the OCL invariants and helpers. Plain
+Validate reports single-document codes. For cross-document sets, open the
+project XMI, add the platform XMI with Load Resource, then select OCL > Load
+Document and load \texttt{model/project-intent.ocl} before validating. Only
+\texttt{minimal} includes a resolved XMI. Task 2 will produce the others.
+
+\texttt{./mvnw verify} in \texttt{implementation/emf} builds the implementation
+and runs its tests; it needs JDK~21. For each example and rejected model it
+writes the parsed model or the diagnostics, and the XMI, under
+\texttt{bundles/cli/}\allowbreak\texttt{target/parity/}. To open the implementation in Eclipse,
+import \texttt{implementation/emf} with File > Import > Existing Maven Projects
+after setting \texttt{emf.target} as the target platform.
 
 \begin{table}[!htbp]
 \centering
@@ -352,63 +88,65 @@ none yet, because producing it is the Task 2 transformation.
 \hline
 \textbf{Path} & \textbf{What it holds} \\
 \hline
-\texttt{metamodels/} & \texttt{project-intent.ecore}, \texttt{resolved-deployment.ecore}, and \texttt{project-intent.ocl}, the constraints of Section~\ref{sec:constraints} \\
-\texttt{examples/<name>/1-input/} & the authored files in concrete syntax, and \texttt{intent.xmi}, the same model as an instance of the source metamodel \\
-\texttt{examples/<name>/2-resolved/} & the resolved model: \texttt{minimal.resolveddeployment} as XMI, and \texttt{resolved*.json} projections \\
-\texttt{examples/<name>/3-output/} & the generated file tree \\
-\texttt{examples/platform/} & the Platform document, and its model as XMI \\
-\texttt{refusals/} & every refused model with the diagnostics it must produce \\
+\texttt{report.pdf} & this report \\
+\texttt{task-1-metamodelling/model/} & \texttt{project-intent.ecore} with \texttt{project-intent.ocl}, the constraints of Section~\ref{sec:constraints}, and \texttt{resolved-deployment.ecore}, each metamodel with its \texttt{.genmodel} \\
+\texttt{\dots/examples/<name>/} & the authored \texttt{*.project.yml}, its \texttt{env/} files, and its XMI, \texttt{*.project.xmi} \\
+\texttt{\dots/examples/minimal/} & also \texttt{minimal.resolveddeployment}, the resolved model as an instance of the target metamodel \\
+\texttt{\dots/examples/platform/} & the platform document, \texttt{platform.intent.yml}, and its XMI \\
+\texttt{\dots/refusals/} & 18 single-file cases and 15 document sets, each with authored files and XMI. \texttt{README.md} gives codes and reproduction steps \\
+\texttt{implementation/emf/} & the Eclipse plug-in projects of Section~\ref{sec:implementation}, with the Maven build \\
+\texttt{implementation/spec/v1/examples/} & the authored models with their expected results, which the tests read \\
 \hline
 \end{tabular}
-\caption{The Layout of the Hand-in Archive}
+\caption{Layout of the Hand-in Archive}
 \label{tab:handin}
 \end{table}
 
-\section{The Constraints in Full}
+\clearpage
+\section{All Constraints}
 \label{sec:allconstraints}
 
-Every invariant of Section~\ref{sec:constraints}, named by the code it emits,
-with the class it sits on. A code on more than one class is reachable from each
-of them. Every one is paired with a refused model in the hand-in archive's
-\texttt{refusals/} directory.
+Table~\ref{tab:constraints} lists each invariant of
+Section~\ref{sec:constraints} by the code it reports, with its context class.
 
-\begin{table}[!htbp]
+\begin{table}[H]
 \centering
 \footnotesize
+\renewcommand{\arraystretch}{0.8}
 \begin{tabular}{>{\raggedright\arraybackslash}p{0.39\linewidth}>{\raggedright\arraybackslash}p{0.14\linewidth}>{\raggedright\arraybackslash}p{0.39\linewidth}}
 \hline
-\textbf{Code} & \textbf{Context} & \textbf{What it refuses} \\
+\textbf{Code} & \textbf{Context} & \textbf{What it rejects} \\
 \hline
-E\_ALERT\_CLASS\_WITHOUT\_SIGNAL & Observability & A class stating how loudly to wake someone, with no signal to wake them about. \\
-E\_CUTOVER\_UNHONOURABLE & Process & A continuous cutover over storage that cannot attach to the second copy a blue/green switchover starts. \\
-E\_CUTOVER\_MISSING & Process & A process no level answers the cutover question for; a prepare process is exempt, because it cuts over nothing. \\
-E\_RELEASE\_UNIT\_MIXED\_CUTOVER & Application & An application whose processes answer the cutover question differently, when it switches as one. \\
-E\_PREPARE\_PROCESS\_SERVES & Process & A prepare process declaring a port, probes, replicas or a cutover, which only a serving process has. \\
-E\_SHARED\_DECLARATION\_DUPLICATED & seven classes & A shared declaration restated unchanged at a lower level, where it changes nothing. \\
-E\_SHARED\_QUANTITY & Placement & A memory or cpu quantity above a process, which means something different for each process holding it. \\
-E\_PLACEMENT\_INCOMPLETE & Process & A process with no quantity of its own, which nothing above it may supply. \\
-E\_OWNER\_ROLE\_GRANTED & DatabaseGrant & The role that changes the schema, granted by hand; it is derived for the migration alone. \\
-E\_MIGRATION\_OWNER\_DUPLICATED & Migration & A second application of one project declaring how the project's database schema moves. \\
-E\_ENGINE\_WITHOUT\_DURABILITY & Process & A backup method named where no volume's durability class asks for one. \\
-E\_DURABILITY\_WITHOUT\_ENGINE & Volume & A volume asking for a backup whose method would have to be guessed. \\
-E\_ENV\_CANNOT\_RELOAD & Rotation & A secret that tolerates a reload, delivered as an environment variable, which is read once at start. \\
-E\_ILLEGAL\_DELIVERY\_FOR\_ACCESS & KvGrant & A delivery the access tier has nothing to project at render time. \\
-E\_NON\_KV\_DELIVERY & TransitGrant, DatabaseGrant & A grant delivered as a value, where the credential is used or minted rather than read. \\
-E\_DUPLICATE\_ROUTE\_MATCH & Route & Two routes of one exposure sharing a path and a match, which derived precedence cannot order. \\
-E\_NO\_FORWARD\_AUTH\_ENDPOINT & Tier & A tier serving authenticated visitors with nothing named to decide whether one is allowed in. \\
-E\_HANDOVER\_BOTH\_PATHS & HandoverLedger & A project named on both delivery paths at once, which two sources would each apply. \\
+E\_ALERT\_CLASS\_WITHOUT\_SIGNAL & Observability & An alert level is set, but no metrics are collected. \\
+E\_CUTOVER\_UNHONOURABLE & Process & A \texttt{continuous} process whose storage cannot attach to the second copy a blue/green switch starts. \\
+E\_CUTOVER\_MISSING & Process & A process with no \texttt{cutover} value at any level. A prepare process is exempt, because it replaces no running version. \\
+E\_RELEASE\_UNIT\_MIXED\_CUTOVER & Application & An application whose processes have different \texttt{cutover} values, although it switches as one unit. \\
+E\_PREPARE\_PROCESS\_SERVES & Process & A prepare process with a port, probes, replicas or a \texttt{cutover}, which only a serving process has. \\
+E\_SHARED\_DECLARATION\_DUPLICATED & seven classes & A shared declaration repeated unchanged at a lower level, where it has no effect. \\
+E\_SHARED\_QUANTITY & Placement & A memory or CPU quantity declared above process level, where it would mean something different for each process. \\
+E\_PLACEMENT\_INCOMPLETE & Process & A process with no memory or CPU quantity of its own. No higher level may supply one. \\
+E\_OWNER\_ROLE\_GRANTED & DatabaseGrant & A hand-written grant of the database role that changes the schema. The platform derives this role for the migration only. \\
+E\_MIGRATION\_OWNER\_DUPLICATED & Migration & A second application in one project that declares a migration for the project's database. \\
+E\_ENGINE\_WITHOUT\_DURABILITY & Process & A backup engine declared where no volume's durability class requires a backup. \\
+E\_DURABILITY\_WITHOUT\_ENGINE & Volume & A volume that requires a backup, with no engine to state the backup method. \\
+E\_ENV\_CANNOT\_RELOAD & Rotation & A secret that tolerates a reload but is delivered as an environment variable, which is read only at start. \\
+E\_ILLEGAL\_DELIVERY\_FOR\_ACCESS & KvGrant & \texttt{custody} delivered as an environment variable or file, although its paths appear only at runtime. Also \texttt{self-renew} delivered as an environment variable, which its identity cannot read. \\
+E\_NON\_KV\_DELIVERY & TransitGrant, DatabaseGrant & A transit or database grant delivered as an environment variable or file. The application requests transit operations from the secret store and fetches database credentials issued per lease. \\
+E\_DUPLICATE\_ROUTE\_MATCH & Route & Two routes of one exposure with the same path and match type, which the derived precedence cannot order. \\
+E\_NO\_FORWARD\_AUTH\_ENDPOINT & Tier & A tier that serves authenticated visitors but declares no endpoint to check whether a visitor may enter. \\
+E\_HANDOVER\_BOTH\_PATHS & HandoverLedger & A project listed on both delivery paths, so two sources would both apply it. \\
 E\_NO\_TIER\_FOR\_AUDIENCE & Exposure, Route & An audience no declared edge tier serves, so the route reaches no edge. \\
-E\_NO\_ENGINE\_POLICY & Process & An engine the platform declares no backup method for. \\
-E\_NO\_DURABILITY\_POLICY & Volume & A durability class the platform declares no policy for. \\
+E\_NO\_ENGINE\_POLICY & Process & An engine with no backup method in the platform document. \\
+E\_NO\_DURABILITY\_POLICY & Volume & A durability class with no policy in the platform document. \\
 E\_SECRETS\_AT\_REST\_REQUIRED & Grant & A secret written into a cluster that does not encrypt secrets at rest. \\
-E\_MIGRATION\_UNDECLARED & Application & An application that reaches a database and says nothing about how its schema moves. \\
-E\_MIGRATION\_WITHOUT\_DATABASE & Migration & A migration on an application that reaches no database, decided only where every provider it reaches was read. \\
-E\_CREDENTIALS\_WITHOUT\_DATABASE & Credentials & A rotation override on an edge to a provider that owns no database. \\
-E\_NO\_MIGRATION\_POLICY & Migration & A changelog read beside a platform document that offers no runner to build it on. \\
-E\_NO\_DELIVERY\_POLICY & Application & A continuous application read beside a platform document that offers no cadence to analyse its blue/green switch at. \\
-E\_HANDOVER\_UNLISTED & Project & A project read beside a handover ledger that names it on neither delivery path. \\
+E\_MIGRATION\_UNDECLARED & Application & An application that uses a database but declares no migration. \\
+E\_MIGRATION\_WITHOUT\_DATABASE & Migration & A migration on an application that uses no database, checked only when the documents of all its providers are loaded. \\
+E\_CREDENTIALS\_WITHOUT\_DATABASE & Credentials & A rotation override on a dependency whose provider has no database. \\
+E\_NO\_MIGRATION\_POLICY & Migration & A changelog, where the platform document defines no migration runner to build it on. \\
+E\_NO\_DELIVERY\_POLICY & Application & A \texttt{continuous} application, where the platform document defines no check interval for its blue/green switch. \\
+E\_HANDOVER\_UNLISTED & Project & A project that the handover ledger lists on neither delivery path. \\
 \hline
 \end{tabular}
-\caption{Every Constraint, Its Context and What It Refuses}
+\caption{All Constraints, Their Context Classes and What They Reject}
 \label{tab:constraints}
 \end{table}
