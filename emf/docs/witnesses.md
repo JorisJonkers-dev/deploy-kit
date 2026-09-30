@@ -21,7 +21,7 @@ name a real model row, it may not also be witnessed, and its count is stated
 beside the witness count, so the gate keeps its teeth while the work is
 outstanding.
 
-This list holds **9** witnesses, and **3** pending.
+This list holds **9** witnesses, and **4** pending.
 
 | id | JUnit test |
 |---|---|
@@ -41,4 +41,5 @@ This list holds **9** witnesses, and **3** pending.
 |---|---|---|
 | REQ-033 | the target metamodel exists here now (#87), but nothing produces a model to validate: the hand-written `minimal` model is input, and the first model this implementation *derives* comes out of the QVT-Operational tracer | #90 |
 | REQ-034 | nothing under `emf/` reads the node contract until placement is resolved against it | #91 |
+| REQ-039 | resolution runs in the production implementation only until the QVT-Operational resolver lands; the part both implementations must meet is the resolved dependency edges, `dependencies.json` | #90 |
 | REQ-035 | `resolved.json` binds the production implementation only, so the shared claim is the rendered tree, and nothing renders here yet ([the parity contract](../../docs/architecture.md#the-parity-contract)) | #94 |

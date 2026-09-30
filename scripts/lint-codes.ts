@@ -90,7 +90,6 @@ export const PENDING: readonly Pending[] = [
       "E_DISK_BINDING_CONFLICT",
       "E_HARDENING_UNMET",
       "E_IMAGE_USER_NOT_NUMERIC",
-      "E_PLACEMENT_UNSATISFIABLE",
       "E_STORAGE_UNSATISFIABLE",
       "E_SUBTREE_PREFIX_COLLISION",
     ],

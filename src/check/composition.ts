@@ -4,7 +4,11 @@
 // names the document it points into, because the object at fault can sit in
 // either.
 import type { Diagnostic } from "../model/diagnostic.ts";
-import type { PlatformIntentDocument } from "../model/platform-intent.ts";
+import {
+  OTLP_SURFACE,
+  type PlatformIntentDocument,
+} from "../model/platform-intent.ts";
+import { collectorEndpoint } from "../model/runtime-profiles.ts";
 import type { ProjectIntentDocument } from "../model/project-intent.ts";
 import {
   effectiveCutover,
@@ -311,9 +315,30 @@ export function setDiagnostics(
             },
           ],
   );
+  // The collector names an Application a project file declares, and the
+  // endpoint every exporting profile is handed is its `otlp` surface.
+  const collector = platform.document.telemetry?.collector;
+  const collects =
+    collectorEndpoint(
+      platform.document,
+      projects.map(({ document }) => document),
+    ) !== undefined;
+  const telemetry =
+    collector === undefined || collects
+      ? []
+      : [
+          {
+            code: "E_UNKNOWN_TELEMETRY_COLLECTOR",
+            document: platform.name,
+            path: "/telemetry",
+            message: `no project file declares an Application ${collector} whose Process provides an \`${OTLP_SURFACE}\` surface`,
+            hint: "Declare the collector in a project file the platform owns, with an `otlp` surface on one of its Processes.",
+          },
+        ];
   return [
     ...proxies,
     ...machinery,
+    ...telemetry,
     ...projects.flatMap(({ name, document }) =>
       projectRefusals(document, platform.document, estate).map((refusal) => ({
         ...refusal,

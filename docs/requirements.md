@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **38** rows. The compiler's behaviours join it as they land.
+This ledger holds **39** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -61,3 +61,4 @@ This ledger holds **38** rows. The compiler's behaviours join it as they land.
 | REQ-036 | Shared Intent declared at the Project or an Application reaches every Process below it: lists extend each other, the lowest declaration of one thing holds, and an identical restatement at two levels is refused | [test/model/lowering.test.ts](../test/model/lowering.test.ts) |
 | REQ-037 | The authored env files are read into the model as the dotenv subset chapter 10 fixes, scoped by the directory holding them, and merged onto the Processes that receive them | [test/model/env.test.ts](../test/model/env.test.ts) |
 | REQ-038 | An Application's revision is the digest of its own element of the Resolved Deployment: every committed projection records it, it does not move when only the provenance does, and it moves when any decision about the Application does | [test/model/resolved-deployment.test.ts](../test/model/resolved-deployment.test.ts) |
+| REQ-039 | The composed union and its pinned inputs resolve, at the use-case seam, to every project's Resolved Deployment projections and dependency edges: minimal's and the Release Gate's equal their committed oracles byte for byte, each derivation chapter 20 names holds, and a node contract the Platform document does not pin, an unlocked image or a Process no node can hold is refused before resolution | [test/model/resolution.test.ts](../test/model/resolution.test.ts) |

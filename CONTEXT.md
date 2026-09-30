@@ -184,8 +184,10 @@ a Process states the paths it must write, and an image that cannot meet the
 class is refused ([0020](docs/adr/model/0020-hardening-is-one-platform-posture.md)).
 
 **Runtime Profile**: the profile selected by `runtime`, from which observability
-and runtime environment variables are derived. Writing one of its keys by hand
-is a build error.
+and runtime environment variables are derived: the Cluster Target, the
+collector's endpoint, the service name and the one port, for `jvm`, `node` and
+`python` ([chapter 10](spec/v1/10-project-intent.md#runtime-profiles)). Writing
+one of its keys by hand is a build error.
 
 **Alert Class**: how urgently a signal about this Application should wake
 someone. Urgency only: which receiver, which channel and which severity mapping
@@ -276,7 +278,9 @@ charts.
 **ClusterState snapshot**: observed cluster facts captured once, digested, and
 then treated as an input like any other.
 
-**Images lock**: image digests, never tags.
+**Images lock**: every image alias a document names, resolved to one digest and
+the user the image runs as; a pinned input, and never a tag
+([chapter 20](spec/v1/20-resolved-deployment.md#the-images-lock)).
 
 **Authority**: which side declares a value. Platform-assigned if and only if it
 must be unique across the estate or draws on a shared finite resource

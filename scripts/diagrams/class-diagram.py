@@ -118,8 +118,8 @@ TREES = {"10-project-intent": {
 }, "14-platform-intent": {
     "Platform": [
         "PlatformMetadata", "Substrate", "Bootstrap", "Tier", "DurabilityPolicies",
-        "EnginePolicies", "MonitorCadence", "ProbeCadence", "EphemeralPolicy",
-        "MigrationPolicy", "DeliveryPolicy", "HandoverLedger", "Provider",
+        "EnginePolicies", "MonitorCadence", "TelemetryPolicy", "ProbeCadence",
+        "EphemeralPolicy", "MigrationPolicy", "DeliveryPolicy", "HandoverLedger", "Provider",
     ],
     "Bootstrap": ["FluxSource", "VaultState"],
     "FluxSource": ["RenderedArtifacts"],
@@ -186,7 +186,8 @@ REPORT_LAYOUTS = {"10-project-intent": {
 }, "14-platform-intent": {
     "columns": {
         "Platform": [
-            ["PlatformMetadata", "Substrate", "MonitorCadence", "ProbeCadence", "EphemeralPolicy"],
+            ["PlatformMetadata", "Substrate", "MonitorCadence", "TelemetryPolicy", "ProbeCadence",
+             "EphemeralPolicy"],
             ["Bootstrap"], ["Tier", "Provider"], ["DurabilityPolicies", "EnginePolicies"],
             ["MigrationPolicy", "DeliveryPolicy", "HandoverLedger"],
         ],

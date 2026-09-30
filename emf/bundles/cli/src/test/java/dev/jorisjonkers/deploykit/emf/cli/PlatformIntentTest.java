@@ -48,7 +48,7 @@ class PlatformIntentTest {
                 .containsEntry("cluster", "production")
                 .extractingByKey("nodeContract")
                 .asString()
-                .startsWith("sha256:6f1c");
+                .startsWith("sha256:a989");
         assertThat(tiers(parsed).get(0))
                 .containsEntry("forwardAuth", "http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward");
     }

@@ -41,10 +41,10 @@ render against a stale one is `E_PARTICIPANT_STALE`.
 
 The Platform document's classes and how they compose. A policy keyed by a
 closed vocabulary is a class with one optional field per literal, so a policy
-the platform does not offer is a field it does not write. Three fields refer
-into another document: a tier's `traefik` and each name in `delivery.machinery`
-name an Application declared in a project file the platform owns, and the
-`handover` ledger names projects.
+the platform does not offer is a field it does not write. Four fields refer
+into another document: a tier's `traefik`, each name in `delivery.machinery` and
+`telemetry.collector` name an Application declared in a project file the
+platform owns, and the `handover` ledger names projects.
 
 A Platform document is checked on its own and together with the project files
 read beside it. On its own, a tier that carries `authenticated` needs its
@@ -61,6 +61,7 @@ other resolves and every policy one asks for the other offers:
 | a volume's Durability Class has no entry in `durability` | `E_NO_DURABILITY_POLICY` |
 | a grant delivered as `env` or `file` where `secretsEncryption` is false | `E_SECRETS_AT_REST_REQUIRED` |
 | a name in `delivery.machinery` names an Application no project file read beside it declares | `E_UNKNOWN_MACHINERY` |
+| `telemetry.collector` names no Application a project file read beside it declares with an `otlp` surface on one of its Processes | `E_UNKNOWN_TELEMETRY_COLLECTOR` |
 | an Application moves its schema with a changelog and the platform declares no `migration` policy | `E_NO_MIGRATION_POLICY` |
 | an Application's cutover is `continuous` and the platform declares no `delivery` policy | `E_NO_DELIVERY_POLICY` |
 | a project file names a project the `handover` ledger puts on neither delivery path | `E_HANDOVER_UNLISTED` |
@@ -192,6 +193,15 @@ platform owns: `platform/edge.project.yml`, `platform/secrets.project.yml`,
 about them is hand-written, and every estate-wide invariant in
 [chapter 40](40-composition.md#the-estate-wide-invariants) sees them.
 
+Their objects live where any Application's do, in `<project>-system` of the
+project that declares them ([chapter 10](10-project-intent.md#application-identity)):
+the worked [`edge`](examples/edge/edge.project.yml) project's in `edge-system`, the
+[`observability`](examples/observability/observability.project.yml) project's in
+`observability-system`, and a secrets project's in `secrets-system`. Every
+derivation that names one (a tier's proxy, the collector a profile is handed, the
+metrics stack a scrape admits, the Secret Store a grant reaches) resolves to
+that namespace, and to no other.
+
 Two consequences are normative:
 
 - **No chart is rendered.** A component whose upstream ships a Helm chart is
@@ -290,6 +300,25 @@ monitors:
 One cadence for every monitor the estate renders, here for the same reason the
 probe cadence below is: it is contended, and no Application knows better
 ([0004](../../docs/adr/model/0004-contention-decides-authority.md)).
+
+## Telemetry
+
+```yaml
+telemetry:
+  collector: otel-collector
+```
+
+Where every exporting Runtime Profile sends its telemetry
+([chapter 10](10-project-intent.md#runtime-profiles)). The block names the
+collector as a tier names its proxy: an Application declared in a project file
+the platform owns. The endpoint each profile is handed derives from it, as
+`http://` and the address of the Process of that Application that provides an
+`otlp` surface, so no project writes the collector's address and none can
+write it wrong. A Platform document without the block names no collector, and
+no profile is handed an endpoint.
+
+The block names the Application and nothing about how it receives: which
+protocol and port are the collector's own `provides`, like any Application's.
 
 That is the whole observability surface of this document. No receiver map, no
 severity mapping, no rule catalog: those belong to the monitoring stack, which
@@ -558,6 +587,9 @@ classDiagram
         +Duration interval
         +Duration timeout
     }
+    class TelemetryPolicy {
+        +ApplicationId collector
+    }
     class ProbeCadence {
         +Duration period
         +Duration timeout
@@ -598,6 +630,7 @@ classDiagram
     Platform "1" *-- "1" DurabilityPolicies : durability
     Platform "1" *-- "1" EnginePolicies : engines
     Platform "1" *-- "1" MonitorCadence : monitors
+    Platform "1" *-- "0..1" TelemetryPolicy : telemetry
     Platform "1" *-- "1" ProbeCadence : probes
     Platform "1" *-- "1" EphemeralPolicy : ephemeral
     Platform "1" *-- "0..1" MigrationPolicy : migration

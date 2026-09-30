@@ -19,13 +19,24 @@ import org.eclipse.xtext.scoping.Scopes;
  * Process of the Application that holds it, and a surface that Process provides. Nothing outside the
  * Application is in scope; a dependency edge's names reach other documents and are not linked here.
  *
- * <p>A tier's proxy is the one name that reaches another document: every Application a project file
- * read in the same set declares (spec/v1/14-platform-intent.md#the-model).
+ * <p>A tier's proxy, a name of the delivery machinery and the telemetry collector reach another
+ * document: every Application a project file read in the same set declares
+ * (spec/v1/14-platform-intent.md#the-model). The collector's scope holds only the Applications whose
+ * Process provides an {@code otlp} surface, so one that receives nothing is a name that links to
+ * nothing, and is refused as one (spec/v1/14-platform-intent.md#telemetry).
  */
 public class ProjectIntentScopes implements IScopeProvider {
 
     @Override
     public IScope getScope(EObject context, EReference reference) {
+        if (reference == ProjectIntentPackage.Literals.TELEMETRY_POLICY__COLLECTOR) {
+            return Scopes.scopeFor(
+                    applications(context.eResource().getResourceSet()).stream()
+                            .filter(ProjectIntentScopes::receivesTelemetry)
+                            .toList(),
+                    application -> QualifiedName.create(((Application) application).getId()),
+                    IScope.NULLSCOPE);
+        }
         if (reference.getEReferenceType() == ProjectIntentPackage.Literals.APPLICATION) {
             return Scopes.scopeFor(
                     applications(context.eResource().getResourceSet()),
@@ -46,6 +57,15 @@ public class ProjectIntentScopes implements IScopeProvider {
                 surface -> QualifiedName.create(String.valueOf(((Map.Entry<?, ?>) surface).getKey())),
                 IScope.NULLSCOPE);
     }
+
+    /** Whether a Process of {@code application} provides the surface a collector receives on. */
+    private static boolean receivesTelemetry(Application application) {
+        return application.getProcesses().stream()
+                .anyMatch(process -> process.getProvides().containsKey(OTLP));
+    }
+
+    /** The surface a telemetry collector receives on. */
+    private static final String OTLP = "otlp";
 
     /** Every Application the project documents of {@code documents} declare, in the order they were read. */
     private static List<Application> applications(ResourceSet documents) {

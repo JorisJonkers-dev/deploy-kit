@@ -24,11 +24,16 @@ const WORKED = [
   "auth/auth.project.yml",
   "data/data.project.yml",
   "delivery/delivery.project.yml",
+  "edge/edge.project.yml",
   "knowledge/knowledge.project.yml",
   "minimal/notes.project.yml",
+  "observability/observability.project.yml",
 ].map(read);
 
-/** The worked Platform document's delivery machinery, which no worked project declares. */
+/** The worked Platform document's telemetry block, which a variant composed with fewer projects drops. */
+const TELEMETRY = /\ntelemetry:\n {2}collector: [^\n]*\n/;
+
+/** The worked Platform document's delivery machinery. */
 const MACHINERY =
   "machinery: [traefik-public, traefik-lan, flagger, release-gate]";
 
@@ -45,29 +50,10 @@ const refusalsOf = (files: readonly AuthoredFile[]) => {
 
 describe("checkIntentSet", () => {
   it("refuses the worked estate exactly where the Platform document says it will", () => {
+    // The foundation is declared: the edge project holds both tier proxies,
+    // `delivery` the rest of the machinery, and `observability` the collector.
+    // What is left is the gate working: nothing encrypts secrets at rest.
     expect(refusalsOf(WORKED)).toStrictEqual([
-      {
-        code: "E_UNKNOWN_TIER_PROXY",
-        document: "platform/platform.intent.yml",
-        path: "/tiers/0",
-      },
-      {
-        code: "E_UNKNOWN_TIER_PROXY",
-        document: "platform/platform.intent.yml",
-        path: "/tiers/1",
-      },
-      // The edge proxies are named as machinery and declared nowhere, as they
-      // are named as tier proxies; `delivery` declares the other two.
-      {
-        code: "E_UNKNOWN_MACHINERY",
-        document: "platform/platform.intent.yml",
-        path: "/delivery",
-      },
-      {
-        code: "E_UNKNOWN_MACHINERY",
-        document: "platform/platform.intent.yml",
-        path: "/delivery",
-      },
       {
         code: "E_SECRETS_AT_REST_REQUIRED",
         document: "data/data.project.yml",
@@ -106,7 +92,15 @@ describe("checkIntentSet", () => {
     });
     expect(
       result.ok && result.value.projects.map(({ project }) => project),
-    ).toStrictEqual(["auth", "data", "delivery", "knowledge", "notes"]);
+    ).toStrictEqual([
+      "auth",
+      "data",
+      "delivery",
+      "edge",
+      "knowledge",
+      "notes",
+      "observability",
+    ]);
   });
 
   it("returns the Platform and the projects when the set breaks nothing", () => {
@@ -119,7 +113,8 @@ describe("checkIntentSet", () => {
         .replace("secretsEncryption: false", "secretsEncryption: true")
         .replace("traefik: traefik-public", "traefik: notes")
         .replace("traefik: traefik-lan", "traefik: notes")
-        .replace(MACHINERY, "machinery: [notes]"),
+        .replace(MACHINERY, "machinery: [notes]")
+        .replace(TELEMETRY, "\n"),
     };
     const result = checkIntentSet([
       platform,
@@ -139,7 +134,8 @@ describe("checkIntentSet", () => {
         .text.replace("secretsEncryption: false", "secretsEncryption: true")
         .replace("traefik: traefik-public", "traefik: notes")
         .replace("traefik: traefik-lan", "traefik: notes")
-        .replace(MACHINERY, "machinery: [notes]"),
+        .replace(MACHINERY, "machinery: [notes]")
+        .replace(TELEMETRY, "\n"),
     };
     const result = checkIntentSet([
       platform,
@@ -201,7 +197,8 @@ describe("checkIntentSet", () => {
         .replace("secretsEncryption: false", "secretsEncryption: true")
         .replace("traefik: traefik-public", "traefik: knowledge")
         .replace("traefik: traefik-lan", "traefik: knowledge")
-        .replace(MACHINERY, "machinery: [knowledge]"),
+        .replace(MACHINERY, "machinery: [knowledge]")
+        .replace(TELEMETRY, "\n"),
     };
     const knowledge = read("knowledge/knowledge.project.yml");
     const lanExposure = {
@@ -222,23 +219,52 @@ describe("checkIntentSet", () => {
   });
 
   it("says what every refusal across documents refused and how to fix it", () => {
-    const result = checkIntentSet(WORKED);
+    // Without the foundation's projects, every name the platform makes into
+    // them is refused, each with what to do about it.
+    const withoutFoundation = WORKED.filter(
+      ({ name }) =>
+        !["edge/", "observability/"].some((dir) => name.startsWith(dir)),
+    );
+    const result = checkIntentSet(withoutFoundation);
     const diagnostics = result.ok ? [] : result.diagnostics;
 
-    expect(diagnostics.map(({ message }) => message).slice(0, 5)).toStrictEqual(
+    expect(diagnostics.map(({ message }) => message).slice(0, 6)).toStrictEqual(
       [
         "no project file declares the Application traefik-public this tier's proxy names",
         "no project file declares the Application traefik-lan this tier's proxy names",
         "no project file declares the Application traefik-public the delivery machinery names",
         "no project file declares the Application traefik-lan the delivery machinery names",
+        "no project file declares an Application otel-collector whose Process provides an `otlp` surface",
         "delivery env writes a secret into the cluster, and the platform does not encrypt secrets at rest",
       ],
     );
-    expect(diagnostics.map(({ hint }) => hint).slice(1, 5)).toStrictEqual([
+    expect(diagnostics.map(({ hint }) => hint).slice(1, 6)).toStrictEqual([
       "Declare the proxy Application in a project file the platform owns.",
       "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
       "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
+      "Declare the collector in a project file the platform owns, with an `otlp` surface on one of its Processes.",
       "Deliver the secret through the application itself, or enable `secretsEncryption` on the platform.",
+    ]);
+  });
+
+  it("refuses a collector that provides no otlp surface, as it refuses one nothing declares", () => {
+    const observability = read("observability/observability.project.yml");
+    const deaf = {
+      name: observability.name,
+      text: observability.text.replace("otlp: 4317", "grpc: 4317"),
+    };
+
+    expect(
+      refusalsOf([
+        ...WORKED.filter(({ name }) => name !== observability.name),
+        deaf,
+      ]).filter(({ code }) => code === "E_UNKNOWN_TELEMETRY_COLLECTOR"),
+    ).toStrictEqual([
+      {
+        code: "E_UNKNOWN_TELEMETRY_COLLECTOR",
+        document: "platform/platform.intent.yml",
+        path: "/telemetry",
+      },
     ]);
   });
 });

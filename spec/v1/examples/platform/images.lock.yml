@@ -1,0 +1,40 @@
+# The images lock: every image alias the estate's documents name, resolved to
+# one digest and the user the image runs as
+# (spec/v1/20-resolved-deployment.md#the-images-lock). A pinned input like any
+# other, carried by digest in every Resolved Deployment rendered from it.
+#
+# An alias is what a Process's `image` names; nothing authored names a tag or a
+# digest. `uid` and `gid` are what the image's own user is, read once when the
+# lock is written, and what the one hardening posture runs it as.
+
+apiVersion: lock.jorisjonkers.dev/v1
+kind: ImagesLock
+schemaVersion: 1.0.0
+name: estate
+
+images:
+  flagger:
+    repository: ghcr.io/fluxcd/flagger
+    digest: "sha256:5d1b8f3e7a2c9d4b6e0f1a3c5e7b9d2f4a6c8e0b1d3f5a7c9e2b4d6f8a0c1e3b"
+    uid: 10001
+    gid: 10001
+  notes-api:
+    repository: ghcr.io/jorisjonkers-dev/notes/notes-api
+    digest: "sha256:9c1e5a4b7d2f8e3a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a"
+    uid: 1000
+    gid: 1000
+  otel-collector:
+    repository: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib
+    digest: "sha256:8e2c4a6f0b1d3e5a7c9f2b4d6e8a0c1f3b5d7e9a2c4f6b8d0e1a3c5f7b9d2e4a"
+    uid: 10001
+    gid: 10001
+  release-gate:
+    repository: ghcr.io/jorisjonkers-dev/delivery/release-gate
+    digest: "sha256:3e7a9c1d5b2f8e4a6c0d9b7e5f3a1c8d6e4b2a0f9c7e5d3b1a8f6e4c2d0b9a7e"
+    uid: 1000
+    gid: 1000
+  traefik:
+    repository: docker.io/library/traefik
+    digest: "sha256:1f3d5b7a9c2e4f6a8b0d1c3e5f7a9b2d4c6e8f0a1b3d5c7e9f2a4b6d8c0e1f3a"
+    uid: 65532
+    gid: 65532

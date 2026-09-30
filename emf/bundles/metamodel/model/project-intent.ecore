@@ -336,6 +336,7 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="durability" lowerBound="1" eType="#//DurabilityPolicies" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="engines" lowerBound="1" eType="#//EnginePolicies" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="monitors" lowerBound="1" eType="#//MonitorCadence" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="telemetry" eType="#//TelemetryPolicy" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="hardening" lowerBound="1" eType="#//HardeningClass"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="probes" lowerBound="1" eType="#//ProbeCadence" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="ephemeral" lowerBound="1" eType="#//EphemeralPolicy" containment="true"/>
@@ -420,6 +421,9 @@
   <eClassifiers xsi:type="ecore:EClass" name="MonitorCadence">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="TelemetryPolicy">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="collector" lowerBound="1" eType="#//Application"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ProbeCadence">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="period" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

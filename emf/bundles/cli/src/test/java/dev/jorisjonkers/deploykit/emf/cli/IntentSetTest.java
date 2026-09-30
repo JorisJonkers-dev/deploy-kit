@@ -20,18 +20,20 @@ class IntentSetTest {
             Examples.of("auth/auth.project.yml"),
             Examples.of("data/data.project.yml"),
             Examples.of("delivery/delivery.project.yml"),
+            Examples.of("edge/edge.project.yml"),
             Examples.of("knowledge/knowledge.project.yml"),
-            Examples.of("minimal/notes.project.yml"));
+            Examples.of("minimal/notes.project.yml"),
+            Examples.of("observability/observability.project.yml"));
+
+    /** The worked Platform document's telemetry block, which a variant composed with fewer projects drops. */
+    private static final String TELEMETRY = "\ntelemetry:\n  collector: [^\n]*\n";
 
     @Test
     void theWorkedEstateIsRefusedExactlyWhereThePlatformDocumentSaysItWillBe() {
+        // The foundation is declared: what is left is nothing encrypting secrets at rest.
         assertThat(Pipeline.check(WORKED))
                 .extracting(Diagnostic::code, Diagnostic::document, Diagnostic::path)
                 .containsExactlyInAnyOrder(
-                        tuple("E_UNKNOWN_TIER_PROXY", "platform.intent.yml", "/tiers/0"),
-                        tuple("E_UNKNOWN_TIER_PROXY", "platform.intent.yml", "/tiers/1"),
-                        tuple("E_UNKNOWN_MACHINERY", "platform.intent.yml", "/delivery"),
-                        tuple("E_UNKNOWN_MACHINERY", "platform.intent.yml", "/delivery"),
                         tuple(
                                 "E_SECRETS_AT_REST_REQUIRED",
                                 "data.project.yml",
@@ -63,8 +65,8 @@ class IntentSetTest {
                         .replace("traefik: traefik-public", "traefik: notes")
                         .replace("traefik: traefik-lan", "traefik: notes")
                         .replace(
-                                "machinery: [traefik-public, traefik-lan, flagger, release-gate]",
-                                "machinery: [notes]"));
+                                "machinery: [traefik-public, traefik-lan, flagger, release-gate]", "machinery: [notes]")
+                        .replaceFirst(TELEMETRY, "\n"));
 
         assertThat(Pipeline.check(List.of(platform, Examples.of("minimal/notes.project.yml"))))
                 .isEmpty();
@@ -100,7 +102,8 @@ class IntentSetTest {
                         .replace("traefik: traefik-lan", "traefik: knowledge")
                         .replace(
                                 "machinery: [traefik-public, traefik-lan, flagger, release-gate]",
-                                "machinery: [knowledge]"));
+                                "machinery: [knowledge]")
+                        .replaceFirst(TELEMETRY, "\n"));
         Path knowledge = Examples.write(
                 directory,
                 "knowledge.project.yml",
@@ -113,5 +116,19 @@ class IntentSetTest {
                         tuple("E_NO_TIER_FOR_AUDIENCE", "/applications/0/exposure/0/routes/1"),
                         tuple("E_NO_TIER_FOR_AUDIENCE", "/applications/0/exposure/0/routes/2"),
                         tuple("E_NO_TIER_FOR_AUDIENCE", "/applications/0/exposure/0/routes/3"));
+    }
+
+    @Test
+    void theFoundationsNamesAreRefusedWhereNoProjectFileDeclaresThem() {
+        assertThat(Pipeline.check(WORKED.stream()
+                        .filter(path -> !path.toString().contains("/edge/")
+                                && !path.toString().contains("/observability/"))
+                        .toList()))
+                .extracting(Diagnostic::code, Diagnostic::path)
+                .contains(
+                        tuple("E_UNKNOWN_TIER_PROXY", "/tiers/0"),
+                        tuple("E_UNKNOWN_TIER_PROXY", "/tiers/1"),
+                        tuple("E_UNKNOWN_MACHINERY", "/delivery"),
+                        tuple("E_UNKNOWN_TELEMETRY_COLLECTOR", "/telemetry"));
     }
 }

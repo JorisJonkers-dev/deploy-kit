@@ -711,6 +711,25 @@ conditionals, no arithmetic. The placeholder names the source; the key names the
 variable. That is what lets `knowledge` write `DB_HOST` and `n8n` write
 `DB_POSTGRESDB_HOST` from the same Postgres.
 
+### Runtime profiles
+
+A Process's `runtime` selects the profile whose values are injected into its
+environment, beside the variables its env files set. Only the three runtimes
+that export telemetry and HTTP server metrics inject anything; `static` and
+`none` inject no value at all:
+
+| variable | value | injected by |
+|---|---|---|
+| `DEPLOYMENT_ENVIRONMENT` | the Platform document's `metadata.cluster`, the Cluster Target the render is for | `jvm`, `node`, `python` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://` and the address of the collector's `otlp` surface ([chapter 14](14-platform-intent.md#telemetry)); absent where the platform names no collector | `jvm`, `node`, `python` |
+| `OTEL_SERVICE_NAME` | the Process's name | `jvm`, `node`, `python` |
+| `PORT` | the port of the Process's only surface; absent where it provides none or more than one, because then no single port is the one it listens on | `jvm`, `node`, `python` |
+
+The variables are sorted by name with the authored ones, as every rendered
+environment is. The set is closed: a variable this table does not name is
+written in an env file or it does not exist, and one it names is never
+written there.
+
 ### The dotenv subset that is read
 
 An env file is a model artefact and not a blob the renderer passes through, so
@@ -850,7 +869,7 @@ choosing ([0016](../../docs/adr/model/0016-probes-are-siblings-and-startup-targe
 | derived | from |
 |---|---|
 | the startup probe's **target** | the **liveness** declaration: its `path` + `port`, or its `tcp` port |
-| the startup probe's period and failure threshold | `startupBudget`, as before |
+| the startup probe's period and failure threshold | a period of 5 seconds, and as many failures as periods fit the `startupBudget`, rounded up: a 20-second budget is 4, a 21-second one 5 |
 | the readiness and liveness cadence | the Platform Intent's probe policy: its `period`, `timeout` and `failures`, carried on every rendered probe |
 | `initialDelaySeconds` | `0` on readiness and liveness, because the startup probe already gates both |
 
@@ -863,7 +882,9 @@ crash-loops on somebody else's outage.
 
 A Process declaring readiness and no liveness therefore derives **no startup
 probe** (there is nothing safe to poll) and its start is bounded by the
-progress deadline alone.
+progress deadline alone. So does a Process that declares no `startupBudget`:
+with no budget there is no threshold to derive, and its progress deadline is
+the substrate's own, 600 seconds, rather than a number the model invents.
 
 Readiness is also what the Application's atomic switchover waits on: healthy means
 *this* Process's declared readiness, so an Application with a Process that never
@@ -1375,6 +1396,11 @@ Traefik happens to sort:
 |---|---|
 | `match: exact` | before any `prefix` |
 | a longer `prefix` | before a shorter one |
+
+The ordering is written as a **precedence**, one per route, smaller matched
+first: every `exact` route of a host shares the first, because two exact paths
+cannot both match a request, and each distinct prefix length after them takes
+the next. `knowledge`'s three exact routes are 1, `/mcp/` is 2 and `/` is 3.
 
 The rendered route carries that ordering explicitly, so what the document says
 is what the edge does, the ordering is visible in a diff, and a proxy that

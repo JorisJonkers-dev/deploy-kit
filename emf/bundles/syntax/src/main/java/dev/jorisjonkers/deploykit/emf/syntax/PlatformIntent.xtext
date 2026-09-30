@@ -21,6 +21,7 @@ Platform returns Platform:
 	& ('durability' ':' BEGIN durability=DurabilityPolicies END)
 	& ('engines' ':' BEGIN engines=EnginePolicies END)
 	& ('monitors' ':' BEGIN monitors=MonitorCadence END)
+	& ('telemetry' ':' BEGIN telemetry=TelemetryPolicy END)?
 	& ('hardening' ':' hardening=HardeningClass)
 	& ('probes' ':' BEGIN probes=ProbeCadence END)
 	& ('ephemeral' ':' BEGIN ephemeral=EphemeralPolicy END)
@@ -107,6 +108,11 @@ MonitorCadence returns MonitorCadence:
 	(('interval' ':' interval=Text)
 	& ('timeout' ':' timeout=Text));
 
+// The collector names an Application a project file declares, linked across the
+// documents read together, as a tier's proxy is.
+TelemetryPolicy returns TelemetryPolicy:
+	'collector' ':' collector=[Application|Text];
+
 ProbeCadence returns ProbeCadence:
 	(('period' ':' period=Text)
 	& ('timeout' ':' timeout=Text)
@@ -146,12 +152,12 @@ Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword | PlatformKeyword;
 
 PlatformKeyword:
-	'acme' | 'address' | 'analysis' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cluster' | 'cni' |
+	'acme' | 'address' | 'analysis' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cluster' | 'cni' | 'collector' |
 	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'embedded' | 'engines' | 'ephemeral' | 'estate' | 'etcd' |
 	'failures' | 'flux' | 'forwardAuth' | 'handover' | 'hardening' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
 	'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'providers' | 'restricted' | 'retireBy' |
 	'repository' | 'retain' | 'runner' | 'schedule' | 'secretsEncryption' | 'serverCount' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
-	'surfaces' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'vault';
+	'surfaces' | 'telemetry' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'vault';
 
 enum Datastore returns Datastore:
 	sqlite='sqlite' | etcd='etcd';

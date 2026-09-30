@@ -339,6 +339,57 @@ snapshot. One entry per fragment rather than one `intent` digest for all of
 them, because the claim is that re-rendering from *these* inputs reproduces this
 tree, and a single digest over the union cannot say which fragment moved.
 
+**A digest is taken over the input's model, not its bytes**: the `sha256` of
+its canonical JSON (RFC 8785, the form every oracle file is written in), as
+the input is read. A comment or a reordered key moves nothing, because it
+decides nothing; a changed value always moves the digest. An Intent Fragment's
+digest covers its project file and the env files beside it together, as an
+object holding the parsed document under `document` and, under `env`, each env
+file's scope and parsed content, in the order its paths sort. Each entry is
+named for what it identifies: a fragment by its project, the Platform document
+by its `metadata.project`, the node contract and the ClusterState snapshot by
+their cluster, and the images lock by its own `name`. The fragments come first,
+sorted by name, then the other four in the order the opening quote lists them.
+
+`renderHash` is the `sha256` of the canonical JSON of an object holding
+`schemaPackageIntegrity` and `inputDigests`, exactly as the artifact records
+them. It is a function of the digests and nothing else, so it moves when and
+only when one of them does.
+
+The node contract read must be the one the Platform document pins: its digest
+equals `metadata.nodeContract`, or the render is `E_NODE_CONTRACT_MISMATCH`, at
+the Platform document, before anything resolves. A contract nobody pinned would
+make every placement answer a question the Platform document did not ask.
+
+### The images lock
+
+```yaml
+apiVersion: lock.jorisjonkers.dev/v1
+kind: ImagesLock
+schemaVersion: 1.0.0
+name: estate
+images:
+  notes-api:
+    repository: ghcr.io/jorisjonkers-dev/notes/notes-api
+    digest: "sha256:9c1e…"
+    uid: 1000
+    gid: 1000
+```
+
+One entry per image alias a document names, keyed by the alias. It resolves the
+alias to one image, written `<repository>@<digest>` wherever it is rendered, and
+records the user the image runs as, which the hardening posture needs and no
+Process authors ([chapter 10](10-project-intent.md#the-uid-is-a-pinned-input-and-the-volume-needs-a-group)).
+An alias a Process or a sidecar names that the lock holds no entry for is
+`E_UNLOCKED_IMAGE`, at that `image`: a tag cannot stand in for it, because a tag
+is the mutable reference this lock exists to remove.
+
+| refused before resolution | error |
+|---|---|
+| the node contract's digest is not the Platform document's `metadata.nodeContract` | `E_NODE_CONTRACT_MISMATCH` |
+| a Process's or a sidecar's `image` names an alias the images lock does not hold | `E_UNLOCKED_IMAGE` |
+| no node in the node contract is eligible for a Process ([Layer 2 does not assign a node](#layer-2-does-not-assign-a-node)) | `E_PLACEMENT_UNSATISFIABLE` |
+
 Two fields the previous generation carried are gone.
 `contextRef`, an OCI digest of a published context bundle, named a second
 publication path that [0047](../../docs/adr/model/0047-one-publication-path.md)
@@ -411,6 +462,22 @@ snapshot is the fact. A `disk` dimension that no longer admits the node holding
 the bound volume is `E_DISK_BINDING_CONFLICT` at composition, a build error,
 never a silent re-placement, because moving the data is a state-move-plan and
 not a re-render.
+
+The snapshot is a document of its own:
+
+```yaml
+apiVersion: state.jorisjonkers.dev/v1
+kind: ClusterState
+schemaVersion: 1.0.0
+cluster: production
+capturedAt: 2026-09-30T00:00:00Z
+bindings:   [{claim: postgres-data, node: enschede-t1000-1}]
+placements: [{process: postgres, node: enschede-t1000-1}]
+```
+
+`capturedAt` is when the collector ran, which is the snapshot's age the artifact
+carries. An estate with no bound volume and no recorded placement captures both
+lists empty, and is still a snapshot with a digest.
 
 Four documents must not be conflated:
 

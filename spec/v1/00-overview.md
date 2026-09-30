@@ -256,6 +256,8 @@ parse-checked in CI.
 
 | path | what it shows |
 |---|---|
+| `examples/{edge,observability,delivery}/<project>.project.yml` | the foundation the worked Platform document names, declared as projects: both Traefik instances, the telemetry collector, Flagger and the Release Gate |
+| `examples/platform/{images.lock,cluster-state,node-contract}.yml` | the pinned inputs beside the Platform document, which every resolution reads by digest |
 | `examples/{auth,knowledge,data,minimal}/<project>.project.yml` | Project Intent, one file per project: two-level secret grants, `probes: none` stated explicitly, TCP probes, `placement` dimensions, declared `writablePaths`, `durability` per volume, and the `auth` pair as two Processes of one Application |
 | `examples/{auth,knowledge,data,minimal}/env/<process>/base.env` | env files, one set **per Process** in a directory named for it, threaded with `${dependency:…}` and `${secret:<granted-path>#<key>}` placeholders whose paths byte-match a granted path |
 | `examples/workflows/project-publish-fragment.yml` | publish after the image build, with every image digest resolved, `oras push` then `oras resolve`, read back |
