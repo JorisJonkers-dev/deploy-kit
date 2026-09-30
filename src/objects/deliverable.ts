@@ -1,11 +1,18 @@
 // A Deliverable (spec/v1/30-deliverables.md#attribution): one file of the
 // render, the objects it holds, and the one adapter it is attributed to.
-import type { Canary, IngressRoute, PodMonitor } from "./custom.ts";
+import type {
+  Canary,
+  IngressRoute,
+  PodMonitor,
+  ServiceMonitor,
+} from "./custom.ts";
 import type {
   Deployment,
   Kustomization,
   Namespace,
   NetworkPolicy,
+  PersistentVolumeClaim,
+  Service,
   ServiceAccount,
 } from "./kubernetes.ts";
 
@@ -15,8 +22,11 @@ export type RenderedObject =
   | ServiceAccount
   | Deployment
   | NetworkPolicy
+  | Service
+  | PersistentVolumeClaim
   | Canary
   | PodMonitor
+  | ServiceMonitor
   | IngressRoute;
 
 export interface Deliverable {

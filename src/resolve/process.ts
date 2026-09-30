@@ -2,6 +2,7 @@
 // (spec/v1/20-resolved-deployment.md#derived-mechanics): what the Application
 // declared, carried through, and every mechanic derived from it and from the
 // pinned platform facts. Nothing here is authored and nothing may be.
+import type { ClusterStateDocument } from "../model/cluster-state.ts";
 import type {
   EffectiveProcess,
   EffectiveProject,
@@ -20,12 +21,14 @@ import type {
 } from "../model/resolved-deployment.ts";
 import { exports, namespaceOf } from "../model/runtime-profiles.ts";
 import { resolveEdge } from "./dependencies.ts";
+import { resolveVolumes } from "./volumes.ts";
 
 /** What resolving one Process reads beyond the Process itself. */
 export interface ProcessContext {
   readonly platform: PlatformIntentDocument;
   readonly contract: NodeContractDocument;
   readonly lock: ImagesLockDocument;
+  readonly clusterState: ClusterStateDocument;
   readonly project: string;
   /** Every project of the composed union, lowered. */
   readonly union: readonly EffectiveProject[];
@@ -168,10 +171,32 @@ function environmentOf(
   return entries.sort((a, b) => (a.name < b.name ? -1 : 1));
 }
 
+/**
+ * Where a Process may land, and where its data already is: a claim the
+ * ClusterState snapshot records as bound holds the Process to that node
+ * (spec/v1/20-resolved-deployment.md#cluster-state).
+ */
+function placementOf(
+  process: EffectiveProcess,
+  context: ProcessContext,
+): ResolvedProcess["placement"] {
+  // A missing list and an empty one hold the Process to no node alike.
+  // Stryker disable next-line ArrayDeclaration
+  const claims = new Set((process.volumes ?? []).map(({ claim }) => claim));
+  const binding = context.clusterState.bindings.find(({ claim }) =>
+    claims.has(claim),
+  );
+  return {
+    eligibleNodes: eligibleNodes(process, context.contract),
+    ...(binding === undefined
+      ? {}
+      : { boundTo: binding.node, from: "cluster-state" as const }),
+  };
+}
+
 /** A family whose derivation lands in a later slice stops the resolution rather than leaving it out. */
 function notYet(process: EffectiveProcess): void {
   const pending = [
-    ["a volume", process.volumes],
     // A grant's policy peer is the Secret Store, which no pinned input names yet.
     ["a grant", process.secrets],
     ["an Asset", process.assets],
@@ -194,6 +219,7 @@ export function resolveProcess(
   const dependencies = (process.dependsOn ?? []).map((edge) =>
     resolveEdge(edge, context.union, context.platform),
   );
+  const volumes = resolveVolumes(process, context.platform, context.lock);
   const surfaces = Object.entries(process.provides ?? {}).map(
     ([name, port]) => ({ name, port }),
   );
@@ -216,7 +242,8 @@ export function resolveProcess(
     // grant stops above until the Secret Store is a pinned fact.
     identityToken: false,
     ...probesOf(process, context.platform),
-    placement: { eligibleNodes: eligibleNodes(process, context.contract) },
+    placement: placementOf(process, context),
+    ...(volumes.length === 0 ? {} : { volumes }),
     ...(dependencies.length === 0 ? {} : { dependencies }),
     ...(process.writablePaths === undefined
       ? {}

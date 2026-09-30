@@ -37,13 +37,15 @@ context Process
 		(lifecycle <> Lifecycle::prepare and effectiveCutover = Cutover::continuous)
 			implies volumes->isEmpty()
 
-	-- The engine keys the backup method, so it names one nothing asks for when no
-	-- volume derives a backup. `Engine::absent` is the literal a document cannot
-	-- write: EMF reads an unset enumeration as its first literal, so the model
-	-- gives absence one of its own.
+	-- The engine keys the backup method and, where it owns databases, the catalog
+	-- its consumers derive, so it names something nothing asks for only when no
+	-- volume derives a backup and it owns no database. `Engine::absent` is the
+	-- literal a document cannot write: EMF reads an unset enumeration as its first
+	-- literal, so the model gives absence one of its own.
 	inv E_ENGINE_WITHOUT_DURABILITY:
 		engine <> Engine::absent implies
-			volumes->exists(durability = DurabilityClass::recoverable or durability = DurabilityClass::irreplaceable)
+			(volumes->exists(durability = DurabilityClass::recoverable or durability = DurabilityClass::irreplaceable)
+				or engine = Engine::postgres)
 
 context Volume
 	-- The backup method comes from the Process's engine, and a guessed backup is

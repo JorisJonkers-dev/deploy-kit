@@ -1426,6 +1426,7 @@ classDiagram
     }
     class ResolvedVolume {
         +string claim
+        +Path mountAt
         +Quantity size
         +DurabilityClass durability
     }

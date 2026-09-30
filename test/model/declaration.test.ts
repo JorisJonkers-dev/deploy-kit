@@ -18,10 +18,16 @@ describe("the derived read path", () => {
         keys: ["user"],
         access: "read",
         delivery: "env",
+        rotation: { tolerates: "restart" },
       }),
     ).toBe("secret/data/platform/postgres/kb");
     expect(
-      derivedReadPath({ engine: "database", role: "kb", delivery: "self" }),
+      derivedReadPath({
+        engine: "database",
+        role: "kb",
+        delivery: "self",
+        rotation: { tolerates: "reload" },
+      }),
     ).toBe("database/creds/kb");
     expect(
       derivedReadPath({
@@ -29,6 +35,7 @@ describe("the derived read path", () => {
         key: "jwt",
         operations: ["sign"],
         delivery: "self",
+        rotation: { tolerates: "reload" },
       }),
     ).toBe("transit/jwt");
   });
@@ -40,13 +47,20 @@ describe("the derived read path", () => {
         keys: ["k"],
         access: "read",
         delivery: "env",
+        rotation: { tolerates: "restart" },
       }),
-      derivedReadPath({ engine: "database", role: "x", delivery: "self" }),
+      derivedReadPath({
+        engine: "database",
+        role: "x",
+        delivery: "self",
+        rotation: { tolerates: "reload" },
+      }),
       derivedReadPath({
         engine: "transit",
         key: "x",
         operations: ["sign"],
         delivery: "self",
+        rotation: { tolerates: "reload" },
       }),
     ];
 

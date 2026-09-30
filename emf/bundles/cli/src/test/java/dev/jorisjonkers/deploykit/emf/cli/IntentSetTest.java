@@ -29,9 +29,22 @@ class IntentSetTest {
     private static final String TELEMETRY = "\ntelemetry:\n(  .*\n)+";
 
     @Test
-    void theWorkedEstateIsRefusedExactlyWhereThePlatformDocumentSaysItWillBe() {
-        // The foundation is declared: what is left is nothing encrypting secrets at rest.
-        assertThat(Pipeline.check(WORKED))
+    void theWorkedEstateIsRefusedNowhere() {
+        // The foundation is declared and secrets are encrypted at rest.
+        assertThat(Pipeline.check(WORKED)).isEmpty();
+    }
+
+    @Test
+    void everyEnvAndFileGrantIsRefusedWhereSecretsAreNotEncryptedAtRest(@TempDir Path directory) {
+        Path platform = Examples.write(
+                directory,
+                "platform.intent.yml",
+                Examples.read("platform/platform.intent.yml")
+                        .replace("secretsEncryption: true", "secretsEncryption: false"));
+        List<Path> unencrypted = new java.util.ArrayList<>(WORKED.subList(1, WORKED.size()));
+        unencrypted.add(0, platform);
+
+        assertThat(Pipeline.check(unencrypted))
                 .extracting(Diagnostic::code, Diagnostic::document, Diagnostic::path)
                 .containsExactlyInAnyOrder(
                         tuple(

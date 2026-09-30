@@ -76,3 +76,20 @@ export interface IngressRoute {
     readonly tls?: { readonly certResolver?: string };
   };
 }
+
+export interface ServiceMonitor {
+  readonly apiVersion: "monitoring.coreos.com/v1";
+  readonly kind: "ServiceMonitor";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly jobLabel: string;
+    readonly selector: { readonly matchLabels: Labels };
+    readonly namespaceSelector: { readonly matchNames: readonly string[] };
+    readonly endpoints: readonly {
+      readonly port: string;
+      readonly path: string;
+      readonly interval: string;
+      readonly scrapeTimeout: string;
+    }[];
+  };
+}

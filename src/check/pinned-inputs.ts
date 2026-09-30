@@ -67,6 +67,20 @@ function processRefusals(set: PinnedSet, { document, effective }: Located) {
   );
 }
 
+/** Every backup method the platform names is an image the lock holds. */
+const methodRefusals = (set: PinnedSet, platform: string): Diagnostic[] =>
+  Object.entries(set.platform.engines)
+    .filter(
+      ([, method]) => !Object.hasOwn(set.imagesLock.images, method.backup),
+    )
+    .map(([engine, method]) => ({
+      code: "E_UNLOCKED_IMAGE",
+      document: platform,
+      path: `/engines/${engine}/backup`,
+      message: `the images lock holds no entry for ${method.backup}`,
+      hint: "Lock the alias, or name one the images lock holds.",
+    }));
+
 /** Every rule the pinned inputs break, before resolution reads them. */
 export const pinnedDiagnostics = (
   set: PinnedSet,
@@ -75,5 +89,6 @@ export const pinnedDiagnostics = (
   platform: string,
 ): Diagnostic[] => [
   ...contractRefusals(set, contractDigest, platform),
+  ...methodRefusals(set, platform),
   ...located.flatMap((project) => processRefusals(set, project)),
 ];

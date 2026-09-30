@@ -101,9 +101,9 @@ describe("the kubernetes adapter", () => {
       "notes-api: a job Process that switches blue-green is not rendered yet",
     );
     expect(() =>
-      renderKubernetes(edited(undefined, () => ({ switchover: "stop-start" }))),
+      renderKubernetes(edited(undefined, () => ({ switchover: "rolling" }))),
     ).toThrow(
-      "notes-api: a application Process that switches stop-start is not rendered yet",
+      "notes-api: a application Process that switches rolling is not rendered yet",
     );
     expect(() =>
       renderKubernetes(
@@ -124,6 +124,131 @@ describe("the kubernetes adapter", () => {
     ).toThrow(
       "notes-api: a blue-green Process that serves no surface is not rendered yet",
     );
+    expect(() =>
+      renderKubernetes(
+        edited(undefined, () => ({
+          volumes: [
+            {
+              claim: "queue",
+              mountAt: "/q",
+              size: "20Gi",
+              durability: "recoverable",
+              backup: { schedule: "15 3 * * *", retain: 14, method: "m" },
+            },
+          ],
+        })),
+      ),
+    ).toThrow("notes-api: a backup is not rendered yet");
+  });
+
+  const stopStart = () =>
+    renderKubernetes(
+      edited(undefined, () => ({
+        switchover: "stop-start",
+        cutover: "interrupted",
+        replicas: 1,
+        volumes: [
+          {
+            claim: "cache",
+            mountAt: "/cache",
+            size: "2Gi",
+            durability: "reconstructible",
+          },
+        ],
+      })),
+    );
+
+  it("replaces a stop-start Process in place, keeps its count, and gives it a Service and no Canary", () => {
+    const rendered = stopStart();
+    const [deployment] = objectsAt(rendered, "workload.yaml") as {
+      spec: {
+        replicas: number;
+        strategy: unknown;
+        template: {
+          spec: Record<string, unknown> & {
+            containers: Record<string, unknown>[];
+          };
+        };
+      };
+    }[];
+
+    expect(deployment?.spec.replicas).toBe(1);
+    expect(deployment?.spec.strategy).toStrictEqual({ type: "Recreate" });
+    expect(deployment?.spec.template.spec["volumes"]).toStrictEqual([
+      { name: "cache", persistentVolumeClaim: { claimName: "cache" } },
+    ]);
+    expect(
+      (
+        deployment?.spec.template.spec["securityContext"] as Record<
+          string,
+          unknown
+        >
+      )["fsGroup"],
+    ).toBe(1000);
+    expect(
+      deployment?.spec.template.spec.containers[0]?.["volumeMounts"],
+    ).toStrictEqual([{ name: "cache", mountPath: "/cache" }]);
+    expect(objectsAt(rendered, "service.yaml")).toStrictEqual([
+      {
+        apiVersion: "v1",
+        kind: "Service",
+        metadata: {
+          name: "notes-api",
+          namespace: "notes-system",
+          labels: {
+            "app.kubernetes.io/name": "notes-api",
+            "app.kubernetes.io/instance": "notes-api",
+            "app.kubernetes.io/part-of": "notes",
+            "app.kubernetes.io/managed-by": "deploy-kit",
+            "app.kubernetes.io/component": "node",
+          },
+        },
+        spec: {
+          selector: { "app.kubernetes.io/instance": "notes-api" },
+          ports: [{ name: "http", port: 8080, targetPort: "http" }],
+        },
+      },
+    ]);
+    expect(rendered.map(({ path }) => path.split("/").at(-1))).not.toContain(
+      "canary.yaml",
+    );
+  });
+
+  it("claims each volume ReadWriteOnce at its size, and writes no pruning guard on one nothing backs up", () => {
+    expect(objectsAt(stopStart(), "pvc.yaml")).toStrictEqual([
+      {
+        apiVersion: "v1",
+        kind: "PersistentVolumeClaim",
+        metadata: {
+          name: "cache",
+          namespace: "notes-system",
+          labels: {
+            "app.kubernetes.io/name": "notes-api",
+            "app.kubernetes.io/instance": "notes-api",
+            "app.kubernetes.io/part-of": "notes",
+            "app.kubernetes.io/managed-by": "deploy-kit",
+            "app.kubernetes.io/component": "node",
+          },
+        },
+        spec: {
+          accessModes: ["ReadWriteOnce"],
+          resources: { requests: { storage: "2Gi" } },
+        },
+      },
+    ]);
+  });
+
+  it("writes no Service for a stop-start Process that serves nothing, and no file with nothing in it", () => {
+    const rendered = renderKubernetes(
+      edited(undefined, () => ({
+        switchover: "stop-start",
+        surfaces: undefined,
+      })),
+    );
+
+    expect(
+      rendered.map(({ path }) => path.split("/").at(-1)).sort(),
+    ).toStrictEqual(["namespace.yaml", "serviceaccount.yaml", "workload.yaml"]);
   });
 
   it("writes no readiness probe for a Process that publishes none", () => {
@@ -287,18 +412,44 @@ describe("the prometheus adapter", () => {
     ).toStrictEqual([]);
   });
 
-  it("stops at a scraped Process that is not blue-green, whose ServiceMonitor waits on its slice", () => {
+  it("scrapes a stop-start Process through a ServiceMonitor, on the surface the scrape names", () => {
+    const rendered = renderPrometheus(
+      edited(undefined, () => ({ switchover: "stop-start" })),
+    );
+
+    expect(rendered.map(({ path }) => path)).toStrictEqual([
+      "apps/notes/notes/servicemonitor.yaml",
+    ]);
+    const [monitor] = rendered[0]?.objects ?? [];
+    expect([monitor?.apiVersion, monitor?.kind]).toStrictEqual([
+      "monitoring.coreos.com/v1",
+      "ServiceMonitor",
+    ]);
+    expect(
+      (rendered[0]?.objects[0] as { spec: unknown } | undefined)?.spec,
+    ).toStrictEqual({
+      jobLabel: "app.kubernetes.io/instance",
+      selector: { matchLabels: { "app.kubernetes.io/instance": "notes-api" } },
+      namespaceSelector: { matchNames: ["notes-system"] },
+      endpoints: [
+        {
+          port: "http",
+          path: "/metrics",
+          interval: "30s",
+          scrapeTimeout: "10s",
+        },
+      ],
+    });
+  });
+
+  it("stops at a scraped Process that switches rolling or nothing, whose monitor waits on its slice", () => {
     expect(() =>
-      renderPrometheus(edited(undefined, () => ({ switchover: "stop-start" }))),
+      renderPrometheus(edited(undefined, () => ({ switchover: "rolling" }))),
     ).toThrow(
-      "a ServiceMonitor for a Process that switches stop-start is not rendered yet",
+      "a monitor for a Process that switches rolling is not rendered yet",
     );
     expect(() =>
-      renderPrometheus(
-        edited(undefined, () => ({
-          switchover: undefined,
-        })),
-      ),
+      renderPrometheus(edited(undefined, () => ({ switchover: undefined }))),
     ).toThrow("switches nothing is not rendered yet");
   });
 });

@@ -129,7 +129,8 @@
         "path",
         "keys",
         "access",
-        "delivery"
+        "delivery",
+        "rotation"
       ],
       "additionalProperties": false
     },
@@ -201,7 +202,8 @@
       "required": [
         "engine",
         "role",
-        "delivery"
+        "delivery",
+        "rotation"
       ],
       "additionalProperties": false
     },
@@ -247,7 +249,8 @@
         "engine",
         "key",
         "operations",
-        "delivery"
+        "delivery",
+        "rotation"
       ],
       "additionalProperties": false
     },
@@ -929,6 +932,7 @@
       "required": [
         "claim",
         "mountAt",
+        "size",
         "durability"
       ],
       "additionalProperties": false

@@ -13,10 +13,11 @@ rests-on: ["0005"]
 What a Process's data *is* (a Postgres cluster, a RabbitMQ broker, a directory
 of files) is a fact only the owner can state and one the platform must key
 several derivations off. False if: every derivation that wants it can get it from
-something already declared without inferring from an image name. Settled by:
-three derivations reading the same field (the backup method, the database
-catalog an inbound edge implies, and an Asset's change response) with none of
-them consulting `runtime` or an image alias.
+something already declared without inferring from an image name, or a provider
+whose engine owns databases gets its catalog without declaring it. Settled by:
+the two derivations that read the same field (the backup method and the
+database catalog an inbound edge implies), with neither consulting `runtime` or
+an image alias, and an accepted Postgres on a `reconstructible` volume.
 
 ## Why
 [0018](0018-durability-class-derives-a-backup.md) needs to know how to back a volume
@@ -39,12 +40,20 @@ So it is layer-1 vocabulary, and it stays inside the layer-1 rule because it
 states a **fact about the Process** rather than a mechanism. It names no
 Kubernetes kind, no command and no schedule; the platform maps it to those.
 
-It pays for itself three times, which is the argument for a closed vocabulary
-rather than a one-off field on the volume. R7's `init-databases.sh` is a derived
-catalog of one database and one owning user per consumer, a derivation that only
-makes sense for `engine: postgres`. R23 asks whether an Asset change means
-restart or reload, and `postgres` supports `pg_ctl reload` while most images do
-not. Both currently have no way to ask what the process is.
+It pays for itself twice, which is the argument for a closed vocabulary rather
+than a one-off field on the volume. Beside the backup method, R7's
+`init-databases.sh` is a derived catalog of one database and one owning user
+per consumer, a derivation that only makes sense for `engine: postgres`. An
+Asset's change response once made a third, and it went when every Asset change
+became a restart ([0014](0014-file-shaped-configuration-is-an-asset.md)).
+
+**It is declarable wherever a derivation reads it, and refused only where none
+does.** A backed-up volume needs its method, so a Process holding one must
+declare its engine. A Postgres needs its catalog whatever its volume is worth,
+so an engine that owns databases is accepted on a `reconstructible` volume too:
+refusing it there would leave its consumers' databases with nobody to derive
+them from. An engine that derives neither a backup nor a catalog, a `valkey` on
+a `reconstructible` volume, is still refused, because it would be decoration.
 
 The vocabulary is closed and small (`postgres`, `rabbitmq`, `valkey`, `files`)
 because a value with no platform behaviour behind it is a label, and the estate
@@ -68,13 +77,13 @@ backup methods from something else for every datastore in the estate.
 
 ## Consequences
 - Two error codes make the pairing explicit: a Process holding a backed-up
-  volume must declare an engine, and one declaring an engine with no such volume
-  is refused, paid by the author, at build time, and it keeps the field from
-  becoming decoration.
+  volume must declare an engine, and one declaring an engine that derives
+  neither a backup nor a catalog is refused, paid by the author, at build time,
+  and it keeps the field from becoming decoration.
 - The vocabulary is closed, so an estate adding a datastore the catalog does not
   cover is a platform change first, paid by whoever adds it, deliberately.
-- R7 and R23 now have a field to key off, which does not decide them; it removes
-  the reason they could not be decided, paid by whoever takes those rows.
+- R7 now has a field to key off, which does not decide it; it removes the
+  reason it could not be decided, paid by whoever takes that row.
 - One more layer-1 field to document, validate and complete in an editor, on a
   Process that already carries eight, paid in schema surface, and it is the
   first new authoring field this rebuild has added.

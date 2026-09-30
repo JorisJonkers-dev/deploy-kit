@@ -83,7 +83,7 @@ const grantDelivery = {
   delivery: delivery,
   mountAt: text.exactOptional(),
   fileMode: text.exactOptional(),
-  rotation: rotation.exactOptional(),
+  rotation,
 };
 
 const kvGrant = z
@@ -174,7 +174,7 @@ const volume = z
   .strictObject({
     claim: text,
     mountAt: text,
-    size: text.exactOptional(),
+    size: text,
     durability: durabilityClass,
   })
   .meta({ id: "Volume" });

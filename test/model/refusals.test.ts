@@ -138,6 +138,7 @@ describe("the refusal fixtures", () => {
       "cutover-mixed",
       "duplicate-route-match",
       "durability-without-engine",
+      "engine-owns-databases",
       "engine-without-durability",
       "env-cannot-reload",
       "handover-both-paths",
@@ -171,8 +172,12 @@ describe("the refusal fixtures", () => {
     expect(refused).toHaveLength(34);
     expect(
       fixtures.length - refused.length,
-      "the three accepted counterparts and the vocabulary case carry no oracle",
-    ).toBe(4);
+      "the four accepted counterparts and the vocabulary case carry no oracle",
+    ).toBe(5);
+  });
+
+  it("accepts a Postgres on a volume whose durability derives no backup, because its catalog derives", () => {
+    expect(checkIntentSet(filesOf("engine-owns-databases")).ok).toBe(true);
   });
 
   it.each(refused)(

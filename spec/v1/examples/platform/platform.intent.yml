@@ -24,9 +24,9 @@ substrate:
   kubernetesVersion: v1.31.4+k3s1
   datastore: sqlite
   serverCount: 1
-  secretsEncryption: false # every delivery: env and file grant fails
-  # E_SECRETS_AT_REST_REQUIRED until this is true -- the gate working, not the
-  # example being wrong (docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)
+  secretsEncryption: true # a delivery: env or file grant writes a secret into
+  # the cluster, which is readable on disk unless this is on; the refusal fixtures
+  # keep it off to prove the gate (docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)
   cni: flannel
   networkPolicyController: embedded # no non-enforcing stage: default-deny stays
   # render-only (docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)
