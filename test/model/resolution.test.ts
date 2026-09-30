@@ -40,6 +40,7 @@ const MINIMAL_SET = [
   "delivery/delivery.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
+  "secrets/secrets.project.yml",
 ];
 
 /** The set, with `edit` applied to the file named `name`. */
@@ -110,6 +111,48 @@ describe("resolveIntentSet", () => {
     expect(canonicalJson(gate)).toBe(text("delivery/expected/resolved.json"));
   });
 
+  describe("data, composed with the same foundation and the files beside it", () => {
+    const data = () => {
+      const result = resolveIntentSet(
+        [
+          ...files().filter(({ name }) => !name.startsWith("minimal/")),
+          ...[
+            "data/data.project.yml",
+            "data/env/postgres/base.env",
+            "data/config/postgresql.conf",
+          ].map((name) => ({ name, text: text(name) })),
+        ],
+        options,
+      );
+      if (!result.ok)
+        throw new Error(
+          JSON.stringify(result.diagnostics.map(({ code }) => code)),
+        );
+      return project([...result.value.projects], "data");
+    };
+
+    it.each([
+      ["platform-postgres", "resolved.json"],
+      ["platform-rabbitmq", "resolved.platform-rabbitmq.json"],
+      ["platform-valkey", "resolved.platform-valkey.json"],
+    ])(
+      "resolves %s to its committed projection, byte for byte",
+      (id, oracle) => {
+        expect(
+          canonicalJson(
+            data().applications.find((candidate) => candidate.id === id),
+          ),
+        ).toBe(text(`data/expected/${oracle}`));
+      },
+    );
+
+    it("resolves data's dependency edges to its committed oracle, byte for byte", () => {
+      expect(canonicalJson(data().dependencies)).toBe(
+        text("data/expected/dependencies.json"),
+      );
+    });
+  });
+
   it("resolves minimal's dependency edges to its committed oracle, byte for byte", () => {
     expect(canonicalJson(project(resolved(), "notes").dependencies)).toBe(
       text("minimal/expected/dependencies.json"),
@@ -138,6 +181,7 @@ describe("resolveIntentSet", () => {
       "delivery",
       "edge",
       "observability",
+      "secrets",
     ]);
   });
 
@@ -151,6 +195,7 @@ describe("resolveIntentSet", () => {
       "intent-fragment edge",
       "intent-fragment notes",
       "intent-fragment observability",
+      "intent-fragment secrets",
       "platform-intent jorisjonkers.dev",
       "node-contract production",
       "images-lock estate",
@@ -178,7 +223,7 @@ describe("resolveIntentSet", () => {
     expect(digest(false)).toBeDefined();
   });
 
-  it("digests a fragment as its document and its env files' scopes and contents, in path order", () => {
+  it("digests a fragment as its document, its env files' scopes and contents, and its Asset files, in path order", () => {
     const shared = {
       name: "minimal/env/_project/base.env",
       text: "SHARED=1\n",
@@ -202,6 +247,7 @@ describe("resolveIntentSet", () => {
       sha256Hasher({
         document: parsed.value.document,
         env: parsed.value.env.map(({ scope, file }) => ({ scope, file })),
+        assets: [],
       }),
     );
   });

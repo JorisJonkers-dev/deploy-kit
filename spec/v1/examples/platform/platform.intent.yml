@@ -107,6 +107,11 @@ telemetry:
   collector: otel-collector
   metrics: prometheus
 
+# The Secret Store every grant is read from, on its `http` surface: the
+# Application the worked `secrets` project declares
+# (spec/v1/14-platform-intent.md#the-secret-store).
+secretStore: vault
+
 # NO rule catalog, no receivers, no severity map. Those belong to the monitoring
 # stack, which reads the published projection; this document decides how often
 # to scrape and nothing else about alerting
@@ -158,7 +163,7 @@ delivery:
 handover:
   retireBy: 2027-03-31
   legacy: [auth, data, knowledge, notes]
-  estate: [delivery, edge, observability]
+  estate: [delivery, edge, observability, secrets]
 
 # Things the estate runs and does not deploy, that an Application depends on. A fact
 # with an address, resolvable by an edge -- not a hole, so no review date

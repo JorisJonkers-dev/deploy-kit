@@ -208,6 +208,10 @@ export const platformIntent = z
     engines: enginePolicies,
     monitors: monitorCadence,
     telemetry: telemetryPolicy.exactOptional(),
+    // The Secret Store every grant is read from, on its `http` surface: an
+    // Application a project file the platform owns declares
+    // (spec/v1/14-platform-intent.md#the-secret-store).
+    secretStore: text.meta({ reference: "Application" }).exactOptional(),
     hardening: hardeningClass,
     probes: probeCadence,
     ephemeral: ephemeralPolicy,

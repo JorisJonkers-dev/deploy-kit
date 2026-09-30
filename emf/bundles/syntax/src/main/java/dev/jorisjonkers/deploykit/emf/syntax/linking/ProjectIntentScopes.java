@@ -24,7 +24,9 @@ import org.eclipse.xtext.scoping.Scopes;
  * (spec/v1/14-platform-intent.md#the-model). The collector's scope holds only the Applications whose
  * Process provides an {@code otlp} surface, so one that receives nothing is a name that links to
  * nothing, and is refused as one (spec/v1/14-platform-intent.md#telemetry). The Release Gate's scope
- * holds the Applications that provide {@code http}, which is where every Canary asks it.
+ * holds the Applications that provide {@code http}, which is where every Canary asks it, and the
+ * Secret Store's the same, which is where every grant is read from
+ * (spec/v1/14-platform-intent.md#the-secret-store).
  */
 public class ProjectIntentScopes implements IScopeProvider {
 
@@ -33,7 +35,8 @@ public class ProjectIntentScopes implements IScopeProvider {
         if (reference == ProjectIntentPackage.Literals.TELEMETRY_POLICY__COLLECTOR) {
             return providing(context, OTLP);
         }
-        if (reference == ProjectIntentPackage.Literals.DELIVERY_POLICY__GATE) {
+        if (reference == ProjectIntentPackage.Literals.DELIVERY_POLICY__GATE
+                || reference == ProjectIntentPackage.Literals.PLATFORM__SECRET_STORE) {
             return providing(context, HTTP);
         }
         if (reference.getEReferenceType() == ProjectIntentPackage.Literals.APPLICATION) {
@@ -71,7 +74,7 @@ public class ProjectIntentScopes implements IScopeProvider {
     /** The surface a telemetry collector receives on. */
     private static final String OTLP = "otlp";
 
-    /** The surface the Release Gate answers every Canary on. */
+    /** The surface the Release Gate answers every Canary on, and the Secret Store every grant on. */
     private static final String HTTP = "http";
 
     /** Every Application the project documents of {@code documents} declare, in the order they were read. */

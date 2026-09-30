@@ -6,6 +6,7 @@ import { pinnedDiagnostics } from "../check/pinned-inputs.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { ScopedEnv } from "../model/env.ts";
 import type { Hasher } from "../model/hasher.ts";
+import type { EffectiveProject } from "../model/effective-intent.ts";
 import type { InputDigest, PinnedSet } from "../model/resolution.ts";
 import {
   readClusterState,
@@ -69,6 +70,46 @@ function inPathOrder(env: readonly ScopedEnv[]): ScopedEnv[] {
   return sorted;
 }
 
+/** Everything before a path's last segment, or nothing where it has one. */
+const directoryOf = (path: string): string =>
+  path.slice(0, path.lastIndexOf("/") + 1);
+
+/**
+ * A project's Asset files, by the `from` path it names each by: the file of
+ * the set at that path beside the project file, where the set holds one.
+ */
+function assetsOf(
+  name: string,
+  project: EffectiveProject,
+  files: readonly AuthoredFile[],
+): Map<string, string> {
+  const named = new Set(
+    project.applications.flatMap(({ processes }) =>
+      // A missing list and an empty one name no Asset alike.
+      // Stryker disable next-line ArrayDeclaration
+      processes.flatMap(({ assets }) => (assets ?? []).map(({ from }) => from)),
+    ),
+  );
+  const beside = directoryOf(name);
+  return new Map(
+    [...named].flatMap((from) => {
+      const file = files.find((candidate) => candidate.name === beside + from);
+      return file === undefined ? [] : [[from, file.text] as const];
+    }),
+  );
+}
+
+type Held = readonly [string, string];
+// No two Asset files share a path, so `<=` would order the same list.
+// Stryker disable next-line EqualityOperator
+const byFrom = ([a]: Held, [b]: Held): number => (a < b ? -1 : 1);
+
+/** A project's Asset files in the order their paths sort. */
+const assetsInPathOrder = (
+  assets: ReadonlyMap<string, string>,
+): { readonly from: string; readonly text: string }[] =>
+  [...assets].sort(byFrom).map(([from, text]) => ({ from, text }));
+
 export function resolveIntentSet(
   files: readonly AuthoredFile[],
   { hash, schemaPackageIntegrity }: ResolveOptions,
@@ -95,6 +136,12 @@ export function resolveIntentSet(
     imagesLock: lock.value,
     clusterState: state.value,
     projects: projects.map(({ value }) => value.effective),
+    assets: new Map(
+      projects.map(({ name, value }) => [
+        value.effective.project,
+        assetsOf(name, value.effective, files),
+      ]),
+    ),
   };
   const fragments = projects.map(({ value }): InputDigest => ({
     input: "intent-fragment",
@@ -102,6 +149,9 @@ export function resolveIntentSet(
     digest: hash({
       document: value.document,
       env: inPathOrder(value.env).map(({ scope, file }) => ({ scope, file })),
+      assets: assetsInPathOrder(
+        set.assets.get(value.document.project) as ReadonlyMap<string, string>,
+      ),
     }),
   }));
   // No two fragments name one project, so `<=` would order the same list.

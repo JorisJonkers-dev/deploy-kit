@@ -52,6 +52,14 @@ function notYet(process: ResolvedProcess): void {
   // Stryker disable next-line ArrayDeclaration
   if ((process.volumes ?? []).some(({ backup }) => backup !== undefined))
     throw new Error(`${process.name}: a backup is not rendered yet`);
+  const pending = [
+    ["a grant", process.secrets],
+    ["an Asset", process.assets],
+    ["a sidecar", process.sidecars],
+  ] as const;
+  for (const [what, held] of pending)
+    if (held !== undefined)
+      throw new Error(`${process.name}: ${what} is not rendered yet`);
 }
 
 /** Flagger switches a blue-green Process; a stop-start one is replaced in place. */
@@ -87,7 +95,12 @@ function containerOf(process: ResolvedProcess): Container {
     ...(process.environment === undefined
       ? {}
       : {
-          env: process.environment.map(({ name, value }) => ({ name, value })),
+          // A secret reference names a grant, and a grant stops the render
+          // above, so every entry that reaches here is a value.
+          env: process.environment.map((entry) => {
+            const { name, value } = entry as { name: string; value: string };
+            return { name, value };
+          }),
         }),
     // Memory request equals its limit; cpu is a request with no limit.
     resources: {

@@ -92,6 +92,7 @@ describe("parseProjectIntent", () => {
       "knowledge",
       "minimal",
       "observability",
+      "secrets",
     ]);
   });
 
@@ -121,6 +122,28 @@ describe("parseProjectIntent", () => {
     expect(result.ok && canonicalJson(result.value.effective)).toBe(
       readFileSync(
         join(EXAMPLES, "minimal", "expected", "effective.json"),
+        "utf8",
+      ),
+    );
+  });
+
+  it("lowers data to its committed effective oracle, byte for byte", () => {
+    const result = parseProjectIntent(
+      readFileSync(join(EXAMPLES, "data", "data.project.yml"), "utf8"),
+      [
+        {
+          path: "data/env/postgres/base.env",
+          text: readFileSync(
+            join(EXAMPLES, "data", "env", "postgres", "base.env"),
+            "utf8",
+          ),
+        },
+      ],
+    );
+
+    expect(result.ok && canonicalJson(result.value.effective)).toBe(
+      readFileSync(
+        join(EXAMPLES, "data", "expected", "effective.json"),
         "utf8",
       ),
     );

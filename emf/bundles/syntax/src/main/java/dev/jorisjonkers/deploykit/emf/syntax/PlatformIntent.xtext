@@ -22,6 +22,7 @@ Platform returns Platform:
 	& ('engines' ':' BEGIN engines=EnginePolicies END)
 	& ('monitors' ':' BEGIN monitors=MonitorCadence END)
 	& ('telemetry' ':' BEGIN telemetry=TelemetryPolicy END)?
+	& ('secretStore' ':' secretStore=[Application|Text])?
 	& ('hardening' ':' hardening=HardeningClass)
 	& ('probes' ':' BEGIN probes=ProbeCadence END)
 	& ('ephemeral' ':' BEGIN ephemeral=EphemeralPolicy END)
@@ -159,7 +160,7 @@ PlatformKeyword:
 	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'embedded' | 'engines' | 'ephemeral' | 'estate' | 'etcd' |
 	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'handover' | 'hardening' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
 	'metrics' | 'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'providers' | 'restricted' | 'retireBy' |
-	'repository' | 'retain' | 'runner' | 'schedule' | 'secretsEncryption' | 'serverCount' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
+	'repository' | 'retain' | 'runner' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'serverCount' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
 	'surfaces' | 'telemetry' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'vault';
 
 enum Datastore returns Datastore:

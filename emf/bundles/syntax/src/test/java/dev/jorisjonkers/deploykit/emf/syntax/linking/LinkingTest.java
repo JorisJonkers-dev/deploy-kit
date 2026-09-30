@@ -217,6 +217,19 @@ class LinkingTest {
     }
 
     @Test
+    void theSecretStoreLinksOnlyToADeclaredApplicationThatAnswersOnHttp() throws IOException {
+        // `elsewhere` provides `http`, so it may be the Secret Store; `gone` is declared nowhere.
+        Resource platform = platform("elsewhere", "secretStore: elsewhere\n");
+
+        assertThat(platform.getErrors()).isEmpty();
+        assertThat(((Platform) platform.getContents().get(0)).getSecretStore().getId())
+                .isEqualTo("elsewhere");
+        assertThat(codes(platform("elsewhere", "secretStore: gone\n")))
+                .containsExactly("E_UNKNOWN_SECRET_STORE no project file declares an Application gone whose Process"
+                        + " provides an `http` surface");
+    }
+
+    @Test
     void theDeliveryMachineryLinksToDeclaredApplicationsAndReportsEachOneThatIsNot() throws IOException {
         String delivery = "delivery: { machinery: [elsewhere, gone], gate: elsewhere, "
                 + "analysis: { interval: 30s, iterations: 4, threshold: 3 } }\n";

@@ -41,9 +41,13 @@ const FOUNDATION = [
   "delivery/delivery.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
+  "secrets/secrets.project.yml",
 ].map((name): AuthoredFile => ({ name, text: text(name) }));
 
 const PLATFORM = text("platform/platform.intent.yml");
+const LOCK = parseYaml(text("platform/images.lock.yml")) as {
+  images: Record<string, { repository: string; digest: string }>;
+};
 
 const HEADER = `apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
@@ -69,6 +73,7 @@ ${extra}`;
 
 interface Options {
   readonly platform?: (platform: string) => string;
+  /** Files read beside the project: its env files, and its Asset files. */
   readonly env?: readonly AuthoredFile[];
 }
 
@@ -390,7 +395,7 @@ describe("the environment a Process runs with", () => {
     expect(
       resolved.environment
         ?.filter(({ name }) => name.length === 1)
-        .map(({ name, value }) => `${name}=${value}`),
+        .map((entry) => `${entry.name}=${"value" in entry ? entry.value : ""}`),
     ).toStrictEqual(["A=base", "B=production", "C=production"]);
   });
 
@@ -640,31 +645,327 @@ describe("the quantities eligibility compares", () => {
   });
 });
 
-describe("what has not landed yet", () => {
+describe("what a grant derives", () => {
+  const granted = (grant: string) =>
+    one(serving("notes-api", `        secrets:\n          - ${grant}\n`));
+  const SELF =
+    "{ path: secret/data/notes/token, keys: [token], access: read, delivery: self, rotation: {tolerates: reload} }";
+  const ENV =
+    "{ path: secret/data/notes/token, keys: [token], access: read, delivery: env, rotation: {tolerates: restart} }";
+  const bound = (line: string): Options => ({
+    env: [{ name: "minimal/env/notes-api/base.env", text: line }],
+  });
+
+  it("reads a self grant in the Process, mounting the token it authenticates with and syncing nothing", () => {
+    const resolved = processOf(granted(SELF));
+
+    expect(resolved.secrets).toStrictEqual([
+      {
+        path: "secret/data/notes/token",
+        keys: ["token"],
+        access: "read",
+        delivery: "self",
+      },
+    ]);
+    expect(resolved.identityToken).toBe(true);
+  });
+
+  it("syncs an env grant to a Secret named for the Process and the path below the mount, and restarts the Process on rotation", () => {
+    const resolved = processOf(
+      granted(ENV),
+      bound("TOKEN=${secret:secret/data/notes/token#token}\n"),
+    );
+
+    expect(resolved.secrets).toStrictEqual([
+      {
+        path: "secret/data/notes/token",
+        keys: ["token"],
+        access: "read",
+        delivery: "env",
+        destination: "notes-api-notes-token",
+        restartTargets: ["notes-api"],
+      },
+    ]);
+    expect(resolved.identityToken).toBe(false);
+    expect(
+      resolved.environment?.find(({ name }) => name === "TOKEN"),
+    ).toStrictEqual({
+      name: "TOKEN",
+      secret: { path: "secret/data/notes/token", key: "token" },
+    });
+  });
+
+  it("leaves the mount out of a Secret's name only where it opens the path", () => {
+    expect(
+      processOf(
+        granted(
+          "{ path: team/secret/data/token, keys: [token], access: read, delivery: env, rotation: {tolerates: restart} }",
+        ),
+        bound("TOKEN=${secret:team/secret/data/token#token}\n"),
+      ).secrets?.[0]?.destination,
+    ).toBe("notes-api-team-secret-data-token");
+  });
+
+  it("carries a file grant's mount and mode", () => {
+    expect(
+      processOf(
+        granted(
+          "{ path: secret/data/notes/key, keys: [key], access: read, delivery: file, mountAt: /run/key, fileMode: '0400', rotation: {tolerates: reload} }",
+        ),
+      ).secrets,
+    ).toStrictEqual([
+      {
+        path: "secret/data/notes/key",
+        keys: ["key"],
+        access: "read",
+        delivery: "file",
+        destination: "notes-api-notes-key",
+        mountAt: "/run/key",
+        fileMode: "0400",
+      },
+    ]);
+  });
+
+  it("admits the Secret Store's http surface to a Process that holds a grant, and to no other", () => {
+    const rules = (applications: string) =>
+      processOf(applications).egress?.map(
+        ({ rule, namespace, process, port }) =>
+          `${rule} ${namespace} ${process ?? "*"} ${String(port)}`,
+      );
+
+    expect(rules(granted(SELF))).toStrictEqual([
+      "cluster-dns kube-system * 53",
+      "secret-store secrets-system vault 8200",
+    ]);
+    expect(rules(one(serving("notes-api")))).toStrictEqual([
+      "cluster-dns kube-system * 53",
+    ]);
+  });
+
+  it("finds the Secret Store's http surface on whichever of its Processes provides it", () => {
+    const secrets = text("secrets/secrets.project.yml").replace(
+      "    processes:\n",
+      "    processes:\n      - name: vault-agent\n        lifecycle: job\n        image: vault\n        runtime: none\n        placement: { memory: 64Mi, cpu: 10m }\n        startupBudget: 20s\n        cutover: interrupted\n",
+    );
+    const result = resolveIntentSet(
+      [
+        { name: "platform/platform.intent.yml", text: PLATFORM },
+        ...FOUNDATION.filter(({ name }) => !name.startsWith("secrets/")),
+        { name: "secrets/secrets.project.yml", text: secrets },
+        { name: "minimal/notes.project.yml", text: HEADER + granted(SELF) },
+      ],
+      {
+        hash: sha256Hasher,
+        schemaPackageIntegrity: `sha256:${"0".repeat(64)}`,
+      },
+    );
+    const notes = result.ok
+      ? result.value.projects.find(({ project }) => project === "notes")
+      : undefined;
+
+    expect(notes?.applications[0]?.processes[0]?.egress?.[1]).toStrictEqual({
+      rule: "secret-store",
+      namespace: "secrets-system",
+      process: "vault",
+      port: 8200,
+    });
+  });
+
+  it("orders an Application holding a grant after the unit that materialises its credentials", () => {
+    expect(application(granted(SELF)).reconcileAfter).toStrictEqual([
+      "apps-vso-secrets",
+    ]);
+    // One Process holding a grant is enough.
+    expect(
+      application(`${granted(SELF)}${serving("notes-worker")}`).reconcileAfter,
+    ).toStrictEqual(["apps-vso-secrets"]);
+    expect(
+      application(one(serving("notes-api"))).reconcileAfter,
+    ).toBeUndefined();
+  });
+
+  it("stops at a grant under a platform that names no Secret Store", () => {
+    expect(() =>
+      resolve(granted(SELF), {
+        platform: (document) => document.replace("secretStore: vault\n", ""),
+      }),
+    ).toThrow(
+      "a grant under a platform that names no Secret Store is not checked yet",
+    );
+  });
+
   it.each([
+    ["a path no grant names", "${secret:secret/data/notes/other#token}"],
     [
-      "a grant",
-      "        secrets:\n          - { path: notes/token, keys: [token], access: read, delivery: self, rotation: {tolerates: reload} }\n",
+      "a key the grant does not list",
+      "${secret:secret/data/notes/token#other}",
     ],
+  ])("stops at a placeholder naming %s", (_, placeholder) => {
+    expect(() =>
+      resolve(granted(ENV), bound(`TOKEN=${placeholder}\n`)),
+    ).toThrow("TOKEN: a placeholder no env grant of the Process holds is");
+  });
+
+  it.each([
+    ["no grant at all", "", ""],
     [
-      "a grant",
+      "a grant on another engine",
       "        secrets:\n          - { engine: database, role: notes, delivery: self, rotation: {tolerates: reload} }\n",
+      "",
     ],
-    [
-      "an Asset",
-      "        assets:\n          - { from: config/notes.yml, mountAt: /etc/notes.yml }\n",
-    ],
-  ])("stops at %s, whose derivation lands in its own slice", (what, block) => {
+  ])("stops at a placeholder on a Process holding %s", (_, block) => {
+    expect(() =>
+      resolve(
+        one(serving("notes-api", block)),
+        bound("TOKEN=${secret:secret/data/notes/token#token}\n"),
+      ),
+    ).toThrow("TOKEN: a placeholder no env grant of the Process holds is");
+  });
+
+  it("stops at a placeholder naming a grant the Process reads itself", () => {
+    expect(() =>
+      resolve(
+        granted(SELF),
+        bound("TOKEN=${secret:secret/data/notes/token#token}\n"),
+      ),
+    ).toThrow("TOKEN: a placeholder no env grant of the Process holds is");
+  });
+});
+
+describe("what an Asset and a sidecar derive", () => {
+  const ASSET =
+    "        assets:\n          - { from: config/notes.yml, mountAt: /etc/notes.yml }\n";
+  const beside = (content: string): Options => ({
+    env: [{ name: "minimal/config/notes.yml", text: content }],
+  });
+
+  it("names an Asset for its Process, its file and its content, and carries the file", () => {
+    const content = "page-size: 20\n";
+
+    expect(
+      processOf(one(serving("notes-api", ASSET)), beside(content)).assets,
+    ).toStrictEqual([
+      {
+        name: `notes-api-notes-yml-${sha256Hasher(content).slice(7, 17)}`,
+        from: "config/notes.yml",
+        mountAt: "/etc/notes.yml",
+        content,
+      },
+    ]);
+  });
+
+  it("spells every run of other characters in an Asset's file name as one `-`", () => {
+    const [asset] =
+      processOf(
+        one(
+          serving(
+            "notes-api",
+            "        assets:\n          - { from: config/Notes--v1.yml, mountAt: /etc/notes.yml }\n",
+          ),
+        ),
+        { env: [{ name: "minimal/config/Notes--v1.yml", text: "a: 1\n" }] },
+      ).assets ?? [];
+
+    expect(asset?.name).toMatch(/^notes-api-notes-v1-yml-[0-9a-f]{10}$/);
+  });
+
+  it("renames an Asset, and moves its fragment's digest, when only its content moves", () => {
+    const resolved = (content: string) =>
+      application(one(serving("notes-api", ASSET)), beside(content));
+    const digest = (content: string) =>
+      resolved(content).provenance.inputDigests.find(
+        ({ name }) => name === "notes",
+      )?.digest;
+
+    expect(resolved("a: 1\n").processes[0]?.assets?.[0]?.name).not.toBe(
+      resolved("a: 2\n").processes[0]?.assets?.[0]?.name,
+    );
+    expect(digest("a: 1\n")).not.toBe(digest("a: 2\n"));
+  });
+
+  it("digests a fragment's Asset files in path order, whatever order the project names them in", () => {
+    const two =
+      "        assets:\n          - { from: config/b.yml, mountAt: /etc/b.yml }\n          - { from: config/c.yml, mountAt: /etc/c.yml }\n          - { from: config/a.yml, mountAt: /etc/a.yml }\n";
+    const source = HEADER + one(serving("notes-api", two));
+    const beside = [
+      { name: "minimal/config/b.yml", text: "b: 1\n" },
+      { name: "minimal/config/c.yml", text: "c: 1\n" },
+      { name: "minimal/config/a.yml", text: "a: 1\n" },
+    ];
+    const parsed = parseProjectIntent(source);
+    if (!parsed.ok) throw new Error("the project did not parse");
+
+    expect(
+      application(one(serving("notes-api", two)), {
+        env: beside,
+      }).provenance.inputDigests.find(({ name }) => name === "notes")?.digest,
+    ).toBe(
+      sha256Hasher({
+        document: parsed.value.document,
+        env: [],
+        assets: [
+          { from: "config/a.yml", text: "a: 1\n" },
+          { from: "config/b.yml", text: "b: 1\n" },
+          { from: "config/c.yml", text: "c: 1\n" },
+        ],
+      }),
+    );
+  });
+
+  it("reads an Asset only from beside its own project", () => {
+    expect(() =>
+      resolve(one(serving("notes-api", ASSET)), {
+        env: [{ name: "other/config/notes.yml", text: "a: 1\n" }],
+      }),
+    ).toThrow(
+      "config/notes.yml: an Asset whose file is not read beside its project is refused, which is not checked yet",
+    );
+  });
+
+  it("stops at a placeholder in an Asset", () => {
+    expect(() =>
+      resolve(
+        one(serving("notes-api", ASSET)),
+        beside("url: ${exposure:notes.app#url}\n"),
+      ),
+    ).toThrow(
+      "config/notes.yml: a placeholder in an Asset is not resolved yet",
+    );
+  });
+
+  it("pins a sidecar's image by digest and carries its own resources", () => {
+    expect(
+      processOf(
+        one(
+          serving(
+            "notes-api",
+            "        sidecars:\n          - { name: exporter, image: postgres-exporter, memory: 32Mi, cpu: 5m }\n",
+          ),
+        ),
+      ).sidecars,
+    ).toStrictEqual([
+      {
+        name: "exporter",
+        image: `${LOCK.images["postgres-exporter"]?.repository ?? ""}@${LOCK.images["postgres-exporter"]?.digest ?? ""}`,
+        memory: "32Mi",
+        cpu: "5m",
+      },
+    ]);
+  });
+});
+
+describe("what has not landed yet", () => {
+  it("stops at a grant on an engine other than kv, whose derivation lands in its own slice", () => {
     expect(() =>
       resolve(
         one(
-          serving("notes-api", block).replace(
-            "cutover: continuous",
-            "cutover: interrupted",
+          serving(
+            "notes-api",
+            "        secrets:\n          - { engine: database, role: notes, delivery: self, rotation: {tolerates: reload} }\n",
           ),
         ),
       ),
-    ).toThrow(`notes-api: ${what} is not resolved yet`);
+    ).toThrow("notes-api: a database grant is not resolved yet");
   });
 
   it("gives every writable path the platform's ephemeral size", () => {
@@ -751,6 +1052,7 @@ describe("an Application under a platform with no delivery policy", () => {
       hash: sha256Hasher,
       collector: undefined,
       gate: undefined,
+      assets: new Map(),
     });
 
     expect(resolved.processes[0]?.switchover).toBe("stop-start");
@@ -805,8 +1107,11 @@ describe("the profiles that inject, and the collector they are handed", () => {
     expect(
       notes?.applications[0]?.processes[0]?.environment?.find(
         ({ name }) => name === "OTEL_EXPORTER_OTLP_ENDPOINT",
-      )?.value,
-    ).toBe("http://otel-collector.observability-system.svc.cluster.local:4317");
+      ),
+    ).toHaveProperty(
+      "value",
+      "http://otel-collector.observability-system.svc.cluster.local:4317",
+    );
   });
 });
 

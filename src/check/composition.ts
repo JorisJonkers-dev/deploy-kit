@@ -8,7 +8,11 @@ import {
   OTLP_SURFACE,
   type PlatformIntentDocument,
 } from "../model/platform-intent.ts";
-import { collectorEndpoint, gateEndpoint } from "../model/runtime-profiles.ts";
+import {
+  collectorEndpoint,
+  gateEndpoint,
+  secretStoreAddress,
+} from "../model/runtime-profiles.ts";
 import type { ProjectIntentDocument } from "../model/project-intent.ts";
 import {
   effectiveCutover,
@@ -368,12 +372,32 @@ export function setDiagnostics(
             hint: "Declare the Release Gate in a project file the platform owns, with an `http` surface on one of its Processes.",
           },
         ];
+  // The Secret Store answers every grant on its `http` surface.
+  const store = platform.document.secretStore;
+  const serves =
+    secretStoreAddress(
+      platform.document,
+      projects.map(({ document }) => document),
+    ) !== undefined;
+  const secrets =
+    store === undefined || serves
+      ? []
+      : [
+          {
+            code: "E_UNKNOWN_SECRET_STORE",
+            document: platform.name,
+            path: "/secretStore",
+            message: `no project file declares an Application ${store} whose Process provides an \`http\` surface`,
+            hint: "Declare the Secret Store in a project file the platform owns, with an `http` surface on one of its Processes.",
+          },
+        ];
   return [
     ...proxies,
     ...machinery,
     ...telemetry,
     ...stack,
     ...release,
+    ...secrets,
     ...projects.flatMap(({ name, document }) =>
       projectRefusals(document, platform.document, estate).map((refusal) => ({
         ...refusal,

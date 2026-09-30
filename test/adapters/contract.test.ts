@@ -33,6 +33,7 @@ function minimal(): ResolvedProject {
       "delivery/delivery.project.yml",
       "edge/edge.project.yml",
       "observability/observability.project.yml",
+      "secrets/secrets.project.yml",
     ].map((name) => ({
       name,
       text: readFileSync(join(EXAMPLES, name), "utf8"),

@@ -20,7 +20,9 @@ import type {
   StartupProbe,
 } from "../model/resolved-deployment.ts";
 import { exports, namespaceOf } from "../model/runtime-profiles.ts";
+import type { Hasher } from "../model/hasher.ts";
 import { resolveEdge } from "./dependencies.ts";
+import { resolveAssets, resolveGrants, resolveSidecars } from "./secrets.ts";
 import { resolveVolumes } from "./volumes.ts";
 
 /** What resolving one Process reads beyond the Process itself. */
@@ -36,6 +38,9 @@ export interface ProcessContext {
   readonly machinery: boolean;
   /** The collector's endpoint, where the platform names one. */
   readonly collector: string | undefined;
+  /** The project's Asset files, by the `from` path it names them by. */
+  readonly assets: ReadonlyMap<string, string>;
+  readonly hash: Hasher;
 }
 
 /** A startup probe polls this often; its threshold covers the budget. */
@@ -108,19 +113,44 @@ function entriesFor(
   return [...base.filter(({ name }) => !overlaid.has(name)), ...overlay];
 }
 
-function valueOf(
+/** `${secret:<path>#<key>}`: one key of a grant the Process holds, delivered `env`. */
+function secretOf(
+  variable: EnvVariable,
+  source: string,
+  process: EffectiveProcess,
+): EnvEntry {
+  const cut = source.lastIndexOf("#");
+  const path = source.slice(0, cut);
+  const key = source.slice(cut + 1);
+  const granted = (process.secrets ?? []).some(
+    (grant) =>
+      "path" in grant &&
+      grant.path === path &&
+      grant.delivery === "env" &&
+      grant.keys.includes(key),
+  );
+  if (!granted)
+    throw new Error(
+      `${variable.name}: a placeholder no env grant of the Process holds is E_UNAUTHORISED_SECRET_REFERENCE, which is not checked yet`,
+    );
+  return { name: variable.name, secret: { path, key } };
+}
+
+function entryOf(
   variable: EnvVariable,
   process: EffectiveProcess,
   project: string,
-): string {
-  const { value } = variable;
-  if ("text" in value) return value.text;
+): EnvEntry {
+  const { name, value } = variable;
+  if ("text" in value) return { name, value: value.text };
+  if (value.kind === "secret") return secretOf(variable, value.source, process);
   if (value.kind !== "identity")
-    throw new Error(
-      `${variable.name}: a ${value.kind} placeholder is not resolved yet`,
-    );
+    throw new Error(`${name}: a ${value.kind} placeholder is not resolved yet`);
   // The Vault role and the ServiceAccount are both the Process's own name.
-  return value.source === "namespace" ? namespaceOf(project) : process.name;
+  return {
+    name,
+    value: value.source === "namespace" ? namespaceOf(project) : process.name,
+  };
 }
 
 /** The Runtime Profile's values (spec/v1/10-project-intent.md#runtime-profiles). */
@@ -153,10 +183,7 @@ function environmentOf(
   // environment would mistake for it.
   const { env: files } = process;
   const authored = entriesFor(files, context.platform.metadata.cluster).map(
-    (variable) => ({
-      name: variable.name,
-      value: valueOf(variable, process, context.project),
-    }),
+    (variable) => entryOf(variable, process, context.project),
   );
   const profile = profileOf(process, context);
   const injected = new Set(profile.map(({ name }) => name));
@@ -194,23 +221,10 @@ function placementOf(
   };
 }
 
-/** A family whose derivation lands in a later slice stops the resolution rather than leaving it out. */
-function notYet(process: EffectiveProcess): void {
-  const pending = [
-    // A grant's policy peer is the Secret Store, which no pinned input names yet.
-    ["a grant", process.secrets],
-    ["an Asset", process.assets],
-  ] as const;
-  for (const [what, held] of pending)
-    if ((held ?? []).length > 0)
-      throw new Error(`${process.name}: ${what} is not resolved yet`);
-}
-
 export function resolveProcess(
   process: EffectiveProcess,
   context: ProcessContext,
 ): ResolvedProcess {
-  notYet(process);
   // Every alias is checked against the lock before resolution runs:
   // E_UNLOCKED_IMAGE.
   const image = context.lock.images[process.image] as LockedImage;
@@ -220,6 +234,9 @@ export function resolveProcess(
     resolveEdge(edge, context.union, context.platform),
   );
   const volumes = resolveVolumes(process, context.platform, context.lock);
+  const secrets = resolveGrants(process);
+  const assets = resolveAssets(process, context.assets, context.hash);
+  const sidecars = resolveSidecars(process, context.lock);
   const surfaces = Object.entries(process.provides ?? {}).map(
     ([name, port]) => ({ name, port }),
   );
@@ -238,12 +255,14 @@ export function resolveProcess(
     memory: process.placement.memory,
     cpu: process.placement.cpu,
     hardening: context.platform.hardening,
-    // The token is mounted only where a grant is delivered `self`, and every
-    // grant stops above until the Secret Store is a pinned fact.
-    identityToken: false,
+    // The pod authenticates only where a grant is delivered `self`.
+    identityToken: secrets.some(({ delivery }) => delivery === "self"),
     ...probesOf(process, context.platform),
     placement: placementOf(process, context),
     ...(volumes.length === 0 ? {} : { volumes }),
+    ...(secrets.length === 0 ? {} : { secrets }),
+    ...(assets.length === 0 ? {} : { assets }),
+    ...(sidecars.length === 0 ? {} : { sidecars }),
     ...(dependencies.length === 0 ? {} : { dependencies }),
     ...(process.writablePaths === undefined
       ? {}

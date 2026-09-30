@@ -49,6 +49,11 @@
         "telemetry": {
           "$ref": "#/$defs/TelemetryPolicy"
         },
+        "secretStore": {
+          "type": "string",
+          "minLength": 1,
+          "reference": "Application"
+        },
         "hardening": {
           "$ref": "#/$defs/HardeningClass"
         },

@@ -84,7 +84,8 @@ are spelled; its `surfaces`, each a name and a port, which a route, a scrape and
 a policy name it by; and the peers its policy admits beyond its own edges: its
 `ingress`, each peer tagged with the allow-set rule that admits it (`tier-proxy`,
 `metrics-stack` or `consumer`), and its `egress`, the `cluster-dns` baseline and,
-once a grant resolves, the `secret-store`
+for a Process that holds a grant, the `secret-store`: the Process of the Secret
+Store's Application that answers on its `http` surface
 ([chapter 16](16-dependencies.md#the-derived-allow-set)). An Application records
 its `scrape`, the monitored surface at the Platform document's cadence; an
 exposure its tier's `listener`, `certificates` and `proxy`, the Application that
@@ -237,9 +238,9 @@ field's placement link to this anchor rather than copying rows.
 | object kind | derived | - | from `lifecycle` and `volumes` |
 | the Application's release-gate deadline | derived | - | `max` over the Application's Processes of `progressDeadlineSeconds` ([The release gate](#the-release-gate)) |
 | the object label set | derived | - | fixed, from Process name, Application Id and the images lock ([chapter 10](10-project-intent.md#the-label-set)) |
-| Secret and VSO sync objects | derived | - | from grants with `delivery: env` or `file`, plus `rolloutRestartTargets` from `rotation`; a grant with `delivery: self` and `tolerates: reload` derives **no** restart target, which is what makes its rotation zero-downtime ([chapter 10](10-project-intent.md#zero-downtime-rotation)); a restart target is a Process name, and a rotation never starts a switchover ([chapter 55](55-delivery.md#secret-rotation)) |
-| an Asset's object name, and the restart it causes | derived | - | content-hashed unconditionally; there is no authored change response ([0014](../../docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)) |
-| env entries and `envFrom` refs | derived | - | from env files, after placeholder resolution, including `${identity:…}`, the Process's own derived facts ([0013](../../docs/adr/model/0013-configuration-is-dotenv-at-three-scopes.md)) |
+| Secret and VSO sync objects | derived | - | from grants with `delivery: env` or `file`, each synced to the `destination` named for its Process and its path below the `secret/data/` mount, a `/` spelled `-` (`postgres-platform-postgres-exporter`), plus `rolloutRestartTargets` from `rotation`; a grant with `delivery: self` and `tolerates: reload` derives **no** restart target, which is what makes its rotation zero-downtime ([chapter 10](10-project-intent.md#zero-downtime-rotation)); a restart target is a Process name, and a rotation never starts a switchover ([chapter 55](55-delivery.md#secret-rotation)) |
+| an Asset's object name, and the restart it causes | derived | - | content-hashed unconditionally, as its Process, its file name with every other character spelled `-`, and the first ten hex digits of its content's digest (`postgres-postgresql-conf-765c16a293`); the projection carries the file's text, since an adapter reads nothing else; there is no authored change response ([0014](../../docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)) |
+| env entries and `envFrom` refs | derived | - | from env files, after placeholder resolution, including `${identity:…}`, the Process's own derived facts, and `${secret:…}`, recorded as the grant's path and key rather than a value ([0013](../../docs/adr/model/0013-configuration-is-dotenv-at-three-scopes.md)) |
 | dependency coordinates | derived | - | from the edge set and the provider's surfaces, bound to the key the consumer chose |
 | Runtime Profile values | derived | - | from `runtime` |
 | ServiceMonitor, PodMonitor | derived | - | target and port name from `observability.scrape` and the named surface in `provides`; cadence from the Platform document |
@@ -360,9 +361,11 @@ tree, and a single digest over the union cannot say which fragment moved.
 its canonical JSON (RFC 8785, the form every oracle file is written in), as
 the input is read. A comment or a reordered key moves nothing, because it
 decides nothing; a changed value always moves the digest. An Intent Fragment's
-digest covers its project file and the env files beside it together, as an
-object holding the parsed document under `document` and, under `env`, each env
-file's scope and parsed content, in the order its paths sort. Each entry is
+digest covers its project file and the files beside it together, as an object
+holding the parsed document under `document`; under `env`, each env file's scope
+and parsed content, in the order its paths sort; and under `assets`, each Asset
+file the project names, as its `from` path and its text, in the order those
+paths sort. Each entry is
 named for what it identifies: a fragment by its project, the Platform document
 by its `metadata.project`, the node contract and the ClusterState snapshot by
 their cluster, and the images lock by its own `name`. The fragments come first,
@@ -1441,7 +1444,22 @@ classDiagram
         +string[] keys
         +AccessTier access
         +Delivery delivery
+        +string destination
+        +Path mountAt
+        +string fileMode
         +string[] restartTargets
+    }
+    class ResolvedAsset {
+        +string name
+        +Path from
+        +Path mountAt
+        +string content
+    }
+    class ResolvedSidecar {
+        +string name
+        +ImageRef image
+        +Quantity memory
+        +Quantity cpu
     }
     class ResolvedEdge {
         +ApplicationId application
@@ -1460,6 +1478,10 @@ classDiagram
     class EnvEntry {
         +string name
         +string value
+    }
+    class SecretReference {
+        +VaultPath path
+        +string key
     }
     class ResolvedExposure {
         +ExposureName name
@@ -1507,6 +1529,8 @@ classDiagram
     ResolvedProcess "1" *-- "1" ResolvedPlacement : placement
     ResolvedProcess "1" *-- "0..*" ResolvedVolume : volumes
     ResolvedProcess "1" *-- "0..*" ResolvedGrant : secrets
+    ResolvedProcess "1" *-- "0..*" ResolvedAsset : assets
+    ResolvedProcess "1" *-- "0..*" ResolvedSidecar : sidecars
     ResolvedProcess "1" *-- "0..*" ResolvedEdge : dependencies
     ResolvedProcess "1" *-- "0..*" WritablePath : writablePaths
     ResolvedProcess "1" *-- "0..*" EnvEntry : environment
@@ -1514,6 +1538,7 @@ classDiagram
     ResolvedProcess "1" *-- "0..*" IngressPeer : ingress
     ResolvedProcess "1" *-- "0..*" EgressPeer : egress
     ResolvedVolume "1" *-- "0..1" BackupPlan : backup
+    EnvEntry "1" *-- "0..1" SecretReference : secret
     ResolvedEdge "1" *-- "0..*" PolicyPeer : peers
 
     ResolvedExposure "1" *-- "1..*" ResolvedRoute : routes

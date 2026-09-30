@@ -17,6 +17,8 @@ export interface PinnedSet {
   readonly imagesLock: ImagesLockDocument;
   readonly clusterState: ClusterStateDocument;
   readonly projects: readonly EffectiveProject[];
+  /** Each project's Asset files, by the `from` path the project names them by. */
+  readonly assets: ReadonlyMap<string, ReadonlyMap<string, string>>;
 }
 
 /** One pinned input, by the name its digest is recorded under. */

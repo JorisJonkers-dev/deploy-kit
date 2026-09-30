@@ -201,6 +201,12 @@ whichever level shares it
 [0012](docs/adr/model/0012-shared-intent-descends-and-is-lowered.md),
 [0028](docs/adr/model/0028-grant-unit-is-the-path.md)).
 
+**Secret Store**: the Application every Grant is read from, which the Platform
+document names in `secretStore` and a project file the platform owns declares.
+It answers on its `http` surface; a Process that holds a Grant egresses to it,
+and its Application is ordered after the unit that materialises the credentials
+([chapter 14](spec/v1/14-platform-intent.md#the-secret-store)).
+
 **Env File**: one authored dotenv file, its Cluster Target and its variables.
 `base.env` names no target, because it is what does not vary; an overlay beside
 it names one. The directory holding it is the scope it reaches: the project, one

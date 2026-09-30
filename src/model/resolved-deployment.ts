@@ -199,11 +199,27 @@ const resolvedGrant = z
     keys: z.array(text).min(1).exactOptional(),
     access: accessTier,
     delivery,
+    // The Secret the store's value is synced to, for a grant delivered `env`
+    // or `file`; a `self` grant is read by the Process and synced nowhere.
+    destination: text.exactOptional(),
+    mountAt: text.exactOptional(),
+    fileMode: text.exactOptional(),
     // A grant with `delivery: self` and `tolerates: reload` derives none, which
     // is what makes its rotation zero-downtime.
     restartTargets: z.array(text).exactOptional(),
   })
   .meta({ id: "ResolvedGrant" });
+
+// A file-shaped settings file, by the content-hashed name an edit changes, so
+// an edit restarts the Process (spec/v1/10-project-intent.md#assets).
+const resolvedAsset = z
+  .strictObject({ name: text, from: text, mountAt: text, content: z.string() })
+  .meta({ id: "ResolvedAsset" });
+
+// A container beside the Process in its pod, its image pinned by digest.
+const resolvedSidecar = z
+  .strictObject({ name: text, image: text, memory: text, cpu: text })
+  .meta({ id: "ResolvedSidecar" });
 
 const policyPeer = z
   .strictObject({ namespace: text, process: text, port })
@@ -247,8 +263,17 @@ const writablePath = z
   .strictObject({ path: text, size: text })
   .meta({ id: "WritablePath" });
 
+// A variable is a value, or one key of a granted Secret Store path, which the
+// render reads from that grant's synced Secret
+// (spec/v1/10-project-intent.md#secret-references).
+const secretReference = z
+  .strictObject({ path: text, key: text })
+  .meta({ id: "SecretReference" });
 const envEntry = z
-  .strictObject({ name: text, value: z.string() })
+  .union([
+    z.strictObject({ name: text, value: z.string() }),
+    z.strictObject({ name: text, secret: secretReference }),
+  ])
   .meta({ id: "EnvEntry" });
 
 const lifecycle = z.enum(LIFECYCLES).meta({ id: "Lifecycle" });
@@ -280,6 +305,8 @@ const resolvedProcess = z
     placement: resolvedPlacement,
     volumes: z.array(resolvedVolume).exactOptional(),
     secrets: z.array(resolvedGrant).exactOptional(),
+    assets: z.array(resolvedAsset).exactOptional(),
+    sidecars: z.array(resolvedSidecar).exactOptional(),
     dependencies: z.array(resolvedEdge).exactOptional(),
     writablePaths: z.array(writablePath).exactOptional(),
     environment: z.array(envEntry).exactOptional(),
