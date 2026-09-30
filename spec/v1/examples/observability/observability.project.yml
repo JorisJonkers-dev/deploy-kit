@@ -1,5 +1,5 @@
-# The telemetry collector as Project Intent: the Application the worked
-# Platform document's `telemetry.collector` names
+# The telemetry collector and the metrics stack as Project Intent: the
+# Applications the worked Platform document's `telemetry` block names
 # (spec/v1/14-platform-intent.md#telemetry).
 #
 # Every Process whose Runtime Profile exports telemetry is handed this
@@ -31,4 +31,25 @@ applications:
           readiness: { path: /, port: 13133 }
           liveness: { path: /, port: 13133 }
         startupBudget: 20s
+        cutover: continuous
+
+  # The metrics stack the Platform document's `telemetry.metrics` names: every
+  # declared scrape surface admits it, and nothing else scrapes
+  # (spec/v1/16-dependencies.md#the-derived-allow-set).
+  - id: prometheus
+    processes:
+      - name: prometheus
+        lifecycle: application
+        image: prometheus
+        runtime: none
+        provides:
+          http: 9090
+        placement:
+          memory: 512Mi
+          cpu: 100m
+        writablePaths: [/prometheus]
+        probes:
+          readiness: { path: /-/ready, port: 9090 }
+          liveness: { path: /-/healthy, port: 9090 }
+        startupBudget: 60s
         cutover: continuous

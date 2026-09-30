@@ -76,6 +76,23 @@ and the document published back to one repository
 already covers it. That is what keeps the projection a filtering rather than a
 second computation.
 
+**The projection carries every value an adapter serializes**, because an
+adapter reads the Resolved Deployment and nothing else
+([chapter 30](30-deliverables.md#the-adapter-port)). So a Process records its
+`lifecycle` and `runtime`, from which the object kind and the `component` label
+are spelled; its `surfaces`, each a name and a port, which a route, a scrape and
+a policy name it by; and the peers its policy admits beyond its own edges: its
+`ingress`, each peer tagged with the allow-set rule that admits it (`tier-proxy`,
+`metrics-stack` or `consumer`), and its `egress`, the `cluster-dns` baseline and,
+once a grant resolves, the `secret-store`
+([chapter 16](16-dependencies.md#the-derived-allow-set)). An Application records
+its `scrape`, the monitored surface at the Platform document's cadence; an
+exposure its tier's `listener`, `certificates` and `proxy`, the Application that
+serves the tier and the namespace it runs in; and the release gate the `endpoint`
+every Canary asks. The startup probe carries the probe policy's `timeout`. A value
+a render writes that none of these holds is a decision taken in layer 3, which
+[The rule](30-deliverables.md#the-rule) forbids.
+
 The startup probe is its own class rather than a third `ResolvedProbe`, because
 its cadence derives from a different input: readiness and liveness take the
 Platform Intent's probe cadence, while the startup probe's period and failure
@@ -1004,6 +1021,7 @@ migration:                           # it declares a changelog (chapter 10)
   nonTransactional: false            # so a held release may be undone automatically
 
 releaseGate:                         # what the Release Gate reads (0052)
+  endpoint: 'http://release-gate.delivery-system.svc.cluster.local:8080'   # the gate the platform names, on its http surface
   deadline: 1800s                    # max over the members
   analysis: {interval: 30s, iterations: 4, threshold: 3}   # the Platform document's cadence
   members:
@@ -1017,6 +1035,9 @@ exposure:                            # on the Application: one host, its routes
   - name: public
     host: knowledge.jorisjonkers.dev # authored; carried through untouched
     tier: public-frankfurt           # arbitrated: the tier carrying `authenticated`
+    listener: tls                    # the tier's facts, which the traefik adapter spells
+    certificates: acme
+    proxy: {application: traefik-public, namespace: edge-system}   # the tier's declared proxy
     routes:                          # five authored, two shown
       - path: /mcp
         match: exact
@@ -1038,6 +1059,8 @@ exposure:                            # on the Application: one host, its routes
 
 processes:
   - name: knowledge-api
+    lifecycle: application           # the kind the kubernetes adapter spells
+    runtime: jvm                     # the Runtime Profile, and the component label
     identity: knowledge-api          # the Process name alone
     image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-api@sha256:1ad39d5…
     uid: 1000
@@ -1052,7 +1075,7 @@ processes:
     identityToken: false             # no grant carries `delivery: self`
     readiness: {path: /api/actuator/health/readiness, port: 8080, period: 10s, timeout: 5s, failures: 3}
     liveness:  {path: /api/actuator/health/liveness,  port: 8080, period: 10s, timeout: 5s, failures: 3}
-    startup:   {path: /api/actuator/health/liveness,  port: 8080, period: 5s,  failures: 120}
+    startup:   {path: /api/actuator/health/liveness,  port: 8080, period: 5s,  timeout: 5s, failures: 120}
     writablePaths:
       - {path: /tmp, size: 64Mi}     # the Platform document's ephemeral size
     placement:
@@ -1323,7 +1346,15 @@ classDiagram
         +AlertClass alertClass
     }
     class ReleaseGate {
+        +Url endpoint
         +Duration deadline
+    }
+    class ResolvedScrape {
+        +string process
+        +string surface
+        +Path path
+        +Duration interval
+        +Duration timeout
     }
     class ResolvedMigration {
         +ImageRef runner
@@ -1341,6 +1372,8 @@ classDiagram
     }
     class ResolvedProcess {
         +string name
+        +Lifecycle lifecycle
+        +Runtime runtime
         +Identity identity
         +ImageRef image
         +int uid
@@ -1367,7 +1400,24 @@ classDiagram
         +int port
         +int tcp
         +Duration period
+        +Duration timeout
         +int failures
+    }
+    class ResolvedSurface {
+        +string name
+        +int port
+    }
+    class IngressPeer {
+        +IngressRule rule
+        +Namespace namespace
+        +string process
+        +int port
+    }
+    class EgressPeer {
+        +EgressRule rule
+        +Namespace namespace
+        +string process
+        +int port
     }
     class ResolvedPlacement {
         +NodeName[] eligibleNodes
@@ -1414,6 +1464,12 @@ classDiagram
         +ExposureName name
         +Fqdn host
         +TierName tier
+        +Listener listener
+        +CertificateSource certificates
+    }
+    class TierProxy {
+        +ApplicationId application
+        +Namespace namespace
     }
     class MiddlewareStep {
         +MiddlewareKind kind
@@ -1440,6 +1496,7 @@ classDiagram
     ResolvedApplication "1" *-- "0..1" ResolvedMigration : migration
     ResolvedApplication "1" *-- "1..*" ResolvedProcess : processes
     ResolvedApplication "1" *-- "0..*" ResolvedExposure : exposure
+    ResolvedApplication "1" *-- "0..1" ResolvedScrape : scrape
     ReleaseGate "1" *-- "1" GateAnalysis : analysis
     ReleaseGate "1" *-- "1..*" GateMember : members
 
@@ -1452,10 +1509,14 @@ classDiagram
     ResolvedProcess "1" *-- "0..*" ResolvedEdge : dependencies
     ResolvedProcess "1" *-- "0..*" WritablePath : writablePaths
     ResolvedProcess "1" *-- "0..*" EnvEntry : environment
+    ResolvedProcess "1" *-- "0..*" ResolvedSurface : surfaces
+    ResolvedProcess "1" *-- "0..*" IngressPeer : ingress
+    ResolvedProcess "1" *-- "0..*" EgressPeer : egress
     ResolvedVolume "1" *-- "0..1" BackupPlan : backup
     ResolvedEdge "1" *-- "0..*" PolicyPeer : peers
 
     ResolvedExposure "1" *-- "1..*" ResolvedRoute : routes
+    ResolvedExposure "1" *-- "1" TierProxy : proxy
     ResolvedRoute "1" *-- "0..*" MiddlewareStep : middleware
 
     GateMember ..> ResolvedProbe : reads readiness

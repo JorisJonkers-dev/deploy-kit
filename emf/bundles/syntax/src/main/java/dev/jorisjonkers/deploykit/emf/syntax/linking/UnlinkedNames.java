@@ -21,10 +21,16 @@ public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
     public static final String UNKNOWN_TIER_PROXY = "E_UNKNOWN_TIER_PROXY";
     public static final String UNKNOWN_MACHINERY = "E_UNKNOWN_MACHINERY";
     public static final String UNKNOWN_TELEMETRY_COLLECTOR = "E_UNKNOWN_TELEMETRY_COLLECTOR";
+    public static final String UNKNOWN_METRICS_STACK = "E_UNKNOWN_METRICS_STACK";
+    public static final String UNKNOWN_RELEASE_GATE = "E_UNKNOWN_RELEASE_GATE";
 
     /** The codes of names that link into another document, reported only when the documents are read together. */
-    public static final Set<String> ACROSS_DOCUMENTS =
-            Set.of(UNKNOWN_TIER_PROXY, UNKNOWN_MACHINERY, UNKNOWN_TELEMETRY_COLLECTOR);
+    public static final Set<String> ACROSS_DOCUMENTS = Set.of(
+            UNKNOWN_TIER_PROXY,
+            UNKNOWN_MACHINERY,
+            UNKNOWN_TELEMETRY_COLLECTOR,
+            UNKNOWN_METRICS_STACK,
+            UNKNOWN_RELEASE_GATE);
 
     @Override
     public DiagnosticMessage getUnresolvedProxyMessage(ILinkingDiagnosticContext context) {
@@ -40,6 +46,18 @@ public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
                     "no project file declares an Application " + name + " whose Process provides an `otlp` surface",
                     Severity.ERROR,
                     UNKNOWN_TELEMETRY_COLLECTOR);
+        }
+        if (context.getReference() == ProjectIntentPackage.Literals.TELEMETRY_POLICY__METRICS) {
+            return new DiagnosticMessage(
+                    "no project file declares the Application " + name + " the metrics stack names",
+                    Severity.ERROR,
+                    UNKNOWN_METRICS_STACK);
+        }
+        if (context.getReference() == ProjectIntentPackage.Literals.DELIVERY_POLICY__GATE) {
+            return new DiagnosticMessage(
+                    "no project file declares an Application " + name + " whose Process provides an `http` surface",
+                    Severity.ERROR,
+                    UNKNOWN_RELEASE_GATE);
         }
         if (context.getReference().getEReferenceType() == ProjectIntentPackage.Literals.APPLICATION) {
             return new DiagnosticMessage(

@@ -76,6 +76,7 @@ function probesOf(
   const startup = (target: Target, budget: string): StartupProbe => ({
     ...target,
     period: inSeconds(STARTUP_PERIOD),
+    timeout: cadence.timeout,
     failures: Math.ceil(seconds(budget) / STARTUP_PERIOD),
   });
   return {
@@ -171,7 +172,8 @@ function environmentOf(
 function notYet(process: EffectiveProcess): void {
   const pending = [
     ["a volume", process.volumes],
-    ["a kv grant", process.secrets?.filter((grant) => "path" in grant)],
+    // A grant's policy peer is the Secret Store, which no pinned input names yet.
+    ["a grant", process.secrets],
     ["an Asset", process.assets],
   ] as const;
   for (const [what, held] of pending)
@@ -188,16 +190,17 @@ export function resolveProcess(
   // E_UNLOCKED_IMAGE.
   const image = context.lock.images[process.image] as LockedImage;
   const switchover = switchoverOf(process, context.machinery);
-  // Every grant resolved today is delivered `self`: a kv grant, which may not
-  // be, stops above, so the test and `every` decide the same.
-  // Stryker disable next-line ConditionalExpression,MethodExpression
-  const identityToken = process.secrets?.some((g) => g.delivery === "self");
   const environment = environmentOf(process, context);
   const dependencies = (process.dependsOn ?? []).map((edge) =>
     resolveEdge(edge, context.union, context.platform),
   );
+  const surfaces = Object.entries(process.provides ?? {}).map(
+    ([name, port]) => ({ name, port }),
+  );
   return {
     name: process.name,
+    lifecycle: process.lifecycle,
+    runtime: process.runtime,
     identity: process.name,
     image: `${image.repository}@${image.digest}`,
     uid: image.uid,
@@ -209,7 +212,9 @@ export function resolveProcess(
     memory: process.placement.memory,
     cpu: process.placement.cpu,
     hardening: context.platform.hardening,
-    identityToken: identityToken === true,
+    // The token is mounted only where a grant is delivered `self`, and every
+    // grant stops above until the Secret Store is a pinned fact.
+    identityToken: false,
     ...probesOf(process, context.platform),
     placement: { eligibleNodes: eligibleNodes(process, context.contract) },
     ...(dependencies.length === 0 ? {} : { dependencies }),
@@ -222,5 +227,6 @@ export function resolveProcess(
           })),
         }),
     ...(environment.length === 0 ? {} : { environment }),
+    ...(surfaces.length === 0 ? {} : { surfaces }),
   };
 }

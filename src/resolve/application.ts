@@ -16,6 +16,7 @@ import type {
 import { applicationRevision } from "../model/revision.ts";
 import { exports, namespaceOf } from "../model/runtime-profiles.ts";
 import { resolveExposure } from "./exposure.ts";
+import { egressOf, ingressOf } from "./policy.ts";
 import { resolveProcess, type ProcessContext } from "./process.ts";
 
 /** An Application's element: the projection without its document header and provenance. */
@@ -28,18 +29,16 @@ export interface ApplicationContext extends Omit<ProcessContext, "machinery"> {
   /** The project that declares each Application of the union, by its id. */
   readonly projectOf: ReadonlyMap<string, string>;
   readonly hash: Hasher;
+  /** The Release Gate's endpoint, where the platform names one. */
+  readonly gate: string | undefined;
 }
 
 const unitOf = (project: string): string => `apps-${project}`;
 
-/** The unit that materialises every credential a grant asks for. */
-const SECRETS_UNIT = "apps-vso-secrets";
-
 /**
- * The units that must be Ready first: every other project an edge reaches,
- * and the secrets-provisioning unit wherever a Process holds a grant, because
- * a Process cannot start before its credential exists
- * (spec/v1/20-resolved-deployment.md#the-reconcile-unit).
+ * The units that must be Ready first: every other project an edge reaches
+ * (spec/v1/20-resolved-deployment.md#the-reconcile-unit). The
+ * secrets-provisioning unit joins them with the first grant that resolves.
  */
 function reconcileAfter(
   application: EffectiveApplication,
@@ -56,10 +55,7 @@ function reconcileAfter(
           : [unitOf(project)],
       ),
   );
-  const grants = application.processes.some(
-    ({ secrets }) => secrets !== undefined,
-  );
-  return [...new Set([...providers, ...(grants ? [SECRETS_UNIT] : [])])].sort();
+  return [...new Set(providers)].sort();
 }
 
 type Probe = NonNullable<
@@ -83,7 +79,7 @@ interface Resolved {
  */
 function releaseGateOf(
   pairs: readonly Resolved[],
-  platform: ApplicationContext["platform"],
+  { platform, gate }: ApplicationContext,
 ): ReleaseGate | undefined {
   const gated = pairs.filter(
     ({ resolved }) => resolved.switchover === "blue-green",
@@ -101,6 +97,9 @@ function releaseGateOf(
     ...members.map(({ resolved }) => seconds(resolved.deadline)),
   );
   return {
+    // A blue/green Process asks a gate the platform names, or
+    // E_UNKNOWN_RELEASE_GATE refused the set.
+    endpoint: gate as string,
     deadline: inSeconds(deadline),
     // A blue/green Process under a platform with no delivery policy is
     // E_NO_DELIVERY_POLICY.
@@ -125,13 +124,21 @@ export function resolveApplication(
     );
   const machinery =
     context.platform.delivery?.machinery.includes(application.id) === true;
-  const pairs = application.processes.map((process) => ({
-    process,
-    resolved: resolveProcess(process, { ...context, machinery }),
-  }));
+  const pairs = application.processes.map((process) => {
+    const ingress = ingressOf(process, application, context);
+    return {
+      process,
+      resolved: {
+        ...resolveProcess(process, { ...context, machinery }),
+        ...(ingress.length === 0 ? {} : { ingress }),
+        egress: egressOf(context.platform),
+      },
+    };
+  });
   const processes = pairs.map(({ resolved }) => resolved);
   const after = reconcileAfter(application, context);
-  const gate = releaseGateOf(pairs, context.platform);
+  const gate = releaseGateOf(pairs, context);
+  const scrape = application.observability?.scrape;
   const element = {
     id: application.id,
     project: context.project,
@@ -141,10 +148,27 @@ export function resolveApplication(
     ...(application.observability === undefined
       ? {}
       : { alertClass: application.observability.alertClass }),
+    ...(scrape === undefined
+      ? {}
+      : {
+          scrape: {
+            process: scrape.process,
+            surface: scrape.surface,
+            path: scrape.path,
+            interval: context.platform.monitors.interval,
+            timeout: context.platform.monitors.timeout,
+          },
+        }),
     ...(gate === undefined ? {} : { releaseGate: gate }),
     ...(application.exposure === undefined
       ? {}
-      : { exposure: resolveExposure(application.exposure, context.platform) }),
+      : {
+          exposure: resolveExposure(
+            application.exposure,
+            context.platform,
+            context.union,
+          ),
+        }),
     processes,
   };
   return { ...element, revision: applicationRevision(element, context.hash) };

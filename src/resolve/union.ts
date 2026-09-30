@@ -4,25 +4,14 @@
 // project's resolved dependency edges, the part of resolution both
 // implementations meet at (docs/architecture.md#the-parity-contract).
 import type { Hasher } from "../model/hasher.ts";
-import type { InputDigest, PinnedSet } from "../model/resolution.ts";
-import type { ResolvedApplicationDocument } from "../model/resolved-deployment.ts";
-import { collectorEndpoint } from "../model/runtime-profiles.ts";
+import type {
+  InputDigest,
+  PinnedSet,
+  ResolvedProject,
+} from "../model/resolution.ts";
+import { collectorEndpoint, gateEndpoint } from "../model/runtime-profiles.ts";
 import { resolveApplication } from "./application.ts";
 import { provenanceOf } from "./provenance.ts";
-
-/** A project's resolved dependency edges, one entry per Application. */
-export interface DependenciesDocument {
-  readonly applications: readonly {
-    readonly id: string;
-    readonly edges: readonly Record<string, unknown>[];
-  }[];
-}
-
-export interface ResolvedProject {
-  readonly project: string;
-  readonly applications: readonly ResolvedApplicationDocument[];
-  readonly dependencies: DependenciesDocument;
-}
 
 export function resolveUnion(
   set: PinnedSet,
@@ -37,6 +26,7 @@ export function resolveUnion(
     ),
   );
   const collector = collectorEndpoint(set.platform, set.projects);
+  const gate = gateEndpoint(set.platform, set.projects);
   return set.projects.map(({ project, applications }) => {
     const elements = applications.map((application) =>
       resolveApplication(application, {
@@ -48,6 +38,7 @@ export function resolveUnion(
         projectOf,
         hash,
         collector,
+        gate,
       }),
     );
     return {

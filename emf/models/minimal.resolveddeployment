@@ -31,7 +31,7 @@
   <!-- notes holds no dependency and no grant, so its unit follows nothing. -->
   <reconcileUnits name="apps-notes"/>
 
-  <applications id="notes" revision="sha256:3adadbe0130be3cedddfc9abe58d408bda136dbf7d87d88cfd5e6fff26d4b709" project="notes" namespace="notes-system"
+  <applications id="notes" revision="sha256:549b6757ba38a8c3d4b83023f27e39ec341b4558d2df2197736e0c176740976e" project="notes" namespace="notes-system"
       alertClass="business-hours" reconcileUnit="//@reconcileUnits.0">
     <releaseGate deadline="60s">
       <!-- The Platform document's cadence, carried for the Release Gate. -->
@@ -82,7 +82,7 @@
       <environment name="DEPLOYMENT_ENVIRONMENT" value="production"/>
       <environment name="NODE_ENV" value="production"/>
       <environment name="NOTES_PAGE_SIZE" value="50"/>
-      <environment name="OTEL_EXPORTER_OTLP_ENDPOINT" value="http://otel-collector.utility-system.svc.cluster.local:4317"/>
+      <environment name="OTEL_EXPORTER_OTLP_ENDPOINT" value="http://otel-collector.observability-system.svc.cluster.local:4317"/>
       <environment name="OTEL_SERVICE_NAME" value="notes-api"/>
       <environment name="PORT" value="8080"/>
     </processes>
@@ -90,33 +90,40 @@
 
   <!--
     One entry per file the templates write, each with the path layer 2 assigned
-    it. These are the paths under spec/v1/examples/minimal/rendered/.
+    it. The project's share is the tree under spec/v1/examples/minimal/rendered/,
+    and the route under apps/edge/ is estate-scoped, in spec/v1/examples/_estate/rendered/.
   -->
   <deliverables xsi:type="resolveddeployment:NamespaceFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="namespace.yaml" adapter="kubernetes" namespace="notes-system"/>
+      path="apps/notes/namespace.yaml" adapter="kubernetes" namespace="notes-system"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="kustomization.yaml" adapter="kubernetes" resources="namespace.yaml apps/notes"/>
+      path="apps/notes/kustomization.yaml" adapter="kubernetes" resources="namespace.yaml notes"/>
+  <!-- The project's default-deny: it selects every pod, and belongs to no Process. -->
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      path="apps/notes/networkpolicy.yaml" adapter="networking"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="apps/notes/kustomization.yaml" adapter="kubernetes" namespace="notes-system"
-      resources="workload.yaml canary.yaml serviceaccount.yaml servicemonitor.yaml networkpolicy.yaml"/>
+      path="apps/notes/notes/kustomization.yaml" adapter="kubernetes"
+      resources="canary.yaml podmonitor.yaml serviceaccount.yaml workload.yaml"/>
   <deliverables xsi:type="resolveddeployment:WorkloadFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="apps/notes/workload.yaml" adapter="kubernetes" process="//@applications.0/@processes.0"
+      path="apps/notes/notes/workload.yaml" adapter="kubernetes" process="//@applications.0/@processes.0"
       controller="Deployment" strategy="RollingUpdate"/>
   <deliverables xsi:type="resolveddeployment:SwitchoverFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="apps/notes/canary.yaml" adapter="kubernetes" process="//@applications.0/@processes.0"/>
+      path="apps/notes/notes/canary.yaml" adapter="kubernetes" process="//@applications.0/@processes.0"/>
   <deliverables xsi:type="resolveddeployment:IdentityFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="apps/notes/serviceaccount.yaml" adapter="kubernetes" process="//@applications.0/@processes.0"/>
+      path="apps/notes/notes/serviceaccount.yaml" adapter="kubernetes" process="//@applications.0/@processes.0"/>
   <deliverables xsi:type="resolveddeployment:MonitorFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="apps/notes/servicemonitor.yaml" adapter="prometheus" process="//@applications.0/@processes.0"
+      path="apps/notes/notes/podmonitor.yaml" adapter="prometheus" process="//@applications.0/@processes.0"
       surface="http" scrapePath="/metrics" interval="30s"/>
   <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="apps/notes/networkpolicy.yaml" adapter="networking" process="//@applications.0/@processes.0">
+      path="apps/notes/notes/networkpolicy.yaml" adapter="networking" process="//@applications.0/@processes.0">
     <!-- The edge and the metrics stack reach it; nothing else does. -->
-    <ingress namespace="kube-system" process="traefik-public" port="8080"/>
-    <ingress namespace="utility-system" process="prometheus" port="8080"/>
-    <egress namespace="kube-system" process="kube-dns" port="53"/>
+    <ingress namespace="edge-system" process="traefik-public" port="8080"/>
+    <ingress namespace="observability-system" process="prometheus" port="8080"/>
+    <!-- The cluster's DNS: a namespace, not a Process the union declares. -->
+    <egress namespace="kube-system" port="53"/>
   </deliverables>
   <deliverables xsi:type="resolveddeployment:IngressRouteFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="edge/ingressroutes.yaml" adapter="traefik" exposure="//@applications.0/@exposure.0"
-      entryPoint="websecure" certificateResolver="letsencrypt"/>
+      path="apps/edge/public-frankfurt/notes-public.yaml" adapter="traefik" exposure="//@applications.0/@exposure.0"
+      entryPoint="websecure" certificateResolver="acme"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      path="apps/edge/public-frankfurt/kustomization.yaml" adapter="kubernetes" resources="notes-public.yaml"/>
 </resolveddeployment:ResolvedDeployment>

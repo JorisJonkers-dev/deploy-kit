@@ -16,6 +16,7 @@ substrate:
   secretsEncryption: false
   cni: flannel
   networkPolicyController: embedded
+  clusterDns: kube-system
 bootstrap:
   flux:
     sourceRef: flux-system/platform
@@ -51,4 +52,5 @@ ephemeral: { size: 64Mi }
 # file declares it (spec/v1/14-platform-intent.md#delivery-policy).
 delivery:
   machinery: [edge-proxy, release-gate]
+  gate: edge-proxy
   analysis: { interval: 30s, iterations: 4, threshold: 3 }

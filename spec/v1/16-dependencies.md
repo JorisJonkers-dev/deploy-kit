@@ -309,7 +309,7 @@ declaration:
 
 | baseline rule | why it cannot be optional |
 |---|---|
-| **egress UDP/53 to the cluster DNS service**, in every policy carrying `Egress` in `policyTypes` | once any egress policy selects a pod, all unmatched egress is denied, DNS included. The dead renderer generation shows the failure: `providerPolicy` (`src/deployment/render/networkpolicy.ts:86-102`) emits an egress rule to the provider's pod and nothing else, so the consumer cannot resolve the `svc.cluster.local` name the coordinate derivation just handed it, and fails with a DNS timeout diagnosed as "Postgres is down". TCP/53 rides the same rule, for truncated responses. |
+| **egress UDP/53 to the cluster DNS service**, in every policy carrying `Egress` in `policyTypes`, admitted by the namespace the Platform document's `substrate.clusterDns` names ([chapter 14](14-platform-intent.md#substrate-facts)) | once any egress policy selects a pod, all unmatched egress is denied, DNS included. The dead renderer generation shows the failure: `providerPolicy` (`src/deployment/render/networkpolicy.ts:86-102`) emits an egress rule to the provider's pod and nothing else, so the consumer cannot resolve the `svc.cluster.local` name the coordinate derivation just handed it, and fails with a DNS timeout diagnosed as "Postgres is down". TCP/53 rides the same rule, for truncated responses. |
 | **ingress from the metrics stack** to any declared scrape port | the same file omits it; a process that silently loses scrape stops alerting, which is the failure observability exists to prevent |
 
 The DNS half is checkable statically: **every rendered NetworkPolicy carrying

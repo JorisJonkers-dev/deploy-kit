@@ -41,10 +41,11 @@ render against a stale one is `E_PARTICIPANT_STALE`.
 
 The Platform document's classes and how they compose. A policy keyed by a
 closed vocabulary is a class with one optional field per literal, so a policy
-the platform does not offer is a field it does not write. Four fields refer
-into another document: a tier's `traefik`, each name in `delivery.machinery` and
-`telemetry.collector` name an Application declared in a project file the
-platform owns, and the `handover` ledger names projects.
+the platform does not offer is a field it does not write. Six fields refer
+into another document: a tier's `traefik`, each name in `delivery.machinery`,
+`delivery.gate`, `telemetry.collector` and `telemetry.metrics` name an
+Application declared in a project file the platform owns, and the `handover`
+ledger names projects.
 
 A Platform document is checked on its own and together with the project files
 read beside it. On its own, a tier that carries `authenticated` needs its
@@ -62,6 +63,8 @@ other resolves and every policy one asks for the other offers:
 | a grant delivered as `env` or `file` where `secretsEncryption` is false | `E_SECRETS_AT_REST_REQUIRED` |
 | a name in `delivery.machinery` names an Application no project file read beside it declares | `E_UNKNOWN_MACHINERY` |
 | `telemetry.collector` names no Application a project file read beside it declares with an `otlp` surface on one of its Processes | `E_UNKNOWN_TELEMETRY_COLLECTOR` |
+| `telemetry.metrics` names an Application no project file read beside it declares | `E_UNKNOWN_METRICS_STACK` |
+| `delivery.gate` names no Application a project file read beside it declares with an `http` surface on one of its Processes | `E_UNKNOWN_RELEASE_GATE` |
 | an Application moves its schema with a changelog and the platform declares no `migration` policy | `E_NO_MIGRATION_POLICY` |
 | an Application's cutover is `continuous` and the platform declares no `delivery` policy | `E_NO_DELIVERY_POLICY` |
 | a project file names a project the `handover` ledger puts on neither delivery path | `E_HANDOVER_UNLISTED` |
@@ -138,6 +141,7 @@ substrate:
   secretsEncryption: false           # gates delivery: env and file (0030)
   cni: flannel
   networkPolicyController: embedded  # none | embedded | cni
+  clusterDns: kube-system            # the namespace the cluster's DNS runs in
 ```
 
 | fact | read by |
@@ -146,6 +150,7 @@ substrate:
 | `datastore`, `serverCount` | the restore rehearsal; every decision resting on [0002](../../docs/adr/model/0002-kubernetes-is-the-substrate-for-one-applier.md) |
 | `secretsEncryption` | `E_SECRETS_AT_REST_REQUIRED` ([0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)) |
 | `cni`, `networkPolicyController` | whether a non-enforcing policy stage exists ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)) |
+| `clusterDns` | the DNS baseline every egress policy carries ([chapter 16](16-dependencies.md#the-baseline)): the substrate runs the cluster's DNS, so where it runs is a fact about the substrate rather than a declared Application |
 
 ## The bootstrap set
 
@@ -306,16 +311,24 @@ probe cadence below is: it is contended, and no Application knows better
 ```yaml
 telemetry:
   collector: otel-collector
+  metrics: prometheus
 ```
 
-Where every exporting Runtime Profile sends its telemetry
-([chapter 10](10-project-intent.md#runtime-profiles)). The block names the
-collector as a tier names its proxy: an Application declared in a project file
-the platform owns. The endpoint each profile is handed derives from it, as
-`http://` and the address of the Process of that Application that provides an
-`otlp` surface, so no project writes the collector's address and none can
-write it wrong. A Platform document without the block names no collector, and
-no profile is handed an endpoint.
+Where telemetry goes, in two names, each an Application declared in a project
+file the platform owns, named as a tier names its proxy.
+
+- **`collector`** is where every exporting Runtime Profile sends its telemetry
+  ([chapter 10](10-project-intent.md#runtime-profiles)). The endpoint each
+  profile is handed derives from it, as `http://` and the address of the
+  Process of that Application that provides an `otlp` surface, so no project
+  writes the collector's address and none can write it wrong.
+- **`metrics`** is the metrics stack, the one peer every declared scrape surface
+  admits ([chapter 16](16-dependencies.md#the-derived-allow-set)): each of its
+  Processes, in its own namespace. `E_UNKNOWN_METRICS_STACK` where no project
+  file declares it.
+
+A Platform document without the block names neither: no profile is handed an
+endpoint, and no scrape surface admits a metrics stack.
 
 The block names the Application and nothing about how it receives: which
 protocol and port are the collector's own `provides`, like any Application's.
@@ -398,6 +411,7 @@ changelog read beside it is `E_NO_MIGRATION_POLICY`.
 ```yaml
 delivery:
   machinery: [traefik-public, traefik-lan, flagger, release-gate]
+  gate: release-gate
   analysis:
     interval: 30s
     iterations: 4
@@ -405,8 +419,8 @@ delivery:
 ```
 
 How a release is switched ([chapter 55](55-delivery.md#the-release-gate),
-[0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)). Two
-facts, both the platform's:
+[0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)). Three
+facts, all the platform's:
 
 - **`machinery`** names the Applications that perform a switch: the Release
   Gate, Flagger, and the edge proxies. They are never gated, because a gate
@@ -415,6 +429,10 @@ facts, both the platform's:
   than `blue-green`. Each name links to an Application a project file declares,
   as a tier's proxy does: `E_UNKNOWN_MACHINERY` otherwise. Flux is not among
   them: it is in the bootstrap set, not an Application.
+- **`gate`** names which of the machinery is the Release Gate: the Application
+  every Canary's three webhooks ask, on its `http` surface. It links as a
+  collector does, to an Application whose Process provides that surface:
+  `E_UNKNOWN_RELEASE_GATE` otherwise.
 - **`analysis`** is the cadence every `blue-green` member is analysed at: how
   often a check runs, how many passing checks promote, and how many failing ones
   roll back. No Application authors its own.
@@ -536,6 +554,7 @@ classDiagram
         +bool secretsEncryption
         +string cni
         +PolicyController networkPolicyController
+        +Namespace clusterDns
     }
     class Bootstrap {
         +string[] crds
@@ -589,6 +608,7 @@ classDiagram
     }
     class TelemetryPolicy {
         +ApplicationId collector
+        +ApplicationId metrics
     }
     class ProbeCadence {
         +Duration period
@@ -605,6 +625,7 @@ classDiagram
     }
     class DeliveryPolicy {
         +ApplicationId[] machinery
+        +ApplicationId gate
     }
     class AnalysisPolicy {
         +Duration interval

@@ -35,10 +35,10 @@ export default defineConfig({
       // test/secret-scan-contract.test.ts already do for theirs, so neither
       // leaves anything on the table for the ratchet to absorb.
       thresholds: {
-        statements: 99.4,
-        branches: 97.4,
+        statements: 99.45,
+        branches: 97.65,
         functions: 100,
-        lines: 99.34,
+        lines: 99.4,
       },
     },
   },

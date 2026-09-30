@@ -140,6 +140,10 @@
         },
         "networkPolicyController": {
           "$ref": "#/$defs/PolicyController"
+        },
+        "clusterDns": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
@@ -148,7 +152,8 @@
         "serverCount",
         "secretsEncryption",
         "cni",
-        "networkPolicyController"
+        "networkPolicyController",
+        "clusterDns"
       ],
       "additionalProperties": false
     },
@@ -425,10 +430,16 @@
           "type": "string",
           "minLength": 1,
           "reference": "Application"
+        },
+        "metrics": {
+          "type": "string",
+          "minLength": 1,
+          "reference": "Application"
         }
       },
       "required": [
-        "collector"
+        "collector",
+        "metrics"
       ],
       "additionalProperties": false
     },
@@ -515,12 +526,18 @@
             "reference": "Application"
           }
         },
+        "gate": {
+          "type": "string",
+          "minLength": 1,
+          "reference": "Application"
+        },
         "analysis": {
           "$ref": "#/$defs/AnalysisPolicy"
         }
       },
       "required": [
         "machinery",
+        "gate",
         "analysis"
       ],
       "additionalProperties": false

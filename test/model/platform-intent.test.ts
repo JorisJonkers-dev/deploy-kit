@@ -68,6 +68,7 @@ describe("parsePlatformIntent", () => {
     );
     expect(offered.ok && offered.value.document.delivery).toStrictEqual({
       machinery: ["traefik-public", "traefik-lan", "flagger", "release-gate"],
+      gate: "release-gate",
       analysis: { interval: "30s", iterations: 4, threshold: 3 },
     });
     expect(ungated.ok && "delivery" in ungated.value.document).toBe(false);

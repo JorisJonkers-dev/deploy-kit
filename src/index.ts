@@ -12,11 +12,22 @@ export {
   type ParsedProjectIntent,
 } from "./application/parse-project-intent.ts";
 export {
+  renderIntentSet,
+  type RenderedArtifact,
+  type RenderedFile,
+  type RenderOptions,
+  type Serializer,
+} from "./application/render-intent-set.ts";
+export { serializeYaml } from "./infrastructure/serializer.ts";
+export {
   resolveIntentSet,
   type ResolveOptions,
   type ResolvedSet,
 } from "./application/resolve-intent-set.ts";
-export type { DependenciesDocument, ResolvedProject } from "./resolve/union.ts";
+export type {
+  DependenciesDocument,
+  ResolvedProject,
+} from "./model/resolution.ts";
 export type { Diagnostic, Result } from "./model/diagnostic.ts";
 export type * from "./model/effective-intent.ts";
 export type { EnvScope, EnvSource, ScopedEnv } from "./model/env.ts";

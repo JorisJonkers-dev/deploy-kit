@@ -69,8 +69,10 @@ class IntentJsonTest {
             application.setId(id);
             delivery.getMachinery().add(application);
         }
+        delivery.setGate(delivery.getMachinery().get(1));
 
-        assertThat(IntentJson.of(delivery)).contains(entry("machinery", List.of("flagger", "release-gate")));
+        assertThat(IntentJson.of(delivery))
+                .contains(entry("machinery", List.of("flagger", "release-gate")), entry("gate", "release-gate"));
     }
 
     @Test

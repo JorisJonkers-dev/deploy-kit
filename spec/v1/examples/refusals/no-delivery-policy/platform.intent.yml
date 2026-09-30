@@ -17,6 +17,7 @@ substrate:
   secretsEncryption: false
   cni: flannel
   networkPolicyController: embedded
+  clusterDns: kube-system
 bootstrap:
   flux:
     sourceRef: flux-system/platform

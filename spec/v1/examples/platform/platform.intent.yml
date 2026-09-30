@@ -30,6 +30,7 @@ substrate:
   cni: flannel
   networkPolicyController: embedded # no non-enforcing stage: default-deny stays
   # render-only (docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)
+  clusterDns: kube-system # where the cluster's DNS runs: every egress policy admits it
 
 # What must exist before the first rendered object can apply. Recorded and
 # enumerated, never declared; growing this table is a decision
@@ -98,11 +99,13 @@ monitors:
   interval: 30s
   timeout: 10s
 
-# Where every exporting Runtime Profile sends its telemetry: the collector's
-# `otlp` surface, named by the Application that provides it, as a tier names its
-# proxy (spec/v1/14-platform-intent.md#telemetry).
+# Where every exporting Runtime Profile sends its telemetry, the collector's
+# `otlp` surface, and the metrics stack every declared scrape surface admits,
+# each named by the Application that is it, as a tier names its proxy
+# (spec/v1/14-platform-intent.md#telemetry).
 telemetry:
   collector: otel-collector
+  metrics: prometheus
 
 # NO rule catalog, no receivers, no severity map. Those belong to the monitoring
 # stack, which reads the published projection; this document decides how often
@@ -142,6 +145,7 @@ migration:
 # The analysis cadence is the platform's, one for every blue/green member.
 delivery:
   machinery: [traefik-public, traefik-lan, flagger, release-gate]
+  gate: release-gate
   analysis:
     interval: 30s
     iterations: 4

@@ -47,6 +47,9 @@ const substrate = z
     secretsEncryption: z.boolean(),
     cni: text,
     networkPolicyController: policyController,
+    // The namespace the cluster's DNS runs in, which every egress policy
+    // admits on port 53 (spec/v1/16-dependencies.md#the-baseline).
+    clusterDns: text,
   })
   .meta({ id: "Substrate" });
 
@@ -147,6 +150,9 @@ const analysisPolicy = z
 const deliveryPolicy = z
   .strictObject({
     machinery: z.array(text.meta({ reference: "Application" })).min(1),
+    // The Release Gate every Canary asks, on its `http` surface
+    // (spec/v1/55-delivery.md#the-release-gate).
+    gate: text.meta({ reference: "Application" }),
     analysis: analysisPolicy,
   })
   .meta({ id: "DeliveryPolicy" });
@@ -169,8 +175,15 @@ const handoverLedger = z
 /** The surface a telemetry collector receives on. */
 export const OTLP_SURFACE = "otlp";
 
+/** The surface the Release Gate answers Flagger's webhooks on. */
+export const GATE_SURFACE = "http";
+
 const telemetryPolicy = z
-  .strictObject({ collector: text.meta({ reference: "Application" }) })
+  .strictObject({
+    collector: text.meta({ reference: "Application" }),
+    // The metrics stack every declared scrape surface admits.
+    metrics: text.meta({ reference: "Application" }),
+  })
   .meta({ id: "TelemetryPolicy" });
 
 const provider = z

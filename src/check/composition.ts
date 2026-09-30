@@ -8,7 +8,7 @@ import {
   OTLP_SURFACE,
   type PlatformIntentDocument,
 } from "../model/platform-intent.ts";
-import { collectorEndpoint } from "../model/runtime-profiles.ts";
+import { collectorEndpoint, gateEndpoint } from "../model/runtime-profiles.ts";
 import type { ProjectIntentDocument } from "../model/project-intent.ts";
 import {
   effectiveCutover,
@@ -335,10 +335,45 @@ export function setDiagnostics(
             hint: "Declare the collector in a project file the platform owns, with an `otlp` surface on one of its Processes.",
           },
         ];
+  // The metrics stack is an Application a project file declares, as a proxy is.
+  const metrics = platform.document.telemetry?.metrics;
+  const stack =
+    metrics === undefined || declared.has(metrics)
+      ? []
+      : [
+          {
+            code: "E_UNKNOWN_METRICS_STACK",
+            document: platform.name,
+            path: "/telemetry",
+            message: `no project file declares the Application ${metrics} the metrics stack names`,
+            hint: "Declare the metrics stack in a project file the platform owns.",
+          },
+        ];
+  // The gate answers every Canary on its `http` surface.
+  const gate = platform.document.delivery?.gate;
+  const answers =
+    gateEndpoint(
+      platform.document,
+      projects.map(({ document }) => document),
+    ) !== undefined;
+  const release =
+    gate === undefined || answers
+      ? []
+      : [
+          {
+            code: "E_UNKNOWN_RELEASE_GATE",
+            document: platform.name,
+            path: "/delivery",
+            message: `no project file declares an Application ${gate} whose Process provides an \`http\` surface`,
+            hint: "Declare the Release Gate in a project file the platform owns, with an `http` surface on one of its Processes.",
+          },
+        ];
   return [
     ...proxies,
     ...machinery,
     ...telemetry,
+    ...stack,
+    ...release,
     ...projects.flatMap(({ name, document }) =>
       projectRefusals(document, platform.document, estate).map((refusal) => ({
         ...refusal,

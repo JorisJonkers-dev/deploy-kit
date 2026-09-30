@@ -11,7 +11,11 @@
 // block are the `kubernetes` adapter's spelling of those decisions
 // (docs/adr/model/0011-authored-values-name-model-concepts.md).
 import { z } from "zod";
-import { HARDENING_CLASSES } from "./platform-intent.ts";
+import {
+  CERTIFICATE_SOURCES,
+  HARDENING_CLASSES,
+  LISTENERS,
+} from "./platform-intent.ts";
 import {
   ACCESS_TIERS,
   ALERT_CLASSES,
@@ -20,7 +24,9 @@ import {
   CUTOVERS,
   DELIVERIES,
   DURABILITY_CLASSES,
+  LIFECYCLES,
   MATCHES,
+  RUNTIMES,
 } from "./vocabularies.ts";
 
 // The closed vocabularies layer 2 adds, each declared here once. Layer 2
@@ -41,6 +47,16 @@ export const PINNED_INPUTS = [
  * (spec/v1/55-delivery.md#switchover): `continuous` derives `blue-green`, or
  * `rolling` on the delivery machinery, and `interrupted` derives `stop-start`. */
 export const SWITCHOVERS = ["blue-green", "rolling", "stop-start"] as const;
+
+/** Which allow-set rule admits an inbound peer (spec/v1/16-dependencies.md#the-derived-allow-set). */
+export const INGRESS_RULES = [
+  "tier-proxy",
+  "metrics-stack",
+  "consumer",
+] as const;
+
+/** Which rule admits an outbound peer beyond an edge: the baseline, or a grant. */
+export const EGRESS_RULES = ["cluster-dns", "secret-store"] as const;
 
 /** What a gate member is analysed on beyond readiness, from its Runtime Profile. */
 export const ANALYSIS_CHECKS = ["error-rate", "latency"] as const;
@@ -140,8 +156,8 @@ const resolvedProbe = z
  */
 const startupProbe = z
   .union([
-    httpProbe.extend({ period: duration, failures: count }),
-    tcpProbe.extend({ period: duration, failures: count }),
+    httpProbe.extend({ period: duration, timeout: duration, failures: count }),
+    tcpProbe.extend({ period: duration, timeout: duration, failures: count }),
   ])
   .meta({ id: "StartupProbe" });
 
@@ -201,6 +217,31 @@ const resolvedEdge = z
   })
   .meta({ id: "ResolvedEdge" });
 
+// A port a Process provides, by the surface name that is what a route, a
+// scrape and a policy name it by.
+const resolvedSurface = z
+  .strictObject({ name: text, port })
+  .meta({ id: "ResolvedSurface" });
+
+const ingressRule = z.enum(INGRESS_RULES).meta({ id: "IngressRule" });
+const egressRule = z.enum(EGRESS_RULES).meta({ id: "EgressRule" });
+
+// An inbound peer the Process's policy admits, on one of its own ports.
+const ingressPeer = z
+  .strictObject({ rule: ingressRule, namespace: text, process: text, port })
+  .meta({ id: "IngressPeer" });
+
+// An outbound peer the policy admits beyond the dependency edges: a whole
+// namespace where no single Process is the peer.
+const egressPeer = z
+  .strictObject({
+    rule: egressRule,
+    namespace: text,
+    process: text.exactOptional(),
+    port,
+  })
+  .meta({ id: "EgressPeer" });
+
 const writablePath = z
   .strictObject({ path: text, size: text })
   .meta({ id: "WritablePath" });
@@ -209,9 +250,14 @@ const envEntry = z
   .strictObject({ name: text, value: z.string() })
   .meta({ id: "EnvEntry" });
 
+const lifecycle = z.enum(LIFECYCLES).meta({ id: "Lifecycle" });
+const runtime = z.enum(RUNTIMES).meta({ id: "Runtime" });
+
 const resolvedProcess = z
   .strictObject({
     name: text,
+    lifecycle,
+    runtime,
     identity: text,
     image: text,
     uid: count,
@@ -236,6 +282,9 @@ const resolvedProcess = z
     dependencies: z.array(resolvedEdge).exactOptional(),
     writablePaths: z.array(writablePath).exactOptional(),
     environment: z.array(envEntry).exactOptional(),
+    surfaces: z.array(resolvedSurface).exactOptional(),
+    ingress: z.array(ingressPeer).exactOptional(),
+    egress: z.array(egressPeer).exactOptional(),
   })
   .meta({ id: "ResolvedProcess" });
 
@@ -268,11 +317,24 @@ const resolvedRoute = z
   })
   .meta({ id: "ResolvedRoute" });
 
+const listener = z.enum(LISTENERS).meta({ id: "Listener" });
+const certificates = z
+  .enum(CERTIFICATE_SOURCES)
+  .meta({ id: "CertificateSource" });
+
+// The proxy a tier is served by: its Application and the namespace it runs in.
+const tierProxy = z
+  .strictObject({ application: text, namespace: text })
+  .meta({ id: "TierProxy" });
+
 const resolvedExposure = z
   .strictObject({
     name: text,
     host: text,
     tier: text,
+    listener,
+    certificates,
+    proxy: tierProxy,
     routes: z.array(resolvedRoute).min(1),
   })
   .meta({ id: "ResolvedExposure" });
@@ -298,6 +360,8 @@ const gateAnalysis = z
 
 const releaseGate = z
   .strictObject({
+    // Where every Canary of the Application asks the Release Gate.
+    endpoint: text,
     // `max` over the members: the unit waits for its slowest legitimate starter.
     deadline: duration,
     analysis: gateAnalysis,
@@ -323,6 +387,18 @@ const resolvedMigration = z
   })
   .meta({ id: "ResolvedMigration" });
 
+// The monitor an Application's observability derives: which surface of which
+// Process, at which path, at the platform's cadence.
+const resolvedScrape = z
+  .strictObject({
+    process: text,
+    surface: text,
+    path: text,
+    interval: duration,
+    timeout: duration,
+  })
+  .meta({ id: "ResolvedScrape" });
+
 const application = {
   id: text,
   // The digest of this element, itself and the provenance excluded
@@ -333,6 +409,7 @@ const application = {
   reconcileUnit: text,
   reconcileAfter: z.array(text).exactOptional(),
   alertClass: alertClass.exactOptional(),
+  scrape: resolvedScrape.exactOptional(),
   // Absent on an `interrupted` Application: it stops before it starts, so no
   // switch waits on a gate (docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md).
   releaseGate: releaseGate.exactOptional(),

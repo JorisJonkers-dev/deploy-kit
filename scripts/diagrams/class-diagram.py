@@ -136,16 +136,18 @@ TREES = {"10-project-intent": {
     ],
     "Provenance": ["InputDigest"],
     "ResolvedApplication": [
-        "ReleaseGate", "ResolvedMigration", "ResolvedProcess", "ResolvedExposure",
+        "ReleaseGate", "ResolvedMigration", "ResolvedScrape", "ResolvedProcess",
+        "ResolvedExposure",
     ],
     "ReleaseGate": ["GateAnalysis", "GateMember"],
     "ResolvedProcess": [
         "ResolvedProbe", "StartupProbe", "ResolvedPlacement", "ResolvedVolume",
         "ResolvedGrant", "ResolvedEdge", "WritablePath", "EnvEntry",
+        "ResolvedSurface", "IngressPeer", "EgressPeer",
     ],
     "ResolvedVolume": ["BackupPlan"],
     "ResolvedEdge": ["PolicyPeer"],
-    "ResolvedExposure": ["ResolvedRoute"],
+    "ResolvedExposure": ["ResolvedRoute", "TierProxy"],
     "ResolvedRoute": ["MiddlewareStep"],
 }}
 NAMES = {"10-project-intent": "Project Intent - the layer-1 model",
