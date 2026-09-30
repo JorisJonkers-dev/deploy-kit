@@ -30,6 +30,9 @@ public final class Outputs {
     /** The parsed intent of a case the pipeline accepted. */
     public static final String INTENT = "intent.json";
 
+    /** The Effective Intent of a case that carries an oracle for it. */
+    public static final String EFFECTIVE = "effective.json";
+
     /** The diagnostics of a case the pipeline refused. */
     public static final String DIAGNOSTICS = "diagnostics.json";
 
@@ -37,6 +40,7 @@ public final class Outputs {
     public static final String EXIT = "exit";
 
     private static final String INTENT_ORACLE = "expected/intent.json";
+    private static final String EFFECTIVE_ORACLE = "expected/effective.json";
     private static final String DIAGNOSTICS_ORACLE = ".diagnostics.json";
     private static final String PROJECT = ".project.yml";
     private static final String PLATFORM = "platform.intent.yml";
@@ -47,6 +51,9 @@ public final class Outputs {
     public static void write(Path examples, Path out) throws IOException {
         for (Path directory : casesWithAnIntentOracle(examples)) {
             writeParsed(out.resolve(examples.relativize(directory)), authored(directory));
+        }
+        for (Path directory : casesWith(examples, EFFECTIVE_ORACLE)) {
+            writeEffective(out.resolve(examples.relativize(directory)), authored(directory));
         }
         for (Path oracle : refusalsWithADiagnosticsOracle(examples)) {
             String stem = oracle.getFileName().toString().replace(DIAGNOSTICS_ORACLE, "");
@@ -65,8 +72,13 @@ public final class Outputs {
 
     /** The case directories carrying an intent oracle: every case the pipeline is expected to accept. */
     private static List<Path> casesWithAnIntentOracle(Path examples) throws IOException {
+        return casesWith(examples, INTENT_ORACLE);
+    }
+
+    /** The case directories carrying {@code oracle}, a path relative to the case. */
+    private static List<Path> casesWith(Path examples, String oracle) throws IOException {
         try (Stream<Path> tree = Files.walk(examples)) {
-            return tree.filter(path -> path.endsWith(INTENT_ORACLE))
+            return tree.filter(path -> path.endsWith(oracle))
                     .map(path -> path.getParent().getParent())
                     .sorted()
                     .toList();
@@ -107,6 +119,18 @@ public final class Outputs {
             writeDiagnostics(directory, parsed.diagnostics());
         }
         writeModels(directory, List.of(authored));
+    }
+
+    /**
+     * The Effective Intent of {@code authored}. A case with that oracle is one the pipeline accepts;
+     * one it refuses leaves an empty object here, beside the diagnostics its intent step wrote.
+     */
+    private static void writeEffective(Path directory, Path authored) throws IOException {
+        Files.createDirectories(directory);
+        Files.writeString(
+                directory.resolve(EFFECTIVE),
+                CanonicalJson.write(Pipeline.effective(authored).intent()),
+                StandardCharsets.UTF_8);
     }
 
     /** The XMI of each of {@code documents} read together; a file that holds no document has none. */

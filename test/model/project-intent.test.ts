@@ -105,128 +105,65 @@ describe("parseProjectIntent", () => {
     expect(result.ok && canonicalJson(result.value.document)).not.toBe(ORACLE);
   });
 
-  it("maps the minimal case into the domain model, with its references resolved", () => {
-    const result = parseProjectIntent(MINIMAL);
-    const surface = { name: "http", port: 8080 };
-    const process = {
-      name: "notes-api",
-      lifecycle: "application",
-      image: "notes-api",
-      runtime: "node",
-      surfaces: [surface],
-      env: [],
-      placement: { memory: "256Mi", cpu: "50m", arch: [], capabilities: [] },
-      writablePaths: [],
-      sidecars: [],
-      dependencies: [],
-      assets: [],
-      volumes: [],
-      grants: [],
-      probes: {
-        readiness: { path: "/healthz/ready", port: 8080 },
-        liveness: { path: "/healthz/live", port: 8080 },
+  it("lowers the minimal case to its committed effective oracle, byte for byte", () => {
+    const result = parseProjectIntent(MINIMAL, [
+      {
+        path: "minimal/env/notes-api/base.env",
+        text: readFileSync(
+          join(EXAMPLES, "minimal", "env", "notes-api", "base.env"),
+          "utf8",
+        ),
       },
-      startupBudget: "20s",
-      cutover: "continuous",
-    };
+    ]);
 
-    // Neither level declares Shared Intent here, so each holds the empty list an
-    // absent block maps to, exactly as a Process does.
-    expect(result.ok && result.value.project).toStrictEqual({
-      name: "notes",
-      owner: "joris",
-      assets: [],
-      dependencies: [],
-      env: [],
-      grants: [],
-      writablePaths: [],
-      applications: [
-        {
-          id: "notes",
-          observability: {
-            alertClass: "business-hours",
-            scrape: { process, surface, path: "/metrics" },
-          },
-          assets: [],
-          dependencies: [],
-          env: [],
-          grants: [],
-          writablePaths: [],
-          exposures: [
-            {
-              name: "public",
-              host: "notes.jorisjonkers.dev",
-              audience: "anonymous",
-              contentPolicy: "strict",
-              routes: [{ path: "/", match: "prefix", process, surface }],
-            },
-          ],
-          processes: [process],
-        },
-      ],
-    });
+    expect(result.ok && canonicalJson(result.value.effective)).toBe(
+      readFileSync(
+        join(EXAMPLES, "minimal", "expected", "effective.json"),
+        "utf8",
+      ),
+    );
   });
 
-  it("links a route and a scrape to the very Process and surface the Application holds", () => {
+  it("names a route's and a scrape's Process and surface as written, each one the lowered Application holds", () => {
     const result = parseProjectIntent(MINIMAL);
     const application = result.ok
-      ? result.value.project.applications[0]
+      ? result.value.effective.applications[0]
       : undefined;
-    const process = application?.processes[0];
+    const names = application?.processes.map(({ name }) => name);
+    const route = application?.exposure?.[0]?.routes[0];
+    const scrape = application?.observability?.scrape;
 
-    expect(application?.exposures[0]?.routes[0]?.process).toBe(process);
-    expect(application?.exposures[0]?.routes[0]?.surface).toBe(
-      process?.surfaces[0],
-    );
-    expect(application?.observability?.scrape?.process).toBe(process);
-    expect(application?.observability?.scrape?.surface).toBe(
-      process?.surfaces[0],
+    expect(names).toContain(route?.process);
+    expect(names).toContain(scrape?.process);
+    expect(application?.processes[0]?.provides).toHaveProperty(
+      route?.surface ?? "",
     );
   });
 
-  it("maps an absent block to an empty one, and leaves an absent optional field absent", () => {
+  it("writes no key that no level declared, and leaves the Application and Project holding only what defines them", () => {
     const result = parseProjectIntent(
       withApplications(`  - id: batch\n    processes:\n${PROCESS}`),
     );
 
-    expect(result.ok && result.value.project.applications).toStrictEqual([
-      {
-        id: "batch",
-        exposures: [],
-        assets: [],
-        dependencies: [],
-        env: [],
-        grants: [],
-        writablePaths: [],
-        processes: [
-          {
-            name: "worker",
-            lifecycle: "job",
-            image: "worker",
-            runtime: "none",
-            surfaces: [],
-            env: [],
-            placement: {
-              memory: "64Mi",
-              cpu: "10m",
-              arch: [],
-              capabilities: [],
+    expect(result.ok && result.value.effective).toStrictEqual({
+      project: "p",
+      owner: "o",
+      applications: [
+        {
+          id: "batch",
+          processes: [
+            {
+              name: "worker",
+              lifecycle: "job",
+              image: "worker",
+              runtime: "none",
+              placement: { memory: "64Mi", cpu: "10m" },
+              cutover: "interrupted",
             },
-            writablePaths: [],
-            sidecars: [],
-            dependencies: [],
-            assets: [],
-            probes: {},
-            volumes: [],
-            grants: [],
-            cutover: "interrupted",
-          },
-        ],
-      },
-    ]);
-    expect(result.ok && canonicalJson(result.value.document)).not.toContain(
-      "startupBudget",
-    );
+          ],
+        },
+      ],
+    });
   });
 
   it.each([
@@ -331,34 +268,21 @@ describe("parseProjectIntent", () => {
     ]);
   });
 
-  it.each([
-    ["required: false", false],
-    ["required: true", true],
-  ])("reads a dependency written %s as such", (line, required) => {
-    const text = withApplications(
-      `  - id: batch\n    processes:\n${PROCESS}        dependsOn:\n          - application: other\n            surface: http\n            ${line}\n`,
-    );
-    const result = parseProjectIntent(text);
+  it.each(["required: false", "required: true", ""])(
+    "carries a dependency's %s onto the lowered Process as written",
+    (line) => {
+      const text = withApplications(
+        `  - id: batch\n    processes:\n${PROCESS}        dependsOn:\n          - application: other\n            surface: http\n            ${line}\n`,
+      );
+      const result = parseProjectIntent(text);
+      const required = line === "" ? {} : { required: line.endsWith("true") };
 
-    expect(
-      result.ok &&
-        result.value.project.applications[0]?.processes[0]?.dependencies,
-    ).toStrictEqual([{ application: "other", surface: "http", required }]);
-  });
-
-  it("reads a dependency with no required field as required", () => {
-    const text = withApplications(
-      `  - id: batch\n    processes:\n${PROCESS}        dependsOn:\n          - { application: other, surface: http }\n`,
-    );
-    const result = parseProjectIntent(text);
-
-    expect(
-      result.ok &&
-        result.value.project.applications[0]?.processes[0]?.dependencies,
-    ).toStrictEqual([
-      { application: "other", surface: "http", required: true },
-    ]);
-  });
+      expect(
+        result.ok &&
+          result.value.effective.applications[0]?.processes[0]?.dependsOn,
+      ).toStrictEqual([{ application: "other", surface: "http", ...required }]);
+    },
+  );
 
   it("accepts a grant that declares no rotation", () => {
     const text = withApplications(

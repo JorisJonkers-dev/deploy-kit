@@ -8,7 +8,7 @@ import {
   dependencyIdentity,
   derivedReadPath,
   sameDeclaration,
-} from "../../src/domain/project-intent/declaration.ts";
+} from "../../src/model/project-intent-queries.ts";
 
 describe("the derived read path", () => {
   it("is the path a grant of each engine is actually read from", () => {

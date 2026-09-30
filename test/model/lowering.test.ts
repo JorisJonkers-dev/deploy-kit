@@ -4,13 +4,19 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { lowerProject } from "../../src/domain/project-intent/lower.ts";
+import { lowerProject } from "../../src/lower/project.ts";
 import type {
-  EffectiveProcess,
+  ApplicationDocument,
   Grant,
+  ProcessDocument,
+  ProjectIntentDocument,
   SharedIntent,
-} from "../../src/domain/project-intent/model.ts";
-import { parseProjectIntent } from "../../src/index.ts";
+} from "../../src/model/project-intent.ts";
+import {
+  parseProjectIntent,
+  type EffectiveProcess,
+  type ScopedEnv,
+} from "../../src/index.ts";
 
 const MERGED = readFileSync(
   join(
@@ -34,9 +40,8 @@ function processes(): Record<string, EffectiveProcess> {
         .map(({ code }) => code)
         .join(", ")}`,
     );
-  const lowered = lowerProject(parsed.value.project);
   return Object.fromEntries(
-    (lowered.applications[0]?.processes ?? []).map((process) => [
+    (parsed.value.effective.applications[0]?.processes ?? []).map((process) => [
       process.name,
       process,
     ]),
@@ -50,7 +55,7 @@ describe("lowerProject", () => {
   it("gives every Process the grants of every level above it, extended by its own", () => {
     const { "shared-intent-merged-api": api } = processes();
 
-    expect(paths(api?.grants ?? [])).toStrictEqual([
+    expect(paths(api?.secrets ?? [])).toStrictEqual([
       "secret/data/refusals/bearer",
       "secret/data/refusals/estate-ca",
       "secret/data/refusals/queue",
@@ -61,7 +66,7 @@ describe("lowerProject", () => {
   it("lets a sibling hold fewer, so the lists extend rather than have to match", () => {
     const { "shared-intent-merged-worker": worker } = processes();
 
-    expect(paths(worker?.grants ?? [])).toStrictEqual([
+    expect(paths(worker?.secrets ?? [])).toStrictEqual([
       "secret/data/refusals/estate-ca",
       "secret/data/refusals/queue",
       "secret/data/refusals/telemetry",
@@ -70,7 +75,7 @@ describe("lowerProject", () => {
 
   it("keeps the lowest declaration of one path, with the terms that Process needs", () => {
     const { "shared-intent-merged-worker": worker } = processes();
-    const telemetry = worker?.grants.find(
+    const telemetry = worker?.secrets?.find(
       (grant) =>
         "path" in grant && grant.path === "secret/data/refusals/telemetry",
     );
@@ -88,7 +93,6 @@ describe("lowerProject", () => {
       memory: "128Mi",
       cpu: "25m",
       arch: ["arm64"],
-      capabilities: [],
       site: "enschede",
     });
     // The Process replaces `site` and inherits `arch`: each key merges on its own.
@@ -96,7 +100,6 @@ describe("lowerProject", () => {
       memory: "64Mi",
       cpu: "10m",
       arch: ["arm64"],
-      capabilities: [],
       site: "frankfurt",
     });
   });
@@ -117,25 +120,24 @@ describe("lowerProject", () => {
 
     expect(api?.writablePaths).toStrictEqual(["/var/cache/api", "/tmp"]);
     expect(worker?.writablePaths).toStrictEqual(["/tmp"]);
+    expect(api?.dependsOn?.map(({ application }) => application)).toStrictEqual(
+      ["platform-postgres", "platform-rabbitmq"],
+    );
     expect(
-      api?.dependencies.map(({ application }) => application),
-    ).toStrictEqual(["platform-postgres", "platform-rabbitmq"]);
-    expect(
-      worker?.dependencies.map(({ application }) => application),
+      worker?.dependsOn?.map(({ application }) => application),
     ).toStrictEqual(["platform-rabbitmq"]);
   });
 
   it("leaves the Project and the Application holding only what defines them", () => {
     const parsed = parseProjectIntent(MERGED);
-    const lowered = parsed.ok ? lowerProject(parsed.value.project) : undefined;
+    const lowered = parsed.ok ? parsed.value.effective : undefined;
 
     expect(Object.keys(lowered ?? {}).sort()).toStrictEqual([
       "applications",
-      "name",
       "owner",
+      "project",
     ]);
     expect(Object.keys(lowered?.applications[0] ?? {}).sort()).toStrictEqual([
-      "exposures",
       "id",
       "processes",
     ]);
@@ -143,29 +145,21 @@ describe("lowerProject", () => {
 });
 
 // The families the worked fixture does not hold, built directly.
-const EMPTY: SharedIntent = {
-  grants: [],
-  dependencies: [],
-  assets: [],
-  writablePaths: [],
-  env: [],
-};
-
-function lowered(
-  header: Partial<SharedIntent>,
-  application: Partial<SharedIntent>,
-  process: Partial<SharedIntent>,
-): EffectiveProcess {
-  const result = lowerProject({
-    name: "p",
+function document(
+  header: SharedIntent,
+  application: Partial<ApplicationDocument>,
+  process: Partial<ProcessDocument>,
+): ProjectIntentDocument {
+  return {
+    apiVersion: "intent.jorisjonkers.dev/v1",
+    kind: "Project",
+    schemaVersion: "1.0.0",
+    project: "p",
     owner: "o",
-    ...EMPTY,
     ...header,
     applications: [
       {
         id: "a",
-        exposures: [],
-        ...EMPTY,
         ...application,
         processes: [
           {
@@ -173,17 +167,21 @@ function lowered(
             lifecycle: "job",
             image: "w",
             runtime: "none",
-            surfaces: [],
-            sidecars: [],
-            probes: {},
-            volumes: [],
-            ...EMPTY,
             ...process,
           },
         ],
       },
     ],
-  });
+  };
+}
+
+function lowered(
+  header: SharedIntent,
+  application: Partial<ApplicationDocument>,
+  process: Partial<ProcessDocument>,
+  env: readonly ScopedEnv[] = [],
+): EffectiveProcess {
+  const result = lowerProject(document(header, application, process), env);
   const only = result.applications[0]?.processes[0];
   if (only === undefined) throw new Error("the lowering dropped the Process");
   return only;
@@ -193,7 +191,7 @@ describe("lowerProject, over the families a worked document does not hold", () =
   it("identifies a database grant by its role and a transit grant by its key", () => {
     const merged = lowered(
       {
-        grants: [
+        secrets: [
           { engine: "database", role: "kb", delivery: "self" },
           {
             engine: "transit",
@@ -205,7 +203,7 @@ describe("lowerProject, over the families a worked document does not hold", () =
       },
       {},
       {
-        grants: [
+        secrets: [
           // The same role, so this replaces the header's rather than joining it.
           {
             engine: "database",
@@ -217,7 +215,7 @@ describe("lowerProject, over the families a worked document does not hold", () =
       },
     );
 
-    expect(merged.grants).toStrictEqual([
+    expect(merged.secrets).toStrictEqual([
       { engine: "database", role: "kb", delivery: "self", mountAt: "/run/db" },
       { engine: "transit", key: "jwt", operations: ["sign"], delivery: "self" },
     ]);
@@ -246,31 +244,46 @@ describe("lowerProject, over the families a worked document does not hold", () =
           gpu: { class: "transcode", memory: "4Gi" },
         },
       },
-      {
-        placement: {
-          arch: ["arm64"],
-          capabilities: [],
-          disk: { media: ["nvme"] },
-        },
-      },
-      { placement: { memory: "64Mi", cpu: "10m", arch: [], capabilities: [] } },
+      { placement: { arch: ["arm64"], disk: { media: ["nvme"] } } },
+      { placement: { memory: "64Mi", cpu: "10m", site: "enschede" } },
     );
 
     expect(merged.placement).toStrictEqual({
       memory: "64Mi",
       cpu: "10m",
       arch: ["arm64"],
+      site: "enschede",
       capabilities: ["public-ingress"],
       disk: { media: ["nvme"] },
       gpu: { class: "transcode", memory: "4Gi" },
     });
   });
 
-  it("leaves the block absent where no level declared one, and a quantity absent where the Process did not", () => {
-    expect(lowered({}, {}, {}).placement).toBeUndefined();
+  it("writes no dimension no level declared, and no quantity the Process did not", () => {
+    expect(lowered({}, {}, {}).placement).toStrictEqual({});
     expect(
-      lowered({}, { placement: { arch: [], capabilities: [] } }, {}).placement,
-    ).toStrictEqual({ arch: [], capabilities: [] });
+      lowered({}, { placement: { arch: ["arm64"] } }, {}).placement,
+    ).toStrictEqual({ arch: ["arm64"] });
+  });
+
+  it("holds a path a level names twice once, as the model-driven implementation does", () => {
+    expect(
+      lowered(
+        { writablePaths: ["/tmp"] },
+        {},
+        { writablePaths: ["/tmp", "/cache", "/tmp"] },
+      ).writablePaths,
+    ).toStrictEqual(["/tmp", "/cache"]);
+  });
+
+  it("writes no key for a many-valued family no level declared", () => {
+    expect(Object.keys(lowered({}, {}, {})).sort()).toStrictEqual([
+      "image",
+      "lifecycle",
+      "name",
+      "placement",
+      "runtime",
+    ]);
   });
 
   it("takes the startupBudget from the lowest level that states one", () => {
@@ -284,25 +297,32 @@ describe("lowerProject, over the families a worked document does not hold", () =
     expect(lowered({}, {}, {}).startupBudget).toBeUndefined();
   });
 
-  it("carries an Application's observability onto the lowered Application", () => {
-    const result = lowerProject({
-      name: "p",
-      owner: "o",
-      ...EMPTY,
-      applications: [
+  it("carries an Application's observability and exposure onto the lowered Application", () => {
+    const result = lowerProject(
+      document(
+        {},
         {
-          id: "a",
-          exposures: [],
           observability: { alertClass: "urgent" },
-          ...EMPTY,
-          processes: [],
+          exposure: [
+            {
+              name: "public",
+              host: "a.example",
+              audience: "anonymous",
+              routes: [
+                { path: "/", match: "prefix", process: "w", surface: "http" },
+              ],
+            },
+          ],
         },
-      ],
-    });
+        {},
+      ),
+      [],
+    );
 
     expect(result.applications[0]?.observability).toStrictEqual({
       alertClass: "urgent",
     });
+    expect(result.applications[0]?.exposure?.[0]?.routes[0]?.process).toBe("w");
   });
 });
 
@@ -482,7 +502,7 @@ describe("what makes two declarations the same one", () => {
   it("keeps three engines apart even where they name the same string", () => {
     const merged = lowered(
       {
-        grants: [
+        secrets: [
           { path: "x", keys: ["k"], access: "read", delivery: "env" },
           { engine: "database", role: "x", delivery: "self" },
           {
@@ -498,7 +518,7 @@ describe("what makes two declarations the same one", () => {
     );
 
     // One identity each: `secret/data/x`, `database/creds/x` and `transit/x`.
-    expect(merged.grants).toHaveLength(3);
+    expect(merged.secrets).toHaveLength(3);
   });
 
   /** A complete `kv` grant, and the one term each case varies. */
@@ -645,8 +665,6 @@ describe("what a refusal says", () => {
 
 describe("what the lowered shape carries, and what it leaves out", () => {
   it("writes no key for a scalar family no level declared", () => {
-    // `placement` and `cutover` are always keys of an effective Process, which
-    // is what the type says; `startupBudget` is the one that may be absent.
     expect(Object.keys(lowered({}, {}, {}))).not.toContain("startupBudget");
     expect(Object.keys(lowered({ startupBudget: "20s" }, {}, {}))).toContain(
       "startupBudget",
@@ -654,19 +672,21 @@ describe("what the lowered shape carries, and what it leaves out", () => {
   });
 
   it("writes a base file with no Cluster Target, and an overlay with one", () => {
-    const process = lowered(
-      {},
-      {},
+    const process = lowered({}, {}, {}, [
       {
-        env: [
-          { entries: [{ name: "A", value: { text: "1" } }] },
-          {
-            cluster: "production",
-            entries: [{ name: "A", value: { text: "2" } }],
-          },
-        ],
+        path: "env/w/base.env",
+        scope: { level: "process", name: "w" },
+        file: { entries: [{ name: "A", value: { text: "1" } }] },
       },
-    );
+      {
+        path: "env/w/production.env",
+        scope: { level: "process", name: "w" },
+        file: {
+          cluster: "production",
+          entries: [{ name: "A", value: { text: "2" } }],
+        },
+      },
+    ]);
 
     expect(process.env).toStrictEqual([
       { entries: [{ name: "A", value: { text: "1" } }] },
@@ -678,21 +698,24 @@ describe("what the lowered shape carries, and what it leaves out", () => {
   });
 
   it("keeps an overlay's variables out of the base file, and the other way round", () => {
-    const process = lowered(
-      { env: [{ entries: [{ name: "SHARED", value: { text: "1" } }] }] },
-      {},
+    const process = lowered({}, {}, {}, [
       {
-        env: [
-          {
-            cluster: "production",
-            entries: [{ name: "ONLY_THERE", value: { text: "2" } }],
-          },
-        ],
+        path: "env/_project/base.env",
+        scope: { level: "project" },
+        file: { entries: [{ name: "SHARED", value: { text: "1" } }] },
       },
-    );
+      {
+        path: "env/w/production.env",
+        scope: { level: "process", name: "w" },
+        file: {
+          cluster: "production",
+          entries: [{ name: "ONLY_THERE", value: { text: "2" } }],
+        },
+      },
+    ]);
 
     expect(
-      process.env.map(({ cluster, entries }) => [
+      process.env?.map(({ cluster, entries }) => [
         cluster,
         entries.map(({ name }) => name),
       ]),
@@ -700,6 +723,30 @@ describe("what the lowered shape carries, and what it leaves out", () => {
     ).toStrictEqual([
       ["production", ["ONLY_THERE"]],
       [undefined, ["SHARED"]],
+    ]);
+  });
+
+  it("reaches an Application's own scope, and not a sibling Application's", () => {
+    const process = lowered({}, {}, {}, [
+      {
+        path: "env/_applications/a/base.env",
+        scope: { level: "application", id: "a" },
+        file: { entries: [{ name: "OURS", value: { text: "1" } }] },
+      },
+      {
+        path: "env/_applications/b/base.env",
+        scope: { level: "application", id: "b" },
+        file: { entries: [{ name: "THEIRS", value: { text: "1" } }] },
+      },
+      {
+        path: "env/v/base.env",
+        scope: { level: "process", name: "v" },
+        file: { entries: [{ name: "SIBLING", value: { text: "1" } }] },
+      },
+    ]);
+
+    expect(process.env).toStrictEqual([
+      { entries: [{ name: "OURS", value: { text: "1" } }] },
     ]);
   });
 });

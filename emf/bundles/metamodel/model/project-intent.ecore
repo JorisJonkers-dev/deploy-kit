@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  The Project Intent source metamodel, written by hand (docs/adr/emf/0109).
+  The Project Intent source metamodel, written by hand
+  (emf/docs/adr/emf/0073-source-and-target-metamodels-are-hand-written.md).
   Names are CONTEXT.md's, and every feature is named as the authored YAML key
   it holds, so the canonical intent is read off the model reflectively. A
   union in the language is a union here: a probe is HTTP or TCP, a probe
@@ -10,7 +11,9 @@
   spec/v1/10-project-intent.md#shared-intent. `env` is the one authored beside
   the document rather than in it, in dotenv files a second grammar parses.
   EffectiveProject and EffectiveApplication are what the lowering writes
-  (docs/adr/model/0125).
+  (docs/adr/model/0012-shared-intent-descends-and-is-lowered.md). Nobody
+  authors the Effective Intent, so it carries no apiVersion, kind or
+  schemaVersion (spec/v1/10-project-intent.md#the-effective-intent).
 -->
 <ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="projectintent" nsURI="https://jorisjonkers.dev/deploy-kit/project-intent/1"
@@ -100,9 +103,6 @@
     <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
       <details key="authored" value="no"/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="apiVersion" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="schemaVersion" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="project" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="owner" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="applications" lowerBound="1" upperBound="-1" eType="#//EffectiveApplication" containment="true"/>

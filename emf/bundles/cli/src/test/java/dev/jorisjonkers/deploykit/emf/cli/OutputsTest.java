@@ -121,6 +121,9 @@ class OutputsTest {
                     .map(document -> directory + "/" + model(document));
             return Stream.concat(Stream.of(directory + "/exit", directory + "/intent.json"), models);
         }
+        if (oracle.endsWith("expected/effective.json")) {
+            return Stream.of(relative(examples, oracle.getParent().getParent()) + "/effective.json");
+        }
         if (name.endsWith(".diagnostics.json")) {
             String stem = name.replace(".diagnostics.json", "");
             String directory = "refusals/" + stem;

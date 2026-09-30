@@ -1,0 +1,321 @@
+// The authoring shape of a Project Intent document, schemaVersion 1, as
+// spec/v1/10-project-intent.md defines it. Every class carries the id the
+// descriptor and the generated JSON Schema name it by, and a union in the
+// language is a union here.
+import { z } from "zod";
+import {
+  ACCESS_TIERS,
+  DATABASE_ENGINES,
+  TRANSIT_ENGINES,
+  ALERT_CLASSES,
+  ARCHITECTURES,
+  AUDIENCES,
+  CONTENT_POLICIES,
+  CUTOVERS,
+  DELIVERIES,
+  DURABILITY_CLASSES,
+  ENGINES,
+  LIFECYCLES,
+  MATCHES,
+  MEDIA,
+  PLACEHOLDER_KINDS,
+  RUNTIMES,
+  TOLERANCES,
+  TRANSIT_OPERATIONS,
+} from "./vocabularies.ts";
+
+// Every closed vocabulary is named, because the descriptor and the generated
+// JSON Schema name it.
+const accessTier = z.enum(ACCESS_TIERS).meta({ id: "AccessTier" });
+const databaseEngine = z.enum(DATABASE_ENGINES).meta({ id: "DatabaseEngine" });
+const transitEngine = z.enum(TRANSIT_ENGINES).meta({ id: "TransitEngine" });
+const alertClass = z.enum(ALERT_CLASSES).meta({ id: "AlertClass" });
+const arch = z.enum(ARCHITECTURES).meta({ id: "Arch" });
+const audience = z.enum(AUDIENCES).meta({ id: "Audience" });
+const contentPolicy = z.enum(CONTENT_POLICIES).meta({ id: "ContentPolicy" });
+const cutover = z.enum(CUTOVERS).meta({ id: "Cutover" });
+const delivery = z.enum(DELIVERIES).meta({ id: "Delivery" });
+const durabilityClass = z
+  .enum(DURABILITY_CLASSES)
+  .meta({ id: "DurabilityClass" });
+const engine = z.enum(ENGINES).meta({ id: "Engine" });
+const lifecycle = z.enum(LIFECYCLES).meta({ id: "Lifecycle" });
+const match = z.enum(MATCHES).meta({ id: "Match" });
+const media = z.enum(MEDIA).meta({ id: "Media" });
+const runtime = z.enum(RUNTIMES).meta({ id: "Runtime" });
+const tolerance = z.enum(TOLERANCES).meta({ id: "Tolerance" });
+const transitOp = z.enum(TRANSIT_OPERATIONS).meta({ id: "TransitOp" });
+
+const placeholderKind = z
+  .enum(PLACEHOLDER_KINDS)
+  .meta({ id: "PlaceholderKind" });
+
+const text = z.string().min(1);
+
+// A name that links to a model element when the document is read. The meta is
+// what the descriptor records the reference by; the authored value stays the name.
+const processReference = text.meta({ reference: "Process" });
+const surfaceReference = text.meta({ reference: "Surface" });
+const port = z.int().min(1).max(65535);
+
+const httpProbe = z
+  .strictObject({ path: text, port })
+  .meta({ id: "HttpProbe" });
+const tcpProbe = z.strictObject({ tcp: port }).meta({ id: "TcpProbe" });
+const probe = z.union([httpProbe, tcpProbe]);
+
+const probes = z
+  .strictObject({
+    readiness: probe.exactOptional(),
+    liveness: probe.exactOptional(),
+  })
+  .meta({ id: "Probes" });
+const noProbes = z.literal("none").meta({ id: "NoProbes" });
+
+const rotation = z
+  .strictObject({
+    tolerates: tolerance,
+    maxAge: text.exactOptional(),
+  })
+  .meta({ id: "Rotation" });
+
+const grantDelivery = {
+  delivery: delivery,
+  mountAt: text.exactOptional(),
+  fileMode: text.exactOptional(),
+  rotation: rotation.exactOptional(),
+};
+
+const kvGrant = z
+  .strictObject({
+    path: text,
+    keys: z.array(text).min(1),
+    access: accessTier,
+    ...grantDelivery,
+  })
+  .meta({ id: "KvGrant" });
+
+const databaseGrant = z
+  .strictObject({
+    engine: databaseEngine,
+    role: text,
+    ...grantDelivery,
+  })
+  .meta({ id: "DatabaseGrant" });
+
+const transitGrant = z
+  .strictObject({
+    engine: transitEngine,
+    key: text,
+    operations: z.array(transitOp).min(1),
+    ...grantDelivery,
+  })
+  .meta({ id: "TransitGrant" });
+
+const grant = z.union([kvGrant, databaseGrant, transitGrant]);
+
+const diskRequest = z
+  .strictObject({ media: z.array(media).min(1) })
+  .meta({ id: "DiskRequest" });
+
+const gpuRequest = z
+  .strictObject({ class: text, memory: text })
+  .meta({ id: "GpuRequest" });
+
+// `memory` and `cpu` are optional in the shape: a block above a Process carries
+// dimensions only, and E_PLACEMENT_INCOMPLETE refuses a merge without them.
+const placement = z
+  .strictObject({
+    memory: text.exactOptional(),
+    cpu: text.exactOptional(),
+    arch: z.array(arch).min(1).exactOptional(),
+    site: text.exactOptional(),
+    disk: diskRequest.exactOptional(),
+    gpu: gpuRequest.exactOptional(),
+    capabilities: z.array(text).min(1).exactOptional(),
+  })
+  .meta({ id: "Placement" });
+
+const sidecar = z
+  .strictObject({ name: text, image: text, memory: text, cpu: text })
+  .meta({ id: "Sidecar" });
+
+// How the credential an edge to a database derives is rotated, where the
+// platform's default (a reload) is more than the application can honour
+// (spec/v1/10-project-intent.md#migration).
+const credentials = z
+  .strictObject({ rotation: rotation })
+  .meta({ id: "Credentials" });
+
+const dependencyEdge = z
+  .strictObject({
+    application: text,
+    surface: text,
+    required: z.boolean().exactOptional(),
+    credentials: credentials.exactOptional(),
+  })
+  .meta({ id: "DependencyEdge" });
+
+// How an Application's schema moves (spec/v1/10-project-intent.md#migration):
+// by the platform's runner over a Liquibase changelog, by the image itself, or
+// not at all.
+const managedMigration = z
+  .strictObject({ changelog: text })
+  .meta({ id: "ManagedMigration" });
+const selfMigration = z.literal("self").meta({ id: "SelfMigration" });
+const noMigration = z.literal("none").meta({ id: "NoMigration" });
+const migration = z.union([selfMigration, noMigration, managedMigration]);
+
+const asset = z
+  .strictObject({ from: text, mountAt: text })
+  .meta({ id: "Asset" });
+
+const volume = z
+  .strictObject({
+    claim: text,
+    mountAt: text,
+    size: text.exactOptional(),
+    durability: durabilityClass,
+  })
+  .meta({ id: "Volume" });
+
+const capacity = z
+  .strictObject({ count: z.int().min(2), reason: text })
+  .meta({ id: "Capacity" });
+
+// Spread into each of the three levels rather than nested under a key: the level
+// a family is written at is not itself a field an author writes.
+const sharedIntent = {
+  secrets: z.array(grant).min(1).exactOptional(),
+  dependsOn: z.array(dependencyEdge).min(1).exactOptional(),
+  assets: z.array(asset).min(1).exactOptional(),
+  writablePaths: z.array(text).min(1).exactOptional(),
+  placement: placement.exactOptional(),
+  startupBudget: text.exactOptional(),
+  cutover: cutover.exactOptional(),
+};
+
+const process = z
+  .strictObject({
+    name: text,
+    lifecycle: lifecycle,
+    image: text,
+    runtime: runtime,
+    engine: engine.exactOptional(),
+    provides: z.record(text, port).meta({ entry: "Surface" }).exactOptional(),
+    sidecars: z.array(sidecar).min(1).exactOptional(),
+    probes: z.union([noProbes, probes]).exactOptional(),
+    volumes: z.array(volume).min(1).exactOptional(),
+    replicas: capacity.exactOptional(),
+    ...sharedIntent,
+  })
+  .meta({ id: "Process" });
+
+const route = z
+  .strictObject({
+    path: text,
+    match: match,
+    process: processReference,
+    surface: surfaceReference,
+    audience: audience.exactOptional(),
+    redirectTo: text.exactOptional(),
+  })
+  .meta({ id: "Route" });
+
+const exposure = z
+  .strictObject({
+    name: text,
+    host: text,
+    audience: audience,
+    contentPolicy: contentPolicy.exactOptional(),
+    routes: z.array(route).min(1),
+  })
+  .meta({ id: "Exposure" });
+
+const scrape = z
+  .strictObject({
+    process: processReference,
+    surface: surfaceReference,
+    path: text,
+  })
+  .meta({ id: "Scrape" });
+
+// `scrape` is optional in the shape, not in the model: a block carrying a class
+// and no signal is refused by a rule with its own code, not by the schema.
+const observability = z
+  .strictObject({ alertClass: alertClass, scrape: scrape.exactOptional() })
+  .meta({ id: "Observability" });
+
+const application = z
+  .strictObject({
+    id: text,
+    observability: observability.exactOptional(),
+    exposure: z.array(exposure).min(1).exactOptional(),
+    migration: migration.exactOptional(),
+    ...sharedIntent,
+    processes: z.array(process).min(1),
+  })
+  .meta({ id: "Application" });
+
+export const projectIntent = z
+  .strictObject({
+    apiVersion: z.literal("intent.jorisjonkers.dev/v1"),
+    kind: z.literal("Project"),
+    schemaVersion: z.string().regex(/^\d+\.\d+\.\d+$/),
+    project: text,
+    owner: text,
+    ...sharedIntent,
+    applications: z.array(application).min(1),
+  })
+  .meta({ id: "Project" });
+
+export type ProjectIntentDocument = z.output<typeof projectIntent>;
+export type ApplicationDocument = ProjectIntentDocument["applications"][number];
+export type ProcessDocument = ApplicationDocument["processes"][number];
+export type Grant = NonNullable<ProcessDocument["secrets"]>[number];
+export type DependencyEdge = NonNullable<ProcessDocument["dependsOn"]>[number];
+export type Asset = NonNullable<ProcessDocument["assets"]>[number];
+export type Placement = NonNullable<ProcessDocument["placement"]>;
+export type Exposure = NonNullable<ApplicationDocument["exposure"]>[number];
+
+/** The eight families of spec/v1/10-project-intent.md#shared-intent that the
+ * project file carries; the eighth, `env`, is the env files beside it. */
+export type SharedIntentKey = keyof typeof sharedIntent;
+export const SHARED_INTENT_KEYS = Object.keys(
+  sharedIntent,
+) as readonly SharedIntentKey[];
+
+/** What one level of a project file declares of the shared families. */
+export type SharedIntent = Pick<ProcessDocument, SharedIntentKey>;
+
+// The other authored artefact. It is dotenv rather than YAML, so its shape is
+// declared for the descriptor and for nothing else: what a file may hold is
+// spec/v1/10-project-intent.md#the-dotenv-subset-that-is-read, enforced by the
+// reader, and what it does hold is the committed env oracle.
+const envLiteral = z.strictObject({ text: z.string() }).meta({
+  id: "EnvLiteral",
+});
+
+const placeholder = z
+  .strictObject({ kind: placeholderKind, source: text })
+  .meta({ id: "Placeholder" });
+
+const envVariable = z
+  .strictObject({ name: text, value: z.union([envLiteral, placeholder]) })
+  .meta({ id: "EnvVariable" });
+
+export const envFile = z
+  .strictObject({
+    cluster: text.exactOptional(),
+    // An overlay that carries only comments holds no entry, and is still a file.
+    entries: z.array(envVariable).exactOptional(),
+  })
+  .meta({ id: "EnvFile" });
+
+export type EnvVariable = z.output<typeof envVariable>;
+/** A file as the reader holds it: an overlay carrying only comments holds no
+ * entry, and still has the list. */
+export type EnvFile = Omit<z.output<typeof envFile>, "entries"> & {
+  readonly entries: readonly EnvVariable[];
+};
+export type EnvValue = EnvVariable["value"];

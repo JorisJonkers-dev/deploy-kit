@@ -148,7 +148,7 @@ Decisions about the compiler's own structure, not about the model; see
 | # | title | claim |
 |---|---|---|
 | [0056](architecture/0056-the-compiler-is-a-chain-of-typed-models.md) | The compiler is a chain of typed models, each step a module of named mappings, and a directory exists once it holds a module | open |
-| [0057](architecture/0057-the-authored-shape-is-the-source-model.md) | Zod declares the authored metamodel, the reader links it, and a second hand-written domain type waits for a second schemaVersion | open |
+| [0057](architecture/0057-the-authored-shape-is-the-source-model.md) | Zod declares the authored metamodel, its output is the source model, and a second hand-written domain type waits for a second schemaVersion | settled |
 | [0058](architecture/0058-every-step-links-through-one-trace.md) | Every step creates its targets, then links them through one trace, adapters build typed objects, and one serializer owns the bytes | open |
 | [0059](architecture/0059-failures-are-a-diagnostic-list.md) | A failure is a coded diagnostic in a list, not a thrown error | settled |
 | [0060](architecture/0060-boundaries-enforced-on-the-graph.md) | Layer boundaries and reachability are gates on the module graph, not review notes | settled |

@@ -29,6 +29,14 @@ class ParityTest {
     }
 
     @ParameterizedTest(name = "{0}")
+    @MethodSource("casesWithAnEffectiveOracle")
+    fun `the lowered intent equals the committed effective oracle`(directory: Path) {
+        val written = output(PIPELINE_OUTPUT, directory)
+
+        assertThat(left(written, EFFECTIVE)).isEqualTo(read(directory.resolve("expected").resolve(EFFECTIVE)))
+    }
+
+    @ParameterizedTest(name = "{0}")
     @MethodSource("refusalsWithADiagnosticsOracle")
     fun `a refused document equals its committed diagnostics`(oracle: Path) {
         val stem = oracle.fileName.toString().removeSuffix(".$DIAGNOSTICS")
@@ -63,6 +71,7 @@ class ParityTest {
         private const val METAMODEL_OUTPUT = "emf/bundles/metamodel/target/parity"
 
         private const val INTENT = "intent.json"
+        private const val EFFECTIVE = "effective.json"
         private const val DIAGNOSTICS = "diagnostics.json"
         private const val DESCRIPTOR = "descriptor.json"
         private const val EXIT = "exit"
@@ -73,6 +82,17 @@ class ParityTest {
                 tree
                     .asSequence()
                     .filter { it.endsWith("expected/$INTENT") }
+                    .map { it.parent.parent }
+                    .sorted()
+                    .toList()
+            }
+
+        @JvmStatic
+        fun casesWithAnEffectiveOracle(): List<Path> =
+            Files.walk(examples()).use { tree ->
+                tree
+                    .asSequence()
+                    .filter { it.endsWith("expected/$EFFECTIVE") }
                     .map { it.parent.parent }
                     .sorted()
                     .toList()

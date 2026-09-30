@@ -1,19 +1,21 @@
-import type { Result } from "../domain/diagnostic.ts";
-import type { EffectiveProject } from "../domain/project-intent/model.ts";
-import { lowerProject } from "../domain/project-intent/lower.ts";
-import {
-  validateProjectIntent,
-  type ValidatedProjectIntent,
-} from "../wire/project-intent/map.ts";
-import { readEnv, type EnvSource } from "../wire/project-intent/env.ts";
-import { readYaml } from "../wire/project-intent/read.ts";
+import { projectDiagnostics } from "../check/project.ts";
+import { lowerProject } from "../lower/project.ts";
+import type { Result } from "../model/diagnostic.ts";
+import type { EffectiveProject } from "../model/effective-intent.ts";
+import type { EnvSource } from "../model/env.ts";
+import type { ProjectIntentDocument } from "../model/project-intent.ts";
+import { readEnv } from "../read/env.ts";
+import { readProjectIntent } from "../read/project-intent.ts";
+import { readYaml } from "../read/yaml.ts";
 
-/** Every stage downstream reads `effective`, never the authored levels. */
-export interface ParsedProjectIntent extends ValidatedProjectIntent {
+/** The authored document, and the Effective Intent everything downstream reads. */
+export interface ParsedProjectIntent {
+  readonly document: ProjectIntentDocument;
   readonly effective: EffectiveProject;
 }
 
-/** The lowering runs after the document's own rules and before composition. */
+/** Read, check, lower: the lowering runs after the document's own rules and
+ * before composition. */
 export function parseProjectIntent(
   text: string,
   env: readonly EnvSource[] = [],
@@ -22,13 +24,15 @@ export function parseProjectIntent(
   if (!read.ok) return read;
   const scoped = readEnv(env);
   if (!scoped.ok) return scoped;
-  const validated = validateProjectIntent(read.value, scoped.value);
-  if (!validated.ok) return validated;
+  const document = readProjectIntent(read.value);
+  if (!document.ok) return document;
+  const refusals = projectDiagnostics(document.value, scoped.value);
+  if (refusals.length > 0) return { ok: false, diagnostics: refusals };
   return {
     ok: true,
     value: {
-      ...validated.value,
-      effective: lowerProject(validated.value.project),
+      document: document.value,
+      effective: lowerProject(document.value, scoped.value),
     },
   };
 }

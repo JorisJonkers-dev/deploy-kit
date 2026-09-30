@@ -105,7 +105,7 @@ describe("checkIntentSet", () => {
       projects: expect.any(Array) as unknown,
     });
     expect(
-      result.ok && result.value.projects.map(({ name }) => name),
+      result.ok && result.value.projects.map(({ project }) => project),
     ).toStrictEqual(["auth", "data", "delivery", "knowledge", "notes"]);
   });
 
@@ -126,9 +126,9 @@ describe("checkIntentSet", () => {
       read("minimal/notes.project.yml"),
     ]);
 
-    expect(result.ok && result.value.platform?.tiers[0]?.proxy).toBe("notes");
+    expect(result.ok && result.value.platform?.tiers[0]?.traefik).toBe("notes");
     expect(
-      result.ok && result.value.projects.map(({ name }) => name),
+      result.ok && result.value.projects.map(({ project }) => project),
     ).toStrictEqual(["notes"]);
   });
 
@@ -159,7 +159,7 @@ describe("checkIntentSet", () => {
     expect(result.ok).toBe(true);
     expect(
       result.ok &&
-        result.value.projects[0]?.applications[0]?.processes[0]?.env.flatMap(
+        result.value.projects[0]?.applications[0]?.processes[0]?.env?.flatMap(
           ({ entries }) => entries.map(({ name }) => name),
         ),
     ).toStrictEqual(["NODE_ENV", "NOTES_PAGE_SIZE"]);

@@ -87,62 +87,62 @@ describe("the boundary lint", () => {
 
   it("passes a tree that respects every boundary", () => {
     const { code, output } = cruise({
-      "src/domain/service.ts": mod(),
+      "src/model/service.ts": mod(),
       "src/objects/deployment.ts": mod(),
-      "src/wire/intent.ts": mod(["../domain/service.js"]),
+      "src/read/intent.ts": mod(["../model/service.js"]),
       "src/adapters/kubernetes/render.ts": mod([
-        "../../domain/service.js",
+        "../../model/service.js",
         "../../objects/deployment.js",
       ]),
       "src/application/compose.ts": mod([
-        "../domain/service.js",
+        "../model/service.js",
         "../adapters/kubernetes/render.js",
       ]),
       "src/infrastructure/serializer.ts": mod(["../objects/deployment.js"]),
       "src/cli/index.ts": mod([
         "../application/compose.js",
         "../infrastructure/serializer.js",
-        "../wire/intent.js",
+        "../read/intent.js",
       ]),
     });
     expect(code, output).toBe(0);
   });
 
-  it("fails the domain reaching the filesystem", () => {
+  it("fails the model reaching the filesystem", () => {
     const { code, output } = cruise({
-      "src/domain/service.ts": mod(["node:fs"]),
-      "src/cli/index.ts": mod(["../domain/service.js"]),
+      "src/model/service.ts": mod(["node:fs"]),
+      "src/cli/index.ts": mod(["../model/service.js"]),
     });
     expect(code).not.toBe(0);
-    expect(output).toMatch(/domain-reads-nothing-ambient/);
+    expect(output).toMatch(/the-chain-reads-nothing-ambient/);
   });
 
-  it("fails the domain reaching crypto, because hashing arrives through a port", () => {
+  it("fails the model reaching crypto, because hashing arrives through a port", () => {
     const { code, output } = cruise({
-      "src/domain/render-hash.ts": mod(["node:crypto"]),
-      "src/cli/index.ts": mod(["../domain/render-hash.js"]),
+      "src/model/render-hash.ts": mod(["node:crypto"]),
+      "src/cli/index.ts": mod(["../model/render-hash.js"]),
     });
     expect(code).not.toBe(0);
-    expect(output).toMatch(/domain-reads-nothing-ambient/);
+    expect(output).toMatch(/the-chain-reads-nothing-ambient/);
   });
 
-  it("fails the domain importing an infrastructure module", () => {
+  it("fails the model importing an infrastructure module", () => {
     const { code, output } = cruise({
       "src/infrastructure/writer.ts": mod(),
-      "src/domain/service.ts": mod(["../infrastructure/writer.js"]),
-      "src/cli/index.ts": mod(["../domain/service.js"]),
+      "src/model/service.ts": mod(["../infrastructure/writer.js"]),
+      "src/cli/index.ts": mod(["../model/service.js"]),
     });
     expect(code).not.toBe(0);
-    expect(output).toMatch(/domain-is-pure/);
+    expect(output).toMatch(/model-is-pure/);
   });
 
   it("fails two directories that import each other, with no module cycle between them", () => {
     const { code, output } = cruise({
-      "src/wire/a.ts": mod(["../domain/b.js"]),
-      "src/domain/b.ts": mod(),
-      "src/domain/c.ts": mod(["../wire/d.js"]),
-      "src/wire/d.ts": mod(),
-      "src/cli/index.ts": mod(["../wire/a.js", "../domain/c.js"]),
+      "src/read/a.ts": mod(["../model/b.js"]),
+      "src/model/b.ts": mod(),
+      "src/model/c.ts": mod(["../read/d.js"]),
+      "src/read/d.ts": mod(),
+      "src/cli/index.ts": mod(["../read/a.js", "../model/c.js"]),
     });
     expect(code).not.toBe(0);
     expect(output).toMatch(/no-circular-folders/);
@@ -201,20 +201,40 @@ describe("the boundary lint", () => {
     expect(output).toMatch(/nothing-depends-on-the-cli/);
   });
 
-  it("fails the wire layer reaching an adapter", () => {
+  it("fails the reader reaching an adapter", () => {
     const { code, output } = cruise({
       "src/adapters/kubernetes/render.ts": mod(),
-      "src/wire/intent.ts": mod(["../adapters/kubernetes/render.js"]),
-      "src/cli/index.ts": mod(["../wire/intent.js"]),
+      "src/read/intent.ts": mod(["../adapters/kubernetes/render.js"]),
+      "src/cli/index.ts": mod(["../read/intent.js"]),
     });
     expect(code).not.toBe(0);
-    expect(output).toMatch(/wire-maps-inward-only/);
+    expect(output).toMatch(/no-step-imports-another-step/);
   });
 
-  it("fails the object model importing the domain", () => {
+  it("fails a step importing another step", () => {
     const { code, output } = cruise({
-      "src/domain/service.ts": mod(),
-      "src/objects/deployment.ts": mod(["../domain/service.js"]),
+      "src/check/project.ts": mod(),
+      "src/lower/project.ts": mod(["../check/project.js"]),
+      "src/cli/index.ts": mod(["../lower/project.js"]),
+    });
+    expect(code).not.toBe(0);
+    expect(output).toMatch(/no-step-imports-another-step/);
+  });
+
+  it("passes a step importing its own directory and the model", () => {
+    const { code, output } = cruise({
+      "src/model/intent.ts": mod(),
+      "src/check/queries.ts": mod(["../model/intent.js"]),
+      "src/check/project.ts": mod(["./queries.js", "../model/intent.js"]),
+      "src/cli/index.ts": mod(["../check/project.js"]),
+    });
+    expect(code, output).toBe(0);
+  });
+
+  it("fails the object model importing the model", () => {
+    const { code, output } = cruise({
+      "src/model/service.ts": mod(),
+      "src/objects/deployment.ts": mod(["../model/service.js"]),
       "src/cli/index.ts": mod(["../objects/deployment.js"]),
     });
     expect(code).not.toBe(0);
@@ -223,7 +243,7 @@ describe("the boundary lint", () => {
 
   it("fails a module reachable from no entry point", () => {
     const { code, output } = cruise({
-      "src/domain/orphan.ts": "export const v = 1;\n",
+      "src/model/orphan.ts": "export const v = 1;\n",
       "src/cli/index.ts": mod(),
     });
     expect(code).not.toBe(0);
@@ -232,29 +252,30 @@ describe("the boundary lint", () => {
 
   it("fails a cycle", () => {
     const { code, output } = cruise({
-      "src/domain/a.ts":
+      "src/model/a.ts":
         'import { v as b } from "./b.js";\nexport const v = b;\n',
-      "src/domain/b.ts":
+      "src/model/b.ts":
         'import { v as a } from "./a.js";\nexport const v = a;\n',
-      "src/cli/index.ts": mod(["../domain/a.js"]),
+      "src/cli/index.ts": mod(["../model/a.js"]),
     });
     expect(code).not.toBe(0);
     expect(output).toMatch(/no-circular/);
   });
 
-  it("fails the domain importing zod", () => {
+  it("fails a step past the reader importing zod", () => {
     const { code, output } = cruise({
-      "src/domain/service.ts": mod(["zod"]),
-      "src/cli/index.ts": mod(["../domain/service.js"]),
+      "src/check/rule.ts": mod(["zod"]),
+      "src/cli/index.ts": mod(["../check/rule.js"]),
     });
     expect(code).not.toBe(0);
-    expect(output).toMatch(/domain-does-not-know-the-wire/);
+    expect(output).toMatch(/zod-is-the-metamodel-and-the-reader/);
   });
 
-  it("passes the wire layer importing zod", () => {
+  it("passes the model and the reader importing zod", () => {
     const { code, output } = cruise({
-      "src/wire/intent.ts": mod(["zod"]),
-      "src/cli/index.ts": mod(["../wire/intent.js"]),
+      "src/model/intent.ts": mod(["zod"]),
+      "src/read/intent.ts": mod(["zod", "../model/intent.js"]),
+      "src/cli/index.ts": mod(["../read/intent.js"]),
     });
     expect(code, output).toBe(0);
   });
@@ -270,13 +291,13 @@ describe("the boundary lint", () => {
 
   it("fails shipped code importing a test file or build output", () => {
     const { code, output } = cruise({
-      "src/domain/intent.ts": mod([
+      "src/model/intent.ts": mod([
         "../../test/support/fixture.js",
         "./intent.test.js",
       ]),
-      "src/domain/intent.test.ts": mod(),
+      "src/model/intent.test.ts": mod(),
       "test/support/fixture.ts": mod(),
-      "src/cli/index.ts": mod(["../domain/intent.js"]),
+      "src/cli/index.ts": mod(["../model/intent.js"]),
     });
     expect(code).not.toBe(0);
     expect(output).toMatch(/shipped-code-imports-no-test-or-build-output/);
@@ -309,20 +330,20 @@ describe("the boundary lint", () => {
     expect(output).toMatch(/not-to-deprecated-core/);
   });
 
-  it("fails the domain importing the object model", () => {
+  it("fails the model importing the object model", () => {
     const { code, output } = cruise({
       "src/objects/deployment.ts": mod(),
-      "src/domain/service.ts": mod(["../objects/deployment.js"]),
-      "src/cli/index.ts": mod(["../domain/service.js"]),
+      "src/model/service.ts": mod(["../objects/deployment.js"]),
+      "src/cli/index.ts": mod(["../model/service.js"]),
     });
     expect(code).not.toBe(0);
-    expect(output).toMatch(/domain-is-pure/);
+    expect(output).toMatch(/model-is-pure/);
   });
 
-  it("fails an adapter importing the wire layer", () => {
+  it("fails an adapter importing the reader", () => {
     const { code, output } = cruise({
-      "src/wire/intent.ts": mod(),
-      "src/adapters/kubernetes/render.ts": mod(["../../wire/intent.js"]),
+      "src/read/intent.ts": mod(),
+      "src/adapters/kubernetes/render.ts": mod(["../../read/intent.js"]),
       "src/cli/index.ts": mod(["../adapters/kubernetes/render.js"]),
     });
     expect(code).not.toBe(0);
@@ -345,10 +366,10 @@ describe("the boundary lint", () => {
 describe("reachability", () => {
   it("fails a dead subtree reachable from no entry point", () => {
     const { code, output } = cruise({
-      "src/domain/dead-a.ts": mod(["./dead-b.js"]),
-      "src/domain/dead-b.ts": mod(),
-      "src/domain/live.ts": mod(),
-      "src/cli/index.ts": mod(["../domain/live.js"]),
+      "src/model/dead-a.ts": mod(["./dead-b.js"]),
+      "src/model/dead-b.ts": mod(),
+      "src/model/live.ts": mod(),
+      "src/cli/index.ts": mod(["../model/live.js"]),
     });
     expect(code).not.toBe(0);
     expect(output).toMatch(/unreachable-from-an-entry-point/);
@@ -356,8 +377,8 @@ describe("reachability", () => {
 
   it("passes a module reached only through src/index.ts", () => {
     const { code, output } = cruise({
-      "src/domain/service.ts": mod(),
-      "src/index.ts": mod(["./domain/service.js"]),
+      "src/model/service.ts": mod(),
+      "src/index.ts": mod(["./model/service.js"]),
       "src/cli/index.ts": mod(["../index.js"]),
     });
     expect(code, output).toBe(0);

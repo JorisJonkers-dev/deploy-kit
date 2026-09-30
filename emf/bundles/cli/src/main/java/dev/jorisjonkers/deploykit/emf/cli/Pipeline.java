@@ -1,7 +1,10 @@
 package dev.jorisjonkers.deploykit.emf.cli;
 
 import com.google.inject.Injector;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.SharedIntent;
+import dev.jorisjonkers.deploykit.emf.resolve.Lowering;
 import dev.jorisjonkers.deploykit.emf.syntax.PlatformIntentStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.ProjectIntentStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.linking.UnlinkedNames;
@@ -9,11 +12,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Stream;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
@@ -40,6 +46,9 @@ public final class Pipeline {
     /** The Complete OCL file the metamodel carries, beside its classes. */
     private static final String CONSTRAINTS = "project-intent.ocl";
 
+    /** The code an env file earns whose scope directory names no level of the project file. */
+    private static final String UNKNOWN_ENV_SCOPE = "E_UNKNOWN_ENV_SCOPE";
+
     private static final String PLATFORM = "platform.intent.yml";
     private static final String PROJECT = ".project.yml";
 
@@ -52,6 +61,70 @@ public final class Pipeline {
         return refusals.isEmpty()
                 ? Parsed.of(IntentJson.of(resource.getContents().get(0)))
                 : Parsed.refused(refusals);
+    }
+
+    /**
+     * The Effective Intent of the one project file at {@code path}: the file and the env files under
+     * the {@code env/} directory beside it, lowered onto the Processes that hold them
+     * (spec/v1/10-project-intent.md#the-effective-intent), or the diagnostics refusing either.
+     */
+    public static Parsed effective(Path path) throws IOException {
+        Resource resource = read(List.of(path)).get(0);
+        List<Diagnostic> refusals = new ArrayList<>(refusals(resource, false));
+        EnvFiles.Read env = EnvFiles.read(envBeside(path));
+        refusals.addAll(env.diagnostics());
+        if (!refusals.isEmpty()) {
+            return Parsed.refused(refusals);
+        }
+        Project project = (Project) resource.getContents().get(0);
+        for (EnvFiles.Scoped scoped : env.files()) {
+            Optional<SharedIntent> level = levelOf(project, scoped.scope());
+            if (level.isEmpty()) {
+                refusals.add(new Diagnostic(
+                        UNKNOWN_ENV_SCOPE,
+                        scoped.path(),
+                        scoped.path(),
+                        "this scope directory names nothing the project file declares"));
+            } else {
+                level.get().getEnv().add(scoped.file());
+            }
+        }
+        return refusals.isEmpty() ? Parsed.of(IntentJson.of(Lowering.lower(project))) : Parsed.refused(refusals);
+    }
+
+    /** The env files under the {@code env/} directory beside {@code path}, in path order. */
+    private static List<EnvFiles.Source> envBeside(Path path) throws IOException {
+        Path env = path.toAbsolutePath().resolveSibling("env");
+        if (!Files.isDirectory(env)) {
+            return List.of();
+        }
+        try (Stream<Path> tree = Files.walk(env)) {
+            List<EnvFiles.Source> sources = new ArrayList<>();
+            for (Path file : tree.filter(file -> file.toString().endsWith(".env"))
+                    .sorted()
+                    .toList()) {
+                sources.add(new EnvFiles.Source(file.toString(), Files.readString(file, StandardCharsets.UTF_8)));
+            }
+            return sources;
+        }
+    }
+
+    /** The level of {@code project} a scope directory names, or nothing where it names none. */
+    private static Optional<SharedIntent> levelOf(Project project, EnvFiles.Scope scope) {
+        return switch (scope.level()) {
+            case PROJECT -> Optional.of(project);
+            case APPLICATION ->
+                project.getApplications().stream()
+                        .filter(application -> scope.name().equals(application.getId()))
+                        .map(SharedIntent.class::cast)
+                        .findFirst();
+            case PROCESS ->
+                project.getApplications().stream()
+                        .flatMap(application -> application.getProcesses().stream())
+                        .filter(process -> scope.name().equals(process.getName()))
+                        .map(SharedIntent.class::cast)
+                        .findFirst();
+        };
     }
 
     /**

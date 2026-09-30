@@ -17,7 +17,7 @@ import {
 import {
   resolvedApplicationDocument,
   resolvedDeployment,
-} from "../../src/wire/resolved-deployment/schema.ts";
+} from "../../src/model/resolved-deployment.ts";
 
 /** The revision the production Hasher gives an Application's element. */
 const applicationRevision = (

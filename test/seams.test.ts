@@ -7,12 +7,12 @@ import { repositoryEslint } from "./support/eslint.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..");
 const PROBES = [
-  "src/domain/probe.ts",
+  "src/model/probe.ts",
   "src/application/probe.ts",
   "src/infrastructure/probe.ts",
   "src/cli/probe.ts",
   "src/cli/boundary.ts",
-  "src/domain/probe.test.ts",
+  "src/model/probe.test.ts",
   "scripts/probe.ts",
   "tool.config.ts",
 ];
@@ -49,8 +49,8 @@ describe(
   { timeout: 120_000 },
   () => {
     for (const [what, source] of Object.entries(AMBIENT)) {
-      it(`refuses ${what} in the domain and the application`, async () => {
-        for (const ring of ["src/domain/probe.ts", "src/application/probe.ts"])
+      it(`refuses ${what} in the model and the application`, async () => {
+        for (const ring of ["src/model/probe.ts", "src/application/probe.ts"])
           expect(await fired(ring, source)).toContainEqual(
             expect.stringMatching(/^no-restricted-syntax: RULE-012: /),
           );
@@ -60,7 +60,7 @@ describe(
         for (const ring of [
           "src/infrastructure/probe.ts",
           "src/cli/probe.ts",
-          "src/domain/probe.test.ts",
+          "src/model/probe.test.ts",
         ])
           expect(await fired(ring, source)).not.toContainEqual(
             expect.stringMatching(/^no-restricted-syntax:/),
@@ -71,7 +71,7 @@ describe(
     it("allows a date from a value and a call merely ending in Sync-free names", async () => {
       expect(
         await fired(
-          "src/domain/probe.ts",
+          "src/model/probe.ts",
           "export const at = (ms: number): Date => new Date(ms);\n",
         ),
       ).toStrictEqual([]);
@@ -95,7 +95,7 @@ describe(
     for (const [what, source] of Object.entries(TOUCHES)) {
       it(`refuses ${what} outside the boundary file, the CLI included`, async () => {
         for (const ring of [
-          "src/domain/probe.ts",
+          "src/model/probe.ts",
           "src/infrastructure/probe.ts",
           "src/cli/probe.ts",
         ])

@@ -3,6 +3,7 @@ package dev.jorisjonkers.deploykit.emf.cli;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.jorisjonkers.deploykit.emf.metamodel.json.CanonicalJson;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Application;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentFactory;
@@ -167,5 +168,66 @@ class PipelineTest {
     void aFileThatCannotBeReadIsAnErrorRatherThanARefusal(@TempDir Path directory) {
         assertThatThrownBy(() -> Pipeline.intent(directory.resolve("missing.project.yml")))
                 .isInstanceOf(UncheckedIOException.class);
+    }
+
+    /** {@code text} as an env file at {@code scope}, under the {@code env/} directory beside a project file. */
+    private static void env(Path directory, String scope, String text) throws IOException {
+        Path file = directory.resolve("env").resolve(scope).resolve("base.env");
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, text);
+    }
+
+    @Test
+    void theMinimalCaseLowersToItsCommittedEffectiveOracle() throws IOException {
+        Parsed effective = Pipeline.effective(Examples.of("minimal/notes.project.yml"));
+
+        assertThat(effective.ok()).isTrue();
+        assertThat(CanonicalJson.write(effective.intent())).isEqualTo(Examples.read("minimal/expected/effective.json"));
+    }
+
+    @Test
+    void aProjectFileWithNoEnvDirectoryLowersWithNoEnv(@TempDir Path directory) throws IOException {
+        Parsed effective = Pipeline.effective(file(directory, MINIMAL));
+
+        assertThat(effective.ok()).isTrue();
+        assertThat(effective.intent().toString()).doesNotContain("env=");
+    }
+
+    @Test
+    void anEnvFileReachesTheLevelItsScopeDirectoryNames(@TempDir Path directory) throws IOException {
+        Path project = file(directory, MINIMAL);
+        env(directory, "_project", "SHARED=1\n");
+        env(directory, "_applications/notes", "OURS=1\n");
+        Files.writeString(directory.resolve("env").resolve("README.md"), "not an env file\n");
+
+        Parsed effective = Pipeline.effective(project);
+
+        assertThat(effective.ok()).isTrue();
+        assertThat(effective.intent().toString()).contains("name=OURS").contains("name=SHARED");
+    }
+
+    @Test
+    void anEnvFileWhoseScopeNamesNothingDeclaredIsRefused(@TempDir Path directory) throws IOException {
+        Path project = file(directory, MINIMAL);
+        env(directory, "notes-worker", "A=1\n");
+        env(directory, "_applications/elsewhere", "B=1\n");
+
+        Parsed effective = Pipeline.effective(project);
+
+        assertThat(effective.diagnostics())
+                .extracting(Diagnostic::code)
+                .containsExactly("E_UNKNOWN_ENV_SCOPE", "E_UNKNOWN_ENV_SCOPE");
+    }
+
+    @Test
+    void aRefusedDocumentOrEnvFileIsNotLowered(@TempDir Path directory) throws IOException {
+        Path project = file(directory, MINIMAL.replace("runtime: node", "runtime: cobol"));
+        env(directory, "notes-api", "not an assignment\n");
+
+        Parsed effective = Pipeline.effective(project);
+
+        assertThat(effective.ok()).isFalse();
+        assertThat(effective.diagnostics()).extracting(Diagnostic::code).contains("schema");
+        assertThat(effective.intent()).isEmpty();
     }
 }

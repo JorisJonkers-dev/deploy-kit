@@ -1,21 +1,20 @@
 ---
 tier: decision
 status: accepted
-claim: open
-owner: joris
+claim: settled
 date: 2026-09-29
 normative: docs/architecture.md#the-wire-boundary
 rests-on: ["0007"]
 ---
 
-# Zod declares the authored metamodel, the reader links it, and a second hand-written domain type waits for a second schemaVersion
+# Zod declares the authored metamodel, its output is the source model, and a second hand-written domain type waits for a second schemaVersion
 
 One Zod schema per authored document family is the single source of the runtime
 check, the TypeScript type and the generated JSON Schema, which is generated from
 the schema's **input** variant because it describes what a human writes. The
-schema's output, with defaults applied and written names linked to elements by
-the reader, is the source model every step receives, in the authored vocabulary
-`CONTEXT.md` defines. There is no second hand-written domain model of an
+schema's output is the source model every step receives, in the authored
+vocabulary `CONTEXT.md` defines. A written name stays the name the author wrote,
+and a check proves each one resolves inside its Application. There is no second hand-written domain model of an
 authored document. When a second `schemaVersion` enters the supported range, the
 older schema gets a pure function that lifts it to the current one, at the
 reader, and the steps keep one shape. Zod is imported only by `model/` and
@@ -28,9 +27,10 @@ The data model's version is separable from the package's
 open: nothing yet publishes two versions at once.
 
 **False if:** a second `schemaVersion` is in the supported range while the steps
-still read one shape without a lifting function. **Settled by:** the first
-rewrite slice deleting the authored half of `src/domain/project-intent/model.ts`
-and `src/domain/platform-intent/model.ts` with every oracle byte-identical.
+still read one shape without a lifting function. **Settled by:** the slice that
+deleted the hand-written Project and Platform domain models: every committed
+`intent.json` stayed byte-identical, and the lowering, reading the schema's
+output, writes `minimal`'s `effective.json` oracle.
 
 ## Why
 
@@ -52,9 +52,13 @@ because Xtext instantiates the metamodel directly.
 absorbs skew the day it exists. Building a mapper per family ahead of it cost
 three shapes of one document for a case with no instance.
 
-**Defaults and links happen once.** The reader applies authored defaults and
-resolves written names, so a step never re-decides a default and never searches
-by name.
+**Names stay names, and are checked once.** A route names its Process and
+surface as the author wrote them, and `E_UNKNOWN_PROCESS` and
+`E_UNKNOWN_SURFACE` prove each resolves inside its Application before the
+lowering runs. A step looks a name up in the model it was handed; no second copy
+of the document holds object references that could point at the wrong level.
+The lowering's Effective Intent keeps the same names, which is what lets its
+canonical JSON be an oracle two implementations meet at.
 
 ## Alternatives
 

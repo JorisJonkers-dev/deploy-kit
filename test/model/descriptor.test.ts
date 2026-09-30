@@ -3,8 +3,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { typesOf } from "../../src/wire/project-intent/descriptor.ts";
-import { DRAFT } from "../../src/wire/project-intent/json-schema.ts";
+import { typesOf } from "../../src/model/descriptor.ts";
+import { DRAFT } from "../../src/model/json-schema.ts";
 import {
   JSON_SCHEMA_PATH,
   canonicalJson,

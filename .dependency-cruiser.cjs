@@ -5,19 +5,25 @@
 // graph rather than one file at a time. Each rule below is a decision recorded
 // in docs/architecture.md, not a style preference.
 //
-// The layers, innermost first:
+// The compiler is a chain of typed models
+// (docs/adr/architecture/0056-the-compiler-is-a-chain-of-typed-models.md).
+// Innermost first:
 //
-//   src/domain/         the model in code: layer 1 aggregates, layer 2
-//                       derivation, the ports it needs. Pure.
-//   src/objects/        the typed Kubernetes object model layer 3 builds.
-//   src/wire/           Zod schemas per document family and per schemaVersion,
-//                       plus the mappers from wire shape into the domain.
-//   src/adapters/       the registered adapters. Documents in, Fragments out.
-//   src/application/    the use-cases. Orders derivation, performs no IO of
-//                       its own: every effect arrives through a port.
-//   src/infrastructure/ port implementations: filesystem, oras, hashing, the
-//                       serializer, the writer.
+//   src/model/          every metamodel in the chain and its pure queries.
+//                       Zod lives here: the schema is the authored metamodel.
+//   src/read/           text in, the source model out. Step.
+//   src/check/          the constraints, one function per code. Step.
+//   src/lower/          Project Intent to the Effective Intent. Step.
+//   src/resolve/        the Effective Intent to the Resolved Deployment. Step.
+//   src/adapters/       the registered adapters. Step.
+//   src/application/    the use-cases: run the steps in order, pass each model
+//                       on, perform no IO of their own.
+//   src/infrastructure/ port implementations: hashing, the serializer, the
+//                       writer.
 //   src/cli/            argument parsing, diagnostic rendering, exit codes.
+//
+// A step imports model/ and nothing else of the compiler, and never another
+// step: the use-case hands it the previous model as a value.
 
 /**
  * The roots of the module graph: the library entry and the CLI entry. Add a
@@ -126,46 +132,47 @@ module.exports = {
       },
     },
     {
-      name: "domain-is-pure",
+      name: "model-is-pure",
       severity: "error",
       comment:
-        "The domain may not reach outward. Everything it needs from the world " +
-        "arrives through a port it declares and the application supplies.",
-      from: { path: "^src/domain/" },
+        "The metamodels are what every step shares, so they reach for nothing " +
+        "else of the compiler.",
+      from: { path: "^src/model/" },
+      to: { path: "^src/(?!model/)" },
+    },
+    {
+      name: "no-step-imports-another-step",
+      severity: "error",
+      comment:
+        "A step receives the previous model as a value from the use-case. One " +
+        "that imports another step turns evaluation order into semantics.",
+      from: { path: "^src/(read|check|lower|resolve)/" },
       to: {
-        path: "^src/(?!domain/)",
+        path: "^src/(read|check|lower|resolve|adapters|application|infrastructure|cli)/",
+        pathNot: "^src/$1/",
       },
     },
     {
-      name: "domain-reads-nothing-ambient",
+      name: "the-chain-reads-nothing-ambient",
       severity: "error",
       comment:
-        "No filesystem, network, clock, environment or crypto inside the " +
-        "domain. Hashing arrives through a port, which is what keeps renderHash " +
+        "No filesystem, network, clock, environment or crypto in a metamodel or " +
+        "a step. Hashing arrives through a port, which is what keeps renderHash " +
         "a pure function of the pinned inputs.",
-      from: { path: "^src/domain/" },
+      from: { path: "^src/(model|read|check|lower|resolve)/" },
       to: { path: ambientPattern },
     },
     {
-      name: "domain-does-not-know-the-wire",
+      name: "zod-is-the-metamodel-and-the-reader",
       severity: "error",
       comment:
-        "Zod declares the authoring shape. The domain is not that shape: a " +
-        "schemaVersion may change without the core moving.",
-      from: { path: "^src/domain/" },
+        "Zod declares the authored metamodel and the reader applies it. A step " +
+        "past the reader reads the model's types, never a schema.",
+      from: { pathNot: "^src/(model|read)/" },
       // The resolved path, not the specifier: dependency-cruiser matches
       // to.path against what the module resolved to, which for an npm package
       // is node_modules/zod/... and never the bare name.
       to: { path: "^(node_modules/)?zod(/|$)" },
-    },
-    {
-      name: "wire-maps-inward-only",
-      severity: "error",
-      comment:
-        "The wire layer parses documents and maps them into the domain. It " +
-        "renders nothing and orchestrates nothing.",
-      from: { path: "^src/wire/" },
-      to: { path: "^src/(adapters|application|infrastructure|cli)/" },
     },
     {
       name: "objects-are-data",
@@ -197,7 +204,10 @@ module.exports = {
         "adapter: reading manifests from disk is the caller's job.",
       from: { path: "^src/adapters/" },
       to: {
-        path: [ambientPattern, "^src/(application|cli|infrastructure|wire)/"],
+        path: [
+          ambientPattern,
+          "^src/(application|cli|infrastructure|read|check|lower|resolve)/",
+        ],
       },
     },
     {
@@ -213,10 +223,10 @@ module.exports = {
       name: "infrastructure-implements-ports-only",
       severity: "error",
       comment:
-        "A port implementation satisfies an interface the domain declares. It " +
+        "A port implementation satisfies an interface the model declares. It " +
         "does not orchestrate, and it does not render.",
       from: { path: "^src/infrastructure/" },
-      to: { path: "^src/(application|adapters|wire)/" },
+      to: { path: "^src/(application|adapters|read|check|lower|resolve)/" },
     },
     {
       name: "nothing-depends-on-the-cli",

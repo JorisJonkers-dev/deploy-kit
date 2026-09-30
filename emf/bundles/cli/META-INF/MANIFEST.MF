@@ -8,6 +8,7 @@ Automatic-Module-Name: dev.jorisjonkers.deploykit.emf.cli
 Export-Package: dev.jorisjonkers.deploykit.emf.cli
 Require-Bundle: dev.jorisjonkers.deploykit.emf.metamodel,
  dev.jorisjonkers.deploykit.emf.syntax,
+ dev.jorisjonkers.deploykit.emf.resolve,
  org.eclipse.emf.ecore,
  org.eclipse.emf.ecore.xmi,
  org.eclipse.xtext,
