@@ -11,12 +11,14 @@ import type {
   StartupProbe,
 } from "../../model/resolved-deployment.ts";
 import type { Canary, Webhook } from "../../objects/custom.ts";
-import type { Deliverable } from "../../objects/deliverable.ts";
+import type { Deliverable, RenderedObject } from "../../objects/deliverable.ts";
 import type {
   Container,
   Deployment,
   Kustomization,
+  PersistentVolumeClaim,
   Probe,
+  Service,
   ServiceAccount,
 } from "../../objects/kubernetes.ts";
 import { wholeSeconds } from "../shared/durations.ts";
@@ -34,20 +36,27 @@ const WEBHOOKS = [
 
 /** A family this adapter does not spell yet stops the render rather than leaving it out. */
 function notYet(process: ResolvedProcess): void {
-  if (
-    process.lifecycle !== "application" ||
-    process.switchover !== "blue-green"
-  )
+  const switched =
+    process.switchover === "blue-green" || process.switchover === "stop-start";
+  if (process.lifecycle !== "application" || !switched)
     throw new Error(
       `${process.name}: a ${process.lifecycle} Process that switches ${process.switchover ?? "nothing"} is not rendered yet`,
     );
   if (process.writablePaths !== undefined)
     throw new Error(`${process.name}: a writable path is not rendered yet`);
-  if (process.surfaces === undefined)
+  if (process.switchover === "blue-green" && process.surfaces === undefined)
     throw new Error(
       `${process.name}: a blue-green Process that serves no surface is not rendered yet`,
     );
+  // A missing list and an empty one hold no backup alike.
+  // Stryker disable next-line ArrayDeclaration
+  if ((process.volumes ?? []).some(({ backup }) => backup !== undefined))
+    throw new Error(`${process.name}: a backup is not rendered yet`);
 }
+
+/** Flagger switches a blue-green Process; a stop-start one is replaced in place. */
+const blueGreen = (process: ResolvedProcess): boolean =>
+  process.switchover === "blue-green";
 
 const probeOf = (
   probe: ResolvedProbe | StartupProbe,
@@ -67,10 +76,14 @@ function containerOf(process: ResolvedProcess): Container {
   return {
     name: process.name,
     image: process.image,
-    // A rendered Process serves a surface: it stopped above otherwise.
-    ports: (process.surfaces as NonNullable<ResolvedProcess["surfaces"]>).map(
-      ({ name, port }) => ({ name, containerPort: port }),
-    ),
+    ...(process.surfaces === undefined
+      ? {}
+      : {
+          ports: process.surfaces.map(({ name, port }) => ({
+            name,
+            containerPort: port,
+          })),
+        }),
     ...(process.environment === undefined
       ? {}
       : {
@@ -85,6 +98,14 @@ function containerOf(process: ResolvedProcess): Container {
       readOnlyRootFilesystem: true,
       capabilities: { drop: ["ALL"] },
     },
+    ...(process.volumes === undefined
+      ? {}
+      : {
+          volumeMounts: process.volumes.map(({ claim, mountAt }) => ({
+            name: claim,
+            mountPath: mountAt,
+          })),
+        }),
     ...(process.readiness === undefined
       ? {}
       : { readinessProbe: probeOf(process.readiness, true) }),
@@ -108,11 +129,19 @@ function deploymentOf(
     metadata: { name: process.name, namespace: application.namespace, labels },
     spec: {
       // Flagger scales and promotes a blue-green Deployment, so it carries no
-      // replica count, and a new version starts beside the old one.
-      strategy: {
-        type: "RollingUpdate",
-        rollingUpdate: { maxSurge: 1, maxUnavailable: 0 },
-      },
+      // replica count and its new version starts beside the old one; a
+      // stop-start one keeps its count and stops before it starts again.
+      ...(blueGreen(process)
+        ? {
+            strategy: {
+              type: "RollingUpdate" as const,
+              rollingUpdate: { maxSurge: 1, maxUnavailable: 0 },
+            },
+          }
+        : {
+            replicas: process.replicas,
+            strategy: { type: "Recreate" as const },
+          }),
       progressDeadlineSeconds: wholeSeconds(process.deadline),
       selector: {
         matchLabels: {
@@ -129,14 +158,67 @@ function deploymentOf(
             runAsNonRoot: true,
             runAsUser: process.uid,
             runAsGroup: process.gid,
+            // A volume is written as the image's group, and only a volume is.
+            ...(process.volumes === undefined ? {} : { fsGroup: process.gid }),
             seccompProfile: { type: "RuntimeDefault" },
           },
           containers: [containerOf(process)],
+          ...(process.volumes === undefined
+            ? {}
+            : {
+                volumes: process.volumes.map(({ claim }) => ({
+                  name: claim,
+                  persistentVolumeClaim: { claimName: claim },
+                })),
+              }),
         },
       },
     },
   };
 }
+
+/** The Service a stop-start Process is reached by; Flagger generates a blue-green one's. */
+const serviceOf = (
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+): Service => ({
+  apiVersion: "v1",
+  kind: "Service",
+  metadata: {
+    name: process.name,
+    namespace: application.namespace,
+    labels: labelsOf(process, application.id),
+  },
+  spec: {
+    selector: instanceOf(process.name),
+    ports: (process.surfaces as NonNullable<ResolvedProcess["surfaces"]>).map(
+      ({ name, port }) => ({ name, port, targetPort: name }),
+    ),
+  },
+});
+
+/**
+ * A claim for each volume, `ReadWriteOnce` as `local-path` provides. A claim
+ * whose class derives a backup is never pruned, which lands with the backup it
+ * guards: until then a backed-up volume stops the render above.
+ */
+const claimsOf = (
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+): PersistentVolumeClaim[] =>
+  (process.volumes ?? []).map((volume) => ({
+    apiVersion: "v1",
+    kind: "PersistentVolumeClaim",
+    metadata: {
+      name: volume.claim,
+      namespace: application.namespace,
+      labels: labelsOf(process, application.id),
+    },
+    spec: {
+      accessModes: ["ReadWriteOnce"],
+      resources: { requests: { storage: volume.size } },
+    },
+  }));
 
 const serviceAccountOf = (
   process: ResolvedProcess,
@@ -215,29 +297,33 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
     ...project.applications.flatMap((application) => {
       const directory = applicationDirectory(project.project, application.id);
       application.processes.forEach(notYet);
-      return [
-        {
-          path: `${directory}/workload.yaml`,
-          adapter: ADAPTER,
-          objects: application.processes.map((process) =>
-            deploymentOf(process, application),
-          ),
-        },
-        {
-          path: `${directory}/serviceaccount.yaml`,
-          adapter: ADAPTER,
-          objects: application.processes.map((process) =>
-            serviceAccountOf(process, application),
-          ),
-        },
-        {
-          path: `${directory}/canary.yaml`,
-          adapter: ADAPTER,
-          objects: application.processes.map((process) =>
-            canaryOf(process, application),
-          ),
-        },
+      const { processes } = application;
+      const files: [string, RenderedObject[]][] = [
+        ["workload.yaml", processes.map((p) => deploymentOf(p, application))],
+        [
+          "serviceaccount.yaml",
+          processes.map((p) => serviceAccountOf(p, application)),
+        ],
+        [
+          "canary.yaml",
+          processes.filter(blueGreen).map((p) => canaryOf(p, application)),
+        ],
+        [
+          "service.yaml",
+          processes
+            .filter((p) => !blueGreen(p) && p.surfaces !== undefined)
+            .map((p) => serviceOf(p, application)),
+        ],
+        ["pvc.yaml", processes.flatMap((p) => claimsOf(p, application))],
       ];
+      // A file holds at least one object, or it is not written.
+      return files
+        .filter(([, objects]) => objects.length > 0)
+        .map(([file, objects]) => ({
+          path: `${directory}/${file}`,
+          adapter: ADAPTER,
+          objects,
+        }));
     }),
   ];
 }

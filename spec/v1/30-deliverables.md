@@ -254,10 +254,13 @@ spells only what the projection holds:
 | model value | adapter | spelled as |
 |---|---|---|
 | a `blue-green` Process | `kubernetes` | a `Deployment` with no `replicas` and a `RollingUpdate` of surge 1, unavailability 0, which Flagger scales and promotes; a `Canary` whose `service` is the Process's first surface and whose three webhooks are the gate's `endpoint` with `/may-start`, `/checks` and `/may-promote`, each carrying the Application, the Process and the Application revision |
+| a `stop-start` Process | `kubernetes` | a `Deployment` of its `replicas` with a `Recreate` strategy, and a `Service` named for the Process that selects its `instance` and serves each of its surfaces by name |
+| a volume | `kubernetes` | a `ReadWriteOnce` `PersistentVolumeClaim` named for the claim at the volume's `size`, mounted at its `mountAt`, the pod's `fsGroup` the image's `gid` |
 | `hardening: restricted` | `kubernetes` | `runAsNonRoot`, the images lock's `uid` and `gid`, seccomp `RuntimeDefault`, a read-only root filesystem, every capability dropped |
 | a probe's `period`, `timeout`, `failures` | `kubernetes` | `periodSeconds`, `timeoutSeconds`, `failureThreshold`; `initialDelaySeconds: 0` on readiness and liveness only |
 | `ingress`, `egress`, an edge's `peers` | `networking` | one rule per peer, from or to its namespace (by `kubernetes.io/metadata.name`) and, where the peer is a Process, its `instance`, on TCP; the `cluster-dns` peer on UDP and TCP both |
 | `scrape` of a `blue-green` Process | `prometheus` | a `PodMonitor` in the Application's namespace, `jobLabel` the `instance` label, the scrape's surface, path, interval and timeout |
+| `scrape` of a `stop-start` Process | `prometheus` | a `ServiceMonitor` over the Process's own `Service`, with the same selection and endpoint |
 | a tier's `listener` | `traefik` | the entry point: `tls` is `websecure`, `plain` is `web` |
 | a tier's `certificates` | `traefik` | `acme` is the certificate resolver of that name; `none` writes no TLS block |
 | a route's `precedence` | `traefik` | `priority` is 1000 less the precedence, since Traefik tries the higher priority first |

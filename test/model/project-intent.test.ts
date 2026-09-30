@@ -286,12 +286,30 @@ describe("parseProjectIntent", () => {
     },
   );
 
-  it("accepts a grant that declares no rotation", () => {
+  it("refuses a grant that declares no rotation, at the grant it does not complete", () => {
     const text = withApplications(
       `  - id: batch\n    processes:\n${PROCESS}        secrets:\n          - path: secret/data/batch\n            keys: [password]\n            access: read\n            delivery: env\n`,
     );
 
-    expect(parseProjectIntent(text).ok).toBe(true);
+    expect(refused(text)).toContainEqual(
+      expect.objectContaining({
+        code: "schema",
+        path: "/applications/0/processes/0/secrets/0",
+      }),
+    );
+  });
+
+  it("refuses a volume that declares no size, at the volume", () => {
+    const text = withApplications(
+      `  - id: batch\n    processes:\n${PROCESS}        volumes:\n          - {claim: c, mountAt: /data, durability: reconstructible}\n`,
+    );
+
+    expect(refused(text)).toContainEqual(
+      expect.objectContaining({
+        code: "schema",
+        path: "/applications/0/processes/0/volumes/0/size",
+      }),
+    );
   });
 
   it("points a schema failure at the chapter that defines the field", () => {

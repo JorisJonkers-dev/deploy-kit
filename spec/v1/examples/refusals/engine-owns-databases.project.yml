@@ -1,0 +1,36 @@
+# ACCEPTED: the counterpart engine-without-durability.project.yml is refused for.
+#
+# `engine` is refused only where it derives nothing. A Postgres owns databases,
+# so its consumers' database catalog derives from it whatever its volume is
+# worth: on a `reconstructible` volume, which derives no backup, it still
+# declares its engine (spec/v1/10-project-intent.md#process,
+# docs/adr/model/0019-engine-is-process-vocabulary.md).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: engine-owns-databases
+    processes:
+      - name: engine-owns-databases-store
+        lifecycle: application
+        image: engine-owns-databases-store
+        runtime: none
+        provides:
+          postgres: 5432
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { tcp: 5432 }
+          liveness: { tcp: 5432 }
+        startupBudget: 20s
+        cutover: interrupted
+        engine: postgres
+        volumes:
+          - claim: engine-owns-databases-data
+            mountAt: /var/lib/postgresql/data
+            size: 1Gi
+            durability: reconstructible

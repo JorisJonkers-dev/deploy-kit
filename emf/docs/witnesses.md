@@ -30,7 +30,7 @@ This list holds **9** witnesses, and **5** pending.
 | REQ-024 | `ParityTest#a refused document equals its committed diagnostics` |
 | REQ-029 | `LinkingTest#aRouteAndAScrapeLinkToTheVeryProcessAndSurfaceTheirApplicationHolds` |
 | REQ-030 | `PlatformIntentTest#aPlatformDocumentParsesAndATierWithoutItsEndpointIsRefused` |
-| REQ-031 | `IntentSetTest#theWorkedEstateIsRefusedExactlyWhereThePlatformDocumentSaysItWillBe` |
+| REQ-031 | `IntentSetTest#everyEnvAndFileGrantIsRefusedWhereSecretsAreNotEncryptedAtRest` |
 | REQ-036 | `LoweringTest#everyProcessHoldsTheGrantsOfEveryLevelAboveItExtendedByItsOwn` |
 | REQ-037 | `EnvFilesTest#readsALiteralAPlaceholderCommentsAndBlankLines` |
 | REQ-038 | `ApplicationRevisionTest#theRevisionMovesExactlyWhenADecisionAboutTheApplicationDoes` |

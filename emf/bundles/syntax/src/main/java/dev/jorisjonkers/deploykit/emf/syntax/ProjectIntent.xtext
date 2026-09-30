@@ -157,7 +157,7 @@ TcpProbe returns TcpProbe:
 Volume returns Volume:
 	(('claim' ':' claim=Text)
 	& ('mountAt' ':' mountAt=Text)
-	& ('size' ':' size=Text)?
+	& ('size' ':' size=Text)
 	& ('durability' ':' durability=DurabilityClass));
 
 Capacity returns Capacity:
@@ -174,7 +174,7 @@ KvGrant returns KvGrant:
 	& ('delivery' ':' delivery=Delivery)
 	& ('mountAt' ':' mountAt=Text)?
 	& ('fileMode' ':' fileMode=Text)?
-	& ('rotation' ':' BEGIN rotation=Rotation END)?);
+	& ('rotation' ':' BEGIN rotation=Rotation END));
 
 DatabaseGrant returns DatabaseGrant:
 	'engine' ':' engine=DatabaseEngine
@@ -182,7 +182,7 @@ DatabaseGrant returns DatabaseGrant:
 	& ('delivery' ':' delivery=Delivery)
 	& ('mountAt' ':' mountAt=Text)?
 	& ('fileMode' ':' fileMode=Text)?
-	& ('rotation' ':' BEGIN rotation=Rotation END)?);
+	& ('rotation' ':' BEGIN rotation=Rotation END));
 
 TransitGrant returns TransitGrant:
 	'engine' ':' engine=TransitEngine
@@ -191,7 +191,7 @@ TransitGrant returns TransitGrant:
 	& ('delivery' ':' delivery=Delivery)
 	& ('mountAt' ':' mountAt=Text)?
 	& ('fileMode' ':' fileMode=Text)?
-	& ('rotation' ':' BEGIN rotation=Rotation END)?);
+	& ('rotation' ':' BEGIN rotation=Rotation END));
 
 Rotation returns Rotation:
 	(('tolerates' ':' tolerates=Tolerance)

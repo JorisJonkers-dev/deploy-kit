@@ -42,7 +42,7 @@ export type Probe = (
 export interface Container {
   readonly name: string;
   readonly image: string;
-  readonly ports: readonly {
+  readonly ports?: readonly {
     readonly name: string;
     readonly containerPort: number;
   }[];
@@ -55,6 +55,10 @@ export interface Container {
     readonly readOnlyRootFilesystem: true;
     readonly capabilities: { readonly drop: readonly ["ALL"] };
   };
+  readonly volumeMounts?: readonly {
+    readonly name: string;
+    readonly mountPath: string;
+  }[];
   readonly readinessProbe?: Probe;
   readonly livenessProbe?: Probe;
   readonly startupProbe?: Probe;
@@ -65,13 +69,16 @@ export interface Deployment {
   readonly kind: "Deployment";
   readonly metadata: ObjectMeta;
   readonly spec: {
-    readonly strategy: {
-      readonly type: "RollingUpdate";
-      readonly rollingUpdate: {
-        readonly maxSurge: number;
-        readonly maxUnavailable: number;
-      };
-    };
+    readonly replicas?: number;
+    readonly strategy:
+      | {
+          readonly type: "RollingUpdate";
+          readonly rollingUpdate: {
+            readonly maxSurge: number;
+            readonly maxUnavailable: number;
+          };
+        }
+      | { readonly type: "Recreate" };
     readonly progressDeadlineSeconds: number;
     readonly selector: { readonly matchLabels: Labels };
     readonly template: {
@@ -83,9 +90,14 @@ export interface Deployment {
           readonly runAsNonRoot: true;
           readonly runAsUser: number;
           readonly runAsGroup: number;
+          readonly fsGroup?: number;
           readonly seccompProfile: { readonly type: "RuntimeDefault" };
         };
         readonly containers: readonly Container[];
+        readonly volumes?: readonly {
+          readonly name: string;
+          readonly persistentVolumeClaim: { readonly claimName: string };
+        }[];
       };
     };
   };
@@ -116,5 +128,29 @@ export interface NetworkPolicy {
       readonly to: readonly PolicyPeer[];
       readonly ports: readonly PolicyPort[];
     }[];
+  };
+}
+
+export interface Service {
+  readonly apiVersion: "v1";
+  readonly kind: "Service";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly selector: Labels;
+    readonly ports: readonly {
+      readonly name: string;
+      readonly port: number;
+      readonly targetPort: string;
+    }[];
+  };
+}
+
+export interface PersistentVolumeClaim {
+  readonly apiVersion: "v1";
+  readonly kind: "PersistentVolumeClaim";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly accessModes: readonly ["ReadWriteOnce"];
+    readonly resources: { readonly requests: { readonly storage: string } };
   };
 }

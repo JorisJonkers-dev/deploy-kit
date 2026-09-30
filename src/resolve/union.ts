@@ -33,6 +33,7 @@ export function resolveUnion(
         platform: set.platform,
         contract: set.nodeContract,
         lock: set.imagesLock,
+        clusterState: set.clusterState,
         project,
         union: set.projects,
         projectOf,

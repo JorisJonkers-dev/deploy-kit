@@ -20,6 +20,7 @@ import {
   declared,
   effectiveCutover,
   NODE_DIMENSIONS,
+  ownsDatabases,
   ownerRole,
   sameDeclaration,
 } from "../model/project-intent-queries.ts";
@@ -43,7 +44,7 @@ const ILLEGAL_DELIVERY = new Set([
 
 function grantRefusals(grant: Grant, at: string): Refusal[] {
   const refusals: Refusal[] = [];
-  if (grant.delivery === "env" && grant.rotation?.tolerates === "reload")
+  if (grant.delivery === "env" && grant.rotation.tolerates === "reload")
     refusals.push({
       code: "E_ENV_CANNOT_RELOAD",
       path: `${at}/rotation`,
@@ -234,7 +235,12 @@ function processRefusals(
       hint: "Declare `cutover: interrupted`, which is what this storage can honour.",
     });
   const backedUp = volumes.filter((volume) => BACKED_UP.has(volume.durability));
-  if (process.engine !== undefined && backedUp.length === 0)
+  // An engine that owns databases derives its consumers' catalog, backed up or not.
+  if (
+    process.engine !== undefined &&
+    backedUp.length === 0 &&
+    !ownsDatabases(process)
+  )
     refusals.push({
       code: "E_ENGINE_WITHOUT_DURABILITY",
       path: at,

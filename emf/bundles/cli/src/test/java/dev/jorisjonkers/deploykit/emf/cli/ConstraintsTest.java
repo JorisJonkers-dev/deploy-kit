@@ -94,4 +94,17 @@ class ConstraintsTest {
                         .toString())
                 .endsWith("project-intent.ocl");
     }
+
+    @Test
+    void aPostgresOnAVolumeThatDerivesNoBackupDeclaresItsEngine() {
+        // Its consumers' database catalog derives from the engine, so the engine is not decoration
+        // (docs/adr/model/0019-engine-is-process-vocabulary.md).
+        assertThat(Pipeline.intent(Examples.of("refusals/engine-owns-databases.project.yml"))
+                        .diagnostics())
+                .isEmpty();
+        assertThat(Pipeline.intent(Examples.of("refusals/engine-without-durability.project.yml"))
+                        .diagnostics())
+                .extracting(Diagnostic::code)
+                .containsExactly("E_ENGINE_WITHOUT_DURABILITY");
+    }
 }

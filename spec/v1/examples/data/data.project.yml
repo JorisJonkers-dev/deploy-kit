@@ -176,6 +176,7 @@ applications:
         volumes:
           - claim: postgres-data
             mountAt: /var/lib/postgresql/data
+            size: 20Gi
             durability: irreplaceable
             # The one fact only the owning Application knows
             # (docs/adr/model/0018-durability-class-derives-a-backup.md); schedule, sweep
@@ -190,8 +191,9 @@ applications:
             # a fixed filename so the PVC holds only the newest copy:
             # https://github.com/JorisJonkers-dev/workspace/blob/main/docs/decisions/ADR-0011-backup-coverage-gaps.md
             #
-            # Not declared: storage class and 20Gi -- both draw on finite node
-            # disk and are assigned.
+            # `size` is how much data the volume holds, a requirement the platform
+            # matches against node disk (spec/v1/10-project-intent.md#storage-and-durability);
+            # the storage class is assigned.
 
         assets:
           # Fully static: zero derived values in 54 lines. Baking it into the

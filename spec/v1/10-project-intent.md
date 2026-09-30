@@ -533,9 +533,15 @@ has to treat specially: `postgres`, `rabbitmq`, `valkey`, `files`, or absent.
 It is a fact about the Process rather than a mechanism, which is why it belongs
 here ([0019](../../docs/adr/model/0019-engine-is-process-vocabulary.md)), and
 it is what the platform keys its backup method off
-([Storage and durability](#storage-and-durability)). It is required on a Process
-holding a volume of a class that derives a backup, and refused on one that
-derives none: `E_ENGINE_WITHOUT_DURABILITY` and `E_DURABILITY_WITHOUT_ENGINE`.
+([Storage and durability](#storage-and-durability)), and what the database
+catalog an inbound edge derives keys off
+([chapter 16](16-dependencies.md#the-database-catalog)). It is required on a
+Process holding a volume of a class that derives a backup,
+`E_DURABILITY_WITHOUT_ENGINE`, and refused only where it derives nothing: on a
+Process holding no such volume whose engine owns no databases,
+`E_ENGINE_WITHOUT_DURABILITY`. A `postgres` on a `reconstructible` volume declares
+its engine, because its consumers' databases derive from it; a `valkey` there
+does not.
 
 `engine` is not `runtime`. `runtime` says how the process is instrumented (
 `jvm`, `python`, `node`) and `engine` says what its data is. `platform-postgres`

@@ -194,7 +194,7 @@
   <eClassifiers xsi:type="ecore:EClass" name="Volume">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="claim" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="size" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="size" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="durability" lowerBound="1" eType="#//DurabilityClass"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Capacity">
@@ -205,7 +205,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="delivery" lowerBound="1" eType="#//Delivery"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="mountAt" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="fileMode" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="rotation" eType="#//Rotation" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="rotation" lowerBound="1" eType="#//Rotation" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="KvGrant" eSuperTypes="#//Grant">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

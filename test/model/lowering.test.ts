@@ -80,7 +80,10 @@ describe("lowerProject", () => {
         "path" in grant && grant.path === "secret/data/refusals/telemetry",
     );
 
-    expect(telemetry).toMatchObject({ access: "custody", delivery: "self" });
+    expect(telemetry).toMatchObject({
+      access: "custody",
+      delivery: "self",
+    });
   });
 
   it("takes each node dimension from the lowest level that set it, and the quantities from the Process", () => {
@@ -192,12 +195,18 @@ describe("lowerProject, over the families a worked document does not hold", () =
     const merged = lowered(
       {
         secrets: [
-          { engine: "database", role: "kb", delivery: "self" },
+          {
+            engine: "database",
+            role: "kb",
+            delivery: "self",
+            rotation: { tolerates: "reload" },
+          },
           {
             engine: "transit",
             key: "jwt",
             operations: ["sign"],
             delivery: "self",
+            rotation: { tolerates: "reload" },
           },
         ],
       },
@@ -210,14 +219,27 @@ describe("lowerProject, over the families a worked document does not hold", () =
             role: "kb",
             delivery: "self",
             mountAt: "/run/db",
+            rotation: { tolerates: "reload" },
           },
         ],
       },
     );
 
     expect(merged.secrets).toStrictEqual([
-      { engine: "database", role: "kb", delivery: "self", mountAt: "/run/db" },
-      { engine: "transit", key: "jwt", operations: ["sign"], delivery: "self" },
+      {
+        engine: "database",
+        role: "kb",
+        delivery: "self",
+        mountAt: "/run/db",
+        rotation: { tolerates: "reload" },
+      },
+      {
+        engine: "transit",
+        key: "jwt",
+        operations: ["sign"],
+        delivery: "self",
+        rotation: { tolerates: "reload" },
+      },
     ]);
   });
 
@@ -442,11 +464,13 @@ describe("the duplicate a lower level restates", () => {
 
     expect(
       restated(
-        "{engine: transit, key: jwt, operations: [sign], delivery: self}",
+        "{engine: transit, key: jwt, operations: [sign], delivery: self, rotation: {tolerates: reload}}",
       ),
     ).toStrictEqual([["E_SHARED_DECLARATION_DUPLICATED", at]]);
     expect(
-      restated("{engine: database, role: kb, delivery: self}"),
+      restated(
+        "{engine: database, role: kb, delivery: self, rotation: {tolerates: reload}}",
+      ),
     ).toStrictEqual([["E_SHARED_DECLARATION_DUPLICATED", at]]);
   });
 });
@@ -485,7 +509,7 @@ describe("the duplicate, per key and without a short circuit", () => {
 
   it("accepts a grant restated with different terms, which is a replacement", () => {
     const grant = (access: string) =>
-      `[{path: secret/data/p/t, keys: [token], access: ${access}, delivery: self}]`;
+      `[{path: secret/data/p/t, keys: [token], access: ${access}, delivery: self, rotation: {tolerates: reload}}]`;
 
     expect(
       refusals(
@@ -503,13 +527,25 @@ describe("what makes two declarations the same one", () => {
     const merged = lowered(
       {
         secrets: [
-          { path: "x", keys: ["k"], access: "read", delivery: "env" },
-          { engine: "database", role: "x", delivery: "self" },
+          {
+            path: "x",
+            keys: ["k"],
+            access: "read",
+            delivery: "env",
+            rotation: { tolerates: "restart" },
+          },
+          {
+            engine: "database",
+            role: "x",
+            delivery: "self",
+            rotation: { tolerates: "reload" },
+          },
           {
             engine: "transit",
             key: "x",
             operations: ["sign"],
             delivery: "self",
+            rotation: { tolerates: "reload" },
           },
         ],
       },
@@ -780,7 +816,8 @@ describe("a refusal that reads the effective answer, not the written one", () =>
   });
 
   it("refuses the owner role granted by hand at every level, where it is written", () => {
-    const owner = "[{engine: database, role: p-owner, delivery: self}]";
+    const owner =
+      "[{engine: database, role: p-owner, delivery: self, rotation: {tolerates: reload}}]";
     const document = `${HEADER}secrets: ${owner}\napplications:\n  - id: a\n    secrets: ${owner}\n${PROCESS}        secrets: ${owner}\n`;
 
     expect(
@@ -833,7 +870,7 @@ describe("a refusal that reads the effective answer, not the written one", () =>
   it("refuses a grant the project header states badly, at the header", () => {
     expect(
       refusals(
-        `${HEADER}secrets: [{engine: transit, key: j, operations: [sign], delivery: env}]\napplications:\n  - id: a\n${PROCESS}`,
+        `${HEADER}secrets: [{engine: transit, key: j, operations: [sign], delivery: env, rotation: {tolerates: restart}}]\napplications:\n  - id: a\n${PROCESS}`,
       ),
     ).toStrictEqual([["E_NON_KV_DELIVERY", "/secrets/0"]]);
   });
@@ -864,7 +901,7 @@ describe("what a duplicate of each family says", () => {
 
   it("names the grant, the edge and the Asset it refused", () => {
     const grant =
-      "[{path: secret/data/p/t, keys: [k], access: read, delivery: env}]";
+      "[{path: secret/data/p/t, keys: [k], access: read, delivery: env, rotation: {tolerates: restart}}]";
     expect(
       says(
         `${HEADER}secrets: ${grant}\napplications:\n  - id: a\n${PROCESS}        secrets: ${grant}\n`,

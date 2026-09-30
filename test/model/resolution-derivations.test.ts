@@ -16,6 +16,7 @@ import {
 import { seconds } from "../../src/model/durations.ts";
 import { eligibleNodes } from "../../src/model/eligibility.ts";
 import {
+  readClusterState,
   readImagesLock,
   readNodeContract,
 } from "../../src/read/pinned-inputs.ts";
@@ -642,16 +643,12 @@ describe("the quantities eligibility compares", () => {
 describe("what has not landed yet", () => {
   it.each([
     [
-      "a volume",
-      "        volumes:\n          - { claim: c, mountAt: /data, size: 1Gi, durability: reconstructible }\n",
+      "a grant",
+      "        secrets:\n          - { path: notes/token, keys: [token], access: read, delivery: self, rotation: {tolerates: reload} }\n",
     ],
     [
       "a grant",
-      "        secrets:\n          - { path: notes/token, keys: [token], access: read, delivery: self }\n",
-    ],
-    [
-      "a grant",
-      "        secrets:\n          - { engine: database, role: notes, delivery: self }\n",
+      "        secrets:\n          - { engine: database, role: notes, delivery: self, rotation: {tolerates: reload} }\n",
     ],
     [
       "an Asset",
@@ -735,7 +732,10 @@ describe("an Application under a platform with no delivery policy", () => {
     const contract = readNodeContract(
       parseYaml(text("platform/node-contract.yml")),
     );
-    if (!parsed.ok || !platform.ok || !lock.ok || !contract.ok)
+    const state = readClusterState(
+      parseYaml(text("platform/cluster-state.yml")),
+    );
+    if (!parsed.ok || !platform.ok || !lock.ok || !contract.ok || !state.ok)
       throw new Error("the worked inputs did not read");
     const [application] = parsed.value.effective.applications;
     if (application === undefined) throw new Error("no Application");
@@ -744,6 +744,7 @@ describe("an Application under a platform with no delivery policy", () => {
       platform: platform.value.document,
       contract: contract.value,
       lock: lock.value,
+      clusterState: state.value,
       project: "notes",
       union: [parsed.value.effective],
       projectOf: new Map([["notes", "notes"]]),
@@ -1163,6 +1164,151 @@ ${serving("notes-api")}${serving("notes-web")}`);
     ]);
     expect(web?.ingress?.map(({ process }) => process)).toStrictEqual([
       "traefik-lan",
+    ]);
+  });
+});
+
+describe("a volume and what its class derives", () => {
+  const holding = (volumes: string, engine = "") =>
+    one(
+      serving("notes-store", `${engine}        volumes:\n${volumes}`).replace(
+        "cutover: continuous",
+        "cutover: interrupted",
+      ),
+    );
+
+  it("carries a reconstructible claim with no backup plan", () => {
+    expect(
+      processOf(
+        holding(
+          "          - { claim: cache, mountAt: /cache, size: 2Gi, durability: reconstructible }\n",
+        ),
+      ).volumes,
+    ).toStrictEqual([
+      {
+        claim: "cache",
+        mountAt: "/cache",
+        size: "2Gi",
+        durability: "reconstructible",
+      },
+    ]);
+  });
+
+  it("derives the platform's plan for its class, the method the platform names for the engine, and an off-cluster copy where the class keeps one", () => {
+    expect(
+      processOf(
+        holding(
+          "          - { claim: queue, mountAt: /q, size: 20Gi, durability: recoverable }\n          - { claim: keep, mountAt: /k, size: 1Gi, durability: irreplaceable }\n",
+          "        engine: rabbitmq\n",
+        ),
+      ).volumes?.map(({ claim, backup }) => [claim, backup]),
+    ).toStrictEqual([
+      [
+        "queue",
+        {
+          schedule: "15 3 * * *",
+          retain: 14,
+          method:
+            "ghcr.io/jorisjonkers-dev/platform/rabbitmq-backup@sha256:a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2",
+        },
+      ],
+      [
+        "keep",
+        {
+          schedule: "45 2 * * *",
+          retain: 90,
+          offCluster: "s3://backup-storage/jorisjonkers-dev",
+          method:
+            "ghcr.io/jorisjonkers-dev/platform/rabbitmq-backup@sha256:a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2",
+        },
+      ],
+    ]);
+  });
+
+  it("stops at a class the platform derives a backup for with no schedule or retention", () => {
+    expect(() =>
+      resolve(
+        holding(
+          "          - { claim: queue, mountAt: /q, size: 20Gi, durability: recoverable }\n",
+          "        engine: rabbitmq\n",
+        ),
+        {
+          platform: (platform) =>
+            platform.replace('    schedule: "15 3 * * *"\n', ""),
+        },
+      ),
+    ).toThrow(
+      "the recoverable policy derives a backup, and names no schedule and retention",
+    );
+    expect(() =>
+      resolve(
+        holding(
+          "          - { claim: queue, mountAt: /q, size: 20Gi, durability: recoverable }\n",
+          "        engine: rabbitmq\n",
+        ),
+        { platform: (platform) => platform.replace("    retain: 14\n", "") },
+      ),
+    ).toThrow("names no schedule and retention");
+  });
+
+  it("holds a Process to the node its bound claim is on, from the ClusterState snapshot", () => {
+    const result = resolveIntentSet(
+      [
+        { name: "platform/platform.intent.yml", text: PLATFORM },
+        ...FOUNDATION.map((file) =>
+          file.name === "platform/cluster-state.yml"
+            ? {
+                ...file,
+                text: file.text.replace(
+                  "bindings: []",
+                  "bindings:\n  - { claim: cache, node: enschede-pi-1 }\n  - { claim: elsewhere, node: frankfurt-contabo-1 }",
+                ),
+              }
+            : file,
+        ),
+        {
+          name: "minimal/notes.project.yml",
+          text:
+            HEADER +
+            holding(
+              "          - { claim: cache, mountAt: /cache, size: 2Gi, durability: reconstructible }\n",
+            ),
+        },
+      ],
+      {
+        hash: sha256Hasher,
+        schemaPackageIntegrity: `sha256:${"0".repeat(64)}`,
+      },
+    );
+    const placement = result.ok
+      ? result.value.projects.find(({ project }) => project === "notes")
+          ?.applications[0]?.processes[0]?.placement
+      : undefined;
+
+    expect([placement?.boundTo, placement?.from]).toStrictEqual([
+      "enschede-pi-1",
+      "cluster-state",
+    ]);
+  });
+
+  it("refuses a backup method the images lock does not hold, at the engine that names it", () => {
+    const result = resolve(one(serving("notes-api")), {
+      platform: (platform) =>
+        platform.replace(
+          "rabbitmq: { backup: rabbitmq-backup }",
+          "rabbitmq: { backup: unlocked }",
+        ),
+    });
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(
+            ({ code, path, message, hint }) =>
+              `${code} ${path} ${message}. ${hint}`,
+          ),
+    ).toStrictEqual([
+      "E_UNLOCKED_IMAGE /engines/rabbitmq/backup the images lock holds no entry for unlocked. Lock the alias, or name one the images lock holds.",
     ]);
   });
 });

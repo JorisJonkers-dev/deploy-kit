@@ -185,6 +185,7 @@ const backupPlan = z
 const resolvedVolume = z
   .strictObject({
     claim: text,
+    mountAt: text,
     size: text,
     durability: durabilityClass,
     // `reconstructible` earns none, which is the absence rather than a class.

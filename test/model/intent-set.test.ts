@@ -49,11 +49,21 @@ const refusalsOf = (files: readonly AuthoredFile[]) => {
 };
 
 describe("checkIntentSet", () => {
-  it("refuses the worked estate exactly where the Platform document says it will", () => {
-    // The foundation is declared: the edge project holds both tier proxies,
-    // `delivery` the rest of the machinery, and `observability` the collector.
-    // What is left is the gate working: nothing encrypts secrets at rest.
-    expect(refusalsOf(WORKED)).toStrictEqual([
+  it("refuses nothing in the worked estate: the foundation is declared and secrets are encrypted at rest", () => {
+    expect(refusalsOf(WORKED)).toStrictEqual([]);
+  });
+
+  it("refuses every env and file grant of the worked estate where secrets are not encrypted at rest", () => {
+    const [platform, ...projects] = WORKED;
+    const unencrypted = {
+      name: (platform as AuthoredFile).name,
+      text: (platform as AuthoredFile).text.replace(
+        "secretsEncryption: true",
+        "secretsEncryption: false",
+      ),
+    };
+
+    expect(refusalsOf([unencrypted, ...projects])).toStrictEqual([
       {
         code: "E_SECRETS_AT_REST_REQUIRED",
         document: "data/data.project.yml",
@@ -231,24 +241,20 @@ describe("checkIntentSet", () => {
     const result = checkIntentSet(withoutFoundation);
     const diagnostics = result.ok ? [] : result.diagnostics;
 
-    expect(diagnostics.map(({ message }) => message).slice(0, 7)).toStrictEqual(
-      [
-        "no project file declares the Application traefik-public this tier's proxy names",
-        "no project file declares the Application traefik-lan this tier's proxy names",
-        "no project file declares the Application traefik-public the delivery machinery names",
-        "no project file declares the Application traefik-lan the delivery machinery names",
-        "no project file declares an Application otel-collector whose Process provides an `otlp` surface",
-        "no project file declares the Application prometheus the metrics stack names",
-        "delivery env writes a secret into the cluster, and the platform does not encrypt secrets at rest",
-      ],
-    );
-    expect(diagnostics.map(({ hint }) => hint).slice(1, 7)).toStrictEqual([
+    expect(diagnostics.map(({ message }) => message)).toStrictEqual([
+      "no project file declares the Application traefik-public this tier's proxy names",
+      "no project file declares the Application traefik-lan this tier's proxy names",
+      "no project file declares the Application traefik-public the delivery machinery names",
+      "no project file declares the Application traefik-lan the delivery machinery names",
+      "no project file declares an Application otel-collector whose Process provides an `otlp` surface",
+      "no project file declares the Application prometheus the metrics stack names",
+    ]);
+    expect(diagnostics.map(({ hint }) => hint).slice(1)).toStrictEqual([
       "Declare the proxy Application in a project file the platform owns.",
       "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
       "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
       "Declare the collector in a project file the platform owns, with an `otlp` surface on one of its Processes.",
       "Declare the metrics stack in a project file the platform owns.",
-      "Deliver the secret through the application itself, or enable `secretsEncryption` on the platform.",
     ]);
   });
 
