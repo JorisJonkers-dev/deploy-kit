@@ -41,7 +41,8 @@ Substrate returns Substrate:
 	& ('serverCount' ':' serverCount=Port)
 	& ('secretsEncryption' ':' secretsEncryption=Bool)
 	& ('cni' ':' cni=Text)
-	& ('networkPolicyController' ':' networkPolicyController=PolicyController));
+	& ('networkPolicyController' ':' networkPolicyController=PolicyController)
+	& ('clusterDns' ':' clusterDns=Text));
 
 Bootstrap returns Bootstrap:
 	(('flux' ':' BEGIN flux=FluxSource END)
@@ -111,7 +112,8 @@ MonitorCadence returns MonitorCadence:
 // The collector names an Application a project file declares, linked across the
 // documents read together, as a tier's proxy is.
 TelemetryPolicy returns TelemetryPolicy:
-	'collector' ':' collector=[Application|Text];
+	(('collector' ':' collector=[Application|Text])
+	& ('metrics' ':' metrics=[Application|Text]));
 
 ProbeCadence returns ProbeCadence:
 	(('period' ':' period=Text)
@@ -125,6 +127,7 @@ EphemeralPolicy returns EphemeralPolicy:
 // documents read together, as a tier's proxy is.
 DeliveryPolicy returns DeliveryPolicy:
 	(('machinery' ':' BEGIN (DASH BEGIN machinery+=[Application|Text] END | machinery+=[Application|Text])+ END)
+	& ('gate' ':' gate=[Application|Text])
 	& ('analysis' ':' BEGIN analysis=AnalysisPolicy END));
 
 AnalysisPolicy returns AnalysisPolicy:
@@ -152,10 +155,10 @@ Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword | PlatformKeyword;
 
 PlatformKeyword:
-	'acme' | 'address' | 'analysis' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cluster' | 'cni' | 'collector' |
+	'acme' | 'address' | 'analysis' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cluster' | 'clusterDns' | 'cni' | 'collector' |
 	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'embedded' | 'engines' | 'ephemeral' | 'estate' | 'etcd' |
-	'failures' | 'flux' | 'forwardAuth' | 'handover' | 'hardening' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
-	'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'providers' | 'restricted' | 'retireBy' |
+	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'handover' | 'hardening' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
+	'metrics' | 'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'providers' | 'restricted' | 'retireBy' |
 	'repository' | 'retain' | 'runner' | 'schedule' | 'secretsEncryption' | 'serverCount' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
 	'surfaces' | 'telemetry' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'vault';
 

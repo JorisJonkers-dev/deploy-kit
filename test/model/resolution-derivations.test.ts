@@ -324,7 +324,13 @@ describe("probes and the release gate", () => {
           ),
         ),
       ).startup,
-    ).toStrictEqual({ path: "/live", port: 8080, period: "5s", failures: 5 });
+    ).toStrictEqual({
+      path: "/live",
+      port: 8080,
+      period: "5s",
+      timeout: "5s",
+      failures: 5,
+    });
   });
 
   it("gates a tcp member with no checks where its profile exports no metrics", () => {
@@ -435,26 +441,32 @@ describe("the environment a Process runs with", () => {
     ]);
   });
 
+  it("hands PORT to no Process that provides no surface", () => {
+    expect(
+      processOf(
+        one(`      - name: notes-job
+        lifecycle: job
+        image: notes-api
+        runtime: node
+        placement: { memory: 64Mi, cpu: 10m }
+        startupBudget: 30s
+        cutover: interrupted
+`),
+      ).environment?.map(({ name }) => name),
+    ).toStrictEqual([
+      "DEPLOYMENT_ENVIRONMENT",
+      "OTEL_EXPORTER_OTLP_ENDPOINT",
+      "OTEL_SERVICE_NAME",
+    ]);
+  });
+
   it("hands no collector endpoint where the platform names no collector", () => {
     expect(
       processOf(one(serving("notes-api")), {
         platform: (platform) =>
-          platform.replace(/\ntelemetry:\n {2}collector: [^\n]*\n/, "\n"),
+          platform.replace(/\ntelemetry:\n( {2}.*\n)+/, "\n"),
       }).environment?.map(({ name }) => name),
     ).toStrictEqual(["DEPLOYMENT_ENVIRONMENT", "OTEL_SERVICE_NAME", "PORT"]);
-  });
-
-  it("mounts the identity token only where a grant is delivered to the Process itself", () => {
-    expect(
-      processOf(
-        one(
-          serving(
-            "notes-api",
-            "        secrets:\n          - { engine: database, role: notes, delivery: self }\n",
-          ),
-        ),
-      ).identityToken,
-    ).toBe(true);
   });
 });
 
@@ -634,8 +646,12 @@ describe("what has not landed yet", () => {
       "        volumes:\n          - { claim: c, mountAt: /data, size: 1Gi, durability: reconstructible }\n",
     ],
     [
-      "a kv grant",
+      "a grant",
       "        secrets:\n          - { path: notes/token, keys: [token], access: read, delivery: self }\n",
+    ],
+    [
+      "a grant",
+      "        secrets:\n          - { engine: database, role: notes, delivery: self }\n",
     ],
     [
       "an Asset",
@@ -733,6 +749,7 @@ describe("an Application under a platform with no delivery policy", () => {
       projectOf: new Map([["notes", "notes"]]),
       hash: sha256Hasher,
       collector: undefined,
+      gate: undefined,
     });
 
     expect(resolved.processes[0]?.switchover).toBe("stop-start");
@@ -950,19 +967,6 @@ ${serving("notes-api")}      - name: notes-worker
 });
 
 describe("what the review found", () => {
-  it("orders the secrets-provisioning unit before an Application that holds any grant", () => {
-    expect(
-      application(
-        one(
-          serving(
-            "notes-api",
-            "        secrets:\n          - { engine: database, role: notes, delivery: self }\n",
-          ) + serving("notes-web"),
-        ),
-      ).reconcileAfter,
-    ).toStrictEqual(["apps-vso-secrets"]);
-  });
-
   it("stops at a Runtime Profile key written in an env file, rather than rendering it twice", () => {
     expect(() =>
       resolve(one(serving("notes-api")), {
@@ -1023,5 +1027,142 @@ ${serving("notes-api")}`,
     expect(() => millicores("one")).toThrow(
       "one: not a cpu quantity the model reads",
     );
+  });
+});
+
+describe("the peers a policy admits", () => {
+  const ingressOf = (all: ResolvedProject[], project: string, index = 0) =>
+    projectNamed(all, project).applications[0]?.processes[index]?.ingress;
+
+  it("admits each consumer of a surface once, on that surface, and no consumer of another Application", () => {
+    const all = projects(`  - id: notes
+    exposure:
+      - name: app
+        host: notes.jorisjonkers.dev
+        audience: anonymous
+        routes:
+          - { path: /, match: prefix, process: notes-api, surface: http }
+          - { path: /api/, match: prefix, process: notes-api, surface: http }
+          - { path: /web/, match: prefix, process: notes-web, surface: http }
+    processes:
+${serving("notes-api", "        dependsOn:\n          - { application: notes-store, surface: store }\n")}${serving("notes-web")}  - id: notes-store
+    processes:
+${serving("notes-store").replace("provides: { http: 8080 }", "provides: { store: 7000, http: 8080 }")}  - id: notes-other
+    processes:
+${serving("notes-other").replace("provides: { http: 8080 }", "provides: { store: 7000 }")}`);
+
+    // Two routes reach notes-api through one proxy on one port: one peer. The
+    // route to notes-web reaches notes-web alone.
+    expect(ingressOf(all, "notes")).toStrictEqual([
+      {
+        rule: "tier-proxy",
+        namespace: "edge-system",
+        process: "traefik-public",
+        port: 8080,
+      },
+    ]);
+    expect(ingressOf(all, "notes", 1)).toStrictEqual([
+      {
+        rule: "tier-proxy",
+        namespace: "edge-system",
+        process: "traefik-public",
+        port: 8080,
+      },
+    ]);
+    const store = projectNamed(all, "notes").applications[1]?.processes[0]
+      ?.ingress;
+    const other = projectNamed(all, "notes").applications[2]?.processes[0]
+      ?.ingress;
+    expect(store).toStrictEqual([
+      {
+        rule: "consumer",
+        namespace: "notes-system",
+        process: "notes-api",
+        port: 7000,
+      },
+    ]);
+    expect(other).toBeUndefined();
+  });
+
+  it("admits the metrics stack only on the scraped Process, and every Process of the stack", () => {
+    const all = projects(`  - id: notes
+    observability:
+      alertClass: business-hours
+      scrape: { process: notes-web, surface: http, path: /metrics }
+    processes:
+${serving("notes-api")}${serving("notes-web")}`);
+
+    expect(ingressOf(all, "notes")).toBeUndefined();
+    expect(ingressOf(all, "notes", 1)).toStrictEqual([
+      {
+        rule: "metrics-stack",
+        namespace: "observability-system",
+        process: "prometheus",
+        port: 8080,
+      },
+    ]);
+  });
+
+  it("admits no metrics stack where the platform names none", () => {
+    expect(
+      ingressOf(
+        projects(
+          `  - id: notes
+    observability:
+      alertClass: business-hours
+      scrape: { process: notes-api, surface: http, path: /metrics }
+    processes:
+${serving("notes-api")}`,
+          {
+            platform: (platform) =>
+              platform.replace(/\ntelemetry:\n( {2}.*\n)+/, "\n"),
+          },
+        ),
+        "notes",
+      ),
+    ).toBeUndefined();
+  });
+
+  it("records no surfaces on a Process that provides none", () => {
+    expect(
+      processOf(
+        one(`      - name: notes-job
+        lifecycle: job
+        image: notes-api
+        runtime: none
+        placement: { memory: 64Mi, cpu: 10m }
+        startupBudget: 30s
+        cutover: interrupted
+`),
+      ).surfaces,
+    ).toBeUndefined();
+  });
+});
+
+describe("a route admits the proxy of its own tier to its own Process only", () => {
+  it("does not admit the LAN proxy to a Process only a public route reaches", () => {
+    const all = projects(`  - id: notes
+    exposure:
+      - name: app
+        host: notes.jorisjonkers.dev
+        audience: anonymous
+        routes:
+          - { path: /, match: prefix, process: notes-api, surface: http }
+      - name: home
+        host: notes.lan
+        audience: lan
+        routes:
+          - { path: /, match: prefix, process: notes-web, surface: http }
+    processes:
+${serving("notes-api")}${serving("notes-web")}`);
+    const [api, web] =
+      projectNamed(all, "notes").applications[0]?.processes ?? [];
+
+    expect(api?.ingress?.map(({ process }) => process)).toStrictEqual([
+      "traefik-public",
+    ]);
+    expect(web?.ingress?.map(({ process }) => process)).toStrictEqual([
+      "traefik-lan",
+    ]);
   });
 });

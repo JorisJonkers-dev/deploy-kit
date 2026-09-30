@@ -224,10 +224,44 @@ Paths are assigned by the Resolved Deployment's path plan
 ```
 <gitopsRoot>/apps/<project>/<application>/<object>.yaml
 <gitopsRoot>/apps/<project>/namespace.yaml
+<gitopsRoot>/apps/<project>/networkpolicy.yaml
 <gitopsRoot>/apps/vso-secrets/…
 <gitopsRoot>/apps/vso-secrets/policies/<process>.{policy,role}.json
-<gitopsRoot>/apps/edge/<tier>/…
+<gitopsRoot>/apps/edge/<tier>/<application>-<exposure>.yaml
 ```
+
+The project's `networkpolicy.yaml` is its one namespace-wide default-deny
+([chapter 16](16-dependencies.md#network-policy)), a per-project object with an
+owner, the `networking` adapter. Under an Application's directory the objects
+are `workload.yaml`, `serviceaccount.yaml` and `canary.yaml` (`kubernetes`),
+`networkpolicy.yaml` (`networking`) and `podmonitor.yaml` (`prometheus`). Every
+directory the render writes carries a `kustomization.yaml` (`kubernetes`)
+listing what that directory applies: its files and, for a project's directory,
+each Application's directory beside its `namespace.yaml`. **No kustomization
+lists a `networkpolicy.yaml`** while chapter 16's stage is render-only
+([Audit before enforce](16-dependencies.md#audit-before-enforce)): the policy set
+is in the artifact, reviewed and signed with everything else, and applied by
+nothing. The paths under `apps/edge/` are estate-scoped, so they are the
+`_estate` artifact's ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)),
+while each IngressRoute stays in its Application's own namespace
+([Forbidden in a Deliverable](#forbidden-in-a-deliverable)).
+
+### How each adapter spells the projection
+
+Each adapter is the one place its target's vocabulary is spelled, and it
+spells only what the projection holds:
+
+| model value | adapter | spelled as |
+|---|---|---|
+| a `blue-green` Process | `kubernetes` | a `Deployment` with no `replicas` and a `RollingUpdate` of surge 1, unavailability 0, which Flagger scales and promotes; a `Canary` whose `service` is the Process's first surface and whose three webhooks are the gate's `endpoint` with `/may-start`, `/checks` and `/may-promote`, each carrying the Application, the Process and the Application revision |
+| `hardening: restricted` | `kubernetes` | `runAsNonRoot`, the images lock's `uid` and `gid`, seccomp `RuntimeDefault`, a read-only root filesystem, every capability dropped |
+| a probe's `period`, `timeout`, `failures` | `kubernetes` | `periodSeconds`, `timeoutSeconds`, `failureThreshold`; `initialDelaySeconds: 0` on readiness and liveness only |
+| `ingress`, `egress`, an edge's `peers` | `networking` | one rule per peer, from or to its namespace (by `kubernetes.io/metadata.name`) and, where the peer is a Process, its `instance`, on TCP; the `cluster-dns` peer on UDP and TCP both |
+| `scrape` of a `blue-green` Process | `prometheus` | a `PodMonitor` in the Application's namespace, `jobLabel` the `instance` label, the scrape's surface, path, interval and timeout |
+| a tier's `listener` | `traefik` | the entry point: `tls` is `websecure`, `plain` is `web` |
+| a tier's `certificates` | `traefik` | `acme` is the certificate resolver of that name; `none` writes no TLS block |
+| a route's `precedence` | `traefik` | `priority` is 1000 less the precedence, since Traefik tries the higher priority first |
+| a route's `middleware` | `traefik` | a reference into the proxy's namespace: `forward-auth`, and `security-headers` suffixed with the content profile where one is named; the edge project renders the Middleware objects themselves |
 
 Two adapters (`kubernetes` and `networking`) declare the same `apps` prefix
 and are kept apart by the object segment. That is why `E_PATH_COLLISION` is

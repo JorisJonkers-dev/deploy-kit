@@ -31,7 +31,7 @@ const WORKED = [
 ].map(read);
 
 /** The worked Platform document's telemetry block, which a variant composed with fewer projects drops. */
-const TELEMETRY = /\ntelemetry:\n {2}collector: [^\n]*\n/;
+const TELEMETRY = /\ntelemetry:\n( {2}.*\n)+/;
 
 /** The worked Platform document's delivery machinery. */
 const MACHINERY =
@@ -114,6 +114,7 @@ describe("checkIntentSet", () => {
         .replace("traefik: traefik-public", "traefik: notes")
         .replace("traefik: traefik-lan", "traefik: notes")
         .replace(MACHINERY, "machinery: [notes]")
+        .replace("gate: release-gate", "gate: notes")
         .replace(TELEMETRY, "\n"),
     };
     const result = checkIntentSet([
@@ -135,6 +136,7 @@ describe("checkIntentSet", () => {
         .replace("traefik: traefik-public", "traefik: notes")
         .replace("traefik: traefik-lan", "traefik: notes")
         .replace(MACHINERY, "machinery: [notes]")
+        .replace("gate: release-gate", "gate: notes")
         .replace(TELEMETRY, "\n"),
     };
     const result = checkIntentSet([
@@ -198,6 +200,7 @@ describe("checkIntentSet", () => {
         .replace("traefik: traefik-public", "traefik: knowledge")
         .replace("traefik: traefik-lan", "traefik: knowledge")
         .replace(MACHINERY, "machinery: [knowledge]")
+        .replace("gate: release-gate", "gate: knowledge")
         .replace(TELEMETRY, "\n"),
     };
     const knowledge = read("knowledge/knowledge.project.yml");
@@ -228,22 +231,73 @@ describe("checkIntentSet", () => {
     const result = checkIntentSet(withoutFoundation);
     const diagnostics = result.ok ? [] : result.diagnostics;
 
-    expect(diagnostics.map(({ message }) => message).slice(0, 6)).toStrictEqual(
+    expect(diagnostics.map(({ message }) => message).slice(0, 7)).toStrictEqual(
       [
         "no project file declares the Application traefik-public this tier's proxy names",
         "no project file declares the Application traefik-lan this tier's proxy names",
         "no project file declares the Application traefik-public the delivery machinery names",
         "no project file declares the Application traefik-lan the delivery machinery names",
         "no project file declares an Application otel-collector whose Process provides an `otlp` surface",
+        "no project file declares the Application prometheus the metrics stack names",
         "delivery env writes a secret into the cluster, and the platform does not encrypt secrets at rest",
       ],
     );
-    expect(diagnostics.map(({ hint }) => hint).slice(1, 6)).toStrictEqual([
+    expect(diagnostics.map(({ hint }) => hint).slice(1, 7)).toStrictEqual([
       "Declare the proxy Application in a project file the platform owns.",
       "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
       "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
       "Declare the collector in a project file the platform owns, with an `otlp` surface on one of its Processes.",
+      "Declare the metrics stack in a project file the platform owns.",
       "Deliver the secret through the application itself, or enable `secretsEncryption` on the platform.",
+    ]);
+  });
+
+  it("says what a Release Gate that answers nowhere was refused for, and how to fix it", () => {
+    const platform = read("platform/platform.intent.yml");
+    const result = checkIntentSet([
+      {
+        name: platform.name,
+        text: platform.text.replace(
+          "gate: release-gate",
+          "gate: otel-collector",
+        ),
+      },
+      ...WORKED.slice(1),
+    ]);
+    const refusal = (result.ok ? [] : result.diagnostics).find(
+      ({ code }) => code === "E_UNKNOWN_RELEASE_GATE",
+    );
+
+    expect([refusal?.message, refusal?.hint]).toStrictEqual([
+      "no project file declares an Application otel-collector whose Process provides an `http` surface",
+      "Declare the Release Gate in a project file the platform owns, with an `http` surface on one of its Processes.",
+    ]);
+  });
+
+  it("refuses a Release Gate that answers on no http surface, and a metrics stack nothing declares", () => {
+    const platform = read("platform/platform.intent.yml");
+    const misnamed = {
+      name: platform.name,
+      text: platform.text
+        .replace("gate: release-gate", "gate: otel-collector")
+        .replace("metrics: prometheus", "metrics: grafana"),
+    };
+
+    expect(
+      refusalsOf([misnamed, ...WORKED.slice(1)]).filter(({ code }) =>
+        ["E_UNKNOWN_RELEASE_GATE", "E_UNKNOWN_METRICS_STACK"].includes(code),
+      ),
+    ).toStrictEqual([
+      {
+        code: "E_UNKNOWN_METRICS_STACK",
+        document: "platform/platform.intent.yml",
+        path: "/telemetry",
+      },
+      {
+        code: "E_UNKNOWN_RELEASE_GATE",
+        document: "platform/platform.intent.yml",
+        path: "/delivery",
+      },
     ]);
   });
 
@@ -286,7 +340,7 @@ owner: o
 `;
   const PROXY = `  - id: edge-proxy
     processes:
-      - {name: edge-proxy, lifecycle: application, image: t, runtime: none, placement: {memory: 1Mi, cpu: 1m}, cutover: continuous}
+      - {name: edge-proxy, lifecycle: application, image: t, runtime: none, provides: {http: 8080}, placement: {memory: 1Mi, cpu: 1m}, cutover: continuous}
 `;
   const process = (name: string, extra = ""): string =>
     `      - {name: ${name}, lifecycle: application, image: ${name}, runtime: none, placement: {memory: 1Mi, cpu: 1m}, cutover: interrupted${extra}}\n`;

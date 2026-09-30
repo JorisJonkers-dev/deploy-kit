@@ -424,6 +424,7 @@ describe("the committed oracles", () => {
     const gated = {
       ...ingest(),
       releaseGate: {
+        endpoint: "http://gate",
         deadline: "360s",
         analysis: { interval: "30s", iterations: 4, threshold: 3 },
         members: [{ process: "x", readiness: { tcp: 1 } }],
@@ -570,17 +571,23 @@ describe("the metamodel names every class the chapter draws", () => {
       "AlertClass",
       "AnalysisCheck",
       "Audience",
+      "CertificateSource",
       "ContentPolicy",
       "Cutover",
       "Delivery",
       "DurabilityClass",
+      "EgressRule",
       "HardeningClass",
+      "IngressRule",
+      "Lifecycle",
+      "Listener",
       "Match",
       "MiddlewareKind",
       "PathScope",
       "PinnedInput",
       "ResolvedHttpProbe",
       "ResolvedTcpProbe",
+      "Runtime",
       "Switchover",
     ]);
   });
@@ -718,7 +725,12 @@ describe("a Process answering on a port rather than a path", () => {
       timeout: "5s",
       failures: 3,
     };
-    process["startup"] = { tcp: 5432, period: "5s", failures: 120 };
+    process["startup"] = {
+      tcp: 5432,
+      period: "5s",
+      timeout: "5s",
+      failures: 120,
+    };
     const member = document.releaseGate.members[0];
     if (member !== undefined) member.readiness = { tcp: 5432 };
 

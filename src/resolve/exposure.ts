@@ -2,12 +2,14 @@
 // (spec/v1/10-project-intent.md#exposure): the tier its audience reaches, the
 // middleware chain the tier, the audience and the content profile derive, and
 // the precedence the model decides rather than the proxy.
+import type { EffectiveProject } from "../model/effective-intent.ts";
 import type { ApplicationDocument } from "../model/project-intent.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import type {
   ResolvedExposure,
   ResolvedRoute,
 } from "../model/resolved-deployment.ts";
+import { peersOf } from "./policy.ts";
 
 type Exposure = NonNullable<ApplicationDocument["exposure"]>[number];
 type Route = Exposure["routes"][number];
@@ -69,13 +71,22 @@ const tierFor = (
 function resolveOne(
   exposure: Exposure,
   platform: PlatformIntentDocument,
+  union: readonly EffectiveProject[],
 ): ResolvedExposure {
   const tier = tierFor(exposure.audience, platform);
+  // The tier's proxy is declared, or E_UNKNOWN_TIER_PROXY refused the set.
+  const [proxy] = peersOf(tier.traefik, union);
   const precedence = precedenceAmong(exposure.routes);
   return {
     name: exposure.name,
     host: exposure.host,
     tier: tier.name,
+    listener: tier.listener,
+    certificates: tier.certificates,
+    proxy: {
+      application: tier.traefik,
+      namespace: (proxy as { namespace: string }).namespace,
+    },
     routes: exposure.routes.map((route) => ({
       path: route.path,
       match: route.match,
@@ -91,5 +102,6 @@ function resolveOne(
 export const resolveExposure = (
   exposures: readonly Exposure[],
   platform: PlatformIntentDocument,
+  union: readonly EffectiveProject[],
 ): ResolvedExposure[] =>
-  exposures.map((exposure) => resolveOne(exposure, platform));
+  exposures.map((exposure) => resolveOne(exposure, platform, union));

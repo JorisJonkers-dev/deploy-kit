@@ -57,7 +57,7 @@ fails the gate, so the taxonomy cannot grow entries nothing stands behind.
 
 ## Rules
 
-This ledger holds **69** rules, **5** of them pending.
+This ledger holds **69** rules, **3** of them pending.
 
 A row is enforced or pending, never both. An enforced row names its enforcer as
 `kind:value`: `depcruise:` a rule in
@@ -109,7 +109,7 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-031 | tests | No fixed sleep through the timers module either, which is the same defect under another import | `eslint:no-restricted-imports` | [test/harness.test.ts](../test/harness.test.ts) `no-restricted-imports` |
 | RULE-032 | tests | No test reaches the network: the capability is removed, and using it fails the test that tried | `file:test/setup.ts` | [test/harness.test.ts](../test/harness.test.ts) `tried to reach` |
 | RULE-033 | tests | A test never imports another test: a shared fixture belongs in `test/support/` | `eslint:deploy-kit/no-test-imports-test` | [test/code-rules.test.ts](../test/code-rules.test.ts) `a shared fixture belongs in test/support/` |
-| RULE-034 | tests | The rendered tree is compared byte for byte against a committed golden tree, and a double render inside one process and in a fresh one agrees with it | pending (n/a): there is no renderer to render anything, and issue #21 puts the golden tree out of scope until one exists | pending |
+| RULE-034 | tests | The rendered tree is compared byte for byte against a committed golden tree, and a double render inside one process and in a fresh one agrees with it | `file:test/model/render.test.ts` | [test/model/render.test.ts](../test/model/render.test.ts) `differs from the committed tree when one authored field moves` |
 | RULE-035 | toolchain | A TypeScript suppression carries a description and may never silence a whole file | `eslint:@typescript-eslint/ban-ts-comment` | [test/eslint-rules.test.ts](../test/eslint-rules.test.ts) `@typescript-eslint/ban-ts-comment` |
 | RULE-036 | toolchain | No `any`: a value the compiler cannot describe is a check nobody runs | `eslint:@typescript-eslint/no-explicit-any` | [test/eslint-rules.test.ts](../test/eslint-rules.test.ts) `@typescript-eslint/no-explicit-any` |
 | RULE-037 | toolchain | No unused binding, unless it is named with a leading underscore to say so | `eslint:@typescript-eslint/no-unused-vars` | [test/eslint-rules.test.ts](../test/eslint-rules.test.ts) `@typescript-eslint/no-unused-vars` |
@@ -120,7 +120,7 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-042 | toolchain | Shipped code is ESM, and the one CommonJS file is the dependency-cruiser configuration that cannot be anything else | `eslint:deploy-kit/esm-only` | [test/code-rules.test.ts](../test/code-rules.test.ts) `is CommonJS; this package is ESM` |
 | RULE-043 | toolchain | Generated artifacts are committed, and CI fails when regenerating one produces a diff | `file:src/model/json-schema.ts` | [test/model/descriptor.test.ts](../test/model/descriptor.test.ts) `regenerates without a diff` |
 | RULE-044 | cli | The CLI prints help on `--help` and `-h`, data on stdout and diagnostics on stderr, emits only data under `--json`, maps failures through one exit-code enum, honours `NO_COLOR`, and never prompts | pending (n/a): each clause needs a process-level test, and no ticket has brought the CLI ring yet | pending |
-| RULE-045 | registry | Every registered adapter satisfies the adapter port, attributes every Deliverable to itself, and renders deterministically | pending (#97): the adapter contract suite arrives with the first adapter | pending |
+| RULE-045 | registry | Every registered adapter satisfies the adapter port, attributes every Deliverable to itself, and renders deterministically | `file:test/adapters/contract.test.ts` | [test/adapters/contract.test.ts](../test/adapters/contract.test.ts) `names an adapter that attributes, places or renders wrongly` |
 | RULE-046 | registry | Every estate-wide invariant is registered with its code, its spec anchor and its test, so an unregistered one is detectable rather than merely absent | pending (#44): the invariant registry is that ticket's deliverable | pending |
 | RULE-047 | diagnostics | Every diagnostic carries a code, a document path, a message and a non-empty hint, enforced by its type rather than by review | pending (#38): the `Diagnostic` type is the enforcement, and it lands with the first parser | pending |
 | RULE-048 | diagnostics | Every `E_` code the specification defines is exercised by a test or a negative example, or listed as pending with a reason, and a code used in the tree that the specification does not define fails | `npm:lint:codes` | [test/codes-lint.test.ts](../test/codes-lint.test.ts) `exercised by no test, and not pending` |

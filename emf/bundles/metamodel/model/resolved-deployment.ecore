@@ -214,7 +214,7 @@
 
   <eClassifiers xsi:type="ecore:EClass" name="PolicyPeer">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="process" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="process" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
   </eClassifiers>
 
@@ -307,7 +307,7 @@
 
   <!-- Firewall rules allowing the declared connections and blocking the rest. -->
   <eClassifiers xsi:type="ecore:EClass" name="NetworkPolicyFile" eSuperTypes="#//Deliverable">
-    <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="process" eType="#//ResolvedProcess"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="ingress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="egress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
   </eClassifiers>

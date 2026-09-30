@@ -167,37 +167,51 @@ class ResolvedDeploymentTest {
 
     @Test
     void theMinimalModelAssignsAPathToEveryFileTheRenderedTreeHolds() {
-        // The paths under spec/v1/examples/minimal/rendered/, which is what the
-        // Acceleo templates must write (#94).
+        // The paths under spec/v1/examples/minimal/rendered/ and its route in the
+        // estate-scoped tree, which is what the Acceleo templates must write (#94).
         List<String> paths =
                 minimal().getDeliverables().stream().map(Deliverable::getPath).toList();
 
         assertThat(paths)
                 .containsExactlyInAnyOrder(
-                        "namespace.yaml",
-                        "kustomization.yaml",
+                        "apps/notes/namespace.yaml",
                         "apps/notes/kustomization.yaml",
-                        "apps/notes/workload.yaml",
-                        "apps/notes/canary.yaml",
-                        "apps/notes/serviceaccount.yaml",
-                        "apps/notes/servicemonitor.yaml",
                         "apps/notes/networkpolicy.yaml",
-                        "edge/ingressroutes.yaml");
+                        "apps/notes/notes/kustomization.yaml",
+                        "apps/notes/notes/workload.yaml",
+                        "apps/notes/notes/canary.yaml",
+                        "apps/notes/notes/serviceaccount.yaml",
+                        "apps/notes/notes/podmonitor.yaml",
+                        "apps/notes/notes/networkpolicy.yaml",
+                        "apps/edge/public-frankfurt/notes-public.yaml",
+                        "apps/edge/public-frankfurt/kustomization.yaml");
     }
 
     @Test
     void thePathsItAssignsAreThePathsTheRenderedTreeActuallyHolds() throws IOException {
-        Path rendered = REPOSITORY.resolve("spec/v1/examples/minimal/rendered");
+        // The project's share is minimal's own tree; an estate-scoped path is in the
+        // `_estate` tree, which other projects' routes join.
+        Set<String> assigned =
+                minimal().getDeliverables().stream().map(Deliverable::getPath).collect(Collectors.toSet());
+
+        assertThat(assigned.stream()
+                        .filter(path -> !path.startsWith(ESTATE_SCOPED))
+                        .collect(Collectors.toSet()))
+                .isEqualTo(yamlUnder(REPOSITORY.resolve("spec/v1/examples/minimal/rendered")));
+        assertThat(yamlUnder(REPOSITORY.resolve("spec/v1/examples/_estate/rendered")))
+                .containsAll(assigned.stream()
+                        .filter(path -> path.startsWith(ESTATE_SCOPED))
+                        .toList());
+    }
+
+    private static final String ESTATE_SCOPED = "apps/edge/";
+
+    private static Set<String> yamlUnder(Path rendered) throws IOException {
         try (var files = Files.walk(rendered)) {
-            Set<String> onDisk = files.filter(Files::isRegularFile)
+            return files.filter(Files::isRegularFile)
                     .map(file -> rendered.relativize(file).toString())
                     .filter(name -> name.endsWith(".yaml"))
                     .collect(Collectors.toSet());
-
-            assertThat(minimal().getDeliverables().stream()
-                            .map(Deliverable::getPath)
-                            .collect(Collectors.toSet()))
-                    .isEqualTo(onDisk);
         }
     }
 

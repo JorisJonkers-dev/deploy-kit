@@ -28,6 +28,11 @@ images:
     digest: "sha256:8e2c4a6f0b1d3e5a7c9f2b4d6e8a0c1f3b5d7e9a2c4f6b8d0e1a3c5f7b9d2e4a"
     uid: 10001
     gid: 10001
+  prometheus:
+    repository: quay.io/prometheus/prometheus
+    digest: "sha256:4c6e8a0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c"
+    uid: 65534
+    gid: 65534
   release-gate:
     repository: ghcr.io/jorisjonkers-dev/delivery/release-gate
     digest: "sha256:3e7a9c1d5b2f8e4a6c0d9b7e5f3a1c8d6e4b2a0f9c7e5d3b1a8f6e4c2d0b9a7e"

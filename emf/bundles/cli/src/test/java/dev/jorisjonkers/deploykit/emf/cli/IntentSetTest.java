@@ -26,7 +26,7 @@ class IntentSetTest {
             Examples.of("observability/observability.project.yml"));
 
     /** The worked Platform document's telemetry block, which a variant composed with fewer projects drops. */
-    private static final String TELEMETRY = "\ntelemetry:\n  collector: [^\n]*\n";
+    private static final String TELEMETRY = "\ntelemetry:\n(  .*\n)+";
 
     @Test
     void theWorkedEstateIsRefusedExactlyWhereThePlatformDocumentSaysItWillBe() {
@@ -66,6 +66,7 @@ class IntentSetTest {
                         .replace("traefik: traefik-lan", "traefik: notes")
                         .replace(
                                 "machinery: [traefik-public, traefik-lan, flagger, release-gate]", "machinery: [notes]")
+                        .replace("gate: release-gate", "gate: notes")
                         .replaceFirst(TELEMETRY, "\n"));
 
         assertThat(Pipeline.check(List.of(platform, Examples.of("minimal/notes.project.yml"))))
@@ -103,6 +104,7 @@ class IntentSetTest {
                         .replace(
                                 "machinery: [traefik-public, traefik-lan, flagger, release-gate]",
                                 "machinery: [knowledge]")
+                        .replace("gate: release-gate", "gate: knowledge")
                         .replaceFirst(TELEMETRY, "\n"));
         Path knowledge = Examples.write(
                 directory,
@@ -129,6 +131,7 @@ class IntentSetTest {
                         tuple("E_UNKNOWN_TIER_PROXY", "/tiers/0"),
                         tuple("E_UNKNOWN_TIER_PROXY", "/tiers/1"),
                         tuple("E_UNKNOWN_MACHINERY", "/delivery"),
-                        tuple("E_UNKNOWN_TELEMETRY_COLLECTOR", "/telemetry"));
+                        tuple("E_UNKNOWN_TELEMETRY_COLLECTOR", "/telemetry"),
+                        tuple("E_UNKNOWN_METRICS_STACK", "/telemetry"));
     }
 }

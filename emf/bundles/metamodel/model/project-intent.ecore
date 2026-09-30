@@ -357,6 +357,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="secretsEncryption" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cni" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="networkPolicyController" lowerBound="1" eType="#//PolicyController"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="clusterDns" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Bootstrap">
     <eStructuralFeatures xsi:type="ecore:EReference" name="flux" lowerBound="1" eType="#//FluxSource" containment="true"/>
@@ -424,6 +425,7 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="TelemetryPolicy">
     <eStructuralFeatures xsi:type="ecore:EReference" name="collector" lowerBound="1" eType="#//Application"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="metrics" lowerBound="1" eType="#//Application"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ProbeCadence">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="period" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -440,6 +442,7 @@
        linked across the documents read together, and the analysis cadence. -->
   <eClassifiers xsi:type="ecore:EClass" name="DeliveryPolicy">
     <eStructuralFeatures xsi:type="ecore:EReference" name="machinery" lowerBound="1" upperBound="-1" eType="#//Application"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="gate" lowerBound="1" eType="#//Application"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="analysis" lowerBound="1" eType="#//AnalysisPolicy" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="AnalysisPolicy">

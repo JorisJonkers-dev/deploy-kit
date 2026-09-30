@@ -7,6 +7,8 @@ export default defineConfig({
   test: {
     include: [
       "test/model/**/*.test.ts",
+      "test/adapters/contract.test.ts",
+      "test/adapters/spelling.test.ts",
       "test/canonical-json.test.ts",
       "test/simplification-contract.test.ts",
     ],

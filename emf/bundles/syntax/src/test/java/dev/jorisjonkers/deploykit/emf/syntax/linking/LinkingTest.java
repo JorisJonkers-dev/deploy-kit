@@ -135,6 +135,7 @@ class LinkingTest {
               secretsEncryption: true
               cni: flannel
               networkPolicyController: embedded
+              clusterDns: kube-system
             bootstrap:
               flux:
                 sourceRef: flux-system/platform
@@ -194,17 +195,30 @@ class LinkingTest {
     @Test
     void theTelemetryCollectorLinksOnlyToADeclaredApplicationThatReceivesOnOtlp() throws IOException {
         // `elsewhere` is declared, and provides only `http`: it is not a collector, so it is not in scope.
-        assertThat(codes(platform("elsewhere", "telemetry: { collector: elsewhere }\n")))
+        assertThat(codes(platform("elsewhere", "telemetry: { collector: elsewhere, metrics: elsewhere }\n")))
                 .containsExactly("E_UNKNOWN_TELEMETRY_COLLECTOR no project file declares an Application elsewhere"
                         + " whose Process provides an `otlp` surface");
-        assertThat(codes(platform("elsewhere", "telemetry: { collector: gone }\n")))
+        assertThat(codes(platform("elsewhere", "telemetry: { collector: gone, metrics: elsewhere }\n")))
                 .containsExactly("E_UNKNOWN_TELEMETRY_COLLECTOR no project file declares an Application gone"
                         + " whose Process provides an `otlp` surface");
     }
 
     @Test
+    void theReleaseGateAndTheMetricsStackLinkOnlyToWhatTheyNeed() throws IOException {
+        // `elsewhere` provides `http`, so it may be the gate; `gone` is declared nowhere.
+        String delivery = "delivery: { machinery: [elsewhere], gate: gone, "
+                + "analysis: { interval: 30s, iterations: 4, threshold: 3 } }\n";
+
+        assertThat(codes(platform("elsewhere", delivery + "telemetry: { collector: gone, metrics: gone }\n")))
+                .contains(
+                        "E_UNKNOWN_RELEASE_GATE no project file declares an Application gone whose Process provides"
+                                + " an `http` surface",
+                        "E_UNKNOWN_METRICS_STACK no project file declares the Application gone the metrics stack names");
+    }
+
+    @Test
     void theDeliveryMachineryLinksToDeclaredApplicationsAndReportsEachOneThatIsNot() throws IOException {
-        String delivery = "delivery: { machinery: [elsewhere, gone], "
+        String delivery = "delivery: { machinery: [elsewhere, gone], gate: elsewhere, "
                 + "analysis: { interval: 30s, iterations: 4, threshold: 3 } }\n";
 
         assertThat(codes(platform("elsewhere", delivery)))

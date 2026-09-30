@@ -16,6 +16,7 @@ substrate:
   secretsEncryption: false
   cni: flannel
   networkPolicyController: embedded
+  clusterDns: kube-system
 bootstrap:
   flux:
     sourceRef: flux-system/platform
@@ -36,6 +37,7 @@ tiers:
     traefik: edge-proxy
 delivery:
   machinery: [edge-proxy]
+  gate: edge-proxy
   analysis:
     interval: 30s
     iterations: 4

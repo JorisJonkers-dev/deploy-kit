@@ -1,6 +1,9 @@
 # GENERATED. Never hand-edit.
+---
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - namespace.yaml
-  - apps/notes
+  - canary.yaml
+  - podmonitor.yaml
+  - serviceaccount.yaml
+  - workload.yaml

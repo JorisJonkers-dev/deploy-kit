@@ -23,19 +23,18 @@ import org.eclipse.xtext.scoping.Scopes;
  * document: every Application a project file read in the same set declares
  * (spec/v1/14-platform-intent.md#the-model). The collector's scope holds only the Applications whose
  * Process provides an {@code otlp} surface, so one that receives nothing is a name that links to
- * nothing, and is refused as one (spec/v1/14-platform-intent.md#telemetry).
+ * nothing, and is refused as one (spec/v1/14-platform-intent.md#telemetry). The Release Gate's scope
+ * holds the Applications that provide {@code http}, which is where every Canary asks it.
  */
 public class ProjectIntentScopes implements IScopeProvider {
 
     @Override
     public IScope getScope(EObject context, EReference reference) {
         if (reference == ProjectIntentPackage.Literals.TELEMETRY_POLICY__COLLECTOR) {
-            return Scopes.scopeFor(
-                    applications(context.eResource().getResourceSet()).stream()
-                            .filter(ProjectIntentScopes::receivesTelemetry)
-                            .toList(),
-                    application -> QualifiedName.create(((Application) application).getId()),
-                    IScope.NULLSCOPE);
+            return providing(context, OTLP);
+        }
+        if (reference == ProjectIntentPackage.Literals.DELIVERY_POLICY__GATE) {
+            return providing(context, HTTP);
         }
         if (reference.getEReferenceType() == ProjectIntentPackage.Literals.APPLICATION) {
             return Scopes.scopeFor(
@@ -58,14 +57,22 @@ public class ProjectIntentScopes implements IScopeProvider {
                 IScope.NULLSCOPE);
     }
 
-    /** Whether a Process of {@code application} provides the surface a collector receives on. */
-    private static boolean receivesTelemetry(Application application) {
-        return application.getProcesses().stream()
-                .anyMatch(process -> process.getProvides().containsKey(OTLP));
+    /** The Applications of the set one of whose Processes provides {@code surface}. */
+    private static IScope providing(EObject context, String surface) {
+        return Scopes.scopeFor(
+                applications(context.eResource().getResourceSet()).stream()
+                        .filter(application -> application.getProcesses().stream()
+                                .anyMatch(process -> process.getProvides().containsKey(surface)))
+                        .toList(),
+                application -> QualifiedName.create(((Application) application).getId()),
+                IScope.NULLSCOPE);
     }
 
     /** The surface a telemetry collector receives on. */
     private static final String OTLP = "otlp";
+
+    /** The surface the Release Gate answers every Canary on. */
+    private static final String HTTP = "http";
 
     /** Every Application the project documents of {@code documents} declare, in the order they were read. */
     private static List<Application> applications(ResourceSet documents) {

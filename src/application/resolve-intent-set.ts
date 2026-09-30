@@ -13,7 +13,8 @@ import {
   readNodeContract,
 } from "../read/pinned-inputs.ts";
 import { readYaml } from "../read/yaml.ts";
-import { resolveUnion, type ResolvedProject } from "../resolve/union.ts";
+import type { ResolvedProject } from "../model/resolution.ts";
+import { resolveUnion } from "../resolve/union.ts";
 import { composeIntentSet, type AuthoredFile } from "./check-intent-set.ts";
 
 export interface ResolveOptions {
