@@ -192,6 +192,17 @@ class LinkingTest {
     }
 
     @Test
+    void theTelemetryCollectorLinksOnlyToADeclaredApplicationThatReceivesOnOtlp() throws IOException {
+        // `elsewhere` is declared, and provides only `http`: it is not a collector, so it is not in scope.
+        assertThat(codes(platform("elsewhere", "telemetry: { collector: elsewhere }\n")))
+                .containsExactly("E_UNKNOWN_TELEMETRY_COLLECTOR no project file declares an Application elsewhere"
+                        + " whose Process provides an `otlp` surface");
+        assertThat(codes(platform("elsewhere", "telemetry: { collector: gone }\n")))
+                .containsExactly("E_UNKNOWN_TELEMETRY_COLLECTOR no project file declares an Application gone"
+                        + " whose Process provides an `otlp` surface");
+    }
+
+    @Test
     void theDeliveryMachineryLinksToDeclaredApplicationsAndReportsEachOneThatIsNot() throws IOException {
         String delivery = "delivery: { machinery: [elsewhere, gone], "
                 + "analysis: { interval: 30s, iterations: 4, threshold: 3 } }\n";

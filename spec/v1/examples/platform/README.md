@@ -35,9 +35,23 @@ Both are the gates working.
 
 **Not here, deliberately.** The foundation (Vault, VSO, the two Traefik
 instances, Prometheus, Gatus) is declared as Applications in project files the
-platform owns ([0046](../../../../docs/adr/model/0046-the-foundation-is-declared.md));
-those files are the next worked example to write. Hostnames
-nobody deploys and nobody depends on are a ledger, not a Platform fact.
+platform owns ([0046](../../../../docs/adr/model/0046-the-foundation-is-declared.md)).
+Two of them are worked: [`edge`](../edge/edge.project.yml) declares both Traefik
+instances the tiers name, and [`observability`](../observability/observability.project.yml)
+declares the collector `telemetry` names, so the worked Platform document composes
+with them and the delivery project and refuses nothing it names. The secrets
+project is the next to write. Hostnames nobody deploys and nobody depends on are
+a ledger, not a Platform fact.
+
+## The images lock and the ClusterState snapshot
+
+[`images.lock.yml`](images.lock.yml) resolves every image alias the worked
+projects name to one digest and the user it runs as, and
+[`cluster-state.yml`](cluster-state.yml) is the snapshot of an estate with no bound
+volume and no recorded placement yet: both lists empty, and still an input with a
+digest ([chapter 20](../../20-resolved-deployment.md#pinned-inputs)). With the node
+contract below and the Platform document, they are every pinned input a
+resolution reads, and `minimal/expected/resolved.json` records the digest of each.
 
 ## The node contract
 

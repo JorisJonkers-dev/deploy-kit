@@ -443,3 +443,14 @@ export type ResolvedDeploymentDocument = z.output<typeof resolvedDeployment>;
 export type ResolvedApplicationDocument = z.output<
   typeof resolvedApplicationDocument
 >;
+export type ResolvedProcess = ResolvedApplicationDocument["processes"][number];
+export type ResolvedExposure = NonNullable<
+  ResolvedApplicationDocument["exposure"]
+>[number];
+export type ResolvedRoute = ResolvedExposure["routes"][number];
+export type ReleaseGate = NonNullable<
+  ResolvedApplicationDocument["releaseGate"]
+>;
+export type ResolvedProbe = NonNullable<ResolvedProcess["readiness"]>;
+export type StartupProbe = NonNullable<ResolvedProcess["startup"]>;
+export type EnvEntry = NonNullable<ResolvedProcess["environment"]>[number];

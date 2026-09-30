@@ -39,9 +39,12 @@ below, and `npm run lint:boundaries` fails on a violation.
 | `infrastructure/` | port implementations: hashing, canonical JSON, the serializer, the writer | `model/`, `objects/` |
 | `cli/` | argument parsing, diagnostic rendering, exit codes, wiring | everything |
 
-A directory exists once it holds a module: `resolve/`, `objects/`,
-`adapters/` and `cli/` land with the slice that first needs them, and their
-rules wait with them. Four rules exist for a reason worth stating once.
+A directory exists once it holds a module: `objects/`, `adapters/` and `cli/`
+land with the slice that first needs them, and their rules wait with them.
+`resolve/` holds the derivations the worked cases exercise so far; a family whose
+derivation has not landed (a volume, a kv grant, an Asset, a managed migration,
+a placeholder other than `${identity:…}`) stops the resolution with an error that
+names it, rather than resolving without it. Four rules exist for a reason worth stating once.
 
 **No step imports another step.** A step receives the previous model as a
 value from the use-case. One that imported another step would turn evaluation
@@ -83,7 +86,10 @@ Two properties are load-bearing rather than tidy.
 **One port resolves the whole pinned input set**, so the digests are computed in
 one place and "the input set is closed"
 ([0006](adr/model/0006-pinned-inputs.md)) is expressed by a single type.
-Widening it is one visible edit.
+Widening it is one visible edit. That type is `PinnedSet` in
+`src/model/resolution.ts`; until the CLI lands, `resolveIntentSet` takes the
+authored files as values, as `checkIntentSet` does, and digests each input itself
+through the `Hasher` it is handed.
 
 **Hashing is a port.** `renderHash` is a pure function of the recorded input
 digests, and a model that imported `node:crypto` could reach for a clock or an

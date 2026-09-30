@@ -7,8 +7,14 @@ import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { EffectiveProject } from "../model/effective-intent.ts";
 import type { EnvSource } from "../model/env.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
-import { parsePlatformIntent } from "./parse-platform-intent.ts";
-import { parseProjectIntent } from "./parse-project-intent.ts";
+import {
+  parsePlatformIntent,
+  type ParsedPlatformIntent,
+} from "./parse-platform-intent.ts";
+import {
+  parseProjectIntent,
+  type ParsedProjectIntent,
+} from "./parse-project-intent.ts";
 
 export interface AuthoredFile {
   readonly name: string;
@@ -45,9 +51,21 @@ function envBeside(
     .map(({ name, text }) => ({ path: name, text }));
 }
 
-export function checkIntentSet(
+/** One authored file's parsed form, by the name it was read under. */
+export interface Named<T> {
+  readonly name: string;
+  readonly value: T;
+}
+
+/** Every file of a set parsed, and the rules the set answers together, answered. */
+export interface ComposedSet {
+  readonly platform: Named<ParsedPlatformIntent> | undefined;
+  readonly projects: readonly Named<ParsedProjectIntent>[];
+}
+
+export function composeIntentSet(
   files: readonly AuthoredFile[],
-): Result<IntentSet> {
+): Result<ComposedSet> {
   const refusals: Diagnostic[] = [];
   const tagged = (name: string, diagnostics: readonly Diagnostic[]): void => {
     refusals.push(
@@ -92,11 +110,20 @@ export function checkIntentSet(
     );
   if (refusals.length > 0) return { ok: false, diagnostics: refusals };
 
+  return { ok: true, value: { platform, projects: parsedProjects } };
+}
+
+export function checkIntentSet(
+  files: readonly AuthoredFile[],
+): Result<IntentSet> {
+  const composed = composeIntentSet(files);
+  if (!composed.ok) return composed;
+  const { platform, projects } = composed.value;
   return {
     ok: true,
     value: {
       ...(platform === undefined ? {} : { platform: platform.value.document }),
-      projects: parsedProjects.map(({ value }) => value.effective),
+      projects: projects.map(({ value }) => value.effective),
     },
   };
 }

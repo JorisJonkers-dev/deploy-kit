@@ -46,6 +46,9 @@
         "monitors": {
           "$ref": "#/$defs/MonitorCadence"
         },
+        "telemetry": {
+          "$ref": "#/$defs/TelemetryPolicy"
+        },
         "hardening": {
           "$ref": "#/$defs/HardeningClass"
         },
@@ -412,6 +415,20 @@
       "required": [
         "interval",
         "timeout"
+      ],
+      "additionalProperties": false
+    },
+    "TelemetryPolicy": {
+      "type": "object",
+      "properties": {
+        "collector": {
+          "type": "string",
+          "minLength": 1,
+          "reference": "Application"
+        }
+      },
+      "required": [
+        "collector"
       ],
       "additionalProperties": false
     },

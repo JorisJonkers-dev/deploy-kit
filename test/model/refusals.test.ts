@@ -165,9 +165,10 @@ describe("the refusal fixtures", () => {
       "shared-quantity",
       "unknown-machinery",
       "unknown-surface",
+      "unknown-telemetry-collector",
       "unknown-tier-proxy",
     ]);
-    expect(refused).toHaveLength(33);
+    expect(refused).toHaveLength(34);
     expect(
       fixtures.length - refused.length,
       "the three accepted counterparts and the vocabulary case carry no oracle",

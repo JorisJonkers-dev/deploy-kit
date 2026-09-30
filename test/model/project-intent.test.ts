@@ -88,8 +88,10 @@ describe("parseProjectIntent", () => {
       "auth",
       "data",
       "delivery",
+      "edge",
       "knowledge",
       "minimal",
+      "observability",
     ]);
   });
 

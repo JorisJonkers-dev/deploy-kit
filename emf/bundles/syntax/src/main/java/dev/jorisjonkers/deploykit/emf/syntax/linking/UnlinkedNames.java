@@ -10,7 +10,8 @@ import org.eclipse.xtext.linking.impl.LinkingDiagnosticMessageProvider;
 /**
  * A name that links to nothing, as the code the specification gives it: `E_UNKNOWN_PROCESS` for a
  * Process, `E_UNKNOWN_SURFACE` for a surface, `E_UNKNOWN_TIER_PROXY` for a tier's proxy Application,
- * `E_UNKNOWN_MACHINERY` for an Application the delivery machinery names. A surface whose Process did not link is not reported
+ * `E_UNKNOWN_MACHINERY` for an Application the delivery machinery names, `E_UNKNOWN_TELEMETRY_COLLECTOR` for
+ * the Application the telemetry block names. A surface whose Process did not link is not reported
  * as well: there is no Process to look it up in, and the Process's own refusal already says so.
  */
 public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
@@ -19,9 +20,11 @@ public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
     public static final String UNKNOWN_SURFACE = "E_UNKNOWN_SURFACE";
     public static final String UNKNOWN_TIER_PROXY = "E_UNKNOWN_TIER_PROXY";
     public static final String UNKNOWN_MACHINERY = "E_UNKNOWN_MACHINERY";
+    public static final String UNKNOWN_TELEMETRY_COLLECTOR = "E_UNKNOWN_TELEMETRY_COLLECTOR";
 
     /** The codes of names that link into another document, reported only when the documents are read together. */
-    public static final Set<String> ACROSS_DOCUMENTS = Set.of(UNKNOWN_TIER_PROXY, UNKNOWN_MACHINERY);
+    public static final Set<String> ACROSS_DOCUMENTS =
+            Set.of(UNKNOWN_TIER_PROXY, UNKNOWN_MACHINERY, UNKNOWN_TELEMETRY_COLLECTOR);
 
     @Override
     public DiagnosticMessage getUnresolvedProxyMessage(ILinkingDiagnosticContext context) {
@@ -31,6 +34,12 @@ public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
                     "no project file declares the Application " + name + " the delivery machinery names",
                     Severity.ERROR,
                     UNKNOWN_MACHINERY);
+        }
+        if (context.getReference() == ProjectIntentPackage.Literals.TELEMETRY_POLICY__COLLECTOR) {
+            return new DiagnosticMessage(
+                    "no project file declares an Application " + name + " whose Process provides an `otlp` surface",
+                    Severity.ERROR,
+                    UNKNOWN_TELEMETRY_COLLECTOR);
         }
         if (context.getReference().getEReferenceType() == ProjectIntentPackage.Literals.APPLICATION) {
             return new DiagnosticMessage(

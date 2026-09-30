@@ -1,0 +1,34 @@
+# The telemetry collector as Project Intent: the Application the worked
+# Platform document's `telemetry.collector` names
+# (spec/v1/14-platform-intent.md#telemetry).
+#
+# Every Process whose Runtime Profile exports telemetry is handed this
+# collector's `otlp` surface as its endpoint
+# (spec/v1/10-project-intent.md#runtime-profiles), so no project writes the
+# address and none can write it wrong.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: observability # the namespace derives: observability-system
+owner: joris
+
+applications:
+  - id: otel-collector
+    processes:
+      - name: otel-collector
+        lifecycle: application
+        image: otel-collector
+        runtime: none
+        provides:
+          otlp: 4317
+          health: 13133
+        placement:
+          memory: 256Mi
+          cpu: 50m
+        probes:
+          readiness: { path: /, port: 13133 }
+          liveness: { path: /, port: 13133 }
+        startupBudget: 20s
+        cutover: continuous

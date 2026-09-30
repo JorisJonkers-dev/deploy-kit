@@ -2,15 +2,16 @@ import { projectDiagnostics } from "../check/project.ts";
 import { lowerProject } from "../lower/project.ts";
 import type { Result } from "../model/diagnostic.ts";
 import type { EffectiveProject } from "../model/effective-intent.ts";
-import type { EnvSource } from "../model/env.ts";
+import type { EnvSource, ScopedEnv } from "../model/env.ts";
 import type { ProjectIntentDocument } from "../model/project-intent.ts";
 import { readEnv } from "../read/env.ts";
 import { readProjectIntent } from "../read/project-intent.ts";
 import { readYaml } from "../read/yaml.ts";
 
-/** The authored document, and the Effective Intent everything downstream reads. */
+/** The authored document and its env files, and the Effective Intent everything downstream reads. */
 export interface ParsedProjectIntent {
   readonly document: ProjectIntentDocument;
+  readonly env: readonly ScopedEnv[];
   readonly effective: EffectiveProject;
 }
 
@@ -32,6 +33,7 @@ export function parseProjectIntent(
     ok: true,
     value: {
       document: document.value,
+      env: scoped.value,
       effective: lowerProject(document.value, scoped.value),
     },
   };

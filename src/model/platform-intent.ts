@@ -163,6 +163,16 @@ const handoverLedger = z
   })
   .meta({ id: "HandoverLedger" });
 
+// Where telemetry is sent (spec/v1/14-platform-intent.md#telemetry): the
+// declared Application whose `otlp` surface every exporting Runtime Profile is
+// handed, named as a tier names its proxy.
+/** The surface a telemetry collector receives on. */
+export const OTLP_SURFACE = "otlp";
+
+const telemetryPolicy = z
+  .strictObject({ collector: text.meta({ reference: "Application" }) })
+  .meta({ id: "TelemetryPolicy" });
+
 const provider = z
   .strictObject({
     name: text,
@@ -184,6 +194,7 @@ export const platformIntent = z
     durability: durabilityPolicies,
     engines: enginePolicies,
     monitors: monitorCadence,
+    telemetry: telemetryPolicy.exactOptional(),
     hardening: hardeningClass,
     probes: probeCadence,
     ephemeral: ephemeralPolicy,
