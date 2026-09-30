@@ -30,9 +30,9 @@ document or one gate. A change is bigger than that shape when it:
 
 - adds or changes a rule this repository enforces (a ledger row, its
   enforcement, and a failing fixture, together;
-  [0104](docs/adr/architecture/0104-every-enforced-rule-has-an-id-a-row-and-a-fixture.md)),
+  [0066](docs/adr/architecture/0066-every-enforced-rule-has-an-id-a-row-and-a-fixture.md)),
 - adds a gate (its npm script and its CI job, in the same pull request;
-  [0102](docs/adr/architecture/0102-the-gate-grows-with-the-code.md)), or
+  [0064](docs/adr/architecture/0064-a-gate-is-a-script-or-a-named-job.md)), or
 - changes what `spec/v1` says the model means, in which case it lands with
   the ADR that decides it, in both implementations while `emf/` exists, and
   with every oracle file the change touches.

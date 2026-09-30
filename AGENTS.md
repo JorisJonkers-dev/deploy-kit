@@ -83,7 +83,7 @@ table does not name, so a new gate cannot go undocumented.
 | `lint:codes` | every specification `E_` code, exercised or pending |
 | `lint:docs` | README.md and CONTRIBUTING.md, held to the scripts, paths, coverage numbers and Node version they name |
 | `lint:agents` | this table, held to `package.json`'s real script list |
-| `lint:meaning` | a citation to a superseded decision with no successor named, a retired term read as current, a stale count |
+| `lint:meaning` | a retired term read as current, a stale count |
 | `lint:secrets` | a committed secret, against the default ruleset and this repository's own allowlist |
 | `report:pr` | comments a pull request's shape and coverage (CI only) |
 | `publish:rc` | publishes a release candidate from a pull request (CI only) |
@@ -104,7 +104,7 @@ this repository's own documents rather than code, carries a negative fixture:
 a gate that has only ever run clean is untested.
 
 Coverage is a ratchet
-([0101](docs/adr/architecture/0101-coverage-is-a-ratchet.md)): the thresholds
+([0063](docs/adr/architecture/0063-coverage-and-mutation-are-ratchets.md)): the thresholds
 in `vitest.config.ts` sit on what the suite reaches, over an explicit include
 list, and only ever rise. Mutation testing holds the same shape with a break
 score in `stryker.config.json`. Neither covers `emf/`, which measures itself.
@@ -144,7 +144,9 @@ tool runs it.
 - **Never:** generate one implementation from the other, regenerate an oracle
   file in CI, or add a root dependency on anything under `emf/`. Push to
   `main` or force-push a shared branch. Edit a version or `CHANGELOG.md` by
-  hand. Reverse a settled ADR in place; supersede it instead. Hand-edit a
+  hand. Supersede an ADR or annotate it with an amendment note: a decision
+  that changes is rewritten, in its one record, in the pull request that
+  changes what it decides. Hand-edit a
   generated file. Specify a second applier, a push path, a field manager or
   a co-test gate in `spec/v1` (delivery is Flux pulling a pinned render,
   [chapter 55](spec/v1/55-delivery.md)). Cite a bare ADR number. Commit on a detached
@@ -195,7 +197,7 @@ above instead of restating them.
 | [`adr`](.agents/skills/adr/SKILL.md) | Writes a decision record to this repository's own ADR contract: the right domain directory, the next estate-wide number (checking both registers while `emf/` exists), the frontmatter, premises only in `rests-on`, an Alternatives table, the register row, and an anchor that resolves. |
 | [`spec-change`](.agents/skills/spec-change/SKILL.md) | Edits a spec chapter as one change: its anchors, the ADRs that point at it, `CONTEXT.md`'s vocabulary, the worked examples, the rendered trees, the oracle files, the diagrams, and both implementations' declarations. |
 | [`gate-triage`](.agents/skills/gate-triage/SKILL.md) | Goes from a failing CI job or a quoted rule id to its ledger row and the ADR that decided it, so a red gate resolves to the document that explains it rather than a guess. |
-| [`new-rule`](.agents/skills/new-rule/SKILL.md) | Adds a rule ledger row, its enforcement and a failing fixture that proves it, in one change, per [0104](docs/adr/architecture/0104-every-enforced-rule-has-an-id-a-row-and-a-fixture.md). |
+| [`new-rule`](.agents/skills/new-rule/SKILL.md) | Adds a rule ledger row, its enforcement and a failing fixture that proves it, in one change, per [0066](docs/adr/architecture/0066-every-enforced-rule-has-an-id-a-row-and-a-fixture.md). |
 
 `.claude/settings.json` holds this repository's permission allowlist (its npm
 scripts, read-only `git` and `gh`, and the one labelled write the claim step
@@ -223,8 +225,10 @@ both. See [`docs/agents/domain.md`](docs/agents/domain.md).
 ## Repeated procedures
 
 - **Citing a decision.** Never a bare ADR number; a citation is always a
-  link. Citing a superseded ADR without linking its successor in the same
-  sentence fails `npm run lint:meaning`.
+  link.
+- **Changing a decision.** Rewrite its one record in the same pull request
+  as the spec change it justifies; git history is the change log.
+  `npm run lint:adrs` refuses `superseded-by` and amendment notes.
 - **Cross-repository references.** Written in full
   (`JorisJonkers-dev/workspace#45`), never bare (`workspace#45`), the same
   rule `docs/agents/issue-tracker.md` states for the issue tracker.
@@ -235,7 +239,7 @@ both. See [`docs/agents/domain.md`](docs/agents/domain.md).
 - **Checking a rule's id.** Grep `docs/architecture-rules.md` for a
   `RULE-NNN`, or use the `gate-triage` skill.
 - **Adding a gate.** Its npm script and its CI job land in the same pull
-  request ([0102](docs/adr/architecture/0102-the-gate-grows-with-the-code.md));
+  request ([0064](docs/adr/architecture/0064-a-gate-is-a-script-or-a-named-job.md));
   `test/pipeline-wiring.test.ts` fails otherwise.
 
 ## Where to read deeper

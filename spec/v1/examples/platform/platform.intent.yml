@@ -1,12 +1,12 @@
 # Platform Intent: the second authored document. What the estate offers, held to
 # the same rule as a project file -- facts and policy, never mechanisms -- and
 # published as an Intent Fragment by digest like any project
-# (spec/v1/14-platform-intent.md, docs/adr/model/0095-platform-intent-is-the-second-authored-document.md).
+# (spec/v1/14-platform-intent.md, docs/adr/model/0045-platform-intent-is-the-second-authored-document.md).
 #
 # Every block is a value the contention test put on the platform's side
 # (docs/adr/model/0004-contention-decides-authority.md). Nothing here names a
 # Kubernetes field, a Traefik key, a k3s flag or a shell command
-# (docs/adr/model/0097-authored-values-name-model-concepts.md).
+# (docs/adr/model/0011-authored-values-name-model-concepts.md).
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Platform
@@ -19,21 +19,21 @@ metadata:
   nodeContract: "sha256:6f1c2a8e5d3b4c7f9a0e1d2c3b4a5968778695a4b3c2d1e0f9a8b7c6d5e4f3a2"
 
 # Facts about the cluster, named for what they are. How k3s is told is a
-# derivation nobody authors (docs/adr/model/0057-datastore-and-restore.md).
+# derivation nobody authors (docs/adr/model/0049-datastore-and-restore.md).
 substrate:
   kubernetesVersion: v1.31.4+k3s1
   datastore: sqlite
   serverCount: 1
   secretsEncryption: false # every delivery: env and file grant fails
   # E_SECRETS_AT_REST_REQUIRED until this is true -- the gate working, not the
-  # example being wrong (docs/adr/model/0028-secrets-at-rest-gate.md)
+  # example being wrong (docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)
   cni: flannel
   networkPolicyController: embedded # no non-enforcing stage: default-deny stays
-  # render-only (docs/adr/model/0084-render-only-is-the-v1-policy-stage.md)
+  # render-only (docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)
 
 # What must exist before the first rendered object can apply. Recorded and
 # enumerated, never declared; growing this table is a decision
-# (docs/adr/model/0099-bootstrap-set-is-recorded.md).
+# (docs/adr/model/0046-the-foundation-is-declared.md).
 bootstrap:
   flux:
     sourceRef: flux-system/platform
@@ -71,7 +71,7 @@ tiers:
     certificates: none
     traefik: traefik-lan # placed on a LAN node
 
-# One policy per Durability Class (docs/adr/model/0077-durability-derives-a-backup.md).
+# One policy per Durability Class (docs/adr/model/0018-durability-class-derives-a-backup.md).
 durability:
   reconstructible: {}
   recoverable:
@@ -105,18 +105,18 @@ monitors:
 
 # One posture for every container the estate renders. A Process authors no
 # hardening at all: it declares the paths it writes, and an image that cannot
-# meet this class is refused (docs/adr/model/0016-pod-hardening.md).
+# meet this class is refused (docs/adr/model/0020-hardening-is-one-platform-posture.md).
 hardening: restricted
 
 # One cadence for every rendered probe
-# (docs/adr/model/0088-startup-probe-targets-liveness.md).
+# (docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md).
 probes:
   period: 10s
   timeout: 5s
   failures: 3
 
 # The ephemeral default for a declared writable path
-# (docs/adr/model/0092-writable-paths-are-declared.md).
+# (docs/adr/model/0020-hardening-is-one-platform-posture.md).
 ephemeral:
   size: 64Mi
 
@@ -152,7 +152,7 @@ handover:
 
 # Things the estate runs and does not deploy, that an Application depends on. A fact
 # with an address, resolvable by an edge -- not a hole, so no review date
-# (docs/adr/model/0090-edges-resolve-against-the-register.md).
+# (docs/adr/model/0024-dependency-edges-resolve-against-the-union.md).
 providers:
   - name: stalwart
     address: 10.0.0.12

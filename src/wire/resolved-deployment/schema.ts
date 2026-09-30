@@ -2,14 +2,14 @@
 // spec/v1/20-resolved-deployment.md#the-model defines it. Two kinds share one
 // schema family: a `ResolvedDeployment` covers the composed estate, and a
 // `ResolvedApplication` is the projection published back to one repository
-// (docs/adr/model/0033-assignments-published-back.md).
+// (docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md).
 //
 // No key here is a Kubernetes or Traefik field name. Layer 2 records the
 // `cutover` a Process was granted and the `switchover` it derives, the
 // `hardening` posture it takes and the
 // capacity it needs; a rollout strategy, a security context and a resource
 // block are the `kubernetes` adapter's spelling of those decisions
-// (docs/adr/model/0097-authored-values-name-model-concepts.md).
+// (docs/adr/model/0011-authored-values-name-model-concepts.md).
 import { z } from "zod";
 import { HARDENING_CLASSES } from "../../domain/platform-intent/vocabularies.ts";
 import {
@@ -94,7 +94,7 @@ const resolvedProbe = z
  * The startup probe is its own class: its target is the liveness declaration
  * and its period and failure count derive from `startupBudget`, where readiness
  * and liveness take the Platform document's cadence
- * (docs/adr/model/0088-startup-probe-targets-liveness.md). Different input,
+ * (docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md). Different input,
  * different derivation, different class.
  */
 const startupProbe = z
@@ -176,7 +176,7 @@ const resolvedProcess = z
     uid: count,
     gid: count,
     // Absent on a `lifecycle: prepare` Process: it runs once and cuts over
-    // nothing (docs/adr/model/0131-prepare-processes-are-forward-only-setup.md).
+    // nothing (docs/adr/model/0027-prepare-processes-are-forward-only-setup.md).
     cutover: cutover.exactOptional(),
     // Present on a `lifecycle: application` Process; a job has no switchover.
     switchover: switchover.exactOptional(),
@@ -219,7 +219,7 @@ const resolvedRoute = z
     surface: text,
     audience,
     // Specificity alone, smallest evaluated first: exact before prefix, longer
-    // prefix before shorter (docs/adr/model/0093-route-precedence-is-derived.md).
+    // prefix before shorter (docs/adr/model/0023-exposure-is-declared-by-audience.md).
     precedence: z.int().min(1),
     // The chain follows the audience, and a route may override the audience, so
     // it hangs off the route rather than off the host it is served on.
@@ -293,7 +293,7 @@ const application = {
   reconcileAfter: z.array(text).exactOptional(),
   alertClass: alertClass.exactOptional(),
   // Absent on an `interrupted` Application: it stops before it starts, so no
-  // switch waits on a gate (docs/adr/model/0128-cutover-names-the-promise.md).
+  // switch waits on a gate (docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md).
   releaseGate: releaseGate.exactOptional(),
   // Present where the Application moves its schema with a changelog.
   migration: resolvedMigration.exactOptional(),

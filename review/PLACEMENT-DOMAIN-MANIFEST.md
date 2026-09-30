@@ -46,7 +46,7 @@ services:
    "any node". Required because BestEffort was the estate's standing QoS class
    and this field exists to end that.
 3. **Raw quantities**, not named classes. The `xs`..`xl` table is deleted; the
-   Cluster Context ([0095](../docs/adr/model/0095-platform-intent-is-the-second-authored-document.md))
+   Cluster Context ([0045](../docs/adr/model/0045-platform-intent-is-the-second-authored-document.md))
    no longer carries it.
 4. **Matched against `allocatable`**, published by the node contract as total
    minus a declared reserve authored in the node file. Never a live read.
@@ -55,7 +55,7 @@ services:
 5. **Shape rules survive, still derived**: memory request == memory limit
    (incompressible; OOM beats eviction roulette); cpu request only, **no cpu
    limit** (throttling gets misdiagnosed as slow application code). The author
-   writes one number per dimension. Escape is 0031's override with a reason.
+   writes one number per dimension. Escape is 0022's override with a reason.
 6. **`gpu` is structured**: `class` and `memory` matched against the node
    contract's `gpus[].class` and `gpus[].memory_mib`. Flat `gpu-nvidia` is not
    vocabulary. This closes a live trap: `enschede-gtx-960m-1` advertises
@@ -133,11 +133,11 @@ everything takes k3s's default `local-path`. Do not claim Longhorn is in use.
 
 ## Numbering
 
-New: 0061 placement-is-hard-dimensions · 0062 service-is-the-release-unit ·
-0063 intent-authored-per-domain.
-Superseded (keep files, set `superseded-by`): 0017 → 0061, 0060 → 0062.
-Amended in place: 0004, 0010, 0016 (keeps hardening, loses the resource class),
-0024, 0037, 0056.
+New: 0017 placement-is-hard-dimensions · 0052 service-is-the-release-unit ·
+0009 intent-authored-per-domain.
+Superseded (keep files, set `superseded-by`): 0017 → 0017, 0052 → 0052.
+Amended in place: 0004, 0010, 0020 (keeps hardening, loses the resource class),
+0031, 0042, 0048.
 
 ## Chapter anchors: changes
 

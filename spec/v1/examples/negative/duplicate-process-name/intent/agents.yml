@@ -5,10 +5,10 @@
 # E_DUPLICATE_PROCESS_NAME and with nothing else.
 schemaVersion: 1.0.0
 
-# One file per project (docs/adr/model/0063-intent-authored-per-project.md). The
+# One file per project (docs/adr/model/0009-intent-is-authored-one-file-per-project.md). The
 # namespace derives from this header as agents-system, and the ServiceAccount
 # and Vault role of a Process are its NAME under that namespace
-# (docs/adr/model/0024-identity-per-process.md) -- which is what makes the collision
+# (docs/adr/model/0031-identity-per-process.md) -- which is what makes the collision
 # below an identity collision rather than a style complaint.
 project: agents
 owner: joris
@@ -16,7 +16,7 @@ owner: joris
 applications:
   # Two Applications in one file are ordinary: co-location couples nothing, and
   # these two release independently
-  # (docs/adr/model/0062-application-is-the-release-unit.md). What is not ordinary is that
+  # (docs/adr/model/0052-an-application-is-the-release-unit.md). What is not ordinary is that
   # both name a Process `api`.
   - id: agents-api
     alertClass: urgent

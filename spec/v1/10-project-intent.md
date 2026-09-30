@@ -11,7 +11,7 @@ them:
    `VaultStaticSecret`, `securityContext` and `statefulset` are mechanisms and
    appear nowhere. What they should be is derived from what is declared
    ([0005](../../docs/adr/model/0005-derivation-is-total.md),
-   [0030](../../docs/adr/model/0030-runtime-mechanics-derived.md)).
+   [0021](../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)).
 2. **Project Intent never gets the last word on a contended value.** A value
    that must be unique across the estate, or that draws on a shared finite
    resource, is **arbitrated** by layer 2
@@ -19,12 +19,12 @@ them:
    decides who **arbitrates**, not who **authors**: the Application states its
    requirement, the platform decides whether it fits and where, and the Application
    reads the assignment back from its generated `resolved.yml`
-   ([0033](../../docs/adr/model/0033-assignments-published-back.md)).
+   ([0032](../../docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md)).
 
 The second rule reads as it does because placement forced it. `memory` and `cpu`
 are contended (they draw on a finite pool of node capacity) and they are
 nevertheless authored here, as raw quantities per Process
-([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). An authors-only
+([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)). An authors-only
 reading of contention would forbid the field and leave the estate exactly where
 it is, because a number no Application may write is a number nobody writes, and what
 that produced is BestEffort on every pod. Arbitration is real and it is the
@@ -57,7 +57,7 @@ label and can never begin with one. A directory under `platform/env/` whose
 name begins with `_` is therefore a scope, and any other is a Process.
 
 One file is one project and one Intent Fragment
-([0063](../../docs/adr/model/0063-intent-authored-per-project.md)). A repository may
+([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)). A repository may
 hold several project files (which is what lets `homelab-collections` stay one
 repository holding three Applications rather than three repositories with three
 publish workflows) and a project never spans repositories, so composition unions
@@ -96,7 +96,7 @@ gets its own namespace. `kind` names the authored document (one project holding
 many Applications) while chapter 40's `IntentFragment` is the envelope that
 publishes it. `schemaVersion` is the **data model's own semver**, not the
 toolkit package's version, and composition accepts a range rather than an
-equality ([0039](../../docs/adr/model/0039-artifact-schema-versioning.md)); chapter 40
+equality ([0044](../../docs/adr/model/0044-artifact-schema-versioning.md)); chapter 40
 defines the range and what the lock records.
 
 ## The model
@@ -134,12 +134,12 @@ The **relations that reach across layers** are not drawn either. A
 
 Nothing in it is ungraded. `minAvailable` was the last such field and it is
 **deleted** rather than graded
-([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)):
+([0022](../../docs/adr/model/0022-a-derived-value-has-one-declaring-site.md)):
 availability by replica count does not exist on this substrate, so the field
 could only ever have been a request the platform could not honour. `sidecars` is
 graded by
-[0064](../../docs/adr/model/0064-sidecars-are-process-vocabulary.md). `placement` is not among them: it is graded by
-[0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md) and specified in
+[0015](../../docs/adr/model/0015-sidecars-are-process-vocabulary.md). `placement` is not among them: it is graded by
+[0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md) and specified in
 full below. It is the one composite an **effective** Process cannot be without,
 and the one an authored Process may leave to a level above it, because the node
 dimensions are shared and the quantities are not
@@ -156,7 +156,7 @@ Eight of the things a Process holds are not facts about that program. They are
 facts about the product it belongs to, or about the project that owns it, and
 declaring them per Process is how they drift. Those eight are **Shared Intent**,
 and each may be declared at the **Project** header, on an **Application**, or on a
-**Process** ([0124](../../docs/adr/model/0124-shared-intent-descends-to-the-process.md)):
+**Process** ([0012](../../docs/adr/model/0012-shared-intent-descends-and-is-lowered.md)):
 
 | family | what a shared declaration means | where the family is specified |
 |---|---|---|
@@ -222,7 +222,7 @@ what it replaces, visibly, at the place it is written.
 **This is not the `overrides` field.** That field was a second declaring site for
 a value the model **derives**, and it stays deleted, with `replicas: {count,
 reason}` as the sole exception
-([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md),
+([0022](../../docs/adr/model/0022-a-derived-value-has-one-declaring-site.md),
 [No overrides](#no-overrides)). Nothing here overrides a derived value. A lower
 level of Shared Intent is the same field, written at the level it belongs to, in
 the vocabulary it already has: there is no `overrides` key, no exception map and
@@ -247,12 +247,11 @@ is `E_CUTOVER_MISSING`.
 
 ### Why the project level exists
 
-[0022](../../docs/adr/model/0022-grants-live-on-the-application.md), superseded by
-[0124](../../docs/adr/model/0124-shared-intent-descends-to-the-process.md),
+[0012](../../docs/adr/model/0012-shared-intent-descends-and-is-lowered.md),
 refused a project level, and the refusal was about grants alone: a project-level
 grant hands every Application in the file a reader slot on a path it may not need,
 and a read grant covers the whole document
-([0009](../../docs/adr/model/0009-vault-read-is-per-path.md)). That argument is
+([0008](../../docs/adr/model/0008-vault-read-is-per-path.md)). That argument is
 unchanged and it is now an argument about what an author should put at the
 project level rather than about whether the level exists. The widening is
 visible where it is written, because the Applications that receive it are listed in
@@ -262,7 +261,7 @@ such argument at all.
 
 The levels are an access boundary **only** for `secrets`, and only because
 identity is per Process
-([0024](../../docs/adr/model/0024-identity-per-process.md)). A project-level
+([0031](../../docs/adr/model/0031-identity-per-process.md)). A project-level
 grant reaches three principals because three Processes hold it, not because a
 project is one: there is no project ServiceAccount and no project Vault role.
 
@@ -272,7 +271,7 @@ The **Effective Intent** is Project Intent with every shared declaration lowered
 onto the Processes that hold it. In it, the Project holds `project` and `owner`,
 an Application holds `id`, `observability` and `exposure`, and a Process holds
 everything it runs with. It is the only shape anything downstream reads
-([0125](../../docs/adr/model/0125-the-effective-intent-is-a-lowering.md)):
+([0012](../../docs/adr/model/0012-shared-intent-descends-and-is-lowered.md)):
 composition, every derivation of [chapter 16](16-dependencies.md), and
 resolution into layer 2 all read lowered Processes, so no derivation unions
 levels for itself.
@@ -289,7 +288,7 @@ Nobody authors the Effective Intent and nothing publishes it. It carries no
 authored documents
 ([0006](../../docs/adr/model/0006-pinned-inputs.md)), and the Intent Fragment a
 project publishes is the authored file
-([0037](../../docs/adr/model/0037-composition-oci-fragments.md)). A compiler
+([0042](../../docs/adr/model/0042-declarations-compose-from-intent-fragments.md)). A compiler
 must be able to **print** it, because a reviewer reading one Process block now
 under-counts what that Process holds at three levels rather than two.
 
@@ -297,7 +296,7 @@ under-counts what that Process holds at three levels rather than two.
 
 Intent is authored one file per project. The file states the project, raises
 exactly one field to it, and lists the Applications it holds
-([0063](../../docs/adr/model/0063-intent-authored-per-project.md)):
+([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)):
 
 ```yaml
 project: auth                 # the file header; one project per file
@@ -339,11 +338,11 @@ project's namespace. Deleting the field deletes that move with it.
 **An Application is the unit of atomic release.** Some products are one thing in two
 processes: a new frontend against an old API is a broken product even though each
 pod individually reports healthy. That coupling is carried by the Application
-boundary itself ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)).
+boundary itself ([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)).
 The Processes of one Application switch together or none switches. No Process's new
 version receives traffic until **every** Process's new version is healthy, where
 healthy means that Process's own declared readiness
-([0014](../../docs/adr/model/0014-probes-are-siblings.md)). If any member fails its
+([0016](../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md)). If any member fails its
 `startupBudget`, **no** member switches and the old versions keep serving.
 Rollback is Application-scoped: reverting one Process reverts all of them.
 
@@ -356,7 +355,7 @@ this estate because nothing references the folded names: the complete set of
 `dependsOn` targets across the composed union is `platform-postgres`,
 `platform-rabbitmq`, `stalwart` and `platform-valkey`, and `auth-api`'s
 estate-wide role is the forward-auth middleware derived from every route's
-audience ([0018](../../docs/adr/model/0018-exposure-by-audience.md)), never an edge.
+audience ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)), never an edge.
 
 Atomicity is declared rather than derived, because lockstep release is a product
 choice the graph cannot see: a frontend depends on its API, but a dependency edge
@@ -367,7 +366,7 @@ Unit:
 | | Reconcile Unit | Application |
 |---|---|---|
 | answers | in what order | all at once, or not at all |
-| origin | derived from the dependency graph ([0032](../../docs/adr/model/0032-reconcile-unit-derived.md)) | declared, by drawing a boundary |
+| origin | derived from the dependency graph ([0033](../../docs/adr/model/0033-reconcile-unit-derived.md)) | declared, by drawing a boundary |
 | example | `platform-postgres` before `knowledge` | `auth-api` and `auth-ui`, in Application `auth` |
 | failure | the later unit waits | nothing switches |
 
@@ -380,16 +379,16 @@ boundary.** This was once a footnote to an exception; it is now the normal case
 for every namespace in the estate, and it must be read as normal rather than as
 an edge case. No isolation claim may rest on a namespace wall. Isolation is the
 derived default-deny edge set
-([0035](../../docs/adr/model/0035-network-policy-default-deny.md)), evaluated per pod,
-plus per-Process identity ([0024](../../docs/adr/model/0024-identity-per-process.md)).
+([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)), evaluated per pod,
+plus per-Process identity ([0031](../../docs/adr/model/0031-identity-per-process.md)).
 
 | field | level | required | notes |
 |---|---|---|---|
-| `project` | file header | yes | One project per file. The namespace is `<project>-system`; the project also owns the Secret Subtree and is the unit of Intent Fragment publication ([0037](../../docs/adr/model/0037-composition-oci-fragments.md), [0063](../../docs/adr/model/0063-intent-authored-per-project.md)). |
+| `project` | file header | yes | One project per file. The namespace is `<project>-system`; the project also owns the Secret Subtree and is the unit of Intent Fragment publication ([0042](../../docs/adr/model/0042-declarations-compose-from-intent-fragments.md), [0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)). |
 | `owner` | file header | yes | Who is notified. Not shared and not inherited: it is the project's, and an Application needing a different owner needs its own project. |
 | the eight Shared Intent families | file header | no | `secrets`, `env`, `dependsOn`, `assets`, `writablePaths`, `placement`, `cutover`, `startupBudget`, each held by every Process in the file ([Shared intent](#shared-intent)). `memory` and `cpu` are refused here: `E_SHARED_QUANTITY`. |
 | `id` | Application | yes | The one referencable identity, estate-unique. The repository or product name. |
-| `observability` | Application | no | `{alertClass, scrape {process, surface, path}}`, whole or absent. Absent means no monitoring is rendered. Urgency, never routing ([0021](../../docs/adr/model/0021-observability-scrape-and-alert-class.md)). Never raised to the project: a project would then page as loudly as its loudest member. See [Observability](#observability). |
+| `observability` | Application | no | `{alertClass, scrape {process, surface, path}}`, whole or absent. Absent means no monitoring is rendered. Urgency, never routing ([0025](../../docs/adr/model/0025-observability-is-one-optional-block.md)). Never raised to the project: a project would then page as loudly as its loudest member. See [Observability](#observability). |
 | `processes` | Application | yes | One or more. They switch together. |
 | the eight Shared Intent families | Application | no | The same eight, held by every Process of this Application ([Shared intent](#shared-intent)). The level a family is written at is an author's choice about where the fact belongs, never about what it means. |
 | `exposure` | Application | no | The hostnames this Application serves and how each routes into its Processes. On the Application, not the Process: one hostname fronts two processes in the live `auth` case. An Application nothing reaches from outside declares none. See [Exposure](#exposure). |
@@ -402,7 +401,7 @@ window in which two repositories both claim an id is an accepted cost.
 Process names carry a second uniqueness rule, and it is scoped to the **project
 file** rather than to the Application, because the ServiceAccount and the Vault role
 are the Process name alone: `auth-system.auth-api`, never
-`auth-system.auth-auth-api` ([0024](../../docs/adr/model/0024-identity-per-process.md),
+`auth-system.auth-auth-api` ([0031](../../docs/adr/model/0031-identity-per-process.md),
 derived in chapter 16). Two Applications in one file therefore cannot both call a
 Process `api`: that is `E_DUPLICATE_PROCESS_NAME` at composition (chapter 40),
 raised where a reader can see both declarations at once.
@@ -415,7 +414,7 @@ subject matter: see
 ## The label set
 
 Labels are **derived and fixed**, and no authored field contributes to them
-([0072](../../docs/adr/model/0072-the-label-set-is-fixed.md)). The set is stated
+([0039](../../docs/adr/model/0039-the-label-set-is-fixed.md)). The set is stated
 here rather than left to a renderer because two of these labels are a
 Deployment's `selector.matchLabels` and are therefore **immutable on a live
 object**: changing the convention later is delete-and-recreate on every process
@@ -490,7 +489,7 @@ listens on it.
 
 Surface **names** are unique within an Application, not within a Process, because a
 dependency edge names `{application, surface}` and never a Process
-([0020](../../docs/adr/model/0020-dependency-edges-carry-surface.md)). An Application's
+([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)). An Application's
 surface set is the union of its Processes' `provides` maps, and one name declared
 twice inside that union is a build error: the edge would otherwise be ambiguous
 about which process it means.
@@ -532,7 +531,7 @@ Application's new version starts ([Prepare Processes](#prepare-processes)).
 `engine` names **what the process is**, where that is something the platform
 has to treat specially: `postgres`, `rabbitmq`, `valkey`, `files`, or absent.
 It is a fact about the Process rather than a mechanism, which is why it belongs
-here ([0078](../../docs/adr/model/0078-engine-is-process-vocabulary.md)), and
+here ([0019](../../docs/adr/model/0019-engine-is-process-vocabulary.md)), and
 it is what the platform keys its backup method off
 ([Storage and durability](#storage-and-durability)). It is required on a Process
 holding a volume of a class that derives a backup, and refused on one that
@@ -556,7 +555,7 @@ on; which hostname reaches it, and on what path, is stated once on the Applicati
 
 A Process is one pod, and a pod holds more than one container three times in
 this estate. `sidecars` names the others
-([0064](../../docs/adr/model/0064-sidecars-are-process-vocabulary.md)):
+([0015](../../docs/adr/model/0015-sidecars-are-process-vocabulary.md)):
 
 ```yaml
 - name: postgres
@@ -593,7 +592,7 @@ to push onto a sidecar in the first place.
 **Eligibility sums.** A node must fit the pod's containers together, so the
 placement check adds every sidecar's `memory` and `cpu` to the Process's before
 matching against allocatable
-([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). `postgres` at
+([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)). `postgres` at
 2Gi with a 64Mi exporter needs a node with 2112Mi free, not 2Gi. This is the one
 place the addition matters and the one place it is easy to miss.
 
@@ -615,8 +614,8 @@ dependsOn:
 Declared at whichever level needs the edge, and the reason to keep declaring it
 per Process is that network policy is precise: within `knowledge`, the API
 reaches Postgres while the ingest worker reaches RabbitMQ, and neither inherits
-the other's egress ([0020](../../docs/adr/model/0020-dependency-edges-carry-surface.md),
-[0035](../../docs/adr/model/0035-network-policy-default-deny.md)). An edge shared
+the other's egress ([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md),
+[0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)). An edge shared
 up a level is a real widening for exactly that reason, and it is the right
 declaration where every Process of the Application genuinely talks to the thing:
 `stalwart` and `stalwart-provisioner` both reach `platform-postgres`. An edge
@@ -624,7 +623,7 @@ declared at two levels merges, identified by `{application, surface}`: the lower
 declaration's `required` holds, and the same edge declared identically twice is
 `E_SHARED_DECLARATION_DUPLICATED`. The Application's edge
 set is the union, and that union drives the Reconcile Unit DAG
-([0032](../../docs/adr/model/0032-reconcile-unit-derived.md)). Chapter 16 covers what an
+([0033](../../docs/adr/model/0033-reconcile-unit-derived.md)). Chapter 16 covers what an
 edge derives, inbound as well as outbound.
 
 An edge says one Process needs another to run. It says nothing about which
@@ -634,7 +633,7 @@ in [docs/adr/deferred/](../../docs/adr/deferred/README.md).
 ## Configuration
 
 Configuration is authored as dotenv, **per Process**
-([0011](../../docs/adr/model/0011-configuration-env-files-per-process.md)), because
+([0013](../../docs/adr/model/0013-configuration-is-dotenv-at-three-scopes.md)), because
 Processes do not share an environment: `knowledge-api` and
 `knowledge-ingest-worker` overlap on the database and RabbitMQ coordinates and
 credentials, and on nothing else.
@@ -684,11 +683,11 @@ A literal is written literally. A derived value is a **named placeholder**:
 `${dependency:…}` for a coordinate, `${secret:…}` for a secret, `${exposure:…}`
 for a hostname the estate serves, and `${identity:…}` for what the platform
 derived about **this** Process
-([0091](../../docs/adr/model/0091-identity-placeholders-not-framework-wiring.md)):
+([0013](../../docs/adr/model/0013-configuration-is-dotenv-at-three-scopes.md)):
 
 | key | value |
 |---|---|
-| `${identity:vaultRole}` | the Process's Vault role, its own name ([0024](../../docs/adr/model/0024-identity-per-process.md)) |
+| `${identity:vaultRole}` | the Process's Vault role, its own name ([0031](../../docs/adr/model/0031-identity-per-process.md)) |
 | `${identity:serviceAccount}` | the Process's ServiceAccount name |
 | `${identity:namespace}` | `<project>-system` |
 
@@ -746,7 +745,7 @@ the file: literal keys become plain env entries, and `${secret:…}` keys become
 
 File-shaped configuration is an **Asset**: a declarative settings file in the
 consuming application's own format, optionally threaded with the same named
-placeholders env files use ([0012](../../docs/adr/model/0012-assets-not-code.md)).
+placeholders env files use ([0014](../../docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)).
 
 ```yaml
 assets:
@@ -762,7 +761,7 @@ same `from` mounted at the same path by two levels is
 `E_SHARED_DECLARATION_DUPLICATED`.
 
 **Change propagation is unconditional and there is no `onChange` field**
-([0094](../../docs/adr/model/0094-asset-change-restarts-unconditionally.md)).
+([0014](../../docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)).
 Every Asset renders a **content-hashed object name**, so an edit reaches the pod
 (16 of the estate's 18 ConfigMaps are plain today, meaning an edit applies
 successfully and has no effect) and the resulting pod-template change restarts
@@ -771,7 +770,7 @@ the Process.
 There is no `reload`. Nothing in Kubernetes reloads a process, no image in this
 estate watches its own config file, and a reload would need an actor the model
 does not have. The consequence is stated rather than hidden: with `replicas: 1`
-and an `interrupted` cutover ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)),
+and an `interrupted` cutover ([0022](../../docs/adr/model/0022-a-derived-value-has-one-declaring-site.md)),
 editing one line of `postgresql.conf` takes `platform-postgres` down for a
 restart. That is the true cost of an Asset edit on this substrate, and an author
 who needs it to be cheaper needs a different mechanism than a field.
@@ -794,7 +793,7 @@ lines), `platform-edge-route-catalog` (30/163), `platform-edge-catalog` (28/146)
 *authored* configuration entirely: each is an **inbound derivation** for the
 platform Application that consumes it, rendered as that Application's own Asset
 ([chapter 16](16-dependencies.md#what-an-edge-derives-read-inbound),
-[0098](../../docs/adr/model/0098-one-publication-path.md)).
+[0047](../../docs/adr/model/0047-one-publication-path.md)).
 
 An Asset may not be executable. `hermes-bootstrap` is 221 lines of shell and
 `n8n-hooks` 499 lines of JavaScript, both run by `alpine:3.21` from a ConfigMap:
@@ -815,7 +814,7 @@ probes:
 
 `probes.readiness` and `probes.liveness` are sibling declarations, each carrying
 its own `path` and `port`. **There is no
-fallback** ([0014](../../docs/adr/model/0014-probes-are-siblings.md)). Readiness means
+fallback** ([0016](../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md)). Readiness means
 *can I serve traffic*; liveness means *is my process wedged*. A liveness probe
 pointed at a readiness endpoint turns a dependency outage into a crash-loop, and
 the v2 model made that the default for anyone declaring one path:
@@ -846,7 +845,7 @@ but no probe declaration is refused.
 ### What the probe derivation completes
 
 Three things were derived only halfway, and a renderer filled the gap by
-choosing ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)):
+choosing ([0016](../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md)):
 
 | derived | from |
 |---|---|
@@ -858,7 +857,7 @@ choosing ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)):
 **The startup probe targets liveness, not readiness.** Exceeding a startup
 probe's failure threshold kills the container, exactly as a failing liveness
 probe does, so pointing it at a readiness endpoint reproduces the defect
-[0014](../../docs/adr/model/0014-probes-are-siblings.md) exists to prevent: a
+[0016](../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md) exists to prevent: a
 dependency outage makes readiness fail, startup never succeeds, and the pod
 crash-loops on somebody else's outage.
 
@@ -873,7 +872,7 @@ reports ready never switches any of them.
 ### Replicas, and the disruption budget
 
 `replicas` derives as **1**
-([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)). Storage
+([0022](../../docs/adr/model/0022-a-derived-value-has-one-declaring-site.md)). Storage
 is `local-path` and every claim is `ReadWriteOnce`, so a stateful Process is
 pinned to one machine by construction; on one node, two replicas are two
 processes on one kernel. A Process that wants more states it as
@@ -906,7 +905,7 @@ volumes:
 ```
 
 Every volume declares a **Durability Class**
-([0015](../../docs/adr/model/0015-durability-class-per-volume.md)), what the data is
+([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)), what the data is
 worth, which only the owning Application knows:
 
 | class | means | derives | live example |
@@ -916,7 +915,7 @@ worth, which only the owning Application knows:
 | `irreplaceable` | needs an off-cluster copy, and a rehearsed restore before its first production apply | backup job + sweep + off-cluster copy | `knowledge-vault-clone`, a personal vault on `local-path` |
 
 **The terms are platform-assigned, the class is not**
-([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)). The window a
+([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)). The window a
 backup runs in, how many copies are kept, and where an off-cluster copy goes are
 contended (one node's IO, one remote target) so by
 [0004](../../docs/adr/model/0004-contention-decides-authority.md) the Platform
@@ -928,8 +927,8 @@ change, not a per-volume restatement.
 [`engine`](#process): the method **is an image**: one purpose-built image per
 engine whose entrypoint performs the backup, named in the Platform document and
 resolved through the images lock ([chapter 14](14-platform-intent.md#engines),
-[0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)).
-Nothing authored is executable, which is what [0012](../../docs/adr/model/0012-assets-not-code.md)
+[0011](../../docs/adr/model/0011-authored-values-name-model-concepts.md)).
+Nothing authored is executable, which is what [0014](../../docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)
 requires and what a `backup.sh` Asset (or a shell string in a platform file)
 would have violated.
 
@@ -940,7 +939,7 @@ off-cluster destination is a **derived** grant against the platform's own Secret
 Store path, recorded in the projection its owner reads back
 ([chapter 20](20-resolved-deployment.md#authority)): the platform chose the
 destination, so the platform owns the credential, and it still appears in the
-derived Vault policy ([0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)).
+derived Vault policy ([0040](../../docs/adr/model/0040-vault-policy-is-a-deliverable.md)).
 
 There is no platform durability to fall back on. Storage is `local-path`, not
 Longhorn: all fourteen PVCs are `ReadWriteOnce`, and
@@ -959,10 +958,10 @@ The class replaces `rollbackTargetRetention`, which every Application declared
 identically as `{minimumDays: 90, acknowledged: true}`, which no renderer read,
 and which asserted a ninety-day rollback a snapshot-less cluster cannot perform.
 **A volume declares its `size`; the platform decides whether it fits**
-([0081](../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md)). How much
+([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)). How much
 data a volume holds is a fact only its owner knows, so it is a hard dimension
 authored beside `claim` and `mountAt`, exactly the shape
-[0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md) uses for
+[0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md) uses for
 `memory` and `cpu`. The platform matches it against the node contract's
 `disks[].usable_gib`, and a volume that fits no eligible node is
 `E_STORAGE_UNSATISFIABLE` rather than a PVC that parses and cannot bind.
@@ -988,7 +987,7 @@ chapter 60.
 
 One required-by-default field per Process, added before the first production
 apply because the retrofit gets strictly more expensive every week
-([0016](../../docs/adr/model/0016-pod-hardening.md)). Like the other seven
+([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)). Like the other seven
 families of [Shared Intent](#shared-intent), it may be declared above the Process
 and reaches every Process below.
 
@@ -1005,7 +1004,7 @@ UID, with a writable root and default capabilities, and the standing QoS class f
 the estate is BestEffort on a node the k3s server, the datastore and every
 application pod share.
 
-Capacity left this record with [0016](../../docs/adr/model/0016-pod-hardening.md)'s
+Capacity left this record with [0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)'s
 amendment. Requests, limits and the QoS class are settled by
 [Placement](#placement), and a reader chasing BestEffort here finds only the
 symptom.
@@ -1016,14 +1015,14 @@ The posture itself is **not authored per Process**. It is one estate-wide value,
 `restricted`, declared once in the Platform document
 ([chapter 14](14-platform-intent.md#hardening-policy)), a Process that repeated
 it thirty times would be restating the only value there is, and a field with one
-legal value carries no information ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)
+legal value carries no information ([0022](../../docs/adr/model/0022-a-derived-value-has-one-declaring-site.md)
 deleted `minAvailable` for the same reason). What a Process authors is the
 paths it must write, and nothing else. `restricted` is four controls, applied
 together:
 
 | control | rendered as |
 |---|---|
-| non-root | `runAsNonRoot: true`, with the numeric UID the images lock resolved ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)) |
+| non-root | `runAsNonRoot: true`, with the numeric UID the images lock resolved ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)) |
 | immutable root filesystem | `readOnlyRootFilesystem: true` |
 | no capabilities | `capabilities.drop: [ALL]` |
 | default syscall filter | `seccompProfile.type: RuntimeDefault` |
@@ -1032,7 +1031,7 @@ together:
 
 A read-only root filesystem is not a filesystem nothing writes. A JVM needs
 `/tmp`; nginx needs `/var/cache/nginx` and `/var/run`. A Process therefore
-lists the paths it must write ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)):
+lists the paths it must write ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)):
 
 ```yaml
 writablePaths: [/tmp]
@@ -1074,7 +1073,7 @@ vocabulary, no `allow` list and no `hardening: privileged` shorthand: an image
 that needs root, a writable root filesystem, a dropped capability back or a
 relaxed syscall filter is `E_HARDENING_UNMET` at composition. The fix is the
 image, or an entry in a Bidirectional Ledger with an owner and a reason
-([0055](../../docs/adr/model/0055-bidirectional-ledgers.md)) while the image is
+([0038](../../docs/adr/model/0038-bidirectional-ledgers.md)) while the image is
 replaced.
 
 An escape hatch in the DSL is the thing this model exists to remove. A per-field
@@ -1091,7 +1090,7 @@ nginx writes, and `platform-postgres`, whose UID comes from the lock.
 A `provides` port below 1024 cannot be bound by a non-root process without
 `CAP_NET_BIND_SERVICE`, and the `restricted` class drops all capabilities. A
 Process declaring one is `E_PRIVILEGED_PORT_UNDER_NONROOT`
-([0083](../../docs/adr/model/0083-privileged-port-needs-the-capability.md)),
+([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)),
 and the answer is a port above 1024. Deriving the capability silently would
 re-add what the class dropped for every Process that happens to declare a low
 port.
@@ -1106,7 +1105,7 @@ expects.
 "The UID from the image" was not a derivation: the images lock resolves an alias
 to a digest and records nothing about the user, so `runAsNonRoot: true` rendered
 without a UID at all. Three failures follow, and one lock field closes all three
-([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)).
+([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)).
 
 The lock records the **resolved `uid` and `gid`** for each alias, read from the
 image config when the lock is built, the one moment a registry may legitimately
@@ -1147,7 +1146,7 @@ placement:
 ```
 
 Six dimensions and a flat capability set, all of them **hard**
-([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). `memory` and `cpu`
+([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)). `memory` and `cpu`
 are required on every Process; every other term defaults to *any node*.
 
 `placement` is Shared Intent, and it is the one family whose **legal keys depend
@@ -1197,7 +1196,7 @@ and the fallback the soft shape was reached for comes back as a value set.
 
 Each term is compared against **one node's allocatable**, the node's total minus
 a reserve declared in the node file, published by the node contract
-([0056](../../docs/adr/model/0056-node-facts-single-source.md), chapter 60). It is never
+([0048](../../docs/adr/model/0048-node-facts-are-authored-once.md), chapter 60). It is never
 a live read of free capacity, which would put an assignment outside the pinned
 input set ([0006](../../docs/adr/model/0006-pinned-inputs.md)).
 
@@ -1273,12 +1272,12 @@ not vocabulary, and neither is any other flat string standing in for a device.
 after an archived repository that rejects pushes. Authored as selectors, retiring
 that prefix is an edit in every project repository; authored as placement
 dimensions it touches none
-([0056](../../docs/adr/model/0056-node-facts-single-source.md)).
+([0048](../../docs/adr/model/0048-node-facts-are-authored-once.md)).
 
 Placement already implied is not declared either: a `local-path` volume pins its
 Process to the node holding the PV, and the resolver states that, reading the
 binding from the pinned `ClusterState` snapshot, never from a live cluster
-([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)). A PV that rebinds
+([0034](../../docs/adr/model/0034-cluster-state-is-a-pinned-input.md)). A PV that rebinds
 after a node failure therefore surfaces as a new lock, not as drift, and a `disk`
 term contradicting that binding is `E_DISK_BINDING_CONFLICT`.
 
@@ -1367,7 +1366,7 @@ routes:
 ```
 
 **Precedence is derived, not inherited from the proxy**
-([0093](../../docs/adr/model/0093-route-precedence-is-derived.md)). `auth`
+([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)). `auth`
 declares `/api` and `/` as prefixes on one host, and which one serves a request
 is a routing decision, so the model makes it rather than leaving it to how
 Traefik happens to sort:
@@ -1389,8 +1388,8 @@ inside a proxy, which no author can see in the document.
 Everything else at the edge is **derived** from the audience and the tier that
 carries it: forward-auth, the security-headers baseline, the tier's listener and
 certificates, and the middleware chain that assembles them
-([0018](../../docs/adr/model/0018-exposure-by-audience.md),
-[0030](../../docs/adr/model/0030-runtime-mechanics-derived.md)).
+([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md),
+[0021](../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)).
 
 ### Why the host is authored rather than derived
 
@@ -1451,7 +1450,7 @@ hostname is written once and its routes name the Processes they reach.
 
 It also puts the hostname on the boundary that already governs it. An Application is
 the unit of atomic release
-([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)), so the Processes
+([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)), so the Processes
 behind one host switch together; a hostname authored per Process would have been
 a per-process fact spanning a release boundary no single process controls.
 
@@ -1459,7 +1458,7 @@ a per-process fact spanning a release boundary no single process controls.
 
 `audience` is the single vocabulary (`anonymous`, `authenticated`, `internal`,
 `lan`) shared by exposures, by routes and by the tiers that carry them
-([0018](../../docs/adr/model/0018-exposure-by-audience.md)). One vocabulary replaces
+([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)). One vocabulary replaces
 three carrying seven values:
 
 | where | values |
@@ -1483,7 +1482,7 @@ the closure is a decision rather than an oversight: no provider-shaped
 passthrough, no raw middleware reference, no headers block, no annotations map, no
 escape hatch shaped like any of them. Layer 1 carries no mechanism, and a Traefik
 middleware name written into Project Intent is a mechanism
-([0030](../../docs/adr/model/0030-runtime-mechanics-derived.md)).
+([0021](../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)).
 
 The vocabulary is two fields because the estate's own edge is four middlewares,
 counted:
@@ -1563,14 +1562,14 @@ pair failing raises it: a route naming a Process this Application does not hold 
 no surface either.
 
 A hostname the estate serves but does not deploy is a Registered Unmanaged Surface
-([0019](../../docs/adr/model/0019-registered-unmanaged-surfaces.md)), declared in the
+([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)), declared in the
 composition input rather than here, and it takes part in `E_DUPLICATE_HOST` on
 equal terms with everything authored.
 
 ## Observability
 
 One optional block on the Application, or nothing at all
-([0021](../../docs/adr/model/0021-observability-scrape-and-alert-class.md)):
+([0025](../../docs/adr/model/0025-observability-is-one-optional-block.md)):
 
 ```yaml
 observability:
@@ -1660,8 +1659,7 @@ A `secrets` list declares what a Process may do to a Secret Store path. It is
 one of the eight Shared Intent families, so it sits at **whichever level the
 secret is shared**: the project header when every Process in the file holds it,
 an Application when every Process of that Application does, a Process when only that one
-does ([0124](../../docs/adr/model/0124-shared-intent-descends-to-the-process.md),
-superseding [0022](../../docs/adr/model/0022-grants-live-on-the-application.md)).
+does ([0012](../../docs/adr/model/0012-shared-intent-descends-and-is-lowered.md)).
 
 ```yaml
 # on the Application: every Process of it gets these
@@ -1687,13 +1685,13 @@ processes:
 
 A grant is a **discriminated union on `engine`**, because the estate uses three
 and they authorise different things
-([0085](../../docs/adr/model/0085-a-grant-is-a-union-on-engine.md)). `engine`
+([0029](../../docs/adr/model/0029-a-grant-is-a-union-on-engine.md)). `engine`
 defaults to `kv`, so every grant written before this rule stays valid.
 
 | field | engine | required | notes |
 |---|---|---|---|
 | `engine` | all | no | `kv` \| `database` \| `transit`; defaults to `kv` |
-| `path` | `kv` | yes | The full KV path. This is the grant unit ([0023](../../docs/adr/model/0023-grant-unit-is-the-path.md)). |
+| `path` | `kv` | yes | The full KV path. This is the grant unit ([0028](../../docs/adr/model/0028-grant-unit-is-the-path.md)). |
 | `keys` | `kv` | yes | The keys the Process expects there. Documentation and a validation input, **not** an access boundary. No wildcard exists. |
 | `access` | `kv` | yes | `read` \| `self-renew` \| `self-roll` \| `custody`. A KV intent, and only a KV intent. |
 | `role` | `database` | yes | The database role that issues the credential. The read path derives as `database/creds/<role>`. |
@@ -1706,11 +1704,11 @@ defaults to `kv`, so every grant written before this rule stays valid.
 **Every grant derives a read path**, and that derived path (not the declared
 one) is what a placeholder byte-matches
 ([Secret references](#secret-references), amending
-[0027](../../docs/adr/model/0027-secret-reference-join-key.md)):
+[0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)):
 
 | engine | derived read path |
 |---|---|
-| `kv` | `secret/data/<path>`, and `secret/metadata/<path>` for the same document ([0086](../../docs/adr/model/0086-kv-read-covers-its-metadata-sibling.md)) |
+| `kv` | `secret/data/<path>`, and `secret/metadata/<path>` for the same document ([0029](../../docs/adr/model/0029-a-grant-is-a-union-on-engine.md)) |
 | `database` | `database/creds/<role>` |
 | `transit` | one path per declared operation: `transit/sign/<key>`, `transit/keys/<key>/rotate`, and so on |
 
@@ -1722,7 +1720,7 @@ second.
 
 **A project-level grant widens by whole documents.** It hands every Application in
 the file a reader slot on a path it may not need, and a read grant covers the
-whole document ([0009](../../docs/adr/model/0009-vault-read-is-per-path.md)), so
+whole document ([0008](../../docs/adr/model/0008-vault-read-is-per-path.md)), so
 the widening is real rather than notional. That is an argument about what belongs
 at the project level, not about whether the level exists: the Applications that
 receive the grant are listed in the same file, and
@@ -1744,7 +1742,7 @@ evidence the secret was never shared, and it moves down a level.
 The levels are an access boundary **only** because identity is per Process.
 The ServiceAccount and Vault role are derived as the **Process name alone** (
 `auth-system.auth-api`, never `auth-system.auth-auth-api`) unique within the
-project file ([0024](../../docs/adr/model/0024-identity-per-process.md), specified in
+project file ([0031](../../docs/adr/model/0031-identity-per-process.md), specified in
 chapter 16). At review time they were not: `serviceAccountName()` in
 `src/adapters/kubernetes.ts:665-669` returned `applicationName`, so two Processes of
 one Application authenticated as the same principal and received the union of both
@@ -1756,7 +1754,7 @@ declaration and the identity ship together or not at all.
 **The grant unit is the path.** On this estate's KV-v2 mount the `read` capability
 attaches to the API path `secret/data/<path>`, and a token holding it receives the
 entire document (every key) on each read
-([0009](../../docs/adr/model/0009-vault-read-is-per-path.md)). No policy stanza narrows a
+([0008](../../docs/adr/model/0008-vault-read-is-per-path.md)). No policy stanza narrows a
 read to a key subset.
 
 The estate's own production configuration depends on that fact.
@@ -1798,7 +1796,7 @@ spec sentence *"`read` on the granted path and keys only"* false.
 ## Access tiers
 
 Four intents, from which the platform derives the Vault policy
-([0025](../../docs/adr/model/0025-access-tiers-derive-policy.md)). The author writes the
+([0029](../../docs/adr/model/0029-a-grant-is-a-union-on-engine.md)). The author writes the
 intent; the renderer makes the least-privilege choice once:
 
 | tier | privilege derived | scope | value changes | downstream |
@@ -1827,7 +1825,7 @@ runtime under `secret/data/agents/projects/<id>/repos/<id>`, paths that cannot b
 enumerated at render time. Its blast radius is bounded only by the prefix.
 
 **The four tiers are KV intents and nothing else**
-([0085](../../docs/adr/model/0085-a-grant-is-a-union-on-engine.md)). A `transit`
+([0029](../../docs/adr/model/0029-a-grant-is-a-union-on-engine.md)). A `transit`
 grant declares `operations` instead, because no tier means anything there:
 `self-roll` derives `patch`, and `patch` on a transit key permits neither
 `transit/keys/<name>/rotate` nor `transit/sign/<name>`, which is what
@@ -1857,8 +1855,8 @@ companion `read` entry for `env` or `file` because `patch` does not include read
 that is the whole point of choosing it.
 
 `self-renew` × `file` survives the letter of
-[0025](../../docs/adr/model/0025-access-tiers-derive-policy.md) and
-[0026](../../docs/adr/model/0026-delivery-env-file-self.md) but not their argument: an
+[0029](../../docs/adr/model/0029-a-grant-is-a-union-on-engine.md) and
+[0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md) but not their argument: an
 identity with no capability on the path cannot have that path projected for it. It
 is recorded as open rather than refused, because refusing it changes those
 decisions instead of restating them.
@@ -1866,13 +1864,13 @@ decisions instead of restating them.
 ## Delivery
 
 Three mechanisms, and which one applies is a property of the consumer, not of the
-secret ([0026](../../docs/adr/model/0026-delivery-env-file-self.md)):
+secret ([0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)):
 
 | delivery | renders | persists a Kubernetes Secret |
 |---|---|---|
 | `env` | a Vault Secrets Operator sync and a `Secret`; the env file's `${secret:…}` placeholders resolve to `envFrom` secretRef entries, never to literal values | yes |
 | `file` | a projected file at `mountAt` with `fileMode`, and nothing in the environment | yes |
-| `self` | a Vault policy and a Kubernetes auth role ([0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)). No Secret, no env var, nothing injected: the application's own client wiring stays in its env file ([0091](../../docs/adr/model/0091-identity-placeholders-not-framework-wiring.md)) | no |
+| `self` | a Vault policy and a Kubernetes auth role ([0040](../../docs/adr/model/0040-vault-policy-is-a-deliverable.md)). No Secret, no env var, nothing injected: the application's own client wiring stays in its env file ([0013](../../docs/adr/model/0013-configuration-is-dotenv-at-three-scopes.md)) | no |
 
 In all three the derived policy is granted per **path**: delivery decides how a
 value reaches a process, never what its token may read.
@@ -1882,7 +1880,7 @@ vault://`, `VAULT_AUTHENTICATION: KUBERNETES`,
 `VAULT_KUBERNETES_ROLE: ${identity:vaultRole}`) and those lines stay in its own
 env file, because they are spring-cloud-vault's configuration surface and the
 model does not know what a framework is
-([0091](../../docs/adr/model/0091-identity-placeholders-not-framework-wiring.md)).
+([0013](../../docs/adr/model/0013-configuration-is-dotenv-at-three-scopes.md)).
 The one value that must not drift is a placeholder, so the role a pod claims and
 the role the platform derived cannot disagree. It is also the only delivery achieving zero-downtime
 rotation, because a pod's environment is fixed for its lifetime. That same fact
@@ -1900,7 +1898,7 @@ being hand-declared.
 ### Zero-downtime rotation
 
 **Replacing a secret without downtime is an option, and it is one combination**
-([0026](../../docs/adr/model/0026-delivery-env-file-self.md)):
+([0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)):
 
 | delivery | `tolerates` | replacing the value costs |
 |---|---|---|
@@ -1924,19 +1922,19 @@ Two gates apply to the two deliveries that persist a Secret:
 
 - **Secrets at rest.** `env` and `file` are refused unless the pinned Platform
   Intent advertises `secretsEncryption: true`, with
-  `E_SECRETS_AT_REST_REQUIRED` ([0028](../../docs/adr/model/0028-secrets-at-rest-gate.md),
+  `E_SECRETS_AT_REST_REQUIRED` ([0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md),
   specified in chapter 60). Shipping them before the flag lands is a regression
   against what runs today, since the agent-inject path being replaced never touched
   the datastore. `self` and `custody` persist nothing and are unaffected.
 - **Non-KV engines take neither.** A `transit/` key is never materialised into a
   variable or a file, and a `database/` credential is minted per lease and
   re-read at runtime, so `self` is the only legal delivery for both
-  (`E_NON_KV_DELIVERY`, [0138](../../docs/adr/model/0138-a-database-grant-is-delivered-self.md)).
+  (`E_NON_KV_DELIVERY`, [0029](../../docs/adr/model/0029-a-grant-is-a-union-on-engine.md)).
 
 ### Rotation is not a release
 
 **Rotating a Vault-delivered secret never starts a blue/green release**
-([0134](../../docs/adr/model/0134-rotating-a-secret-is-not-a-release.md)). A
+([0053](../../docs/adr/model/0053-rotating-a-secret-is-not-a-release.md)). A
 new value is not a new version of the Application: its image, its
 configuration and its revision are all unchanged
 ([chapter 20](20-resolved-deployment.md#the-application-revision)), so there is
@@ -1961,15 +1959,15 @@ by writing `restart`.
 
 An env-delivered grant is bound to a variable by a placeholder in the Process's
 env file, and the placeholder's path half **byte-matches the grant's derived read
-path** ([0027](../../docs/adr/model/0027-secret-reference-join-key.md), amended by
-[0085](../../docs/adr/model/0085-a-grant-is-a-union-on-engine.md)):
+path** ([0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md), amended by
+[0029](../../docs/adr/model/0029-a-grant-is-a-union-on-engine.md)):
 
 ```
 ${secret:<derived-read-path>#<key>}
 ```
 
 For a `kv` grant the derived read path is the declared path, so this is the rule
-0027 always stated. For a `database` grant it is `database/creds/<role>`, which
+0030 always stated. For a `database` grant it is `database/creds/<role>`, which
 is where the credential is read from and what the derived policy covers. The join
 stays byte equality, with no mount rewrite and no engine taxonomy in the
 comparison, one rule over one string, which is the property that made the join
@@ -2008,7 +2006,7 @@ reader-set model auditable from the repository.
 
 | placeholder | resolves to | resolved from |
 |---|---|---|
-| `${secret:<path>#<key>}` | one key of one granted Secret Store path | the grant, byte-matched ([0027](../../docs/adr/model/0027-secret-reference-join-key.md)) |
+| `${secret:<path>#<key>}` | one key of one granted Secret Store path | the grant, byte-matched ([0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)) |
 | `${dependency:<application>.<coordinate>}` | one coordinate of an Application this Process depends on | the edge set (chapter 16) |
 | `${exposure:<application>.<name>#<field>}` | one field of a declared exposure | the composed union's exposure set ([Exposure](#exposure)) |
 
@@ -2051,7 +2049,7 @@ a `dependsOn` target must (`E_UNRESOLVED_APPLICATION`), and it must declare an
 exposure by that name. Reading a host this way is **not** a dependency edge: it
 resolves to a string at build time and derives no egress, so a Process that
 actually calls the host still declares `dependsOn`
-([0035](../../docs/adr/model/0035-network-policy-default-deny.md)).
+([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)).
 
 ### Validation
 
@@ -2091,7 +2089,7 @@ deadline the Application's switchover waits on.
 
 Both are Shared Intent. `cutover` on the Application is the natural declaration,
 because the Application is the release unit
-([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)) and its
+([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)) and its
 Processes switch together: answering the question once for the unit that switches
 is what the level is for. `startupBudget` shares less often, because a budget is
 usually measured per image, and it shares honestly where two Processes run the
@@ -2118,8 +2116,8 @@ boolean nobody reads:
 The two values name the owner's promise, not a mechanism: the Kubernetes and
 Flagger spellings (`RollingUpdate`, `Recreate`, `maxSurge`, a Canary) are
 derived by the adapters and appear nowhere in layer 1
-([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md),
-[0128](../../docs/adr/model/0128-cutover-names-the-promise.md)). They were
+([0011](../../docs/adr/model/0011-authored-values-name-model-concepts.md),
+[0021](../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)). They were
 `rolling` and `recreate` until 2026-09-24, and an authored `rolling` named a
 Kubernetes strategy the owner has no business choosing; the `rolling`
 switchover a machinery Process derives is the platform's, never authored.
@@ -2129,12 +2127,12 @@ one is a promise the substrate cannot keep. Refusing it is the point: the old
 `zeroDowntime: true` could ask for continuity while the derived strategy was
 `Recreate`, and the contradiction was silent: the Process rendered, reported
 success, and simply stopped serving during every roll
-([0030](../../docs/adr/model/0030-runtime-mechanics-derived.md)). A Process
+([0021](../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)). A Process
 whose storage forces `interrupted` now says so, and a Process with no such
 storage says `continuous` only if its owner actually requires continuity.
 
 **One Application, one answer.** The Processes of an Application switch as one
-([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)), so every
+([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)), so every
 `lifecycle: application` Process of one Application has the same effective
 `cutover`. Mixed, the interrupted member's gap sits inside a unit that promised
 to keep serving, and neither answer is true of the unit:
@@ -2155,7 +2153,7 @@ migration: none      # this Application moves no schema
 
 `migration` is an Application field, and it is how the Application's schema
 moves when its new version replaces the old one
-([0130](../../docs/adr/model/0130-migration-is-declared-on-the-application.md)).
+([0026](../../docs/adr/model/0026-migration-is-declared-on-the-application.md)).
 When the migration runs is [chapter 55](55-delivery.md#migrations)'s, what
 proves it safe is [chapter 55](55-delivery.md#migration-safety)'s, and what
 undoes it is [chapter 55](55-delivery.md#failure-and-undo)'s; this section is
@@ -2222,7 +2220,7 @@ processes:
 A `prepare` Process is **idempotent, forward-only setup** that must finish
 before an Application's new version starts: registering a client, creating a
 bucket, seeding a row
-([0131](../../docs/adr/model/0131-prepare-processes-are-forward-only-setup.md)).
+([0027](../../docs/adr/model/0027-prepare-processes-are-forward-only-setup.md)).
 It is not a migration: a migration has a down, a schema and an owner role, and is
 declared on the Application ([Migration](#migration)); a prepare step has none of
 them, and nothing undoes it.
@@ -2255,7 +2253,7 @@ replicas:
 ```
 
 `replicas` derives as **1**
-([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)). Storage
+([0022](../../docs/adr/model/0022-a-derived-value-has-one-declaring-site.md)). Storage
 is `local-path` and every claim is `ReadWriteOnce`, so a stateful Process is
 pinned to one machine by construction; on one node, two replicas are two
 processes on one kernel.
@@ -2276,7 +2274,7 @@ override vocabulary. Where a derived value is wrong for a whole process class,
 the central derivation is repaired and re-rendered against the estate; where it
 is genuinely a fact only one Application knows, it earns one narrowly named field
 with its own authority and validation
-([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md)).
+([0022](../../docs/adr/model/0022-a-derived-value-has-one-declaring-site.md)).
 
 ## No overrides
 
@@ -2359,14 +2357,14 @@ declaring site is fixed:
 | a hostname another Application serves, written as a literal | `${exposure:…}`, addressing the exposure that declares it |
 | a namespace | derived from `project`, as `<project>-system` |
 | a node label or selector | `placement` |
-| a scheduler weight, or any soft placement term | every dimension is hard ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)) |
-| `replicas` | derived as **1**, and more than one is a `replicas: {count, reason}` declaration ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)), never a live cluster read |
+| a scheduler weight, or any soft placement term | every dimension is hard ([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)) |
+| `replicas` | derived as **1**, and more than one is a `replicas: {count, reason}` declaration ([0022](../../docs/adr/model/0022-a-derived-value-has-one-declaring-site.md)), never a live cluster read |
 | storage class, volume capacity | assigned |
 | `resources`, requests or limits | derived from `placement` |
 | a `securityContext` field | the platform's `hardening` posture, and `writablePaths` |
 | a ServiceAccount, Vault role or policy name | derived per Process (chapter 16) |
 | a Reconcile Unit or `platform.layer` | derived from the edge set |
-| a field coupling the release of two Applications | one Application, or two that release independently ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)) |
+| a field coupling the release of two Applications | one Application, or two that release independently ([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)) |
 | an image tag or digest | the images lock |
 | a `ports` list, or a port as a string | an integer at its point of use |
 | a migration image, a migration Job, an owner or data role name | derived from `migration`, the project and the Platform document's migration policy |
@@ -2390,7 +2388,7 @@ about it is authored here. No field in this chapter names an applier, a
 workflow, a field manager, a pruning rule or a co-test suite, and none may be
 added: the applier, the switch and the pins are fixed by
 [chapter 55](55-delivery.md), and read what this chapter does declare
-([0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md)).
+([0050](../../docs/adr/model/0050-delivery-is-part-of-the-model.md)).
 Whether one unit's tests gate another's deploy stays parked in
 [docs/adr/deferred/](../../docs/adr/deferred/README.md).
 
@@ -2398,20 +2396,20 @@ The declarations delivery reads are these:
 
 1. **Application atomicity**: no Process of an Application switches until every Process
    of that Application is healthy
-   ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)).
+   ([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)).
 2. **Durability Class gating**: a destructive operation on a non-`reconstructible`
-   claim is refused ([0015](../../docs/adr/model/0015-durability-class-per-volume.md)).
+   claim is refused ([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)).
 3. **Pinned inputs only**: every rendered value is a function of digested inputs,
    `clusterStateDigest` included
    ([0006](../../docs/adr/model/0006-pinned-inputs.md),
-   [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)).
+   [0034](../../docs/adr/model/0034-cluster-state-is-a-pinned-input.md)).
 
 ## Still to be graded
 
 Two items no decision in the register covers:
 
 1. ~~**`minAvailable`.**~~ Graded by deletion
-   ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)):
+   ([0022](../../docs/adr/model/0022-a-derived-value-has-one-declaring-site.md)):
    `auth-api`'s two replicas were a capacity decision on freed Frankfurt budget,
    not an availability requirement, and this substrate cannot deliver
    availability by replica count. `replicas` derives as 1; a second is a
@@ -2421,12 +2419,12 @@ Two items no decision in the register covers:
 
 The list was five. Two items left it by being answered rather than graded, and
 `sidecars` left it by being graded
-([0064](../../docs/adr/model/0064-sidecars-are-process-vocabulary.md)).
+([0015](../../docs/adr/model/0015-sidecars-are-process-vocabulary.md)).
 
 The first asked what checks that a Process's declared capacity can be satisfied
 by a node it is also allowed to run on: capacity and eligibility are one
 comparison against the node contract, and failing it is
-`E_PLACEMENT_UNSATISFIABLE` ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)).
+`E_PLACEMENT_UNSATISFIABLE` ([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)).
 
 The second asked how an exposure entry is named, and it is now
 [vocabulary](#exposure). An exposure carries an authored `name`, unique within

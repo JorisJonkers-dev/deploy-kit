@@ -4,7 +4,7 @@
 #
 # Intent is authored ONE FILE PER PROJECT, holding every Application that project
 # owns, and one file is one Intent Fragment
-# (docs/adr/model/0063-intent-authored-per-project.md). The namespace derives from the
+# (docs/adr/model/0009-intent-is-authored-one-file-per-project.md). The namespace derives from the
 # header -- auth-system -- and no field exists that could divert it.
 #
 # Exercises: two Processes that switch together because they are one Application,
@@ -16,12 +16,12 @@
 # derived.
 #
 # Companion env files, one per PROCESS
-# (docs/adr/model/0011-configuration-env-files-per-process.md):
+# (docs/adr/model/0013-configuration-is-dotenv-at-three-scopes.md):
 #   platform/env/auth-api/base.env   -- reproduced as env/auth-api/base.env
 #   platform/env/auth-ui/base.env
 
 # The DATA MODEL's own semver, not the toolkit package's version
-# (docs/adr/model/0039-artifact-schema-versioning.md). It starts at 1.0.0 and is
+# (docs/adr/model/0044-artifact-schema-versioning.md). It starts at 1.0.0 and is
 # bumped only when the model changes, so a literal here is legitimate and does
 # not go stale on a toolkit release. Composition admits same-major, minor <=
 # toolkit; the composition lock records the exact versions that ran.
@@ -33,8 +33,8 @@ schemaVersion: 1.0.0
 # `observability` stays per Application -- raising it makes a project page as loudly as
 # its loudest member -- and so does `secrets`, because a project-level grant
 # hands every Application in the file a reader slot on the whole path
-# (docs/adr/model/0009-vault-read-is-per-path.md,
-# docs/adr/model/0063-intent-authored-per-project.md).
+# (docs/adr/model/0008-vault-read-is-per-path.md,
+# docs/adr/model/0009-intent-is-authored-one-file-per-project.md).
 project: auth
 owner: joris
 
@@ -43,7 +43,7 @@ applications:
   # This Application was two Applications -- `auth-api` and `auth-ui` -- coupled by a
   # `releaseUnit: auth` name that each declared in its own repository. That
   # field is deleted. An Application is itself the unit of atomic release
-  # (docs/adr/model/0062-application-is-the-release-unit.md): its Processes switch
+  # (docs/adr/model/0052-an-application-is-the-release-unit.md): its Processes switch
   # together or none switches. No Process's new version receives traffic until
   # every Process's new version is healthy by its own declared readiness, and
   # if any misses its `startupBudget`, none of them switch and the old versions
@@ -57,13 +57,13 @@ applications:
   #
   # The merge costs no reference: auth's estate-wide role is the forward-auth
   # middleware derived from every route's exposure audience
-  # (docs/adr/model/0018-exposure-by-audience.md), never a `dependsOn` edge, and
+  # (docs/adr/model/0023-exposure-is-declared-by-audience.md), never a `dependsOn` edge, and
   # nothing in the estate names `auth-ui` at all.
   #
   # Still not a Reconcile Unit. That one is DERIVED from the dependency graph
   # and answers ordering (postgres before auth); this one is DECLARED, by
   # drawing a boundary, and answers atomicity
-  # (docs/adr/model/0032-reconcile-unit-derived.md).
+  # (docs/adr/model/0033-reconcile-unit-derived.md).
   - id: auth
 
     # REQUIRED, because auth-api's edge to platform-postgres derives a database
@@ -79,7 +79,7 @@ applications:
     # that carries the signal, both on the Application, because both are facts about
     # the Application rather than about one of its two containers. auth-api
     # publishes for the pair; auth-ui exports nothing and needs to say nothing
-    # (docs/adr/model/0021-observability-scrape-and-alert-class.md).
+    # (docs/adr/model/0025-observability-is-one-optional-block.md).
     observability:
       alertClass: page      # every forward-auth protected route depends on it
       scrape:
@@ -90,11 +90,11 @@ applications:
     # No Application-level `secrets`. The three grants below are auth-api's alone,
     # so they sit on that Process: an Application-level grant is held by EVERY
     # Process, including ones added later
-    # (docs/adr/model/0022-grants-live-on-the-application.md), and leaving them here would
+    # (docs/adr/model/0012-shared-intent-descends-and-is-lowered.md), and leaving them here would
     # hand the nginx container a Vault identity holding `read` on the database
     # credentials. Folding the pair into one Application is what moved them down a
     # level, and the level is an access boundary only because identity is per
-    # Process (docs/adr/model/0024-identity-per-process.md).
+    # Process (docs/adr/model/0031-identity-per-process.md).
 
     # ONE HOSTNAME, TWO PROCESSES -- the case that forced `exposure` up from the
     # Process to the Application. `auth.jorisjonkers.dev/api` is auth-api and `/`
@@ -104,7 +104,7 @@ applications:
     # show. `provides` stays on the Process, because the two are different
     # facts: `provides` is *this process listens on this port*, `exposure` is
     # *this hostname routes here* (review/EXPOSURE-MANIFEST.md,
-    # docs/adr/model/0018-exposure-by-audience.md).
+    # docs/adr/model/0023-exposure-is-declared-by-audience.md).
     #
     # `host` is the full FQDN, AUTHORED. No zone mapping, no `<application>.<zone>`
     # rule, no apex flag -- an apex host is written `host: jorisjonkers.dev`.
@@ -144,7 +144,7 @@ applications:
       - name: auth-api
         # The ServiceAccount and the Vault role are the PROCESS NAME, unique
         # within the project: `auth-system.auth-api`, never
-        # `auth-system.auth-auth-api` (docs/adr/model/0024-identity-per-process.md).
+        # `auth-system.auth-auth-api` (docs/adr/model/0031-identity-per-process.md).
         lifecycle: application
 
         # An ALIAS resolved to a digest through the images lock -- never a tag
@@ -161,12 +161,12 @@ applications:
           http: 8080            # not 80: a port below 1024 cannot be bound by a
                                 # non-root process without CAP_NET_BIND_SERVICE,
                                 # which `restricted` drops
-                                # (docs/adr/model/0083-privileged-port-needs-the-capability.md).
+                                # (docs/adr/model/0020-hardening-is-one-platform-posture.md).
                                 # A route names a surface, not a number, so the
                                 # edge is unchanged.81
 
         # Placement is a set of HARD dimensions, every one of which must match
-        # (docs/adr/model/0061-placement-is-hard-dimensions.md). A list is a SET of
+        # (docs/adr/model/0017-placement-is-hard-dimensions.md). A list is a SET of
         # equally acceptable values -- no ordering, no weight. There is no
         # `requires`/`prefers` split: the estate paid for the soft half once,
         # when a preference naming a capability no node advertised was discarded
@@ -178,7 +178,7 @@ applications:
           # `memory` and `cpu` are required on every Process, as raw
           # quantities, and are matched against node ALLOCATABLE from the pinned
           # node contract -- total minus the reserve declared in the node file,
-          # never a live read (docs/adr/model/0056-node-facts-single-source.md,
+          # never a live read (docs/adr/model/0048-node-facts-are-authored-once.md,
           # docs/adr/model/0006-pinned-inputs.md). This is ELIGIBILITY, not
           # bin-packing: three Processes asking 2Gi each all pass against a
           # 4096Mi node, and the scheduler refuses the third at apply.
@@ -208,7 +208,7 @@ applications:
           # contract emits 110 of them for 7 nodes, 55 under a prefix named
           # after an archived repository that rejects pushes, and retiring that
           # prefix must not be an edit in every project repository
-          # (docs/adr/model/0056-node-facts-single-source.md).
+          # (docs/adr/model/0048-node-facts-are-authored-once.md).
           #
           # `tailscale` is not written here and is no longer vocabulary: 7 of 7
           # nodes advertise it, so it excludes nothing, and a filter that never
@@ -220,7 +220,7 @@ applications:
         # /tmp, which is declared below rather than assumed: a writable path is
         # mounted as an emptyDir and the read-only root control stays intact, so
         # it is not an exception and takes no inventory entry
-        # (docs/adr/model/0092-writable-paths-are-declared.md).
+        # (docs/adr/model/0020-hardening-is-one-platform-posture.md).
 
         # The paths this process must write. Nothing is implicit: a mount nobody
         # declared would appear in every image, including those that never
@@ -239,7 +239,7 @@ applications:
         # `http` is the surface the `/api` route names.
 
         # Siblings, each carrying its own endpoint, neither falling back to the
-        # other (docs/adr/model/0014-probes-are-siblings.md). Deliberately identical
+        # other (docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md). Deliberately identical
         # endpoints would still be written twice.
         probes:
           readiness:
@@ -262,7 +262,7 @@ applications:
         cutover: continuous
 
         # No `minAvailable`: the field is deleted
-        # (docs/adr/model/0089-replicas-derived-no-minavailable.md). Availability
+        # (docs/adr/model/0022-a-derived-value-has-one-declaring-site.md). Availability
         # by replica count does not exist on this substrate -- local-path, RWO,
         # one node per stateful volume -- so `replicas` derives as 1.
         #
@@ -285,7 +285,7 @@ applications:
         # placeholder at all, and the dead-grant check correctly does not fire.
         #
         # The grant unit is the PATH, never the key
-        # (docs/adr/model/0023-grant-unit-is-the-path.md): a KV-v2 read returns the
+        # (docs/adr/model/0028-grant-unit-is-the-path.md): a KV-v2 read returns the
         # whole document, so `keys:` documents the expected keys, feeds
         # validation, and confers nothing. No wildcard is expressible.
         secrets:
@@ -311,7 +311,7 @@ applications:
           # auth-api's own document: the static credentials for the three
           # dependencies whose credentials are not minted by an engine. They sit
           # here rather than under the platform Subtrees because the reader set
-          # is this Process alone -- 0023 asks for one path per reader set, not
+          # is this Process alone -- 0028 asks for one path per reader set, not
           # one path per consumer. Only the Postgres pair above is dynamic,
           # which is why it must live under the data project's mount.
           #
@@ -339,7 +339,7 @@ applications:
           # it, and verifiers follow JWKS rather than caching the key.
           #
           # A non-KV mount takes NO placeholder and `delivery: self` is its only
-          # legal delivery (docs/adr/model/0027-secret-reference-join-key.md): a
+          # legal delivery (docs/adr/model/0030-secret-delivery-is-env-file-or-self.md): a
           # transit key is never materialised into an env var or a file, so
           # there is nothing for a ${secret:...} reference to carry. `keys:`
           # names the mount object.
@@ -352,7 +352,7 @@ applications:
       # ------------------------------------------------------------- auth-ui
       # The second half of the product. It is here, in this Application, because it
       # must cut over with auth-api and for no other reason
-      # (docs/adr/model/0062-application-is-the-release-unit.md). Its identity is its own:
+      # (docs/adr/model/0052-an-application-is-the-release-unit.md). Its identity is its own:
       # `auth-system.auth-ui`, holding none of the grants above.
       - name: auth-ui
         lifecycle: application
@@ -364,7 +364,7 @@ applications:
           http: 8080         # above 1024. A port below it cannot be bound
                              # under runAsNonRoot with capabilities dropped, and
                              # there is no exception to relax
-                             # (docs/adr/model/0083-privileged-port-needs-the-capability.md).
+                             # (docs/adr/model/0020-hardening-is-one-platform-posture.md).
                              # The Service object still listens on 80: a route
                              # names a surface, never a number
 
@@ -384,7 +384,7 @@ applications:
         # writes its temporary bodies and cache under /var/cache/nginx and its
         # pid file under /var/run; both are declared writable paths, mounted as
         # emptyDirs, and readOnlyRootFilesystem stays true
-        # (docs/adr/model/0092-writable-paths-are-declared.md). The exception
+        # (docs/adr/model/0020-hardening-is-one-platform-posture.md). The exception
         # this Process used to carry retired with that decision, without the
         # rebuilt image its own reason was waiting for.
         writablePaths: [/var/cache/nginx, /var/run]
@@ -392,7 +392,7 @@ applications:
         # No `dependsOn`. The bundle is static and the API call is made by the
         # browser, not by this container, so there is no egress edge to declare
         # and the derived default-deny policy gives it none
-        # (docs/adr/model/0035-network-policy-default-deny.md). A dependency edge
+        # (docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md). A dependency edge
         # would claim a connection this pod never opens.
 
         # No `exposure` here either. The Application's `public` exposure routes
@@ -402,8 +402,8 @@ applications:
 
         # Siblings, written twice on purpose. For a static server the two
         # questions genuinely have the same answer -- there is no dependency to
-        # be unready for -- and 0014 still refuses to infer one from the other
-        # (docs/adr/model/0014-probes-are-siblings.md).
+        # be unready for -- and 0016 still refuses to infer one from the other
+        # (docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md).
         probes:
           readiness:
             path: /
@@ -430,7 +430,7 @@ applications:
         # whole block sits on the Application above and names auth-api's surface.
         # This image exports no metrics, and a scrape path the platform guessed
         # would collect nothing and report success
-        # (docs/adr/model/0021-observability-scrape-and-alert-class.md).
+        # (docs/adr/model/0025-observability-is-one-optional-block.md).
 
         # No `secrets`. Everything this Process needs is baked into the bundle
         # at build time or reached through the browser, so no Vault role is

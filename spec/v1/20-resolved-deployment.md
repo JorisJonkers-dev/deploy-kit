@@ -8,7 +8,7 @@ is the reason layer 3 can contain none.
 The Resolved Deployment is a **versioned, reviewable artifact**: emitted on every
 render, validated against its own schema, and diffed against the previous render
 as part of the change under review
-([0029](../../docs/adr/model/0029-resolved-deployment-versioned-artifact.md)). A
+([0032](../../docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md)). A
 reviewer reads that diff and sees what the platform decided on their behalf,
 including decisions nobody asked for.
 
@@ -80,14 +80,14 @@ The startup probe is its own class rather than a third `ResolvedProbe`, because
 its cadence derives from a different input: readiness and liveness take the
 Platform Intent's probe cadence, while the startup probe's period and failure
 count derive from the Process's own `startupBudget` and its target from the
-liveness declaration ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)).
+liveness declaration ([0016](../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md)).
 
 ![The Resolved Deployment: pinned inputs and outputs](diagrams/20-resolved-deployment-io.drawio.svg)
 
 <sub>[Diagram source](#the-resolved-deployment-pinned-inputs-and-outputs) · edit by opening the SVG in draw.io</sub>
 
 One project file is one Intent Fragment
-([0063](../../docs/adr/model/0063-intent-authored-per-project.md)), so the input a
+([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)), so the input a
 Application owner edits and the input composition unions are the same document. The
 two node-facing inputs are deliberately drawn apart: what a node **can hold** is
 declared in the node contract and pinned with the Platform Intent; what the
@@ -115,12 +115,12 @@ Three readings of the rule matter, and none is an exception to it:
   The Application states its requirement, and the platform decides whether it fits
   and where. Placement forced this reading and settles it. `memory` and `cpu`
   are required on every Process and authored there as raw quantities
-  ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)), and both are
+  ([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)), and both are
   draws on a finite pool. An authors-only reading of the rule would have to
   forbid the field, which leaves the estate exactly where it is: BestEffort on
   every pod, because a number no Application may write is a number nobody writes.
   The platform arbitrates against node `allocatable` published by the node
-  contract ([0056](../../docs/adr/model/0056-node-facts-single-source.md)) and refuses
+  contract ([0048](../../docs/adr/model/0048-node-facts-are-authored-once.md)) and refuses
   what no node can hold with `E_PLACEMENT_UNSATISFIABLE`.
 - **Uniqueness alone is not contention.** A value that must be unique but is
   drawn from no finite pool is *declared* by the Application and *checked* at
@@ -165,9 +165,9 @@ field's placement link to this anchor rather than copying rows.
 
 | field | authority | placed by | note |
 |---|---|---|---|
-| `project` | Application | no contention | the file header, and the unit of fragment publication ([0063](../../docs/adr/model/0063-intent-authored-per-project.md)); the namespace derives from it |
+| `project` | Application | no contention | the file header, and the unit of fragment publication ([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)); the namespace derives from it |
 | `owner` | Application | no contention | the project's own field, shared with nothing below it; notification target, never routing |
-| `id` | Application | unique, checked | estate-unique; `E_DUPLICATE_APPLICATION_ID` at composition. It is also the atomic release boundary ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)) |
+| `id` | Application | unique, checked | estate-unique; `E_DUPLICATE_APPLICATION_ID` at composition. It is also the atomic release boundary ([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)) |
 | `observability` `{alertClass, scrape}` | Application | no contention | urgency and the surface that carries the signal, per Application and never raised: a project would page as loudly as its loudest member. Absent means no monitoring ([chapter 10](10-project-intent.md#observability)) |
 | process `name` | Application | unique, checked | unique within the **project**; `E_DUPLICATE_PROCESS_NAME`, and it names the derived identity |
 | `provides` surface names and ports | Application | no contention | declared on the Process, because a port is a property of a process; written once, there |
@@ -181,21 +181,21 @@ field's placement link to this anchor rather than copying rows.
 | `exposure[].contentPolicy` | Application | no contention | `strict`, `admin` or `workflow`. Which profile an application needs is a fact about the application; the header set it selects is derived |
 | `exposure[].routes`: `path`, `match`, `process`, `surface`, `redirectTo` | Application | no contention | which of the Application's own Processes serves which path of the host. The surface must be one that Process `provides` (`E_UNKNOWN_SURFACE`); no two routes may share a `path` + `match` pair (`E_DUPLICATE_ROUTE_MATCH`); `redirectTo` is a path, never a regex |
 | `probes`, `startupBudget`, `cutover` | Application | no contention | what only the Application knows about its own start, health and cutover; `cutover` is required on every Process but a prepare one and has no default |
-| `hardening` | platform | no contention | one estate-wide posture, `restricted`. A Process authors no hardening at all: it declares the paths it must write, and an image that cannot meet the class is `E_HARDENING_UNMET` ([0016](../../docs/adr/model/0016-pod-hardening.md)) |
+| `hardening` | platform | no contention | one estate-wide posture, `restricted`. A Process authors no hardening at all: it declares the paths it must write, and an image that cannot meet the class is `E_HARDENING_UNMET` ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)) |
 | `placement.memory`, `placement.cpu` | Application | pool, stated | required on every Process; the Application states the requirement, the platform arbitrates it against node allocatable |
 | `placement.gpu` | Application | pool, stated | `class` and `memory`, matched against the node contract's `gpus[].class` and `gpus[].memory_mib`; a card is held by one Process at a time |
 | `placement.disk` | Application | pool, stated | a `media` set; it filters the first placement and the PV binding wins thereafter: `E_DISK_BINDING_CONFLICT` |
-| `volumes[].size` | Application | pool, stated | how much data the volume holds, matched against the node contract's `disks[].usable_gib`; no eligible node is `E_STORAGE_UNSATISFIABLE` ([0081](../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md)) |
+| `volumes[].size` | Application | pool, stated | how much data the volume holds, matched against the node contract's `disks[].usable_gib`; no eligible node is `E_STORAGE_UNSATISFIABLE` ([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)) |
 | PVC capacity and the disk capacity filter | derived | - | the volume's `size`, and their sum per Process for placement |
 | `placement.arch`, `.site`, `.capabilities` | Application | no contention | filters over facts the node contract publishes; a list is a set of equally acceptable values, never a ranking |
-| `writablePaths` | Application | no contention | which paths the process must write; the size of each is platform-assigned ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)) |
-| `volumes[].durability` | Application | no contention | what losing the data costs; only the owner knows ([0015](../../docs/adr/model/0015-durability-class-per-volume.md)) |
-| `engine` | Application | no contention | what the process is, which the platform keys its backup method off ([0078](../../docs/adr/model/0078-engine-is-process-vocabulary.md)) |
+| `writablePaths` | Application | no contention | which paths the process must write; the size of each is platform-assigned ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)) |
+| `volumes[].durability` | Application | no contention | what losing the data costs; only the owner knows ([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)) |
+| `engine` | Application | no contention | what the process is, which the platform keys its backup method off ([0019](../../docs/adr/model/0019-engine-is-process-vocabulary.md)) |
 | `replicas` | Application | no contention | the sole local capacity exception: `count` above one with a required `reason` ([No overrides](#no-overrides)) |
 | route tier | platform | pool | the shared edge is finite; `E_NO_TIER_FOR_AUDIENCE` where no tier carries the audience |
-| route precedence | derived | - | `exact` before `prefix`, longer prefix before shorter; carried explicitly on the rendered route rather than left to the proxy's sort ([0093](../../docs/adr/model/0093-route-precedence-is-derived.md)) |
+| route precedence | derived | - | `exact` before `prefix`, longer prefix before shorter; carried explicitly on the rendered route rather than left to the proxy's sort ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)) |
 | middleware chain | platform | pool | tier + audience + `contentPolicy`; `forward-auth` for `authenticated` on a public tier, the security-headers baseline with the named content profile, and the redirect rule a route's `redirectTo` asks for |
-| backup window, retention count, off-cluster destination | platform | pool | one policy per Durability Class; the window is one node's IO and the destination is one remote target ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)) |
+| backup window, retention count, off-cluster destination | platform | pool | one policy per Durability Class; the window is one node's IO and the destination is one remote target ([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)) |
 | the backup method | platform | pool | the image the Platform document names per `engine`, resolved through the images lock; nothing executable is authored ([chapter 14](14-platform-intent.md#engines)) |
 | alert rules, their severity and their receiver | the monitoring stack | pool | derived nowhere in this model. `alertClass` is published as a resolved fact and the stack that reads it decides what a class means ([chapter 10](10-project-intent.md#observability)) |
 | monitor `interval` and `timeout` | platform | pool | the metrics stack's ingest budget is shared, so it is one estate-wide value in the Platform document ([chapter 14](14-platform-intent.md#monitor-cadence)) |
@@ -206,23 +206,23 @@ field's placement link to this anchor rather than copying rows.
 | image digest | platform | unique, arbitrated | one image reference resolves to one digest estate-wide, from the pinned images lock |
 | eligible node set, `nodeSelector` and affinity | platform | pool | every declared dimension matched against the node contract; no eligible node is `E_PLACEMENT_UNSATISFIABLE` ([Derived mechanics](#derived-mechanics)) |
 | recorded PV binding | platform | pool | one `local-path` PV lives on one node; read from the ClusterState snapshot |
-| `replicas` | derived | - | **1**; more than one is the `replicas: {count, reason}` declaration ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)) |
+| `replicas` | derived | - | **1**; more than one is the `replicas: {count, reason}` declaration ([0022](../../docs/adr/model/0022-a-derived-value-has-one-declaring-site.md)) |
 | `PodDisruptionBudget` | derived | - | emitted only where `replicas` exceeds one, as `maxUnavailable: 1`; a budget over a single replica is a drain deadlock |
-| `namespace` | derived | - | `<project>-system`, and nothing else ([0063](../../docs/adr/model/0063-intent-authored-per-project.md)); several Applications share one by construction |
+| `namespace` | derived | - | `<project>-system`, and nothing else ([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)); several Applications share one by construction |
 | requests and limits | derived | - | from `placement.memory` and `placement.cpu`: memory request equals memory limit, cpu request with no cpu limit |
 | `securityContext` | derived | - | from the one platform `hardening` posture and the Process's declared `writablePaths`; no Process authors a control and no exception relaxes one |
-| `automountServiceAccountToken` | derived | - | `true` only where a grant carries `delivery: self`; the pod authenticates in that case and in no other ([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)) |
-| the ephemeral mount per writable path, and its size | derived | - | one mount per declared path, sized from the Platform Intent's ephemeral `size` ([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)) |
-| `runAsUser`, `runAsGroup`, `fsGroup` | derived | - | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Process holds a volume ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md)) |
-| container probe timings | derived | - | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Platform Intent's probe policy ([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)) |
+| `automountServiceAccountToken` | derived | - | `true` only where a grant carries `delivery: self`; the pod authenticates in that case and in no other ([0031](../../docs/adr/model/0031-identity-per-process.md)) |
+| the ephemeral mount per writable path, and its size | derived | - | one mount per declared path, sized from the Platform Intent's ephemeral `size` ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)) |
+| `runAsUser`, `runAsGroup`, `fsGroup` | derived | - | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Process holds a volume ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)) |
+| container probe timings | derived | - | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Platform Intent's probe policy ([0016](../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md)) |
 | `progressDeadlineSeconds` | derived | - | from `startupBudget`; a `prepare` Process's run deadline is its `startupBudget` itself |
 | switchover | derived | - | from `cutover` and the delivery machinery: `continuous` derives `blue-green`, or `rolling` on the machinery, and `interrupted` derives `stop-start` ([chapter 55](55-delivery.md#switchover)), which the adapters spell; `cutover: continuous` over an RWO volume is `E_CUTOVER_UNHONOURABLE`, not a silent downgrade |
 | object kind | derived | - | from `lifecycle` and `volumes` |
 | the Application's release-gate deadline | derived | - | `max` over the Application's Processes of `progressDeadlineSeconds` ([The release gate](#the-release-gate)) |
 | the object label set | derived | - | fixed, from Process name, Application Id and the images lock ([chapter 10](10-project-intent.md#the-label-set)) |
 | Secret and VSO sync objects | derived | - | from grants with `delivery: env` or `file`, plus `rolloutRestartTargets` from `rotation`; a grant with `delivery: self` and `tolerates: reload` derives **no** restart target, which is what makes its rotation zero-downtime ([chapter 10](10-project-intent.md#zero-downtime-rotation)); a restart target is a Process name, and a rotation never starts a switchover ([chapter 55](55-delivery.md#secret-rotation)) |
-| an Asset's object name, and the restart it causes | derived | - | content-hashed unconditionally; there is no authored change response ([0094](../../docs/adr/model/0094-asset-change-restarts-unconditionally.md)) |
-| env entries and `envFrom` refs | derived | - | from env files, after placeholder resolution, including `${identity:…}`, the Process's own derived facts ([0091](../../docs/adr/model/0091-identity-placeholders-not-framework-wiring.md)) |
+| an Asset's object name, and the restart it causes | derived | - | content-hashed unconditionally; there is no authored change response ([0014](../../docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)) |
+| env entries and `envFrom` refs | derived | - | from env files, after placeholder resolution, including `${identity:…}`, the Process's own derived facts ([0013](../../docs/adr/model/0013-configuration-is-dotenv-at-three-scopes.md)) |
 | dependency coordinates | derived | - | from the edge set and the provider's surfaces, bound to the key the consumer chose |
 | Runtime Profile values | derived | - | from `runtime` |
 | ServiceMonitor, PodMonitor | derived | - | target and port name from `observability.scrape` and the named surface in `provides`; cadence from the Platform document |
@@ -245,7 +245,7 @@ assembly to run. `knowledge` serves `kb`, `platform-rabbitmq` serves `rabbitmq`,
 so a hostname policy would be right for most hosts and silently wrong for the
 rest, and the wrong ones are the ones nobody would check. `host` is therefore
 authored in full on the Application's `exposure` entry and carried through untouched
-([0018](../../docs/adr/model/0018-exposure-by-audience.md)); both old rows are gone,
+([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)); both old rows are gone,
 replaced by one.
 
 That is the rule's second reading, not an exception to it. A hostname must be
@@ -294,9 +294,9 @@ footnote to an exception:
 - **A namespace is not a trust boundary.** It holds several Applications by
   construction, so no isolation claim may rest on a namespace wall. Isolation is
   the derived default-deny edge set
-  ([0035](../../docs/adr/model/0035-network-policy-default-deny.md)), evaluated per
+  ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)), evaluated per
   pod, plus per-Process identity
-  ([0024](../../docs/adr/model/0024-identity-per-process.md)), and nothing else.
+  ([0031](../../docs/adr/model/0031-identity-per-process.md)), and nothing else.
 
 ## Pinned inputs
 
@@ -314,7 +314,7 @@ why publishing assignments back to a project repository cannot drift.
 Placement is the case that tests the rule hardest, and it stays inside it.
 Every declared dimension is matched against node `allocatable`, the node's
 total minus a reserve declared in the same node file, published by the node
-contract ([0056](../../docs/adr/model/0056-node-facts-single-source.md)) and pinned
+contract ([0048](../../docs/adr/model/0048-node-facts-are-authored-once.md)) and pinned
 with the Platform Intent. It is never matched against free capacity read from a
 cluster, which is not a pinned input and cannot be made into one: free capacity
 changes with every pod that starts anywhere in the estate.
@@ -341,7 +341,7 @@ tree, and a single digest over the union cannot say which fragment moved.
 
 Two fields the previous generation carried are gone.
 `contextRef`, an OCI digest of a published context bundle, named a second
-publication path that [0098](../../docs/adr/model/0098-one-publication-path.md)
+publication path that [0047](../../docs/adr/model/0047-one-publication-path.md)
 deleted: a repository publishes its Intent Fragment and nothing else.
 `adapterCompat.digest` paired publish-time producers with their consumers, and
 those producers are deleted with it ([chapter 30](30-deliverables.md#adapters)),
@@ -376,7 +376,7 @@ Some assignments need facts the cluster alone can supply: which node holds a
 bound PersistentVolume, and where a Process currently runs. Those facts are
 captured **once**, by a read-only collector, into a snapshot that is digested
 and pinned like every other input
-([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)). Assignments read
+([0034](../../docs/adr/model/0034-cluster-state-is-a-pinned-input.md)). Assignments read
 the snapshot. Nothing reads the live cluster.
 
 | the snapshot enumerates | used by |
@@ -387,9 +387,9 @@ the snapshot. Nothing reads the live cluster.
 **What a node can hold is not on that list.** `allocatable`, `site`, `arch`,
 `gpus[]` and `disks[]` are *declared* platform facts: authored once per node and
 published by the node contract
-([0056](../../docs/adr/model/0056-node-facts-single-source.md)), pinned with the
+([0048](../../docs/adr/model/0048-node-facts-are-authored-once.md)), pinned with the
 Platform Intent, never observed. Placement reads them there and only there.
-[0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) enumerates node
+[0034](../../docs/adr/model/0034-cluster-state-is-a-pinned-input.md) enumerates node
 capacity among the snapshot's facts because it predates the node contract
 carrying `allocatable`; the spec is normative, and that record is the one that
 gets fixed.
@@ -460,7 +460,7 @@ only it can state: how much memory and cpu each of its Processes needs. Probe
 timings, rollout strategy, surge and unavailability, progress deadlines, health
 timeout classes, object kind, resource requests and limits, pod hardening,
 backup jobs and retention sweeps all follow
-([0030](../../docs/adr/model/0030-runtime-mechanics-derived.md)).
+([0021](../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)).
 **None of the derived values may be authored**, and writing one in an env file
 or an Application document is a build error ([chapter 10](10-project-intent.md)).
 
@@ -515,14 +515,14 @@ Five rules carry most of the weight:
   from the platform's per-class policy and the method from the Process's
   `engine`, so two Applications of the same class and engine derive the same objects
   with different volumes, which is the property that makes a restore rehearsal
-  meaningful ([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)).
+  meaningful ([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)).
 - **Hardening is one platform posture, and nothing else.** `restricted` (
   `runAsNonRoot`, `readOnlyRootFilesystem`, all capabilities dropped, seccomp
   `RuntimeDefault`) is declared once in the Platform document and authored by no
   Process. There is no per-control relaxation and no exception vocabulary: a
   Process declares the paths it must write, and an image that cannot meet the
   class is `E_HARDENING_UNMET`
-  ([0016](../../docs/adr/model/0016-pod-hardening.md),
+  ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md),
   [Hardening has no exception surface either](#hardening-has-no-exception-surface-either)).
 - **Capacity is not a class.** Requests and limits no longer resolve through a
   named table in the Platform Intent; they derive from the raw quantities the
@@ -530,7 +530,7 @@ Five rules carry most of the weight:
   request **equals** memory limit, because memory is incompressible and an OOM
   kill beats eviction roulette. Cpu is a request with **no** limit, because
   throttling gets misdiagnosed as slow application code
-  ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). One number per
+  ([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)). One number per
   dimension goes in, the shape stays derived, and there is no hatch to reach it
   ([No overrides](#no-overrides)).
 
@@ -559,8 +559,8 @@ is therefore `E_PLACEMENT_UNSATISFIABLE` at build time, not a `Pending` pod at
 apply time. A `continuous` Process counts **twice**: its blue/green switchover
 runs the new version beside the old one for the length of its analysis, so a
 node is eligible only if its allocatable fits two copies of the Process and its
-sidecars ([0128](../../docs/adr/model/0128-cutover-names-the-promise.md),
-amending [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)).
+sidecars ([0021](../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md),
+amending [0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)).
 This is still eligibility, a per-Process test, and not bin-packing: a canary that
 cannot schedule would otherwise hit its deadline and read as a failed release. The same reasoning retires a capability advertised by 7 of 7 nodes:
 a filter that never excludes anything teaches authors that filters do nothing.
@@ -578,7 +578,7 @@ declared `disk` dimension that contradicts the binding is
 
 The middleware chain is derived, and one of its members needs an address: a
 forward-auth Middleware must name the endpoint that performs the check. **The
-tier names it** ([0076](../../docs/adr/model/0076-middleware-has-one-producer.md)).
+tier names it** ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)).
 A tier in the Platform Intent that serves the `authenticated` audience carries
 the address of the endpoint that authenticates for it, beside the audiences it
 serves; a tier that serves no `authenticated` route carries no such field and
@@ -603,8 +603,7 @@ until every member's new version is healthy
 ([chapter 50](50-lifecycle.md#release-unit-switchover)). *Performing* the switch
 belongs to delivery: Flagger switches each member, and the Release Gate holds
 them at a barrier ([chapter 55](55-delivery.md#the-release-gate),
-[0132](../../docs/adr/model/0132-the-release-gate-answers-the-switch.md),
-superseding [0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md)).
+[0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)).
 What the model owes is the gate's **inputs**, derived rather than authored.
 
 Layer 2 therefore carries, per Application a Process of which switches
@@ -633,7 +632,7 @@ gate is a Canary per member naming the gate's endpoint, and nothing that decides
 
 An `interrupted` Application carries no gate: its Processes stop before their
 new versions start, so there is no moment at which an old version serves while
-a new one waits, and nothing to hold ([0128](../../docs/adr/model/0128-cutover-names-the-promise.md)).
+a new one waits, and nothing to hold ([0021](../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)).
 Neither does an Application of the delivery machinery, whose Processes switch
 `rolling`.
 
@@ -646,7 +645,7 @@ discovered by a delivery mechanism at apply time.
 
 Every Application's element of the Resolved Deployment carries its **revision**:
 the `sha256` digest of the element's canonical JSON (RFC 8785, the form every
-oracle file is written in), with the revision itself left out ([0129](../../docs/adr/model/0129-the-application-revision-is-the-digest-of-its-element.md)).
+oracle file is written in), with the revision itself left out ([0032](../../docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md)).
 It is the identity of one release of one Application, and it is what delivery
 names that release by ([chapter 55](55-delivery.md)): a migration Job, the tag a
 database is marked with after its migration, the Canary annotation the Release
@@ -683,13 +682,13 @@ Everything else about a migration is a fixed function of the Application id,
 the project and the Platform document, so recording it would repeat a
 derivation, not a decision: the identity `<application>-migration`, the owner
 role `<project>-owner`, the database, the deadline and the requests
-([0130](../../docs/adr/model/0130-migration-is-declared-on-the-application.md)).
+([0026](../../docs/adr/model/0026-migration-is-declared-on-the-application.md)).
 An Application declaring `self` or `none` carries no block.
 
 ## The path plan
 
 Layer 2 assigns **every output path**
-([0070](../../docs/adr/model/0070-path-authority-is-layer-2.md)). The Resolved
+([0036](../../docs/adr/model/0036-path-authority-is-layer-2.md)). The Resolved
 Deployment carries, for each object to be rendered, the Adapter that owns it and
 the path it is written to. Layer 3 serialises what it is handed and chooses
 nothing.
@@ -760,9 +759,9 @@ So the classification, and the evidence it rests on:
 | `replicas` | irreducible local capacity knowledge | the named `replicas: {count, reason}` field, the one survivor |
 | `startupDeadline` | a process class (`runtime: static` starts in seconds, `jvm` in minutes) | repaired central rule over `startupBudget` and `runtime` |
 | `gateDeadline` | `max` over members, already a derivation, never a decision | derived, unchanged |
-| `automountToken` | a derivation from `delivery: self` | derived, unchanged ([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)) |
+| `automountToken` | a derivation from `delivery: self` | derived, unchanged ([0031](../../docs/adr/model/0031-identity-per-process.md)) |
 | `ephemeralSize`, `probeCadence`, `backupTerms`, `monitorCadence` | platform policy over shared resources | platform, stated once |
-| `routePriority` | derived by design, to prevent hand-tuning | derived, unchanged ([0093](../../docs/adr/model/0093-route-precedence-is-derived.md)) |
+| `routePriority` | derived by design, to prevent hand-tuning | derived, unchanged ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)) |
 | `volumeSize` | the volume's authored `size` | authored, never derived |
 
 **The deadline rule is the one open proof.** `runtime: static` is recorded here
@@ -791,12 +790,12 @@ per-control relaxation carried with a reason, because that is an override under
 another name and it outlives the image that justified it. An image that cannot
 meet `restricted` is `E_HARDENING_UNMET`; the fix is the image, or a
 Bidirectional Ledger entry with an owner while it is replaced
-([0055](../../docs/adr/model/0055-bidirectional-ledgers.md)).
+([0038](../../docs/adr/model/0038-bidirectional-ledgers.md)).
 
 ## The Reconcile Unit
 
 The Reconcile Unit is **derived from the dependency graph**, never declared
-([0032](../../docs/adr/model/0032-reconcile-unit-derived.md)). An Application's unit is
+([0033](../../docs/adr/model/0033-reconcile-unit-derived.md)). An Application's unit is
 `apps-<project>`; the ordering between units is the edge set of
 [chapter 16](16-dependencies.md#dependency-edges) projected onto projects, plus an
 edge to the secrets-provisioning unit wherever an Application holds any grant.
@@ -832,7 +831,7 @@ applied Application hard to read. A dependency cycle becomes a build failure
 
 **The Reconcile Unit orders; it does not make anything atomic.** Ordering is
 derived from the graph. Atomicity is the **Application boundary itself**
-([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)): every Process of
+([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)): every Process of
 one Application switches together or none switches, and there is no mechanism to
 couple two Applications. The two are orthogonal: postgres before knowledge is
 ordering; `auth-api` and `auth-ui` moving together is atomicity, and they move
@@ -844,13 +843,13 @@ boundary is drawn wrong.
 The derived unit has one consumer in v1: the Flux `Kustomization` DAG, whose
 `dependsOn` edges are this derivation's output. The health timeout class that
 sentence used to name with them is deleted
-([0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md) (superseded by [0132](../../docs/adr/model/0132-the-release-gate-answers-the-switch.md)),
+([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md),
 [There is no health timeout class](#derived-mechanics)); what an applier waits
 on per Application is the release gate's deadline, and what it waits on between
 units is this ordering. How objects reach a cluster, and the mechanism that makes
 an Application's switchover all-or-nothing, are [chapter 55](55-delivery.md)'s;
 the push design that would have read this ordering a second way is retired
-([0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md)). The
+([0050](../../docs/adr/model/0050-delivery-is-part-of-the-model.md)). The
 derivation does not change with its consumers; only their number does.
 
 ## Publish back
@@ -860,12 +859,12 @@ their own node placement or Secret Store paths out of their own repository.
 Composition therefore writes each Application's `ResolvedApplication` projection into
 that Application's repository as a generated file (
 `platform/resolved.yml`) and opens a pull request when it changes
-([0033](../../docs/adr/model/0033-assignments-published-back.md)).
+([0032](../../docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md)).
 
 The projection carries, per Process, the **image it runs at the digest the lock
 resolved**, the image metadata the previous generation rendered as a separate
 document. That is a layer-2 fact and it is published back like every other
-([0098](../../docs/adr/model/0098-one-publication-path.md)); nothing about it was
+([0047](../../docs/adr/model/0047-one-publication-path.md)); nothing about it was
 ever a Deliverable.
 
 Two entries left this list. The namespace is now derived from `project`, which
@@ -873,7 +872,7 @@ the owner writes in the header of the file they are already editing, so
 answering "which namespace am I in" needs no published assignment at all. The
 hostname followed it for another reason: `host` is authored, so the owner reads
 it back out of the line they wrote
-([0018](../../docs/adr/model/0018-exposure-by-audience.md)). Both still appear in the
+([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)). Both still appear in the
 projection, because the projection records every layer-2 decision whether or not
 the owner could have predicted it, and on that path the decisions that remain
 are the tier and the middleware chain, not the name.
@@ -937,7 +936,7 @@ migration:                           # it declares a changelog (chapter 10)
   testedAgainst: sha256:…            # the serving revision the proof ran against
   nonTransactional: false            # so a held release may be undone automatically
 
-releaseGate:                         # what the Release Gate reads (0132)
+releaseGate:                         # what the Release Gate reads (0052)
   deadline: 1800s                    # max over the members
   analysis: {interval: 30s, iterations: 4, threshold: 3}   # the Platform document's cadence
   members:
@@ -1065,7 +1064,7 @@ Six things in those blocks are worth reading closely.
 768Mi and 250m; the `kubernetes` adapter is where those become a strategy
 block, a security context and a resource block, exactly as Traefik's spellings
 belong to the `traefik` adapter
-([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md),
+([0011](../../docs/adr/model/0011-authored-values-name-model-concepts.md),
 [chapter 30](30-deliverables.md#adapters)). A reviewer who wants the rendered
 spelling reads the Deliverable, which is one artifact away.
 
@@ -1081,7 +1080,7 @@ Application-scoped number a switchover waits on is the gate's
 **Provenance is one digest per pinned input.** Every fragment is named, not
 folded into one `intent` digest, and neither `contextRef` nor
 `adapterCompat.digest` appears: both named machinery
-[0098](../../docs/adr/model/0098-one-publication-path.md) deleted
+[0047](../../docs/adr/model/0047-one-publication-path.md) deleted
 ([Pinned inputs](#pinned-inputs)).
 
 **The worker declares what chapter 10 says it declares.** `memory: 256Mi` and
@@ -1091,7 +1090,7 @@ twice over: the numbers were not the ones the project file carries, and a
 `placement.disk` dimension filters which nodes may hold a claim without saying
 how large the claim is. The size is the volume's own authored `size`, 20Gi,
 and it appears under `volumes`, once
-([0081](../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md)).
+([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)).
 `placement` here carries only what the platform decided: the eligible set, the
 binding, and the input the binding was read from.
 
@@ -1125,7 +1124,7 @@ file, where two Processes may not share a name
 
 Two smaller points. `exposure` sits beside `processes:`, not inside one,
 because it belongs to the Application
-([0018](../../docs/adr/model/0018-exposure-by-audience.md)): a host fronts
+([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)): a host fronts
 Processes, and the routes under it are how it picks between them. The
 projection records the entry although the owner authored `host` and every route
 themselves, because the two things they did not write are the ones worth a pull
@@ -1145,7 +1144,7 @@ profile, so the chain takes the tier's baseline; an Application that writes
 
 And `precedence` is an ordinal over specificity alone, smallest evaluated
 first: `exact` before `prefix`, longer prefix before shorter
-([0093](../../docs/adr/model/0093-route-precedence-is-derived.md)). The three
+([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)). The three
 exact routes share precedence 1, which is not a missing tie-break: two exact
 paths cannot both match one request, so no order between them decides anything.
 The prefixes are ordered, `/mcp/` at 2 ahead of `/` at 3, and that ordering is
@@ -1159,7 +1158,7 @@ the one thing a proxy used to decide by sorting rule names.
    `dashboard`, `gatus` `status`, `agents-api` two) and the conclusion drawn
    from it is that nothing derives a hostname at all: `host` is the full FQDN,
    authored on the Application's `exposure` entry
-   ([0018](../../docs/adr/model/0018-exposure-by-audience.md)), placed
+   ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)), placed
    *unique, checked* above, and arbitrated only as a collision at composition
    (`E_DUPLICATE_HOST`). No third category was needed and no row of the table is
    an exception, so [0004](../../docs/adr/model/0004-contention-decides-authority.md)
@@ -1169,7 +1168,7 @@ the one thing a proxy used to decide by sorting rule names.
    needs none. With `host` authored in full and no zone derivation anywhere,
    `home-portal` writes `host: jorisjonkers.dev` exactly as `auth` writes
    `host: auth.jorisjonkers.dev`; `apex: true` is not vocabulary
-   ([0018](../../docs/adr/model/0018-exposure-by-audience.md)). Two Applications writing
+   ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)). Two Applications writing
    the bare project are one duplicated host like any other
    ([chapter 40](40-composition.md#identity)), which is what `E_DUPLICATE_APEX`
    names when the contested name is that one.
@@ -1188,7 +1187,7 @@ the one thing a proxy used to decide by sorting rule names.
    large fraction of the node, so a wrong guess bites there first: as a pod
    the build says fits and the scheduler refuses. (The other half this item
    used to carry (whether the ClusterState digest is stable) is
-   [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)'s own
+   [0034](../../docs/adr/model/0034-cluster-state-is-a-pinned-input.md)'s own
    settling test and is recorded there.)
    **Owner:** joris.
    **Settled by:** reconciling each node's declared `allocatable` against

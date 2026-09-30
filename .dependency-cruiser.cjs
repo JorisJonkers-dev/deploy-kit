@@ -47,13 +47,13 @@ const ambientPattern = `^(node:)?(${AMBIENT.join("|")})$`;
  *
  *   @kubernetes/client-node  the compiler renders, it does not apply: adapters
  *                            build typed objects and one serializer owns the
- *                            bytes (0067).
+ *                            bytes (0058).
  *   ajv                      Zod is the one validator; a second one means two
- *                            declarations of the same shape (0066).
+ *                            declarations of the same shape (0057).
  *   zod-to-json-schema       Zod generates JSON Schema itself, from the input
- *                            variant of each schema (0066).
+ *                            variant of each schema (0057).
  *   handlebars, ejs,         text templating is the generation this compiler
- *   mustache, nunjucks       replaces: objects in, one serializer out (0067).
+ *   mustache, nunjucks       replaces: objects in, one serializer out (0058).
  */
 const DENIED = [
   "@kubernetes/client-node",

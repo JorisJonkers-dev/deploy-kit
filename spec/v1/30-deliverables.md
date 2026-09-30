@@ -7,7 +7,7 @@ worth separating) it contains **no decisions**.
 
 > A Deliverable's content is a pure function of the Resolved Deployment, and its
 > path is **assigned by** the Resolved Deployment
-> ([0070](../../docs/adr/model/0070-path-authority-is-layer-2.md), normative in
+> ([0036](../../docs/adr/model/0036-path-authority-is-layer-2.md), normative in
 > [chapter 20](20-resolved-deployment.md#the-path-plan)).
 
 Layer 2 decided everything (chapter 20). Layer 3 serialises. If a renderer has to
@@ -43,14 +43,14 @@ Deliverable's `object` is that model object, and its `content` is the output of
 the one serializer turning that object into bytes. An adapter never formats
 bytes itself: there is exactly one serializer, so determinism, key order and
 line endings are one module's responsibility
-([0067](../../docs/adr/architecture/0067-adapters-build-objects-one-serializer.md)).
+([0058](../../docs/adr/architecture/0058-every-step-links-through-one-trace.md)).
 A Deliverable holds `path`, `object` and `adapter`; it has no `content` string
 an adapter would write, and no `executable` flag: nothing in the model is
-executable ([0012](../../docs/adr/model/0012-assets-not-code.md)).
+executable ([0014](../../docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)).
 
 **The registry is the enumeration**
-([0052](../../docs/adr/model/0052-registered-adapters-are-v1.md), rewritten by
-[0098](../../docs/adr/model/0098-one-publication-path.md)): nothing renders
+([0037](../../docs/adr/model/0037-six-registered-adapters-satisfy-one-port.md), rewritten by
+[0047](../../docs/adr/model/0047-one-publication-path.md)): nothing renders
 that is not registered, `adapterContract()` is the only list, and a change to the
 set is a decision with its own ADR. The set is six, one per subsystem, and every
 one of them is a **central** adapter running once over the composed union:
@@ -58,10 +58,10 @@ one of them is a **central** adapter running once over the composed union:
 | adapter | subsystem | emits |
 |---|---|---|
 | `kubernetes` | processes | per Application: the controller, `Service` (none for a `blue-green` Process, whose Services Flagger generates), the `Canary` of each `blue-green` Process with its `HorizontalPodAutoscaler` where it declares `replicas` ([Flagger-ready objects](#flagger-ready-objects)), `ServiceAccount`, `ConfigMap` (including every inbound-derived Asset) `PersistentVolumeClaim`, `PodDisruptionBudget` above one replica, the backup and sweep `CronJob`, the migration identity with its per-revision migration `Job` and suspended down `Job` ([chapter 55](../../spec/v1/55-delivery.md#failure-and-undo)), `Namespace` per project, and the kustomize `Kustomization` per directory |
-| `networking` | policy | every `NetworkPolicy` ([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)) |
+| `networking` | policy | every `NetworkPolicy` ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)) |
 | `prometheus` | monitoring | one `ServiceMonitor` or `PodMonitor` per Application that declares `observability`, from the named surface and the Platform document's cadence. No `PrometheusRule`: PromQL is the monitoring stack's ([chapter 10](../../spec/v1/10-project-intent.md#observability)) |
-| `traefik` | edge | one `IngressRoute` set and one `Middleware` set **per tier** the Platform document declares ([0076](../../docs/adr/model/0076-middleware-has-one-producer.md), [0098](../../docs/adr/model/0098-one-publication-path.md)) |
-| `vault-policy` | secret store | one policy and one auth role per Process identity, as JSON ([0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md)) |
+| `traefik` | edge | one `IngressRoute` set and one `Middleware` set **per tier** the Platform document declares ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md), [0047](../../docs/adr/model/0047-one-publication-path.md)) |
+| `vault-policy` | secret store | one policy and one auth role per Process identity, as JSON ([0040](../../docs/adr/model/0040-vault-policy-is-a-deliverable.md)) |
 | `vso` | secret delivery | `VaultConnection`, `VaultAuth`, the operator `ServiceAccount` per namespace, `VaultStaticSecret`, `VaultDynamicSecret` |
 
 **There is one publication path.** A repository publishes its Intent Fragment
@@ -84,7 +84,7 @@ rendered as that Application's own Assets by `kubernetes`. Image metadata is a
 mechanism's reading of the Reconcile Unit DAG, and is taken up by
 [chapter 55](55-delivery.md#rendered-artifacts-and-pins), where each Project's
 pinned source is what a Kustomization applies. `flux-packs` and `flux-source` had nothing left to render once the
-foundation was declared ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)).
+foundation was declared ([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)).
 
 A second, unregistered renderer generation exists in the tree being replaced: `src/deployment/render/`, 14 modules and 1,967 lines, reachable from neither
 entry point, imported only by 11 test files, yet inside the `--lines 90` coverage
@@ -95,7 +95,7 @@ the adapter port and costs what writing a new adapter costs.
 ## The adapter port
 
 Every adapter satisfies one typed port
-([0053](../../docs/adr/model/0053-adapter-port-contract.md)):
+([0037](../../docs/adr/model/0037-six-registered-adapters-satisfy-one-port.md)):
 
 > **Documents in, attributed Deliverables out. Deterministic. No ambient reads. A
 > path claimed twice is a build error.**
@@ -140,7 +140,7 @@ Narrowing the port is cheap now and expensive later. Once adapters outside this
 repository register through the public `registerAdapter` export, the port is a
 compatibility surface every out-of-tree adapter pins, and narrowing it means a
 major toolkit release, a version number separate from `schemaVersion`
-([0039](../../docs/adr/model/0039-artifact-schema-versioning.md), chapter 40).
+([0044](../../docs/adr/model/0044-artifact-schema-versioning.md), chapter 40).
 
 ## Vault configuration is rendered, not applied
 
@@ -150,8 +150,8 @@ the operator `ServiceAccount` per target namespace, `VaultStaticSecret`,
 Flagger's configuration tracking, and a restart target names a `blue-green`
 Process's `<name>-primary`, so rotating a value never starts a release
 ([chapter 55](55-delivery.md#secret-rotation)). None of those is a policy or an auth role, so until
-[0073](../../docs/adr/model/0073-vault-policy-is-a-deliverable.md) the policy
-that [0025](../../docs/adr/model/0025-access-tiers-derive-policy.md) derives had
+[0040](../../docs/adr/model/0040-vault-policy-is-a-deliverable.md) the policy
+that [0029](../../docs/adr/model/0029-a-grant-is-a-union-on-engine.md) derives had
 no output at all, and a derivation with no output is not total
 ([0005](../../docs/adr/model/0005-derivation-is-total.md)).
 
@@ -160,7 +160,7 @@ The `vault-policy` adapter emits, **per Process identity**, two documents:
 | document | derived from |
 |---|---|
 | the Vault policy | the Process's grants and their access tiers: `read` on the granted path, `patch` for `self-roll`, `create`/`update`/`delete` on a prefix for `custody`, nothing for `self-renew` |
-| the Kubernetes auth role | the Process's ServiceAccount and namespace ([0024](../../docs/adr/model/0024-identity-per-process.md)), bound to that one policy |
+| the Kubernetes auth role | the Process's ServiceAccount and namespace ([0031](../../docs/adr/model/0031-identity-per-process.md)), bound to that one policy |
 
 One document per identity, not per Application: identity is per Process, so a
 two-Process Application produces two policies and a diff says which principal's
@@ -178,20 +178,20 @@ configuring its JWT issuer and CA, and creating the KV mounts are estate-unique
 and draw on a shared resource, so by
 [0004](../../docs/adr/model/0004-contention-decides-authority.md) they are
 platform-assigned, and they are Assets of the declared `vault` Application in the
-platform's secrets project ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md),
+platform's secrets project ([0046](../../docs/adr/model/0046-the-foundation-is-declared.md),
 [chapter 60](60-setup.md#secrets-at-rest)) rather than per-Application render. The
 per-Application render owns what varies per Process and nothing else.
 
 ## Attribution
 
 **Every Deliverable is attributed to exactly one Adapter**
-([0054](../../docs/adr/model/0054-adapter-attribution.md)). Attribution is a property of
+([0037](../../docs/adr/model/0037-six-registered-adapters-satisfy-one-port.md)). Attribution is a property of
 the producer, declared in the registry, not a property of the output that an edit
 could lose:
 
 - Every registry entry declares a `defaultPath`, and registration throws
   `adapter definition missing defaultPath` without one. It is what the path plan
-  assigns from ([0070](../../docs/adr/model/0070-path-authority-is-layer-2.md)).
+  assigns from ([0036](../../docs/adr/model/0036-path-authority-is-layer-2.md)).
 - `adapterContract()` is the only enumeration of the set. A tool that needs to
   know who produces what reads it; nothing reconstructs ownership by scanning
   rendered YAML.
@@ -236,7 +236,7 @@ decided on the plan, before any adapter runs, rather than left as a convention.
 ## Ledgers
 
 **Every accepted hole is a bidirectional ledger**
-([0055](../../docs/adr/model/0055-bidirectional-ledgers.md)). Each ledger fails **both**
+([0038](../../docs/adr/model/0038-bidirectional-ledgers.md)). Each ledger fails **both**
 when something is missing from it and when one of its own entries no longer
 matches anything, which is the property `catalog/accepted-fragment-drift.yml`
 already has and states:
@@ -249,7 +249,7 @@ already has and states:
 |---|---|---|---|
 | coverage ledger | every live object with no producing adapter | `E_UNATTRIBUTED_OBJECT` | `E_LEDGER_ENTRY_STALE` |
 | accepted fragment drift | differences between the render and what an Application published, each a deferred fix | `E_UNACCEPTED_DRIFT` | `E_LEDGER_ENTRY_STALE` |
-| registered unmanaged surfaces | hostnames the model does not deploy ([0019](../../docs/adr/model/0019-registered-unmanaged-surfaces.md), chapter 40) | `E_UNREGISTERED_SURFACE` | `E_LEDGER_ENTRY_STALE` |
+| registered unmanaged surfaces | hostnames the model does not deploy ([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md), chapter 40) | `E_UNREGISTERED_SURFACE` | `E_LEDGER_ENTRY_STALE` |
 
 Every entry carries three fields and a build consequence:
 
@@ -264,7 +264,7 @@ three identities in `git shortlog`, every review date is a note to self, and the
 build failure, not the review, is what enforces the deadline.
 
 The check runs against the pinned `ClusterState` snapshot
-([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md), chapter 20), so a
+([0034](../../docs/adr/model/0034-cluster-state-is-a-pinned-input.md), chapter 20), so a
 ledger verdict is exactly as fresh as that snapshot's `clusterStateDigest` and no
 fresher. Closing a hole is therefore always two changes, register the adapter,
 delete the entry, and forgetting the second breaks the build. That is the whole
@@ -303,28 +303,28 @@ them is wrong by 74.
 | class | objects | share | how it is produced |
 |---|---|---|---|
 | **A, derived from Project Intent** | 364 | 81% | a registered adapter, per Application |
-| **B, the foundation** | 41 | 9% | was pack-delivered from `flux-modules` at a pinned ref; now **declared** as Applications of the platform projects and rendered like class A ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)). The CRDs among them are the bootstrap set |
+| **B, the foundation** | 41 | 9% | was pack-delivered from `flux-modules` at a pinned ref; now **declared** as Applications of the platform projects and rendered like class A ([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)). The CRDs among them are the bootstrap set |
 | **C, authored content** | 45 | 10% | not derivable; ledgered until its owner lands |
 
 Class C is entirely Grafana: 31 `GrafanaDashboard`, 14 `GrafanaFolder`. Nothing
 in Project Intent implies a dashboard's panels; deriving one would be inventing a
 dashboard DSL. It is ledgered rather than permanent: 14 application dashboards become
-Assets on the owning Application ([0012](../../docs/adr/model/0012-assets-not-code.md)), 3
+Assets on the owning Application ([0014](../../docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)), 3
 runtime-family dashboards ship with the Runtime Profile, 14 platform dashboards
 become Assets of the declared observability Applications, and `service-overview` / `service-template` derive
 per Application from the scrape surface and exposure
-([0021](../../docs/adr/model/0021-observability-scrape-and-alert-class.md)).
+([0025](../../docs/adr/model/0025-observability-is-one-optional-block.md)).
 
 ### The true gap
 
 Every kind the 2026-08-31 survey found unrendered now has a decision: `Role` and
-`RoleBinding` are not rendered ([0075](../../docs/adr/model/0075-no-process-rbac-in-v1.md)),
-`NetworkPolicy` is `networking`'s ([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)),
+`RoleBinding` are not rendered ([0041](../../docs/adr/model/0041-no-process-rbac-in-v1.md)),
+`NetworkPolicy` is `networking`'s ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)),
 `ServiceMonitor` and `PodMonitor` are `prometheus`'s, from the declared
 `observability.scrape` surface, and `PrometheusRule` is rendered by nothing here
-([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)),
+([0025](../../docs/adr/model/0025-observability-is-one-optional-block.md)),
 and `GitRepository` is a bootstrap fact
-([0099](../../docs/adr/model/0099-bootstrap-set-is-recorded.md)), created by
+([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)), created by
 `flux bootstrap`, never rendered.
 
 The number itself is arithmetic on an old survey, not a fresh measurement. The
@@ -362,13 +362,13 @@ needs a decision, not an allowlist entry."*
 
 | forbidden | why |
 |---|---|
-| a kind on the forbidden list, `Secret`, `ClusterRole`, `ClusterRoleBinding`, `CustomResourceDefinition` | `E_FORBIDDEN_KIND`; a CRD is a bootstrap fact ([chapter 14](14-platform-intent.md#the-bootstrap-set)), a Secret arrives through VSO, and RBAC is not rendered ([0075](../../docs/adr/model/0075-no-process-rbac-in-v1.md)) |
+| a kind on the forbidden list, `Secret`, `ClusterRole`, `ClusterRoleBinding`, `CustomResourceDefinition` | `E_FORBIDDEN_KIND`; a CRD is a bootstrap fact ([chapter 14](14-platform-intent.md#the-bootstrap-set)), a Secret arrives through VSO, and RBAC is not rendered ([0041](../../docs/adr/model/0041-no-process-rbac-in-v1.md)) |
 | an object in a namespace the Application does not own | `E_FOREIGN_NAMESPACE` |
 | a floating image tag | `E_FLOATING_IMAGE`; digests only |
 | a path claimed by two adapters | `E_PATH_COLLISION`; attribution becomes ambiguous |
 | a path outside the gitops root, or containing `..` | `E_UNSAFE_OUTPUT_PATH` |
 | a hand-added file inside the rendered tree | `E_RENDER_OVERWRITE_REFUSED`; the writer refuses to overwrite a file it does not manage, and parity would stay red |
-| a hand-written object of any kind, a raw manifest, a pack file | there is no pass-through ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)); what cannot be declared yet is a ledger entry with a review date |
+| a hand-written object of any kind, a raw manifest, a pack file | there is no pass-through ([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)); what cannot be declared yet is a ledger entry with a review date |
 
 ## Flagger-ready objects
 
@@ -376,7 +376,7 @@ A `blue-green` Process is switched by Flagger
 ([chapter 55](55-delivery.md#what-the-render-leaves-to-flagger)), and Flagger
 generates objects of its own and rewrites a label on the ones it copies. Every
 adapter renders so that Flux and Flagger never own the same field
-([0137](../../docs/adr/model/0137-the-render-leaves-flaggers-objects-to-flagger.md)):
+([0055](../../docs/adr/model/0055-the-render-leaves-flaggers-objects-to-flagger.md)):
 
 | rule | adapter | why |
 |---|---|---|
@@ -384,11 +384,11 @@ adapter renders so that Flux and Flagger never own the same field
 | no `Service` named `<name>`, `<name>-primary` or `<name>-canary` for such a Process | `kubernetes` | Flagger generates all three; a rendered one would have two owners |
 | no `replicas` on its Deployment; a `replicas` declaration becomes a `HorizontalPodAutoscaler` with `minReplicas` equal to `maxReplicas`, named by the Canary | `kubernetes` | Flagger scales the Deployment it watches to zero and owns the primary's count, so a count in the render is a field Flux would reset |
 | a `blue-green` Process's `PodDisruptionBudget` selects `app.kubernetes.io/name: <name>-primary` | `kubernetes` | the primary is what serves between releases; the budget protects it, not the scaled-down source |
-| every other selector names `app.kubernetes.io/instance`, never `app.kubernetes.io/name` | `networking`, `prometheus` | Flagger rewrites `app.kubernetes.io/name` on the primary and copies `instance` unchanged, so an `instance` selector matches the primary and the canary alike. It holds for every Process, not only `blue-green` ones, because every rendered Process carries the fixed label set ([0072](../../docs/adr/model/0072-the-label-set-is-fixed.md)), the foundation's included ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)); a pod monitor's `jobLabel` names `instance` for the same reason |
+| every other selector names `app.kubernetes.io/instance`, never `app.kubernetes.io/name` | `networking`, `prometheus` | Flagger rewrites `app.kubernetes.io/name` on the primary and copies `instance` unchanged, so an `instance` selector matches the primary and the canary alike. It holds for every Process, not only `blue-green` ones, because every rendered Process carries the fixed label set ([0039](../../docs/adr/model/0039-the-label-set-is-fixed.md)), the foundation's included ([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)); a pod monitor's `jobLabel` names `instance` for the same reason |
 | a scraped `blue-green` Process is scraped by a `PodMonitor` | `prometheus` | the Services are Flagger's, and the canary's pods must be scraped for the Release Gate's checks |
 | one configuration object per Process | `kubernetes` | Flagger tracks a changed `ConfigMap` as a new revision of every Canary that reads it; one per Process keeps a change to one Process from releasing another |
 | a restart target names `<name>-primary` | `vso` | [chapter 55](55-delivery.md#secret-rotation) |
-| the migration and prepare Jobs are named by Application revision and created once, never force-replaced; their pods keep a stable `instance`, `<application>-migration` or the Process name, so a network policy can select them | `kubernetes` | the Release Gate writes their `suspend`, which a replacement would reset ([0135](../../docs/adr/model/0135-a-migration-is-proven-against-the-serving-version.md), [chapter 55](55-delivery.md#failure-and-undo)) |
+| the migration and prepare Jobs are named by Application revision and created once, never force-replaced; their pods keep a stable `instance`, `<application>-migration` or the Process name, so a network policy can select them | `kubernetes` | the Release Gate writes their `suspend`, which a replacement would reset ([0026](../../docs/adr/model/0026-migration-is-declared-on-the-application.md), [chapter 55](55-delivery.md#failure-and-undo)) |
 | a claim whose Durability Class derives a backup carries `kustomize.toolkit.fluxcd.io/prune: disabled` | `kubernetes` | removing a Process from the render never deletes the data it held: Durability Class gating kept by the applier ([chapter 55](55-delivery.md#scope)) |
 
 ## Delivery reads this tree
@@ -412,9 +412,9 @@ stale participant (chapter 40) rather than as a quietly smaller render.
 
 The first three items this section carried (`rbac`, `NetworkPolicy`,
 `PrometheusRule`) are decided
-([0075](../../docs/adr/model/0075-no-process-rbac-in-v1.md),
-[0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md),
-[0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)).
+([0041](../../docs/adr/model/0041-no-process-rbac-in-v1.md),
+[0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md),
+[0025](../../docs/adr/model/0025-observability-is-one-optional-block.md)).
 Four more, the `E_PATH_COLLISION` implementation, the `@ts-nocheck` ratchet, the
 Application `ServiceAccount` name and the gitops root in the allocator, are code
 work against a compiler that does not exist yet, and belong in its issue tracker

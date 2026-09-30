@@ -9,11 +9,6 @@ normative: spec/v1/00-overview.md#the-estate
 
 # The estate is one maintainer, one cluster, about thirty Applications
 
-> **Amended 2026-09-14.** Vocabulary renamed by
-> [0116](0116-project-application-process.md): Domain is now Project,
-> Service is Application, Workload is Process, and Service Intent is Project
-> Intent. The decision is unchanged.
-
 ## Rests on
 The estate is operated by one regular human maintainer (one person across three
 git identities, plus bot accounts), runs one production cluster, and comprises
@@ -53,8 +48,8 @@ THIS scale, one maintainer, one cluster, thirty Applications, not at the scale o
 an imagined organisation.
 
 The premise is dated, not permanent. A 24-month horizon is long enough to build
-and operate v1 (the stopping rule in
-[0059](0059-v1-scope-stopping-rule.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md)) fits inside it) and short enough that the
+and operate v1, delivery included
+([0050](0050-delivery-is-part-of-the-model.md)), and short enough that the
 assumption is re-checked before it silently rots. RED-006's direction stands as
 the working rule until the horizon or a falsifying observation: separate the
 invariants that catch the maintainer's own mistakes from the ones that arbitrate
@@ -67,13 +62,8 @@ between people, and build only the first set until there is a second person.
 | Design for exactly today, with no horizon | Any growth, a second maintainer, a second cluster, falsifies undated assumptions silently, and the rework arrives unplanned and unbudgeted | A dated horizon costs one review entry per 24 months and turns "the estate outgrew the design" from a surprise into a scheduled observation |
 
 ## Reversibility
-Undo cost today: edit this file and re-examine the six decisions whose
-`rests-on` names it: [0013](0013-blueprint-packs-pinned-checkout.md)
-(superseded by [0096](0096-the-foundation-is-declared.md)),
-[0037](0037-composition-oci-fragments.md),
-[0038](0038-participants-list-staleness.md),
-[0049](../deferred/0049-aggregator-owned-tests.md), [0050](../deferred/0050-exercises-and-deploys.md),
-[0059](0059-v1-scope-stopping-rule.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md)), a day of review, no code, no cluster
+Undo cost today: edit this file and re-examine every decision whose
+`rests-on` names it, a day of review, no code, no cluster
 change. Becomes irreversible once: mechanisms sized to this premise are live in
 production and a real second maintainer or second cluster exists; from that
 point the premise cannot be quietly re-worded: each dependent decision must be

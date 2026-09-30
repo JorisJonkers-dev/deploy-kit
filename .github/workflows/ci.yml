@@ -12,7 +12,7 @@
 # resolves to as a trailing comment; Renovate bumps the pin and the comment
 # together.
 #
-# docs/adr/architecture/0102-the-gate-grows-with-the-code.md: a new gate's
+# docs/adr/architecture/0064-a-gate-is-a-script-or-a-named-job.md: a new gate's
 # script and its job land in the same pull request, and
 # test/pipeline-wiring.test.ts is what notices when they do not.
 'name': 'CI'
@@ -80,7 +80,7 @@
       # The layer boundaries on the module graph: no layer reaching outward,
       # no adapter reading another adapter, no cycle, nothing unreachable from
       # an entry point. Skips loudly while src/ does not exist.
-      # See docs/adr/architecture/0069-boundaries-enforced-on-the-graph.md.
+      # See docs/adr/architecture/0060-boundaries-enforced-on-the-graph.md.
       - 'name': 'Boundaries'
         'run': 'npm run lint:boundaries'
 
@@ -114,8 +114,7 @@
       # Every rendered example object, against Kubernetes and CRD schemas.
       # "All parse" is what let a PVC with `storage: null` through
       # (spec/v1/examples/RENDER-GAPS.md, R8). Pinned by version, never
-      # `curl | bash` from a default branch: see
-      # docs/adr/deferred/0048-class-b-pinning.md.
+      # `curl | bash` from a default branch.
       - 'name': 'Manifest schemas'
         'shell': 'bash'
         'run': |
@@ -128,7 +127,7 @@
       # The behaviour ledger (docs/requirements.md): every row parses, names a
       # real test that holds at least one test, its stated count matches what
       # it holds, and every REQ-NNN cited in the tracked tree resolves to a
-      # row. See docs/adr/architecture/0103-a-behaviour-ledger-names-what-a-test-proves.md.
+      # row. See docs/adr/architecture/0065-a-behaviour-ledger-names-what-a-test-proves.md.
       - 'name': 'Requirements ledger'
         'run': 'npm run lint:requirements'
 
@@ -137,7 +136,7 @@
       # witness, every pending row carries a ticket and a reason, and every
       # rule the two rule configurations name is claimed by exactly one
       # enforced row. See
-      # docs/adr/architecture/0104-every-enforced-rule-has-an-id-a-row-and-a-fixture.md.
+      # docs/adr/architecture/0066-every-enforced-rule-has-an-id-a-row-and-a-fixture.md.
       - 'name': 'Rule ledger'
         'run': 'npm run lint:rules'
 
@@ -160,11 +159,9 @@
       - 'name': 'Agents contract'
         'run': 'npm run lint:agents'
 
-      # A citation to a decision record marked superseded, unless its
-      # successor is linked in the same sentence; a term the model retired
-      # still read as current outside a quotation; a stated count that no
-      # longer matches the collection it counts. See
-      # docs/adr/architecture/0104-every-enforced-rule-has-an-id-a-row-and-a-fixture.md.
+      # A term the model retired still read as current outside a quotation;
+      # a stated count that no longer matches the collection it counts. See
+      # docs/adr/architecture/0066-every-enforced-rule-has-an-id-a-row-and-a-fixture.md.
       - 'name': 'Meaning contract'
         'run': 'npm run lint:meaning'
 
@@ -179,7 +176,7 @@
       - 'uses': './.github/actions/setup'
       # The coverage ratchet lives in vitest.config.ts: thresholds sit on what
       # the suite reaches and only rise. See
-      # docs/adr/architecture/0101-coverage-is-a-ratchet.md.
+      # docs/adr/architecture/0063-coverage-and-mutation-are-ratchets.md.
       - 'name': 'Test'
         'run': 'npm run test:coverage'
 
@@ -235,9 +232,8 @@
       - 'uses': './.github/actions/setup'
 
       # Pinned by version, never `curl | bash` from a third-party default
-      # branch: docs/adr/deferred/0048-class-b-pinning.md (deferred set)
-      # records that pattern as a live supply-chain defect in the repository
-      # this one replaces. Renovate bumps the pin.
+      # branch: the repository this one replaces carried that pattern as a live
+      # supply-chain defect. Renovate bumps the pin.
       - 'name': 'Actionlint'
         'shell': 'bash'
         'env':
@@ -260,8 +256,7 @@
       - 'uses': './.github/actions/setup'
 
       # Binary, not gitleaks-action: the action needs a paid licence for org
-      # repos. Pinned version, per
-      # docs/adr/deferred/0048-class-b-pinning.md. scripts/lint-secrets.ts is
+      # repos. Pinned version. scripts/lint-secrets.ts is
       # the one command and one set of patterns `npm run verify` also runs;
       # this step only supplies the pinned binary it downloads.
       - 'name': 'Secret scan'
@@ -317,7 +312,7 @@
 
   # Two jobs land here together, for issue #33. Neither gates: neither joins
   # `pipeline-complete`'s `needs` below, per
-  # docs/adr/architecture/0102-the-gate-grows-with-the-code.md's own rule
+  # docs/adr/architecture/0064-a-gate-is-a-script-or-a-named-job.md's own rule
   # that only a gate belongs in that list.
   #
   # `coverage-baseline` runs on a push to main only: it stages the coverage

@@ -7,7 +7,7 @@
 #
 # It is also the only worked example that renders on today's pinned inputs:
 # it holds no grant, so the secrets-at-rest gate
-# (docs/adr/model/0028-secrets-at-rest-gate.md) has nothing to refuse.
+# (docs/adr/model/0030-secret-delivery-is-env-file-or-self.md) has nothing to refuse.
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
@@ -48,7 +48,7 @@ applications:
 
         # Two dimensions are required. Both are matched against what the node
         # contract publishes, never against free capacity
-        # (docs/adr/model/0061-placement-is-hard-dimensions.md).
+        # (docs/adr/model/0017-placement-is-hard-dimensions.md).
         placement:
           memory: 256Mi
           cpu: 50m

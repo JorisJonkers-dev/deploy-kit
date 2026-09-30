@@ -39,9 +39,9 @@ const OUT_OF_SCOPE = [
 
 export const RETIRED: Readonly<Record<string, string>> = {
   E_CAPABILITY_UNSATISFIABLE:
-    "retired for E_PLACEMENT_UNSATISFIABLE by 0061, which records the retirement",
+    "retired for E_PLACEMENT_UNSATISFIABLE by 0017, which records the retirement",
   E_ORPHANED_CLAIM:
-    "a delivery code, owned by the deferred set (0043) and cited by 0015 as the reader of its decision",
+    "retired by 0018: a claim whose class derives a backup is never pruned, so nothing refuses its removal",
 };
 
 export const PENDING: readonly Pending[] = [

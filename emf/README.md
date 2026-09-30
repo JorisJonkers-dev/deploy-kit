@@ -7,7 +7,7 @@ model-driven engineering course at the University of Twente requires: Ecore,
 Xtext, OCL, QVT-Operational and Acceleo. It is **deprecated from the day it
 lands**: it exists for the length of the course and is deleted when its sunset
 condition holds
-([0107](docs/adr/emf/0107-emf-is-coursework-scoped-and-self-contained.md)).
+([0071](docs/adr/emf/0071-emf-is-coursework-scoped-and-self-contained.md)).
 
 The repository root stays TypeScript. Nothing outside `emf/` builds, imports or
 depends on anything inside it. The Maven build, its modules, its checks, its
@@ -28,7 +28,7 @@ oracle files under `spec/v1/examples/` that both are tested against, separately.
 
 This table says which artefact lives where and which course task grades
 it, so the split tree
-([0122](docs/adr/emf/0122-bundles-and-tests-are-separate-tiers.md))
+([0081](docs/adr/emf/0081-bundles-and-tests-are-separate-tiers.md))
 answers the navigation question without a search.
 
 | artefact | lives in | graded in | how an examiner opens it |

@@ -8,11 +8,6 @@ normative: spec/v1/00-overview.md#the-three-model-pipeline
 
 # Three layers, with the middle layer as a contract
 
-> **Amended 2026-09-14.** Vocabulary renamed by
-> [0116](0116-project-application-process.md): Domain is now Project,
-> Service is Application, Workload is Process, and Service Intent is Project
-> Intent. The decision is unchanged.
-
 ## Rests on
 
 With deployment configuration split into **Project Intent** (hand-authored,
@@ -47,18 +42,16 @@ no decisions. Every field is then assignable to exactly one layer, and a
 reviewer can read a diff of the Resolved Deployment to see what the platform
 decided on their behalf. The middle layer is a contract in the concrete sense:
 it carries its own schema and its own version
-([0029](0029-resolved-deployment-versioned-artifact.md)), it is derived from
+([0032](0032-the-resolved-deployment-is-a-versioned-artifact.md)), it is derived from
 the Intent plus the pinned inputs, the cluster-state snapshot among them
-([0034](0034-cluster-state-pinned-input.md)), and it is the sole input the
-deliverable layer's adapters accept ([0053](0053-adapter-port-contract.md)).
+([0034](0034-cluster-state-is-a-pinned-input.md)), and it is the sole input the
+deliverable layer's adapters accept ([0037](0037-six-registered-adapters-satisfy-one-port.md)).
 
-**The name, amended 2026-09-15.** This decision was filed as "the three-layer
-meta-model", and that name claims something the decision does not. The three
-layers are three **models**, each written in its own language and joined to
-the next by a transformation; no layer is a type model of the layer below it,
-which is what a metamodel requires. The arrangement is the **three-model
-pipeline**, "metamodel" is kept for a language definition, and the decision
-itself, its H1 and everything else in this record are unchanged.
+**Three models, not a metamodel.** The three layers are three **models**, each
+written in its own language and joined to the next by a transformation; no
+layer is a type model of the layer below it, which is what a metamodel
+requires. The arrangement is the **three-model pipeline**, and "metamodel" is
+kept for a language definition.
 
 ## Alternatives
 
@@ -73,9 +66,9 @@ Undo cost today: collapsing to two layers means deleting the Resolved
 Deployment schema (`schemas/deployment.schema.json`, over 1,100 lines) and its
 chapter (`../../spec/v1/20-resolved-deployment.md`), and re-founding every
 decision that rests on this premise,
-[0029](0029-resolved-deployment-versioned-artifact.md) and
-[0052](0052-registered-adapters-are-v1.md) through
-[0055](0055-bidirectional-ledgers.md); days of spec and schema work with the
+[0032](0032-the-resolved-deployment-is-a-versioned-artifact.md) and
+[0037](0037-six-registered-adapters-satisfy-one-port.md) through
+[0038](0038-bidirectional-ledgers.md); days of spec and schema work with the
 whole render pipeline as blast radius.
 Becomes irreversible once: parties outside this repository pin the Resolved
 Deployment schema version or diff resolved artifacts in their own CI, the
@@ -86,6 +79,6 @@ repository cannot enumerate.
 
 - A third schema to version and keep honest, paid by this repository's maintainers.
 - `validate deployment` is ambiguous by construction and must be renamed per layer, paid by tooling authors and every script that spells the old name.
-- Every platform decision lands in one reviewable, diffable document, paid by aggregators, whose pipelines must produce and publish it.
+- Every platform decision lands in one reviewable, diffable document, paid by the composition run, which must produce and publish it.
 - Field-placement debates get a decidable answer, paid by authors of new fields, who must classify each one before it merges.
 - Layer purity (no mechanisms in Intent, no decisions in the Deliverable Set) is enforceable in CI rather than aspirational, paid by CI wall time on every change.

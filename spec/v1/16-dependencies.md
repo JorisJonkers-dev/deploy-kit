@@ -10,7 +10,7 @@ machine-checkable property.
 
 An edge is a triple. It names the provider, the surface, and whether the
 consumer requires it
-([0020](../../docs/adr/model/0020-dependency-edges-carry-surface.md)).
+([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)).
 
 ```yaml
 dependsOn:
@@ -34,7 +34,7 @@ by Process `auth-api`, and the consumer neither names that Process nor learns
 it exists. A provider may move a surface between its own Processes without a
 single consumer edit. The Application Id remains the only referencable identity, and
 a Process is not referencable from outside its Application
-([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)).
+([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)).
 
 Edges are declared **per Process**, and an Application's edge set is the union of
 its Processes' edges. Within `knowledge` the API reaches Postgres while the
@@ -65,7 +65,7 @@ default) buys both. The graph of required edges must be acyclic
 An edge orders; it does not group. Things that must switch versions together are
 Processes of **one Application**: an Application is the unit of atomic release, its
 Processes switch together or none switches, and there is no mechanism to couple
-two Applications ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)).
+two Applications ([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)).
 Atomicity is authored by drawing the Application boundary, because the graph cannot
 see it: a frontend depends on its API, but a dependency edge does not mean the
 two must cut over together, and deriving atomicity from every edge would make
@@ -78,13 +78,13 @@ redrawing it.
 The same edges read from the provider's side produce derivations no Application
 could declare locally, because no Application knows its own consumers. They are
 computable only over the composed union
-([0037](../../docs/adr/model/0037-composition-oci-fragments.md)), which is this
+([0042](../../docs/adr/model/0042-declarations-compose-from-intent-fragments.md)), which is this
 chapter's hard dependency on [chapter 40](40-composition.md).
 
 | inbound derivation | evidence it is needed |
 |---|---|
 | a database and owning user per consumer | `init-databases.sh` creates `auth_db`, `agents_db`, `knowledge_db` and `n8n_db`, one per Application claiming a Postgres credential. 98 lines the graph already knows. |
-| the Gatus endpoint list | one check per route on every exposure in the union, for the declared `gatus` Application, 41 derived references in 288 hand-maintained lines today ([0098](../../docs/adr/model/0098-one-publication-path.md)) |
+| the Gatus endpoint list | one check per route on every exposure in the union, for the declared `gatus` Application, 41 derived references in 288 hand-maintained lines today ([0047](../../docs/adr/model/0047-one-publication-path.md)) |
 | the edge catalogs | every host and route the estate serves, for the declared Traefik Applications, 30 and 28 derived references in two hand-maintained ConfigMaps |
 | NetworkPolicy **ingress** | a provider must admit its consumers, and only the inbound set says who they are |
 | browser origin allow-lists | `auth-api` hand-maintains `AUTH_CORS_ALLOWED_ORIGINS` with nine hostnames |
@@ -97,21 +97,21 @@ specification, see [Delivery and co-testing](#delivery-and-co-testing).
 ### The database catalog
 
 The first row of that table has a producer
-([0080](../../docs/adr/model/0080-database-catalog-is-derived-data.md)). For a
+([0026](../../docs/adr/model/0026-migration-is-declared-on-the-application.md)). For a
 provider Process whose [`engine`](10-project-intent.md#process) is a datastore
 that owns databases, the inbound edge set derives a **catalog**: one entry per
 consuming **project** naming its database and two Vault roles, the **owner**
 role that changes the schema and the **data** role that reads and writes it
-([0130](../../docs/adr/model/0130-migration-is-declared-on-the-application.md),
-amending [0080](../../docs/adr/model/0080-database-catalog-is-derived-data.md)'s one entry per consuming Application). Every consuming
+([0026](../../docs/adr/model/0026-migration-is-declared-on-the-application.md),
+amending [0026](../../docs/adr/model/0026-migration-is-declared-on-the-application.md)'s one entry per consuming Application). Every consuming
 Application of a project reads the project's one database; the owner role is
 derived for the Application that moves the schema, and only for it
 ([chapter 10](10-project-intent.md#migration)).
 
 The catalog is **data, not a procedure**. It renders as a `ConfigMap` and the
 platform's engine catalog supplies the image and command that applies it, the
-same split [0077](../../docs/adr/model/0077-durability-derives-a-backup.md) makes
-for backups, and for the same reason: [0012](../../docs/adr/model/0012-assets-not-code.md)
+same split [0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md) makes
+for backups, and for the same reason: [0014](../../docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)
 forbids an executable Asset, and a rendered shell script is a diff no reviewer
 can validate except by running it. What exists today is 98 lines of
 `init-databases.sh` creating `auth_db`, `agents_db`, `knowledge_db` and `n8n_db`, one per Application claiming a Postgres credential, which is exactly the inbound
@@ -126,7 +126,7 @@ consumer role name and the catalog entry.
 
 The credential lives at `database/creds/<role>`, which a `database` grant names
 by deriving it from the role
-([0085](../../docs/adr/model/0085-a-grant-is-a-union-on-engine.md)). That was the
+([0029](../../docs/adr/model/0029-a-grant-is-a-union-on-engine.md)). That was the
 mismatch R20 recorded (a grant path is not the path a credential is read from)
 and it is why the catalog could not render until the grant vocabulary became a
 union on engine.
@@ -136,11 +136,11 @@ union on engine.
 Every Process authenticates as its own principal. The ServiceAccount, the
 Vault Kubernetes auth role and the Vault policy bound to it are derived **per
 Process** and named for the **Process alone**
-([0024](../../docs/adr/model/0024-identity-per-process.md)). The namespace is the
+([0031](../../docs/adr/model/0031-identity-per-process.md)). The namespace is the
 project's, `<project>-system`
-([0063](../../docs/adr/model/0063-intent-authored-per-project.md)), so the principal a
+([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)), so the principal a
 Pod presents is `<project>-system.<process>`. No author writes an identity name
-([0030](../../docs/adr/model/0030-runtime-mechanics-derived.md)).
+([0021](../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)).
 
 | project | Application | Processes | derived identity |
 |---|---|---|---|
@@ -161,8 +161,8 @@ are one principal holding the union of the policies bound to it. Two things
 follow. Deriving the account from the Application Id (which
 `src/adapters/kubernetes.ts:665-669` does today, and which the previous version
 of this chapter drew as `id --> ServiceAccount`) makes the grant levels of
-[0022](../../docs/adr/model/0022-grants-live-on-the-application.md), now the three
-of [0124](../../docs/adr/model/0124-shared-intent-descends-to-the-process.md),
+[0012](../../docs/adr/model/0012-shared-intent-descends-and-is-lowered.md), now the three
+of [0012](../../docs/adr/model/0012-shared-intent-descends-and-is-lowered.md),
 documentation rather than a boundary. Under it, `knowledge-api`, which serves anonymous paths from
 the public internet, authenticated as the principal holding `read` on
 `secret/data/knowledge-system/vault-deploy-key`, the `0400` deploy key only the
@@ -176,7 +176,7 @@ project rather than within one Application.
 A Process's **effective grant set** is every level's `secrets` list merged with
 its own, computed once by the lowering
 ([chapter 10](10-project-intent.md#the-effective-intent),
-[0125](../../docs/adr/model/0125-the-effective-intent-is-a-lowering.md)). Layer 2
+[0012](../../docs/adr/model/0012-shared-intent-descends-and-is-lowered.md)). Layer 2
 reads the lowered Process, so a shared grant renders one policy statement per
 Process that holds it, never one shared statement. Renaming a Process renames its identity: role,
 policy and bindings churn, and the new identity must be granted before it
@@ -185,13 +185,13 @@ starts.
 ### What a grant confers
 
 **The grant unit is the path.** A KV-v2 `read` returns the whole document stored
-at that path ([0009](../../docs/adr/model/0009-vault-read-is-per-path.md)), so a
+at that path ([0008](../../docs/adr/model/0008-vault-read-is-per-path.md)), so a
 policy naming a key subset would promise a narrowing the store never enforces.
 The previous version of this chapter promised exactly that, "`read` on the
 granted path and keys only", and it was false. That claim is deleted.
 
 That is the `kv` engine's rule. A grant is a union on `engine`
-([0085](../../docs/adr/model/0085-a-grant-is-a-union-on-engine.md)): a `database`
+([0029](../../docs/adr/model/0029-a-grant-is-a-union-on-engine.md)): a `database`
 grant names a role and confers a read on `database/creds/<role>`, and a `transit`
 grant names a key and the operations it performs, each conferring exactly one
 Vault path. The unit is still one path per grant; what differs is which path the
@@ -201,7 +201,7 @@ declaration derives.
 nothing, and no author may read it as an access boundary. `keys: ['*']` is not
 vocabulary. The boundary can therefore be drawn only at the path, which fixes
 the Secret Subtree layout: **no path may hold keys for more than one reader
-set** ([0023](../../docs/adr/model/0023-grant-unit-is-the-path.md)).
+set** ([0028](../../docs/adr/model/0028-grant-unit-is-the-path.md)).
 `secret/data/platform/postgres` splits per consumer, and until it does, every
 one of its readers holds `read` on its neighbours' credentials.
 
@@ -230,7 +230,7 @@ DB_PASSWORD=${secret:secret/data/platform/postgres/kb#password}
 
 The placeholder's path half **byte-matches** the granted path, no mount table,
 no `data/` strip, no engine taxonomy
-([0027](../../docs/adr/model/0027-secret-reference-join-key.md)). The `#<key>` half
+([0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)). The `#<key>` half
 selects which value fills the variable and confers nothing.
 
 | derives | detail |
@@ -271,13 +271,13 @@ those keys.
 Policy is **default-deny and derived**. A Process's legal flows are exactly its
 declared edges, the surfaces it declares, the exposure routes that name it, its
 effective grant set, and a platform baseline no Application authors
-([0035](../../docs/adr/model/0035-network-policy-default-deny.md)).
+([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)).
 
 It is evaluated **per pod**, and it has to be. A namespace holds every Application
-of its project ([0063](../../docs/adr/model/0063-intent-authored-per-project.md)), so a
+of its project ([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)), so a
 namespace wall separates nothing and no isolation claim may rest on one.
 Isolation in this model is the derived edge set plus per-Process identity
-([0024](../../docs/adr/model/0024-identity-per-process.md)), both per Process, both
+([0031](../../docs/adr/model/0031-identity-per-process.md)), both per Process, both
 readable in one file.
 
 Opt-in was already measured here and it lost: three NetworkPolicy objects exist
@@ -286,7 +286,7 @@ Three of thirty is what opt-in produces on this estate, and the number is the
 argument. Default-deny is expressible only because the edge set is complete: every legal flow named by a declaration someone owns.
 
 The producer is the `networking` adapter
-([0074](../../docs/adr/model/0074-networking-adapter-emits-policy.md)): every
+([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)): every
 `NetworkPolicy` in the estate, per Process from the allow set below plus the two
 baseline rules, and one namespace-wide default-deny per project. Nothing else
 emits one, which is what makes the DNS assertion checkable against a single
@@ -296,7 +296,7 @@ producer.
 
 | rule | derived from | direction |
 |---|---|---|
-| to a provider's surface port | each `dependsOn` edge of the Process; for an edge to a Registered Unmanaged Surface, to the address and port the register carries ([0090](../../docs/adr/model/0090-edges-resolve-against-the-register.md)) | egress |
+| to a provider's surface port | each `dependsOn` edge of the Process; for an edge to a Registered Unmanaged Surface, to the address and port the register carries ([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)) | egress |
 | from each consumer of a surface | the inbound edge set, over the composed union | ingress |
 | to the Secret Store | any grant in the Process's effective set | egress |
 | from the route tier carrying the audience | a route on the Application's `exposure` naming this Process | ingress |
@@ -324,7 +324,7 @@ Process at once.
 ### The token is mounted only where the pod authenticates
 
 `automountServiceAccountToken` derives from **`delivery`**, and from nothing else
-([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)):
+([0031](../../docs/adr/model/0031-identity-per-process.md)):
 
 | the Process's grants | token |
 |---|---|
@@ -338,7 +338,7 @@ authenticates to anything. Under `delivery: file` the kubelet does the
 projecting. Only `delivery: self` means *the pod itself* presents its
 ServiceAccount token to Vault, which is the one case a token is for.
 
-This is [0075](../../docs/adr/model/0075-no-process-rbac-in-v1.md)'s reasoning
+This is [0041](../../docs/adr/model/0041-no-process-rbac-in-v1.md)'s reasoning
 applied to the token instead of the Role, and it reaches the same place: the
 privilege a Process of this estate actually needs is smaller than the default,
 and the field that says so already exists.
@@ -347,7 +347,7 @@ A Process that calls the **Kubernetes** API (`agents-api` creates Applications a
 runtime) needs a token that no grant implies. It declares so with a reason,
 recorded in the projection its owner reads back, which lets the estate count how
 many pods hold a token they were not derived one for
-([0087](../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md)).
+([0031](../../docs/adr/model/0031-identity-per-process.md)).
 
 ### No Role grants what an absence already denies
 
@@ -355,7 +355,7 @@ Three Applications share `data-system`, and the only thing stopping `platform-va
 ServiceAccount from reading `platform-postgres`'s Secret is that no Role grants
 it. That is an absence rather than a boundary, and the model turns it into a
 checked property rather than rendering RBAC
-([0075](../../docs/adr/model/0075-no-process-rbac-in-v1.md)).
+([0041](../../docs/adr/model/0041-no-process-rbac-in-v1.md)).
 
 **v1 renders no `Role`, `ClusterRole`, `RoleBinding` or `ClusterRoleBinding` for
 a Process**, and no rendered Deliverable may grant access to `secrets`,
@@ -370,7 +370,7 @@ A Process that genuinely needs the Kubernetes API (`agents-api` creates
 Applications at runtime) is the case this rule refuses to guess at. It is an
 unregistered capability today, so it belongs in a Bidirectional Ledger with an
 owner until the model has vocabulary for it
-([0055](../../docs/adr/model/0055-bidirectional-ledgers.md)), not in an
+([0038](../../docs/adr/model/0038-bidirectional-ledgers.md)), not in an
 adapter's default.
 
 ### Audit before enforce
@@ -384,12 +384,12 @@ never be ticked: a grep for `cilium|calico|kube-router|flannel` across `src/`,
 `spec/`, `schemas/`, `fixtures/` and `docs/` returned zero hits, and no decision
 had picked a CNI. It becomes satisfiable only through a CNI carrying a
 non-enforcing policy stage ([chapter 60](60-setup.md#cni),
-[0036](../../docs/adr/model/0036-cni-selection.md)).
+[0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)).
 
 **Render-only is the v1 stage**
-([0084](../../docs/adr/model/0084-render-only-is-the-v1-policy-stage.md)). The
+([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)). The
 `networking` adapter emits the complete policy set and the tree is diffed in
-review; nothing loads it until [0036](../../docs/adr/model/0036-cni-selection.md)
+review; nothing loads it until [0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)
 picks a CNI with a non-enforcing stage. What v1 owes is the policies, and
 promoting them is a rollout decision waiting on a premise nobody has settled,
 so an unpicked CNI does not block the render.
@@ -404,7 +404,7 @@ An edge whose target resolves to neither an Application in the union nor a Regis
 Unmanaged Surface is `E_UNRESOLVED_APPLICATION`, and one resolving to a register
 entry without coordinates for that surface is
 `E_UNMANAGED_SURFACE_WITHOUT_COORDINATES`
-([0090](../../docs/adr/model/0090-edges-resolve-against-the-register.md)). Both
+([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)). Both
 existed as silence before: `{application: stalwart, surface: smtp}` derived no
 coordinates and therefore no egress rule, producing a valid policy with a
 missing rule, a timeout on-call rather than a build error.
@@ -450,11 +450,11 @@ no assignment in between.*
 
 Two edges carry the amendment. `namespace` hangs off `project`, not off `id`, so
 ten live namespaces come out unchanged and no Application can name its own
-([0063](../../docs/adr/model/0063-intent-authored-per-project.md)). And `placement`
+([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)). And `placement`
 feeds both `nodeSelector` and `requests + limits`, so the numbers a Process
 asks for and the nodes it may land on are one declaration compared against one
 pinned input: the node contract's `allocatable`, never a live read
-([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). No node
+([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)). No node
 satisfying every declared dimension is `E_PLACEMENT_UNSATISFIABLE` at build,
 before an object is rendered. Eligibility is not bin-packing: three Processes
 asking `memory: 2Gi` each pass against a 4096Mi node, and the scheduler refuses
@@ -463,7 +463,7 @@ the third at apply.
 A node left the map altogether, and with it four edges. There is no derived
 `hostname (FQDN)` any more: `exposure` hangs off the **Application**, and the `host`
 it carries is a full authored FQDN
-([0018](../../docs/adr/model/0018-exposure-by-audience.md)), so the
+([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)), so the
 IngressRoute, the reachability entry, both edge catalogs, the Gatus endpoint and
 the published `resolved.yml` all hang off the declaration itself rather than off
 a value layer 2 assembled from a label, a tier policy and a cluster domain. The
@@ -477,7 +477,7 @@ says which host and path, the Process says which port.
 The map is dense on purpose and is not meant to be read by eye. Its value is
 that the three properties below are **checkable by a script** over the
 renderer's attribution table, which
-[0054](../../docs/adr/model/0054-adapter-attribution.md) requires every Deliverable to
+[0037](../../docs/adr/model/0037-six-registered-adapters-satisfy-one-port.md) requires every Deliverable to
 carry.
 
 ### Worked trace: one exposure declaration
@@ -514,7 +514,7 @@ an object is the defect.
 Every rendered object is reachable from at least one declaration or one pinned
 input. An object with no inbound edge is hand-written, and must either become
 derived or be entered in a Bidirectional Ledger with an owner and a reason
-([0055](../../docs/adr/model/0055-bidirectional-ledgers.md)).
+([0038](../../docs/adr/model/0038-bidirectional-ledgers.md)).
 
 This is the property that was violated seven ways over: `reachability.yml`, both
 edge catalogs, both IngressRoutes and the Gatus endpoint each declared
@@ -542,7 +542,7 @@ adapter. Every application declared the identical value. Out-degree zero.
 
 No surface is exempt from this check. The override mechanism that used to be
 exempt is deleted
-([0031](../../docs/adr/model/0031-derived-overrides-with-reason.md)), so the
+([0022](../../docs/adr/model/0022-a-derived-value-has-one-declaring-site.md)), so the
 dead-declaration property now runs over every declaration in every project file.
 
 ## What the properties would have caught
@@ -582,10 +582,10 @@ gates a deploy is co-testing, and stays parked in
    **Blocks:** rendering the allow-list at all; it stays hand-maintained until
    the predicate is written here.
 2. ~~**Nothing enforces the rendered policy set.**~~ Decided: render-only is
-   v1's stage ([0084](../../docs/adr/model/0084-render-only-is-the-v1-policy-stage.md)),
+   v1's stage ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)),
    so this is not a gap in the model but the first stage of a sequence whose
-   exit criterion is [0036](../../docs/adr/model/0036-cni-selection.md)'s lab
-   evaluation. That evaluation is 0036's own settling test and is recorded
+   exit criterion is [0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)'s lab
+   evaluation. That evaluation is 0035's own settling test and is recorded
    there, not here.
 
 ## Diagram sources

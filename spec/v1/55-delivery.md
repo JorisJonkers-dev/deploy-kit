@@ -3,16 +3,16 @@
 How a render reaches the cluster, how an Application's new version replaces
 the old one, and how its schema moves with it. Until 2026-09-24 this was
 "defined separately" from the model; it is now part of it
-([0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md)).
+([0050](../../docs/adr/model/0050-delivery-is-part-of-the-model.md)).
 
 The model's three demands on delivery stand, and this chapter is how they are
 met rather than a list of them:
 
 | demand | decided in | how delivery meets it |
 |---|---|---|
-| **Release Unit atomicity** | [0062](../../docs/adr/model/0062-application-is-the-release-unit.md) | [Switchover](#switchover): a barrier over every member of the Application, run by the [Release Gate](#the-release-gate) |
-| **Durability Class gating** | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | no destructive operation proceeds automatically against a volume declared `recoverable` or `irreplaceable`: the applier never prunes such a claim ([chapter 30](30-deliverables.md#flagger-ready-objects)) |
-| **Pinned inputs only** | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | [Rendered artifacts and pins](#rendered-artifacts-and-pins): what is applied is a signed artifact named by digest, rendered from a recorded lock |
+| **Release Unit atomicity** | [0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md) | [Switchover](#switchover): a barrier over every member of the Application, run by the [Release Gate](#the-release-gate) |
+| **Durability Class gating** | [0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md) | no destructive operation proceeds automatically against a volume declared `recoverable` or `irreplaceable`: the applier never prunes such a claim ([chapter 30](30-deliverables.md#flagger-ready-objects)) |
+| **Pinned inputs only** | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-is-a-pinned-input.md) | [Rendered artifacts and pins](#rendered-artifacts-and-pins): what is applied is a signed artifact named by digest, rendered from a recorded lock |
 
 ## Scope
 
@@ -21,7 +21,7 @@ Application's Processes from the old version to the new one. Nothing pushes to
 the cluster, so there is one applier, no deploy credential outside the
 cluster, and Flagger owns only the objects it generates, which the render
 therefore omits
-([0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md)).
+([0050](../../docs/adr/model/0050-delivery-is-part-of-the-model.md)).
 
 What is in scope, and the section that specifies each:
 
@@ -58,7 +58,7 @@ What is not in scope:
 Each Project's render is one OCI artifact, signed, and named by digest. A deploy
 is a commit that changes which digest a Project's source points at: the
 estate's git history is its deploy log, and no rendered Deliverable is committed
-anywhere ([0133](../../docs/adr/model/0133-a-project-is-delivered-as-a-signed-artifact-pinned-by-digest.md)).
+anywhere ([0051](../../docs/adr/model/0051-a-project-is-delivered-as-a-signed-artifact.md)).
 
 ```text
 ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Project
@@ -117,7 +117,7 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   every image alias it names resolved to a digest, a UID and a GID in the
   fragment's own contribution to the images lock. A composition therefore never
   renders a reference nothing can pull. This amends
-  [0037](../../docs/adr/model/0037-composition-oci-fragments.md), whose fragment
+  [0042](../../docs/adr/model/0042-declarations-compose-from-intent-fragments.md), whose fragment
   was published independently of any image build.
 - **Rollback is a revert in the application repository.** The revert publishes
   a fragment, which composes a render, which moves the pin forward to the old
@@ -136,7 +136,7 @@ delivery machinery ([#148](https://github.com/JorisJonkers-dev/deploy-kit/issues
 The **switchover** is how an Application's new version replaces the old one. It
 is derived from the owner's `cutover`
 ([chapter 10](10-project-intent.md#cutover-is-declared-not-promised),
-[0128](../../docs/adr/model/0128-cutover-names-the-promise.md)) and recorded per
+[0021](../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)) and recorded per
 Process in the Resolved Deployment
 ([chapter 20](20-resolved-deployment.md#derived-mechanics)):
 
@@ -179,7 +179,7 @@ between Processes goes through their own Services, and no edge flip moves it.
 
 The **Release Gate** is the first-party controller that answers the switchover's
 two questions, from the Resolved Deployment and nothing else
-([0132](../../docs/adr/model/0132-the-release-gate-answers-the-switch.md)):
+([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)):
 
 | question | asked | the gate answers yes when |
 |---|---|---|
@@ -229,7 +229,7 @@ race the fix.
 ## Migrations
 
 The estate has **one migration system**: Liquibase, with YAML changelogs
-([0130](../../docs/adr/model/0130-migration-is-declared-on-the-application.md)).
+([0026](../../docs/adr/model/0026-migration-is-declared-on-the-application.md)).
 An Application that derives a database answers how its schema moves
 ([chapter 10](10-project-intent.md#migration)), and a project's one database has
 one Application that moves it:
@@ -251,7 +251,7 @@ A migration is safe when the version still serving keeps working against the
 schema it leaves behind. The model cannot read a changelog to decide that, so it
 is proven where the changelog and both versions exist, the application's own
 CI, and the proof travels with the Intent Fragment
-([0135](../../docs/adr/model/0135-a-migration-is-proven-against-the-serving-version.md)).
+([0026](../../docs/adr/model/0026-migration-is-declared-on-the-application.md)).
 Three obligations, each a gate on publishing the fragment:
 
 | obligation | what it runs | what it catches |
@@ -368,7 +368,7 @@ with the revision.
 
 Rotating a secret is not a release, so it never starts a switchover
 ([chapter 10](10-project-intent.md#rotation-is-not-a-release),
-[0134](../../docs/adr/model/0134-rotating-a-secret-is-not-a-release.md)).
+[0053](../../docs/adr/model/0053-rotating-a-secret-is-not-a-release.md)).
 Flagger starts an analysis whenever a Canary's pod template changes, and by
 default it also counts a change to any Secret or ConfigMap the template
 references as one. It also gives the primary its own copies of the Secrets it
@@ -400,7 +400,7 @@ primary is Flagger's ([What the render leaves to Flagger](#what-the-render-leave
 
 Flux applies the render and Flagger switches `blue-green` Processes, so the two
 must never own the same field
-([0137](../../docs/adr/model/0137-the-render-leaves-flaggers-objects-to-flagger.md)).
+([0055](../../docs/adr/model/0055-the-render-leaves-flaggers-objects-to-flagger.md)).
 For each `blue-green` Process, the render carries a `Canary` naming its
 Deployment, and Flagger generates the rest:
 

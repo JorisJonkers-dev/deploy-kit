@@ -51,6 +51,5 @@ retired, read outside a quotation.
 ## Flag ADR conflicts
 
 If output contradicts an existing ADR, surface it explicitly rather than
-silently overriding it, and check whether the ADR is itself superseded before
-raising the conflict: a citation to a superseded decision needs its successor
-named in the same sentence, or `lint:meaning` fails on it too.
+silently overriding it. A decision that has to change is rewritten in its one
+record, never superseded.

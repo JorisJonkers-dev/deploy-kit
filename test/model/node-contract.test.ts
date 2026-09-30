@@ -95,7 +95,7 @@ describe("the worked node contract", () => {
   });
 
   it("publishes a medium no Process may ask for", () => {
-    // 0123: the contract's vocabulary is the wider one. Three Pis boot from SD
+    // 0048: the contract's vocabulary is the wider one. Three Pis boot from SD
     // cards, and `sdcard` is not a `placement.disk.media` value.
     const media = new Set(
       parsed()

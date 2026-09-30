@@ -11,7 +11,7 @@ One boundary runs through the whole document and is stated once here: **how
 the estate deploys is part of the model, and how dependency on other units for
 testing gates a deploy is not.** Delivery was parked on 2026-09-07 and rejoined
 the model on 2026-09-24
-([0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md)): Flux pulls
+([0050](../../docs/adr/model/0050-delivery-is-part-of-the-model.md)): Flux pulls
 a signed, pinned render per Project and Flagger switches it, as
 [chapter 55](55-delivery.md) specifies. Co-testing stays parked in
 [`docs/adr/deferred/`](../../docs/adr/deferred/README.md), and nothing in these
@@ -42,7 +42,7 @@ premise is re-opened against the new scale rather than re-worded.
 ## Substrate
 
 Kubernetes stays, and not for the reasons it is usually bought
-([0002](../../docs/adr/model/0002-kubernetes-as-substrate.md)). Rescheduling does not
+([0002](../../docs/adr/model/0002-kubernetes-is-the-substrate-for-one-applier.md)). Rescheduling does not
 exist here: storage is `local-path`, all fourteen PVCs are `ReadWriteOnce`, and
 a `local-path` volume does not survive its node, so every stateful Process is
 pinned to one machine by construction. Control-plane HA does not exist: every
@@ -55,13 +55,14 @@ upgrades.
 
 The substrate is retained as **a declarative object store with field-level
 ownership and an authorisation boundary, that happens to also run containers**.
-Two properties earn it: the API server as an authorisation boundary between
-appliers, and server-side-apply field ownership as the signal that a human
-edited a field something else owns. No design in this specification may cite
+Two properties earn it: the API server as an authorisation boundary around
+the one applier, bounding what its identity may write, and server-side-apply
+field ownership as the signal that a human or a second controller edited a
+field something else owns. No design in this specification may cite
 rescheduling, HA or horizontal scale as justification.
 
 Both retained properties are made real by *how objects are applied*: which
-identity applies, under which field manager. Delivery has one applier, Flux,
+identity applies. Delivery has one applier, Flux,
 pulling from inside the cluster, so there is one applying identity for
 everything rendered, and Flagger owns only the objects it generates, which the
 render therefore omits ([chapter 55](55-delivery.md#scope)). The model's own
@@ -71,7 +72,7 @@ object attributed to exactly one adapter, so there is always a single answer to
 
 The layer-1 documents (Project Intent and Platform Intent alike) survive a
 substrate swap: neither names a Kubernetes kind, a Traefik field or a k3s flag
-([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)). The
+([0011](../../docs/adr/model/0011-authored-values-name-model-concepts.md)). The
 registered adapters do not: five of the six emit Kubernetes kinds and the sixth
 emits Vault configuration, which is why the swap is a v2 migration rather than
 an undo once repositories author against a shipped v1.
@@ -108,7 +109,7 @@ across the estate or draws on a shared finite resource
 of the two authored documents a value is written in: an Application's own in
 [chapter 10](10-project-intent.md), the estate's in
 [chapter 14](14-platform-intent.md)
-([0095](../../docs/adr/model/0095-platform-intent-is-the-second-authored-document.md)).
+([0045](../../docs/adr/model/0045-platform-intent-is-the-second-authored-document.md)).
 
 The counter-experiment is on record. Two layers, with resolution private to the
 renderer, produced three mutually incompatible documents all claiming
@@ -120,7 +121,7 @@ wrong.
 Layer 2 is derived from a **closed set of pinned, digested inputs**: Project
 Intent, the Platform Intent, the locks, and a ClusterState snapshot carrying its
 own digest ([0006](../../docs/adr/model/0006-pinned-inputs.md),
-[0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)). Nothing at render
+[0034](../../docs/adr/model/0034-cluster-state-is-a-pinned-input.md)). Nothing at render
 time reads live cluster state. Reproducibility is therefore conditional and
 true: identical inputs *including* `clusterStateDigest` produce a byte-identical
 tree, so a differing render with identical digests is a defect, never weather.
@@ -136,12 +137,11 @@ Release Gate switch what must keep serving.
 ## Programme scope
 
 v1 is the model and its delivery
-([0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md), superseding
-[0059](../../docs/adr/model/0059-v1-scope-stopping-rule.md)): the two layer-1
+([0050](../../docs/adr/model/0050-delivery-is-part-of-the-model.md)): the two layer-1
 vocabularies, composition, layer-2 derivation, the registered renderer that
 serializes layer 3, and the pull delivery of [chapter 55](55-delivery.md). It
 ships when it renders the live estate, foundation included
-([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)), from declared
+([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)), from declared
 intent, and that render is delivered through per-Project pins and switched by
 Flagger.
 
@@ -165,9 +165,9 @@ now how they are met.
 
 | demand | decided in | what delivery does |
 |---|---|---|
-| Release Unit atomicity | [0060](../../docs/adr/model/0060-release-unit.md), superseded by [0062](../../docs/adr/model/0062-application-is-the-release-unit.md) | no member's new version receives traffic until every member's new version is healthy; if any member fails its budget, none switch and the old versions keep serving |
-| Durability Class gating | [0015](../../docs/adr/model/0015-durability-class-per-volume.md) | no destructive operation proceeds automatically against a volume declared `recoverable` or `irreplaceable` |
-| Pinned inputs only | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-pinned-input.md) | render from recorded digests (Intent, Platform Intent, locks, ClusterState), never from live cluster state |
+| Release Unit atomicity | [0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md) | no member's new version receives traffic until every member's new version is healthy; if any member fails its budget, none switch and the old versions keep serving |
+| Durability Class gating | [0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md) | no destructive operation proceeds automatically against a volume declared `recoverable` or `irreplaceable` |
+| Pinned inputs only | [0006](../../docs/adr/model/0006-pinned-inputs.md), [0034](../../docs/adr/model/0034-cluster-state-is-a-pinned-input.md) | render from recorded digests (Intent, Platform Intent, locks, ClusterState), never from live cluster state |
 
 **The stopping rule.** Co-testing stays parked until
 [workspace#45](https://github.com/JorisJonkers-dev/workspace/issues/45) runs and
@@ -263,12 +263,6 @@ parse-checked in CI.
 | `examples/negative/duplicate-application-id/` | a negative fixture, so an invariant that stops running is detectable |
 | [`examples/refusals/`](examples/refusals/README.md) | the refusal fixtures: an alert class with no signal, a class outside the vocabulary, the `continuous`/`interrupted` pair over RWO storage, and a mixed-cutover Application |
 
-The retired push-delivery examples are not part of this specification.
-`aggregator.yml`, both aggregator workflows, the generated deployer RBAC, the
-re-apply CronJob and the Renovate manager that pinned the aggregator stay in
-[`docs/adr/deferred/examples/`](../../docs/adr/deferred/examples/) with the
-records they illustrate.
-
 Both remaining workflows are **one job with many steps**, each step carrying
 `if: ${{ !cancelled() }}`. The
 [estate agent contract](https://github.com/JorisJonkers-dev/workspace/blob/main/CLAUDE.md)
@@ -283,7 +277,7 @@ it, and what it blocks. An entry that an ADR has since decided is struck
 through, with the deciding ADR named.
 
 1. ~~**`exposure[].name` and apex hosts.**~~ Decided by
-   [0018](../../docs/adr/model/0018-exposure-by-audience.md) as amended: the hostname
+   [0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md) as amended: the hostname
    is **authored on the Application**, never assigned. An `exposure` entry carries
    `host` as the full FQDN, so no zone rule and no `<application>.<zone>`
    derivation exists anywhere, and with none, there is no apex flag left to
@@ -299,28 +293,27 @@ through, with the deciding ADR named.
    restated as contention deciding who arbitrates rather than who authors.
 
 2. **Four ConfigMap-hosted scripts, three images to build.** Code is not
-   configuration ([0012](../../docs/adr/model/0012-assets-not-code.md)), and an Asset
+   configuration ([0014](../../docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)), and an Asset
    may not be executable, so `hermes-bootstrap` (221 lines of shell),
    `n8n-hooks` (499 lines of JavaScript) and the `garage` bootstrap need
    first-party images, and the `alpine:3.21`-plus-ConfigMap pattern retires with
    them. A one-shot bootstrap among them runs as a prepare Process
    ([chapter 10](10-project-intent.md#prepare-processes)). The fourth, `postgres-init-script`, is decided: it is the derived
-   database catalog ([0080](../../docs/adr/model/0080-database-catalog-is-derived-data.md)),
+   database catalog ([0026](../../docs/adr/model/0026-migration-is-declared-on-the-application.md)),
    applied by an engine image on the same rule that makes a backup method an
-   image ([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)).
+   image ([0011](../../docs/adr/model/0011-authored-values-name-model-concepts.md)).
    - **Owner:** joris, as owner of `hermes`, `garage` and `n8n`.
    - **Settled by:** three published first-party images referenced from intent,
      then a ConfigMap census (`kubectl get configmap -A -o yaml`) in which no
      data key contains an executable script.
    - **Blocks:** rendering the live estate from intent, which is the settling
-     test of [0059](../../docs/adr/model/0059-v1-scope-stopping-rule.md) itself (now [0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md)'s), so
+     test of [0050](../../docs/adr/model/0050-delivery-is-part-of-the-model.md) itself (now [0050](../../docs/adr/model/0050-delivery-is-part-of-the-model.md)'s), so
      this blocks v1's own stopping condition.
 
 3. **Label prefix retirement.** Node facts are authored once and generate the
-   contract ([0056](../../docs/adr/model/0056-node-facts-single-source.md)), and
+   contract ([0048](../../docs/adr/model/0048-node-facts-are-authored-once.md)), and
    placement is declared as capabilities rather than labels
-   ([0017](../../docs/adr/model/0017-placement-by-capability.md), superseded by
-   [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)), so retiring a
+   ([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)), so retiring a
    prefix costs no edit in any project repository. The live nodes still carry
    two: 110 labels across 7 nodes, 55 under `platform.jorisjonkers.dev/*` and
    the same 55 under `personal-stack/*`, named after an archived repository that
@@ -330,18 +323,18 @@ through, with the deciding ADR named.
    - **Settled by:** regenerate the node contract without `personal-stack/*`,
      apply it through the generated path, and confirm `kubectl get nodes -o
      json` contains zero `personal-stack/` keys after a full reconcile.
-   - **Blocks:** [0056](../../docs/adr/model/0056-node-facts-single-source.md)'s
+   - **Blocks:** [0048](../../docs/adr/model/0048-node-facts-are-authored-once.md)'s
      single-source claim. It blocks no render: adapters emit
      `<cluster>/capability-<name>`.
 
 4. **Closing the coverage gap, re-derived.** Every kind the 2026-08-31 survey
    found unrendered now has a decision, and the three items that travelled with
    this one are gone: the duplicated adapter pairs are deleted
-   ([0098](../../docs/adr/model/0098-one-publication-path.md)),
+   ([0047](../../docs/adr/model/0047-one-publication-path.md)),
    `E_PATH_COLLISION` is a check on the path plan
-   ([0070](../../docs/adr/model/0070-path-authority-is-layer-2.md)) awaiting a
+   ([0036](../../docs/adr/model/0036-path-authority-is-layer-2.md)) awaiting a
    compiler, and Grafana's 45 authored objects become Assets of the declared
-   observability Applications ([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)).
+   observability Applications ([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)).
    What remains is the number, which is [chapter 30](30-deliverables.md#open-in-this-chapter)'s
    one open item and is owned there.
    - **Owner:** joris.
@@ -350,11 +343,11 @@ through, with the deciding ADR named.
    - **Blocks:** the v1 schedule, not the model.
 
 5. ~~**`minAvailable`.**~~ Chapter 10 proposed three fields. One became
-   `placement` ([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)),
+   `placement` ([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)),
    `sidecars` is graded by
-   [0064](../../docs/adr/model/0064-sidecars-are-process-vocabulary.md), and this
+   [0015](../../docs/adr/model/0015-sidecars-are-process-vocabulary.md), and this
    one is **graded by deletion**
-   ([0089](../../docs/adr/model/0089-replicas-derived-no-minavailable.md)). The six
+   ([0022](../../docs/adr/model/0022-a-derived-value-has-one-declaring-site.md)). The six
    live PodDisruptionBudgets are re-homed rather than derived from a declaration:
    a budget is emitted only where `replicas` exceeds one, because
    `minAvailable: 1` over a single replica blocks a drain forever.
@@ -369,8 +362,8 @@ through, with the deciding ADR named.
    keyed by cluster while Application Id uniqueness is estate-wide. With one cluster
    ([0001](../../docs/adr/model/0001-estate-scale-and-ownership.md)) the question is
    invisible, and neither
-   [0037](../../docs/adr/model/0037-composition-oci-fragments.md) nor
-   [0038](../../docs/adr/model/0038-participants-list-staleness.md) settles it.
+   [0042](../../docs/adr/model/0042-declarations-compose-from-intent-fragments.md) nor
+   [0043](../../docs/adr/model/0043-participants-list-staleness.md) settles it.
    - **Owner:** joris.
    - **Settled by:** only observable at a second cluster, decide at the 0001
      horizon review (2028-08-31) or on the day a second production cluster is
@@ -379,13 +372,13 @@ through, with the deciding ADR named.
 
 7. **Fragment signing** (chapter 40). Composition verifies `MANIFEST.sha256`
    per file and pins every fragment by digest
-   ([0037](../../docs/adr/model/0037-composition-oci-fragments.md)), which fixes
+   ([0042](../../docs/adr/model/0042-declarations-compose-from-intent-fragments.md)), which fixes
    *what* is composed but says nothing about *who* published it, while the
    artifact publishing workflow already carries `id-token: write` and
    `attestations: write`.
    - **Owner:** joris.
    - **Settled by:** choose between digest pinning alone and provenance
-     verification inside composition, recorded as an ADR resting on 0037; the
+     verification inside composition, recorded as an ADR resting on 0042; the
      test is a fragment published by an identity outside the estate failing
      composition.
    - **Blocks:** nothing in v1's render.
@@ -393,32 +386,32 @@ through, with the deciding ADR named.
 ### Retired since the rebuild
 
 - ~~**Kubernetes secrets-at-rest encryption.**~~ Decided by
-  [0028](../../docs/adr/model/0028-secrets-at-rest-gate.md): the renderer refuses
+  [0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md): the renderer refuses
   `delivery: env` and `delivery: file` unless the pinned Platform Intent
   advertises `secretsEncryption: true` (`E_SECRETS_AT_REST_REQUIRED`), normative
   in [chapter 60](60-setup.md#secrets-at-rest). The claim is open and owned
   there, not here.
 - ~~**Default-deny promotion criterion.**~~ Decided by
-  [0035](../../docs/adr/model/0035-network-policy-default-deny.md), zero undeclared
+  [0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md), zero undeclared
   flows observed over 14 days, and by
-  [0036](../../docs/adr/model/0036-cni-selection.md), which supplies the non-enforcing
+  [0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md), which supplies the non-enforcing
   policy stage the old audit-mode precondition assumed and `networking.k8s.io/v1`
   does not have.
 - ~~**Where third-party Project Intent lives.**~~ Decided by
-  [0037](../../docs/adr/model/0037-composition-oci-fragments.md): publication is
+  [0042](../../docs/adr/model/0042-declarations-compose-from-intent-fragments.md): publication is
   repository-scoped and a fragment declares the projects it contributes to, so
   splitting a multi-project repository is a convenience, never a prerequisite.
 - ~~**Fragment publication trigger**~~ and ~~**who runs composition.**~~ Decided
-  by [0037](../../docs/adr/model/0037-composition-oci-fragments.md): composition
+  by [0042](../../docs/adr/model/0042-declarations-compose-from-intent-fragments.md): composition
   runs on any publish and merges nothing. Fragments publish on merge, after the
   repository's images are built, as amended by
-  [0133](../../docs/adr/model/0133-a-project-is-delivered-as-a-signed-artifact-pinned-by-digest.md).
+  [0051](../../docs/adr/model/0051-a-project-is-delivered-as-a-signed-artifact.md).
 - ~~**The `resolved.yml` drift check's failure mode.**~~ Decided by
-  [0033](../../docs/adr/model/0033-assignments-published-back.md): the file is
+  [0032](../../docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md): the file is
   generated, never hand-edited, and its drift check fails the build in the
   repository holding it when it disagrees with a fresh compose.
 - ~~**Grading the resource class.**~~ Decided by
-  [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md): the closed
+  [0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md): the closed
   `xs`–`xl` class is replaced by `placement`, which states `memory` and `cpu` as
   raw quantities alongside the other node dimensions and is matched against
   allocatable.

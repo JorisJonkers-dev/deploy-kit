@@ -41,8 +41,9 @@ pointing at it.
    `docs/adr/README.md` (or `emf/docs/adr/README.md`) already sorts by, with
    the title and claim matching the file exactly.
 6. **Cite it correctly everywhere else you touch.** Never a bare `ADR-NNNN`
-   or bare number: always a Markdown link. A decision that supersedes another
-   updates the superseded one's own claim line and citation.
+   or bare number: always a Markdown link. A decision that changes is
+   rewritten in its one record, never superseded or annotated with an
+   amendment note; `lint:adrs` refuses both.
 7. **Run `npm run lint:adrs`.** It is the same check CI runs, so a failure
    here is the failure a pull request would get.
 

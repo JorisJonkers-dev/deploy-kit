@@ -9,11 +9,6 @@ normative: spec/v1/20-resolved-deployment.md#authority
 
 # Contention decides who declares a value
 
-> **Amended 2026-09-14.** Vocabulary renamed by
-> [0116](0116-project-application-process.md): Domain is now Project,
-> Service is Application, Workload is Process, and Service Intent is Project
-> Intent. The decision is unchanged.
-
 ## Rests on
 
 Contention decides who **arbitrates** a value, not who authors it: a value
@@ -43,11 +38,11 @@ draw on a finite pool. Contention does not silence the Application: it means the
 Application does not get the last word: the Application states its requirement, the
 platform decides whether it fits and where. Placement forced that reading.
 `memory` and `cpu` are authored per Process as raw quantities
-([0061](0061-placement-is-hard-dimensions.md)) and both are contended, so an
+([0017](0017-placement-is-hard-dimensions.md)) and both are contended, so an
 authors-only rule would forbid the field and leave the estate where it is:
 BestEffort on every pod, because a number no Application may write is a number
 nobody writes. The platform arbitrates against node `allocatable` from the
-pinned node contract ([0056](0056-node-facts-single-source.md)) and rejects what
+pinned node contract ([0048](0048-node-facts-are-authored-once.md)) and rejects what
 no node can hold with `E_PLACEMENT_UNSATISFIABLE`.
 
 This record deliberately carries the rule and no field table. The old record
@@ -58,9 +53,9 @@ strategy, and hostnames), the last recorded as open item 1 in
 separates *identity* (unique, declared, checked) from *pool* (finite,
 assigned) "because not one live hostname is derivable from an Application Id". A
 rule and a table have different lifetimes. The table lives once, at the
-normative anchor, where every row must cite which half of the rule placed it;
-that same open item is live pressure on the residue claim, which is why this
-premise is open rather than settled.
+normative anchor, where every row must cite which half of the rule placed it.
+The premise stays open because the table has not yet been shown to derive every
+row from the rule alone.
 
 ## Alternatives
 
@@ -75,9 +70,9 @@ premise is open rather than settled.
 Undo cost today: reassign authority field-by-field in the chapter-20 table
 (one file) and retire this premise: hours of editing, but the decisions the
 index rests on it ([0010](0010-flat-application-identity.md),
-[0018](0018-exposure-by-audience.md),
-[0019](0019-registered-unmanaged-surfaces.md),
-[0033](0033-assignments-published-back.md)) each lose their stated
+[0023](0023-exposure-is-declared-by-audience.md),
+[0024](0024-dependency-edges-resolve-against-the-union.md),
+[0032](0032-the-resolved-deployment-is-a-versioned-artifact.md)) each lose their stated
 justification and must restate their own.
 Becomes irreversible once: project repositories author Intent against the
 chapter-20 table: moving a field across the Intent/Resolved boundary after
@@ -90,7 +85,7 @@ that is a schema-shape change paid again in every consuming repository.
   schema change.
 - An application owner cannot read their own application's URL out of their own
   repository, so assignments must be published back rather than merely
-  computed during a render ([0033](0033-assignments-published-back.md)),
+  computed during a render ([0032](0032-the-resolved-deployment-is-a-versioned-artifact.md)),
   paid by the platform, which owns the publish-back machinery.
 - Six of the seven `kb.jorisjonkers.dev` declarations become derived, and both
   conformance tests become unnecessary rather than merely passing, paid by

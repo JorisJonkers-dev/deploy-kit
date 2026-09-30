@@ -7,7 +7,7 @@ project, two Applications of one Process each, namespace `knowledge-system`.
 **Split on 2026-09-24.** `knowledge-api` releases continuously and
 `knowledge-ingest-worker` cannot (its ReadWriteOnce volume forces a stop-start
 cutover), and one Application switches as one, so the worker is now Application
-`knowledge-ingest` ([0128](../../../../../docs/adr/model/0128-cutover-names-the-promise.md)).
+`knowledge-ingest` ([0021](../../../../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)).
 Its objects moved to `apps/knowledge-ingest/`; the namespace-wide `default-deny`
 and the two secrets both Applications share moved to the project level
 (`networkpolicy.yaml`, `vso.yaml`), as the `data` project already does. The
@@ -36,13 +36,13 @@ that had no producer and made explicit three things a renderer had been choosing
 
 | change | decided in |
 |---|---|
-| the fixed label set, `instance` now the Process and `component` the runtime | [0072](../../../../../docs/adr/model/0072-the-label-set-is-fixed.md) |
-| `automountServiceAccountToken`, `false` wherever the pod does not authenticate | [0087](../../../../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md) |
-| `runAsUser`, `runAsGroup`, and `fsGroup` on the Process holding the clone | [0082](../../../../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md) |
-| a startup probe pointed at the **liveness** endpoint, and one probe cadence | [0088](../../../../../docs/adr/model/0088-startup-probe-targets-liveness.md) |
-| an `emptyDir` for the JVM's `/tmp`, at the platform's ephemeral size | [0092](../../../../../docs/adr/model/0092-writable-paths-are-declared.md) |
-| explicit route `priority` on all five routes, rather than a rule-length sort | [0093](../../../../../docs/adr/model/0093-route-precedence-is-derived.md) |
-| `size` on the PVC, and the backup a Durability Class derives | [0081](../../../../../docs/adr/model/0081-volume-size-is-a-hard-dimension.md), [0077](../../../../../docs/adr/model/0077-durability-derives-a-backup.md) |
+| the fixed label set, `instance` now the Process and `component` the runtime | [0039](../../../../../docs/adr/model/0039-the-label-set-is-fixed.md) |
+| `automountServiceAccountToken`, `false` wherever the pod does not authenticate | [0031](../../../../../docs/adr/model/0031-identity-per-process.md) |
+| `runAsUser`, `runAsGroup`, and `fsGroup` on the Process holding the clone | [0020](../../../../../docs/adr/model/0020-hardening-is-one-platform-posture.md) |
+| a startup probe pointed at the **liveness** endpoint, and one probe cadence | [0016](../../../../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md) |
+| an `emptyDir` for the JVM's `/tmp`, at the platform's ephemeral size | [0020](../../../../../docs/adr/model/0020-hardening-is-one-platform-posture.md) |
+| explicit route `priority` on all five routes, rather than a rule-length sort | [0023](../../../../../docs/adr/model/0023-exposure-is-declared-by-audience.md) |
+| `size` on the PVC, and the backup a Durability Class derives | [0017](../../../../../docs/adr/model/0017-placement-is-hard-dimensions.md), [0018](../../../../../docs/adr/model/0018-durability-class-derives-a-backup.md) |
 
 **The "cannot derive today" column below is largely historical.** Those rows
 were decided on 2026-09-07 and their status lives in
@@ -55,8 +55,8 @@ Two files this tree used to carry, `edge/middlewares.yaml` and
 the Middleware set is emitted per tier by the `traefik` adapter into the edge
 project, and the Gatus endpoint list is an inbound derivation rendered as the
 declared `gatus` Application's own Asset in the observability project
-([0096](../../../../../docs/adr/model/0096-the-foundation-is-declared.md),
-[0098](../../../../../docs/adr/model/0098-one-publication-path.md)). This project
+([0046](../../../../../docs/adr/model/0046-the-foundation-is-declared.md),
+[0047](../../../../../docs/adr/model/0047-one-publication-path.md)). This project
 contributes routes and exposures to both; it owns neither object.
 
 ## Emitted
@@ -76,8 +76,8 @@ contributes routes and exposures to both; it owns neither object.
 | `apps/knowledge/vso.yaml` | `vso` | `secrets` at both levels, `delivery`, `rotation`, process `name` | Secret/object naming (**G-21**); which identity reads a shared path (**G-23**); the Kubernetes auth mount name |
 | `apps/knowledge/kustomization.yaml` | `kubernetes` | the emitted file set | ownership of `vso.yaml` (**G-25**) |
 | `edge/ingressroutes.yaml` | `traefik`, for the tier each route's audience selects | the Application's `exposure`: authored `host`, the exposure `audience` and five routes, four overriding it to `anonymous`, each naming `knowledge-api` and its `http` surface | - |
-| `apps/knowledge/backup.yaml` | `kubernetes` | `durability: irreplaceable` plus `engine: files` on the vault clone | none (0077) |
-| `apps/vso-secrets/policies/knowledge-api.policy.json` | `vault-policy` | the three KV grants, each with its `metadata` sibling | none (0073, 0086) |
+| `apps/knowledge/backup.yaml` | `kubernetes` | `durability: irreplaceable` plus `engine: files` on the vault clone | none (0018) |
+| `apps/vso-secrets/policies/knowledge-api.policy.json` | `vault-policy` | the three KV grants, each with its `metadata` sibling | none (0040, 0029) |
 | `apps/vso-secrets/policies/knowledge-api.role.json` | `vault-policy` | the Process's ServiceAccount and namespace | - |
 
 ## Deliberately absent, and correct
@@ -106,7 +106,7 @@ project; the Gatus endpoint list, an Asset of the declared `gatus` Application; 
 `vso`'s `VaultConnection` in `vso-system`. The per-Process image digests that
 were once an `image-metadata` document are in this Application's `resolved.yml`
 projection, and the Flux `Kustomization` for `apps-knowledge` is delivery's
-([0098](../../../../../docs/adr/model/0098-one-publication-path.md)).
+([0047](../../../../../docs/adr/model/0047-one-publication-path.md)).
 
 ## Gaps
 

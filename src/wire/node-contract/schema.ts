@@ -3,10 +3,10 @@
 //
 // It is generated from one authored file per node and pinned with the Platform
 // Intent, which names it by digest
-// (docs/adr/model/0056-node-facts-single-source.md). It is the other half of
+// (docs/adr/model/0048-node-facts-are-authored-once.md). It is the other half of
 // every placement comparison: a Process declares hard dimensions and layer 2
 // matches them against exactly these facts, never against a live cluster
-// (docs/adr/model/0061-placement-is-hard-dimensions.md).
+// (docs/adr/model/0017-placement-is-hard-dimensions.md).
 //
 // `memory_mib` and `usable_gib` carry the spelling the specification uses for
 // them, in chapter 60's published-facts table and in the chapters that match

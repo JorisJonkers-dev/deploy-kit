@@ -29,7 +29,7 @@ The tree is deleted in one pull request when both of these hold:
    removed from `Pipeline Complete`.
 
 What that pull request keeps: every oracle file under `spec/v1/examples/`, the
-constraint ledger without its OCL column, and the descriptor check. What it
+constraint parity test without its OCL column, and the descriptor check. What it
 deletes: this directory; the `emf` CI job and the `ADR contract (emf)` step in
 `.github/workflows/ci.yml`; the `java-kotlin` entry in
 `.github/workflows/codeql.yml`; `test/emf-wiring.test.ts`, with `RULE-061`,
@@ -82,7 +82,7 @@ Two tiers, under one parent `pom.xml` that owns the Tycho configuration and the
 target platform. `bundles/` holds one Maven module per pipeline stage: what
 Tycho builds against `emf.target`, and what an examiner imports into Eclipse.
 `tests/` holds what Maven alone builds and runs, and what no examiner opens
-([0122](adr/emf/0122-bundles-and-tests-are-separate-tiers.md)). The boundary
+([0081](adr/emf/0081-bundles-and-tests-are-separate-tiers.md)). The boundary
 answers the question a flat list left every reader to work out from a
 `pom.xml`: is this file graded, and will a teacher open it.
 
@@ -117,7 +117,7 @@ Xtext's runtime hooks are Java, and a bundle compiles through Tycho's JDT
 compiler against a target platform holding no Kotlin unit, so a language other
 than Java is a bundle's problem before it is anything else. `tests/` carries
 none of those constraints and is Kotlin, the estate's JVM language, with the
-test idiom its other repositories run: JUnit 5, AssertJ, ArchUnit, and a test
+test idiom its other repositories run: JUnit 6, AssertJ, ArchUnit, and a test
 function named as a sentence in backticks.
 
 ## Metamodels
@@ -200,10 +200,10 @@ part of the vocabulary. And the Platform classes live in the Project Intent
 package, because a tier's proxy is an Application a project file declares, and
 one package is what lets that be an Ecore reference.
 
-The constraint ledger's OCL column lives in `emf/`: a table mapping each
-`CONS-NNN` id to the OCL invariant that enforces it. `tests/parity` fails when a
-ledger constraint has no invariant, or an invariant names a code no ledger row
-carries.
+Constraint parity is checked by code: every OCL invariant is named by the
+diagnostic code it emits, and the root's parity test compares those names with
+the TypeScript checks and the refused fixtures
+([0068](../../docs/adr/architecture/0068-two-implementations-meet-at-the-parity-table.md)).
 
 ## Concrete syntax
 
@@ -264,7 +264,7 @@ transformation executor.
 the Project or an Application is merged onto the Processes that hold it, and what
 comes out is the Effective Intent, in which `EffectiveProject` and
 `EffectiveApplication` carry no Shared Intent at all and the Process carries all
-of it ([0125](../../docs/adr/model/0125-the-effective-intent-is-a-lowering.md)).
+of it ([0012](../../docs/adr/model/0012-shared-intent-descends-and-is-lowered.md)).
 Source and target are the same metamodel, because the shapes differ by two
 classes and a Process is a Process in both. It runs after the constraints and
 before composition, and it has no error path: a duplicate is refused before it,
@@ -296,7 +296,7 @@ against the committed oracles, the ledger checks, and the module rules. It is
 built and run by Maven only, and no examiner opens it.
 
 It reaches the pipeline through the pipeline's own interface, and through nothing
-else ([0121](adr/emf/0121-parity-crosses-the-cli-file-interface.md)): arguments
+else ([0080](adr/emf/0080-parity-crosses-the-cli-file-interface.md)): arguments
 and input files in; an exit code, diagnostics, the parsed intent, the descriptor
 and the rendered tree out. A run of the build leaves those files under the build
 output of the module that wrote them, one directory per case, mirroring
@@ -346,7 +346,7 @@ mutation score, from `scripts/summary.sh`. The ADR lint for `emf/docs/adr/` runs
 in the existing `contracts` job, as `node scripts/lint-adrs.ts emf`.
 
 `verify` runs these gates, in this order, and fails on the first that does not
-hold ([0115](adr/emf/0115-the-emf-gates-are-estate-shaped.md)):
+hold ([0079](adr/emf/0079-the-emf-gates-are-estate-shaped.md)):
 
 | gate | plugin | fails when |
 |---|---|---|
