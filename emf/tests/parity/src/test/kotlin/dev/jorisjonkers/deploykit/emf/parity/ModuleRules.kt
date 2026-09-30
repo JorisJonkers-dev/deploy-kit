@@ -13,7 +13,7 @@ import kotlin.streams.asSequence
 /**
  * The module rules of docs/architecture.md#modules, and the classes they are held over, kept apart
  * from the suite that runs them so the same rule can be run over a fixture that breaks it
- * (docs/adr/architecture/0104-every-enforced-rule-has-an-id-a-row-and-a-fixture.md).
+ * (docs/adr/architecture/0066-every-enforced-rule-has-an-id-a-row-and-a-fixture.md).
  */
 object ModuleRules {
     const val ROOT = "dev.jorisjonkers.deploykit.emf."

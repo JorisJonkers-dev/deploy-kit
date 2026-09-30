@@ -33,7 +33,7 @@ What the tree does **not** show is that all three reconcile as one unit, see
 [G-01](#g-01), the most important row here.
 
 Attribution is a property of the producing adapter, declared in the registry
-(0054), not an annotation on the object, which was considered and rejected
+(0037), not an annotation on the object, which was considered and rejected
 because an edit can lose it. The `# adapter:` header on each file is a reading
 aid; the table below is the attribution.
 
@@ -50,13 +50,13 @@ made three derivations explicit that a renderer had been choosing:
 
 | change | decided in |
 |---|---|
-| the fixed label set, `instance` now the Process and `component` the runtime | [0072](../../../../../docs/adr/model/0072-the-label-set-is-fixed.md) |
-| `automountServiceAccountToken`, `false` wherever the pod does not authenticate | [0087](../../../../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md) |
-| `runAsUser`, `runAsGroup`, and `fsGroup` where a volume is held | [0082](../../../../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md) |
-| a startup probe pointed at the **liveness** endpoint, and one probe cadence | [0088](../../../../../docs/adr/model/0088-startup-probe-targets-liveness.md) |
-| an `emptyDir` per declared writable path, at the platform's ephemeral size | [0092](../../../../../docs/adr/model/0092-writable-paths-are-declared.md) |
-| explicit route `priority`, rather than Traefik's rule-length sort | [0093](../../../../../docs/adr/model/0093-route-precedence-is-derived.md) |
-| a `PodDisruptionBudget` only above one replica, as `maxUnavailable` | [0089](../../../../../docs/adr/model/0089-replicas-derived-no-minavailable.md) |
+| the fixed label set, `instance` now the Process and `component` the runtime | [0039](../../../../../docs/adr/model/0039-the-label-set-is-fixed.md) |
+| `automountServiceAccountToken`, `false` wherever the pod does not authenticate | [0031](../../../../../docs/adr/model/0031-identity-per-process.md) |
+| `runAsUser`, `runAsGroup`, and `fsGroup` where a volume is held | [0020](../../../../../docs/adr/model/0020-hardening-is-one-platform-posture.md) |
+| a startup probe pointed at the **liveness** endpoint, and one probe cadence | [0016](../../../../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md) |
+| an `emptyDir` per declared writable path, at the platform's ephemeral size | [0020](../../../../../docs/adr/model/0020-hardening-is-one-platform-posture.md) |
+| explicit route `priority`, rather than Traefik's rule-length sort | [0023](../../../../../docs/adr/model/0023-exposure-is-declared-by-audience.md) |
+| a `PodDisruptionBudget` only above one replica, as `maxUnavailable` | [0022](../../../../../docs/adr/model/0022-a-derived-value-has-one-declaring-site.md) |
 
 **The "cannot derive today" column below is largely historical.** Twenty-six of
 those rows were decided on 2026-09-07 and the row-by-row status lives in
@@ -69,8 +69,8 @@ Two files this tree used to carry, `edge/middlewares.yaml` and
 the Middleware set is emitted per tier by the `traefik` adapter into the edge
 project, and the Gatus endpoint list is an inbound derivation rendered as the
 declared `gatus` Application's own Asset in the observability project
-([0096](../../../../../docs/adr/model/0096-the-foundation-is-declared.md),
-[0098](../../../../../docs/adr/model/0098-one-publication-path.md)). This project
+([0046](../../../../../docs/adr/model/0046-the-foundation-is-declared.md),
+[0047](../../../../../docs/adr/model/0047-one-publication-path.md)). This project
 contributes routes and exposures to both; it owns neither object.
 
 ## The files
@@ -100,9 +100,9 @@ contributes routes and exposures to both; it owns neither object.
 | `apps/platform-valkey/networkpolicy.yaml` | **none** ([G-35](#g-35)) | one inbound edge, the baseline | the same union problem, at its sharpest ([G-22](#g-22)) |
 | `apps/platform-valkey/kustomization.yaml` | `kubernetes` | the emitted file set | - |
 | `edge/ingressroutes.yaml` | `traefik`, for the tier each route's audience selects | the `management` exposure: `host` (authored, and it does **not** follow the Application id), its one route → the rule and the backend surface, `audience: authenticated` → the forward-auth chain | the `Middleware` object the chain references ([G-31](#g-31)); entryPoint and TLS policy ([G-21](#g-21)); the CORS contribution this route makes to another project ([G-32](#g-32)) |
-| `apps/platform-postgres/backup.yaml` | `kubernetes` | `durability: irreplaceable` plus `engine: postgres`: the platform's per-class policy supplies the window and retention, the engine catalog the command | none (0077) |
-| `apps/platform-rabbitmq/backup.yaml` | `kubernetes` | `durability: recoverable` plus `engine: rabbitmq`: a backup and a sweep, no off-cluster copy | none (0077) |
-| `apps/vso-secrets/policies/postgres.policy.json` | `vault-policy` | the exporter grant and the derived off-cluster backup credential | none (0073, 0077) |
+| `apps/platform-postgres/backup.yaml` | `kubernetes` | `durability: irreplaceable` plus `engine: postgres`: the platform's per-class policy supplies the window and retention, the engine catalog the command | none (0018) |
+| `apps/platform-rabbitmq/backup.yaml` | `kubernetes` | `durability: recoverable` plus `engine: rabbitmq`: a backup and a sweep, no off-cluster copy | none (0018) |
+| `apps/vso-secrets/policies/postgres.policy.json` | `vault-policy` | the exporter grant and the derived off-cluster backup credential | none (0040, 0018) |
 | `apps/vso-secrets/policies/postgres.role.json` | `vault-policy` | the Process's ServiceAccount and namespace | - |
 
 ### Not emitted, with the reason
@@ -291,7 +291,7 @@ both trace to that declaration. The id is not reused and nothing is renumbered.
 | id | gap |
 |---|---|
 | [G-01](#g-01) | **Three Applications release independently and reconcile as one unit.** Detailed above. Two derivations over one project file disagree about what a unit is |
-| <a id="g-02"></a>G-02 | **A sidecar has no identity of its own, and no restart target.** [0064](../../../../../docs/adr/model/0064-sidecars-are-process-vocabulary.md) grades the field: `postgres-exporter` now declares its own `memory`, `cpu` and `hardening`, those render as container-level `resources` and `securityContext`, and eligibility sums both containers (2112Mi, not 2Gi). Two things it deliberately does not answer. **Identity**: [0024](../../../../../docs/adr/model/0024-identity-per-process.md) puts the ServiceAccount on the Process, and a pod has one, so a grant scoped "to the exporter" is in practice held by the database container beside it, the boundary is a comment, not a control. **Restart target**: `rotation: {tolerates: restart}` on the exporter's grant derives `{kind: Deployment, name: postgres}`, which under `Recreate` takes the datastore down to rotate a read-only connection string. A sidecar-scoped restart target is not expressible. `probes` staying on the Process is a decision rather than a gap: a failing exporter must not hold its Process out of application |
+| <a id="g-02"></a>G-02 | **A sidecar has no identity of its own, and no restart target.** [0015](../../../../../docs/adr/model/0015-sidecars-are-process-vocabulary.md) grades the field: `postgres-exporter` now declares its own `memory`, `cpu` and `hardening`, those render as container-level `resources` and `securityContext`, and eligibility sums both containers (2112Mi, not 2Gi). Two things it deliberately does not answer. **Identity**: [0031](../../../../../docs/adr/model/0031-identity-per-process.md) puts the ServiceAccount on the Process, and a pod has one, so a grant scoped "to the exporter" is in practice held by the database container beside it, the boundary is a comment, not a control. **Restart target**: `rotation: {tolerates: restart}` on the exporter's grant derives `{kind: Deployment, name: postgres}`, which under `Recreate` takes the datastore down to rotate a read-only connection string. A sidecar-scoped restart target is not expressible. `probes` staying on the Process is a decision rather than a gap: a failing exporter must not hold its Process out of application |
 | <a id="g-03"></a>G-03 | **The image digests here are illustrative, and the repository paths are the lock's.** Three third-party aliases, `postgres` → pgvector, `rabbitmq`, `valkey`, plus `postgres-exporter`, resolve through an images lock this example set does not reproduce. Nothing in layer 1 names a registry, so `docker.io/pgvector/pgvector` and `quay.io/prometheuscommunity/postgres-exporter` are the lock's mapping standing in for a lock entry. Third-party is *not* a reason to float a tag: `pgvector/pgvector:pg17` moves on every upstream build and this Process is `Recreate` on an RWO volume, so any reschedule is a fresh pull |
 | [G-04](#g-04) | **Deployment or StatefulSet is not derived, it is chosen.** Detailed above. `stateful: true` ends up selecting only a health timeout class |
 | <a id="g-05"></a>G-05 | **`replicas` has no input in this project.** The rule is "from `minAvailable`, bounded by the size of the eligible node set". No Process here declares `minAvailable`, the field is ungraded, and the eligible sets are four and seven. `1` is rendered because an RWO volume forces it, so the number is right and the derivation that is supposed to produce it never ran. The same absence removes every PDB in the project |

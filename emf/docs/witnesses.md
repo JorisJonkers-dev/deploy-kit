@@ -4,7 +4,7 @@ A row of the root [behaviour ledger](../../docs/requirements.md) whose
 behaviour is the model's own is proved in both implementations. The root row
 names the production implementation's test, under `test/model/`; this list
 names the JUnit test that proves the same behaviour here
-([0114](adr/emf/0114-model-behaviours-have-a-java-witness.md)). A witness is a
+([0078](adr/emf/0078-model-behaviours-have-a-junit-witness.md)). A witness is a
 JUnit test in whichever language its module is written, so a row here names a
 Kotlin function of the test tier or a Java method of a bundle, and the check
 reads both.

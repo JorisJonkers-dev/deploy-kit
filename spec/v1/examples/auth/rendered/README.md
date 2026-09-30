@@ -21,7 +21,7 @@ the rendered tree says about atomicity. See [G-01](#g-01), which is the most
 important entry here.
 
 Attribution is a property of the producing adapter, declared in the registry
-(0054), not an annotation on the object, which was considered and rejected
+(0037), not an annotation on the object, which was considered and rejected
 because an edit can lose it. The table below is the attribution: the files
 themselves carry no `# adapter:` header, because rendered output carries no
 commentary.
@@ -39,13 +39,13 @@ made three derivations explicit that a renderer had been choosing:
 
 | change | decided in |
 |---|---|
-| the fixed label set, `instance` now the Process and `component` the runtime | [0072](../../../../../docs/adr/model/0072-the-label-set-is-fixed.md) |
-| `automountServiceAccountToken`, `false` wherever the pod does not authenticate | [0087](../../../../../docs/adr/model/0087-token-mounted-only-for-delivery-self.md) |
-| `runAsUser`, `runAsGroup`, and `fsGroup` where a volume is held | [0082](../../../../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md) |
-| a startup probe pointed at the **liveness** endpoint, and one probe cadence | [0088](../../../../../docs/adr/model/0088-startup-probe-targets-liveness.md) |
-| an `emptyDir` per declared writable path, at the platform's ephemeral size | [0092](../../../../../docs/adr/model/0092-writable-paths-are-declared.md) |
-| explicit route `priority`, rather than Traefik's rule-length sort | [0093](../../../../../docs/adr/model/0093-route-precedence-is-derived.md) |
-| a `PodDisruptionBudget` only above one replica, as `maxUnavailable` | [0089](../../../../../docs/adr/model/0089-replicas-derived-no-minavailable.md) |
+| the fixed label set, `instance` now the Process and `component` the runtime | [0039](../../../../../docs/adr/model/0039-the-label-set-is-fixed.md) |
+| `automountServiceAccountToken`, `false` wherever the pod does not authenticate | [0031](../../../../../docs/adr/model/0031-identity-per-process.md) |
+| `runAsUser`, `runAsGroup`, and `fsGroup` where a volume is held | [0020](../../../../../docs/adr/model/0020-hardening-is-one-platform-posture.md) |
+| a startup probe pointed at the **liveness** endpoint, and one probe cadence | [0016](../../../../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md) |
+| an `emptyDir` per declared writable path, at the platform's ephemeral size | [0020](../../../../../docs/adr/model/0020-hardening-is-one-platform-posture.md) |
+| explicit route `priority`, rather than Traefik's rule-length sort | [0023](../../../../../docs/adr/model/0023-exposure-is-declared-by-audience.md) |
+| a `PodDisruptionBudget` only above one replica, as `maxUnavailable` | [0022](../../../../../docs/adr/model/0022-a-derived-value-has-one-declaring-site.md) |
 
 **The "cannot derive today" column below is largely historical.** Twenty-six of
 those rows were decided on 2026-09-07 and the row-by-row status lives in
@@ -58,8 +58,8 @@ Two files this tree used to carry, `edge/middlewares.yaml` and
 the Middleware set is emitted per tier by the `traefik` adapter into the edge
 project, and the Gatus endpoint list is an inbound derivation rendered as the
 declared `gatus` Application's own Asset in the observability project
-([0096](../../../../../docs/adr/model/0096-the-foundation-is-declared.md),
-[0098](../../../../../docs/adr/model/0098-one-publication-path.md)). This project
+([0046](../../../../../docs/adr/model/0046-the-foundation-is-declared.md),
+[0047](../../../../../docs/adr/model/0047-one-publication-path.md)). This project
 contributes routes and exposures to both; it owns neither object.
 
 ## The files
@@ -78,7 +78,7 @@ contributes routes and exposures to both; it owns neither object.
 | `apps/auth/migration.yaml` | `kubernetes` | `migration.changelog`, the Platform document's `migration` policy, the Application revision and the migration's `testedAgainst` | the owner credential's Vault role, which no adapter writes yet ([G-02](#g-02)). The file holds the migration identity, this revision's migration, and the suspended down that only the Release Gate runs ([chapter 55](../../../55-delivery.md#failure-and-undo)) |
 | `apps/auth/kustomization.yaml` | `kubernetes` | the file set of the Application | - |
 | `edge/ingressroutes.yaml` | `traefik`, for the tier each route's audience selects | the Application's `exposure`: `host` (authored, copied verbatim), each route's `path` + `match` → the rule, `process` + `surface` → the backend, `audience: anonymous` → no forward-auth, `contentPolicy: strict` → the security-headers middleware reference | entryPoint and TLS policy ([G-11](#g-11)); the `Middleware` objects both references resolve to: forward-auth elsewhere and security-headers here ([G-23](#g-23)) |
-| `apps/vso-secrets/policies/auth-api.policy.json` | `vault-policy` | the Process's grants and their access tiers, per engine: KV read plus its `metadata` sibling, `transit/sign` and `transit/keys/.../rotate` for the JWT key | none (0073, 0085, 0086) |
+| `apps/vso-secrets/policies/auth-api.policy.json` | `vault-policy` | the Process's grants and their access tiers, per engine: KV read plus its `metadata` sibling, `transit/sign` and `transit/keys/.../rotate` for the JWT key | none (0040, 0029, 0029) |
 | `apps/vso-secrets/policies/auth-api.role.json` | `vault-policy` | the Process's ServiceAccount and namespace, bound to that one policy | - |
 
 ### Not emitted, with the reason
@@ -98,7 +98,7 @@ This is the single most important gap in the example set, and it is not a
 missing field: it is a demand the model makes on the delivery definition that no
 Kubernetes object satisfies.
 
-**What the model requires** (0062, chapter 10): the Processes of one Application
+**What the model requires** (0052, chapter 10): the Processes of one Application
 switch together or none switches. No Process's new version receives traffic
 until *every* Process's new version is healthy by its own declared readiness.
 If any member misses its `startupBudget`, none of them switch and the old
@@ -115,7 +115,7 @@ the pair. So on a two-image release:
 - auth-api's JVM is allowed 600 s to start, and is still on the old ReplicaSet
   for all of it;
 - for up to ten minutes the estate serves **a new UI against an old API**, precisely
-  the broken product 0062 exists to prevent, and both Deployments
+  the broken product 0052 exists to prevent, and both Deployments
   report healthy throughout;
 - if auth-api then exceeds its budget, its Deployment reports
   `ProgressDeadlineExceeded` and auth-ui does **not** roll back. Nothing links
@@ -187,7 +187,7 @@ renumbered: every other reference in this file keeps pointing where it did.
 | <a id="g-16"></a>G-16 | **`alertClass` renders nothing here, and that is now correct.** `page` is declared on the Application every forward-auth protected route depends on, and what this tree renders from it is the `PodMonitor` above and nothing else. Rules, severity and receiver routing are the monitoring stack's, which reads the class from the published projection. The gap this records is historic: in the generation being replaced the class was supposed to derive objects inside the model and derived none, no registered adapter rendered a `PrometheusRule` (zero occurrences under `src/`, either generation), and the live Gatus ConfigMap had no `alerting` section at all. What the model still guarantees is that a declared class has a signal: `E_ALERT_CLASS_WITHOUT_SIGNAL` |
 | <a id="g-17"></a>G-17 | **No scrape `interval` or `scrapeTimeout`.** Omitted, which silently takes whatever the metrics stack's global default is, a value decided outside the model. **Closed**: one `monitors: {interval, timeout}` in the Platform document, named by every emitted monitor |
 | <a id="g-18"></a>G-18 | **The forward-auth caller produces no ingress rule.** auth's estate-wide role is derived from every *other* route's audience, not from a `dependsOn` edge, so the inbound edge set for `{application: auth}` is empty and no ingress rule admits the middleware. As rendered it is admitted only because the middleware runs in the same edge pod the exposure rule already allows, by luck of a shared peer, not by derivation |
-| <a id="g-19"></a>G-19 | **A byte-matched grant path cannot reach its KV-v2 metadata sibling.** 0027 forbids any transform on the path, so `secret/metadata/…` is outside every derived policy: version listing and soft-delete are denied to every reader in the estate |
+| <a id="g-19"></a>G-19 | **A byte-matched grant path cannot reach its KV-v2 metadata sibling.** 0030 forbids any transform on the path, so `secret/metadata/…` is outside every derived policy: version listing and soft-delete are denied to every reader in the estate |
 | <a id="g-20"></a>G-20 | **The dynamic database credential is granted at a path it is not read from.** The grant declares `secret/data/platform/postgres/auth` (KV-v2) while the intent's prose and the derived `VAULT_DB_ENABLED=true` describe the database secrets engine, which lives at `database/creds/<role>`. No grant declares that path, so the derived policy does not permit the read the wiring performs |
 | <a id="g-21"></a>G-21 | **`self-roll` derives a capability that cannot perform the roll.** The tier derives `patch` on the *granted path*, `transit/keys/auth-api-jwt`. Vault rotates a transit key at `transit/keys/<name>/rotate` and signs at `transit/sign/<name>`, both requiring `update`. The grant that exists so this Process can roll its own JWT key derives a policy that permits neither rotation nor signing. The `access` × path derivation needs a non-KV branch |
 | <a id="g-22"></a>G-22 | **No token TTLs.** `token_ttl`, `token_max_ttl` and `token_period` on the Kubernetes auth role have no field and no derivation; the mount default applies |
@@ -195,9 +195,9 @@ renumbered: every other reference in this file keeps pointing where it did.
 | <a id="g-24"></a>G-24 | **A project's Deliverables land in another project's namespace.** The Gatus endpoints ConfigMap is one estate-wide object in `utility-system`, contributed to by every project. `E_FOREIGN_NAMESPACE` is satisfied only because the adapter owns the path rather than the Application, worth stating explicitly before someone tightens the rule |
 | <a id="g-25"></a>G-25 | **auth-ui cannot bind port 80 as rendered.** `provides: {http: 80}` with `runAsNonRoot: true` and `capabilities.drop: [ALL]`, and the only declared exception is `writableRootFilesystem`. Binding below 1024 needs `CAP_NET_BIND_SERVICE`, which the exception vocabulary can express (`capability:NET_BIND_SERVICE`) and this Process does not declare. Nothing checks it: the model has every fact needed to refuse this at build time (an exposed or provided port < 1024, non-root, no capability exception), and no rule that does |
 | <a id="g-26"></a>G-26 | **`runAsNonRoot: true` with no UID.** Chapter 10 renders the control "with the UID from the image", and no pinned input carries a UID: the images lock carries digests. If the image's `USER` is a name rather than a number, the kubelet cannot verify non-root and the pod fails with `CreateContainerConfigError`. Either the lock grows a UID or the model grows a field |
-| <a id="g-27"></a>G-27 | **The Flux health timeout class contradicts the startup budget.** The class table gives `stateless: 5m`; auth-api's `startupBudget` is 600 s and its derived `progressDeadlineSeconds` is 1800. The Kustomization gives up at 5 minutes on a Process the model says may legitimately take ten. Two derivations over the same declaration disagree | **Closed** by [0071](../../../../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md) (superseded by [0132](../../../../../docs/adr/model/0132-the-release-gate-answers-the-switch.md)): the class table is deleted and the Application-scoped number is the release-gate deadline, max over members of progressDeadlineSeconds. |
+| <a id="g-27"></a>G-27 | **The Flux health timeout class contradicts the startup budget.** The class table gives `stateless: 5m`; auth-api's `startupBudget` is 600 s and its derived `progressDeadlineSeconds` is 1800. The Kustomization gives up at 5 minutes on a Process the model says may legitimately take ten. Two derivations over the same declaration disagree | **Closed** by [0052](../../../../../docs/adr/model/0052-an-application-is-the-release-unit.md): the class table is deleted and the Application-scoped number is the release-gate deadline, max over members of progressDeadlineSeconds. |
 | <a id="g-28"></a>G-28 | **The hardening class does not say where its controls land.** `runAsNonRoot` and `seccompProfile` are rendered at pod level, `readOnlyRootFilesystem` and `capabilities` at container level (the latter two have no pod-level form). The split is a serialisation choice, and it matters the moment `sidecars` is graded: a pod-level control covers a sidecar the Process did not declare |
-| <a id="g-29"></a>G-29 | **Two label sources for `arch`.** `kubernetes.io/arch` is the kubelet's own; the node contract emits 110 labels for 7 nodes, 55 of them under a prefix named after an archived repository. Which one a selector uses is not fixed, and picking the archived prefix is the trap 0056 exists to retire. Capabilities have only one source (`platform.jorisjonkers.dev/capability-*`), so the ambiguity is `arch`-specific, and it is a single-authority (property 2) question, not a style one |
+| <a id="g-29"></a>G-29 | **Two label sources for `arch`.** `kubernetes.io/arch` is the kubelet's own; the node contract emits 110 labels for 7 nodes, 55 of them under a prefix named after an archived repository. Which one a selector uses is not fixed, and picking the archived prefix is the trap 0048 exists to retire. Capabilities have only one source (`platform.jorisjonkers.dev/capability-*`), so the ambiguity is `arch`-specific, and it is a single-authority (property 2) question, not a style one |
 | <a id="g-30"></a>G-30 | **`NetworkPolicy` has no registered producer.** Chapter 30's open item 2: the only implementation is in the generation being deleted, so coverage for the kind goes from unregistered to absent. Everything in `networkpolicy.yaml` is what the future `networking` adapter must emit. The same holds for the RBAC gap, see G-31 |
 | <a id="g-31"></a>G-31 | **No `rbac` adapter.** Chapter 30's largest true gap (16 objects). auth's Processes need no in-cluster RBAC of their own, so nothing is rendered here, but the identity model implies a Role/RoleBinding per Process and nothing produces one |
 | <a id="g-32"></a>G-32 | **The image digests here are illustrative.** The images lock is a pinned input that this example set does not reproduce, so the two `sha256:` values stand for lock entries rather than being read from one. The alias → repository path mapping (`auth-api` → `ghcr.io/jorisjonkers-dev/auth/auth-api`) is the lock's too: nothing in layer 1 names a registry |

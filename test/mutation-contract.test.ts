@@ -44,7 +44,7 @@ describe("the mutation gate", () => {
   // docs/adr/architecture/0120: scripts/ does not join the scope yet because
   // two of its own gates cannot be exercised inside Stryker's sandbox (a
   // git-index read, and a subprocess-only smoke test). A change that widens
-  // `mutate` should widen this assertion in the same pull request as 0120's
+  // `mutate` should widen this assertion in the same pull request as 0063's
   // successor.
   it("does not mutate scripts/ until its own gates are sandbox-safe", () => {
     expect(config.mutate).toStrictEqual([

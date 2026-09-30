@@ -340,7 +340,7 @@ describe("the boundary lint", () => {
   });
 });
 
-// The case ADR 0069 cites is not an orphan: a dead subtree has internal edges,
+// The case ADR 0060 cites is not an orphan: a dead subtree has internal edges,
 // so only a reachability rule anchored on the entry points catches it.
 describe("reachability", () => {
   it("fails a dead subtree reachable from no entry point", () => {

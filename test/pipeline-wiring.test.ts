@@ -2,7 +2,7 @@
 // script with no workflow behind it is a gate nobody wired; a workflow that
 // calls a script that no longer exists is a job whose step was never updated
 // when the script moved or was renamed. Per
-// docs/adr/architecture/0102-the-gate-grows-with-the-code.md, a new gate's
+// docs/adr/architecture/0064-a-gate-is-a-script-or-a-named-job.md, a new gate's
 // script and its CI job land in the same pull request, and this is the test
 // that makes drift between the two visible instead of silent.
 //

@@ -4,7 +4,7 @@
 # must fail with E_DUPLICATE_APPLICATION_ID -- and with nothing else.
 #
 # The project header does NOT namespace the id. Deriving the Kubernetes namespace
-# from `project` (docs/adr/model/0063-intent-authored-per-project.md) would place these
+# from `project` (docs/adr/model/0009-intent-is-authored-one-file-per-project.md) would place these
 # two in knowledge-system and agents-system, so nothing would collide at apply.
 # That is exactly why the check exists at composition: the id is what one
 # Application uses to reference another, and two Applications answering to one string

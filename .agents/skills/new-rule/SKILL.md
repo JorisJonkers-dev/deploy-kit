@@ -6,7 +6,7 @@ description: Add a rule ledger row, its enforcement, and a failing fixture that 
 # New rule
 
 Per
-[0104](../../../docs/adr/architecture/0104-every-enforced-rule-has-an-id-a-row-and-a-fixture.md):
+[0066](../../../docs/adr/architecture/0066-every-enforced-rule-has-an-id-a-row-and-a-fixture.md):
 every enforced rule has a greppable id, a row, and a fixture that proves it
 fires, added together. `npm run lint:rules` is the meta test that holds the
 three in agreement; nothing here should be a step this skill performs

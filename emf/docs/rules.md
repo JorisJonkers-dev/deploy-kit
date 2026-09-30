@@ -4,7 +4,7 @@ The rules the model-driven build enforces on itself. The root
 [rule ledger](../../docs/architecture-rules.md) holds the rules the root
 enforces, including the two that watch this build from outside; the rules
 here are enforced by Maven inside `emf/` and deleted with it
-([0115](adr/emf/0115-the-emf-gates-are-estate-shaped.md)).
+([0079](adr/emf/0079-the-emf-gates-are-estate-shaped.md)).
 
 A row names the file that enforces the rule, relative to `emf/`, and the
 literal in that file that does the enforcing. `Ledgers.checkRules` in

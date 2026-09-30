@@ -2,7 +2,7 @@
 // test cannot see it: a workflow step running the Maven wrapper against a
 // directory with no build, or a reactor naming a module that is not on disk,
 // would pass every other check and fail only in CI, or not at all. This test
-// holds the Maven side to the same rule 0102 states for npm: the job CI runs is
+// holds the Maven side to the same rule 0064 states for npm: the job CI runs is
 // the build the tree contains. It also holds CodeQL to scanning that build.
 //
 // Deleted with emf/ at its sunset (emf/docs/adr/emf/0107).

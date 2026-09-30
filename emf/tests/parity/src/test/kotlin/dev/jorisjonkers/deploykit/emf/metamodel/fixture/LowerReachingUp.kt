@@ -6,7 +6,7 @@ import dev.jorisjonkers.deploykit.emf.cli.fixture.UpperReachingDown
  * The fixture EMF-010 and EMF-011 are shown firing on: a class in the lowest module of the table
  * reaching up into the highest, which the module direction forbids and which closes a cycle with
  * [UpperReachingDown]
- * (docs/adr/architecture/0104-every-enforced-rule-has-an-id-a-row-and-a-fixture.md). It is never
+ * (docs/adr/architecture/0066-every-enforced-rule-has-an-id-a-row-and-a-fixture.md). It is never
  * called; it exists to be imported.
  */
 object LowerReachingUp {

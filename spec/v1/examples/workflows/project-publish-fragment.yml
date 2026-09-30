@@ -7,7 +7,7 @@
 #                                                            -> oras resolve
 #                                                            -> verify digest
 #
-# ONE PROJECT FILE IS ONE FRAGMENT (docs/adr/model/0063-intent-authored-per-project.md).
+# ONE PROJECT FILE IS ONE FRAGMENT (docs/adr/model/0009-intent-is-authored-one-file-per-project.md).
 # This repository holds one, platform/knowledge.project.yml, so it publishes one
 # fragment; a repository holding several project files runs these steps once per
 # file, and a project never spans repositories, so no fragment is ever a partial
@@ -17,11 +17,11 @@
 # fragment names only images that exist: every alias it names is resolved to a
 # digest, a UID and a GID in the fragment's own share of the images lock, so a
 # composition never renders a reference nothing can pull
-# (docs/adr/model/0133-a-project-is-delivered-as-a-signed-artifact-pinned-by-digest.md,
-# amending docs/adr/model/0037-composition-oci-fragments.md). The image build
+# (docs/adr/model/0051-a-project-is-delivered-as-a-signed-artifact.md,
+# amending docs/adr/model/0042-declarations-compose-from-intent-fragments.md). The image build
 # runs on every merge to main, so an intent-only change still publishes, a few
 # minutes later, and never waits for a version tag
-# (docs/adr/model/0038-participants-list-staleness.md). Whether and how a change
+# (docs/adr/model/0043-participants-list-staleness.md). Whether and how a change
 # is co-tested against other units before it reaches a cluster stays parked:
 # see docs/adr/deferred/README.md.
 #
@@ -69,13 +69,13 @@ jobs:
         run: |
           # The version lives in ONE place: this repository's own lockfile,
           # bumped by Renovate behind the ordering gate
-          # (docs/adr/model/0040-renovate-ordering-gate.md). Restating it here is how
+          # (docs/adr/model/0047-one-publication-path.md). Restating it here is how
           # the previous render-local.sh copies went stale by four minor
           # releases.
           #
           # It is NOT read from the project file's schemaVersion. That
           # field is the DATA MODEL's own semver and no longer tracks the
-          # package version (docs/adr/model/0039-artifact-schema-versioning.md):
+          # package version (docs/adr/model/0044-artifact-schema-versioning.md):
           # reading it as a package version pins the toolkit to a release that
           # may not exist, and hides the real pin from Renovate. Composition
           # checks the fragment's schemaVersion against the composing toolkit's
@@ -89,7 +89,7 @@ jobs:
           # Local-only checks: schema shape, forbidden fields, and
           # placeholder-to-grant agreement WITHIN this repository -- every
           # ${secret:...} byte-matches a granted path and every delivery: env
-          # grant has a placeholder (docs/adr/model/0027-secret-reference-join-key.md).
+          # grant has a placeholder (docs/adr/model/0030-secret-delivery-is-env-file-or-self.md).
           # Estate-wide invariants cannot be checked here and are
           # composition's job.
           npx --no-install deploy-config-schema intent validate \
@@ -103,7 +103,7 @@ jobs:
           # The fragment's own share of the images lock: each alias the project
           # file names, resolved to the digest the build just pushed, with the
           # numeric UID and GID the image runs as
-          # (docs/adr/model/0082-images-lock-carries-uid-and-gid.md). A tag in
+          # (docs/adr/model/0020-hardening-is-one-platform-posture.md). A tag in
           # this file would be a mutable input, so it holds digests only, and
           # an alias with no image yet fails here rather than at pod start.
           npx --no-install deploy-config-schema intent lock-images \
@@ -116,12 +116,12 @@ jobs:
         if: ${{ !cancelled() }}
         run: |
           # --env-dir holds one directory per PROCESS
-          # (docs/adr/model/0011-configuration-env-files-per-process.md):
+          # (docs/adr/model/0013-configuration-is-dotenv-at-three-scopes.md):
           # platform/env/knowledge-api/base.env and
           # platform/env/knowledge-ingest-worker/base.env, each with its own
           # per-cluster overlay. Process names are unique within a project, so
           # one directory per Process is unambiguous across every Application the
-          # file declares (docs/adr/model/0024-identity-per-process.md).
+          # file declares (docs/adr/model/0031-identity-per-process.md).
           npx --no-install deploy-config-schema intent pack \
             --project platform/knowledge.project.yml \
             --env-dir platform/env \
@@ -159,7 +159,7 @@ jobs:
           # An artefact cannot contain its own digest, so it is resolved AFTER
           # the push and recorded by the consumer. This is why the composition
           # lock is an output rather than an input
-          # (docs/adr/model/0037-composition-oci-fragments.md).
+          # (docs/adr/model/0042-declarations-compose-from-intent-fragments.md).
           DIGEST="$(oras resolve "$REF")"
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
 

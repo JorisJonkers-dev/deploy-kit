@@ -9,8 +9,8 @@ carries the product name, so `api` is what an author reaches for twice), and it
 is precisely what the rule forbids: **Process names are unique within a
 project**, because the ServiceAccount and the Vault role are the Process name
 alone under the project's namespace
-([0024](../../../../../docs/adr/model/0024-identity-per-process.md),
-[0063](../../../../../docs/adr/model/0063-intent-authored-per-project.md)). Both
+([0031](../../../../../docs/adr/model/0031-identity-per-process.md),
+[0009](../../../../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)). Both
 Processes here would derive `agents-system.api`, and the second Application's pods
 would authenticate as the first Application's principal and receive its grants.
 
@@ -19,14 +19,14 @@ would authenticate as the first Application's principal and receive its grants.
 `E_DUPLICATE_APPLICATION_ID` needs a union of two fragments to demonstrate, because
 ids collide across repositories. This one does not: a project never spans
 repositories and one file is the whole project
-([0063](../../../../../docs/adr/model/0063-intent-authored-per-project.md)), so every
+([0009](../../../../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)), so every
 Process name that must be compared is in this single file. The check runs
 where the other identity checks run (the union, [chapter
 40](../../../40-composition.md)), and a union of one fragment is still a union.
 
 The fixture is otherwise valid and schema-complete: complete `placement` blocks
 with the required `memory` and `cpu`
-([0061](../../../../../docs/adr/model/0061-placement-is-hard-dimensions.md)), probes
+([0017](../../../../../docs/adr/model/0017-placement-is-hard-dimensions.md)), probes
 declared rather than omitted, no secret grants and therefore no env files to
 bind. If it tripped a different check on the way in, it would prove that check
 can fail and say nothing about Process identity.
@@ -44,5 +44,5 @@ the command.*
 Renaming one of the two Processes is the fix an author would make (`api` to
 `lightrag-api`, say), and it is a one-line edit, because a Process is not
 independently referencable: `dependsOn` names `{application, surface}`
-([0062](../../../../../docs/adr/model/0062-application-is-the-release-unit.md)), so no
+([0052](../../../../../docs/adr/model/0052-an-application-is-the-release-unit.md)), so no
 other document names either Process.

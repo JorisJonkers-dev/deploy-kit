@@ -32,8 +32,8 @@ the fixture, and (for a rule) the ADR that decided it exists at all.
    what the ledger states, fix the enforcement or the row, whichever the tree
    actually needs, and re-run the meta test
    (`npm run lint:rules` or `npm run lint:requirements`). If the rule itself
-   is wrong, that is a decision: write an ADR (see the `adr` skill) that
-   supersedes the one that decided it, never a reversal in place.
+   is wrong, that is a decision: rewrite the record that decided it (see the `adr` skill) in the same
+   pull request as the change.
 5. **A rule with no row, or a row with no enforcement:** that is what
    `lint:rules` and `lint:requirements` themselves catch; use the `new-rule`
    skill to add the missing piece rather than silencing the meta test.

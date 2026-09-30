@@ -71,7 +71,7 @@ describe("the worked projection", () => {
     expect(result.success).toBe(true);
   });
 
-  it("is a ResolvedApplication, the kind 0116 renamed it to", () => {
+  it("is a ResolvedApplication, the kind 0009 renamed it to", () => {
     const document = workedProjection() as { kind: string };
 
     expect(document.kind).toBe("ResolvedApplication");
@@ -80,7 +80,7 @@ describe("the worked projection", () => {
 
 describe("the four defects it carried", () => {
   it("refuses a health timeout class beside the release gate", () => {
-    // 0071 deleted the concept: it was a second derivation over the same
+    // 0052 deleted the concept: it was a second derivation over the same
     // startupBudget the deadline already derives from, and the two disagreed.
     const document = withDefect((it) => {
       Object.assign(it, { healthTimeoutClass: "stateful" });
@@ -103,7 +103,7 @@ describe("the four defects it carried", () => {
     expect(resolvedApplicationDocument.safeParse(document).success).toBe(false);
   });
 
-  it("refuses contextRef and adapterCompat, which 0098 deleted", () => {
+  it("refuses contextRef and adapterCompat, which 0047 deleted", () => {
     for (const field of ["contextRef", "adapterCompat"]) {
       const document = withDefect((it) => {
         Object.assign(it["provenance"] as object, { [field]: DIGEST });
@@ -188,7 +188,7 @@ describe("the metamodel's own keys", () => {
   it("names no Kubernetes or Traefik field", () => {
     // The spellings the worked projection carried until it was rewritten, plus
     // the ones the authority table names as the kubernetes adapter's
-    // (docs/adr/model/0097-authored-values-name-model-concepts.md).
+    // (docs/adr/model/0011-authored-values-name-model-concepts.md).
     const target = [
       "objectKind",
       "strategy",

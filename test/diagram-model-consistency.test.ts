@@ -1,7 +1,7 @@
 // The drawings, the chapters and the worked examples say the same thing.
 //
 // Two defects this file exists to catch actually shipped and were found by
-// hand: `data.project.yml` authored an `onChange` key that 0094 deleted and no
+// hand: `data.project.yml` authored an `onChange` key that 0014 deleted and no
 // class carries, and four `PrometheusRule` fixtures stayed in the rendered
 // trees after chapter 30 stopped rendering the kind. Both were invisible to
 // every existing gate, because each artefact was internally consistent.

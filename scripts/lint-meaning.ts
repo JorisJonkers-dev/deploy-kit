@@ -4,12 +4,11 @@
 // read as current, or a stated count that has drifted from what it counts.
 // Those are silent: every other gate stays green while they rot.
 //
-// Three checks, each driven by a small data table beside the logic that reads
-// it, so covering one more case is a data edit, never a code edit:
+// Two checks, each driven by a small data table beside the logic that reads
+// it, so covering one more case is a data edit, never a code edit. A citation
+// of a superseded decision needs no check: the register holds one record per
+// decision and lint-adrs.ts refuses `superseded-by`.
 //
-//   - superseded citation: a link to an ADR carrying `superseded-by:` passes
-//     only when its successor is also linked in the same sentence, or when
-//     the citing file is that successor's own (it cannot link to itself);
 //   - retired term: a phrase CONTEXT.md marks fully retired, found bare
 //     outside a quotation, a blockquote (every renamed ADR carries its own
 //     amendment note this way) or the file that performed the retirement;
@@ -86,11 +85,7 @@ function sortedEntries(
 }
 
 // ---------------------------------------------------------------------------
-// Sentence splitting, shared by the citation and retired-term checks. A
-// markdown link is masked before splitting so a period inside a relative
-// `.md` path never fakes a sentence break, and a table row is always its own
-// sentence so a whole table is never swallowed as one run-on sentence just
-// because none of its cells happens to end in a period.
+// Link and match helpers, shared by the retired-term and stale-count checks.
 // ---------------------------------------------------------------------------
 
 const LINK = /\[[^\]\n]*\]\(([^)\s]+)\)/g;
@@ -115,83 +110,9 @@ function beforeHash(href: string): string {
   return href.split("#")[0] as string;
 }
 
-// U+E000, a Private Use Area code point: never a real character in
-// tracked Markdown, and not a control character, so it masks a link
-// without eslint's no-control-regex objecting to the pattern that
-// finds it again afterwards.
-const MASK = "\uE000";
-
-function splitProseSentences(text: string): string[] {
-  const links: string[] = [];
-  const masked = text.replace(LINK, (match) => {
-    links.push(match);
-    return `${MASK}${String(links.length - 1)}${MASK}`;
-  });
-  return masked
-    .split(/(?<=[.!?])\s+/)
-    .map((sentence) =>
-      sentence.replace(
-        new RegExp(`${MASK}(\\d+)${MASK}`, "g"),
-        (_, index: string) => links[Number(index)] ?? "",
-      ),
-    );
-}
-
-/** `text` split into sentences: a table row is atomic, a prose paragraph is sentence-split. */
-export function sentencesOf(text: string): string[] {
-  const sentences: string[] = [];
-  for (const paragraph of text.split(/\n{2,}/)) {
-    let prose: string[] = [];
-    const flush = (): void => {
-      if (prose.length === 0) return;
-      sentences.push(...splitProseSentences(prose.join(" ")));
-      prose = [];
-    };
-    for (const line of paragraph.split("\n")) {
-      if (/^\s*\|.*\|\s*$/.test(line)) {
-        flush();
-        sentences.push(line);
-      } else {
-        prose.push(line);
-      }
-    }
-    flush();
-  }
-  return sentences;
-}
-
 // ---------------------------------------------------------------------------
-// Superseded citation.
+// Cited numbers, shared by the retired-term check.
 // ---------------------------------------------------------------------------
-
-interface SupersededAdr {
-  /** The file's own path, relative to `root`. */
-  readonly rel: string;
-  /** Its own four-digit number. */
-  readonly number: string;
-  /** The number of the ADR that replaces it. */
-  readonly supersededBy: string;
-}
-
-const ADR_FILE = /^(docs\/adr|emf\/docs\/adr)\/[a-z]+\/(\d{4})-[\w-]+\.md$/;
-
-/** Every ADR that carries `superseded-by:` in its frontmatter, across every domain. */
-export function supersededAdrs(
-  files: Readonly<Record<string, string>>,
-): readonly SupersededAdr[] {
-  const found: SupersededAdr[] = [];
-  for (const [rel, content] of Object.entries(files)) {
-    if (!ADR_FILE.test(rel)) continue;
-    const block = /^---\n([\s\S]*?)\n---\n/.exec(content);
-    const supersededBy = /^superseded-by:\s*(\d{4})\s*$/m.exec(
-      block?.[1] ?? "",
-    )?.[1];
-    const number = ADR_FILE.exec(rel)?.[2];
-    if (supersededBy !== undefined && number !== undefined)
-      found.push({ rel, number, supersededBy });
-  }
-  return found;
-}
 
 /**
  * The four-digit ADR numbers a sentence links to. Every ADR link ends in
@@ -210,41 +131,6 @@ function citedNumbers(sentence: string): ReadonlySet<string> {
   return numbers;
 }
 
-/**
- * Every citation of a superseded ADR whose successor is not linked in the
- * same sentence, across `files`. Pure over a {rel: content} map, so it is
- * testable against a synthetic tree with no filesystem involved. The
- * successor's own file is exempt: it names what it replaces, and cannot
- * link to itself to prove it.
- */
-export function supersededCitationErrors(
-  files: Readonly<Record<string, string>>,
-): string[] {
-  const errors: string[] = [];
-  const superseded = new Map(
-    supersededAdrs(files).map((adr) => [adr.number, adr]),
-  );
-  const numberOf = (rel: string): string | undefined => ADR_FILE.exec(rel)?.[2];
-
-  for (const [rel, content] of sortedEntries(files)) {
-    const ownNumber = numberOf(rel);
-    for (const sentence of sentencesOf(proseOf(content))) {
-      const cited = citedNumbers(sentence);
-      for (const number of cited) {
-        const adr = superseded.get(number);
-        if (!adr) continue;
-        if (ownNumber === adr.supersededBy) continue; // the successor's own file
-        if (cited.has(adr.supersededBy)) continue; // successor linked too
-        errors.push(
-          `${rel}: cites superseded ${number} without its successor ` +
-            `${adr.supersededBy} in the same sentence`,
-        );
-      }
-    }
-  }
-  return errors;
-}
-
 // ---------------------------------------------------------------------------
 // Retired term.
 //
@@ -252,8 +138,8 @@ export function supersededCitationErrors(
 // most of which still have a legitimate current meaning ("Deploy", "Render",
 // "Config"): banning those bare would fail on every correct use. This list
 // holds only the phrases the section calls fully retired, with no legitimate
-// current sense of their own: "Cluster Context" (retired outright by 0095)
-// and "Service Intent" (retired by 0116; the document is now Project
+// current sense of their own: "Cluster Context" (retired outright by 0045)
+// and "Service Intent" (retired by 0009; the document is now Project
 // Intent). Deliberately excluded: bare "Service", "Workload" and "Domain".
 // CONTEXT.md itself keeps all three overloaded on purpose (a Kubernetes
 // `Service`, a rendered `workload.yaml`, a DNS name, an ADR domain, the
@@ -278,18 +164,18 @@ export const RETIRED_TERMS: readonly RetiredTerm[] = [
     pattern: /\bCluster Context\b/g,
     exemptFiles: [
       "CONTEXT.md",
-      "docs/adr/model/0095-platform-intent-is-the-second-authored-document.md",
+      "docs/adr/model/0045-platform-intent-is-the-second-authored-document.md",
     ],
-    retiredBy: "0095",
+    retiredBy: "0045",
   },
   {
     term: "Service Intent",
     pattern: /\bService Intent\b/g,
     exemptFiles: [
       "CONTEXT.md",
-      "docs/adr/model/0116-project-application-process.md",
+      "docs/adr/model/0009-intent-is-authored-one-file-per-project.md",
     ],
-    retiredBy: "0116",
+    retiredBy: "0009",
   },
 ];
 
@@ -346,7 +232,7 @@ export function retiredTermErrors(
 // an enumerated backticked list inside one specific ADR. Not a blanket sweep
 // over every number in prose, which would either miss what it cannot verify
 // or misreport a number that was never a claim about this repository's own
-// state (the sixteen-adapter evidence 0052 and 0054 keep about the generation
+// state (the sixteen-adapter evidence 0037 keeps about the generation
 // this compiler replaces, for instance, which is history, not a live count).
 // ---------------------------------------------------------------------------
 
@@ -406,10 +292,16 @@ function gateCount(root: string): number {
     ).length;
 }
 
-/** The registered-adapter list ADR 0052 enumerates. */
+/** The registered-adapter list ADR 0037 enumerates. */
 function registeredAdapterCount(root: string): number {
   const text = readFileSync(
-    join(root, "docs", "adr", "model", "0052-registered-adapters-are-v1.md"),
+    join(
+      root,
+      "docs",
+      "adr",
+      "model",
+      "0037-six-registered-adapters-satisfy-one-port.md",
+    ),
     "utf8",
   );
   const list =
@@ -427,7 +319,7 @@ export const CHECKED_COUNTS: readonly CountedClaim[] = [
   },
   {
     id: "registered adapters",
-    describe: "the adapters ADR 0052 names as v1's registered set",
+    describe: "the adapters ADR 0037 names as v1's registered set",
     files: ["spec/v1/examples/RENDER-GAPS.md"],
     pattern: /\b(\w+)\s+registered\s+adapters\b/gi,
     actual: registeredAdapterCount,
@@ -472,11 +364,7 @@ export function staleCountErrors(root: string): string[] {
 /** Lint every tracked Markdown file under `root` for meaning: citations, terms, counts. */
 export function lintMeaning(root: string): MeaningLintResult {
   const files = trackedMarkdown(root);
-  const errors = [
-    ...supersededCitationErrors(files),
-    ...retiredTermErrors(files),
-    ...staleCountErrors(root),
-  ];
+  const errors = [...retiredTermErrors(files), ...staleCountErrors(root)];
   return { files: Object.keys(files).length, errors };
 }
 

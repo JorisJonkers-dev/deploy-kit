@@ -9,11 +9,6 @@ normative: spec/v1/20-resolved-deployment.md#pinned-inputs
 
 # Every assignment is a function of pinned, digested inputs
 
-> **Amended 2026-09-14.** Vocabulary renamed by
-> [0116](0116-project-application-process.md): Domain is now Project,
-> Service is Application, Workload is Process, and Service Intent is Project
-> Intent. The decision is unchanged.
-
 ## Rests on
 
 The pinned input set (Project Intent, the Platform Intent, the locks, and a
@@ -49,8 +44,8 @@ PV rebinds following a node failure, with every digest identical. Reproducibilit
 fails at the moment it is most needed, and the report blames the lock.
 
 The repair enlarges the input set instead of weakening the claim. A ClusterState
-snapshot with its own digest ([0034](0034-cluster-state-pinned-input.md)) joins
-Intent, Context and the locks. Placement against a bound PV and
+snapshot with its own digest ([0034](0034-cluster-state-is-a-pinned-input.md)) joins
+Project Intent, Platform Intent and the locks. Placement against a bound PV and
 capacity-informed replica assignment become expressible: they read the
 snapshot, never the live cluster. Reproducibility becomes conditional and true:
 identical inputs *including* `clusterStateDigest` produce byte-identical output,
@@ -70,7 +65,7 @@ input; nothing is read ad hoc.
 
 Undo cost today: hours of spec edits, restate the rule at
 `../../spec/v1/20-resolved-deployment.md` and rewrite the reproducibility wording
-there and in chapter 30; [0034](0034-cluster-state-pinned-input.md), which rests
+there and in chapter 30; [0034](0034-cluster-state-is-a-pinned-input.md), which rests
 on this premise, would need reworking. No snapshot-capture code exists yet, so
 the blast radius is documents plus that one dependent decision.
 Becomes irreversible once: the double-render determinism test gates CI and
@@ -81,17 +76,17 @@ defects as weather across the estate.
 ## Consequences
 
 - Snapshot capture and digesting join the render path; every deploy render waits
-  on it, paid by the aggregator pipeline in wall-clock time and by its
+  on it, paid by the composition run in wall-clock time and by its
   maintainer.
 - Reproducibility claims in chapters 20 and 30 must be restated as conditional on
   `clusterStateDigest`, paid by joris in the spec rewrite pass.
-- The hourly reconcile re-render must render from the recorded snapshot, not a
-  fresh one, or drift detection re-reports weather as lock defects, paid by the
-  implementer of [0044](../deferred/0044-reconcile-cronjob.md) (superseded by [0127](0127-delivery-is-part-of-the-model.md)).
+- Any render that reproduces a recorded lock reads the snapshot that lock names,
+  not a fresh one, or a mismatch re-reports weather as a lock defect
+  ([0034](0034-cluster-state-is-a-pinned-input.md)).
 - Placement and replica assignment become expressible without the spec
   contradicting itself (`10:463` vs `20:266`), paid by
-  [0034](0034-cluster-state-pinned-input.md), whose snapshot schema must carry PV
-  bindings and capacity facts.
+  [0034](0034-cluster-state-is-a-pinned-input.md), whose snapshot carries PV bindings and
+  current placements, while node capacity stays a node-contract fact.
 - The input set is closed, so every new assignment need becomes a schema change
   to a pinned input before it becomes a feature, paid by whoever adds the next
   assignment.

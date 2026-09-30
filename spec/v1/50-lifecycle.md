@@ -16,7 +16,7 @@ decision. The next section says where each lives.
 
 On 2026-09-07 the owner parked delivery and co-testing outside the model; on
 2026-09-24 delivery rejoined it
-([0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md)). How a
+([0050](../../docs/adr/model/0050-delivery-is-part-of-the-model.md)). How a
 render reaches the cluster, how an Application's new version replaces the old
 one, and how its schema moves with it are specified in
 [chapter 55](55-delivery.md). That chapter is also how the model's three
@@ -42,7 +42,7 @@ A lock names, by digest:
 - the node contract, by digest;
 - the images lock, which resolves every `image` alias to a digest, never a tag;
 - the ClusterState snapshot, as `clusterStateDigest`
-  ([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)).
+  ([0034](../../docs/adr/model/0034-cluster-state-is-a-pinned-input.md)).
 
 The lock is an **output** of composition and never an input to it, because an
 artefact cannot contain its own digest: chapter 40 carries the evidence and the
@@ -62,7 +62,7 @@ event produces one.
 | a PV rebinds after a node failure; a node joins or leaves | **yes** | the ClusterState snapshot changes, so `clusterStateDigest` changes, and the rebind lands as a visible decision rather than as drift |
 | a node contract republishes new `allocatable`, a reserve is retuned, RAM is added | **yes** | placement is matched against allocatable, so eligibility can change without any Intent changing |
 | a pod restarts; a Kustomization reports Ready; a health check flips | no | that is what is *running*. Chapter 20 keeps the health document (`cluster-state.schema.json`) distinct from the pinned ClusterState snapshot; only the snapshot is an input |
-| the toolkit is upgraded with no model change | no | `schemaVersion` is the data model's own semver and moves only on a model change ([0039](../../docs/adr/model/0039-artifact-schema-versioning.md)); the lock records the exact versions it was composed under |
+| the toolkit is upgraded with no model change | no | `schemaVersion` is the data model's own semver and moves only on a model change ([0044](../../docs/adr/model/0044-artifact-schema-versioning.md)); the lock records the exact versions it was composed under |
 
 ### What a lock guarantees
 
@@ -101,7 +101,7 @@ without diffing published artefacts.
 ## Release Unit switchover
 
 Membership is structural, not declared: **an Application is the Release Unit**, and
-its members are its Processes ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)).
+its members are its Processes ([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)).
 Nothing names a unit, because nothing needs to: things that must switch
 together are Processes of one Application, and things that must not are separate
 Applications. Chapter 10's [Application identity](10-project-intent.md#application-identity)
@@ -114,14 +114,14 @@ budget, none switch and the old versions keep serving. Performed, it is a
 promoted until all have passed, and then each is promoted on its own, seconds
 apart, so the members of one Application tolerate one version of skew for that
 window ([chapter 55](55-delivery.md#switchover),
-[0132](../../docs/adr/model/0132-the-release-gate-answers-the-switch.md)).
+[0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)).
 
 Every term in that rule is already defined elsewhere in the model:
 
 | term | means | where it comes from |
 |---|---|---|
-| **healthy** | the member's own declared readiness: `probes.readiness`, with its own `path` + `port` or `tcp` | chapter 10, [0014](../../docs/adr/model/0014-probes-are-siblings.md) |
-| **budget** | the derived rollout budget: how long a new version has to report ready before it counts as failed | chapter 20's derived mechanics, [0030](../../docs/adr/model/0030-runtime-mechanics-derived.md) |
+| **healthy** | the member's own declared readiness: `probes.readiness`, with its own `path` + `port` or `tcp` | chapter 10, [0016](../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md) |
+| **budget** | the derived rollout budget: how long a new version has to report ready before it counts as failed | chapter 20's derived mechanics, [0021](../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md) |
 | **switch** | the moment traffic reaches the new versions rather than the old | the delivery mechanism performs it; the model states when it may happen |
 
 A Process declaring `probes: none` publishes no readiness signal and so cannot
@@ -132,7 +132,7 @@ not something a delivery mechanism discovers at apply time.
 
 An `interrupted` Application has no gate: its Processes stop before their new
 versions start, so there is no moment at which a new version waits while an old
-one serves ([0128](../../docs/adr/model/0128-cutover-names-the-promise.md)). And
+one serves ([0021](../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)). And
 an Application's Processes answer the cutover question alike, because they switch
 as one: `E_RELEASE_UNIT_MIXED_CUTOVER`
 ([chapter 10](10-project-intent.md#cutover-is-declared-not-promised)).
@@ -158,7 +158,7 @@ pin back by hand is break-glass, not a rollback.
 | | Release Unit | Reconcile Unit |
 |---|---|---|
 | answers | what switches together | what applies before what |
-| origin | **structural**, the Application boundary; its members are its Processes | **derived** from the dependency graph ([0032](../../docs/adr/model/0032-reconcile-unit-derived.md)) |
+| origin | **structural**, the Application boundary; its members are its Processes | **derived** from the dependency graph ([0033](../../docs/adr/model/0033-reconcile-unit-derived.md)) |
 | property | atomicity | ordering |
 | worked case | Application `auth`, Processes `auth-api` + `auth-ui`: a new UI against an old API is a broken product although each pod reports healthy | `platform-postgres` before `knowledge`: the consumer cannot start without its provider |
 | membership changes when | a Process joins or leaves the Application | an edge is added or removed |
@@ -215,9 +215,9 @@ The three phases, and what composition sees at each:
 Two limits are worth stating plainly. First, composition sees **declared** edges
 only: an undeclared consumer is invisible to the check, which is why a
 dependency edge names the provider and the surface
-([0020](../../docs/adr/model/0020-dependency-edges-carry-surface.md)) and why a
+([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)) and why a
 hostname served by something outside the model is a Registered Unmanaged Surface
-([0019](../../docs/adr/model/0019-registered-unmanaged-surfaces.md)) rather than an
+([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)) rather than an
 absence. Second, the check is about *declarations*, not about running pods:
 whether a consumer at an older lock is still serving is a delivery question, and
 [chapter 55](55-delivery.md) owns any stronger guarantee that wants to read live
@@ -236,21 +236,18 @@ is its [release diagram](55-delivery.md#a-release-end-to-end).
 ## Open in this chapter
 
 1. ~~**Release Unit atomicity is untested.**~~ It is
-   [0132](../../docs/adr/model/0132-the-release-gate-answers-the-switch.md)'s own
+   [0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)'s own
    settling test, a release forced to fail on one member and observed to promote
-   none, and is recorded there; it was first recorded by
-   [0071](../../docs/adr/model/0071-release-gate-inputs-are-layer-2.md), which
-   it supersedes. [0060](../../docs/adr/model/0060-release-unit.md),
-   which this item used to cite, is superseded; the unit is the Application
-   ([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)).
+   none, and is recorded there. The unit is the Application
+   ([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)).
 2. ~~**Whether a unit may span ownership boundaries.**~~ Moot: pull delivery has
-   one deployer ([0127](../../docs/adr/model/0127-delivery-is-part-of-the-model.md)),
+   one deployer ([0050](../../docs/adr/model/0050-delivery-is-part-of-the-model.md)),
    so there is no ownership boundary for a unit to span.
 3. **How far the contraction check reaches** is a recorded limitation rather
    than an open decision: it is exact over declared edges and silent over
    undeclared ones, so its value is bounded by the completeness of the edge set
    , the same completeness default-deny network policy depends on
-   ([0035](../../docs/adr/model/0035-network-policy-default-deny.md)). Nothing
+   ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)). Nothing
    settles it except the audit stage finding no undeclared flow.
 
 ## Diagram sources

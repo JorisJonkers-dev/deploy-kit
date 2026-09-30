@@ -52,6 +52,9 @@ const SECTIONS = [
 ];
 const STATUS = ["proposed", "accepted"];
 const CLAIM = ["settled", "open", "accepted-untested"];
+// A dated note that changes a record, which the register replaces by a rewrite.
+const AMENDMENT_NOTE =
+  /^> \*\*(Amended|Superseded|Rewritten|Retired|Re-graded|Re-measured)\b/m;
 
 const isAdrName = (file: string): boolean => /^\d{4}-.+\.md$/.test(file);
 const listing = (dir: string): string[] =>
@@ -164,14 +167,17 @@ export function lintAdrs(root: string): AdrLintResult {
     if (tier === "premise") premises.add(name.slice(0, 4));
 
     const status = fields.get("status");
-    if (
-      (status === undefined || !STATUS.includes(status)) &&
-      !fields.get("superseded-by")
-    )
+    if (status === undefined || !STATUS.includes(status))
+      err(rel, `status must be proposed|accepted, got '${String(status)}'`);
+
+    // -- one record per decision: a change rewrites it, never supersedes it
+    if (fields.get("superseded-by") !== undefined)
       err(
         rel,
-        `status must be proposed|accepted|superseded-by, got '${String(status)}'`,
+        "superseded-by: a decision is rewritten in place, not superseded",
       );
+    if (AMENDMENT_NOTE.test(text))
+      err(rel, "amendment note: rewrite the decision instead of annotating it");
 
     const claim = fields.get("claim");
     if (claim === undefined || !CLAIM.includes(claim))

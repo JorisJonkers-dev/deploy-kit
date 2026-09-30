@@ -174,16 +174,27 @@ describe("structure", () => {
   it("fails a status outside the vocabulary", () => {
     const broken = validAdr().replace("status: proposed", "status: draft");
     expect(violations({ [DECISION]: broken })).toMatch(
-      /status must be proposed\|accepted\|superseded-by, got 'draft'/,
+      /status must be proposed\|accepted, got 'draft'/,
     );
   });
 
-  it("accepts a superseded record in place of a status", () => {
+  it("fails a superseded-by field, since a decision is rewritten instead", () => {
     const superseded = validAdr().replace(
       "status: proposed",
-      "superseded-by: 0003",
+      "status: proposed\nsuperseded-by: 0003",
     );
-    expect(violations({ [DECISION]: superseded })).toBe("");
+    expect(violations({ [DECISION]: superseded })).toMatch(
+      /superseded-by: a decision is rewritten in place/,
+    );
+  });
+
+  it("fails an amendment note, since a decision is rewritten instead", () => {
+    const amended = validAdr({
+      body: "> **Amended 2026-09-14.** The rule moved.\n",
+    });
+    expect(violations({ [DECISION]: amended })).toMatch(
+      /amendment note: rewrite the decision/,
+    );
   });
 
   it("fails an unknown claim value", () => {

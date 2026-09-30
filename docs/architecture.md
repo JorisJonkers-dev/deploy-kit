@@ -54,7 +54,7 @@ Two use-cases, one core. `publish` runs in any repository that authors intent (
 a project, or the platform) validates the Intent Fragment and pushes it by
 digest, and renders nothing; `compose` runs centrally over the composed union
 and is where every adapter runs
-([0098](adr/model/0098-one-publication-path.md)). They share the domain, and
+([0047](adr/model/0047-one-publication-path.md)). They share the domain, and
 neither performs an effect directly: everything that touches the world arrives
 as a port the domain declares and the CLI supplies.
 
@@ -78,7 +78,7 @@ environment variable through the same door.
 
 The adapter port is the third contract and belongs to layer 3: parsed documents
 in, attributed Deliverables out, deterministic, no ambient reads, a path claimed
-twice is a build error ([0053](adr/model/0053-adapter-port-contract.md),
+twice is a build error ([0037](adr/model/0037-six-registered-adapters-satisfy-one-port.md),
 [chapter 30](../spec/v1/30-deliverables.md#the-adapter-port)). Unlike the ports
 above it is a published compatibility surface: an out-of-tree adapter pins it,
 so narrowing it later is a major release.
@@ -89,7 +89,7 @@ Only the infrastructure and CLI rings read ambient state: the environment, the
 clock, randomness, a child process, or the filesystem synchronously. Everything
 further in receives what it needs as a value or through a port, so a derivation
 cannot depend on when or where it runs
-([0117](adr/architecture/0117-the-process-lives-in-one-boundary-file.md)).
+([0061](adr/architecture/0061-the-process-lives-in-one-boundary-file.md)).
 
 Only `src/cli/boundary.ts` exits the process, sets its exit code, or writes to
 stdout or stderr, the console included. It holds no decision: it takes the
@@ -139,7 +139,7 @@ no spec anchor is detectable rather than merely absent.
 Every code a chapter defines is exercised by a test, or pending on the ticket
 that will exercise it, and no code a chapter does not define is used in the
 tree; `npm run lint:codes` holds both
-([0118](adr/architecture/0118-every-spec-error-code-is-proved-by-a-test.md)). A
+([0067](adr/architecture/0067-every-spec-error-code-is-proved-by-a-test.md)). A
 test exercises a code by naming it, whether in a TypeScript test, a Java test
 of the model-driven implementation, or a refused case's committed
 `diagnostics.json`.
@@ -154,7 +154,7 @@ regenerates it and fails on a diff, from the pull request that brings its
 generator: the JSON Schema derived from the metamodel, and the diagnostic
 catalogue. A reader sees the artifact without running anything, and a change
 to the source cannot land without the artifact that depends on it
-([0119](adr/architecture/0119-generated-files-are-committed-and-diff-checked.md)).
+([0068](adr/architecture/0068-two-implementations-meet-at-the-parity-table.md)).
 
 An oracle file is the opposite. The rendered example trees, `intent.json`,
 `resolved.json`, `dependencies.json`, `diagnostics.json` and the descriptor are
@@ -173,7 +173,7 @@ property rather than a review question.
 
 One serializer in the infrastructure ring turns those objects into bytes. It
 owns key order, indentation, and the single permitted header line. Determinism
-is therefore one module's responsibility instead of sixteen, and an adapter test
+is therefore one module's responsibility instead of six, and an adapter test
 asserts a field rather than whitespace.
 
 Rendered output carries **no commentary** beyond one fixed `GENERATED` line,
@@ -194,7 +194,7 @@ handed rather than deciding where its output lands.
 
 This is a model rule, so it is normative in
 [chapter 20](../spec/v1/20-resolved-deployment.md#the-path-plan) and decided in
-[0070](adr/model/0070-path-authority-is-layer-2.md), not here. The consequence
+[0036](adr/model/0036-path-authority-is-layer-2.md), not here. The consequence
 for code is the part that belongs in this document: path collision is detected
 when the plan is built, before any adapter runs, and an adapter has no API with
 which to choose a path.
@@ -231,7 +231,7 @@ repository is coursework for requires Ecore, Xtext, OCL, QVT-Operational and
 Acceleo, so a **model-driven implementation** in Java lives under
 [`emf/`](../emf/README.md)
 until its sunset condition holds
-([0105](adr/architecture/0105-two-implementations-meet-at-committed-oracles.md)).
+([0068](adr/architecture/0068-two-implementations-meet-at-the-parity-table.md)).
 Everything about that implementation, its build, its checks and its decisions,
 lives inside `emf/`. What lives here is the contract both implementations
 answer to, because the contract outlives the model-driven implementation.
@@ -277,7 +277,7 @@ holds. `env` is the one feature it leaves out of a class: an env file is a
 directory beside the document rather than a key in it, so its own classes are
 listed and the feature that would carry them is not. A shape a transformation writes and nobody authors is left out of it: the
 Effective Intent's Project and Application are the two today
-([0125](adr/model/0125-the-effective-intent-is-a-lowering.md)), and what holds
+([0012](adr/model/0012-shared-intent-descends-and-is-lowered.md)), and what holds
 them equal is the same thing that holds every other stage equal, the oracles
 downstream of the lowering. An implementation that declared a lowered class where
 the other did not would still render the same tree or fail the rendered oracle.
@@ -326,10 +326,12 @@ by either source format:
 - `vocabularies`, sorted by name, each with its `literals` in the order the
   model declares them.
 
-**The constraint ledger** gives every model constraint a `CONS-NNN` id, the
-diagnostic code it emits, the check that enforces it in `src/`, and a refused
-fixture that proves it fires. A constraint the ledger does not list is not part
-of the model's validation, whichever implementation happens to enforce it.
+**Constraint parity is checked by code, not kept in a ledger.** Every model
+constraint is named by the diagnostic code it emits: the Complete OCL invariant
+carries the code as its name, and the TypeScript check is one function per code
+with the same name. A parity test lists every code three ways (the invariant,
+the check, and the refused fixture whose diagnostics name it) and fails on any
+gap ([0068](adr/architecture/0068-two-implementations-meet-at-the-parity-table.md)).
 
 **Behaviour rows.** A row of the [behaviour ledger](requirements.md) whose
 behaviour is the model's own (parse, validate, resolve, render) is proved in
@@ -359,12 +361,12 @@ lists cases says so rather than skipping it silently.
 ## Gates
 
 Twenty gates hold the structure, and each exists because its absence has already
-cost something in the generation this compiler replaces. Each runs as its own
-CI job, aggregated by one required check that fails when any gate job fails,
+cost something in the generation this compiler replaces. Gates are grouped
+into CI jobs, aggregated by one required check that fails when any gate job fails,
 is cancelled, or is skipped
-([0069](adr/architecture/0069-boundaries-enforced-on-the-graph.md)); a new
+([0060](adr/architecture/0060-boundaries-enforced-on-the-graph.md)); a new
 gate's script and its job land in the same pull request, and
-[0102](adr/architecture/0102-the-gate-grows-with-the-code.md) is the test that
+[0064](adr/architecture/0064-a-gate-is-a-script-or-a-named-job.md) is the test that
 proves the two never drift apart.
 
 | gate | command | catches |
@@ -381,7 +383,7 @@ proves the two never drift apart.
 | codes | `npm run lint:codes` | a specification `E_` code no test exercises and no ticket holds pending, a pending code a test already exercises, and a code used in the tree that no chapter defines |
 | docs | `npm run lint:docs` | a script, path, coverage number or Node version README.md or CONTRIBUTING.md name that no longer matches the repository |
 | agents | `npm run lint:agents` | a script `package.json` gains that AGENTS.md does not name verbatim |
-| meaning | `npm run lint:meaning` | a citation to a superseded decision with no successor in the same sentence, a retired term used outside a quotation, a stated count that no longer matches what it counts |
+| meaning | `npm run lint:meaning` | a retired term used outside a quotation, a stated count that no longer matches what it counts |
 | tests | `npm run test:coverage` | behaviour, plus the coverage ratchet |
 | mutation | `npm run test:mutation` | a change that keeps every line running but breaks what the line was for, which coverage alone rewards |
 | package contents | `node scripts/check-package-contents.ts` | `npm pack` shipping a file outside `docs/adr/` and `spec/`, the boundary the package's `files` field states but does not enforce on its own |
@@ -400,12 +402,12 @@ deleted with `emf/`.
 
 Every rule these gates enforce is written down once, with a greppable id, in
 the [rule ledger](architecture-rules.md)
-([0104](adr/architecture/0104-every-enforced-rule-has-an-id-a-row-and-a-fixture.md)).
+([0066](adr/architecture/0066-every-enforced-rule-has-an-id-a-row-and-a-fixture.md)).
 A row names the enforcer that runs the rule and the fixture that proves it
 fires; a rule not enforced yet is listed as pending with a ticket and a reason,
 and stops being allowed to say that the moment something enforces it.
 
-Coverage is a ratchet ([0101](adr/architecture/0101-coverage-is-a-ratchet.md)).
+Coverage is a ratchet ([0063](adr/architecture/0063-coverage-and-mutation-are-ratchets.md)).
 The thresholds in `vitest.config.ts` sit on what the suite reaches, over an
 explicit include list so a file no test reaches counts as zero, and they only
 rise: a change that reaches more raises them in the same pull request, and
@@ -413,10 +415,10 @@ lowering one is a line in a diff that has to be argued. Coverage-ignore
 comments are counted, and the count is held at zero.
 
 The mutation break score is measured, not assumed
-([0120](adr/architecture/0120-the-mutation-break-score-is-measured-not-assumed.md)),
+([0063](adr/architecture/0063-coverage-and-mutation-are-ratchets.md)),
 and only rises like the coverage ratchet does. It holds `src/**/*.ts` today;
 `scripts/**/*.ts` joins once its own gates can be exercised inside Stryker's
-sandbox, which two of them cannot yet.
+sandbox, which two defect classes keep several of them from yet.
 
 The reachability half of the boundary gate is the one worth naming. Coverage
 alone rewards a module for having tests: chapter 30 records 1,967 lines of dead
@@ -433,7 +435,7 @@ it would fail.
 The gates and their tests are TypeScript, held to the same compiler options and
 lint rules as the compiler, and Node runs them directly: Node 24 strips the
 types, so nothing is built between editing a gate and running it
-([0100](adr/architecture/0100-tests-run-in-process-on-vitest.md)). `.nvmrc`
+([0062](adr/architecture/0062-tests-run-in-process-on-vitest.md)). `.nvmrc`
 pins the exact Node version, and CI reads the same file.
 
 Each gate is a library first. It exports a function that takes a root and

@@ -12,25 +12,24 @@ in isolation:
 | property | needs | decided in |
 |---|---|---|
 | Application Id uniqueness | every Application in the estate | [0010](../../docs/adr/model/0010-flat-application-identity.md) |
-| project uniqueness, and exactly one publisher per project | every fragment in the estate | [0063](../../docs/adr/model/0063-intent-authored-per-project.md) |
-| hostname uniqueness | every exposure in the estate, plus the register of surfaces the model does not deploy | [0018](../../docs/adr/model/0018-exposure-by-audience.md) |
-| reachability completeness, derived ∪ registered | every exposure plus the unmanaged register | [0019](../../docs/adr/model/0019-registered-unmanaged-surfaces.md) |
-| the Reconcile Unit DAG | every required dependency edge | [0032](../../docs/adr/model/0032-reconcile-unit-derived.md) |
-| inbound derivations, CORS origins, one database per consumer | edges pointing *at* an Application | [0020](../../docs/adr/model/0020-dependency-edges-carry-surface.md) |
-| the reader set of a secret path | every grant in the estate | [0023](../../docs/adr/model/0023-grant-unit-is-the-path.md) |
-| placement eligibility, at least one node per Process | every declared dimension against the fleet's node contract | [0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md) |
+| project uniqueness, and exactly one publisher per project | every fragment in the estate | [0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md) |
+| hostname uniqueness | every exposure in the estate, plus the register of surfaces the model does not deploy | [0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md) |
+| reachability completeness, derived ∪ registered | every exposure plus the unmanaged register | [0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md) |
+| the Reconcile Unit DAG | every required dependency edge | [0033](../../docs/adr/model/0033-reconcile-unit-derived.md) |
+| inbound derivations, CORS origins, one database per consumer | edges pointing *at* an Application | [0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md) |
+| the reader set of a secret path | every grant in the estate | [0028](../../docs/adr/model/0028-grant-unit-is-the-path.md) |
+| placement eligibility, at least one node per Process | every declared dimension against the fleet's node contract | [0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md) |
 
 No Application knows its own consumers, and no project file holds the fleet's node
 contract, so none of these are locally computable. That is the whole argument for
-composition ([0037](../../docs/adr/model/0037-composition-oci-fragments.md)), and it is
+composition ([0042](../../docs/adr/model/0042-declarations-compose-from-intent-fragments.md)), and it is
 why this chapter is a hard dependency of chapters 16, 20 and 30.
 
 Two properties left this list on 2026-09-07. **Co-test membership** moved out
 with co-testing, which stays parked; see
 [docs/adr/deferred/README.md](../../docs/adr/deferred/README.md). **Release Unit
 membership** moved out because an Application is now itself the unit of atomic release
-([0062](../../docs/adr/model/0062-application-is-the-release-unit.md), superseding
-[0060](../../docs/adr/model/0060-release-unit.md)): its members are the Processes in
+([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)): its members are the Processes in
 its own document, so membership is readable in one file and needs no union at
 all.
 
@@ -39,7 +38,7 @@ all.
 The unit of publication is a **project file**. One project file is one Intent
 Fragment, holding the many Applications of that project, and a fragment therefore
 declares exactly one project
-([0063](../../docs/adr/model/0063-intent-authored-per-project.md)):
+([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)):
 
 ```yaml
 apiVersion: intent.jorisjonkers.dev/v1
@@ -57,7 +56,7 @@ spec:
 ```
 
 This narrows the wording of
-[0037](../../docs/adr/model/0037-composition-oci-fragments.md), which says "each project
+[0042](../../docs/adr/model/0042-declarations-compose-from-intent-fragments.md), which says "each project
 repository publishes". **One repository may hold several project files**, and it
 then publishes one fragment per project file rather than one fragment per
 repository: `homelab-collections` stays one repository and publishes one fragment
@@ -81,11 +80,11 @@ A fragment carries:
 - the Secret Subtree the project owns: paths, keys, engines, readers
 - the node contract, for the fragment that owns the fleet: the `allocatable`
   table every `placement` is matched against
-  ([0056](../../docs/adr/model/0056-node-facts-single-source.md))
+  ([0048](../../docs/adr/model/0048-node-facts-are-authored-once.md))
 - Registered Unmanaged Surfaces the project is responsible for
 - its share of the images lock: every image alias the project file names,
   resolved to the digest its repository's build pushed, with the UID and GID it
-  runs as ([0082](../../docs/adr/model/0082-images-lock-carries-uid-and-gid.md))
+  runs as ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md))
 - for an Application that declares a changelog, its compatibility proof: the
   serving revision the proof ran against, and whether the release holds a
   non-transactional changeset
@@ -93,8 +92,8 @@ A fragment carries:
 
 A fragment publishes **after its repository's images are built**, on every merge
 to the default branch, with every alias it names already resolved
-([0133](../../docs/adr/model/0133-a-project-is-delivered-as-a-signed-artifact-pinned-by-digest.md),
-amending [0037](../../docs/adr/model/0037-composition-oci-fragments.md)). A
+([0051](../../docs/adr/model/0051-a-project-is-delivered-as-a-signed-artifact.md),
+amending [0042](../../docs/adr/model/0042-declarations-compose-from-intent-fragments.md)). A
 fragment therefore never names an image nothing can pull, and an intent-only
 change (a changed exposure, a secret grant, a dependency edge, a raised
 `placement.memory`) still publishes on its own merge, a build later, rather than
@@ -175,18 +174,18 @@ Normative. Composition fails on any of these, and produces no `ComposedIntent`.
 
 **Application ids stay estate-unique even though they no longer determine the
 namespace.** The namespace derives from `project`, as `<project>-system`
-([0063](../../docs/adr/model/0063-intent-authored-per-project.md)), which is why a
+([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)), which is why a
 namespace now holds several Applications and is not a trust boundary. The id's
 uniqueness follows from what *references* it, not from what it names: it is the
 join key every `dependsOn.application` resolves against
 ([0010](../../docs/adr/model/0010-flat-application-identity.md),
-[0020](../../docs/adr/model/0020-dependency-edges-carry-surface.md)), and two Applications
+[0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)), and two Applications
 answering to one id would make an edge ambiguous wherever they live.
 
 `E_DUPLICATE_PROCESS_NAME` is scoped to the **project**, not to the Application,
 because the Process name alone is the ServiceAccount and the Vault role name
 under the project's namespace, `auth-system.auth-api`, not
-`auth-system.auth-auth-api` ([0024](../../docs/adr/model/0024-identity-per-process.md)).
+`auth-system.auth-auth-api` ([0031](../../docs/adr/model/0031-identity-per-process.md)).
 Two Applications in one project file therefore cannot both call a Process `api`,
 while the same name may repeat freely across projects. Since a project is exactly
 one fragment, the check reads one fragment at a time; it is asserted here because
@@ -195,7 +194,7 @@ composition is the one step every fragment passes through.
 **`host` uniqueness is a composition check, not a structural guarantee.**
 Nothing in the model makes a hostname unique by construction: `host` is a full
 FQDN authored on an Application's `exposure` entry
-([0018](../../docs/adr/model/0018-exposure-by-audience.md)), and two project files in
+([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)), and two project files in
 two repositories can write the same string with neither able to read the other.
 `E_DUPLICATE_HOST` over the union is the only place the property holds at all,
 and it is evaluated over **derived hosts and Registered Unmanaged Surfaces
@@ -231,11 +230,11 @@ because the vocabulary they were written in had no path to declare: the
 
 | invariant | error |
 |---|---|
-| every `dependsOn.application` resolves to an Application in the union **or to a provider the Platform document declares** ([0090](../../docs/adr/model/0090-edges-resolve-against-the-register.md), [0095](../../docs/adr/model/0095-platform-intent-is-the-second-authored-document.md)) | `E_UNRESOLVED_APPLICATION` |
+| every `dependsOn.application` resolves to an Application in the union **or to a provider the Platform document declares** ([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md), [0045](../../docs/adr/model/0045-platform-intent-is-the-second-authored-document.md)) | `E_UNRESOLVED_APPLICATION` |
 | every `dependsOn.surface` is provided by a Process of that Application, or listed by that provider | `E_UNKNOWN_SURFACE` |
 | every provider an edge targets carries an address and the port for that surface ([chapter 14](14-platform-intent.md#providers)) | `E_PROVIDER_WITHOUT_COORDINATES` |
 | every route's `surface` is provided by the Process that route names | `E_UNKNOWN_SURFACE` |
-| no two routes on one host share a `path` and `match` ([0093](../../docs/adr/model/0093-route-precedence-is-derived.md)) | `E_DUPLICATE_ROUTE` |
+| no two routes on one host share a `path` and `match` ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)) | `E_DUPLICATE_ROUTE` |
 | the graph of **required** edges is acyclic | `E_DEPENDENCY_CYCLE` |
 | every exposure's audience is carryable by some tier | `E_NO_TIER_FOR_AUDIENCE` |
 
@@ -253,7 +252,7 @@ Process outright: the check is that *that* Process declares *that* surface in
 its own `provides`, with no search across the Application. A route is the one place
 a Process is named from outside itself, and it is named from inside the same
 Application document, which is why `exposure` sits on the Application while `provides`
-stays on the Process ([0018](../../docs/adr/model/0018-exposure-by-audience.md)).
+stays on the Process ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)).
 Moving a surface between two Processes of one Application therefore breaks no
 `dependsOn` edge and does break a route still naming the old Process, and that
 asymmetry is correct: the edge asked for a capability, the route asked for a
@@ -269,13 +268,13 @@ joined at composition and nowhere else: an Application held at most one, no Appl
 could see its co-members, and a misspelt name yielded two units of one rather
 than an error, atomicity silently gone with every gate green. An Application is now
 itself the unit of atomic release
-([0062](../../docs/adr/model/0062-application-is-the-release-unit.md)), so there is no join
+([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)), so there is no join
 key to misspell, no membership for composition to materialise, and nothing left
 for that error to catch: the members are the Processes listed in the Application's
 own document. The readiness requirement the second error carried is unchanged in
 substance (no member's new version takes traffic until every member is healthy,
 health meaning that member's own declared readiness
-([0014](../../docs/adr/model/0014-probes-are-siblings.md)), but it is now a property
+([0016](../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md)), but it is now a property
 of one Application in one file rather than of a set assembled across repositories,
 and checking it needs no estate-wide view.
 
@@ -290,8 +289,8 @@ Every declared dimension is **hard**: all of them must match, a list is a set of
 equally acceptable values with no ordering and no weight, and matching is against
 `allocatable` from the pinned node contract, each node's total minus a reserve
 declared in the node file, never a live read of free capacity
-([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md),
-[0056](../../docs/adr/model/0056-node-facts-single-source.md),
+([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md),
+[0048](../../docs/adr/model/0048-node-facts-are-authored-once.md),
 [0006](../../docs/adr/model/0006-pinned-inputs.md)). `E_PLACEMENT_UNSATISFIABLE` is
 the one error for all of it, replacing the retired capability-only error that
 could speak about flat strings and nothing else: it now covers every dimension:
@@ -348,15 +347,15 @@ scheduler drops without an event, a warning or a condition.
 | every grant's `path` is declared by exactly one Subtree | `E_UNDECLARED_SECRET_PATH` |
 | the Subtree lists the granting Application as a reader of that path | `E_READER_NOT_DECLARED` |
 | every grant with `delivery: env` is named by at least one placeholder | `E_UNBOUND_SECRET_GRANT` |
-| every `${secret:<path>#<key>}` placeholder byte-matches a grant's **derived read path** ([0085](../../docs/adr/model/0085-a-grant-is-a-union-on-engine.md)) | `E_UNAUTHORISED_SECRET_REFERENCE` |
+| every `${secret:<path>#<key>}` placeholder byte-matches a grant's **derived read path** ([0029](../../docs/adr/model/0029-a-grant-is-a-union-on-engine.md)) | `E_UNAUTHORISED_SECRET_REFERENCE` |
 | `access: self-roll` on a path with other readers carries an acknowledgement | `E_ROLL_AFFECTS_OTHER_READERS` |
 | no literal secret value appears in an env file or an Asset | `E_RAW_SECRET` |
 | no rendered Deliverable grants a Process access to `secrets` | `E_PROCESS_RBAC_GRANT` |
 
 Three points of precision, all following from the grant unit being the path
-([0009](../../docs/adr/model/0009-vault-read-is-per-path.md),
-[0023](../../docs/adr/model/0023-grant-unit-is-the-path.md),
-[0027](../../docs/adr/model/0027-secret-reference-join-key.md)):
+([0008](../../docs/adr/model/0008-vault-read-is-per-path.md),
+[0028](../../docs/adr/model/0028-grant-unit-is-the-path.md),
+[0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)):
 
 - The placeholder join is **byte equality against the grant's derived read
   path**, with no mount rewrite and no engine taxonomy in the comparison itself.
@@ -387,7 +386,7 @@ Three points of precision, all following from the grant unit being the path
 
 The last two here, and `E_DISK_BINDING_CONFLICT` above, are evaluated against the
 pinned `ClusterState` snapshot
-([0034](../../docs/adr/model/0034-cluster-state-pinned-input.md)), so their verdict is
+([0034](../../docs/adr/model/0034-cluster-state-is-a-pinned-input.md)), so their verdict is
 exactly as fresh as that snapshot: composition reads no live cluster.
 
 ## Participants
@@ -399,7 +398,7 @@ on can vanish without breaking any reference, and leaves are the majority:
 Seven media applications, zero inbound edges, invisible to any edge-derived guard.
 
 **The Platform document is a required participant.** It publishes as an Intent
-Fragment like any project ([0095](../../docs/adr/model/0095-platform-intent-is-the-second-authored-document.md)),
+Fragment like any project ([0045](../../docs/adr/model/0045-platform-intent-is-the-second-authored-document.md)),
 appears in `participants.yml` under the platform's own repository, and is held to
 the same seven-day bound: a render without it is `E_PARTICIPANT_MISSING`, a
 render against a stale one is `E_PARTICIPANT_STALE`. There is no side channel by
@@ -408,7 +407,7 @@ which platform facts reach the render.
 `participants.yml` is the one central artefact that survives composition by
 fragments. It changes when a project is added or retired, never when a
 declaration changes, and since one fragment is exactly one project
-([0063](../../docs/adr/model/0063-intent-authored-per-project.md)), that sentence is now
+([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)), that sentence is now
 literal rather than approximate. The list enumerates projects, and because a
 project has exactly one publisher it is also the project-to-repository map that
 `E_DUPLICATE_PROJECT` is checked against. A repository holding several project
@@ -437,7 +436,7 @@ roundness: `CHANGELOG.md` records 26 releases between 2026-06-09 and 2026-08-20 
 one every 2.8 days), so seven days is about 2.5 observed intervals. Long enough
 to absorb two consecutive missed releases, short enough that a broken publish job
 is caught in the week it breaks
-([0038](../../docs/adr/model/0038-participants-list-staleness.md)). A participant that
+([0043](../../docs/adr/model/0043-participants-list-staleness.md)). A participant that
 genuinely publishes less often overrides the default **with a written reason**;
 an override without one is a build error.
 
@@ -484,7 +483,7 @@ document in this specification, including the lock below, is correct and stays
 correct across those releases: the model is at `1.0.0`, the toolkit is at
 `0.22.0`, and they are allowed to differ
 ([0007](../../docs/adr/model/0007-schema-version-separable.md),
-[0039](../../docs/adr/model/0039-artifact-schema-versioning.md)).
+[0044](../../docs/adr/model/0044-artifact-schema-versioning.md)).
 
 Composition admits a fragment on a **range**, not on equality:
 
@@ -585,7 +584,7 @@ applications (`tailscale`, `media-storage`, `backup-storage`,
 `btrfs-backup-snapshots`), have no cluster presence at all. `tailscale` here is
 the host daemon; it is not a placement capability, that use having retired with
 the flat capability vocabulary
-([0061](../../docs/adr/model/0061-placement-is-hard-dimensions.md)). Modelling NixOS was
+([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)). Modelling NixOS was
 rejected: rendering it is not writing a file but producing a build and an
 activation, an order of magnitude more v1 scope for roughly eight hosts.
 
@@ -601,10 +600,10 @@ A hostname the estate **depends on** is not an entry here. Something the estate
 runs and does not deploy but reaches (`stalwart` for SMTP) is a **provider**,
 a fact with an address and surfaces in the Platform document
 ([chapter 14](14-platform-intent.md#providers)), resolvable by an edge
-([0090](../../docs/adr/model/0090-edges-resolve-against-the-register.md)). The
+([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)). The
 register below holds the remainder: hostnames nobody deploys and nobody depends
 on, each an accepted hole with a review date. An edge resolves against facts,
-never against exemptions ([0095](../../docs/adr/model/0095-platform-intent-is-the-second-authored-document.md)).
+never against exemptions ([0045](../../docs/adr/model/0045-platform-intent-is-the-second-authored-document.md)).
 
 ```yaml
 unmanagedSurfaces:
@@ -636,9 +635,9 @@ entry, and an Application later authoring `host: wolf.jorisjonkers.dev` has to
 collide with it rather than quietly take the name back.
 
 Derived entries come from Audience declarations
-([0018](../../docs/adr/model/0018-exposure-by-audience.md)); registered entries come
+([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)); registered entries come
 from the ledger; anything in neither is a build error
-([0019](../../docs/adr/model/0019-registered-unmanaged-surfaces.md)). Because the check
+([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)). Because the check
 is symmetric, the register cannot quietly outlive what it excuses.
 
 A registration is an **unverified assertion**: nothing proves `samba` is actually
@@ -682,8 +681,8 @@ spec:
 
 `project` and `repository` are recorded per fragment because the union is over
 projects and a project has exactly one publisher
-([0037](../../docs/adr/model/0037-composition-oci-fragments.md),
-[0063](../../docs/adr/model/0063-intent-authored-per-project.md)). A replay can then
+([0042](../../docs/adr/model/0042-declarations-compose-from-intent-fragments.md),
+[0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)). A replay can then
 show which repository published a project at that digest, and a project that moved
 repositories between two locks appears as a diff rather than as a quietly
 different render.
@@ -712,7 +711,7 @@ a Process or a namespace.
 Renaming an Application is therefore a breaking change to every inbound reference,
 which is what `E_UNRESOLVED_APPLICATION` reports, and there is no escape hatch left:
 the `aliases` block is deleted
-([0063](../../docs/adr/model/0063-intent-authored-per-project.md)). It existed so a
+([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)). It existed so a
 *coordinate* could diverge from the identity, and it now has nothing to express:
 the namespace comes from `project`, and the Process name and the image are fields
 the author already writes explicitly
@@ -733,12 +732,12 @@ stays parked in [docs/adr/deferred/README.md](../../docs/adr/deferred/README.md)
 ## Open in this chapter
 
 1. ~~**The range's determinism claim is untested.**~~ It is
-   [0039](../../docs/adr/model/0039-artifact-schema-versioning.md)'s own
+   [0044](../../docs/adr/model/0044-artifact-schema-versioning.md)'s own
    settling test (render the pinned inputs once per toolkit minor and assert
    the render hash is equal across the set), and it is recorded there, where a
    failure flips the claim rather than a chapter item.
 2. ~~**The 7-day bound is calibrated against today's cadence.**~~ It is
-   [0038](../../docs/adr/model/0038-participants-list-staleness.md)'s own
+   [0043](../../docs/adr/model/0043-participants-list-staleness.md)'s own
    settling test (the maximum inter-publish gap per participant over 90 days)
    and is recorded there.
 3. **Whether the union may span clusters.** The lock is keyed by cluster, but the

@@ -2,7 +2,7 @@
 //
 // A lint that has only ever run against a clean tree is untested: nothing
 // proves it would fail. Each case builds a throwaway tree that violates
-// exactly one of the three checks and asserts the lint reports it.
+// exactly one of the two checks and asserts the lint reports it.
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -12,10 +12,7 @@ import {
   main,
   parseCount,
   retiredTermErrors,
-  sentencesOf,
   staleCountErrors,
-  supersededAdrs,
-  supersededCitationErrors,
 } from "../scripts/lint-meaning.ts";
 import { collect } from "./support/collect.ts";
 import { temporary } from "./setup.ts";
@@ -33,7 +30,7 @@ function write(root: string, files: Files): void {
 /**
  * The two real sources the stale-count check reads for its collections: a
  * Gates table of two rows in `docs/architecture.md`, and a two-adapter
- * enumeration in ADR 0052's own shape. Present in every fixture so a case
+ * enumeration in ADR 0037's own shape. Present in every fixture so a case
  * that does not touch counts still lints cleanly.
  */
 const COUNT_SOURCES: Files = {
@@ -42,7 +39,7 @@ const COUNT_SOURCES: Files = {
     "| gate | command | catches |\n|---|---|---|\n" +
     "| lint | `npm run lint` | drift |\n" +
     "| test | `npm run test` | breakage |\n\n## Tooling\n\nNothing here.\n",
-  "docs/adr/model/0052-registered-adapters-are-v1.md":
+  "docs/adr/model/0037-six-registered-adapters-satisfy-one-port.md":
     "---\ntier: decision\nstatus: proposed\nclaim: settled\ndate: 2026-08-31\n" +
     'normative: spec/v1/30-deliverables.md#adapters\nrests-on: ["0003"]\n---\n\n' +
     "# The registered adapters are v1\n\n" +
@@ -57,76 +54,6 @@ function fixture(files: Files): string {
   execFileSync("git", ["add", "-A"], { cwd: root });
   return root;
 }
-
-/** A minimal ADR file: valid frontmatter, an optional `superseded-by`, one H1. */
-function adr(title: string, supersededBy?: string): string {
-  return (
-    "---\ntier: decision\nstatus: proposed\nclaim: settled\ndate: 2026-08-31\n" +
-    (supersededBy === undefined ? "" : `superseded-by: ${supersededBy}\n`) +
-    `normative: spec/v1/00-overview.md#x\nrests-on: ["0003"]\n---\n\n# ${title}\n`
-  );
-}
-
-describe("superseded citation", () => {
-  const SUPERSEDED: Files = {
-    "docs/adr/model/0001-old-way.md": adr("The old way", "0002"),
-    "docs/adr/model/0002-new-way.md": adr("The new way"),
-  };
-
-  it("fails a citation of a superseded ADR with no successor in the same sentence", () => {
-    const root = fixture({
-      ...SUPERSEDED,
-      "README.md":
-        "The old way governs this\n" +
-        "([0001](docs/adr/model/0001-old-way.md)).\n",
-    });
-    expect(lintMeaning(root).errors).toContain(
-      "README.md: cites superseded 0001 without its successor 0002 in the same sentence",
-    );
-  });
-
-  it("passes when the successor is linked in the same sentence", () => {
-    const root = fixture({
-      ...SUPERSEDED,
-      "README.md":
-        "The old way governs this ([0001](docs/adr/model/0001-old-way.md), " +
-        "superseded by [0002](docs/adr/model/0002-new-way.md)).\n",
-    });
-    expect(lintMeaning(root).errors).toStrictEqual([]);
-  });
-
-  it("passes a table row citing both in one cell, the register's own shape", () => {
-    const root = fixture({
-      ...SUPERSEDED,
-      "README.md":
-        "| id | claim |\n|---|---|\n" +
-        "| [0001](docs/adr/model/0001-old-way.md) | superseded by [0002](docs/adr/model/0002-new-way.md) |\n",
-    });
-    expect(lintMeaning(root).errors).toStrictEqual([]);
-  });
-
-  it("exempts the successor's own file citing what it replaces", () => {
-    const root = fixture({
-      "docs/adr/model/0001-old-way.md":
-        SUPERSEDED["docs/adr/model/0001-old-way.md"] ?? "",
-      "docs/adr/model/0002-new-way.md":
-        adr("The new way") + "\nThis supersedes [0001](0001-old-way.md).\n",
-    });
-    expect(lintMeaning(root).errors).toStrictEqual([]);
-  });
-
-  it("fails two sentences apart the same way link-contract fails a moved link", () => {
-    const root = fixture({
-      ...SUPERSEDED,
-      "README.md":
-        "The old way governs this ([0001](docs/adr/model/0001-old-way.md)). " +
-        "It was replaced ([0002](docs/adr/model/0002-new-way.md)).\n",
-    });
-    expect(lintMeaning(root).errors).toContain(
-      "README.md: cites superseded 0001 without its successor 0002 in the same sentence",
-    );
-  });
-});
 
 describe("retired term", () => {
   it("fails a bare mention of a retired term outside a quotation", () => {
@@ -164,7 +91,7 @@ describe("retired term", () => {
   it("passes a paragraph that cites the ADR which retired the term", () => {
     const root = fixture({
       "notes.md":
-        "Until [0095](docs/adr/model/0095-x.md) this was called the Cluster " +
+        "Until [0045](docs/adr/model/0045-x.md) this was called the Cluster " +
         "Context, and the name changed when the content became authored intent.\n",
     });
     expect(lintMeaning(root).errors).toStrictEqual([]);
@@ -186,7 +113,7 @@ describe("stale count", () => {
         "Rendered against the sixteen registered adapters.\n",
     });
     expect(lintMeaning(root).errors).toContain(
-      "spec/v1/examples/RENDER-GAPS.md: states sixteen for the adapters ADR 0052 " +
+      "spec/v1/examples/RENDER-GAPS.md: states sixteen for the adapters ADR 0037 " +
         "names as v1's registered set, which holds 2",
     );
   });
@@ -254,22 +181,6 @@ describe("the command", () => {
   });
 });
 
-describe("sentencesOf", () => {
-  it("keeps a table row atomic, unsplit by a period-free cell boundary", () => {
-    expect(sentencesOf("| a | b |\n| c | d |")).toStrictEqual([
-      "| a | b |",
-      "| c | d |",
-    ]);
-  });
-
-  it("does not split a sentence on a period inside a link's path", () => {
-    expect(sentencesOf("See [it](model/0001-x.md). Then this.")).toStrictEqual([
-      "See [it](model/0001-x.md).",
-      "Then this.",
-    ]);
-  });
-});
-
 describe("parseCount", () => {
   it("reads a numeral and a number word alike", () => {
     expect(parseCount("6")).toBe(6);
@@ -282,27 +193,6 @@ describe("parseCount", () => {
   });
 });
 
-describe("supersededAdrs", () => {
-  it("reads the superseded-by field across every domain", () => {
-    expect(
-      supersededAdrs({
-        "docs/adr/model/0001-x.md": adr("X", "0002"),
-        "docs/adr/model/0002-y.md": adr("Y"),
-      }),
-    ).toStrictEqual([
-      { rel: "docs/adr/model/0001-x.md", number: "0001", supersededBy: "0002" },
-    ]);
-  });
-
-  it("skips an ADR-shaped file with no frontmatter block, rather than throwing", () => {
-    expect(
-      supersededAdrs({
-        "docs/adr/model/0001-x.md": "# No frontmatter at all\n",
-      }),
-    ).toStrictEqual([]);
-  });
-});
-
 describe("the stale-count sources, reshaped", () => {
   it("counts zero gates rather than throwing when the Gates heading is gone", () => {
     const root = fixture({
@@ -311,9 +201,9 @@ describe("the stale-count sources, reshaped", () => {
     expect(staleCountErrors(root)).toStrictEqual([]);
   });
 
-  it("counts zero adapters rather than throwing when 0052 carries no enumeration", () => {
+  it("counts zero adapters rather than throwing when 0037 carries no enumeration", () => {
     const root = fixture({
-      "docs/adr/model/0052-registered-adapters-are-v1.md":
+      "docs/adr/model/0037-six-registered-adapters-satisfy-one-port.md":
         "---\ntier: decision\nstatus: proposed\nclaim: settled\ndate: 2026-08-31\n" +
         'normative: spec/v1/30-deliverables.md#adapters\nrests-on: ["0003"]\n---\n\n' +
         "# The registered adapters are v1\n\nNo enumeration in this shape.\n",
@@ -321,7 +211,7 @@ describe("the stale-count sources, reshaped", () => {
         "Rendered against the six registered adapters.\n",
     });
     expect(staleCountErrors(root)).toContain(
-      "spec/v1/examples/RENDER-GAPS.md: states six for the adapters ADR 0052 " +
+      "spec/v1/examples/RENDER-GAPS.md: states six for the adapters ADR 0037 " +
         "names as v1's registered set, which holds 0",
     );
   });
@@ -336,17 +226,6 @@ describe("the stale-count sources, reshaped", () => {
 });
 
 describe("pure helpers stay pure over a synthetic tree", () => {
-  it("supersededCitationErrors takes a {rel: content} map with no filesystem", () => {
-    const files = {
-      "docs/adr/model/0001-x.md": adr("X", "0002"),
-      "docs/adr/model/0002-y.md": adr("Y"),
-      "a.md": "cites [0001](docs/adr/model/0001-x.md) alone.\n",
-    };
-    expect(supersededCitationErrors(files)).toStrictEqual([
-      "a.md: cites superseded 0001 without its successor 0002 in the same sentence",
-    ]);
-  });
-
   it("retiredTermErrors and staleCountErrors are exercised above via lintMeaning", () => {
     expect(
       retiredTermErrors({ "a.md": "Fine, no retired term here.\n" }),

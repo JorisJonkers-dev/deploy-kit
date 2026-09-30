@@ -9,7 +9,7 @@ A value an Application could state for itself belongs in chapter 10; a value tha
 must be unique across the estate or draws on a shared finite resource belongs
 here.
 
-Until [0095](../../docs/adr/model/0095-platform-intent-is-the-second-authored-document.md)
+Until [0045](../../docs/adr/model/0045-platform-intent-is-the-second-authored-document.md)
 this document was called the Cluster Context, had no chapter, and acquired its
 fields one decision at a time. The name changes because the content is
 authored intent, not observed context, and because it now enters composition
@@ -85,7 +85,7 @@ Process or Application could state for itself.**
 `Engine`'s literals stay fixed by the first branch: `engine: postgres` derives
 a database catalog no other engine derives, and answers an Asset's change
 response differently than `engine: rabbitmq` does
-([0078](../../docs/adr/model/0078-engine-is-process-vocabulary.md)). What each
+([0019](../../docs/adr/model/0019-engine-is-process-vocabulary.md)). What each
 literal *does*, the backup method, is still the platform's to state, in
 `engines` above; only the set of names is Project Intent's.
 
@@ -95,8 +95,8 @@ the value is carried into the published projection unread. But an Application
 authors its own `alertClass` exactly as it authors `engine`, and what the
 literal means, the severity and the receiver, is decided by the monitoring
 stack that reads the projection, past this model's edge, not by this metamodel
-([0079](../../docs/adr/model/0079-alert-class-derives-from-a-rule-catalog.md)).
-0079 keeps the vocabulary in Intent for that reason: once the rule catalog, the
+([0025](../../docs/adr/model/0025-observability-is-one-optional-block.md)).
+0025 keeps the vocabulary in Intent for that reason: once the rule catalog, the
 cadence and the receiver table were deleted from this specification, they
 followed the stack that evaluates them, but the urgency vocabulary stayed,
 because it is the Application's own claim about itself, not the stack's.
@@ -114,8 +114,8 @@ Three things a reader might expect here live elsewhere, each for a reason.
 | not here | where | why |
 |---|---|---|
 | the foundation components, Vault, VSO, Traefik, the metrics stack, Gatus | project files the platform owns, as ordinary Applications ([The foundation is declared](#the-foundation-is-declared)) | an Application is an Application; a second way to declare one is the duplicate vocabulary [0003](../../docs/adr/model/0003-three-model-pipeline.md) exists to end |
-| the node contract, site, arch, allocatable, gpus, disks per node | its own pinned input, authored once where nix reads it ([0056](../../docs/adr/model/0056-node-facts-single-source.md), [chapter 60](60-setup.md#node-facts)) | folding it in would make nix read a deployment-model document or duplicate the facts |
-| anything executable | the images lock, as a purpose-built image per engine ([Engines](#engines)) | [0012](../../docs/adr/model/0012-assets-not-code.md) applies to the platform's own files |
+| the node contract, site, arch, allocatable, gpus, disks per node | its own pinned input, authored once where nix reads it ([0048](../../docs/adr/model/0048-node-facts-are-authored-once.md), [chapter 60](60-setup.md#node-facts)) | folding it in would make nix read a deployment-model document or duplicate the facts |
+| anything executable | the images lock, as a purpose-built image per engine ([Engines](#engines)) | [0014](../../docs/adr/model/0014-file-shaped-configuration-is-an-asset.md) applies to the platform's own files |
 
 The Platform document names the node contract it was composed against, by
 digest, so the pinned input set stays closed
@@ -124,9 +124,9 @@ digest, so the pinned input set stays closed
 ## Substrate facts
 
 Facts about the cluster that decide other decisions
-([0057](../../docs/adr/model/0057-datastore-and-restore.md)). Each is named for
+([0049](../../docs/adr/model/0049-datastore-and-restore.md)). Each is named for
 what it is, never for how k3s is told about it: a CLI flag is a derivation
-nobody authors, or an observation recorded under 0057, and it appears in no
+nobody authors, or an observation recorded under 0049, and it appears in no
 authored file.
 
 ```yaml
@@ -134,23 +134,23 @@ substrate:
   kubernetesVersion: v1.31.4+k3s1
   datastore: sqlite                  # sqlite | etcd
   serverCount: 1
-  secretsEncryption: false           # gates delivery: env and file (0028)
+  secretsEncryption: false           # gates delivery: env and file (0030)
   cni: flannel
   networkPolicyController: embedded  # none | embedded | cni
 ```
 
 | fact | read by |
 |---|---|
-| `kubernetesVersion` | schema validation of every rendered object; [0036](../../docs/adr/model/0036-cni-selection.md)'s evaluation |
-| `datastore`, `serverCount` | the restore rehearsal; every decision resting on [0002](../../docs/adr/model/0002-kubernetes-as-substrate.md) |
-| `secretsEncryption` | `E_SECRETS_AT_REST_REQUIRED` ([0028](../../docs/adr/model/0028-secrets-at-rest-gate.md)) |
-| `cni`, `networkPolicyController` | whether a non-enforcing policy stage exists ([0084](../../docs/adr/model/0084-render-only-is-the-v1-policy-stage.md)) |
+| `kubernetesVersion` | schema validation of every rendered object; [0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)'s evaluation |
+| `datastore`, `serverCount` | the restore rehearsal; every decision resting on [0002](../../docs/adr/model/0002-kubernetes-is-the-substrate-for-one-applier.md) |
+| `secretsEncryption` | `E_SECRETS_AT_REST_REQUIRED` ([0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)) |
+| `cni`, `networkPolicyController` | whether a non-enforcing policy stage exists ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)) |
 
 ## The bootstrap set
 
 A render cannot apply itself. The things that must exist before the first
 rendered object can land are **recorded, not declared**
-([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)), and the set is
+([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)), and the set is
 enumerated here so that growing it is a decision:
 
 ```yaml
@@ -188,7 +188,7 @@ Vault, VSO, Traefik, Prometheus and Gatus are Applications in project files the
 platform owns: `platform/edge.project.yml`, `platform/secrets.project.yml`,
 `platform/observability.project.yml`, with an `image`, Processes, `engine`, grants,
 `exposure`, volumes and a Durability Class like any tenant Application
-([0096](../../docs/adr/model/0096-the-foundation-is-declared.md)). Nothing
+([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)). Nothing
 about them is hand-written, and every estate-wide invariant in
 [chapter 40](40-composition.md#the-estate-wide-invariants) sees them.
 
@@ -207,13 +207,13 @@ The estate-scoped Deliverables that used to have adapters of their own, the
 Gatus endpoints, the edge catalogs, are **inbound derivations** of the platform
 Application that consumes them ([chapter 16](16-dependencies.md#what-an-edge-derives-read-inbound)),
 rendered as that Application's own Assets, exactly as the database catalog is for
-`postgres` ([0080](../../docs/adr/model/0080-database-catalog-is-derived-data.md)).
+`postgres` ([0026](../../docs/adr/model/0026-migration-is-declared-on-the-application.md)).
 
 ## Tiers
 
 A tier is where the edge terminates. It declares **four edge facts**, in the
 model's words, and the `traefik` adapter maps them to Traefik's
-([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)):
+([0011](../../docs/adr/model/0011-authored-values-name-model-concepts.md)):
 
 ```yaml
 tiers:
@@ -235,7 +235,7 @@ tiers:
 | `audiences` | which audiences this tier carries; a route's audience selects its tier, and an audience no tier carries is `E_NO_TIER_FOR_AUDIENCE` |
 | `listener` | whether the edge terminates TLS |
 | `certificates` | how certificates are issued for what it terminates |
-| `forwardAuth` | the endpoint that authenticates for it; required where `authenticated` is carried, `E_NO_FORWARD_AUTH_ENDPOINT` otherwise ([0076](../../docs/adr/model/0076-middleware-has-one-producer.md)) |
+| `forwardAuth` | the endpoint that authenticates for it; required where `authenticated` is carried, `E_NO_FORWARD_AUTH_ENDPOINT` otherwise ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)) |
 | `traefik` | the platform Application whose proxy this tier is; an Application no project file declares is `E_UNKNOWN_TIER_PROXY` |
 
 `entryPoint`, `certResolver` and every other Traefik spelling appear only in the
@@ -246,7 +246,7 @@ adapter ran.
 ## Durability policy
 
 One policy per Durability Class
-([0077](../../docs/adr/model/0077-durability-derives-a-backup.md)). The window
+([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)). The window
 is one node's IO and the destination one remote target, so both are
 platform-assigned. A volume whose class has no policy here is
 `E_NO_DURABILITY_POLICY`:
@@ -264,7 +264,7 @@ durability:
 
 The method for an `engine` **is an image**: one purpose-built image per engine,
 whose entrypoint performs the backup, resolved through the images lock like every
-other image ([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)).
+other image ([0011](../../docs/adr/model/0011-authored-values-name-model-concepts.md)).
 The Platform document names the alias and nothing executable, and a Process
 whose `engine` has no entry here is `E_NO_ENGINE_POLICY`.
 
@@ -275,7 +275,7 @@ engines:
   files:    {backup: file-backup}
 ```
 
-A shell command in an authored file is what [0012](../../docs/adr/model/0012-assets-not-code.md)
+A shell command in an authored file is what [0014](../../docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)
 refuses for an Application, and it is refused here for the same reason: what the
 image does is versioned and digested; a string in YAML is neither.
 
@@ -299,7 +299,7 @@ reads `alertClass` from the published projection
 ## Hardening policy
 
 One posture for every container the estate renders
-([0016](../../docs/adr/model/0016-pod-hardening.md)):
+([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)):
 
 ```yaml
 hardening: restricted
@@ -321,9 +321,9 @@ vocabulary stays one value wide.
 ## Probe and ephemeral policy
 
 One probe cadence for the estate
-([0088](../../docs/adr/model/0088-startup-probe-targets-liveness.md)) and one
+([0016](../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md)) and one
 ephemeral size for a declared writable path
-([0092](../../docs/adr/model/0092-writable-paths-are-declared.md)):
+([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)):
 
 ```yaml
 probes:    {period: 10s, timeout: 5s, failures: 3}
@@ -331,7 +331,7 @@ ephemeral: {size: 64Mi}
 ```
 
 Both blocks name model concepts, not the target's fields
-([0097](../../docs/adr/model/0097-authored-values-name-model-concepts.md)). They
+([0011](../../docs/adr/model/0011-authored-values-name-model-concepts.md)). They
 did not always: until this amendment they were written `periodSeconds`,
 `timeoutSeconds`, `failureThreshold` and `sizeLimit`, which are the Kubernetes
 probe and volume field names, in the one document whose own rule is that no
@@ -352,7 +352,7 @@ migration:
 ```
 
 The estate has one migration system, Liquibase with YAML changelogs
-([0130](../../docs/adr/model/0130-migration-is-declared-on-the-application.md)),
+([0026](../../docs/adr/model/0026-migration-is-declared-on-the-application.md)),
 and the platform owns its runner: every Application declaring
 `migration: {changelog}` builds its migration image `FROM` this runner's digest
 ([chapter 10](10-project-intent.md#migration)). The deadline and the requests
@@ -376,7 +376,7 @@ delivery:
 ```
 
 How a release is switched ([chapter 55](55-delivery.md#the-release-gate),
-[0132](../../docs/adr/model/0132-the-release-gate-answers-the-switch.md)). Two
+[0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)). Two
 facts, both the platform's:
 
 - **`machinery`** names the Applications that perform a switch: the Release
@@ -421,9 +421,9 @@ optional, and is removed once `legacy` is empty.
 
 Things the estate runs and this model does not deploy, that an Application may
 depend on. A **provider is a fact, not a hole**
-([0095](../../docs/adr/model/0095-platform-intent-is-the-second-authored-document.md)):
+([0045](../../docs/adr/model/0045-platform-intent-is-the-second-authored-document.md)):
 it has an address and surfaces, an edge resolves against it
-([0090](../../docs/adr/model/0090-edges-resolve-against-the-register.md)), and
+([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)), and
 it carries no review date because it is not going away.
 
 ```yaml
@@ -436,7 +436,7 @@ providers:
 A hostname nobody deploys and nobody depends on is still a hole, and stays a
 Registered Unmanaged Surface in the ledger
 ([chapter 40](40-composition.md#unmanaged-surfaces)) with an owner, a reason and
-a review date. The two were one list until 0095 split them; an edge resolves
+a review date. The two were one list until 0045 split them; an edge resolves
 against facts, never against exemptions.
 
 ## There is nothing to override here

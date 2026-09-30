@@ -20,7 +20,7 @@ describe("bucketOf", () => {
       "production code": "src/domain/service.ts",
       tests: "test/change-buckets.test.ts",
       specification: "spec/v1/10-service-intent.md",
-      "decision records": "docs/adr/model/0003-three-layer-meta-model.md",
+      "decision records": "docs/adr/model/0003-three-model-pipeline.md",
       documentation: "docs/architecture.md",
       examples: "spec/v1/examples/auth/auth.domain.yml",
       tooling: "scripts/lint-rules.ts",

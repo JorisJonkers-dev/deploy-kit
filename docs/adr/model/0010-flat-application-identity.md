@@ -9,15 +9,10 @@ rests-on: ["0004"]
 
 # One flat Application Id
 
-> **Amended 2026-09-14.** Vocabulary renamed by
-> [0116](0116-project-application-process.md): Domain is now Project,
-> Service is Application, Workload is Process, and Service Intent is Project
-> Intent. The decision is unchanged.
-
 An Application is identified by one short string, unique across the estate, and that
 string is the only identity another Application may reference. The id is the
 repository or product name. The namespace derives from the Application's project
-([0063](0063-intent-authored-per-project.md)); Process names and image
+([0009](0009-intent-is-authored-one-file-per-project.md)); Process names and image
 references are authored, not derived; there is no alias mechanism.
 
 ## Rests on
@@ -42,7 +37,7 @@ explain. The Application id is the repository name, `home-portal`. The Process i
 called what the process is called, `app-ui`, and so is its image, because a
 Process name is what the program is called and never a derivative of the id. The namespace
 is `app-system` because the project is `app`
-([0063](0063-intent-authored-per-project.md)). Nothing moves and nothing is
+([0009](0009-intent-is-authored-one-file-per-project.md)). Nothing moves and nothing is
 aliased: the prose row describes a divergence that no longer exists.
 
 Flat uniqueness cannot be had by construction, only by check: the id is a bare
@@ -88,7 +83,7 @@ avoid.
   repository runs a process called `app-ui`.
 - Uniqueness is enforced by `E_DUPLICATE_APPLICATION_ID` at composition, not by
   construction; two repositories can claim one id until composition runs,
-  paid by the aggregator operator, who discovers the collision only then.
+  paid by the estate maintainer, who discovers the collision only then.
 - A namespace is no longer reachable from Project Intent at all: it is
   `<project>-system` and nothing else, so the Applications of one project share one
   namespace and that namespace is not a trust boundary, paid by anyone who

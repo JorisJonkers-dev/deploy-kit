@@ -68,16 +68,16 @@ Three of the eight are currently false as built, and say so.
 
 How one unit's tests gate another's deploy (co-testing) stays parked. How the
 estate deploys is part of the model since 2026-09-24
-([0127](docs/adr/model/0127-delivery-is-part-of-the-model.md)): Flux pulls a
+([0050](docs/adr/model/0050-delivery-is-part-of-the-model.md)): Flux pulls a
 signed, pinned render per Project and Flagger switches it, as
 [chapter 55](spec/v1/55-delivery.md) specifies. The model's three demands on
 delivery are what that chapter meets:
 
 | Demand | Decided in |
 | --- | --- |
-| Release Unit atomicity: no member switches until every member is healthy | [0060](docs/adr/model/0060-release-unit.md), superseded by [0062](docs/adr/model/0062-application-is-the-release-unit.md) |
-| Destructive operations gated by Durability Class | [0015](docs/adr/model/0015-durability-class-per-volume.md) |
-| Rendering only from pinned, digested inputs | [0006](docs/adr/model/0006-pinned-inputs.md), [0034](docs/adr/model/0034-cluster-state-pinned-input.md) |
+| Release Unit atomicity: no member switches until every member is healthy | [0052](docs/adr/model/0052-an-application-is-the-release-unit.md) |
+| Destructive operations gated by Durability Class | [0018](docs/adr/model/0018-durability-class-derives-a-backup.md) |
+| Rendering only from pinned, digested inputs | [0006](docs/adr/model/0006-pinned-inputs.md), [0034](docs/adr/model/0034-cluster-state-is-a-pinned-input.md) |
 
 The parked co-testing work, and the push design delivery retired, are in
 [`docs/adr/deferred/`](docs/adr/deferred/README.md).

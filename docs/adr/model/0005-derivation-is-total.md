@@ -9,11 +9,6 @@ normative: spec/v1/20-resolved-deployment.md#derived-mechanics
 
 # Derivation from declared intent covers the live estate
 
-> **Amended 2026-09-14.** Vocabulary renamed by
-> [0116](0116-project-application-process.md): Domain is now Project,
-> Service is Application, Workload is Process, and Service Intent is Project
-> Intent. The decision is unchanged.
-
 ## Rests on
 Every hand-tuned value in the live estate is reachable from a value only the
 owning Application could know. False if: a live value exists that no layer-1 field
@@ -22,7 +17,7 @@ manifests: every unauthored value remaining in the diff is a counterexample.
 
 ## Why
 This is the premise under every derive-not-declare decision
-([0030](0030-runtime-mechanics-derived.md) and its siblings): if an Application
+([0021](0021-runtime-mechanics-derive-from-cutover.md) and its siblings): if an Application
 declares what only it can know (its cold-start budget, whether it requires
 zero-downtime rolls, which paths answer readiness and liveness, what a volume's
 data is worth), then probe timings, rollout strategy, surge and unavailability,
@@ -51,8 +46,8 @@ returns **0 hits** (verified 2026-08-31; the grep spans both renderer
 generations), and resource requests are emitted only when the model already
 carries them: pod hardening and QoS have no layer-1 vocabulary at all, so every
 pod runs root-by-default and BestEffort with no field able to reach either
-(`review/CONSOLIDATED.md` B6). [0016](0016-pod-hardening.md) closes the
-hardening half and [0061](0061-placement-is-hard-dimensions.md) the QoS half;
+(`review/CONSOLIDATED.md` B6). [0020](0020-hardening-is-one-platform-posture.md) closes the
+hardening half and [0017](0017-placement-is-hard-dimensions.md) the QoS half;
 the premise stays open until the render-and-diff shows no others.
 
 ## Alternatives
@@ -64,8 +59,7 @@ Rival premises, this being a premise:
 | Full declaration (every application restates the platform) | the ~10 hand-authored layer-1 repositories carry every mechanic for all ~30 Applications; one platform-wide tuning change is ~30 Application edits across ~10 pull requests | The values are platform knowledge, not Application knowledge; an Application owner cannot defend `failureThreshold: 120` and should not be asked to |
 
 ## Reversibility
-Undo cost today: reopen the 14 index decisions that rest on this premise (0011
-through [0056](0056-node-facts-single-source.md)), reintroduce
+Undo cost today: reopen every decision that rests on this premise, reintroduce
 authored-mechanics fields into the layer-1 schemas, and accept hand-tuned
 values back across ~10 repositories, days of schema work plus an estate-wide
 re-author. Becomes irreversible once: the hand-written manifests carrying the
@@ -85,6 +79,7 @@ hard-won values, and there is nothing to fall back to.
   owner.
 - A wrong derivation rule mis-tunes every application at once instead of one,
   paid by the whole estate on the first rollout after the bad rule.
-- An unusual process cannot hand-tune anything except through the
-  named-override hatch of [0031](0031-derived-overrides-with-reason.md),
-  paid by that process's owner, in a recorded reason per override.
+- An unusual process cannot hand-tune anything: a derivation that is wrong
+  for it is a rule change for everyone, and `replicas` is the one local
+  exception ([0022](0022-a-derived-value-has-one-declaring-site.md)), paid by
+  the rule's author.

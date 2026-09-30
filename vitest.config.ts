@@ -20,7 +20,7 @@ export default defineConfig({
       // lcov carries per-line hits, which a pull request report needs to say
       // whether the lines a change added are covered.
       reporter: ["text", "json-summary", "lcov"],
-      // A ratchet, per docs/adr/architecture/0101-coverage-is-a-ratchet.md:
+      // A ratchet, per docs/adr/architecture/0063-coverage-and-mutation-are-ratchets.md:
       // set from what the suite reaches, and only ever raised.
       //
       // Measured 2026-09-15, after AGENTS.md's script-list gate

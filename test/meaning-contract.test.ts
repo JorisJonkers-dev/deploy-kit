@@ -1,11 +1,10 @@
-// The meaning lint, executed. scripts/lint-meaning.ts catches a citation to a
-// superseded decision presented as current, a term the model retired still
-// read as current, and a stated count that has drifted from what it counts.
+// The meaning lint, executed. scripts/lint-meaning.ts catches a term the
+// model retired still read as current, and a stated count that has drifted from what it counts.
 // This runs it against the repository's own tree, the way CI would, and
 // proves the guard at the bottom of the script still starts it as a command.
 //
-// REQ-028 (docs/requirements.md): a citation to a superseded decision, a
-// retired term, or a stated count is checked against what it claims.
+// REQ-028 (docs/requirements.md): a retired term or a stated count is
+// checked against what it claims.
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";

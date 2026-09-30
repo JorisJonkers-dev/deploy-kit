@@ -4,8 +4,8 @@
 #
 # THREE Applications in one file. They are neighbours, not a unit: co-location in a
 # project file couples nothing, and each of the three releases on its own
-# (docs/adr/model/0062-application-is-the-release-unit.md,
-# docs/adr/model/0063-intent-authored-per-project.md). "Every Application in a project file
+# (docs/adr/model/0052-an-application-is-the-release-unit.md,
+# docs/adr/model/0009-intent-is-authored-one-file-per-project.md). "Every Application in a project file
 # releases as one" was considered and rejected exactly because it would let
 # someone couple nine rollouts by editing an unrelated line. Atomicity stops at
 # the Application boundary; the file is an authoring and publication unit.
@@ -13,7 +13,7 @@
 # None of the three has a repository of its own. The data project ships from
 # homelab-collections, and publication is repository-scoped, so the project may
 # stay there or split out later -- composition behaves identically
-# (docs/adr/model/0037-composition-oci-fragments.md). What may not happen is a project
+# (docs/adr/model/0042-declarations-compose-from-intent-fragments.md). What may not happen is a project
 # spanning two repositories: this file is the whole project.
 #
 # Exercises: three independently released Applications, a third-party image behind
@@ -26,7 +26,7 @@
 #   platform/env/postgres/base.env   -- reproduced as env/postgres/base.env
 
 # The data model's own semver, not the toolkit's
-# (docs/adr/model/0039-artifact-schema-versioning.md).
+# (docs/adr/model/0044-artifact-schema-versioning.md).
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
 schemaVersion: 1.0.0
@@ -54,7 +54,7 @@ applications:
         # `platform-postgres` is the repository/product name; `postgres` is what
         # the process is actually called. That is not a divergence needing a
         # field to record it -- it is the name
-        # (docs/adr/model/0063-intent-authored-per-project.md). The identity derived
+        # (docs/adr/model/0009-intent-is-authored-one-file-per-project.md). The identity derived
         # from it is `data-system.postgres`.
         lifecycle: application
 
@@ -64,7 +64,7 @@ applications:
         # tag that moves on every upstream build, and this Process is Recreate
         # on a local-path RWO volume, so any reschedule is a fresh pull.
         # Renovate raises the digest bump behind the ordering gate
-        # (docs/adr/model/0040-renovate-ordering-gate.md), and every rendered
+        # (docs/adr/model/0047-one-publication-path.md), and every rendered
         # Deliverable stays E_FLOATING_IMAGE clean.
         image: postgres
 
@@ -75,7 +75,7 @@ applications:
 
         # What this process IS, which the platform keys its backup method off.
         # Not `runtime`, which is instrumentation and is correctly `none` here
-        # (docs/adr/model/0078-engine-is-process-vocabulary.md). Required
+        # (docs/adr/model/0019-engine-is-process-vocabulary.md). Required
         # because this Process holds a volume whose class derives a backup.
         engine: postgres
 
@@ -96,8 +96,8 @@ applications:
         placement:
           # The datastore eight Applications queue behind. Raw quantities, matched
           # against node allocatable from the pinned node contract
-          # (docs/adr/model/0061-placement-is-hard-dimensions.md,
-          # docs/adr/model/0056-node-facts-single-source.md).
+          # (docs/adr/model/0017-placement-is-hard-dimensions.md,
+          # docs/adr/model/0048-node-facts-are-authored-once.md).
           memory: 2Gi           # request == limit
           cpu: 500m             # request only, no limit
           arch: [amd64]         # pgvector publishes no arm64 build of pg17
@@ -112,7 +112,7 @@ applications:
           # `disk` filters FIRST placement only. Once a PV is bound, the binding
           # wins, and a `disk` value that contradicts an existing binding in the
           # pinned ClusterState is E_DISK_BINDING_CONFLICT
-          # (docs/adr/model/0034-cluster-state-pinned-input.md).
+          # (docs/adr/model/0034-cluster-state-is-a-pinned-input.md).
           #
           # This is the NODE's disk, not the claim's. The PVC's storage class
           # and size are still assigned (chapter 20); this dimension only
@@ -121,28 +121,28 @@ applications:
             media: [nvme, ssd]
             # No `size`: it is derived as the sum of this Process's volume
             # sizes, so the quantity has one declaring site
-            # (docs/adr/model/0081-volume-size-is-a-hard-dimension.md)
+            # (docs/adr/model/0017-placement-is-hard-dimensions.md)
 
         # The `restricted` class applies whole: the pod runs as uid 999, drops
         # all capabilities, takes seccomp RuntimeDefault and keeps
         # readOnlyRootFilesystem true. There is no hardening block to author
         # and no control to relax -- an image that cannot meet the class is
         # E_HARDENING_UNMET, not an entry in an exception list
-        # (docs/adr/model/0016-pod-hardening.md).
+        # (docs/adr/model/0020-hardening-is-one-platform-posture.md).
         # The upstream entrypoint writes its unix socket to
         # /var/run/postgresql and lock files under /tmp before the server
         # starts; both are declared writable paths and readOnlyRootFilesystem
-        # stays true (docs/adr/model/0092-writable-paths-are-declared.md).
+        # stays true (docs/adr/model/0020-hardening-is-one-platform-posture.md).
         # runAsNonRoot needs no exception either: the images lock resolves this
         # image's uid and gid, and fsGroup derives from the gid so a freshly
         # provisioned local-path volume is writable without an init chown
-        # (docs/adr/model/0082-images-lock-carries-uid-and-gid.md).
+        # (docs/adr/model/0020-hardening-is-one-platform-posture.md).
         writablePaths: [/var/run/postgresql, /tmp]
 
         # postgres-exporter runs in the same pod and serves the metrics port
         # this Process declares in `provides`. stalwart (stalwart-apply) and
         # agent-runner (the agent-gateway jar) have the same shape
-        # (docs/adr/model/0064-sidecars-are-process-vocabulary.md).
+        # (docs/adr/model/0015-sidecars-are-process-vocabulary.md).
         #
         # A sidecar carries what a container carries: its own memory, cpu and
         # hardening. The node dimensions stay on the Process above, because
@@ -159,7 +159,7 @@ applications:
         # TCP, not HTTP. postgres has no HTTP surface, and this is what the live
         # probes do -- tcpSocket on port db for both. An HTTP-only probe
         # vocabulary could not express the estate's data tier at all
-        # (docs/adr/model/0014-probes-are-siblings.md).
+        # (docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md).
         probes:
           readiness: {tcp: 5432}
           liveness:  {tcp: 5432}
@@ -178,14 +178,14 @@ applications:
             mountAt: /var/lib/postgresql/data
             durability: irreplaceable
             # The one fact only the owning Application knows
-            # (docs/adr/model/0015-durability-class-per-volume.md); schedule, sweep
+            # (docs/adr/model/0018-durability-class-derives-a-backup.md); schedule, sweep
             # and destination are derived. This is the database eight Applications
             # queue behind, on a `local-path` volume in a cluster with no
             # VolumeSnapshot CRDs and no CSI snapshot support, so losing the
             # node loses every consumer's data at once. `irreplaceable` renders
             # a backup job with a retention sweep plus an off-cluster copy, and
             # its restore must be rehearsed before the first production apply
-            # (docs/adr/model/0057-datastore-and-restore.md) -- which is the gap the
+            # (docs/adr/model/0049-datastore-and-restore.md) -- which is the gap the
             # workspace backup-coverage decision recorded, where each job writes
             # a fixed filename so the PVC holds only the newest copy:
             # https://github.com/JorisJonkers-dev/workspace/blob/main/docs/decisions/ADR-0011-backup-coverage-gaps.md
@@ -198,12 +198,12 @@ applications:
           # image was rejected because that means a derived image, a build
           # pipeline, a registry entry and a Renovate rule, plus a rebuild on
           # every upstream pg17 bump -- to change one settings file
-          # (docs/adr/model/0012-assets-not-code.md).
+          # (docs/adr/model/0014-file-shaped-configuration-is-an-asset.md).
           - from: config/postgresql.conf
             mountAt: /etc/postgresql/postgresql.conf
             # No `onChange`. A change to an Asset is content-hashed and restarts
             # the Process unconditionally; the field does not exist
-            # (docs/adr/model/0094-asset-change-restarts-unconditionally.md).
+            # (docs/adr/model/0014-file-shaped-configuration-is-an-asset.md).
 
           # NOT declared: init-databases.sh.
           #
@@ -218,7 +218,7 @@ applications:
           # path is how long the file has gone unexamined.
 
         # SPLIT PATH, one path per reader set
-        # (docs/adr/model/0023-grant-unit-is-the-path.md). The exporter's datasource
+        # (docs/adr/model/0028-grant-unit-is-the-path.md). The exporter's datasource
         # used to sit in the same document as every consumer's credentials, so
         # holding `read` for the exporter meant holding `read` on auth's and
         # knowledge's database passwords too -- a KV-v2 read returns the whole
@@ -235,7 +235,7 @@ applications:
         #
         # `delivery: env`, so this Application is refused until the pinned Cluster
         # Context advertises `secretsEncryption: true` --
-        # E_SECRETS_AT_REST_REQUIRED (docs/adr/model/0028-secrets-at-rest-gate.md).
+        # E_SECRETS_AT_REST_REQUIRED (docs/adr/model/0030-secret-delivery-is-env-file-or-self.md).
         secrets:
           - path: secret/data/platform/postgres/exporter
             keys: [datasource]
@@ -250,8 +250,8 @@ applications:
   # holds three Applications by construction, so it is NOT a trust boundary -- no
   # isolation claim may rest on the namespace wall. Isolation here is the
   # derived default-deny edge set, evaluated per pod
-  # (docs/adr/model/0035-network-policy-default-deny.md), plus per-Process identity
-  # (docs/adr/model/0024-identity-per-process.md).
+  # (docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md), plus per-Process identity
+  # (docs/adr/model/0031-identity-per-process.md).
   - id: platform-rabbitmq
     # Its own urgency, not the project's: raising the class to the header would
     # make this file page as loudly as postgres does. rabbitmq exports metrics
@@ -278,7 +278,7 @@ applications:
         audience: authenticated # the management UI behind forward-auth. One
                                 # word: the chain, the tier and the middleware
                                 # name are all derived and none is authorable
-                                # (docs/adr/model/0018-exposure-by-audience.md)
+                                # (docs/adr/model/0023-exposure-is-declared-by-audience.md)
         routes:
           - {path: /, match: prefix, process: rabbitmq, surface: management}
         # No `contentPolicy` and no `redirectTo`: this route takes the derived
@@ -296,7 +296,7 @@ applications:
         image: rabbitmq     # an alias, resolved through the images lock
         runtime: none       # third-party image; no profile values to inject
         engine: rabbitmq    # keys the backup method: a definitions export
-                            # (docs/adr/model/0078-engine-is-process-vocabulary.md)
+                            # (docs/adr/model/0019-engine-is-process-vocabulary.md)
 
         provides:
           amqp: 5672        # named by auth and knowledge in `dependsOn`
@@ -332,7 +332,7 @@ applications:
             size: 20Gi
             durability: recoverable
             # One step below `irreplaceable`
-            # (docs/adr/model/0015-durability-class-per-volume.md): a nightly
+            # (docs/adr/model/0018-durability-class-derives-a-backup.md): a nightly
             # application-level backup with a retention sweep suffices, and no
             # off-cluster copy is required. Losing the mnesia directory costs
             # undelivered messages and the definitions, not a consumer's data.
@@ -350,7 +350,7 @@ applications:
     # datastore is correctly not exposed, so there is no signal to name. An
     # omission says it: there is no `none` class to write, because a value
     # meaning "I wrote the field to say I did not want the field" is ceremony
-    # (docs/adr/model/0021-observability-scrape-and-alert-class.md). Giving this
+    # (docs/adr/model/0025-observability-is-one-optional-block.md). Giving this
     # Application a class would be E_ALERT_CLASS_WITHOUT_SIGNAL, and the repair is
     # an exporter sidecar plus a scrape surface, as postgres has above.
 
@@ -389,12 +389,12 @@ applications:
             # No `engine`. `reconstructible` derives no backup, and an engine on
             # a Process that derives none is refused --
             # E_ENGINE_WITHOUT_DURABILITY
-            # (docs/adr/model/0077-durability-derives-a-backup.md)
+            # (docs/adr/model/0018-durability-class-derives-a-backup.md)
             durability: reconstructible
             # The estate's own words for this volume: "deliberately unbacked as
             # reconstructible cache". Losing it costs a rebuild, not data, so no
             # backup job is rendered at all
-            # (docs/adr/model/0015-durability-class-per-volume.md). Stating the class
+            # (docs/adr/model/0018-durability-class-derives-a-backup.md). Stating the class
             # is what makes that a decision rather than an omission. The class
             # is also the model's gate on destruction -- a claim backing
             # non-`reconstructible` data may not be removed as a side effect of

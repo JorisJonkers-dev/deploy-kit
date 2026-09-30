@@ -1,6 +1,6 @@
 // The closed vocabularies layer 2 adds, each declared here once. Layer 2
 // records decisions in model words, so none of these names a Kubernetes or
-// Traefik concept (docs/adr/model/0097-authored-values-name-model-concepts.md,
+// Traefik concept (docs/adr/model/0011-authored-values-name-model-concepts.md,
 // normative in spec/v1/20-resolved-deployment.md#the-model).
 
 /** Which pinned input a recorded digest is the digest of. */

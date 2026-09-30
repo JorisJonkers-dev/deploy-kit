@@ -17,7 +17,7 @@
 #
 # Non-gating by design: this job carries no bearing on Pipeline Complete
 # (ci.yml). Only a gate belongs in that job's `needs` list, per
-# docs/adr/architecture/0102-the-gate-grows-with-the-code.md, and a label
+# docs/adr/architecture/0064-a-gate-is-a-script-or-a-named-job.md, and a label
 # sync is not a gate.
 #
 # What this can do: add and remove the two labels the claim procedure names,

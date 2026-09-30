@@ -41,7 +41,7 @@ offers, authored by the platform: substrate facts, the bootstrap set, tiers,
 durability and observability policy, engines, providers. Same rule as Project
 Intent, and the contention test decides which of the two a value lives in
 ([chapter 14](spec/v1/14-platform-intent.md),
-[0095](docs/adr/model/0095-platform-intent-is-the-second-authored-document.md)).
+[0045](docs/adr/model/0045-platform-intent-is-the-second-authored-document.md)).
 Formerly the *Cluster Context*, which had no chapter.
 
 **Resolved Deployment**: layer 2. Every platform decision, derived and never
@@ -56,12 +56,12 @@ artifact ([chapter 20](spec/v1/20-resolved-deployment.md)).
 **Project**: the authored document, and the unit of publication. One project
 file holds one project's `owner`, every Application in it, and any Shared Intent
 the whole file holds. A project never spans repositories
-([0063](docs/adr/model/0063-intent-authored-per-project.md)).
+([0009](docs/adr/model/0009-intent-is-authored-one-file-per-project.md)).
 
 **Application**: the release unit, and the thing an owner reasons about. Holds one
 or more Processes, its observability, its exposure, and any Shared Intent its
 Processes share
-([0062](docs/adr/model/0062-application-is-the-release-unit.md)).
+([0052](docs/adr/model/0052-an-application-is-the-release-unit.md)).
 
 **Shared Intent**: the eight things a Process holds that are a property of its
 product or its project rather than of that program: `secrets`, `env`,
@@ -70,13 +70,13 @@ product or its project rather than of that program: `secrets`, `env`,
 and a declaration reaches every Process below it. Lists extend each other, the
 lowest declaration of one thing holds, and an identical restatement at two levels
 is refused
-([0124](docs/adr/model/0124-shared-intent-descends-to-the-process.md)).
+([0012](docs/adr/model/0012-shared-intent-descends-and-is-lowered.md)).
 
 **Effective Intent**: Project Intent with every Shared Intent declaration
 lowered onto the Processes that hold it, so the Project and the Application hold
 only what defines them. The only layer-1 shape anything downstream reads; nobody
 authors it and nothing publishes it
-([0125](docs/adr/model/0125-the-effective-intent-is-a-lowering.md)).
+([0012](docs/adr/model/0012-shared-intent-descends-and-is-lowered.md)).
 
 **Process**: one program to run, with its own image, lifecycle, env file set,
 probes, volumes, placement and hardening. A port is a property of a process, so
@@ -88,7 +88,7 @@ route both name.
 
 **Sidecar**: a second container in a Process's pod, and Process vocabulary
 rather than an Application of its own
-([0064](docs/adr/model/0064-sidecars-are-process-vocabulary.md)).
+([0015](docs/adr/model/0015-sidecars-are-process-vocabulary.md)).
 
 **Dependency edge**: a declared need for another Application's Surface, carrying
 whether it is required ([chapter 16](spec/v1/16-dependencies.md)).
@@ -100,20 +100,20 @@ policy. Holds one or more Routes.
 serve it.
 
 **Audience**: who may reach an Exposure. The declared word from which the edge
-mechanism is derived ([0018](docs/adr/model/0018-exposure-by-audience.md)).
+mechanism is derived ([0023](docs/adr/model/0023-exposure-is-declared-by-audience.md)).
 
 **Cutover**: the owner's answer to whether the next revision keeps serving while
 it replaces the old one: `continuous` or `interrupted`. Required, answered alike
 by every Process of one Application, and the input the Switchover derives from
 ([chapter 10](spec/v1/10-project-intent.md#cutover-is-declared-not-promised),
-[0128](docs/adr/model/0128-cutover-names-the-promise.md)).
+[0021](docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)).
 
 **Migration**: how an Application's database schema moves when its new version
 replaces the old: a Liquibase changelog the platform's runner applies, the image
 itself (`self`), or `none`. Declared on the Application; one Application of a
 project moves the project's database
 ([chapter 10](spec/v1/10-project-intent.md#migration),
-[0130](docs/adr/model/0130-migration-is-declared-on-the-application.md)).
+[0026](docs/adr/model/0026-migration-is-declared-on-the-application.md)).
 `migration: self` shares its reading with `delivery: self`: the Process does it
 itself.
 
@@ -150,22 +150,22 @@ migration ([chapter 10](spec/v1/10-project-intent.md#prepare-processes)).
 **Probe**: a declared readiness or liveness check.
 
 **Asset**: a file mounted into a Process. Declarative, never executable
-([0012](docs/adr/model/0012-assets-not-code.md)). Its object name is
+([0014](docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)). Its object name is
 content-hashed and a change restarts the Process, unconditionally
-([0094](docs/adr/model/0094-asset-change-restarts-unconditionally.md)).
+([0014](docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)).
 
 **Volume**: a claim mounted at a path, carrying its Durability Class.
 
 **Durability Class**: what losing a volume costs: `reconstructible`,
 `recoverable`, `irreplaceable`. Gates every destructive operation
-([0015](docs/adr/model/0015-durability-class-per-volume.md)), and derives the
+([0018](docs/adr/model/0018-durability-class-derives-a-backup.md)), and derives the
 backup objects that make the class mean something
-([0077](docs/adr/model/0077-durability-derives-a-backup.md)).
+([0018](docs/adr/model/0018-durability-class-derives-a-backup.md)).
 
 **Engine**: what a Process *is*, where the platform must treat it
 specially: `postgres`, `rabbitmq`, `valkey`, `files`. Not `runtime`, which says
 how a process is instrumented
-([0078](docs/adr/model/0078-engine-is-process-vocabulary.md)).
+([0019](docs/adr/model/0019-engine-is-process-vocabulary.md)).
 
 **Durability policy**: the platform's terms for one Durability Class: the
 backup window, the retention count, and the off-cluster destination. Carried by
@@ -173,14 +173,14 @@ the Platform Intent, never authored per volume.
 
 **Placement**: the hard dimensions a Process requires of a node: memory, cpu,
 architecture, site, capabilities, and optionally disk and GPU. Eligibility, not
-bin-packing ([0061](docs/adr/model/0061-placement-is-hard-dimensions.md)).
+bin-packing ([0017](docs/adr/model/0017-placement-is-hard-dimensions.md)).
 
 **Capability**: a named node property a Process may require.
 
 **Hardening Class**: the pod security posture every Process takes, declared
 once by the platform and authored by none of them. It has no exception surface:
 a Process states the paths it must write, and an image that cannot meet the
-class is refused ([0016](docs/adr/model/0016-pod-hardening.md)).
+class is refused ([0020](docs/adr/model/0020-hardening-is-one-platform-posture.md)).
 
 **Runtime Profile**: the profile selected by `runtime`, from which observability
 and runtime environment variables are derived. Writing one of its keys by hand
@@ -189,21 +189,21 @@ is a build error.
 **Alert Class**: how urgently a signal about this Application should wake
 someone. Urgency only: which receiver, which channel and which severity mapping
 belong to the monitoring stack that reads the projection, never to this model
-([0021](docs/adr/model/0021-observability-scrape-and-alert-class.md)).
+([0025](docs/adr/model/0025-observability-is-one-optional-block.md)).
 
 **Grant**: declared access to a Secret Store path, its keys, its access tier
 and its delivery mode. One of the eight Shared Intent families, so it lives at
 whichever level shares it
-([0124](docs/adr/model/0124-shared-intent-descends-to-the-process.md), superseding
-[0022](docs/adr/model/0022-grants-live-on-the-application.md),
-[0023](docs/adr/model/0023-grant-unit-is-the-path.md)).
+([0012](docs/adr/model/0012-shared-intent-descends-and-is-lowered.md), superseding
+[0012](docs/adr/model/0012-shared-intent-descends-and-is-lowered.md),
+[0028](docs/adr/model/0028-grant-unit-is-the-path.md)).
 
 **Env File**: one authored dotenv file, its Cluster Target and its variables.
 `base.env` names no target, because it is what does not vary; an overlay beside
 it names one. The directory holding it is the scope it reaches: the project, one
 Application, or one Process
-([0011](docs/adr/model/0011-configuration-env-files-per-process.md),
-[0124](docs/adr/model/0124-shared-intent-descends-to-the-process.md)).
+([0013](docs/adr/model/0013-configuration-is-dotenv-at-three-scopes.md),
+[0012](docs/adr/model/0012-shared-intent-descends-and-is-lowered.md)).
 
 **Env Variable**: one `NAME=value` a process reads from its environment. Its
 value is a literal or one Placeholder, never a literal holding one. The rendered
@@ -212,17 +212,17 @@ entry is layer 3's, and is an **Env Entry** there.
 **Placeholder**: an Env Variable's value where it names what should be
 substituted rather than carrying it: `dependency`, `secret`, `exposure` or
 `identity`, and a source. A secret placeholder byte-matches a granted path
-([0027](docs/adr/model/0027-secret-reference-join-key.md)).
+([0030](docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)).
 
 **Capacity exception**: the sole local exception to a derived value:
 `replicas: {count, reason}`, with the reason required
-([0031](docs/adr/model/0031-derived-overrides-with-reason.md)). There is no
+([0022](docs/adr/model/0022-a-derived-value-has-one-declaring-site.md)). There is no
 generic override mechanism.
 
 ## Composition: many repositories, one estate
 
 **Intent Fragment**: one project file published as an OCI artifact, by digest
-([0037](docs/adr/model/0037-composition-oci-fragments.md),
+([0042](docs/adr/model/0042-declarations-compose-from-intent-fragments.md),
 [chapter 40](spec/v1/40-composition.md#fragments)).
 
 **Composition**: the run that unions the published fragments and checks the
@@ -236,11 +236,11 @@ cannot contain its own digest.
 
 **Participants**: the expected set of publishing projects, with a staleness
 bound. A missed publish is a deletion, so the bound is what makes silence
-visible ([0038](docs/adr/model/0038-participants-list-staleness.md)).
+visible ([0043](docs/adr/model/0043-participants-list-staleness.md)).
 
 **Schema version**: the data model's own semver, carried by each document
 family and separate from the toolkit's package version
-([0039](docs/adr/model/0039-artifact-schema-versioning.md)).
+([0044](docs/adr/model/0044-artifact-schema-versioning.md)).
 
 ## Layer 2: what the platform decides
 
@@ -248,11 +248,11 @@ family and separate from the toolkit's package version
 (the project files and the Platform document), the node contract, the locks, and
 the ClusterState snapshot, each carried by digest. Nothing at render time reads live cluster
 state ([0006](docs/adr/model/0006-pinned-inputs.md),
-[0034](docs/adr/model/0034-cluster-state-pinned-input.md)).
+[0034](docs/adr/model/0034-cluster-state-is-a-pinned-input.md)).
 
 **Node contract**: the node facts a cluster publishes, authored once where nix
 reads them and named by the Platform document by digest
-([0056](docs/adr/model/0056-node-facts-single-source.md)).
+([0048](docs/adr/model/0048-node-facts-are-authored-once.md)).
 
 **Tier**: where the edge terminates: four facts, `audiences`, `listener`,
 `certificates`, `forwardAuth`, plus the Traefik Application that is its proxy. A
@@ -265,11 +265,11 @@ depend on: an address and surfaces, in the Platform document. A fact, not a hole
 
 **Bootstrap set**: what must exist before the first rendered object can apply:
 k3s, the Flux source, Vault's unseal, the CRDs. Recorded, enumerated, never
-declared ([0099](docs/adr/model/0099-bootstrap-set-is-recorded.md)).
+declared ([0046](docs/adr/model/0046-the-foundation-is-declared.md)).
 
 **The foundation**: Vault, VSO, Traefik, Prometheus, Gatus: Applications in project
 files the platform owns, declared like any tenant
-([0096](docs/adr/model/0096-the-foundation-is-declared.md)). Not packs, not
+([0046](docs/adr/model/0046-the-foundation-is-declared.md)). Not packs, not
 charts.
 
 **ClusterState snapshot**: observed cluster facts captured once, digested, and
@@ -283,15 +283,14 @@ must be unique across the estate or draws on a shared finite resource
 
 **ResolvedApplication**: the projection of the Resolved Deployment belonging to one
 Application, obtained by filtering and published back to its repository
-([0033](docs/adr/model/0033-assignments-published-back.md)).
+([0032](docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md)).
 
 **Reconcile Unit**: the ordering unit, derived from the dependency graph and
-never declared ([0032](docs/adr/model/0032-reconcile-unit-derived.md)).
+never declared ([0033](docs/adr/model/0033-reconcile-unit-derived.md)).
 
 **Release Unit**: the set that switches together: no member's new version
 receives traffic until every member's new version is healthy
-([0060](docs/adr/model/0060-release-unit.md), superseded by
-[0062](docs/adr/model/0062-application-is-the-release-unit.md)).
+([0052](docs/adr/model/0052-an-application-is-the-release-unit.md)).
 
 **Application revision**: the digest of one Application's element of the
 Resolved Deployment, itself excluded: the identity of one release of one
@@ -305,23 +304,23 @@ input digests alone, so if it changes at least one input changed.
 ## Layer 3: what is written out
 
 **Deliverable**: one serialized object destined for a file. Attributed to
-exactly one Adapter ([0054](docs/adr/model/0054-adapter-attribution.md)).
+exactly one Adapter ([0037](docs/adr/model/0037-six-registered-adapters-satisfy-one-port.md)).
 
 **Adapter**: one of six named renderers registered in one registry, every one
 central and run once over the composed union. Documents in, attributed
 Deliverables out; deterministic; no ambient reads
-([0052](docs/adr/model/0052-registered-adapters-are-v1.md),
-[0053](docs/adr/model/0053-adapter-port-contract.md)).
+([0037](docs/adr/model/0037-six-registered-adapters-satisfy-one-port.md),
+[0037](docs/adr/model/0037-six-registered-adapters-satisfy-one-port.md)).
 
 **Adapter port**: the single typed contract every Adapter satisfies.
 
 **Bidirectional ledger**: where an accepted hole is recorded, with an owner and
 a reason. Bidirectional because an entry outliving the gap it covered fails the
-build too ([0055](docs/adr/model/0055-bidirectional-ledgers.md)).
+build too ([0038](docs/adr/model/0038-bidirectional-ledgers.md)).
 
 **Unmanaged surface**: a hostname nobody deploys and nobody depends on,
 registered as a ledger entry rather than ignored
-([0019](docs/adr/model/0019-registered-unmanaged-surfaces.md)). Something the
+([0024](docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)). Something the
 estate *depends on* is a Provider, not an unmanaged surface.
 
 ## Delivery: how a render reaches the cluster
@@ -369,12 +368,12 @@ keeps serving while the pin names the new one, until a new pin lands
 **Fragment.** One meaning now: the **Intent Fragment**, an authored document
 published by digest. The output unit is a **Deliverable**, in chapter 30 as
 everywhere else, and the `*Fragment` producer kinds are deleted
-([0098](docs/adr/model/0098-one-publication-path.md)). Say *Intent Fragment*
+([0047](docs/adr/model/0047-one-publication-path.md)). Say *Intent Fragment*
 in prose, `IntentFragment` in code, and never `Fragment` bare.
 
 **Cluster Context.** Retired. The document is Platform Intent; the old name
 described observed context and the content is authored intent
-([0095](docs/adr/model/0095-platform-intent-is-the-second-authored-document.md)).
+([0045](docs/adr/model/0045-platform-intent-is-the-second-authored-document.md)).
 
 **Deployment.** Ambiguous between the Kubernetes kind and the estate's old
 `deployment.jorisjonkers.dev` documents, which is the confusion
@@ -384,7 +383,7 @@ Resolved Deployment, or say the Kubernetes kind.
 **Reload.** A secret's `rotation.tolerates: reload`, and nothing else: the
 client library re-reads the value itself, which happens under `delivery: self`.
 An Asset has no such actor, so an Asset change restarts
-([0094](docs/adr/model/0094-asset-change-restarts-unconditionally.md)).
+([0014](docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)).
 
 **Render.** Two steps, both layer 2 to layer 3. The **adapters** map the
 Resolved Deployment into the narrow Kubernetes and Vault object model (a
@@ -396,11 +395,11 @@ vocabulary keeps the two apart so the act of deciding is still *resolution* or
 **Deploy.** Applying a render to the cluster: a pin commit names a Project's
 signed render by digest, and Flux, the one applier, pulls and applies it
 ([chapter 55](spec/v1/55-delivery.md),
-[0127](docs/adr/model/0127-delivery-is-part-of-the-model.md)). A render is not
+[0050](docs/adr/model/0050-delivery-is-part-of-the-model.md)). A render is not
 a deploy, and neither is a pin until Flux has applied it.
 
 **Service.** Retired as a model word: the level is **Application**
-([0116](docs/adr/model/0116-project-application-process.md)). Say *Service*
+([0009](docs/adr/model/0009-intent-is-authored-one-file-per-project.md)). Say *Service*
 only for the Kubernetes `Service` object a Deliverable contains. The layer-2
 projection followed the same rename: the kind is **ResolvedApplication**, and
 `ResolvedService` is retired with the word it was built from.

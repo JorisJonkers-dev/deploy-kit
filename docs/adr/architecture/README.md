@@ -1,29 +1,23 @@
 # Architecture: the compiler's own structure
 
-These ADRs decide how the compiler is built: its layering, its ports, its error
-model, how output is serialized, and which gates hold the structure in place.
-They are **not model decisions**. Nothing here can change what the model means,
-and no chapter of `spec/v1` depends on one.
+These records decide how the compiler is built: its chain of steps, its trace,
+its error model, how output is serialized, and which gates hold the structure
+in place. They are **not model decisions**. Nothing here can change what the
+model means, and no chapter of `spec/v1` depends on one.
 
-The consequence for the contract every ADR satisfies is one field: a
-`normative:` pointer here names a section of
-[`docs/architecture.md`](../../architecture.md), the normative document for code
-structure, or of [`docs/architecture-rules.md`](../../architecture-rules.md),
-the ledger of rules that structure is held to, rather than a section of
-`spec/v1`. Everything else is unchanged
-(frontmatter schema, a falsifiable claim per premise, `rests-on` naming premises
-only, the Alternatives table, the citation rule) and `scripts/lint-adrs.ts`
-enforces all of it here exactly as it does for the model, anchor check included.
+The one difference from a model record is its `normative:` pointer, which names
+a section of [`docs/architecture.md`](../../architecture.md), the normative
+document for code structure, or of
+[`docs/architecture-rules.md`](../../architecture-rules.md), the ledger of rules
+that structure is held to. Everything else is the register's contract, and
+`scripts/lint-adrs.ts` enforces it here as it does for the model.
 
-Numbers come from the one estate-wide sequence, so a citation resolves without
-knowing which domain it lands in. The register is
-[`../README.md`](../README.md), the same one the model uses.
-
-The scope boundary is stated in
+Numbers come from the one estate-wide sequence; the register is
+[`../README.md`](../README.md). The scope boundary is stated in
 [chapter 00](../../../spec/v1/00-overview.md#programme-scope).
 
-Four of these decisions are scoped to the TypeScript tree for as long as the
-coursework implementation under `emf/` exists, and
-[0105](0105-two-implementations-meet-at-committed-oracles.md) is the contract
-between the two. The Java implementation's own structure is decided in
-[`emf/docs/adr/`](../../../emf/docs/adr/README.md), not here.
+The records here bind the TypeScript tree. The model-driven implementation
+under `emf/` decides its own structure in
+[`emf/docs/adr/`](../../../emf/docs/adr/README.md), and
+[0068](0068-two-implementations-meet-at-the-parity-table.md) is the contract
+between the two.
