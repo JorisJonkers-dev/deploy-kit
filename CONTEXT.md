@@ -27,7 +27,8 @@ and *layer 3* for its members.
 **Metamodel**: the definition of the language a model is written in, and
 nothing else. A metamodel is a model whose instances are models, so the word is
 never used for a layer, a document, an abstraction level or the pipeline as a
-whole. The production implementation declares its languages as wire schemas;
+whole. The production implementation declares its languages as Zod schemas in
+`src/model/`;
 the model-driven implementation under `emf/` has two hand-written Ecore
 metamodels, a source and a target, and generates the Deliverable Set as files
 with no metamodel of its own. One word, `metamodel`, unhyphenated.

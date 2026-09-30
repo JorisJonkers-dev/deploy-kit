@@ -36,8 +36,8 @@ over, and its structure can be the chain itself.
 internals, to produce its output. **Settled by:** the first rewrite slice
 rendering `minimal` end to end through `read`, `lower`, `resolve` and the
 adapters, with each step importing only `model/`, and `npm run lint:boundaries`
-proving it. Until that slice lands, the tree and `docs/architecture.md#layers`
-still carry the ring layout this replaces.
+proving it. The tree runs the chain as far as the Effective Intent today;
+`resolve/` and the adapters join it in the slices that follow.
 
 ## Why
 

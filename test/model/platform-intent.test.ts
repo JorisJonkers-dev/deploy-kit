@@ -30,6 +30,18 @@ describe("parsePlatformIntent", () => {
     expect(result.ok && canonicalJson(result.value.document)).toBe(ORACLE);
   });
 
+  it("refuses text that is not one YAML document, before any schema reads it", () => {
+    const result = parsePlatformIntent(`${WORKED}---\n${WORKED}`);
+
+    expect(result.ok ? [] : result.diagnostics).toStrictEqual([
+      expect.objectContaining({
+        code: "schema",
+        path: "",
+        message: "expected one YAML document, found 2",
+      }),
+    ]);
+  });
+
   it("differs from the oracle when one authored field changes", () => {
     const result = parsePlatformIntent(
       WORKED.replace("retain: 14", "retain: 15"),
@@ -38,74 +50,27 @@ describe("parsePlatformIntent", () => {
     expect(result.ok && canonicalJson(result.value.document)).not.toBe(ORACLE);
   });
 
-  it("maps the migration policy where it is offered, and leaves it absent where it is not", () => {
+  it("reads the migration policy where it is offered, and leaves it absent where it is not", () => {
     const offered = parsePlatformIntent(WORKED);
     const withheld = parsePlatformIntent(
       WORKED.replace(/\nmigration:\n( {2}.*\n)+/, "\n"),
     );
 
-    expect(offered.ok && offered.value.platform.migration).toStrictEqual({
+    expect(offered.ok && offered.value.document.migration).toStrictEqual({
       runner: "liquibase-runner",
       deadline: "10m",
       memory: "256Mi",
       cpu: "100m",
     });
-    expect(withheld.ok && "migration" in withheld.value.platform).toBe(false);
+    expect(withheld.ok && "migration" in withheld.value.document).toBe(false);
     const ungated = parsePlatformIntent(
       WORKED.replace(/\ndelivery:\n( {2}.*\n)+/, "\n"),
     );
-    expect(offered.ok && offered.value.platform.delivery).toStrictEqual({
+    expect(offered.ok && offered.value.document.delivery).toStrictEqual({
       machinery: ["traefik-public", "traefik-lan", "flagger", "release-gate"],
       analysis: { interval: "30s", iterations: 4, threshold: 3 },
     });
-    expect(ungated.ok && "delivery" in ungated.value.platform).toBe(false);
-  });
-
-  it("maps the worked document into the domain model", () => {
-    const result = parsePlatformIntent(WORKED);
-    const platform = result.ok ? result.value.platform : undefined;
-
-    expect(platform?.owner).toBe("joris");
-    expect(platform?.cluster).toBe("production");
-    expect(platform?.nodeContract).toMatch(/^sha256:/);
-    expect(platform?.hardening).toBe("restricted");
-    expect(platform?.substrate.secretsEncryption).toBe(false);
-    expect(
-      platform?.tiers.map(({ name, proxy }) => [name, proxy]),
-    ).toStrictEqual([
-      ["public-frankfurt", "traefik-public"],
-      ["lan", "traefik-lan"],
-    ]);
-    expect(platform?.tiers[0]?.forwardAuth).toMatch(/^http:\/\/auth-api/);
-    expect(platform?.tiers[1]).not.toHaveProperty("forwardAuth");
-    expect([...(platform?.durability.keys() ?? [])]).toStrictEqual([
-      "reconstructible",
-      "recoverable",
-      "irreplaceable",
-    ]);
-    expect(platform?.durability.get("irreplaceable")?.retain).toBe(90);
-    expect([...(platform?.engines ?? [])]).toStrictEqual([
-      ["postgres", "postgres-backup"],
-      ["rabbitmq", "rabbitmq-backup"],
-      ["files", "file-backup"],
-    ]);
-    expect(platform?.providers).toStrictEqual([
-      {
-        name: "stalwart",
-        address: "10.0.0.12",
-        surfaces: new Map([
-          ["smtp", 25],
-          ["http", 8080],
-        ]),
-      },
-    ]);
-  });
-
-  it("maps a document with no providers to an empty list", () => {
-    const text = WORKED.slice(0, WORKED.indexOf("\nproviders:")) + "\n";
-    const result = parsePlatformIntent(text);
-
-    expect(result.ok && result.value.platform.providers).toStrictEqual([]);
+    expect(ungated.ok && "delivery" in ungated.value.document).toBe(false);
   });
 
   it("refuses a value outside a closed vocabulary at its JSON Pointer", () => {

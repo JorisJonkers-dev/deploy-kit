@@ -20,7 +20,11 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import { parseProjectIntent } from "../src/index.ts";
-import type { Application, Process, Project } from "../src/index.ts";
+import type {
+  EffectiveApplication,
+  EffectiveProcess,
+  EffectiveProject,
+} from "../src/index.ts";
 
 const repo = join(import.meta.dirname, "..");
 const examples = join(repo, "spec", "v1", "examples");
@@ -45,17 +49,17 @@ const refusalFiles = readdirSync(refusals)
  * refuses: a refusal fixture's own oracle is what proves its refusal, and what
  * is checked here is what the accepted half of the estate declares.
  */
-function projectOf(file: string): Project | undefined {
+function projectOf(file: string): EffectiveProject | undefined {
   const result = parseProjectIntent(read(file));
   if (!result.ok && projectFiles.includes(file))
     throw new Error(`${file}: ${JSON.stringify(result.diagnostics)}`);
-  return result.ok ? result.value.project : undefined;
+  return result.ok ? result.value.effective : undefined;
 }
 
-const applicationsOf = (file: string): readonly Application[] =>
+const applicationsOf = (file: string): readonly EffectiveApplication[] =>
   projectOf(file)?.applications ?? [];
 
-const processesOf = (file: string): readonly Process[] =>
+const processesOf = (file: string): readonly EffectiveProcess[] =>
   applicationsOf(file).flatMap((application) => application.processes);
 
 /** A file's declared lines, with whole-line and trailing comments removed. */
@@ -84,7 +88,7 @@ test("every worked Process declares cutover, and zeroDowntime is gone", () => {
 test("a Process with a volume declares interrupted, because RWO cannot hold a second copy", () => {
   for (const file of [...projectFiles, ...refusalFiles])
     for (const process of processesOf(file).filter(
-      (candidate) => candidate.volumes.length > 0,
+      (candidate) => (candidate.volumes ?? []).length > 0,
     ))
       expect(
         process.cutover,
@@ -148,12 +152,15 @@ test("a scrape names a surface its own Process provides, never a port", () => {
       const scrape = application.observability?.scrape;
       if (scrape === undefined) continue;
 
+      const process = application.processes.find(
+        ({ name }) => name === scrape.process,
+      );
       expect(
-        application.processes,
+        process,
         `${application.id}: scrape names a Process of another Application`,
-      ).toContain(scrape.process);
+      ).toBeDefined();
       expect(
-        scrape.process.surfaces,
+        Object.keys(process?.provides ?? {}),
         `${application.id}: its Process provides no such surface`,
       ).toContain(scrape.surface);
       expect(scrape.path, `${application.id}: scrape names no path`).not.toBe(
@@ -224,7 +231,7 @@ test("no Process or sidecar authors hardening", () => {
 test("no provides port below 1024, because there is no capability to declare", () => {
   for (const file of projectFiles)
     for (const process of processesOf(file))
-      for (const { name: surface, port } of process.surfaces)
+      for (const [surface, port] of Object.entries(process.provides ?? {}))
         expect(
           port,
           `${process.name}: ${surface} on ${port} is E_PRIVILEGED_PORT_UNDER_NONROOT`,

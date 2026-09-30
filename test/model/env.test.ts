@@ -4,13 +4,8 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { lowerProject } from "../../src/domain/project-intent/lower.ts";
-import type { EnvFile } from "../../src/domain/project-intent/model.ts";
-import {
-  readEnv,
-  readEnvFile,
-  scopeOf,
-} from "../../src/wire/project-intent/env.ts";
+import type { EnvFile } from "../../src/model/project-intent.ts";
+import { readEnv, readEnvFile, scopeOf } from "../../src/read/env.ts";
 import { checkIntentSet, parseProjectIntent } from "../../src/index.ts";
 
 const KNOWLEDGE = join(
@@ -185,7 +180,7 @@ describe("the worked knowledge example", () => {
       sources(),
     );
     const processes = parsed.ok
-      ? lowerProject(parsed.value.project).applications.flatMap(
+      ? parsed.value.effective.applications.flatMap(
           (application) => application.processes,
         )
       : undefined;
@@ -193,7 +188,7 @@ describe("the worked knowledge example", () => {
       names(
         processes
           ?.find((process) => process.name === name)
-          ?.env.find(({ cluster }) => cluster === undefined),
+          ?.env?.find(({ cluster }) => cluster === undefined),
       );
 
     expect(envOf("knowledge-api")).toStrictEqual([
@@ -276,7 +271,7 @@ describe("the scope a directory names, against the document beside it", () => {
 
     expect(
       parsed.ok &&
-        parsed.value.effective.applications[0]?.processes[0]?.env.flatMap(
+        parsed.value.effective.applications[0]?.processes[0]?.env?.flatMap(
           ({ entries }) => entries.map(({ name }) => name),
         ),
     ).toStrictEqual(["A"]);
@@ -300,7 +295,7 @@ describe("the scope a directory names, against the document beside it", () => {
       parsed.ok
         ? (parsed.value.effective.applications[
             index
-          ]?.processes[0]?.env.flatMap(({ entries }) =>
+          ]?.processes[0]?.env?.flatMap(({ entries }) =>
             entries.map(({ name }) => name),
           ) ?? [])
         : [];
@@ -424,7 +419,7 @@ describe("a set of authored files read together", () => {
     const process = set.ok ? set.value.projects[0]?.applications[0] : undefined;
 
     expect(
-      process?.processes[0]?.env.flatMap(({ entries }) =>
+      process?.processes[0]?.env?.flatMap(({ entries }) =>
         entries.map(({ name }) => name),
       ),
     ).toStrictEqual(["MODE"]);
@@ -482,11 +477,11 @@ applications:
       { path: "env/_project/base.env", text: "SHARED=1\n" },
     ]);
     const process = parsed.ok
-      ? lowerProject(parsed.value.project).applications[0]?.processes[0]
+      ? parsed.value.effective.applications[0]?.processes[0]
       : undefined;
 
     expect(
-      process?.env.flatMap(({ entries }) => entries.map(({ name }) => name)),
+      process?.env?.flatMap(({ entries }) => entries.map(({ name }) => name)),
     ).toStrictEqual(["SHARED"]);
   });
 

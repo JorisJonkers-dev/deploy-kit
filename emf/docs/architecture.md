@@ -302,7 +302,9 @@ and the rendered tree out. A run of the build leaves those files under the build
 output of the module that wrote them, one directory per case, mirroring
 `spec/v1/examples/` so a written file and its oracle are obviously a pair:
 `bundles/cli/target/parity/<case>/` holds `intent.json` or `diagnostics.json` beside the
-`exit` the run ended on, and `bundles/metamodel/target/parity/` holds `descriptor.json`.
+`exit` the run ended on, and, where the case carries an `expected/effective.json`,
+the `effective.json` the lowering wrote from the document and the env files beside
+it; `bundles/metamodel/target/parity/` holds `descriptor.json`.
 Every case also leaves each document it reads as an XMI instance of the source
 metamodel, named after its authored file (`notes.project.yml` leaves
 `notes.project.xmi`), for a reader who opens it in Eclipse without the grammar. A

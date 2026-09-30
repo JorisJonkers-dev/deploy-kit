@@ -17,7 +17,7 @@ const REPOSITORY = join(import.meta.dirname, "..");
 describe("bucketOf", () => {
   it("places one representative path in each named bucket", () => {
     const examples: Record<(typeof BUCKETS)[number], string> = {
-      "production code": "src/domain/service.ts",
+      "production code": "src/model/service.ts",
       tests: "test/change-buckets.test.ts",
       specification: "spec/v1/10-service-intent.md",
       "decision records": "docs/adr/model/0003-three-model-pipeline.md",

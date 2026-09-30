@@ -3,45 +3,56 @@ export {
   type AuthoredFile,
   type IntentSet,
 } from "./application/check-intent-set.ts";
-export { parsePlatformIntent } from "./application/parse-platform-intent.ts";
+export {
+  parsePlatformIntent,
+  type ParsedPlatformIntent,
+} from "./application/parse-platform-intent.ts";
 export {
   parseProjectIntent,
   type ParsedProjectIntent,
 } from "./application/parse-project-intent.ts";
-export type * from "./domain/platform-intent/model.ts";
-export type { Diagnostic, Result } from "./domain/diagnostic.ts";
-export type * from "./domain/project-intent/model.ts";
+export type { Diagnostic, Result } from "./model/diagnostic.ts";
+export type * from "./model/effective-intent.ts";
+export type { EnvScope, EnvSource, ScopedEnv } from "./model/env.ts";
 export type {
-  EnvScope,
-  EnvSource,
-  ScopedEnv,
-} from "./wire/project-intent/env.ts";
-export { descriptor } from "./wire/project-intent/descriptor.ts";
+  ApplicationDocument,
+  Asset,
+  DependencyEdge,
+  EnvFile,
+  EnvVariable,
+  Exposure,
+  Grant,
+  Placement,
+  ProcessDocument,
+  ProjectIntentDocument,
+  SharedIntent,
+} from "./model/project-intent.ts";
+export type { PlatformIntentDocument } from "./model/platform-intent.ts";
+export { descriptor } from "./model/descriptor.ts";
 export type {
   Descriptor,
   DescriptorClass,
   DescriptorFeature,
   DescriptorVocabulary,
-} from "./wire/project-intent/descriptor.ts";
+} from "./model/descriptor.ts";
 export {
   JSON_SCHEMA_PATH,
   PLATFORM_JSON_SCHEMA_PATH,
   platformIntentJsonSchema,
   projectIntentJsonSchema,
-} from "./wire/project-intent/json-schema.ts";
-export type * from "./domain/node-contract/vocabularies.ts";
-export type * from "./domain/resolved-deployment/vocabularies.ts";
+} from "./model/json-schema.ts";
 export {
   nodeContract,
   type NodeContractDocument,
-} from "./wire/node-contract/schema.ts";
+  type NodeMedium,
+} from "./model/node-contract.ts";
 export {
   resolvedApplicationDocument,
   resolvedDeployment,
   type ResolvedApplicationDocument,
   type ResolvedDeploymentDocument,
-} from "./wire/resolved-deployment/schema.ts";
-export type { Hasher } from "./domain/hasher.ts";
-export { applicationRevision } from "./domain/resolved-deployment/revision.ts";
+} from "./model/resolved-deployment.ts";
+export type { Hasher } from "./model/hasher.ts";
+export { applicationRevision } from "./model/revision.ts";
 export { canonicalJson } from "./infrastructure/canonical-json.ts";
 export { sha256Hasher } from "./infrastructure/sha256-hasher.ts";

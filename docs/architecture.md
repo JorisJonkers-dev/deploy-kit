@@ -16,34 +16,47 @@ below it is a section not yet decided, and an ADR may not point at one.
 
 ## Layers
 
-Seven directories under `src/`, innermost first. A layer may reach inward and
-may not reach outward, and the graph is checked rather than described:
+The compiler is a chain of typed models
+([0056](adr/architecture/0056-the-compiler-is-a-chain-of-typed-models.md)):
+Project Intent and Platform Intent are read, the lowering writes the Effective
+Intent, resolution writes the Resolved Deployment, and the adapters write the
+Deliverable Set, which one serializer turns into bytes. Each arrow is a
+**step**, a pure function from one typed model to the next, in its own
+directory. The graph is checked rather than described:
 [`.dependency-cruiser.cjs`](../.dependency-cruiser.cjs) encodes every rule
 below, and `npm run lint:boundaries` fails on a violation.
 
 | directory | holds | may import |
 |---|---|---|
-| `domain/` | layer 1 aggregates, layer 2 derivation, the ports the core declares | itself only |
-| `objects/` | the typed Kubernetes object model layer 3 builds | nothing |
-| `wire/` | Zod schemas per document family per `schemaVersion`, and the mappers into the domain | `domain/`, `zod` |
-| `adapters/` | the registered adapters, one directory each, shared code in `adapters/shared/` | `domain/`, `objects/`, `adapters/shared/` |
-| `application/` | the use-cases; orders derivation, performs no IO of its own | `domain/`, `wire/`, `adapters/`, `objects/` |
-| `infrastructure/` | port implementations: filesystem, `oras`, hashing, the serializer, the writer | `domain/`, `objects/` |
+| `model/` | every metamodel in the chain (the Zod schemas of the authored documents and of layer 2, the Effective Intent's types) and their pure queries; `Diagnostic`; the ports the core declares | `zod` only |
+| `read/` | step: text in, the source model out (YAML, the env files, the schema) | `model/`, `yaml` |
+| `check/` | step: the constraints, one function per code, named as the Complete OCL invariant | `model/` |
+| `lower/` | step: Project Intent to the Effective Intent | `model/` |
+| `resolve/` | step: the Effective Intent and the pinned inputs to the Resolved Deployment | `model/` |
+| `objects/` | the typed Kubernetes object model the adapters build | nothing |
+| `adapters/` | step: the registered adapters, one directory each, shared code in `adapters/shared/` | `model/`, `objects/`, `adapters/shared/` |
+| `application/` | the use-cases: run the steps in order, pass each model on, perform no IO of their own | every step, `model/` |
+| `infrastructure/` | port implementations: hashing, canonical JSON, the serializer, the writer | `model/`, `objects/` |
 | `cli/` | argument parsing, diagnostic rendering, exit codes, wiring | everything |
 
-Four of those rules exist for a reason worth stating once.
+A directory exists once it holds a module: `resolve/`, `objects/`,
+`adapters/` and `cli/` land with the slice that first needs them, and their
+rules wait with them. Four rules exist for a reason worth stating once.
 
-**The domain reads nothing ambient.** No filesystem, network, clock,
-environment or crypto. Hashing arrives through a port, which is what keeps
-`renderHash` a pure function of the pinned inputs rather than of the machine.
+**No step imports another step.** A step receives the previous model as a
+value from the use-case. One that imported another step would turn evaluation
+order into semantics, and would let an adapter read another adapter's output,
+which makes attribution and path-collision detection unprovable.
 
-**The domain does not know the wire shape.** Zod declares what a human writes;
-the domain is a different shape, reached through an explicit mapper. This is
-what lets two `schemaVersion`s coexist without the core carrying both.
+**The chain reads nothing ambient.** No filesystem, network, clock,
+environment or crypto in a metamodel or a step. Hashing arrives through a
+port, which is what keeps `renderHash` a pure function of the pinned inputs
+rather than of the machine.
 
-**No adapter reads another adapter.** An adapter that consumes another's output
-turns evaluation order into semantics, and attribution and path-collision
-detection stop being provable. Shared code goes to `adapters/shared/`.
+**Queries live with their metamodel.** A query both a check and the lowering
+need, such as the lowest level's answer to a Shared Intent question, lives in
+`model/` beside the type it navigates, the way an OCL `def:` lives with its
+context class.
 
 **Nothing depends on the CLI.** Diagnostic rendering and exit-code mapping are
 the outermost ring; a use-case that reached them could not be called by a test.
@@ -54,15 +67,15 @@ Two use-cases, one core. `publish` runs in any repository that authors intent (
 a project, or the platform) validates the Intent Fragment and pushes it by
 digest, and renders nothing; `compose` runs centrally over the composed union
 and is where every adapter runs
-([0047](adr/model/0047-one-publication-path.md)). They share the domain, and
+([0047](adr/model/0047-one-publication-path.md)). They share the model, and
 neither performs an effect directly: everything that touches the world arrives
-as a port the domain declares and the CLI supplies.
+as a port the model declares and the CLI supplies.
 
 | port | what it hides | production implementation |
 |---|---|---|
 | `PinnedInputSet` | resolving every Intent Fragment (the project files and the Platform document) the node contract, the locks and the ClusterState snapshot into parsed, validated, digested documents | filesystem plus OCI |
 | `FragmentSource` / `FragmentPublisher` | reading and publishing Intent Fragments by digest | `oras push` then `oras resolve`, and a filesystem implementation for tests |
-| `Hasher` | the hash primitive | `node:crypto`, so the domain imports no crypto |
+| `Hasher` | the hash primitive | `node:crypto`, so the chain imports no crypto |
 | `DeliverableWriter` | putting bytes on disk | staging directory plus atomic rename |
 
 Two properties are load-bearing rather than tidy.
@@ -73,7 +86,7 @@ one place and "the input set is closed"
 Widening it is one visible edit.
 
 **Hashing is a port.** `renderHash` is a pure function of the recorded input
-digests, and a domain that imported `node:crypto` could reach for a clock or an
+digests, and a model that imported `node:crypto` could reach for a clock or an
 environment variable through the same door.
 
 The adapter port is the third contract and belongs to layer 3: parsed documents
@@ -99,21 +112,24 @@ every line worth covering sits outside it.
 
 ## The wire boundary
 
-Zod schemas declare what a human writes, one set per document family per
-`schemaVersion`. They are the single source of the runtime check, the
-TypeScript type and the generated JSON Schema, so an editor's completion list
-and the loader's error come from the same declaration.
+Zod schemas declare what a human writes, one per document family. They are the
+single source of the runtime check, the TypeScript type and the generated JSON
+Schema, so an editor's completion list and the loader's error come from the
+same declaration.
 
-The inferred type is **not** the domain model. An explicit mapper per document
-family converts the authoring shape into domain objects, and the domain imports
-no Zod. Two consequences make the extra code worth writing: two
-`schemaVersion`s can coexist behind one core, upgraded by a pure function per
-step ([0007](adr/model/0007-schema-version-separable.md)); and the authoring
-vocabulary can be renamed without the core moving.
+The schema's output **is** the source model
+([0057](adr/architecture/0057-the-authored-shape-is-the-source-model.md)): the
+reader validates a document against it, and every later step reads that shape
+in the authored vocabulary `CONTEXT.md` defines. A route or a scrape names its
+Process and surface as written; the checks prove each name resolves inside its
+Application, so the lowering and everything after it look the name up rather
+than holding a second, renamed copy of the document. When a second
+`schemaVersion` enters the supported range, the older schema gets a pure
+function that lifts it to the current one, at the reader, and the steps keep
+one shape ([0007](adr/model/0007-schema-version-separable.md)).
 
-JSON Schema is generated from the **input** variant of each schema, because a
-field with a platform default is optional in the file a human writes and
-required only after validation.
+JSON Schema is generated from the **input** variant of each schema, because it
+describes what a human writes rather than what validation leaves behind.
 
 ## Error model
 
@@ -203,7 +219,7 @@ which to choose a path.
 
 A test asserts external behaviour at a published boundary: documents in,
 Deliverables or diagnostics out. It does not reach into a derivation rule, does
-not mock a domain service, and does not compare whitespace. Four seams carry
+not mock a step, and does not compare whitespace. Four seams carry
 the whole suite, and adding a fifth needs a reason.
 
 | seam | what it proves | shape |

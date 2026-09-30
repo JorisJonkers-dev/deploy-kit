@@ -9,6 +9,9 @@ import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Cutover;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.DependencyEdge;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.EffectiveApplication;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.EffectiveProject;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.EnvFile;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.EnvLiteral;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.EnvVariable;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.KvGrant;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Lifecycle;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ManagedMigration;
@@ -19,15 +22,7 @@ import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentFacto
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Rotation;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Tolerance;
-import java.nio.file.Path;
-import java.util.Collections;
 import java.util.List;
-import org.eclipse.emf.common.util.Diagnostic;
-import org.eclipse.emf.common.util.URI;
-import org.eclipse.m2m.qvt.oml.BasicModelExtent;
-import org.eclipse.m2m.qvt.oml.ExecutionContextImpl;
-import org.eclipse.m2m.qvt.oml.ExecutionDiagnostic;
-import org.eclipse.m2m.qvt.oml.TransformationExecutor;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -95,16 +90,7 @@ class LoweringTest {
     }
 
     private static EffectiveProject lower(Project project) {
-        ProjectIntentPackage.eINSTANCE.getName();
-        BasicModelExtent source = new BasicModelExtent(Collections.singletonList(project));
-        BasicModelExtent target = new BasicModelExtent();
-
-        ExecutionDiagnostic result = new TransformationExecutor(URI.createFileURI(
-                        Path.of("model", "lower.qvto").toAbsolutePath().toString()))
-                .execute(new ExecutionContextImpl(), source, target);
-
-        assertThat(result.getSeverity()).as(result.toString()).isEqualTo(Diagnostic.OK);
-        return (EffectiveProject) target.getContents().get(0);
+        return Lowering.lower(project);
     }
 
     private static Process lowered(EffectiveProject project, String name) {
@@ -212,5 +198,36 @@ class LoweringTest {
         assertThat(ProjectIntentPackage.eINSTANCE.getEffectiveApplication().getEAllStructuralFeatures())
                 .extracting(feature -> feature.getName())
                 .containsExactlyInAnyOrder("id", "migration", "observability", "exposure", "processes");
+    }
+
+    @Test
+    void leavesTheDocumentHeaderBehind() {
+        assertThat(ProjectIntentPackage.eINSTANCE.getEffectiveProject().getEAllStructuralFeatures())
+                .extracting(feature -> feature.getName())
+                .containsExactly("project", "owner", "applications");
+        assertThat(lower(source()).getProject()).isEqualTo("refusals");
+    }
+
+    @Test
+    void anEnvVariableKeepsItsValueOnTheProcessItReaches() {
+        Project project = source();
+        EnvFile file = MODEL.createEnvFile();
+        EnvVariable variable = MODEL.createEnvVariable();
+        variable.setName("NODE_ENV");
+        EnvLiteral literal = MODEL.createEnvLiteral();
+        literal.setText("production");
+        variable.setValue(literal);
+        file.getEntries().add(variable);
+        project.getEnv().add(file);
+
+        Process api = lowered(lower(project), "shared-intent-merged-api");
+
+        assertThat(api.getEnv()).singleElement().satisfies(lowered -> {
+            assertThat(lowered.getCluster()).isNull();
+            assertThat(lowered.getEntries()).singleElement().satisfies(entry -> {
+                assertThat(entry.getName()).isEqualTo("NODE_ENV");
+                assertThat(((EnvLiteral) entry.getValue()).getText()).isEqualTo("production");
+            });
+        });
     }
 }

@@ -2,11 +2,11 @@
 // where one Platform document is among them, the rules the documents answer
 // together. A file is a Platform document, a project file or an env file by its
 // name, and an env file reaches the project its `env/` directory sits beside.
-import type { Diagnostic, Result } from "../domain/diagnostic.ts";
-import type { Platform } from "../domain/platform-intent/model.ts";
-import type { Project } from "../domain/project-intent/model.ts";
-import { setDiagnostics } from "../wire/intent-set/rules.ts";
-import type { EnvSource } from "../wire/project-intent/env.ts";
+import { setDiagnostics } from "../check/composition.ts";
+import type { Diagnostic, Result } from "../model/diagnostic.ts";
+import type { EffectiveProject } from "../model/effective-intent.ts";
+import type { EnvSource } from "../model/env.ts";
+import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import { parsePlatformIntent } from "./parse-platform-intent.ts";
 import { parseProjectIntent } from "./parse-project-intent.ts";
 
@@ -15,9 +15,10 @@ export interface AuthoredFile {
   readonly text: string;
 }
 
+/** The Platform document, and every project lowered to its Effective Intent. */
 export interface IntentSet {
-  readonly platform?: Platform;
-  readonly projects: readonly Project[];
+  readonly platform?: PlatformIntentDocument;
+  readonly projects: readonly EffectiveProject[];
 }
 
 type Parsed<R> = Extract<R, { readonly ok: true }>;
@@ -94,8 +95,8 @@ export function checkIntentSet(
   return {
     ok: true,
     value: {
-      ...(platform === undefined ? {} : { platform: platform.value.platform }),
-      projects: parsedProjects.map(({ value }) => value.project),
+      ...(platform === undefined ? {} : { platform: platform.value.document }),
+      projects: parsedProjects.map(({ value }) => value.effective),
     },
   };
 }

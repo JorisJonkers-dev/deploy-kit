@@ -10,9 +10,8 @@ import { join } from "node:path";
 import { parse } from "yaml";
 import { z } from "zod";
 import { describe, expect, it } from "vitest";
-import { MEDIA } from "../../src/domain/project-intent/vocabularies.ts";
-import { NODE_MEDIA } from "../../src/domain/node-contract/vocabularies.ts";
-import { nodeContract } from "../../src/wire/node-contract/schema.ts";
+import { MEDIA } from "../../src/model/vocabularies.ts";
+import { NODE_MEDIA, nodeContract } from "../../src/model/node-contract.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..", "..");
 const CONTRACT = join(

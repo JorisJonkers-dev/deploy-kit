@@ -10,10 +10,10 @@ import { repositoryEslint } from "./support/eslint.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..");
 const PROBES = [
-  "src/domain/probe.ts",
-  "src/domain/ProbeModule.ts",
-  "src/domain/probe_module.ts",
-  "src/domain/probe-module.test.ts",
+  "src/model/probe.ts",
+  "src/model/ProbeModule.ts",
+  "src/model/probe_module.ts",
+  "src/model/probe-module.test.ts",
   "scripts/probe.ts",
   "test/probe.test.ts",
   "test/support/probe.ts",
@@ -35,7 +35,7 @@ describe("the rules one file shows on its own", { timeout: 120_000 }, () => {
   it("RULE-019 refuses a computed dynamic import and allows a literal one", async () => {
     expect(
       await fired(
-        "src/domain/probe.ts",
+        "src/model/probe.ts",
         "export const load = (name: string): Promise<unknown> => import(name);\n",
       ),
     ).toStrictEqual([
@@ -43,7 +43,7 @@ describe("the rules one file shows on its own", { timeout: 120_000 }, () => {
     ]);
     expect(
       await fired(
-        "src/domain/probe.ts",
+        "src/model/probe.ts",
         'export const load = (): Promise<unknown> => import("./other.ts");\nexport const also = (): Promise<unknown> => import(`./other.ts`);\n',
       ),
     ).toStrictEqual([]);
@@ -71,15 +71,15 @@ describe("the rules one file shows on its own", { timeout: 120_000 }, () => {
 
   it("RULE-024 refuses a module file not named in kebab-case", async () => {
     for (const path of [
-      "src/domain/ProbeModule.ts",
-      "src/domain/probe_module.ts",
+      "src/model/ProbeModule.ts",
+      "src/model/probe_module.ts",
     ])
       expect(await fired(path, "export const v = 1;\n")).toStrictEqual([
         expect.stringMatching(
           /^deploy-kit\/kebab-case-filename: RULE-024: (probe_module|ProbeModule)\.ts is not named in kebab-case$/,
         ),
       ]);
-    for (const path of ["src/domain/probe-module.test.ts", "scripts/probe.ts"])
+    for (const path of ["src/model/probe-module.test.ts", "scripts/probe.ts"])
       expect(await fired(path, "export const v = 1;\n")).toStrictEqual([]);
   });
 
