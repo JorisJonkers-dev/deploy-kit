@@ -192,9 +192,15 @@ export function codeErrors(
         errors.push(
           `${code}: defined by the specification, and missing from the closed code type in ${CLOSED}`,
         );
+    // A retired code may still be mentioned elsewhere, never carried.
+    for (const code of closed.keys())
+      if (!defined.has(code))
+        errors.push(
+          `${code}: in the closed code type in ${CLOSED}, and defined by no chapter`,
+        );
   }
   for (const [code, rel] of used)
-    if (!defined.has(code) && !(code in RETIRED))
+    if (rel !== CLOSED && !defined.has(code) && !(code in RETIRED))
       errors.push(`${rel} uses ${code}, which no chapter defines`);
 
   const exercisedDefined = [...exercised.keys()].filter((code) =>

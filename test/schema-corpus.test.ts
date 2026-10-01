@@ -83,7 +83,9 @@ function documentOf(corpus: Corpus, which: Case): unknown {
   let base: unknown;
   if (which.file !== undefined) base = readInstance(which.file);
   else if (which.case !== undefined) {
-    const earlier = corpus.cases.find(({ name }) => name === which.case);
+    const earlier = corpus.cases
+      .slice(0, corpus.cases.indexOf(which))
+      .find(({ name }) => name === which.case);
     if (earlier === undefined)
       throw new Error(`${which.name}: no earlier case named ${which.case}`);
     base = documentOf(corpus, earlier);
@@ -212,6 +214,23 @@ describe("the schema corpus", () => {
     expect(disagreements(corpus, objectsOnly, () => false)).toStrictEqual([
       "probe.schema.json: the model refuses an empty object, which the corpus says to accept",
     ]);
+  });
+
+  it("refuses a case that derives from itself or a later case", () => {
+    const later = { name: "later", verdict: "accept", instance: {} } as const;
+    const first: Case = { name: "first", verdict: "accept", case: "later" };
+    const self: Case = { name: "self", verdict: "accept", case: "self" };
+    const corpus: Corpus = {
+      schema: "probe.schema.json",
+      cases: [first, later, self],
+    };
+
+    expect(() => documentOf(corpus, first)).toThrow(
+      "first: no earlier case named later",
+    );
+    expect(() => documentOf(corpus, self)).toThrow(
+      "self: no earlier case named self",
+    );
   });
 
   it("refuses a case that derives from no earlier case", () => {

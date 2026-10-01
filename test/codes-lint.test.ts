@@ -20,6 +20,8 @@ const code = (name: string): string => ["E", name].join("_");
 const ALPHA = code("ALPHA");
 const BETA = code("BETA");
 const GAMMA = code("GAMMA");
+// A code the specification retired: mentioned elsewhere, never carried.
+const RETIRED_CODE = Object.keys(RETIRED)[0] ?? "";
 const chapter = (...codes: string[]): string =>
   `| code |\n| ${codes.join(" |\n| ")} |\n`;
 const pending = (ticket: string, ...codes: string[]): Pending => ({
@@ -112,12 +114,13 @@ describe("codeErrors", () => {
     const files = {
       "spec/v1/10-intent.md": chapter(ALPHA, BETA),
       "test/a.test.ts": `"${ALPHA}" "${BETA}"`,
-      "src/model/diagnostic.ts": `type RefusalCode = "${ALPHA}" | "${GAMMA}";`,
+      "src/model/diagnostic.ts": `type RefusalCode = "${ALPHA}" | "${GAMMA}" | "${RETIRED_CODE}";`,
     };
 
     expect(codeErrors(files, []).errors).toStrictEqual([
       `${BETA}: defined by the specification, and missing from the closed code type in src/model/diagnostic.ts`,
-      `src/model/diagnostic.ts uses ${GAMMA}, which no chapter defines`,
+      `${GAMMA}: in the closed code type in src/model/diagnostic.ts, and defined by no chapter`,
+      `${RETIRED_CODE}: in the closed code type in src/model/diagnostic.ts, and defined by no chapter`,
     ]);
   });
 
