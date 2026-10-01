@@ -34,7 +34,7 @@ This list holds **11** witnesses, and **3** pending.
 | REQ-034 | `PinnedInputsTest#theNodeContractPublishesTheSevenNodesTheirCapabilitiesAndAMediumNoProcessMayAskFor` |
 | REQ-036 | `LoweringTest#everyProcessHoldsTheGrantsOfEveryLevelAboveItExtendedByItsOwn` |
 | REQ-037 | `EnvFilesTest#readsALiteralAPlaceholderCommentsAndBlankLines` |
-| REQ-038 | `ApplicationRevisionTest#theRevisionMovesExactlyWhenADecisionAboutTheApplicationDoes` |
+| REQ-038 | `ResolutionTest#theRevisionIsTheOneEveryCommittedProjectionRecordsAndMovesOnlyWithADecision` |
 | REQ-039 | `ParityTest#the resolved dependency edges equal the committed oracle` |
 
 ## Pending

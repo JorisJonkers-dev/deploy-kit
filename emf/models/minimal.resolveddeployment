@@ -13,8 +13,10 @@
   Every value here is derivable from `spec/v1/examples/minimal/notes.project.yml`,
   the project files of the foundation it composes with, and the Platform document
   and pinned inputs beside them. The digests are what the transformation
-  computes: the revision and the provenance are each a digest of this model's
-  own canonical form, so they bind this implementation only.
+  computes. The revision is the production implementation's, the digest of the
+  Application's element in its canonical JSON, because the rendered tree carries
+  it; the provenance's digests are over this model's own form, and bind this
+  implementation only.
 -->
 <resolveddeployment:ResolvedDeployment
     xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
@@ -42,9 +44,9 @@
   <!-- notes holds no dependency and no grant, so its unit follows nothing. -->
   <reconcileUnits name="apps-notes"/>
 
-  <applications id="notes" revision="sha256:32422a8209e51c7026173ad2c4efee0af6dee5539d2a6977fc8adb982dac1f93" project="notes" namespace="notes-system"
+  <applications id="notes" revision="sha256:493fb16ace2e5e7bebf96ea8490f20c2f1dd82fbbf8ce4a9d6b67963b0bcb048" project="notes" namespace="notes-system"
       alertClass="business-hours" reconcileUnit="//@reconcileUnits.0">
-    <releaseGate deadline="60s">
+    <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="60s">
       <!-- The Platform document's cadence, carried for the Release Gate. -->
       <analysis interval="30s" iterations="4" threshold="3"/>
       <members process="//@applications.0/@processes.0">
@@ -56,7 +58,8 @@
       </members>
     </releaseGate>
 
-    <exposure name="public" host="notes.jorisjonkers.dev" tier="public-frankfurt">
+    <exposure name="public" host="notes.jorisjonkers.dev" tier="public-frankfurt"
+        listener="tls" certificates="acme" proxyApplication="traefik-public" proxyNamespace="edge-system">
       <!-- One prefix route, so precedence is 1 and nothing competes with it. -->
       <routes path="/" match="prefix" audience="anonymous" precedence="1"
           process="//@applications.0/@processes.0" surface="http">
@@ -65,7 +68,10 @@
       </routes>
     </exposure>
 
-    <processes name="notes-api" identity="notes-api"
+    <!-- The metrics stack scrapes it at the platform's cadence. -->
+    <scrape process="//@applications.0/@processes.0" surface="http" path="/metrics" interval="30s" timeout="10s"/>
+
+    <processes name="notes-api" identity="notes-api" lifecycle="application"
         image="ghcr.io/jorisjonkers-dev/notes/notes-api@sha256:9c1e5a4b7d2f8e3a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a"
         uid="1000" gid="1000" cutover="continuous" switchover="blue-green" deadline="60s" replicas="1"
         memory="256Mi" cpu="50m" hardening="restricted" identityToken="false"
@@ -123,15 +129,15 @@
       path="apps/notes/notes/serviceaccount.yaml" adapter="kubernetes" processes="//@applications.0/@processes.0"/>
   <deliverables xsi:type="resolveddeployment:MonitorFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/notes/podmonitor.yaml" adapter="prometheus" process="//@applications.0/@processes.0"
-      surface="http" scrapePath="/metrics" interval="30s"/>
+      surface="http" scrapePath="/metrics" interval="30s" timeout="10s"/>
   <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/notes/networkpolicy.yaml" adapter="networking">
     <policies process="//@applications.0/@processes.0">
       <!-- The edge and the metrics stack reach it; nothing else does. -->
-      <ingress namespace="edge-system" process="traefik-public" port="8080"/>
-      <ingress namespace="observability-system" process="prometheus" port="8080"/>
+      <ingress rule="tier-proxy" namespace="edge-system" process="traefik-public" port="8080"/>
+      <ingress rule="metrics-stack" namespace="observability-system" process="prometheus" port="8080"/>
       <!-- The cluster's DNS: a namespace, not a Process the union declares. -->
-      <egress namespace="kube-system" port="53"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
     </policies>
   </deliverables>
   <deliverables xsi:type="resolveddeployment:IngressRouteFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"

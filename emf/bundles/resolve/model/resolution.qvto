@@ -72,7 +72,13 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 	end {
 		-- Only a complete element has a revision: it is the digest of all of it.
 		result.reconcileUnits->first().after := result.reconcileUnits->excluding(result.reconcileUnits->first());
-		result.applications->forEach(a) { a.revision := a.oclAsType(ECORE::EObject).revisionOf() };
+		-- The revision is the production implementation's: the digest of the
+		-- Application's element in that implementation's canonical JSON, which
+		-- the rendered tree carries (spec/v1/20-resolved-deployment.md#the-application-revision).
+		self.applications->forEach(src) {
+			var res : ResolvedApplication := src.resolveone(ResolvedApplication);
+			res.revision := res.elementJson(src, self).rawDigestOf();
+		};
 	}
 }
 
@@ -148,6 +154,15 @@ mapping EffectiveApplication::application(in prj : EffectiveProject) : ResolvedA
 	-- The Processes first: everything below refers to them.
 	processes := self.processes->map process(self, prj);
 	exposure := self.exposure->map exposure(self, prj);
+	if self.observability <> null and self.observability.scrape <> null then
+		scrape := object ResolvedScrape {
+			process := self.observability.scrape.process.resolveone(ResolvedProcess);
+			surface := self.observability.scrape.surface.key;
+			path := self.observability.scrape.path;
+			interval := estate.monitors.interval;
+			timeout := estate.monitors.timeout;
+		}
+	endif;
 	releaseGate := if gated(self) then self.map gate() else null endif;
 	if self.migration <> null and self.migration.oclIsKindOf(ManagedMigration) then
 		migration := self.map migrationOf()
@@ -184,6 +199,17 @@ query unlocked(alias : String) : LockedImage {
 	return null;
 }
 
+-- The Release Gate's endpoint: its `http` surface, which the platform names.
+query gateEndpoint() : String =
+	let address : String = if estate.delivery = null then null
+		else surfaceAddress(estate.delivery.gate.id, HTTP_SURFACE) endif in
+	if address = null then ungated() else 'http://' + address endif;
+
+query ungated() : String {
+	assert fatal (false) with log('a blue/green Process under a platform that names no Release Gate is E_UNKNOWN_RELEASE_GATE');
+	return null;
+}
+
 -- The Secret Store's endpoint: its `http` surface, which the platform names.
 query storeEndpoint() : String =
 	let address : String = if estate.secretStore = null then null
@@ -216,6 +242,7 @@ mapping EffectiveApplication::gate() : ReleaseGate {
 		with log('a blue/green Application that publishes no readiness is E_RELEASE_UNIT_NO_READINESS');
 	assert fatal (estate.delivery <> null)
 		with log('a blue/green Process under a platform with no delivery policy is E_NO_DELIVERY_POLICY');
+	endpoint := gateEndpoint();
 	deadline := inSeconds(waiting->collect(p | deadlineOf(p))->max());
 	analysis := object GateAnalysis {
 		interval := estate.delivery.analysis.interval;
@@ -243,6 +270,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	name := self.name;
 	-- The Vault role and the ServiceAccount are both the Process's own name.
 	identity := self.name;
+	lifecycle := self.lifecycle.spelling();
 	image := own.repository + '@' + own.digest;
 	uid := own.uid;
 	gid := own.gid;
@@ -688,6 +716,10 @@ mapping Exposure::exposure(in app : EffectiveApplication, in prj : EffectiveProj
 	name := self.name;
 	host := self.host;
 	tier := tierFor(self.audience).name;
+	listener := if tierFor(self.audience).listener = Listener::tls then 'tls' else 'plain' endif;
+	certificates := if tierFor(self.audience).certificates = CertificateSource::acme then 'acme' else 'none' endif;
+	proxyApplication := tierFor(self.audience).traefik.id;
+	proxyNamespace := namespaceOf(projectOf(tierFor(self.audience).traefik.id));
 	routes := self.routes->collect(r | object ResolvedRoute {
 		path := r.path;
 		match := r.match.resolvedMatch();
@@ -799,6 +831,7 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 			surface := self.observability.scrape.surface.key;
 			scrapePath := self.observability.scrape.path;
 			interval := estate.monitors.interval;
+			timeout := estate.monitors.timeout;
 		}.oclAsType(Deliverable)} else Sequence{} endif)
 	->append(object NetworkPolicyFile {
 			path := root + 'networkpolicy.yaml';
@@ -831,14 +864,15 @@ query assertFailedFiles(message : String) : Sequence(Deliverable) {
 -- port, the first time it is reached.
 query ingressOf(p : PI::Process, app : EffectiveApplication) : Sequence(PolicyPeer) =
 	(app.exposure->collect(e | e.routes->select(r | r.process = p)->collect(r |
-		peersOf(tierFor(r.audienceOf(e)).traefik.id, r.surface.value)))->flatten()
+		peersOf(tierFor(r.audienceOf(e)).traefik.id, r.surface.value, 'tier-proxy')))->flatten()
 	->union(if app.observability <> null and app.observability.scrape <> null
 			and app.observability.scrape.process = p and estate.telemetry <> null
-		then peersOf(estate.telemetry.metrics.id, app.observability.scrape.surface.value)
+		then peersOf(estate.telemetry.metrics.id, app.observability.scrape.surface.value, 'metrics-stack')
 		else Sequence{} endif)
 	->union(consumersOf(p, app)))
 	->asOrderedSet()->asSequence()
 	->collect(peer | object PolicyPeer {
+		rule := peer.rule;
 		namespace := peer.namespace;
 		process := peer.process;
 		port := peer.port;
@@ -846,16 +880,16 @@ query ingressOf(p : PI::Process, app : EffectiveApplication) : Sequence(PolicyPe
 
 -- Every Process of the union whose edge names this Application and a surface this Process provides.
 query consumersOf(p : PI::Process, app : EffectiveApplication)
-		: Sequence(Tuple(namespace : String, process : String, port : Integer)) =
+		: Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)) =
 	projects->collect(prj | prj.applications.processes->collect(consumer |
 		consumer.dependsOn->select(e | e.application = app.id and p.provides->exists(s | s.key = e.surface))
-			->collect(e | Tuple{namespace = namespaceOf(prj.project), process = consumer.name,
+			->collect(e | Tuple{rule = 'consumer', namespace = namespaceOf(prj.project), process = consumer.name,
 				port = p.provides->select(s | s.key = e.surface)->any(true).value})))->flatten();
 
 -- What a Process may reach beyond its edges: the cluster's DNS, and the Secret
 -- Store where it holds a grant.
 query egressOf(p : PI::Process) : Sequence(PolicyPeer) =
-	Sequence{object PolicyPeer { namespace := estate.substrate.clusterDns; port := DNS_PORT; }}
+	Sequence{object PolicyPeer { rule := 'cluster-dns'; namespace := estate.substrate.clusterDns; port := DNS_PORT; }}
 	->union(if p.secrets->isEmpty() then Sequence{} else storePeers() endif);
 
 -- The one Process of the Secret Store that answers on `http`, at its own port.
@@ -867,6 +901,7 @@ query storePeers() : Sequence(PolicyPeer) =
 	if providers->isEmpty() then Sequence{} else
 		let first : Tuple(project : String, process : PI::Process) = providers->first() in
 		Sequence{object PolicyPeer {
+			rule := 'secret-store';
 			namespace := namespaceOf(first.project);
 			process := first.process.name;
 			port := first.process.provides->select(s | s.key = HTTP_SURFACE)->any(true).value;
@@ -874,10 +909,10 @@ query storePeers() : Sequence(PolicyPeer) =
 	endif;
 
 -- Every Process of `application` in the union, at `port`, as a value.
-query peersOf(application : String, at : Integer)
-		: Sequence(Tuple(namespace : String, process : String, port : Integer)) =
+query peersOf(application : String, at : Integer, admits : String)
+		: Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)) =
 	projects->collect(prj | prj.applications->select(a | a.id = application).processes
-		->collect(p | Tuple{namespace = namespaceOf(prj.project), process = p.name, port = at}))
+		->collect(p | Tuple{rule = admits, namespace = namespaceOf(prj.project), process = p.name, port = at}))
 		->flatten();
 
 -- The port of `application`'s Process that provides this surface.
@@ -980,6 +1015,9 @@ query Runtime::spelling() : String =
 
 query HardeningClass::spelling() : String = 'restricted';
 
+query Lifecycle::spelling() : String =
+	if self = Lifecycle::application then 'application' else if self = Lifecycle::job then 'job' else 'prepare' endif endif;
+
 query Delivery::spelling() : String =
 	if self = Delivery::env then 'env' else if self = Delivery::file then 'file' else 'self' endif endif;
 
@@ -1003,3 +1041,253 @@ query Arch::spelling() : String = if self = Arch::amd64 then 'amd64' else 'arm64
 
 query Media::spelling() : String =
 	if self = Media::nvme then 'nvme' else if self = Media::ssd then 'ssd' else 'hdd' endif endif;
+
+-- =================================================== the production element
+
+-- An Application's element as the production implementation writes it in
+-- `resolved.json`, without the keys that are not its own decisions, in that
+-- implementation's canonical JSON: keys sorted, no white space, absent values
+-- left out. Its digest is the revision, which the rendered tree carries, so
+-- the two implementations must compute it from the same text.
+query ResolvedApplication::elementJson(src : EffectiveApplication, prj : EffectiveProject) : String =
+	let after : Sequence(String) = appAfterOf(src, prj) in
+	obj(Sequence{
+		Tuple{k = 'id', v = str(self.id)},
+		Tuple{k = 'project', v = str(self.project)},
+		Tuple{k = 'namespace', v = str(self.namespace)},
+		Tuple{k = 'reconcileUnit', v = str(self.reconcileUnit.name)},
+		Tuple{k = 'reconcileAfter', v = if after->isEmpty() then null else arr(after->collect(n | str(n))) endif},
+		Tuple{k = 'alertClass', v = opt(self.alertClass)},
+		Tuple{k = 'scrape', v = if self.scrape = null then null else obj(Sequence{
+			Tuple{k = 'process', v = str(self.scrape.process.name)},
+			Tuple{k = 'surface', v = str(self.scrape.surface)},
+			Tuple{k = 'path', v = str(self.scrape.path)},
+			Tuple{k = 'interval', v = str(self.scrape.interval)},
+			Tuple{k = 'timeout', v = str(self.scrape.timeout)}}) endif},
+		Tuple{k = 'releaseGate', v = if self.releaseGate = null then null else self.releaseGate.json() endif},
+		Tuple{k = 'migration', v = if self.migration = null then null else obj(Sequence{
+			Tuple{k = 'runner', v = str(self.migration.runner)},
+			Tuple{k = 'testedAgainst', v = opt(self.migration.testedAgainst)},
+			Tuple{k = 'nonTransactional', v = bool(self.migration.nonTransactional)}}) endif},
+		Tuple{k = 'secretStore', v = opt(self.secretStore)},
+		Tuple{k = 'exposure', v = if self.exposure->isEmpty() then null
+			else arr(self.exposure->collect(e | e.json())) endif},
+		Tuple{k = 'processes', v = arr(self.processes->collect(p | p.json()))}
+	});
+
+-- The units an Application must follow, as the production implementation
+-- records them per Application: every other project its edges reach, and the
+-- secrets unit wherever one of its Processes holds a grant.
+query appAfterOf(app : EffectiveApplication, prj : EffectiveProject) : Sequence(String) =
+	(app.processes.dependsOn
+		->collect(e | projectOf(e.application))
+		->select(other | other <> null and other <> prj.project)
+		->collect(other | unitOf(other))
+	->union(if app.processes->exists(p | p.secrets->notEmpty())
+		then Sequence{SECRETS_UNIT} else Sequence{} endif))
+	->asSet()->sortedBy(n | n)->asSequence();
+
+query ReleaseGate::json() : String = obj(Sequence{
+	Tuple{k = 'endpoint', v = str(self.endpoint)},
+	Tuple{k = 'deadline', v = str(self.deadline)},
+	Tuple{k = 'analysis', v = obj(Sequence{
+		Tuple{k = 'interval', v = str(self.analysis.interval)},
+		Tuple{k = 'iterations', v = num(self.analysis.iterations)},
+		Tuple{k = 'threshold', v = num(self.analysis.threshold)}})},
+	Tuple{k = 'members', v = arr(self.members->collect(m | obj(Sequence{
+		Tuple{k = 'process', v = str(m.process.name)},
+		Tuple{k = 'readiness', v = m.readiness.json()},
+		Tuple{k = 'checks', v = if m.checks->isEmpty() then null
+			else arr(m.checks->collect(c | str(c.spelling()))) endif}})))}
+});
+
+query ResolvedExposure::json() : String = obj(Sequence{
+	Tuple{k = 'name', v = str(self.name)},
+	Tuple{k = 'host', v = str(self.host)},
+	Tuple{k = 'tier', v = str(self.tier)},
+	Tuple{k = 'listener', v = str(self.listener)},
+	Tuple{k = 'certificates', v = str(self.certificates)},
+	Tuple{k = 'proxy', v = obj(Sequence{
+		Tuple{k = 'application', v = str(self.proxyApplication)},
+		Tuple{k = 'namespace', v = str(self.proxyNamespace)}})},
+	Tuple{k = 'routes', v = arr(self.routes->collect(r | obj(Sequence{
+		Tuple{k = 'path', v = str(r.path)},
+		Tuple{k = 'match', v = str(r.match.spelling())},
+		Tuple{k = 'process', v = str(r.process.name)},
+		Tuple{k = 'surface', v = str(r.surface)},
+		Tuple{k = 'audience', v = str(r.audience)},
+		Tuple{k = 'precedence', v = num(r.precedence)},
+		Tuple{k = 'middleware', v = arr(r.middleware->collect(m | obj(Sequence{
+			Tuple{k = 'kind', v = str(m.kind.spelling())},
+			Tuple{k = 'contentPolicy', v = opt(m.contentPolicy)},
+			Tuple{k = 'endpoint', v = opt(m.endpoint)},
+			Tuple{k = 'redirectTo', v = opt(m.redirectTo)}})))}})))}
+});
+
+query ResolvedProcess::json() : String =
+	let policy : Sequence(ProcessPolicy) = self.oclAsType(ECORE::EObject).eContainer().eContainer()
+		.oclAsType(ResolvedDeployment).deliverables[NetworkPolicyFile].policies
+		->select(pp | pp.process = self)->asSequence() in
+	let ingress : Sequence(PolicyPeer) = if policy->isEmpty() then Sequence{} else policy->first().ingress->asSequence() endif in
+	let egress : Sequence(PolicyPeer) = if policy->isEmpty() then Sequence{} else policy->first().egress->asSequence() endif in
+	obj(Sequence{
+		Tuple{k = 'name', v = str(self.name)},
+		Tuple{k = 'lifecycle', v = str(self.lifecycle)},
+		Tuple{k = 'runtime', v = str(self.component)},
+		Tuple{k = 'identity', v = str(self.identity)},
+		Tuple{k = 'image', v = str(self.image)},
+		Tuple{k = 'uid', v = num(self.uid)},
+		Tuple{k = 'gid', v = num(self.gid)},
+		Tuple{k = 'cutover', v = if self.oclAsType(ECORE::EObject).states('cutover')
+			then str(self.cutover.spelling()) else null endif},
+		Tuple{k = 'switchover', v = if self.oclAsType(ECORE::EObject).states('switchover')
+			then str(self.switchover.spelling()) else null endif},
+		Tuple{k = 'deadline', v = str(self.deadline)},
+		Tuple{k = 'replicas', v = num(self.replicas)},
+		Tuple{k = 'memory', v = str(self.memory)},
+		Tuple{k = 'cpu', v = str(self.cpu)},
+		Tuple{k = 'hardening', v = str(self.hardening)},
+		Tuple{k = 'identityToken', v = bool(self.identityToken)},
+		Tuple{k = 'readiness', v = if self.readiness = null then null else self.readiness.json() endif},
+		Tuple{k = 'liveness', v = if self.liveness = null then null else self.liveness.json() endif},
+		Tuple{k = 'startup', v = if self.startup = null then null else self.startup.json() endif},
+		Tuple{k = 'placement', v = obj(Sequence{
+			Tuple{k = 'eligibleNodes', v = arr(self.placement.eligibleNodes->collect(n | str(n)))},
+			Tuple{k = 'boundTo', v = opt(self.placement.boundTo)},
+			Tuple{k = 'from', v = if self.placement.boundTo = null then null else str(self.placement._from.spelling()) endif}})},
+		Tuple{k = 'volumes', v = if self.volumes->isEmpty() then null else arr(self.volumes->collect(x | x.json())) endif},
+		Tuple{k = 'secrets', v = if self.secrets->isEmpty() then null else arr(self.secrets->collect(x | x.json())) endif},
+		Tuple{k = 'assets', v = if self.assets->isEmpty() then null else arr(self.assets->collect(x | obj(Sequence{
+			Tuple{k = 'name', v = str(x.name)},
+			Tuple{k = 'from', v = str(x._from)},
+			Tuple{k = 'mountAt', v = str(x.mountAt)},
+			Tuple{k = 'content', v = str(x.content)}}))) endif},
+		Tuple{k = 'sidecars', v = if self.sidecars->isEmpty() then null else arr(self.sidecars->collect(x | obj(Sequence{
+			Tuple{k = 'name', v = str(x.name)},
+			Tuple{k = 'image', v = str(x.image)},
+			Tuple{k = 'memory', v = str(x.memory)},
+			Tuple{k = 'cpu', v = str(x.cpu)}}))) endif},
+		Tuple{k = 'dependencies', v = if self.dependencies->isEmpty() then null else arr(self.dependencies->collect(x | obj(Sequence{
+			Tuple{k = 'application', v = str(x.application)},
+			Tuple{k = 'surface', v = str(x.surface)},
+			Tuple{k = 'address', v = str(x.address)},
+			Tuple{k = 'peers', v = if x.peers->isEmpty() then null else arr(x.peers->collect(q | q.json())) endif}}))) endif},
+		Tuple{k = 'writablePaths', v = if self.writablePaths->isEmpty() then null else arr(self.writablePaths->collect(x | obj(Sequence{
+			Tuple{k = 'path', v = str(x.path)},
+			Tuple{k = 'size', v = str(x.size)}}))) endif},
+		Tuple{k = 'environment', v = if self.environment->isEmpty() then null else arr(self.environment->collect(x | obj(Sequence{
+			Tuple{k = 'name', v = str(x.name)},
+			Tuple{k = 'value', v = opt(x.value)},
+			Tuple{k = 'secret', v = if x.secret = null then null else obj(Sequence{
+				Tuple{k = 'path', v = str(x.secret.path)},
+				Tuple{k = 'key', v = str(x.secret.key)}}) endif}}))) endif},
+		Tuple{k = 'surfaces', v = if self.surfaces->isEmpty() then null else arr(self.surfaces->collect(x | obj(Sequence{
+			Tuple{k = 'name', v = str(x.name)},
+			Tuple{k = 'port', v = num(x.port)}}))) endif},
+		Tuple{k = 'ingress', v = if ingress->isEmpty() then null else arr(ingress->collect(x | x.json())) endif},
+		Tuple{k = 'egress', v = arr(egress->collect(x | x.json()))}
+	});
+
+query ProbeTarget::fields() : Sequence(Tuple(k : String, v : String)) =
+	if self.oclIsKindOf(HttpTarget) then Sequence{
+		Tuple{k = 'path', v = str(self.oclAsType(HttpTarget).path)},
+		Tuple{k = 'port', v = num(self.oclAsType(HttpTarget).port)}}
+	else Sequence{Tuple{k = 'tcp', v = num(self.oclAsType(TcpTarget).tcp)}} endif;
+
+query ProbeTarget::json() : String = obj(self.fields());
+
+query ResolvedProbe::json() : String = obj(self.target.fields()->union(Sequence{
+	Tuple{k = 'period', v = str(self.period)},
+	Tuple{k = 'timeout', v = str(self.timeout)},
+	Tuple{k = 'failures', v = num(self.failures)}}));
+
+query StartupProbe::json() : String = obj(self.target.fields()->union(Sequence{
+	Tuple{k = 'period', v = str(self.period)},
+	Tuple{k = 'timeout', v = str(self.timeout)},
+	Tuple{k = 'failures', v = num(self.failures)}}));
+
+query PolicyPeer::json() : String = obj(Sequence{
+	Tuple{k = 'rule', v = opt(self.rule)},
+	Tuple{k = 'namespace', v = str(self.namespace)},
+	Tuple{k = 'process', v = opt(self.process)},
+	Tuple{k = 'port', v = num(self.port)}});
+
+query ResolvedVolume::json() : String = obj(Sequence{
+	Tuple{k = 'claim', v = str(self.claim)},
+	Tuple{k = 'mountAt', v = str(self.mountAt)},
+	Tuple{k = 'size', v = str(self.size)},
+	Tuple{k = 'durability', v = str(self.durability.spelling())},
+	Tuple{k = 'backup', v = if self.backup = null then null else obj(Sequence{
+		Tuple{k = 'schedule', v = str(self.backup.schedule)},
+		Tuple{k = 'retain', v = num(self.backup.retain)},
+		Tuple{k = 'offCluster', v = opt(self.backup.offCluster)},
+		Tuple{k = 'method', v = str(self.backup.method)},
+		Tuple{k = 'uid', v = num(self.backup.uid)},
+		Tuple{k = 'gid', v = num(self.backup.gid)},
+		Tuple{k = 'identity', v = str(self.backup.identity)},
+		Tuple{k = 'claim', v = str(self.backup.claim)},
+		Tuple{k = 'credential', v = if self.backup.credential = null then null else self.backup.credential.json() endif}}) endif}});
+
+query ResolvedGrant::json() : String = obj(Sequence{
+	Tuple{k = 'path', v = opt(self.path)},
+	Tuple{k = 'keys', v = if self.keys->isEmpty() then null else arr(self.keys->collect(x | str(x))) endif},
+	Tuple{k = 'access', v = opt(self._access)},
+	Tuple{k = 'engine', v = opt(self.engine)},
+	Tuple{k = 'paths', v = if self.paths->isEmpty() then null else arr(self.paths->collect(x | obj(Sequence{
+		Tuple{k = 'path', v = str(x.path)},
+		Tuple{k = 'allows', v = arr(x.allows->collect(a | str(a)))}}))) endif},
+	Tuple{k = 'delivery', v = str(self.delivery)},
+	Tuple{k = 'destination', v = opt(self.destination)},
+	Tuple{k = 'mountAt', v = opt(self.mountAt)},
+	Tuple{k = 'fileMode', v = opt(self.fileMode)},
+	Tuple{k = 'restartTargets', v = if self.restartTargets->isEmpty() then null
+		else arr(self.restartTargets->collect(x | str(x))) endif}});
+
+-- ===================================================== canonical JSON text
+
+-- An object of the entries whose value is present, in key order.
+query obj(entries : Sequence(Tuple(k : String, v : String))) : String =
+	'{' + joined(entries->select(e | e.v <> null)->sortedBy(e | e.k)->collect(e | str(e.k) + ':' + e.v)) + '}';
+
+query arr(items : Sequence(String)) : String = '[' + joined(items) + ']';
+
+-- The items, comma-separated; no item is empty, since each is a JSON value.
+query joined(items : Sequence(String)) : String =
+	items->iterate(i; acc : String = '' | if acc = '' then i else acc + ',' + i endif);
+
+-- A JSON string, escaped as JSON.stringify escapes it.
+query str(s : String) : String =
+	'"' + s.substituteAll('\\', '\\\\').substituteAll('"', '\\"').substituteAll('\n', '\\n')
+		.substituteAll('\r', '\\r').substituteAll('\t', '\\t') + '"';
+
+query opt(s : String) : String = if s = null then null else str(s) endif;
+
+query num(n : Integer) : String = n.toString();
+
+query bool(b : Boolean) : String = if b then 'true' else 'false' endif;
+
+query Switchover::spelling() : String =
+	if self = Switchover::blueGreen then 'blue-green'
+	else if self = Switchover::stopStart then 'stop-start' else 'rolling' endif endif;
+
+query RD::Cutover::spelling() : String =
+	if self = RD::Cutover::continuous then 'continuous' else 'interrupted' endif;
+
+query RD::Match::spelling() : String = if self = RD::Match::exact then 'exact' else 'prefix' endif;
+
+query MiddlewareKind::spelling() : String =
+	if self = MiddlewareKind::forwardAuth then 'forward-auth'
+	else if self = MiddlewareKind::securityHeaders then 'security-headers' else 'redirect' endif endif;
+
+query RD::DurabilityClass::spelling() : String =
+	if self = RD::DurabilityClass::reconstructible then 'reconstructible'
+	else if self = RD::DurabilityClass::recoverable then 'recoverable' else 'irreplaceable' endif endif;
+
+query PinnedInput::spelling() : String =
+	if self = PinnedInput::clusterState then 'cluster-state'
+	else if self = PinnedInput::nodeContract then 'node-contract'
+	else if self = PinnedInput::imagesLock then 'images-lock'
+	else if self = PinnedInput::platformIntent then 'platform-intent' else 'intent-fragment' endif endif endif endif;
+
+query AnalysisCheck::spelling() : String =
+	if self = AnalysisCheck::errorRate then 'error-rate' else 'latency' endif;
