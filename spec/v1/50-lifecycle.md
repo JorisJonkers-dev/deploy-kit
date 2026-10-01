@@ -144,14 +144,13 @@ member from a broken product (a new frontend against an old API, both pods
 individually reporting healthy), into a visibly held release, paid for by
 whoever shipped the failing member.
 
-**Rollback is unit-scoped.** Reverting one member means reverting the unit, and
-what a revert targets is the Application's own inputs: a revert in its
-repository publishes a fragment, which composes a render, which moves its
-Project's pin forward to the old content
-([chapter 55](55-delivery.md#rendered-artifacts-and-pins)). The cost is a larger
-rollback scope than a single Process, and the benefit is that the scope is
-consistent: there is no state in which half a unit has been reverted. Moving a
-pin back by hand is break-glass, not a rollback.
+**Going back is unit-scoped.** Reverting one member means reverting the unit:
+a revert in the Application's repository is a new release, and a Rollback
+re-composes its whole Project at an earlier release
+([chapter 55](55-delivery.md#pause-and-rollback)). The cost is a larger scope
+than a single Process, and the benefit is that the scope is consistent: there is
+no state in which half a unit has been reverted. Moving a pin back by hand is
+break-glass, not a Rollback.
 
 **A Release Unit is not a Reconcile Unit.**
 
@@ -289,5 +288,5 @@ flowchart TB
     G -->|"no: stop-start"| D["Flux has applied the pin<br/>the new revision serves, or the<br/>Application is held"]
     G -->|"yes"| U["blue/green: Flagger + the Release Gate<br/>every member behind one barrier"]
     U --> D
-    C -.->|"E_CONTRACT_TOO_EARLY"| B["no lock.<br/>Nothing renders."]
+    C -.->|"E_CONTRACT_TOO_EARLY"| B["isolated: its pin stays.<br/>The rest compose."]
 ```

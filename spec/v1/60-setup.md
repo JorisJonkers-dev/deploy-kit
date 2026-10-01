@@ -423,6 +423,46 @@ That growth is the coverage assertion's problem
 ([chapter 30](30-deliverables.md#coverage)), and it is the honest cost of
 adopting an estate that was hand-written first.
 
+## The Estate repository
+
+The estate path is read from one private repository,
+`JorisJonkers-dev/estate`. Flux's bootstrap points at it, and it holds what
+composition reads and what it records, and nothing rendered:
+
+| path | what it is | who writes it |
+|---|---|---|
+| `platform.intent.yml` | the Platform document ([chapter 14](14-platform-intent.md)) | a human, by pull request |
+| the composition lock | the inputs the last composition rendered from ([chapter 40](40-composition.md)) | the composition workflow |
+| `cluster-state.yml` | the ClusterState snapshot ([0034](../../docs/adr/model/0034-cluster-state-is-a-pinned-input.md)) | the Collector |
+| `projects/<project>/source.yaml` | one pin per Project ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)) | the composition workflow |
+
+A rendered tree is never committed here or anywhere else: the Rendered artifact
+is the render. What a change would render is shown where the change is made: a
+pull request in an application repository runs its publish workflow as a dry
+run, which composes its Project against this repository's current lock, posts
+the render diff on the pull request, and publishes nothing.
+
+**Composition runs in this repository's CI.** An application repository asks
+for a run with a `workflow_dispatch` of the composition workflow, and a nightly
+schedule runs it anyway,
+so a dispatch that never arrives costs a day, not a deploy. Runs are serialised:
+one composition at a time. The toolkit is the npm package at the exact version
+this repository's lockfile pins, so a toolkit upgrade is a reviewed pull request
+here and never a side effect of a publish elsewhere.
+
+**Two GitHub Apps reach it, and nothing else does.** Neither holds a long-lived
+token; each is used through a short-lived installation token:
+
+| App | installed on | may | used by |
+|---|---|---|---|
+| **dispatch** | the Estate repository | `actions: write`, to start the composition workflow; `contents: read`, to read the lock for a dry run | an application repository's publish workflow |
+| | every application repository | `statuses: write`, to report a composition on the commit that published | the composition workflow ([chapter 55](55-delivery.md#notifications)) |
+| **Collector** | the Estate repository | `contents: write`, to commit the snapshot | the Collector, its key read from the Secret Store |
+
+`actions: write` starts a workflow and cannot push a commit, so an application
+repository can ask for a composition and never write a pin. The composition
+workflow's own token opens and closes the Estate repository's issues.
+
 ## Handing over one Project at a time
 
 The estate is delivered today from `fleet-infra`'s `deploy/production` branch,
@@ -481,7 +521,10 @@ only then do its manifests return to `fleet-infra`. Moving the ledger alone
 would leave the last pin applied beside the old path.
 
 - **The order across Projects** is [the adoption order below](#adoption-order-across-the-estate):
-  providers before consumers.
+  providers before consumers, with one exception. **The first Project handed
+  over is `home-portal`**: stateless, holding no grant and no database, so it
+  proves the estate path, the pin and the signature check end to end with
+  nothing to lose. The providers follow it in adoption order.
 - **`retireBy` ends the old path.** On that date `legacy` must be empty. The
   Kustomization that applies `fleet-infra`'s `deploy/production` is set to
   `prune: false` first, so deleting it garbage-collects nothing still running,

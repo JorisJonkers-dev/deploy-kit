@@ -139,6 +139,9 @@ and linted by the same script with `emf` as its root.
 | [0053](model/0053-rotating-a-secret-is-not-a-release.md) | Rotating a secret is not a release, so it never starts a switchover | open |
 | [0054](model/0054-projects-are-handed-over-one-at-a-time.md) | Projects are handed over to the estate path one at a time, recorded in a ledger, and never delivered by both paths | open |
 | [0055](model/0055-the-render-leaves-flaggers-objects-to-flagger.md) | The render leaves Flagger's objects to Flagger, so Flux and Flagger never own the same field | open |
+| [0083](model/0083-a-fragment-publishes-on-a-release-tag.md) | A fragment publishes on a release tag and carries that release's version | open |
+| [0084](model/0084-pause-and-rollback.md) | A Pause freezes a Project's pin, and a Rollback re-composes an earlier proven release with the schema at its newest | open |
+| [0085](model/0085-composition-isolates-a-refused-project.md) | Composition isolates a refused Project, and every other Project still composes | open |
 
 ## Architecture
 

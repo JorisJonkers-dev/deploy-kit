@@ -108,6 +108,12 @@ Application of a project reads the project's one database; the owner role is
 derived for the Application that moves the schema, and only for it
 ([chapter 10](10-project-intent.md#migration)).
 
+**The names are fixed functions of the project.** A project's database is
+`<project>_db`, the spelling the live estate already uses (`auth_db`,
+`knowledge_db`), so adopting a project renames nothing in its datastore. Its
+owner role is `<project>-owner`, and its data role `<project>-data`. No author
+writes any of the three.
+
 The catalog is **data, not a procedure**. It renders as a `ConfigMap` and the
 platform's engine catalog supplies the image and command that applies it, the
 same split [0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md) makes

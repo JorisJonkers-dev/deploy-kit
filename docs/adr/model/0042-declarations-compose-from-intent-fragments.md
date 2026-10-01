@@ -11,7 +11,8 @@ rests-on: ["0001", "0006"]
 # Declarations compose from Intent Fragments published by digest, because eight properties of the estate need every project at once
 
 Each project file is published as an Intent Fragment, an OCI artifact named by
-digest, after its repository's images are built, on every merge. Composition
+digest, after its repository's images are built, when a release is tagged
+([0083](0083-a-fragment-publishes-on-a-release-tag.md)). Composition
 resolves the participants' fragments, unions them, checks the estate-wide
 invariants and records every digest it resolved in the composition lock, which
 is an output. The eight properties that need the whole estate are
@@ -80,6 +81,8 @@ on its own cadence.
 
 - Chapter 40's table is the one list of what composition decides; a new
   estate-wide property is a row there.
-- An intent-only change publishes on its own merge, one build later.
+- An intent-only change publishes with its repository's next release, one
+  build later.
 - Composition needs registry read access for every participant, and a missing
-  or stale participant fails it.
+  or stale participant is isolated at its last composed fragment
+  ([0085](0085-composition-isolates-a-refused-project.md)).
