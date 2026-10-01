@@ -157,8 +157,14 @@ one the current inputs produce. In order:
    Release Gate's, for a held release only ([Failure and undo](#failure-and-undo)).
    So the target must be a release proven against the current schema, which is
    the release the current Migration Proof's `testedAgainst` names
-   ([Migration safety](#migration-safety)). A Project with no changelog may roll
-   back to any earlier release. Anything else is refused before anything runs.
+   ([Migration safety](#migration-safety)). `testedAgainst` names an Application
+   revision; the lock records, beside each fragment's version, the revision each
+   of its Applications rendered at
+   ([chapter 40](40-composition.md#the-composition-lock)), so the release is
+   found by walking back along the lock chain. Where several Applications of the
+   Project move a schema with a changelog, the target must be the release every
+   one of their proofs names. A Project with no changelog may roll back to any
+   earlier release. Anything else is refused before anything runs.
 2. **A backup first.** The Rollback runs a backup of the data the Project
    reaches: each of its backed-up volumes, and its project database on the
    datastore its edges reach. That backup is kept for 7 days beside the
@@ -424,7 +430,7 @@ function of the project and the Platform document, never authored:
 | `DATABASE_HOST`, `DATABASE_PORT` | the datastore surface the Application's edge to the project database reaches ([chapter 16](16-dependencies.md#the-database-catalog)) |
 | `DATABASE_NAME` | `<project>_db` |
 | `VAULT_ADDR` | the Secret Store's address ([chapter 14](14-platform-intent.md#the-secret-store)) |
-| `VAULT_ROLE` | the migration identity's Vault role, `<namespace>-<application>-migration` ([chapter 16](16-dependencies.md#process-identity)) |
+| `VAULT_ROLE` | the migration identity's Vault role ([chapter 16](16-dependencies.md#process-identity)) |
 | `VAULT_CREDENTIALS_PATH` | the owner credential, `database/creds/<project>-owner` |
 
 Both commands run as the migration identity, which reads its owner credential

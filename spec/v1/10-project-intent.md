@@ -344,7 +344,7 @@ version receives traffic until **every** Process's new version is healthy, where
 healthy means that Process's own declared readiness
 ([0016](../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md)). If any member fails its
 `startupBudget`, **no** member switches and the old versions keep serving.
-Rollback is Application-scoped: reverting one Process reverts all of them.
+Going back is Application-scoped: reverting one Process reverts all of them.
 
 There is no mechanism to couple two Applications, and no field naming a set. A pair
 that must release together is **one Application** (`auth-api` and `auth-ui` are
@@ -693,7 +693,7 @@ derived about **this** Process
 
 | key | value |
 |---|---|
-| `${identity:vaultRole}` | the Process's Vault role, `<namespace>-<identity>` ([0031](../../docs/adr/model/0031-identity-per-process.md)) |
+| `${identity:vaultRole}` | the Process's Vault role, its own name ([0031](../../docs/adr/model/0031-identity-per-process.md)) |
 | `${identity:serviceAccount}` | the Process's ServiceAccount name |
 | `${identity:namespace}` | `<project>-system` |
 

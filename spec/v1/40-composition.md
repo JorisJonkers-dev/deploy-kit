@@ -162,7 +162,8 @@ Composition is **order-independent**: the same fragment set yields the same
 the composed digest meaningful, and it forces a design consequence. Every merge
 must be commutative, so **every collision is an error rather than a
 last-write-wins merge.** There is no precedence between fragments, and no fragment
-can override another.
+can override another. The error refuses the changed fragment, not the run
+([A refused Project is isolated](#a-refused-project-is-isolated)).
 
 ### A refused Project is isolated
 
@@ -177,12 +178,19 @@ composes as if nothing happened.
   so a collision is blamed on the fragment that introduced it. Composition then
   runs again over the remaining set, and repeats until no error names a changed
   fragment.
+- **A participant's own errors isolate it, changed or not.** A missing or stale
+  participant (`E_PARTICIPANT_MISSING`, `E_PARTICIPANT_STALE`), and one whose
+  `schemaVersion` the toolkit does not accept (`E_SCHEMA_VERSION_MISMATCH`), is
+  isolated at its last composed fragment even though its digest did not change:
+  the error is about that participant alone, so it is the one held back. A
+  toolkit upgrade that no participant's version accepts therefore holds every
+  Project still and fails nothing, until each republishes.
 - **A dependant is isolated in turn.** A fragment whose reference resolves only
   against an isolated fragment's new content fails its own reference check on the
   next pass and is isolated too.
 - **Some errors still fail the run.** A refused Platform document, and an error
-  that names no changed fragment (one the toolkit or the Platform document
-  caused), stop the composition: there is nothing to isolate, and no pin moves.
+  between fragments that names no changed one (a collision the toolkit or the
+  Platform document caused), stop the composition: there is nothing to isolate, and no pin moves.
 - **A Project that has never composed** has no earlier fragment to stay at. It is
   left out of the render and its handover waits; it was not delivered, so
   nothing is pruned.
@@ -546,8 +554,10 @@ dependency edge leaving the tree with no digest, exit code or ledger noticing. A
 loud stop is recoverable; a missing PVC is not.
 
 Equality is rejected for the opposite reason: it fails closed over the **union**.
-One stale participant blocks every composition, including the composition
-carrying the fix, and dormancy does not exempt a fragment from a version check.
+Every toolkit release would refuse every participant not yet republished at that
+exact version, isolating it, so nothing would deploy until every repository had
+republished, the fix included, and dormancy does not exempt a fragment from a
+version check.
 The estate already demonstrates that skew is survivable: `0.16.0` in four
 project repos, `0.20.0` in `stalwart-provisioner`, `0.22.0` in the published
 contexts, and it functions.
@@ -712,6 +722,9 @@ spec:
       repository: JorisJonkers-dev/knowledge
       schemaVersion: 1.0.0            # exact resolved model version
       version: 2.1.2                  # the release the fragment published from
+      revisions:                      # each Application's revision, as rendered
+        knowledge: sha256:…
+        knowledge-ingest: sha256:…
       sourceSha: 22b9d33…
       inputsSha: 84021c5…
     intent-data: {…}
