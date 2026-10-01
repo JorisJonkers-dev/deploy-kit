@@ -1,6 +1,6 @@
 ---
 tier: premise
-status: proposed
+status: accepted
 claim: settled
 date: 2026-08-31
 normative: spec/v1/00-overview.md#the-three-model-pipeline
