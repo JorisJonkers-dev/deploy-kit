@@ -8,9 +8,11 @@ import type { ScopedEnv } from "../model/env.ts";
 import type { Hasher } from "../model/hasher.ts";
 import type { EffectiveProject } from "../model/effective-intent.ts";
 import type { InputDigest, PinnedSet } from "../model/resolution.ts";
+import type { MigrationProofDocument } from "../model/migration-proof.ts";
 import {
   readClusterState,
   readImagesLock,
+  readMigrationProof,
   readNodeContract,
 } from "../read/pinned-inputs.ts";
 import { readYaml } from "../read/yaml.ts";
@@ -31,6 +33,7 @@ export interface ResolvedSet {
 const NODE_CONTRACT = "node-contract.yml";
 const IMAGES_LOCK = "images.lock.yml";
 const CLUSTER_STATE = "cluster-state.yml";
+const MIGRATION_PROOF = "migration-proof.yml";
 
 const missing = (what: string): Diagnostic => ({
   code: "schema",
@@ -104,6 +107,33 @@ type Held = readonly [string, string];
 // Stryker disable next-line EqualityOperator
 const byFrom = ([a]: Held, [b]: Held): number => (a < b ? -1 : 1);
 
+/** The migration proof beside each project file that has one, or every refusal of one. */
+function proofsOf(
+  projects: readonly { readonly name: string; readonly project: string }[],
+  files: readonly AuthoredFile[],
+): Result<Map<string, MigrationProofDocument>> {
+  const proofs = new Map<string, MigrationProofDocument>();
+  const diagnostics: Diagnostic[] = [];
+  for (const { name, project } of projects) {
+    const path = directoryOf(name) + MIGRATION_PROOF;
+    const file = files.find((candidate) => candidate.name === path);
+    if (file === undefined) continue;
+    const yaml = readYaml(file.text);
+    const read = yaml.ok ? readMigrationProof(yaml.value) : yaml;
+    if (read.ok) proofs.set(project, read.value);
+    else
+      diagnostics.push(
+        ...read.diagnostics.map((diagnostic) => ({
+          ...diagnostic,
+          document: path,
+        })),
+      );
+  }
+  return diagnostics.length > 0
+    ? { ok: false, diagnostics }
+    : { ok: true, value: proofs };
+}
+
 /** A project's Asset files in the order their paths sort. */
 const assetsInPathOrder = (
   assets: ReadonlyMap<string, string>,
@@ -122,10 +152,17 @@ export function resolveIntentSet(
   const contract = pinned(files, NODE_CONTRACT, readNodeContract);
   const lock = pinned(files, IMAGES_LOCK, readImagesLock);
   const state = pinned(files, CLUSTER_STATE, readClusterState);
-  if (!contract.ok || !lock.ok || !state.ok)
+  const proofs = proofsOf(
+    projects.map(({ name, value }) => ({
+      name,
+      project: value.document.project,
+    })),
+    files,
+  );
+  if (!contract.ok || !lock.ok || !state.ok || !proofs.ok)
     return {
       ok: false,
-      diagnostics: [contract, lock, state].flatMap((result) =>
+      diagnostics: [contract, lock, state, proofs].flatMap((result) =>
         result.ok ? [] : result.diagnostics,
       ),
     };
@@ -142,6 +179,7 @@ export function resolveIntentSet(
         assetsOf(name, value.effective, files),
       ]),
     ),
+    proofs: proofs.value,
   };
   const fragments = projects.map(({ value }): InputDigest => ({
     input: "intent-fragment",
@@ -152,6 +190,10 @@ export function resolveIntentSet(
       assets: assetsInPathOrder(
         set.assets.get(value.document.project) as ReadonlyMap<string, string>,
       ),
+      // CI writes the proof beside the project file, so it is the fragment's.
+      ...(proofs.value.has(value.document.project)
+        ? { proof: proofs.value.get(value.document.project) }
+        : {}),
     }),
   }));
   // No two fragments name one project, so `<=` would order the same list.

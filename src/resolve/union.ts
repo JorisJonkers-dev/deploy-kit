@@ -46,6 +46,7 @@ export function resolveUnion(
         collector,
         gate,
         store,
+        proof: set.proofs.get(project),
         // Every project of the set is read with its Asset files, if none.
         assets: set.assets.get(project) as ReadonlyMap<string, string>,
       }),

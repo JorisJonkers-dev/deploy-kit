@@ -136,27 +136,44 @@ public final class EnvFiles {
         return file;
     }
 
-    /** A literal, or one placeholder, and nothing that is half of each. */
+    /**
+     * A literal, or one placeholder with literal text after it, and never a secret with text after
+     * it: a secret becomes one key of a Secret, and half a key is nothing.
+     */
     private static Optional<EnvValue> value(String raw) {
-        if (raw.startsWith(OPENS) && raw.endsWith("}")) {
+        if (raw.startsWith(OPENS)) {
+            int close = raw.indexOf('}');
+            if (close == -1) {
+                return Optional.empty();
+            }
             // Split once: a source may hold colons, and the kind may hold none.
-            String[] parts = raw.substring(OPENS.length(), raw.length() - 1).split(":", 2);
+            String[] parts = raw.substring(OPENS.length(), close).split(":", 2);
             PlaceholderKind kind = parts.length == 2 ? PlaceholderKind.get(parts[0]) : null;
             String source = parts.length == 2 ? parts[1] : "";
-            if (kind == null || source.isEmpty() || source.contains("}")) {
+            String suffix = raw.substring(close + 1);
+            boolean whole = kind != PlaceholderKind.SECRET || suffix.isEmpty();
+            if (kind == null || source.isEmpty() || !literal(suffix) || !whole) {
                 return Optional.empty();
             }
             Placeholder placeholder = MODEL.createPlaceholder();
             placeholder.setKind(kind);
             placeholder.setSource(source);
+            if (!suffix.isEmpty()) {
+                placeholder.setSuffix(suffix);
+            }
             return Optional.of(placeholder);
         }
-        if (raw.isEmpty() || raw.contains("#") || raw.contains(OPENS)) {
+        if (raw.isEmpty() || !literal(raw)) {
             return Optional.empty();
         }
         EnvLiteral literal = MODEL.createEnvLiteral();
         literal.setText(raw);
         return Optional.of(literal);
+    }
+
+    /** Literal text: no {@code #}, which is a comment wherever it appears, and no placeholder. */
+    private static boolean literal(String text) {
+        return !text.contains("#") && !text.contains(OPENS);
     }
 
     /** {@code base.env} does not vary, so it names no Cluster Target. */

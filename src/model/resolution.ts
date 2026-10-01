@@ -1,6 +1,7 @@
 // What resolution reads (spec/v1/20-resolved-deployment.md#pinned-inputs): the
 // composed union lowered to the Effective Intent, and every other pinned input,
 // each already read into its model. The set is closed; nothing else is read.
+import type { MigrationProofDocument } from "./migration-proof.ts";
 import type { ClusterStateDocument } from "./cluster-state.ts";
 import type { EffectiveProject } from "./effective-intent.ts";
 import type { ImagesLockDocument } from "./images-lock.ts";
@@ -19,6 +20,8 @@ export interface PinnedSet {
   readonly projects: readonly EffectiveProject[];
   /** Each project's Asset files, by the `from` path the project names them by. */
   readonly assets: ReadonlyMap<string, ReadonlyMap<string, string>>;
+  /** Each project's migration proof, where one is read beside it. */
+  readonly proofs: ReadonlyMap<string, MigrationProofDocument>;
 }
 
 /** One pinned input, by the name its digest is recorded under. */

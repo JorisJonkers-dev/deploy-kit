@@ -11,7 +11,12 @@ import type {
 } from "../../model/resolved-deployment.ts";
 import type { VaultAuth, VaultStaticSecret } from "../../objects/custom.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";
-import { holdersOf, type Grant, type Holder } from "../shared/holders.ts";
+import {
+  holdersOf,
+  isSynced,
+  type KvGrant,
+  type Holder,
+} from "../shared/holders.ts";
 import { managedOnly } from "../shared/labels.ts";
 import { applicationDirectory, projectDirectory } from "../shared/paths.ts";
 
@@ -41,7 +46,7 @@ function servingOf(
 }
 
 function staticSecretOf(
-  grant: Grant,
+  grant: KvGrant,
   holder: Holder,
   application: ResolvedApplicationDocument,
 ): VaultStaticSecret {
@@ -130,9 +135,7 @@ export function renderVso(project: ResolvedProject): Deliverable[] {
     (application): Deliverable[] => {
       const objects = holdersOf(application).flatMap((holder) => {
         // A `self` grant is read by the Process itself, and synced nowhere.
-        const synced = holder.grants.filter(
-          ({ destination }) => destination !== undefined,
-        );
+        const synced = holder.grants.filter(isSynced);
         return synced.length === 0
           ? []
           : [

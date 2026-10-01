@@ -737,6 +737,27 @@ describe("the vault-policy adapter", () => {
   const policy = (grant: unknown) =>
     renderVaultPolicy(edited(undefined, () => ({ secrets: [grant] })));
 
+  it("covers each path an engine grant derives, with what it may do there", () => {
+    const [document] = objectsAt(
+      policy({
+        engine: "transit",
+        delivery: "self",
+        paths: [
+          { path: "transit/sign/notes-jwt", allows: ["update"] },
+          { path: "transit/keys/notes-jwt/rotate", allows: ["update"] },
+        ],
+      }),
+      "policy.json",
+    );
+
+    expect(document).toStrictEqual({
+      path: {
+        "transit/sign/notes-jwt": { capabilities: ["update"] },
+        "transit/keys/notes-jwt/rotate": { capabilities: ["update"] },
+      },
+    });
+  });
+
   it("stops at an access tier it does not spell yet, and at a grant outside the kv mount", () => {
     expect(() => policy({ ...GRANT, access: "custody" })).toThrow(
       "secret/data/notes/token: a custody grant is not rendered yet",

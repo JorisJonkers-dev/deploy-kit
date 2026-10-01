@@ -159,6 +159,7 @@ mapping Placeholder::copyFor(in owner : Process) : Placeholder {
 	kind := self.kind;
 	-- Qualified: bare `source` is this transformation's input model parameter.
 	result.source := self.source;
+	if self.oclAsType(ECORE::EObject).states('suffix') then result.suffix := self.suffix endif;
 }
 
 -- The derived read path is the identity, so a `kv` grant and a `database` grant

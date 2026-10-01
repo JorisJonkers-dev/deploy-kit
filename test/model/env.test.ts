@@ -52,6 +52,37 @@ describe("the dotenv subset", () => {
     });
   });
 
+  it("keeps the literal text after a placeholder that is no secret", () => {
+    const file = read(
+      "LOGIN=${exposure:auth.public#url}/login\nHOST=${exposure:auth.public#host}\n",
+    );
+
+    expect(file.ok && file.value).toStrictEqual({
+      entries: [
+        {
+          name: "LOGIN",
+          value: {
+            kind: "exposure",
+            source: "auth.public#url",
+            suffix: "/login",
+          },
+        },
+        {
+          name: "HOST",
+          value: { kind: "exposure", source: "auth.public#host" },
+        },
+      ],
+    });
+  });
+
+  it("refuses a placeholder left open, and text after one that holds a comment or a second placeholder", () => {
+    expect(read("URL=${exposure:a.b#url\n").ok).toBe(false);
+    expect(read("URL=${exposure:a.b#url}#x\n").ok).toBe(false);
+    expect(read("URL=${exposure:a.b#url}${exposure:a.b#host}\n").ok).toBe(
+      false,
+    );
+  });
+
   it("refuses a line that is not an assignment, and a name a process cannot read", () => {
     expect(read("MODE\n").ok).toBe(false);
     expect(read("=lite\n").ok).toBe(false);
@@ -350,7 +381,7 @@ describe("what an env refusal says, and which line it names", () => {
     expect(refusal?.path).toBe("platform/env/w/base.env:3");
     expect(refusal?.message).toBe("a line is not a NAME=value assignment");
     expect(refusal?.hint).toBe(
-      "Write NAME=value, one per line, where a value is a literal or one ${kind:source} placeholder.",
+      "Write NAME=value, one per line, where a value is a literal, or one ${kind:source} placeholder with literal text after it unless it is a secret.",
     );
   });
 

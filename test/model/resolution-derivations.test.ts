@@ -45,6 +45,12 @@ const FOUNDATION = [
 ].map((name): AuthoredFile => ({ name, text: text(name) }));
 
 const PLATFORM = text("platform/platform.intent.yml");
+/** data, for a Process whose edge reaches one of its Applications. */
+const DATA = [
+  "data/data.project.yml",
+  "data/env/postgres/base.env",
+  "data/config/postgresql.conf",
+].map((name): AuthoredFile => ({ name, text: text(name) }));
 const LOCK = parseYaml(text("platform/images.lock.yml")) as {
   images: Record<
     string,
@@ -78,6 +84,7 @@ interface Options {
   readonly platform?: (platform: string) => string;
   /** Files read beside the project: its env files, and its Asset files. */
   readonly env?: readonly AuthoredFile[];
+  readonly lock?: (lock: string) => string;
 }
 
 function resolve(applications: string, options: Options = {}) {
@@ -87,7 +94,11 @@ function resolve(applications: string, options: Options = {}) {
         name: "platform/platform.intent.yml",
         text: (options.platform ?? ((same: string) => same))(PLATFORM),
       },
-      ...FOUNDATION,
+      ...FOUNDATION.map((file) =>
+        file.name === "platform/images.lock.yml" && options.lock !== undefined
+          ? { ...file, text: options.lock(file.text) }
+          : file,
+      ),
       { name: "minimal/notes.project.yml", text: HEADER + applications },
       ...(options.env ?? []),
     ],
@@ -130,6 +141,10 @@ const processOf = (applications: string, options?: Options) => {
 
 const one = (processBlock: string): string =>
   `  - id: notes\n    processes:\n${processBlock}`;
+
+/** One Application whose Process reaches a datastore, which moves no schema of its own. */
+const reaching = (processBlock: string): string =>
+  `  - id: notes\n    migration: none\n    processes:\n${processBlock}`;
 
 describe("the route a request takes", () => {
   const exposed = (routes: string, extra = "") => `  - id: notes
@@ -420,12 +435,143 @@ describe("the environment a Process runs with", () => {
     ]);
   });
 
-  it("stops at a placeholder whose derivation has not landed, rather than writing a wrong value", () => {
+  it("resolves a dependency placeholder to one coordinate of the Process's own edge, with the text after it", () => {
+    const resolved = processOf(
+      reaching(
+        serving(
+          "notes-api",
+          "        dependsOn:\n          - { application: platform-postgres, surface: postgres }\n",
+        ),
+      ),
+      {
+        env: [
+          env(
+            "notes-api/base.env",
+            "DB_HOST=${dependency:platform-postgres.host}\nDB_PORT=${dependency:platform-postgres.port}\nDB_URL=${dependency:platform-postgres.host}/notes\n",
+          ),
+          ...DATA,
+        ],
+      },
+    );
+
+    expect(
+      resolved.environment?.filter(({ name }) => name.startsWith("DB_")),
+    ).toStrictEqual([
+      { name: "DB_HOST", value: "postgres.data-system.svc.cluster.local" },
+      { name: "DB_PORT", value: "5432" },
+      {
+        name: "DB_URL",
+        value: "postgres.data-system.svc.cluster.local/notes",
+      },
+    ]);
+  });
+
+  it.each([
+    [
+      "an Application the Process has no edge to",
+      "${dependency:platform-valkey.host}",
+    ],
+    [
+      "a coordinate an edge does not hand out",
+      "${dependency:platform-postgres.url}",
+    ],
+  ])("stops at a dependency placeholder naming %s", (_, placeholder) => {
+    expect(() =>
+      resolve(
+        reaching(
+          serving(
+            "notes-api",
+            "        dependsOn:\n          - { application: platform-postgres, surface: postgres }\n",
+          ),
+        ),
+        { env: [env("notes-api/base.env", `X=${placeholder}\n`), ...DATA] },
+      ),
+    ).toThrow(
+      "X: a dependency placeholder names no one edge of the Process and no coordinate of it, which is not checked yet",
+    );
+  });
+
+  it("stops at a dependency placeholder on a Process that has no edge at all", () => {
     expect(() =>
       resolve(one(serving("notes-api")), {
-        env: [env("notes-api/base.env", "URL=${exposure:notes.app#url}\n")],
+        env: [
+          env("notes-api/base.env", "X=${dependency:platform-postgres.host}\n"),
+        ],
       }),
-    ).toThrow("URL: a exposure placeholder is not resolved yet");
+    ).toThrow("X: a dependency placeholder names no one edge of the Process");
+  });
+
+  it("stops at a dependency placeholder naming an Application the Process has two edges to", () => {
+    expect(() =>
+      resolve(
+        reaching(
+          serving(
+            "notes-api",
+            "        dependsOn:\n          - { application: platform-postgres, surface: postgres }\n          - { application: platform-postgres, surface: metrics }\n",
+          ),
+        ),
+        {
+          env: [
+            env(
+              "notes-api/base.env",
+              "X=${dependency:platform-postgres.host}\n",
+            ),
+            ...DATA,
+          ],
+        },
+      ),
+    ).toThrow("X: a dependency placeholder names no one edge of the Process");
+  });
+
+  it("resolves an exposure placeholder to its url, host or scheme, by the tier that carries it", () => {
+    const exposed = `  - id: notes
+    exposure:
+      - { name: app, host: notes.jorisjonkers.dev, audience: lan, routes: [{ path: /, match: prefix, process: notes-api, surface: http }] }
+    processes:
+${serving("notes-api")}`;
+    const resolved = processOf(exposed, {
+      env: [
+        env(
+          "notes-api/base.env",
+          "URL=${exposure:notes.app#url}/login\nHOST=${exposure:notes.app#host}\nSCHEME=${exposure:notes.app#scheme}\n",
+        ),
+      ],
+      platform: (document) =>
+        document.replace("listener: tls\n", "listener: plain\n"),
+    });
+
+    expect(
+      resolved.environment?.filter(({ name }) =>
+        ["URL", "HOST", "SCHEME"].includes(name),
+      ),
+    ).toStrictEqual([
+      { name: "HOST", value: "notes.jorisjonkers.dev" },
+      { name: "SCHEME", value: "http" },
+      { name: "URL", value: "http://notes.jorisjonkers.dev/login" },
+    ]);
+  });
+
+  it.each([
+    ["an exposure the union does not declare", "${exposure:notes.gone#url}"],
+    ["an Application the union does not hold", "${exposure:gone.app#url}"],
+    [
+      "an Application that declares no exposure",
+      "${exposure:release-gate.app#url}",
+    ],
+    ["a field an exposure does not hand out", "${exposure:notes.app#path}"],
+  ])("stops at an exposure placeholder naming %s", (_, placeholder) => {
+    expect(() =>
+      resolve(
+        `  - id: notes
+    exposure:
+      - { name: app, host: notes.jorisjonkers.dev, audience: authenticated, routes: [{ path: /, match: prefix, process: notes-api, surface: http }] }
+    processes:
+${serving("notes-api")}`,
+        { env: [env("notes-api/base.env", `X=${placeholder}\n`)] },
+      ),
+    ).toThrow(
+      "X: an exposure placeholder names no exposure of the union and no field of it, which is not checked yet",
+    );
   });
 
   it("injects no Runtime Profile where the runtime exports nothing, and no PORT beside two surfaces", () => {
@@ -705,8 +851,8 @@ describe("what a grant derives", () => {
           "{ path: team/secret/data/token, keys: [token], access: read, delivery: env, rotation: {tolerates: restart} }",
         ),
         bound("TOKEN=${secret:team/secret/data/token#token}\n"),
-      ).secrets?.[0]?.destination,
-    ).toBe("notes-api-team-secret-data-token");
+      ).secrets?.[0],
+    ).toHaveProperty("destination", "notes-api-team-secret-data-token");
   });
 
   it("carries a file grant's mount and mode", () => {
@@ -968,20 +1114,50 @@ describe("what an Asset and a sidecar derive", () => {
   });
 });
 
-describe("what has not landed yet", () => {
-  it("stops at a grant on an engine other than kv, whose derivation lands in its own slice", () => {
-    expect(() =>
-      resolve(
-        one(
-          serving(
-            "notes-api",
-            "        secrets:\n          - { engine: database, role: notes, delivery: self, rotation: {tolerates: reload} }\n",
-          ),
-        ),
-      ),
-    ).toThrow("notes-api: a database grant is not resolved yet");
+describe("what an engine grant derives", () => {
+  const holding = (grant: string) =>
+    processOf(
+      one(serving("notes-api", `        secrets:\n          - ${grant}\n`)),
+    );
+
+  it("covers one path per transit operation, each the one Vault maps it to", () => {
+    expect(
+      holding(
+        "{ engine: transit, key: notes-jwt, operations: [sign, verify, encrypt, decrypt, rotate], delivery: self, rotation: {tolerates: restart} }",
+      ).secrets,
+    ).toStrictEqual([
+      {
+        engine: "transit",
+        delivery: "self",
+        paths: [
+          { path: "transit/sign/notes-jwt", allows: ["update"] },
+          { path: "transit/verify/notes-jwt", allows: ["update"] },
+          { path: "transit/encrypt/notes-jwt", allows: ["update"] },
+          { path: "transit/decrypt/notes-jwt", allows: ["update"] },
+          { path: "transit/keys/notes-jwt/rotate", allows: ["update"] },
+        ],
+        restartTargets: ["notes-api"],
+      },
+    ]);
   });
 
+  it("reads a database role's credential, and mounts the token the Process reads it with", () => {
+    const resolved = holding(
+      "{ engine: database, role: notes, delivery: self, rotation: {tolerates: reload} }",
+    );
+
+    expect(resolved.secrets).toStrictEqual([
+      {
+        engine: "database",
+        delivery: "self",
+        paths: [{ path: "database/creds/notes", allows: ["read"] }],
+      },
+    ]);
+    expect(resolved.identityToken).toBe(true);
+  });
+});
+
+describe("what has not landed yet", () => {
   it("gives every writable path the platform's ephemeral size", () => {
     expect(
       processOf(
@@ -992,32 +1168,127 @@ describe("what has not landed yet", () => {
       { path: "/cache", size: "64Mi" },
     ]);
   });
+});
 
-  it("stops at a managed migration, whose runner block waits on its own slice", () => {
-    const managed = `  - id: notes
+describe("what a managed migration derives", () => {
+  const managed = `  - id: notes
     migration: { changelog: db/changelog.yml }
     processes:
-${serving("notes-api", "        dependsOn:\n          - { application: notes-db, surface: postgres }\n")}  - id: notes-db
-    processes:
-      - name: notes-db
-        lifecycle: application
-        image: notes-api
-        runtime: none
-        engine: postgres
-        provides: { postgres: 5432 }
-        placement: { memory: 64Mi, cpu: 10m }
-        volumes:
-          - { claim: notes-db, mountAt: /var/lib/postgresql, size: 1Gi, durability: recoverable }
-        probes:
-          readiness: { tcp: 5432 }
-          liveness: { tcp: 5432 }
-        startupBudget: 20s
-        cutover: interrupted
-`;
+${serving("notes-api", "        dependsOn:\n          - { application: platform-postgres, surface: postgres }\n")}`;
+  const LOCKED = (lock: string) =>
+    `${lock.trimEnd()}\n  notes-migration:\n    repository: ghcr.io/jorisjonkers-dev/notes/notes-migration\n    digest: "sha256:${"7".repeat(64)}"\n    uid: 1000\n    gid: 1000\n`;
+  const PROOF = (body: string): AuthoredFile => ({
+    name: "minimal/migration-proof.yml",
+    text: `apiVersion: proof.jorisjonkers.dev/v1\nkind: MigrationProof\nschemaVersion: 1.0.0\napplications:\n${body}`,
+  });
+  const migration = (files: readonly AuthoredFile[] = []) =>
+    application(managed, { lock: LOCKED, env: [...files, ...DATA] }).migration;
 
-    expect(() => resolve(managed)).toThrow(
-      "notes: a managed migration is not resolved yet",
+  it("runs the image the lock holds for the Application, as a first release where no proof names it", () => {
+    expect(migration()).toStrictEqual({
+      runner: `ghcr.io/jorisjonkers-dev/notes/notes-migration@sha256:${"7".repeat(64)}`,
+      nonTransactional: false,
+    });
+    expect(
+      migration([PROOF("  - { id: other, nonTransactional: true }\n")]),
+    ).toStrictEqual({
+      runner: `ghcr.io/jorisjonkers-dev/notes/notes-migration@sha256:${"7".repeat(64)}`,
+      nonTransactional: false,
+    });
+  });
+
+  it("carries what the proof beside the project records, and covers it with the fragment's digest", () => {
+    const proof = PROOF(
+      `  - { id: notes, testedAgainst: "sha256:${"8".repeat(64)}", nonTransactional: true }\n`,
     );
+    const digest = (files: readonly AuthoredFile[]) =>
+      application(managed, {
+        lock: LOCKED,
+        env: [...files, ...DATA],
+      }).provenance.inputDigests.find(({ name }) => name === "notes")?.digest;
+
+    expect(migration([proof])).toStrictEqual({
+      runner: `ghcr.io/jorisjonkers-dev/notes/notes-migration@sha256:${"7".repeat(64)}`,
+      testedAgainst: `sha256:${"8".repeat(64)}`,
+      nonTransactional: true,
+    });
+    expect(digest([proof])).not.toBe(digest([]));
+  });
+
+  it("refuses a managed migration whose image the lock does not hold, at the migration, and says how to fix it", () => {
+    const result = resolve(managed, { env: DATA });
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, document, path, message, hint }) => ({
+            code,
+            document,
+            path,
+            message,
+            hint,
+          })),
+    ).toStrictEqual([
+      {
+        code: "E_UNLOCKED_IMAGE",
+        document: "minimal/notes.project.yml",
+        path: "/applications/0/migration",
+        message: "the images lock holds no entry for notes-migration",
+        hint: "Lock the migration image the Application's CI builds from the platform's runner.",
+      },
+    ]);
+  });
+
+  it.each([
+    [
+      "a revision that is not a digest",
+      `  - { id: notes, testedAgainst: "xsha256:${"8".repeat(64)}", nonTransactional: false }\n`,
+    ],
+    [
+      "a digest with more after it",
+      `  - { id: notes, testedAgainst: "sha256:${"8".repeat(64)}0", nonTransactional: false }\n`,
+    ],
+  ])("refuses a proof naming %s", (_, body) => {
+    expect(
+      resolve(managed, { lock: LOCKED, env: [PROOF(body), ...DATA] }).ok,
+    ).toBe(false);
+  });
+
+  it.each([
+    ["1.0.0-draft", false],
+    ["v1.0.0", false],
+    ["10.20.30", true],
+  ])(
+    "reads a proof of schema version %s only where it is semver",
+    (version, ok) => {
+      const proof = PROOF("  - { id: notes, nonTransactional: false }\n");
+
+      expect(
+        resolve(managed, {
+          lock: LOCKED,
+          env: [
+            { ...proof, text: proof.text.replace("1.0.0", version) },
+            ...DATA,
+          ],
+        }).ok,
+      ).toBe(ok);
+    },
+  );
+
+  it.each([
+    ["breaks its schema", PROOF("  - { id: notes }\n")],
+    [
+      "is no YAML",
+      { name: "minimal/migration-proof.yml", text: "applications: [\n" },
+    ],
+  ])("refuses a proof that %s, at the proof", (_, proof) => {
+    const result = resolve(managed, { lock: LOCKED, env: [proof, ...DATA] });
+
+    expect(
+      result.ok
+        ? []
+        : [...new Set(result.diagnostics.map(({ document }) => document))],
+    ).toStrictEqual(["minimal/migration-proof.yml"]);
   });
 });
 
@@ -1067,6 +1338,7 @@ describe("an Application under a platform with no delivery policy", () => {
       collector: undefined,
       gate: undefined,
       store: undefined,
+      proof: undefined,
       assets: new Map(),
     });
 

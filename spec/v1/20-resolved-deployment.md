@@ -363,9 +363,10 @@ the input is read. A comment or a reordered key moves nothing, because it
 decides nothing; a changed value always moves the digest. An Intent Fragment's
 digest covers its project file and the files beside it together, as an object
 holding the parsed document under `document`; under `env`, each env file's scope
-and parsed content, in the order its paths sort; and under `assets`, each Asset
+and parsed content, in the order its paths sort; under `assets`, each Asset
 file the project names, as its `from` path and its text, in the order those
-paths sort. Each entry is
+paths sort; and under `proof`, the migration proof beside the project file,
+where its CI wrote one. Each entry is
 named for what it identifies: a fragment by its project, the Platform document
 by its `metadata.project`, the node contract and the ClusterState snapshot by
 their cluster, and the images lock by its own `name`. The fragments come first,
@@ -763,9 +764,9 @@ it records three things only:
 
 | field | derived from |
 |---|---|
-| `runner` | the migration image: the Platform document's runner, by digest, with the Application's changelog built in; carried by the Intent Fragment's images lock |
-| `testedAgainst` | the serving revision the compatibility of this changelog was proven against, recorded by the Intent Fragment's compatibility proof; absent on a first release, when nothing serves ([chapter 55](55-delivery.md#migration-safety)) |
-| `nonTransactional` | whether the release holds a changeset that cannot run in a transaction, recorded by the same proof; such a release is never undone automatically ([chapter 55](55-delivery.md#failure-and-undo)) |
+| `runner` | the migration image: the Platform document's runner with the Application's changelog built in, by the digest the images lock holds for `<application>-migration`, or `E_UNLOCKED_IMAGE` at the Application's `migration` |
+| `testedAgainst` | the serving revision the compatibility of this changelog was proven against, recorded by the migration proof beside the project file; absent on a first release, when nothing serves, which is also what an Application the proof does not name is ([chapter 55](55-delivery.md#migration-safety)) |
+| `nonTransactional` | whether the release holds a changeset that cannot run in a transaction, recorded by the same proof, and `false` where it names none; such a release is never undone automatically ([chapter 55](55-delivery.md#failure-and-undo)) |
 
 Everything else about a migration is a fixed function of the Application id,
 the project and the Platform document, so recording it would repeat a
@@ -1464,6 +1465,15 @@ classDiagram
         +string fileMode
         +string[] restartTargets
     }
+    class ResolvedEngineGrant {
+        +GrantEngine engine
+        +Delivery delivery
+        +string[] restartTargets
+    }
+    class PolicyPath {
+        +VaultPath path
+        +string[] allows
+    }
     class ResolvedAsset {
         +string name
         +Path from
@@ -1544,6 +1554,7 @@ classDiagram
     ResolvedProcess "1" *-- "1" ResolvedPlacement : placement
     ResolvedProcess "1" *-- "0..*" ResolvedVolume : volumes
     ResolvedProcess "1" *-- "0..*" ResolvedGrant : secrets
+    ResolvedProcess "1" *-- "0..*" ResolvedEngineGrant : secrets
     ResolvedProcess "1" *-- "0..*" ResolvedAsset : assets
     ResolvedProcess "1" *-- "0..*" ResolvedSidecar : sidecars
     ResolvedProcess "1" *-- "0..*" ResolvedEdge : dependencies
@@ -1554,6 +1565,7 @@ classDiagram
     ResolvedProcess "1" *-- "0..*" EgressPeer : egress
     ResolvedVolume "1" *-- "0..1" BackupPlan : backup
     EnvEntry "1" *-- "0..1" SecretReference : secret
+    ResolvedEngineGrant "1" *-- "1..*" PolicyPath : paths
     ResolvedEdge "1" *-- "0..*" PolicyPeer : peers
 
     ResolvedExposure "1" *-- "1..*" ResolvedRoute : routes
