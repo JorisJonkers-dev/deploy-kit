@@ -139,7 +139,7 @@ against ([chapter 55](spec/v1/55-delivery.md#migration-safety)).
 version N stops using it and only N+1 removes it. The compatibility proof is
 what enforces it ([chapter 55](spec/v1/55-delivery.md#migration-safety)).
 
-**Down**: the rollback of a held release's migration to the serving revision,
+**Down**: the undo of a held release's migration to the serving revision,
 which only the Release Gate may start, and only while nothing new serves
 ([chapter 55](spec/v1/55-delivery.md#failure-and-undo)).
 
@@ -363,6 +363,27 @@ pin file per Project, and never a rendered tree.
 **Pin**: the digest a Project's source points at, and the commit that changes
 it. A deploy is a pin commit applied; the estate's git history is its deploy log
 ([chapter 55](spec/v1/55-delivery.md#rendered-artifacts-and-pins)).
+
+**Rollback**: re-composing one Project at the fragment of an earlier release,
+asked for by a human, while the database schema stays at its newest: no
+migration runs backwards, so the earlier release must be one proven against the
+current schema. It first takes a backup of the data the Project reaches, kept
+for a short window beside the class's own copies, and moves the pin only once
+that backup has succeeded. A Rollback names its target by the release version
+the Project's repository tagged, never by a commit. Not a **Down**, which only
+undoes a held release's migration
+([chapter 55](spec/v1/55-delivery.md#pause-and-rollback)).
+
+**Pause**: a Project whose pin composition no longer moves. Composition still
+checks it and Flux still reconciles the pinned render; a paused Project is
+resumed by a human, and a **Rollback** leaves its Project paused
+([chapter 55](spec/v1/55-delivery.md#pause-and-rollback)).
+
+**Isolated**: a Project whose newest fragment composition refused, composed
+instead at the fragment the previous lock recorded for it, while every other
+Project composes as usual. Not a **Pause**: nobody asked for it, and it ends
+when a fragment that composes is published
+([chapter 40](spec/v1/40-composition.md#a-refused-project-is-isolated)).
 
 **Handover ledger**: the Platform document's record of which delivery path each
 Project is on while the estate moves off `fleet-infra`: the **old path** or the

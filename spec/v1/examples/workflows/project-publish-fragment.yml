@@ -1,8 +1,8 @@
 # applications/knowledge/.github/workflows/publish-fragment.yml
 #
-# Publishes this repository's Intent Fragment once its images are built.
+# Publishes this repository's Intent Fragment once a release's images are built.
 #
-#   images built on main -> validate -> resolve image digests -> build fragment
+#   images built on a release tag -> validate -> resolve image digests -> build fragment
 #                                                            -> oras push
 #                                                            -> oras resolve
 #                                                            -> verify digest
@@ -13,15 +13,15 @@
 # file, and a project never spans repositories, so no fragment is ever a partial
 # project.
 #
-# Fires AFTER this repository's image build on main, never beside it. A
-# fragment names only images that exist: every alias it names is resolved to a
-# digest, a UID and a GID in the fragment's own share of the images lock, so a
+# Fires AFTER this repository's image build for a release tag, never beside it,
+# and never for a merge that is not released: release-please tags the release,
+# the tag builds the images, and only then does the fragment publish, carrying
+# the release's version
+# (docs/adr/model/0083-a-fragment-publishes-on-a-release-tag.md). A fragment
+# names only images that exist: every alias it names is resolved to a digest, a
+# UID and a GID in the fragment's own share of the images lock, so a
 # composition never renders a reference nothing can pull
-# (docs/adr/model/0051-a-project-is-delivered-as-a-signed-artifact.md,
-# amending docs/adr/model/0042-declarations-compose-from-intent-fragments.md). The image build
-# runs on every merge to main, so an intent-only change still publishes, a few
-# minutes later, and never waits for a version tag
-# (docs/adr/model/0043-participants-list-staleness.md). Whether and how a change
+# (docs/adr/model/0051-a-project-is-delivered-as-a-signed-artifact.md). Whether and how a change
 # is co-tested against other units before it reaches a cluster stays parked:
 # see docs/adr/deferred/README.md.
 #
@@ -36,7 +36,8 @@ on:
   workflow_run:
     workflows: [Build images]
     types: [completed]
-    branches: [main]
+    # A tag-triggered run reports the tag as its head branch.
+    branches: ["v*"]
   workflow_dispatch:
 
 permissions: {}
@@ -151,7 +152,10 @@ jobs:
           REF="ghcr.io/${{ github.repository_owner }}/intent-knowledge:latest"
           echo "$GH_TOKEN" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
 
+          # The release's version, without the tag's leading v.
+          TAG="${{ github.event.workflow_run.head_branch || github.ref_name }}"
           ( cd fragment && oras push "$REF" \
+              --annotation "org.opencontainers.image.version=${TAG#v}" \
               --annotation "org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha || github.sha }}" \
               --annotation "dev.jorisjonkers.inputs-sha=$(cat INPUTS_SHA)" \
               . )

@@ -90,14 +90,23 @@ A fragment carries:
   non-transactional changeset
   ([chapter 55](55-delivery.md#migration-safety))
 
-A fragment publishes **after its repository's images are built**, on every merge
-to the default branch, with every alias it names already resolved
-([0051](../../docs/adr/model/0051-a-project-is-delivered-as-a-signed-artifact.md),
-amending [0042](../../docs/adr/model/0042-declarations-compose-from-intent-fragments.md)). A
-fragment therefore never names an image nothing can pull, and an intent-only
-change (a changed exposure, a secret grant, a dependency edge, a raised
-`placement.memory`) still publishes on its own merge, a build later, rather than
-waiting behind a version tag and a staleness window. The worked workflow is
+A fragment publishes **on a release tag, after that release's images are
+built**, with every alias it names already resolved
+([0083](../../docs/adr/model/0083-a-fragment-publishes-on-a-release-tag.md),
+[0051](../../docs/adr/model/0051-a-project-is-delivered-as-a-signed-artifact.md),
+[0042](../../docs/adr/model/0042-declarations-compose-from-intent-fragments.md)).
+release-please tags the release; the tag's build pushes the images; the fragment
+publishes once they exist. A merge that is not released publishes nothing, so a
+merge is never a deploy. A fragment therefore never names an image nothing can
+pull, and an intent-only change (a changed exposure, a secret grant, a dependency
+edge, a raised `placement.memory`) deploys with its repository's next release.
+
+**A fragment carries its release's version**, the one release-please tagged,
+without the tag's `v`. The composition lock records it beside the fragment's
+digest ([The composition lock](#the-composition-lock)), and a deploy, a
+Rollback target ([chapter 55](55-delivery.md#pause-and-rollback)) and the
+estate's notifications name a Project's state by it, with the commit as
+provenance. The worked workflow is
 [`examples/workflows/project-publish-fragment.yml`](examples/workflows/project-publish-fragment.yml).
 
 ### Publication, and why the lock is an output
@@ -155,9 +164,38 @@ must be commutative, so **every collision is an error rather than a
 last-write-wins merge.** There is no precedence between fragments, and no fragment
 can override another.
 
+### A refused Project is isolated
+
+An error refuses the fragments it names, not the run
+([0085](../../docs/adr/model/0085-composition-isolates-a-refused-project.md)). A
+refused fragment is **isolated**: its Project is composed at the fragment the
+previous lock recorded for it, its pin does not move, and every other Project
+composes as if nothing happened.
+
+- **What changed is what is isolated.** An error names the fragments involved.
+  Of those, the ones whose digest differs from the previous lock's are isolated,
+  so a collision is blamed on the fragment that introduced it. Composition then
+  runs again over the remaining set, and repeats until no error names a changed
+  fragment.
+- **A dependant is isolated in turn.** A fragment whose reference resolves only
+  against an isolated fragment's new content fails its own reference check on the
+  next pass and is isolated too.
+- **Some errors still fail the run.** A refused Platform document, and an error
+  that names no changed fragment (one the toolkit or the Platform document
+  caused), stop the composition: there is nothing to isolate, and no pin moves.
+- **A Project that has never composed** has no earlier fragment to stay at. It is
+  left out of the render and its handover waits; it was not delivered, so
+  nothing is pruned.
+- **It is reported, not hidden.** Every isolation is a composition-side
+  notification on the commit that published the fragment
+  ([chapter 55](55-delivery.md#notifications)), and the lock records which
+  Projects are isolated and why.
+
 ## The estate-wide invariants
 
-Normative. Composition fails on any of these, and produces no `ComposedIntent`.
+Normative. An error here refuses the fragments it names, and isolates them
+([A refused Project is isolated](#a-refused-project-is-isolated)); a composition
+whose remaining set still fails produces no `ComposedIntent`.
 
 ### Identity
 
@@ -460,7 +498,10 @@ the `ComposedIntent` as an *intentional* absence. Composition is the only place
 that can tell the difference, because it is the only place holding the
 enumeration of what was expected. The applier prunes what a render no longer
 claims ([chapter 55](55-delivery.md)), so the model's obligation is to refuse to
-emit the render in the first place.
+emit the render in the first place. It does that by isolation: a missing or
+stale participant is composed at its last composed fragment
+([A refused Project is isolated](#a-refused-project-is-isolated)), so its
+Project stays exactly as delivered, and is never rendered absent.
 
 ## Versioning
 
@@ -670,9 +711,14 @@ spec:
       project: knowledge               # exactly one per fragment
       repository: JorisJonkers-dev/knowledge
       schemaVersion: 1.0.0            # exact resolved model version
+      version: 2.1.2                  # the release the fragment published from
       sourceSha: 22b9d33…
       inputsSha: 84021c5…
     intent-data: {…}
+  isolated:                           # Projects composed at an earlier fragment
+    data:
+      refused: ghcr.io/jorisjonkers-dev/intent-data@sha256:…
+      codes: [E_DUPLICATE_HOST]
   context:
     ref: ghcr.io/jorisjonkers-dev/cluster-deploy-context-public@sha256:…
     inventorySourceSha: 84021c5…
@@ -807,5 +853,5 @@ flowchart TB
     PULL --> UNION
     UNION --> ASSERT
     ASSERT --> OUT
-    ASSERT -.->|"any failure"| X["no ComposedIntent.<br/>Nothing renders."]
+    ASSERT -.->|"a refusal"| X["isolate what changed, re-run;<br/>else no ComposedIntent."]
 ```

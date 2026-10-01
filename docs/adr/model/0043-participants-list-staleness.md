@@ -81,10 +81,10 @@ estate's only enumeration of expected projects, with nothing left to rebuild it.
 - A publishing pipeline that breaks fails composition within seven days instead
   of silently dropping a project's estate-scoped objects, paid by the project owner, who gets a
   red compose rather than a silent restore.
-- One stale participant blocks every composition, including the one shipping
-  the fix; a Project already delivered keeps serving its pinned render, and a
-  pin revert is the remaining lever ([0050](0050-delivery-is-part-of-the-model.md)),
-  paid by every other project owner.
+- A stale participant is isolated at its last composed fragment while every
+  other Project still composes
+  ([0085](0085-composition-isolates-a-refused-project.md)), paid by its own
+  owner, who fixes the publish job.
 - A project that genuinely publishes less often than weekly must carry an
   override with a written reason, paid by that project's owner.
 - Dormancy costs a reason and a review date and is reviewed as a ledger entry,

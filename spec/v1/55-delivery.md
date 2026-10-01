@@ -28,6 +28,7 @@ What is in scope, and the section that specifies each:
 | concern | section |
 |---|---|
 | how a render becomes something Flux can fetch, and how a deploy is recorded | [Rendered artifacts and pins](#rendered-artifacts-and-pins) |
+| how a Project is held still, or taken back to an earlier release | [Pause and Rollback](#pause-and-rollback) |
 | how an Application's new version replaces the old one | [Switchover](#switchover) |
 | what gates the switch, and who answers | [The Release Gate](#the-release-gate) |
 | what a failed release leaves behind | [Held releases](#held-releases) |
@@ -114,23 +115,75 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   same way, against the Platform document's signer, before it commits a pin,
   and a composition that failed any step before it commits no pin at all.
 - **A fragment names only images that exist.** An application repository
-  publishes its Intent Fragment only after its images are built and pushed, with
-  every image alias it names resolved to a digest, a UID and a GID in the
-  fragment's own contribution to the images lock. A composition therefore never
-  renders a reference nothing can pull. This amends
-  [0042](../../docs/adr/model/0042-declarations-compose-from-intent-fragments.md), whose fragment
-  was published independently of any image build.
-- **Rollback is a revert in the application repository.** The revert publishes
-  a fragment, which composes a render, which moves the pin forward to the old
-  content: the deploy log only grows. Reverting a pin commit directly is
-  **break-glass**, for when composition itself cannot run. It puts the estate on
-  a render its current inputs no longer produce, so the next composition moves
-  it back unless the inputs are reverted as well.
+  publishes its Intent Fragment on a release tag, only after that release's
+  images are built and pushed, with every image alias it names resolved to a
+  digest, a UID and a GID in the fragment's own contribution to the images lock
+  ([chapter 40](40-composition.md#fragments),
+  [0083](../../docs/adr/model/0083-a-fragment-publishes-on-a-release-tag.md)). A
+  composition therefore never renders a reference nothing can pull.
+- **Reverting a pin commit is break-glass**, for when composition itself cannot
+  run. It puts the estate on a render its current inputs no longer produce, so
+  the next composition moves it back unless the Project is paused. The ordinary
+  way back is a [Rollback](#pause-and-rollback).
 
 **Image admission** is the recorded gap in [Scope](#scope): nothing verifies an
 image's signature when a pod is admitted, only the render's when it is fetched.
 The owner is joris, and the policy that closes it is part of the estate's
 delivery machinery ([#148](https://github.com/JorisJonkers-dev/deploy-kit/issues/148)).
+
+## Pause and Rollback
+
+A human can hold one Project still, or take it back to an earlier release,
+without touching its repository
+([0084](../../docs/adr/model/0084-pause-and-rollback.md)). Both are workflows in
+the Estate repository, run by hand, and each is one commit to the Project's pin
+file. Neither is a second applier: Flux still applies whatever the pin names.
+
+**A Pause freezes the pin.** While a Project is paused, composition still checks
+its newest fragment against every estate-wide invariant and reports what it
+finds, and Flux still reconciles the pinned render, but no pin commit moves the
+Project. Resuming removes the Pause, and the next composition moves the pin to
+the Project's newest fragment, as for any other Project.
+
+**A Rollback re-composes an earlier release.** It names its target by the
+release version the Project's repository tagged
+([chapter 40](40-composition.md#fragments)), and composes the Project at that
+release's fragment with today's Platform document and toolkit, so the render is
+one the current inputs produce. In order:
+
+1. **Only a proven release is offered.** The database schema stays at its
+   newest: no migration runs backwards in a Rollback, and the down remains the
+   Release Gate's, for a held release only ([Failure and undo](#failure-and-undo)).
+   So the target must be a release proven against the current schema, which is
+   the release the current Migration Proof's `testedAgainst` names
+   ([Migration safety](#migration-safety)). A Project with no changelog may roll
+   back to any earlier release. Anything else is refused before anything runs.
+2. **A backup first.** The Rollback runs a backup of the data the Project
+   reaches: each of its backed-up volumes, and its project database on the
+   datastore its edges reach. That backup is kept for 7 days beside the
+   Durability Class's own copies, which it never counts against.
+3. **The pin moves only once the backup has succeeded.** A backup that fails
+   stops the Rollback with the pin where it was, and reports it.
+4. **The Project is left paused.** Its repository still publishes its newest
+   release; without the Pause the next composition would deploy exactly what
+   the Rollback removed. Resuming is a human's statement that the fix has
+   landed.
+
+**Both are recorded on the pin file**, as annotations on the `OCIRepository` in
+`projects/<project>/source.yaml`, so the Estate repository's history says who
+paused what, when and why:
+
+| annotation | set by | value |
+|---|---|---|
+| `estate.jorisjonkers.dev/paused-by` | a Pause or a Rollback | the GitHub login that ran it |
+| `estate.jorisjonkers.dev/paused-at` | a Pause or a Rollback | an RFC 3339 time |
+| `estate.jorisjonkers.dev/paused-reason` | a Pause or a Rollback | the reason given, required |
+| `estate.jorisjonkers.dev/rollback-version` | a Rollback | the release version rolled back to |
+| `estate.jorisjonkers.dev/rollback-fragment` | a Rollback | that release's fragment, by digest |
+
+Composition reads the annotations as an input: a Project carrying
+`paused-by` moves no pin, and one carrying `rollback-fragment` is composed at
+that fragment. Resuming removes all five.
 
 ## Switchover
 
@@ -503,7 +556,7 @@ flowchart TB
     D1 -->|no| F1["no fragment publishes<br/>nothing changed anywhere"]
     S2 --> D2{"composition: every<br/>estate-wide invariant holds?"}
     D2 -->|yes| S3["render; one signed artifact per changed Project;<br/>the pin commit lands on main [ci skip]"]
-    D2 -->|no| F2["no lock: nothing renders<br/>E_ codes name what to fix"]
+    D2 -->|no| F2["isolated: its pin stays<br/>E_ codes on the commit"]
     S3 --> D3{"Flux: the artifact verifies<br/>against the signer?"}
     D3 -->|yes| D4{"the Release Gate: every primary<br/>runs testedAgainst?"}
     D3 -->|no| F3["not applied: its source reports it<br/>what was running keeps running"]
