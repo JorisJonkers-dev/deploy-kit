@@ -348,11 +348,13 @@ goal-state trees hold, are not modelled yet.
 ## Text generation
 
 Acceleo 4 templates generate the Deliverable Set's YAML and JSON files from a
-Resolved Deployment model, run through Acceleo's standalone API. Until the
-transformation covers a case, a template test reads a hand-written Resolved
-Deployment model kept inside `emf/`; it is test input, never an oracle. Output is compared byte for byte with the
-committed `rendered/` tree, so whitespace, key order and the `GENERATED` header
-are template decisions made to match the oracle, not presentation.
+Resolved Deployment model, run through Acceleo's standalone API. They render the
+transformation's output: the pipeline's one entry, `Pipeline.render`, parses and
+checks every document, lowers and resolves each project, and runs the templates
+over the Resolved Deployments in one pass, and no test feeds them a hand-written
+model. Output is compared byte for byte with the committed `rendered/` trees, so
+whitespace, key order and the `GENERATED` header are template decisions made to
+match the oracle, not presentation.
 
 `bundles/render/model/render.mtl` is one module. Its main template walks the
 Deployment's `deliverables` and opens one file per Deliverable at the path the
@@ -402,7 +404,11 @@ it. A case the resolution reaches also holds the `dependencies.json` exported fr
 its Resolved Deployment, the model itself as `<project>.resolveddeployment`, and the
 two extents it was resolved from, `resolution.intent.xmi` and
 `resolution.pinned.xmi`, which the launch configuration in Eclipse runs the
-transformation on. `bundles/metamodel/target/parity/` holds `descriptor.json`.
+transformation on. `bundles/cli/target/parity/rendered/` holds the tree the
+composed union of `minimal` and `data` renders to, which is the committed
+`minimal/rendered/`, `data/rendered/` and `_estate/rendered/` together, file for
+file, or the diagnostics that refused the union in its place.
+`bundles/metamodel/target/parity/` holds `descriptor.json`.
 Every case also leaves each document it reads as an XMI instance of the source
 metamodel, named after its authored file (`notes.project.yml` leaves
 `notes.project.xmi`), for a reader who opens it in Eclipse without the grammar. A

@@ -140,6 +140,78 @@ class ResolvedDeploymentTest {
     }
 
     @Test
+    void theResolvedModelNamesNoKubernetesOrTraefikField() {
+        // The spellings the production implementation's own check refuses
+        // (test/model/resolved-deployment.test.ts, after
+        // docs/adr/model/0011-authored-values-name-model-concepts.md), over every class of the
+        // resolved model. The Deliverable plan is left out: it spells the target formats on purpose,
+        // and the production model has no such plan to check.
+        Set<String> target = Set.of(
+                "objectKind",
+                "strategy",
+                "maxSurge",
+                "maxUnavailable",
+                "securityContext",
+                "runAsNonRoot",
+                "runAsUser",
+                "runAsGroup",
+                "readOnlyRootFilesystem",
+                "seccompProfile",
+                "fsGroup",
+                "capabilities",
+                "nodeSelector",
+                "affinity",
+                "resources",
+                "requests",
+                "limits",
+                "emptyDir",
+                "sizeLimit",
+                "periodSeconds",
+                "timeoutSeconds",
+                "failureThreshold",
+                "initialDelaySeconds",
+                "progressDeadlineSeconds",
+                "automountServiceAccountToken",
+                "serviceAccount",
+                "serviceAccountName",
+                "secretObjects",
+                "middlewares",
+                "entryPoints");
+        List<EClass> classes = ResolvedDeploymentPackage.eINSTANCE.getEClassifiers().stream()
+                .filter(EClass.class::isInstance)
+                .map(EClass.class::cast)
+                .toList();
+        Set<EClass> plan = classes.stream()
+                .filter(ResolvedDeploymentPackage.eINSTANCE.getDeliverable()::isSuperTypeOf)
+                .collect(Collectors.toCollection(java.util.HashSet::new));
+        // A class only the plan contains is the plan's too; one the resolved model also contains is not.
+        boolean grew = true;
+        while (grew) {
+            grew = false;
+            for (EClass type : classes) {
+                List<EClass> containers = classes.stream()
+                        .filter(owner -> owner.getEReferences().stream()
+                                .anyMatch(reference ->
+                                        reference.isContainment() && reference.getEReferenceType() == type))
+                        .toList();
+                if (!plan.contains(type) && !containers.isEmpty() && plan.containsAll(containers)) {
+                    grew = plan.add(type);
+                }
+            }
+        }
+
+        assertThat(plan.stream().map(EClassifier::getName))
+                .contains("ProcessPolicy", "SecretHolder")
+                .doesNotContain("PolicyPeer");
+        assertThat(classes.stream()
+                        .filter(type -> !plan.contains(type))
+                        .flatMap(type -> type.getEStructuralFeatures().stream())
+                        .map(feature -> feature.getName()))
+                .isNotEmpty()
+                .doesNotContainAnyElementsOf(target);
+    }
+
+    @Test
     void everyResourceFamilyOfTheProposalHasATypedClassTheTemplatesWalk() {
         // The project proposal's generated-resources table, one row per family:
         // a namespace and indexes, workload resources with their identity,

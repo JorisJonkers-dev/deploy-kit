@@ -55,6 +55,18 @@ class ParityTest {
     }
 
     @Test
+    fun `the composed union renders to the committed trees byte for byte`() {
+        val written = repository().resolve(PIPELINE_OUTPUT).resolve(RENDERED)
+        val committed = RENDERED_CASES.map { examples().resolve(it).resolve(RENDERED) }
+        val expected = committed.flatMap { tree -> filesUnder(tree).map { it to tree.resolve(it) } }.toMap()
+
+        assertThat(filesUnder(written)).containsExactlyElementsOf(expected.keys.sorted())
+        expected.forEach { (file, oracle) ->
+            assertThat(left(written, file)).`as`(file).isEqualTo(read(oracle))
+        }
+    }
+
+    @Test
     fun `every case the resolution reaches carries a dependencies oracle`() {
         assertThat(casesTheResolutionReaches()).allSatisfy { directory ->
             assertThat(directory.resolve("expected").resolve(DEPENDENCIES)).exists()
@@ -98,6 +110,25 @@ class ParityTest {
          */
         private val RESOLVED = listOf("auth", "data", "delivery", "edge", "minimal", "observability", "secrets")
         private const val EXIT = "exit"
+        private const val RENDERED = "rendered"
+
+        /**
+         * The cases whose committed rendered trees the composed union writes between them: every tree
+         * the production implementation renders. `auth`'s and `knowledge`'s trees are hand-written
+         * goal states it does not render yet.
+         */
+        private val RENDERED_CASES = listOf("minimal", "data", "_estate")
+
+        /** Every file under `root`, by its path below it, sorted; a tree's README is no rendered file. */
+        private fun filesUnder(root: Path): List<String> =
+            Files.walk(root).use { tree ->
+                tree
+                    .asSequence()
+                    .filter { Files.isRegularFile(it) && it.fileName.toString() != "README.md" }
+                    .map { root.relativize(it).toString() }
+                    .sorted()
+                    .toList()
+            }
 
         @JvmStatic
         fun casesWithAnIntentOracle(): List<Path> =

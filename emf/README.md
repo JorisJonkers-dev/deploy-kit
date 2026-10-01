@@ -79,7 +79,7 @@ and Acceleo 4 SDKs installed from the same release:
    Configurations**. They write under each project's `target/`. The resolution
    reads the two extents step 0's build left under
    `dev.jorisjonkers.deploykit.emf.cli/target/parity/minimal/`, and its output
-   equals `models/minimal.resolveddeployment`. The rendering reads that same
-   hand-written model, and the files it writes under `target/render/apps/`
-   equal `spec/v1/examples/minimal/rendered/` and minimal's route under
-   `spec/v1/examples/_estate/rendered/`.
+   equals `models/minimal.resolveddeployment`. The rendering reads the
+   Resolved Deployment the same build left beside those extents, and the files
+   it writes under `target/render/apps/notes/` equal
+   `spec/v1/examples/minimal/rendered/apps/notes/`.
