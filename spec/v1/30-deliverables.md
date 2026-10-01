@@ -169,7 +169,7 @@ documents, at `apps/vso-secrets/policies/<namespace>/<identity>.{policy,role}.js
 | document | derived from |
 |---|---|
 | the Vault policy | the Process's grants and their access tiers: `read` on the granted path, `patch` for `self-roll`, `create`/`update`/`delete` on a prefix for `custody`, nothing for `self-renew` |
-| the Kubernetes auth role | the identity's ServiceAccount and namespace ([0031](../../docs/adr/model/0031-identity-per-process.md)), bound to that one policy by its name, `<namespace>-<identity>`; the role is named for the identity, which is what its `VaultAuth` asks for |
+| the Kubernetes auth role | the identity's ServiceAccount and namespace ([0031](../../docs/adr/model/0031-identity-per-process.md)), bound to that one policy; the role and the policy are both named `<namespace>-<identity>`, the spelling of their file's path, which is what the identity's `VaultAuth` asks for ([chapter 16](16-dependencies.md#process-identity)) |
 
 One document per identity, not per Application: identity is per Process, so a
 two-Process Application produces two policies and a diff says which principal's

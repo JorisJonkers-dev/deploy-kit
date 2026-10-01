@@ -108,6 +108,12 @@ Application of a project reads the project's one database; the owner role is
 derived for the Application that moves the schema, and only for it
 ([chapter 10](10-project-intent.md#migration)).
 
+**The names are fixed functions of the project.** A project's database is
+`<project>_db`, the spelling the live estate already uses (`auth_db`,
+`knowledge_db`), so adopting a project renames nothing in its datastore. Its
+owner role is `<project>-owner`, and its data role `<project>-data`. No author
+writes any of the three.
+
 The catalog is **data, not a procedure**. It renders as a `ConfigMap` and the
 platform's engine catalog supplies the image and command that applies it, the
 same split [0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md) makes
@@ -135,16 +141,20 @@ union on engine.
 
 Every Process authenticates as its own principal. The ServiceAccount, the
 Vault Kubernetes auth role and the Vault policy bound to it are derived **per
-Process** and named for the **Process alone**
+Process**, and the ServiceAccount is named for the **Process alone**
 ([0031](../../docs/adr/model/0031-identity-per-process.md)). The namespace is the
 project's, `<project>-system`
 ([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)), so the principal a
-Pod presents is `<project>-system.<process>`. No author writes an identity name
+Pod presents is `<project>-system.<process>`. The Vault role and its policy are
+both named `<namespace>-<identity>`, `auth-system-auth-api`, the same spelling as
+the policy's file ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)):
+Vault's names are estate-wide, so a name without its namespace would let two
+projects' Processes of one name share a role. No author writes an identity name
 ([0021](../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)).
 
 | project | Application | Processes | derived identity |
 |---|---|---|---|
-| `auth` | `auth` | `auth-api`, `auth-ui` | `auth-system.auth-api`, the identity already live, `VAULT_KUBERNETES_ROLE: auth-api`, and `auth-system.auth-ui` |
+| `auth` | `auth` | `auth-api`, `auth-ui` | `auth-system.auth-api`, the identity already live, and `auth-system.auth-ui`; Vault roles `auth-system-auth-api` and `auth-system-auth-ui`, so the live `VAULT_KUBERNETES_ROLE: auth-api` is renamed at the handover |
 | `knowledge` | `knowledge`, `knowledge-ingest` | `knowledge-api`; `knowledge-ingest-worker` | `knowledge-system.knowledge-api`, `knowledge-system.knowledge-ingest-worker` |
 
 A `<application>-<process>` prefix is what the project file makes absurd. Application
@@ -320,6 +330,13 @@ to hold.
 A baseline rule is not authorable and not exceptable from an Application document. An
 exception to one is a change to the derivation, reviewed once, applied to every
 Process at once.
+
+**A backup pod has its own policy.** A backup runs as its Process's Backup
+Identity, not as the Process, so it gets its own `NetworkPolicy`, one per
+Backup Identity, selecting the backup pods alone. It allows egress to the
+datastore surface it dumps, to the cluster DNS by the baseline, to the Secret
+Store, and, where the backup copies off-cluster, to the destination. It allows no
+ingress. The serving Process's policy never widens to admit what a backup needs.
 
 ### The token is mounted only where the pod authenticates
 
