@@ -496,7 +496,8 @@ bindings:   [{claim: postgres-data, node: enschede-t1000-1}]
 placements: [{process: postgres, node: enschede-t1000-1}]
 ```
 
-`capturedAt` is when the Collector first captured these facts, not when it last
+`capturedAt` is written quoted, as every value carrying a colon is in the
+documents the model reads. It is when the Collector first captured these facts, not when it last
 ran: a stable cluster keeps an old `capturedAt`. An estate with no bound volume and no
 recorded placement captures both lists empty, and is still a snapshot with a
 digest.
