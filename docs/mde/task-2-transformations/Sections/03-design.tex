@@ -250,9 +250,10 @@ egress & \texttt{egressOf}, \texttt{storePeers} &
 provenance & \texttt{provenance} &
   One digest per input, and a hash over all of them and the schema
   version. \\
-revision & \texttt{end} section of \texttt{deployment} &
-  The digest of each application's complete element. \\
-generated files & \texttt{projectFiles}, \texttt{applicationFiles}, \texttt{edgeFiles} &
+revision & \texttt{end} section of \texttt{deployment}, \texttt{elementJson} &
+  The digest of each application's complete element, in the production
+  implementation's JSON form. \\
+generated files & \texttt{projectFiles}, \texttt{applicationFiles}, \texttt{edgeFiles}, \texttt{vaultFiles} &
   The path of every file the target metamodel describes, with the processes or
   exposures it is generated from (Section~\ref{sec:pathplan}). \\
 \end{longtable}
@@ -341,13 +342,18 @@ secret. A placeholder that names nothing stops the run.
 \label{sec:pathplan}
 
 The \emph{path plan} assigns each generated file its path. The project gets a
-namespace file, an index of its directories and a default-deny network policy.
-Each application gets a directory with one file per kind of resource: the
-workloads, the blue/green switch definitions, the service accounts, the
-metrics definition if it is scraped, and the network policies. A file lists
-every process it applies to, and the policy file contains one policy per
-process. Each exposure gets a route file in the directory of its entry point,
-and each entry point gets an index of its route files. Task~3's templates
+namespace file, an index of its directories, a default-deny network policy,
+and the secret operator's connection where an application syncs secrets. Each
+application gets a directory with one file per kind of resource: the
+workloads, the blue/green switch definitions, the services of the other
+processes, the service accounts, the volume claims, the configuration files,
+the backups, the metrics definition if it is scraped, the synced secrets, and
+the network policies. A file lists every process it applies to, a file that
+would be empty is not planned, and the policy file contains one policy per
+process. Each index lists what its directory applies. Each exposure gets a
+route file in the directory of its entry point, and each entry point gets an
+index of its route files. Each identity that holds a secret gets a Vault policy
+and a Vault role in the estate's own directory. Task~3's templates
 generate each file from its entry in the model, so the templates do not decide
 any path.
 
@@ -366,7 +372,7 @@ are set in \texttt{end} sections:
 
 \begin{itemize}
   \item each application's \emph{revision}, the digest of its complete element,
-    which names this release of it;
+    which names this release of it and which every generated Canary carries;
   \item the provenance's render hash, which covers every input digest;
   \item the order between reconcile units, which refers to units the same
     mapping created.
@@ -376,21 +382,32 @@ are set in \texttt{end} sections:
 	end {
 		result.reconcileUnits->first().after :=
 			result.reconcileUnits->excluding(result.reconcileUnits->first());
-		result.applications->forEach(a) {
-			a.revision := a.oclAsType(ECORE::EObject).revisionOf() };
+		self.applications->forEach(src) {
+			var res : ResolvedApplication := src.resolveone(ResolvedApplication);
+			res.revision := res.elementJson(src, self).rawDigestOf();
+		};
 	}
 \end{lstlisting}
 
 \subsection{The Black-Box Library}
 \label{sec:blackbox}
 
-A digest is a SHA-256 hash over a canonical text form of a model element.
-OCL has no operation that produces bytes or hashes them. The class
-\texttt{Hashing} therefore provides three contextual operations:
-\texttt{digestOf} for any model element, \texttt{textDigestOf} for a string,
-and \texttt{revisionOf} for a resolved application. Each walks the element
-reflectively, writes canonical JSON and hashes it. The transformation calls no
-other Java code. The pipeline registers the library with the standalone
+A digest is a SHA-256 hash over a canonical text form. OCL has no operation
+that hashes bytes. The class \texttt{Hashing} therefore provides three
+contextual operations: \texttt{digestOf}, which walks any model element
+reflectively, writes canonical JSON and hashes it; \texttt{textDigestOf}, which
+hashes a file's text as the production implementation does; and
+\texttt{rawDigestOf}, which hashes a string as it stands. The transformation
+calls no other Java code.
+
+The revision uses the third. The generated files carry it, so it has to equal
+the production implementation's, which is the digest of the application's
+element in that implementation's JSON form, a shape the target metamodel does
+not have. The query \texttt{elementJson} therefore writes that element as text,
+in OCL, from the source and the target model together, with the keys sorted and
+every value spelled as the production implementation spells it, and the black
+box only hashes the result. All six revisions the committed projections record
+are reproduced exactly. The pipeline registers the library with the standalone
 executor before the run, and in Eclipse a \texttt{plugin.xml} registers it with
 the same unit name.
 
@@ -419,9 +436,8 @@ The stops cover an image missing from the lock, an edge that no process or
 provider serves, a placeholder that names nothing, a variable that an author
 wrote although the runtime profile sets it, an Asset whose file is missing or
 contains a placeholder, a backed-up volume without a schedule or a database
-engine, a platform without a secret store or delivery policy, and an
-application whose processes would need two different workload kinds in one
-file. Where the specification defines an error code for the situation, the
+engine, and a platform without a secret store, delivery policy or release
+gate. Where the specification defines an error code for the situation, the
 message contains it.
 
 \subsection{Running the Transformation}

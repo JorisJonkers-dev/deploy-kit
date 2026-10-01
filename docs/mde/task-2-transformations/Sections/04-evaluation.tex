@@ -99,13 +99,14 @@ variables with their secret references, writable paths, secrets with their
 paths and restart targets, volumes with their backup plans, configuration file
 names, sidecars, and the startup probe. All values were equal.
 
-Two values are computed by both implementations but differ by design. The
-revision and the input digests are hashes over each implementation's own form
-of the model, and the two forms differ. Each implementation is consistent with
-itself, and only the production implementation's digests reach the cluster.
-The configuration file's name also contains a digest, and there the
-transformation hashes the text as the production implementation does, because
-the name appears in the generated files.
+One kind of value is computed by both implementations but differs by design.
+The input digests are hashes over each implementation's own form of the model,
+and the two forms differ. Each implementation is consistent with itself, and
+only the production implementation's digests reach the cluster. The revision
+and the configuration file's name also contain digests, and there the
+transformation reproduces the production implementation's value, because both
+appear in the generated files: all six revisions the committed projections
+record are equal.
 
 \subsubsection{Defects Found by Testing}
 \label{sec:defects}

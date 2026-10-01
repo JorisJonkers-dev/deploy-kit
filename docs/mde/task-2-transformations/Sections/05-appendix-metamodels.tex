@@ -57,10 +57,11 @@ the project document.
 \subsection{Changes to the Target Metamodel}
 \label{app:target}
 
-Table~\ref{tab:targetchanges} lists the changes. The first four record values
-the transformation derives. The last three let one generated file describe an
-application with several processes, which the Task~1 model of \texttt{minimal}
-did not need.
+Table~\ref{tab:targetvalues} lists the values added so that the transformation
+can record what it derives, and Table~\ref{tab:targetfiles} the changes to the
+generated-file classes, which let one file describe an application with several
+processes and cover every kind of file the specification's generated trees
+hold. The Task~1 model of \texttt{minimal} needed neither.
 
 \begin{table}[!htbp]
 \centering
@@ -73,18 +74,42 @@ did not need.
 \texttt{ResolvedGrant} & \texttt{path} and \texttt{access} optional; added \texttt{engine} and \texttt{paths} & A transit or database secret has no single path. It is recorded as the Vault paths its policy covers. \\
 \texttt{PolicyPath} & new: \texttt{path}, \texttt{allows} & One path of a secret's policy and the operations allowed on it. \\
 \texttt{ResolvedVolume} & added \texttt{mountAt} & The workload template needs the path a volume is mounted at. \\
+\texttt{ResolvedProcess} & added \texttt{lifecycle} & Whether the process serves, runs once or prepares; the revision's element names it. \\
+\texttt{ResolvedScrape} & new: \texttt{process}, \texttt{surface}, \texttt{path}, \texttt{interval}, \texttt{timeout} & How the metrics stack scrapes the application, which the revision's element names. \\
+\texttt{ReleaseGate} & added \texttt{endpoint} & The address every Canary's webhooks call. \\
+\texttt{ResolvedExposure} & added \texttt{listener}, \texttt{certificates}, \texttt{proxyApplication}, \texttt{proxyNamespace} & The entry point and certificate source of the tier, and the proxy whose middleware the routes name. \\
+\texttt{PolicyPeer} & added \texttt{rule} & Which rule admitted the peer, so two rules admitting one peer stay two entries, as in the production implementation. \\
+\hline
+\end{tabular}
+\caption{Values Added to the Target Metamodel}
+\label{tab:targetvalues}
+\end{table}
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.33\linewidth}>{\raggedright\arraybackslash}p{0.35\linewidth}}
+\hline
+\textbf{Class} & \textbf{Change} & \textbf{Reason} \\
+\hline
 \texttt{WorkloadFile}, \texttt{SwitchoverFile}, \texttt{IdentityFile} & \texttt{process} replaced by \texttt{processes} (one or more) & One file per application holds the resources of all its processes, as in the generated tree of the specification. \\
 \texttt{NetworkPolicyFile} & \texttt{process}, \texttt{ingress} and \texttt{egress} replaced by \texttt{policies} & One policy file per application holds one policy per process. The project's default-deny file holds none. \\
 \texttt{ProcessPolicy} & new: \texttt{process}, \texttt{ingress}, \texttt{egress} & The peers that may reach one process, and those it may reach. \\
+\texttt{MonitorFile} & added \texttt{timeout} and \texttt{kind} & A blue/green process is scraped through its pods, any other through its service. \\
+\texttt{ServiceFile}, \texttt{ClaimFile}, \texttt{ConfigMapFile}, \texttt{BackupFile} & new, each with \texttt{processes} & The services, volume claims, configuration files and backups of an application's processes. \\
+\texttt{SecretFile} & \texttt{process} and \texttt{grants} replaced by \texttt{application} and \texttt{holders} & One file per application holds the secrets of every identity in it, including a backup identity. \\
+\texttt{SecretHolder} & new: \texttt{identity}, \texttt{component}, \texttt{grants} & One identity and the secrets synced for it. \\
+\texttt{ConnectionFile} & new: \texttt{namespace}, \texttt{address} & The secret operator's connection to the secret store. \\
+\texttt{VaultPolicyFile}, \texttt{VaultRoleFile} & new, with \texttt{namespace} and \texttt{identity} & The Vault policy and role of one identity, written as JSON. \\
 \hline
 \end{tabular}
-\caption{Changes to the Target Metamodel}
-\label{tab:targetchanges}
+\caption{Changes to the Generated-File Classes}
+\label{tab:targetfiles}
 \end{table}
 
-The hand-written model of \texttt{minimal} follows these changes. Its startup
-probe now has a timeout, which changed its revision digest, and its generated
-files refer to the process through the new features.
+The hand-written model of \texttt{minimal} follows these changes. Its revision
+is now the production implementation's, and its generated files refer to the
+process through the new features.
 
 \subsection{Grammars for the Pinned Inputs}
 \label{app:grammars}
