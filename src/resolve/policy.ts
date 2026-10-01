@@ -114,11 +114,52 @@ export function ingressOf(
   return distinct([...routes, ...metrics, ...consumers]);
 }
 
-/** The baseline every egress policy carries: the cluster's DNS. */
-export const egressOf = (platform: PlatformIntentDocument): Egress[] => [
+/** The surface the Secret Store answers every grant on. */
+const STORE_SURFACE = "http";
+
+/** The Secret Store's Process that answers on its `http` surface, as an egress peer. */
+function storeOf(context: PolicyContext): Egress {
+  const store = context.union
+    .flatMap(({ project, applications }) =>
+      applications
+        .filter(({ id }) => id === context.platform.secretStore)
+        .flatMap(({ processes }) =>
+          processes.flatMap(({ name, provides }) =>
+            provides?.[STORE_SURFACE] === undefined
+              ? []
+              : [
+                  {
+                    rule: "secret-store" as const,
+                    namespace: namespaceOf(project),
+                    process: name,
+                    port: provides[STORE_SURFACE],
+                  },
+                ],
+          ),
+        ),
+    )
+    .at(0);
+  if (store === undefined)
+    throw new Error(
+      "a grant under a platform that names no Secret Store is not checked yet",
+    );
+  return store;
+}
+
+/**
+ * The baseline every egress policy carries, the cluster's DNS, and the Secret
+ * Store for a Process that holds a grant.
+ */
+export const egressOf = (
+  process: EffectiveProcess,
+  context: PolicyContext,
+): Egress[] => [
   {
     rule: "cluster-dns",
-    namespace: platform.substrate.clusterDns,
+    namespace: context.platform.substrate.clusterDns,
     port: DNS_PORT,
   },
+  // A missing list and an empty one hold no grant alike.
+  // Stryker disable next-line ArrayDeclaration
+  ...((process.secrets ?? []).length === 0 ? [] : [storeOf(context)]),
 ];

@@ -79,3 +79,10 @@ export const gateEndpoint = (
   projects: readonly Declares[],
 ): string | undefined =>
   endpoint(surfaceAddress(projects, platform.delivery?.gate, GATE_SURFACE));
+
+/** The Secret Store every grant reads from: its `http` surface, where the platform names one. */
+export const secretStoreAddress = (
+  platform: PlatformIntentDocument,
+  projects: readonly Declares[],
+): string | undefined =>
+  surfaceAddress(projects, platform.secretStore, GATE_SURFACE);

@@ -28,6 +28,7 @@ const WORKED = [
   "knowledge/knowledge.project.yml",
   "minimal/notes.project.yml",
   "observability/observability.project.yml",
+  "secrets/secrets.project.yml",
 ].map(read);
 
 /** The worked Platform document's telemetry block, which a variant composed with fewer projects drops. */
@@ -110,6 +111,7 @@ describe("checkIntentSet", () => {
       "knowledge",
       "notes",
       "observability",
+      "secrets",
     ]);
   });
 
@@ -125,6 +127,7 @@ describe("checkIntentSet", () => {
         .replace("traefik: traefik-lan", "traefik: notes")
         .replace(MACHINERY, "machinery: [notes]")
         .replace("gate: release-gate", "gate: notes")
+        .replace("secretStore: vault", "secretStore: notes")
         .replace(TELEMETRY, "\n"),
     };
     const result = checkIntentSet([
@@ -147,6 +150,7 @@ describe("checkIntentSet", () => {
         .replace("traefik: traefik-lan", "traefik: notes")
         .replace(MACHINERY, "machinery: [notes]")
         .replace("gate: release-gate", "gate: notes")
+        .replace("secretStore: vault", "secretStore: notes")
         .replace(TELEMETRY, "\n"),
     };
     const result = checkIntentSet([
@@ -211,6 +215,7 @@ describe("checkIntentSet", () => {
         .replace("traefik: traefik-lan", "traefik: knowledge")
         .replace(MACHINERY, "machinery: [knowledge]")
         .replace("gate: release-gate", "gate: knowledge")
+        .replace("secretStore: vault", "secretStore: knowledge")
         .replace(TELEMETRY, "\n"),
     };
     const knowledge = read("knowledge/knowledge.project.yml");
@@ -278,6 +283,41 @@ describe("checkIntentSet", () => {
       "no project file declares an Application otel-collector whose Process provides an `http` surface",
       "Declare the Release Gate in a project file the platform owns, with an `http` surface on one of its Processes.",
     ]);
+  });
+
+  it("refuses a Secret Store that answers on no http surface, and says how to fix it", () => {
+    const platform = read("platform/platform.intent.yml");
+    const refusals = (store: string) => {
+      const result = checkIntentSet([
+        {
+          name: platform.name,
+          text: platform.text.replace(
+            "secretStore: vault",
+            `secretStore: ${store}`,
+          ),
+        },
+        ...WORKED.slice(1),
+      ]);
+      return (result.ok ? [] : result.diagnostics)
+        .filter(({ code }) => code === "E_UNKNOWN_SECRET_STORE")
+        .map(({ document, path, message, hint }) => ({
+          document,
+          path,
+          message,
+          hint,
+        }));
+    };
+
+    // `otel-collector` is declared and serves only `otlp`; `gone` is declared nowhere.
+    expect([...refusals("otel-collector"), ...refusals("gone")]).toStrictEqual(
+      ["otel-collector", "gone"].map((store) => ({
+        document: "platform/platform.intent.yml",
+        path: "/secretStore",
+        message: `no project file declares an Application ${store} whose Process provides an \`http\` surface`,
+        hint: "Declare the Secret Store in a project file the platform owns, with an `http` surface on one of its Processes.",
+      })),
+    );
+    expect(refusals("vault")).toStrictEqual([]);
   });
 
   it("refuses a Release Gate that answers on no http surface, and a metrics stack nothing declares", () => {

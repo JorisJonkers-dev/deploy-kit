@@ -238,7 +238,7 @@ describe("the metamodel's own keys", () => {
 });
 
 describe("the committed oracles", () => {
-  const ORACLES = ["minimal", "knowledge", "delivery"] as const;
+  const ORACLES = ["minimal", "knowledge", "delivery", "data"] as const;
   const oracle = (name: string): unknown =>
     JSON.parse(
       readFileSync(

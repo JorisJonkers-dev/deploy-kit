@@ -23,7 +23,8 @@ class IntentSetTest {
             Examples.of("edge/edge.project.yml"),
             Examples.of("knowledge/knowledge.project.yml"),
             Examples.of("minimal/notes.project.yml"),
-            Examples.of("observability/observability.project.yml"));
+            Examples.of("observability/observability.project.yml"),
+            Examples.of("secrets/secrets.project.yml"));
 
     /** The worked Platform document's telemetry block, which a variant composed with fewer projects drops. */
     private static final String TELEMETRY = "\ntelemetry:\n(  .*\n)+";
@@ -80,6 +81,7 @@ class IntentSetTest {
                         .replace(
                                 "machinery: [traefik-public, traefik-lan, flagger, release-gate]", "machinery: [notes]")
                         .replace("gate: release-gate", "gate: notes")
+                        .replace("secretStore: vault", "secretStore: notes")
                         .replaceFirst(TELEMETRY, "\n"));
 
         assertThat(Pipeline.check(List.of(platform, Examples.of("minimal/notes.project.yml"))))
@@ -118,6 +120,7 @@ class IntentSetTest {
                                 "machinery: [traefik-public, traefik-lan, flagger, release-gate]",
                                 "machinery: [knowledge]")
                         .replace("gate: release-gate", "gate: knowledge")
+                        .replace("secretStore: vault", "secretStore: knowledge")
                         .replaceFirst(TELEMETRY, "\n"));
         Path knowledge = Examples.write(
                 directory,

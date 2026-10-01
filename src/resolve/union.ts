@@ -40,6 +40,8 @@ export function resolveUnion(
         hash,
         collector,
         gate,
+        // Every project of the set is read with its Asset files, if none.
+        assets: set.assets.get(project) as ReadonlyMap<string, string>,
       }),
     );
     return {

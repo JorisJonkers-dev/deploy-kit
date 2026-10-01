@@ -35,10 +35,13 @@ export interface ApplicationContext extends Omit<ProcessContext, "machinery"> {
 
 const unitOf = (project: string): string => `apps-${project}`;
 
+/** The unit that materialises every grant's credentials before a Process may hold one. */
+const SECRETS_UNIT = "apps-vso-secrets";
+
 /**
- * The units that must be Ready first: every other project an edge reaches
- * (spec/v1/20-resolved-deployment.md#the-reconcile-unit). The
- * secrets-provisioning unit joins them with the first grant that resolves.
+ * The units that must be Ready first: every other project an edge reaches, and
+ * the secrets-provisioning unit wherever a Process holds a grant
+ * (spec/v1/20-resolved-deployment.md#the-reconcile-unit).
  */
 function reconcileAfter(
   application: EffectiveApplication,
@@ -55,7 +58,12 @@ function reconcileAfter(
           : [unitOf(project)],
       ),
   );
-  return [...new Set(providers)].sort();
+  const grants = application.processes.some(
+    // A missing list and an empty one hold no grant alike.
+    // Stryker disable next-line ArrayDeclaration
+    ({ secrets }) => (secrets ?? []).length > 0,
+  );
+  return [...new Set([...providers, ...(grants ? [SECRETS_UNIT] : [])])].sort();
 }
 
 type Probe = NonNullable<
@@ -131,7 +139,7 @@ export function resolveApplication(
       resolved: {
         ...resolveProcess(process, { ...context, machinery }),
         ...(ingress.length === 0 ? {} : { ingress }),
-        egress: egressOf(context.platform),
+        egress: egressOf(process, context),
       },
     };
   });

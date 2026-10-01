@@ -41,11 +41,11 @@ render against a stale one is `E_PARTICIPANT_STALE`.
 
 The Platform document's classes and how they compose. A policy keyed by a
 closed vocabulary is a class with one optional field per literal, so a policy
-the platform does not offer is a field it does not write. Six fields refer
+the platform does not offer is a field it does not write. Seven fields refer
 into another document: a tier's `traefik`, each name in `delivery.machinery`,
-`delivery.gate`, `telemetry.collector` and `telemetry.metrics` name an
-Application declared in a project file the platform owns, and the `handover`
-ledger names projects.
+`delivery.gate`, `telemetry.collector`, `telemetry.metrics` and `secretStore`
+name an Application declared in a project file the platform owns, and the
+`handover` ledger names projects.
 
 A Platform document is checked on its own and together with the project files
 read beside it. On its own, a tier that carries `authenticated` needs its
@@ -65,6 +65,7 @@ other resolves and every policy one asks for the other offers:
 | `telemetry.collector` names no Application a project file read beside it declares with an `otlp` surface on one of its Processes | `E_UNKNOWN_TELEMETRY_COLLECTOR` |
 | `telemetry.metrics` names an Application no project file read beside it declares | `E_UNKNOWN_METRICS_STACK` |
 | `delivery.gate` names no Application a project file read beside it declares with an `http` surface on one of its Processes | `E_UNKNOWN_RELEASE_GATE` |
+| `secretStore` names no Application a project file read beside it declares with an `http` surface on one of its Processes | `E_UNKNOWN_SECRET_STORE` |
 | an Application moves its schema with a changelog and the platform declares no `migration` policy | `E_NO_MIGRATION_POLICY` |
 | an Application's cutover is `continuous` and the platform declares no `delivery` policy | `E_NO_DELIVERY_POLICY` |
 | a project file names a project the `handover` ledger puts on neither delivery path | `E_HANDOVER_UNLISTED` |
@@ -447,13 +448,33 @@ serving: a `continuous` Application read beside it is `E_NO_DELIVERY_POLICY`,
 because its blue/green switch has no cadence to be analysed at. A platform whose
 every Application is `interrupted` needs neither the gate nor the block.
 
+## The Secret Store
+
+```yaml
+secretStore: vault
+```
+
+The Application every grant is read from
+([chapter 10](10-project-intent.md#secrets),
+[0028](../../docs/adr/model/0028-grant-unit-is-the-path.md)). It links as the
+Release Gate does, to an Application whose Process provides an `http` surface:
+`E_UNKNOWN_SECRET_STORE` otherwise. A Process that holds a `kv` grant egresses
+to that surface, and the Application it belongs to is ordered after the unit
+that materialises its credentials
+([chapter 20](20-resolved-deployment.md#the-reconcile-unit)).
+
+The platform owns the Secret Store's Application in a project file of its own,
+the worked [`secrets`](examples/secrets/secrets.project.yml) project. The field
+is optional, and a platform that omits it offers no store: nothing it resolves
+may hold a grant.
+
 ## Handover ledger
 
 ```yaml
 handover:
   retireBy: 2027-03-31
   legacy: [auth, data, knowledge, notes]
-  estate: [delivery]
+  estate: [delivery, edge, observability, secrets]
 ```
 
 Which delivery path each Project is on while the estate moves off `fleet-infra`:
@@ -541,6 +562,7 @@ classDiagram
         +SemVer schemaVersion
         +string owner
         +HardeningClass hardening
+        +ApplicationId secretStore
     }
     class PlatformMetadata {
         +string cluster

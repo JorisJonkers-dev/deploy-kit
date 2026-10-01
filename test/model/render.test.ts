@@ -35,6 +35,7 @@ const SET = [
   "delivery/delivery.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
+  "secrets/secrets.project.yml",
 ];
 
 const OPTIONS = {
@@ -201,6 +202,27 @@ describe("renderIntentSet", () => {
     expect(() => render(undefined, ["delivery"])).toThrow(
       "flagger: a application Process that switches rolling is not rendered yet",
     );
+  });
+
+  it.each([
+    [
+      "a grant",
+      "        secrets:\n          - { path: secret/data/notes/token, keys: [token], access: read, delivery: self, rotation: {tolerates: reload} }\n",
+    ],
+    [
+      "a sidecar",
+      "        sidecars:\n          - { name: exporter, image: postgres-exporter, memory: 32Mi, cpu: 5m }\n",
+    ],
+  ])("stops at %s, which the render spells in its own slice", (what, block) => {
+    expect(() =>
+      render({
+        "minimal/notes.project.yml": (document) =>
+          document.replace(
+            "        runtime: node\n",
+            `        runtime: node\n${block}`,
+          ),
+      }),
+    ).toThrow(`notes-api: ${what} is not rendered yet`);
   });
 
   it("orders the tree whatever order the adapters hand it out in", () => {
