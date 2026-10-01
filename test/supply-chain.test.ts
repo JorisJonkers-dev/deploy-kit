@@ -118,7 +118,8 @@ describe("RULE-072: every install runs with lifecycle scripts disabled", () => {
           "  - 'run': 'npm ci'",
           "  - 'run': 'npm ci --ignore-scripts'",
         ].join("\n"),
-        "b.yml": "jobs:\n  x:\n    steps:\n      - run: |\n          set -e\n          npm install --no-audit\n",
+        "b.yml":
+          "jobs:\n  x:\n    steps:\n      - run: |\n          set -e\n          npm install --no-audit\n",
       }),
     ).toEqual([
       "a.yml: 'npm ci' runs lifecycle scripts; add --ignore-scripts",
