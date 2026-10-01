@@ -20,14 +20,43 @@ const CONTENT_DIGITS = 10;
 export const destinationOf = (process: string, path: string): string =>
   `${process}-${path.replace(KV_MOUNT, "").replaceAll("/", "-")}`;
 
+/** What a transit operation may do, on the one path it maps to. */
+const transitPath = (key: string, operation: string): string =>
+  operation === "rotate"
+    ? `transit/keys/${key}/rotate`
+    : `transit/${operation}/${key}`;
+
+type Grant = NonNullable<EffectiveProcess["secrets"]>[number];
+type EngineGrant = Exclude<Grant, { readonly path: string }>;
+
+/** The paths a non-kv grant's policy covers: one per transit operation, or the role's credential. */
+function enginePaths(grant: EngineGrant): ResolvedEngine["paths"] {
+  if ("key" in grant)
+    return grant.operations.map((operation) => ({
+      path: transitPath(grant.key, operation),
+      allows: ["update"],
+    }));
+  return [{ path: `database/creds/${grant.role}`, allows: ["read"] }];
+}
+
+type ResolvedEngine = Extract<ResolvedGrant, { readonly engine: string }>;
+
 export function resolveGrants(process: EffectiveProcess): ResolvedGrant[] {
   // A missing list and an empty one hold no grant alike.
   // Stryker disable next-line ArrayDeclaration
-  return (process.secrets ?? []).map((grant) => {
+  return (process.secrets ?? []).map((grant): ResolvedGrant => {
+    const restart =
+      grant.rotation.tolerates === "restart"
+        ? { restartTargets: [process.name] }
+        : {};
+    // A non-kv grant is delivered `self`, or E_NON_KV_DELIVERY refused it.
     if (!("path" in grant))
-      throw new Error(
-        `${process.name}: a ${grant.engine} grant is not resolved yet`,
-      );
+      return {
+        engine: grant.engine,
+        delivery: "self",
+        paths: enginePaths(grant),
+        ...restart,
+      };
     return {
       path: grant.path,
       keys: grant.keys,
@@ -39,9 +68,7 @@ export function resolveGrants(process: EffectiveProcess): ResolvedGrant[] {
       ...(grant.mountAt === undefined ? {} : { mountAt: grant.mountAt }),
       ...(grant.fileMode === undefined ? {} : { fileMode: grant.fileMode }),
       // A rotation restarts the Process in place, and a reload restarts nothing.
-      ...(grant.rotation.tolerates === "restart"
-        ? { restartTargets: [process.name] }
-        : {}),
+      ...restart,
     };
   });
 }

@@ -10,6 +10,10 @@ import {
 import type { Result } from "../model/diagnostic.ts";
 import { imagesLock, type ImagesLockDocument } from "../model/images-lock.ts";
 import {
+  migrationProof,
+  type MigrationProofDocument,
+} from "../model/migration-proof.ts";
+import {
   nodeContract,
   type NodeContractDocument,
 } from "../model/node-contract.ts";
@@ -37,3 +41,7 @@ export const readImagesLock = (value: unknown): Result<ImagesLockDocument> =>
 export const readClusterState = (
   value: unknown,
 ): Result<ClusterStateDocument> => readWith(clusterState, value);
+
+export const readMigrationProof = (
+  value: unknown,
+): Result<MigrationProofDocument> => readWith(migrationProof, value);

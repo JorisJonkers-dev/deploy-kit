@@ -29,6 +29,7 @@ import type {
   VolumeMount,
 } from "../../objects/kubernetes.ts";
 import { wholeSeconds } from "../shared/durations.ts";
+import { isSynced, type KvGrant } from "../shared/holders.ts";
 import { instanceOf, labelsOf, managedOnly } from "../shared/labels.ts";
 import { applicationDirectory, projectDirectory } from "../shared/paths.ts";
 
@@ -114,8 +115,8 @@ function envOf(process: ResolvedProcess): EnvVar[] {
     if ("value" in entry) return { name: entry.name, value: entry.value };
     // A reference names an env grant the Process holds, or resolution stopped.
     const grant = process.secrets?.find(
-      ({ path }) => path === entry.secret.path,
-    ) as NonNullable<ResolvedProcess["secrets"]>[number];
+      (held) => isSynced(held) && held.path === entry.secret.path,
+    ) as KvGrant;
     return {
       name: entry.name,
       valueFrom: {

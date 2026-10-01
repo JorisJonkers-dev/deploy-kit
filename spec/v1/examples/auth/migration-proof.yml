@@ -1,0 +1,18 @@
+# The migration proof for the auth project, written beside its project file by
+# auth-api's own CI (spec/v1/55-delivery.md#migration-safety) and read with it:
+# the fragment's digest covers it, so a new proof is a new fragment.
+#
+# One entry per Application that moves its schema with a changelog. `auth`
+# serves today, so its suite ran against the serving revision, which is what
+# `testedAgainst` names: the Application revision the projection published back.
+# No changeset in this release runs outside a transaction, so the release may
+# be undone automatically (spec/v1/55-delivery.md#failure-and-undo).
+
+apiVersion: proof.jorisjonkers.dev/v1
+kind: MigrationProof
+schemaVersion: 1.0.0
+
+applications:
+  - id: auth
+    testedAgainst: "sha256:2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a"
+    nonTransactional: false

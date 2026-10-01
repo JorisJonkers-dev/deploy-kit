@@ -136,20 +136,92 @@ function secretOf(
   return { name: variable.name, secret: { path, key } };
 }
 
+/** The coordinates an edge hands its consumer (spec/v1/10-project-intent.md#secret-references). */
+const COORDINATES = ["host", "port"] as const;
+
+/** `${dependency:<application>.<coordinate>}`: one coordinate of the Process's own edge. */
+function dependencyOf(
+  variable: EnvVariable,
+  source: string,
+  process: EffectiveProcess,
+  context: ProcessContext,
+): string {
+  const cut = source.lastIndexOf(".");
+  const application = source.slice(0, cut);
+  const coordinate = COORDINATES.find((one) => one === source.slice(cut + 1));
+  // A missing list and an empty one hold no edge alike.
+  // Stryker disable next-line ArrayDeclaration
+  const edges = (process.dependsOn ?? []).filter(
+    (edge) => edge.application === application,
+  );
+  const [edge] = edges;
+  if (edge === undefined || edges.length > 1 || coordinate === undefined)
+    throw new Error(
+      `${variable.name}: a dependency placeholder names no one edge of the Process and no coordinate of it, which is not checked yet`,
+    );
+  const { address } = resolveEdge(edge, context.union, context.platform);
+  const port = address.lastIndexOf(":");
+  return coordinate === "host"
+    ? address.slice(0, port)
+    : address.slice(port + 1);
+}
+
+/** `${exposure:<application>.<name>#<field>}`: one field of an exposure the union declares. */
+function exposureOf(
+  variable: EnvVariable,
+  source: string,
+  context: ProcessContext,
+): string {
+  const hash = source.lastIndexOf("#");
+  const dot = source.lastIndexOf(".", hash);
+  const [application, name, field] = [
+    source.slice(0, dot),
+    source.slice(dot + 1, hash),
+    source.slice(hash + 1),
+  ];
+  const exposure = context.union
+    .flatMap(({ applications }) => applications)
+    .find(({ id }) => id === application)
+    ?.exposure?.find((candidate) => candidate.name === name);
+  if (exposure === undefined || !["url", "host", "scheme"].includes(field))
+    throw new Error(
+      `${variable.name}: an exposure placeholder names no exposure of the union and no field of it, which is not checked yet`,
+    );
+  // A tier carries the exposure's audience, or E_NO_TIER_FOR_AUDIENCE refused it.
+  const tier = context.platform.tiers.find(({ audiences }) =>
+    audiences.includes(exposure.audience),
+  ) as PlatformIntentDocument["tiers"][number];
+  const scheme = tier.listener === "tls" ? "https" : "http";
+  if (field === "host") return exposure.host;
+  return field === "scheme" ? scheme : `${scheme}://${exposure.host}`;
+}
+
 function entryOf(
   variable: EnvVariable,
   process: EffectiveProcess,
-  project: string,
+  context: ProcessContext,
 ): EnvEntry {
   const { name, value } = variable;
   if ("text" in value) return { name, value: value.text };
   if (value.kind === "secret") return secretOf(variable, value.source, process);
-  if (value.kind !== "identity")
-    throw new Error(`${name}: a ${value.kind} placeholder is not resolved yet`);
+  const suffix = value.suffix ?? "";
+  if (value.kind === "dependency")
+    return {
+      name,
+      value: dependencyOf(variable, value.source, process, context) + suffix,
+    };
+  if (value.kind === "exposure")
+    return {
+      name,
+      value: exposureOf(variable, value.source, context) + suffix,
+    };
   // The Vault role and the ServiceAccount are both the Process's own name.
   return {
     name,
-    value: value.source === "namespace" ? namespaceOf(project) : process.name,
+    value:
+      (value.source === "namespace"
+        ? namespaceOf(context.project)
+        : process.name) + suffix,
   };
 }
 
@@ -183,7 +255,7 @@ function environmentOf(
   // environment would mistake for it.
   const { env: files } = process;
   const authored = entriesFor(files, context.platform.metadata.cluster).map(
-    (variable) => entryOf(variable, process, context.project),
+    (variable) => entryOf(variable, process, context),
   );
   const profile = profileOf(process, context);
   const injected = new Set(profile.map(({ name }) => name));

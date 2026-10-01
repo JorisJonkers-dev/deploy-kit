@@ -111,6 +111,42 @@ describe("resolveIntentSet", () => {
     expect(canonicalJson(gate)).toBe(text("delivery/expected/resolved.json"));
   });
 
+  describe("auth, composed with data, the same foundation and the files beside both", () => {
+    const auth = () => {
+      const result = resolveIntentSet(
+        [
+          ...files().filter(({ name }) => !name.startsWith("minimal/")),
+          ...[
+            "auth/auth.project.yml",
+            "auth/env/auth-api/base.env",
+            "auth/migration-proof.yml",
+            "data/data.project.yml",
+            "data/env/postgres/base.env",
+            "data/config/postgresql.conf",
+          ].map((name) => ({ name, text: text(name) })),
+        ],
+        options,
+      );
+      if (!result.ok)
+        throw new Error(
+          JSON.stringify(result.diagnostics.map(({ code }) => code)),
+        );
+      return project([...result.value.projects], "auth");
+    };
+
+    it("resolves auth to its committed projection, byte for byte", () => {
+      expect(canonicalJson(auth().applications[0])).toBe(
+        text("auth/expected/resolved.json"),
+      );
+    });
+
+    it("resolves auth's dependency edges to its committed oracle, byte for byte", () => {
+      expect(canonicalJson(auth().dependencies)).toBe(
+        text("auth/expected/dependencies.json"),
+      );
+    });
+  });
+
   describe("data, composed with the same foundation and the files beside it", () => {
     const data = () => {
       const result = resolveIntentSet(

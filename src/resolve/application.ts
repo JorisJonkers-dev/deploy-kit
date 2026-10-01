@@ -10,10 +10,14 @@ import { inSeconds, seconds } from "../model/durations.ts";
 import type { Hasher } from "../model/hasher.ts";
 import type {
   ReleaseGate,
+  ResolvedMigration,
   ResolvedApplicationDocument,
   ResolvedProcess,
 } from "../model/resolved-deployment.ts";
+import type { LockedImage } from "../model/images-lock.ts";
+import type { MigrationProofDocument } from "../model/migration-proof.ts";
 import { applicationRevision } from "../model/revision.ts";
+import { migrationImage } from "../model/migration-proof.ts";
 import { exports, namespaceOf } from "../model/runtime-profiles.ts";
 import { resolveExposure } from "./exposure.ts";
 import { egressOf, ingressOf } from "./policy.ts";
@@ -33,9 +37,37 @@ export interface ApplicationContext extends Omit<ProcessContext, "machinery"> {
   readonly gate: string | undefined;
   /** The Secret Store's endpoint, where the platform names one. */
   readonly store: string | undefined;
+  /** The migration proof beside the project file, where CI wrote one. */
+  readonly proof: MigrationProofDocument | undefined;
 }
 
 const unitOf = (project: string): string => `apps-${project}`;
+
+/**
+ * A managed migration (spec/v1/20-resolved-deployment.md#the-migration): its
+ * locked image, and what the proof beside the project records about this
+ * release; an Application the proof does not name is a first release, which
+ * nothing serves and so nothing was tested against.
+ */
+function migrationOf(
+  application: EffectiveApplication,
+  context: ApplicationContext,
+): ResolvedMigration {
+  // E_UNLOCKED_IMAGE refused a managed migration whose image is not locked.
+  const image = context.lock.images[
+    migrationImage(application.id)
+  ] as LockedImage;
+  const proven = context.proof?.applications.find(
+    ({ id }) => id === application.id,
+  );
+  return {
+    runner: `${image.repository}@${image.digest}`,
+    ...(proven?.testedAgainst === undefined
+      ? {}
+      : { testedAgainst: proven.testedAgainst }),
+    nonTransactional: proven?.nonTransactional ?? false,
+  };
+}
 
 /**
  * Whether the operator syncs anything for these Processes: a grant one holds,
@@ -148,10 +180,6 @@ export function resolveApplication(
   application: EffectiveApplication,
   context: ApplicationContext,
 ): ResolvedElement {
-  if (typeof application.migration === "object")
-    throw new Error(
-      `${application.id}: a managed migration is not resolved yet`,
-    );
   const machinery =
     context.platform.delivery?.machinery.includes(application.id) === true;
   const pairs = application.processes.map((process) => {
@@ -190,6 +218,9 @@ export function resolveApplication(
           },
         }),
     ...(gate === undefined ? {} : { releaseGate: gate }),
+    ...(typeof application.migration === "object"
+      ? { migration: migrationOf(application, context) }
+      : {}),
     ...(synced(processes) ? { secretStore: storeFor(context) } : {}),
     ...(application.exposure === undefined
       ? {}

@@ -127,6 +127,28 @@ describe("parseProjectIntent", () => {
     );
   });
 
+  it("lowers auth to its committed effective oracle, byte for byte, a placeholder's text after it kept", () => {
+    const result = parseProjectIntent(
+      readFileSync(join(EXAMPLES, "auth", "auth.project.yml"), "utf8"),
+      [
+        {
+          path: "auth/env/auth-api/base.env",
+          text: readFileSync(
+            join(EXAMPLES, "auth", "env", "auth-api", "base.env"),
+            "utf8",
+          ),
+        },
+      ],
+    );
+
+    expect(result.ok && canonicalJson(result.value.effective)).toBe(
+      readFileSync(
+        join(EXAMPLES, "auth", "expected", "effective.json"),
+        "utf8",
+      ),
+    );
+  });
+
   it("lowers data to its committed effective oracle, byte for byte", () => {
     const result = parseProjectIntent(
       readFileSync(join(EXAMPLES, "data", "data.project.yml"), "utf8"),

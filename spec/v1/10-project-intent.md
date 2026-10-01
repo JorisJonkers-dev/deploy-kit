@@ -747,11 +747,13 @@ than interpreted, exactly as the YAML subset is
   assignment;
 - an assignment is `NAME=value`, where `NAME` matches `[A-Za-z_][A-Za-z0-9_]*`:
   the shape a process can actually read from its environment;
-- a value is **either** a literal **or** exactly one placeholder, never a
-  literal with a placeholder inside it. `${secret:…}/db` is refused, because a
-  value half-derived is a value no renderer can partition
-  ([Delivery](#delivery)): a `${secret:…}` key becomes an `envFrom` secretRef
-  entry, and there is no such thing as half an entry;
+- a value is **either** a literal **or** exactly one placeholder, which may be
+  followed by literal text: `${exposure:auth.public#url}/login` is a host and a
+  path after it. Text never comes before a placeholder, and a second placeholder
+  is never inside one value. `${secret:…}/db` is refused, because a value
+  half-derived from a secret is a value no renderer can partition
+  ([Delivery](#delivery)): a `${secret:…}` key becomes one key of a synced
+  Secret, and there is no such thing as half a key;
 - a literal carries no `#`, which is a comment wherever it appears;
 - there is no quoting, no `export`, no line continuation and no multi-line
   value. Each is a dotenv dialect rather than dotenv, and a value that needs
@@ -1746,8 +1748,8 @@ one) is what a placeholder byte-matches
 | engine | derived read path |
 |---|---|
 | `kv` | `secret/data/<path>`, and `secret/metadata/<path>` for the same document ([0029](../../docs/adr/model/0029-a-grant-is-a-union-on-engine.md)) |
-| `database` | `database/creds/<role>` |
-| `transit` | one path per declared operation: `transit/sign/<key>`, `transit/keys/<key>/rotate`, and so on |
+| `database` | `database/creds/<role>`, which it may `read` |
+| `transit` | one path per declared operation, each of which it may `update`: `transit/<operation>/<key>` for `sign`, `verify`, `encrypt` and `decrypt`, and `transit/keys/<key>/rotate` for `rotate` |
 
 For a `kv` grant the derived path is the string the author already wrote, so
 nothing about today's placeholders changes. For the other two it is the path the
@@ -2044,7 +2046,7 @@ reader-set model auditable from the repository.
 | placeholder | resolves to | resolved from |
 |---|---|---|
 | `${secret:<path>#<key>}` | one key of one granted Secret Store path | the grant, byte-matched ([0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)) |
-| `${dependency:<application>.<coordinate>}` | one coordinate of an Application this Process depends on | the edge set (chapter 16) |
+| `${dependency:<application>.<coordinate>}` | one coordinate of an Application this Process depends on: `host` or `port` of the Process's one edge to it | the edge set (chapter 16) |
 | `${exposure:<application>.<name>#<field>}` | one field of a declared exposure | the composed union's exposure set ([Exposure](#exposure)) |
 
 `${exposure:…}` addresses an exposure by the Application that declares it and the

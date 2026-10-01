@@ -21,22 +21,30 @@ const refusal = (path: string, line: number, message: string): Diagnostic => ({
   code: "schema",
   path: `${path}:${String(line)}`,
   message,
-  hint: "Write NAME=value, one per line, where a value is a literal or one ${kind:source} placeholder.",
+  hint: "Write NAME=value, one per line, where a value is a literal, or one ${kind:source} placeholder with literal text after it unless it is a secret.",
 });
 
+/** A literal: no `#`, which is a comment wherever it appears, and no placeholder. */
+const literal = (text: string): boolean =>
+  !text.includes("#") && !text.includes(OPENS);
+
 function readValue(raw: string): EnvValue | undefined {
-  if (raw.startsWith(OPENS) && raw.endsWith("}")) {
+  if (raw.startsWith(OPENS)) {
+    // A placeholder left open has no close: its suffix is then the whole value,
+    // which opens one, so it is refused below as no literal.
+    const close = raw.indexOf("}");
     // Split once: a source may hold colons, and a kind holds none.
-    const inner = raw.slice(OPENS.length, -1);
-    const [named, ...rest] = inner.split(":");
+    const [named, ...rest] = raw.slice(OPENS.length, close).split(":");
     const source = rest.join(":");
+    const suffix = raw.slice(close + 1);
     const kind = PLACEHOLDER_KINDS.find((one) => one === named);
-    if (kind === undefined || source.length === 0 || source.includes("}"))
+    // A secret becomes one key of a Secret, and half a key is nothing.
+    const whole = kind !== "secret" || suffix.length === 0;
+    if (kind === undefined || source.length === 0 || !literal(suffix) || !whole)
       return undefined;
-    return { kind, source };
+    return { kind, source, ...(suffix.length === 0 ? {} : { suffix }) };
   }
-  if (raw.length === 0 || raw.includes("#") || raw.includes(OPENS))
-    return undefined;
+  if (raw.length === 0 || !literal(raw)) return undefined;
   return { text: raw };
 }
 

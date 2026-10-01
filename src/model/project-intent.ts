@@ -296,8 +296,14 @@ const envLiteral = z.strictObject({ text: z.string() }).meta({
   id: "EnvLiteral",
 });
 
+// A placeholder, and the literal text after it: a path after a host, never
+// after a secret (spec/v1/10-project-intent.md#the-dotenv-subset-that-is-read).
 const placeholder = z
-  .strictObject({ kind: placeholderKind, source: text })
+  .strictObject({
+    kind: placeholderKind,
+    source: text,
+    suffix: text.exactOptional(),
+  })
   .meta({ id: "Placeholder" });
 
 const envVariable = z

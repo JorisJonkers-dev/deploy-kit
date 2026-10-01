@@ -10,6 +10,15 @@ import type { Labels } from "../../objects/kubernetes.ts";
 import { labelsOf } from "./labels.ts";
 
 export type Grant = NonNullable<ResolvedProcess["secrets"]>[number];
+/** A kv grant: the one engine whose value is ever synced to a Secret. */
+export type KvGrant = Extract<Grant, { readonly path: string }>;
+
+/** Whether a grant is synced to a Secret: a kv grant delivered `env` or `file`. */
+export const isSynced = (
+  grant: Grant,
+): grant is KvGrant & { destination: string } =>
+  // An absent destination is an absent key, so asking for the key is enough.
+  "destination" in grant;
 
 export interface Holder {
   /** The ServiceAccount, and the Vault role it authenticates as. */

@@ -22,11 +22,13 @@ import {
   AUDIENCES,
   CONTENT_POLICIES,
   CUTOVERS,
+  DATABASE_ENGINES,
   DELIVERIES,
   DURABILITY_CLASSES,
   LIFECYCLES,
   MATCHES,
   RUNTIMES,
+  TRANSIT_ENGINES,
 } from "./vocabularies.ts";
 
 // The closed vocabularies layer 2 adds, each declared here once. Layer 2
@@ -190,6 +192,23 @@ const resolvedGrant = z
   })
   .meta({ id: "ResolvedGrant" });
 
+// A path a grant's policy covers, and what it may do there.
+const policyPath = z
+  .strictObject({ path: text, allows: z.array(text).min(1) })
+  .meta({ id: "PolicyPath" });
+
+// A `transit` or `database` grant: read by the Process itself and synced
+// nowhere, so what the projection holds is the paths its policy covers,
+// derived from the engine (spec/v1/10-project-intent.md#secrets).
+const resolvedEngineGrant = z
+  .strictObject({
+    engine: z.enum([...TRANSIT_ENGINES, ...DATABASE_ENGINES]),
+    delivery: z.literal("self"),
+    paths: z.array(policyPath).min(1),
+    restartTargets: z.array(text).exactOptional(),
+  })
+  .meta({ id: "ResolvedEngineGrant" });
+
 // The backup a Durability Class derives: the platform's terms for the class,
 // the engine's method image, the identity it runs as, the claim its copies
 // land on, and for an off-cluster copy the credential only that identity holds.
@@ -313,7 +332,9 @@ const resolvedProcess = z
     startup: startupProbe.exactOptional(),
     placement: resolvedPlacement,
     volumes: z.array(resolvedVolume).exactOptional(),
-    secrets: z.array(resolvedGrant).exactOptional(),
+    secrets: z
+      .array(z.union([resolvedGrant, resolvedEngineGrant]))
+      .exactOptional(),
     assets: z.array(resolvedAsset).exactOptional(),
     sidecars: z.array(resolvedSidecar).exactOptional(),
     dependencies: z.array(resolvedEdge).exactOptional(),
@@ -565,6 +586,9 @@ export type ResolvedExposure = NonNullable<
   ResolvedApplicationDocument["exposure"]
 >[number];
 export type ResolvedRoute = ResolvedExposure["routes"][number];
+export type ResolvedMigration = NonNullable<
+  ResolvedApplicationDocument["migration"]
+>;
 export type ReleaseGate = NonNullable<
   ResolvedApplicationDocument["releaseGate"]
 >;

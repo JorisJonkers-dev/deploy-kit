@@ -267,9 +267,24 @@ may remove it. Removing it one release early fails the compatibility test,
 because N's own suite still reads it.
 
 The fragment records the proof: the serving revision the suite ran against, and
-whether the release holds a non-transactional changeset. Layer 2 carries both as
-the migration's `testedAgainst` and `nonTransactional`
-([chapter 20](20-resolved-deployment.md#the-migration)). A first release, with
+whether the release holds a non-transactional changeset. The application's CI
+writes it as `migration-proof.yml` beside the project file, one entry per
+Application that moves its schema with a changelog, and the fragment's digest
+covers it, so a new proof is a new fragment:
+
+```yaml
+apiVersion: proof.jorisjonkers.dev/v1
+kind: MigrationProof
+schemaVersion: 1.0.0
+applications:
+  - id: auth
+    testedAgainst: "sha256:…"   # the serving revision; absent on a first release
+    nonTransactional: false
+```
+
+Layer 2 carries both as the migration's `testedAgainst` and `nonTransactional`
+([chapter 20](20-resolved-deployment.md#the-migration)), and the worked
+[`auth`](examples/auth/migration-proof.yml) project carries one. A first release, with
 nothing serving, carries no `testedAgainst`, and has nothing to be compatible
 with.
 

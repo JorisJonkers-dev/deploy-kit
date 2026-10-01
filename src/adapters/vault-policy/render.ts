@@ -19,6 +19,12 @@ const KV_METADATA = "secret/metadata/";
  * metadata. The other tiers land with the grants that hold them.
  */
 function pathsOf(grant: Grant): [string, { capabilities: string[] }][] {
+  // A transit or database grant carries the paths its engine derives.
+  if ("paths" in grant)
+    return grant.paths.map(({ path, allows }) => [
+      path,
+      { capabilities: [...allows] },
+    ]);
   if (grant.access !== "read")
     throw new Error(
       `${grant.path}: a ${grant.access} grant is not rendered yet`,

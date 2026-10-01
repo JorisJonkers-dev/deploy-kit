@@ -39,6 +39,18 @@ class EnvFilesTest {
     }
 
     @Test
+    void keepsTheLiteralTextAfterAPlaceholderThatIsNoSecret() {
+        EnvFiles.Read read = read("LOGIN=${exposure:auth.public#url}/login\nHOST=${exposure:auth.public#host}\n");
+
+        assertThat(read.ok()).as(read.diagnostics().toString()).isTrue();
+        List<EnvVariable> entries = read.files().get(0).file().getEntries();
+        Placeholder login = (Placeholder) entries.get(0).getValue();
+        assertThat(login.getSource()).isEqualTo("auth.public#url");
+        assertThat(login.getSuffix()).isEqualTo("/login");
+        assertThat(((Placeholder) entries.get(1).getValue()).isSetSuffix()).isFalse();
+    }
+
+    @Test
     void refusesEveryLineOutsideTheSubset() {
         assertThat(read("MODE\n").ok()).isFalse();
         assertThat(read("=lite\n").ok()).isFalse();
@@ -52,6 +64,9 @@ class EnvFilesTest {
         assertThat(read("DSN=${secret:}\n").ok()).isFalse();
         assertThat(read("DSN=\n").ok()).isFalse();
         assertThat(read("TOKEN=a#b\n").ok()).isFalse();
+        assertThat(read("URL=${exposure:a.b#url\n").ok()).isFalse();
+        assertThat(read("URL=${exposure:a.b#url}#x\n").ok()).isFalse();
+        assertThat(read("URL=${exposure:a.b#url}${exposure:a.b#host}\n").ok()).isFalse();
     }
 
     @Test

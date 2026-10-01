@@ -5,6 +5,7 @@
 import type { Diagnostic } from "../model/diagnostic.ts";
 import { eligibleNodes } from "../model/eligibility.ts";
 import type { EffectiveProject } from "../model/effective-intent.ts";
+import { migrationImage } from "../model/migration-proof.ts";
 import type { PinnedSet } from "../model/resolution.ts";
 
 interface Located {
@@ -81,6 +82,24 @@ const methodRefusals = (set: PinnedSet, platform: string): Diagnostic[] =>
       hint: "Lock the alias, or name one the images lock holds.",
     }));
 
+/** Every Application that moves its schema with a changelog has its migration image locked. */
+const migrationRefusals = (set: PinnedSet, { document, effective }: Located) =>
+  effective.applications.flatMap((application, a): Diagnostic[] => {
+    const image = migrationImage(application.id);
+    return typeof application.migration === "object" &&
+      !Object.hasOwn(set.imagesLock.images, image)
+      ? [
+          {
+            code: "E_UNLOCKED_IMAGE",
+            document,
+            path: `/applications/${String(a)}/migration`,
+            message: `the images lock holds no entry for ${image}`,
+            hint: "Lock the migration image the Application's CI builds from the platform's runner.",
+          },
+        ]
+      : [];
+  });
+
 /** Every rule the pinned inputs break, before resolution reads them. */
 export const pinnedDiagnostics = (
   set: PinnedSet,
@@ -91,4 +110,5 @@ export const pinnedDiagnostics = (
   ...contractRefusals(set, contractDigest, platform),
   ...methodRefusals(set, platform),
   ...located.flatMap((project) => processRefusals(set, project)),
+  ...located.flatMap((project) => migrationRefusals(set, project)),
 ];
