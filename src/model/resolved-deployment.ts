@@ -173,26 +173,6 @@ const resolvedPlacement = z
   })
   .meta({ id: "ResolvedPlacement" });
 
-const backupPlan = z
-  .strictObject({
-    schedule: text,
-    retain: count,
-    offCluster: text.exactOptional(),
-    method: text,
-  })
-  .meta({ id: "BackupPlan" });
-
-const resolvedVolume = z
-  .strictObject({
-    claim: text,
-    mountAt: text,
-    size: text,
-    durability: durabilityClass,
-    // `reconstructible` earns none, which is the absence rather than a class.
-    backup: backupPlan.exactOptional(),
-  })
-  .meta({ id: "ResolvedVolume" });
-
 const resolvedGrant = z
   .strictObject({
     path: text,
@@ -209,6 +189,35 @@ const resolvedGrant = z
     restartTargets: z.array(text).exactOptional(),
   })
   .meta({ id: "ResolvedGrant" });
+
+// The backup a Durability Class derives: the platform's terms for the class,
+// the engine's method image, the identity it runs as, the claim its copies
+// land on, and for an off-cluster copy the credential only that identity holds.
+const backupPlan = z
+  .strictObject({
+    schedule: text,
+    // How many copies are kept: the method prunes to this count after a run.
+    retain: count,
+    offCluster: text.exactOptional(),
+    method: text,
+    uid: count,
+    gid: count,
+    identity: text,
+    claim: text,
+    credential: resolvedGrant.exactOptional(),
+  })
+  .meta({ id: "BackupPlan" });
+
+const resolvedVolume = z
+  .strictObject({
+    claim: text,
+    mountAt: text,
+    size: text,
+    durability: durabilityClass,
+    // `reconstructible` earns none, which is the absence rather than a class.
+    backup: backupPlan.exactOptional(),
+  })
+  .meta({ id: "ResolvedVolume" });
 
 // A file-shaped settings file, by the content-hashed name an edit changes, so
 // an edit restarts the Process (spec/v1/10-project-intent.md#assets).
@@ -441,6 +450,9 @@ const application = {
   // Absent on an `interrupted` Application: it stops before it starts, so no
   // switch waits on a gate (docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md).
   releaseGate: releaseGate.exactOptional(),
+  // The Secret Store's endpoint, where a Process or its backup holds a grant:
+  // what the operator connects through to sync every one of them.
+  secretStore: text.exactOptional(),
   // Present where the Application moves its schema with a changelog.
   migration: resolvedMigration.exactOptional(),
   exposure: z.array(resolvedExposure).exactOptional(),

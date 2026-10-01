@@ -673,7 +673,7 @@ flowchart LR
         k_ir["IngressRoute"]
         k_np["NetworkPolicy"]
         k_gat["Gatus endpoint"]
-        k_bkp["backup CronJob + sweep"]
+        k_bkp["backup CronJob + backup claim"]
         k_res["resolved.yml"]
 
         k_sm["ServiceMonitor / PodMonitor"]

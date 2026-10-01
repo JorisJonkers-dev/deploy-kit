@@ -163,6 +163,12 @@ content-hashed and a change restarts the Process, unconditionally
 backup objects that make the class mean something
 ([0018](docs/adr/model/0018-durability-class-derives-a-backup.md)).
 
+**Backup Identity**: the identity a Process's backups run as,
+`<process>-backup`, apart from the Process so that only it holds the off-cluster
+destination's credential. Its **Backup Claim**, `<claim>-backup`, is the claim a
+volume's copies land on, of which the method keeps `retain`
+([0018](docs/adr/model/0018-durability-class-derives-a-backup.md)).
+
 **Engine**: what a Process *is*, where the platform must treat it
 specially: `postgres`, `rabbitmq`, `valkey`, `files`. Not `runtime`, which says
 how a process is instrumented

@@ -5,8 +5,15 @@ import type {
   IngressRoute,
   PodMonitor,
   ServiceMonitor,
+  VaultAuth,
+  VaultConnection,
+  VaultPolicy,
+  VaultRole,
+  VaultStaticSecret,
 } from "./custom.ts";
 import type {
+  ConfigMap,
+  CronJob,
   Deployment,
   Kustomization,
   Namespace,
@@ -27,7 +34,14 @@ export type RenderedObject =
   | Canary
   | PodMonitor
   | ServiceMonitor
-  | IngressRoute;
+  | IngressRoute
+  | ConfigMap
+  | CronJob
+  | VaultConnection
+  | VaultAuth
+  | VaultStaticSecret
+  | VaultPolicy
+  | VaultRole;
 
 export interface Deliverable {
   /** Relative to the gitops root, assigned by the path plan. */

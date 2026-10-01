@@ -31,9 +31,31 @@ export interface ApplicationContext extends Omit<ProcessContext, "machinery"> {
   readonly hash: Hasher;
   /** The Release Gate's endpoint, where the platform names one. */
   readonly gate: string | undefined;
+  /** The Secret Store's endpoint, where the platform names one. */
+  readonly store: string | undefined;
 }
 
 const unitOf = (project: string): string => `apps-${project}`;
+
+/**
+ * Whether the operator syncs anything for these Processes: a grant one holds,
+ * or the off-cluster credential one's backup holds. Either is read from the
+ * Secret Store the platform names, or the set was refused before resolution.
+ */
+function storeFor({ store }: ApplicationContext): string {
+  if (store === undefined)
+    throw new Error(
+      "a grant under a platform that names no Secret Store is not checked yet",
+    );
+  return store;
+}
+
+const synced = (processes: readonly ResolvedProcess[]): boolean =>
+  processes.some(
+    ({ secrets, volumes }) =>
+      secrets !== undefined ||
+      volumes?.some(({ backup }) => backup?.credential !== undefined) === true,
+  );
 
 /** The unit that materialises every grant's credentials before a Process may hold one. */
 const SECRETS_UNIT = "apps-vso-secrets";
@@ -168,6 +190,7 @@ export function resolveApplication(
           },
         }),
     ...(gate === undefined ? {} : { releaseGate: gate }),
+    ...(synced(processes) ? { secretStore: storeFor(context) } : {}),
     ...(application.exposure === undefined
       ? {}
       : {

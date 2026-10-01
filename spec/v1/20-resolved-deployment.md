@@ -217,7 +217,7 @@ field's placement link to this anchor rather than copying rows.
 | the backup method | platform | pool | the image the Platform document names per `engine`, resolved through the images lock; nothing executable is authored ([chapter 14](14-platform-intent.md#engines)) |
 | alert rules, their severity and their receiver | the monitoring stack | pool | derived nowhere in this model. `alertClass` is published as a resolved fact and the stack that reads it decides what a class means ([chapter 10](10-project-intent.md#observability)) |
 | monitor `interval` and `timeout` | platform | pool | the metrics stack's ingest budget is shared, so it is one estate-wide value in the Platform document ([chapter 14](14-platform-intent.md#monitor-cadence)) |
-| the backup identity's grant on the destination | platform | pool | derived, never authored: the platform chose the destination, so it owns the credential |
+| the backup identity's grant on the destination | platform | pool | derived, never authored: the platform chose the destination, so it owns the credential, and only the backup identity holds it, never the serving Process |
 | Reconcile Unit and its ordering | platform | unique, arbitrated | one estate-wide DAG ([The Reconcile Unit](#the-reconcile-unit)) |
 | identity name, Vault role, Vault policy | platform | pool | named for the **Process alone**; the auth role namespace is shared ([chapter 16](16-dependencies.md#process-identity)) |
 | Secret Store path layout and grants | platform | pool | one path per reader set; `E_SUBTREE_PREFIX_COLLISION` across Subtrees ([chapter 40](40-composition.md#identity)) |
@@ -245,7 +245,7 @@ field's placement link to this anchor rather than copying rows.
 | Runtime Profile values | derived | - | from `runtime` |
 | ServiceMonitor, PodMonitor | derived | - | target and port name from `observability.scrape` and the named surface in `provides`; cadence from the Platform document |
 | PrometheusRule, severity, receiver route | the monitoring stack | - | not rendered by this model. PromQL is a mechanism and a receiver is a shared channel ([chapter 10](10-project-intent.md#observability)) |
-| backup job and retention sweep | derived | - | from `volumes[].durability`; `reconstructible` renders none |
+| backup job, its identity and its claim | derived | - | from `volumes[].durability`: the job runs as `<process>-backup` and writes to `<claim>-backup`, of the volume's `size`, keeping `retain` copies; `reconstructible` renders none |
 | NetworkPolicy set | derived | - | from the edge set, exposure, grants, plus the baseline ([chapter 16](16-dependencies.md#network-policy)) |
 
 A field the rule cannot place falsifies
@@ -546,7 +546,7 @@ volume's data is worth, what it can survive when an input changes) and what
 only it can state: how much memory and cpu each of its Processes needs. Probe
 timings, rollout strategy, surge and unavailability, progress deadlines, health
 timeout classes, object kind, resource requests and limits, pod hardening,
-backup jobs and retention sweeps all follow
+backup jobs, their identities and their claims all follow
 ([0021](../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)).
 **None of the derived values may be authored**, and writing one in an env file
 or an Application document is a build error ([chapter 10](10-project-intent.md)).
@@ -596,9 +596,11 @@ Five rules carry most of the weight:
   One input has one derivation, and the Application-scoped number that a switchover
   waits on is the release-gate deadline below.
 - **Durability derives objects, not just a label.** A volume of class
-  `recoverable` derives a backup `CronJob` and a retention sweep; `irreplaceable`
-  derives both plus an off-cluster copy and a derived grant for the destination;
-  `reconstructible` derives nothing. The schedule, retention and destination come
+  `recoverable` derives a backup `CronJob`, run as the Process's backup identity,
+  and the backup claim its copies land on, of which it keeps `retain`;
+  `irreplaceable` derives both plus an off-cluster copy and a derived grant for
+  the destination, held by the backup identity; `reconstructible` derives
+  nothing. The schedule, retention and destination come
   from the platform's per-class policy and the method from the Process's
   `engine`, so two Applications of the same class and engine derive the same objects
   with different volumes, which is the property that makes a restore rehearsal
@@ -1135,9 +1137,16 @@ processes:
         durability: irreplaceable
         backup:
           schedule: '45 2 * * *'     # the platform's policy for the class
-          retain: 90
+          retain: 90                 # copies kept: the method prunes the rest
           offCluster: 's3://backup-storage/jorisjonkers-dev'
           method: ghcr.io/jorisjonkers-dev/platform/file-backup@sha256:…
+          uid: 1000                  # the method image's own user, from the lock
+          gid: 1000
+          identity: knowledge-ingest-worker-backup   # who runs it, never the Process
+          claim: knowledge-vault-clone-backup        # where its copies land
+          credential:                # the destination's, held by the backup identity alone
+            {path: secret/data/platform/backup/off-cluster, access: read, delivery: env,
+             destination: knowledge-ingest-worker-backup-platform-backup-off-cluster}
     secrets:
       - {path: secret/data/platform/postgres/kb, access: read, delivery: env}
       - {path: secret/data/platform/rabbitmq,    access: read, delivery: env}
@@ -1347,6 +1356,7 @@ classDiagram
         +UnitName reconcileUnit
         +UnitName[] reconcileAfter
         +AlertClass alertClass
+        +Uri secretStore
     }
     class ReleaseGate {
         +Url endpoint
@@ -1438,6 +1448,11 @@ classDiagram
         +int retain
         +Uri offCluster
         +ImageRef method
+        +int uid
+        +int gid
+        +Identity identity
+        +ClaimName claim
+        +ResolvedGrant credential
     }
     class ResolvedGrant {
         +VaultPath path

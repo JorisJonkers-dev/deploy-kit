@@ -1,0 +1,28 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: platform-rabbitmq-management
+  namespace: data-system
+  labels:
+    app.kubernetes.io/part-of: platform-rabbitmq
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`rabbitmq.jorisjonkers.dev`) && PathPrefix(`/`)
+      priority: 999
+      middlewares:
+        - name: forward-auth
+          namespace: edge-system
+        - name: security-headers
+          namespace: edge-system
+      services:
+        - name: rabbitmq
+          namespace: data-system
+          port: 15672
+  tls:
+    certResolver: acme

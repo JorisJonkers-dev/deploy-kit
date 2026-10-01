@@ -264,8 +264,10 @@ adapter ran.
 One policy per Durability Class
 ([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)). The window
 is one node's IO and the destination one remote target, so both are
-platform-assigned. A volume whose class has no policy here is
-`E_NO_DURABILITY_POLICY`:
+platform-assigned. `retain` is how many copies a backup keeps, the newest, and
+`offCluster` names where an `irreplaceable` copy also goes and the Secret Store
+path of the credential that writes there. A volume whose class has no policy
+here is `E_NO_DURABILITY_POLICY`:
 
 ```yaml
 durability:
@@ -294,6 +296,13 @@ engines:
 A shell command in an authored file is what [0014](../../docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)
 refuses for an Application, and it is refused here for the same reason: what the
 image does is versioned and digested; a string in YAML is neither.
+
+What a method image is handed is fixed, so one image serves every volume of its
+engine: the volume, read-only, at `/data`; the backup claim at `/backup`; the
+count to keep as `BACKUP_RETAIN`; and for an off-cluster copy the destination as
+`BACKUP_OFF_CLUSTER` and its credential's keys as variables. It runs as the
+user the images lock records for it, writes one copy, and prunes `/backup` to
+the newest `BACKUP_RETAIN` before it exits.
 
 ## Monitor cadence
 

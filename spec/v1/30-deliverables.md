@@ -57,12 +57,12 @@ one of them is a **central** adapter running once over the composed union:
 
 | adapter | subsystem | emits |
 |---|---|---|
-| `kubernetes` | processes | per Application: the controller, `Service` (none for a `blue-green` Process, whose Services Flagger generates), the `Canary` of each `blue-green` Process with its `HorizontalPodAutoscaler` where it declares `replicas` ([Flagger-ready objects](#flagger-ready-objects)), `ServiceAccount`, `ConfigMap` (including every inbound-derived Asset) `PersistentVolumeClaim`, `PodDisruptionBudget` above one replica, the backup and sweep `CronJob`, the migration identity with its per-revision migration `Job` and suspended down `Job` ([chapter 55](../../spec/v1/55-delivery.md#failure-and-undo)), `Namespace` per project, and the kustomize `Kustomization` per directory |
+| `kubernetes` | processes | per Application: the controller, `Service` (none for a `blue-green` Process, whose Services Flagger generates), the `Canary` of each `blue-green` Process with its `HorizontalPodAutoscaler` where it declares `replicas` ([Flagger-ready objects](#flagger-ready-objects)), `ServiceAccount` (and each backup identity's), `ConfigMap` (including every inbound-derived Asset) `PersistentVolumeClaim` (and each backup claim), `PodDisruptionBudget` above one replica, the backup `CronJob`, the migration identity with its per-revision migration `Job` and suspended down `Job` ([chapter 55](../../spec/v1/55-delivery.md#failure-and-undo)), `Namespace` per project, and the kustomize `Kustomization` per directory |
 | `networking` | policy | every `NetworkPolicy` ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)) |
 | `prometheus` | monitoring | one `ServiceMonitor` or `PodMonitor` per Application that declares `observability`, from the named surface and the Platform document's cadence. No `PrometheusRule`: PromQL is the monitoring stack's ([chapter 10](../../spec/v1/10-project-intent.md#observability)) |
 | `traefik` | edge | one `IngressRoute` set and one `Middleware` set **per tier** the Platform document declares ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md), [0047](../../docs/adr/model/0047-one-publication-path.md)) |
 | `vault-policy` | secret store | one policy and one auth role per Process identity, as JSON ([0040](../../docs/adr/model/0040-vault-policy-is-a-deliverable.md)) |
-| `vso` | secret delivery | `VaultConnection`, `VaultAuth`, the operator `ServiceAccount` per namespace, `VaultStaticSecret`, `VaultDynamicSecret` |
+| `vso` | secret delivery | `VaultConnection` per namespace, `VaultAuth` per identity that holds a synced grant, `VaultStaticSecret`, `VaultDynamicSecret` |
 
 **There is one publication path.** A repository publishes its Intent Fragment
 by digest ([chapter 40](40-composition.md#fragments)) and nothing else; no
@@ -144,9 +144,16 @@ major toolkit release, a version number separate from `schemaVersion`
 
 ## Vault configuration is rendered, not applied
 
-`vso` emits the operator's Kubernetes objects: `VaultConnection`, `VaultAuth`,
-the operator `ServiceAccount` per target namespace, `VaultStaticSecret`,
-`VaultDynamicSecret`. Every destination Secret it asks for is excluded from
+`vso` emits the operator's Kubernetes objects: one `VaultConnection` per project
+namespace, to the Secret Store's endpoint the projection carries; one
+`VaultAuth` per identity that holds a grant delivered `env` or `file`, a
+Process or a backup identity, in its Application's directory; and one
+`VaultStaticSecret` per such grant, beside it, or a `VaultDynamicSecret`. A
+grant delivered `self` is read by the Process itself and syncs nothing. The
+objects are applied with the Application they serve, not by
+`apps-vso-secrets`: the namespace and the ServiceAccount a `VaultAuth` names
+exist only once the Application's own unit applies, and its pod waits on the
+Secret. Every destination Secret it asks for is excluded from
 Flagger's configuration tracking, and a restart target names a `blue-green`
 Process's `<name>-primary`, so rotating a value never starts a release
 ([chapter 55](55-delivery.md#secret-rotation)). None of those is a policy or an auth role, so until
@@ -155,12 +162,14 @@ that [0029](../../docs/adr/model/0029-a-grant-is-a-union-on-engine.md) derives h
 no output at all, and a derivation with no output is not total
 ([0005](../../docs/adr/model/0005-derivation-is-total.md)).
 
-The `vault-policy` adapter emits, **per Process identity**, two documents:
+The `vault-policy` adapter emits, **per identity that holds a grant** (each
+Process, and each backup identity that holds its destination's credential), two
+documents, at `apps/vso-secrets/policies/<namespace>/<identity>.{policy,role}.json`:
 
 | document | derived from |
 |---|---|
 | the Vault policy | the Process's grants and their access tiers: `read` on the granted path, `patch` for `self-roll`, `create`/`update`/`delete` on a prefix for `custody`, nothing for `self-renew` |
-| the Kubernetes auth role | the Process's ServiceAccount and namespace ([0031](../../docs/adr/model/0031-identity-per-process.md)), bound to that one policy |
+| the Kubernetes auth role | the identity's ServiceAccount and namespace ([0031](../../docs/adr/model/0031-identity-per-process.md)), bound to that one policy by its name, `<namespace>-<identity>`; the role is named for the identity, which is what its `VaultAuth` asks for |
 
 One document per identity, not per Application: identity is per Process, so a
 two-Process Application produces two policies and a diff says which principal's
@@ -225,8 +234,8 @@ Paths are assigned by the Resolved Deployment's path plan
 <gitopsRoot>/apps/<project>/<application>/<object>.yaml
 <gitopsRoot>/apps/<project>/namespace.yaml
 <gitopsRoot>/apps/<project>/networkpolicy.yaml
-<gitopsRoot>/apps/vso-secrets/…
-<gitopsRoot>/apps/vso-secrets/policies/<process>.{policy,role}.json
+<gitopsRoot>/apps/<project>/vaultconnection.yaml
+<gitopsRoot>/apps/vso-secrets/policies/<namespace>/<identity>.{policy,role}.json
 <gitopsRoot>/apps/edge/<tier>/<application>-<exposure>.yaml
 ```
 
@@ -241,8 +250,9 @@ each Application's directory beside its `namespace.yaml`. **No kustomization
 lists a `networkpolicy.yaml`** while chapter 16's stage is render-only
 ([Audit before enforce](16-dependencies.md#audit-before-enforce)): the policy set
 is in the artifact, reviewed and signed with everything else, and applied by
-nothing. The paths under `apps/edge/` are estate-scoped, so they are the
-`_estate` artifact's ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)),
+nothing, and none lists a Vault document, which is no Kubernetes object. The
+paths under `apps/edge/` and `apps/vso-secrets/` are estate-scoped, so they are
+the `_estate` artifact's ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)),
 while each IngressRoute stays in its Application's own namespace
 ([Forbidden in a Deliverable](#forbidden-in-a-deliverable)).
 
@@ -256,6 +266,14 @@ spells only what the projection holds:
 | a `blue-green` Process | `kubernetes` | a `Deployment` with no `replicas` and a `RollingUpdate` of surge 1, unavailability 0, which Flagger scales and promotes; a `Canary` whose `service` is the Process's first surface and whose three webhooks are the gate's `endpoint` with `/may-start`, `/checks` and `/may-promote`, each carrying the Application, the Process and the Application revision |
 | a `stop-start` Process | `kubernetes` | a `Deployment` of its `replicas` with a `Recreate` strategy, and a `Service` named for the Process that selects its `instance` and serves each of its surfaces by name |
 | a volume | `kubernetes` | a `ReadWriteOnce` `PersistentVolumeClaim` named for the claim at the volume's `size`, mounted at its `mountAt`, the pod's `fsGroup` the image's `gid` |
+| a backed-up volume's `backup` | `kubernetes` | a `CronJob` named for the backup claim at the plan's `schedule`, `concurrencyPolicy: Forbid`, running the `method` image as the plan's `uid` and `gid` under the backup identity's `ServiceAccount` with no token mounted; the volume mounted read-only at `/data`, the backup claim at `/backup`, `BACKUP_RETAIN` the `retain` count, `BACKUP_OFF_CLUSTER` the destination and the credential's Secret as variables where it copies off-cluster; the backup claim a second `PersistentVolumeClaim` at the volume's `size`, and both carrying `kustomize.toolkit.fluxcd.io/prune: disabled` |
+| an Asset | `kubernetes` | an immutable `ConfigMap` under the Asset's `name`, its one key the file name of `from`; a volume of that name, mounted at `mountAt` by that key, read-only |
+| a sidecar | `kubernetes` | a second container of the pod, its own `memory` and `cpu`, the same posture and the Process's variables |
+| a writable path | `kubernetes` | an `emptyDir` at the path's `size`, named `writable` and the path with every run of other characters a `-`, mounted at the path |
+| a secret reference | `kubernetes` | `valueFrom.secretKeyRef`, the grant's `destination` and the reference's `key` |
+| the `secretStore` endpoint | `vso` | a `VaultConnection` named `secret-store` in the project's namespace, at that address, `skipTLSVerify: false` |
+| a grant delivered `env` or `file` | `vso` | a `VaultAuth` per holding identity, its role and `ServiceAccount` that identity, over the `secret-store` connection; a `VaultStaticSecret` named for the `destination`, `kv-v2` on the `secret` mount at the path below `secret/data/`, `refreshAfter: 1h`, its destination created and `flagger.app/config-tracking: disabled`, each restart target a `Deployment`, a `blue-green` Process's `-primary` |
+| a `read` grant | `vault-policy` | `read` on its path and on the same document's `secret/metadata/` path |
 | `hardening: restricted` | `kubernetes` | `runAsNonRoot`, the images lock's `uid` and `gid`, seccomp `RuntimeDefault`, a read-only root filesystem, every capability dropped |
 | a probe's `period`, `timeout`, `failures` | `kubernetes` | `periodSeconds`, `timeoutSeconds`, `failureThreshold`; `initialDelaySeconds: 0` on readiness and liveness only |
 | `ingress`, `egress`, an edge's `peers` | `networking` | one rule per peer, from or to its namespace (by `kubernetes.io/metadata.name`) and, where the peer is a Process, its `instance`, on TCP; the `cluster-dns` peer on UDP and TCP both |

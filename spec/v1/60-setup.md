@@ -195,7 +195,7 @@ So the numbers are split by how they are obtained:
 
 | number | value | how it is obtained |
 |---|---|---|
-| **RPO** | **24 hours** | stated, not measured, it is the daily node backup's period. A Process wanting better declares `durability: recoverable` and gets an application-level backup job with a retention sweep ([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)) |
+| **RPO** | **24 hours** | stated, not measured, it is the daily node backup's period. A Process wanting better declares `durability: recoverable` and gets an application-level backup job that keeps a fixed number of copies ([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)) |
 | **RTO** | **no number until the drill runs** | measured: wall time from a destroyed claim to a passing readiness probe. This record refuses to invent one |
 
 **A restore is rehearsed before the first production apply of an

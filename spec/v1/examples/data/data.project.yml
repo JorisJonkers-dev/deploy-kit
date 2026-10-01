@@ -184,7 +184,7 @@ applications:
             # queue behind, on a `local-path` volume in a cluster with no
             # VolumeSnapshot CRDs and no CSI snapshot support, so losing the
             # node loses every consumer's data at once. `irreplaceable` renders
-            # a backup job with a retention sweep plus an off-cluster copy, and
+            # a backup job keeping 90 copies plus an off-cluster copy, and
             # its restore must be rehearsed before the first production apply
             # (docs/adr/model/0049-datastore-and-restore.md) -- which is the gap the
             # workspace backup-coverage decision recorded, where each job writes
@@ -335,7 +335,7 @@ applications:
             durability: recoverable
             # One step below `irreplaceable`
             # (docs/adr/model/0018-durability-class-derives-a-backup.md): a nightly
-            # application-level backup with a retention sweep suffices, and no
+            # application-level backup keeping 14 copies suffices, and no
             # off-cluster copy is required. Losing the mnesia directory costs
             # undelivered messages and the definitions, not a consumer's data.
 
