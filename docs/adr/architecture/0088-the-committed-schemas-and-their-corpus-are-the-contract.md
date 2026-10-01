@@ -24,6 +24,12 @@ that consume it ([0003](../model/0003-three-model-pipeline.md)), and its
 published schemas are how a reader outside this repository holds a document to
 that contract.
 
+**False if:** a committed schema and its model disagree on a document and no
+corpus case fails, or a schema can express a kind of break its corpus has no
+refused case for and the corpus test stays green. **Settled by:** the corpus
+test failing on the published Resolved Application schema with its release-gate
+conditional removed, which it does.
+
 ## Why
 
 **The schema is already read outside this repository.** The in-cluster

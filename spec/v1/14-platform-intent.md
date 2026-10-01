@@ -32,6 +32,10 @@ whose staleness bound is the same seven days
 render that cannot find the platform fragment is `E_PARTICIPANT_MISSING`, and a
 render against a stale one is `E_PARTICIPANT_STALE`.
 
+The document is read exactly as a project file is, in the same YAML subset and
+with the same schema refusals
+([chapter 10](10-project-intent.md#reading-a-file)).
+
 ## The model
 
 ![The Platform Intent model](diagrams/14-platform-intent-model.drawio.svg)

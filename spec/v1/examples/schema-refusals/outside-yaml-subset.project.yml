@@ -1,0 +1,29 @@
+# REFUSED: schema
+#
+# An anchor, an alias and an explicit tag. The file is refused once, at the
+# root, and its value is never read.
+# (spec/v1/10-project-intent.md#reading-a-file).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: outside-yaml-subset
+    processes:
+      - name: outside-yaml-subset-api
+        lifecycle: &life application
+        image: outside-yaml-subset-api
+        runtime: !!str node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: continuous
+    labels: *life

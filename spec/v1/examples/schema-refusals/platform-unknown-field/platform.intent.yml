@@ -1,0 +1,177 @@
+# Platform Intent: the second authored document. What the estate offers, held to
+# the same rule as a project file -- facts and policy, never mechanisms -- and
+# published as an Intent Fragment by digest like any project
+# (spec/v1/14-platform-intent.md, docs/adr/model/0045-platform-intent-is-the-second-authored-document.md).
+#
+# Every block is a value the contention test put on the platform's side
+# (docs/adr/model/0004-contention-decides-authority.md). Nothing here names a
+# Kubernetes field, a Traefik key, a k3s flag or a shell command
+# (docs/adr/model/0011-authored-values-name-model-concepts.md).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Platform
+schemaVersion: 1.0.0
+owner: joris
+colour: blue # REFUSED: schema, a field the model does not have, at /colour
+
+metadata:
+  cluster: production
+  project: jorisjonkers.dev
+  nodeContract: "sha256:a989e80337efb294fa1a7175b3ad3eea8bed9bf13fbd503a26691c9265575fc2"
+
+# Facts about the cluster, named for what they are. How k3s is told is a
+# derivation nobody authors (docs/adr/model/0049-datastore-and-restore.md).
+substrate:
+  kubernetesVersion: v1.31.4+k3s1
+  datastore: sqlite
+  serverCount: 1
+  secretsEncryption: true # a delivery: env or file grant writes a secret into
+  # the cluster, which is readable on disk unless this is on; the refusal fixtures
+  # keep it off to prove the gate (docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)
+  cni: flannel
+  networkPolicyController: embedded # no non-enforcing stage: default-deny stays
+  # render-only (docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)
+  clusterDns: kube-system # where the cluster's DNS runs: every egress policy admits it
+
+# What must exist before the first rendered object can apply. Recorded and
+# enumerated, never declared; growing this table is a decision
+# (docs/adr/model/0046-the-foundation-is-declared.md).
+bootstrap:
+  flux:
+    sourceRef: flux-system/platform
+    # Where each Project's render is published, one artifact per Project at
+    # <repository>/<project>, and the keyless identity Flux verifies it
+    # against: the estate repository's composition workflow on main
+    # (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
+    artifacts:
+      repository: ghcr.io/jorisjonkers-dev/render
+      signer:
+        issuer: "https://token.actions.githubusercontent.com"
+        subject: "https://github.com/JorisJonkers-dev/estate/.github/workflows/compose.yml@refs/heads/main"
+  vault:
+    unsealed: true
+  crds:
+    - traefik.io/v1alpha1
+    - secrets.hashicorp.com/v1beta1
+    - monitoring.coreos.com/v1
+
+# Where the edge terminates. Four facts per tier; the traefik adapter owns every
+# Traefik spelling. A route's audience is the only way it reaches a tier, so a
+# lan exposure -- jellyfin's high-volume traffic, which may not be proxied
+# through Frankfurt -- can reach the LAN proxy and no other, by construction.
+tiers:
+  - name: public-frankfurt
+    audiences: [anonymous, authenticated]
+    listener: tls
+    certificates: acme
+    forwardAuth: "http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward"
+    traefik: traefik-public # the declared Application in the platform edge project,
+    # placed on the public-ingress node
+  - name: lan
+    audiences: [lan]
+    listener: plain
+    certificates: none
+    traefik: traefik-lan # placed on a LAN node
+
+# One policy per Durability Class (docs/adr/model/0018-durability-class-derives-a-backup.md).
+durability:
+  reconstructible: {}
+  recoverable:
+    schedule: "15 3 * * *"
+    retain: 14
+  irreplaceable:
+    schedule: "45 2 * * *"
+    retain: 90
+    offCluster:
+      destination: "s3://backup-storage/jorisjonkers-dev"
+      credential: secret/data/platform/backup/off-cluster
+
+# The method IS the image: one purpose-built image per engine, resolved through
+# the images lock. Nothing executable is authored.
+engines:
+  postgres: { backup: postgres-backup }
+  rabbitmq: { backup: rabbitmq-backup }
+  files: { backup: file-backup }
+
+# One cadence for every rendered monitor, for the same reason the probe cadence
+# below is here: it is contended across the estate, and no Application knows better
+# (docs/adr/model/0004-contention-decides-authority.md).
+monitors:
+  interval: 30s
+  timeout: 10s
+
+# Where every exporting Runtime Profile sends its telemetry, the collector's
+# `otlp` surface, and the metrics stack every declared scrape surface admits,
+# each named by the Application that is it, as a tier names its proxy
+# (spec/v1/14-platform-intent.md#telemetry).
+telemetry:
+  collector: otel-collector
+  metrics: prometheus
+
+# The Secret Store every grant is read from, on its `http` surface: the
+# Application the worked `secrets` project declares
+# (spec/v1/14-platform-intent.md#the-secret-store).
+secretStore: vault
+
+# NO rule catalog, no receivers, no severity map. Those belong to the monitoring
+# stack, which reads the published projection; this document decides how often
+# to scrape and nothing else about alerting
+# (spec/v1/10-project-intent.md#observability).
+
+# One posture for every container the estate renders. A Process authors no
+# hardening at all: it declares the paths it writes, and an image that cannot
+# meet this class is refused (docs/adr/model/0020-hardening-is-one-platform-posture.md).
+hardening: restricted
+
+# One cadence for every rendered probe
+# (docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md).
+probes:
+  period: 10s
+  timeout: 5s
+  failures: 3
+
+# The ephemeral default for a declared writable path
+# (docs/adr/model/0020-hardening-is-one-platform-posture.md).
+ephemeral:
+  size: 64Mi
+
+# The migration runner (spec/v1/14-platform-intent.md#migration-policy). Every
+# Application that moves its schema through a changelog builds its migration
+# image FROM this alias's digest, and its Job takes this deadline and these
+# requests. One system for the estate: Liquibase, YAML changelogs.
+migration:
+  runner: liquibase-runner
+  deadline: 10m
+  memory: 256Mi
+  cpu: 100m
+
+# How a release is switched (spec/v1/14-platform-intent.md#delivery-policy).
+# The machinery performs the switch and is never switched by it: a gate cannot
+# gate its own release, and an edge proxy on a host port cannot run two copies.
+# The analysis cadence is the platform's, one for every blue/green member.
+delivery:
+  machinery: [traefik-public, traefik-lan, flagger, release-gate]
+  gate: release-gate
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+
+# Which delivery path each Project is on while the estate moves off
+# fleet-infra's deploy/production branch, one Project at a time
+# (spec/v1/60-setup.md#handing-over-one-project-at-a-time). No Project is on
+# both, and after retireBy the old path is removed.
+handover:
+  retireBy: 2027-03-31
+  legacy: [auth, data, knowledge, notes]
+  estate: [delivery, edge, observability, secrets]
+
+# Things the estate runs and does not deploy, that an Application depends on. A fact
+# with an address, resolvable by an edge -- not a hole, so no review date
+# (docs/adr/model/0024-dependency-edges-resolve-against-the-union.md).
+providers:
+  - name: stalwart
+    address: 10.0.0.12
+    surfaces:
+      smtp: 25
+      http: 8080

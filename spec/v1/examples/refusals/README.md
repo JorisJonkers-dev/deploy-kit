@@ -9,7 +9,6 @@ one defect so the refusal has a single cause.
 | fixture | expects | why |
 |---|---|---|
 | [`alert-class-without-signal.project.yml`](alert-class-without-signal.project.yml) | `E_ALERT_CLASS_WITHOUT_SIGNAL` | an `observability` block carrying a class and no `scrape`. A class states how loudly to wake someone and means nothing without a signal to wake them about ([chapter 10](../../10-project-intent.md#observability)) |
-| [`alert-class-unknown.project.yml`](alert-class-unknown.project.yml) | schema validation | a value outside the closed `AlertClass` vocabulary, refused before any rule runs, so no error code carries it |
 | [`cutover-continuous-over-rwo.project.yml`](cutover-continuous-over-rwo.project.yml) | `E_CUTOVER_UNHONOURABLE` | `cutover: continuous` over an RWO volume, which cannot hold the second copy a continuous cutover starts ([chapter 10](../../10-project-intent.md#cutover-is-declared-not-promised)) |
 | [`cutover-interrupted-over-rwo.project.yml`](cutover-interrupted-over-rwo.project.yml) | accepted | the same Process and storage with the cutover it can honour, the pair that makes the refusal above meaningful |
 | [`cutover-mixed.project.yml`](cutover-mixed.project.yml) | `E_RELEASE_UNIT_MIXED_CUTOVER` | one Application whose Processes answer the cutover question differently: a continuous API beside an interrupted store. An Application switches as one, so the part that cannot keep serving is an Application of its own ([chapter 10](../../10-project-intent.md#cutover-is-declared-not-promised)) |
@@ -45,11 +44,10 @@ JSON Pointer of the object refused. Both implementations are held to that file
 ([the parity contract](../../../../docs/architecture.md#the-parity-contract)),
 and it replaces the `expect:` header these fixtures used to carry.
 
-`alert-class-unknown.project.yml` carries no diagnostics oracle. A value outside
-a closed vocabulary is refused by each implementation's own front end, before a
-rule runs: the production parser can point at the field, and the model-driven
-parser refuses the token. The code is the same and the place it can name is not,
-so the case is not a parity oracle.
+A value outside a closed vocabulary, and every other defect the schema or the
+YAML subset refuses before a rule runs, is a schema refusal rather than a coded
+one. Those cases live in [`../schema-refusals/`](../schema-refusals/README.md),
+held to the same kind of oracle by the production implementation only.
 
 There is no fixture for "no monitoring". An Application that wants none omits the
 `observability` block, which is an accepted input and appears in the worked set

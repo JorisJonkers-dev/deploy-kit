@@ -322,6 +322,15 @@ target metamodel holding both, because a model-to-text template reads one model.
 | the source metamodel's **authored** structure | `spec/v1/examples/expected/descriptor.json` | canonical JSON, byte for byte | both |
 | the Effective Intent (the lowering) | `spec/v1/examples/<case>/expected/effective.json` | canonical JSON, byte for byte | both |
 | the Resolved Deployment | `spec/v1/examples/<case>/expected/resolved.json` | canonical JSON, byte for byte | production only |
+| the diagnostics of a file the reader refuses (code `schema`) | `<input>.diagnostics.json` beside the refused input, in `schema-refusals/` | a set of `(code, document, path)` triples | production only |
+
+**A schema refusal binds the production implementation only.** The
+model-driven implementation reads a file through a grammar, which refuses a
+token where the production reader names the field the token belongs to, so the
+two agree on the code and not on the place
+([chapter 10](../spec/v1/10-project-intent.md#what-a-schema-refusal-reports)
+fixes the place). The refused cases a rule answers, in `refusals/` and
+`negative/`, bind both.
 
 **The dependency edges** are, per Application, every dependency edge after
 resolution: the consumer, the provider Application and Surface, the address the

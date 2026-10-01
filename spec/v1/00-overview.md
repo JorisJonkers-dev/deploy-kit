@@ -263,7 +263,8 @@ parse-checked in CI.
 | `examples/workflows/project-publish-fragment.yml` | publish after the image build, with every image digest resolved, `oras push` then `oras resolve`, read back |
 | `examples/workflows/compose.yml` | pull participants, assert the estate-wide invariants, **prove the gate can fail**, then publish one signed artifact per Project and commit the moved pins |
 | `examples/negative/duplicate-application-id/` | a negative fixture, so an invariant that stops running is detectable |
-| [`examples/refusals/`](examples/refusals/README.md) | the refusal fixtures: an alert class with no signal, a class outside the vocabulary, the `continuous`/`interrupted` pair over RWO storage, and a mixed-cutover Application |
+| [`examples/refusals/`](examples/refusals/README.md) | the refusal fixtures: an alert class with no signal, the `continuous`/`interrupted` pair over RWO storage, and a mixed-cutover Application |
+| [`examples/schema-refusals/`](examples/schema-refusals/README.md) | the files the reader refuses before any rule runs: a class outside the vocabulary, an unknown, missing or mistyped field, a value matching no shape, and text outside the YAML subset |
 
 Both remaining workflows are **one job with many steps**, each step carrying
 `if: ${{ !cancelled() }}`. The
