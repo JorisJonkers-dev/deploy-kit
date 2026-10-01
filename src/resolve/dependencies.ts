@@ -6,6 +6,7 @@ import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import type { DependencyEdge } from "../model/project-intent.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
 import { addressOf, namespaceOf } from "../model/runtime-profiles.ts";
+import { brokenInvariant } from "../model/internal-failure.ts";
 
 export type ResolvedEdge = NonNullable<ResolvedProcess["dependencies"]>[number];
 
@@ -40,7 +41,9 @@ export function resolveEdge(
       name === application && Object.hasOwn(surfaces, surface),
   );
   if (provider === undefined)
-    throw new Error(`${application}.${surface}: no provider in the union`);
+    throw brokenInvariant(
+      `${application}.${surface}: no provider in the union`,
+    );
   return {
     application,
     surface,

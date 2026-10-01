@@ -228,7 +228,11 @@ export default defineConfig(
     // too, so a consumer validating against the published schema refuses what
     // the model refuses.
     files: ["src/**/*.ts"],
-    rules: { "deploy-kit/no-unstated-rule": "error" },
+    rules: {
+      "deploy-kit/no-unstated-rule": "error",
+      // RULE-074: every failure the compiler throws is a named kind.
+      "deploy-kit/no-bare-throw": "error",
+    },
   },
   {
     // RULE-073's one exemption: the module that pairs a zod check with the

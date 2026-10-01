@@ -108,6 +108,19 @@ describe("codeErrors", () => {
     ]);
   });
 
+  it("fails a defined code the closed code type lacks, and one it holds that no chapter defines", () => {
+    const files = {
+      "spec/v1/10-intent.md": chapter(ALPHA, BETA),
+      "test/a.test.ts": `"${ALPHA}" "${BETA}"`,
+      "src/model/diagnostic.ts": `type RefusalCode = "${ALPHA}" | "${GAMMA}";`,
+    };
+
+    expect(codeErrors(files, []).errors).toStrictEqual([
+      `${BETA}: defined by the specification, and missing from the closed code type in src/model/diagnostic.ts`,
+      `src/model/diagnostic.ts uses ${GAMMA}, which no chapter defines`,
+    ]);
+  });
+
   it("fails a code used in the tree that no chapter defines, once per code", () => {
     const result = codeErrors(
       {

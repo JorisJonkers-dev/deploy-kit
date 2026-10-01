@@ -57,7 +57,7 @@ fails the gate, so the taxonomy cannot grow entries nothing stands behind.
 
 ## Rules
 
-This ledger holds **73** rules, **3** of them pending.
+This ledger holds **74** rules, **3** of them pending.
 
 A row is enforced or pending, never both. An enforced row names its enforcer as
 `kind:value`: `depcruise:` a rule in
@@ -149,6 +149,7 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-071 | dependencies | Every dependency in `package.json` is one exact version: no caret, tilde, wildcard, tag or range, so an install resolves to the version a reviewer saw | `file:test/supply-chain.test.ts` | [test/supply-chain.test.ts](../test/supply-chain.test.ts) `not an exact version; pin it` |
 | RULE-072 | dependencies | No install runs a dependency's lifecycle script: every workflow and action installs with `--ignore-scripts`, and `.npmrc` sets `ignore-scripts` for a local install | `file:test/supply-chain.test.ts` | [test/supply-chain.test.ts](../test/supply-chain.test.ts) `add --ignore-scripts` |
 | RULE-073 | toolchain | A schema in `src/` states only what its generated JSON Schema states too: no `refine`, `superRefine`, `check`, `overwrite`, `transform`, `preprocess`, `pipe` or `custom`, outside the one module that pairs a zod check with the JSON Schema keywords stating the same rule | `eslint:deploy-kit/no-unstated-rule` | [test/code-rules.test.ts](../test/code-rules.test.ts) `RULE-073 refuses a rule the published JSON Schema drops` |
+| RULE-074 | diagnostics | Shipped code throws only an `InternalFailure` of a named kind (unsupported, unchecked or a broken invariant), never a bare `Error` or `TypeError`, so every way the compiler fails is one enumerable list | `eslint:deploy-kit/no-bare-throw` | [test/code-rules.test.ts](../test/code-rules.test.ts) `RULE-074 refuses a bare error thrown in src/` |
 
 ## Considered and rejected
 

@@ -24,6 +24,9 @@ type Files = Readonly<Record<string, string>>;
 const REPOSITORY = join(import.meta.dirname, "..");
 const CODE = /(?<![A-Z0-9_])E_[A-Z][A-Z0-9_]*[A-Z0-9](?![A-Z0-9_])/g;
 const CHAPTER = /^spec\/v1\/\d\d-[^/]+\.md$/;
+// The closed type a refusal's code is checked against when the compiler is
+// typechecked: it holds every code a chapter defines, and no other.
+export const CLOSED = "src/model/diagnostic.ts";
 const EXERCISING = [
   /^test\//,
   /^emf\/[^/]+\/[^/]+\/src\/test\//,
@@ -182,6 +185,14 @@ export function codeErrors(
       errors.push(
         `${code}: defined by the specification, exercised by no test, and not pending`,
       );
+  if (CLOSED in files) {
+    const closed = codesIn(files, (rel) => rel === CLOSED);
+    for (const code of defined.keys())
+      if (!closed.has(code))
+        errors.push(
+          `${code}: defined by the specification, and missing from the closed code type in ${CLOSED}`,
+        );
+  }
   for (const [code, rel] of used)
     if (!defined.has(code) && !(code in RETIRED))
       errors.push(`${rel} uses ${code}, which no chapter defines`);

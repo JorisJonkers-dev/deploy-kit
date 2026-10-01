@@ -152,8 +152,17 @@ message, and a hint. Use-cases return a `Result` over a diagnostic list, never
 a thrown error, and every rule runs before the result is returned: one command
 reports ten mistakes rather than the first one.
 
-Exceptions are reserved for programmer error: a broken invariant inside the
-compiler, not a defect in what it was given.
+Exceptions are reserved for the compiler's own failures, never a defect in
+what it was given, and each is an `InternalFailure` of one of three kinds
+(RULE-074): `unsupported`, a construct the model accepts that the compiler does
+not resolve or render yet; `unchecked`, an authored mistake that reached a later
+step because no check refuses it yet; and `invariant`, a state the compiler's
+own invariants rule out. The first two are known gaps, each closed by the
+ticket that brings its renderer or its check; the third is a bug.
+
+A refusal's code is one of a closed set, the `RefusalCode` type: every code a
+chapter defines and `schema`. A code no chapter defines fails the typecheck,
+and a code a chapter defines that the type lacks fails `npm run lint:codes`.
 
 The codes are the spec's: `E_PATH_COLLISION`, `E_RENDER_NONDETERMINISTIC`,
 `E_AMBIENT_INPUT_FORBIDDEN`, `E_UNSAFE_OUTPUT_PATH` and the rest live in the

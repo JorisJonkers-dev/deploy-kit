@@ -114,6 +114,20 @@ export const plugin: ESLint.Plugin = {
         },
       }),
     ),
+    "no-bare-throw": rule(
+      "Shipped code throws only an InternalFailure",
+      (context) => ({
+        "ThrowStatement > NewExpression.argument[callee.name!='InternalFailure']"(
+          node: Rule.Node,
+        ) {
+          context.report({
+            node,
+            message:
+              "RULE-074: throw notSupported(), notChecked() or brokenInvariant(), never a bare error, so every way the compiler fails is a named kind",
+          });
+        },
+      }),
+    ),
     "no-test-imports-test": rule(
       "A test never imports another test",
       (context) =>

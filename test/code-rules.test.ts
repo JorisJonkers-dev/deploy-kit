@@ -1,4 +1,4 @@
-// RULE-019, RULE-023, RULE-024, RULE-033, RULE-042 and RULE-073: the rules one file
+// RULE-019, RULE-023, RULE-024, RULE-033, RULE-042, RULE-073 and RULE-074: the rules one file
 // shows on its own, each proved on a probe that breaks it and shown silent on
 // one that keeps it. They are this repository's own ESLint rules, in
 // scripts/lib/eslint-rules.ts, because no configured rule reads what they read.
@@ -147,6 +147,24 @@ describe("the rules one file shows on its own", { timeout: 120_000 }, () => {
       ),
     ).toStrictEqual([]);
   });
+
+  it("RULE-074 refuses a bare error thrown in src/, and allows a named failure", async () => {
+    expect(
+      await fired(
+        "src/model/probe.ts",
+        'export function f(): never {\n  throw new Error("x");\n}\nexport function g(): never {\n  throw new TypeError("x");\n}\n',
+      ),
+    ).toStrictEqual([
+      "deploy-kit/no-bare-throw: RULE-074: throw notSupported(), notChecked() or brokenInvariant(), never a bare error, so every way the compiler fails is a named kind",
+      "deploy-kit/no-bare-throw: RULE-074: throw notSupported(), notChecked() or brokenInvariant(), never a bare error, so every way the compiler fails is a named kind",
+    ]);
+    expect(
+      await fired(
+        "src/model/probe.ts",
+        'import { InternalFailure, brokenInvariant } from "./internal-failure.ts";\nexport function f(): never {\n  throw brokenInvariant("x");\n}\nexport function g(): never {\n  throw new InternalFailure("invariant", "x");\n}\n',
+      ),
+    ).toStrictEqual([]);
+  });
 });
 
 // ESLint loads eslint.config.js, and the rules with it, as a module of its own,
@@ -186,6 +204,14 @@ describe("the rules, imported", () => {
     ["no-unstated-rule", "probe.ts", "z.string().min(1);", 0],
     ["no-unstated-rule", "probe.ts", "check();", 0],
     ["no-unstated-rule", "probe.ts", "a[refine]();", 0],
+    ["no-bare-throw", "probe.ts", 'throw new Error("x");', 1],
+    [
+      "no-bare-throw",
+      "probe.ts",
+      'throw new InternalFailure("invariant", "x");',
+      0,
+    ],
+    ["no-bare-throw", "probe.ts", 'throw brokenInvariant("x");', 0],
   ])("%s on %s: %s reports %i", (rule, filename, code, count) => {
     expect(own(rule, filename, code)).toBe(count);
   });
