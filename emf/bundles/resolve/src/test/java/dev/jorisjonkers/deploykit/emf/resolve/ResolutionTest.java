@@ -11,7 +11,6 @@ import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.Node;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.NodeContract;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.PinnedInputsFactory;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Asset;
-import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.DurabilityClass;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.EffectiveApplication;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.EffectiveProject;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.HardeningClass;
@@ -20,12 +19,10 @@ import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Platform;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Process;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentFactory;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Runtime;
-import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Volume;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedApplication;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
 import java.util.List;
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -127,22 +124,19 @@ class ResolutionTest {
     }
 
     @Test
-    void aDerivationNoCaseReachesYetStopsTheRunWithTheTicketThatLandsIt() {
-        // A Deployment beside a StatefulSet in one Application: one workload file cannot spell both.
+    void aDerivationTheInputsCannotCompleteStopsTheRunWithWhatIsMissing() {
+        // The Asset names a file no pinned input carries, so its content and name cannot be derived.
         EffectiveProject project = project();
-        Process stateful =
-                EcoreUtil.copy(project.getApplications().get(0).getProcesses().get(0));
-        stateful.setName("store");
-        Volume volume = INTENT.createVolume();
-        volume.setClaim("store-data");
-        volume.setMountAt("/data");
-        volume.setSize("1Gi");
-        volume.setDurability(DurabilityClass.RECONSTRUCTIBLE);
-        stateful.getVolumes().add(volume);
-        project.getApplications().get(0).getProcesses().add(stateful);
+        project.getApplications()
+                .get(0)
+                .getProcesses()
+                .get(0)
+                .getAssets()
+                .get(0)
+                .setFrom("config/absent.conf");
 
         assertThatThrownBy(() -> Resolution.resolve(List.of(project, platform()), pinned(), "jobs", INTEGRITY))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("#95");
+                .hasMessageContaining("config/absent.conf: an Asset whose file is not beside its project");
     }
 }

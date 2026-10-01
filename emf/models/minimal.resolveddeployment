@@ -129,7 +129,7 @@
       path="apps/notes/notes/serviceaccount.yaml" adapter="kubernetes" processes="//@applications.0/@processes.0"/>
   <deliverables xsi:type="resolveddeployment:MonitorFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/notes/podmonitor.yaml" adapter="prometheus" process="//@applications.0/@processes.0"
-      surface="http" scrapePath="/metrics" interval="30s" timeout="10s"/>
+      surface="http" scrapePath="/metrics" interval="30s" timeout="10s" kind="PodMonitor"/>
   <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/notes/networkpolicy.yaml" adapter="networking">
     <policies process="//@applications.0/@processes.0">

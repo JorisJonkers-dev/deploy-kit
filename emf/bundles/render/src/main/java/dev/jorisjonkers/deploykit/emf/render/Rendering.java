@@ -3,6 +3,7 @@ package dev.jorisjonkers.deploykit.emf.render;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeploymentPackage;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import org.eclipse.acceleo.Module;
 import org.eclipse.acceleo.aql.AcceleoUtil;
@@ -18,34 +19,43 @@ import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
+import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.emf.ecore.xmi.impl.XMIResourceImpl;
 
 /**
- * The rendering, {@code render.mtl}, run on one Resolved Deployment: every Deliverable it carries
+ * The rendering, {@code render.mtl}, run on Resolved Deployments: every Deliverable they carry
  * written under a root, at the path the path plan assigned it (spec/v1/30-deliverables.md). The
- * templates write the files as they stand; nothing formats them afterwards.
+ * templates write the files as they stand; nothing formats them afterwards. Several Deployments
+ * rendered together write the estate-scoped share they hold between them, a tier's index listing
+ * every route each puts under it.
  */
 public final class Rendering {
 
     private static final String MODULE = "render";
     private static final String SEPARATOR = "::";
     private static final String NEW_LINE = "\n";
+    private static final String MODEL = "rendered.resolveddeployment";
 
     private Rendering() {}
 
     /**
-     * {@code deployment}'s Deliverable Set, written under {@code root}. A template that does not parse
-     * or fails to evaluate fails the rendering with what Acceleo said, rather than leaving a partial
-     * tree to be read as whole.
+     * The Deliverable Sets of {@code deployments}, written under {@code root}. The Deployments are
+     * copied, so the caller's models are left as they were. A template that does not parse or fails
+     * to evaluate fails the rendering with what Acceleo said, rather than leaving a partial tree to be
+     * read as whole.
      */
-    public static void render(ResolvedDeployment deployment, Path root) {
-        render(deployment, root, MODULE);
+    public static void render(List<ResolvedDeployment> deployments, Path root) {
+        render(deployments, root, MODULE);
     }
 
-    /** {@code deployment} rendered by the named module: the seam a test drives a broken one through. */
-    static void render(ResolvedDeployment deployment, Path root, String module) {
-        Resource model = deployment.eResource();
-        ResourceSet resources = model.getResourceSet();
+    /** {@code deployments} rendered by the named module: the seam a test drives a broken one through. */
+    static void render(List<ResolvedDeployment> deployments, Path root, String module) {
+        ResourceSet resources = new ResourceSetImpl();
         resources.getPackageRegistry().put(ResolvedDeploymentPackage.eNS_URI, ResolvedDeploymentPackage.eINSTANCE);
+        Resource model = new XMIResourceImpl(URI.createURI(MODEL));
+        resources.getResources().add(model);
+        model.getContents().addAll(EcoreUtil.copyAll(deployments));
         ClassLoaderQualifiedNameResolver resolver = new ClassLoaderQualifiedNameResolver(
                 Rendering.class.getClassLoader(), resources.getPackageRegistry(), SEPARATOR);
         IQualifiedNameQueryEnvironment environment =

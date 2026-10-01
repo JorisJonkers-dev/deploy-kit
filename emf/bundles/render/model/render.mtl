@@ -15,9 +15,20 @@
   [/for]
 [/template]
 
-[comment Every document opens on the same header, and each object on its own separator. /]
+[comment A YAML document opens on the one header line, and each object on its own separator. A
+  Vault document is JSON, which carries no comment and so no header. /]
 [template private document(d : resolveddeployment::Deliverable)]
-  # GENERATED. Never hand-edit.
+  [if (d.oclIsKindOf(resolveddeployment::VaultPolicyFile))]
+    [d.oclAsType(resolveddeployment::VaultPolicyFile).json()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::VaultRoleFile))]
+    [d.oclAsType(resolveddeployment::VaultRoleFile).json()/]
+  [else]
+    # GENERATED. Never hand-edit.
+    [d.yaml()/]
+  [/if]
+[/template]
+
+[template private yaml(d : resolveddeployment::Deliverable)]
   [if (d.oclIsKindOf(resolveddeployment::NamespaceFile))]
     [d.oclAsType(resolveddeployment::NamespaceFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::IndexFile))]
@@ -34,6 +45,18 @@
     [d.oclAsType(resolveddeployment::MonitorFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::IngressRouteFile))]
     [d.oclAsType(resolveddeployment::IngressRouteFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::ServiceFile))]
+    [d.oclAsType(resolveddeployment::ServiceFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::ClaimFile))]
+    [d.oclAsType(resolveddeployment::ClaimFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::ConfigMapFile))]
+    [d.oclAsType(resolveddeployment::ConfigMapFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::BackupFile))]
+    [d.oclAsType(resolveddeployment::BackupFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::SecretFile))]
+    [d.oclAsType(resolveddeployment::SecretFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::ConnectionFile))]
+    [d.oclAsType(resolveddeployment::ConnectionFile).objects()/]
   [/if]
 [/template]
 
@@ -49,12 +72,14 @@
       app.kubernetes.io/managed-by: deploy-kit
 [/template]
 
+[comment An index the estate shares, a tier's under the edge, lists what every Deployment rendered
+  beside it puts there, so each writes the same whole file. /]
 [template private objects(d : resolveddeployment::IndexFile)]
   ---
   apiVersion: kustomize.config.k8s.io/v1beta1
   kind: Kustomization
   resources:
-  [for (r : String | d.resources)]
+  [for (r : String | d.listed())]
       - [r/]
   [/for]
 [/template]
@@ -150,13 +175,19 @@
 [/template]
 
 [template private labels(p : resolveddeployment::ResolvedProcess)]
-  app.kubernetes.io/name: [p.name/]
-  app.kubernetes.io/instance: [p.name/]
-  app.kubernetes.io/part-of: [p.application().id/]
-  app.kubernetes.io/managed-by: deploy-kit
-  app.kubernetes.io/component: [p.component/]
+  [p.name.labelSet(p.component, p.application().id)/]
 [/template]
 
+[comment The fixed label set: the name twice, the Application, the manager and the runtime. /]
+[template private labelSet(name : String, component : String, application : String)]
+  app.kubernetes.io/name: [name/]
+  app.kubernetes.io/instance: [name/]
+  app.kubernetes.io/part-of: [application/]
+  app.kubernetes.io/managed-by: deploy-kit
+  app.kubernetes.io/component: [component/]
+[/template]
+
+[comment The Process's own ServiceAccount, and one for the backup identity every backup of it runs as. /]
 [template private objects(d : resolveddeployment::IdentityFile)]
   [for (p : resolveddeployment::ResolvedProcess | d.processes)]
     ---
@@ -164,13 +195,27 @@
     kind: ServiceAccount
     metadata:
       [p.metadata()/]
+    [if (p.backups()->notEmpty())]
+      ---
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        [p.backups()->first().backup.backupMetadata(p)/]
+    [/if]
   [/for]
+[/template]
+
+[template private backupMetadata(b : resolveddeployment::BackupPlan, p : resolveddeployment::ResolvedProcess)]
+  name: [b.identity/]
+  namespace: [p.application().namespace/]
+  labels:
+    [b.identity.labelSet('none', p.application().id)/]
 [/template]
 
 [template private objects(d : resolveddeployment::MonitorFile)]
   ---
   apiVersion: monitoring.coreos.com/v1
-  kind: PodMonitor
+  kind: [d.kind.toString()/]
   metadata:
     [d.process.metadata()/]
   spec:
@@ -181,7 +226,7 @@
     namespaceSelector:
       matchNames:
         - [d.process.application().namespace/]
-    podMetricsEndpoints:
+    [if (d.kind.toString() = 'PodMonitor')]podMetricsEndpoints[else]endpoints[/if]:
       - port: [d.surface/]
         path: [d.scrapePath/]
         interval: [d.interval/]
@@ -270,10 +315,75 @@
           runAsNonRoot: true
           runAsUser: [p.uid/]
           runAsGroup: [p.gid/]
+  [comment A volume is written as the image's group, and only a volume is. /]
+  [if (p.volumes->notEmpty())]
+            fsGroup: [p.gid/]
+  [/if]
           seccompProfile:
             type: RuntimeDefault
         containers:
           [p.container()/]
+  [for (c : resolveddeployment::ResolvedSidecar | p.sidecars)]
+            [c.sidecar(p)/]
+  [/for]
+  [if (p.volumes->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty())]
+          volumes:
+    [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
+              - name: [v.claim/]
+                persistentVolumeClaim:
+                  claimName: [v.claim/]
+    [/for]
+    [for (a : resolveddeployment::ResolvedAsset | p.assets)]
+              - name: [a.name/]
+                configMap:
+                  name: [a.name/]
+                  items:
+                    - key: [a._from.fileOf()/]
+                      path: [a._from.fileOf()/]
+    [/for]
+    [for (w : resolveddeployment::WritablePath | p.writablePaths)]
+              - name: [w.path.writableOf()/]
+                emptyDir:
+                  sizeLimit: [w.size/]
+    [/for]
+  [/if]
+[/template]
+
+[comment A container beside the Process, under the same posture and the same variables. /]
+[template private sidecar(c : resolveddeployment::ResolvedSidecar, p : resolveddeployment::ResolvedProcess)]
+  - name: [c.name/]
+    image: [c.image/]
+  [if (p.environment->notEmpty())]
+      env:
+        [p.env()/]
+  [/if]
+    resources:
+      requests:
+        memory: [c.memory/]
+        cpu: [c.cpu/]
+      limits:
+        memory: [c.memory/]
+    securityContext:
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+[/template]
+
+[comment A variable as written, or a secret reference as one key of the Secret its grant syncs to. /]
+[template private env(p : resolveddeployment::ResolvedProcess)]
+  [for (e : resolveddeployment::EnvEntry | p.environment)]
+    [if (e.secret = null)]
+      - name: [e.name/]
+        value: [e.value.scalar()/]
+    [else]
+      - name: [e.name/]
+        valueFrom:
+          secretKeyRef:
+            name: [p.destinationOf(e.secret.path)/]
+            key: [e.secret.key/]
+    [/if]
+  [/for]
 [/template]
 
 [template private container(p : resolveddeployment::ResolvedProcess)]
@@ -288,10 +398,7 @@
   [/if]
   [if (p.environment->notEmpty())]
       env:
-    [for (e : resolveddeployment::EnvEntry | p.environment)]
-          - name: [e.name/]
-            value: [e.value.scalar()/]
-    [/for]
+        [p.env()/]
   [/if]
     resources:
       requests:
@@ -304,6 +411,23 @@
       capabilities:
         drop:
           - ALL
+  [if (p.volumes->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty())]
+      volumeMounts:
+    [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
+          - name: [v.claim/]
+            mountPath: [v.mountAt/]
+    [/for]
+    [for (a : resolveddeployment::ResolvedAsset | p.assets)]
+          - name: [a.name/]
+            mountPath: [a.mountAt/]
+            subPath: [a._from.fileOf()/]
+            readOnly: true
+    [/for]
+    [for (w : resolveddeployment::WritablePath | p.writablePaths)]
+          - name: [w.path.writableOf()/]
+            mountPath: [w.path/]
+    [/for]
+  [/if]
   [if (p.readiness <> null)]
       readinessProbe:
         [p.readiness.target.probeTarget()/]
@@ -338,6 +462,260 @@
     tcpSocket:
       port: [t.oclAsType(resolveddeployment::TcpTarget).tcp/]
   [/if]
+[/template]
+
+[comment The Service a stop-start Process is reached by; Flagger generates a blue-green one's. /]
+[template private objects(d : resolveddeployment::ServiceFile)]
+  [for (p : resolveddeployment::ResolvedProcess | d.processes)]
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      [p.metadata()/]
+    spec:
+      selector:
+        app.kubernetes.io/instance: [p.name/]
+      ports:
+    [for (s : resolveddeployment::ResolvedSurface | p.surfaces)]
+          - name: [s.name/]
+            port: [s.port/]
+            targetPort: [s.name/]
+    [/for]
+  [/for]
+[/template]
+
+[comment A claim for each volume, and for each backed-up one the claim its copies land on, at the same
+  size. A claim whose class derives a backup is never pruned, and neither is its copies'. /]
+[template private objects(d : resolveddeployment::ClaimFile)]
+  [for (p : resolveddeployment::ResolvedProcess | d.processes)]
+    [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
+      [p.claim(v.claim, v.size, v.backup <> null)/]
+      [if (v.backup <> null)]
+        [p.claim(v.backup.claim, v.size, true)/]
+      [/if]
+    [/for]
+  [/for]
+[/template]
+
+[template private claim(p : resolveddeployment::ResolvedProcess, name : String, size : String, kept : Boolean)]
+  ---
+  apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: [name/]
+    namespace: [p.application().namespace/]
+    labels:
+      [p.labels()/]
+  [if (kept)]
+      annotations:
+        kustomize.toolkit.fluxcd.io/prune: disabled
+  [/if]
+  spec:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: [size/]
+[/template]
+
+[comment An immutable ConfigMap per Asset, under the content-named name an edit changes. /]
+[template private objects(d : resolveddeployment::ConfigMapFile)]
+  [for (p : resolveddeployment::ResolvedProcess | d.processes)]
+    [for (a : resolveddeployment::ResolvedAsset | p.assets)]
+      ---
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: [a.name/]
+        namespace: [p.application().namespace/]
+        labels:
+          [p.labels()/]
+      immutable: true
+      data:
+        [a._from.fileOf()/]: [a.content.chomping()/]
+      [a.content.blockOf('    ')/]
+    [/for]
+  [/for]
+[/template]
+
+[comment A backup per backed-up volume, at its class's schedule: the engine's method image, run as the
+  backup identity, reading the volume at `/data` and writing its copies to the backup claim at
+  `/backup`, pruned to `retain`. /]
+[template private objects(d : resolveddeployment::BackupFile)]
+  [for (p : resolveddeployment::ResolvedProcess | d.processes)]
+    [for (v : resolveddeployment::ResolvedVolume | p.backups())]
+      [v.backup.cronJob(v, p)/]
+    [/for]
+  [/for]
+[/template]
+
+[template private cronJob(b : resolveddeployment::BackupPlan, v : resolveddeployment::ResolvedVolume, p : resolveddeployment::ResolvedProcess)]
+  ---
+  apiVersion: batch/v1
+  kind: CronJob
+  metadata:
+    name: [b.claim/]
+    namespace: [p.application().namespace/]
+    labels:
+      [b.identity.labelSet('none', p.application().id)/]
+  spec:
+    schedule: [b.schedule.scalar()/]
+    concurrencyPolicy: Forbid
+    jobTemplate:
+      spec:
+        template:
+          metadata:
+            labels:
+              [b.identity.labelSet('none', p.application().id)/]
+          spec:
+            serviceAccountName: [b.identity/]
+            automountServiceAccountToken: false
+            restartPolicy: OnFailure
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: [b.uid/]
+              runAsGroup: [b.gid/]
+              fsGroup: [b.gid/]
+              seccompProfile:
+                type: RuntimeDefault
+            containers:
+              - name: backup
+                image: [b.method/]
+                env:
+                  - name: BACKUP_RETAIN
+                    value: [b.retain.toString().scalar()/]
+  [if (b.offCluster <> null)]
+                    - name: BACKUP_OFF_CLUSTER
+                      value: [b.offCluster.scalar()/]
+  [/if]
+  [if (b.credential <> null)]
+                  envFrom:
+                    - secretRef:
+                        name: [b.credential.destination/]
+  [/if]
+                securityContext:
+                  readOnlyRootFilesystem: true
+                  capabilities:
+                    drop:
+                      - ALL
+                volumeMounts:
+                  - name: data
+                    mountPath: /data
+                    readOnly: true
+                  - name: backup
+                    mountPath: /backup
+            volumes:
+              - name: data
+                persistentVolumeClaim:
+                  claimName: [v.claim/]
+                  readOnly: true
+              - name: backup
+                persistentVolumeClaim:
+                  claimName: [b.claim/]
+[/template]
+
+[comment ========================================================= the operator /]
+
+[comment The operator's connection to the Secret Store. TLS is never skipped: the schema asks, and
+  the answer is fixed. /]
+[template private objects(d : resolveddeployment::ConnectionFile)]
+  ---
+  apiVersion: secrets.hashicorp.com/v1beta1
+  kind: VaultConnection
+  metadata:
+    name: secret-store
+    namespace: [d.namespace/]
+    labels:
+      app.kubernetes.io/managed-by: deploy-kit
+  spec:
+    address: [d.address/]
+    skipTLSVerify: false
+[/template]
+
+[comment For each holder, how the operator authenticates as it, then one synced Secret per grant, read
+  every hour from the kv mount, never tracked by Flagger, and restarting what is serving. /]
+[template private objects(d : resolveddeployment::SecretFile)]
+  [for (h : resolveddeployment::SecretHolder | d.holders)]
+    ---
+    apiVersion: secrets.hashicorp.com/v1beta1
+    kind: VaultAuth
+    metadata:
+      [h.holderMetadata(d.application)/]
+    spec:
+      vaultConnectionRef: secret-store
+      method: kubernetes
+      mount: kubernetes
+      kubernetes:
+        role: [h.identity/]
+        serviceAccount: [h.identity/]
+    [for (g : resolveddeployment::ResolvedGrant | h.grants)]
+      ---
+      apiVersion: secrets.hashicorp.com/v1beta1
+      kind: VaultStaticSecret
+      metadata:
+        name: [g.destination/]
+        namespace: [d.application.namespace/]
+        labels:
+          [h.identity.labelSet(h.component, d.application.id)/]
+      spec:
+        vaultAuthRef: [h.identity/]
+        mount: secret
+        type: kv-v2
+        path: [g.path.substring(13)/]
+        refreshAfter: 1h
+        destination:
+          name: [g.destination/]
+          create: true
+          annotations:
+            flagger.app/config-tracking: disabled
+      [if (g.restartTargets->notEmpty())]
+          rolloutRestartTargets:
+        [for (t : String | g.restartTargets)]
+              - kind: Deployment
+                name: [d.application.serving(t)/]
+        [/for]
+      [/if]
+    [/for]
+  [/for]
+[/template]
+
+[template private holderMetadata(h : resolveddeployment::SecretHolder, a : resolveddeployment::ResolvedApplication)]
+  name: [h.identity/]
+  namespace: [a.namespace/]
+  labels:
+    [h.identity.labelSet(h.component, a.id)/]
+[/template]
+
+[comment ============================================================ Vault /]
+
+[comment What each grant may do: the paths a transit or database grant's engine derives, or `read` on
+  a kv grant's path and on the same document's metadata. /]
+[template private json(d : resolveddeployment::VaultPolicyFile)]
+  {
+    "path": {
+  [for (k : String | d.policyPaths()) separator(',\n')]
+        "[k/]": {
+          "capabilities": ['['/]
+    [for (c : String | d.allowsAt(k)) separator(',\n')]
+              "[c/]"[/for]
+          ]
+        }[/for]
+    }
+  }
+[/template]
+
+[template private json(d : resolveddeployment::VaultRoleFile)]
+  {
+    "bound_service_account_names": [ '[' /]
+      "[d.identity/]"
+    ],
+    "bound_service_account_namespaces": [ '[' /]
+      "[d.namespace/]"
+    ],
+    "token_policies": [ '[' /]
+      "[d.namespace/]-[d.identity/]"
+    ]
+  }
 [/template]
 
 [comment ============================================================ the edge /]
@@ -393,8 +771,54 @@
 [query private projectNamespace(d : resolveddeployment::Deliverable) : String =
   d.eContainer().oclAsType(resolveddeployment::ResolvedDeployment).applications->first().namespace /]
 
-[comment A duration as whole seconds: `60s` is 60. /]
-[query private seconds(duration : String) : Integer = duration.substring(1, duration.size() - 1).toInteger() /]
+[comment A duration as whole seconds: `60s` is 60, `10m` 600 and `1h` 3600. /]
+[query private seconds(duration : String) : Integer =
+  let amount : Integer = duration.substring(1, duration.size() - 1).toInteger() in
+  if duration.endsWith('h') then amount * 3600
+  else if duration.endsWith('m') then amount * 60 else amount endif endif /]
+
+[query private listed(d : resolveddeployment::IndexFile) : Sequence(String) =
+  resolveddeployment::IndexFile.allInstances()->select(i | i.path = d.path).resources
+    ->asOrderedSet()->sortedBy(r | r) /]
+
+[comment The volumes whose class derives a backup. /]
+[query private backups(p : resolveddeployment::ResolvedProcess) : Sequence(resolveddeployment::ResolvedVolume) =
+  p.volumes->select(v | v.backup <> null) /]
+
+[comment The file an Asset arrives as: the last segment of the path it is read from. /]
+[query private fileOf(source : String) : String = source.tokenize('/')->last() /]
+
+[comment A writable path's volume, named for the path. /]
+[query private writableOf(path : String) : String = 'writable' + path.replaceAll('[^a-z0-9]+', '-') /]
+
+[comment The Secret a kv grant on `path` syncs to, for the Process's own variables. /]
+[query private destinationOf(p : resolveddeployment::ResolvedProcess, path : String) : String =
+  p.secrets->select(g | g.destination <> null and g.path = path)->first().destination /]
+
+[comment The Deployment a rotation restarts: a blue-green Process serves from its primary. /]
+[query private serving(a : resolveddeployment::ResolvedApplication, name : String) : String =
+  if a.processes->select(p | p.name = name)->first().switchover.toString() = 'blue-green'
+  then name + '-primary' else name endif /]
+
+[comment Every path a policy names, in its grants' order: the paths a transit or database grant's
+  engine derives, or a kv grant's path and the same document's metadata. /]
+[query private policyPaths(d : resolveddeployment::VaultPolicyFile) : Sequence(String) =
+  d.grants->collect(g | if g.engine <> null then g.paths.path
+    else Sequence{g.path, g.path.replace('^secret/data/', 'secret/metadata/')} endif) /]
+
+[comment What a policy allows at one path: an engine's own, or `read` on a kv grant's document. /]
+[query private allowsAt(d : resolveddeployment::VaultPolicyFile, path : String) : Sequence(String) =
+  let derived : Sequence(resolveddeployment::PolicyPath) = d.grants.paths->select(e | e.path = path) in
+  if derived->isEmpty() then Sequence{'read'} else derived->first().allows endif /]
+
+[comment How a block scalar keeps its last line break: once, not at all, or every one. /]
+[query private chomping(content : String) : String =
+  if content.endsWith('\n\n') then '|+' else if content.endsWith('\n') then '|' else '|-' endif endif /]
+
+[comment A block scalar's body: every line under `indent`, a blank line left blank. /]
+[query private blockOf(content : String, indent : String) : String =
+  (if content.endsWith('\n') then content.substring(1, content.size() - 1) else content endif)
+    .replaceAll('(?m)^(?=.)', indent) /]
 
 [query private middlewareName(m : resolveddeployment::MiddlewareStep) : String =
   if m.kind.toString() = 'forward-auth' then 'forward-auth'

@@ -143,7 +143,10 @@ class ResolvedDeploymentTest {
     void everyResourceFamilyOfTheProposalHasATypedClassTheTemplatesWalk() {
         // The project proposal's generated-resources table, one row per family:
         // a namespace and indexes, workload resources with their identity,
-        // network policy, edge routing, monitoring, and secret resources.
+        // network policy, edge routing, monitoring, and secret resources; and
+        // what the rendered trees hold beyond it: Services, claims, Asset
+        // ConfigMaps, backups, the Secret Store connection, and Vault's own
+        // documents.
         assertThat(ResolvedDeploymentPackage.eINSTANCE.getEClassifiers().stream()
                         .filter(EClass.class::isInstance)
                         .map(EClass.class::cast)
@@ -162,7 +165,14 @@ class ResolvedDeploymentTest {
                         "NetworkPolicyFile",
                         "IngressRouteFile",
                         "MonitorFile",
-                        "SecretFile");
+                        "SecretFile",
+                        "ServiceFile",
+                        "ClaimFile",
+                        "ConfigMapFile",
+                        "BackupFile",
+                        "ConnectionFile",
+                        "VaultPolicyFile",
+                        "VaultRoleFile");
     }
 
     @Test
