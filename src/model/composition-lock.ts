@@ -11,8 +11,10 @@ const digest = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const commit = z.string().regex(/^[a-f0-9]{40}$/);
 /** An exact released version, as release-please tags it, without the `v`. */
 export const semver = z.string().regex(/^\d+\.\d+\.\d+$/);
-/** An OCI artifact named by digest, never by tag. */
-export const reference = z.string().regex(/^[^@\s]+@sha256:[a-f0-9]{64}$/);
+/** An OCI artifact named by digest, never by tag: no `:` after the last `/`. */
+export const reference = z
+  .string()
+  .regex(/^(?:[^@\s/]+\/)+[^@\s/:]+@sha256:[a-f0-9]{64}$/);
 
 const lockedFragment = z
   .strictObject({
@@ -21,6 +23,7 @@ const lockedFragment = z
     repository: z.string().regex(/^[^/\s]+\/[^/\s]+$/),
     schemaVersion: semver,
     version: semver,
+    revisions: z.record(text, digest),
     sourceSha: commit,
     inputsSha: z.string().regex(/^[a-f0-9]{64}$/),
   })

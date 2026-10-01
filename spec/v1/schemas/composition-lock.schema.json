@@ -130,7 +130,7 @@
       "properties": {
         "ref": {
           "type": "string",
-          "pattern": "^[^@\\s]+@sha256:[a-f0-9]{64}$"
+          "pattern": "^(?:[^@\\s/]+\\/)+[^@\\s/:]+@sha256:[a-f0-9]{64}$"
         },
         "project": {
           "type": "string",
@@ -148,6 +148,17 @@
           "type": "string",
           "pattern": "^\\d+\\.\\d+\\.\\d+$"
         },
+        "revisions": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
         "sourceSha": {
           "type": "string",
           "pattern": "^[a-f0-9]{40}$"
@@ -163,6 +174,7 @@
         "repository",
         "schemaVersion",
         "version",
+        "revisions",
         "sourceSha",
         "inputsSha"
       ],
@@ -173,7 +185,7 @@
       "properties": {
         "refused": {
           "type": "string",
-          "pattern": "^[^@\\s]+@sha256:[a-f0-9]{64}$"
+          "pattern": "^(?:[^@\\s/]+\\/)+[^@\\s/:]+@sha256:[a-f0-9]{64}$"
         },
         "codes": {
           "minItems": 1,

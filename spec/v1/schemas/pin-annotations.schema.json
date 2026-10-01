@@ -55,7 +55,7 @@
             },
             "estate.jorisjonkers.dev/rollback-fragment": {
               "type": "string",
-              "pattern": "^[^@\\s]+@sha256:[a-f0-9]{64}$"
+              "pattern": "^(?:[^@\\s/]+\\/)+[^@\\s/:]+@sha256:[a-f0-9]{64}$"
             }
           },
           "required": [

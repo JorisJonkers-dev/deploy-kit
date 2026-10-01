@@ -70,6 +70,7 @@ const LOCK: CompositionLockDocument = {
         repository: "JorisJonkers-dev/knowledge",
         schemaVersion: "1.0.0",
         version: "2.1.2",
+        revisions: { knowledge: DIGEST, "knowledge-ingest": DIGEST },
         sourceSha: COMMIT,
         inputsSha: "c".repeat(64),
       },
@@ -176,6 +177,18 @@ describe("the composition lock", () => {
     expect(valid(LOCK)).toBe(true);
   });
 
+  it("holds a reference through a registry port", () => {
+    const ref = `registry.local:5000/intent-knowledge@${DIGEST}`;
+    const fragment = { ...LOCK.spec.fragments["intent-knowledge"], ref };
+    const lock = {
+      ...LOCK,
+      spec: { ...LOCK.spec, fragments: { "intent-knowledge": fragment } },
+    };
+
+    expect(compositionLock.safeParse(lock).success).toBe(true);
+    expect(valid(lock)).toBe(true);
+  });
+
   it("holds a first lock, with no previous lock and nothing isolated", () => {
     const { previousLockDigest: _, isolated: __, ...spec } = LOCK.spec;
 
@@ -190,6 +203,15 @@ describe("the composition lock", () => {
       "a reference by tag",
       { ref: "ghcr.io/jorisjonkers-dev/intent-knowledge:2.1.2" },
     ],
+    [
+      "a reference by tag and digest",
+      { ref: `ghcr.io/jorisjonkers-dev/intent-knowledge:2.1.2@${DIGEST}` },
+    ],
+    [
+      "a reference with no repository path",
+      { ref: `intent-knowledge@${DIGEST}` },
+    ],
+    ["a revision that is not a digest", { revisions: { knowledge: "2.1.2" } }],
     ["a reference with a short digest", { ref: `${REF}0`.slice(0, -2) }],
     ["a reference with nothing before the digest", { ref: `@${DIGEST}` }],
     ["a repository with no owner", { repository: "knowledge" }],

@@ -710,11 +710,11 @@ metadata:
   generatedAt: 2026-09-07T14:22:07Z
 spec:
   schemaVersion: 1.0.0                # the model version of this document
-  toolkitVersion: 0.22.0              # exact version that composed it
+  toolkitVersion: 0.22.0              # exact released version; a release candidate never composes
   composedDigest: sha256:…            # of the ComposedIntent
   previousLockDigest: sha256:…
   lockChain:
-    - {digest: sha256:…, commit: 22b9d33, timestamp: …}
+    - {digest: sha256:…, commit: 22b9d33…, timestamp: …}   # commit: all 40 hex digits
   fragments:
     intent-knowledge:
       ref: ghcr.io/jorisjonkers-dev/intent-knowledge@sha256:…
@@ -725,16 +725,13 @@ spec:
       revisions:                      # each Application's revision, as rendered
         knowledge: sha256:…
         knowledge-ingest: sha256:…
-      sourceSha: 22b9d33…
-      inputsSha: 84021c5…
+      sourceSha: 22b9d33…             # the full 40-digit commit
+      inputsSha: 84021c5…             # 64 hex digits, no algorithm prefix
     intent-data: {…}
   isolated:                           # Projects composed at an earlier fragment
     data:
       refused: ghcr.io/jorisjonkers-dev/intent-data@sha256:…
       codes: [E_DUPLICATE_HOST]
-  context:
-    ref: ghcr.io/jorisjonkers-dev/cluster-deploy-context-public@sha256:…
-    inventorySourceSha: 84021c5…
   clusterStateDigest: sha256:…        # the pinned snapshot, chapter 20
 ```
 
