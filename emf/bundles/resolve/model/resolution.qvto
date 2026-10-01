@@ -51,6 +51,10 @@ property UNBUDGETED_DEADLINE : Integer = 600;
 -- The surface an exporting profile's collector receives on, and a gate answers on.
 property OTLP_SURFACE : String = 'otlp';
 property DNS_PORT : Integer = 53;
+-- The runtime a backup identity's labels name: it runs no Runtime Profile.
+property NO_RUNTIME : String = 'none';
+-- The estate-wide directory every identity's Vault documents land in, by namespace.
+property POLICIES : String = 'apps/vso-secrets/policies/';
 
 main() {
 	projects->select(p | p.project = project)->any(true).map deployment();
@@ -68,7 +72,8 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 	provenance := self.map provenance();
 	deliverables := self.projectFiles()
 		->union(self.applications->collect(a | a.applicationFiles(self))->flatten())
-		->union(self.edgeFiles());
+		->union(self.edgeFiles())
+		->union(self.vaultFiles());
 	end {
 		-- Only a complete element has a revision: it is the digest of all of it.
 		result.reconcileUnits->first().after := result.reconcileUnits->excluding(result.reconcileUnits->first());
@@ -763,10 +768,13 @@ query middlewareOf(r : Route, exposure : Exposure) : Sequence(MiddlewareStep) =
 
 -- ============================================================ the path plan
 
--- What every project writes: its namespace, the index over it, and the
--- default-deny that selects every pod and belongs to no Process.
+-- What every project writes: its namespace, the index over it, the
+-- default-deny that selects every pod and belongs to no Process, and the
+-- operator's connection to the Secret Store where any Application syncs from it.
 query EffectiveProject::projectFiles() : Sequence(Deliverable) =
 	let root : String = 'apps/' + self.project + '/' in
+	let stores : Sequence(ResolvedApplication) = self.applications
+		->collect(a | a.resolveone(ResolvedApplication))->select(a | a.secretStore <> null) in
 	Sequence{
 		object NamespaceFile {
 			path := root + 'namespace.yaml';
@@ -777,62 +785,91 @@ query EffectiveProject::projectFiles() : Sequence(Deliverable) =
 			path := root + 'kustomization.yaml';
 			adapter := AdapterName::kubernetes;
 			resources := Sequence{'namespace.yaml'}->union(self.applications->collect(a | a.id))
+				->union(if stores->isEmpty() then Sequence{} else Sequence{'vaultconnection.yaml'} endif)
 				->sortedBy(r | r);
 		}.oclAsType(Deliverable),
 		object NetworkPolicyFile {
 			path := root + 'networkpolicy.yaml';
 			adapter := AdapterName::networking;
 		}.oclAsType(Deliverable)
-	};
+	}
+	->union(if stores->isEmpty() then Sequence{} else Sequence{object ConnectionFile {
+			path := root + 'vaultconnection.yaml';
+			adapter := AdapterName::vso;
+			namespace := stores->first().namespace;
+			address := stores->first().secretStore;
+		}.oclAsType(Deliverable)} endif);
 
--- What one Application writes under its own directory: its index, the
--- workloads of its Processes, the Canaries of those that switch blue-green,
--- their identities, its monitor where it is scraped, and one policy per Process.
+-- What one Application writes under its own directory: its index over every
+-- file below that a kustomization applies, the workloads of its Processes, the
+-- Canaries of those that switch blue-green and the Services of those that do
+-- not, their identities, their claims, Asset ConfigMaps and backups, its monitor
+-- where it is scraped, what the operator syncs for it, and one policy per
+-- Process. A file that would hold no object is not written.
 query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(Deliverable) =
 	let root : String = 'apps/' + prj.project + '/' + self.id + '/' in
 	let served : Sequence(ResolvedProcess) = self.processes->collect(p | p.resolveone(ResolvedProcess)) in
 	let blueGreen : Sequence(ResolvedProcess) =
 		self.processes->select(p | switchesBlueGreen(self, p))->collect(p | p.resolveone(ResolvedProcess)) in
-	let scraped : Boolean = self.observability <> null and self.observability.scrape <> null in
-	if self.processes->exists(p | controllerOf(p) <> controllerOf(self.processes->first())
-			or strategyOf(p) <> strategyOf(self.processes->first()))
-		then assertFailedFiles(self.id + ' holds Processes of two controllers, which one workload file cannot spell: #95')
-	else
-	Sequence{
-		object IndexFile {
-			path := root + 'kustomization.yaml';
-			adapter := AdapterName::kubernetes;
-			resources := (if blueGreen->notEmpty() then Sequence{'canary.yaml'} else Sequence{} endif)
-				->union(if scraped then Sequence{'podmonitor.yaml'} else Sequence{} endif)
-				->union(Sequence{'serviceaccount.yaml', 'workload.yaml'});
-		}.oclAsType(Deliverable),
-		object WorkloadFile {
+	let reached : Sequence(ResolvedProcess) = served->select(p |
+		p.switchover <> Switchover::blueGreen and p.surfaces->notEmpty()) in
+	let claimed : Sequence(ResolvedProcess) = served->select(p | p.volumes->notEmpty()) in
+	let configured : Sequence(ResolvedProcess) = served->select(p | p.assets->notEmpty()) in
+	let backedUp : Sequence(ResolvedProcess) = served->select(p | p.volumes->exists(v | v.backup <> null)) in
+	let synced : Sequence(SecretHolder) = served->collect(p | holdersOf(p))->flatten() in
+	let monitor : Sequence(Deliverable) = monitorOf(self, root) in
+	let files : Sequence(Deliverable) =
+		Sequence{object WorkloadFile {
 			path := root + 'workload.yaml';
 			adapter := AdapterName::kubernetes;
 			processes := served;
 			controller := controllerOf(self.processes->first());
 			strategy := strategyOf(self.processes->first());
-		}.oclAsType(Deliverable)
-	}
-	->union(if blueGreen->notEmpty() then Sequence{object SwitchoverFile {
-			path := root + 'canary.yaml';
+		}.oclAsType(Deliverable)}
+		->union(if blueGreen->notEmpty() then Sequence{object SwitchoverFile {
+				path := root + 'canary.yaml';
+				adapter := AdapterName::kubernetes;
+				processes := blueGreen;
+			}.oclAsType(Deliverable)} else Sequence{} endif)
+		->union(if reached->notEmpty() then Sequence{object ServiceFile {
+				path := root + 'service.yaml';
+				adapter := AdapterName::kubernetes;
+				processes := reached;
+			}.oclAsType(Deliverable)} else Sequence{} endif)
+		->append(object IdentityFile {
+				path := root + 'serviceaccount.yaml';
+				adapter := AdapterName::kubernetes;
+				processes := served;
+			}.oclAsType(Deliverable))
+		->union(if claimed->notEmpty() then Sequence{object ClaimFile {
+				path := root + 'pvc.yaml';
+				adapter := AdapterName::kubernetes;
+				processes := claimed;
+			}.oclAsType(Deliverable)} else Sequence{} endif)
+		->union(if configured->notEmpty() then Sequence{object ConfigMapFile {
+				path := root + 'configmap.yaml';
+				adapter := AdapterName::kubernetes;
+				processes := configured;
+			}.oclAsType(Deliverable)} else Sequence{} endif)
+		->union(if backedUp->notEmpty() then Sequence{object BackupFile {
+				path := root + 'backup.yaml';
+				adapter := AdapterName::kubernetes;
+				processes := backedUp;
+			}.oclAsType(Deliverable)} else Sequence{} endif)
+		->union(monitor)
+		->union(if synced->notEmpty() then Sequence{object SecretFile {
+				path := root + 'vso.yaml';
+				adapter := AdapterName::vso;
+				application := self.resolveone(ResolvedApplication);
+				holders := synced;
+			}.oclAsType(Deliverable)} else Sequence{} endif) in
+	Sequence{object IndexFile {
+			path := root + 'kustomization.yaml';
 			adapter := AdapterName::kubernetes;
-			processes := blueGreen;
-		}.oclAsType(Deliverable)} else Sequence{} endif)
-	->append(object IdentityFile {
-			path := root + 'serviceaccount.yaml';
-			adapter := AdapterName::kubernetes;
-			processes := served;
-		}.oclAsType(Deliverable))
-	->union(if scraped then Sequence{object MonitorFile {
-			path := root + 'podmonitor.yaml';
-			adapter := AdapterName::prometheus;
-			process := self.observability.scrape.process.resolveone(ResolvedProcess);
-			surface := self.observability.scrape.surface.key;
-			scrapePath := self.observability.scrape.path;
-			interval := estate.monitors.interval;
-			timeout := estate.monitors.timeout;
-		}.oclAsType(Deliverable)} else Sequence{} endif)
+			-- A policy file is listed nowhere while the policy stage is render-only.
+			resources := files->collect(f | f.path.substring(root.size() + 1, f.path.size()))->sortedBy(f | f);
+		}.oclAsType(Deliverable)}
+	->union(files)
 	->append(object NetworkPolicyFile {
 			path := root + 'networkpolicy.yaml';
 			adapter := AdapterName::networking;
@@ -841,21 +878,58 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 				ingress := ingressOf(p, self);
 				egress := egressOf(p);
 			});
-		}.oclAsType(Deliverable))
-	endif;
+		}.oclAsType(Deliverable));
 
--- The controller kind derives from `lifecycle` and `volumes`, and the strategy
--- from `cutover`; the templates spell both.
-query controllerOf(p : PI::Process) : ControllerKind =
-	if p.volumes->notEmpty() then ControllerKind::statefulSet else ControllerKind::deployment endif;
+-- The monitor of a scraped Application (spec/v1/30-deliverables.md#adapters): a
+-- blue-green Process is scraped by its pods, because its Services are Flagger's
+-- and the canary's pods must be scraped for the Release Gate's checks; a
+-- stop-start one by a ServiceMonitor over the Service the render gives it.
+query monitorOf(app : EffectiveApplication, root : String) : Sequence(Deliverable) =
+	if app.observability = null or app.observability.scrape = null then Sequence{} else
+	let scraped : ResolvedProcess = app.observability.scrape.process.resolveone(ResolvedProcess) in
+	let monitored : MonitorKind = if scraped.switchover = Switchover::stopStart
+		then MonitorKind::serviceMonitor else MonitorKind::podMonitor endif in
+	Sequence{object MonitorFile {
+		path := root + (if monitored = MonitorKind::serviceMonitor then 'servicemonitor.yaml' else 'podmonitor.yaml' endif);
+		adapter := AdapterName::prometheus;
+		process := scraped;
+		surface := app.observability.scrape.surface.key;
+		scrapePath := app.observability.scrape.path;
+		interval := estate.monitors.interval;
+		timeout := estate.monitors.timeout;
+		kind := monitored;
+	}.oclAsType(Deliverable)} endif;
+
+-- The identities of one Process that sync a grant
+-- (spec/v1/16-dependencies.md#what-a-grant-confers): the Process itself for each
+-- grant delivered anywhere but to itself, and its backup identity for the one
+-- off-cluster credential its backups share. A Process that syncs nothing
+-- holds nothing here.
+query holdersOf(p : ResolvedProcess) : Sequence(SecretHolder) =
+	(if p.secrets->forAll(g | g.destination = null) then Sequence{} else
+	Sequence{object SecretHolder {
+		identity := p.identity;
+		component := p.component;
+		grants := p.secrets->select(g | g.destination <> null);
+	}} endif)
+	->union(if backupOf(p) = null then Sequence{} else Sequence{object SecretHolder {
+		identity := backupOf(p).identity;
+		component := NO_RUNTIME;
+		grants := Sequence{backupOf(p).credential};
+	}} endif);
+
+-- The plan whose off-cluster credential every backup of one Process shares, where one has it.
+query backupOf(p : ResolvedProcess) : BackupPlan =
+	let credentialed : Sequence(ResolvedVolume) =
+		p.volumes->select(v | v.backup <> null and v.backup.credential <> null)->asSequence() in
+	if credentialed->isEmpty() then null else credentialed->first().backup endif;
+
+-- The controller every serving Process runs under, and the strategy from
+-- `cutover`; the templates spell both.
+query controllerOf(p : PI::Process) : ControllerKind = ControllerKind::deployment;
 
 query strategyOf(p : PI::Process) : String =
 	if p.cutover = PI::Cutover::interrupted then 'Recreate' else 'RollingUpdate' endif;
-
-query assertFailedFiles(message : String) : Sequence(Deliverable) {
-	assert fatal (false) with log(message);
-	return Sequence{};
-}
 
 -- Who may reach a Process (spec/v1/16-dependencies.md#the-derived-allow-set):
 -- the proxy of the tier each route's audience reaches, the metrics stack where
@@ -944,6 +1018,36 @@ query EffectiveProject::edgeFiles() : Sequence(Deliverable) =
 		resources := routed->select(r | tierFor(r.exposure.audience) = t)
 			->collect(r | routeFile(r.app, r.exposure))->sortedBy(f | f);
 	}.oclAsType(Deliverable)));
+
+-- Per identity that holds a grant, one Vault policy over every grant it holds
+-- and one Kubernetes auth role bound to it, estate-scoped by namespace: the
+-- Process for all of its grants, and its backup identity for the credential.
+query EffectiveProject::vaultFiles() : Sequence(Deliverable) =
+	self.applications->collect(a | a.resolveone(ResolvedApplication))->collect(app |
+		app.processes->collect(p |
+			(if p.secrets->isEmpty() then Sequence{} else
+				vaultFilesOf(app.namespace, p.identity, p.secrets->asSequence()) endif)
+			->union(if backupOf(p) = null then Sequence{} else
+				vaultFilesOf(app.namespace, backupOf(p).identity, Sequence{backupOf(p).credential}) endif)))
+		->flatten();
+
+query vaultFilesOf(ns : String, holder : String, held : Sequence(ResolvedGrant)) : Sequence(Deliverable) =
+	let stem : String = POLICIES + ns + '/' + holder in
+	Sequence{
+		object VaultPolicyFile {
+			path := stem + '.policy.json';
+			adapter := AdapterName::vaultPolicy;
+			namespace := ns;
+			identity := holder;
+			grants := held;
+		}.oclAsType(Deliverable),
+		object VaultRoleFile {
+			path := stem + '.role.json';
+			adapter := AdapterName::vaultPolicy;
+			namespace := ns;
+			identity := holder;
+		}.oclAsType(Deliverable)
+	};
 
 query routeFile(app : EffectiveApplication, exposure : Exposure) : String =
 	app.id + '-' + exposure.name + '.yaml';

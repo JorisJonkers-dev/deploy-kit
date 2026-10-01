@@ -49,7 +49,7 @@ class RenderingTest {
 
     @Test
     void minimalsProjectTreeIsTheCommittedOneByteForByte(@TempDir Path out) throws IOException {
-        Rendering.render(minimal(), out);
+        Rendering.render(List.of(minimal()), out);
 
         Path committed = EXAMPLES.resolve("minimal/rendered").resolve(PROJECT);
         Path rendered = out.resolve(PROJECT);
@@ -63,7 +63,7 @@ class RenderingTest {
 
     @Test
     void minimalsRouteIsTheEstateTreesOneByteForByte(@TempDir Path out) throws IOException {
-        Rendering.render(minimal(), out);
+        Rendering.render(List.of(minimal()), out);
 
         // The tier's index lists every Application the tier serves, so only the estate's render
         // writes it whole; the route itself is minimal's own.
@@ -74,7 +74,7 @@ class RenderingTest {
 
     @Test
     void aTemplateThatDoesNotParseFailsTheRenderingWithWhatAcceleoSaid(@TempDir Path out) {
-        assertThatThrownBy(() -> Rendering.render(minimal(), out, "unindented"))
+        assertThatThrownBy(() -> Rendering.render(List.of(minimal()), out, "unindented"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageStartingWith("the rendering did not complete: ")
                 .hasMessageContaining("Acceleo parsing error");

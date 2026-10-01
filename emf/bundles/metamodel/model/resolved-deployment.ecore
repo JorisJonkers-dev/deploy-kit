@@ -408,12 +408,71 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="scrapePath" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- A blue-green Process is scraped by its pods, because Flagger owns its
+         Services; a stop-start one by the Service the render gives it. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//MonitorKind"/>
   </eClassifiers>
 
-  <!-- The permissions granting each Process only its allowed secrets. -->
+  <!-- The Services of the Processes Flagger does not switch: each stop-start
+       Process that serves a surface, reached on every surface it serves. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ServiceFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess"/>
+  </eClassifiers>
+
+  <!-- The claims of every volume the Processes hold, and of each backed-up
+       volume's copies; the volumes carry the claim names and sizes. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ClaimFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess"/>
+  </eClassifiers>
+
+  <!-- One immutable ConfigMap per Asset the Processes mount, under its
+       content-named name. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ConfigMapFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess"/>
+  </eClassifiers>
+
+  <!-- One scheduled backup per backed-up volume of the Processes, from the plan
+       each volume carries. -->
+  <eClassifiers xsi:type="ecore:EClass" name="BackupFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess"/>
+  </eClassifiers>
+
+  <!-- The permissions granting each Process only its allowed secrets: for every
+       identity of one Application that holds a synced grant, how the operator
+       authenticates as it, and one synced Secret per grant. -->
   <eClassifiers xsi:type="ecore:EClass" name="SecretFile" eSuperTypes="#//Deliverable">
-    <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="application" lowerBound="1" eType="#//ResolvedApplication"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="holders" lowerBound="1" upperBound="-1" eType="#//SecretHolder" containment="true"/>
+  </eClassifiers>
+
+  <!-- An identity that holds grants: a Process, or a backup identity holding
+       its destination's credential. Its name is its ServiceAccount, its Vault
+       role and its label set's name. -->
+  <eClassifiers xsi:type="ecore:EClass" name="SecretHolder">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="component" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="grants" lowerBound="1" upperBound="-1" eType="#//ResolvedGrant"/>
+  </eClassifiers>
+
+  <!-- The operator's connection to the Secret Store, one per project namespace
+       that syncs anything. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ConnectionFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="address" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- The Vault policy one identity's grants derive, rendered and applied by
+       no kustomization (spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied). -->
+  <eClassifiers xsi:type="ecore:EClass" name="VaultPolicyFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="grants" lowerBound="1" upperBound="-1" eType="#//ResolvedGrant"/>
+  </eClassifiers>
+
+  <!-- The Kubernetes auth role that binds one identity to its policy. -->
+  <eClassifiers xsi:type="ecore:EClass" name="VaultRoleFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <!-- ==================================================== vocabularies -->
@@ -467,6 +526,11 @@
   </eClassifiers>
 
   <!-- The kind derives from `lifecycle` and `volumes`; the template spells it. -->
+  <eClassifiers xsi:type="ecore:EEnum" name="MonitorKind">
+    <eLiterals name="podMonitor" literal="PodMonitor"/>
+    <eLiterals name="serviceMonitor" value="1" literal="ServiceMonitor"/>
+  </eClassifiers>
+
   <eClassifiers xsi:type="ecore:EEnum" name="ControllerKind">
     <eLiterals name="deployment" literal="Deployment"/>
     <eLiterals name="statefulSet" value="1" literal="StatefulSet"/>

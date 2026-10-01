@@ -309,11 +309,14 @@ package's integrity the provenance records.
 **Hashing is the one black box.** A revision and an input digest are digests of
 canonical bytes, which OCL has no way to produce, so they are a Java library,
 `Hashing`, imported as a unit and called on an `EObject`: the digest of a model's
-canonical JSON, walked reflectively, and the Application revision
+canonical JSON, walked reflectively, and the digest of the bytes the
+transformation writes for an Application's element
 ([0076](adr/emf/0076-qvto-derives-the-resolved-deployment.md)). Everything else
-is a mapping or a query. Each digest is over this implementation's own model, so
-the revision and the provenance bind this implementation only, as
-`resolved.json` binds the other.
+is a mapping or a query, including that element: the transformation writes it as
+the production implementation's canonical JSON, so the revision is the
+production implementation's, which the rendered tree carries in every Canary.
+The provenance's digests are over this implementation's own model, and bind this
+implementation only, as `resolved.json` binds the other.
 
 **What the transformation cannot derive stops the run.** It resolves every case
 the production implementation resolves, and an input it cannot derive is a
@@ -321,24 +324,26 @@ fatal assertion naming what is missing, never a model with a gap or a default in
 it: an image the lock does not hold, an edge no provider answers, a placeholder
 that names nothing, a Runtime Profile key written in an env file, an Asset whose
 file is not beside its project or holds a placeholder, a backed-up volume with
-no schedule, retention or engine to back it up with, or an Application whose Processes need two
-workload controllers, which one workload file cannot spell until the templates
-widen (JorisJonkers-dev/deploy-kit#95).
+no schedule, retention or engine to back it up with.
 
-**Two places the model is one level coarser than the production
+**One place the model is one level coarser than the production
 implementation's.** A Reconcile Unit is the project's, so what it must follow is
 the union over the project's Applications: Flux orders units, and one unit
-cannot follow two lists. And a network policy's peer names the namespace,
-Process and port it admits but not the rule that admitted it, so two rules
-admitting one peer are one ingress entry, which admits exactly what the two did.
+cannot follow two lists.
 
-**The path plan holds the families the target metamodel models.** An
+**The path plan holds every family the production implementation renders.** An
 Application's directory holds one file per family, each naming every Process it
-applies to, and one network policy per Process in its policy file. The families
-the templates add with their widening (the claims, the backup jobs, the Asset
-ConfigMaps, the Services, the disruption budgets, the migration Jobs and the
-Vault and operator objects) join the metamodel and the path plan with
-JorisJonkers-dev/deploy-kit#95.
+applies to, and a file that would hold no object is not written: the workloads,
+the Canaries of the blue-green Processes and the Services of the others, the
+identities, the claims, the Asset ConfigMaps, the backups, the monitor, what the
+operator syncs, and one network policy per Process. A project's directory holds
+the operator's connection to the Secret Store wherever an Application syncs from
+it, and the estate-scoped Vault directory holds one policy and one role per
+identity that holds a grant. Each index lists what its directory applies, so the
+policy files and the Vault documents, which nothing applies, are listed nowhere.
+The families the production implementation does not render either, the
+disruption budgets and the migration Jobs that `auth`'s and `knowledge`'s
+goal-state trees hold, are not modelled yet.
 
 ## Text generation
 
@@ -351,8 +356,13 @@ are template decisions made to match the oracle, not presentation.
 
 `bundles/render/model/render.mtl` is one module. Its main template walks the
 Deployment's `deliverables` and opens one file per Deliverable at the path the
-path plan assigned it, and each Deliverable kind has one `objects` template
-that spells its target format. The templates decide nothing: every value they
+path plan assigned it, and each Deliverable kind has one template that spells
+its target format: YAML under the one header line, or for a Vault document JSON,
+which carries no comment. Several Deployments render together, which is how the
+estate-scoped share is written: a tier's index lists every route each Deployment
+puts under it, so each writes the same whole file. An Asset's content is a block
+scalar, kept as written, its last line break chomped the way the production
+serializer chooses. The templates decide nothing: every value they
 write is a feature of the model, and the only arithmetic they do is spelling,
 a duration as whole seconds and a precedence as a Traefik priority.
 
