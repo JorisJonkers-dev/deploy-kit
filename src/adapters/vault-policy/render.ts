@@ -1,7 +1,8 @@
 // The `vault-policy` adapter (spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied):
 // per identity that holds a grant, one Vault policy and one Kubernetes auth
 // role bound to it, as JSON. Rendered, not applied: no kustomization lists
-// them, and who writes them into Vault is delivery's to decide.
+// them, and the in-cluster Vault policy job writes them into Vault
+// (docs/adr/model/0087-in-cluster-consumers-read-the-render.md).
 import type { ResolvedProject } from "../../model/resolution.ts";
 import type { VaultPolicy, VaultRole } from "../../objects/custom.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";

@@ -446,7 +446,7 @@ premise and must be fixed in the renderer before the gate is trusted.
 
 Some assignments need facts the cluster alone can supply: which node holds a
 bound PersistentVolume, and where a Process currently runs. Those facts are
-captured **once**, by a read-only collector, into a snapshot that is digested
+captured **once**, by a read-only [Collector](#the-collector), into a snapshot that is digested
 and pinned like every other input
 ([0034](../../docs/adr/model/0034-cluster-state-is-a-pinned-input.md)). Assignments read
 the snapshot. Nothing reads the live cluster.
@@ -496,9 +496,36 @@ bindings:   [{claim: postgres-data, node: enschede-t1000-1}]
 placements: [{process: postgres, node: enschede-t1000-1}]
 ```
 
-`capturedAt` is when the collector ran, which is the snapshot's age the artifact
-carries. An estate with no bound volume and no recorded placement captures both
-lists empty, and is still a snapshot with a digest.
+`capturedAt` is when the Collector first captured these facts, not when it last
+ran: a stable cluster keeps an old `capturedAt`. An estate with no bound volume and no
+recorded placement captures both lists empty, and is still a snapshot with a
+digest.
+
+### The Collector
+
+The snapshot is captured inside the cluster
+([0086](../../docs/adr/model/0086-the-collector-runs-in-the-cluster.md)). The
+**Collector** is an Application of the `delivery` project, a `CronJob` whose
+ServiceAccount may get and list PersistentVolumes, PersistentVolumeClaims and
+pods, and nothing else. Each run captures the bindings and placements and
+compares them with the snapshot committed to the Estate repository
+([chapter 60](60-setup.md#the-estate-repository)):
+
+- **Unchanged facts commit nothing.** `capturedAt` is not a fact, so a run that
+  sees what the snapshot already says leaves it, and its digest, as they are.
+- **Changed facts are one commit** of `cluster-state.yml`, through the
+  Collector's GitHub App, whose key the Collector reads from the Secret Store.
+  The next composition reads it and records its new `clusterStateDigest`.
+- **It never applies.** The Collector writes to one file in one repository and
+  to nothing in the cluster.
+- **Its liveness is an alert, not the file.** Because an unchanged run commits
+  nothing, a stopped Collector and a stable cluster look the same in the Estate
+  repository. Alertmanager raises it instead, from the `CronJob`'s last
+  successful run, when the Collector has not succeeded within twice its
+  schedule ([chapter 55](55-delivery.md#notifications)).
+
+Until the Collector is delivered, composition runs with an empty snapshot, which
+is valid.
 
 Four documents must not be conflated:
 
@@ -714,11 +741,17 @@ because a UI that is ready in 30 seconds must still not receive traffic while
 the API it talks to is inside its own legitimate startup window.
 
 **The inputs are all the gate reads.** They live in the Resolved Deployment and in
-each Application's projection, which is where decisions live and where a
-controller reading a pinned lock already looks
-([0006](../../docs/adr/model/0006-pinned-inputs.md)). What is rendered for the
-gate is a Canary per member naming the gate's endpoint, and nothing that decides
-([chapter 55](55-delivery.md#what-the-render-leaves-to-flagger)).
+each Application's projection, which is where decisions live
+([0006](../../docs/adr/model/0006-pinned-inputs.md)). The `kubernetes` adapter
+renders them into the cluster as one `ConfigMap` per gated Application,
+`<application>-release-gate` in the Application's namespace, holding its
+`releaseGate` element as JSON
+([0087](../../docs/adr/model/0087-in-cluster-consumers-read-the-render.md)): the
+gate reads that ConfigMap and nothing else. What is rendered for the gate is
+that ConfigMap and a Canary per member naming the gate's endpoint, and nothing
+that decides ([chapter 55](55-delivery.md#what-the-render-leaves-to-flagger)).
+Until [#199](https://github.com/JorisJonkers-dev/deploy-kit/issues/199) lands,
+the rendered trees carry no gate ConfigMap.
 
 An `interrupted` Application carries no gate: its Processes stop before their
 new versions start, so there is no moment at which an old version serves while

@@ -10,7 +10,8 @@ rests-on: ["0006"]
 
 # The ClusterState snapshot is a pinned, digested input holding PV bindings and current placements, and node capacity is a node-contract fact
 
-A read-only collector captures two cluster facts: the node holding each bound
+A read-only collector, running in the cluster
+([0086](0086-the-collector-runs-in-the-cluster.md)), captures two cluster facts: the node holding each bound
 PersistentVolume, and where each Process currently runs. The snapshot is
 digested and pinned like every other input. Assignments read the snapshot and
 never the live cluster. What a node can hold is not in it: capacity is authored
