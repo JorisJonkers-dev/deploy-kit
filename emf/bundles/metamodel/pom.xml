@@ -47,6 +47,19 @@
               </arguments>
             </configuration>
           </execution>
+          <!-- The pinned inputs resolution reads beside the intent (issue #90). -->
+          <execution>
+            <id>generate-pinned-inputs</id>
+            <phase>generate-sources</phase>
+            <goals><goal>java</goal></goals>
+            <configuration>
+              <arguments>
+                <argument>/${project.basedir}/src/main/java/dev/jorisjonkers/deploykit/emf/metamodel/GeneratePinnedInputs.mwe2</argument>
+                <argument>-p</argument>
+                <argument>rootPath=/${project.basedir}/..</argument>
+              </arguments>
+            </configuration>
+          </execution>
         </executions>
         <configuration>
           <mainClass>org.eclipse.emf.mwe2.launch.runtime.Mwe2Launcher</mainClass>
@@ -77,6 +90,9 @@
                 <exclude>dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.*</exclude>
                 <exclude>dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.impl.*</exclude>
                 <exclude>dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.util.*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.impl.*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.util.*</exclude>
               </excludes>
             </configuration>
           </execution>
@@ -86,6 +102,7 @@
               <excludes>
                 <exclude>dev/jorisjonkers/deploykit/emf/metamodel/projectintent/**</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/metamodel/resolveddeployment/**</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/metamodel/pinnedinputs/**</exclude>
               </excludes>
             </configuration>
           </execution>
@@ -95,6 +112,7 @@
               <excludes>
                 <exclude>dev/jorisjonkers/deploykit/emf/metamodel/projectintent/**</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/metamodel/resolveddeployment/**</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/metamodel/pinnedinputs/**</exclude>
               </excludes>
             </configuration>
           </execution>
@@ -107,6 +125,7 @@
           <excludedClasses>
             <param>dev.jorisjonkers.deploykit.emf.metamodel.projectintent.*</param>
             <param>dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.*</param>
+            <param>dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.*</param>
           </excludedClasses>
           <failWhenNoMutations>false</failWhenNoMutations>
         </configuration>

@@ -76,6 +76,68 @@ class OutputsTest {
     }
 
     @Test
+    void aResolutionCaseLeavesItsEdgesItsModelAndTheExtentsItWasResolvedFrom(@TempDir Path root) throws IOException {
+        Path examples = root.resolve("examples");
+        Path out = root.resolve("out");
+        resolving(examples, text -> text);
+
+        Outputs.write(examples, out);
+
+        Path minimal = out.resolve("minimal");
+        assertThat(read(minimal.resolve("dependencies.json")))
+                .isEqualTo(Examples.read("minimal/expected/dependencies.json"));
+        assertThat(read(minimal.resolve("notes" + Outputs.RESOLVED_MODEL)))
+                .contains("resolveddeployment:ResolvedDeployment");
+        // Every link of the intent extent lands inside it, by root index and path rather than by ID,
+        // so the extent loads in Eclipse on its own.
+        String intent = read(minimal.resolve(Outputs.INTENT_MODEL));
+        assertThat(intent).doesNotContain("href=").containsPattern("traefik=\"/\\d+/@applications\\.\\d+\"");
+        assertThat(read(minimal.resolve(Outputs.PINNED_MODEL))).contains("pinnedinputs:NodeContract");
+    }
+
+    @Test
+    void anExtentNamesARootByItsIndexAndAnythingBelowItByItsPathUnderThatRoot() {
+        Outputs.ByIndex extent = new Outputs.ByIndex(org.eclipse.emf.common.util.URI.createURI("extent.xmi"));
+        var model = dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentFactory.eINSTANCE;
+        var first = model.createProject();
+        var second = model.createProject();
+        var application = model.createApplication();
+        application.setId("notes");
+        second.getApplications().add(application);
+        extent.getContents().add(first);
+        extent.getContents().add(second);
+
+        assertThat(extent.getURIFragment(second)).isEqualTo("/1");
+        assertThat(extent.getURIFragment(application)).isEqualTo("/1/@applications.0");
+        assertThat(extent.getEObject("/1/@applications.0")).isSameAs(application);
+    }
+
+    @Test
+    void aResolutionCaseTheChecksRefuseLeavesItsDiagnostics(@TempDir Path root) throws IOException {
+        Path examples = root.resolve("examples");
+        Path out = root.resolve("out");
+        resolving(examples, text -> text.replace("surface: http }", "surface: grpc }"));
+
+        Outputs.write(examples, out);
+
+        assertThat(read(out.resolve("minimal/exit"))).isEqualTo("1");
+        assertThat(read(out.resolve("minimal/diagnostics.json"))).contains("E_UNKNOWN_SURFACE");
+        assertThat(out.resolve("minimal/dependencies.json")).doesNotExist();
+    }
+
+    /** minimal's resolution set, copied out of the real examples, its project file passed through {@code edit}. */
+    private static void resolving(Path examples, java.util.function.UnaryOperator<String> edit) throws IOException {
+        for (String document : Outputs.RESOLVED.get("minimal").documents()) {
+            Path target = examples.resolve(document);
+            Files.createDirectories(target.getParent());
+            String text = Examples.read(document);
+            Files.writeString(target, document.equals("minimal/notes.project.yml") ? edit.apply(text) : text);
+        }
+        touch(examples.resolve("minimal/expected/dependencies.json"));
+        Files.createDirectories(examples.resolve("refusals"));
+    }
+
+    @Test
     void aRefusedFileThatHoldsNoDocumentLeavesNoModel(@TempDir Path root) throws IOException {
         Path examples = root.resolve("examples");
         Path out = root.resolve("out");
@@ -120,6 +182,17 @@ class OutputsTest {
                     .limit(1)
                     .map(document -> directory + "/" + model(document));
             return Stream.concat(Stream.of(directory + "/exit", directory + "/intent.json"), models);
+        }
+        if (oracle.endsWith("expected/dependencies.json")) {
+            String directory = relative(examples, oracle.getParent().getParent());
+            Outputs.Resolving resolving = Outputs.RESOLVED.get(directory);
+            return resolving == null
+                    ? Stream.empty()
+                    : Stream.of(
+                            directory + "/dependencies.json",
+                            directory + "/" + resolving.project() + Outputs.RESOLVED_MODEL,
+                            directory + "/" + Outputs.INTENT_MODEL,
+                            directory + "/" + Outputs.PINNED_MODEL);
         }
         if (oracle.endsWith("expected/effective.json")) {
             return Stream.of(relative(examples, oracle.getParent().getParent()) + "/effective.json");

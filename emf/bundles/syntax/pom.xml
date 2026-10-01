@@ -35,6 +35,12 @@
                 <exclude>dev.jorisjonkers.deploykit.emf.syntax.AbstractProjectIntent*</exclude>
                 <exclude>dev.jorisjonkers.deploykit.emf.syntax.PlatformIntent*</exclude>
                 <exclude>dev.jorisjonkers.deploykit.emf.syntax.AbstractPlatformIntent*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.ClusterState*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.AbstractClusterState*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.ImagesLock*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.AbstractImagesLock*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.NodeContract*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.AbstractNodeContract*</exclude>
                 <exclude>dev.jorisjonkers.deploykit.emf.syntax.parser.*</exclude>
                 <exclude>dev.jorisjonkers.deploykit.emf.syntax.parser.antlr.*</exclude>
                 <exclude>dev.jorisjonkers.deploykit.emf.syntax.parser.antlr.internal.*</exclude>
@@ -54,6 +60,12 @@
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractProjectIntent*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/PlatformIntent*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractPlatformIntent*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/ClusterState*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractClusterState*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/ImagesLock*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractImagesLock*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/NodeContract*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractNodeContract*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/parser/**</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/serializer/**</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/services/**</exclude>
@@ -70,6 +82,12 @@
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractProjectIntent*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/PlatformIntent*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractPlatformIntent*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/ClusterState*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractClusterState*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/ImagesLock*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractImagesLock*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/NodeContract*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractNodeContract*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/parser/**</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/serializer/**</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/services/**</exclude>
@@ -87,6 +105,9 @@
           <excludedClasses>
             <param>dev.jorisjonkers.deploykit.emf.syntax.*ProjectIntent*</param>
             <param>dev.jorisjonkers.deploykit.emf.syntax.*PlatformIntent*</param>
+            <param>dev.jorisjonkers.deploykit.emf.syntax.*ClusterState*</param>
+            <param>dev.jorisjonkers.deploykit.emf.syntax.*ImagesLock*</param>
+            <param>dev.jorisjonkers.deploykit.emf.syntax.*NodeContract*</param>
             <param>dev.jorisjonkers.deploykit.emf.syntax.parser.antlr.lexer.*</param>
             <param>dev.jorisjonkers.deploykit.emf.syntax.parser.antlr.internal.*</param>
             <param>dev.jorisjonkers.deploykit.emf.syntax.parser.*</param>

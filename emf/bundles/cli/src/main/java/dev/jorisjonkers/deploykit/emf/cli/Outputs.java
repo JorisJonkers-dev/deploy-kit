@@ -1,5 +1,6 @@
 package dev.jorisjonkers.deploykit.emf.cli;
 
+import dev.jorisjonkers.deploykit.emf.metamodel.descriptor.DependencyEdges;
 import dev.jorisjonkers.deploykit.emf.metamodel.json.CanonicalJson;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -10,6 +11,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Stream;
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.emf.ecore.xmi.impl.XMIResourceImpl;
 
 /**
  * What a run of the pipeline leaves behind: for every case under {@code spec/v1/examples/}, the
@@ -39,6 +45,36 @@ public final class Outputs {
     /** The code the run ended on: {@code 0} when the pipeline accepted the case, {@code 1} when not. */
     public static final String EXIT = "exit";
 
+    /**
+     * The cases this implementation resolves, each with the project it resolves and the set of
+     * documents it is read with: the case's own project file, the foundation it composes with, and
+     * the pinned inputs beside the Platform document (spec/v1/20-resolved-deployment.md#pinned-inputs).
+     * A case with a dependencies oracle and no entry here is not yet a resolution parity case; #91
+     * widens the list to every example.
+     */
+    public static final Map<String, Resolving> RESOLVED = Map.of(
+            "minimal",
+            new Resolving(
+                    "notes",
+                    List.of(
+                            "platform/platform.intent.yml",
+                            "platform/node-contract.yml",
+                            "platform/images.lock.yml",
+                            "platform/cluster-state.yml",
+                            "minimal/notes.project.yml",
+                            "delivery/delivery.project.yml",
+                            "edge/edge.project.yml",
+                            "observability/observability.project.yml",
+                            "secrets/secrets.project.yml")));
+
+    /** The integrity the worked projections record for the schema package they were rendered against. */
+    public static final String INTEGRITY = "sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b";
+
+    /** The project a resolution case resolves, and the documents under the examples it reads. */
+    public record Resolving(String project, List<String> documents) {}
+
+    private static final String DEPENDENCIES_ORACLE = "expected/" + DependencyEdges.NAME;
+
     private static final String INTENT_ORACLE = "expected/intent.json";
     private static final String EFFECTIVE_ORACLE = "expected/effective.json";
     private static final String DIAGNOSTICS_ORACLE = ".diagnostics.json";
@@ -54,6 +90,12 @@ public final class Outputs {
         }
         for (Path directory : casesWith(examples, EFFECTIVE_ORACLE)) {
             writeEffective(out.resolve(examples.relativize(directory)), authored(directory));
+        }
+        for (Path directory : casesWith(examples, DEPENDENCIES_ORACLE)) {
+            Resolving resolving = RESOLVED.get(examples.relativize(directory).toString());
+            if (resolving != null) {
+                writeResolved(out.resolve(examples.relativize(directory)), examples, resolving);
+            }
         }
         for (Path oracle : refusalsWithADiagnosticsOracle(examples)) {
             String stem = oracle.getFileName().toString().replace(DIAGNOSTICS_ORACLE, "");
@@ -132,6 +174,66 @@ public final class Outputs {
                 CanonicalJson.write(Pipeline.effective(authored).intent()),
                 StandardCharsets.UTF_8);
     }
+
+    /**
+     * The resolved dependency edges of a resolution case, the half of resolution the parity contract
+     * compares, and the Resolved Deployment model they were exported from, in XMI, which no oracle
+     * compares and which is what the templates read.
+     */
+    private static void writeResolved(Path directory, Path examples, Resolving resolving) throws IOException {
+        Resolved resolved = Pipeline.resolve(
+                resolving.documents().stream().map(examples::resolve).toList(), resolving.project(), INTEGRITY);
+        if (!resolved.ok()) {
+            writeDiagnostics(directory, resolved.diagnostics());
+            return;
+        }
+        DependencyEdges.write(directory, resolved.deployment());
+        // The two extents the transformation read, so a launch in Eclipse runs it on the same models.
+        EcoreUtil.Copier copier = new EcoreUtil.Copier();
+        Resource intent = model(directory, INTENT_MODEL);
+        Resource pinned = model(directory, PINNED_MODEL);
+        intent.getContents().addAll(copier.copyAll(resolved.intent()));
+        pinned.getContents().addAll(copier.copyAll(resolved.pinned()));
+        copier.copyReferences();
+        Resource deployment = model(directory, resolving.project() + RESOLVED_MODEL);
+        deployment.getContents().add(resolved.deployment());
+        for (Resource resource : List.of(intent, pinned, deployment)) {
+            resource.save(null);
+        }
+    }
+
+    /** An XMI resource for {@code name} under {@code directory}, which refers to its objects as {@link ByIndex} does. */
+    private static Resource model(Path directory, String name) {
+        return new ByIndex(
+                URI.createFileURI(directory.resolve(name).toAbsolutePath().toString()));
+    }
+
+    /**
+     * An XMI resource of several roots that refers to its objects by their root's index and their
+     * containment path, never by ID: an extent holds several projects, and an ID names one object
+     * only within one of them.
+     */
+    static final class ByIndex extends XMIResourceImpl {
+        ByIndex(URI uri) {
+            super(uri);
+        }
+
+        @Override
+        public String getURIFragment(EObject object) {
+            EObject root = EcoreUtil.getRootContainer(object);
+            String index = "/" + getContents().indexOf(root);
+            return root == object ? index : index + "/" + EcoreUtil.getRelativeURIFragmentPath(root, object);
+        }
+    }
+
+    /** The intent extent a resolution case reads: each authored Project, its lowering, and the Platform document. */
+    public static final String INTENT_MODEL = "resolution.intent.xmi";
+
+    /** The pinned extent a resolution case reads: the node contract, the images lock and the snapshot. */
+    public static final String PINNED_MODEL = "resolution.pinned.xmi";
+
+    /** What the XMI of a resolved project is called, beside the edges exported from it. */
+    public static final String RESOLVED_MODEL = ".resolveddeployment";
 
     /** The XMI of each of {@code documents} read together; a file that holds no document has none. */
     private static void writeModels(Path directory, List<Path> documents) throws IOException {

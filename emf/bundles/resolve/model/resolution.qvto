@@ -1,0 +1,581 @@
+-- The resolution (spec/v1/20-resolved-deployment.md): one project of the lowered
+-- union, with the Platform document and the pinned inputs beside it, to its
+-- Resolved Deployment. It reads the Effective Intent and never the authored
+-- shape, so no derivation has to union three levels for itself
+-- (emf/docs/architecture.md#transformation).
+--
+-- Every derived value is a mapping or a query here. Hashing is the one
+-- operation done outside the language, by the `Hashing` black box: a digest
+-- is a function of canonical bytes, which OCL has no way to produce.
+--
+-- The derivations a case under spec/v1/examples/ does not yet reach stop the run
+-- with the ticket that lands them, rather than write a model with a gap in it.
+import dev.jorisjonkers.deploykit.emf.hashing;
+
+modeltype PI uses 'https://jorisjonkers.dev/deploy-kit/project-intent/1';
+modeltype IN uses 'https://jorisjonkers.dev/deploy-kit/pinned-inputs/1';
+modeltype RD uses 'https://jorisjonkers.dev/deploy-kit/resolved-deployment/1';
+modeltype ECORE uses 'http://www.eclipse.org/emf/2002/Ecore';
+
+transformation resolution(in intent : PI, in pinned : IN, out resolved : RD)
+	access library Hashing;
+
+
+-- The project of the union this run resolves, and the integrity the schema
+-- package it was rendered against records: both are inputs, never derived.
+configuration property project : String;
+configuration property integrity : String;
+
+property estate : Platform = intent.rootObjects()[Platform]->any(true);
+property projects : Sequence(EffectiveProject) =
+	intent.rootObjects()[EffectiveProject]->sortedBy(p | p.project)->asSequence();
+property contract : NodeContract = pinned.rootObjects()[NodeContract]->any(true);
+property lock : ImagesLock = pinned.rootObjects()[ImagesLock]->any(true);
+property snapshot : ClusterState = pinned.rootObjects()[ClusterState]->any(true);
+
+-- A startup probe polls this often; its threshold covers the budget.
+property STARTUP_PERIOD : Integer = 5;
+-- The deadline of a Process that declares no startup budget: the substrate's own.
+property UNBUDGETED_DEADLINE : Integer = 600;
+-- The surface an exporting profile's collector receives on, and a gate answers on.
+property OTLP_SURFACE : String = 'otlp';
+property DNS_PORT : Integer = 53;
+
+main() {
+	projects->select(p | p.project = project)->any(true).map deployment();
+}
+
+-- ============================================================== the document
+
+mapping EffectiveProject::deployment() : ResolvedDeployment {
+	apiVersion := 'resolved.jorisjonkers.dev/v1';
+	kind := 'ResolvedDeployment';
+	reconcileUnits := Sequence{self.map unit()};
+	applications := self.applications->map application(self);
+	provenance := self.map provenance();
+	deliverables := self.projectFiles()
+		->union(self.applications->collect(a | a.applicationFiles(self))->flatten())
+		->union(self.applications->collect(a | a.edgeFiles(self))->flatten());
+	end {
+		-- Only a complete element has a revision: it is the digest of all of it.
+		result.applications->forEach(a) { a.revision := a.oclAsType(ECORE::EObject).revisionOf() };
+	}
+}
+
+-- The Reconcile Unit of a project's Applications (spec/v1/20-resolved-deployment.md#the-reconcile-unit).
+mapping EffectiveProject::unit() : ReconcileUnit {
+	name := 'apps-' + self.project;
+	-- Every unit an edge reaches and the secrets unit a grant needs land with #91;
+	-- until then a project that would need one stops here.
+	assert fatal (self.applications.processes->forAll(p |
+		p.dependsOn->isEmpty() and p.secrets->isEmpty()))
+		with log('reconcile ordering across projects lands with #91');
+}
+
+-- One digest per pinned input, then the render hash over them and the schema
+-- package's integrity (spec/v1/20-resolved-deployment.md#pinned-inputs).
+mapping EffectiveProject::provenance() : Provenance {
+	schemaPackageIntegrity := integrity;
+	inputDigests := projects->collect(p | object InputDigest {
+			input := PinnedInput::intentFragment;
+			name := p.project;
+			digest := p.oclAsType(ECORE::EObject).digestOf();
+		})
+		->append(object InputDigest {
+			input := PinnedInput::platformIntent;
+			name := estate.metadata.project;
+			digest := estate.oclAsType(ECORE::EObject).digestOf();
+		})
+		->append(object InputDigest {
+			input := PinnedInput::nodeContract;
+			name := contract.cluster;
+			digest := contract.oclAsType(ECORE::EObject).digestOf();
+		})
+		->append(object InputDigest {
+			input := PinnedInput::imagesLock;
+			name := lock.name;
+			digest := lock.oclAsType(ECORE::EObject).digestOf();
+		})
+		->append(object InputDigest {
+			input := PinnedInput::clusterState;
+			name := snapshot.cluster;
+			digest := snapshot.oclAsType(ECORE::EObject).digestOf();
+		});
+	end {
+		-- The render hash covers everything above it and nothing else, so it is
+		-- taken before it is set.
+		result.renderHash := result.oclAsType(ECORE::EObject).digestOf();
+	}
+}
+
+-- =========================================================== the Application
+
+mapping EffectiveApplication::application(in prj : EffectiveProject) : ResolvedApplication {
+	id := self.id;
+	project := prj.project;
+	namespace := namespaceOf(prj.project);
+	if self.observability <> null then alertClass := self.observability.alertClass.spelling() endif;
+	reconcileUnit := prj.map unit();
+	-- The Processes first: everything below refers to them.
+	processes := self.processes->map process(self, prj);
+	exposure := self.exposure->map exposure(self, prj);
+	releaseGate := if gated(self) then self.map gate() else null endif;
+	assert fatal (self.migration = null or not self.migration.oclIsKindOf(ManagedMigration))
+		with log('a managed migration lands with #91');
+}
+
+-- Whether any Process of the Application switches blue-green.
+query gated(app : EffectiveApplication) : Boolean =
+	app.processes->exists(p | switchesBlueGreen(app, p));
+
+-- Only a serving Process switches at all: a job or a prepare Process has no switchover.
+query switchesBlueGreen(app : EffectiveApplication, p : PI::Process) : Boolean =
+	p.lifecycle = Lifecycle::application and switchoverOf(app, p) = Switchover::blueGreen;
+
+-- The release-gate inputs a blue/green switch reads
+-- (spec/v1/20-resolved-deployment.md#the-release-gate): one member per
+-- blue/green Process that publishes readiness, the platform's analysis cadence,
+-- and the slowest member's deadline.
+mapping EffectiveApplication::gate() : ReleaseGate {
+	init {
+		var waiting : Sequence(PI::Process) := self.processes->select(p |
+			switchesBlueGreen(self, p) and readinessOf(p) <> null)->asSequence();
+	}
+	assert fatal (waiting->notEmpty())
+		with log('a blue/green Application that publishes no readiness is E_RELEASE_UNIT_NO_READINESS');
+	deadline := inSeconds(waiting->collect(p | deadlineOf(p))->max());
+	analysis := object GateAnalysis {
+		interval := estate.delivery.analysis.interval;
+		iterations := estate.delivery.analysis.iterations;
+		threshold := estate.delivery.analysis.threshold;
+	};
+	members := waiting->collect(p | object GateMember {
+		process := p.resolveone(ResolvedProcess);
+		readiness := readinessOf(p).target();
+		checks := if exportsTelemetry(p) then Sequence{AnalysisCheck::errorRate, AnalysisCheck::latency}
+			else Sequence{} endif;
+	});
+}
+
+-- ================================================================ the Process
+
+mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectiveProject)
+		: ResolvedProcess {
+	init {
+		var locked : LockedImage := lock.images->select(i | i.alias = self.image)->any(true);
+		var declared : Probes := if self.probes <> null and self.probes.oclIsKindOf(Probes)
+			then self.probes.oclAsType(Probes) else null endif;
+	}
+	assert fatal (locked <> null) with log(self.image + ' is not locked: E_UNLOCKED_IMAGE');
+	-- The families no case resolved through this implementation reaches yet.
+	assert fatal (self.dependsOn->isEmpty() and self.volumes->isEmpty() and self.secrets->isEmpty()
+		and self.assets->isEmpty() and self.sidecars->isEmpty())
+		with log('edges, volumes, grants, Assets and sidecars land with #91');
+
+	name := self.name;
+	-- The Vault role and the ServiceAccount are both the Process's own name.
+	identity := self.name;
+	image := locked.repository + '@' + locked.digest;
+	uid := locked.uid;
+	gid := locked.gid;
+	if self.cutover <> PI::Cutover::absent then cutover := self.cutover.resolvedCutover() endif;
+	if self.lifecycle = Lifecycle::application then switchover := switchoverOf(app, self) endif;
+	deadline := inSeconds(deadlineOf(self));
+	replicas := if self.replicas = null then 1 else self.replicas.count endif;
+	memory := self.placement.memory;
+	cpu := self.placement.cpu;
+	hardening := estate.hardening.spelling();
+	-- The pod authenticates only where a grant is delivered `self`, and this
+	-- Process holds none.
+	identityToken := false;
+	component := self.runtime.spelling();
+	if declared <> null and declared.readiness <> null then readiness := declared.readiness.cadenced() endif;
+	if declared <> null and declared.liveness <> null then liveness := declared.liveness.cadenced() endif;
+	-- The startup probe polls liveness, so readiness alone derives none.
+	if declared <> null and declared.liveness <> null and self.startupBudget <> null then
+		startup := object StartupProbe {
+			target := declared.liveness.target();
+			period := inSeconds(STARTUP_PERIOD);
+			failures := ceiling(seconds(self.startupBudget) / STARTUP_PERIOD);
+		}
+	endif;
+	surfaces := self.provides->collect(s | object ResolvedSurface { name := s.key; port := s.value; });
+	placement := object ResolvedPlacement {
+		eligibleNodes := contract.nodes->select(n | eligible(self, n))->collect(n | n.name);
+	};
+	writablePaths := self.writablePaths->collect(w | object WritablePath {
+		path := w;
+		size := estate.ephemeral.size;
+	});
+	environment := environmentOf(self, prj)->sortedBy(e | e.name);
+}
+
+-- `progressDeadlineSeconds`: three budgets, floored to a whole second, or for a
+-- prepare Process the budget itself, rounded up so it is never cut short.
+query deadlineOf(p : PI::Process) : Integer =
+	if p.startupBudget = null then UNBUDGETED_DEADLINE
+	else if p.lifecycle = Lifecycle::prepare then ceiling(seconds(p.startupBudget))
+	else (seconds(p.startupBudget) * 3).floor() endif endif;
+
+-- How the new version replaces the old (spec/v1/55-delivery.md#switchover).
+query switchoverOf(app : EffectiveApplication, p : PI::Process) : Switchover =
+	if p.cutover = PI::Cutover::interrupted then Switchover::stopStart
+	else if estate.delivery <> null and estate.delivery.machinery->exists(m | m.id = app.id)
+		then Switchover::rolling
+	else Switchover::blueGreen endif endif;
+
+query readinessOf(p : PI::Process) : Probe =
+	if p.probes <> null and p.probes.oclIsKindOf(Probes)
+		then p.probes.oclAsType(Probes).readiness else null endif;
+
+-- Readiness and liveness take the Platform document's cadence.
+query Probe::cadenced() : ResolvedProbe = object ResolvedProbe {
+	target := self.target();
+	period := estate.probes.period;
+	timeout := estate.probes.timeout;
+	failures := estate.probes.failures;
+};
+
+query Probe::target() : ProbeTarget =
+	if self.oclIsKindOf(HttpProbe) then
+		object HttpTarget {
+			path := self.oclAsType(HttpProbe).path;
+			port := self.oclAsType(HttpProbe).port;
+		}.oclAsType(ProbeTarget)
+	else
+		object TcpTarget { tcp := self.oclAsType(TcpProbe).tcp; }.oclAsType(ProbeTarget)
+	endif;
+
+-- ============================================================== eligibility
+
+-- The copies a node must fit: a continuous Process runs its new version beside its old one.
+query copiesOf(p : PI::Process) : Integer =
+	if p.cutover = PI::Cutover::continuous then 2 else 1 endif;
+
+-- Eligibility, not bin-packing: each Process against allocatable alone, on every
+-- dimension it declared (spec/v1/20-resolved-deployment.md#layer-2-does-not-assign-a-node).
+query eligible(p : PI::Process, n : Node) : Boolean =
+	mebibytes(n.allocatable.memory) >= mebibytes(p.placement.memory) * copiesOf(p)
+	and millicores(n.allocatable.cpu) >= millicores(p.placement.cpu) * copiesOf(p)
+	and (p.placement.arch->isEmpty() or p.placement.arch->exists(a | a.spelling() = n.arch))
+	and (p.placement.site = null or p.placement.site = n.site)
+	and p.placement.capabilities->forAll(c | n.capabilities->includes(c))
+	and (p.placement.gpu = null or n.gpus->exists(g |
+		g._class = p.placement.gpu._class and g.memoryMib >= mebibytes(p.placement.gpu.memory)))
+	and (p.placement.disk = null or n.disks->exists(d |
+		p.placement.disk.media->exists(m | m.spelling() = d.media)));
+
+-- =============================================================== environment
+
+-- The env file a render for the platform's cluster reads: the base, overlaid by
+-- that cluster's own file; then the Runtime Profile's values.
+query environmentOf(p : PI::Process, prj : EffectiveProject) : Sequence(EnvEntry) =
+	authoredOf(p)->collect(v | v.entry(prj))->union(profileOf(p));
+
+query authoredOf(p : PI::Process) : Sequence(EnvVariable) =
+	let base : Sequence(EnvVariable) =
+			p.env->select(f | f.cluster = null)->collect(f | f.entries)->asSequence(),
+		overlay : Sequence(EnvVariable) =
+			p.env->select(f | f.cluster = estate.metadata.cluster)->collect(f | f.entries)->asSequence() in
+	base->select(b | overlay->forAll(o | o.name <> b.name))->union(overlay);
+
+query EnvVariable::entry(prj : EffectiveProject) : EnvEntry = object EnvEntry {
+	name := self.name;
+	value := if self.value.oclIsKindOf(EnvLiteral) then self.value.oclAsType(EnvLiteral).text
+		else self.value.oclAsType(Placeholder).placeholderValue(prj) endif;
+};
+
+-- `${identity:...}` is the one placeholder kind this tracer resolves; every
+-- other kind reads an edge, a grant or an exposure, which land with #91.
+query Placeholder::placeholderValue(prj : EffectiveProject) : String =
+	let suffix : String = if self.suffix = null then '' else self.suffix endif in
+	if self.kind = PlaceholderKind::identity then
+		(if self.source = 'namespace' then namespaceOf(prj.project)
+			else self.oclAsType(ECORE::EObject).eContainer().eContainer().eContainer()
+				.oclAsType(PI::Process).name endif) + suffix
+	else
+		assertFailed('placeholders other than ${identity:} land with #91')
+	endif;
+
+query assertFailed(message : String) : String {
+	assert fatal (false) with log(message);
+	return '';
+}
+
+-- The Runtime Profile's values (spec/v1/10-project-intent.md#runtime-profiles).
+query profileOf(p : PI::Process) : Sequence(EnvEntry) =
+	if not exportsTelemetry(p) then Sequence{}
+	else
+		Sequence{object EnvEntry { name := 'DEPLOYMENT_ENVIRONMENT'; value := estate.metadata.cluster; }}
+		->union(if collectorEndpoint() = null then Sequence{}
+			else Sequence{object EnvEntry { name := 'OTEL_EXPORTER_OTLP_ENDPOINT'; value := collectorEndpoint(); }} endif)
+		->append(object EnvEntry { name := 'OTEL_SERVICE_NAME'; value := p.name; })
+		->union(if p.provides->size() = 1
+			then Sequence{object EnvEntry { name := 'PORT'; value := p.provides->any(true).value.toString(); }}
+			else Sequence{} endif)
+	endif;
+
+-- Whether a runtime's profile exports telemetry and HTTP server metrics.
+query exportsTelemetry(p : PI::Process) : Boolean =
+	p.runtime = Runtime::jvm or p.runtime = Runtime::node or p.runtime = Runtime::python;
+
+-- The named collector's `otlp` surface, where the platform names one and the
+-- union declares it (spec/v1/14-platform-intent.md#telemetry).
+query collectorEndpoint() : String =
+	if estate.telemetry = null then null
+	else let address : String = surfaceAddress(estate.telemetry.collector.id, OTLP_SURFACE) in
+		if address = null then null else 'http://' + address endif
+	endif;
+
+-- The in-cluster address of the Process of `application` that provides `surface`.
+query surfaceAddress(application : String, surface : String) : String =
+	let providers : Sequence(Tuple(project : String, process : PI::Process)) =
+		projects->collect(prj | prj.applications->select(a | a.id = application).processes
+			->select(p | p.provides->exists(s | s.key = surface))
+			->collect(p | Tuple{project = prj.project, process = p}))->flatten() in
+	if providers->isEmpty() then null
+	else let first : Tuple(project : String, process : PI::Process) = providers->first() in
+		first.process.name + '.' + namespaceOf(first.project) + '.svc.cluster.local:'
+			+ first.process.provides->select(s | s.key = surface)->any(true).value.toString()
+	endif;
+
+-- ================================================================== exposure
+
+-- The tier carrying an audience, or E_NO_TIER_FOR_AUDIENCE refused the set.
+query tierFor(audience : Audience) : Tier =
+	estate.tiers->select(t | t.audiences->includes(audience))->first();
+
+mapping Exposure::exposure(in app : EffectiveApplication, in prj : EffectiveProject)
+		: ResolvedExposure {
+	name := self.name;
+	host := self.host;
+	tier := tierFor(self.audience).name;
+	routes := self.routes->collect(r | object ResolvedRoute {
+		path := r.path;
+		match := r.match.resolvedMatch();
+		audience := r.audienceOf(self).spelling();
+		precedence := precedenceOf(r, self.routes);
+		process := r.process.resolveone(ResolvedProcess);
+		surface := r.surface.key;
+		middleware := middlewareOf(r, self);
+	});
+}
+
+query Route::audienceOf(exposure : Exposure) : Audience =
+	if self.audience <> Audience::absent then self.audience else exposure.audience endif;
+
+-- Where a route sorts: every `exact` before any `prefix`, a longer prefix before
+-- a shorter one, and its precedence is one more than the distinct ranks before it.
+query rankOf(r : Route) : Integer =
+	if r.match = PI::Match::exact then -1000000 else -r.path.size() endif;
+
+query precedenceOf(r : Route, routes : Collection(Route)) : Integer =
+	routes->collect(o | rankOf(o))->asSet()->select(k | k < rankOf(r))->size() + 1;
+
+-- The chain the tier, the audience and the content profile derive.
+query middlewareOf(r : Route, exposure : Exposure) : Sequence(MiddlewareStep) =
+	(if r.audienceOf(exposure) = Audience::authenticated
+		then Sequence{object MiddlewareStep {
+			kind := MiddlewareKind::forwardAuth;
+			endpoint := tierFor(r.audienceOf(exposure)).forwardAuth;
+		}}
+		else Sequence{} endif)
+	->append(object MiddlewareStep {
+		kind := MiddlewareKind::securityHeaders;
+		if exposure.oclAsType(ECORE::EObject).states('contentPolicy')
+			then contentPolicy := exposure.contentPolicy.spelling() endif;
+	})
+	->union(if r.redirectTo = null then Sequence{}
+		else Sequence{object MiddlewareStep {
+			kind := MiddlewareKind::redirect;
+			redirectTo := r.redirectTo;
+		}} endif);
+
+-- ============================================================ the path plan
+
+-- What every project writes: its namespace, the index over it, and the
+-- default-deny that selects every pod and belongs to no Process.
+query EffectiveProject::projectFiles() : Sequence(Deliverable) =
+	let root : String = 'apps/' + self.project + '/' in
+	Sequence{
+		object NamespaceFile {
+			path := root + 'namespace.yaml';
+			adapter := AdapterName::kubernetes;
+			namespace := namespaceOf(self.project);
+		}.oclAsType(Deliverable),
+		object IndexFile {
+			path := root + 'kustomization.yaml';
+			adapter := AdapterName::kubernetes;
+			resources := Sequence{'namespace.yaml'}->union(self.applications->collect(a | a.id));
+		}.oclAsType(Deliverable),
+		object NetworkPolicyFile {
+			path := root + 'networkpolicy.yaml';
+			adapter := AdapterName::networking;
+		}.oclAsType(Deliverable)
+	};
+
+-- What one Application writes under its own directory: its index, and per
+-- Process the workload, its Canary where it switches blue-green, its
+-- identity, its monitor where it is scraped, and its policy.
+query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(Deliverable) =
+	let root : String = 'apps/' + prj.project + '/' + self.id + '/' in
+	let first : PI::Process = self.processes->first() in
+	let served : ResolvedProcess = first.resolveone(ResolvedProcess) in
+	let blueGreen : Boolean = switchesBlueGreen(self, first) in
+	let scraped : Boolean = self.observability <> null and self.observability.scrape <> null in
+	if self.processes->size() <> 1 then assertFailedFiles('an Application of several Processes lands with #91')
+	else
+	Sequence{
+		object IndexFile {
+			path := root + 'kustomization.yaml';
+			adapter := AdapterName::kubernetes;
+			resources := (if blueGreen then Sequence{'canary.yaml'} else Sequence{} endif)
+				->union(if scraped then Sequence{'podmonitor.yaml'} else Sequence{} endif)
+				->union(Sequence{'serviceaccount.yaml', 'workload.yaml'});
+		}.oclAsType(Deliverable),
+		object WorkloadFile {
+			path := root + 'workload.yaml';
+			adapter := AdapterName::kubernetes;
+			process := served;
+			controller := ControllerKind::deployment;
+			strategy := if first.cutover = PI::Cutover::interrupted then 'Recreate' else 'RollingUpdate' endif;
+		}.oclAsType(Deliverable)
+	}
+	->union(if blueGreen then Sequence{object SwitchoverFile {
+			path := root + 'canary.yaml';
+			adapter := AdapterName::kubernetes;
+			process := served;
+		}.oclAsType(Deliverable)} else Sequence{} endif)
+	->append(object IdentityFile {
+			path := root + 'serviceaccount.yaml';
+			adapter := AdapterName::kubernetes;
+			process := served;
+		}.oclAsType(Deliverable))
+	->union(if scraped then Sequence{object MonitorFile {
+			path := root + 'podmonitor.yaml';
+			adapter := AdapterName::prometheus;
+			process := self.observability.scrape.process.resolveone(ResolvedProcess);
+			surface := self.observability.scrape.surface.key;
+			scrapePath := self.observability.scrape.path;
+			interval := estate.monitors.interval;
+		}.oclAsType(Deliverable)} else Sequence{} endif)
+	->append(object NetworkPolicyFile {
+			path := root + 'networkpolicy.yaml';
+			adapter := AdapterName::networking;
+			process := served;
+			ingress := ingressOf(first, self);
+			egress := Sequence{object PolicyPeer {
+				namespace := estate.substrate.clusterDns;
+				port := DNS_PORT;
+			}};
+		}.oclAsType(Deliverable))
+	endif;
+
+query assertFailedFiles(message : String) : Sequence(Deliverable) {
+	assert fatal (false) with log(message);
+	return Sequence{};
+}
+
+-- Who may reach a Process (spec/v1/16-dependencies.md#the-derived-allow-set):
+-- the proxy of the tier each route's audience reaches, and the metrics stack
+-- where the Process is scraped, each at the port of the surface it names.
+query ingressOf(p : PI::Process, app : EffectiveApplication) : Sequence(PolicyPeer) =
+	app.exposure->collect(e | e.routes->select(r | r.process = p)->collect(r |
+		peersOf(tierFor(r.audienceOf(e)).traefik.id, r.surface.value)))->flatten()
+	->union(if app.observability <> null and app.observability.scrape <> null
+			and app.observability.scrape.process = p and estate.telemetry <> null
+		then peersOf(estate.telemetry.metrics.id, app.observability.scrape.surface.value)
+		else Sequence{} endif);
+
+-- Every Process of `application` in the union, at `port`.
+query peersOf(application : String, at : Integer) : Sequence(PolicyPeer) =
+	projects->collect(prj | prj.applications->select(a | a.id = application).processes
+		->collect(p | object PolicyPeer {
+			namespace := namespaceOf(prj.project);
+			process := p.name;
+			port := at;
+		}))->flatten();
+
+-- The routes an exposure gives the tier proxy, in the tier's own directory of
+-- the estate-scoped edge, and the index over them.
+query EffectiveApplication::edgeFiles(prj : EffectiveProject) : Sequence(Deliverable) =
+	self.exposure->collect(e |
+		let tier : Tier = tierFor(e.audience) in
+		let root : String = 'apps/edge/' + tier.name + '/' in
+		Sequence{
+			object IngressRouteFile {
+				path := root + self.id + '-' + e.name + '.yaml';
+				adapter := AdapterName::traefik;
+				exposure := e.resolveone(ResolvedExposure);
+				entryPoint := if tier.listener = Listener::tls then 'websecure' else 'web' endif;
+				if tier.certificates = CertificateSource::acme then certificateResolver := 'acme' endif;
+			}.oclAsType(Deliverable),
+			object IndexFile {
+				path := root + 'kustomization.yaml';
+				adapter := AdapterName::kubernetes;
+				resources := Sequence{self.id + '-' + e.name + '.yaml'};
+			}.oclAsType(Deliverable)
+		})->flatten();
+
+-- ================================================================ spellings
+
+query namespaceOf(prj : String) : String = prj + '-system';
+
+-- Whether the source states `feature`: an unset enumeration reads as its first literal.
+query ECORE::EObject::states(feature : String) : Boolean =
+	self.eIsSet(self.eClass().getEStructuralFeature(feature));
+
+query inSeconds(n : Integer) : String = n.toString() + 's';
+
+query ceiling(r : Real) : Integer = -((-r).floor());
+
+-- A duration in seconds: `20s`, `30ms`, `5m` or `2h`.
+query seconds(d : String) : Real =
+	if d.endsWith('ms') then d.substring(1, d.size() - 2).toReal() / 1000
+	else if d.endsWith('s') then d.substring(1, d.size() - 1).toReal()
+	else if d.endsWith('m') then d.substring(1, d.size() - 1).toReal() * 60
+	else d.substring(1, d.size() - 1).toReal() * 3600 endif endif endif;
+
+-- A cpu quantity in millicores: `50m`, or `2` whole cores.
+query millicores(q : String) : Integer =
+	if q.endsWith('m') then q.substring(1, q.size() - 1).toInteger() else q.toInteger() * 1000 endif;
+
+-- A memory quantity in MiB: `256Mi`, `2Gi`, `1Ti`.
+query mebibytes(q : String) : Integer =
+	let amount : Integer = q.substring(1, q.size() - 2).toInteger() in
+	if q.endsWith('Mi') then amount
+	else if q.endsWith('Gi') then amount * 1024
+	else amount * 1024 * 1024 endif endif;
+
+query PI::Cutover::resolvedCutover() : RD::Cutover =
+	if self = PI::Cutover::continuous then RD::Cutover::continuous else RD::Cutover::interrupted endif;
+
+query PI::Match::resolvedMatch() : RD::Match =
+	if self = PI::Match::exact then RD::Match::exact else RD::Match::prefix endif;
+
+query AlertClass::spelling() : String =
+	if self = AlertClass::businessHours then 'business-hours'
+	else if self = AlertClass::urgent then 'urgent' else 'page' endif endif;
+
+query Audience::spelling() : String =
+	if self = Audience::anonymous then 'anonymous'
+	else if self = Audience::authenticated then 'authenticated'
+	else if self = Audience::internal then 'internal' else 'lan' endif endif endif;
+
+query ContentPolicy::spelling() : String =
+	if self = ContentPolicy::strict then 'strict'
+	else if self = ContentPolicy::admin then 'admin' else 'workflow' endif endif;
+
+-- `static` is a keyword of the language, so it is the literal no comparison names.
+query Runtime::spelling() : String =
+	if self = Runtime::jvm then 'jvm'
+	else if self = Runtime::python then 'python'
+	else if self = Runtime::node then 'node'
+	else if self = Runtime::none then 'none' else 'static' endif endif endif endif;
+
+query HardeningClass::spelling() : String = 'restricted';
+
+query Arch::spelling() : String = if self = Arch::amd64 then 'amd64' else 'arm64' endif;
+
+query Media::spelling() : String =
+	if self = Media::nvme then 'nvme' else if self = Media::ssd then 'ssd' else 'hdd' endif endif;

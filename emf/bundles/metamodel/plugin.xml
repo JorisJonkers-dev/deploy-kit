@@ -15,5 +15,11 @@
             class="dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeploymentPackage"
             genModel="model/resolved-deployment.genmodel"/>
    </extension>
+   <extension point="org.eclipse.emf.ecore.generated_package">
+      <package
+            uri="https://jorisjonkers.dev/deploy-kit/pinned-inputs/1"
+            class="dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.PinnedInputsPackage"
+            genModel="model/pinned-inputs.genmodel"/>
+   </extension>
 
 </plugin>
