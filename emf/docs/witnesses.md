@@ -21,7 +21,7 @@ name a real model row, it may not also be witnessed, and its count is stated
 beside the witness count, so the gate keeps its teeth while the work is
 outstanding.
 
-This list holds **10** witnesses, and **4** pending.
+This list holds **11** witnesses, and **3** pending.
 
 | id | JUnit test |
 |---|---|
@@ -31,6 +31,7 @@ This list holds **10** witnesses, and **4** pending.
 | REQ-029 | `LinkingTest#aRouteAndAScrapeLinkToTheVeryProcessAndSurfaceTheirApplicationHolds` |
 | REQ-030 | `PlatformIntentTest#aPlatformDocumentParsesAndATierWithoutItsEndpointIsRefused` |
 | REQ-031 | `IntentSetTest#everyEnvAndFileGrantIsRefusedWhereSecretsAreNotEncryptedAtRest` |
+| REQ-034 | `PinnedInputsTest#theNodeContractPublishesTheSevenNodesTheirCapabilitiesAndAMediumNoProcessMayAskFor` |
 | REQ-036 | `LoweringTest#everyProcessHoldsTheGrantsOfEveryLevelAboveItExtendedByItsOwn` |
 | REQ-037 | `EnvFilesTest#readsALiteralAPlaceholderCommentsAndBlankLines` |
 | REQ-038 | `ApplicationRevisionTest#theRevisionMovesExactlyWhenADecisionAboutTheApplicationDoes` |
@@ -40,7 +41,6 @@ This list holds **10** witnesses, and **4** pending.
 
 | id | why no witness yet | ticket |
 |---|---|---|
-| REQ-033 | the row holds chapter 20's worked projection, which is the production implementation's shape; this implementation's target metamodel is shaped differently on purpose, and the model it derives for `minimal` is held to the hand-written one by `ResolutionTest`, so the row is witnessed once every case resolves and its derived models validate | #91 |
-| REQ-034 | nothing under `emf/` reads the node contract until placement is resolved against it | #91 |
+| REQ-033 | the row holds chapter 20's worked projection, which is the production implementation's shape; this implementation's target metamodel is shaped differently on purpose, so the row's projection has no counterpart here, and what is held instead is each resolved case's dependency edges and minimal's model against the hand-written one | #95 |
 | REQ-040 | the rendered tree is shared by both implementations, and the Acceleo templates that write it land with the Task 3 tracer; until then the hand-written `minimal` target model assigns every path the committed trees hold (`ResolvedDeploymentTest`) | #94 |
 | REQ-035 | `resolved.json` binds the production implementation only, so the shared claim is the rendered tree, and nothing renders here yet ([the parity contract](../../docs/architecture.md#the-parity-contract)) | #94 |

@@ -320,9 +320,17 @@ the production implementation resolves, and an input it cannot derive is a
 fatal assertion naming what is missing, never a model with a gap or a default in
 it: an image the lock does not hold, an edge no provider answers, a placeholder
 that names nothing, a Runtime Profile key written in an env file, an Asset whose
-file is not beside its project, or an Application whose Processes need two
+file is not beside its project or holds a placeholder, a backed-up volume with
+no schedule, retention or engine to back it up with, or an Application whose Processes need two
 workload controllers, which one workload file cannot spell until the templates
 widen (JorisJonkers-dev/deploy-kit#95).
+
+**Two places the model is one level coarser than the production
+implementation's.** A Reconcile Unit is the project's, so what it must follow is
+the union over the project's Applications: Flux orders units, and one unit
+cannot follow two lists. And a network policy's peer names the namespace,
+Process and port it admits but not the rule that admitted it, so two rules
+admitting one peer are one ingress entry, which admits exactly what the two did.
 
 **The path plan holds the families the target metamodel models.** An
 Application's directory holds one file per family, each naming every Process it

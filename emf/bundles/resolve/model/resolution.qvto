@@ -8,8 +8,8 @@
 -- operation done outside the language, by the `Hashing` black box: a digest
 -- is a function of canonical bytes, which OCL has no way to produce.
 --
--- The derivations a case under spec/v1/examples/ does not yet reach stop the run
--- with the ticket that lands them, rather than write a model with a gap in it.
+-- An input it cannot derive stops the run with a message naming what is missing,
+-- rather than write a model with a gap or a default in it.
 import dev.jorisjonkers.deploykit.emf.hashing;
 
 modeltype PI uses 'https://jorisjonkers.dev/deploy-kit/project-intent/1';
@@ -339,7 +339,7 @@ query boundOf(p : PI::Process) : Binding =
 
 -- The Secret a grant's value is synced to: the Process, then the path below the mount.
 query destinationOf(holder : String, path : String) : String =
-	holder + '-' + (if path.startsWith('secret/data/') then path.substring(13, path.size()) else path endif)
+	holder + '-' + (if path.startsWith('secret/data/') and path.size() > 12 then path.substring(13, path.size()) else path endif)
 		.replaceAll('/', '-');
 
 -- A `kv` grant keeps its path and keys; a `transit` or `database` grant becomes
@@ -390,6 +390,8 @@ query Volume::backupFor(p : PI::Process) : BackupPlan =
 		then estate.durability.recoverable else estate.durability.irreplaceable endif in
 	let methodImage : LockedImage = locked(engineMethod(p)) in
 	let holder : String = p.name + '-backup' in
+	if policy = null or policy.schedule = null or policy.retain = null
+		then unplanned(self.claim) else
 	object BackupPlan {
 		schedule := policy.schedule;
 		retain := policy.retain;
@@ -407,14 +409,25 @@ query Volume::backupFor(p : PI::Process) : BackupPlan =
 				destination := destinationOf(holder, policy.offCluster.credential);
 			};
 		} endif;
-	};
+	} endif;
+
+query unplanned(claim : String) : BackupPlan {
+	assert fatal (false) with log(claim + ': its Durability Class derives a backup, and the platform names no schedule and retention for it');
+	return null;
+}
 
 -- The backup method the platform names for the Process's engine, an image alias.
 query engineMethod(p : PI::Process) : String =
-	if p.engine = Engine::postgres then estate.engines.postgres.backup
+	if not p.oclAsType(ECORE::EObject).states('engine') then unengined(p)
+	else if p.engine = Engine::postgres then estate.engines.postgres.backup
 	else if p.engine = Engine::rabbitmq then estate.engines.rabbitmq.backup
 	else if p.engine = Engine::valkey then estate.engines.valkey.backup
-	else estate.engines.files.backup endif endif endif;
+	else estate.engines.files.backup endif endif endif endif;
+
+query unengined(p : PI::Process) : String {
+	assert fatal (false) with log(p.name + ' backs a volume up and declares no engine: E_DURABILITY_WITHOUT_ENGINE');
+	return null;
+}
 
 -- ==================================================================== Assets
 
@@ -422,18 +435,31 @@ query engineMethod(p : PI::Process) : String =
 -- (spec/v1/10-project-intent.md#assets): the Process, the file, and the first
 -- digits of the content's digest.
 query Asset::resolvedFor(p : PI::Process, prj : EffectiveProject) : ResolvedAsset =
-	let file : AssetFile = assetFiles->select(f | f.project = prj.project and f._from = self._from)->any(true) in
+	let found : Sequence(AssetFile) =
+		assetFiles->select(f | f.project = prj.project and f._from = self._from)->asSequence() in
+	let file : AssetFile = if found->isEmpty() then unfiled(self._from) else found->first() endif in
+	if file.content.indexOf('${') > 0 then unplaced(self._from) else
 	object ResolvedAsset {
 		name := p.name + '-' + spelled(self._from) + '-'
 			+ file.content.textDigestOf().substring(8, 7 + CONTENT_DIGITS);
 		_from := self._from;
 		mountAt := self.mountAt;
 		content := file.content;
-	};
+	} endif;
+
+query unfiled(source : String) : AssetFile {
+	assert fatal (false) with log(source + ': an Asset whose file is not beside its project');
+	return null;
+}
+
+query unplaced(source : String) : ResolvedAsset {
+	assert fatal (false) with log(source + ': a placeholder in an Asset is not resolved yet');
+	return null;
+}
 
 -- An Asset's file name, spelled as the part of an object name it becomes.
 query spelled(path : String) : String =
-	path.tokenize('/')->last().toLower().replaceAll('[^a-z0-9]+', '-');
+	path.substring(path.lastIndexOf('/') + 1, path.size()).toLower().replaceAll('[^a-z0-9]+', '-');
 
 -- ===================================================================== edges
 
@@ -541,7 +567,9 @@ query Placeholder::entryFor(variable : String, prj : EffectiveProject) : EnvEntr
 	let owner : PI::Process = self.oclAsType(ECORE::EObject).eContainer().eContainer().eContainer()
 			.oclAsType(PI::Process) in
 	let suffix : String = if self.suffix = null then '' else self.suffix endif in
-	if self.kind = PlaceholderKind::secret then
+	if self.kind = PlaceholderKind::secret and self.source.lastIndexOf('#') <= 0 then
+		unresolved(variable, 'a secret placeholder names no key')
+	else if self.kind = PlaceholderKind::secret then
 		let cut : Integer = self.source.lastIndexOf('#') in
 		let secretPath : String = self.source.substring(1, cut - 1) in
 		let secretKey : String = self.source.substring(cut + 1, self.source.size()) in
@@ -554,7 +582,7 @@ query Placeholder::entryFor(variable : String, prj : EffectiveProject) : EnvEntr
 		else unresolved(variable, 'a placeholder no env grant of the Process holds is E_UNAUTHORISED_SECRET_REFERENCE') endif
 	else
 		object EnvEntry { name := variable; value := self.textFor(owner, prj) + suffix; }
-	endif;
+	endif endif;
 
 query Placeholder::textFor(owner : PI::Process, prj : EffectiveProject) : String =
 	if self.kind = PlaceholderKind::dependency then dependencyValue(self.source, owner)
@@ -565,6 +593,8 @@ query Placeholder::textFor(owner : PI::Process, prj : EffectiveProject) : String
 
 -- `${dependency:<application>.<coordinate>}`: one coordinate of the Process's own edge.
 query dependencyValue(source : String, owner : PI::Process) : String =
+	if source.lastIndexOf('.') <= 0 then
+		unresolvedText(source, 'a dependency placeholder names no coordinate') else
 	let cut : Integer = source.lastIndexOf('.') in
 	let application : String = source.substring(1, cut - 1) in
 	let coordinate : String = source.substring(cut + 1, source.size()) in
@@ -576,10 +606,12 @@ query dependencyValue(source : String, owner : PI::Process) : String =
 		let colon : Integer = address.lastIndexOf(':') in
 		if coordinate = 'host' then address.substring(1, colon - 1)
 		else address.substring(colon + 1, address.size()) endif
-	endif;
+	endif endif;
 
 -- `${exposure:<application>.<name>#<field>}`: one field of an exposure the union declares.
 query exposureValue(source : String) : String =
+	if source.lastIndexOf('#') <= 0 or source.substring(1, source.lastIndexOf('#') - 1).lastIndexOf('.') <= 0 then
+		unresolvedText(source, 'an exposure placeholder names no field of an exposure') else
 	let hash : Integer = source.lastIndexOf('#') in
 	let head : String = source.substring(1, hash - 1) in
 	let dot : Integer = head.lastIndexOf('.') in
@@ -596,7 +628,7 @@ query exposureValue(source : String) : String =
 		if field = 'host' then exposure.host
 		else if field = 'scheme' then scheme
 		else scheme + '://' + exposure.host endif endif
-	endif;
+	endif endif;
 
 query unresolved(variable : String, message : String) : EnvEntry {
 	assert fatal (false) with log(variable + ': ' + message);
@@ -826,13 +858,20 @@ query egressOf(p : PI::Process) : Sequence(PolicyPeer) =
 	Sequence{object PolicyPeer { namespace := estate.substrate.clusterDns; port := DNS_PORT; }}
 	->union(if p.secrets->isEmpty() then Sequence{} else storePeers() endif);
 
+-- The one Process of the Secret Store that answers on `http`, at its own port.
 query storePeers() : Sequence(PolicyPeer) =
-	peersOf(estate.secretStore.id, HTTP_SURFACE.portOf(estate.secretStore.id))
-		->collect(peer | object PolicyPeer {
-			namespace := peer.namespace;
-			process := peer.process;
-			port := peer.port;
-		});
+	let providers : Sequence(Tuple(project : String, process : PI::Process)) =
+		projects->collect(prj | prj.applications->select(a | a.id = estate.secretStore.id).processes
+			->select(p | p.provides->exists(s | s.key = HTTP_SURFACE))
+			->collect(p | Tuple{project = prj.project, process = p}))->flatten() in
+	if providers->isEmpty() then Sequence{} else
+		let first : Tuple(project : String, process : PI::Process) = providers->first() in
+		Sequence{object PolicyPeer {
+			namespace := namespaceOf(first.project);
+			process := first.process.name;
+			port := first.process.provides->select(s | s.key = HTTP_SURFACE)->any(true).value;
+		}}
+	endif;
 
 -- Every Process of `application` in the union, at `port`, as a value.
 query peersOf(application : String, at : Integer)
