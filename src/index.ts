@@ -59,9 +59,20 @@ export type {
 export {
   JSON_SCHEMA_PATH,
   PLATFORM_JSON_SCHEMA_PATH,
+  PUBLISHED_SCHEMAS,
   platformIntentJsonSchema,
   projectIntentJsonSchema,
+  publishedJsonSchema,
 } from "./model/json-schema.ts";
+export {
+  compositionLock,
+  type CompositionLockDocument,
+} from "./model/composition-lock.ts";
+export {
+  PIN_ANNOTATIONS,
+  pinAnnotations,
+  type PinAnnotationsDocument,
+} from "./model/pin-annotations.ts";
 export {
   nodeContract,
   type NodeContractDocument,
