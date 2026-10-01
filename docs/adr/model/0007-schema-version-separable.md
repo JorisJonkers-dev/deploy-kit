@@ -34,9 +34,9 @@ demonstrably needs.
 
 Under composition the same rule amplifies from a local annoyance into an
 estate-wide stop. Review finding B3 (three independent reviewers) names it:
-equality is asserted fail-closed over the union of fragments, so one stale
-participant blocks every composition (including the one shipping the
-fix), and `dormant: true` exempts a participant from `maxAge` but not from the
+equality is asserted fail-closed over the union of fragments, so every toolkit
+release refuses every participant until it republishes at that exact version,
+and nothing deploys until all have (including the one shipping the fix), and `dormant: true` exempts a participant from `maxAge` but not from the
 version assert. Post-v1, each of those 26-in-ten-weeks releases would open
 roughly ten Renovate PRs that must all merge before anything renders. Two spec
 artifacts already contradict lockstep as written: `spec/v1/40-composition.md:237`

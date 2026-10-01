@@ -31,8 +31,9 @@ The rule exists to kill an amplification that equality creates and no earlier
 decision names. Review finding B3 (three independent reviewers) records it:
 `spec/v1/40-composition.md:105` asserts `schemaVersion == installed toolkit`
 inside the resolve stage, and `:128` routes any failure to *"no ComposedIntent.
-Nothing renders."* Under the union that is estate-wide, not local: one stale
-participant blocks every aggregator, including the aggregator shipping the fix,
+Nothing renders."* Under the union that is estate-wide, not local: every
+participant behind the toolkit is refused, and nothing deploys until all have
+republished, including the one shipping the fix,
 and `dormant: true` exempts a participant from `maxAge`
 ([0043](0043-participants-list-staleness.md)) but not from the version assert.
 `CHANGELOG.md` carries 26 releases between 2026-06-09 and 2026-08-20 (ten

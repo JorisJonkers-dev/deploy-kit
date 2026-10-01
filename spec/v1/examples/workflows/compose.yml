@@ -128,8 +128,10 @@ jobs:
             --out composed/ \
             --report composed/invariants.json
           # Identity, references, secrets, completeness -- chapter 40 holds the
-          # list and its error codes. Any failure produces no ComposedIntent,
-          # so nothing downstream can render.
+          # list and its error codes. An error isolates the fragment it names
+          # and composition runs again over the rest; only a refused Platform
+          # document, or an error no changed fragment caused, produces no
+          # ComposedIntent (spec/v1/40-composition.md#a-refused-project-is-isolated).
           #
           # The secret checks are string comparisons over the union, with no
           # mount table and no Vault read: a ${secret:...} placeholder must

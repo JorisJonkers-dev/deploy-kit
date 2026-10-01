@@ -405,9 +405,10 @@ through, with the deciding ADR named.
   splitting a multi-project repository is a convenience, never a prerequisite.
 - ~~**Fragment publication trigger**~~ and ~~**who runs composition.**~~ Decided
   by [0042](../../docs/adr/model/0042-declarations-compose-from-intent-fragments.md): composition
-  runs on any publish and merges nothing. Fragments publish on merge, after the
-  repository's images are built, as amended by
-  [0051](../../docs/adr/model/0051-a-project-is-delivered-as-a-signed-artifact.md).
+  runs on any publish and merges nothing. Fragments publish on a release tag,
+  after the release's images are built
+  ([0083](../../docs/adr/model/0083-a-fragment-publishes-on-a-release-tag.md),
+  [0051](../../docs/adr/model/0051-a-project-is-delivered-as-a-signed-artifact.md)).
 - ~~**The `resolved.yml` drift check's failure mode.**~~ Decided by
   [0032](../../docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md): the file is
   generated, never hand-edited, and its drift check fails the build in the

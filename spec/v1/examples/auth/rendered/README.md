@@ -102,7 +102,7 @@ Kubernetes object satisfies.
 switch together or none switches. No Process's new version receives traffic
 until *every* Process's new version is healthy by its own declared readiness.
 If any member misses its `startupBudget`, none of them switch and the old
-versions keep serving. Rollback is Application-scoped.
+versions keep serving. Going back is Application-scoped.
 
 **What the rendered objects do.** `workload.yaml` holds two Deployments. Each
 one's new ReplicaSet is admitted to its own Application's `Endpoints` the moment its
