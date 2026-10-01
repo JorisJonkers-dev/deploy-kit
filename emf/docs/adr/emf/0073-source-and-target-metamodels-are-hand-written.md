@@ -14,7 +14,9 @@ There are two packages, as the project proposal defines
 ([#102](https://github.com/JorisJonkers-dev/deploy-kit/pull/102)): a source
 metamodel holding Project Intent and the Platform document, and a target
 metamodel holding the Resolved Deployment with its typed Kubernetes and
-extension resources. The descriptor covers the source metamodel only.
+extension resources. A third holds the pinned inputs the resolution reads beside
+the source: the node contract, the images lock and the ClusterState snapshot.
+The descriptor covers the source metamodel only.
 
 ## Rests on
 Resting on [0070](0070-the-model-is-expressible-in-the-emf-toolchain.md), the
@@ -42,7 +44,11 @@ the Deliverable Set is the generated files, so it has no metamodel, and the
 target metamodel carries layer 2 together with the typed resources the files
 are written from, because an Acceleo template reads one model. The Platform
 document is part of the source package because the transformation resolves a
-Project against it.
+Project against it. The pinned inputs are not: nobody authors them as intent,
+each is a document another process publishes and resolution pins by digest, and
+neither the descriptor nor the TypeScript schemas the descriptor is compared
+with hold them, so a package of their own keeps the descriptor what it was and
+nothing in the target refers to them.
 Cross-document references are Ecore references, so the transformation navigates
 them rather than joining strings.
 

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<!--
+  Registers the Hashing black box in Eclipse, under the unit resolution.qvto
+  imports; outside OSGi, Resolution registers the same module by hand.
+-->
+<plugin>
+   <extension point="org.eclipse.m2m.qvt.oml.javaBlackboxUnits">
+      <unit name="hashing" namespace="dev.jorisjonkers.deploykit.emf">
+         <library class="dev.jorisjonkers.deploykit.emf.resolve.Hashing" name="Hashing">
+            <metamodel nsURI="http://www.eclipse.org/emf/2002/Ecore"/>
+            <metamodel nsURI="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1"/>
+         </library>
+      </unit>
+   </extension>
+</plugin>

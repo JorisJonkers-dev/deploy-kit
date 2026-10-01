@@ -1,0 +1,31 @@
+grammar dev.jorisjonkers.deploykit.emf.syntax.ImagesLock with dev.jorisjonkers.deploykit.emf.syntax.ProjectIntent
+	hidden(WS, SL_COMMENT)
+
+import "https://jorisjonkers.dev/deploy-kit/pinned-inputs/1"
+import "http://www.eclipse.org/emf/2002/Ecore" as ecore
+
+// The images lock, in the YAML subset the project language reads. `images` is
+// a mapping keyed by alias, so each entry is its key and the block below it.
+
+ImagesLock returns ImagesLock:
+	(('apiVersion' ':' apiVersion=Text)
+	& ('kind' ':' kind=Text)
+	& ('schemaVersion' ':' schemaVersion=Text)
+	& ('name' ':' name=Text)
+	& ('images' ':' BEGIN images+=LockedImage* END));
+
+LockedImage returns LockedImage:
+	alias=Text ':' BEGIN
+	(('repository' ':' repository=Text)
+	& ('digest' ':' digest=Text)
+	& ('uid' ':' uid=Port)
+	& ('gid' ':' gid=Port))
+	END;
+
+// Every keyword this document adds is also a scalar, as the project language's are.
+@Override
+Text returns ecore::EString:
+	SCALAR | STRING | INT | Keyword | ImagesLockKeyword;
+
+ImagesLockKeyword:
+	'digest' | 'gid' | 'images' | 'repository' | 'uid';

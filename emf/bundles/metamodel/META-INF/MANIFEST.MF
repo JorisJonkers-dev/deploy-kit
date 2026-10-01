@@ -7,6 +7,9 @@ Bundle-RequiredExecutionEnvironment: JavaSE-21
 Automatic-Module-Name: dev.jorisjonkers.deploykit.emf.metamodel
 Export-Package: dev.jorisjonkers.deploykit.emf.metamodel.descriptor,
  dev.jorisjonkers.deploykit.emf.metamodel.json,
+ dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs,
+ dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.impl,
+ dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.util,
  dev.jorisjonkers.deploykit.emf.metamodel.projectintent,
  dev.jorisjonkers.deploykit.emf.metamodel.projectintent.impl,
  dev.jorisjonkers.deploykit.emf.metamodel.projectintent.util,

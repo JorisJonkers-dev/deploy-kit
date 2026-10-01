@@ -1,0 +1,47 @@
+grammar dev.jorisjonkers.deploykit.emf.syntax.NodeContract with dev.jorisjonkers.deploykit.emf.syntax.ProjectIntent
+	hidden(WS, SL_COMMENT)
+
+import "https://jorisjonkers.dev/deploy-kit/pinned-inputs/1"
+import "http://www.eclipse.org/emf/2002/Ecore" as ecore
+
+// The node contract, in the YAML subset the project language reads: what each
+// node can hold, in the order the contract lists them.
+
+NodeContract returns NodeContract:
+	(('apiVersion' ':' apiVersion=Text)
+	& ('kind' ':' kind=Text)
+	& ('schemaVersion' ':' schemaVersion=Text)
+	& ('cluster' ':' cluster=Text)
+	& ('labelPrefix' ':' labelPrefix=Text)
+	& ('nodes' ':' BEGIN (DASH BEGIN nodes+=Node END)+ END));
+
+Node returns Node:
+	(('name' ':' name=Text)
+	& ('site' ':' site=Text)
+	& ('arch' ':' arch=Text)
+	& ('allocatable' ':' BEGIN allocatable=Allocatable END)
+	& ('capabilities' ':' BEGIN (DASH BEGIN capabilities+=Text END | capabilities+=Text)* END)?
+	& ('gpus' ':' BEGIN (DASH BEGIN gpus+=Gpu END)* END)?
+	& ('disks' ':' BEGIN (DASH BEGIN disks+=Disk END)* END)?);
+
+Allocatable returns Allocatable:
+	(('cpu' ':' cpu=Text)
+	& ('memory' ':' memory=Text));
+
+Gpu returns Gpu:
+	(('vendor' ':' vendor=Text)
+	& ('model' ':' model=Text)
+	& ('class' ':' class=Text)
+	& ('memory_mib' ':' memoryMib=Port));
+
+Disk returns Disk:
+	(('media' ':' media=Text)
+	& ('usable_gib' ':' usableGib=Port));
+
+// Every keyword this document adds is also a scalar, as the project language's are.
+@Override
+Text returns ecore::EString:
+	SCALAR | STRING | INT | Keyword | NodeContractKeyword;
+
+NodeContractKeyword:
+	'allocatable' | 'cluster' | 'disks' | 'gpus' | 'labelPrefix' | 'memory_mib' | 'model' | 'nodes' | 'usable_gib' | 'vendor';

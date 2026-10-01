@@ -73,7 +73,8 @@ the **walking skeleton**, which proves each tool runs headless in CI before any
 model work depends on it: an `.ecore` loads, an OCL
 invariant fires, the Xtext parser reads a three-line document, a QVTo identity
 transformation runs, and an Acceleo template writes one file. Its smoke tests
-sit in the module each tool belongs to, and each is deleted by the stage ticket
+sat in the module each tool belongs to (the QVTo one is gone, deleted by the
+resolution tracer), and each is deleted by the stage ticket
 whose suite covers that tool.
 
 ## Modules
@@ -93,9 +94,9 @@ and cost every path in the tree.
 
 | module | holds | graded in |
 |---|---|---|
-| `bundles/metamodel` | the source and target `.ecore` and `.genmodel`, Complete OCL `.ocl` for the source metamodel, the descriptor exporter, and the canonical JSON writer both it and `cli` write through | Task 1 |
-| `bundles/syntax` | the Xtext grammar for the authored YAML subset, and the generated editor bundles that run the OCL validators | Task 1 |
-| `bundles/resolve` | the QVTo transformations: the lowering onto the Process, and Project Intent with Platform Intent to the Resolved Deployment | Task 2 |
+| `bundles/metamodel` | the source, target and pinned-inputs `.ecore` and `.genmodel`, Complete OCL `.ocl` for the source metamodel, the descriptor exporter, and the canonical JSON writer both it and `cli` write through | Task 1 |
+| `bundles/syntax` | the Xtext grammars for the authored YAML subset and the pinned inputs written in it, and the generated editor bundles that run the OCL validators | Task 1 |
+| `bundles/resolve` | the QVTo transformations: the lowering onto the Process, and Project Intent with Platform Intent and the pinned inputs to the Resolved Deployment; and the one Java black box, hashing | Task 2 |
 | `bundles/render` | the Acceleo 4 templates from a Resolved Deployment model to the Deliverable Set's files | Task 3 |
 | `bundles/cli` | the pipeline entry point: files in, the parsed intent, diagnostics and rendered files out | Task 1 onward |
 | `tests/parity` | JUnit suites asserting each stage against the committed oracles, and the witness ledger check | no task grades it |
@@ -103,10 +104,11 @@ and cost every path in the tree.
 Beside the two tiers sits `models/`, which is neither: hand-written example
 models, in the target metamodel's own XMI. They belong to no module because
 two use them from opposite ends. `minimal.resolveddeployment` is what the
-Acceleo templates are first run against and what the QVT-Operational
-transformation must produce, so it is the target half of both tracers before
-either exists. It is **not an oracle**: `resolved.json` binds the production
-implementation only, for the reason [Metamodels](#metamodels) gives.
+Acceleo templates are first run against, and what the QVT-Operational
+transformation produces for `minimal`: the pipeline's resolution test holds the
+two equal, so a change to either is a change to both. It is **not a parity
+oracle**: `resolved.json` binds the production implementation only, for the
+reason [Metamodels](#metamodels) gives, and nothing outside `emf/` reads it.
 
 A module may depend on the modules above it in this table and on nothing
 below. `tests/parity` depends on no module at all: it reads the files a run
@@ -122,7 +124,8 @@ function named as a sentence in backticks.
 
 ## Metamodels
 
-Two hand-written Ecore metamodels, as the project proposal defines them. Both
+Two hand-written Ecore metamodels, as the project proposal defines them, and a
+third the resolution reads beside the source. All three
 are committed `.ecore` XMI, with names taken unchanged from
 [`CONTEXT.md`](../../CONTEXT.md).
 
@@ -130,6 +133,13 @@ are committed `.ecore` XMI, with names taken unchanged from
 |---|---|---|
 | Project Intent | source | the authored Project, Application and Process with everything layer 1 declares, the lowered pair the Effective Intent is written in, and the Platform document the source is resolved against |
 | Resolved Deployment | target | every derived value of layer 2 together with the typed Kubernetes and extension resources, identities and output paths the templates write |
+| Pinned Inputs | read beside the source | the node contract, the images lock and the ClusterState snapshot: documents another process publishes and resolution pins by digest ([0073](adr/emf/0073-source-and-target-metamodels-are-hand-written.md)) |
+
+The pinned inputs are a package of their own because they are no part of the
+authored intent: the descriptor, which fixes the source metamodel's structure
+against the TypeScript schemas, would otherwise list three documents those
+schemas do not hold. Nothing in the target refers to them; the Resolved
+Deployment carries their digests and the values it read out of them.
 
 The Deliverable Set is not a metamodel: it is the files Acceleo generates from
 a Resolved Deployment model. The target metamodel is deliberately not the shape
@@ -208,7 +218,12 @@ the TypeScript checks and the refused fixtures
 ## Concrete syntax
 
 The Xtext grammar parses the same authored `.project.yml` and
-`platform.intent.yml` files the TypeScript compiler reads. It covers the YAML
+`platform.intent.yml` files the TypeScript compiler reads. Three more grammars
+read the pinned inputs beside the Platform document, `node-contract.yml`,
+`images.lock.yml` and `cluster-state.yml`: each inherits the project grammar's
+terminals, block tokens and scalars as the Platform grammar does, imports the
+pinned-inputs metamodel, and adds only its own rules
+([0075](adr/emf/0075-xtext-parses-the-authored-yaml-into-the-metamodel.md)). It covers the YAML
 subset those files use, with indentation handled by synthetic block tokens, and
 refuses anything outside the subset with a diagnostic rather than a guess.
 
@@ -226,8 +241,9 @@ own rules. There is no inferred syntax metamodel and no mapping step between
 parsing and validation.
 
 A plain scalar holds no colon: the lexer cannot tell `sha256:6f1c` from a key
-without looking past the colon, so a value that carries one, a digest or a URL,
-is quoted in the authored files.
+without looking past the colon, so a value that carries one, a digest, a URL or
+a timestamp, is quoted in the authored files and in the pinned inputs alike: the
+snapshot's `capturedAt` is written quoted.
 
 A route's and a scrape's `process` and `surface` are cross-references, linked by
 a scope provider that offers the Processes of the Application holding them and the
@@ -280,6 +296,29 @@ exposes, through the dependency edges or the generated files. The resolved
 dependency edges are exported from the target model as canonical JSON and
 compared with `expected/dependencies.json`.
 
+It reads two extents and writes one. The **intent** extent holds every project
+of the union, authored and lowered, and the Platform document: the authored
+Projects stay in it because the Platform document's links point into them,
+while every derivation reads the lowering. The **pinned** extent holds the node
+contract, the images lock and the snapshot. Two configuration properties name
+what is not derived: the project of the union to resolve, and the schema
+package's integrity the provenance records.
+
+**Hashing is the one black box.** A revision and an input digest are digests of
+canonical bytes, which OCL has no way to produce, so they are a Java library,
+`Hashing`, imported as a unit and called on an `EObject`: the digest of a model's
+canonical JSON, walked reflectively, and the Application revision
+([0076](adr/emf/0076-qvto-derives-the-resolved-deployment.md)). Everything else
+is a mapping or a query. Each digest is over this implementation's own model, so
+the revision and the provenance bind this implementation only, as
+`resolved.json` binds the other.
+
+**A derivation no case reaches yet stops the run.** The transformation is widened
+case by case, and a family of input it does not derive yet (a dependency edge, a
+volume, a grant, an Asset, a sidecar, a managed migration, an Application of
+several Processes, a placeholder other than `${identity:}`) is a fatal assertion
+naming the ticket that lands it, never a model with a gap in it.
+
 ## Text generation
 
 Acceleo 4 templates generate the Deliverable Set's YAML and JSON files from a
@@ -304,7 +343,11 @@ output of the module that wrote them, one directory per case, mirroring
 `bundles/cli/target/parity/<case>/` holds `intent.json` or `diagnostics.json` beside the
 `exit` the run ended on, and, where the case carries an `expected/effective.json`,
 the `effective.json` the lowering wrote from the document and the env files beside
-it; `bundles/metamodel/target/parity/` holds `descriptor.json`.
+it. A case the resolution reaches also holds the `dependencies.json` exported from
+its Resolved Deployment, the model itself as `<project>.resolveddeployment`, and the
+two extents it was resolved from, `resolution.intent.xmi` and
+`resolution.pinned.xmi`, which the launch configuration in Eclipse runs the
+transformation on. `bundles/metamodel/target/parity/` holds `descriptor.json`.
 Every case also leaves each document it reads as an XMI instance of the source
 metamodel, named after its authored file (`notes.project.yml` leaves
 `notes.project.xmi`), for a reader who opens it in Eclipse without the grammar. A

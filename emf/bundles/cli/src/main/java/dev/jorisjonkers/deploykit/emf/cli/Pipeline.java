@@ -1,10 +1,16 @@
 package dev.jorisjonkers.deploykit.emf.cli;
 
 import com.google.inject.Injector;
+import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.PinnedInputsPackage;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Platform;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.SharedIntent;
 import dev.jorisjonkers.deploykit.emf.resolve.Lowering;
+import dev.jorisjonkers.deploykit.emf.resolve.Resolution;
+import dev.jorisjonkers.deploykit.emf.syntax.ClusterStateStandaloneSetup;
+import dev.jorisjonkers.deploykit.emf.syntax.ImagesLockStandaloneSetup;
+import dev.jorisjonkers.deploykit.emf.syntax.NodeContractStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.PlatformIntentStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.ProjectIntentStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.linking.UnlinkedNames;
@@ -52,6 +58,12 @@ public final class Pipeline {
     private static final String PLATFORM = "platform.intent.yml";
     private static final String PROJECT = ".project.yml";
 
+    /** The pinned inputs resolution reads beside the intent, each by its own file name. */
+    private static final String NODE_CONTRACT = "node-contract.yml";
+
+    private static final String IMAGES_LOCK = "images.lock.yml";
+    private static final String CLUSTER_STATE = "cluster-state.yml";
+
     private Pipeline() {}
 
     /** The parsed intent of the one authored file at {@code path}, or the diagnostics refusing it. */
@@ -90,6 +102,44 @@ public final class Pipeline {
             }
         }
         return refusals.isEmpty() ? Parsed.of(IntentJson.of(Lowering.lower(project))) : Parsed.refused(refusals);
+    }
+
+    /**
+     * The Resolved Deployment of {@code project}, from {@code files} read together: the Platform
+     * document, every project file of the union with the env files beside each, and the pinned inputs
+     * (spec/v1/20-resolved-deployment.md#pinned-inputs). Every document is checked first, and a set
+     * the checks refuse is refused here with their diagnostics, before anything is resolved.
+     */
+    public static Resolved resolve(List<Path> files, String project, String schemaPackageIntegrity) throws IOException {
+        List<Diagnostic> refusals = new ArrayList<>(check(files));
+        if (!refusals.isEmpty()) {
+            return Resolved.refused(refusals);
+        }
+        List<Resource> documents = read(files);
+        List<EObject> intent = new ArrayList<>();
+        List<EObject> pinned = new ArrayList<>();
+        for (int i = 0; i < files.size(); i++) {
+            EObject root = documents.get(i).getContents().get(0);
+            switch (root) {
+                case Project authored -> {
+                    EnvFiles.Read env = EnvFiles.read(envBeside(files.get(i)));
+                    refusals.addAll(env.diagnostics());
+                    for (EnvFiles.Scoped scoped : env.files()) {
+                        levelOf(authored, scoped.scope())
+                                .ifPresent(level -> level.getEnv().add(scoped.file()));
+                    }
+                    // The authored Project stays in the extent beside its lowering: the Platform
+                    // document's links point into it, and the transformation reads the lowering.
+                    intent.add(authored);
+                    intent.add(Lowering.lower(authored));
+                }
+                case Platform platform -> intent.add(platform);
+                default -> pinned.add(root);
+            }
+        }
+        return refusals.isEmpty()
+                ? Resolved.of(Resolution.resolve(intent, pinned, project, schemaPackageIntegrity), intent, pinned)
+                : Resolved.refused(refusals);
     }
 
     /** The env files under the {@code env/} directory beside {@code path}, in path order. */
@@ -230,15 +280,25 @@ public final class Pipeline {
     }
 
     /** Every file loaded into one resource set, by the language its name says, then linked. */
-    private static List<Resource> read(List<Path> files) {
-        // Outside OSGi nothing registers the metamodel, and the grammars' rules return its classes.
+    static List<Resource> read(List<Path> files) {
+        // Outside OSGi nothing registers the metamodels, and the grammars' rules return their classes.
         EPackage.Registry.INSTANCE.putIfAbsent(ProjectIntentPackage.eNS_URI, ProjectIntentPackage.eINSTANCE);
+        EPackage.Registry.INSTANCE.putIfAbsent(PinnedInputsPackage.eNS_URI, PinnedInputsPackage.eINSTANCE);
         Injector project = new ProjectIntentStandaloneSetup().createInjectorAndDoEMFRegistration();
-        Injector platform = new PlatformIntentStandaloneSetup().createInjectorAndDoEMFRegistration();
+        Map<String, Injector> languages = Map.of(
+                PLATFORM, new PlatformIntentStandaloneSetup().createInjectorAndDoEMFRegistration(),
+                NODE_CONTRACT, new NodeContractStandaloneSetup().createInjectorAndDoEMFRegistration(),
+                IMAGES_LOCK, new ImagesLockStandaloneSetup().createInjectorAndDoEMFRegistration(),
+                CLUSTER_STATE, new ClusterStateStandaloneSetup().createInjectorAndDoEMFRegistration());
         XtextResourceSet resources = project.getInstance(XtextResourceSet.class);
         List<Resource> documents = new ArrayList<>();
         for (Path file : files) {
-            Injector language = isPlatform(file) ? platform : project;
+            String name = file.getFileName().toString();
+            Injector language = languages.entrySet().stream()
+                    .filter(named -> name.endsWith(named.getKey()))
+                    .map(Map.Entry::getValue)
+                    .findFirst()
+                    .orElse(project);
             Resource document = language.getInstance(IResourceFactory.class)
                     .createResource(URI.createFileURI(file.toAbsolutePath().toString()));
             resources.getResources().add(document);

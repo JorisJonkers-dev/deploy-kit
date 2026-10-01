@@ -62,5 +62,41 @@ Workflow {
 			scopeProvider = { generateStub = false }
 			generator = { generateStub = false }
 		}
+		// The pinned inputs resolution reads inherit the same terminals and block
+		// tokens; their classes are the pinned-inputs metamodel's (issue #90).
+		language = StandardLanguage {
+			name = "dev.jorisjonkers.deploykit.emf.syntax.NodeContract"
+			grammarUri = "classpath:/dev/jorisjonkers/deploykit/emf/syntax/NodeContract.xtext"
+			fileExtensions = "yml"
+			referencedResource = "platform:/resource/dev.jorisjonkers.deploykit.emf.metamodel/model/project-intent.genmodel"
+			referencedResource = "platform:/resource/dev.jorisjonkers.deploykit.emf.metamodel/model/pinned-inputs.genmodel"
+			serializer = { generateStub = false }
+			validator = { generateStub = false }
+			scopeProvider = { generateStub = false }
+			generator = { generateStub = false }
+		}
+		language = StandardLanguage {
+			name = "dev.jorisjonkers.deploykit.emf.syntax.ImagesLock"
+			grammarUri = "classpath:/dev/jorisjonkers/deploykit/emf/syntax/ImagesLock.xtext"
+			fileExtensions = "yml"
+			referencedResource = "platform:/resource/dev.jorisjonkers.deploykit.emf.metamodel/model/project-intent.genmodel"
+			referencedResource = "platform:/resource/dev.jorisjonkers.deploykit.emf.metamodel/model/pinned-inputs.genmodel"
+			serializer = { generateStub = false }
+			validator = { generateStub = false }
+			scopeProvider = { generateStub = false }
+			generator = { generateStub = false }
+		}
+		language = StandardLanguage {
+			name = "dev.jorisjonkers.deploykit.emf.syntax.ClusterState"
+			grammarUri = "classpath:/dev/jorisjonkers/deploykit/emf/syntax/ClusterState.xtext"
+			fileExtensions = "yml"
+			referencedResource = "platform:/resource/dev.jorisjonkers.deploykit.emf.metamodel/model/project-intent.genmodel"
+			referencedResource = "platform:/resource/dev.jorisjonkers.deploykit.emf.metamodel/model/pinned-inputs.genmodel"
+			serializer = { generateStub = false }
+			validator = { generateStub = false }
+			scopeProvider = { generateStub = false }
+			generator = { generateStub = false }
+		}
+
 	}
 }

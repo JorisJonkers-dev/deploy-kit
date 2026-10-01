@@ -6,32 +6,43 @@
   It is NOT an oracle. `spec/v1/examples/minimal/expected/resolved.json` binds
   the production implementation only, because the two implementations shape
   layer 2 differently on purpose (emf/docs/architecture.md#metamodels). This
-  file is what the Acceleo templates are first run against (#94) and what the
-  QVT-Operational tracer must produce (#90), so it is the target half of both
-  tracers before either exists.
+  file is what the Acceleo templates are first run against (#94), and what the
+  QVT-Operational resolution produces for minimal: ResolutionTest holds the
+  transformation's output equal to it (#90).
 
-  Every value here is derivable from `spec/v1/examples/minimal/notes.project.yml`
-  and the pinned Platform document and node contract beside it. The digests are
-  fixtures: nothing computes a render hash yet.
+  Every value here is derivable from `spec/v1/examples/minimal/notes.project.yml`,
+  the project files of the foundation it composes with, and the Platform document
+  and pinned inputs beside them. The digests are what the transformation
+  computes: the revision and the provenance are each a digest of this model's
+  own canonical form, so they bind this implementation only.
 -->
 <resolveddeployment:ResolvedDeployment
     xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI"
     xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1"
     apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
 
-  <provenance renderHash="sha256:a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4"
-      schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
-    <inputDigests input="intent-fragment" name="notes" digest="sha256:1122334411223344112233441122334411223344112233441122334411223344"/>
-    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:9a8b7c6d9a8b7c6d9a8b7c6d9a8b7c6d9a8b7c6d9a8b7c6d9a8b7c6d9a8b7c6d"/>
-    <inputDigests input="node-contract" name="production" digest="sha256:6f1c2a8e6f1c2a8e6f1c2a8e6f1c2a8e6f1c2a8e6f1c2a8e6f1c2a8e6f1c2a8e"/>
-    <inputDigests input="images-lock" name="estate" digest="sha256:0f1e2d3c0f1e2d3c0f1e2d3c0f1e2d3c0f1e2d3c0f1e2d3c0f1e2d3c0f1e2d3c"/>
-    <inputDigests input="cluster-state" name="production" digest="sha256:4b5a69784b5a69784b5a69784b5a69784b5a69784b5a69784b5a69784b5a6978"/>
+  <!--
+    One digest per pinned input, each over the canonical form of the model read
+    from it, and the render hash over them: what the transformation computes
+    through its one black box, and not the production implementation's digests,
+    which are over a different shape (spec/v1/20-resolved-deployment.md#pinned-inputs).
+  -->
+  <provenance renderHash="sha256:ffd0f6c45de3bc710e1dedb90d47eb37270cc0bfbca69d389d49886631b94475" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+    <inputDigests input="intent-fragment" name="delivery" digest="sha256:861217f488ba263bb918931f4565f3851136f3f6a370c923abb082e6a548d114"/>
+    <inputDigests input="intent-fragment" name="edge" digest="sha256:273c64ecd8c35ab69918664735661764e44e8e3ad04a58a11ab92dcb52ec1f4a"/>
+    <inputDigests input="intent-fragment" name="notes" digest="sha256:252e68be274ac566d591709794fbfed79b35e24cabaa38e39d90242e3e3893df"/>
+    <inputDigests input="intent-fragment" name="observability" digest="sha256:aac790f0f921ce56ea5fb7af1f5a85c48c2122fbcbd99923124aafe063f6594c"/>
+    <inputDigests input="intent-fragment" name="secrets" digest="sha256:3b6b608aa89a7beebed377772c9905705861c2609f1c262a5ddcb757b70bcecc"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:a2361022fdf48d1f0995c30f47c5588a2632d4911664be3a9f9ecfcc4dc3f72f"/>
+    <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
+    <inputDigests input="images-lock" name="estate" digest="sha256:3d4bfc9cb007aec841365471fa66e5f9625592c993d18eca14a066cf6eb7d302"/>
+    <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
   </provenance>
 
   <!-- notes holds no dependency and no grant, so its unit follows nothing. -->
   <reconcileUnits name="apps-notes"/>
 
-  <applications id="notes" revision="sha256:549b6757ba38a8c3d4b83023f27e39ec341b4558d2df2197736e0c176740976e" project="notes" namespace="notes-system"
+  <applications id="notes" revision="sha256:32422a8209e51c7026173ad2c4efee0af6dee5539d2a6977fc8adb982dac1f93" project="notes" namespace="notes-system"
       alertClass="business-hours" reconcileUnit="//@reconcileUnits.0">
     <releaseGate deadline="60s">
       <!-- The Platform document's cadence, carried for the Release Gate. -->
@@ -68,7 +79,7 @@
             path="/healthz/live" port="8080"/>
       </liveness>
       <!-- 5s x 4 is the 20s budget the Process declares. -->
-      <startup period="5s" failures="4">
+      <startup period="5s" timeout="5s" failures="4">
         <target xsi:type="resolveddeployment:HttpTarget" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             path="/healthz/live" port="8080"/>
       </startup>
