@@ -232,6 +232,49 @@ submitted and graded. The grading formula is in
 lecture 0, under *Formula for the final grade*, and the LLM policy under
 *Use of LLMs*, both in `course-material/lectures/lecture-0-introduction.md`.
 
+### The presentations
+
+Canvas announced the schedule on 1 October. This project is **group 20**, in
+room HB-2D with João Rebelo Moreira as teacher:
+
+| Date | Group 20 presents | Its block |
+|---|---|---|
+| 8 October | last, after groups 13, 15 and 17 | 9:45-10:45 |
+| 22 October | first, before groups 17 and 15 | 8:45-9:30 |
+
+> You are expected to participate in the whole session (from 8:45 to 10:45),
+> even if you don't have to present or have already presented. Agree with your
+> project partner about the presentation order (who will present on 8 October
+> and who will present on 22 October), and about the contents of the
+> presentation. For example, the first presentation can be a general
+> introduction to the project and the metamodels, while the second
+> presentation can be about model transformations and text/code generation.
+> The presentations will be assessed and the presentation grade will count for
+> the final project grade. Each presentation should take no longer than 10
+> minutes followed by 5 minutes of questions.
+
+So each partner presents once, for 10 minutes plus 5 minutes of questions.
+The 8 October talk covers the project and its metamodels (Task 1), and the
+22 October talk covers the transformation and the code generation (Tasks 2
+and 3).
+
+### How the course is graded
+
+From the course's syllabus on Canvas:
+
+- **Project, 40%**, graded 1-10 as the weighted average of the three graded
+  tasks and the presentation. It counts only if every deliverable is submitted
+  and the presentation is given. The minimum is 5.
+- **Exam, 60%**, open book and individual, graded 1-10. The weekly questions
+  count for 10% of this grade: one five-minute question at the start of each
+  lecture, answered without notes, and scored 0 when absent. The minimum is
+  5.5, and a resit replaces the whole exam grade.
+- **Practical sessions** carry no mark, but they are mandatory: a student who
+  misses one is not admitted to the exam. The syllabus says seven sessions,
+  and Canvas lists six; see [`practicals.md`](practicals.md).
+- Copying solutions, or making your own available to another group, is
+  reported to the Examination Board as fraud.
+
 ## Project ideas the course offers
 
 Given as examples of what a code-generation project can look like; none of them
