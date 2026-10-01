@@ -1,7 +1,10 @@
 package dev.jorisjonkers.deploykit.emf.cli;
 
 import com.google.inject.Injector;
+import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.AssetFile;
+import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.PinnedInputsFactory;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.PinnedInputsPackage;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Asset;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Platform;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
@@ -10,6 +13,7 @@ import dev.jorisjonkers.deploykit.emf.resolve.Lowering;
 import dev.jorisjonkers.deploykit.emf.resolve.Resolution;
 import dev.jorisjonkers.deploykit.emf.syntax.ClusterStateStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.ImagesLockStandaloneSetup;
+import dev.jorisjonkers.deploykit.emf.syntax.MigrationProofStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.NodeContractStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.PlatformIntentStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.ProjectIntentStandaloneSetup;
@@ -63,6 +67,7 @@ public final class Pipeline {
 
     private static final String IMAGES_LOCK = "images.lock.yml";
     private static final String CLUSTER_STATE = "cluster-state.yml";
+    private static final String MIGRATION_PROOF = "migration-proof.yml";
 
     private Pipeline() {}
 
@@ -132,6 +137,7 @@ public final class Pipeline {
                     // document's links point into it, and the transformation reads the lowering.
                     intent.add(authored);
                     intent.add(Lowering.lower(authored));
+                    pinned.addAll(assetFiles(authored, files.get(i)));
                 }
                 case Platform platform -> intent.add(platform);
                 default -> pinned.add(root);
@@ -140,6 +146,26 @@ public final class Pipeline {
         return refusals.isEmpty()
                 ? Resolved.of(Resolution.resolve(intent, pinned, project, schemaPackageIntegrity), intent, pinned)
                 : Resolved.refused(refusals);
+    }
+
+    /**
+     * The file each Asset of {@code project} names, read as text from beside its project file
+     * (spec/v1/10-project-intent.md#assets). A file that is not there is left out, and the
+     * transformation, which reads one per Asset, stops on its absence.
+     */
+    private static List<AssetFile> assetFiles(Project project, Path file) throws IOException {
+        List<AssetFile> read = new ArrayList<>();
+        for (Asset asset : EcoreUtil2.getAllContentsOfType(project, Asset.class)) {
+            Path content = file.toAbsolutePath().resolveSibling(asset.getFrom());
+            if (Files.isRegularFile(content)) {
+                AssetFile assetFile = PinnedInputsFactory.eINSTANCE.createAssetFile();
+                assetFile.setProject(project.getProject());
+                assetFile.setFrom(asset.getFrom());
+                assetFile.setContent(Files.readString(content, StandardCharsets.UTF_8));
+                read.add(assetFile);
+            }
+        }
+        return read;
     }
 
     /** The env files under the {@code env/} directory beside {@code path}, in path order. */
@@ -289,7 +315,8 @@ public final class Pipeline {
                 PLATFORM, new PlatformIntentStandaloneSetup().createInjectorAndDoEMFRegistration(),
                 NODE_CONTRACT, new NodeContractStandaloneSetup().createInjectorAndDoEMFRegistration(),
                 IMAGES_LOCK, new ImagesLockStandaloneSetup().createInjectorAndDoEMFRegistration(),
-                CLUSTER_STATE, new ClusterStateStandaloneSetup().createInjectorAndDoEMFRegistration());
+                CLUSTER_STATE, new ClusterStateStandaloneSetup().createInjectorAndDoEMFRegistration(),
+                MIGRATION_PROOF, new MigrationProofStandaloneSetup().createInjectorAndDoEMFRegistration());
         XtextResourceSet resources = project.getInstance(XtextResourceSet.class);
         List<Resource> documents = new ArrayList<>();
         for (Path file : files) {

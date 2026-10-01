@@ -77,4 +77,24 @@ class ModelDigestTest {
         one.getApplications().get(0).setId("vault");
         assertThat(ModelDigest.of(platform)).isNotEqualTo(named);
     }
+
+    @Test
+    void aTextIsDigestedAsTheJsonStringItIsWrittenAs() {
+        // sha256 over `"a\nb"`, the canonical JSON of the two-line text: the digest the production
+        // implementation gives an Asset's content, so an Asset's name is the same in both.
+        assertThat(ModelDigest.ofText("a\nb"))
+                .isEqualTo(ModelDigest.ofText("a\nb"))
+                .isNotEqualTo(ModelDigest.ofText("a\nc"))
+                .isEqualTo("sha256:" + sha256("\"a\\nb\""));
+    }
+
+    private static String sha256(String text) {
+        try {
+            return java.util.HexFormat.of()
+                    .formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                            .digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException absent) {
+            throw new IllegalStateException(absent);
+        }
+    }
 }

@@ -26,6 +26,15 @@ public class Hashing {
         return ModelDigest.of(model);
     }
 
+    /**
+     * The digest of a text, over its canonical JSON: a string as a JSON string, so an Asset's
+     * content-hashed name is the one the production implementation gives it.
+     */
+    @Operation(contextual = true, kind = Kind.QUERY)
+    public static String textDigestOf(String text) {
+        return ModelDigest.ofText(text);
+    }
+
     /** The Application revision (spec/v1/20-resolved-deployment.md#the-application-revision). */
     @Operation(contextual = true, kind = Kind.QUERY)
     public static String revisionOf(EObject application) {

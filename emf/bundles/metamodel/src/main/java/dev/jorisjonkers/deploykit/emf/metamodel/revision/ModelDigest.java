@@ -30,6 +30,11 @@ public final class ModelDigest {
                 + HexFormat.of().formatHex(ApplicationRevision.digest("SHA-256", CanonicalJson.write(json(model))));
     }
 
+    /** {@code sha256:<hex>} over the canonical JSON of {@code text}: the string, quoted and escaped. */
+    public static String ofText(String text) {
+        return "sha256:" + HexFormat.of().formatHex(ApplicationRevision.digest("SHA-256", CanonicalJson.write(text)));
+    }
+
     private static Map<String, Object> json(EObject object) {
         Map<String, Object> json = new LinkedHashMap<>();
         for (EStructuralFeature feature : object.eClass().getEAllStructuralFeatures()) {

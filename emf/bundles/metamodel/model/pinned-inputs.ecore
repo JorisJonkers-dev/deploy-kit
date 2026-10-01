@@ -101,4 +101,32 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="node" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
+  <!-- ================================================ the migration proof -->
+
+  <!-- What an Application's CI proved about its changelog, beside the project file
+       (spec/v1/55-delivery.md#migration-safety). -->
+  <eClassifiers xsi:type="ecore:EClass" name="MigrationProof">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="apiVersion" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="schemaVersion" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="applications" upperBound="-1" eType="#//ProvenApplication" containment="true"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ProvenApplication">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The serving revision; absent on a first release. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="testedAgainst" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="nonTransactional" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
+  </eClassifiers>
+
+  <!-- ========================================================= Asset files -->
+
+  <!-- A file an Asset names, as its project's directory holds it: read as text,
+       never parsed, because what is in it is the Application's, not the model's. -->
+  <eClassifiers xsi:type="ecore:EClass" name="AssetFile">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="project" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="from" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="content" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
 </ecore:EPackage>

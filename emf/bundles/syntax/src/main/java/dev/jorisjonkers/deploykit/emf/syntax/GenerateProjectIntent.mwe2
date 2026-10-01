@@ -97,6 +97,17 @@ Workflow {
 			scopeProvider = { generateStub = false }
 			generator = { generateStub = false }
 		}
+		language = StandardLanguage {
+			name = "dev.jorisjonkers.deploykit.emf.syntax.MigrationProof"
+			grammarUri = "classpath:/dev/jorisjonkers/deploykit/emf/syntax/MigrationProof.xtext"
+			fileExtensions = "yml"
+			referencedResource = "platform:/resource/dev.jorisjonkers.deploykit.emf.metamodel/model/project-intent.genmodel"
+			referencedResource = "platform:/resource/dev.jorisjonkers.deploykit.emf.metamodel/model/pinned-inputs.genmodel"
+			serializer = { generateStub = false }
+			validator = { generateStub = false }
+			scopeProvider = { generateStub = false }
+			generator = { generateStub = false }
+		}
 
 	}
 }

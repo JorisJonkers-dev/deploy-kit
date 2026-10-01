@@ -115,22 +115,24 @@
       path="apps/notes/notes/kustomization.yaml" adapter="kubernetes"
       resources="canary.yaml podmonitor.yaml serviceaccount.yaml workload.yaml"/>
   <deliverables xsi:type="resolveddeployment:WorkloadFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="apps/notes/notes/workload.yaml" adapter="kubernetes" process="//@applications.0/@processes.0"
+      path="apps/notes/notes/workload.yaml" adapter="kubernetes" processes="//@applications.0/@processes.0"
       controller="Deployment" strategy="RollingUpdate"/>
   <deliverables xsi:type="resolveddeployment:SwitchoverFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="apps/notes/notes/canary.yaml" adapter="kubernetes" process="//@applications.0/@processes.0"/>
+      path="apps/notes/notes/canary.yaml" adapter="kubernetes" processes="//@applications.0/@processes.0"/>
   <deliverables xsi:type="resolveddeployment:IdentityFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="apps/notes/notes/serviceaccount.yaml" adapter="kubernetes" process="//@applications.0/@processes.0"/>
+      path="apps/notes/notes/serviceaccount.yaml" adapter="kubernetes" processes="//@applications.0/@processes.0"/>
   <deliverables xsi:type="resolveddeployment:MonitorFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/notes/podmonitor.yaml" adapter="prometheus" process="//@applications.0/@processes.0"
       surface="http" scrapePath="/metrics" interval="30s"/>
   <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="apps/notes/notes/networkpolicy.yaml" adapter="networking" process="//@applications.0/@processes.0">
-    <!-- The edge and the metrics stack reach it; nothing else does. -->
-    <ingress namespace="edge-system" process="traefik-public" port="8080"/>
-    <ingress namespace="observability-system" process="prometheus" port="8080"/>
-    <!-- The cluster's DNS: a namespace, not a Process the union declares. -->
-    <egress namespace="kube-system" port="53"/>
+      path="apps/notes/notes/networkpolicy.yaml" adapter="networking">
+    <policies process="//@applications.0/@processes.0">
+      <!-- The edge and the metrics stack reach it; nothing else does. -->
+      <ingress namespace="edge-system" process="traefik-public" port="8080"/>
+      <ingress namespace="observability-system" process="prometheus" port="8080"/>
+      <!-- The cluster's DNS: a namespace, not a Process the union declares. -->
+      <egress namespace="kube-system" port="53"/>
+    </policies>
   </deliverables>
   <deliverables xsi:type="resolveddeployment:IngressRouteFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/edge/public-frankfurt/notes-public.yaml" adapter="traefik" exposure="//@applications.0/@exposure.0"

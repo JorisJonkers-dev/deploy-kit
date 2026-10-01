@@ -35,6 +35,8 @@
                 <exclude>dev.jorisjonkers.deploykit.emf.syntax.AbstractProjectIntent*</exclude>
                 <exclude>dev.jorisjonkers.deploykit.emf.syntax.PlatformIntent*</exclude>
                 <exclude>dev.jorisjonkers.deploykit.emf.syntax.AbstractPlatformIntent*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.MigrationProof*</exclude>
+                <exclude>dev.jorisjonkers.deploykit.emf.syntax.AbstractMigrationProof*</exclude>
                 <exclude>dev.jorisjonkers.deploykit.emf.syntax.ClusterState*</exclude>
                 <exclude>dev.jorisjonkers.deploykit.emf.syntax.AbstractClusterState*</exclude>
                 <exclude>dev.jorisjonkers.deploykit.emf.syntax.ImagesLock*</exclude>
@@ -60,6 +62,8 @@
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractProjectIntent*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/PlatformIntent*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractPlatformIntent*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/MigrationProof*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractMigrationProof*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/ClusterState*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractClusterState*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/ImagesLock*.class</exclude>
@@ -82,6 +86,8 @@
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractProjectIntent*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/PlatformIntent*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractPlatformIntent*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/MigrationProof*.class</exclude>
+                <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractMigrationProof*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/ClusterState*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/AbstractClusterState*.class</exclude>
                 <exclude>dev/jorisjonkers/deploykit/emf/syntax/ImagesLock*.class</exclude>
@@ -105,6 +111,7 @@
           <excludedClasses>
             <param>dev.jorisjonkers.deploykit.emf.syntax.*ProjectIntent*</param>
             <param>dev.jorisjonkers.deploykit.emf.syntax.*PlatformIntent*</param>
+            <param>dev.jorisjonkers.deploykit.emf.syntax.*MigrationProof*</param>
             <param>dev.jorisjonkers.deploykit.emf.syntax.*ClusterState*</param>
             <param>dev.jorisjonkers.deploykit.emf.syntax.*ImagesLock*</param>
             <param>dev.jorisjonkers.deploykit.emf.syntax.*NodeContract*</param>

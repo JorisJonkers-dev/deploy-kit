@@ -92,11 +92,11 @@ class ParityTest {
         private const val DEPENDENCIES = "dependencies.json"
 
         /**
-         * The cases the QVT-Operational resolution reaches so far. A case with a dependencies oracle
-         * outside this list is not yet a resolution parity case: JorisJonkers-dev/deploy-kit#91 widens
-         * it to every example.
+         * The cases the QVT-Operational resolution reaches: every case the production implementation
+         * resolves. `knowledge` carries a dependencies oracle and joins when the production
+         * implementation resolves it (JorisJonkers-dev/deploy-kit#201).
          */
-        private val RESOLVED = listOf("minimal")
+        private val RESOLVED = listOf("auth", "data", "delivery", "edge", "minimal", "observability", "secrets")
         private const val EXIT = "exit"
 
         @JvmStatic

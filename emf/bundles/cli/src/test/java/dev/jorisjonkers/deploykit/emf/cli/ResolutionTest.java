@@ -1,6 +1,7 @@
 package dev.jorisjonkers.deploykit.emf.cli;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeploymentPackage;
@@ -91,6 +92,38 @@ class ResolutionTest {
         assertThat(resolved.diagnostics())
                 .extracting(Diagnostic::code)
                 .containsExactly("E_SHARED_DECLARATION_DUPLICATED");
+    }
+
+    @Test
+    void anAssetCarriesTheFileBesideItsProjectWordForWord() throws IOException {
+        Resolved data = Pipeline.resolve(
+                Outputs.RESOLVED.get("data").documents().stream()
+                        .map(Examples::of)
+                        .toList(),
+                "data",
+                Outputs.INTEGRITY);
+
+        assertThat(data.deployment()
+                        .getApplications()
+                        .get(0)
+                        .getProcesses()
+                        .get(0)
+                        .getAssets())
+                .singleElement()
+                .satisfies(asset ->
+                        assertThat(asset.getContent()).isEqualTo(Examples.read("data/config/postgresql.conf")));
+    }
+
+    @Test
+    void anAssetWhoseFileIsNotBesideItsProjectStopsTheResolution(@TempDir Path directory) throws IOException {
+        Path data = Examples.write(directory, "data.project.yml", Examples.read("data/data.project.yml"));
+        List<Path> files = Outputs.RESOLVED.get("data").documents().stream()
+                .map(file -> file.equals("data/data.project.yml") ? data : Examples.of(file))
+                .toList();
+
+        assertThatThrownBy(() -> Pipeline.resolve(files, "data", Outputs.INTEGRITY))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageStartingWith("data did not resolve");
     }
 
     @Test

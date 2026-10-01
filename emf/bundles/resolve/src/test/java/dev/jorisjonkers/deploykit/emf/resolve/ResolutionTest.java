@@ -3,12 +3,15 @@ package dev.jorisjonkers.deploykit.emf.resolve;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.AssetFile;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.ClusterState;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.ImagesLock;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.LockedImage;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.Node;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.NodeContract;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.PinnedInputsFactory;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Asset;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.DurabilityClass;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.EffectiveApplication;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.EffectiveProject;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.HardeningClass;
@@ -17,11 +20,13 @@ import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Platform;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Process;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentFactory;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Runtime;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Volume;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedApplication;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
 import dev.jorisjonkers.deploykit.emf.metamodel.revision.ApplicationRevision;
 import java.util.List;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -44,6 +49,10 @@ class ResolutionTest {
         worker.setPlacement(INTENT.createPlacement());
         worker.getPlacement().setMemory("64Mi");
         worker.getPlacement().setCpu("10m");
+        Asset settings = INTENT.createAsset();
+        settings.setFrom("config/worker.conf");
+        settings.setMountAt("/etc/worker.conf");
+        worker.getAssets().add(settings);
         EffectiveApplication application = INTENT.createEffectiveApplication();
         application.setId("batch");
         application.getProcesses().add(worker);
@@ -86,7 +95,11 @@ class ResolutionTest {
         lock.getImages().add(image);
         ClusterState snapshot = PINNED.createClusterState();
         snapshot.setCluster("production");
-        return List.of(contract, lock, snapshot);
+        AssetFile settings = PINNED.createAssetFile();
+        settings.setProject("jobs");
+        settings.setFrom("config/worker.conf");
+        settings.setContent("threads = 4\n");
+        return List.of(contract, lock, snapshot, settings);
     }
 
     @Test
@@ -99,6 +112,8 @@ class ResolutionTest {
                 .isEqualTo("ghcr.io/jorisjonkers-dev/jobs/worker@sha256:" + "ab".repeat(32));
         assertThat(batch.getProcesses().get(0).getPlacement().getEligibleNodes())
                 .containsExactly("enschede-pi-1");
+        // An Asset is named for its Process, its file and the first digits of its content's digest.
+        assertThat(batch.getProcesses().get(0).getAssets().get(0).getName()).matches("worker-worker-conf-[0-9a-f]{10}");
         // The one black box: the revision is the digest of the element, the provenance of its inputs.
         assertThat(batch.getRevision()).isEqualTo(ApplicationRevision.of(batch));
         assertThat(deployment.getProvenance().getRenderHash()).startsWith("sha256:");
@@ -114,17 +129,21 @@ class ResolutionTest {
 
     @Test
     void aDerivationNoCaseReachesYetStopsTheRunWithTheTicketThatLandsIt() {
+        // A Deployment beside a StatefulSet in one Application: one workload file cannot spell both.
         EffectiveProject project = project();
-        project.getApplications()
-                .get(0)
-                .getProcesses()
-                .get(0)
-                .getWritablePaths()
-                .add("/tmp");
-        project.getApplications().get(0).getProcesses().get(0).getDependsOn().add(INTENT.createDependencyEdge());
+        Process stateful =
+                EcoreUtil.copy(project.getApplications().get(0).getProcesses().get(0));
+        stateful.setName("store");
+        Volume volume = INTENT.createVolume();
+        volume.setClaim("store-data");
+        volume.setMountAt("/data");
+        volume.setSize("1Gi");
+        volume.setDurability(DurabilityClass.RECONSTRUCTIBLE);
+        stateful.getVolumes().add(volume);
+        project.getApplications().get(0).getProcesses().add(stateful);
 
         assertThatThrownBy(() -> Resolution.resolve(List.of(project, platform()), pinned(), "jobs", INTEGRITY))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("#91");
+                .hasMessageContaining("#95");
     }
 }
