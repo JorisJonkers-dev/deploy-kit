@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+status: accepted
 claim: settled
 date: 2026-09-08
 normative: spec/v1/14-platform-intent.md#the-document

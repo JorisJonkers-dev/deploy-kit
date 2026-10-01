@@ -640,6 +640,22 @@ describe("the metamodel refuses", () => {
     expect(refused(withProcess({ replicas: 0 }))).toBe(true);
   });
 
+  it.each([
+    [["read", "update"], false],
+    [["update"], false],
+    [[], true],
+  ])("a policy path allowing %j: %s", (allows, refuses) => {
+    const secrets = [
+      {
+        delivery: "self",
+        engine: "transit",
+        paths: [{ path: "transit/encrypt/notes", allows }],
+      },
+    ];
+
+    expect(refused(withProcess({ secrets }))).toBe(refuses);
+  });
+
   it("a release gate with no members", () => {
     const document = withDefect((it) => {
       Object.assign(it["releaseGate"] as object, { members: [] });

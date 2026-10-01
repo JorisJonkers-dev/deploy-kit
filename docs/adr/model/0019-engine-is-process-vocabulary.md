@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+status: accepted
 claim: settled
 date: 2026-09-07
 normative: spec/v1/10-project-intent.md#process

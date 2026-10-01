@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+status: accepted
 claim: settled
 owner: joris
 date: 2026-09-14

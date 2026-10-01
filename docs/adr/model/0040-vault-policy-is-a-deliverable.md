@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+status: accepted
 claim: settled
 date: 2026-09-07
 normative: spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied
