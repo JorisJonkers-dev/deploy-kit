@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  Runs model/resolution.qvto over minimal in Eclipse, the run ResolutionTest makes
+  headless: the two extents `./mvnw verify` leaves under the pipeline's parity
+  output in, the Resolved Deployment out, under this project's target/.
+-->
+<launchConfiguration type="org.eclipse.m2m.qvt.oml.QvtTransformation">
+    <stringAttribute key="org.eclipse.m2m.qvt.oml.interpreter.module" value="platform:/resource/dev.jorisjonkers.deploykit.emf.resolve/model/resolution.qvto"/>
+    <intAttribute key="org.eclipse.m2m.qvt.oml.interpreter.elemCount" value="3"/>
+    <stringAttribute key="org.eclipse.m2m.qvt.oml.interpreter.targetType" value="NEW_MODEL"/>
+    <stringAttribute key="org.eclipse.m2m.qvt.oml.interpreter.targetModel" value="platform:/resource/dev.jorisjonkers.deploykit.emf.cli/target/parity/minimal/resolution.intent.xmi"/>
+    <stringAttribute key="org.eclipse.m2m.qvt.oml.interpreter.targetType1" value="NEW_MODEL"/>
+    <stringAttribute key="org.eclipse.m2m.qvt.oml.interpreter.targetModel1" value="platform:/resource/dev.jorisjonkers.deploykit.emf.cli/target/parity/minimal/resolution.pinned.xmi"/>
+    <stringAttribute key="org.eclipse.m2m.qvt.oml.interpreter.targetType2" value="NEW_MODEL"/>
+    <stringAttribute key="org.eclipse.m2m.qvt.oml.interpreter.targetModel2" value="platform:/resource/dev.jorisjonkers.deploykit.emf.resolve/target/resolution/notes.resolveddeployment"/>
+    <mapAttribute key="org.eclipse.m2m.qvt.oml.interpreter.configurationProperties">
+        <mapEntry key="project" value="notes"/>
+        <mapEntry key="integrity" value="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b"/>
+    </mapAttribute>
+    <booleanAttribute key="org.eclipse.m2m.qvt.oml.interpreter.useTraceFile" value="false"/>
+</launchConfiguration>
