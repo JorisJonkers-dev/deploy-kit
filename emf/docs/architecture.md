@@ -133,7 +133,7 @@ are committed `.ecore` XMI, with names taken unchanged from
 |---|---|---|
 | Project Intent | source | the authored Project, Application and Process with everything layer 1 declares, the lowered pair the Effective Intent is written in, and the Platform document the source is resolved against |
 | Resolved Deployment | target | every derived value of layer 2 together with the typed Kubernetes and extension resources, identities and output paths the templates write |
-| Pinned Inputs | read beside the source | the node contract, the images lock and the ClusterState snapshot: documents another process publishes and resolution pins by digest ([0073](adr/emf/0073-source-and-target-metamodels-are-hand-written.md)) |
+| Pinned Inputs | read beside the source | the node contract, the images lock and the ClusterState snapshot, which another process publishes and resolution pins by digest; the migration proof an Application's CI writes beside its project file; and the text of each Asset's file ([0073](adr/emf/0073-source-and-target-metamodels-are-hand-written.md)) |
 
 The pinned inputs are a package of their own because they are no part of the
 authored intent: the descriptor, which fixes the source metamodel's structure
@@ -218,9 +218,11 @@ the TypeScript checks and the refused fixtures
 ## Concrete syntax
 
 The Xtext grammar parses the same authored `.project.yml` and
-`platform.intent.yml` files the TypeScript compiler reads. Three more grammars
-read the pinned inputs beside the Platform document, `node-contract.yml`,
-`images.lock.yml` and `cluster-state.yml`: each inherits the project grammar's
+`platform.intent.yml` files the TypeScript compiler reads. Four more grammars
+read the pinned inputs: `node-contract.yml`, `images.lock.yml` and
+`cluster-state.yml` beside the Platform document, and `migration-proof.yml`
+beside a project file. An Asset's file is read as text, never parsed: what is in
+it is the Application's, not the model's. Each grammar inherits the project grammar's
 terminals, block tokens and scalars as the Platform grammar does, imports the
 pinned-inputs metamodel, and adds only its own rules
 ([0075](adr/emf/0075-xtext-parses-the-authored-yaml-into-the-metamodel.md)). It covers the YAML
@@ -313,11 +315,22 @@ is a mapping or a query. Each digest is over this implementation's own model, so
 the revision and the provenance bind this implementation only, as
 `resolved.json` binds the other.
 
-**A derivation no case reaches yet stops the run.** The transformation is widened
-case by case, and a family of input it does not derive yet (a dependency edge, a
-volume, a grant, an Asset, a sidecar, a managed migration, an Application of
-several Processes, a placeholder other than `${identity:}`) is a fatal assertion
-naming the ticket that lands it, never a model with a gap in it.
+**What the transformation cannot derive stops the run.** It resolves every case
+the production implementation resolves, and an input it cannot derive is a
+fatal assertion naming what is missing, never a model with a gap or a default in
+it: an image the lock does not hold, an edge no provider answers, a placeholder
+that names nothing, a Runtime Profile key written in an env file, an Asset whose
+file is not beside its project, or an Application whose Processes need two
+workload controllers, which one workload file cannot spell until the templates
+widen (JorisJonkers-dev/deploy-kit#95).
+
+**The path plan holds the families the target metamodel models.** An
+Application's directory holds one file per family, each naming every Process it
+applies to, and one network policy per Process in its policy file. The families
+the templates add with their widening (the claims, the backup jobs, the Asset
+ConfigMaps, the Services, the disruption budgets, the migration Jobs and the
+Vault and operator objects) join the metamodel and the path plan with
+JorisJonkers-dev/deploy-kit#95.
 
 ## Text generation
 

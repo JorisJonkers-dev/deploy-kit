@@ -15,7 +15,8 @@ There are two packages, as the project proposal defines
 metamodel holding Project Intent and the Platform document, and a target
 metamodel holding the Resolved Deployment with its typed Kubernetes and
 extension resources. A third holds the pinned inputs the resolution reads beside
-the source: the node contract, the images lock and the ClusterState snapshot.
+the source: the node contract, the images lock, the ClusterState snapshot, the
+migration proofs and the text of the Asset files.
 The descriptor covers the source metamodel only.
 
 ## Rests on
