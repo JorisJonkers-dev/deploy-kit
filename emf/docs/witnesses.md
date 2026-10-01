@@ -21,7 +21,7 @@ name a real model row, it may not also be witnessed, and its count is stated
 beside the witness count, so the gate keeps its teeth while the work is
 outstanding.
 
-This list holds **12** witnesses, and **2** pending.
+This list holds **13** witnesses, and **1** pending.
 
 | id | JUnit test |
 |---|---|
@@ -31,6 +31,7 @@ This list holds **12** witnesses, and **2** pending.
 | REQ-029 | `LinkingTest#aRouteAndAScrapeLinkToTheVeryProcessAndSurfaceTheirApplicationHolds` |
 | REQ-030 | `PlatformIntentTest#aPlatformDocumentParsesAndATierWithoutItsEndpointIsRefused` |
 | REQ-031 | `IntentSetTest#everyEnvAndFileGrantIsRefusedWhereSecretsAreNotEncryptedAtRest` |
+| REQ-033 | `ResolvedDeploymentTest#theResolvedModelNamesNoKubernetesOrTraefikField` |
 | REQ-034 | `PinnedInputsTest#theNodeContractPublishesTheSevenNodesTheirCapabilitiesAndAMediumNoProcessMayAskFor` |
 | REQ-036 | `LoweringTest#everyProcessHoldsTheGrantsOfEveryLevelAboveItExtendedByItsOwn` |
 | REQ-037 | `EnvFilesTest#readsALiteralAPlaceholderCommentsAndBlankLines` |
@@ -42,5 +43,4 @@ This list holds **12** witnesses, and **2** pending.
 
 | id | why no witness yet | ticket |
 |---|---|---|
-| REQ-033 | the row holds chapter 20's worked projection, which is the production implementation's shape; this implementation's target metamodel is shaped differently on purpose, so the row's projection has no counterpart here, and what is held instead is each resolved case's dependency edges and minimal's model against the hand-written one | #96 |
 | REQ-035 | `resolved.json` binds the production implementation only, so the shared claim is the rendered tree, which REQ-040's witness holds; the row's own last clause, knowledge's resolved edges, waits on the production implementation resolving knowledge ([the parity contract](../../docs/architecture.md#the-parity-contract)) | #201 |

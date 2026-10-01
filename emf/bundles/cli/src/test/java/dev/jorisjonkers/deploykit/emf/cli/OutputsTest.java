@@ -23,6 +23,9 @@ class OutputsTest {
     /** Where a run of this module leaves what the parity contract compares, under its build output. */
     private static final Path OUTPUT = Path.of("target", "parity");
 
+    /** The cases whose committed rendered trees the composed union writes between them. */
+    private static final java.util.Set<String> RENDERED_CASES = java.util.Set.of("minimal", "data", "_estate");
+
     @Test
     void aRunLeavesEveryCaseUnderTheModulesBuildOutput() throws IOException {
         Path examples = Examples.of("");
@@ -125,6 +128,29 @@ class OutputsTest {
         assertThat(out.resolve("minimal/dependencies.json")).doesNotExist();
     }
 
+    @Test
+    void aRenderedUnionTheChecksRefuseLeavesItsDiagnosticsInPlaceOfTheTree(@TempDir Path root) throws IOException {
+        Path examples = root.resolve("examples");
+        Path out = root.resolve("out");
+        for (String document : Outputs.RENDERED_UNION.documents()) {
+            Path target = examples.resolve(document);
+            Files.createDirectories(target.getParent());
+            String text = Examples.read(document);
+            Files.writeString(
+                    target,
+                    document.equals("minimal/notes.project.yml")
+                            ? text.replace("surface: http }", "surface: grpc }")
+                            : text);
+        }
+        Files.createDirectories(examples.resolve("_estate/rendered"));
+        Files.createDirectories(examples.resolve("refusals"));
+
+        Outputs.write(examples, out);
+
+        assertThat(files(out.resolve(Outputs.RENDERED_TREE))).containsExactly("diagnostics.json", "exit");
+        assertThat(read(out.resolve("rendered/diagnostics.json"))).contains("E_UNKNOWN_SURFACE");
+    }
+
     /** minimal's resolution set, copied out of the real examples, its project file passed through {@code edit}. */
     private static void resolving(Path examples, java.util.function.UnaryOperator<String> edit) throws IOException {
         for (String document : Outputs.RESOLVED.get("minimal").documents()) {
@@ -176,6 +202,15 @@ class OutputsTest {
 
     private static Stream<String> pairedFiles(Path examples, Path oracle) {
         String name = oracle.getFileName().toString();
+        Path relative = examples.relativize(oracle);
+        // A committed rendered tree the composed union writes, file for file, under one tree.
+        if (relative.getNameCount() > 2
+                && relative.getName(1).toString().equals(Outputs.RENDERED_TREE)
+                && RENDERED_CASES.contains(relative.getName(0).toString())
+                && Files.isRegularFile(oracle)
+                && !name.equals("README.md")) {
+            return Stream.of(Outputs.RENDERED_TREE + "/" + relative.subpath(2, relative.getNameCount()));
+        }
         if (oracle.endsWith("expected/intent.json")) {
             String directory = relative(examples, oracle.getParent().getParent());
             Stream<String> models = documents(oracle.getParent().getParent())

@@ -9,6 +9,8 @@ import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Platform;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.SharedIntent;
+import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
+import dev.jorisjonkers.deploykit.emf.render.Rendering;
 import dev.jorisjonkers.deploykit.emf.resolve.Lowering;
 import dev.jorisjonkers.deploykit.emf.resolve.Resolution;
 import dev.jorisjonkers.deploykit.emf.syntax.ClusterStateStandaloneSetup;
@@ -146,6 +148,27 @@ public final class Pipeline {
         return refusals.isEmpty()
                 ? Resolved.of(Resolution.resolve(intent, pinned, project, schemaPackageIntegrity), intent, pinned)
                 : Resolved.refused(refusals);
+    }
+
+    /**
+     * The Deliverable Sets of {@code projects}, from {@code files} read together, written under
+     * {@code root} in one pass: every document parsed and checked, each project lowered and resolved,
+     * and the templates run over the Resolved Deployments (spec/v1/30-deliverables.md). Rendered
+     * together, the projects write the estate-scoped share they hold between them. A set the checks
+     * refuse writes nothing, and its diagnostics are returned.
+     */
+    public static List<Diagnostic> render(
+            List<Path> files, List<String> projects, String schemaPackageIntegrity, Path root) throws IOException {
+        List<ResolvedDeployment> deployments = new ArrayList<>();
+        for (String project : projects) {
+            Resolved resolved = resolve(files, project, schemaPackageIntegrity);
+            if (!resolved.ok()) {
+                return resolved.diagnostics();
+            }
+            deployments.add(resolved.deployment());
+        }
+        Rendering.render(deployments, root);
+        return List.of();
     }
 
     /**
