@@ -15,9 +15,10 @@ by the composition workflow's own identity and annotated with the render hash
 and the lock digest. A deploy is a `[ci skip]` commit to the estate repository's
 `main` that moves a Project's `OCIRepository` to the new digest, and Flux
 verifies the signature before it applies anything. No rendered Deliverable is
-committed. An application repository publishes its Intent Fragment only after
-its images exist, with their digests resolved, as
-[0042](0042-declarations-compose-from-intent-fragments.md) states. The mechanics are
+committed. An application repository publishes its Intent Fragment on a release
+tag, only after its images exist, with their digests resolved, as
+[0042](0042-declarations-compose-from-intent-fragments.md) and
+[0083](0083-a-fragment-publishes-on-a-release-tag.md) state. The mechanics are
 [chapter 55](../../../spec/v1/55-delivery.md#rendered-artifacts-and-pins)'s.
 
 ## Rests on
@@ -88,8 +89,9 @@ committed tree is deleted.
   ([#148](https://github.com/JorisJonkers-dev/deploy-kit/issues/148)).
 - The Platform document records where artifacts live and who signs them, paid
   by the platform's owner.
-- An intent-only change waits for its repository's image build to finish before
-  it publishes, paid in minutes by every application repository.
+- An intent-only change waits for its repository's release and image build
+  before it publishes, paid by every application repository.
 - A pin revert is break-glass, and the next composition undoes it unless the
-  inputs are reverted too, paid by whoever reaches for it.
+  inputs are reverted too, paid by whoever reaches for it. The ordinary way back
+  is a Rollback ([0084](0084-pause-and-rollback.md)).
 - Image admission stays unverified: a recorded gap, owned by joris.

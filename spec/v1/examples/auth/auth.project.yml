@@ -47,7 +47,7 @@ applications:
   # together or none switches. No Process's new version receives traffic until
   # every Process's new version is healthy by its own declared readiness, and
   # if any misses its `startupBudget`, none of them switch and the old versions
-  # keep serving. Rollback is Application-scoped for the same reason.
+  # keep serving. Going back is Application-scoped for the same reason.
   #
   # The requirement is unchanged; only the mechanism is. A new UI against an old
   # API is a broken product even though both pods report healthy, and that is
