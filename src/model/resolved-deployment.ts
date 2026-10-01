@@ -30,6 +30,7 @@ import {
   RUNTIMES,
   TRANSIT_ENGINES,
 } from "./vocabularies.ts";
+import { stated, type ShapeRule } from "./shape-rule.ts";
 
 // The closed vocabularies layer 2 adds, each declared here once. Layer 2
 // records decisions in model words, so none of these names a Kubernetes or
@@ -307,8 +308,56 @@ const envEntry = z
 const lifecycle = z.enum(LIFECYCLES).meta({ id: "Lifecycle" });
 const runtime = z.enum(RUNTIMES).meta({ id: "Runtime" });
 
-const resolvedProcess = z
-  .strictObject({
+/** The switchovers each `cutover` may derive (spec/v1/55-delivery.md#switchover):
+ * `rolling` is the delivery machinery's, which no gate switches. */
+const SWITCHOVERS_OF = {
+  continuous: ["blue-green", "rolling"],
+  interrupted: ["stop-start"],
+} as const satisfies Record<(typeof CUTOVERS)[number], readonly string[]>;
+
+/**
+ * What a derivation guarantees about one Process: its switchover is one its
+ * cutover derives, and a Process with no cutover switches nothing.
+ */
+const switchoverFollowsCutover: ShapeRule<{
+  readonly cutover?: keyof typeof SWITCHOVERS_OF;
+  readonly switchover?: string;
+}> = {
+  statement: {
+    dependentRequired: { switchover: ["cutover"] },
+    allOf: [
+      ...Object.entries(SWITCHOVERS_OF).map(([cutover, switchovers]) => ({
+        if: {
+          required: ["cutover"],
+          properties: { cutover: { const: cutover } },
+        },
+        then: { properties: { switchover: { enum: [...switchovers] } } },
+      })),
+    ],
+  },
+  breaches: ({ cutover, switchover }) => {
+    if (switchover === undefined) return [];
+    if (cutover === undefined)
+      return [
+        {
+          path: ["switchover"],
+          message: "a Process with no cutover switches nothing",
+        },
+      ];
+    const allowed: readonly string[] = SWITCHOVERS_OF[cutover];
+    return allowed.includes(switchover)
+      ? []
+      : [
+          {
+            path: ["switchover"],
+            message: `a ${cutover} cutover derives the ${allowed.join(" or ")} switchover`,
+          },
+        ];
+  },
+};
+
+const resolvedProcess = stated(
+  z.strictObject({
     name: text,
     lifecycle,
     runtime,
@@ -343,8 +392,10 @@ const resolvedProcess = z
     surfaces: z.array(resolvedSurface).exactOptional(),
     ingress: z.array(ingressPeer).exactOptional(),
     egress: z.array(egressPeer).exactOptional(),
-  })
-  .meta({ id: "ResolvedProcess" });
+  }),
+  "ResolvedProcess",
+  switchoverFollowsCutover,
+);
 
 // ---------------------------------------------------------------- the edge
 
@@ -480,62 +531,50 @@ const application = {
   processes: z.array(resolvedProcess).min(1),
 };
 
-/** The switchovers each `cutover` may derive (spec/v1/55-delivery.md#switchover):
- * `rolling` is the delivery machinery's, which no gate switches. */
-const SWITCHOVERS_OF = {
-  continuous: ["blue-green", "rolling"],
-  interrupted: ["stop-start"],
-} as const satisfies Record<string, readonly string[]>;
-
 /**
- * What a derivation guarantees and the shape alone cannot say: a Process's
- * switchover is one its cutover derives, and an Application carries
- * release-gate inputs exactly when a Process of it switches blue/green.
+ * What a derivation guarantees about one Application: it carries release-gate
+ * inputs exactly when a Process of it switches blue/green.
  */
-function switchoverFollowsCutover(
-  element: {
-    readonly releaseGate?: unknown;
-    readonly processes: readonly {
-      readonly cutover?: keyof typeof SWITCHOVERS_OF;
-      readonly switchover?: string;
-    }[];
+const gateFollowsSwitchover: ShapeRule<{
+  readonly releaseGate?: unknown;
+  readonly processes: readonly { readonly switchover?: string }[];
+}> = {
+  statement: {
+    if: {
+      properties: {
+        processes: {
+          type: "array",
+          contains: {
+            type: "object",
+            required: ["switchover"],
+            properties: { switchover: { const: "blue-green" } },
+          },
+        },
+      },
+    },
+    // `releaseGate: true` restates the property the node already declares, so
+    // a strict validator sees the required key defined where it is required.
+    then: { required: ["releaseGate"], properties: { releaseGate: true } },
+    else: { properties: { releaseGate: false } },
   },
-  context: z.RefinementCtx,
-): void {
-  for (const [index, process] of element.processes.entries()) {
-    if (process.switchover === undefined) continue;
-    if (process.cutover === undefined) {
-      context.addIssue({
-        code: "custom",
-        path: ["processes", index, "switchover"],
-        message: "a Process with no cutover switches nothing",
-      });
-      continue;
-    }
-    const allowed: readonly string[] = SWITCHOVERS_OF[process.cutover];
-    if (!allowed.includes(process.switchover))
-      context.addIssue({
-        code: "custom",
-        path: ["processes", index, "switchover"],
-        message: `a ${process.cutover} cutover derives the ${allowed.join(" or ")} switchover`,
-      });
-  }
-  const gated = element.processes.some(
-    (process) => process.switchover === "blue-green",
-  );
-  if (gated !== (element.releaseGate !== undefined))
-    context.addIssue({
-      code: "custom",
-      path: ["releaseGate"],
-      message:
-        "an Application carries release-gate inputs exactly when a Process of it switches blue-green",
-    });
-}
+  breaches: ({ releaseGate, processes }) =>
+    processes.some((process) => process.switchover === "blue-green") ===
+    (releaseGate !== undefined)
+      ? []
+      : [
+          {
+            path: ["releaseGate"],
+            message:
+              "an Application carries release-gate inputs exactly when a Process of it switches blue-green",
+          },
+        ],
+};
 
-const resolvedApplication = z
-  .strictObject(application)
-  .superRefine(switchoverFollowsCutover)
-  .meta({ id: "ResolvedApplication" });
+const resolvedApplication = stated(
+  z.strictObject(application),
+  "ResolvedApplication",
+  gateFollowsSwitchover,
+);
 
 // ------------------------------------------------------------ the documents
 
@@ -567,15 +606,16 @@ export const resolvedDeployment = z
  * covers it. Obtained by filtering, never computed separately, so the two
  * cannot disagree about what was decided.
  */
-export const resolvedApplicationDocument = z
-  .strictObject({
+export const resolvedApplicationDocument = stated(
+  z.strictObject({
     apiVersion: z.literal(API_VERSION),
     kind: z.literal("ResolvedApplication"),
     provenance,
     ...application,
-  })
-  .superRefine(switchoverFollowsCutover)
-  .meta({ id: "ResolvedApplicationDocument" });
+  }),
+  "ResolvedApplicationDocument",
+  gateFollowsSwitchover,
+);
 
 export type ResolvedDeploymentDocument = z.output<typeof resolvedDeployment>;
 export type ResolvedApplicationDocument = z.output<

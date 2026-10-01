@@ -45,6 +45,19 @@ function specifiers(
   };
 }
 
+// The zod methods whose rule a generated JSON Schema drops or cannot state: a
+// refinement, a check, a transformation, a pipe into another schema.
+const UNSTATED = new Set([
+  "refine",
+  "superRefine",
+  "check",
+  "overwrite",
+  "transform",
+  "preprocess",
+  "pipe",
+  "custom",
+]);
+
 // A leading dot is a tool configuration file, named by its tool.
 const KEBAB = /^\.?[a-z0-9]+(-[a-z0-9]+)*(\.[a-z0-9]+(-[a-z0-9]+)*)*$/;
 
@@ -83,6 +96,20 @@ export const plugin: ESLint.Plugin = {
             context.report({
               node,
               message: `RULE-024: ${name} is not named in kebab-case`,
+            });
+        },
+      }),
+    ),
+    "no-unstated-rule": rule(
+      "A schema states only what its generated JSON Schema states too",
+      (context) => ({
+        "CallExpression > MemberExpression.callee[computed=false] > Identifier.property"(
+          node: Rule.Node & { name: string },
+        ) {
+          if (UNSTATED.has(node.name))
+            context.report({
+              node,
+              message: `RULE-073: .${node.name}() states a rule the published JSON Schema drops; state it in the shape, or through stated() with its JSON Schema statement`,
             });
         },
       }),

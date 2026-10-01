@@ -137,6 +137,14 @@ one shape ([0007](adr/model/0007-schema-version-separable.md)).
 JSON Schema is generated from the **input** variant of each schema, because it
 describes what a human writes rather than what validation leaves behind.
 
+A schema states only what its generated JSON Schema states too, so a consumer
+validating against a published schema refuses exactly what the model refuses.
+A refinement, a transformation or a pipe would be dropped by the generator, so
+none appears in `src/` (RULE-073). A rule the shape cannot carry but JSON
+Schema can (a conditional, a requirement on what an array contains) is
+declared once in `src/model/shape-rule.ts`'s form: the check zod runs and the
+JSON Schema keywords stating the same rule, side by side.
+
 ## Error model
 
 Every failure is a `Diagnostic`: a code, the document path it occurred at, a

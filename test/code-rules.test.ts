@@ -1,4 +1,4 @@
-// RULE-019, RULE-023, RULE-024, RULE-033 and RULE-042: the rules one file
+// RULE-019, RULE-023, RULE-024, RULE-033, RULE-042 and RULE-073: the rules one file
 // shows on its own, each proved on a probe that breaks it and shown silent on
 // one that keeps it. They are this repository's own ESLint rules, in
 // scripts/lib/eslint-rules.ts, because no configured rule reads what they read.
@@ -11,6 +11,7 @@ import { repositoryEslint } from "./support/eslint.ts";
 const REPOSITORY = join(import.meta.dirname, "..");
 const PROBES = [
   "src/model/probe.ts",
+  "src/read/probe.ts",
   "src/model/ProbeModule.ts",
   "src/model/probe_module.ts",
   "src/model/probe-module.test.ts",
@@ -118,6 +119,34 @@ describe("the rules one file shows on its own", { timeout: 120_000 }, () => {
       ),
     ).toStrictEqual([]);
   });
+
+  it("RULE-073 refuses a rule the published JSON Schema drops, anywhere in src/ but the module that states it twice", async () => {
+    const source = [
+      'import { z } from "zod";',
+      'export const a = z.string().refine((value) => value !== "");',
+      "export const b = z.object({}).superRefine(() => undefined);",
+      "export const c = z.string().transform((value) => value.length);",
+      "export const d = z.preprocess((value) => value, z.string());",
+      "",
+    ].join("\n");
+    const refused = (method: string): string =>
+      `deploy-kit/no-unstated-rule: RULE-073: .${method}() states a rule the published JSON Schema drops; state it in the shape, or through stated() with its JSON Schema statement`;
+
+    for (const path of ["src/model/probe.ts", "src/read/probe.ts"])
+      expect(await fired(path, source)).toStrictEqual([
+        refused("refine"),
+        refused("superRefine"),
+        refused("transform"),
+        refused("preprocess"),
+      ]);
+    expect(await fired("src/model/shape-rule.ts", source)).toStrictEqual([]);
+    expect(
+      await fired(
+        "src/model/probe.ts",
+        'import { z } from "zod";\nexport const a = z.strictObject({ b: z.string().min(1) }).meta({ id: "A" });\n',
+      ),
+    ).toStrictEqual([]);
+  });
 });
 
 // ESLint loads eslint.config.js, and the rules with it, as a module of its own,
@@ -153,6 +182,10 @@ describe("the rules, imported", () => {
     ["esm-only", "probe.ts", 'require("./a.cjs");', 1],
     ["esm-only", "probe.ts", "exports.v = 1;", 1],
     ["esm-only", "probe.ts", "export const v = 1;", 0],
+    ["no-unstated-rule", "probe.ts", "z.string().pipe(z.string());", 1],
+    ["no-unstated-rule", "probe.ts", "z.string().min(1);", 0],
+    ["no-unstated-rule", "probe.ts", "check();", 0],
+    ["no-unstated-rule", "probe.ts", "a[refine]();", 0],
   ])("%s on %s: %s reports %i", (rule, filename, code, count) => {
     expect(own(rule, filename, code)).toBe(count);
   });
