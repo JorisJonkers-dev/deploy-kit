@@ -29,6 +29,13 @@ derivations and the reader set of a Secret Store path are global properties
 slice belonging to one Application, obtained by filtering and never computed
 separately, so the two cannot disagree about what was decided.
 
+Both schemas are generated from the model and shipped in the package, for a
+consumer outside this repository to generate its types from:
+[`schemas/resolved-deployment.schema.json`](schemas/resolved-deployment.schema.json)
+and [`schemas/resolved-application.schema.json`](schemas/resolved-application.schema.json).
+The ClusterState snapshot's is
+[`schemas/cluster-state-snapshot.schema.json`](schemas/cluster-state-snapshot.schema.json).
+
 The version is the data model's own semver, not the package's
 ([chapter 40](40-composition.md#versioning)), so a field appearing in an artifact
 is attributable to a model change rather than to a release. That matters here

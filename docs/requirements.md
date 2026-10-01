@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **40** rows. The compiler's behaviours join it as they land.
+This ledger holds **41** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -63,3 +63,4 @@ This ledger holds **40** rows. The compiler's behaviours join it as they land.
 | REQ-038 | An Application's revision is the digest of its own element of the Resolved Deployment: every committed projection records it, it does not move when only the provenance does, and it moves when any decision about the Application does | [test/model/resolved-deployment.test.ts](../test/model/resolved-deployment.test.ts) |
 | REQ-039 | The composed union and its pinned inputs resolve, at the use-case seam, to every project's Resolved Deployment projections and dependency edges: minimal's and the Release Gate's equal their committed oracles byte for byte, each derivation chapter 20 names holds, and a node contract the Platform document does not pin, an unlocked image or a Process no node can hold is refused before resolution | [test/model/resolution.test.ts](../test/model/resolution.test.ts) |
 | REQ-040 | The composed union renders, at the use-case seam, to each project's share of the tree and the estate-scoped share: minimal's equal their committed trees byte for byte, every file is attributed to one adapter, and rendering twice from the same inputs writes the same bytes | [test/model/render.test.ts](../test/model/render.test.ts) |
+| REQ-041 | Every document the toolkit writes for a consumer outside this repository (the Resolved Deployment and its projection, the composition lock, the pin annotations, the ClusterState snapshot) has a JSON Schema generated from the model, committed without a diff and shipped in the package, and every committed Resolved Deployment oracle validates against it | [test/published-schemas.test.ts](../test/published-schemas.test.ts) |
