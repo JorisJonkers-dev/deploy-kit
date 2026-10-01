@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+status: accepted
 claim: settled
 date: 2026-08-31
 normative: spec/v1/20-resolved-deployment.md#the-reconcile-unit
