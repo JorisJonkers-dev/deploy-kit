@@ -496,8 +496,8 @@ bindings:   [{claim: postgres-data, node: enschede-t1000-1}]
 placements: [{process: postgres, node: enschede-t1000-1}]
 ```
 
-`capturedAt` is when the Collector first captured these facts, which is the
-snapshot's age the artifact carries. An estate with no bound volume and no
+`capturedAt` is when the Collector first captured these facts, not when it last
+ran: a stable cluster keeps an old `capturedAt`. An estate with no bound volume and no
 recorded placement captures both lists empty, and is still a snapshot with a
 digest.
 
@@ -518,6 +518,11 @@ compares them with the snapshot committed to the Estate repository
   The next composition reads it and records its new `clusterStateDigest`.
 - **It never applies.** The Collector writes to one file in one repository and
   to nothing in the cluster.
+- **Its liveness is an alert, not the file.** Because an unchanged run commits
+  nothing, a stopped Collector and a stable cluster look the same in the Estate
+  repository. Alertmanager raises it instead, from the `CronJob`'s last
+  successful run, when the Collector has not succeeded within twice its
+  schedule ([chapter 55](55-delivery.md#notifications)).
 
 Until the Collector is delivered, composition runs with an empty snapshot, which
 is valid.
@@ -745,6 +750,8 @@ renders them into the cluster as one `ConfigMap` per gated Application,
 gate reads that ConfigMap and nothing else. What is rendered for the gate is
 that ConfigMap and a Canary per member naming the gate's endpoint, and nothing
 that decides ([chapter 55](55-delivery.md#what-the-render-leaves-to-flagger)).
+Until [#199](https://github.com/JorisJonkers-dev/deploy-kit/issues/199) lands,
+the rendered trees carry no gate ConfigMap.
 
 An `interrupted` Application carries no gate: its Processes stop before their
 new versions start, so there is no moment at which an old version serves while

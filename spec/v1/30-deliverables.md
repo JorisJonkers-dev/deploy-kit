@@ -183,7 +183,11 @@ against a live system by an identity with privilege, which is delivery
 so it runs before any Application that holds a grant, whose image is the
 `delivery` project's. The Reconcile Unit carries the documents into the job as a
 generated `ConfigMap`, so the job writes exactly the documents of the render
-that applied it, and nothing else:
+that applied it, and nothing else. The job is named by the digest of those
+documents, `vault-policy-<12 hex>`: a Job's template cannot change once created,
+so a changed policy set is a new Job, and the one it replaces leaves the render
+with it. Until [#199](https://github.com/JorisJonkers-dev/deploy-kit/issues/199)
+lands, the render carries the documents alone, and no job applies them.
 
 - It authenticates as a dedicated **policy-admin** role, a platform fixture
   created with the auth method, because it cannot grant itself the privilege to
