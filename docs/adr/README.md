@@ -142,6 +142,8 @@ and linted by the same script with `emf` as its root.
 | [0083](model/0083-a-fragment-publishes-on-a-release-tag.md) | A fragment publishes on a release tag and carries that release's version | open |
 | [0084](model/0084-pause-and-rollback.md) | A Pause freezes a Project's pin, and a Rollback re-composes an earlier proven release with the schema at its newest | open |
 | [0085](model/0085-composition-isolates-a-refused-project.md) | Composition isolates a refused Project, and every other Project still composes | open |
+| [0086](model/0086-the-collector-runs-in-the-cluster.md) | The ClusterState Collector runs in the cluster, reads only, and commits the snapshot when it changes | open |
+| [0087](model/0087-in-cluster-consumers-read-the-render.md) | An in-cluster job applies the rendered Vault policies, and the Release Gate reads its inputs from a rendered ConfigMap | open |
 
 ## Architecture
 

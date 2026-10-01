@@ -82,5 +82,6 @@ keeps that cost per Project ([0054](0054-projects-are-handed-over-one-at-a-time.
   [#148](https://github.com/JorisJonkers-dev/deploy-kit/issues/148).
 - Every blue/green release runs two copies of a Process for its analysis, paid
   in node capacity at every release.
-- Who writes the rendered Vault policies and auth roles into Vault is not yet
-  decided, and delivering a `self` grant needs it.
+- The rendered Vault policies and auth roles reach Vault through an in-cluster
+  job ([0087](0087-in-cluster-consumers-read-the-render.md)), which delivering a
+  `self` grant needs, paid in one more first-party Application.
