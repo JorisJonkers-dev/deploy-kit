@@ -50,10 +50,11 @@ What is not in scope:
   ([Rendered artifacts and pins](#rendered-artifacts-and-pins)).
 - **A second cluster.** The estate is one cluster
   ([0001](../../docs/adr/model/0001-estate-scale-and-ownership.md)).
-- **Writing the Vault policy and auth roles.** They are Deliverables of the
-  `vault-policy` adapter ([chapter 30](30-deliverables.md)); which identity
-  writes them into Vault is not yet decided, and is recorded here rather than
-  left implicit.
+- **How the Vault policy and auth roles reach Vault** is not in this chapter's
+  scope: they are Deliverables of the `vault-policy` adapter, and the Vault
+  policy job applies them in the cluster
+  ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied),
+  [0087](../../docs/adr/model/0087-in-cluster-consumers-read-the-render.md)).
 
 ## Rendered artifacts and pins
 
@@ -242,8 +243,13 @@ two questions, from the Resolved Deployment and nothing else
 
 It reads the Application's release-gate inputs (its members, their readiness,
 their analysis checks and the gate deadline;
-[chapter 20](20-resolved-deployment.md#the-release-gate)), and names the release
+[chapter 20](20-resolved-deployment.md#the-release-gate)) from the
+`<application>-release-gate` ConfigMap the render puts in the Application's
+namespace, and names the release
 by its [Application revision](20-resolved-deployment.md#the-application-revision).
+A missing or unreadable ConfigMap is a question the gate cannot answer, so it
+answers no
+([0087](../../docs/adr/model/0087-in-cluster-consumers-read-the-render.md)).
 No executable code is rendered for it: a Canary names the gate's endpoint, and
 the decision is the gate's, from data.
 

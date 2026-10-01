@@ -298,7 +298,12 @@ then treated as an input like any other.
 
 **Collector**: the read-only Application that captures the ClusterState
 snapshot inside the cluster and commits it to the estate repository when it
-changes. It reads; it never applies.
+changes. It reads; it never applies
+([chapter 20](spec/v1/20-resolved-deployment.md#the-collector)).
+
+**Vault policy job**: the in-cluster Job that writes the rendered Vault policies
+and auth roles into the Secret Store, before any Application holding a grant
+starts ([chapter 30](spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied)).
 
 **Images lock**: every image alias a document names, resolved to one digest and
 the user the image runs as; a pinned input, and never a tag

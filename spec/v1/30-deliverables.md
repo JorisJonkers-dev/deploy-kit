@@ -57,7 +57,7 @@ one of them is a **central** adapter running once over the composed union:
 
 | adapter | subsystem | emits |
 |---|---|---|
-| `kubernetes` | processes | per Application: the controller, `Service` (none for a `blue-green` Process, whose Services Flagger generates), the `Canary` of each `blue-green` Process with its `HorizontalPodAutoscaler` where it declares `replicas` ([Flagger-ready objects](#flagger-ready-objects)), `ServiceAccount` (and each backup identity's), `ConfigMap` (including every inbound-derived Asset) `PersistentVolumeClaim` (and each backup claim), `PodDisruptionBudget` above one replica, the backup `CronJob`, the migration identity with its per-revision migration `Job` and suspended down `Job` ([chapter 55](../../spec/v1/55-delivery.md#failure-and-undo)), `Namespace` per project, and the kustomize `Kustomization` per directory |
+| `kubernetes` | processes | per Application: the controller, `Service` (none for a `blue-green` Process, whose Services Flagger generates), the `Canary` of each `blue-green` Process with its `HorizontalPodAutoscaler` where it declares `replicas` ([Flagger-ready objects](#flagger-ready-objects)), `ServiceAccount` (and each backup identity's), `ConfigMap` (including every inbound-derived Asset, and each gated Application's `<application>-release-gate`, [chapter 20](20-resolved-deployment.md#the-release-gate)) `PersistentVolumeClaim` (and each backup claim), `PodDisruptionBudget` above one replica, the backup `CronJob`, the migration identity with its per-revision migration `Job` and suspended down `Job` ([chapter 55](../../spec/v1/55-delivery.md#failure-and-undo)), `Namespace` per project, and the kustomize `Kustomization` per directory |
 | `networking` | policy | every `NetworkPolicy` ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)) |
 | `prometheus` | monitoring | one `ServiceMonitor` or `PodMonitor` per Application that declares `observability`, from the named surface and the Platform document's cadence. No `PrometheusRule`: PromQL is the monitoring stack's ([chapter 10](../../spec/v1/10-project-intent.md#observability)) |
 | `traefik` | edge | one `IngressRoute` set and one `Middleware` set **per tier** the Platform document declares ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md), [0047](../../docs/adr/model/0047-one-publication-path.md)) |
@@ -176,11 +176,24 @@ two-Process Application produces two policies and a diff says which principal's
 privilege changed. Both are JSON, which Vault accepts and which lets the one
 serializer own key order.
 
-**Rendered, not applied.** Writing a policy into Vault is an act against a live
-system by an identity with privilege, which is delivery
-([chapter 55](55-delivery.md#scope), where who writes them is recorded as not
-yet decided). This chapter emits the documents and attributes them; nothing
-here says who writes them.
+**Rendered here, applied in the cluster.** Writing a policy into Vault is an act
+against a live system by an identity with privilege, which is delivery
+([0087](../../docs/adr/model/0087-in-cluster-consumers-read-the-render.md)). The
+**Vault policy job** writes them: a Job in the `apps-vso-secrets` Reconcile Unit,
+so it runs before any Application that holds a grant, whose image is the
+`delivery` project's. The Reconcile Unit carries the documents into the job as a
+generated `ConfigMap`, so the job writes exactly the documents of the render
+that applied it, and nothing else:
+
+- It authenticates as a dedicated **policy-admin** role, a platform fixture
+  created with the auth method, because it cannot grant itself the privilege to
+  write policies.
+- It writes each policy and each auth role under its rendered name,
+  `<namespace>-<identity>`, and leaves an unchanged one as it is.
+- It never deletes. A role and policy Vault holds that the render no longer
+  names are reported, and a human removes them.
+- A job that fails stops the Reconcile Unit, so no Application that holds a
+  grant starts against policies Vault does not hold yet.
 
 **The auth method itself is a platform fixture.** Mounting `kubernetes` auth,
 configuring its JWT issuer and CA, and creating the KV mounts are estate-unique

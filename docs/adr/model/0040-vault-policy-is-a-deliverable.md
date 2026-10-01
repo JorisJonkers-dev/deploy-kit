@@ -50,8 +50,8 @@ give.
 
 **Rendered, not applied.** Writing a policy into Vault is an act against a live
 system performed by a privileged identity. This decision produces attributed
-documents and stops there; who writes them into Vault is a delivery question
-still open ([0050](0050-delivery-is-part-of-the-model.md)). The
+documents and stops there; writing them into Vault is delivery's, done by an
+in-cluster job ([0087](0087-in-cluster-consumers-read-the-render.md)). The
 alternative (CRs for a Vault-configuration operator) would make the policy a
 Kubernetes object at the price of an operator the substrate does not run, and
 would put a v1 dependency on CRDs nobody has installed.
