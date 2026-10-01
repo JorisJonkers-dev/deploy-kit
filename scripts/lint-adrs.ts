@@ -187,6 +187,11 @@ export function lintAdrs(root: string): AdrLintResult {
       );
     if (claim !== "settled" && !fields.get("owner"))
       err(rel, `claim '${String(claim)}' requires an owner`);
+    if (claim === "settled" && status !== "accepted")
+      err(
+        rel,
+        `claim 'settled' requires status accepted, got '${String(status)}'`,
+      );
 
     const date = fields.get("date");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? ""))
