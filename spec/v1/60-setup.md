@@ -437,23 +437,31 @@ composition reads and what it records, and nothing rendered:
 | `projects/<project>/source.yaml` | one pin per Project ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)) | the composition workflow |
 
 A rendered tree is never committed here or anywhere else: the Rendered artifact
-is the render, and the diff a change would make is posted on the application
-repository's pull request instead.
+is the render. What a change would render is shown where the change is made: a
+pull request in an application repository runs its publish workflow as a dry
+run, which composes its Project against this repository's current lock, posts
+the render diff on the pull request, and publishes nothing.
 
 **Composition runs in this repository's CI.** An application repository asks
-for a run with a `repository_dispatch`, and a nightly schedule runs it anyway,
+for a run with a `workflow_dispatch` of the composition workflow, and a nightly
+schedule runs it anyway,
 so a dispatch that never arrives costs a day, not a deploy. Runs are serialised:
 one composition at a time. The toolkit is the npm package at the exact version
 this repository's lockfile pins, so a toolkit upgrade is a reviewed pull request
 here and never a side effect of a publish elsewhere.
 
 **Two GitHub Apps reach it, and nothing else does.** Neither holds a long-lived
-token:
+token; each is used through a short-lived installation token:
 
 | App | installed on | may | used by |
 |---|---|---|---|
-| **dispatch** | the Estate repository | `actions: write`, to send a `repository_dispatch` | an application repository's publish workflow, with a short-lived installation token |
+| **dispatch** | the Estate repository | `actions: write`, to start the composition workflow; `contents: read`, to read the lock for a dry run | an application repository's publish workflow |
+| | every application repository | `statuses: write`, to report a composition on the commit that published | the composition workflow ([chapter 55](55-delivery.md#notifications)) |
 | **Collector** | the Estate repository | `contents: write`, to commit the snapshot | the Collector, its key read from the Secret Store |
+
+`actions: write` starts a workflow and cannot push a commit, so an application
+repository can ask for a composition and never write a pin. The composition
+workflow's own token opens and closes the Estate repository's issues.
 
 ## Handing over one Project at a time
 
@@ -516,9 +524,7 @@ would leave the last pin applied beside the old path.
   providers before consumers, with one exception. **The first Project handed
   over is `home-portal`**: stateless, holding no grant and no database, so it
   proves the estate path, the pin and the signature check end to end with
-  nothing to lose. The providers follow it in adoption order. A Project's live
-  Vault roles are renamed to their `<namespace>-<identity>` spelling in its own
-  handover step ([chapter 16](16-dependencies.md#process-identity)).
+  nothing to lose. The providers follow it in adoption order.
 - **`retireBy` ends the old path.** On that date `legacy` must be empty. The
   Kustomization that applies `fleet-infra`'s `deploy/production` is set to
   `prune: false` first, so deleting it garbage-collects nothing still running,

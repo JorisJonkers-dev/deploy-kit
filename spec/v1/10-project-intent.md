@@ -693,7 +693,7 @@ derived about **this** Process
 
 | key | value |
 |---|---|
-| `${identity:vaultRole}` | the Process's Vault role, `<namespace>-<identity>` ([0031](../../docs/adr/model/0031-identity-per-process.md)) |
+| `${identity:vaultRole}` | the Process's Vault role, its own name ([0031](../../docs/adr/model/0031-identity-per-process.md)) |
 | `${identity:serviceAccount}` | the Process's ServiceAccount name |
 | `${identity:namespace}` | `<project>-system` |
 

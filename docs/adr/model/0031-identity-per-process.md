@@ -9,12 +9,9 @@ rests-on: ["0005", "0008"]
 
 # Each Process holds its own identity, and its ServiceAccount token is mounted only where the pod itself authenticates
 
-The ServiceAccount and the Vault Kubernetes auth role are derived per Process.
-The ServiceAccount is named for the Process alone: `auth-system.auth-api`, never
-`auth-system.auth-auth-api`. The role and the policy bound to it are named
-`<namespace>-<identity>`, `auth-system-auth-api`, because Vault's names are not
-namespaced: two projects may each hold a Process called `api`, and one Vault
-holds both roles. The policy bound to a Process's role is exactly its
+The ServiceAccount and the Vault Kubernetes auth role are derived per Process
+and named for the Process alone: `auth-system.auth-api`, never
+`auth-system.auth-auth-api`. The policy bound to a Process's role is exactly its
 effective grant set ([0012](0012-shared-intent-descends-and-is-lowered.md)),
 never a sibling's, and no author writes an identity name.
 `automountServiceAccountToken` derives from `delivery`: true only for a Process
@@ -71,7 +68,6 @@ what is applied.
 | Mount the token wherever a grant exists | one simple rule | wrong for `env` and `file`, where the pod presents nothing |
 | Default false with an authored opt-in | explicit | a second field for something derivable; a forgotten opt-in fails at runtime |
 | Derive the token from the ledger | covers `agents-api` | a review document silently changes what is applied |
-| Name the Vault role for the Process alone, as the ServiceAccount is | matches the live `auth-api` role | Vault's role and policy names are estate-wide, so two projects' Processes of one name would share a role |
 
 ## Reversibility
 
@@ -83,9 +79,6 @@ them, because merging identities then widens a live grant.
 
 - Twice the ServiceAccounts and roles for a two-Process Application, paid in
   render size and in one re-creation of the roles.
-- A live role named for its Process alone, such as `auth-api`, is renamed to its
-  `<namespace>-<identity>` spelling at its Project's handover
-  ([chapter 60](../../../spec/v1/60-setup.md#handing-over-one-project-at-a-time)).
 - Every pod without a `self` grant runs with no token, so a Process that
   silently relied on the default mount fails at start and says so.
 - `agents-api` cannot reach the Kubernetes API from a render until the model
