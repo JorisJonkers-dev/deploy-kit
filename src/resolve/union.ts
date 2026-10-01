@@ -9,7 +9,11 @@ import type {
   PinnedSet,
   ResolvedProject,
 } from "../model/resolution.ts";
-import { collectorEndpoint, gateEndpoint } from "../model/runtime-profiles.ts";
+import {
+  collectorEndpoint,
+  gateEndpoint,
+  secretStoreEndpoint,
+} from "../model/runtime-profiles.ts";
 import { resolveApplication } from "./application.ts";
 import { provenanceOf } from "./provenance.ts";
 
@@ -27,6 +31,7 @@ export function resolveUnion(
   );
   const collector = collectorEndpoint(set.platform, set.projects);
   const gate = gateEndpoint(set.platform, set.projects);
+  const store = secretStoreEndpoint(set.platform, set.projects);
   return set.projects.map(({ project, applications }) => {
     const elements = applications.map((application) =>
       resolveApplication(application, {
@@ -40,6 +45,7 @@ export function resolveUnion(
         hash,
         collector,
         gate,
+        store,
         // Every project of the set is read with its Asset files, if none.
         assets: set.assets.get(project) as ReadonlyMap<string, string>,
       }),

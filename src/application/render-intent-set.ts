@@ -13,8 +13,11 @@ import type { Deliverable, RenderedObject } from "../objects/deliverable.ts";
 import type { AuthoredFile } from "./check-intent-set.ts";
 import { resolveIntentSet, type ResolveOptions } from "./resolve-intent-set.ts";
 
-/** Typed objects in, one file's bytes out: the serializer port. */
-export type Serializer = (objects: readonly RenderedObject[]) => string;
+/** One file's typed objects and its path in, its bytes out: the serializer port. */
+export type Serializer = (
+  objects: readonly RenderedObject[],
+  path: string,
+) => string;
 
 export interface RenderOptions extends ResolveOptions {
   readonly serialize: Serializer;
@@ -38,7 +41,7 @@ export interface RenderedArtifact {
 }
 
 /** The estate-scoped paths, which the `_estate` artifact publishes (spec/v1/55-delivery.md#rendered-artifacts-and-pins). */
-const ESTATE_SCOPED = /^apps\/edge\//;
+const ESTATE_SCOPED = /^apps\/(edge|vso-secrets)\//;
 const ESTATE = "_estate";
 
 export function collisions(deliverables: readonly Deliverable[]): Diagnostic[] {
@@ -90,7 +93,7 @@ export function renderIntentSet(
       : (path.split("/")[1] as string);
     artifacts.set(name, [
       ...(artifacts.get(name) ?? []),
-      { path, adapter, text: options.serialize(objects) },
+      { path, adapter, text: options.serialize(objects, path) },
     ]);
   }
   // The adapters hand their Deliverables out in the order they derive them, and

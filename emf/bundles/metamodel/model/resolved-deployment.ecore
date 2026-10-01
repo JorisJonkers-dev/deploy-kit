@@ -61,6 +61,8 @@
     <!-- Absent on an `interrupted` Application: it stops before it starts, so no
          switch waits on a gate (docs/adr/model/0128). -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="releaseGate" eType="#//ReleaseGate" containment="true"/>
+    <!-- The Secret Store's endpoint, where a Process or its backup holds a grant. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="secretStore" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <!-- Present where the Application moves its schema with a changelog. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="migration" eType="#//ResolvedMigration" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="exposure" upperBound="-1" eType="#//ResolvedExposure" containment="true"/>
@@ -191,6 +193,13 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="retain" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="offCluster" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="method" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The method image's own user, the identity it runs as, the claim its
+         copies land on, and the destination's credential only that identity holds. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="uid" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="gid" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="claim" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="credential" eType="#//ResolvedGrant" containment="true"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedGrant">

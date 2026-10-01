@@ -46,7 +46,10 @@ const FOUNDATION = [
 
 const PLATFORM = text("platform/platform.intent.yml");
 const LOCK = parseYaml(text("platform/images.lock.yml")) as {
-  images: Record<string, { repository: string; digest: string }>;
+  images: Record<
+    string,
+    { repository: string; digest: string; uid: number; gid: number }
+  >;
 };
 
 const HEADER = `apiVersion: intent.jorisjonkers.dev/v1
@@ -771,6 +774,17 @@ describe("what a grant derives", () => {
     });
   });
 
+  it("hands the Secret Store's endpoint to an Application holding a grant, and to no other", () => {
+    expect(application(granted(SELF)).secretStore).toBe(
+      "http://vault.secrets-system.svc.cluster.local:8200",
+    );
+    // One Process holding a grant is enough.
+    expect(
+      application(`${granted(SELF)}${serving("notes-worker")}`).secretStore,
+    ).toBe("http://vault.secrets-system.svc.cluster.local:8200");
+    expect(application(one(serving("notes-api"))).secretStore).toBeUndefined();
+  });
+
   it("orders an Application holding a grant after the unit that materialises its credentials", () => {
     expect(application(granted(SELF)).reconcileAfter).toStrictEqual([
       "apps-vso-secrets",
@@ -1052,6 +1066,7 @@ describe("an Application under a platform with no delivery policy", () => {
       hash: sha256Hasher,
       collector: undefined,
       gate: undefined,
+      store: undefined,
       assets: new Map(),
     });
 
@@ -1482,6 +1497,46 @@ describe("a volume and what its class derives", () => {
       ),
     );
 
+  it("hands the Secret Store's endpoint to an Application whose backup holds the off-cluster credential, and to no other", () => {
+    const store = (durability: string) =>
+      application(
+        holding(
+          `          - { claim: keep, mountAt: /k, size: 1Gi, durability: ${durability} }\n`,
+          "        engine: files\n",
+        ),
+      ).secretStore;
+
+    expect(store("irreplaceable")).toBe(
+      "http://vault.secrets-system.svc.cluster.local:8200",
+    );
+    // One volume of the Process whose backup holds it is enough.
+    expect(
+      application(
+        holding(
+          "          - { claim: cache, mountAt: /c, size: 1Gi, durability: reconstructible }\n          - { claim: keep, mountAt: /k, size: 1Gi, durability: irreplaceable }\n",
+          "        engine: files\n",
+        ),
+      ).secretStore,
+    ).toBe("http://vault.secrets-system.svc.cluster.local:8200");
+    expect(store("recoverable")).toBeUndefined();
+  });
+
+  it("stops at a backup holding the off-cluster credential under a platform that names no Secret Store", () => {
+    expect(() =>
+      resolve(
+        holding(
+          "          - { claim: keep, mountAt: /k, size: 1Gi, durability: irreplaceable }\n",
+          "        engine: files\n",
+        ),
+        {
+          platform: (document) => document.replace("secretStore: vault\n", ""),
+        },
+      ),
+    ).toThrow(
+      "a grant under a platform that names no Secret Store is not checked yet",
+    );
+  });
+
   it("carries a reconstructible claim with no backup plan", () => {
     expect(
       processOf(
@@ -1515,6 +1570,10 @@ describe("a volume and what its class derives", () => {
           retain: 14,
           method:
             "ghcr.io/jorisjonkers-dev/platform/rabbitmq-backup@sha256:a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2",
+          uid: LOCK.images["rabbitmq-backup"]?.uid,
+          gid: LOCK.images["rabbitmq-backup"]?.gid,
+          identity: "notes-store-backup",
+          claim: "queue-backup",
         },
       ],
       [
@@ -1525,6 +1584,17 @@ describe("a volume and what its class derives", () => {
           offCluster: "s3://backup-storage/jorisjonkers-dev",
           method:
             "ghcr.io/jorisjonkers-dev/platform/rabbitmq-backup@sha256:a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2",
+          uid: LOCK.images["rabbitmq-backup"]?.uid,
+          gid: LOCK.images["rabbitmq-backup"]?.gid,
+          identity: "notes-store-backup",
+          claim: "keep-backup",
+          // Only the backup identity holds the destination's credential.
+          credential: {
+            path: "secret/data/platform/backup/off-cluster",
+            access: "read",
+            delivery: "env",
+            destination: "notes-store-backup-platform-backup-off-cluster",
+          },
         },
       ],
     ]);

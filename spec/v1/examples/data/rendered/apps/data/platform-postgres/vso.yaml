@@ -1,0 +1,88 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: postgres
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: postgres
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: postgres
+    serviceAccount: postgres
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: postgres-platform-postgres-exporter
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: postgres
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: postgres
+  mount: secret
+  type: kv-v2
+  path: platform/postgres/exporter
+  refreshAfter: 1h
+  destination:
+    name: postgres-platform-postgres-exporter
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: postgres
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: postgres-backup
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres-backup
+    app.kubernetes.io/instance: postgres-backup
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: postgres-backup
+    serviceAccount: postgres-backup
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: postgres-backup-platform-backup-off-cluster
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres-backup
+    app.kubernetes.io/instance: postgres-backup
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: postgres-backup
+  mount: secret
+  type: kv-v2
+  path: platform/backup/off-cluster
+  refreshAfter: 1h
+  destination:
+    name: postgres-backup-platform-backup-off-cluster
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled

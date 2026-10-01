@@ -93,3 +93,64 @@ export interface ServiceMonitor {
     }[];
   };
 }
+
+/** The operator's connection to the Secret Store, one per project namespace. */
+export interface VaultConnection {
+  readonly apiVersion: "secrets.hashicorp.com/v1beta1";
+  readonly kind: "VaultConnection";
+  readonly metadata: ObjectMeta;
+  readonly spec: { readonly address: string; readonly skipTLSVerify: false };
+}
+
+/** How the operator authenticates as one Process identity. */
+export interface VaultAuth {
+  readonly apiVersion: "secrets.hashicorp.com/v1beta1";
+  readonly kind: "VaultAuth";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly vaultConnectionRef: string;
+    readonly method: "kubernetes";
+    readonly mount: "kubernetes";
+    readonly kubernetes: {
+      readonly role: string;
+      readonly serviceAccount: string;
+    };
+  };
+}
+
+/** One granted kv path, synced to the Secret the grant names. */
+export interface VaultStaticSecret {
+  readonly apiVersion: "secrets.hashicorp.com/v1beta1";
+  readonly kind: "VaultStaticSecret";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly vaultAuthRef: string;
+    readonly mount: string;
+    readonly type: "kv-v2";
+    readonly path: string;
+    readonly refreshAfter: string;
+    readonly destination: {
+      readonly name: string;
+      readonly create: true;
+      readonly annotations: Readonly<Record<string, string>>;
+    };
+    readonly rolloutRestartTargets?: readonly {
+      readonly kind: "Deployment";
+      readonly name: string;
+    }[];
+  };
+}
+
+/** A Vault policy in its JSON form: each path and what it may do there. */
+export interface VaultPolicy {
+  readonly path: Readonly<
+    Record<string, { readonly capabilities: readonly string[] }>
+  >;
+}
+
+/** A Kubernetes auth role, bound to one ServiceAccount and the one policy it holds. */
+export interface VaultRole {
+  readonly bound_service_account_names: readonly string[];
+  readonly bound_service_account_namespaces: readonly string[];
+  readonly token_policies: readonly string[];
+}

@@ -7,6 +7,7 @@ import { join, relative } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   renderIntentSet,
+  serialize,
   serializeYaml,
   sha256Hasher,
   type AuthoredFile,
@@ -36,13 +37,16 @@ const SET = [
   "edge/edge.project.yml",
   "observability/observability.project.yml",
   "secrets/secrets.project.yml",
+  "data/data.project.yml",
+  "data/env/postgres/base.env",
+  "data/config/postgresql.conf",
 ];
 
 const OPTIONS = {
   hash: sha256Hasher,
   schemaPackageIntegrity:
     "sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b",
-  serialize: serializeYaml,
+  serialize,
   projects: ["notes"],
 };
 
@@ -98,10 +102,16 @@ describe("renderIntentSet", () => {
     );
   });
 
-  it("renders the estate-scoped share to its committed tree, byte for byte", () => {
-    expect(asTree(artifact(render(), "_estate"))).toStrictEqual(
-      committed("_estate/rendered"),
+  it("renders data's share of the tree to its committed tree, byte for byte", () => {
+    expect(asTree(artifact(render(undefined, ["data"]), "data"))).toStrictEqual(
+      committed("data/rendered"),
     );
+  });
+
+  it("renders the estate-scoped share of both to its committed tree, byte for byte", () => {
+    expect(
+      asTree(artifact(render(undefined, ["notes", "data"]), "_estate")),
+    ).toStrictEqual(committed("_estate/rendered"));
   });
 
   it("renders the same bytes twice from the same inputs, in one module and in a fresh one", async () => {
@@ -109,7 +119,7 @@ describe("renderIntentSet", () => {
     const fresh = await import("../../src/index.ts");
     const again = fresh.renderIntentSet(files(), {
       ...OPTIONS,
-      serialize: fresh.serializeYaml,
+      serialize: fresh.serialize,
       hash: fresh.sha256Hasher,
     });
 
@@ -204,25 +214,16 @@ describe("renderIntentSet", () => {
     );
   });
 
-  it.each([
-    [
-      "a grant",
-      "        secrets:\n          - { path: secret/data/notes/token, keys: [token], access: read, delivery: self, rotation: {tolerates: reload} }\n",
-    ],
-    [
-      "a sidecar",
-      "        sidecars:\n          - { name: exporter, image: postgres-exporter, memory: 32Mi, cpu: 5m }\n",
-    ],
-  ])("stops at %s, which the render spells in its own slice", (what, block) => {
+  it("stops at a file grant, which the render mounts in its own slice", () => {
     expect(() =>
       render({
         "minimal/notes.project.yml": (document) =>
           document.replace(
             "        runtime: node\n",
-            `        runtime: node\n${block}`,
+            "        runtime: node\n        secrets:\n          - { path: secret/data/notes/key, keys: [key], access: read, delivery: file, mountAt: /run/key, rotation: {tolerates: restart} }\n",
           ),
       }),
-    ).toThrow(`notes-api: ${what} is not rendered yet`);
+    ).toThrow("notes-api: a file grant is not rendered yet");
   });
 
   it("orders the tree whatever order the adapters hand it out in", () => {

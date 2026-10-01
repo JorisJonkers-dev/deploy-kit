@@ -13,6 +13,8 @@ import { renderNetworking } from "../../src/adapters/networking/render.ts";
 import { renderPrometheus } from "../../src/adapters/prometheus/render.ts";
 import { wholeSeconds } from "../../src/adapters/shared/durations.ts";
 import { renderTraefik } from "../../src/adapters/traefik/render.ts";
+import { renderVaultPolicy } from "../../src/adapters/vault-policy/render.ts";
+import { renderVso } from "../../src/adapters/vso/render.ts";
 import { collisions } from "../../src/application/render-intent-set.ts";
 import {
   resolveIntentSet,
@@ -114,13 +116,6 @@ describe("the kubernetes adapter", () => {
       ),
     ).toThrow("switches nothing is not rendered yet");
     expect(() =>
-      renderKubernetes(
-        edited(undefined, () => ({
-          writablePaths: [{ path: "/tmp", size: "64Mi" }],
-        })),
-      ),
-    ).toThrow("notes-api: a writable path is not rendered yet");
-    expect(() =>
       renderKubernetes(edited(undefined, () => ({ surfaces: undefined }))),
     ).toThrow(
       "notes-api: a blue-green Process that serves no surface is not rendered yet",
@@ -128,18 +123,18 @@ describe("the kubernetes adapter", () => {
     expect(() =>
       renderKubernetes(
         edited(undefined, () => ({
-          volumes: [
+          secrets: [
             {
-              claim: "queue",
-              mountAt: "/q",
-              size: "20Gi",
-              durability: "recoverable",
-              backup: { schedule: "15 3 * * *", retain: 14, method: "m" },
+              path: "secret/data/notes/key",
+              access: "read",
+              delivery: "file",
+              destination: "notes-api-notes-key",
+              mountAt: "/run/key",
             },
           ],
         })),
       ),
-    ).toThrow("notes-api: a backup is not rendered yet");
+    ).toThrow("notes-api: a file grant is not rendered yet");
   });
 
   const stopStart = () =>
@@ -421,7 +416,10 @@ describe("the prometheus adapter", () => {
     expect(rendered.map(({ path }) => path)).toStrictEqual([
       "apps/notes/notes/servicemonitor.yaml",
     ]);
-    const [monitor] = rendered[0]?.objects ?? [];
+    const [monitor] = (rendered[0]?.objects ?? []) as readonly {
+      apiVersion: string;
+      kind: string;
+    }[];
     expect([monitor?.apiVersion, monitor?.kind]).toStrictEqual([
       "monitoring.coreos.com/v1",
       "ServiceMonitor",
@@ -577,5 +575,174 @@ describe("the kustomizations", () => {
       "xapps/notes/kustomization.yaml": ["stray.yaml"],
       "x/apps/notes/sub/kustomization.yaml": ["deep.yaml"],
     });
+  });
+});
+
+const GRANT = {
+  path: "secret/data/notes/token",
+  keys: ["token"],
+  access: "read" as const,
+  delivery: "env" as const,
+  destination: "notes-api-notes-token",
+  restartTargets: ["notes-api"],
+};
+const SELF = {
+  path: "secret/data/notes/self",
+  access: "read" as const,
+  delivery: "self" as const,
+};
+const STORE = "http://vault.secrets-system.svc.cluster.local:8200";
+
+/** A backed-up volume of class `durability`, its plan as resolution derives it. */
+const backedUp = (claim: string, credential: boolean) => ({
+  claim,
+  mountAt: `/${claim}`,
+  size: "1Gi",
+  durability: "recoverable" as const,
+  backup: {
+    schedule: "15 3 * * *",
+    retain: 14,
+    method: "ghcr.io/jorisjonkers-dev/platform/file-backup@sha256:0",
+    uid: 1000,
+    gid: 1000,
+    identity: "notes-api-backup",
+    claim: `${claim}-backup`,
+    ...(credential
+      ? {
+          credential: {
+            path: "secret/data/platform/backup/off-cluster",
+            access: "read" as const,
+            delivery: "env" as const,
+            destination: "notes-api-backup-platform-backup-off-cluster",
+          },
+        }
+      : {}),
+  },
+});
+
+describe("the kubernetes adapter, for what data holds", () => {
+  it("names a writable path's volume for the path, every run of other characters one `-`", () => {
+    const [deployment] = objectsAt(
+      renderKubernetes(
+        edited(undefined, () => ({
+          writablePaths: [{ path: "/var/run.-d", size: "64Mi" }],
+        })),
+      ),
+      "workload.yaml",
+    ) as { spec: { template: { spec: { volumes: unknown[] } } } }[];
+
+    expect(deployment?.spec.template.spec.volumes).toStrictEqual([
+      { name: "writable-var-run-d", emptyDir: { sizeLimit: "64Mi" } },
+    ]);
+  });
+
+  it("stops at a file grant among others", () => {
+    expect(() =>
+      renderKubernetes(
+        edited(undefined, () => ({
+          secrets: [GRANT, { ...GRANT, delivery: "file", mountAt: "/run/k" }],
+        })),
+      ),
+    ).toThrow("notes-api: a file grant is not rendered yet");
+  });
+
+  it("gives a sidecar no variables where the Process has none", () => {
+    const [deployment] = objectsAt(
+      renderKubernetes(
+        edited(undefined, () => ({
+          environment: undefined,
+          sidecars: [
+            {
+              name: "exporter",
+              image: "x@sha256:0",
+              memory: "32Mi",
+              cpu: "5m",
+            },
+          ],
+        })),
+      ),
+      "workload.yaml",
+    ) as { spec: { template: { spec: { containers: unknown[] } } } }[];
+
+    expect(deployment?.spec.template.spec.containers[1]).toStrictEqual({
+      name: "exporter",
+      image: "x@sha256:0",
+      resources: {
+        requests: { memory: "32Mi", cpu: "5m" },
+        limits: { memory: "32Mi" },
+      },
+      securityContext: {
+        readOnlyRootFilesystem: true,
+        capabilities: { drop: ["ALL"] },
+      },
+    });
+  });
+
+  it("runs every backup of one Process as its one backup identity", () => {
+    const accounts = objectsAt(
+      renderKubernetes(
+        edited(undefined, () => ({
+          switchover: "stop-start",
+          volumes: [backedUp("a", false), backedUp("b", false)],
+        })),
+      ),
+      "serviceaccount.yaml",
+    ) as { metadata: { name: string } }[];
+
+    expect(accounts.map(({ metadata }) => metadata.name)).toStrictEqual([
+      "notes-api",
+      "notes-api-backup",
+    ]);
+  });
+});
+
+describe("the vso adapter", () => {
+  const vso = (secrets: readonly unknown[]) =>
+    renderVso(
+      edited(
+        () => ({ secretStore: STORE }),
+        () => ({ secrets }),
+      ),
+    );
+
+  it("restarts a blue-green Process's primary, which is what serves", () => {
+    const [, secret] = objectsAt(vso([GRANT]), "vso.yaml") as {
+      spec: { rolloutRestartTargets: unknown };
+    }[];
+
+    expect(secret?.spec.rolloutRestartTargets).toStrictEqual([
+      { kind: "Deployment", name: "notes-api-primary" },
+    ]);
+  });
+
+  it("syncs only what a grant delivers env or file, and nothing for a Process that reads its own", () => {
+    expect(
+      (objectsAt(vso([SELF, GRANT]), "vso.yaml") as { kind: string }[]).map(
+        ({ kind }) => kind,
+      ),
+    ).toStrictEqual(["VaultAuth", "VaultStaticSecret"]);
+    expect(vso([SELF]).map(({ path }) => path)).toStrictEqual([
+      "apps/notes/vaultconnection.yaml",
+    ]);
+  });
+
+  it("stops at a grant outside the kv mount", () => {
+    expect(() => vso([{ ...GRANT, path: "kv/secret/data/x" }])).toThrow(
+      "kv/secret/data/x: a grant outside the secret mount is not rendered yet",
+    );
+  });
+});
+
+describe("the vault-policy adapter", () => {
+  const policy = (grant: unknown) =>
+    renderVaultPolicy(edited(undefined, () => ({ secrets: [grant] })));
+
+  it("stops at an access tier it does not spell yet, and at a grant outside the kv mount", () => {
+    expect(() => policy({ ...GRANT, access: "custody" })).toThrow(
+      "secret/data/notes/token: a custody grant is not rendered yet",
+    );
+    expect(() => policy({ ...GRANT, path: "kv/secret/data/x" })).toThrow(
+      "kv/secret/data/x: a grant outside the kv mount is not rendered yet",
+    );
   });
 });

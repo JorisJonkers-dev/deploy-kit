@@ -74,7 +74,7 @@ describe("the adapter contract", () => {
     },
   );
 
-  it("registers the four adapters minimal needs, each with a default path", () => {
+  it("registers the six adapters minimal and data need, each with a default path", () => {
     expect(
       ADAPTERS.map(({ name, defaultPath }) => [name, defaultPath.length > 0]),
     ).toStrictEqual([
@@ -82,6 +82,8 @@ describe("the adapter contract", () => {
       ["networking", true],
       ["prometheus", true],
       ["traefik", true],
+      ["vso", true],
+      ["vault-policy", true],
     ]);
   });
 

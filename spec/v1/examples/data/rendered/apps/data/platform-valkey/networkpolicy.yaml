@@ -1,0 +1,30 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: valkey
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: valkey
+    app.kubernetes.io/instance: valkey
+    app.kubernetes.io/part-of: platform-valkey
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: valkey
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

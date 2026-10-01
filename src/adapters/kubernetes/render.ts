@@ -1,7 +1,8 @@
 // The `kubernetes` adapter (spec/v1/30-deliverables.md#adapters): per project
-// its Namespace, per Process its controller and ServiceAccount, the Canary of
-// each blue-green Process (#flagger-ready-objects), and the kustomize
-// Kustomization of every directory the render writes. It spells what layer 2
+// its Namespace, per Process its controller, ServiceAccount, claims and Asset
+// ConfigMaps, the backup each backed-up volume derives, the Canary of each
+// blue-green Process (#flagger-ready-objects), and the kustomize Kustomization
+// of every directory the render writes. It spells what layer 2
 // decided and decides nothing: every value below is read off the projection.
 import type { ResolvedProject } from "../../model/resolution.ts";
 import type {
@@ -13,13 +14,19 @@ import type {
 import type { Canary, Webhook } from "../../objects/custom.ts";
 import type { Deliverable, RenderedObject } from "../../objects/deliverable.ts";
 import type {
+  ConfigMap,
   Container,
+  CronJob,
   Deployment,
+  EnvVar,
   Kustomization,
   PersistentVolumeClaim,
+  PodSpec,
   Probe,
   Service,
   ServiceAccount,
+  Volume,
+  VolumeMount,
 } from "../../objects/kubernetes.ts";
 import { wholeSeconds } from "../shared/durations.ts";
 import { instanceOf, labelsOf, managedOnly } from "../shared/labels.ts";
@@ -34,6 +41,13 @@ const WEBHOOKS = [
   ["may-promote", "confirm-promotion"],
 ] as const;
 
+/** The mark that keeps the applier from ever deleting a claim (spec/v1/30-deliverables.md#flagger-ready-objects). */
+const NEVER_PRUNED = { "kustomize.toolkit.fluxcd.io/prune": "disabled" };
+
+/** Where a backup's method reads the volume, and where it writes its copies. */
+const BACKUP_SOURCE = "/data";
+const BACKUP_TARGET = "/backup";
+
 /** A family this adapter does not spell yet stops the render rather than leaving it out. */
 function notYet(process: ResolvedProcess): void {
   const switched =
@@ -42,25 +56,34 @@ function notYet(process: ResolvedProcess): void {
     throw new Error(
       `${process.name}: a ${process.lifecycle} Process that switches ${process.switchover ?? "nothing"} is not rendered yet`,
     );
-  if (process.writablePaths !== undefined)
-    throw new Error(`${process.name}: a writable path is not rendered yet`);
   if (process.switchover === "blue-green" && process.surfaces === undefined)
     throw new Error(
       `${process.name}: a blue-green Process that serves no surface is not rendered yet`,
     );
+  if (process.secrets?.some(({ delivery }) => delivery === "file") === true)
+    throw new Error(`${process.name}: a file grant is not rendered yet`);
+}
+
+type Backed = NonNullable<ResolvedProcess["volumes"]>[number] & {
+  readonly backup: NonNullable<
+    NonNullable<ResolvedProcess["volumes"]>[number]["backup"]
+  >;
+};
+
+/** The volumes whose class derives a backup. */
+const backedUp = (process: ResolvedProcess): Backed[] =>
   // A missing list and an empty one hold no backup alike.
   // Stryker disable next-line ArrayDeclaration
-  if ((process.volumes ?? []).some(({ backup }) => backup !== undefined))
-    throw new Error(`${process.name}: a backup is not rendered yet`);
-  const pending = [
-    ["a grant", process.secrets],
-    ["an Asset", process.assets],
-    ["a sidecar", process.sidecars],
-  ] as const;
-  for (const [what, held] of pending)
-    if (held !== undefined)
-      throw new Error(`${process.name}: ${what} is not rendered yet`);
-}
+  (process.volumes ?? []).filter(
+    (volume): volume is Backed => volume.backup !== undefined,
+  );
+
+/** The file an Asset arrives as: the last segment of the path it is read from. */
+const fileOf = (from: string): string => from.split("/").pop() as string;
+
+/** A writable path's volume, named for the path. */
+const writableOf = (path: string): string =>
+  `writable${path.replaceAll(/[^a-z0-9]+/g, "-")}`;
 
 /** Flagger switches a blue-green Process; a stop-start one is replaced in place. */
 const blueGreen = (process: ResolvedProcess): boolean =>
@@ -80,7 +103,107 @@ const probeOf = (
   ...(delay ? { initialDelaySeconds: 0 } : {}),
 });
 
+/**
+ * The Process's variables, every container of its pod alike: a value as
+ * written, a secret reference as one key of the Secret its grant syncs to.
+ */
+function envOf(process: ResolvedProcess): EnvVar[] {
+  // A missing list and an empty one hold no variable alike.
+  // Stryker disable next-line ArrayDeclaration
+  return (process.environment ?? []).map((entry) => {
+    if ("value" in entry) return { name: entry.name, value: entry.value };
+    // A reference names an env grant the Process holds, or resolution stopped.
+    const grant = process.secrets?.find(
+      ({ path }) => path === entry.secret.path,
+    ) as NonNullable<ResolvedProcess["secrets"]>[number];
+    return {
+      name: entry.name,
+      valueFrom: {
+        secretKeyRef: {
+          name: grant.destination as string,
+          key: entry.secret.key,
+        },
+      },
+    };
+  });
+}
+
+/** Memory request equals its limit; cpu is a request with no limit. */
+const resourcesOf = (
+  memory: string,
+  cpu: string,
+): NonNullable<Container["resources"]> => ({
+  requests: { memory, cpu },
+  limits: { memory },
+});
+
+const RESTRICTED: Container["securityContext"] = {
+  readOnlyRootFilesystem: true,
+  capabilities: { drop: ["ALL"] },
+};
+
+/** Where the Process's claims, Assets and writable paths arrive in its container. */
+function mountsOf(process: ResolvedProcess): VolumeMount[] {
+  return [
+    // A missing list and an empty one mount nothing alike.
+    // Stryker disable next-line ArrayDeclaration
+    ...(process.volumes ?? []).map(({ claim, mountAt }) => ({
+      name: claim,
+      mountPath: mountAt,
+    })),
+    // Stryker disable next-line ArrayDeclaration
+    ...(process.assets ?? []).map(({ name, from, mountAt }) => ({
+      name,
+      mountPath: mountAt,
+      subPath: fileOf(from),
+      readOnly: true as const,
+    })),
+    // Stryker disable next-line ArrayDeclaration
+    ...(process.writablePaths ?? []).map(({ path }) => ({
+      name: writableOf(path),
+      mountPath: path,
+    })),
+  ];
+}
+
+/** The pod's volumes: each claim, each Asset's ConfigMap, each writable path. */
+function volumesOf(process: ResolvedProcess): Volume[] {
+  return [
+    // Stryker disable next-line ArrayDeclaration
+    ...(process.volumes ?? []).map(({ claim }) => ({
+      name: claim,
+      persistentVolumeClaim: { claimName: claim },
+    })),
+    // Stryker disable next-line ArrayDeclaration
+    ...(process.assets ?? []).map(({ name, from }) => ({
+      name,
+      configMap: { name, items: [{ key: fileOf(from), path: fileOf(from) }] },
+    })),
+    // Stryker disable next-line ArrayDeclaration
+    ...(process.writablePaths ?? []).map(({ path, size }) => ({
+      name: writableOf(path),
+      emptyDir: { sizeLimit: size },
+    })),
+  ];
+}
+
+/** A container beside the Process, under the same posture and the same variables. */
+function sidecarOf(
+  sidecar: NonNullable<ResolvedProcess["sidecars"]>[number],
+  env: readonly EnvVar[],
+): Container {
+  return {
+    name: sidecar.name,
+    image: sidecar.image,
+    ...(env.length === 0 ? {} : { env }),
+    resources: resourcesOf(sidecar.memory, sidecar.cpu),
+    securityContext: RESTRICTED,
+  };
+}
+
 function containerOf(process: ResolvedProcess): Container {
+  const env = envOf(process);
+  const mounts = mountsOf(process);
   return {
     name: process.name,
     image: process.image,
@@ -92,33 +215,10 @@ function containerOf(process: ResolvedProcess): Container {
             containerPort: port,
           })),
         }),
-    ...(process.environment === undefined
-      ? {}
-      : {
-          // A secret reference names a grant, and a grant stops the render
-          // above, so every entry that reaches here is a value.
-          env: process.environment.map((entry) => {
-            const { name, value } = entry as { name: string; value: string };
-            return { name, value };
-          }),
-        }),
-    // Memory request equals its limit; cpu is a request with no limit.
-    resources: {
-      requests: { memory: process.memory, cpu: process.cpu },
-      limits: { memory: process.memory },
-    },
-    securityContext: {
-      readOnlyRootFilesystem: true,
-      capabilities: { drop: ["ALL"] },
-    },
-    ...(process.volumes === undefined
-      ? {}
-      : {
-          volumeMounts: process.volumes.map(({ claim, mountAt }) => ({
-            name: claim,
-            mountPath: mountAt,
-          })),
-        }),
+    ...(env.length === 0 ? {} : { env }),
+    resources: resourcesOf(process.memory, process.cpu),
+    securityContext: RESTRICTED,
+    ...(mounts.length === 0 ? {} : { volumeMounts: mounts }),
     ...(process.readiness === undefined
       ? {}
       : { readinessProbe: probeOf(process.readiness, true) }),
@@ -136,6 +236,7 @@ function deploymentOf(
   application: ResolvedApplicationDocument,
 ): Deployment {
   const labels = labelsOf(process, application.id);
+  const volumes = volumesOf(process);
   return {
     apiVersion: "apps/v1",
     kind: "Deployment",
@@ -175,15 +276,14 @@ function deploymentOf(
             ...(process.volumes === undefined ? {} : { fsGroup: process.gid }),
             seccompProfile: { type: "RuntimeDefault" },
           },
-          containers: [containerOf(process)],
-          ...(process.volumes === undefined
-            ? {}
-            : {
-                volumes: process.volumes.map(({ claim }) => ({
-                  name: claim,
-                  persistentVolumeClaim: { claimName: claim },
-                })),
-              }),
+          containers: [
+            containerOf(process),
+            // Stryker disable next-line ArrayDeclaration
+            ...(process.sidecars ?? []).map((sidecar) =>
+              sidecarOf(sidecar, envOf(process)),
+            ),
+          ],
+          ...(volumes.length === 0 ? {} : { volumes }),
         },
       },
     },
@@ -211,40 +311,171 @@ const serviceOf = (
 });
 
 /**
- * A claim for each volume, `ReadWriteOnce` as `local-path` provides. A claim
- * whose class derives a backup is never pruned, which lands with the backup it
- * guards: until then a backed-up volume stops the render above.
+ * A claim for each volume, `ReadWriteOnce` as `local-path` provides, and for
+ * each backed-up one the claim its copies land on, at the same size. A claim
+ * whose class derives a backup is never pruned, and neither is its copies'.
  */
-const claimsOf = (
+function claimsOf(
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
-): PersistentVolumeClaim[] =>
-  (process.volumes ?? []).map((volume) => ({
+): PersistentVolumeClaim[] {
+  const claim = (
+    name: string,
+    size: string,
+    kept: boolean,
+  ): PersistentVolumeClaim => ({
     apiVersion: "v1",
     kind: "PersistentVolumeClaim",
     metadata: {
-      name: volume.claim,
+      name,
       namespace: application.namespace,
       labels: labelsOf(process, application.id),
+      ...(kept ? { annotations: NEVER_PRUNED } : {}),
     },
     spec: {
       accessModes: ["ReadWriteOnce"],
-      resources: { requests: { storage: volume.size } },
+      resources: { requests: { storage: size } },
     },
-  }));
+  });
+  // A missing list and an empty one hold no claim alike.
+  // Stryker disable next-line ArrayDeclaration
+  return (process.volumes ?? []).flatMap(({ claim: name, size, backup }) =>
+    backup === undefined
+      ? [claim(name, size, false)]
+      : [claim(name, size, true), claim(backup.claim, size, true)],
+  );
+}
 
-const serviceAccountOf = (
+/** An immutable ConfigMap per Asset, under the content-hashed name an edit changes. */
+const configMapsOf = (
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
-): ServiceAccount => ({
-  apiVersion: "v1",
-  kind: "ServiceAccount",
-  metadata: {
-    name: process.identity,
-    namespace: application.namespace,
-    labels: labelsOf(process, application.id),
+): ConfigMap[] =>
+  // A missing list and an empty one hold no Asset alike.
+  // Stryker disable next-line ArrayDeclaration
+  (process.assets ?? []).map(({ name, from, content }) => ({
+    apiVersion: "v1",
+    kind: "ConfigMap",
+    metadata: {
+      name,
+      namespace: application.namespace,
+      labels: labelsOf(process, application.id),
+    },
+    immutable: true,
+    data: { [fileOf(from)]: content },
+  }));
+
+/** The labels of a backup's own identity: never the Process's, which a Service selects. */
+const backupLabels = (
+  backup: Backed["backup"],
+  application: ResolvedApplicationDocument,
+) => labelsOf({ name: backup.identity, runtime: "none" }, application.id);
+
+/**
+ * A backup CronJob per backed-up volume, at its class's schedule: the engine's
+ * method image, run as the backup identity, reading the volume at `/data` and
+ * writing its copies to the backup claim at `/backup`, pruned to `retain`.
+ */
+function backupsOf(
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+): CronJob[] {
+  return backedUp(process).map(({ claim, backup }) => {
+    const labels = backupLabels(backup, application);
+    const env: EnvVar[] = [
+      { name: "BACKUP_RETAIN", value: String(backup.retain) },
+      ...(backup.offCluster === undefined
+        ? []
+        : [{ name: "BACKUP_OFF_CLUSTER", value: backup.offCluster }]),
+    ];
+    const pod: PodSpec = {
+      serviceAccountName: backup.identity,
+      automountServiceAccountToken: false,
+      restartPolicy: "OnFailure",
+      securityContext: {
+        runAsNonRoot: true,
+        runAsUser: backup.uid,
+        runAsGroup: backup.gid,
+        fsGroup: backup.gid,
+        seccompProfile: { type: "RuntimeDefault" },
+      },
+      containers: [
+        {
+          name: "backup",
+          image: backup.method,
+          env,
+          ...(backup.credential === undefined
+            ? {}
+            : {
+                envFrom: [
+                  {
+                    secretRef: {
+                      name: backup.credential.destination as string,
+                    },
+                  },
+                ],
+              }),
+          securityContext: RESTRICTED,
+          volumeMounts: [
+            { name: "data", mountPath: BACKUP_SOURCE, readOnly: true },
+            { name: "backup", mountPath: BACKUP_TARGET },
+          ],
+        },
+      ],
+      volumes: [
+        {
+          name: "data",
+          persistentVolumeClaim: { claimName: claim, readOnly: true },
+        },
+        { name: "backup", persistentVolumeClaim: { claimName: backup.claim } },
+      ],
+    };
+    return {
+      apiVersion: "batch/v1",
+      kind: "CronJob",
+      metadata: {
+        name: backup.claim,
+        namespace: application.namespace,
+        labels,
+      },
+      spec: {
+        schedule: backup.schedule,
+        concurrencyPolicy: "Forbid",
+        jobTemplate: {
+          spec: { template: { metadata: { labels }, spec: pod } },
+        },
+      },
+    };
+  });
+}
+
+/** The Process's own ServiceAccount, and one per backup identity it derives. */
+const serviceAccountsOf = (
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+): ServiceAccount[] => [
+  {
+    apiVersion: "v1",
+    kind: "ServiceAccount",
+    metadata: {
+      name: process.identity,
+      namespace: application.namespace,
+      labels: labelsOf(process, application.id),
+    },
   },
-});
+  // Every backup of one Process runs as its one backup identity.
+  ...backedUp(process)
+    .slice(0, 1)
+    .map(({ backup }): ServiceAccount => ({
+      apiVersion: "v1",
+      kind: "ServiceAccount",
+      metadata: {
+        name: backup.identity,
+        namespace: application.namespace,
+        labels: backupLabels(backup, application),
+      },
+    })),
+];
 
 function canaryOf(
   process: ResolvedProcess,
@@ -315,7 +546,7 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
         ["workload.yaml", processes.map((p) => deploymentOf(p, application))],
         [
           "serviceaccount.yaml",
-          processes.map((p) => serviceAccountOf(p, application)),
+          processes.flatMap((p) => serviceAccountsOf(p, application)),
         ],
         [
           "canary.yaml",
@@ -328,6 +559,11 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
             .map((p) => serviceOf(p, application)),
         ],
         ["pvc.yaml", processes.flatMap((p) => claimsOf(p, application))],
+        [
+          "configmap.yaml",
+          processes.flatMap((p) => configMapsOf(p, application)),
+        ],
+        ["backup.yaml", processes.flatMap((p) => backupsOf(p, application))],
       ];
       // A file holds at least one object, or it is not written.
       return files
@@ -341,8 +577,14 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
   ];
 }
 
-/** The network policy set is rendered and applied by nothing (spec/v1/16-dependencies.md#audit-before-enforce). */
-const unapplied = (file: string): boolean => file === "networkpolicy.yaml";
+/**
+ * What no kustomization applies: the network policy set, rendered and applied
+ * by nothing (spec/v1/16-dependencies.md#audit-before-enforce), and a Vault
+ * document, which is no Kubernetes object
+ * (spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied).
+ */
+const unapplied = (file: string): boolean =>
+  file === "networkpolicy.yaml" || file.endsWith(".json");
 
 /**
  * One Kustomization per directory the render writes, listing what that

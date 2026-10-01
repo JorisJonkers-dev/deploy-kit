@@ -12,9 +12,13 @@ rests-on: ["0004", "0005", "0006"]
 
 Every volume declares one Durability Class: `reconstructible`, `recoverable` or
 `irreplaceable`. A class other than `reconstructible` derives a backup: a
-`CronJob` and its sweep on platform terms, a method keyed by the Process's
-`engine`, and for `irreplaceable` an off-cluster copy. The claim of such a
-volume carries the prune-disabled mark, so the applier never deletes it
+`CronJob` on platform terms, running the method image the Process's `engine`
+keys, which keeps the class's `retain` newest copies and prunes the rest. It
+runs as the Process's own backup identity, `<process>-backup`, writes its copies
+to a derived claim of the volume's size, `<claim>-backup`, and for
+`irreplaceable` also copies off-cluster with a credential only that identity
+holds. The volume's claim and its backup claim carry the prune-disabled mark, so
+the applier never deletes either
 ([chapter 30](../../../spec/v1/30-deliverables.md#flagger-ready-objects)).
 Nothing refuses at build time when a backed-up claim leaves the render.
 
@@ -32,12 +36,12 @@ protection must be written into the render.
 **False if:** two volumes of one class and engine legitimately need different
 backup terms often enough to be the normal case, Flux deletes a backed-up claim
 after its Process leaves the render, or a `reconstructible` claim carries the
-mark. **Settled by:** the fourteen PVCs rendered with a `CronJob`, a sweep and
-(for `irreplaceable`) an off-cluster copy on every non-`reconstructible` volume;
-`data/rendered/apps/platform-postgres/pvc.yaml` carrying the mark and
-`platform-valkey/pvc.yaml` not; and a live run, owned by joris: remove a Process
-holding a backed-up claim from a delivered render and observe the claim still
-bound after the next reconcile.
+mark. **Settled by:** every non-`reconstructible` volume rendered with a
+`CronJob`, a backup claim and (for `irreplaceable`) an off-cluster copy;
+`data/rendered/apps/data/platform-postgres/pvc.yaml` carrying the mark on both
+its claims and `platform-valkey/pvc.yaml` on none; and a live run, owned by
+joris: remove a Process holding a backed-up claim from a delivered render and
+observe the claim still bound after the next reconcile.
 
 ## Why
 
@@ -53,11 +57,21 @@ node's IO on a seven-node cluster, and an off-cluster destination is one target
 with one credential. Both are shared, so the Platform document carries one
 policy per class and the volume declares only its class.
 
-**The method is an image.** One purpose-built image per engine, named in the
-Platform document and resolved through the images lock. What it does (`pg_dump`
-for `postgres`, a definitions export for `rabbitmq`, a file copy for `files`) is
-its entrypoint, versioned and digested. An authored `backup.sh` would be an
-executable Asset ([0014](0014-file-shaped-configuration-is-an-asset.md)).
+**The method is an image, and it keeps the count.** One purpose-built image per
+engine, named in the Platform document and resolved through the images lock.
+What it does (`pg_dump` for `postgres`, a definitions export for `rabbitmq`, a
+file copy for `files`) is its entrypoint, versioned and digested. An authored
+`backup.sh` would be an executable Asset
+([0014](0014-file-shaped-configuration-is-an-asset.md)). Pruning is part of the
+same run: `retain` is how many copies are kept, so the image that writes a copy
+is the one that knows which are oldest, and a second schedule for a sweep would
+be a window nothing declares.
+
+**A backup runs as its own identity and writes to its own claim.** The serving
+Process never needs the off-cluster credential, so it never holds it: the
+backup identity does, and the derived Vault policy shows the two apart. The
+copies land on a claim derived beside the volume, the same size, because
+`recoverable` keeps no copy anywhere else.
 
 **The destination credential is derived.** The platform chose the destination,
 so the grant is derived, recorded in the projection
@@ -79,18 +93,26 @@ disagree.
 | Refuse a backed-up claim leaving the render, against the previous lock | nothing vanishes without a recorded plan | layer 2 reads its own previous output, a retired Project stalls every composition, and no plan schema exists |
 | `persistentVolumeReclaimPolicy: Retain` and let Flux prune claims | bytes survive on the node | a recreated claim binds a fresh, empty volume; the Process comes back empty and healthy |
 | Prune nothing, ever | no data deleted by the applier | withdrawn routes and grants outlive their Application |
+| A separate sweep `CronJob` on its own schedule | pruning visible as its own object | a second window per class that no policy declares, and a sweep that cannot tell a copy from a half-written one |
+| `retain` as an age in days | matches a `find -mtime` sweep | a failing backup then deletes the last good copies on schedule; a count keeps them |
+| Run the backup as the serving Process | one identity fewer | the long-running Process holds the off-cluster credential it never uses |
+| Copy off-cluster only, for every backed-up class | no on-cluster claim | `recoverable` gains a destination and a credential it was defined not to need |
 
 ## Reversibility
 
-Undo cost today: one policy per class, one derivation, one `CronJob` branch and
-one annotation: a day. Becomes irreversible once: an `irreplaceable` volume's
+Undo cost today: one policy per class, one derivation, one `CronJob` branch, one
+identity, one claim and one annotation: a day. Becomes irreversible once: an `irreplaceable` volume's
 only copy is the one this derivation produces, or a backed-up claim has left a
 delivered render and the mark is the only thing that kept it.
 
 ## Consequences
 
-- Every non-`reconstructible` volume adds two objects, paid in render size and
-  in one more thing that can fail at 03:00, which is the point.
+- Every non-`reconstructible` volume adds a `CronJob` and a claim, and its
+  Process a backup `ServiceAccount`, paid in render size and in one more thing
+  that can fail at 03:00, which is the point. A backup claim doubles the
+  volume's footprint on its node.
+- Every method image must prune to `retain` after a run, paid by whoever writes
+  one for a new engine.
 - The platform owns a credential that writes to an off-cluster destination, and
   its blast radius is visible in the derived policy.
 - A volume whose engine has no method cannot derive a backup, so a new datastore

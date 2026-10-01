@@ -86,3 +86,9 @@ export const secretStoreAddress = (
   projects: readonly Declares[],
 ): string | undefined =>
   surfaceAddress(projects, platform.secretStore, GATE_SURFACE);
+
+/** The endpoint the secrets operator connects to the Secret Store through. */
+export const secretStoreEndpoint = (
+  platform: PlatformIntentDocument,
+  projects: readonly Declares[],
+): string | undefined => endpoint(secretStoreAddress(platform, projects));

@@ -139,11 +139,9 @@ function storeOf(context: PolicyContext): Egress {
         ),
     )
     .at(0);
-  if (store === undefined)
-    throw new Error(
-      "a grant under a platform that names no Secret Store is not checked yet",
-    );
-  return store;
+  // A grant under a platform that names no Secret Store stops resolution at
+  // the Application's endpoint for it, so a store is found here.
+  return store as Egress;
 }
 
 /**

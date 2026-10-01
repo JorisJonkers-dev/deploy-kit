@@ -8,6 +8,7 @@ export interface ObjectMeta {
   readonly name: string;
   readonly namespace?: string;
   readonly labels: Labels;
+  readonly annotations?: Readonly<Record<string, string>>;
 }
 
 export interface Namespace {
@@ -39,6 +40,61 @@ export type Probe = (
   readonly initialDelaySeconds?: number;
 };
 
+/** A variable is a value, or one key of a Secret the operator syncs. */
+export type EnvVar =
+  | { readonly name: string; readonly value: string }
+  | {
+      readonly name: string;
+      readonly valueFrom: {
+        readonly secretKeyRef: { readonly name: string; readonly key: string };
+      };
+    };
+
+export interface VolumeMount {
+  readonly name: string;
+  readonly mountPath: string;
+  readonly subPath?: string;
+  readonly readOnly?: true;
+}
+
+export type Volume =
+  | {
+      readonly name: string;
+      readonly persistentVolumeClaim: {
+        readonly claimName: string;
+        readonly readOnly?: true;
+      };
+    }
+  | {
+      readonly name: string;
+      readonly configMap: {
+        readonly name: string;
+        readonly items: readonly {
+          readonly key: string;
+          readonly path: string;
+        }[];
+      };
+    }
+  | {
+      readonly name: string;
+      readonly emptyDir: { readonly sizeLimit: string };
+    };
+
+export interface PodSpec {
+  readonly serviceAccountName: string;
+  readonly automountServiceAccountToken: boolean;
+  readonly restartPolicy?: "OnFailure";
+  readonly securityContext: {
+    readonly runAsNonRoot: true;
+    readonly runAsUser: number;
+    readonly runAsGroup: number;
+    readonly fsGroup?: number;
+    readonly seccompProfile: { readonly type: "RuntimeDefault" };
+  };
+  readonly containers: readonly Container[];
+  readonly volumes?: readonly Volume[];
+}
+
 export interface Container {
   readonly name: string;
   readonly image: string;
@@ -46,8 +102,13 @@ export interface Container {
     readonly name: string;
     readonly containerPort: number;
   }[];
-  readonly env?: readonly { readonly name: string; readonly value: string }[];
-  readonly resources: {
+  readonly env?: readonly EnvVar[];
+  readonly envFrom?: readonly {
+    readonly secretRef: { readonly name: string };
+  }[];
+  // A backup's method image carries no quantity the model holds, so it asks
+  // for none.
+  readonly resources?: {
     readonly requests: { readonly memory: string; readonly cpu: string };
     readonly limits: { readonly memory: string };
   };
@@ -55,10 +116,7 @@ export interface Container {
     readonly readOnlyRootFilesystem: true;
     readonly capabilities: { readonly drop: readonly ["ALL"] };
   };
-  readonly volumeMounts?: readonly {
-    readonly name: string;
-    readonly mountPath: string;
-  }[];
+  readonly volumeMounts?: readonly VolumeMount[];
   readonly readinessProbe?: Probe;
   readonly livenessProbe?: Probe;
   readonly startupProbe?: Probe;
@@ -83,24 +141,35 @@ export interface Deployment {
     readonly selector: { readonly matchLabels: Labels };
     readonly template: {
       readonly metadata: { readonly labels: Labels };
+      readonly spec: PodSpec;
+    };
+  };
+}
+
+export interface CronJob {
+  readonly apiVersion: "batch/v1";
+  readonly kind: "CronJob";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly schedule: string;
+    readonly concurrencyPolicy: "Forbid";
+    readonly jobTemplate: {
       readonly spec: {
-        readonly serviceAccountName: string;
-        readonly automountServiceAccountToken: boolean;
-        readonly securityContext: {
-          readonly runAsNonRoot: true;
-          readonly runAsUser: number;
-          readonly runAsGroup: number;
-          readonly fsGroup?: number;
-          readonly seccompProfile: { readonly type: "RuntimeDefault" };
+        readonly template: {
+          readonly metadata: { readonly labels: Labels };
+          readonly spec: PodSpec;
         };
-        readonly containers: readonly Container[];
-        readonly volumes?: readonly {
-          readonly name: string;
-          readonly persistentVolumeClaim: { readonly claimName: string };
-        }[];
       };
     };
   };
+}
+
+export interface ConfigMap {
+  readonly apiVersion: "v1";
+  readonly kind: "ConfigMap";
+  readonly metadata: ObjectMeta;
+  readonly immutable: true;
+  readonly data: Readonly<Record<string, string>>;
 }
 
 export interface PolicyPeer {

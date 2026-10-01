@@ -1,0 +1,14 @@
+{
+  "path": {
+    "secret/data/platform/postgres/exporter": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/platform/postgres/exporter": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

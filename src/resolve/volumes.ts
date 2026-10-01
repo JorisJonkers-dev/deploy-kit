@@ -6,6 +6,7 @@ import type { EffectiveProcess } from "../model/effective-intent.ts";
 import type { ImagesLockDocument, LockedImage } from "../model/images-lock.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
+import { destinationOf } from "./secrets.ts";
 
 export type ResolvedVolume = NonNullable<ResolvedProcess["volumes"]>[number];
 type BackupPlan = NonNullable<ResolvedVolume["backup"]>;
@@ -14,6 +15,7 @@ type BackupPlan = NonNullable<ResolvedVolume["backup"]>;
 const BACKED_UP = new Set(["recoverable", "irreplaceable"]);
 
 function backupOf(
+  claim: string,
   durability: ResolvedVolume["durability"],
   process: EffectiveProcess,
   platform: PlatformIntentDocument,
@@ -33,13 +35,29 @@ function backupOf(
     process.engine as NonNullable<EffectiveProcess["engine"]>
   ] as { readonly backup: string };
   const image = lock.images[method.backup] as LockedImage;
+  const identity = `${process.name}-backup`;
+  const { offCluster } = policy;
   return {
     schedule: policy.schedule,
     retain: policy.retain,
-    ...(policy.offCluster === undefined
-      ? {}
-      : { offCluster: policy.offCluster.destination }),
+    ...(offCluster === undefined ? {} : { offCluster: offCluster.destination }),
     method: `${image.repository}@${image.digest}`,
+    uid: image.uid,
+    gid: image.gid,
+    identity,
+    claim: `${claim}-backup`,
+    // The platform chose the destination, so the grant on it is derived, and
+    // held by the backup identity alone.
+    ...(offCluster === undefined
+      ? {}
+      : {
+          credential: {
+            path: offCluster.credential,
+            access: "read" as const,
+            delivery: "env" as const,
+            destination: destinationOf(identity, offCluster.credential),
+          },
+        }),
   };
 }
 
@@ -54,6 +72,6 @@ export const resolveVolumes = (
     size,
     durability,
     ...(BACKED_UP.has(durability)
-      ? { backup: backupOf(durability, process, platform, lock) }
+      ? { backup: backupOf(claim, durability, process, platform, lock) }
       : {}),
   }));

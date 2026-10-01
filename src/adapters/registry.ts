@@ -16,6 +16,11 @@ import {
   renderPrometheus,
 } from "./prometheus/render.ts";
 import { ADAPTER as TRAEFIK, renderTraefik } from "./traefik/render.ts";
+import {
+  ADAPTER as VAULT_POLICY,
+  renderVaultPolicy,
+} from "./vault-policy/render.ts";
+import { ADAPTER as VSO, renderVso } from "./vso/render.ts";
 
 export { kustomizationsFor } from "./kubernetes/render.ts";
 
@@ -45,5 +50,16 @@ export const ADAPTERS: readonly Adapter[] = [
     name: TRAEFIK,
     defaultPath: "apps/edge/<tier>/<application>-<exposure>.yaml",
     render: renderTraefik,
+  },
+  {
+    name: VSO,
+    defaultPath: "apps/<project>/<application>/vso.yaml",
+    render: renderVso,
+  },
+  {
+    name: VAULT_POLICY,
+    defaultPath:
+      "apps/vso-secrets/policies/<namespace>/<process>.{policy,role}.json",
+    render: renderVaultPolicy,
   },
 ];

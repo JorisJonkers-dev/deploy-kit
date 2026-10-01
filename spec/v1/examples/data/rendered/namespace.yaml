@@ -1,8 +1,0 @@
-# GENERATED. Never hand-edit.
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: data-system
-  labels:
-    kubernetes.io/metadata.name: data-system
-    app.kubernetes.io/part-of: data

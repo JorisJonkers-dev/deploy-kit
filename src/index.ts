@@ -18,7 +18,11 @@ export {
   type RenderOptions,
   type Serializer,
 } from "./application/render-intent-set.ts";
-export { serializeYaml } from "./infrastructure/serializer.ts";
+export {
+  serialize,
+  serializeJson,
+  serializeYaml,
+} from "./infrastructure/serializer.ts";
 export {
   resolveIntentSet,
   type ResolveOptions,

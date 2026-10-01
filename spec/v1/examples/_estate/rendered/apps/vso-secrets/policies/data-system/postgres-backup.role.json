@@ -1,0 +1,11 @@
+{
+  "bound_service_account_names": [
+    "postgres-backup"
+  ],
+  "bound_service_account_namespaces": [
+    "data-system"
+  ],
+  "token_policies": [
+    "data-system-postgres-backup"
+  ]
+}

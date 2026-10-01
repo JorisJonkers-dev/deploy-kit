@@ -1,0 +1,51 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: rabbitmq
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: rabbitmq
+    app.kubernetes.io/instance: rabbitmq
+    app.kubernetes.io/part-of: platform-rabbitmq
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: rabbitmq
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: edge-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: traefik-public
+      ports:
+        - protocol: TCP
+          port: 15672
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: prometheus
+      ports:
+        - protocol: TCP
+          port: 15692
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

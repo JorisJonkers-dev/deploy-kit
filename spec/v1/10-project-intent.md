@@ -938,8 +938,8 @@ worth, which only the owning Application knows:
 | class | means | derives | live example |
 |---|---|---|---|
 | `reconstructible` | losing it costs a rebuild, not data | no backup job | `valkey`: *"deliberately unbacked as reconstructible cache"* |
-| `recoverable` | a nightly application-level backup with a retention sweep suffices | backup job + sweep | the Postgres logical dumps |
-| `irreplaceable` | needs an off-cluster copy, and a rehearsed restore before its first production apply | backup job + sweep + off-cluster copy | `knowledge-vault-clone`, a personal vault on `local-path` |
+| `recoverable` | a nightly application-level backup, keeping a fixed number of copies, suffices | backup job + backup claim | the Postgres logical dumps |
+| `irreplaceable` | needs an off-cluster copy, and a rehearsed restore before its first production apply | backup job + backup claim + off-cluster copy | `knowledge-vault-clone`, a personal vault on `local-path` |
 
 **The terms are platform-assigned, the class is not**
 ([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)). The window a
@@ -959,11 +959,16 @@ Nothing authored is executable, which is what [0014](../../docs/adr/model/0014-f
 requires and what a `backup.sh` Asset (or a shell string in a platform file)
 would have violated.
 
-The `kubernetes` adapter emits the resulting `CronJob` (one per volume that
-derives a backup, plus its retention sweep) because that kind is already its
-([chapter 30](30-deliverables.md#the-registered-set)). The credential for an
-off-cluster destination is a **derived** grant against the platform's own Secret
-Store path, recorded in the projection its owner reads back
+The `kubernetes` adapter emits the resulting `CronJob`, one per volume that
+derives a backup, because that kind is already its
+([chapter 30](30-deliverables.md#the-registered-set)). The method image keeps the
+class's `retain` newest copies and prunes the rest in the same run, so there is
+no separate sweep. Each backup runs as the Process's **backup identity**,
+`<process>-backup`, and writes its copies to a derived **backup claim**,
+`<claim>-backup`, of the volume's `size`. The credential for an off-cluster
+destination is a **derived** grant against the platform's own Secret Store path,
+held by the backup identity and never by the serving Process, and recorded in the
+projection its owner reads back
 ([chapter 20](20-resolved-deployment.md#authority)): the platform chose the
 destination, so the platform owns the credential, and it still appears in the
 derived Vault policy ([0040](../../docs/adr/model/0040-vault-policy-is-a-deliverable.md)).
