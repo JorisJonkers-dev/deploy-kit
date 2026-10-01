@@ -738,6 +738,9 @@ The two version fields are what makes the range in
 `toolkitVersion: 0.22.0` differ legitimately, and both are exact: no range is
 ever recorded here.
 
+The lock's JSON Schema, generated from the model and shipped in the package, is
+[`schemas/composition-lock.schema.json`](schemas/composition-lock.schema.json).
+
 `lockChain` is inherited deliberately: it answers "when did this fragment's digest
 change, and which render did that produce" without diffing published artefacts.
 

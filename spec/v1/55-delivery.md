@@ -182,6 +182,8 @@ paused what, when and why:
 | `estate.jorisjonkers.dev/rollback-version` | a Rollback | the release version rolled back to |
 | `estate.jorisjonkers.dev/rollback-fragment` | a Rollback | that release's fragment, by digest |
 
+Their JSON Schema is
+[`schemas/pin-annotations.schema.json`](schemas/pin-annotations.schema.json).
 Composition reads the annotations as an input: a Project carrying
 `paused-by` moves no pin, and one carrying `rollback-fragment` is composed at
 that fragment. Resuming removes all five.
