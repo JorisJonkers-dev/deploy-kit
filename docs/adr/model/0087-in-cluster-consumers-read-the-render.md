@@ -68,5 +68,6 @@ reader, a day.
 - A policy-admin Vault role exists, created as a platform fixture with the auth
   method, since the job cannot grant itself its own privilege, paid once.
 - A changed grant reaches Vault on the next apply of `apps-vso-secrets`, before
-  the Application that needs it starts, paid in one Job run per change.
+  the Application that needs it starts, through a new Job named by the
+  documents' digest, paid in one Job run per change.
 - Every gated Application carries one more ConfigMap, paid in render size.

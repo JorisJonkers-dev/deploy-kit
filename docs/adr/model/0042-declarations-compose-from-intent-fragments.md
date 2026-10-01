@@ -84,4 +84,5 @@ on its own cadence.
 - An intent-only change publishes with its repository's next release, one
   build later.
 - Composition needs registry read access for every participant, and a missing
-  or stale participant fails it.
+  or stale participant is isolated at its last composed fragment
+  ([0085](0085-composition-isolates-a-refused-project.md)).

@@ -169,7 +169,7 @@ documents, at `apps/vso-secrets/policies/<namespace>/<identity>.{policy,role}.js
 | document | derived from |
 |---|---|
 | the Vault policy | the Process's grants and their access tiers: `read` on the granted path, `patch` for `self-roll`, `create`/`update`/`delete` on a prefix for `custody`, nothing for `self-renew` |
-| the Kubernetes auth role | the identity's ServiceAccount and namespace ([0031](../../docs/adr/model/0031-identity-per-process.md)), bound to that one policy; the role and the policy are both named `<namespace>-<identity>`, the spelling of their file's path, which is what the identity's `VaultAuth` asks for ([chapter 16](16-dependencies.md#process-identity)) |
+| the Kubernetes auth role | the identity's ServiceAccount and namespace ([0031](../../docs/adr/model/0031-identity-per-process.md)), bound to that one policy by its name, `<namespace>-<identity>`; the role is named for the identity, which is what its `VaultAuth` asks for |
 
 One document per identity, not per Application: identity is per Process, so a
 two-Process Application produces two policies and a diff says which principal's
@@ -183,7 +183,11 @@ against a live system by an identity with privilege, which is delivery
 so it runs before any Application that holds a grant, whose image is the
 `delivery` project's. The Reconcile Unit carries the documents into the job as a
 generated `ConfigMap`, so the job writes exactly the documents of the render
-that applied it, and nothing else:
+that applied it, and nothing else. The job is named by the digest of those
+documents, `vault-policy-<12 hex>`: a Job's template cannot change once created,
+so a changed policy set is a new Job, and the one it replaces leaves the render
+with it. Until [#199](https://github.com/JorisJonkers-dev/deploy-kit/issues/199)
+lands, the render carries the documents alone, and no job applies them.
 
 - It authenticates as a dedicated **policy-admin** role, a platform fixture
   created with the auth method, because it cannot grant itself the privilege to

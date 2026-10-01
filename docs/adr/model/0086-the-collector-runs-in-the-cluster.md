@@ -73,5 +73,8 @@ who captures the snapshot, only on the document.
   first-party Application, paid once in its repository.
 - A GitHub App installation with write access to the Estate repository's
   contents exists, its key held in the Secret Store, paid in one more key.
+- A stopped Collector is invisible in the Estate repository, so its liveness
+  is an Alertmanager rule on its last successful run, paid once in the
+  observability project's rules.
 - The first composition runs with an empty snapshot, before the Collector is
   delivered, which is a valid snapshot with a digest.
