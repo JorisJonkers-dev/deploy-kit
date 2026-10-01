@@ -13,8 +13,8 @@ rests-on: ["0070"]
 Xtext also generates the editor that examiners use in Eclipse, configured to
 run the OCL validators and report constraint violations during editing. The
 grammar imports the one source metamodel, which holds the Platform document
-as well. The pinned inputs resolution reads, the node contract, the images lock
-and the ClusterState snapshot, are YAML in the same subset, so each is read by a
+as well. The pinned inputs resolution reads, the node contract, the images lock,
+the ClusterState snapshot and a project's migration proof, are YAML in the same subset, so each is read by a
 grammar of its own that inherits the project grammar's terminals, block tokens
 and scalars and imports the pinned-inputs metamodel; which grammar reads a file
 is the file's name to say, as it is for the Platform document.

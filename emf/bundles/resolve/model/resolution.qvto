@@ -8,8 +8,8 @@
 -- operation done outside the language, by the `Hashing` black box: a digest
 -- is a function of canonical bytes, which OCL has no way to produce.
 --
--- The derivations a case under spec/v1/examples/ does not yet reach stop the run
--- with the ticket that lands them, rather than write a model with a gap in it.
+-- An input it cannot derive stops the run with a message naming what is missing,
+-- rather than write a model with a gap or a default in it.
 import dev.jorisjonkers.deploykit.emf.hashing;
 
 modeltype PI uses 'https://jorisjonkers.dev/deploy-kit/project-intent/1';
@@ -32,6 +32,17 @@ property projects : Sequence(EffectiveProject) =
 property contract : NodeContract = pinned.rootObjects()[NodeContract]->any(true);
 property lock : ImagesLock = pinned.rootObjects()[ImagesLock]->any(true);
 property snapshot : ClusterState = pinned.rootObjects()[ClusterState]->any(true);
+-- Every proof written beside a project file of the union, and every Asset file.
+property proofs : Sequence(ProvenApplication) =
+	pinned.rootObjects()[MigrationProof].applications->asSequence();
+property assetFiles : Sequence(AssetFile) = pinned.rootObjects()[AssetFile]->asSequence();
+
+-- The unit that materialises every grant's credentials before a Process may hold one.
+property SECRETS_UNIT : String = 'apps-vso-secrets';
+-- The surface a Release Gate and a Secret Store answer on.
+property HTTP_SURFACE : String = 'http';
+-- How many hex digits of an Asset's content digest its name carries.
+property CONTENT_DIGITS : Integer = 10;
 
 -- A startup probe polls this often; its threshold covers the budget.
 property STARTUP_PERIOD : Integer = 5;
@@ -50,7 +61,9 @@ main() {
 mapping EffectiveProject::deployment() : ResolvedDeployment {
 	apiVersion := 'resolved.jorisjonkers.dev/v1';
 	kind := 'ResolvedDeployment';
-	reconcileUnits := Sequence{self.map unit()};
+	-- The project's own unit, and every unit it must follow, which this
+	-- document carries so `after` is a reference and never a name.
+	reconcileUnits := Sequence{self.map unit()}->union(afterOf(self)->collect(n | object ReconcileUnit { name := n; }));
 	applications := self.applications->map application(self);
 	provenance := self.map provenance();
 	deliverables := self.projectFiles()
@@ -58,19 +71,35 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 		->union(self.edgeFiles());
 	end {
 		-- Only a complete element has a revision: it is the digest of all of it.
+		result.reconcileUnits->first().after := result.reconcileUnits->excluding(result.reconcileUnits->first());
 		result.applications->forEach(a) { a.revision := a.oclAsType(ECORE::EObject).revisionOf() };
 	}
 }
 
 -- The Reconcile Unit of a project's Applications (spec/v1/20-resolved-deployment.md#the-reconcile-unit).
 mapping EffectiveProject::unit() : ReconcileUnit {
-	name := 'apps-' + self.project;
-	-- Every unit an edge reaches and the secrets unit a grant needs land with #91;
-	-- until then a project that would need one stops here.
-	assert fatal (self.applications.processes->forAll(p |
-		p.dependsOn->isEmpty() and p.secrets->isEmpty()))
-		with log('reconcile ordering across projects lands with #91');
+	name := unitOf(self.project);
 }
+
+query unitOf(prj : String) : String = 'apps-' + prj;
+
+-- The units that must be Ready first: every other project an edge reaches, and
+-- the secrets-provisioning unit wherever a Process holds a grant
+-- (spec/v1/20-resolved-deployment.md#the-reconcile-unit).
+query afterOf(prj : EffectiveProject) : Sequence(String) =
+	(prj.applications.processes.dependsOn
+		->collect(e | projectOf(e.application))
+		->select(other | other <> null and other <> prj.project)
+		->collect(other | unitOf(other))
+	->union(if prj.applications.processes->exists(p | p.secrets->notEmpty())
+		then Sequence{SECRETS_UNIT} else Sequence{} endif))
+	->asSet()->sortedBy(n | n)->asSequence();
+
+-- The project of the union that declares `application`, where one does.
+query projectOf(application : String) : String =
+	let declaring : Sequence(EffectiveProject) =
+		projects->select(p | p.applications->exists(a | a.id = application)) in
+	if declaring->isEmpty() then null else declaring->first().project endif;
 
 -- One digest per pinned input, then the render hash over them and the schema
 -- package's integrity (spec/v1/20-resolved-deployment.md#pinned-inputs).
@@ -120,8 +149,50 @@ mapping EffectiveApplication::application(in prj : EffectiveProject) : ResolvedA
 	processes := self.processes->map process(self, prj);
 	exposure := self.exposure->map exposure(self, prj);
 	releaseGate := if gated(self) then self.map gate() else null endif;
-	assert fatal (self.migration = null or not self.migration.oclIsKindOf(ManagedMigration))
-		with log('a managed migration lands with #91');
+	if self.migration <> null and self.migration.oclIsKindOf(ManagedMigration) then
+		migration := self.map migrationOf()
+	endif;
+	-- The operator syncs from the Secret Store wherever a grant or a backup's
+	-- off-cluster credential is delivered anywhere but to the Process itself.
+	if synced(result) then secretStore := storeEndpoint() endif;
+}
+
+query synced(app : ResolvedApplication) : Boolean =
+	app.processes->exists(p | p.secrets->notEmpty()
+		or p.volumes->exists(v | v.backup <> null and v.backup.credential <> null));
+
+-- A managed migration (spec/v1/20-resolved-deployment.md#the-migration): its
+-- locked runner, and what the proof beside the project records about this
+-- release; an Application no proof names is a first release.
+mapping EffectiveApplication::migrationOf() : ResolvedMigration {
+	init {
+		var runnerImage : LockedImage := locked(self.id + '-migration');
+		var proven : ProvenApplication := proofs->select(a | a.id = self.id)->any(true);
+	}
+	runner := runnerImage.repository + '@' + runnerImage.digest;
+	if proven <> null and proven.testedAgainst <> null then testedAgainst := proven.testedAgainst endif;
+	nonTransactional := proven <> null and proven.nonTransactional;
+}
+
+-- The image the lock holds for `alias`, or E_UNLOCKED_IMAGE refused the set.
+query locked(alias : String) : LockedImage =
+	let found : Sequence(LockedImage) = lock.images->select(i | i.alias = alias)->asSequence() in
+	if found->isEmpty() then unlocked(alias) else found->first() endif;
+
+query unlocked(alias : String) : LockedImage {
+	assert fatal (false) with log(alias + ' is not locked: E_UNLOCKED_IMAGE');
+	return null;
+}
+
+-- The Secret Store's endpoint: its `http` surface, which the platform names.
+query storeEndpoint() : String =
+	let address : String = if estate.secretStore = null then null
+		else surfaceAddress(estate.secretStore.id, HTTP_SURFACE) endif in
+	if address = null then unstored() else 'http://' + address endif;
+
+query unstored() : String {
+	assert fatal (false) with log('a grant under a platform that names no Secret Store');
+	return null;
 }
 
 -- Whether any Process of the Application switches blue-green.
@@ -164,22 +235,17 @@ mapping EffectiveApplication::gate() : ReleaseGate {
 mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectiveProject)
 		: ResolvedProcess {
 	init {
-		var locked : LockedImage := lock.images->select(i | i.alias = self.image)->any(true);
+		var own : LockedImage := locked(self.image);
 		var declared : Probes := if self.probes <> null and self.probes.oclIsKindOf(Probes)
 			then self.probes.oclAsType(Probes) else null endif;
 	}
-	assert fatal (locked <> null) with log(self.image + ' is not locked: E_UNLOCKED_IMAGE');
-	-- The families no case resolved through this implementation reaches yet.
-	assert fatal (self.dependsOn->isEmpty() and self.volumes->isEmpty() and self.secrets->isEmpty()
-		and self.assets->isEmpty() and self.sidecars->isEmpty())
-		with log('edges, volumes, grants, Assets and sidecars land with #91');
 
 	name := self.name;
 	-- The Vault role and the ServiceAccount are both the Process's own name.
 	identity := self.name;
-	image := locked.repository + '@' + locked.digest;
-	uid := locked.uid;
-	gid := locked.gid;
+	image := own.repository + '@' + own.digest;
+	uid := own.uid;
+	gid := own.gid;
 	if self.cutover <> PI::Cutover::absent then cutover := self.cutover.resolvedCutover() endif;
 	if self.lifecycle = Lifecycle::application then switchover := switchoverOf(app, self) endif;
 	deadline := inSeconds(deadlineOf(self));
@@ -187,9 +253,9 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	memory := self.placement.memory;
 	cpu := self.placement.cpu;
 	hardening := estate.hardening.spelling();
-	-- The pod authenticates only where a grant is delivered `self`, and this
-	-- Process holds none.
-	identityToken := false;
+	secrets := self.secrets->collect(g | g.resolvedFor(self));
+	-- The pod authenticates only where a grant is delivered `self`.
+	identityToken := self.secrets->exists(g | g.delivery = Delivery::selfDelivery);
 	component := self.runtime.spelling();
 	if declared <> null and declared.readiness <> null then readiness := declared.readiness.cadenced() endif;
 	if declared <> null and declared.liveness <> null then liveness := declared.liveness.cadenced() endif;
@@ -205,7 +271,21 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	surfaces := self.provides->collect(s | object ResolvedSurface { name := s.key; port := s.value; });
 	placement := object ResolvedPlacement {
 		eligibleNodes := contract.nodes->select(n | eligible(self, n))->collect(n | n.name);
+		-- A claim the snapshot records as bound holds the Process to that node.
+		if (boundOf(self) <> null) {
+			boundTo := boundOf(self).node;
+			_from := PinnedInput::clusterState;
+		} endif;
 	};
+	volumes := self.volumes->collect(v | v.resolvedFor(self));
+	assets := self.assets->collect(a | a.resolvedFor(self, prj));
+	sidecars := self.sidecars->collect(c | object ResolvedSidecar {
+		name := c.name;
+		image := locked(c.image).repository + '@' + locked(c.image).digest;
+		memory := c.memory;
+		cpu := c.cpu;
+	});
+	dependencies := self.dependsOn->collect(e | edgeOf(e));
 	writablePaths := self.writablePaths->collect(w | object WritablePath {
 		path := w;
 		size := estate.ephemeral.size;
@@ -249,6 +329,178 @@ query Probe::target() : ProbeTarget =
 		object TcpTarget { tcp := self.oclAsType(TcpProbe).tcp; }.oclAsType(ProbeTarget)
 	endif;
 
+-- The binding the snapshot records for a claim the Process holds, where one does.
+query boundOf(p : PI::Process) : Binding =
+	let bound : Sequence(Binding) =
+		snapshot.bindings->select(b | p.volumes->exists(v | v.claim = b.claim))->asSequence() in
+	if bound->isEmpty() then null else bound->first() endif;
+
+-- ==================================================================== grants
+
+-- The Secret a grant's value is synced to: the Process, then the path below the mount.
+query destinationOf(holder : String, path : String) : String =
+	holder + '-' + (if path.startsWith('secret/data/') and path.size() > 12 then path.substring(13, path.size()) else path endif)
+		.replaceAll('/', '-');
+
+-- A `kv` grant keeps its path and keys; a `transit` or `database` grant becomes
+-- the paths its policy covers. A rotation that tolerates only a restart restarts
+-- the Process in place, and a reload restarts nothing.
+query Grant::resolvedFor(p : PI::Process) : ResolvedGrant = object ResolvedGrant {
+	delivery := self.delivery.spelling();
+	if (self.oclIsKindOf(KvGrant)) {
+		path := self.oclAsType(KvGrant).path;
+		keys := self.oclAsType(KvGrant).keys;
+		_access := self.oclAsType(KvGrant)._access.spelling();
+		if self.delivery <> Delivery::selfDelivery then
+			destination := destinationOf(p.name, self.oclAsType(KvGrant).path)
+		endif;
+	} elif (self.oclIsKindOf(TransitGrant)) {
+		engine := 'transit';
+		paths := self.oclAsType(TransitGrant).operations->collect(o | object PolicyPath {
+			path := if o = TransitOp::rotate then 'transit/keys/' + self.oclAsType(TransitGrant).key + '/rotate'
+				else 'transit/' + o.spelling() + '/' + self.oclAsType(TransitGrant).key endif;
+			allows := Sequence{'update'};
+		});
+	} else {
+		engine := 'database';
+		paths := Sequence{object PolicyPath {
+			path := 'database/creds/' + self.oclAsType(DatabaseGrant).role;
+			allows := Sequence{'read'};
+		}};
+	} endif;
+	if self.mountAt <> null then mountAt := self.mountAt endif;
+	if self.fileMode <> null then fileMode := self.fileMode endif;
+	if self.rotation.tolerates = Tolerance::restart then restartTargets := Sequence{p.name} endif;
+};
+
+-- =================================================================== volumes
+
+-- A volume, and the backup its Durability Class derives
+-- (spec/v1/10-project-intent.md#volumes): `reconstructible` earns none.
+query Volume::resolvedFor(p : PI::Process) : ResolvedVolume = object ResolvedVolume {
+	claim := self.claim;
+	mountAt := self.mountAt;
+	size := self.size;
+	durability := self.durability.resolvedDurability();
+	if self.durability <> PI::DurabilityClass::reconstructible then backup := self.backupFor(p) endif;
+};
+
+query Volume::backupFor(p : PI::Process) : BackupPlan =
+	let policy : DurabilityPolicy = if self.durability = PI::DurabilityClass::recoverable
+		then estate.durability.recoverable else estate.durability.irreplaceable endif in
+	let methodImage : LockedImage = locked(engineMethod(p)) in
+	let holder : String = p.name + '-backup' in
+	if policy = null or policy.schedule = null or policy.retain = null
+		then unplanned(self.claim) else
+	object BackupPlan {
+		schedule := policy.schedule;
+		retain := policy.retain;
+		method := methodImage.repository + '@' + methodImage.digest;
+		uid := methodImage.uid;
+		gid := methodImage.gid;
+		identity := holder;
+		claim := self.claim + '-backup';
+		if (policy.offCluster <> null) {
+			offCluster := policy.offCluster.destination;
+			credential := object ResolvedGrant {
+				path := policy.offCluster.credential;
+				_access := 'read';
+				delivery := 'env';
+				destination := destinationOf(holder, policy.offCluster.credential);
+			};
+		} endif;
+	} endif;
+
+query unplanned(claim : String) : BackupPlan {
+	assert fatal (false) with log(claim + ': its Durability Class derives a backup, and the platform names no schedule and retention for it');
+	return null;
+}
+
+-- The backup method the platform names for the Process's engine, an image alias.
+query engineMethod(p : PI::Process) : String =
+	if not p.oclAsType(ECORE::EObject).states('engine') then unengined(p)
+	else if p.engine = Engine::postgres then estate.engines.postgres.backup
+	else if p.engine = Engine::rabbitmq then estate.engines.rabbitmq.backup
+	else if p.engine = Engine::valkey then estate.engines.valkey.backup
+	else estate.engines.files.backup endif endif endif endif;
+
+query unengined(p : PI::Process) : String {
+	assert fatal (false) with log(p.name + ' backs a volume up and declares no engine: E_DURABILITY_WITHOUT_ENGINE');
+	return null;
+}
+
+-- ==================================================================== Assets
+
+-- A settings file, by a name its content changes
+-- (spec/v1/10-project-intent.md#assets): the Process, the file, and the first
+-- digits of the content's digest.
+query Asset::resolvedFor(p : PI::Process, prj : EffectiveProject) : ResolvedAsset =
+	let found : Sequence(AssetFile) =
+		assetFiles->select(f | f.project = prj.project and f._from = self._from)->asSequence() in
+	let file : AssetFile = if found->isEmpty() then unfiled(self._from) else found->first() endif in
+	if file.content.indexOf('${') > 0 then unplaced(self._from) else
+	object ResolvedAsset {
+		name := p.name + '-' + spelled(self._from) + '-'
+			+ file.content.textDigestOf().substring(8, 7 + CONTENT_DIGITS);
+		_from := self._from;
+		mountAt := self.mountAt;
+		content := file.content;
+	} endif;
+
+query unfiled(source : String) : AssetFile {
+	assert fatal (false) with log(source + ': an Asset whose file is not beside its project');
+	return null;
+}
+
+query unplaced(source : String) : ResolvedAsset {
+	assert fatal (false) with log(source + ': a placeholder in an Asset is not resolved yet');
+	return null;
+}
+
+-- An Asset's file name, spelled as the part of an object name it becomes.
+query spelled(path : String) : String =
+	path.substring(path.lastIndexOf('/') + 1, path.size()).toLower().replaceAll('[^a-z0-9]+', '-');
+
+-- ===================================================================== edges
+
+-- A dependency edge resolved against the union, then the platform's register
+-- of providers (spec/v1/16-dependencies.md#dependency-edges): the pair names one
+-- Process, one port and one address, and the peer a policy admits.
+query edgeOf(e : DependencyEdge) : ResolvedEdge =
+	let providers : Sequence(Tuple(project : String, process : PI::Process)) =
+		projects->collect(prj | prj.applications->select(a | a.id = e.application).processes
+			->select(p | p.provides->exists(s | s.key = e.surface))
+			->collect(p | Tuple{project = prj.project, process = p}))->flatten() in
+	if providers->notEmpty() then
+		let first : Tuple(project : String, process : PI::Process) = providers->first() in
+		let at : Integer = first.process.provides->select(s | s.key = e.surface)->any(true).value in
+		object ResolvedEdge {
+			application := e.application;
+			surface := e.surface;
+			address := first.process.name + '.' + namespaceOf(first.project) + '.svc.cluster.local:' + at.toString();
+			peers := Sequence{object PolicyPeer {
+				namespace := namespaceOf(first.project);
+				process := first.process.name;
+				port := at;
+			}};
+		}
+	else
+		let registered : Sequence(Provider) = estate.providers
+			->select(r | r.name = e.application and r.surfaces->exists(s | s.key = e.surface))->asSequence() in
+		if registered->isEmpty() then unprovided(e) else
+		object ResolvedEdge {
+			application := e.application;
+			surface := e.surface;
+			address := registered->first().address + ':'
+				+ registered->first().surfaces->select(s | s.key = e.surface)->any(true).value.toString();
+		} endif
+	endif;
+
+query unprovided(e : DependencyEdge) : ResolvedEdge {
+	assert fatal (false) with log(e.application + '.' + e.surface + ': no provider in the union');
+	return null;
+}
+
 -- ============================================================== eligibility
 
 -- The copies a node must fit: a continuous Process runs its new version beside its old one.
@@ -257,9 +509,16 @@ query copiesOf(p : PI::Process) : Integer =
 
 -- Eligibility, not bin-packing: each Process against allocatable alone, on every
 -- dimension it declared (spec/v1/20-resolved-deployment.md#layer-2-does-not-assign-a-node).
+-- What one copy asks for is the Process and its sidecars together.
+query requestedMemory(p : PI::Process) : Real =
+	p.sidecars->collect(c | mebibytes(c.memory))->sum() + mebibytes(p.placement.memory);
+
+query requestedCpu(p : PI::Process) : Integer =
+	p.sidecars->collect(c | millicores(c.cpu))->sum() + millicores(p.placement.cpu);
+
 query eligible(p : PI::Process, n : Node) : Boolean =
-	mebibytes(n.allocatable.memory) >= mebibytes(p.placement.memory) * copiesOf(p)
-	and millicores(n.allocatable.cpu) >= millicores(p.placement.cpu) * copiesOf(p)
+	mebibytes(n.allocatable.memory) >= requestedMemory(p) * copiesOf(p)
+	and millicores(n.allocatable.cpu) >= requestedCpu(p) * copiesOf(p)
 	and (p.placement.arch->isEmpty() or p.placement.arch->exists(a | a.spelling() = n.arch))
 	and (p.placement.site = null or p.placement.site = n.site)
 	and p.placement.capabilities->forAll(c | n.capabilities->includes(c))
@@ -293,27 +552,92 @@ query authoredOf(p : PI::Process) : Sequence(EnvVariable) =
 			p.env->select(f | f.cluster = estate.metadata.cluster)->collect(f | f.entries)->asSequence() in
 	base->select(b | overlay->forAll(o | o.name <> b.name))->union(overlay);
 
-query EnvVariable::entry(prj : EffectiveProject) : EnvEntry = object EnvEntry {
-	name := self.name;
-	value := if self.value.oclIsKindOf(EnvLiteral) then self.value.oclAsType(EnvLiteral).text
-		else self.value.oclAsType(Placeholder).placeholderValue(prj) endif;
-};
-
--- `${identity:...}` is the one placeholder kind this tracer resolves; every
--- other kind reads an edge, a grant or an exposure, which land with #91.
-query Placeholder::placeholderValue(prj : EffectiveProject) : String =
-	let suffix : String = if self.suffix = null then '' else self.suffix endif in
-	if self.kind = PlaceholderKind::identity then
-		(if self.source = 'namespace' then namespaceOf(prj.project)
-			else self.oclAsType(ECORE::EObject).eContainer().eContainer().eContainer()
-				.oclAsType(PI::Process).name endif) + suffix
+query EnvVariable::entry(prj : EffectiveProject) : EnvEntry =
+	if self.value.oclIsKindOf(EnvLiteral) then
+		object EnvEntry { name := self.name; value := self.value.oclAsType(EnvLiteral).text; }
 	else
-		assertFailed('placeholders other than ${identity:} land with #91')
+		self.value.oclAsType(Placeholder).entryFor(self.name, prj)
 	endif;
 
-query assertFailed(message : String) : String {
-	assert fatal (false) with log(message);
-	return '';
+-- A placeholder's value (spec/v1/10-project-intent.md#secret-references): one
+-- key of a grant, one coordinate of the Process's own edge, one field of an
+-- exposure the union declares, or the Process's own identity; any literal text
+-- after it is kept, except after a secret.
+query Placeholder::entryFor(variable : String, prj : EffectiveProject) : EnvEntry =
+	let owner : PI::Process = self.oclAsType(ECORE::EObject).eContainer().eContainer().eContainer()
+			.oclAsType(PI::Process) in
+	let suffix : String = if self.suffix = null then '' else self.suffix endif in
+	if self.kind = PlaceholderKind::secret and self.source.lastIndexOf('#') <= 0 then
+		unresolved(variable, 'a secret placeholder names no key')
+	else if self.kind = PlaceholderKind::secret then
+		let cut : Integer = self.source.lastIndexOf('#') in
+		let secretPath : String = self.source.substring(1, cut - 1) in
+		let secretKey : String = self.source.substring(cut + 1, self.source.size()) in
+		if owner.secrets->exists(g | g.oclIsKindOf(KvGrant) and g.oclAsType(KvGrant).path = secretPath
+				and g.delivery = Delivery::env and g.oclAsType(KvGrant).keys->includes(secretKey)) then
+			object EnvEntry {
+				name := variable;
+				secret := object SecretReference { path := secretPath; key := secretKey; };
+			}
+		else unresolved(variable, 'a placeholder no env grant of the Process holds is E_UNAUTHORISED_SECRET_REFERENCE') endif
+	else
+		object EnvEntry { name := variable; value := self.textFor(owner, prj) + suffix; }
+	endif endif;
+
+query Placeholder::textFor(owner : PI::Process, prj : EffectiveProject) : String =
+	if self.kind = PlaceholderKind::dependency then dependencyValue(self.source, owner)
+	else if self.kind = PlaceholderKind::exposure then exposureValue(self.source)
+	else if self.source = 'namespace' then namespaceOf(prj.project)
+	-- The Vault role and the ServiceAccount are both the Process's own name.
+	else owner.name endif endif endif;
+
+-- `${dependency:<application>.<coordinate>}`: one coordinate of the Process's own edge.
+query dependencyValue(source : String, owner : PI::Process) : String =
+	if source.lastIndexOf('.') <= 0 then
+		unresolvedText(source, 'a dependency placeholder names no coordinate') else
+	let cut : Integer = source.lastIndexOf('.') in
+	let application : String = source.substring(1, cut - 1) in
+	let coordinate : String = source.substring(cut + 1, source.size()) in
+	let edges : Sequence(DependencyEdge) = owner.dependsOn->select(e | e.application = application)->asSequence() in
+	if edges->size() <> 1 or (coordinate <> 'host' and coordinate <> 'port')
+		then unresolvedText(source, 'a dependency placeholder names no one edge of the Process and no coordinate of it')
+	else
+		let address : String = edgeOf(edges->first()).address in
+		let colon : Integer = address.lastIndexOf(':') in
+		if coordinate = 'host' then address.substring(1, colon - 1)
+		else address.substring(colon + 1, address.size()) endif
+	endif endif;
+
+-- `${exposure:<application>.<name>#<field>}`: one field of an exposure the union declares.
+query exposureValue(source : String) : String =
+	if source.lastIndexOf('#') <= 0 or source.substring(1, source.lastIndexOf('#') - 1).lastIndexOf('.') <= 0 then
+		unresolvedText(source, 'an exposure placeholder names no field of an exposure') else
+	let hash : Integer = source.lastIndexOf('#') in
+	let head : String = source.substring(1, hash - 1) in
+	let dot : Integer = head.lastIndexOf('.') in
+	let application : String = head.substring(1, dot - 1) in
+	let name : String = head.substring(dot + 1, head.size()) in
+	let field : String = source.substring(hash + 1, source.size()) in
+	let exposures : Sequence(Exposure) = projects.applications->select(a | a.id = application)
+		.exposure->select(e | e.name = name)->asSequence() in
+	if exposures->isEmpty() or not Sequence{'url', 'host', 'scheme'}->includes(field)
+		then unresolvedText(source, 'an exposure placeholder names no exposure of the union and no field of it')
+	else
+		let exposure : Exposure = exposures->first() in
+		let scheme : String = if tierFor(exposure.audience).listener = Listener::tls then 'https' else 'http' endif in
+		if field = 'host' then exposure.host
+		else if field = 'scheme' then scheme
+		else scheme + '://' + exposure.host endif endif
+	endif endif;
+
+query unresolved(variable : String, message : String) : EnvEntry {
+	assert fatal (false) with log(variable + ': ' + message);
+	return null;
+}
+
+query unresolvedText(source : String, message : String) : String {
+	assert fatal (false) with log(source + ': ' + message);
+	return null;
 }
 
 -- The Runtime Profile's values (spec/v1/10-project-intent.md#runtime-profiles).
@@ -429,42 +753,44 @@ query EffectiveProject::projectFiles() : Sequence(Deliverable) =
 		}.oclAsType(Deliverable)
 	};
 
--- What one Application writes under its own directory: its index, and per
--- Process the workload, its Canary where it switches blue-green, its
--- identity, its monitor where it is scraped, and its policy.
+-- What one Application writes under its own directory: its index, the
+-- workloads of its Processes, the Canaries of those that switch blue-green,
+-- their identities, its monitor where it is scraped, and one policy per Process.
 query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(Deliverable) =
 	let root : String = 'apps/' + prj.project + '/' + self.id + '/' in
-	let first : PI::Process = self.processes->first() in
-	let served : ResolvedProcess = first.resolveone(ResolvedProcess) in
-	let blueGreen : Boolean = switchesBlueGreen(self, first) in
+	let served : Sequence(ResolvedProcess) = self.processes->collect(p | p.resolveone(ResolvedProcess)) in
+	let blueGreen : Sequence(ResolvedProcess) =
+		self.processes->select(p | switchesBlueGreen(self, p))->collect(p | p.resolveone(ResolvedProcess)) in
 	let scraped : Boolean = self.observability <> null and self.observability.scrape <> null in
-	if self.processes->size() <> 1 then assertFailedFiles('an Application of several Processes lands with #91')
+	if self.processes->exists(p | controllerOf(p) <> controllerOf(self.processes->first())
+			or strategyOf(p) <> strategyOf(self.processes->first()))
+		then assertFailedFiles(self.id + ' holds Processes of two controllers, which one workload file cannot spell: #95')
 	else
 	Sequence{
 		object IndexFile {
 			path := root + 'kustomization.yaml';
 			adapter := AdapterName::kubernetes;
-			resources := (if blueGreen then Sequence{'canary.yaml'} else Sequence{} endif)
+			resources := (if blueGreen->notEmpty() then Sequence{'canary.yaml'} else Sequence{} endif)
 				->union(if scraped then Sequence{'podmonitor.yaml'} else Sequence{} endif)
 				->union(Sequence{'serviceaccount.yaml', 'workload.yaml'});
 		}.oclAsType(Deliverable),
 		object WorkloadFile {
 			path := root + 'workload.yaml';
 			adapter := AdapterName::kubernetes;
-			process := served;
-			controller := ControllerKind::deployment;
-			strategy := if first.cutover = PI::Cutover::interrupted then 'Recreate' else 'RollingUpdate' endif;
+			processes := served;
+			controller := controllerOf(self.processes->first());
+			strategy := strategyOf(self.processes->first());
 		}.oclAsType(Deliverable)
 	}
-	->union(if blueGreen then Sequence{object SwitchoverFile {
+	->union(if blueGreen->notEmpty() then Sequence{object SwitchoverFile {
 			path := root + 'canary.yaml';
 			adapter := AdapterName::kubernetes;
-			process := served;
+			processes := blueGreen;
 		}.oclAsType(Deliverable)} else Sequence{} endif)
 	->append(object IdentityFile {
 			path := root + 'serviceaccount.yaml';
 			adapter := AdapterName::kubernetes;
-			process := served;
+			processes := served;
 		}.oclAsType(Deliverable))
 	->union(if scraped then Sequence{object MonitorFile {
 			path := root + 'podmonitor.yaml';
@@ -477,14 +803,21 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 	->append(object NetworkPolicyFile {
 			path := root + 'networkpolicy.yaml';
 			adapter := AdapterName::networking;
-			process := served;
-			ingress := ingressOf(first, self);
-			egress := Sequence{object PolicyPeer {
-				namespace := estate.substrate.clusterDns;
-				port := DNS_PORT;
-			}};
+			policies := self.processes->collect(p | object ProcessPolicy {
+				process := p.resolveone(ResolvedProcess);
+				ingress := ingressOf(p, self);
+				egress := egressOf(p);
+			});
 		}.oclAsType(Deliverable))
 	endif;
+
+-- The controller kind derives from `lifecycle` and `volumes`, and the strategy
+-- from `cutover`; the templates spell both.
+query controllerOf(p : PI::Process) : ControllerKind =
+	if p.volumes->notEmpty() then ControllerKind::statefulSet else ControllerKind::deployment endif;
+
+query strategyOf(p : PI::Process) : String =
+	if p.cutover = PI::Cutover::interrupted then 'Recreate' else 'RollingUpdate' endif;
 
 query assertFailedFiles(message : String) : Sequence(Deliverable) {
 	assert fatal (false) with log(message);
@@ -492,34 +825,53 @@ query assertFailedFiles(message : String) : Sequence(Deliverable) {
 }
 
 -- Who may reach a Process (spec/v1/16-dependencies.md#the-derived-allow-set):
--- the proxy of the tier each route's audience reaches, and the metrics stack
--- where the Process is scraped, each at the port of the surface it names.
--- One peer per namespace, Process and port, the first time it is reached: two
--- routes to one surface admit the proxy once.
+-- the proxy of the tier each route's audience reaches, the metrics stack where
+-- the Process is scraped, and every consumer whose edge names one of its
+-- surfaces, each at that surface's port. One peer per namespace, Process and
+-- port, the first time it is reached.
 query ingressOf(p : PI::Process, app : EffectiveApplication) : Sequence(PolicyPeer) =
-	if consumed(app) then unconsumed(app)
-	else (app.exposure->collect(e | e.routes->select(r | r.process = p)->collect(r |
+	(app.exposure->collect(e | e.routes->select(r | r.process = p)->collect(r |
 		peersOf(tierFor(r.audienceOf(e)).traefik.id, r.surface.value)))->flatten()
 	->union(if app.observability <> null and app.observability.scrape <> null
 			and app.observability.scrape.process = p and estate.telemetry <> null
 		then peersOf(estate.telemetry.metrics.id, app.observability.scrape.surface.value)
-		else Sequence{} endif))
+		else Sequence{} endif)
+	->union(consumersOf(p, app)))
 	->asOrderedSet()->asSequence()
 	->collect(peer | object PolicyPeer {
 		namespace := peer.namespace;
 		process := peer.process;
 		port := peer.port;
-	}) endif;
+	});
 
--- Whether a Process anywhere in the union consumes the Application by an edge,
--- which admits it too: that ingress lands with the edges, #91.
-query consumed(app : EffectiveApplication) : Boolean =
-	projects.applications.processes.dependsOn->exists(e | e.application = app.id);
+-- Every Process of the union whose edge names this Application and a surface this Process provides.
+query consumersOf(p : PI::Process, app : EffectiveApplication)
+		: Sequence(Tuple(namespace : String, process : String, port : Integer)) =
+	projects->collect(prj | prj.applications.processes->collect(consumer |
+		consumer.dependsOn->select(e | e.application = app.id and p.provides->exists(s | s.key = e.surface))
+			->collect(e | Tuple{namespace = namespaceOf(prj.project), process = consumer.name,
+				port = p.provides->select(s | s.key = e.surface)->any(true).value})))->flatten();
 
-query unconsumed(app : EffectiveApplication) : Sequence(PolicyPeer) {
-	assert fatal (false) with log(app.id + ' is consumed by an edge, whose ingress lands with #91');
-	return Sequence{};
-}
+-- What a Process may reach beyond its edges: the cluster's DNS, and the Secret
+-- Store where it holds a grant.
+query egressOf(p : PI::Process) : Sequence(PolicyPeer) =
+	Sequence{object PolicyPeer { namespace := estate.substrate.clusterDns; port := DNS_PORT; }}
+	->union(if p.secrets->isEmpty() then Sequence{} else storePeers() endif);
+
+-- The one Process of the Secret Store that answers on `http`, at its own port.
+query storePeers() : Sequence(PolicyPeer) =
+	let providers : Sequence(Tuple(project : String, process : PI::Process)) =
+		projects->collect(prj | prj.applications->select(a | a.id = estate.secretStore.id).processes
+			->select(p | p.provides->exists(s | s.key = HTTP_SURFACE))
+			->collect(p | Tuple{project = prj.project, process = p}))->flatten() in
+	if providers->isEmpty() then Sequence{} else
+		let first : Tuple(project : String, process : PI::Process) = providers->first() in
+		Sequence{object PolicyPeer {
+			namespace := namespaceOf(first.project);
+			process := first.process.name;
+			port := first.process.provides->select(s | s.key = HTTP_SURFACE)->any(true).value;
+		}}
+	endif;
 
 -- Every Process of `application` in the union, at `port`, as a value.
 query peersOf(application : String, at : Integer)
@@ -527,6 +879,11 @@ query peersOf(application : String, at : Integer)
 	projects->collect(prj | prj.applications->select(a | a.id = application).processes
 		->collect(p | Tuple{namespace = namespaceOf(prj.project), process = p.name, port = at}))
 		->flatten();
+
+-- The port of `application`'s Process that provides this surface.
+query String::portOf(application : String) : Integer =
+	projects.applications->select(a | a.id = application).processes.provides
+		->select(s | s.key = self)->any(true).value;
 
 -- The routes an exposure gives the tier proxy, in the tier's own directory of
 -- the estate-scoped edge, and one index per tier over every route in it. The
@@ -622,6 +979,25 @@ query Runtime::spelling() : String =
 	else if self = Runtime::none then 'none' else 'static' endif endif endif endif;
 
 query HardeningClass::spelling() : String = 'restricted';
+
+query Delivery::spelling() : String =
+	if self = Delivery::env then 'env' else if self = Delivery::file then 'file' else 'self' endif endif;
+
+query AccessTier::spelling() : String =
+	if self = AccessTier::read then 'read'
+	else if self = AccessTier::selfRenew then 'self-renew'
+	else if self = AccessTier::selfRoll then 'self-roll' else 'custody' endif endif endif;
+
+query TransitOp::spelling() : String =
+	if self = TransitOp::sign then 'sign'
+	else if self = TransitOp::verify then 'verify'
+	else if self = TransitOp::encrypt then 'encrypt'
+	else if self = TransitOp::decrypt then 'decrypt' else 'rotate' endif endif endif endif;
+
+query PI::DurabilityClass::resolvedDurability() : RD::DurabilityClass =
+	if self = PI::DurabilityClass::reconstructible then RD::DurabilityClass::reconstructible
+	else if self = PI::DurabilityClass::recoverable then RD::DurabilityClass::recoverable
+	else RD::DurabilityClass::irreplaceable endif endif;
 
 query Arch::spelling() : String = if self = Arch::amd64 then 'amd64' else 'arm64' endif;
 

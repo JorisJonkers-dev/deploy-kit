@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -47,25 +48,44 @@ public final class Outputs {
 
     /**
      * The cases this implementation resolves, each with the project it resolves and the set of
-     * documents it is read with: the case's own project file, the foundation it composes with, and
-     * the pinned inputs beside the Platform document (spec/v1/20-resolved-deployment.md#pinned-inputs).
-     * A case with a dependencies oracle and no entry here is not yet a resolution parity case; #91
-     * widens the list to every example.
+     * documents it is read with: the case's own documents, the foundation it composes with, and the
+     * pinned inputs beside the Platform document (spec/v1/20-resolved-deployment.md#pinned-inputs).
+     * Every case the production implementation resolves is here; `knowledge` joins when the
+     * production implementation resolves it (JorisJonkers-dev/deploy-kit#201).
      */
     public static final Map<String, Resolving> RESOLVED = Map.of(
             "minimal",
+            new Resolving("notes", withFoundation("minimal/notes.project.yml")),
+            "auth",
             new Resolving(
-                    "notes",
-                    List.of(
-                            "platform/platform.intent.yml",
-                            "platform/node-contract.yml",
-                            "platform/images.lock.yml",
-                            "platform/cluster-state.yml",
-                            "minimal/notes.project.yml",
-                            "delivery/delivery.project.yml",
-                            "edge/edge.project.yml",
-                            "observability/observability.project.yml",
-                            "secrets/secrets.project.yml")));
+                    "auth",
+                    withFoundation("auth/auth.project.yml", "auth/migration-proof.yml", "data/data.project.yml")),
+            "data",
+            new Resolving("data", withFoundation("data/data.project.yml")),
+            "delivery",
+            new Resolving("delivery", withFoundation()),
+            "edge",
+            new Resolving("edge", withFoundation()),
+            "observability",
+            new Resolving("observability", withFoundation()),
+            "secrets",
+            new Resolving("secrets", withFoundation()));
+
+    /** The Platform document, its pinned inputs and the foundation every case composes with, then {@code own}. */
+    private static List<String> withFoundation(String... own) {
+        List<String> documents = new ArrayList<>(List.of(
+                "platform/platform.intent.yml",
+                "platform/node-contract.yml",
+                "platform/images.lock.yml",
+                "platform/cluster-state.yml"));
+        documents.addAll(List.of(own));
+        documents.addAll(List.of(
+                "delivery/delivery.project.yml",
+                "edge/edge.project.yml",
+                "observability/observability.project.yml",
+                "secrets/secrets.project.yml"));
+        return List.copyOf(documents);
+    }
 
     /** The integrity the worked projections record for the schema package they were rendered against. */
     public static final String INTEGRITY = "sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b";

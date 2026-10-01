@@ -195,6 +195,15 @@ describe("resolveIntentSet", () => {
     );
   });
 
+  it.each(["delivery", "edge", "observability", "secrets"])(
+    "resolves the foundation's %s dependency edges to its committed oracle, byte for byte",
+    (name) => {
+      expect(canonicalJson(project(resolved(), name).dependencies)).toBe(
+        text(`${name}/expected/dependencies.json`),
+      );
+    },
+  );
+
   it("moves the projection, the revision and the render hash when one authored field moves", () => {
     const moved = notes({
       "minimal/notes.project.yml": (document) =>

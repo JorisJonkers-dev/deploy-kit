@@ -184,6 +184,7 @@
 
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedVolume">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="claim" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="size" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="durability" lowerBound="1" eType="#//DurabilityClass"/>
     <!-- `reconstructible` earns none, which is the absence rather than a class. -->
@@ -204,16 +205,26 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="credential" eType="#//ResolvedGrant" containment="true"/>
   </eClassifiers>
 
+  <!-- A `kv` grant names its path, keys and access tier; a `transit` or `database`
+       grant names its engine and the paths its policy covers, derived from it. -->
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedGrant">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="keys" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="access" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="access" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="engine" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="paths" upperBound="-1" eType="#//PolicyPath" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="delivery" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <!-- The Secret an `env` or `file` grant is synced to; a `self` grant is synced nowhere. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="destination" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="fileMode" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="restartTargets" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- A path a grant's policy covers, and what it may do there. -->
+  <eClassifiers xsi:type="ecore:EClass" name="PolicyPath">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="allows" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <!-- A settings file, by the content-hashed name an edit changes (spec/v1/10-project-intent.md#assets). -->
@@ -329,7 +340,8 @@
     identity it runs as, and the budget a drain honours.
   -->
   <eClassifiers xsi:type="ecore:EClass" name="WorkloadFile" eSuperTypes="#//Deliverable">
-    <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
+    <!-- One file per Application, holding every Process it applies to. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="controller" lowerBound="1" eType="#//ControllerKind"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="strategy" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="disruptionBudget" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -338,16 +350,25 @@
   <!-- What Flagger switches a blue-green Process by: its Canary, whose webhooks
        ask the Release Gate (spec/v1/30-deliverables.md#flagger-ready-objects). -->
   <eClassifiers xsi:type="ecore:EClass" name="SwitchoverFile" eSuperTypes="#//Deliverable">
-    <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
+    <!-- One file per Application, holding every Process it applies to. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="IdentityFile" eSuperTypes="#//Deliverable">
-    <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
+    <!-- One file per Application, holding every Process it applies to. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess"/>
   </eClassifiers>
 
   <!-- Firewall rules allowing the declared connections and blocking the rest. -->
+  <!-- A project's file holds its default-deny and no policy; an Application's holds
+       one policy per Process. -->
   <eClassifiers xsi:type="ecore:EClass" name="NetworkPolicyFile" eSuperTypes="#//Deliverable">
-    <eStructuralFeatures xsi:type="ecore:EReference" name="process" eType="#//ResolvedProcess"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="policies" upperBound="-1" eType="#//ProcessPolicy" containment="true"/>
+  </eClassifiers>
+
+  <!-- Who may reach one Process, and what it may reach. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ProcessPolicy">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="ingress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="egress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
   </eClassifiers>
