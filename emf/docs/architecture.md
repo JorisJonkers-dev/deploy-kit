@@ -73,9 +73,9 @@ the **walking skeleton**, which proves each tool runs headless in CI before any
 model work depends on it: an `.ecore` loads, an OCL
 invariant fires, the Xtext parser reads a three-line document, a QVTo identity
 transformation runs, and an Acceleo template writes one file. Its smoke tests
-sat in the module each tool belongs to (the QVTo one is gone, deleted by the
-resolution tracer), and each is deleted by the stage ticket
-whose suite covers that tool.
+sat in the module each tool belongs to (the QVTo and Acceleo ones are gone,
+deleted by the resolution and rendering tracers), and each is deleted by the
+stage ticket whose suite covers that tool.
 
 ## Modules
 
@@ -348,6 +348,30 @@ transformation covers a case, a template test reads a hand-written Resolved
 Deployment model kept inside `emf/`; it is test input, never an oracle. Output is compared byte for byte with the
 committed `rendered/` tree, so whitespace, key order and the `GENERATED` header
 are template decisions made to match the oracle, not presentation.
+
+`bundles/render/model/render.mtl` is one module. Its main template walks the
+Deployment's `deliverables` and opens one file per Deliverable at the path the
+path plan assigned it, and each Deliverable kind has one `objects` template
+that spells its target format. The templates decide nothing: every value they
+write is a feature of the model, and the only arithmetic they do is spelling,
+a duration as whole seconds and a precedence as a Traefik priority.
+
+Acceleo 4 strips two spaces of margin from every line of a block's body, and a
+call written at a column repeats that column's text before every line the call
+writes. The templates lean on the second rule: a fragment that appears in more
+than one object (the metadata, the label set, a policy peer, a probe target) is
+one template written unindented, and each caller places it at its own depth.
+A list item is a fragment that opens on its own `- `, because the repeated text
+is copied literally and a `- ` before the call would open every line as an item.
+
+A string value is written plain unless the YAML 1.2 core schema would read it
+as null, a boolean, an integer or a float, in which case it is double-quoted,
+as the production implementation's serializer quotes it. That serializer also
+quotes a string for an indicator character or an embedded `: `, which no value
+the examples render carries yet, so the templates do not spell that case. The Java
+side, `Rendering`, only loads the module, runs it, and fails the run with
+Acceleo's own diagnostic when a template does not parse or does not evaluate, so
+a half-written tree is never read as a whole one.
 
 ## Parity
 

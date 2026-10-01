@@ -1,0 +1,407 @@
+[module render('https://jorisjonkers.dev/deploy-kit/resolved-deployment/1')/]
+
+[comment The Deliverable Set (spec/v1/30-deliverables.md): one file per Deliverable a Resolved
+  Deployment carries, at the path the path plan assigned it. The templates spell the target
+  formats and decide nothing: every value is read from the model. A block's body carries two
+  spaces of margin that are not written, and a call written at a column repeats that column's
+  text before every line it writes, so a shared fragment is spelled once, unindented. /]
+
+[comment @main /]
+[template public render(deployment : resolveddeployment::ResolvedDeployment)]
+  [for (d : resolveddeployment::Deliverable | deployment.deliverables)]
+    [file (d.path, overwrite, 'UTF-8')]
+      [d.document()/]
+    [/file]
+  [/for]
+[/template]
+
+[comment Every document opens on the same header, and each object on its own separator. /]
+[template private document(d : resolveddeployment::Deliverable)]
+  # GENERATED. Never hand-edit.
+  [if (d.oclIsKindOf(resolveddeployment::NamespaceFile))]
+    [d.oclAsType(resolveddeployment::NamespaceFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::IndexFile))]
+    [d.oclAsType(resolveddeployment::IndexFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::NetworkPolicyFile))]
+    [d.oclAsType(resolveddeployment::NetworkPolicyFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::WorkloadFile))]
+    [d.oclAsType(resolveddeployment::WorkloadFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::SwitchoverFile))]
+    [d.oclAsType(resolveddeployment::SwitchoverFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::IdentityFile))]
+    [d.oclAsType(resolveddeployment::IdentityFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::MonitorFile))]
+    [d.oclAsType(resolveddeployment::MonitorFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::IngressRouteFile))]
+    [d.oclAsType(resolveddeployment::IngressRouteFile).objects()/]
+  [/if]
+[/template]
+
+[comment ======================================================= project files /]
+
+[template private objects(d : resolveddeployment::NamespaceFile)]
+  ---
+  apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: [d.namespace/]
+    labels:
+      app.kubernetes.io/managed-by: deploy-kit
+[/template]
+
+[template private objects(d : resolveddeployment::IndexFile)]
+  ---
+  apiVersion: kustomize.config.k8s.io/v1beta1
+  kind: Kustomization
+  resources:
+  [for (r : String | d.resources)]
+      - [r/]
+  [/for]
+[/template]
+
+[comment A project-level file holds no policy: it is the project's default-deny, which selects
+  every pod and belongs to no Process. /]
+[template private objects(d : resolveddeployment::NetworkPolicyFile)]
+  [if (d.policies->isEmpty())]
+    ---
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: default-deny
+      namespace: [d.projectNamespace()/]
+      labels:
+        app.kubernetes.io/managed-by: deploy-kit
+    spec:
+      podSelector:
+        matchLabels: {}
+      policyTypes:
+        - Ingress
+        - Egress
+  [else]
+    [for (p : resolveddeployment::ProcessPolicy | d.policies)]
+      [p.policy()/]
+    [/for]
+  [/if]
+[/template]
+
+[template private policy(p : resolveddeployment::ProcessPolicy)]
+  ---
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    [p.process.metadata()/]
+  spec:
+    podSelector:
+      matchLabels:
+        app.kubernetes.io/instance: [p.process.name/]
+    policyTypes:
+      - Ingress
+      - Egress
+  [if (p.ingress->notEmpty())]
+      ingress:
+    [for (peer : resolveddeployment::PolicyPeer | p.ingress)]
+          - from:
+              [peer.peer()/]
+            ports:
+              - protocol: TCP
+                port: [peer.port/]
+    [/for]
+  [/if]
+    egress:
+  [for (edge : resolveddeployment::ResolvedEdge | p.process.dependencies)]
+    [for (peer : resolveddeployment::PolicyPeer | edge.peers)]
+            - to:
+                [peer.peer()/]
+              ports:
+                - protocol: TCP
+                  port: [peer.port/]
+    [/for]
+  [/for]
+  [comment The cluster's DNS answers on UDP, and on TCP for a truncated response. /]
+  [for (peer : resolveddeployment::PolicyPeer | p.egress)]
+        - to:
+            [peer.peer()/]
+          ports:
+            - protocol: UDP
+              port: [peer.port/]
+            - protocol: TCP
+              port: [peer.port/]
+  [/for]
+[/template]
+
+[template private peer(peer : resolveddeployment::PolicyPeer)]
+  - namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: [peer.namespace/]
+  [if (peer.process <> null)]
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: [peer.process/]
+  [/if]
+[/template]
+
+[comment =================================================== application files /]
+
+[template private metadata(p : resolveddeployment::ResolvedProcess)]
+  name: [p.name/]
+  namespace: [p.application().namespace/]
+  labels:
+    [p.labels()/]
+[/template]
+
+[template private labels(p : resolveddeployment::ResolvedProcess)]
+  app.kubernetes.io/name: [p.name/]
+  app.kubernetes.io/instance: [p.name/]
+  app.kubernetes.io/part-of: [p.application().id/]
+  app.kubernetes.io/managed-by: deploy-kit
+  app.kubernetes.io/component: [p.component/]
+[/template]
+
+[template private objects(d : resolveddeployment::IdentityFile)]
+  [for (p : resolveddeployment::ResolvedProcess | d.processes)]
+    ---
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      [p.metadata()/]
+  [/for]
+[/template]
+
+[template private objects(d : resolveddeployment::MonitorFile)]
+  ---
+  apiVersion: monitoring.coreos.com/v1
+  kind: PodMonitor
+  metadata:
+    [d.process.metadata()/]
+  spec:
+    jobLabel: app.kubernetes.io/instance
+    selector:
+      matchLabels:
+        app.kubernetes.io/instance: [d.process.name/]
+    namespaceSelector:
+      matchNames:
+        - [d.process.application().namespace/]
+    podMetricsEndpoints:
+      - port: [d.surface/]
+        path: [d.scrapePath/]
+        interval: [d.interval/]
+        scrapeTimeout: [d.timeout/]
+[/template]
+
+[template private objects(d : resolveddeployment::SwitchoverFile)]
+  [for (p : resolveddeployment::ResolvedProcess | d.processes)]
+    ---
+    apiVersion: flagger.app/v1beta1
+    kind: Canary
+    metadata:
+      [p.metadata()/]
+    spec:
+      provider: kubernetes
+      targetRef:
+        apiVersion: apps/v1
+        kind: Deployment
+        name: [p.name/]
+      progressDeadlineSeconds: [p.deadline.seconds()/]
+      service:
+        port: [p.surfaces->first().port/]
+        targetPort: [p.surfaces->first().name/]
+        portName: [p.surfaces->first().name/]
+      analysis:
+        interval: [p.application().releaseGate.analysis.interval/]
+        iterations: [p.application().releaseGate.analysis.iterations/]
+        threshold: [p.application().releaseGate.analysis.threshold/]
+        webhooks:
+          [p.webhook('may-start', 'confirm-rollout')/]
+          [p.webhook('checks', 'rollout')/]
+          [p.webhook('may-promote', 'confirm-promotion')/]
+  [/for]
+[/template]
+
+[template private webhook(p : resolveddeployment::ResolvedProcess, name : String, type : String)]
+  - name: [name/]
+    type: [type/]
+    url: [p.application().releaseGate.endpoint/]/[name/]
+    metadata:
+      application: [p.application().id/]
+      process: [p.name/]
+      revision: [p.application().revision/]
+[/template]
+
+[template private objects(d : resolveddeployment::WorkloadFile)]
+  [for (p : resolveddeployment::ResolvedProcess | d.processes)]
+    [p.workload(d)/]
+  [/for]
+[/template]
+
+[comment Flagger scales and promotes a blue-green Deployment, so it carries no replica count and
+  its new version starts beside the old one; a stop-start one keeps its count and stops before
+  it starts again. /]
+[template private workload(p : resolveddeployment::ResolvedProcess, d : resolveddeployment::WorkloadFile)]
+  ---
+  apiVersion: apps/v1
+  kind: [d.controller.toString()/]
+  metadata:
+    [p.metadata()/]
+  spec:
+  [if (p.switchover.toString() = 'blue-green')]
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 1
+          maxUnavailable: 0
+  [else]
+      replicas: [p.replicas/]
+      strategy:
+        type: Recreate
+  [/if]
+    progressDeadlineSeconds: [p.deadline.seconds()/]
+    selector:
+      matchLabels:
+        app.kubernetes.io/name: [p.name/]
+        app.kubernetes.io/instance: [p.name/]
+    template:
+      metadata:
+        labels:
+          [p.labels()/]
+      spec:
+        serviceAccountName: [p.identity/]
+        automountServiceAccountToken: [p.identityToken/]
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: [p.uid/]
+          runAsGroup: [p.gid/]
+          seccompProfile:
+            type: RuntimeDefault
+        containers:
+          [p.container()/]
+[/template]
+
+[template private container(p : resolveddeployment::ResolvedProcess)]
+  - name: [p.name/]
+    image: [p.image/]
+  [if (p.surfaces->notEmpty())]
+      ports:
+    [for (s : resolveddeployment::ResolvedSurface | p.surfaces)]
+          - name: [s.name/]
+            containerPort: [s.port/]
+    [/for]
+  [/if]
+  [if (p.environment->notEmpty())]
+      env:
+    [for (e : resolveddeployment::EnvEntry | p.environment)]
+          - name: [e.name/]
+            value: [e.value.scalar()/]
+    [/for]
+  [/if]
+    resources:
+      requests:
+        memory: [p.memory/]
+        cpu: [p.cpu/]
+      limits:
+        memory: [p.memory/]
+    securityContext:
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+  [if (p.readiness <> null)]
+      readinessProbe:
+        [p.readiness.target.probeTarget()/]
+        periodSeconds: [p.readiness.period.seconds()/]
+        timeoutSeconds: [p.readiness.timeout.seconds()/]
+        failureThreshold: [p.readiness.failures/]
+        initialDelaySeconds: 0
+  [/if]
+  [if (p.liveness <> null)]
+      livenessProbe:
+        [p.liveness.target.probeTarget()/]
+        periodSeconds: [p.liveness.period.seconds()/]
+        timeoutSeconds: [p.liveness.timeout.seconds()/]
+        failureThreshold: [p.liveness.failures/]
+        initialDelaySeconds: 0
+  [/if]
+  [if (p.startup <> null)]
+      startupProbe:
+        [p.startup.target.probeTarget()/]
+        periodSeconds: [p.startup.period.seconds()/]
+        timeoutSeconds: [p.startup.timeout.seconds()/]
+        failureThreshold: [p.startup.failures/]
+  [/if]
+[/template]
+
+[template private probeTarget(t : resolveddeployment::ProbeTarget)]
+  [if (t.oclIsKindOf(resolveddeployment::HttpTarget))]
+    httpGet:
+      path: [t.oclAsType(resolveddeployment::HttpTarget).path/]
+      port: [t.oclAsType(resolveddeployment::HttpTarget).port/]
+  [else]
+    tcpSocket:
+      port: [t.oclAsType(resolveddeployment::TcpTarget).tcp/]
+  [/if]
+[/template]
+
+[comment ============================================================ the edge /]
+
+[comment A route set belongs to an Application and to none of its Processes. /]
+[template private objects(d : resolveddeployment::IngressRouteFile)]
+  ---
+  apiVersion: traefik.io/v1alpha1
+  kind: IngressRoute
+  metadata:
+    name: [d.exposure.application().id/]-[d.exposure.name/]
+    namespace: [d.exposure.application().namespace/]
+    labels:
+      app.kubernetes.io/part-of: [d.exposure.application().id/]
+      app.kubernetes.io/managed-by: deploy-kit
+  spec:
+    entryPoints:
+      - [d.entryPoint/]
+    routes:
+  [for (r : resolveddeployment::ResolvedRoute | d.exposure.routes)]
+        [r.route(d.exposure)/]
+  [/for]
+  [if (d.certificateResolver <> null)]
+      tls:
+        certResolver: [d.certificateResolver/]
+  [/if]
+[/template]
+
+[comment Traefik tries the higher priority first, and precedence 1 is matched first. /]
+[template private route(r : resolveddeployment::ResolvedRoute, e : resolveddeployment::ResolvedExposure)]
+  - kind: Rule
+    match: Host(`[e.host/]`) && [if (r.match.toString() = 'exact')]Path[else]PathPrefix[/if](`[r.path/]`)
+    priority: [1000 - r.precedence/]
+    middlewares:
+  [for (m : resolveddeployment::MiddlewareStep | r.middleware)]
+        - name: [m.middlewareName()/]
+          namespace: [e.proxyNamespace/]
+  [/for]
+    services:
+      - name: [r.process.name/]
+        namespace: [e.application().namespace/]
+        port: [r.process.surfaces->select(s | s.name = r.surface)->first().port/]
+[/template]
+
+[comment ============================================================= queries /]
+
+[query private application(p : resolveddeployment::ResolvedProcess) : resolveddeployment::ResolvedApplication =
+  p.eContainer().oclAsType(resolveddeployment::ResolvedApplication) /]
+
+[query private application(e : resolveddeployment::ResolvedExposure) : resolveddeployment::ResolvedApplication =
+  e.eContainer().oclAsType(resolveddeployment::ResolvedApplication) /]
+
+[query private projectNamespace(d : resolveddeployment::Deliverable) : String =
+  d.eContainer().oclAsType(resolveddeployment::ResolvedDeployment).applications->first().namespace /]
+
+[comment A duration as whole seconds: `60s` is 60. /]
+[query private seconds(duration : String) : Integer = duration.substring(1, duration.size() - 1).toInteger() /]
+
+[query private middlewareName(m : resolveddeployment::MiddlewareStep) : String =
+  if m.kind.toString() = 'forward-auth' then 'forward-auth'
+  else if m.contentPolicy = null then 'security-headers' else 'security-headers-' + m.contentPolicy endif endif /]
+
+[comment A string scalar, double-quoted where the YAML 1.2 core schema would read it as null, a
+  boolean, an integer or a float, and written plain otherwise. /]
+[query private scalar(value : String) : String =
+  if value.matches('|~|null|Null|NULL|true|True|TRUE|false|False|FALSE|[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+|[-+]?([.][0-9]+|[0-9]+([.][0-9]*)?)([eE][-+]?[0-9]+)?|[-+]?[.](inf|Inf|INF)|[.](nan|NaN|NAN)')
+  then '"' + value + '"' else value endif /]

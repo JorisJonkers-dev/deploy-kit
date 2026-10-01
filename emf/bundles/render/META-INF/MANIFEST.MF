@@ -5,7 +5,9 @@ Bundle-SymbolicName: dev.jorisjonkers.deploykit.emf.render;singleton:=true
 Bundle-Version: 0.1.0.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-21
 Automatic-Module-Name: dev.jorisjonkers.deploykit.emf.render
+Export-Package: dev.jorisjonkers.deploykit.emf.render
 Require-Bundle: org.eclipse.emf.ecore,
  org.eclipse.emf.ecore.xmi,
  org.eclipse.acceleo.aql,
- org.eclipse.acceleo.query
+ org.eclipse.acceleo.query,
+ dev.jorisjonkers.deploykit.emf.metamodel

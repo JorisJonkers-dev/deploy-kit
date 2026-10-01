@@ -36,7 +36,7 @@ answers the navigation question without a search.
 | the Ecore metamodels (source, target and pinned inputs) and their OCL | `emf/bundles/metamodel` | Task 1 | imported in step 2; `model/skeleton.ecore` and `model/skeleton.ocl` open and validate as step 3 describes |
 | the Xtext grammars and generated editor | `emf/bundles/syntax` | Task 1 | imported in step 2; the generated editor reports OCL constraint violations while a source file is edited in it |
 | the QVTo transformations | `emf/bundles/resolve` | Task 2 | imported in step 2; `resolution.launch` runs the resolution on `minimal`, as step 4 describes |
-| the Acceleo templates | `emf/bundles/render` | Task 3 | imported in step 2; `file.launch` runs them, as step 4 describes |
+| the Acceleo templates | `emf/bundles/render` | Task 3 | imported in step 2; `render.launch` runs them, as step 4 describes |
 | the pipeline entry point | `emf/bundles/cli` | Task 1 onward | imported in step 2, alongside the rest |
 | the parity suite | `emf/tests/parity` | no task grades it | it is Maven-only; no examiner opens it |
 
@@ -75,8 +75,11 @@ and Acceleo 4 SDKs installed from the same release:
    `skeletonHasAnApplication` invariant is reported. `model/notes.xmi`
    validates clean.
 4. Run `resolution.launch` in `dev.jorisjonkers.deploykit.emf.resolve` and
-   `file.launch` in `dev.jorisjonkers.deploykit.emf.render` from **Run > Run
+   `render.launch` in `dev.jorisjonkers.deploykit.emf.render` from **Run > Run
    Configurations**. They write under each project's `target/`. The resolution
    reads the two extents step 0's build left under
    `dev.jorisjonkers.deploykit.emf.cli/target/parity/minimal/`, and its output
-   equals `models/minimal.resolveddeployment`.
+   equals `models/minimal.resolveddeployment`. The rendering reads that same
+   hand-written model, and the files it writes under `target/render/apps/`
+   equal `spec/v1/examples/minimal/rendered/` and minimal's route under
+   `spec/v1/examples/_estate/rendered/`.
