@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+status: accepted
 claim: settled
 date: 2026-09-14
 normative: docs/architecture.md#gates

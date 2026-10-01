@@ -18,6 +18,7 @@ interface AdrOptions {
   readonly tier?: string;
   readonly title?: string;
   readonly claim?: string;
+  readonly status?: string;
   readonly owner?: string;
   readonly restsOn?: string | null;
   readonly normative?: string;
@@ -29,6 +30,7 @@ function validAdr({
   tier = "decision",
   title = "A decision stated as one sentence",
   claim = "settled",
+  status = "accepted",
   owner,
   restsOn = '["0001"]',
   normative = "spec/v1/00-overview.md#a-heading",
@@ -37,7 +39,7 @@ function validAdr({
   return [
     "---",
     `tier: ${tier}`,
-    "status: proposed",
+    `status: ${status}`,
     `claim: ${claim}`,
     ...(owner === undefined ? [] : [`owner: ${owner}`]),
     "date: 2026-09-07",
@@ -172,7 +174,7 @@ describe("structure", () => {
   });
 
   it("fails a status outside the vocabulary", () => {
-    const broken = validAdr().replace("status: proposed", "status: draft");
+    const broken = validAdr().replace("status: accepted", "status: draft");
     expect(violations({ [DECISION]: broken })).toMatch(
       /status must be proposed\|accepted, got 'draft'/,
     );
@@ -180,8 +182,8 @@ describe("structure", () => {
 
   it("fails a superseded-by field, since a decision is rewritten instead", () => {
     const superseded = validAdr().replace(
-      "status: proposed",
-      "status: proposed\nsuperseded-by: 0003",
+      "status: accepted",
+      "status: accepted\nsuperseded-by: 0003",
     );
     expect(violations({ [DECISION]: superseded })).toMatch(
       /superseded-by: a decision is rewritten in place/,
@@ -195,6 +197,22 @@ describe("structure", () => {
     expect(violations({ [DECISION]: amended })).toMatch(
       /amendment note: rewrite the decision/,
     );
+  });
+
+  it("fails a settled claim whose status is not accepted", () => {
+    const settled = validAdr({ claim: "settled", status: "proposed" });
+    expect(violations({ [DECISION]: settled })).toMatch(
+      /claim 'settled' requires status accepted, got 'proposed'/,
+    );
+  });
+
+  it("accepts an open claim that is still proposed", () => {
+    const open = validAdr({
+      claim: "open",
+      owner: "someone",
+      status: "proposed",
+    });
+    expect(violations({ [DECISION]: open })).toBe("");
   });
 
   it("fails an unknown claim value", () => {
