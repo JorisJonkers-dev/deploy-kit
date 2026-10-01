@@ -1,0 +1,154 @@
+\section{Alternatives and Justification}
+\label{sec:alternatives}
+
+This section first compares the transformation languages the course offers
+(Section~\ref{sec:language}). It then compares the ways the transformation
+could be structured, and gives the chosen solution in general terms
+(Section~\ref{sec:structure}). Section~\ref{sec:design} describes the solution
+in detail.
+
+\subsection{The Transformation Language}
+\label{sec:language}
+
+The course offers ATL and QVT-Operational (QVTo). A third option is a
+transformation written in Java, by hand or with a small rule library such as
+SiTra. Table~\ref{tab:languages} compares the three against what this
+transformation has to do.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.27\linewidth}>{\raggedright\arraybackslash}p{0.20\linewidth}>{\raggedright\arraybackslash}p{0.20\linewidth}>{\raggedright\arraybackslash}p{0.20\linewidth}}
+\hline
+\textbf{Requirement} & \textbf{ATL} & \textbf{QVTo} & \textbf{Java} \\
+\hline
+Derive values from the whole cluster, not from one source element &
+  helpers outside the rules & queries in the language & methods \\
+Refer to a target object created by another rule &
+  implicit resolution of matched rules &
+  explicit \texttt{resolveone} through the trace & a trace kept by hand \\
+Set a value only after the rest of the element exists &
+  imperative \texttt{do} section & \texttt{end} section of a mapping & any order \\
+Stop with a message on an underivable value &
+  no assertion statement & \texttt{assert fatal} & exception \\
+Call code for an operation the language lacks &
+  native library only & Java black-box library & not needed \\
+Graded as a transformation language & yes & yes & no \\
+\hline
+\end{tabular}
+\caption{Transformation Languages Against the Requirements of the Resolution}
+\label{tab:languages}
+\end{table}
+
+Most values in a resolved model do not come from one source element. The
+eligible machines of a process depend on the node contract. A route's
+precedence depends on the other routes of the same exposure. The ingress
+rules of a process depend on every process in the cluster that depends on it.
+ATL is strongest when one source element matches one target element, as in its
+matched rules. Here, most of the work would end up in helpers and called rules,
+which are imperative ATL without the matching. QVTo is imperative from the
+start, uses OCL for its expressions, and makes the trace an explicit operation.
+The transformation uses the trace in seven places, to point a gate member, a
+route or a generated file at the process the transformation created for it.
+
+A Java transformation would be the easiest to debug. It would also keep the
+trace by hand, and it is not a transformation language, which the course
+grades. QVTo was therefore chosen. The one operation QVTo cannot express,
+computing a SHA-256 digest, is a Java black-box library
+(Section~\ref{sec:blackbox}).
+
+\subsection{The Structure of the Transformation}
+\label{sec:structure}
+
+Table~\ref{tab:structure} lists the structural alternatives that were
+considered, and the choice made for each.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}p{0.33\linewidth}>{\raggedright\arraybackslash}p{0.37\linewidth}}
+\hline
+\textbf{Question} & \textbf{Alternatives} & \textbf{Choice and reason} \\
+\hline
+One transformation or two &
+  One transformation from the authored model; or a lowering first, then the resolution &
+  Two. The constraints of Task~1 are checked on the lowered model, and the
+  resolution reads one level of values instead of three. \\
+How much to resolve per run &
+  The whole cluster in one resolved model; or one project per run, with the
+  other projects as input &
+  One project per run. It matches the production implementation, which writes
+  one resolved document per project, and keeps the model the templates read
+  small. \\
+Where the extra input documents come from &
+  A Java YAML reader; hand-written XMI models; a metamodel with Xtext grammars &
+  A metamodel with grammars. The same YAML files are read by both
+  implementations, so their results can be compared. \\
+How the inputs reach the transformation &
+  One model extent per document; or one extent per metamodel &
+  One extent for the intent (projects and platform) and one for the pinned
+  inputs. The transformation selects documents by type. \\
+How to compute digests &
+  In OCL; in the Java pipeline before the run; in a black-box library &
+  A black-box library. OCL cannot produce bytes, and a digest computed before
+  the run could not cover values the transformation derives. \\
+What to do with an underivable value &
+  Write a default; write a diagnostic model; stop with a message &
+  Stop. A default would produce files that deploy the wrong thing. \\
+\hline
+\end{tabular}
+\caption{Structural Alternatives and the Choices Made}
+\label{tab:structure}
+\end{table}
+
+\subsubsection{A Lowering Before the Resolution}
+\label{sec:twotransformations}
+
+An author may declare a secret, a dependency or a memory limit once for a
+whole project, once for an application, or on a single process. The lowering
+merges these levels onto each process, so that the \emph{effective} process
+contains everything that applies to it. Task~1 checks its constraints on this
+lowered model. If the resolution read the authored model instead, every rule
+that reads a process would have to merge three levels again, and could merge
+them differently from the constraints. Keeping two transformations means each
+rule of the resolution reads one place.
+
+\subsubsection{One Project per Run}
+\label{sec:perproject}
+
+The transformation runs once per project. The other projects are inputs: the
+resolution of \texttt{auth} reads the \texttt{data} project to find the address
+and port of the database it depends on. The alternative, one resolved model
+for the whole cluster, would also work, because QVTo can create several
+deployments in one run. It was rejected because the production implementation
+produces one resolved document per project and the oracles are per project,
+and because the templates of Task~3 generate one project's files at a time.
+
+\subsubsection{Grammars for the Pinned Inputs}
+\label{sec:pinnedalternatives}
+
+The node contract, the images lock and the snapshot are YAML files in the same
+subset as the project documents. Three ways of reading them were compared. A
+Java YAML reader would be short, but it would add a parser the course does not
+teach, and it would read the files differently from the Xtext grammars that
+read the project documents. Hand-written XMI models of the three documents
+would be the quickest, but then the transformation would never read the files
+the production implementation reads, and the comparison between the two
+implementations would not cover them. The chosen solution adds one grammar per
+document. Each grammar inherits the terminals and indentation handling of the
+project grammar, so it adds only its own rules. The migration proof is read the
+same way. An Asset's file is the one input that is not parsed: its text belongs
+to the application, so the pipeline reads it as a string.
+
+\subsubsection{Stopping Instead of Defaulting}
+\label{sec:stopping}
+
+The specification states every derivation as total: each value either derives
+from declared input or the input is rejected. Some rejections need several
+documents, for example an image that the lock does not contain, and the
+constraints of Task~1 do not check those yet. The transformation therefore
+contains fatal assertions at each point where it would otherwise have to
+invent a value. Each assertion names what is missing. The same mechanism let
+the transformation be extended one example at a time: while an example was not
+yet supported, the transformation stopped on it with the name of the ticket
+that would add it.

@@ -1,0 +1,119 @@
+\section{Changes to the Task 1 Metamodels}
+\label{app:metamodels}
+
+Writing the transformation changed the Task~1 metamodels in three ways. A
+third metamodel, the pinned inputs, was added
+(Section~\ref{app:pinned}). The target metamodel gained the values the
+transformation derives that Task~1 had not yet recorded, and its
+generated-file classes now cover applications with several processes
+(Section~\ref{app:target}). Four grammars were added for the pinned inputs
+(Section~\ref{app:grammars}). The source metamodel did not change.
+
+\subsection{The Pinned Inputs Metamodel}
+\label{app:pinned}
+
+The package \texttt{pinnedinputs} contains the documents the resolution reads
+beside the source models. They are a separate package because they are not
+part of what an author writes. The source metamodel's structure is compared
+with the production implementation's schemas through a committed descriptor,
+and adding these classes to it would have added classes those schemas do not
+contain. No class of the target metamodel refers to them: the resolved model
+records the values the transformation reads from them, and their digests.
+Table~\ref{tab:pinned} lists the classes.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.2\linewidth}>{\raggedright\arraybackslash}p{0.36\linewidth}>{\raggedright\arraybackslash}p{0.36\linewidth}}
+\hline
+\textbf{Class} & \textbf{Features} & \textbf{Read by} \\
+\hline
+\texttt{NodeContract} & cluster, label prefix, \texttt{nodes} & eligibility \\
+\texttt{Node} & name (ID), site, architecture, \texttt{allocatable}, capabilities, \texttt{gpus}, \texttt{disks} & eligibility \\
+\texttt{Allocatable} & cpu, memory, as quantities such as \texttt{53500m} & eligibility \\
+\texttt{Gpu} & vendor, model, class, memory in MiB & GPU requests \\
+\texttt{Disk} & medium, usable GiB & disk requests \\
+\texttt{ImagesLock} & name, \texttt{images} & every image \\
+\texttt{LockedImage} & alias (ID), repository, digest, user, group & images, sidecars, backups, migrations \\
+\texttt{ClusterState} & cluster, capture time, \texttt{bindings}, \texttt{placements} & bound machines \\
+\texttt{Binding} & claim, node & bound machines \\
+\texttt{CurrentPlacement} & process, node & not yet read \\
+\texttt{MigrationProof} & \texttt{applications} & migrations \\
+\texttt{ProvenApplication} & application id, tested schema version (optional), whether the release holds a change that cannot run in a transaction & migrations \\
+\texttt{AssetFile} & project, path, text & configuration files \\
+\hline
+\end{tabular}
+\caption{The Classes of the Pinned Inputs Metamodel}
+\label{tab:pinned}
+\end{table}
+
+The disk medium of a node is a string, not the source metamodel's
+\texttt{Media} enumeration. The node contract may list a medium that no process
+may request: three machines boot from SD cards, and \texttt{sdcard} is not a
+\texttt{Media} literal. \texttt{AssetFile} is not parsed from YAML. The pipeline
+creates one per configuration file that a project names, from the file beside
+the project document.
+
+\subsection{Changes to the Target Metamodel}
+\label{app:target}
+
+Table~\ref{tab:targetchanges} lists the changes. The first four record values
+the transformation derives. The last three let one generated file describe an
+application with several processes, which the Task~1 model of \texttt{minimal}
+did not need.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.33\linewidth}>{\raggedright\arraybackslash}p{0.35\linewidth}}
+\hline
+\textbf{Class} & \textbf{Change} & \textbf{Reason} \\
+\hline
+\texttt{StartupProbe} & added \texttt{timeout} & The specification gives the startup probe the platform's probe timeout. \\
+\texttt{ResolvedGrant} & \texttt{path} and \texttt{access} optional; added \texttt{engine} and \texttt{paths} & A transit or database secret has no single path. It is recorded as the Vault paths its policy covers. \\
+\texttt{PolicyPath} & new: \texttt{path}, \texttt{allows} & One path of a secret's policy and the operations allowed on it. \\
+\texttt{ResolvedVolume} & added \texttt{mountAt} & The workload template needs the path a volume is mounted at. \\
+\texttt{WorkloadFile}, \texttt{SwitchoverFile}, \texttt{IdentityFile} & \texttt{process} replaced by \texttt{processes} (one or more) & One file per application holds the resources of all its processes, as in the generated tree of the specification. \\
+\texttt{NetworkPolicyFile} & \texttt{process}, \texttt{ingress} and \texttt{egress} replaced by \texttt{policies} & One policy file per application holds one policy per process. The project's default-deny file holds none. \\
+\texttt{ProcessPolicy} & new: \texttt{process}, \texttt{ingress}, \texttt{egress} & The peers that may reach one process, and those it may reach. \\
+\hline
+\end{tabular}
+\caption{Changes to the Target Metamodel}
+\label{tab:targetchanges}
+\end{table}
+
+The hand-written model of \texttt{minimal} follows these changes. Its startup
+probe now has a timeout, which changed its revision digest, and its generated
+files refer to the process through the new features.
+
+\subsection{Grammars for the Pinned Inputs}
+\label{app:grammars}
+
+Four grammars were added beside the project and platform grammars:
+\texttt{NodeContract}, \texttt{ImagesLock}, \texttt{ClusterState} and
+\texttt{MigrationProof}. Each inherits the project grammar, so it reuses its
+terminals, its indentation tokens and its scalar rule, and adds only the rules
+for its own document and the keywords it introduces. Listing~\ref{lst:grammar}
+shows the smallest.
+
+\begin{lstlisting}[style=report, caption={The Grammar of the Cluster-State Snapshot}, label={lst:grammar}]
+grammar dev.jorisjonkers.deploykit.emf.syntax.ClusterState
+	with dev.jorisjonkers.deploykit.emf.syntax.ProjectIntent
+import "https://jorisjonkers.dev/deploy-kit/pinned-inputs/1"
+
+ClusterState returns ClusterState:
+	(('apiVersion' ':' apiVersion=Text)
+	& ('kind' ':' kind=Text)
+	& ('schemaVersion' ':' schemaVersion=Text)
+	& ('cluster' ':' cluster=Text)
+	& ('capturedAt' ':' capturedAt=Text)
+	& ('bindings' ':' BEGIN (DASH BEGIN bindings+=Binding END)* END)
+	& ('placements' ':' BEGIN (DASH BEGIN placements+=CurrentPlacement END)* END));
+\end{lstlisting}
+
+As with the platform document, the file name selects the grammar:
+\texttt{node-contract.yml}, \texttt{images.lock.yml},
+\texttt{cluster-state.yml} and \texttt{migration-proof.yml}. One input file
+changed. The scalar terminal of the project grammar cannot contain a colon, so
+the snapshot's capture time is now quoted, as digests and URLs already were.
+The production implementation reads the same value either way.

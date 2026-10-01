@@ -1,0 +1,144 @@
+\section{Purpose of the Project}
+\label{sec:purpose}
+
+\subsection{Goals}
+\label{sec:goals}
+
+The project generates the Kubernetes files of a small cluster from short
+deployment documents. Each application's repository holds one \emph{project
+document}, which states what the application needs: its processes, their
+memory and CPU, the ports they offer, the services they depend on, and how the
+application is reached from outside. One \emph{platform document} states what
+all applications share, such as the entry points of the cluster, its probe
+timings and its backup policies. Task~1 defined the two metamodels for this
+work in Ecore. The \emph{source metamodel} describes both documents. The
+\emph{target metamodel} describes the \emph{resolved model}, which records every
+value the platform derives for an application, and the files that will be
+generated from it.
+
+Task~2 implements the model transformation between the two. It takes the
+source models of every project in the cluster, the platform document, and three
+documents that other processes publish, and produces the resolved model of one
+project. The resolved model is the input of the code generation of Task~3. The
+transformation is where the derivation rules of the specification become
+executable: every value in a resolved model is computed by a rule in the
+transformation, and none is written by an author.
+
+The transformation has two goals.
+
+\begin{enumerate}
+  \item It derives the same decisions as the production implementation of the
+    same specification, which is written in TypeScript and used to deploy the
+    cluster. Both implementations are tested against the same committed result
+    files, called \emph{oracles}.
+  \item It stops with a message when it cannot derive a value. A resolved model
+    with a missing or default value would generate files that look valid and
+    deploy the wrong thing.
+\end{enumerate}
+
+\subsection{Role of the Transformation}
+\label{sec:role}
+
+Figure~\ref{fig:pipeline} shows the pipeline. Xtext parses each document into a
+source model, and OCL rejects invalid ones (Task~1). A first QVT-Operational
+transformation, the \emph{lowering}, copies values that an author declared once
+for a whole project or application onto each process. Task~1 already contained
+the lowering, because the constraints are checked on its output. The second
+transformation, the \emph{resolution}, is the subject of this report. It reads
+the lowered models and produces the resolved model. A small Java exporter then
+writes the resolved dependency edges as JSON, which is compared with the
+oracle. In Task~3, Acceleo templates will read the same resolved model and
+write the Kubernetes files.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=0.45cm and 0.55cm,
+  box/.style={draw, rounded corners=2pt, align=center, font=\scriptsize,
+    minimum height=0.9cm, text width=2.1cm},
+  document/.style={box, fill=blue!6},
+  stage/.style={box, fill=green!8},
+  result/.style={box, fill=orange!10},
+  arr/.style={-{Stealth[length=2mm]}}]
+\node[document] (docs) {Project and platform documents (YAML)};
+\node[document, below=of docs] (pinned) {Node contract, images lock, snapshot, migration proof};
+\node[stage, right=of docs] (parse) {Xtext parsing and OCL constraints};
+\node[stage, right=of parse] (lower) {Lowering (QVTo)};
+\node[stage, right=of lower] (resolve) {\textbf{Resolution (QVTo)}};
+\node[result, right=of resolve] (model) {Resolved model (XMI)};
+\node[result, below=of model] (edges) {dependencies.json, compared with the oracle};
+\node[stage, above=of model] (acceleo) {Code generation (Acceleo, Task~3)};
+\draw[arr] (docs) -- (parse);
+\draw[arr] (pinned) -| (parse);
+\draw[arr] (parse) -- (lower);
+\draw[arr] (lower) -- (resolve);
+\draw[arr] (resolve) -- (model);
+\draw[arr] (model) -- (edges);
+\draw[arr] (model) -- (acceleo);
+\end{tikzpicture}
+\caption{The Pipeline, With the Resolution This Report Describes}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Refinement of Tasks 0 and 1}
+\label{sec:refinement}
+
+Task~1 planned one transformation from a source model, resolved against the
+platform document, to a resolved model. Writing it showed that the platform
+document is not enough. Three facts that the resolution needs come from other
+documents:
+
+\begin{itemize}
+  \item the \emph{node contract}, which lists the machines of the cluster and
+    what each can hold;
+  \item the \emph{images lock}, which maps each image name in a project
+    document to an immutable digest and the user the image runs as;
+  \item the \emph{cluster-state snapshot}, which records on which machine each
+    stored volume already lives.
+\end{itemize}
+
+A project may also publish a \emph{migration proof}, which records the
+database schema version its new release was tested against, and it may name
+configuration files, called \emph{Assets}, whose text ends up in the cluster.
+The transformation therefore reads a third metamodel, the \emph{pinned
+inputs}, beside the source metamodel. Appendix~\ref{app:metamodels} describes
+this metamodel and the other changes to the Task~1 metamodels.
+
+\subsection{Assumptions and Conditions}
+\label{sec:assumptions}
+
+\begin{itemize}
+  \item The input is valid. The OCL constraints of Task~1 reject an invalid
+    source model before the transformation runs. A value that only a set of
+    documents can check, such as an image missing from the lock, stops the
+    transformation instead.
+  \item The transformation resolves one project at a time, but reads all
+    projects of the cluster, because a dependency on another project's service
+    needs that service's address and port.
+  \item The production implementation is the reference. Where the
+    specification leaves a choice, the transformation makes the same choice,
+    so that both produce the same oracles.
+  \item The transformation runs without Eclipse, through the standalone QVTo
+    executor, so that the build server runs it on every change. A launch
+    configuration is also provided to run it in Eclipse
+    (Appendix~\ref{app:handin}).
+\end{itemize}
+
+\subsection{Scope}
+\label{sec:scope}
+
+The transformation covers every example project that the production
+implementation resolves: \texttt{minimal}, \texttt{auth}, \texttt{data},
+\texttt{delivery}, \texttt{edge}, \texttt{observability} and \texttt{secrets}.
+Together these use every kind of value the specification derives: dependency
+edges, secrets, volumes with backups, configuration files, sidecar containers,
+database migrations, release gates and environment variables with
+placeholders.
+
+Two things are outside the scope of Task~2. The eighth example,
+\texttt{knowledge}, is not yet resolved by the production implementation
+either, so it has no reliable oracle. The target metamodel also does not yet
+describe every file Task~3 must generate. The transformation produces the
+generated-file entries that the target metamodel can describe, and the rest are
+added with the templates in Task~3. Section~\ref{sec:limitations} discusses
+both.

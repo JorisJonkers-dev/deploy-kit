@@ -1,0 +1,439 @@
+\section{Solution Design}
+\label{sec:design}
+
+The resolution is one QVTo transformation, \texttt{resolution.qvto}, of about
+1000 lines. It contains 8 mapping operations and 86 queries. This section
+describes its interface (Section~\ref{sec:interface}), how it is divided into
+mappings and queries (Section~\ref{sec:shape}), the derivation rules one by one
+(Section~\ref{sec:rules}), the use of the trace and of late assignment
+(Section~\ref{sec:trace}), the black-box library (Section~\ref{sec:blackbox}),
+the stops (Section~\ref{sec:stops}), and how the transformation is run
+(Section~\ref{sec:running}).
+
+\subsection{Interface}
+\label{sec:interface}
+
+Listing~\ref{lst:header} shows the transformation's signature. It reads two
+model extents and writes one.
+
+\begin{lstlisting}[language=qvto, style=report, caption={The Signature, Model Types and Inputs}, label={lst:header}]
+import dev.jorisjonkers.deploykit.emf.hashing;
+
+modeltype PI uses 'https://jorisjonkers.dev/deploy-kit/project-intent/1';
+modeltype IN uses 'https://jorisjonkers.dev/deploy-kit/pinned-inputs/1';
+modeltype RD uses 'https://jorisjonkers.dev/deploy-kit/resolved-deployment/1';
+
+transformation resolution(in intent : PI, in pinned : IN, out resolved : RD)
+	access library Hashing;
+
+configuration property project : String;
+configuration property integrity : String;
+
+property estate : Platform = intent.rootObjects()[Platform]->any(true);
+property projects : Sequence(EffectiveProject) =
+	intent.rootObjects()[EffectiveProject]->sortedBy(p | p.project)->asSequence();
+property contract : NodeContract = pinned.rootObjects()[NodeContract]->any(true);
+property lock : ImagesLock = pinned.rootObjects()[ImagesLock]->any(true);
+\end{lstlisting}
+
+The \texttt{intent} extent contains, for every project of the cluster, its
+authored model and its lowered model (\texttt{EffectiveProject}), and the
+platform document. The authored models stay in the extent because the platform
+document refers to applications in them: an entry point names the proxy
+application that serves it. Every rule reads the lowered models. The
+\texttt{pinned} extent contains the node contract, the images lock, the
+snapshot, each project's migration proof, and one \texttt{AssetFile} per
+configuration file. Two configuration properties give what is not derived: the
+project to resolve, and an identifier of the schema version, which the
+resolved model records as provenance. The transformation-level properties at
+the end of the listing select each input once, so the rules can refer to
+\texttt{estate}, \texttt{projects}, \texttt{contract} and \texttt{lock} by
+name.
+
+The output extent receives one \texttt{ResolvedDeployment}. The entry point
+selects the project to resolve and maps it:
+
+\begin{lstlisting}[language=qvto, style=report, caption={The Entry Point}, label={lst:main}]
+main() {
+	projects->select(p | p.project = project)->any(true).map deployment();
+}
+\end{lstlisting}
+
+\subsection{Mappings and Queries}
+\label{sec:shape}
+
+QVTo offers two ways to create a target object. A \emph{mapping operation}
+records its source and result in the trace, so other rules can find the result
+later with \texttt{resolveone}, and calling it twice on the same source returns
+the same result. An \emph{object expression} inside a query creates an object
+that nothing else needs to find. The transformation uses a mapping wherever
+another rule refers to the result, and an object expression otherwise.
+Table~\ref{tab:mappings} lists the eight mappings.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.33\linewidth}>{\raggedright\arraybackslash}p{0.59\linewidth}}
+\hline
+\textbf{Mapping} & \textbf{What it creates, and why it is a mapping} \\
+\hline
+\texttt{EffectiveProject::deployment} &
+  The \texttt{ResolvedDeployment}. Its \texttt{end} section sets values that
+  need the complete model. \\
+\texttt{EffectiveProject::unit} &
+  The project's reconcile unit, the group Flux applies together. Each
+  application refers to it. \\
+\texttt{EffectiveProject::provenance} &
+  The digests of every input, and the hash over them. \\
+\texttt{EffectiveApplication::application} &
+  A \texttt{ResolvedApplication}. Generated files refer to its exposures. \\
+\texttt{EffectiveApplication::gate} &
+  The release gate's inputs. \\
+\texttt{EffectiveApplication::migrationOf} &
+  The database migration of an application that manages its schema. \\
+\texttt{Process::process} &
+  A \texttt{ResolvedProcess}. Gate members, routes, policies and generated
+  files refer to it. \\
+\texttt{Exposure::exposure} &
+  A \texttt{ResolvedExposure}. The generated route file refers to it. \\
+\hline
+\end{tabular}
+\caption{The Mapping Operations of the Resolution}
+\label{tab:mappings}
+\end{table}
+
+The 86 queries are of four kinds. Value queries derive one value, such as a
+deadline or an address. Object queries build a contained object, such as a
+probe or a backup plan. Spelling queries turn an enumeration literal of the
+source metamodel into the string the target metamodel records, for example
+\texttt{AlertClass::businessHours} into \texttt{business-hours}. Stop queries,
+whose names start with \texttt{un}, raise a fatal assertion
+(Section~\ref{sec:stops}).
+
+Figure~\ref{fig:calls} shows the order in which the mappings run. The
+\texttt{deployment} mapping creates the reconcile units first, then the
+applications, the provenance and the generated files. Each application maps its
+processes before its exposures and its gate, because those refer to the
+processes.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=0.35cm and 0.5cm,
+  mapping/.style={draw, rounded corners=2pt, font=\scriptsize\ttfamily, fill=green!8,
+    minimum height=0.6cm, inner sep=3pt},
+  queries/.style={draw, dashed, rounded corners=2pt, font=\scriptsize, fill=gray!6,
+    minimum height=0.6cm, inner sep=3pt},
+  arr/.style={-{Stealth[length=1.6mm]}}]
+\node[mapping] (dep) {deployment};
+\node[mapping, below left=0.5cm and 1.6cm of dep] (unit) {unit};
+\node[mapping, below=0.5cm of dep] (app) {application};
+\node[mapping, below right=0.5cm and 1.6cm of dep] (prov) {provenance};
+\node[queries, right=of prov] (files) {path plan queries};
+\node[mapping, below left=0.5cm and 0.6cm of app] (proc) {process};
+\node[mapping, below=0.5cm of app] (exp) {exposure};
+\node[mapping, below right=0.5cm and 0.6cm of app] (gate) {gate};
+\node[mapping, right=of gate] (mig) {migrationOf};
+\node[queries, below=of proc] (pq) {grants, volumes, Assets, edges, environment, placement};
+\draw[arr] (dep) -- node[left, font=\tiny] {1} (unit);
+\draw[arr] (dep) -- node[left, font=\tiny] {2} (app);
+\draw[arr] (dep) -- node[right, font=\tiny] {3} (prov);
+\draw[arr] (dep) -| node[above, near start, font=\tiny] {4} (files);
+\draw[arr] (app) -- node[left, font=\tiny] {a} (proc);
+\draw[arr] (app) -- node[left, font=\tiny] {b} (exp);
+\draw[arr] (app) -- node[right, font=\tiny] {c} (gate);
+\draw[arr] (app) -- node[above, font=\tiny] {d} (mig);
+\draw[arr] (proc) -- (pq);
+\end{tikzpicture}
+\caption{Mapping Invocations, in the Order They Run (Dashed: Groups of Queries)}
+\label{fig:calls}
+\end{figure}
+
+\subsection{The Derivation Rules}
+\label{sec:rules}
+
+Each rule implements a derivation of the specification. Table~\ref{tab:rules}
+lists them by the target element they produce, with the rule that computes
+each and the source of its input. The rules are written as the specification
+states them; where it leaves a choice, they follow the production
+implementation.
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.21\linewidth}>{\raggedright\arraybackslash}p{0.25\linewidth}>{\raggedright\arraybackslash}p{0.46\linewidth}}
+\caption{Derivation Rules, by Target Element}
+\label{tab:rules} \\
+\hline
+\textbf{Target value} & \textbf{Rule} & \textbf{Derivation} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Target value} & \textbf{Rule} & \textbf{Derivation} \\
+\hline
+\endhead
+\hline
+\endfoot
+\multicolumn{3}{l}{\emph{Application}} \\
+namespace & \texttt{namespaceOf} & The project's name followed by \texttt{-system}. \\
+alert class & \texttt{AlertClass::spelling} & Copied from the application's observability declaration. \\
+reconcile unit and its order & \texttt{unit}, \texttt{afterOf} &
+  One unit per project, \texttt{apps-<project>}. It follows the unit of every
+  other project its edges reach, and the secrets unit if any process holds a
+  secret. \\
+secret store & \texttt{synced}, \texttt{storeEndpoint} &
+  The address of the secret store's \texttt{http} port, recorded only if a
+  secret or a backup credential is copied into the cluster. \\
+migration & \texttt{migrationOf} &
+  The migration image from the lock entry \texttt{<application>-migration},
+  and the tested schema version from the project's migration proof. \\
+release gate & \texttt{gate}, \texttt{switchesBlueGreen} &
+  The inputs of the service that holds a new version back until all its
+  processes are healthy. One member per blue/green process that has a
+  readiness probe. The deadline
+  is the slowest member's. The analysis cadence comes from the platform. \\
+\multicolumn{3}{l}{\emph{Process}} \\
+image, user and group & \texttt{locked} &
+  The lock entry for the image name: repository, digest, user and group. \\
+switchover & \texttt{switchoverOf} &
+  \texttt{stop-start} for an interrupted process, \texttt{rolling} for the
+  platform's delivery tools, \texttt{blue-green} otherwise. \\
+deadline & \texttt{deadlineOf} &
+  Three times the startup budget, rounded down; the budget itself, rounded up,
+  for a process that runs once before a release; 600 seconds without a
+  budget. \\
+probes & \texttt{Probe::cadenced}, \texttt{Probe::target} &
+  The declared target with the platform's period, timeout and failure count.
+  The startup probe polls the liveness target every five seconds, for as many
+  attempts as the startup budget allows. \\
+eligible machines & \texttt{eligible}, \texttt{requestedMemory} &
+  Every machine of the node contract whose memory and CPU fit the process and
+  its sidecars, twice for a continuous process because its old and new
+  versions run side by side during a switch,
+  and that matches every declared architecture, site, capability, GPU and disk
+  medium. \\
+bound machine & \texttt{boundOf} &
+  The machine the snapshot records for one of the process's volumes. \\
+environment & \texttt{environmentOf}, \texttt{Placeholder::entryFor} &
+  The base env file, overlaid by the cluster's own file. Each placeholder is
+  replaced by a secret reference, an edge's host or port, an exposure's URL,
+  or the process's own name or namespace. The runtime profile adds the
+  telemetry variables and the port. Sorted by name. \\
+secrets & \texttt{Grant::resolvedFor} &
+  A key-value grant keeps its path and keys and gets the name of the
+  Kubernetes Secret it is copied to. A transit or database grant becomes the
+  Vault paths its policy covers. \\
+volumes and backups & \texttt{Volume::resolvedFor}, \texttt{backupFor} &
+  A recoverable or irreplaceable volume gets a backup plan: the platform's
+  schedule and retention for its class, the backup image for the process's
+  database engine, and a separate identity and claim for the backup. \\
+configuration files & \texttt{Asset::resolvedFor} &
+  The file's text, under a name made of the process, the file name and the
+  first ten hex digits of the text's digest, so a changed file gets a new
+  name. \\
+dependency edges & \texttt{edgeOf} &
+  The first process in the cluster whose application and port the edge names,
+  with its address and the network peer it admits. Otherwise the platform's
+  register of external providers. \\
+\multicolumn{3}{l}{\emph{Exposure}} \\
+entry point & \texttt{tierFor} & The first entry point of the platform that carries the exposure's audience. \\
+route precedence & \texttt{rankOf}, \texttt{precedenceOf} &
+  Exact routes before prefix routes, longer prefixes before shorter. \\
+middleware & \texttt{middlewareOf} &
+  Authentication for an authenticated route, then security headers, then a
+  redirect if declared. \\
+\multicolumn{3}{l}{\emph{Network policy, per process}} \\
+ingress & \texttt{ingressOf}, \texttt{consumersOf} &
+  The proxy of each route's entry point, the metrics collector if the process
+  is scraped, and every process in the cluster with an edge to one of its
+  ports. Each peer once. \\
+egress & \texttt{egressOf}, \texttt{storePeers} &
+  The cluster's DNS, and the secret store if the process holds a secret. \\
+\multicolumn{3}{l}{\emph{Deployment}} \\
+provenance & \texttt{provenance} &
+  One digest per input, and a hash over all of them and the schema
+  version. \\
+revision & \texttt{end} section of \texttt{deployment} &
+  The digest of each application's complete element. \\
+generated files & \texttt{projectFiles}, \texttt{applicationFiles}, \texttt{edgeFiles} &
+  The path of every file the target metamodel describes, with the processes or
+  exposures it is generated from (Section~\ref{sec:pathplan}). \\
+\end{longtable}
+
+\subsubsection{A Process}
+\label{sec:processrule}
+
+Listing~\ref{lst:process} shows the start of the process mapping. The
+\texttt{init} section finds the lock entry and the declared probes once, so the
+assignments below can use them. Each assignment calls the query of
+Table~\ref{tab:rules} that derives it.
+
+\begin{lstlisting}[language=qvto, style=report, caption={The Process Mapping, Abridged}, label={lst:process}]
+mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectiveProject)
+		: ResolvedProcess {
+	init {
+		var own : LockedImage := locked(self.image);
+		var declared : Probes := if self.probes <> null and self.probes.oclIsKindOf(Probes)
+			then self.probes.oclAsType(Probes) else null endif;
+	}
+	name := self.name;
+	identity := self.name;
+	image := own.repository + '@' + own.digest;
+	uid := own.uid;
+	gid := own.gid;
+	if self.lifecycle = Lifecycle::application then switchover := switchoverOf(app, self) endif;
+	deadline := inSeconds(deadlineOf(self));
+	secrets := self.secrets->collect(g | g.resolvedFor(self));
+	identityToken := self.secrets->exists(g | g.delivery = Delivery::selfDelivery);
+	placement := object ResolvedPlacement {
+		eligibleNodes := contract.nodes->select(n | eligible(self, n))->collect(n | n.name);
+	};
+	dependencies := self.dependsOn->collect(e | edgeOf(e));
+	environment := environmentOf(self, prj)->sortedBy(e | e.name);
+}
+\end{lstlisting}
+
+\subsubsection{A Dependency Edge}
+\label{sec:edgerule}
+
+A dependency edge names an application and a port name, for example
+\texttt{platform-postgres} and \texttt{postgres}. The rule in
+Listing~\ref{lst:edge} looks for the first process in the cluster that belongs
+to that application and offers that port. The resolved edge records the
+process's in-cluster address and the network peer that the consumer may reach.
+If no process offers the port, the platform's register of external providers
+is tried, which is how \texttt{auth} reaches the mail server outside the
+cluster. If neither has it, the run stops.
+
+\begin{lstlisting}[language=qvto, style=report, caption={Resolving a Dependency Edge, Abridged}, label={lst:edge}]
+query edgeOf(e : DependencyEdge) : ResolvedEdge =
+	let providers : Sequence(Tuple(project : String, process : PI::Process)) =
+		projects->collect(prj | prj.applications->select(a | a.id = e.application).processes
+			->select(p | p.provides->exists(s | s.key = e.surface))
+			->collect(p | Tuple{project = prj.project, process = p}))->flatten() in
+	if providers->notEmpty() then
+		let first : Tuple(project : String, process : PI::Process) = providers->first() in
+		let at : Integer = first.process.provides->select(s | s.key = e.surface)->any(true).value in
+		object ResolvedEdge {
+			application := e.application;
+			surface := e.surface;
+			address := first.process.name + '.' + namespaceOf(first.project)
+				+ '.svc.cluster.local:' + at.toString();
+			peers := Sequence{object PolicyPeer {
+				namespace := namespaceOf(first.project); process := first.process.name; port := at; }};
+		}
+	else ... the platform's register, or unprovided(e) ... endif;
+\end{lstlisting}
+
+\subsubsection{Environment Variables and Placeholders}
+\label{sec:placeholders}
+
+An env file may contain placeholders, such as
+\texttt{DB\_HOST=\$\{dependency:platform-postgres.host\}}. The query
+\texttt{Placeholder::entryFor} handles the four kinds. A secret placeholder
+becomes a reference to a key of a secret the process holds, so the value never
+appears in a file. A dependency placeholder takes the host or the port of the
+process's own edge to that application, from \texttt{edgeOf}. An exposure
+placeholder takes the URL, host or scheme of an exposure anywhere in the
+cluster. An identity placeholder takes the process's own name or namespace.
+Text after the placeholder is kept, as in
+\texttt{AUTH\_LOGIN\_URL=\$\{exposure:auth.public\#url\}/login}, except after a
+secret. A placeholder that names nothing stops the run.
+
+\subsubsection{The Path Plan}
+\label{sec:pathplan}
+
+The \emph{path plan} assigns each generated file its path. The project gets a
+namespace file, an index of its directories and a default-deny network policy.
+Each application gets a directory with one file per kind of resource: the
+workloads, the blue/green switch definitions, the service accounts, the
+metrics definition if it is scraped, and the network policies. A file lists
+every process it applies to, and the policy file contains one policy per
+process. Each exposure gets a route file in the directory of its entry point,
+and each entry point gets an index of its route files. Task~3's templates
+generate each file from its entry in the model, so the templates do not decide
+any path.
+
+\subsection{The Trace and Late Assignment}
+\label{sec:trace}
+
+The transformation uses the trace for every reference from one created element
+to another. A gate member, a route and a metrics file each refer to a
+\texttt{ResolvedProcess}, and the route file refers to a
+\texttt{ResolvedExposure}. Each of these uses \texttt{resolveone} on the source
+element, for example \texttt{p.resolveone(ResolvedProcess)}. This works because
+the application mapping maps its processes first.
+
+Three values can only be computed once the rest of the model exists, and they
+are set in \texttt{end} sections:
+
+\begin{itemize}
+  \item each application's \emph{revision}, the digest of its complete element,
+    which names this release of it;
+  \item the provenance's render hash, which covers every input digest;
+  \item the order between reconcile units, which refers to units the same
+    mapping created.
+\end{itemize}
+
+\begin{lstlisting}[language=qvto, style=report, caption={The End Section of the Deployment Mapping}, label={lst:end}]
+	end {
+		result.reconcileUnits->first().after :=
+			result.reconcileUnits->excluding(result.reconcileUnits->first());
+		result.applications->forEach(a) {
+			a.revision := a.oclAsType(ECORE::EObject).revisionOf() };
+	}
+\end{lstlisting}
+
+\subsection{The Black-Box Library}
+\label{sec:blackbox}
+
+A digest is a SHA-256 hash over a canonical text form of a model element.
+OCL has no operation that produces bytes or hashes them. The class
+\texttt{Hashing} therefore provides three contextual operations:
+\texttt{digestOf} for any model element, \texttt{textDigestOf} for a string,
+and \texttt{revisionOf} for a resolved application. Each walks the element
+reflectively, writes canonical JSON and hashes it. The transformation calls no
+other Java code. The pipeline registers the library with the standalone
+executor before the run, and in Eclipse a \texttt{plugin.xml} registers it with
+the same unit name.
+
+Two details of the QVTo implementation shaped the library. An operation that
+takes a plain \texttt{EObject} is not found when it is called on a model
+element, because a model type does not conform to the Ecore type in the
+compiler. Each call therefore casts first:
+\texttt{p.oclAsType(ECORE::EObject).digestOf()}. And the unit name could not be
+the package name of the class, because \texttt{resolve} is a keyword of QVTo,
+so the unit is registered as \texttt{dev.jorisjonkers.deploykit.emf.hashing}.
+
+\subsection{Stops}
+\label{sec:stops}
+
+Fourteen fatal assertions stop the run when a value cannot be derived. Each is
+in a stop query, which the rule calls instead of returning an invalid value:
+
+\begin{lstlisting}[language=qvto, style=report, caption={A Stop Query}, label={lst:stop}]
+query unlocked(alias : String) : LockedImage {
+	assert fatal (false) with log(alias + ' is not locked: E_UNLOCKED_IMAGE');
+	return null;
+}
+\end{lstlisting}
+
+The stops cover an image missing from the lock, an edge that no process or
+provider serves, a placeholder that names nothing, a variable that an author
+wrote although the runtime profile sets it, an Asset whose file is missing or
+contains a placeholder, a backed-up volume without a schedule or a database
+engine, a platform without a secret store or delivery policy, and an
+application whose processes would need two different workload kinds in one
+file. Where the specification defines an error code for the situation, the
+message contains it.
+
+\subsection{Running the Transformation}
+\label{sec:running}
+
+The class \texttt{Resolution} runs the transformation through the standalone
+\texttt{TransformationExecutor}. It registers the black-box library, sets the
+two configuration properties, passes the two extents, and returns the
+\texttt{ResolvedDeployment}, or fails with the executor's diagnostic. The
+pipeline class \texttt{Pipeline.resolve} builds the extents: it parses each
+file with the grammar its name selects, checks the constraints, adds the env
+files, lowers each project and reads each Asset's file. For each example, the
+build writes the dependency edges, the resolved model and both input extents
+as files under \texttt{target/parity/<example>/}. The launch configuration
+\texttt{resolution.launch} runs the transformation on those extents in Eclipse.
