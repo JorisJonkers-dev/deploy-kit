@@ -1,0 +1,197 @@
+{
+  "schema": "resolved-application.schema.json",
+  "cases": [
+    {
+      "name": "the committed projection examples/auth/expected/resolved.json",
+      "verdict": "accept",
+      "file": "examples/auth/expected/resolved.json"
+    },
+    {
+      "name": "the committed projection examples/data/expected/resolved.json",
+      "verdict": "accept",
+      "file": "examples/data/expected/resolved.json"
+    },
+    {
+      "name": "the committed projection examples/data/expected/resolved.platform-rabbitmq.json",
+      "verdict": "accept",
+      "file": "examples/data/expected/resolved.platform-rabbitmq.json"
+    },
+    {
+      "name": "the committed projection examples/data/expected/resolved.platform-valkey.json",
+      "verdict": "accept",
+      "file": "examples/data/expected/resolved.platform-valkey.json"
+    },
+    {
+      "name": "the committed projection examples/delivery/expected/resolved.json",
+      "verdict": "accept",
+      "file": "examples/delivery/expected/resolved.json"
+    },
+    {
+      "name": "the committed projection examples/knowledge/expected/resolved.json",
+      "verdict": "accept",
+      "file": "examples/knowledge/expected/resolved.json"
+    },
+    {
+      "name": "the committed projection examples/knowledge/expected/resolved.knowledge-ingest.json",
+      "verdict": "accept",
+      "file": "examples/knowledge/expected/resolved.knowledge-ingest.json"
+    },
+    {
+      "name": "the committed projection examples/minimal/expected/resolved.json",
+      "verdict": "accept",
+      "file": "examples/minimal/expected/resolved.json"
+    },
+    {
+      "name": "a field the model does not have",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/minimal/expected/resolved.json",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/replicas",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "name": "an Application with no namespace",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/minimal/expected/resolved.json",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/namespace"
+        }
+      ]
+    },
+    {
+      "name": "replicas written as a string",
+      "verdict": "refuse",
+      "breaks": "wrong-type",
+      "file": "examples/minimal/expected/resolved.json",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/processes/0/replicas",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "name": "a runtime outside the vocabulary",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/minimal/expected/resolved.json",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/processes/0/runtime",
+          "value": "go"
+        }
+      ]
+    },
+    {
+      "name": "a secret grant that is neither a path grant nor an engine grant",
+      "verdict": "refuse",
+      "breaks": "union",
+      "file": "examples/knowledge/expected/resolved.json",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/processes/0/secrets/0",
+          "value": {
+            "path": "secret/data/x"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a switchover its cutover does not derive",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/knowledge/expected/resolved.knowledge-ingest.json",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/processes/0/switchover",
+          "value": "rolling"
+        }
+      ]
+    },
+    {
+      "name": "a switchover on a Process with no cutover",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/knowledge/expected/resolved.knowledge-ingest.json",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/processes/0/cutover"
+        }
+      ]
+    },
+    {
+      "name": "a blue-green switchover with no release gate",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/knowledge/expected/resolved.json",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/releaseGate"
+        }
+      ]
+    },
+    {
+      "name": "a release gate with no blue-green switchover",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/knowledge/expected/resolved.knowledge-ingest.json",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/releaseGate",
+          "value": {
+            "analysis": {
+              "interval": "30s",
+              "iterations": 4,
+              "threshold": 3
+            },
+            "deadline": "1800s",
+            "endpoint": "http://release-gate.delivery-system.svc.cluster.local:8080",
+            "members": [
+              {
+                "checks": [
+                  "error-rate",
+                  "latency"
+                ],
+                "process": "knowledge-api",
+                "readiness": {
+                  "path": "/api/actuator/health/readiness",
+                  "port": 8080
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "a Process with neither a cutover nor a switchover",
+      "verdict": "accept",
+      "file": "examples/knowledge/expected/resolved.knowledge-ingest.json",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/processes/0/cutover"
+        },
+        {
+          "op": "remove",
+          "path": "/processes/0/switchover"
+        }
+      ]
+    }
+  ]
+}

@@ -192,6 +192,42 @@ written and reviewed by hand, and no generator in CI writes into an oracle path,
 because an oracle that an implementation regenerates proves only that the
 implementation agrees with itself.
 
+## The schema contract
+
+Every committed JSON Schema under `spec/v1/schemas/` is a contract with a
+reader outside this repository: an editor completing an authored file, or a
+service generating its types from a document the toolkit writes. What holds a
+schema to that contract is its **corpus**, not the bytes the generator writes
+([0088](adr/architecture/0088-the-committed-schemas-and-their-corpus-are-the-contract.md)).
+
+Each schema has one corpus file beside it, `spec/v1/schemas/corpus/<name>.corpus.json`,
+written and reviewed by hand like any oracle file. It holds the schema's file
+name and a list of cases. A case has:
+
+- `name`: what the case is, unique within the corpus.
+- `verdict`: `accept` or `refuse`.
+- `breaks`, on a refused case: the kind of break it is, one of
+  `unknown-field`, `missing-required`, `wrong-type`, `enum` (an enum or a
+  constant), `union` (no branch of an `anyOf` or `oneOf` matches) or `rule`
+  (a conditional or a dependency between fields).
+- The document it starts from, exactly one of: `file`, a path relative to
+  `spec/v1/` (JSON, or YAML read as the authored files are); `instance`, the
+  document inline; or `case`, the name of an earlier case in the same corpus,
+  whose document (after its own patch) this one starts from.
+- `patch`, optional: a JSON Patch (RFC 6902) applied to that document, using
+  `add`, `remove` and `replace` only.
+
+An implementation conforms when the committed schema and its own model give
+every case its verdict. A corpus accepts at least one case, and refuses at
+least one case of every kind its schema can express: every schema can express
+the first three kinds, and `enum`, `union` and `rule` wherever the schema
+carries the keywords for them. A validator reading a committed schema treats
+the authored schemas' `reference` and `entry` keywords as annotations.
+
+The production implementation's generator is still checked byte for byte
+against the committed schema ([Generated files](#generated-files)): that
+proves its output is committed, and says nothing about another generator.
+
 ## Serialization
 
 Adapters build **typed objects**, not text. The object model

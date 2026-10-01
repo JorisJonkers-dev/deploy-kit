@@ -1,0 +1,122 @@
+{
+  "schema": "project-intent.schema.json",
+  "cases": [
+    {
+      "name": "the worked example examples/auth/auth.project.yml",
+      "verdict": "accept",
+      "file": "examples/auth/auth.project.yml"
+    },
+    {
+      "name": "the worked example examples/data/data.project.yml",
+      "verdict": "accept",
+      "file": "examples/data/data.project.yml"
+    },
+    {
+      "name": "the worked example examples/delivery/delivery.project.yml",
+      "verdict": "accept",
+      "file": "examples/delivery/delivery.project.yml"
+    },
+    {
+      "name": "the worked example examples/edge/edge.project.yml",
+      "verdict": "accept",
+      "file": "examples/edge/edge.project.yml"
+    },
+    {
+      "name": "the worked example examples/knowledge/knowledge.project.yml",
+      "verdict": "accept",
+      "file": "examples/knowledge/knowledge.project.yml"
+    },
+    {
+      "name": "the worked example examples/minimal/notes.project.yml",
+      "verdict": "accept",
+      "file": "examples/minimal/notes.project.yml"
+    },
+    {
+      "name": "the worked example examples/observability/observability.project.yml",
+      "verdict": "accept",
+      "file": "examples/observability/observability.project.yml"
+    },
+    {
+      "name": "the worked example examples/secrets/secrets.project.yml",
+      "verdict": "accept",
+      "file": "examples/secrets/secrets.project.yml"
+    },
+    {
+      "name": "a field the model does not have",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/minimal/notes.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/colour",
+          "value": "blue"
+        }
+      ]
+    },
+    {
+      "name": "a Project with no project name",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/minimal/notes.project.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/project"
+        }
+      ]
+    },
+    {
+      "name": "applications written as one string",
+      "verdict": "refuse",
+      "breaks": "wrong-type",
+      "file": "examples/minimal/notes.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications",
+          "value": "notes"
+        }
+      ]
+    },
+    {
+      "name": "a cutover outside the vocabulary",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/minimal/notes.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/0/processes/0/cutover",
+          "value": "eventual"
+        }
+      ]
+    },
+    {
+      "name": "a document of another kind",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/minimal/notes.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/kind",
+          "value": "Platform"
+        }
+      ]
+    },
+    {
+      "name": "probes that are neither none nor a probe set",
+      "verdict": "refuse",
+      "breaks": "union",
+      "file": "examples/minimal/notes.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/0/processes/0/probes",
+          "value": "some"
+        }
+      ]
+    }
+  ]
+}
