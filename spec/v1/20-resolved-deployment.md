@@ -491,7 +491,7 @@ apiVersion: state.jorisjonkers.dev/v1
 kind: ClusterState
 schemaVersion: 1.0.0
 cluster: production
-capturedAt: 2026-09-30T00:00:00Z
+capturedAt: "2026-09-30T00:00:00Z"   # quoted: a plain scalar holds no colon
 bindings:   [{claim: postgres-data, node: enschede-t1000-1}]
 placements: [{process: postgres, node: enschede-t1000-1}]
 ```

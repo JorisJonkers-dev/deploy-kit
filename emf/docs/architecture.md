@@ -73,7 +73,8 @@ the **walking skeleton**, which proves each tool runs headless in CI before any
 model work depends on it: an `.ecore` loads, an OCL
 invariant fires, the Xtext parser reads a three-line document, a QVTo identity
 transformation runs, and an Acceleo template writes one file. Its smoke tests
-sit in the module each tool belongs to, and each is deleted by the stage ticket
+sat in the module each tool belongs to (the QVTo one is gone, deleted by the
+resolution tracer), and each is deleted by the stage ticket
 whose suite covers that tool.
 
 ## Modules
@@ -103,10 +104,11 @@ and cost every path in the tree.
 Beside the two tiers sits `models/`, which is neither: hand-written example
 models, in the target metamodel's own XMI. They belong to no module because
 two use them from opposite ends. `minimal.resolveddeployment` is what the
-Acceleo templates are first run against and what the QVT-Operational
-transformation must produce, so it is the target half of both tracers before
-either exists. It is **not an oracle**: `resolved.json` binds the production
-implementation only, for the reason [Metamodels](#metamodels) gives.
+Acceleo templates are first run against, and what the QVT-Operational
+transformation produces for `minimal`: the pipeline's resolution test holds the
+two equal, so a change to either is a change to both. It is **not a parity
+oracle**: `resolved.json` binds the production implementation only, for the
+reason [Metamodels](#metamodels) gives, and nothing outside `emf/` reads it.
 
 A module may depend on the modules above it in this table and on nothing
 below. `tests/parity` depends on no module at all: it reads the files a run
@@ -239,8 +241,9 @@ own rules. There is no inferred syntax metamodel and no mapping step between
 parsing and validation.
 
 A plain scalar holds no colon: the lexer cannot tell `sha256:6f1c` from a key
-without looking past the colon, so a value that carries one, a digest or a URL,
-is quoted in the authored files.
+without looking past the colon, so a value that carries one, a digest, a URL or
+a timestamp, is quoted in the authored files and in the pinned inputs alike: the
+snapshot's `capturedAt` is written quoted.
 
 A route's and a scrape's `process` and `surface` are cross-references, linked by
 a scope provider that offers the Processes of the Application holding them and the

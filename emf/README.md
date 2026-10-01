@@ -33,8 +33,8 @@ answers the navigation question without a search.
 
 | artefact | lives in | graded in | how an examiner opens it |
 |---|---|---|---|
-| the two Ecore metamodels and their OCL | `emf/bundles/metamodel` | Task 1 | imported in step 2; `model/skeleton.ecore` and `model/skeleton.ocl` open and validate as step 3 describes |
-| the Xtext grammar and generated editor | `emf/bundles/syntax` | Task 1 | imported in step 2; the generated editor reports OCL constraint violations while a source file is edited in it |
+| the Ecore metamodels (source, target and pinned inputs) and their OCL | `emf/bundles/metamodel` | Task 1 | imported in step 2; `model/skeleton.ecore` and `model/skeleton.ocl` open and validate as step 3 describes |
+| the Xtext grammars and generated editor | `emf/bundles/syntax` | Task 1 | imported in step 2; the generated editor reports OCL constraint violations while a source file is edited in it |
 | the QVTo transformations | `emf/bundles/resolve` | Task 2 | imported in step 2; `resolution.launch` runs the resolution on `minimal`, as step 4 describes |
 | the Acceleo templates | `emf/bundles/render` | Task 3 | imported in step 2; `file.launch` runs them, as step 4 describes |
 | the pipeline entry point | `emf/bundles/cli` | Task 1 onward | imported in step 2, alongside the rest |

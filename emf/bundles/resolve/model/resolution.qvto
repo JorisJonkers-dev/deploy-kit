@@ -55,7 +55,7 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 	provenance := self.map provenance();
 	deliverables := self.projectFiles()
 		->union(self.applications->collect(a | a.applicationFiles(self))->flatten())
-		->union(self.applications->collect(a | a.edgeFiles(self))->flatten());
+		->union(self.edgeFiles());
 	end {
 		-- Only a complete element has a revision: it is the digest of all of it.
 		result.applications->forEach(a) { a.revision := a.oclAsType(ECORE::EObject).revisionOf() };
@@ -143,6 +143,8 @@ mapping EffectiveApplication::gate() : ReleaseGate {
 	}
 	assert fatal (waiting->notEmpty())
 		with log('a blue/green Application that publishes no readiness is E_RELEASE_UNIT_NO_READINESS');
+	assert fatal (estate.delivery <> null)
+		with log('a blue/green Process under a platform with no delivery policy is E_NO_DELIVERY_POLICY');
 	deadline := inSeconds(waiting->collect(p | deadlineOf(p))->max());
 	analysis := object GateAnalysis {
 		interval := estate.delivery.analysis.interval;
@@ -196,6 +198,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 		startup := object StartupProbe {
 			target := declared.liveness.target();
 			period := inSeconds(STARTUP_PERIOD);
+			timeout := estate.probes.timeout;
 			failures := ceiling(seconds(self.startupBudget) / STARTUP_PERIOD);
 		}
 	endif;
@@ -270,7 +273,18 @@ query eligible(p : PI::Process, n : Node) : Boolean =
 -- The env file a render for the platform's cluster reads: the base, overlaid by
 -- that cluster's own file; then the Runtime Profile's values.
 query environmentOf(p : PI::Process, prj : EffectiveProject) : Sequence(EnvEntry) =
-	authoredOf(p)->collect(v | v.entry(prj))->union(profileOf(p));
+	let authored : Sequence(EnvEntry) = authoredOf(p)->collect(v | v.entry(prj)),
+		profile : Sequence(EnvEntry) = profileOf(p) in
+	if authored->exists(a | profile->exists(f | f.name = a.name))
+		then unwritten(p)
+		else authored->union(profile) endif;
+
+-- A Runtime Profile key written in an env file is a build error the checks do not
+-- make yet, so the run stops rather than carry two values for one name.
+query unwritten(p : PI::Process) : Sequence(EnvEntry) {
+	assert fatal (false) with log(p.name + ' writes a Runtime Profile key in an env file');
+	return Sequence{};
+}
 
 query authoredOf(p : PI::Process) : Sequence(EnvVariable) =
 	let base : Sequence(EnvVariable) =
@@ -406,7 +420,8 @@ query EffectiveProject::projectFiles() : Sequence(Deliverable) =
 		object IndexFile {
 			path := root + 'kustomization.yaml';
 			adapter := AdapterName::kubernetes;
-			resources := Sequence{'namespace.yaml'}->union(self.applications->collect(a | a.id));
+			resources := Sequence{'namespace.yaml'}->union(self.applications->collect(a | a.id))
+				->sortedBy(r | r);
 		}.oclAsType(Deliverable),
 		object NetworkPolicyFile {
 			path := root + 'networkpolicy.yaml';
@@ -479,43 +494,67 @@ query assertFailedFiles(message : String) : Sequence(Deliverable) {
 -- Who may reach a Process (spec/v1/16-dependencies.md#the-derived-allow-set):
 -- the proxy of the tier each route's audience reaches, and the metrics stack
 -- where the Process is scraped, each at the port of the surface it names.
+-- One peer per namespace, Process and port, the first time it is reached: two
+-- routes to one surface admit the proxy once.
 query ingressOf(p : PI::Process, app : EffectiveApplication) : Sequence(PolicyPeer) =
-	app.exposure->collect(e | e.routes->select(r | r.process = p)->collect(r |
+	if consumed(app) then unconsumed(app)
+	else (app.exposure->collect(e | e.routes->select(r | r.process = p)->collect(r |
 		peersOf(tierFor(r.audienceOf(e)).traefik.id, r.surface.value)))->flatten()
 	->union(if app.observability <> null and app.observability.scrape <> null
 			and app.observability.scrape.process = p and estate.telemetry <> null
 		then peersOf(estate.telemetry.metrics.id, app.observability.scrape.surface.value)
-		else Sequence{} endif);
+		else Sequence{} endif))
+	->asOrderedSet()->asSequence()
+	->collect(peer | object PolicyPeer {
+		namespace := peer.namespace;
+		process := peer.process;
+		port := peer.port;
+	}) endif;
 
--- Every Process of `application` in the union, at `port`.
-query peersOf(application : String, at : Integer) : Sequence(PolicyPeer) =
+-- Whether a Process anywhere in the union consumes the Application by an edge,
+-- which admits it too: that ingress lands with the edges, #91.
+query consumed(app : EffectiveApplication) : Boolean =
+	projects.applications.processes.dependsOn->exists(e | e.application = app.id);
+
+query unconsumed(app : EffectiveApplication) : Sequence(PolicyPeer) {
+	assert fatal (false) with log(app.id + ' is consumed by an edge, whose ingress lands with #91');
+	return Sequence{};
+}
+
+-- Every Process of `application` in the union, at `port`, as a value.
+query peersOf(application : String, at : Integer)
+		: Sequence(Tuple(namespace : String, process : String, port : Integer)) =
 	projects->collect(prj | prj.applications->select(a | a.id = application).processes
-		->collect(p | object PolicyPeer {
-			namespace := namespaceOf(prj.project);
-			process := p.name;
-			port := at;
-		}))->flatten();
+		->collect(p | Tuple{namespace = namespaceOf(prj.project), process = p.name, port = at}))
+		->flatten();
 
 -- The routes an exposure gives the tier proxy, in the tier's own directory of
--- the estate-scoped edge, and the index over them.
-query EffectiveApplication::edgeFiles(prj : EffectiveProject) : Sequence(Deliverable) =
-	self.exposure->collect(e |
-		let tier : Tier = tierFor(e.audience) in
-		let root : String = 'apps/edge/' + tier.name + '/' in
-		Sequence{
-			object IngressRouteFile {
-				path := root + self.id + '-' + e.name + '.yaml';
-				adapter := AdapterName::traefik;
-				exposure := e.resolveone(ResolvedExposure);
-				entryPoint := if tier.listener = Listener::tls then 'websecure' else 'web' endif;
-				if tier.certificates = CertificateSource::acme then certificateResolver := 'acme' endif;
-			}.oclAsType(Deliverable),
-			object IndexFile {
-				path := root + 'kustomization.yaml';
-				adapter := AdapterName::kubernetes;
-				resources := Sequence{self.id + '-' + e.name + '.yaml'};
-			}.oclAsType(Deliverable)
-		})->flatten();
+-- the estate-scoped edge, and one index per tier over every route in it. The
+-- index lists the resolved project's routes: composing the whole estate's edge
+-- is the composed estate's (JorisJonkers-dev/deploy-kit#203).
+query EffectiveProject::edgeFiles() : Sequence(Deliverable) =
+	let routed : Sequence(Tuple(app : EffectiveApplication, exposure : Exposure)) =
+		self.applications->collect(a | a.exposure->collect(e | Tuple{app = a, exposure = e}))->flatten() in
+	let tiers : Sequence(Tier) =
+		routed->collect(r | tierFor(r.exposure.audience))->asOrderedSet()->sortedBy(t | t.name)->asSequence() in
+	routed->collect(r |
+		let tier : Tier = tierFor(r.exposure.audience) in
+		object IngressRouteFile {
+			path := 'apps/edge/' + tier.name + '/' + routeFile(r.app, r.exposure);
+			adapter := AdapterName::traefik;
+			exposure := r.exposure.resolveone(ResolvedExposure);
+			entryPoint := if tier.listener = Listener::tls then 'websecure' else 'web' endif;
+			if tier.certificates = CertificateSource::acme then certificateResolver := 'acme' endif;
+		}.oclAsType(Deliverable))
+	->union(tiers->collect(t | object IndexFile {
+		path := 'apps/edge/' + t.name + '/kustomization.yaml';
+		adapter := AdapterName::kubernetes;
+		resources := routed->select(r | tierFor(r.exposure.audience) = t)
+			->collect(r | routeFile(r.app, r.exposure))->sortedBy(f | f);
+	}.oclAsType(Deliverable)));
+
+query routeFile(app : EffectiveApplication, exposure : Exposure) : String =
+	app.id + '-' + exposure.name + '.yaml';
 
 -- ================================================================ spellings
 
@@ -534,18 +573,27 @@ query seconds(d : String) : Real =
 	if d.endsWith('ms') then d.substring(1, d.size() - 2).toReal() / 1000
 	else if d.endsWith('s') then d.substring(1, d.size() - 1).toReal()
 	else if d.endsWith('m') then d.substring(1, d.size() - 1).toReal() * 60
-	else d.substring(1, d.size() - 1).toReal() * 3600 endif endif endif;
+	else if d.endsWith('h') then d.substring(1, d.size() - 1).toReal() * 3600
+	else unread('a duration', d) endif endif endif endif;
+
+-- A quantity no spelling of the model reads: the checks refuse it before
+-- resolution, so reaching here is a defect, and it stops the run.
+query unread(what : String, q : String) : Real {
+	assert fatal (false) with log(q + ' is not ' + what + ' the model reads');
+	return 0;
+}
 
 -- A cpu quantity in millicores: `50m`, or `2` whole cores.
 query millicores(q : String) : Integer =
 	if q.endsWith('m') then q.substring(1, q.size() - 1).toInteger() else q.toInteger() * 1000 endif;
 
--- A memory quantity in MiB: `256Mi`, `2Gi`, `1Ti`.
-query mebibytes(q : String) : Integer =
-	let amount : Integer = q.substring(1, q.size() - 2).toInteger() in
-	if q.endsWith('Mi') then amount
-	else if q.endsWith('Gi') then amount * 1024
-	else amount * 1024 * 1024 endif endif;
+-- A memory quantity in MiB: `256Mi`, `2Gi`, `1Ti`, or bytes with no unit.
+query mebibytes(q : String) : Real =
+	if q.endsWith('Mi') then q.substring(1, q.size() - 2).toReal()
+	else if q.endsWith('Gi') then q.substring(1, q.size() - 2).toReal() * 1024
+	else if q.endsWith('Ti') then q.substring(1, q.size() - 2).toReal() * 1024 * 1024
+	else if q.matches('[0-9]+') then q.toReal() / (1024 * 1024)
+	else unread('a memory quantity', q) endif endif endif endif;
 
 query PI::Cutover::resolvedCutover() : RD::Cutover =
 	if self = PI::Cutover::continuous then RD::Cutover::continuous else RD::Cutover::interrupted endif;

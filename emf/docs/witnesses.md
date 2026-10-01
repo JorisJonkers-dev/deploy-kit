@@ -40,7 +40,7 @@ This list holds **10** witnesses, and **4** pending.
 
 | id | why no witness yet | ticket |
 |---|---|---|
-| REQ-033 | the target metamodel exists here now (#87), but nothing produces a model to validate: the hand-written `minimal` model is input, and the first model this implementation *derives* comes out of the QVT-Operational tracer | #90 |
+| REQ-033 | the row holds chapter 20's worked projection, which is the production implementation's shape; this implementation's target metamodel is shaped differently on purpose, and the model it derives for `minimal` is held to the hand-written one by `ResolutionTest`, so the row is witnessed once every case resolves and its derived models validate | #91 |
 | REQ-034 | nothing under `emf/` reads the node contract until placement is resolved against it | #91 |
 | REQ-040 | the rendered tree is shared by both implementations, and the Acceleo templates that write it land with the Task 3 tracer; until then the hand-written `minimal` target model assigns every path the committed trees hold (`ResolvedDeploymentTest`) | #94 |
 | REQ-035 | `resolved.json` binds the production implementation only, so the shared claim is the rendered tree, and nothing renders here yet ([the parity contract](../../docs/architecture.md#the-parity-contract)) | #94 |

@@ -170,6 +170,8 @@
   <eClassifiers xsi:type="ecore:EClass" name="StartupProbe">
     <eStructuralFeatures xsi:type="ecore:EReference" name="target" lowerBound="1" eType="#//ProbeTarget" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="period" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The probe policy's own timeout, as readiness and liveness carry it. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="failures" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
   </eClassifiers>
 
