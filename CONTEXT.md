@@ -296,6 +296,10 @@ charts.
 **ClusterState snapshot**: observed cluster facts captured once, digested, and
 then treated as an input like any other.
 
+**Collector**: the read-only Application that captures the ClusterState
+snapshot inside the cluster and commits it to the estate repository when it
+changes. It reads; it never applies.
+
 **Images lock**: every image alias a document names, resolved to one digest and
 the user the image runs as; a pinned input, and never a tag
 ([chapter 20](spec/v1/20-resolved-deployment.md#the-images-lock)).
@@ -351,6 +355,10 @@ estate *depends on* is a Provider, not an unmanaged surface.
 **Rendered artifact**: one Project's render, published as a signed OCI artifact
 and named by digest. What the applier fetches, and never committed as files
 ([chapter 55](spec/v1/55-delivery.md#rendered-artifacts-and-pins)).
+
+**Estate repository**: the repository Flux reads for the estate path. It holds
+the Platform document, the composition lock, the ClusterState snapshot and one
+pin file per Project, and never a rendered tree.
 
 **Pin**: the digest a Project's source points at, and the commit that changes
 it. A deploy is a pin commit applied; the estate's git history is its deploy log

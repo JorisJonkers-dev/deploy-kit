@@ -35,6 +35,7 @@ What is in scope, and the section that specifies each:
 | what proves a migration safe to run while the old version serves | [Migration safety](#migration-safety) |
 | what runs before a new version starts, in what order | [Release order](#release-order) |
 | what undoes a failed migration, and when it may | [Failure and undo](#failure-and-undo) |
+| who hears about a refusal, a hold or a failed step, and where | [Notifications](#notifications) |
 | why rotating a secret is not a release | [Secret rotation](#secret-rotation) |
 | what the render leaves to Flagger | [What the render leaves to Flagger](#what-the-render-leaves-to-flagger) |
 | how a Project moves off the old path | [chapter 60](60-setup.md#handing-over-one-project-at-a-time) |
@@ -347,18 +348,36 @@ undone:
 | **analysis, or the barrier** | the old version; Flagger scales every member's new copy back to zero | undone by the down, if the conditions below hold |
 | **promotion** | a mix: some members' primaries run the new version | **never undone automatically**: a promoted member needs the new schema. An urgent alert fires, and the fix is forward |
 
-**The runner's contract.** The platform's runner takes two commands. `up`
-applies the changelog and then a `tagDatabase` changeset of its own, named for
-the Application revision, so every revision has its own row and its own tag
-even when it changes no schema. `down` rolls the database back to a named tag.
-Both run as the migration identity, which reads its owner credential from Vault
-itself, as a `delivery: self` Process does
-([chapter 10](10-project-intent.md#delivery)).
+**The runner's contract.** The platform's runner takes two commands, each with
+one argument, a **tag**: the Application revision's first 12 hex digits, the
+same 12 the migration Jobs are named by.
+
+| command | what it does |
+|---|---|
+| `up <tag>` | applies the changelog, then a `tagDatabase` changeset of its own naming `<tag>`, so every revision has its own row and its own tag even when it changes no schema |
+| `down <tag>` | rolls the database back to `<tag>` |
+
+Everything else the runner reads is a fixed variable the render sets, each a
+function of the project and the Platform document, never authored:
+
+| variable | value |
+|---|---|
+| `DATABASE_HOST`, `DATABASE_PORT` | the datastore surface the Application's edge to the project database reaches ([chapter 16](16-dependencies.md#the-database-catalog)) |
+| `DATABASE_NAME` | `<project>_db` |
+| `VAULT_ADDR` | the Secret Store's address ([chapter 14](14-platform-intent.md#the-secret-store)) |
+| `VAULT_ROLE` | the migration identity's Vault role ([chapter 16](16-dependencies.md#process-identity)) |
+| `VAULT_CREDENTIALS_PATH` | the owner credential, `database/creds/<project>-owner` |
+
+Both commands run as the migration identity, which reads its owner credential
+from Vault itself, as a `delivery: self` Process does
+([chapter 10](10-project-intent.md#delivery)). The runner is its own
+repository, `JorisJonkers-dev/liquibase-runner`, and an application's migration
+image is built `FROM` it.
 
 **Two Jobs per revision, both created suspended.** The render carries, per
-Application revision, `<application>-migration-<revision>`, which runs `up`,
-and `<application>-migration-down-<revision>`, which runs `down` to the tag of
-`testedAgainst`. Both are rendered with `suspend: true` and applied **once**:
+Application revision, `<application>-migration-<tag>`, which runs `up`, and
+`<application>-migration-down-<tag>`, which runs `down` to the tag of
+`testedAgainst`, both named by the revision's 12-digit tag. Both are rendered with `suspend: true` and applied **once**:
 Flux creates each Job if it is absent and never updates it afterwards, so the
 Release Gate is the only writer of `suspend` from then on, and no field has two
 writers. The gate unsuspends the up Job when the proof holds
@@ -378,6 +397,24 @@ that failed. A down that fails is reported the same way and never retried.
 Undoing is never a side effect of a new pin: the down runs against the release
 that failed, before anything replaces it, and a revision's Jobs leave the render
 with the revision.
+
+## Notifications
+
+What reaches a human, and where, depends on which side noticed. **The cluster's
+side** is Alertmanager's: the Release Gate's alerts, a held release, a failed
+down, a failing backup. Its rules are Assets of the observability project, and
+it routes to the estate's Discord. **The composition side** is the composition
+workflow's own, because a refusal there happens before anything reaches the
+cluster. It writes each condition three ways:
+
+| where | what it carries |
+|---|---|
+| a **commit status** on the commit that published the fragment | whether the fragment composed: composed, isolated, or refused, with the `E_` codes that name what to fix. A refusal shows on the commit the author merged |
+| **one issue per Project condition** in the Estate repository | opened when a condition starts (a refused or isolated fragment, a stale fragment, a Pause, a Rollback), commented when it recurs, closed when it clears. One issue per pair of Project and condition, never one per run |
+| a **Discord** post | refusals, isolations, pauses and rollbacks, posted when the issue opens or closes |
+
+Nothing here is a second applier or a gate: a notification reports what
+composition decided and never changes it.
 
 ## Secret rotation
 

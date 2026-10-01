@@ -7,7 +7,7 @@
 # model (docs/adr/model/0042-declarations-compose-from-intent-fragments.md,
 # docs/adr/model/0051-a-project-is-delivered-as-a-signed-artifact.md).
 #
-#   fragment publishes -> repository_dispatch -> pull all participants
+#   fragment publishes -> workflow_dispatch -> pull all participants
 #                                             -> verify + union
 #                                             -> assert the invariants
 #                                             -> prove the gate can fail
@@ -30,8 +30,8 @@
 name: Compose
 
 on:
-  repository_dispatch:
-    types: [fragment-published]
+  # The publish starts this workflow through the dispatch GitHub App, whose
+  # actions: write can start a run and cannot push (spec/v1/60-setup.md#the-estate-repository).
   workflow_dispatch:
   schedule:
     - cron: '41 2 * * *'      # safety net only; see the note above
