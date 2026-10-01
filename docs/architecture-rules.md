@@ -57,7 +57,7 @@ fails the gate, so the taxonomy cannot grow entries nothing stands behind.
 
 ## Rules
 
-This ledger holds **70** rules, **3** of them pending.
+This ledger holds **72** rules, **3** of them pending.
 
 A row is enforced or pending, never both. An enforced row names its enforcer as
 `kind:value`: `depcruise:` a rule in
@@ -146,6 +146,8 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-068 | gates | A term the model retired is not read as current outside a quotation, and a stated count matches the real collection it counts | `npm:lint:meaning` | [test/meaning-lint-negative.test.ts](../test/meaning-lint-negative.test.ts) `uses retired term 'Cluster Context' outside a quotation` |
 | RULE-069 | gates | AGENTS.md names every npm script package.json defines, verbatim, so a script gained there cannot go undocumented | `npm:lint:agents` | [test/agents-contract.test.ts](../test/agents-contract.test.ts) `does not appear in AGENTS.md` |
 | RULE-070 | gates | A decision record whose claim is settled carries `status: accepted`, in both registers, so the field distinguishes something | `npm:lint:adrs` | [test/adr-lint-negative.test.ts](../test/adr-lint-negative.test.ts) `requires status accepted, got 'proposed'` |
+| RULE-071 | dependencies | Every dependency in `package.json` is one exact version: no caret, tilde, wildcard, tag or range, so an install resolves to the version a reviewer saw | `file:test/supply-chain.test.ts` | [test/supply-chain.test.ts](../test/supply-chain.test.ts) `not an exact version; pin it` |
+| RULE-072 | dependencies | No install runs a dependency's lifecycle script: every workflow and action installs with `--ignore-scripts`, and `.npmrc` sets `ignore-scripts` for a local install | `file:test/supply-chain.test.ts` | [test/supply-chain.test.ts](../test/supply-chain.test.ts) `add --ignore-scripts` |
 
 ## Considered and rejected
 
