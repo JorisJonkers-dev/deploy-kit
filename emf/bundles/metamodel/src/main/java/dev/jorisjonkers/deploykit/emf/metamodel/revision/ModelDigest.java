@@ -1,6 +1,9 @@
 package dev.jorisjonkers.deploykit.emf.metamodel.revision;
 
 import dev.jorisjonkers.deploykit.emf.metamodel.json.CanonicalJson;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
@@ -16,7 +19,7 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
  * The digest of a pinned input (spec/v1/20-resolved-deployment.md#pinned-inputs): {@code
  * sha256:<hex>} over the canonical JSON of the model read from it, so a change of spelling that
  * reads as the same model does not move it, and any change of what it says does. The model is walked
- * reflectively, like {@link ApplicationRevision}'s element: a set attribute as its value, an
+ * reflectively: a set attribute as its value, an
  * enumeration as its literal, a contained object as an object, and a reference as the identifier of
  * what it points at, or its path where the class carries none. A feature nobody set is absent.
  */
@@ -26,13 +29,26 @@ public final class ModelDigest {
 
     /** {@code sha256:<hex>} over the canonical JSON of {@code model}. */
     public static String of(EObject model) {
-        return "sha256:"
-                + HexFormat.of().formatHex(ApplicationRevision.digest("SHA-256", CanonicalJson.write(json(model))));
+        return "sha256:" + HexFormat.of().formatHex(digest("SHA-256", CanonicalJson.write(json(model))));
     }
 
     /** {@code sha256:<hex>} over the canonical JSON of {@code text}: the string, quoted and escaped. */
     public static String ofText(String text) {
-        return "sha256:" + HexFormat.of().formatHex(ApplicationRevision.digest("SHA-256", CanonicalJson.write(text)));
+        return "sha256:" + HexFormat.of().formatHex(digest("SHA-256", CanonicalJson.write(text)));
+    }
+
+    /** {@code sha256:<hex>} over {@code text}'s UTF-8 bytes, as written. */
+    public static String ofBytes(String text) {
+        return "sha256:" + HexFormat.of().formatHex(digest("SHA-256", text));
+    }
+
+    /** {@code text} digested by {@code algorithm}; every Java platform implements SHA-256. */
+    static byte[] digest(String algorithm, String text) {
+        try {
+            return MessageDigest.getInstance(algorithm).digest(text.getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException absent) {
+            throw new IllegalStateException(absent);
+        }
     }
 
     private static Map<String, Object> json(EObject object) {

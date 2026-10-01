@@ -1,6 +1,7 @@
 package dev.jorisjonkers.deploykit.emf.metamodel.revision;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Application;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Lifecycle;
@@ -86,6 +87,14 @@ class ModelDigestTest {
                 .isEqualTo(ModelDigest.ofText("a\nb"))
                 .isNotEqualTo(ModelDigest.ofText("a\nc"))
                 .isEqualTo("sha256:" + sha256("\"a\\nb\""));
+    }
+
+    @Test
+    void aCanonicalTextIsDigestedAsWrittenAndAnUnknownAlgorithmIsADefect() {
+        // The revision's text is already canonical JSON, so its bytes are what is hashed.
+        assertThat(ModelDigest.ofBytes("{\"id\":\"notes\"}")).isEqualTo("sha256:" + sha256("{\"id\":\"notes\"}"));
+        assertThatThrownBy(() -> ModelDigest.digest("no-such-algorithm", "text"))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     private static String sha256(String text) {

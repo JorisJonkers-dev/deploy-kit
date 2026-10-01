@@ -1,7 +1,5 @@
 package dev.jorisjonkers.deploykit.emf.resolve;
 
-import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedApplication;
-import dev.jorisjonkers.deploykit.emf.metamodel.revision.ApplicationRevision;
 import dev.jorisjonkers.deploykit.emf.metamodel.revision.ModelDigest;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.m2m.qvt.oml.blackbox.java.Operation;
@@ -35,9 +33,9 @@ public class Hashing {
         return ModelDigest.ofText(text);
     }
 
-    /** The Application revision (spec/v1/20-resolved-deployment.md#the-application-revision). */
+    /** The digest of a text exactly as written: its UTF-8 bytes, for a JSON text already canonical. */
     @Operation(contextual = true, kind = Kind.QUERY)
-    public static String revisionOf(EObject application) {
-        return ApplicationRevision.of((ResolvedApplication) application);
+    public static String rawDigestOf(String text) {
+        return ModelDigest.ofBytes(text);
     }
 }

@@ -1,0 +1,10 @@
+[module unindented('https://jorisjonkers.dev/deploy-kit/resolved-deployment/1')/]
+
+[comment A body written without its two spaces of margin, which Acceleo refuses to parse. /]
+
+[comment @main /]
+[template public unindented(deployment : resolveddeployment::ResolvedDeployment)]
+[file ('unindented.yaml', overwrite, 'UTF-8')]
+# GENERATED. Never hand-edit.
+[/file]
+[/template]

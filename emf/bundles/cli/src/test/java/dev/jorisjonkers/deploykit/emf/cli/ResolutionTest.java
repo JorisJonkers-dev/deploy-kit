@@ -126,6 +126,71 @@ class ResolutionTest {
                 .hasMessageStartingWith("data did not resolve");
     }
 
+    /**
+     * REQ-038: an Application's revision is the digest of its own element, as the production
+     * implementation writes it. Every committed projection records it, and the rendered tree carries
+     * it, so this implementation derives the same one: it does not move when only the provenance
+     * does, and it moves when a decision about the Application does.
+     */
+    @Test
+    void theRevisionIsTheOneEveryCommittedProjectionRecordsAndMovesOnlyWithADecision(@TempDir Path directory)
+            throws IOException {
+        for (String example : List.of("minimal", "auth", "data", "delivery")) {
+            Outputs.Resolving resolving = Outputs.RESOLVED.get(example);
+            ResolvedDeployment deployment = Pipeline.resolve(
+                            resolving.documents().stream().map(Examples::of).toList(),
+                            resolving.project(),
+                            Outputs.INTEGRITY)
+                    .deployment();
+            try (var oracles = java.nio.file.Files.list(Examples.of(example + "/expected"))) {
+                for (Path oracle : oracles.filter(
+                                file -> file.getFileName().toString().startsWith("resolved"))
+                        .toList()) {
+                    String text = java.nio.file.Files.readString(oracle);
+                    String id = field(text, "id");
+                    assertThat(deployment.getApplications())
+                            .filteredOn(application -> application.getId().equals(id))
+                            .singleElement()
+                            .satisfies(application -> assertThat(application.getRevision())
+                                    .as(oracle.toString())
+                                    .isEqualTo(field(text, "revision")));
+                }
+            }
+        }
+
+        String recorded = minimal().getApplications().get(0).getRevision();
+        Path moved = Examples.write(
+                directory,
+                "notes.project.yml",
+                Examples.read("minimal/notes.project.yml").replace("memory: 256Mi", "memory: 512Mi"));
+        Path captured = Examples.write(
+                directory,
+                "cluster-state.yml",
+                Examples.read("platform/cluster-state.yml").replace("2026-09-30", "2026-10-01"));
+        assertThat(revisionWith("minimal/notes.project.yml", moved)).isNotEqualTo(recorded);
+        assertThat(revisionWith("platform/cluster-state.yml", captured)).isEqualTo(recorded);
+    }
+
+    /** minimal's revision, resolved with {@code replaced} in place of the example file {@code name}. */
+    private static String revisionWith(String name, Path replaced) throws IOException {
+        List<Path> files = MINIMAL_SET.stream()
+                .map(file -> file.equals(name) ? replaced : Examples.of(file))
+                .toList();
+        return Pipeline.resolve(files, "notes", Outputs.INTEGRITY)
+                .deployment()
+                .getApplications()
+                .get(0)
+                .getRevision();
+    }
+
+    /** The value of the top-level string field {@code key} in a canonical JSON text. */
+    private static String field(String json, String key) {
+        java.util.regex.Matcher found = java.util.regex.Pattern.compile("\"" + key + "\":\"([^\"]*)\"")
+                .matcher(json.substring(json.lastIndexOf("\"" + key + "\":")));
+        assertThat(found.find()).isTrue();
+        return found.group(1);
+    }
+
     @Test
     void minimalResolvesToTheHandWrittenTargetModel() throws IOException {
         ResolvedDeployment resolved = minimal();

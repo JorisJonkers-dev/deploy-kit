@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  Runs model/render.mtl over minimal in Eclipse, the run RenderingTest makes headless:
+  the hand-written Resolved Deployment in, its Deliverable Set out, under this
+  project's target/. The model lives in the reactor's root project, which m2e
+  imports under its artifactId.
+-->
+<launchConfiguration type="org.eclipse.acceleo.aql.ls.debug.ide.launchConfigurationType">
+    <stringAttribute key="module" value="/dev.jorisjonkers.deploykit.emf.render/model/render.mtl"/>
+    <stringAttribute key="model" value="/emf-parent/models/minimal.resolveddeployment"/>
+    <stringAttribute key="destination" value="/dev.jorisjonkers.deploykit.emf.render/target/render"/>
+</launchConfiguration>
