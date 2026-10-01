@@ -75,7 +75,7 @@ const LOCK: CompositionLockDocument = {
         inputsSha: "c".repeat(64),
       },
     },
-    isolated: { data: { refused: REF, codes: ["E_DUPLICATE_HOST"] } },
+    isolated: { data: { refused: REF, codes: ["E_CUTOVER_UNHONOURABLE"] } },
     clusterStateDigest: DIGEST,
   },
 };
