@@ -8,15 +8,15 @@ import { describe, expect, it } from "vitest";
 import {
   compositionLock,
   type CompositionLockDocument,
-} from "../../src/model/composition-lock.ts";
-import { DRAFT } from "../../src/model/json-schema.ts";
+} from "../src/model/composition-lock.ts";
+import { DRAFT } from "../src/model/json-schema.ts";
 import {
   PIN_ANNOTATIONS,
   pinAnnotations,
-} from "../../src/model/pin-annotations.ts";
-import { PUBLISHED_SCHEMAS, publishedJsonSchema } from "../../src/index.ts";
+} from "../src/model/pin-annotations.ts";
+import { PUBLISHED_SCHEMAS, publishedJsonSchema } from "../src/index.ts";
 
-const REPOSITORY = join(import.meta.dirname, "..", "..");
+const REPOSITORY = join(import.meta.dirname, "..");
 const read = (path: string): string =>
   readFileSync(join(REPOSITORY, path), "utf8");
 

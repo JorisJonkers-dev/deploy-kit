@@ -10,6 +10,7 @@ export default defineConfig({
       "test/adapters/contract.test.ts",
       "test/adapters/spelling.test.ts",
       "test/canonical-json.test.ts",
+      "test/published-schemas.test.ts",
       "test/simplification-contract.test.ts",
     ],
     setupFiles: ["./test/setup.ts"],
