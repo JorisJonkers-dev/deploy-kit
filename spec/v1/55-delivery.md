@@ -418,7 +418,7 @@ function of the project and the Platform document, never authored:
 | `DATABASE_HOST`, `DATABASE_PORT` | the datastore surface the Application's edge to the project database reaches ([chapter 16](16-dependencies.md#the-database-catalog)) |
 | `DATABASE_NAME` | `<project>_db` |
 | `VAULT_ADDR` | the Secret Store's address ([chapter 14](14-platform-intent.md#the-secret-store)) |
-| `VAULT_ROLE` | the migration identity's Vault role, `<namespace>-<application>-migration` ([chapter 16](16-dependencies.md#process-identity)) |
+| `VAULT_ROLE` | the migration identity's Vault role ([chapter 16](16-dependencies.md#process-identity)) |
 | `VAULT_CREDENTIALS_PATH` | the owner credential, `database/creds/<project>-owner` |
 
 Both commands run as the migration identity, which reads its owner credential
