@@ -7,6 +7,11 @@ export default defineConfig({
   test: {
     include: [
       "test/model/**/*.test.ts",
+      "test/application/compose.test.ts",
+      "test/application/fragment.test.ts",
+      // The CLI in process; its process-level runs reach no instrumented code.
+      "test/cli/main.test.ts",
+      "test/cli/index.test.ts",
       "test/adapters/contract.test.ts",
       "test/adapters/spelling.test.ts",
       "test/canonical-json.test.ts",

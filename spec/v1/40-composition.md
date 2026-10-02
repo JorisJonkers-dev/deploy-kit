@@ -41,6 +41,7 @@ declares exactly one project
 ([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)):
 
 ```yaml
+# fragment.yml, beside the files the fragment carries
 apiVersion: intent.jorisjonkers.dev/v1
 kind: IntentFragment
 metadata:
@@ -49,11 +50,13 @@ metadata:
 spec:
   schemaVersion: 1.0.0
   project: knowledge                 # exactly one; the project file's header
-  owner: joris                      # the project's own, and not shared
-  contains:
-    applications: [knowledge]
-    secretSubtrees: [knowledge-system/]
+  version: 2.3.0                     # the release, as release-please tagged it, without the v
+  inputsSha: 9f2c4e1a7b3d5f8e0c2a4b6d8f0e1c3a5b7d9f1e3c5a7b9d1f3e5c7a9b1d3f5e
 ```
+
+The manifest names the project and the release and nothing the project file
+already states: the owner, the Applications and every grant are read from the
+project file itself, so the two cannot disagree.
 
 This narrows the wording of
 [0042](../../docs/adr/model/0042-declarations-compose-from-intent-fragments.md), which says "each project

@@ -8,13 +8,19 @@
 # docs/adr/model/0051-a-project-is-delivered-as-a-signed-artifact.md).
 #
 #   fragment publishes -> workflow_dispatch -> pull all participants
-#                                             -> verify + union
-#                                             -> assert the invariants
+#                                             -> verify each package
 #                                             -> prove the gate can fail
-#                                             -> publish ComposedIntent + lock
-#                                             -> render, one artifact per Project
+#                                             -> deploy-kit compose: union, invariants,
+#                                                isolation, render, lock
+#                                             -> publish the lock
+#                                             -> publish one artifact per moved Project
 #                                             -> sign keyless, read back, verify
 #                                             -> commit the moved pins [ci skip]
+#                                             -> report: statuses, issues, Discord
+#
+# The toolkit reads and writes directories only: this workflow pulls every
+# fragment, the previous lock and the pins into the workspace, runs
+# `deploy-kit compose` once, and pushes what it wrote.
 #
 # The pin commit is the deploy: Flux fetches each Project's OCIRepository by
 # the digest this workflow writes, and verifies it against this workflow's own
@@ -62,7 +68,7 @@ jobs:
       - name: Install the toolkit at this repository's pinned version
         id: toolkit
         run: |
-          # Bare `npx deploy-config-schema` resolves from the registry at
+          # Bare `npx deploy-kit` resolves from the registry at
           # invocation time, so two runs of the same inputs could compose with
           # different toolkits and produce different render hashes. Every step
           # below calls `npx --no-install`, which can only use what this step
@@ -76,7 +82,7 @@ jobs:
           # (docs/adr/model/0044-artifact-schema-versioning.md).
           npm ci
           TOOLKIT="$(node -p "require('./package-lock.json') \
-            .packages['node_modules/@jorisjonkers-dev/deploy-config-schema'].version")"
+            .packages['node_modules/@jorisjonkers-dev/deploy-kit'].version")"
           test -n "$TOOLKIT"
           echo "toolkit=${TOOLKIT}" >> "$GITHUB_OUTPUT"
           echo "composing with toolkit ${TOOLKIT}"
@@ -94,150 +100,136 @@ jobs:
             *) echo "CONTEXT_REF must be digest-pinned, got '${CONTEXT_REF}'"; exit 1 ;;
           esac
 
-      - name: Resolve every participant
+      - name: Pull every participant, the previous lock and the pins
         id: pull
         if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONTEXT_REF: ${{ vars.CONTEXT_REF }}
         run: |
+          echo "$GH_TOKEN" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
           # participants.yml is the one central artefact. It changes when a
-          # project is added or retired, not when a declaration changes.
-          npx --no-install deploy-config-schema compose pull \
-            --participants participants.yml \
-            --out fragments/ \
-            --record fragments/RESOLVED.json
-          # Fails with E_PARTICIPANT_MISSING, or E_PARTICIPANT_STALE past the
+          # project is added or retired, not when a declaration changes. Each
+          # fragment lands in its own directory beside the `ref` its pull
+          # resolved: an artefact cannot contain its own digest, so the puller
+          # records it (spec/v1/40-composition.md#publication-and-why-the-lock-is-an-output).
+          for project in $(yq '.participants | keys | .[]' participants.yml); do
+            ref="$(oras resolve "ghcr.io/${{ github.repository_owner }}/intent-${project}:latest")"
+            oras pull "ghcr.io/${{ github.repository_owner }}/intent-${project}@${ref}" --output "fragments/${project}/"
+            echo "ghcr.io/${{ github.repository_owner }}/intent-${project}@${ref}" > "fragments/${project}/ref"
+          done
+          # The Platform document is a participant like any project, pinned by
+          # digest rather than resolved from a tag.
+          oras pull "$CONTEXT_REF" --output platform/
+          echo "$CONTEXT_REF" > platform/ref
+
+          # The previous lock, and the estate commit it was committed in, READ
+          # FROM THE REGISTRY and the repository rather than a variable no step
+          # updates (docs/adr/model/0006-pinned-inputs.md). Absent on the very
+          # first composition, which is the one legitimate empty ancestor.
+          if oras pull "ghcr.io/${{ github.repository_owner }}/composed:latest" --output previous/ 2>/dev/null; then
+            echo "lock=--lock previous/lock.json --lock-commit $(cat previous/COMMIT)" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Every earlier fragment the previous lock or a Rollback names, so an
+          # isolated Project composes at the fragment it last composed at
+          # (spec/v1/40-composition.md#a-refused-project-is-isolated).
+          for ref in $( { [ -f previous/lock.json ] && jq -r '.spec.fragments[].ref' previous/lock.json; \
+                          yq '.metadata.annotations["estate.jorisjonkers.dev/rollback-fragment"] // ""' projects/*/source.yaml; } | sort -u ); do
+            oras pull "$ref" --output "held/$(echo "$ref" | sha256sum | cut -c1-12)/"
+            echo "$ref" > "held/$(echo "$ref" | sha256sum | cut -c1-12)/ref"
+          done
+          mkdir -p held
+
+          # Each delivered Project's pin: the content hash its pinned artifact
+          # carries, and the Pause and Rollback annotations on its source
+          # (spec/v1/55-delivery.md#pause-and-rollback).
+          REPOSITORY="$(yq '.bootstrap.flux.artifacts.repository' platform/platform.intent.yml)"
+          echo '{}' > pins.json
+          for source in projects/*/source.yaml; do
+            [ -f "$source" ] || continue
+            project="$(basename "$(dirname "$source")")"
+            content="$(oras manifest fetch "${REPOSITORY}/${project}@$(yq '.spec.ref.digest' "$source")" \
+              | jq -r '.annotations["dev.jorisjonkers.content-hash"]')"
+            jq --arg p "$project" --arg c "$content" \
+               --argjson a "$(yq -o=json '.metadata.annotations // {} | with_entries(select(.key | test("^estate\\.jorisjonkers\\.dev/")))' "$source")" \
+               '.[$p] = {contentHash: $c, annotations: $a}' pins.json > pins.next && mv pins.next pins.json
+          done
+          # E_PARTICIPANT_MISSING and E_PARTICIPANT_STALE, past the
           # participant's maxAge -- seven days by default
-          # (docs/adr/model/0043-participants-list-staleness.md). Not pedantry: the
-          # composed union is the estate's only complete picture, so a project
-          # that silently stops publishing yields a ComposedIntent that looks
-          # entirely valid and is missing every Application that project owns. What
-          # then happens to the objects those Applications already have in a
-          # cluster is a delivery question, defined separately from the model:
-          # see docs/adr/deferred/README.md.
+          # (docs/adr/model/0043-participants-list-staleness.md) -- are not
+          # checked by the toolkit yet; a participant whose pull fails above
+          # fails the run instead.
 
       - name: Verify each package against its own manifest
         if: ${{ !cancelled() }}
         run: |
-          for d in fragments/*/; do ( cd "$d" && sha256sum -c MANIFEST.sha256 ); done
-
-      - name: Union and assert the invariants
-        if: ${{ !cancelled() }}
-        run: |
-          npx --no-install deploy-config-schema compose union \
-            --fragments fragments/ \
-            --context-ref "${{ vars.CONTEXT_REF }}" \
-            --out composed/ \
-            --report composed/invariants.json
-          # Identity, references, secrets, completeness -- chapter 40 holds the
-          # list and its error codes. An error isolates the fragment it names
-          # and composition runs again over the rest; only a refused Platform
-          # document, or an error no changed fragment caused, produces no
-          # ComposedIntent (spec/v1/40-composition.md#a-refused-project-is-isolated).
-          #
-          # The secret checks are string comparisons over the union, with no
-          # mount table and no Vault read: a ${secret:...} placeholder must
-          # byte-match a granted path (E_UNAUTHORISED_SECRET_REFERENCE), and a
-          # delivery: env grant must have a placeholder (E_UNBOUND_SECRET_GRANT)
-          # -- docs/adr/model/0030-secret-delivery-is-env-file-or-self.md.
+          for d in fragments/*/ platform/; do ( cd "$d" && sha256sum -c MANIFEST.sha256 ); done
 
       - name: Prove the gate can fail, on the right error
         if: ${{ !cancelled() }}
         run: |
-          # Check your own gate can fail before trusting that it passed. The
-          # fixture is otherwise valid, so the union reaches the identity check
-          # rather than tripping on something else on the way in.
+          # Check your own gate can fail before trusting that it passed. Each
+          # negative fixture is otherwise valid, so the set reaches the one
+          # check it exists to trip rather than something else on the way in.
           #
           # The assertion is on the ERROR CODE, not the exit status. A step
           # that accepted any non-zero exit would keep printing success while
           # proving a different invariant -- exactly the failure this fixture
           # exists to detect, one level up.
-          set +e
-          out="$(npx --no-install deploy-config-schema compose union \
-            --fragments spec/v1/examples/negative/duplicate-application-id/ \
-            --context-ref "${{ vars.CONTEXT_REF }}" \
-            --out /tmp/should-fail 2>&1)"
-          status=$?
-          set -e
-          printf '%s\n' "$out"
-          if [ "$status" -eq 0 ]; then
-            echo "gate did not fail"; exit 1
-          fi
-          printf '%s' "$out" | grep -q 'E_DUPLICATE_APPLICATION_ID' || {
-            echo "gate failed, but not on E_DUPLICATE_APPLICATION_ID"; exit 1; }
-          echo "gate rejects a duplicate Application Id with E_DUPLICATE_APPLICATION_ID"
+          for fixture in duplicate-application-id:E_DUPLICATE_APPLICATION_ID \
+                         duplicate-process-name:E_DUPLICATE_PROCESS_NAME; do
+            set +e
+            out="$(npx --no-install deploy-kit validate "spec/v1/examples/negative/${fixture%%:*}/" --json)"
+            status=$?
+            set -e
+            [ "$status" -eq 1 ] || { echo "${fixture%%:*}: gate did not refuse (exit ${status})"; exit 1; }
+            printf '%s' "$out" | jq -e --arg c "${fixture##*:}" 'map(.code) | index($c)' > /dev/null || {
+              echo "${fixture%%:*}: refused, but not on ${fixture##*:}"; exit 1; }
+            echo "gate refuses ${fixture%%:*} with ${fixture##*:}"
+          done
 
-      - name: Prove the process-name gate can fail, on the right error
-        if: ${{ !cancelled() }}
-        run: |
-          # One negative fixture per invariant. This one is a single project
-          # file whose two Applications both name a Process `api`: Process names
-          # are unique within a project, because the ServiceAccount and the
-          # Vault role are the Process name under the project's namespace
-          # (docs/adr/model/0031-identity-per-process.md,
-          # docs/adr/model/0009-intent-is-authored-one-file-per-project.md). It needs no second
-          # fragment -- a project never spans repositories, so one file holds
-          # every name that must be compared.
-          #
-          # Again the assertion is the ERROR CODE. The fixture is otherwise
-          # valid, so a non-zero exit could just as easily mean a schema slip.
-          set +e
-          out="$(npx --no-install deploy-config-schema compose union \
-            --fragments spec/v1/examples/negative/duplicate-process-name/ \
-            --context-ref "${{ vars.CONTEXT_REF }}" \
-            --out /tmp/should-fail-process 2>&1)"
-          status=$?
-          set -e
-          printf '%s\n' "$out"
-          if [ "$status" -eq 0 ]; then
-            echo "gate did not fail"; exit 1
-          fi
-          printf '%s' "$out" | grep -q 'E_DUPLICATE_PROCESS_NAME' || {
-            echo "gate failed, but not on E_DUPLICATE_PROCESS_NAME"; exit 1; }
-          echo "gate rejects a duplicate Process name with E_DUPLICATE_PROCESS_NAME"
-
-      - name: Publish ComposedIntent and its lock
-        id: publish
+      - name: Compose
         if: ${{ !cancelled() }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TOOLKIT: ${{ steps.toolkit.outputs.toolkit }}
+          LOCK: ${{ steps.pull.outputs.lock }}
         run: |
+          # The union, every estate-wide invariant, isolation and the render,
+          # in one run. An error isolates the fragment it names and composition
+          # runs again over the rest; only a refused Platform document, or an
+          # error no changed fragment caused, exits 1 and composes nothing
+          # (spec/v1/40-composition.md#a-refused-project-is-isolated). A
+          # Project the handover ledger still puts on the old path is composed
+          # and checked, never delivered, and the estate-scoped artifact waits
+          # until none is (spec/v1/60-setup.md#handing-over-one-project-at-a-time).
+          # shellcheck disable=SC2086 # LOCK is two options or none
+          npx --no-install deploy-kit compose \
+            --platform platform/ \
+            --fragments fragments/ \
+            --held held/ \
+            --pins pins.json \
+            $LOCK \
+            --cluster-state cluster-state.yml \
+            --schema-package-integrity "$(node -p "require('./package-lock.json').packages['node_modules/@jorisjonkers-dev/deploy-kit'].integrity")" \
+            --out composed/
+
+      - name: Publish the lock
+        id: publish
+        if: ${{ success() && github.ref == 'refs/heads/main' }}
+        run: |
+          # The lock records what was composed -- every fragment by digest and
+          # release, every isolation and why, and the toolkit that composed
+          # them, since the accepted schemaVersion RANGE is not enough to
+          # replay with (docs/adr/model/0044-artifact-schema-versioning.md).
           REF="ghcr.io/${{ github.repository_owner }}/composed:latest"
-          echo "$GH_TOKEN" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
-
-          # The previous lock digest is READ FROM THE REGISTRY, not from a
-          # repository variable. A variable no step updates is either stale
-          # forever -- every lock claiming the same ancestor -- or maintained
-          # by hand out of band, which is the mutable remembered state the
-          # pinned-input rule forbids (docs/adr/model/0006-pinned-inputs.md).
-          # Absent on the very first composition, which is the one legitimate
-          # empty ancestor.
-          PREVIOUS="$(oras resolve "$REF" 2>/dev/null || true)"
-          echo "previous lock ancestor: ${PREVIOUS:-<none, first composition>}"
-
-          # The lock records what was composed -- every resolved fragment
-          # digest and the exact toolkit version that produced this tree, since
-          # the accepted schemaVersion RANGE is not enough to replay with
-          # (docs/adr/model/0044-artifact-schema-versioning.md). It is written INSIDE
-          # the package minus its own digest, which cannot exist yet.
-          npx --no-install deploy-config-schema compose lock \
-            --resolved fragments/RESOLVED.json \
-            --composed composed/ \
-            --toolkit "$TOOLKIT" \
-            --previous "$PREVIOUS" \
-            --out composed/composition-lock.yml
-
-          ( cd composed && oras push "$REF" . )
+          git rev-parse HEAD > composed/COMMIT
+          ( cd composed && oras push "$REF" lock.json composition.json COMMIT )
           DIGEST="$(oras resolve "$REF")"
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
-
-      - name: Read the composed digest back
-        if: ${{ !cancelled() }}
-        run: |
           # A successful push is not evidence that a consumer can read what was
-          # meant. Pull it back by digest and verify the content.
-          oras pull "ghcr.io/${{ github.repository_owner }}/composed@${{ steps.publish.outputs.digest }}" \
-            --output check/
-          npx --no-install deploy-config-schema compose verify --composed check/
+          # meant. Pull it back by digest and compare.
+          oras pull "${REF%:latest}@${DIGEST}" --output check/
+          cmp check/lock.json composed/lock.json
 
       # Everything below deploys, so it runs only when every step above
       # succeeded, and only on main: a failed invariant, a failed gate proof or
@@ -246,79 +238,40 @@ jobs:
       - uses: sigstore/cosign-installer@v3
         if: ${{ success() && github.ref == 'refs/heads/main' }}
 
-      - name: Render, and publish one signed artifact per changed Project
+      - name: Publish one signed artifact per moved Project
         id: render
         if: ${{ success() && github.ref == 'refs/heads/main' }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COMPOSED: ${{ steps.publish.outputs.digest }}
         run: |
-          # The render is a function of the composed intent and the pinned
-          # inputs alone. One directory per Project, plus `_estate/` for the
-          # paths the path plan scopes to the estate; each Reconcile Unit
-          # applies its own path inside its Project's artifact.
-          npx --no-install deploy-config-schema render \
-            --composed check/ \
-            --context-ref "${{ vars.CONTEXT_REF }}" \
-            --out rendered/ \
-            --render-hash-to RENDER_HASH
-          platform() {
-            npx --no-install deploy-config-schema platform get \
-              --context-ref "${{ vars.CONTEXT_REF }}" "$1"
-          }
-          REPOSITORY="$(platform bootstrap.flux.artifacts.repository)"
-          echo "$GH_TOKEN" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
-
+          # The toolkit decided which pins move: an unchanged render, and a
+          # paused Project, move none (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
+          REPOSITORY="$(yq '.bootstrap.flux.artifacts.repository' platform/platform.intent.yml)"
+          RENDER_HASH="$(jq -r '.spec.composedDigest' composed/lock.json)"
           : > moved.txt
-          # A Project the handover ledger still puts on the old path is
-          # composed and checked, never delivered: fleet-infra applies it
-          # until its handover step (spec/v1/60-setup.md#handing-over-one-project-at-a-time).
-          # The estate-scoped artifact follows once no Project is legacy.
-          LEGACY=" $(platform handover.legacy | tr '\n' ' ') "
-          for dir in rendered/*/; do
-            project="$(basename "$dir")"
-            case "$LEGACY" in *" ${project} "*) echo "${project}: legacy"; continue ;; esac
-            if [ "$project" = "_estate" ] && [ -n "$(echo "$LEGACY" | tr -d ' ')" ]; then
-              echo "_estate: waits for the handover to end"; continue
-            fi
-            source="projects/${project}/source.yaml"
-
-            # A Project seen for the first time gets its pinned source, derived
-            # from the Platform document and the Reconcile Unit DAG. After that
-            # only its digest ever changes.
-            if [ ! -f "$source" ]; then
-              npx --no-install deploy-config-schema deliver source \
-                --context-ref "${{ vars.CONTEXT_REF }}" \
-                --composed check/ --project "$project" --out "$source"
-            fi
-
-            # An unchanged render publishes nothing: compare this render's
-            # content hash with the one the pinned artifact carries.
-            CONTENT="$( cd "$dir" && find . -type f | sort | xargs sha256sum | sha256sum | cut -d' ' -f1 )"
-            PINNED="$(yq '.spec.ref.digest // ""' "$source" | head -n1)"
-            if [ -n "$PINNED" ] && [ "$(oras manifest fetch "${REPOSITORY}/${project}@${PINNED}" \
-                  | jq -r '.annotations["dev.jorisjonkers.content-hash"]')" = "sha256:${CONTENT}" ]; then
-              echo "${project}: unchanged"
-              continue
-            fi
-
+          for row in $(jq -r '.artifacts[] | select(.moves) | "\(.name)=\(.contentHash)"' composed/composition.json); do
+            project="${row%%=*}"; content="${row#*=}"
+            # A Project seen for the first time needs its pinned source,
+            # derived from the Platform document and the Reconcile Unit DAG;
+            # the toolkit does not write it yet, so its first source is
+            # written by hand.
+            test -f "projects/${project}/source.yaml" || { echo "${project}: no source yet"; exit 1; }
             # The digest is taken from the push itself, never re-read through a
             # mutable tag another run could move in between.
-            DIGEST="$( cd "$dir" && oras push "${REPOSITORY}/${project}:${CONTENT}" \
-                --annotation "dev.jorisjonkers.content-hash=sha256:${CONTENT}" \
-                --annotation "dev.jorisjonkers.render-hash=$(cat "$GITHUB_WORKSPACE/RENDER_HASH")" \
+            DIGEST="$( cd "composed/artifacts/${project}" && oras push "${REPOSITORY}/${project}:${content#sha256:}" \
+                --annotation "dev.jorisjonkers.content-hash=${content}" \
+                --annotation "dev.jorisjonkers.render-hash=${RENDER_HASH}" \
                 --annotation "dev.jorisjonkers.lock-digest=${COMPOSED}" \
                 --annotation "org.opencontainers.image.revision=${{ github.sha }}" \
                 --format go-template='{{.digest}}' . )"
-
             # Keyless: the identity is this run's OIDC token, so no signing key
             # exists to store, rotate or leak.
             cosign sign --yes "${REPOSITORY}/${project}@${DIGEST}"
             echo "${project} ${DIGEST}" >> moved.txt
           done
           echo "repository=${REPOSITORY}" >> "$GITHUB_OUTPUT"
-          echo "issuer=$(platform bootstrap.flux.artifacts.signer.issuer)" >> "$GITHUB_OUTPUT"
-          echo "subject=$(platform bootstrap.flux.artifacts.signer.subject)" >> "$GITHUB_OUTPUT"
+          echo "issuer=$(yq '.bootstrap.flux.artifacts.signer.issuer' platform/platform.intent.yml)" >> "$GITHUB_OUTPUT"
+          echo "subject=$(yq '.bootstrap.flux.artifacts.signer.subject' platform/platform.intent.yml)" >> "$GITHUB_OUTPUT"
 
       - name: Verify the value, not the command
         if: ${{ success() && github.ref == 'refs/heads/main' }}
@@ -357,3 +310,23 @@ jobs:
           git add projects/
           git commit -m "chore(deploy): $(cut -d' ' -f1 moved.txt | paste -sd, -) [ci skip]"
           git push origin HEAD:main
+
+      - name: Report what composition decided
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # A commit status on every commit that published a fragment, and one
+          # issue per Project condition, opened when it starts, commented when
+          # it recurs, closed when it clears; its Discord line is posted when
+          # the issue opens or closes (spec/v1/55-delivery.md#notifications).
+          test -f composed/composition.json || exit 0
+          jq -c '.statuses[]' composed/composition.json | while read -r status; do
+            gh api "repos/$(jq -r .repository <<< "$status")/statuses/$(jq -r .sha <<< "$status")" \
+              -f state="$(jq -r .state <<< "$status")" \
+              -f context=estate/compose \
+              -f description="$(jq -r .description <<< "$status")"
+          done
+          jq -c '.conditions[]' composed/composition.json > conditions.jsonl
+          # Opening, commenting on and closing each condition's issue, and the
+          # Discord post, are the composition workflow's own (estate#2).

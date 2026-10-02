@@ -77,7 +77,7 @@ as a port the model declares and the CLI supplies.
 | port | what it hides | production implementation |
 |---|---|---|
 | `PinnedInputSet` | resolving every Intent Fragment (the project files and the Platform document) the node contract, the locks and the ClusterState snapshot into parsed, validated, digested documents | filesystem plus OCI |
-| `FragmentSource` / `FragmentPublisher` | reading and publishing Intent Fragments by digest | `oras push` then `oras resolve`, and a filesystem implementation for tests |
+| `FragmentSource` / `FragmentPublisher` | reading and publishing Intent Fragments by digest | a directory: the CLI reads pulled fragments from one and writes a packed fragment to another, and the workflow around it runs `oras pull`, `oras push` and `oras resolve` |
 | `Hasher` | the hash primitive | `node:crypto`, so the chain imports no crypto |
 | `DeliverableWriter` | putting bytes on disk | staging directory plus atomic rename |
 
@@ -87,9 +87,10 @@ Two properties are load-bearing rather than tidy.
 one place and "the input set is closed"
 ([0006](adr/model/0006-pinned-inputs.md)) is expressed by a single type.
 Widening it is one visible edit. That type is `PinnedSet` in
-`src/model/resolution.ts`; until the CLI lands, `resolveIntentSet` takes the
-authored files as values, as `checkIntentSet` does, and digests each input itself
-through the `Hasher` it is handed.
+`src/model/resolution.ts`. `resolveIntentSet` takes the authored files as
+values, as `checkIntentSet` does, and digests each input itself through the
+`Hasher` it is handed; the CLI reads them from the directories a workflow
+pulled them into, and `composeEstate` hands them on.
 
 **Hashing is a port.** `renderHash` is a pure function of the recorded input
 digests, and a model that imported `node:crypto` could reach for a clock or an
