@@ -1,0 +1,42 @@
+\section{The Hand-in Archive}
+\label{app:handin}
+
+The archive holds this report as \texttt{report.pdf}, a \texttt{README.md} with
+the steps below, and two folders, laid out as Table~\ref{tab:handin} shows.
+The first, \texttt{task-3-code-generation/}, is an Eclipse project for reading
+the transformation and its results, imported with File > Import > Existing
+Projects into Workspace. The second, \texttt{implementation/}, contains the EMF
+implementation and the examples its tests read.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.5\linewidth}>{\raggedright\arraybackslash}p{0.42\linewidth}}
+\hline
+\textbf{Path} & \textbf{Contents} \\
+\hline
+\path{model/resolved-deployment.ecore} & The target metamodel, the templates' input. \\
+\path{templates/render.mtl} & The Acceleo module. \\
+\path{examples/<example>/<project>.resolveddeployment} & The resolved model of \texttt{minimal} and of \texttt{data} the transformation wrote, the templates' source models. \\
+\path{generated/} & The tree the templates wrote from both, as the build left it. \\
+\path{expected/} & The committed trees it equals: \path{minimal/}, \path{data/} and \path{_estate/}. \\
+\path{evidence/} & The output of \texttt{kustomize build} for each directory and of \texttt{kubeconform} for the tree. \\
+\hline
+\end{tabular}
+\caption{The Project of the Archive}
+\label{tab:handin}
+\end{table}
+
+Every resolved model declares its metamodel in \texttt{xsi:schemaLocation}, so
+Eclipse opens it in the Sample Reflective Ecore Model Editor without a
+registered package.
+
+\texttt{./mvnw clean verify} in \texttt{implementation/emf} builds the
+implementation and runs every test; it needs JDK~21. It parses every example,
+runs both transformations and the templates, writes the rendered tree under
+\path{bundles/cli/target/parity/rendered/}, and runs the parity test that
+compares it with the committed trees. To run the templates in Eclipse Modeling
+Tools with the Acceleo~4 SDK, import \texttt{implementation/emf} as existing
+Maven projects after that build, and run \texttt{render.launch} in
+\texttt{dev.jorisjonkers.deploykit.emf.render}. It renders \texttt{minimal}
+from the resolved model the build wrote.

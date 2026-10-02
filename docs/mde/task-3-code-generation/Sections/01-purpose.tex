@@ -1,0 +1,148 @@
+\section{Purpose of the Project}
+\label{sec:purpose}
+
+\subsection{Goals}
+\label{sec:goals}
+
+The project generates the Kubernetes files of a small cluster from short
+deployment documents. Each application's repository holds one \emph{project
+document}, which states what the application needs, and one \emph{platform
+document} states what all applications share. Task~1 defined two metamodels in
+Ecore: the \emph{source metamodel}, which describes both documents, and the
+\emph{target metamodel}, which describes the \emph{resolved model}. A resolved
+model records every value the platform derives for one project, and the files
+that will be generated from it. Task~2 implemented the model transformation
+from source models to a resolved model in QVT-Operational.
+
+Task~3 implements the last step: Acceleo templates that turn a resolved model
+into text. The text is the \emph{Deliverable Set}, the YAML and JSON files a
+cluster applies: the workloads and their service accounts, the network
+policies, the routes of the web proxy, the monitors, the volume claims and
+backups, the configuration files, the objects of the secret operator, and the
+policies of the secret store. The templates are run on the resolved models the
+Task~2 transformation writes, so the three tasks together form one pipeline
+from documents to files.
+
+The code generation has two goals.
+
+\begin{enumerate}
+  \item It writes the same files as the production implementation of the same
+    specification, which is written in TypeScript and used to deploy the
+    cluster, \emph{byte for byte}. Both implementations are compared with the
+    same committed trees of files, called \emph{oracles}. Byte-for-byte
+    equality is what makes the comparison meaningful: whitespace, key order and
+    quoting decide whether two files are the same, so the templates have to
+    decide them exactly as the production implementation's serializer does.
+  \item It decides nothing. Every value in a generated file is read from the
+    resolved model. A template only chooses how a value is spelled in YAML or
+    JSON, never which value it is, so a wrong file is always traced to the
+    transformation or the model and never to the templates.
+\end{enumerate}
+
+\subsection{Role of the Code Generation}
+\label{sec:role}
+
+Figure~\ref{fig:pipeline} shows the pipeline. Xtext parses each document into a
+source model and OCL rejects invalid ones (Task~1). Two QVT-Operational
+transformations lower and resolve them into one resolved model per project
+(Task~2). The Acceleo module of this report writes the files of every resolved
+model it is given. One Java entry point, \texttt{Pipeline.render}, runs all of
+these steps in one pass, and the build compares the files it writes with the
+oracles.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=0.45cm and 0.55cm,
+  box/.style={draw, rounded corners=2pt, align=center, font=\scriptsize,
+    minimum height=0.9cm, text width=2.1cm},
+  document/.style={box, fill=blue!6},
+  stage/.style={box, fill=green!8},
+  result/.style={box, fill=orange!10},
+  arr/.style={-{Stealth[length=2mm]}}]
+\node[document] (docs) {Project and platform documents (YAML)};
+\node[stage, right=of docs] (parse) {Xtext parsing and OCL (Task~1)};
+\node[stage, right=of parse] (qvto) {Lowering and resolution (QVTo, Task~2)};
+\node[result, right=of qvto] (model) {Resolved models (XMI)};
+\node[stage, right=of model] (acceleo) {\textbf{Code generation (Acceleo)}};
+\node[result, below=of acceleo] (tree) {The Deliverable Set (YAML, JSON)};
+\node[result, below=of model] (oracle) {Committed trees, compared byte for byte};
+\draw[arr] (docs) -- (parse);
+\draw[arr] (parse) -- (qvto);
+\draw[arr] (qvto) -- (model);
+\draw[arr] (model) -- (acceleo);
+\draw[arr] (acceleo) -- (tree);
+\draw[arr, dashed] (tree) -- (oracle);
+\end{tikzpicture}
+\caption{The Pipeline, With the Code Generation This Report Describes}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Refinement of Tasks 1 and 2}
+\label{sec:refinement}
+
+Task~1 planned to write the templates against hand-written resolved models, so
+that the code generation could proceed while the transformation was still being
+written. The first template indeed ran on the hand-written model of the
+\texttt{minimal} example. By the time the templates were widened, the Task~2
+transformation already resolved every example, so the templates were widened
+directly on its output, and the hand-written model is now only the expected
+result of the transformation for \texttt{minimal}. No test feeds a hand-written
+model to the templates any more.
+
+Generating the files changed the earlier tasks in two ways:
+
+\begin{itemize}
+  \item \textbf{The target metamodel gained the files it did not describe.}
+    Task~1's metamodel described the workload, identity, network policy,
+    route, monitor and secret files. The oracles also hold services, volume
+    claims, configuration files, backup jobs, the secret operator's connection
+    and the secret store's policies and roles. Seven classes were added for
+    them, one class was restructured, and a few values the files need were
+    added, such as the endpoint of the release gate and the rule that admitted
+    a network peer. The Task~2 report lists every change in its appendix.
+  \item \textbf{The application revision became the production
+    implementation's.} Every generated Canary carries the revision of its
+    application, a digest. Task~2 first computed it over the target model's own
+    form, which differs from the production implementation's. Byte-for-byte
+    files need the production value, so the transformation now writes the
+    application's element in the production implementation's JSON form and
+    hashes that.
+\end{itemize}
+
+\subsection{Assumptions and Conditions}
+\label{sec:assumptions}
+
+\begin{itemize}
+  \item The resolved model is complete. The transformation stops rather than
+    write a model with a missing value (Task~2), so a template reads every
+    value it needs without checking for its absence, except where the target
+    metamodel declares a value optional.
+  \item The production implementation is the reference for the spelling of
+    every file: its key order, its indentation, and when it quotes a string.
+    Where YAML allows two spellings, the templates use the production one.
+  \item Several resolved models are rendered together when their files share a
+    directory. The routes of every project share the directory of their entry
+    point, so the index file of that directory lists the routes of every
+    project rendered with it.
+  \item The templates run without Eclipse, through Acceleo's standalone API, so
+    that the build server runs them on every change. A launch configuration
+    runs the same module in Eclipse (Appendix~\ref{app:handin}).
+\end{itemize}
+
+\subsection{Scope}
+\label{sec:scope}
+
+The templates generate every tree the production implementation generates:
+the share of the \texttt{minimal} project (9 files), the share of the
+\texttt{data} project (28 files), and the files the two share at the level of
+the cluster (7 files), 44 files in total. Together they use every kind of file
+the specification defines for a running application, apart from two.
+
+The \texttt{auth} and \texttt{knowledge} examples also carry rendered trees, but
+those are written by hand as the goal state of the specification: the
+production implementation does not generate them yet either, so they hold no
+reliable oracle. They contain the two kinds of file no implementation generates
+yet, a disruption budget and a database migration job, and the target
+metamodel does not describe those two kinds. Section~\ref{sec:limitations}
+discusses this.
