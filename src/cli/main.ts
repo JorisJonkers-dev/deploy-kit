@@ -5,8 +5,11 @@
 // fragments and artifacts to and from the registry, never this code. It returns
 // what the process should do, and `boundary.ts` does it.
 import {
+  closeSync,
   existsSync,
+  fstatSync,
   mkdirSync,
+  openSync,
   readdirSync,
   readFileSync,
   statSync,
@@ -132,6 +135,23 @@ function filesUnder(root: string): AuthoredFile[] {
   }));
 }
 
+/** The files `path` names: the file itself, or every file under the directory it is. */
+function filesAt(path: string): AuthoredFile[] {
+  // One descriptor answers both what `path` is and what it holds, so the file
+  // cannot change between the two.
+  const descriptor = openSync(path, "r");
+  const files = fstatSync(descriptor).isDirectory()
+    ? filesUnder(path).map(({ name, text }) => ({
+        name: `${path}/${name}`,
+        text,
+      }))
+    : [{ name: path, text: readFileSync(descriptor, "utf8") }];
+  // A descriptor left open is invisible to a test.
+  // Stryker disable next-line all
+  closeSync(descriptor);
+  return files;
+}
+
 /** One fragment a workflow pulled: its manifest, the reference it recorded, and its files; or why it is not one. */
 function fragmentAt(directory: string): Fragment | string {
   const files = filesUnder(directory);
@@ -162,14 +182,7 @@ function fragmentsUnder(root: string): Fragment[] | string {
 
 function validate(paths: readonly string[], json: boolean): Outcome {
   if (paths.length === 0) return usage("validate: name a file or a directory");
-  const files = paths.flatMap((path) =>
-    statSync(path).isDirectory()
-      ? filesUnder(path).map(({ name, text }) => ({
-          name: `${path}/${name}`,
-          text,
-        }))
-      : [{ name: path, text: readFileSync(path, "utf8") }],
-  );
+  const files = paths.flatMap(filesAt);
   const checked = checkIntentSet(files);
   return checked.ok
     ? accepted(`accepted (${String(files.length)} read)\n`)
@@ -323,9 +336,9 @@ function compose(values: Options, json: boolean, world: World): Outcome {
   if (absent !== undefined) return usage(`--${absent} is required`);
   const platform = fragmentAt(given(values, "platform"));
   const fragments = fragmentsUnder(given(values, "fragments"));
-  // No --held and an empty directory hold no fragment alike.
-  // Stryker disable next-line ArrayDeclaration
   const held =
+    // No --held and an empty directory hold no fragment alike.
+    // Stryker disable next-line ArrayDeclaration
     typeof values.held === "string" ? fragmentsUnder(values.held) : [];
   const wrong = [platform, fragments, held].find(
     (read) => typeof read === "string",
