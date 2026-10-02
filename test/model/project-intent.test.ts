@@ -266,9 +266,11 @@ describe("parseProjectIntent", () => {
   it("refuses malformed YAML and a duplicated key at the document, before the schema runs", () => {
     const batch = `  - id: batch\n    processes:\n${PROCESS}`;
 
-    expect(
-      refused(withApplications(`${batch}  - [\n`)).map(({ path }) => path),
-    ).toStrictEqual([""]);
+    const [malformed, ...more] = refused(withApplications(`${batch}  - [\n`));
+    expect(more).toStrictEqual([]);
+    expect(malformed?.path).toBe("");
+    // The parser's own words, not an empty or undefined reason.
+    expect(malformed?.message).toMatch(/flow sequence|\]/i);
     expect(refused(`owner: again\n${withApplications(batch)}`)).toStrictEqual([
       expect.objectContaining({ code: "schema", path: "" }),
     ]);
