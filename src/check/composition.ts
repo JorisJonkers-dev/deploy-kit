@@ -291,33 +291,35 @@ export function setDiagnostics(
       ),
     ),
   };
-  const proxies = platform.document.tiers.flatMap((tier, index) =>
-    declared.has(tier.traefik)
-      ? []
-      : [
-          {
-            code: "E_UNKNOWN_TIER_PROXY",
-            document: platform.name,
-            path: `/tiers/${index}`,
-            message: `no project file declares the Application ${tier.traefik} this tier's proxy names`,
-            hint: "Declare the proxy Application in a project file the platform owns.",
-          },
-        ],
-  );
-  // The machinery names Applications a project file declares, as a proxy does.
-  const machinery = (platform.document.delivery?.machinery ?? []).flatMap(
-    (name) =>
-      declared.has(name)
+  const proxies: Diagnostic[] = platform.document.tiers.flatMap(
+    (tier, index) =>
+      declared.has(tier.traefik)
         ? []
         : [
             {
-              code: "E_UNKNOWN_MACHINERY",
+              code: "E_UNKNOWN_TIER_PROXY",
               document: platform.name,
-              path: "/delivery",
-              message: `no project file declares the Application ${name} the delivery machinery names`,
-              hint: "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
+              path: `/tiers/${index}`,
+              message: `no project file declares the Application ${tier.traefik} this tier's proxy names`,
+              hint: "Declare the proxy Application in a project file the platform owns.",
             },
           ],
+  );
+  // The machinery names Applications a project file declares, as a proxy does.
+  const machinery: Diagnostic[] = (
+    platform.document.delivery?.machinery ?? []
+  ).flatMap((name) =>
+    declared.has(name)
+      ? []
+      : [
+          {
+            code: "E_UNKNOWN_MACHINERY",
+            document: platform.name,
+            path: "/delivery",
+            message: `no project file declares the Application ${name} the delivery machinery names`,
+            hint: "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
+          },
+        ],
   );
   // The collector names an Application a project file declares, and the
   // endpoint every exporting profile is handed is its `otlp` surface.
@@ -327,7 +329,7 @@ export function setDiagnostics(
       platform.document,
       projects.map(({ document }) => document),
     ) !== undefined;
-  const telemetry =
+  const telemetry: Diagnostic[] =
     collector === undefined || collects
       ? []
       : [
@@ -341,7 +343,7 @@ export function setDiagnostics(
         ];
   // The metrics stack is an Application a project file declares, as a proxy is.
   const metrics = platform.document.telemetry?.metrics;
-  const stack =
+  const stack: Diagnostic[] =
     metrics === undefined || declared.has(metrics)
       ? []
       : [
@@ -360,7 +362,7 @@ export function setDiagnostics(
       platform.document,
       projects.map(({ document }) => document),
     ) !== undefined;
-  const release =
+  const release: Diagnostic[] =
     gate === undefined || answers
       ? []
       : [
@@ -379,7 +381,7 @@ export function setDiagnostics(
       platform.document,
       projects.map(({ document }) => document),
     ) !== undefined;
-  const secrets =
+  const secrets: Diagnostic[] =
     store === undefined || serves
       ? []
       : [

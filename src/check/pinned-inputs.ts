@@ -31,9 +31,12 @@ function contractRefusals(
       ];
 }
 
-function processRefusals(set: PinnedSet, { document, effective }: Located) {
+function processRefusals(
+  set: PinnedSet,
+  { document, effective }: Located,
+): Diagnostic[] {
   return effective.applications.flatMap((application, a) =>
-    application.processes.flatMap((process, p) => {
+    application.processes.flatMap((process, p): Diagnostic[] => {
       const at = `/applications/${String(a)}/processes/${String(p)}`;
       const images = [
         { image: process.image, path: `${at}/image` },
@@ -55,7 +58,7 @@ function processRefusals(set: PinnedSet, { document, effective }: Located) {
         ...(eligibleNodes(process, set.nodeContract).length === 0
           ? [
               {
-                code: "E_PLACEMENT_UNSATISFIABLE",
+                code: "E_PLACEMENT_UNSATISFIABLE" as const,
                 document,
                 path: `${at}/placement`,
                 message: `no node in the node contract can hold ${process.name}`,

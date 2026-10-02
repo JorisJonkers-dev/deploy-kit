@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { platformIntent } from "./platform-intent.ts";
 import { envFile, projectIntent } from "./project-intent.ts";
+import { brokenInvariant } from "./internal-failure.ts";
 
 export interface DescriptorFeature {
   readonly name: string;
@@ -53,7 +54,7 @@ export function typesOf(node: Node): string[] {
     return union.flatMap((member) => typesOf(member as Node)).sort();
   const primitive = PRIMITIVES.get(String(node["type"]));
   if (primitive === undefined)
-    throw new TypeError(
+    throw brokenInvariant(
       `${String(node["type"])} is not a type the descriptor names`,
     );
   return [primitive];

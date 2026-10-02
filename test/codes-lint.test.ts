@@ -20,6 +20,8 @@ const code = (name: string): string => ["E", name].join("_");
 const ALPHA = code("ALPHA");
 const BETA = code("BETA");
 const GAMMA = code("GAMMA");
+// A code the specification retired: mentioned elsewhere, never carried.
+const RETIRED_CODE = Object.keys(RETIRED)[0] ?? "";
 const chapter = (...codes: string[]): string =>
   `| code |\n| ${codes.join(" |\n| ")} |\n`;
 const pending = (ticket: string, ...codes: string[]): Pending => ({
@@ -105,6 +107,20 @@ describe("codeErrors", () => {
       "pending on #2: names no reason",
       `${ALPHA}: pending on both #1 and #2`,
       `${BETA}: pending on #2, but no chapter defines it`,
+    ]);
+  });
+
+  it("fails a defined code the closed code type lacks, and one it holds that no chapter defines", () => {
+    const files = {
+      "spec/v1/10-intent.md": chapter(ALPHA, BETA),
+      "test/a.test.ts": `"${ALPHA}" "${BETA}"`,
+      "src/model/diagnostic.ts": `type RefusalCode = "${ALPHA}" | "${GAMMA}" | "${RETIRED_CODE}";`,
+    };
+
+    expect(codeErrors(files, []).errors).toStrictEqual([
+      `${BETA}: defined by the specification, and missing from the closed code type in src/model/diagnostic.ts`,
+      `${GAMMA}: in the closed code type in src/model/diagnostic.ts, and defined by no chapter`,
+      `${RETIRED_CODE}: in the closed code type in src/model/diagnostic.ts, and defined by no chapter`,
     ]);
   });
 

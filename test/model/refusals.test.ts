@@ -129,7 +129,6 @@ describe("the access by delivery matrix", () => {
 describe("the refusal fixtures", () => {
   it("are the ones this chapter carries, refused but for the accepted counterpart", () => {
     expect(fixtures).toStrictEqual([
-      "alert-class-unknown",
       "alert-class-without-signal",
       "credentials-without-database",
       "cutover-continuous-over-rwo",
@@ -172,8 +171,8 @@ describe("the refusal fixtures", () => {
     expect(refused).toHaveLength(34);
     expect(
       fixtures.length - refused.length,
-      "the four accepted counterparts and the vocabulary case carry no oracle",
-    ).toBe(5);
+      "the four accepted counterparts carry no oracle",
+    ).toBe(4);
   });
 
   it("accepts a Postgres on a volume whose durability derives no backup, because its catalog derives", () => {

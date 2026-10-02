@@ -24,6 +24,7 @@ import type { Hasher } from "../model/hasher.ts";
 import { resolveEdge } from "./dependencies.ts";
 import { resolveAssets, resolveGrants, resolveSidecars } from "./secrets.ts";
 import { resolveVolumes } from "./volumes.ts";
+import { notChecked } from "../model/internal-failure.ts";
 
 /** What resolving one Process reads beyond the Process itself. */
 export interface ProcessContext {
@@ -130,7 +131,7 @@ function secretOf(
       grant.keys.includes(key),
   );
   if (!granted)
-    throw new Error(
+    throw notChecked(
       `${variable.name}: a placeholder no env grant of the Process holds is E_UNAUTHORISED_SECRET_REFERENCE, which is not checked yet`,
     );
   return { name: variable.name, secret: { path, key } };
@@ -156,7 +157,7 @@ function dependencyOf(
   );
   const [edge] = edges;
   if (edge === undefined || edges.length > 1 || coordinate === undefined)
-    throw new Error(
+    throw notChecked(
       `${variable.name}: a dependency placeholder names no one edge of the Process and no coordinate of it, which is not checked yet`,
     );
   const { address } = resolveEdge(edge, context.union, context.platform);
@@ -184,7 +185,7 @@ function exposureOf(
     .find(({ id }) => id === application)
     ?.exposure?.find((candidate) => candidate.name === name);
   if (exposure === undefined || !["url", "host", "scheme"].includes(field))
-    throw new Error(
+    throw notChecked(
       `${variable.name}: an exposure placeholder names no exposure of the union and no field of it, which is not checked yet`,
     );
   // A tier carries the exposure's audience, or E_NO_TIER_FOR_AUDIENCE refused it.
@@ -261,7 +262,7 @@ function environmentOf(
   const injected = new Set(profile.map(({ name }) => name));
   const written = authored.find(({ name }) => injected.has(name));
   if (written !== undefined)
-    throw new Error(
+    throw notChecked(
       `${written.name}: a Runtime Profile key written in an env file is a build error, which is not checked yet`,
     );
   const entries = [...authored, ...profile];

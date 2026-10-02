@@ -9,6 +9,7 @@ import type { IngressRoute } from "../../objects/custom.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";
 import { managedOnly } from "../shared/labels.ts";
 import { tierDirectory } from "../shared/paths.ts";
+import { notSupported } from "../../model/internal-failure.ts";
 
 export const ADAPTER = "traefik";
 
@@ -22,7 +23,7 @@ type Middleware = NonNullable<ResolvedRoute["middleware"]>[number];
 /** The Middleware a step names, in the proxy's namespace, where the edge project renders it. */
 function middlewareName(step: Middleware): string {
   if (step.kind === "redirect")
-    throw new Error("a redirect Middleware is not rendered yet");
+    throw notSupported("a redirect Middleware is not rendered yet");
   if (step.kind === "forward-auth") return "forward-auth";
   return step.contentPolicy === undefined
     ? "security-headers"

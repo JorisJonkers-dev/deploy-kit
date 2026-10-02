@@ -224,6 +224,23 @@ export default defineConfig(
     rules: { "deploy-kit/no-computed-dynamic-import": "error" },
   },
   {
+    // RULE-073: a metamodel states only what its generated JSON Schema states
+    // too, so a consumer validating against the published schema refuses what
+    // the model refuses.
+    files: ["src/**/*.ts"],
+    rules: {
+      "deploy-kit/no-unstated-rule": "error",
+      // RULE-074: every failure the compiler throws is a named kind.
+      "deploy-kit/no-bare-throw": "error",
+    },
+  },
+  {
+    // RULE-073's one exemption: the module that pairs a zod check with the
+    // JSON Schema keywords stating the same rule.
+    files: ["src/model/shape-rule.ts"],
+    rules: { "deploy-kit/no-unstated-rule": "off" },
+  },
+  {
     // RULE-033: a shared fixture lives in test/support/, never in a test.
     files: ["test/**/*.ts", "**/*.test.ts"],
     rules: { "deploy-kit/no-test-imports-test": "error" },

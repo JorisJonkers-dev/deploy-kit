@@ -3,6 +3,7 @@
 // declared requirement against a node's declared allocatable, never against
 // free capacity. The authored shape is still free text, so a spelling read
 // here as nothing else stops the derivation rather than reading as NaN.
+import { brokenInvariant } from "./internal-failure.ts";
 
 const CPU = /^(\d+)(m?)$/;
 const MEMORY = /^(\d+)(Mi|Gi|Ti)?$/;
@@ -16,7 +17,7 @@ const MEBIBYTES: Readonly<Record<string, number>> = {
 export function millicores(quantity: string): number {
   const match = CPU.exec(quantity);
   if (match === null)
-    throw new Error(`${quantity}: not a cpu quantity the model reads`);
+    throw brokenInvariant(`${quantity}: not a cpu quantity the model reads`);
   const [, amount, milli] = match as unknown as [string, string, string];
   return Number(amount) * (milli === "m" ? 1 : 1000);
 }
@@ -25,7 +26,7 @@ export function millicores(quantity: string): number {
 export function mebibytes(quantity: string): number {
   const match = MEMORY.exec(quantity);
   if (match === null)
-    throw new Error(`${quantity}: not a memory quantity the model reads`);
+    throw brokenInvariant(`${quantity}: not a memory quantity the model reads`);
   const [, amount, unit] = match as unknown as [
     string,
     string,

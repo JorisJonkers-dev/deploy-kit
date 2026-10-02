@@ -6,6 +6,7 @@ import type { EffectiveProcess } from "../model/effective-intent.ts";
 import type { Hasher } from "../model/hasher.ts";
 import type { ImagesLockDocument, LockedImage } from "../model/images-lock.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
+import { notChecked, notSupported } from "../model/internal-failure.ts";
 
 type ResolvedGrant = NonNullable<ResolvedProcess["secrets"]>[number];
 type ResolvedAsset = NonNullable<ResolvedProcess["assets"]>[number];
@@ -89,11 +90,13 @@ export function resolveAssets(
   return (process.assets ?? []).map(({ from, mountAt }) => {
     const content = files.get(from);
     if (content === undefined)
-      throw new Error(
+      throw notChecked(
         `${from}: an Asset whose file is not read beside its project is refused, which is not checked yet`,
       );
     if (content.includes("${"))
-      throw new Error(`${from}: a placeholder in an Asset is not resolved yet`);
+      throw notSupported(
+        `${from}: a placeholder in an Asset is not resolved yet`,
+      );
     const digest = hash(content).split(":")[1] as string;
     return {
       name: `${process.name}-${spelled(from)}-${digest.slice(0, CONTENT_DIGITS)}`,

@@ -36,7 +36,7 @@
           'cache': 'npm'
 
       - 'name': 'Install'
-        'run': 'npm ci'
+        'run': 'npm ci --ignore-scripts'
 
       - 'name': 'Check PR title, commits and attribution'
         'shell': 'bash'

@@ -99,6 +99,49 @@ toolkit package's version, and composition accepts a range rather than an
 equality ([0044](../../docs/adr/model/0044-artifact-schema-versioning.md)); chapter 40
 defines the range and what the lock records.
 
+## Reading a file
+
+A file is read in two stages. The first reads its text as YAML, within the
+subset below; the second holds the value it holds to the schema this chapter
+defines (and [chapter 14](14-platform-intent.md#the-document) defines for the
+Platform document). A file refused by either stage reaches no rule: every
+`E_` code a later section names is answered only for a file both stages
+accept. Both stages refuse with the code `schema`, because what they refuse is
+the document's form, not a decision about the estate.
+
+### The YAML subset that is read
+
+A file is **one** YAML document, read as plain block or flow YAML: no anchor,
+no alias, no explicit tag, and no key written twice in one mapping. Anything
+outside the subset is refused rather than interpreted, because each of these
+lets the text a reader sees differ from the value a tool reads.
+
+A file outside the subset, or text that is not well-formed YAML at all, is
+refused **once**, at the JSON Pointer `""` (the whole document), however many
+times and in however many ways it breaks the subset. Its value is never read,
+so nothing in it reaches the schema stage. One refusal at the root is what
+every YAML reader can agree on; the count and position of a parser's own
+errors are the parser's, not the model's.
+
+### What a schema refusal reports
+
+A value the schema refuses is reported as one diagnostic with the code
+`schema` and the JSON Pointer (RFC 6901) of that value. **Every** offending
+value in the document is reported, not only the first; a value that breaks
+more than one constraint is reported once. Where the pointer lands, by what
+the value breaks:
+
+| the value breaks | the pointer names |
+|---|---|
+| a field the model does not have | that field, one diagnostic per unknown field: `/applications/0/stateful`, never the object holding it |
+| a required field that is absent | where the field would be: `/applications/0/id` |
+| its type, a closed vocabulary or a constant, a pattern, a length or a bound | the value itself |
+| a choice of shapes (`probes` is `none` or a block; a grant is one of three) that it matches none of | the value itself, once; nothing inside it is reported, because which shape it was meant to have is not known |
+
+A value inside one that is already refused is not examined: a Process written
+as a string is one refusal at the Process, not one per field it lacks. The
+order diagnostics are reported in carries no meaning; the set of pointers does.
+
 ## The model
 
 ![The layer-1 model](diagrams/10-project-intent-model.drawio.svg)
@@ -741,7 +784,7 @@ written there.
 An env file is a model artefact and not a blob the renderer passes through, so
 the subset it may use is fixed here and anything outside it is refused rather
 than interpreted, exactly as the YAML subset is
-([Two artefacts](#two-artefacts)):
+([The YAML subset that is read](#the-yaml-subset-that-is-read)):
 
 - a line is a comment (`#` first, after any indentation), blank, or one
   assignment;

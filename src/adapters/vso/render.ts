@@ -19,6 +19,7 @@ import {
 } from "../shared/holders.ts";
 import { managedOnly } from "../shared/labels.ts";
 import { applicationDirectory, projectDirectory } from "../shared/paths.ts";
+import { notSupported } from "../../model/internal-failure.ts";
 
 export const ADAPTER = "vso";
 
@@ -51,7 +52,7 @@ function staticSecretOf(
   application: ResolvedApplicationDocument,
 ): VaultStaticSecret {
   if (!grant.path.startsWith(KV_DATA))
-    throw new Error(
+    throw notSupported(
       `${grant.path}: a grant outside the ${KV_MOUNT} mount is not rendered yet`,
     );
   const destination = grant.destination as string;

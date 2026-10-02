@@ -1,5 +1,6 @@
 // Durations the way the model writes them (`500ms`, `20s`, `10m`, `1h`), in
 // seconds where a derivation multiplies one.
+import { brokenInvariant } from "./internal-failure.ts";
 
 const DURATION = /^(\d+)(ms|s|m|h)$/;
 const SECONDS: Readonly<Record<string, number>> = {
@@ -16,7 +17,7 @@ const SECONDS: Readonly<Record<string, number>> = {
 export function seconds(duration: string): number {
   const match = DURATION.exec(duration);
   if (match === null)
-    throw new Error(`${duration}: not a duration the model writes`);
+    throw brokenInvariant(`${duration}: not a duration the model writes`);
   const [, amount, unit] = match as unknown as [string, string, string];
   return Number(amount) * (SECONDS[unit] as number);
 }

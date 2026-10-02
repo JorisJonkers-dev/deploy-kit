@@ -5,7 +5,7 @@
 # workspace, so the repository has to be on disk before this file can be
 # resolved at all.
 'name': 'Setup'
-'description': 'Install the pinned Node and run npm ci'
+'description': 'Install the pinned Node and run npm ci without lifecycle scripts'
 
 'runs':
   'using': 'composite'
@@ -17,4 +17,4 @@
 
     - 'name': 'Install'
       'shell': 'bash'
-      'run': 'npm ci'
+      'run': 'npm ci --ignore-scripts'

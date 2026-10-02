@@ -50,7 +50,7 @@
           'registry-url': 'https://npm.pkg.github.com'
           'scope': '@jorisjonkers-dev'
           'cache': 'npm'
-      - 'run': 'npm ci'
+      - 'run': 'npm ci --ignore-scripts'
       - 'name': 'Publish npm package if version is new'
         'shell': 'bash'
         'run': |

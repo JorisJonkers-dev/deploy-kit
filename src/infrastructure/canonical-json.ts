@@ -1,10 +1,12 @@
+import { brokenInvariant } from "../model/internal-failure.ts";
+
 export function canonicalJson(value: unknown): string {
   return write(value, "");
 }
 
 function write(value: unknown, pointer: string): string {
   if (value === null || value === undefined)
-    throw new TypeError(
+    throw brokenInvariant(
       `${String(value)} at ${pointer}: an absent optional field is absent, never null`,
     );
   if (Array.isArray(value))
@@ -16,7 +18,7 @@ function write(value: unknown, pointer: string): string {
       return String(value);
     case "number":
       if (!Number.isFinite(value))
-        throw new TypeError(
+        throw brokenInvariant(
           `${String(value)} at ${pointer} is not a JSON number`,
         );
       return JSON.stringify(value);
@@ -25,7 +27,7 @@ function write(value: unknown, pointer: string): string {
         return writeObject(value as Record<string, unknown>, pointer);
       break;
   }
-  throw new TypeError(`${describe(value)} at ${pointer} is not a JSON value`);
+  throw brokenInvariant(`${describe(value)} at ${pointer} is not a JSON value`);
 }
 
 function writeObject(object: Record<string, unknown>, pointer: string): string {
@@ -44,7 +46,7 @@ function writeString(text: string, pointer: string): string {
       text,
     );
   if (lone !== null)
-    throw new TypeError(
+    throw brokenInvariant(
       `string at ${pointer} holds a lone surrogate at index ${String(lone.index)}`,
     );
   return JSON.stringify(text);

@@ -7,6 +7,7 @@ import type { ResolvedProject } from "../../model/resolution.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";
 import { instanceOf, labelsOf } from "../shared/labels.ts";
 import { applicationDirectory } from "../shared/paths.ts";
+import { notSupported } from "../../model/internal-failure.ts";
 
 export const ADAPTER = "prometheus";
 
@@ -22,7 +23,7 @@ export function renderPrometheus(project: ResolvedProject): Deliverable[] {
       process.switchover !== "blue-green" &&
       process.switchover !== "stop-start"
     )
-      throw new Error(
+      throw notSupported(
         `${process.name}: a monitor for a Process that switches ${process.switchover ?? "nothing"} is not rendered yet`,
       );
     const metadata = {

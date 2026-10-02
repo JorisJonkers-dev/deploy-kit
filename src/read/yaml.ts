@@ -21,17 +21,19 @@ export function readYaml(text: string): Result<unknown> {
       ],
     };
   const [document] = documents as [(typeof documents)[number]];
-  const diagnostics = [...document.errors, ...document.warnings].map((error) =>
-    refusal(error.message),
+  const reasons = [...document.errors, ...document.warnings].map(
+    ({ message }) => message,
   );
   visit(document, (_key, node) => {
-    if (isAlias(node)) diagnostics.push(refusal("an alias is not read"));
+    if (isAlias(node)) reasons.push("an alias is not read");
     else if (isNode(node) && node.anchor !== undefined)
-      diagnostics.push(refusal("an anchor is not read"));
+      reasons.push("an anchor is not read");
     else if (isNode(node) && node.tag !== undefined)
-      diagnostics.push(refusal("an explicit tag is not read"));
+      reasons.push("an explicit tag is not read");
   });
-  return diagnostics.length > 0
-    ? { ok: false, diagnostics }
+  // Refused once, at the root, however often the text breaks the subset
+  // (spec/v1/10-project-intent.md#the-yaml-subset-that-is-read).
+  return reasons.length > 0
+    ? { ok: false, diagnostics: [refusal(reasons.join("; "))] }
     : { ok: true, value: document.toJS() as unknown };
 }

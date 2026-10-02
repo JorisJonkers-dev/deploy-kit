@@ -7,6 +7,7 @@ import type { ImagesLockDocument, LockedImage } from "../model/images-lock.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
 import { destinationOf } from "./secrets.ts";
+import { notChecked } from "../model/internal-failure.ts";
 
 export type ResolvedVolume = NonNullable<ResolvedProcess["volumes"]>[number];
 type BackupPlan = NonNullable<ResolvedVolume["backup"]>;
@@ -28,7 +29,7 @@ function backupOf(
     PlatformIntentDocument["durability"]["recoverable"]
   >;
   if (policy.schedule === undefined || policy.retain === undefined)
-    throw new Error(
+    throw notChecked(
       `the ${durability} policy derives a backup, and names no schedule and retention`,
     );
   const method = platform.engines[

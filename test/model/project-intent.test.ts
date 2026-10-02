@@ -228,7 +228,26 @@ describe("parseProjectIntent", () => {
       "an explicit tag is not read",
     ],
   ])("refuses %s rather than interpreting it", (_name, text, message) => {
-    expect(refused(text)).toContainEqual({ code: "schema", path: "", message });
+    const [refusal, ...rest] = refused(text);
+
+    expect(rest).toStrictEqual([]);
+    expect(refusal?.code).toBe("schema");
+    expect(refusal?.path).toBe("");
+    expect(refusal?.message).toContain(message);
+  });
+
+  it("refuses a file outside the YAML subset once, at the root, however often it breaks it", () => {
+    const [refusal, ...rest] = refused(
+      `${HEADER}applications: &a []\nother: *a\nmore: !!str x\n`,
+    );
+
+    expect(rest).toStrictEqual([]);
+    expect(refusal).toStrictEqual({
+      code: "schema",
+      path: "",
+      message:
+        "an anchor is not read; an alias is not read; an explicit tag is not read",
+    });
   });
 
   it.each(["rolling", "recreate"])(
@@ -247,9 +266,11 @@ describe("parseProjectIntent", () => {
   it("refuses malformed YAML and a duplicated key at the document, before the schema runs", () => {
     const batch = `  - id: batch\n    processes:\n${PROCESS}`;
 
-    expect(
-      refused(withApplications(`${batch}  - [\n`)).map(({ path }) => path),
-    ).toStrictEqual([""]);
+    const [malformed, ...more] = refused(withApplications(`${batch}  - [\n`));
+    expect(more).toStrictEqual([]);
+    expect(malformed?.path).toBe("");
+    // The parser's own words, not an empty or undefined reason.
+    expect(malformed?.message).toMatch(/flow sequence|\]/i);
     expect(refused(`owner: again\n${withApplications(batch)}`)).toStrictEqual([
       expect.objectContaining({ code: "schema", path: "" }),
     ]);
@@ -298,9 +319,35 @@ describe("parseProjectIntent", () => {
     expect(diagnostics.map(({ code, path }) => ({ code, path }))).toStrictEqual(
       [
         { code: "schema", path: "/applications/0/processes/0/runtime" },
-        { code: "schema", path: "/applications/0/processes/0" },
+        { code: "schema", path: "/applications/0/processes/0/stateful" },
       ],
     );
+  });
+
+  it("refuses every unknown field at its own pointer, and a value once however much of it is wrong", () => {
+    const diagnostics = refused(
+      withApplications(
+        `  - id: batch\n    colour: blue\n    size: 3\n    processes:\n${PROCESS}        provides: { http: 0.5 }\n`,
+      ),
+    );
+
+    expect(
+      diagnostics.sort((a, b) => (a.path < b.path ? -1 : 1)),
+    ).toStrictEqual([
+      {
+        code: "schema",
+        path: "/applications/0/colour",
+        message: '"colour" is not a field of the model',
+      },
+      expect.objectContaining({
+        path: "/applications/0/processes/0/provides/http",
+      }),
+      {
+        code: "schema",
+        path: "/applications/0/size",
+        message: '"size" is not a field of the model',
+      },
+    ]);
   });
 
   it("escapes a pointer segment and refuses a port that is not an integer", () => {
