@@ -1,0 +1,48 @@
+\section{The Hand-in Archive}
+\label{app:handin}
+
+The archive holds this report as \texttt{report.pdf}, a \texttt{README.md} with
+the steps below, and two folders, laid out as Table~\ref{tab:handin} shows.
+The first, \texttt{task-2-transformations/}, is an Eclipse project for reading
+the models, imported with File > Import > Existing Projects into Workspace. The
+second, \texttt{implementation/}, contains the EMF implementation and the
+examples its tests read.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.5\linewidth}>{\raggedright\arraybackslash}p{0.42\linewidth}}
+\hline
+\textbf{Path} & \textbf{Contents} \\
+\hline
+\path{model/} & The source, pinned-inputs and target metamodels. \\
+\path{transforms/} & \texttt{lower.qvto} and \texttt{resolution.qvto}. \\
+\path{examples/platform/} & The platform document and the pinned inputs every example reads. \\
+\path{examples/<example>/authored/} & The project document with its env and configuration files. \\
+\path{examples/<example>/resolution.intent.xmi} & The intent extent: authored and lowered projects, and the platform document. \\
+\path{examples/<example>/resolution.pinned.xmi} & The pinned extent. \\
+\path{examples/<example>/<project>.resolveddeployment} & The resolved model the transformation wrote. \\
+\path{examples/<example>/dependencies.json} & The edges exported from it, and \texttt{expected-dependencies.json}, the oracle. \\
+\path{examples/minimal/minimal.hand-written.resolveddeployment} & The hand-written target model of Task~1, as changed in Appendix~\ref{app:target}. \\
+\hline
+\end{tabular}
+\caption{The Models Project of the Archive}
+\label{tab:handin}
+\end{table}
+
+Every XMI declares its metamodel in \texttt{xsi:schemaLocation}, so Eclipse
+opens it in the Sample Reflective Ecore Model Editor without a registered
+package. The models project contains no Java, so the transformation does not
+run from it: the resolution calls the \texttt{Hashing} library, which the
+implementation's plug-in registers.
+
+\texttt{./mvnw clean verify} in \texttt{implementation/emf} builds the
+implementation and runs every test; it needs JDK~21. It parses every example,
+runs both transformations, writes each example's output under
+\path{bundles/cli/target/parity/<example>/}, and runs the
+parity test that compares each \texttt{dependencies.json} with its oracle. To
+run the transformation in Eclipse Modeling Tools with the QVT-Operational SDK,
+import \texttt{implementation/emf} as existing Maven projects after that build,
+and run \texttt{resolution.launch} in
+\texttt{dev.jorisjonkers.deploykit.emf.resolve}. It resolves \texttt{minimal}
+from the extents the build wrote.

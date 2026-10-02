@@ -1,0 +1,114 @@
+% Project Task 2: model transformation
+% Model Driven Engineering, University of Twente
+%
+% Always compile twice, to get the table of contents and references right.
+\documentclass[10pt, a4paper, oneside]{article}
+\usepackage[left=2cm, right=2cm, top=2.5cm, bottom=3cm]{geometry}
+\usepackage{color}          % So you can use colors
+\usepackage{amsmath}        % For all kinds of math symbols
+\usepackage{graphicx}       % Package to include photos and graphs
+\usepackage{float}          % Helps in positioning floats
+\usepackage[justification=centering]{caption}  % To center the captions
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage{listings}
+\usepackage{nameref}
+\usepackage{pdflscape}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta}
+\renewcommand{\lstlistingname}{Example}  % a listing is called an Example here
+
+% Code listings, coloured by language with listings alone: the Overleaf
+% instance runs without shell escape, so minted and Pygments are not an option.
+\definecolor{codebg}{HTML}{F8FAFC}
+\definecolor{codeframe}{HTML}{CBD5E1}
+\definecolor{codekey}{HTML}{1E40AF}
+\definecolor{codeattr}{HTML}{7C3AED}
+\definecolor{codestring}{HTML}{047857}
+\definecolor{codecomment}{HTML}{64748B}
+\definecolor{codeliteral}{HTML}{B45309}
+\lstdefinestyle{report}{
+  backgroundcolor=\color{codebg}, frame=single, rulecolor=\color{codeframe},
+  framesep=4pt, xleftmargin=5pt, xrightmargin=5pt, captionpos=b,
+  basicstyle=\scriptsize\ttfamily, columns=fullflexible, keepspaces=true,
+  breaklines=true, showstringspaces=false,
+  commentstyle=\color{codecomment}\itshape, stringstyle=\color{codestring},
+  keywordstyle=\color{codeliteral}}
+% YAML: a line starts as a key, and turns into a value at its first colon.
+\newcommand\yamlkey{\color{codekey}\scriptsize\ttfamily}
+\newcommand\yamlvalue{\color{black}\scriptsize\ttfamily}
+\newcommand\yamlcolon{\color{black}}
+\lstdefinelanguage{yaml}{
+  basicstyle=\yamlkey, keywords={true,false,null},
+  keywordstyle=\color{codeliteral}, sensitive=true,
+  comment=[l]{\#}, morestring=[b]', morestring=[b]",
+  moredelim=**[il][\yamlcolon{:}\yamlvalue]{:},
+  literate={-\ }{{\color{black}-\ }}2}
+% QVT Operational Mappings: the keywords the listings use.
+\lstdefinelanguage{qvto}{
+  morekeywords={modeltype,uses,transformation,in,out,access,library,import,
+    configuration,property,main,mapping,query,init,end,object,var,let,if,then,
+    else,elif,endif,and,or,not,self,result,map,resolveone,assert,fatal,with,
+    log,return,disjuncts,Sequence,Tuple},
+  keywordstyle=\color{codekey}\bfseries, sensitive=true,
+  comment=[l]{--}, morestring=[b]'}
+\lstdefinelanguage{ocl}{
+  morekeywords={context,inv,def,let,in,if,then,else,endif,implies,and,or,not,self},
+  keywordstyle=\color{codekey}\bfseries, sensitive=true,
+  comment=[l]{--}, morestring=[b]'}
+\setlength{\parindent}{0pt} % When you do not want indentation for your paragraphs.
+\setlength{\parskip}{5pt}   % For space between paragraphs.
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!55!black,
+  citecolor=blue!55!black,
+  urlcolor=blue!55!black,
+  linktoc=all,
+  bookmarksnumbered=true,
+}
+
+% Heading and list layout. This is a short report, so the headings stay small
+% and the spacing around them tight. The Overleaf instance carries no titlesec
+% or enumitem, so both are reproduced with the kernel's own commands.
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{\z@}%
+  {-2.2ex \@plus -0.6ex \@minus -.2ex}{0.6ex \@plus.2ex}%
+  {\normalfont\large\bfseries}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
+  {-1.8ex \@plus -0.5ex \@minus -.2ex}{0.4ex \@plus.2ex}%
+  {\normalfont\normalsize\bfseries}}
+\def\@listI{\leftmargin\leftmargini
+  \parsep 0pt \topsep 3pt \itemsep 1pt}
+\let\@listi\@listI
+\makeatother
+
+\begin{document}
+%==== FRONT PART====
+\include{Title/titlepage}
+\pagenumbering{roman}
+\setcounter{tocdepth}{2}
+\tableofcontents
+
+%==== MAIN PART ====
+\newpage
+\pagenumbering{arabic}
+\input{Sections/01-purpose}
+\input{Sections/02-alternatives}
+\input{Sections/03-design}
+\input{Sections/04-evaluation}
+
+%==== APPENDIX ====
+\clearpage
+\appendix
+\input{Sections/05-appendix-metamodels}
+\input{Sections/06-appendix-hand-in}
+
+%==== END OF ALL ===
+\end{document}

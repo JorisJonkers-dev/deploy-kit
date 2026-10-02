@@ -16,7 +16,7 @@ One directory per deadline, named after the course's own task numbering.
 |---|---|---|---|---|
 | [`task-0-proposal/`](task-0-proposal/) | approved | Task 0 — project description, the proposal that must be approved before work starts | `6aa2ba0c3920baa59ec20901` | re-mirrored 2026-09-16, after the delivery and output-layout corrections in #56 |
 | [`task-1-metamodelling/`](task-1-metamodelling/) | 2026-09-25 | Task 1 — domain analysis and modelling decisions for the two metamodels, **Project Intent** (source) and **Resolved Deployment** (target), their diagrams and example models | `6aaa9f1d3920baa59ec267f7` | drafted; both metamodels exist as Ecore under [`emf/bundles/metamodel/model/`](../../emf/bundles/metamodel/model/) |
-| `task-2-transformations/` | 2026-10-16 | Task 2 — the model-to-model transformation from **Project Intent** (resolved against the Platform document) to **Resolved Deployment**, its rules and limitations, evidence it runs | — | not started |
+| [`task-2-transformations/`](task-2-transformations/) | 2026-10-16 | Task 2 — the model-to-model transformation from **Project Intent** (resolved against the Platform document and the pinned inputs) to **Resolved Deployment**, its rules and limitations, evidence it runs | — | drafted; the transformation is [`emf/bundles/resolve/model/resolution.qvto`](../../emf/bundles/resolve/model/resolution.qvto) |
 | `task-3-code-generation/` | 2026-10-30 | Task 3 — the model-to-text transformation from **Resolved Deployment** to the Deliverable Set, the generated code, evidence it loads | — | not started |
 
 Each task delivers an EMF artefact, and the table above says which directory
