@@ -6,6 +6,7 @@
 // These oracles bind the production implementation only
 // (docs/architecture.md#the-parity-contract): the model-driven implementation's
 // front end is a grammar, which refuses a token rather than naming the field.
+// So the test sits outside test/model/, whose rows each need a witness there.
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, sep } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -13,11 +14,10 @@ import {
   canonicalJson,
   checkIntentSet,
   type AuthoredFile,
-} from "../../src/index.ts";
+} from "../src/index.ts";
 
 const CASES = join(
   import.meta.dirname,
-  "..",
   "..",
   "spec",
   "v1",

@@ -22,5 +22,5 @@ the chapter's table says the refusal lands at.
 These oracles bind the production implementation only
 ([the parity contract](../../../../docs/architecture.md#the-parity-contract)):
 the model-driven implementation reads a file through a grammar, which refuses
-the token rather than naming the field. `test/model/schema-refusals.test.ts`
+the token rather than naming the field. `test/schema-refusals.test.ts`
 runs each case.
