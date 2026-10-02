@@ -488,6 +488,15 @@ describe("deploy-kit compose", () => {
 
   it("asks for a pulled fragment, the commit of a lock it is handed, and every required option", () => {
     const root = pulled();
+    const notesRef = readFileSync(
+      join(root, "fragments", "notes", "ref"),
+      "utf8",
+    );
+    rmSync(join(root, "fragments", "notes", "ref"));
+    expect(composeIn(root, "--out", join(root, "out")).stderr).toBe(
+      `${join(root, "fragments", "notes")}: not a pulled fragment\n${USAGE_TEXT}`,
+    );
+    writeFileSync(join(root, "fragments", "notes", "ref"), notesRef);
     rmSync(join(root, "platform", "ref"));
     expect(composeIn(root, "--out", join(root, "out")).stderr).toBe(
       `${join(root, "platform")}: not a pulled fragment\n${USAGE_TEXT}`,

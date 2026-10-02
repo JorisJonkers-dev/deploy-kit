@@ -14,6 +14,7 @@ import type { CompositionLockDocument } from "../model/composition-lock.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { FragmentManifest } from "../model/fragment.ts";
 import type { Hasher } from "../model/hasher.ts";
+import { brokenInvariant } from "../model/internal-failure.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import {
   PIN_ANNOTATIONS,
@@ -141,7 +142,7 @@ function platformOf(fragment: Fragment): PlatformIntentDocument {
 function heldAt(held: readonly Fragment[], ref: string): Fragment {
   const fragment = held.find((candidate) => candidate.ref === ref);
   if (fragment === undefined)
-    throw new Error(`${ref}: a held fragment the caller did not supply`);
+    throw brokenInvariant(`${ref}: a held fragment the caller did not supply`);
   return fragment;
 }
 
