@@ -1,4 +1,4 @@
-// REQ-042 (docs/requirements.md): composition at its use-case seam, with
+// REQ-044 (docs/requirements.md): composition at its use-case seam, with
 // in-memory fragments built from the worked examples. A clean union composes
 // every Project; a refused fragment isolates its Project at its last composed
 // fragment; a Pause holds a pin; a Rollback composes the held fragment; and an

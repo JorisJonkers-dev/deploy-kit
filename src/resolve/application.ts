@@ -22,6 +22,7 @@ import { exports, namespaceOf } from "../model/runtime-profiles.ts";
 import { resolveExposure } from "./exposure.ts";
 import { egressOf, ingressOf } from "./policy.ts";
 import { resolveProcess, type ProcessContext } from "./process.ts";
+import { notChecked } from "../model/internal-failure.ts";
 
 /** An Application's element: the projection without its document header and provenance. */
 export type ResolvedElement = Omit<
@@ -76,7 +77,7 @@ function migrationOf(
  */
 function storeFor({ store }: ApplicationContext): string {
   if (store === undefined)
-    throw new Error(
+    throw notChecked(
       "a grant under a platform that names no Secret Store is not checked yet",
     );
   return store;
@@ -151,7 +152,7 @@ function releaseGateOf(
     ({ process }) => readinessOf(process) !== undefined,
   );
   if (members.length === 0)
-    throw new Error(
+    throw notChecked(
       "a blue/green Application whose Processes publish no readiness is E_RELEASE_UNIT_NO_READINESS, which is not checked yet",
     );
   // The unit waits for its slowest member, and only a member is waited on.

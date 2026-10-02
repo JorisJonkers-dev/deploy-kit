@@ -1,0 +1,50 @@
+# REFUSED: schema
+#
+# Two YAML documents in one file. Refused once, at the root.
+# (spec/v1/10-project-intent.md#reading-a-file).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: two-documents
+    processes:
+      - name: two-documents-api
+        lifecycle: application
+        image: two-documents-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: continuous
+---
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: two-documents
+    processes:
+      - name: two-documents-api
+        lifecycle: application
+        image: two-documents-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: continuous

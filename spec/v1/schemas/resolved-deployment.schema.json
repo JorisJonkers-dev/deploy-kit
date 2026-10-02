@@ -234,7 +234,38 @@
         "reconcileUnit",
         "processes"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "processes": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "required": [
+                "switchover"
+              ],
+              "properties": {
+                "switchover": {
+                  "const": "blue-green"
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "releaseGate"
+        ],
+        "properties": {
+          "releaseGate": true
+        }
+      },
+      "else": {
+        "properties": {
+          "releaseGate": false
+        }
+      }
     },
     "AlertClass": {
       "type": "string",
@@ -752,7 +783,57 @@
         "identityToken",
         "placement"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "dependentRequired": {
+        "switchover": [
+          "cutover"
+        ]
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "cutover"
+            ],
+            "properties": {
+              "cutover": {
+                "const": "continuous"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "switchover": {
+                "enum": [
+                  "blue-green",
+                  "rolling"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cutover"
+            ],
+            "properties": {
+              "cutover": {
+                "const": "interrupted"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "switchover": {
+                "enum": [
+                  "stop-start"
+                ]
+              }
+            }
+          }
+        }
+      ]
     },
     "Lifecycle": {
       "type": "string",

@@ -87,11 +87,29 @@ public final class Outputs {
         return List.copyOf(documents);
     }
 
+    /** Where the composed union's rendered tree is written, under the output root. */
+    public static final String RENDERED_TREE = "rendered";
+
+    /**
+     * The union the rendered trees are written from: every project whose share the production
+     * implementation renders, read and rendered together, so the estate-scoped share they hold
+     * between them is written whole. Its tree is the committed {@code minimal/rendered/}, {@code
+     * data/rendered/} and {@code _estate/rendered/} together.
+     */
+    public static final Union RENDERED_UNION =
+            new Union(List.of("notes", "data"), withFoundation("minimal/notes.project.yml", "data/data.project.yml"));
+
     /** The integrity the worked projections record for the schema package they were rendered against. */
     public static final String INTEGRITY = "sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b";
 
     /** The project a resolution case resolves, and the documents under the examples it reads. */
     public record Resolving(String project, List<String> documents) {}
+
+    /** The projects one rendering writes together, and the set of documents they are read with. */
+    public record Union(List<String> projects, List<String> documents) {}
+
+    /** The estate-scoped tree's oracle, whose presence says the examples carry rendered trees at all. */
+    private static final String ESTATE_TREE = "_estate/rendered";
 
     private static final String DEPENDENCIES_ORACLE = "expected/" + DependencyEdges.NAME;
 
@@ -116,6 +134,9 @@ public final class Outputs {
             if (resolving != null) {
                 writeResolved(out.resolve(examples.relativize(directory)), examples, resolving);
             }
+        }
+        if (Files.isDirectory(examples.resolve(ESTATE_TREE))) {
+            writeRendered(out.resolve(RENDERED_TREE), examples);
         }
         for (Path oracle : refusalsWithADiagnosticsOracle(examples)) {
             String stem = oracle.getFileName().toString().replace(DIAGNOSTICS_ORACLE, "");
@@ -219,6 +240,21 @@ public final class Outputs {
         deployment.getContents().add(resolved.deployment());
         for (Resource resource : List.of(intent, pinned, deployment)) {
             resource.save(null);
+        }
+    }
+
+    /**
+     * The composed union's Deliverable Sets, written by the pipeline's one entry from the documents
+     * to the tree, or the diagnostics that refused the set in place of the tree.
+     */
+    private static void writeRendered(Path directory, Path examples) throws IOException {
+        List<Diagnostic> refusals = Pipeline.render(
+                RENDERED_UNION.documents().stream().map(examples::resolve).toList(),
+                RENDERED_UNION.projects(),
+                INTEGRITY,
+                directory);
+        if (!refusals.isEmpty()) {
+            writeDiagnostics(directory, refusals);
         }
     }
 

@@ -1,0 +1,74 @@
+{
+  "schema": "platform-intent.schema.json",
+  "cases": [
+    {
+      "name": "the worked Platform document",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml"
+    },
+    {
+      "name": "a field the model does not have",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/colour",
+          "value": "blue"
+        }
+      ]
+    },
+    {
+      "name": "a Platform with no owner",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/owner"
+        }
+      ]
+    },
+    {
+      "name": "a server count written as a word",
+      "verdict": "refuse",
+      "breaks": "wrong-type",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/substrate/serverCount",
+          "value": "one"
+        }
+      ]
+    },
+    {
+      "name": "a datastore outside the vocabulary",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/substrate/datastore",
+          "value": "postgres"
+        }
+      ]
+    },
+    {
+      "name": "a document of another kind",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/kind",
+          "value": "Project"
+        }
+      ]
+    }
+  ]
+}

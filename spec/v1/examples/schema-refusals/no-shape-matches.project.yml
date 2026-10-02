@@ -1,0 +1,26 @@
+# REFUSED: schema
+#
+# `probes` that is neither the word `none` nor a probe block. Refused once, at
+# the value, with nothing inside it reported.
+# (spec/v1/10-project-intent.md#reading-a-file).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: no-shape-matches
+    processes:
+      - name: no-shape-matches-api
+        lifecycle: application
+        image: no-shape-matches-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes: some
+        startupBudget: 20s
+        cutover: continuous

@@ -32,6 +32,7 @@ import { wholeSeconds } from "../shared/durations.ts";
 import { isSynced, type KvGrant } from "../shared/holders.ts";
 import { instanceOf, labelsOf, managedOnly } from "../shared/labels.ts";
 import { applicationDirectory, projectDirectory } from "../shared/paths.ts";
+import { notSupported } from "../../model/internal-failure.ts";
 
 export const ADAPTER = "kubernetes";
 
@@ -54,15 +55,15 @@ function notYet(process: ResolvedProcess): void {
   const switched =
     process.switchover === "blue-green" || process.switchover === "stop-start";
   if (process.lifecycle !== "application" || !switched)
-    throw new Error(
+    throw notSupported(
       `${process.name}: a ${process.lifecycle} Process that switches ${process.switchover ?? "nothing"} is not rendered yet`,
     );
   if (process.switchover === "blue-green" && process.surfaces === undefined)
-    throw new Error(
+    throw notSupported(
       `${process.name}: a blue-green Process that serves no surface is not rendered yet`,
     );
   if (process.secrets?.some(({ delivery }) => delivery === "file") === true)
-    throw new Error(`${process.name}: a file grant is not rendered yet`);
+    throw notSupported(`${process.name}: a file grant is not rendered yet`);
 }
 
 type Backed = NonNullable<ResolvedProcess["volumes"]>[number] & {

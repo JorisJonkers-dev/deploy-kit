@@ -6,9 +6,10 @@
   It is NOT an oracle. `spec/v1/examples/minimal/expected/resolved.json` binds
   the production implementation only, because the two implementations shape
   layer 2 differently on purpose (emf/docs/architecture.md#metamodels). This
-  file is what the Acceleo templates are first run against (#94), and what the
-  QVT-Operational resolution produces for minimal: ResolutionTest holds the
-  transformation's output equal to it (#90).
+  file is what the QVT-Operational resolution produces for minimal:
+  ResolutionTest holds the transformation's output equal to it (#90). The
+  Acceleo templates were first run against it (#94); they now render the
+  transformation's output, and no test reads this file as its input (#96).
 
   Every value here is derivable from `spec/v1/examples/minimal/notes.project.yml`,
   the project files of the foundation it composes with, and the Platform document

@@ -138,6 +138,14 @@ one shape ([0007](adr/model/0007-schema-version-separable.md)).
 JSON Schema is generated from the **input** variant of each schema, because it
 describes what a human writes rather than what validation leaves behind.
 
+A schema states only what its generated JSON Schema states too, so a consumer
+validating against a published schema refuses exactly what the model refuses.
+A refinement, a transformation or a pipe would be dropped by the generator, so
+none appears in `src/` (RULE-073). A rule the shape cannot carry but JSON
+Schema can (a conditional, a requirement on what an array contains) is
+declared once in `src/model/shape-rule.ts`'s form: the check zod runs and the
+JSON Schema keywords stating the same rule, side by side.
+
 ## Error model
 
 Every failure is a `Diagnostic`: a code, the document path it occurred at, a
@@ -145,8 +153,17 @@ message, and a hint. Use-cases return a `Result` over a diagnostic list, never
 a thrown error, and every rule runs before the result is returned: one command
 reports ten mistakes rather than the first one.
 
-Exceptions are reserved for programmer error: a broken invariant inside the
-compiler, not a defect in what it was given.
+Exceptions are reserved for the compiler's own failures, never a defect in
+what it was given, and each is an `InternalFailure` of one of three kinds
+(RULE-074): `unsupported`, a construct the model accepts that the compiler does
+not resolve or render yet; `unchecked`, an authored mistake that reached a later
+step because no check refuses it yet; and `invariant`, a state the compiler's
+own invariants rule out. The first two are known gaps, each closed by the
+ticket that brings its renderer or its check; the third is a bug.
+
+A refusal's code is one of a closed set, the `RefusalCode` type: every code a
+chapter defines and `schema`. A code no chapter defines fails the typecheck,
+and a code a chapter defines that the type lacks fails `npm run lint:codes`.
 
 The codes are the spec's: `E_PATH_COLLISION`, `E_RENDER_NONDETERMINISTIC`,
 `E_AMBIENT_INPUT_FORBIDDEN`, `E_UNSAFE_OUTPUT_PATH` and the rest live in the
@@ -184,6 +201,42 @@ An oracle file is the opposite. The rendered example trees, `intent.json`,
 written and reviewed by hand, and no generator in CI writes into an oracle path,
 because an oracle that an implementation regenerates proves only that the
 implementation agrees with itself.
+
+## The schema contract
+
+Every committed JSON Schema under `spec/v1/schemas/` is a contract with a
+reader outside this repository: an editor completing an authored file, or a
+service generating its types from a document the toolkit writes. What holds a
+schema to that contract is its **corpus**, not the bytes the generator writes
+([0088](adr/architecture/0088-the-committed-schemas-and-their-corpus-are-the-contract.md)).
+
+Each schema has one corpus file beside it, `spec/v1/schemas/corpus/<name>.corpus.json`,
+written and reviewed by hand like any oracle file. It holds the schema's file
+name and a list of cases. A case has:
+
+- `name`: what the case is, unique within the corpus.
+- `verdict`: `accept` or `refuse`.
+- `breaks`, on a refused case: the kind of break it is, one of
+  `unknown-field`, `missing-required`, `wrong-type`, `enum` (an enum or a
+  constant), `union` (no branch of an `anyOf` or `oneOf` matches) or `rule`
+  (a conditional or a dependency between fields).
+- The document it starts from, exactly one of: `file`, a path relative to
+  `spec/v1/` (JSON, or YAML read as the authored files are); `instance`, the
+  document inline; or `case`, the name of an earlier case in the same corpus,
+  whose document (after its own patch) this one starts from.
+- `patch`, optional: a JSON Patch (RFC 6902) applied to that document, using
+  `add`, `remove` and `replace` only.
+
+An implementation conforms when the committed schema and its own model give
+every case its verdict. A corpus accepts at least one case, and refuses at
+least one case of every kind its schema can express: every schema can express
+the first three kinds, and `enum`, `union` and `rule` wherever the schema
+carries the keywords for them. A validator reading a committed schema treats
+the authored schemas' `reference` and `entry` keywords as annotations.
+
+The production implementation's generator is still checked byte for byte
+against the committed schema ([Generated files](#generated-files)): that
+proves its output is committed, and says nothing about another generator.
 
 ## Serialization
 
@@ -279,6 +332,15 @@ target metamodel holding both, because a model-to-text template reads one model.
 | the source metamodel's **authored** structure | `spec/v1/examples/expected/descriptor.json` | canonical JSON, byte for byte | both |
 | the Effective Intent (the lowering) | `spec/v1/examples/<case>/expected/effective.json` | canonical JSON, byte for byte | both |
 | the Resolved Deployment | `spec/v1/examples/<case>/expected/resolved.json` | canonical JSON, byte for byte | production only |
+| the diagnostics of a file the reader refuses (code `schema`) | `<input>.diagnostics.json` beside the refused input, in `schema-refusals/` | a set of `(code, document, path)` triples | production only |
+
+**A schema refusal binds the production implementation only.** The
+model-driven implementation reads a file through a grammar, which refuses a
+token where the production reader names the field the token belongs to, so the
+two agree on the code and not on the place
+([chapter 10](../spec/v1/10-project-intent.md#what-a-schema-refusal-reports)
+fixes the place). The refused cases a rule answers, in `refusals/` and
+`negative/`, bind both.
 
 **The dependency edges** are, per Application, every dependency edge after
 resolution: the consumer, the provider Application and Surface, the address the

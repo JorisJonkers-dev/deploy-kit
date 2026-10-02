@@ -7,6 +7,7 @@ import type { ResolvedProject } from "../../model/resolution.ts";
 import type { VaultPolicy, VaultRole } from "../../objects/custom.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";
 import { holdersOf, type Grant } from "../shared/holders.ts";
+import { notSupported } from "../../model/internal-failure.ts";
 
 export const ADAPTER = "vault-policy";
 
@@ -27,11 +28,11 @@ function pathsOf(grant: Grant): [string, { capabilities: string[] }][] {
       { capabilities: [...allows] },
     ]);
   if (grant.access !== "read")
-    throw new Error(
+    throw notSupported(
       `${grant.path}: a ${grant.access} grant is not rendered yet`,
     );
   if (!KV_DATA.test(grant.path))
-    throw new Error(
+    throw notSupported(
       `${grant.path}: a grant outside the kv mount is not rendered yet`,
     );
   return [

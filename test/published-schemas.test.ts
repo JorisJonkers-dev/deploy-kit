@@ -14,6 +14,7 @@ import {
   PIN_ANNOTATIONS,
   pinAnnotations,
 } from "../src/model/pin-annotations.ts";
+import { resolvedApplicationDocument } from "../src/model/resolved-deployment.ts";
 import { PUBLISHED_SCHEMAS, publishedJsonSchema } from "../src/index.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..");
@@ -166,6 +167,75 @@ describe("the Resolved Deployment schema", () => {
     ) as object;
 
     expect(valid({ ...projection, replicas: 3 })).toBe(false);
+  });
+
+  // The rules a derivation guarantees and the shape alone cannot say are in
+  // the published schema too, not only in the model: a consumer validating
+  // against the schema refuses what the model refuses.
+  const projection = (example: string): Record<string, unknown> =>
+    JSON.parse(read(`spec/v1/examples/${example}`)) as Record<string, unknown>;
+  const processesOf = (
+    document: Record<string, unknown>,
+  ): Record<string, unknown>[] =>
+    document["processes"] as Record<string, unknown>[];
+
+  it.each([
+    [
+      "a switchover its cutover does not derive",
+      () => {
+        const ingest = projection(
+          "knowledge/expected/resolved.knowledge-ingest.json",
+        );
+        const [worker] = processesOf(ingest);
+        return { ...ingest, processes: [{ ...worker, switchover: "rolling" }] };
+      },
+    ],
+    [
+      "a switchover on a Process with no cutover",
+      () => {
+        const ingest = projection(
+          "knowledge/expected/resolved.knowledge-ingest.json",
+        );
+        const { cutover: _, ...worker } = processesOf(ingest)[0] ?? {};
+        return { ...ingest, processes: [worker] };
+      },
+    ],
+    [
+      "a blue-green switchover with no release gate",
+      () => {
+        const { releaseGate: _, ...ungated } = projection(
+          "knowledge/expected/resolved.json",
+        );
+        return ungated;
+      },
+    ],
+    [
+      "a release gate with no blue-green switchover",
+      () => ({
+        ...projection("knowledge/expected/resolved.knowledge-ingest.json"),
+        releaseGate: projection("knowledge/expected/resolved.json")[
+          "releaseGate"
+        ],
+      }),
+    ],
+  ])("and the model both refuse %s", (_, document) => {
+    expect(valid(document())).toBe(false);
+    expect(resolvedApplicationDocument.safeParse(document()).success).toBe(
+      false,
+    );
+  });
+
+  it("holds a Process with no cutover and no switchover", () => {
+    const ingest = projection(
+      "knowledge/expected/resolved.knowledge-ingest.json",
+    );
+    const {
+      cutover: _,
+      switchover: __,
+      ...prepare
+    } = processesOf(ingest)[0] ?? {};
+
+    expect(valid({ ...ingest, processes: [prepare] })).toBe(true);
   });
 });
 

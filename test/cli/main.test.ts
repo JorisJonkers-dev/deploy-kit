@@ -1,4 +1,4 @@
-// REQ-043 (docs/requirements.md): the CLI's three commands against the worked
+// REQ-045 (docs/requirements.md): the CLI's three commands against the worked
 // examples, in process: `validate` accepts and refuses a set, `publish` packs a
 // project's and the platform's Intent Fragment, and `compose` composes the
 // estate from pulled fragments and composes it again from its own lock. A

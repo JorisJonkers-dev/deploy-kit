@@ -6,7 +6,7 @@
 // takes as its context. A rule that needs more than one document belongs to
 // composition.ts, not here. The env files beside a project file are checked
 // here too, because they are part of what one project authors.
-import type { Diagnostic } from "../model/diagnostic.ts";
+import type { Diagnostic, RefusalCode } from "../model/diagnostic.ts";
 import type { EnvScope, ScopedEnv } from "../model/env.ts";
 import type {
   ApplicationDocument as Application,
@@ -26,7 +26,7 @@ import {
 } from "../model/project-intent-queries.ts";
 
 interface Refusal {
-  readonly code: string;
+  readonly code: RefusalCode;
   readonly path: string;
   readonly message: string;
   readonly hint: string;

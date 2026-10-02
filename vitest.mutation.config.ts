@@ -16,6 +16,8 @@ export default defineConfig({
       "test/adapters/spelling.test.ts",
       "test/canonical-json.test.ts",
       "test/published-schemas.test.ts",
+      "test/schema-corpus.test.ts",
+      "test/schema-refusals.test.ts",
       "test/simplification-contract.test.ts",
     ],
     setupFiles: ["./test/setup.ts"],

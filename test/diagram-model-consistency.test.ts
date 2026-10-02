@@ -280,8 +280,10 @@ test("a worked example authors no key the model does not carry", () => {
     "readiness",
     "liveness",
   ]);
-  const projectFiles = walk(join(spec, "examples")).filter((f) =>
-    f.endsWith(".project.yml"),
+  // A schema refusal authors a key the model lacks on purpose: that key is
+  // what the fixture is refused for.
+  const projectFiles = walk(join(spec, "examples")).filter(
+    (f) => f.endsWith(".project.yml") && !f.includes("/schema-refusals/"),
   );
 
   const surfaces = new Set<string>();
