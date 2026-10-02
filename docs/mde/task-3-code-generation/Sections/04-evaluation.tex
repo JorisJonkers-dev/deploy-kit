@@ -1,0 +1,169 @@
+\section{Tests and Evaluation}
+\label{sec:evaluation}
+
+\subsection{Testing Strategy}
+\label{sec:strategy}
+
+The code generation is tested at three levels, and every level runs in the
+build on every change.
+
+\begin{enumerate}
+  \item \textbf{The oracle comparison.} The build runs the whole pipeline on the
+    union of the \texttt{minimal} and \texttt{data} projects and compares the
+    tree it writes with the committed trees, file for file and byte for byte.
+    The comparison sits in a separate test module that holds no EMF type and
+    calls no Java code: it reads only the files the pipeline left behind, the
+    same interface the production implementation's own test reads. A file the
+    run should have written and did not fails as a missing file.
+  \item \textbf{The pipeline's entry point.} JUnit tests call
+    \texttt{Pipeline.render} for each project's share and for the shared
+    files, render the same inputs twice into two directories and compare them,
+    and check that a set the constraints refuse writes no file at all.
+  \item \textbf{The runner.} The render bundle's own tests run the module on a
+    resolved model built in code, check the one file it writes, check that the
+    caller's model is left as it was, and run a deliberately broken module to
+    check that a parse error fails the run with Acceleo's message.
+\end{enumerate}
+
+The Java code of the render bundle is held to 100\% line and branch coverage
+and a 100\% mutation score with PIT, like every module of the implementation.
+Mutation testing does not reach the templates themselves, so their evidence is
+the oracle comparison: a template that writes one character differently fails
+it.
+
+\subsection{Results}
+\label{sec:results}
+
+Table~\ref{tab:results} shows the result. Every file of every tree the
+production implementation generates is equal, and the second render of the
+same inputs is byte-identical to the first.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.34\linewidth}r>{\raggedright\arraybackslash}p{0.42\linewidth}}
+\hline
+\textbf{Committed tree} & \textbf{Files} & \textbf{Result} \\
+\hline
+\path{minimal/rendered/} & 9 & equal byte for byte \\
+\path{data/rendered/} & 28 & equal byte for byte \\
+\path{_estate/rendered/} & 7 & equal byte for byte \\
+\textbf{Total} & \textbf{44} & every file equal; no extra file written \\
+\hline
+\end{tabular}
+\caption{The Rendered Trees Compared With the Oracles}
+\label{tab:results}
+\end{table}
+
+The 44 files exercise every one of the sixteen kinds of file: a blue-green
+workload with its Canary and pod monitor in \texttt{minimal}, and in
+\texttt{data} three stateful services with their services, volume claims,
+backup jobs, a configuration file, a sidecar container, environment variables
+read from synchronised secrets, the secret operator's connection and objects,
+and the secret store's policies and roles.
+
+\subsubsection{Loading the Generated Files}
+\label{sec:loading}
+
+The task asks for the generated code to be loaded in a tool that handles it.
+For Kubernetes files there are two such tools short of a live cluster, and the
+tree passes both.
+
+\begin{itemize}
+  \item \textbf{kustomize}, which Flux uses to apply a directory, builds every
+    directory from its index file: the \texttt{notes} project to 5 objects, the
+    \texttt{data} project to 27, and the shared directory of the public entry
+    point to 2. A wrong index entry, a missing file or a file that is not
+    valid YAML fails the build.
+  \item \textbf{kubeconform} validates every object against the schemas of
+    Kubernetes~1.31 and, for the custom resources of Flagger, the Prometheus
+    operator, Traefik and the Vault secrets operator, against the schemas in
+    the public CRD catalogue: all 47 objects in the 40 YAML files are valid,
+    with unknown fields refused (\texttt{-strict}).
+\end{itemize}
+
+The same kubeconform check is a gate of the repository, run on the committed
+trees, so the oracles themselves are known to be valid. Because the generated
+tree equals them byte for byte, it inherits that validity; the run above
+checks the generated tree directly as well.
+
+\subsubsection{Defects Found by Testing}
+\label{sec:defects}
+
+The oracle comparison found every defect below. None of them would have been
+visible by reading the generated files, because each produced files that
+looked plausible.
+
+\begin{itemize}
+  \item \textbf{No file at all.} The first run generated nothing and reported
+    no error. The main template's parameter type resolves only against the
+    packages the query environment knows, and the target metamodel had not
+    been registered with it, so no model element matched the main template.
+    The runner now registers the package, and the tests check the files, not
+    only the diagnostic.
+  \item \textbf{The margin rule.} The first version of the module was written
+    as a plain text template and failed to parse, because every body line
+    lacked its two spaces of margin (Section~\ref{sec:margins}).
+  \item \textbf{A dash on every line.} A container called after \texttt{- }
+    turned each of its keys into a separate list item, and so did a route,
+    because the text before a call is repeated on every line it writes.
+  \item \textbf{Nested indentation.} The environment list, the backup's
+    service account and the synchronised secrets came out two columns too
+    deep: a block nested in a \texttt{for} and an \texttt{if} has two levels of
+    margin, not one.
+  \item \textbf{A resource is not a model element.} The first shared-index
+    query navigated the resource holding the models, which AQL cannot do; it
+    now uses \texttt{allInstances} (Section~\ref{sec:sharedindex}).
+  \item \textbf{Two defects in the transformation.} Comparing the
+    \texttt{data} tree showed that the transformation chose a stateful
+    controller for a process with a volume, where the production implementation and the
+    oracle use a deployment, and comparing the Canaries showed that the
+    revision differed from the production implementation's
+    (Section~\ref{sec:refinement}). Both were fixed in the transformation, not
+    in the templates.
+\end{itemize}
+
+\subsection{Limitations}
+\label{sec:limitations}
+
+\begin{itemize}
+  \item \textbf{Two kinds of file are not generated.} A disruption budget and
+    a database migration job appear only in the hand-written goal-state trees
+    of \texttt{auth} and \texttt{knowledge}. Neither implementation generates
+    them yet, and the target metamodel does not describe them.
+  \item \textbf{The delivery machinery is not generated.} The processes that
+    run the delivery itself (the proxies, Flagger and the release gate) roll
+    out in a third way the specification defines, which neither implementation
+    renders yet, so the projects holding them have no rendered tree.
+  \item \textbf{The quoting rule is partial.} The production serializer also
+    quotes a string that starts with an indicator character or holds a colon
+    followed by a space. No value in the examples needs that, so the templates
+    do not spell it; such a value would be written unquoted and would differ
+    from the production file.
+  \item \textbf{Some template branches are not exercised by an example.} No
+    example has a route that matches an exact path, a duration given in
+    minutes or hours, a configuration file without a final line break, or a
+    boolean-looking environment value. These branches are written to the same
+    rules as the exercised ones, but no oracle proves them.
+\end{itemize}
+
+\subsection{Reflection}
+\label{sec:reflection}
+
+Comparing byte for byte made the task harder and the result more convincing.
+Most of the work was not in choosing which objects to write, which the target
+metamodel already decides, but in matching the production serializer's text
+exactly: its key order, its quoting and its indentation. That precision is
+also what made the comparison find real defects in the transformation, which
+a looser comparison would have hidden.
+
+Keeping the templates free of decisions worked as intended. Every time a
+template seemed to need a decision, such as which monitor to write or which
+identities hold a secret, the decision moved into the transformation and the
+target metamodel gained the value, so the templates stayed a pure spelling of
+the model. The cost was a larger target metamodel than Task~1 planned.
+
+Acceleo~4's margin rule was the steepest part to learn, because it differs from
+every other template language: indentation in the module is both syntax and
+output. Once understood, it was also what made the fragments work, because one
+template can be placed at any depth by its caller.

@@ -1,0 +1,108 @@
+\section{Alternatives and Justification}
+\label{sec:alternatives}
+
+\subsection{The Template Language}
+\label{sec:language}
+
+The course asks for Acceleo, and Acceleo exists in two incompatible
+generations. Table~\ref{tab:languages} compares them with the two languages a
+generator of this kind would otherwise be written in.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.17\linewidth}>{\raggedright\arraybackslash}p{0.38\linewidth}>{\raggedright\arraybackslash}p{0.37\linewidth}}
+\hline
+\textbf{Language} & \textbf{For} & \textbf{Against} \\
+\hline
+Acceleo 3 (MTL) & Implements the OMG MOF Model-to-Text standard; the most documented generation. & The older generation, kept for compatibility; its generator project assumes an Eclipse workspace, and it is not the Acceleo of the release the build pins. \\
+\textbf{Acceleo 4} & Expressions in AQL, the query language the Sirius tools share; a maintained standalone API; released in the same Eclipse release train as the Xtext, OCL and QVTo versions the build already pins. & A newer, thinner documentation; its whitespace rule (Section~\ref{sec:margins}) differs from every other template language. \\
+Xtend & Typed template expressions in Java's type system. & Not a model-to-text language the course accepts; a template is Java code in disguise. \\
+Java and a YAML library & The production implementation's own approach: build typed objects, let one serializer write the bytes. & Not model-to-text: a serializer owns the formatting, so the templates would decide nothing about the text, which is what the task asks for. \\
+\hline
+\end{tabular}
+\caption{Template Languages Considered}
+\label{tab:languages}
+\end{table}
+
+Acceleo~4 was chosen. The deciding fact is the release train: the build pins
+one Eclipse release for every modelling tool (Task~1), and the Acceleo of that
+release is Acceleo~4. Its standalone API runs the templates from a JUnit test or the
+command-line pipeline with no workspace. Its expression language, AQL, is
+close enough to OCL that the queries read like the constraints of Task~1.
+
+\subsection{The Structure of the Templates}
+\label{sec:structure}
+
+Table~\ref{tab:structure} summarises the four decisions about how the templates
+are organised. The subsections give the reasons.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.2\linewidth}>{\raggedright\arraybackslash}p{0.33\linewidth}>{\raggedright\arraybackslash}p{0.37\linewidth}}
+\hline
+\textbf{Decision} & \textbf{Chosen} & \textbf{Rejected} \\
+\hline
+Who formats the text & The templates, character for character & A YAML serializer after the templates \\
+Modules & One module, one template per kind of file, shared fragments & One module per kind of file \\
+Files that several projects share & One query over every model rendered together & Merging the models in Java first, or a second transformation \\
+Where spelling rules live & AQL queries in the module & Attributes the transformation computes \\
+\hline
+\end{tabular}
+\caption{Structural Decisions}
+\label{tab:structure}
+\end{table}
+
+\subsubsection{The Templates Write Every Character}
+\label{sec:nopostprocessing}
+
+The production implementation builds typed objects and lets one YAML
+serializer write them, so its key order, indentation and quoting are the
+serializer's. The Acceleo implementation could have generated a rough text and
+run the same kind of serializer over it. That was rejected for two reasons.
+First, it would move the formatting out of the model-to-text transformation,
+which is what this task is meant to show. Second, it would weaken the
+comparison: a serializer that normalises the output would make two different
+texts equal, and the oracle would no longer prove that the templates are
+right. The templates therefore write every character, and the test compares
+their output with the oracle with nothing in between.
+
+\subsubsection{One Module}
+\label{sec:onemodule}
+
+Every Kubernetes object carries the same metadata block and the same fixed set
+of five labels, and several objects share larger fragments: the label set, a
+network peer, a probe target, an environment list. With one module per kind of
+file, each fragment would be written several times or imported across
+modules. With one module, each fragment is one template, and the sixteen kinds
+of file each have one template that spells their format. The module is long
+(831 lines), but it is read top to bottom like the list of generated files.
+
+\subsubsection{Files Several Projects Share}
+\label{sec:shared}
+
+Each entry point of the web proxy has one directory, and its index file lists
+the routes of every project the entry point serves. The transformation resolves
+one project at a time (Task~2), so each resolved model only knows its own
+routes. Three ways to write the shared index were considered. A Java step could
+merge the index entries of all models before the templates run, but that is a
+post-processing step between the transformation and the templates. A second
+transformation could combine the resolved models into one model of the whole
+cluster, but that adds a metamodel for a single file. The chosen way is a query:
+when several resolved models are rendered together, the index template lists
+the routes that every model puts under the same path. Each model then writes
+the same complete file, so the order in which the models are rendered does not
+matter.
+
+\subsubsection{Spelling Rules as Queries}
+\label{sec:spelling}
+
+Some values are spelled differently in YAML than in the model: a duration
+\texttt{60s} is written as the integer \texttt{60}, a precedence of
+\texttt{1} is written as the proxy priority \texttt{999}, and a string such as
+\texttt{"50"} must be quoted, or a YAML reader takes it for a number. The
+transformation could compute these spellings as extra attributes, but then the
+resolved model would contain YAML details, which the target metamodel keeps
+out on purpose. They are AQL queries in the module instead, one per rule, so
+every rule about the text lives in the code generation.

@@ -1,0 +1,36 @@
+\section{The Kinds of File and Their Templates}
+\label{app:templates}
+
+Table~\ref{tab:kinds} lists the sixteen kinds of file the target metamodel
+describes, the template that writes each, and the objects in it. Every file
+but the two Vault documents starts with the header line and holds one or more
+YAML documents, each after its own \texttt{---} separator.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.2\linewidth}>{\raggedright\arraybackslash}p{0.17\linewidth}>{\raggedright\arraybackslash}p{0.55\linewidth}}
+\hline
+\textbf{Kind (class)} & \textbf{File} & \textbf{Objects written} \\
+\hline
+\texttt{NamespaceFile} & \path{namespace.yaml} & The project's namespace. \\
+\texttt{IndexFile} & \path{kustomization.yaml} & The index of a directory: every file and subdirectory a cluster applies from it; a shared index lists every model's entries (Section~\ref{sec:sharedindex}). \\
+\texttt{NetworkPolicyFile} & \path{networkpolicy.yaml} & The project's default-deny policy, or one policy per process with its admitted peers. \\
+\texttt{WorkloadFile} & \path{workload.yaml} & One deployment per process: its strategy, security context, containers, sidecars, probes, mounts and volumes. \\
+\texttt{SwitchoverFile} & \path{canary.yaml} & One Flagger Canary per blue-green process, its webhooks calling the release gate. \\
+\texttt{ServiceFile} & \path{service.yaml} & One service per other process that serves a port. \\
+\texttt{IdentityFile} & \path{serviceaccount.yaml} & Each process's service account, and its backup identity's. \\
+\texttt{ClaimFile} & \path{pvc.yaml} & A claim per volume, and per backed-up volume the claim its copies land on, kept from pruning. \\
+\texttt{ConfigMapFile} & \path{configmap.yaml} & An immutable configuration map per configuration file, its text as a block scalar. \\
+\texttt{BackupFile} & \path{backup.yaml} & A scheduled backup job per backed-up volume. \\
+\texttt{MonitorFile} & \path{podmonitor.yaml} or \path{servicemonitor.yaml} & The monitor of a scraped application. \\
+\texttt{SecretFile} & \path{vso.yaml} & Per identity holding a secret: how the operator authenticates as it, and one synchronised secret per grant. \\
+\texttt{ConnectionFile} & \path{vaultconnection.yaml} & The secret operator's connection to the secret store. \\
+\texttt{IngressRouteFile} & \path{<application>-<exposure>.yaml} & A Traefik route per exposure, in its entry point's shared directory. \\
+\texttt{VaultPolicyFile} & \path{<identity>.policy.json} & The Vault policy an identity's grants derive, as JSON. \\
+\texttt{VaultRoleFile} & \path{<identity>.role.json} & The Kubernetes authentication role that binds the identity to its policy, as JSON. \\
+\hline
+\end{tabular}
+\caption{The Kinds of File}
+\label{tab:kinds}
+\end{table}

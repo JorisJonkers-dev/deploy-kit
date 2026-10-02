@@ -1,0 +1,302 @@
+\section{Solution Design}
+\label{sec:design}
+
+\subsection{Interface}
+\label{sec:interface}
+
+The code generation is one Acceleo module, \texttt{render.mtl}, in the
+\texttt{render} bundle, and one Java class, \texttt{Rendering}, that runs it.
+The module's input is the target metamodel: its main template takes one
+\texttt{ResolvedDeployment}. Its output is a tree of files under a root
+directory, each at the path the resolved model assigns it. The module reads
+nothing else: no file, no environment, no clock.
+
+\texttt{Rendering.render} takes a list of resolved models and a root
+directory. It copies the models into one resource, so the caller's models are
+left as they were, and so a query can see every model rendered together
+(Section~\ref{sec:sharedindex}). It then loads the module through Acceleo's
+standalone API and generates. Any diagnostic Acceleo reports, whether a parse
+error in the module or an evaluation error in a template, fails the run with
+Acceleo's own message, so a half-written tree is never mistaken for a whole
+one. Listing~\ref{lst:runner} shows the core of the runner.
+
+\begin{lstlisting}[language=javarunner, style=report, caption={The Runner, Abridged}, label={lst:runner}]
+ResourceSet resources = new ResourceSetImpl();
+Resource model = new XMIResourceImpl(URI.createURI(MODEL));
+resources.getResources().add(model);
+model.getContents().addAll(EcoreUtil.copyAll(deployments));
+ClassLoaderQualifiedNameResolver resolver = new ClassLoaderQualifiedNameResolver(
+        Rendering.class.getClassLoader(), resources.getPackageRegistry(), "::");
+IQualifiedNameQueryEnvironment environment =
+        AcceleoUtil.newAcceleoQueryEnvironment(Map.of(), resolver, resources, false);
+// A template's parameter type resolves only against the packages its environment knows.
+environment.registerEPackage(ResolvedDeploymentPackage.eINSTANCE);
+AcceleoEvaluator evaluator = new AcceleoEvaluator(environment.getLookupEngine(), "\n");
+resolver.addLoader(new ModuleLoader(new AcceleoParser(), evaluator));
+AcceleoUtil.generate(evaluator, environment, (Module) resolver.resolve("render"), model,
+        new DefaultGenerationStrategy(resources.getURIConverter(), new DefaultWriterFactory()),
+        URI.createFileURI(root.toAbsolutePath() + "/"), null, new BasicMonitor());
+if (evaluator.getGenerationResult().getDiagnostic().getSeverity() != Diagnostic.OK)
+    throw new IllegalStateException("the rendering did not complete: " + ...);
+\end{lstlisting}
+
+The pipeline's entry point, \texttt{Pipeline.render}, puts the three tasks in
+one call: it parses and checks every document, lowers and resolves each project
+named, and hands the resolved models to \texttt{Rendering.render}. The build
+calls it for the union of the \texttt{minimal} and \texttt{data} projects and
+leaves the tree under \path{bundles/cli/target/parity/rendered/}, where the
+parity suite compares it with the oracles (Section~\ref{sec:strategy}).
+
+\subsection{The Shape of the Module}
+\label{sec:shape}
+
+The module has 35 templates and 16 queries. Figure~\ref{fig:calls} shows how
+they call each other.
+
+\begin{itemize}
+  \item \textbf{The main template} walks the resolved model's generated-file
+    entries, the \emph{deliverables}, and opens one file per entry at its path
+    (Listing~\ref{lst:main}).
+  \item \textbf{\texttt{document}} writes the one header line every YAML file
+    carries, or writes nothing before a JSON document, which cannot carry a
+    comment. \textbf{\texttt{yaml}} then dispatches on the kind of file.
+  \item \textbf{One \texttt{objects} template per kind of file} spells that
+    file's format: sixteen kinds, from a namespace to a backup job.
+    Appendix~\ref{app:templates} lists them, with the objects each writes.
+  \item \textbf{Fragments} are what several objects share: the metadata block,
+    the fixed label set, a network peer, a probe target, a container, an
+    environment list. Each is written once, unindented, and every caller
+    places it at its own depth (Section~\ref{sec:margins}).
+  \item \textbf{Queries} hold every rule about spelling: durations as seconds,
+    precedences as priorities, quoting, the name of a volume, the shared index
+    (Section~\ref{sec:spellingrules}).
+\end{itemize}
+
+\begin{lstlisting}[language=acceleo, style=report, caption={The Main Template and the Header}, label={lst:main}]
+[comment @main /]
+[template public render(deployment : resolveddeployment::ResolvedDeployment)]
+  [for (d : resolveddeployment::Deliverable | deployment.deliverables)]
+    [file (d.path, overwrite, 'UTF-8')]
+      [d.document()/]
+    [/file]
+  [/for]
+[/template]
+
+[template private document(d : resolveddeployment::Deliverable)]
+  [if (d.oclIsKindOf(resolveddeployment::VaultPolicyFile))]
+    [d.oclAsType(resolveddeployment::VaultPolicyFile).json()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::VaultRoleFile))]
+    [d.oclAsType(resolveddeployment::VaultRoleFile).json()/]
+  [else]
+    # GENERATED. Never hand-edit.
+    [d.yaml()/]
+  [/if]
+[/template]
+\end{lstlisting}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=0.35cm and 0.45cm,
+  t/.style={draw, rounded corners=2pt, align=center, font=\scriptsize,
+    minimum height=0.6cm, text width=1.9cm, fill=green!8},
+  f/.style={t, fill=blue!6},
+  q/.style={t, fill=orange!10},
+  arr/.style={-{Stealth[length=1.6mm]}}]
+\node[t] (main) {render (main)};
+\node[t, right=of main] (doc) {document};
+\node[t, right=of doc] (yaml) {yaml};
+\node[t, above right=0.2cm and 0.45cm of yaml] (json) {json (2)};
+\node[t, right=of yaml] (obj) {objects (14)};
+\node[f, below=0.6cm of obj] (frag) {metadata, labelSet, peer, container, env, probeTarget, \dots};
+\node[q, left=of frag] (query) {seconds, scalar, listed, middlewareName, \dots};
+\draw[arr] (main) -- (doc);
+\draw[arr] (doc) -- (yaml);
+\draw[arr] (doc) |- (json);
+\draw[arr] (yaml) -- (obj);
+\draw[arr] (obj) -- (frag);
+\draw[arr] (obj) -- (query);
+\draw[arr] (frag) -- (query);
+\end{tikzpicture}
+\caption{How the Templates and Queries Call Each Other}
+\label{fig:calls}
+\end{figure}
+
+\subsection{Whitespace: the Margin Rule}
+\label{sec:margins}
+
+YAML encodes structure in indentation, so the whitespace a template writes is
+part of the result. Acceleo~4 has two rules about it, and the module's
+structure follows from them.
+
+\begin{enumerate}
+  \item \textbf{Every line of a block's body carries two spaces of margin,
+    which are not written.} The body of a template, a \texttt{for} or an
+    \texttt{if} is indented two spaces deeper than its header, and those two
+    spaces are removed from the output. A line with less margin is a parse
+    error.
+  \item \textbf{A call written at a column repeats that column's text before
+    every line the call writes.} If a template is called after six spaces, the
+    six spaces are written before every line of its output.
+\end{enumerate}
+
+The second rule is what makes fragments possible. The label set is one
+template that writes five lines starting at column zero
+(Listing~\ref{lst:labels}). The metadata block calls it one level under its
+own \texttt{labels:} key, and the workload's pod template calls it several
+levels deeper. The same five lines therefore appear at every depth YAML needs
+without being written twice.
+
+\begin{lstlisting}[language=acceleo, style=report, caption={A Fragment, Placed at Its Caller's Depth}, label={lst:labels}]
+[template private metadata(p : resolveddeployment::ResolvedProcess)]
+  name: [p.name/]
+  namespace: [p.application().namespace/]
+  labels:
+    [p.labels()/]
+[/template]
+
+[template private labelSet(name : String, component : String, application : String)]
+  app.kubernetes.io/name: [name/]
+  app.kubernetes.io/instance: [name/]
+  app.kubernetes.io/part-of: [application/]
+  app.kubernetes.io/managed-by: deploy-kit
+  app.kubernetes.io/component: [component/]
+[/template]
+\end{lstlisting}
+
+The same rule has one trap. The repeated text is copied literally, so a call
+written after \texttt{- } would start \emph{every} line with a dash, and
+turn each key of a container into a list item of its own. A fragment that is a
+list item therefore opens with its own \texttt{- } and indents the rest of its
+lines two spaces, and its caller places it with spaces only. The container
+fragment of Listing~\ref{lst:workload} is written that way. Conditional lines
+follow the first rule: an \texttt{if} adds a level of margin, so a line inside
+it is indented two spaces more in the module than in the output, as the
+\texttt{fsGroup} line shows.
+
+\begin{lstlisting}[language=acceleo, style=report, caption={Part of the Workload Template, and the Container Fragment}, label={lst:workload}]
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: [p.uid/]
+          runAsGroup: [p.gid/]
+  [comment A volume is written as the image's group, and only a volume is. /]
+  [if (p.volumes->notEmpty())]
+            fsGroup: [p.gid/]
+  [/if]
+          seccompProfile:
+            type: RuntimeDefault
+        containers:
+          [p.container()/]
+
+[template private container(p : resolveddeployment::ResolvedProcess)]
+  - name: [p.name/]
+    image: [p.image/]
+  [if (p.surfaces->notEmpty())]
+      ports:
+    [for (s : resolveddeployment::ResolvedSurface | p.surfaces)]
+          - name: [s.name/]
+            containerPort: [s.port/]
+    [/for]
+  [/if]
+\end{lstlisting}
+
+\subsection{Spelling Rules}
+\label{sec:spellingrules}
+
+Every rule about how a value is written is one query, so a template never
+computes anything itself.
+
+\begin{itemize}
+  \item \textbf{Durations.} The model records a duration as text, such as
+    \texttt{60s}; Kubernetes fields take whole seconds. \texttt{seconds}
+    converts seconds, minutes and hours.
+  \item \textbf{Quoting.} A string is written plain unless the YAML~1.2 core
+    schema would read it as null, a boolean, an integer or a float, in which
+    case it is double-quoted, as the production implementation's serializer
+    does (Listing~\ref{lst:scalar}). The environment value \texttt{50} is
+    therefore written \texttt{"50"}, and \texttt{production} is written plain.
+  \item \textbf{Block scalars.} A configuration file's text is written as a
+    literal block (\texttt{|}), each line indented under its key, an empty line
+    left empty, and its last line break kept the way the serializer keeps it.
+  \item \textbf{Names.} A volume for a writable path is named after the path,
+    and a file mounted from a configuration file is named after the last
+    segment of its source.
+  \item \textbf{Priorities and middleware.} A route's precedence becomes a
+    proxy priority, \texttt{1000} minus the precedence, and a middleware step
+    becomes the name of the middleware object the edge project renders.
+\end{itemize}
+
+\begin{lstlisting}[language=acceleo, style=report, caption={Two Spelling Queries}, label={lst:scalar}]
+[query private seconds(duration : String) : Integer =
+  let amount : Integer = duration.substring(1, duration.size() - 1).toInteger() in
+  if duration.endsWith('h') then amount * 3600
+  else if duration.endsWith('m') then amount * 60 else amount endif endif /]
+
+[query private scalar(value : String) : String =
+  if value.matches('|~|null|Null|NULL|true|True|TRUE|false|False|FALSE|[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+|[-+]?([.][0-9]+|[0-9]+([.][0-9]*)?)([eE][-+]?[0-9]+)?|[-+]?[.](inf|Inf|INF)|[.](nan|NaN|NAN)')
+  then '"' + value + '"' else value endif /]
+\end{lstlisting}
+
+\subsection{The Shared Index}
+\label{sec:sharedindex}
+
+The index of an entry point's directory lists the routes of every project the
+entry point serves (Section~\ref{sec:shared}). Its template does not read its
+own entry's list but calls \texttt{listed}
+(Listing~\ref{lst:listed}), which collects the entries of every index file at
+the same path in every resolved model rendered together, without duplicates,
+in name order. Each model then writes the same file, so writing it twice is
+harmless and the order of the models does not matter. A first version read the
+other models through the resource that holds them; AQL cannot navigate a
+resource, because a resource is not a model element, so the query uses
+\texttt{allInstances} instead, which the query environment answers over the
+resource set it was given.
+
+\begin{lstlisting}[language=acceleo, style=report, caption={The Index Template and Its Query}, label={lst:listed}]
+[template private objects(d : resolveddeployment::IndexFile)]
+  ---
+  apiVersion: kustomize.config.k8s.io/v1beta1
+  kind: Kustomization
+  resources:
+  [for (r : String | d.listed())]
+      - [r/]
+  [/for]
+[/template]
+
+[query private listed(d : resolveddeployment::IndexFile) : Sequence(String) =
+  resolveddeployment::IndexFile.allInstances()->select(i | i.path = d.path).resources
+    ->asOrderedSet()->sortedBy(r | r) /]
+\end{lstlisting}
+
+\subsection{What the Templates Leave to the Transformation}
+\label{sec:boundary}
+
+Because the templates decide nothing, several decisions that look like
+formatting are made by the transformation and only read here.
+
+\begin{itemize}
+  \item \textbf{Which files exist.} The transformation plans a file only when
+    it would hold at least one object, and assigns its path. A template never
+    skips a file or invents a path.
+  \item \textbf{What each index lists.} The transformation lists, for every
+    directory, the files a cluster applies from it, leaving out the network
+    policies and the secret store's documents, which nothing applies yet.
+  \item \textbf{Which monitor a process gets.} A blue-green process is
+    scraped through its pods and any other through its service; the
+    transformation records the kind, and the template writes
+    \texttt{PodMonitor} or \texttt{ServiceMonitor} from it.
+  \item \textbf{Who holds a secret.} The transformation lists, per
+    application, every identity that synchronises a secret: each process, and
+    the backup identity that holds the backup's credential.
+\end{itemize}
+
+\subsection{Running the Code Generation}
+\label{sec:running}
+
+The build runs the templates headless: \texttt{./mvnw clean verify} in
+\texttt{emf/} runs the render bundle's own tests, then the pipeline, which
+writes the rendered tree, then the parity suite, which compares it. In Eclipse
+Modeling Tools with the Acceleo~4 SDK, \texttt{render.launch} in the render
+bundle runs the same module on the resolved model of \texttt{minimal} that the
+build leaves in the parity output, and writes its files under the bundle's
+\path{target/render/}.
