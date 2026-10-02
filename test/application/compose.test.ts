@@ -6,7 +6,7 @@
 // spec/v1/55-delivery.md#pause-and-rollback).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   composeEstate,
   type ComposeInput,
@@ -146,8 +146,15 @@ function compose(input: Partial<ComposeInput> = {}): Composition {
   return result.value;
 }
 
-/** The first composition: every Project new, nothing pinned. */
-const FIRST = compose();
+/**
+ * The first composition: every Project new, nothing pinned. Composed before
+ * each test rather than once at import, so a mutation run sees which test
+ * reaches which code.
+ */
+let FIRST: Composition;
+beforeEach(() => {
+  FIRST = compose();
+});
 
 /** Every artifact of a composition, pinned at the content it holds. */
 const pinned = (
