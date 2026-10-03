@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **43** rows. The compiler's behaviours join it as they land.
+This ledger holds **45** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -66,3 +66,5 @@ This ledger holds **43** rows. The compiler's behaviours join it as they land.
 | REQ-041 | Every document the toolkit writes for a consumer outside this repository (the Resolved Deployment and its projection, the composition lock, the pin annotations, the ClusterState snapshot) has a JSON Schema generated from the model, committed without a diff and shipped in the package, and every committed Resolved Deployment oracle validates against it | [test/published-schemas.test.ts](../test/published-schemas.test.ts) |
 | REQ-042 | Every committed JSON Schema has a hand-written corpus of documents to accept and to refuse, covering every kind of break the schema can express, and the committed schema and the model it is generated from give every case its verdict | [test/schema-corpus.test.ts](../test/schema-corpus.test.ts) |
 | REQ-043 | A file outside the YAML subset is refused once, at the root, and a value the schema refuses is refused with the code `schema` at its own JSON Pointer, every offending value once, as each committed schema-refusal oracle names | [test/schema-refusals.test.ts](../test/schema-refusals.test.ts) |
+| REQ-044 | Composition, at its use-case seam, composes every Project's newest fragment with the Platform document's and the ClusterState snapshot, whatever order they arrive in: a refused fragment isolates its Project at the fragment the previous lock recorded, an error naming no changed fragment fails the run, a paused Project moves no pin, a Rollback composes its held fragment, an unchanged render moves no pin, and only the Projects the handover ledger delivers are published | [test/application/compose.test.ts](../test/application/compose.test.ts) |
+| REQ-045 | The `deploy-kit` command validates a set of authored files, packs a project file's or the Platform document's Intent Fragment, and composes the estate from pulled fragments, exiting 0 when accepted, 1 when refused, with the diagnostics for a human or as JSON, and 2 on a wrong call | [test/cli/main.test.ts](../test/cli/main.test.ts) |

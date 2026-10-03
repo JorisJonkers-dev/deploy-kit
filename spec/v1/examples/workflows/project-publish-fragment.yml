@@ -92,49 +92,37 @@ jobs:
           # ${secret:...} byte-matches a granted path and every delivery: env
           # grant has a placeholder (docs/adr/model/0030-secret-delivery-is-env-file-or-self.md).
           # Estate-wide invariants cannot be checked here and are
-          # composition's job.
-          npx --no-install deploy-config-schema intent validate \
-            --project platform/knowledge.project.yml \
-            --env-dir platform/env \
-            --strict
+          # composition's job. A directory is read as every file below it, so
+          # the env files reach the project file they sit beside.
+          npx --no-install deploy-kit validate \
+            platform/knowledge.project.yml \
+            platform/env
 
-      - name: Resolve every image this project names
+      - name: Pack the fragment
         if: ${{ !cancelled() }}
         run: |
-          # The fragment's own share of the images lock: each alias the project
-          # file names, resolved to the digest the build just pushed, with the
-          # numeric UID and GID the image runs as
-          # (docs/adr/model/0020-hardening-is-one-platform-posture.md). A tag in
-          # this file would be a mutable input, so it holds digests only, and
-          # an alias with no image yet fails here rather than at pod start.
-          npx --no-install deploy-config-schema intent lock-images \
-            --project platform/knowledge.project.yml \
-            --registry "ghcr.io/${{ github.repository_owner }}" \
-            --commit "${{ github.event.workflow_run.head_sha || github.sha }}" \
-            --out images.lock
-
-      - name: Build the fragment tree
-        if: ${{ !cancelled() }}
-        run: |
-          # --env-dir holds one directory per PROCESS
-          # (docs/adr/model/0013-configuration-is-dotenv-at-three-scopes.md):
-          # platform/env/knowledge-api/base.env and
-          # platform/env/knowledge-ingest-worker/base.env, each with its own
-          # per-cluster overlay. Process names are unique within a project, so
-          # one directory per Process is unambiguous across every Application the
-          # file declares (docs/adr/model/0031-identity-per-process.md).
-          npx --no-install deploy-config-schema intent pack \
-            --project platform/knowledge.project.yml \
-            --env-dir platform/env \
-            --images images.lock \
+          # The fragment is the project file, the env files under platform/env
+          # -- one directory per PROCESS
+          # (docs/adr/model/0013-configuration-is-dotenv-at-three-scopes.md),
+          # each with its own per-cluster overlay -- the Asset files it names,
+          # and the migration proof beside it. fragment.yml records the release
+          # and inputsSha, which covers AUTHORED inputs only, never generated
+          # output: homelab-inventory derives inventorySourceSha the same way,
+          # and a hash that included generated output would change on every
+          # publish and detect nothing.
+          #
+          # The fragment's own share of the images lock -- each alias the
+          # project file names, resolved to the digest the build just pushed,
+          # with the UID and GID it runs as
+          # (docs/adr/model/0020-hardening-is-one-platform-posture.md) -- is
+          # not packed by the toolkit yet; until it is, the Platform document's
+          # fragment carries the estate's images lock.
+          TAG="${{ github.event.workflow_run.head_branch || github.ref_name }}"
+          npx --no-install deploy-kit publish platform/knowledge.project.yml \
+            --repository "${{ github.repository }}" \
+            --source-sha "${{ github.event.workflow_run.head_sha || github.sha }}" \
+            --version "${TAG#v}" \
             --out fragment/
-
-          # inputsSha covers AUTHORED inputs only, never generated output.
-          # homelab-inventory derives inventorySourceSha the same way; a hash
-          # that included generated output would change on every publish and
-          # detect nothing.
-          find platform -type f -print0 | sort -z \
-            | xargs -0 sha256sum | sha256sum | cut -d' ' -f1 > fragment/INPUTS_SHA
 
           # Per-file digests, so a consumer can verify the package it pulled.
           ( cd fragment && find . -type f -not -name MANIFEST.sha256 \
@@ -157,7 +145,7 @@ jobs:
           ( cd fragment && oras push "$REF" \
               --annotation "org.opencontainers.image.version=${TAG#v}" \
               --annotation "org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha || github.sha }}" \
-              --annotation "dev.jorisjonkers.inputs-sha=$(cat INPUTS_SHA)" \
+              --annotation "dev.jorisjonkers.inputs-sha=$(yq '.spec.inputsSha' fragment.yml)" \
               . )
 
           # An artefact cannot contain its own digest, so it is resolved AFTER
@@ -175,5 +163,5 @@ jobs:
           oras pull "ghcr.io/${{ github.repository_owner }}/intent-knowledge@${{ steps.resolve.outputs.digest }}" \
             --output verify/
           ( cd verify && sha256sum -c MANIFEST.sha256 )
-          test "$(cat verify/INPUTS_SHA)" = "$(cat fragment/INPUTS_SHA)"
-          echo "verified: $(cat verify/INPUTS_SHA)"
+          cmp verify/fragment.yml fragment/fragment.yml
+          echo "verified: $(yq '.spec.inputsSha' verify/fragment.yml)"

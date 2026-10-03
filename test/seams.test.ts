@@ -11,7 +11,6 @@ const PROBES = [
   "src/application/probe.ts",
   "src/infrastructure/probe.ts",
   "src/cli/probe.ts",
-  "src/cli/boundary.ts",
   "src/model/probe.test.ts",
   "scripts/probe.ts",
   "tool.config.ts",

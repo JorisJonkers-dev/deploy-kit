@@ -11,7 +11,11 @@ import {
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { Deliverable, RenderedObject } from "../objects/deliverable.ts";
 import type { AuthoredFile } from "./check-intent-set.ts";
-import { resolveIntentSet, type ResolveOptions } from "./resolve-intent-set.ts";
+import {
+  resolveIntentSet,
+  type ResolvedSet,
+  type ResolveOptions,
+} from "./resolve-intent-set.ts";
 
 /** One file's typed objects and its path in, its bytes out: the serializer port. */
 export type Serializer = (
@@ -71,8 +75,15 @@ export function renderIntentSet(
   options: RenderOptions,
 ): Result<readonly RenderedArtifact[]> {
   const resolved = resolveIntentSet(files, options);
-  if (!resolved.ok) return resolved;
-  const rendered = resolved.value.projects
+  return resolved.ok ? renderResolvedSet(resolved.value, options) : resolved;
+}
+
+/** A set already resolved, rendered: the half of {@link renderIntentSet} after resolution. */
+export function renderResolvedSet(
+  resolved: ResolvedSet,
+  options: Omit<RenderOptions, keyof ResolveOptions>,
+): Result<readonly RenderedArtifact[]> {
+  const rendered = resolved.projects
     .filter(({ project }) => options.projects.includes(project))
     .flatMap((project) =>
       (options.adapters ?? ADAPTERS).flatMap((adapter) =>

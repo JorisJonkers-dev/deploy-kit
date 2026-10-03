@@ -12,6 +12,18 @@ export {
   type ParsedProjectIntent,
 } from "./application/parse-project-intent.ts";
 export {
+  composeEstate,
+  type CommitStatus,
+  type ComposedArtifact,
+  type ComposeInput,
+  type ComposeOptions,
+  type Composition,
+  type Condition,
+  type Fragment,
+  type Pin,
+} from "./application/compose-estate.ts";
+export type { FragmentManifest } from "./model/fragment.ts";
+export {
   renderIntentSet,
   type RenderedArtifact,
   type RenderedFile,

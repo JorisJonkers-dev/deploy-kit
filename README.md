@@ -95,6 +95,46 @@ runs the suite without enforcing coverage. `npm run test:coverage` (part of
 `npm run verify`) enforces the ratchet in `vitest.config.ts`: statements
 99.51%, branches 97.95%, functions 100%, lines 99.46%.
 
+## The command
+
+`deploy-kit` is the compiler's command line, in
+[`src/cli/`](src/cli/main.ts). The package does not ship it as a bin yet, so
+run it from a clone. It has three commands. Each reads and writes directories
+and never the registry: a workflow pulls fragments into a directory, runs the
+command, and pushes what it wrote.
+
+```bash
+# Check a set of authored files read together: a Platform document, project files, env files.
+node src/cli/index.ts validate spec/v1/examples/platform/platform.intent.yml \
+  spec/v1/examples/minimal/notes.project.yml ...
+
+# Pack one release of a project file, or of the Platform document, as an Intent Fragment.
+node src/cli/index.ts publish spec/v1/examples/minimal/notes.project.yml \
+  --repository JorisJonkers-dev/notes --source-sha <commit> --version 1.4.0 --out fragment/
+
+# Compose the estate from pulled fragments, each directory holding a fragment and the
+# `ref` its pull resolved, and write the artifacts, the lock and what to report.
+node src/cli/index.ts compose --platform platform/ --fragments fragments/ \
+  --cluster-state cluster-state.yml --schema-package-integrity <sha256:...> --out composed/ \
+  [--held held/] [--pins pins.json] [--lock lock.json --lock-commit <commit>]
+```
+
+- **Exit status.** A command exits 0 when the inputs are accepted, 1 when they
+  are refused, and 2 when it was called wrongly.
+- **Diagnostics.** They go to stderr for a human. Under `--json` they go to
+  stdout as an array.
+- **What compose writes.** Under its output directory, `artifacts/<name>/`
+  holds one directory per delivered Project, and `_estate` once no Project is
+  legacy. Beside it, the lock.json file holds the composition lock, and the
+  composition.json file holds each artifact's content hash and whether its pin
+  moves, plus the commit statuses and the Project conditions the workflow
+  reports.
+- **Composing the worked examples as they stand.** Their handover ledger
+  delivers the delivery machinery, which no adapter renders yet
+  (JorisJonkers-dev/deploy-kit#202). Until it does, compose them under a ledger
+  that hands only `notes`, `observability` and `secrets` to the estate path, as
+  [the CLI's own tests](test/cli/main.test.ts) do.
+
 ## Conventions
 
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): Conventional Commits, PR flow
