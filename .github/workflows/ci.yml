@@ -219,7 +219,11 @@
       # (docs/architecture.md#the-published-package). `files` in package.json
       # states that, but npm always bundles package.json, README and LICENSE
       # regardless of it, so this asks the real npm what it would ship rather
-      # than trusting the field. Packing builds dist first, through prepack.
+      # than trusting the field. Nothing builds dist implicitly: lifecycle
+      # hooks are off (RULE-072), so the build is a step, and the gate refuses
+      # a pack whose bin is missing.
+      - 'name': 'Build the command'
+        'run': 'npm run build'
       - 'name': 'Package contents'
         'run': 'node scripts/check-package-contents.ts'
 
@@ -435,7 +439,11 @@
           'RC_IS_FORK': '${{ github.event.pull_request.head.repo.full_name != github.repository }}'
           'RC_ACTOR': '${{ github.event.pull_request.user.login }}'
           'RC_PR_NUMBER': '${{ github.event.pull_request.number }}'
-        'run': 'npm run publish:rc'
+        'run': |
+          # The package ships the built command, and no hook builds it.
+          npm run build
+          node scripts/check-package-contents.ts
+          npm run publish:rc
 
   'pipeline-complete':
     'name': 'Pipeline Complete'

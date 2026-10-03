@@ -9,9 +9,9 @@ rests-on: ["0006"]
 
 # The package ships the command, built to JavaScript when it is packed, and the repository still runs its TypeScript directly
 
-The published package carries a `deploy-kit` bin. `npm pack` and `npm publish`
-build it first: `tsc` strips the types from `src/` and writes JavaScript to
-`dist/`, which is never committed. Inside the repository nothing changes: the
+The published package carries a `deploy-kit` bin. Every pack and publish is
+preceded by a build step: `tsc` strips the types from `src/` and writes
+JavaScript to `dist/`, which is never committed. Inside the repository nothing changes: the
 suite, the gates and a clone run the TypeScript as it is written.
 
 ## Rests on
@@ -38,12 +38,17 @@ dependency the type check uses on every commit. With relative import extensions
 rewritten on emit, it turns each `.ts` file into the `.js` file beside the same
 path, one for one, and adds no dependency.
 
-**Built at pack time, so it cannot go stale.** A committed `dist/` is a second
-copy of the source that a pull request can forget to rebuild, and a generated
-file a reviewer has to trust. Built by `prepack`, the JavaScript in a tarball
-is always the build of the commit that was packed, and release, release
-candidates and the package-contents gate all take the same path through
-`npm pack`.
+**Built for the pack, not committed.** A committed `dist/` is a second copy
+of the source that a pull request can forget to rebuild, and a generated file a
+reviewer has to trust. A workflow checks out a clean tree, builds, and packs, so
+the JavaScript in a tarball is the build of the commit that was packed.
+
+**An explicit step, because hooks are off.** This repository runs no lifecycle
+script, its own `prepack` included, so a hook would never fire and the package
+would ship a `bin` with nothing behind it. Each workflow that packs or
+publishes runs `npm run build` first, and the package-contents gate refuses a
+pack that holds no file for a `bin` it names, so a forgotten build fails the
+release instead of shipping.
 
 **The repository keeps running what is written.** The rule that tooling has no
 build step stays whole: no test, gate or script reads `dist/`. The one place
@@ -68,10 +73,12 @@ they would each need another way to run it.
 
 ## Consequences
 
-- `package.json` gains a `bin`, `dist/` in `files`, and the `build` and
-  `prepack` scripts.
-- The package-contents gate allows `dist/`, and only JavaScript under it.
-- A test packs the repository, installs the tarball into an empty project
+- `package.json` gains a `bin`, `dist/` in `files`, and the `build` script.
+- The release, the release candidate and the package-contents job each build
+  before they pack.
+- The package-contents gate allows `dist/`, and only JavaScript under it, and
+  refuses a pack that is missing a `bin` it names.
+- A test builds and packs the repository, installs the tarball into an empty project
   with npm offline and its cache empty, and runs the installed command.
 - The emitted JavaScript targets the Node the package's `engines` field
   names; nothing is down-levelled.

@@ -13,6 +13,7 @@ import {
   checkPackageContents,
   isAllowed,
   main,
+  missingBins,
   packedFiles,
   violations,
 } from "../scripts/check-package-contents.ts";
@@ -71,6 +72,24 @@ describe("isAllowed", () => {
     expect(isAllowed("src/index.ts")).toBe(false);
     expect(isAllowed("scripts/lint-adrs.ts")).toBe(false);
     expect(isAllowed("CHANGELOG.md")).toBe(false);
+  });
+});
+
+describe("missingBins", () => {
+  it("names, sorted, every bin the pack holds no file for", () => {
+    const root = pkg([]);
+    writeFileSync(
+      join(root, "package.json"),
+      JSON.stringify({ bin: { b: "dist/b.js", a: "./dist/a.js", c: "c.js" } }),
+    );
+    expect(missingBins(root, ["dist/b.js", "package.json"])).toStrictEqual([
+      "c.js",
+      "dist/a.js",
+    ]);
+  });
+
+  it("is empty for a package that names no bin", () => {
+    expect(missingBins(pkg([]), ["package.json"])).toStrictEqual([]);
   });
 });
 
@@ -148,8 +167,28 @@ describe("checkPackageContents", () => {
     expect(output.text()).toMatch(/^package contents: /);
   });
 
-  it("passes this repository's own tree", () => {
-    expect(checkPackageContents(REPOSITORY, collect())).toBe(0);
+  it("fails a pack that holds no file for a bin the package names", () => {
+    // What a pack made without the build is: lifecycle hooks are off, so
+    // nothing builds dist/ on the way to it.
+    const output = collect();
+    const root = pkg(["docs/adr/", "dist/"], { "docs/adr/a.md": "x" });
+    writeFileSync(
+      join(root, "package.json"),
+      JSON.stringify({
+        name: "fixture",
+        version: "0.0.0",
+        files: ["docs/adr/", "dist/"],
+        bin: { fixture: "./dist/cli/index.js" },
+      }),
+    );
+    expect(checkPackageContents(root, output)).toBe(1);
+    expect(output.text()).toMatch(
+      /ship no file for the bin dist\/cli\/index\.js; run `npm run build`/,
+    );
+
+    mkdirSync(join(root, "dist/cli"), { recursive: true });
+    writeFileSync(join(root, "dist/cli/index.js"), "#!/usr/bin/env node\n");
+    expect(checkPackageContents(root, collect())).toBe(0);
   });
 });
 

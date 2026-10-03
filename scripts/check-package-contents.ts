@@ -12,7 +12,8 @@
 // fixture package, and `node scripts/check-package-contents.ts [root]` is the
 // command, which asks the real npm in `root` (this repository, by default).
 import { spawnSync } from "node:child_process";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
+import { join, normalize } from "node:path";
 import { isEntrypoint } from "./lib/entrypoint.ts";
 import { processOutput, type GateOutput } from "./lib/output.ts";
 
@@ -58,6 +59,22 @@ export function packedFiles(cwd: string): string[] {
   return (parsed[0]?.files ?? []).map((entry) => entry.path);
 }
 
+/**
+ * Every file the package's `bin` names that the pack does not hold, sorted.
+ * Lifecycle hooks are off, so nothing builds `dist/` on the way to a pack: a
+ * pack made before `npm run build` names a command it does not ship.
+ */
+export function missingBins(root: string, files: readonly string[]): string[] {
+  const { bin } = JSON.parse(
+    readFileSync(join(root, "package.json"), "utf8"),
+  ) as { bin?: Readonly<Record<string, string>> };
+  const packed = new Set(files);
+  return Object.values(bin ?? {})
+    .map((path) => normalize(path))
+    .filter((path) => !packed.has(path))
+    .sort();
+}
+
 /** Check the package `npm pack` would build from `root`. */
 export function checkPackageContents(root: string, output: GateOutput): number {
   let files: string[];
@@ -73,6 +90,14 @@ export function checkPackageContents(root: string, output: GateOutput): number {
     output.err(
       "package contents: npm pack would ship files outside docs/adr/, " +
         `spec/ and dist/**/*.js: ${offenders.join(", ")}\n`,
+    );
+    return 1;
+  }
+  const missing = missingBins(root, files);
+  if (missing.length > 0) {
+    output.err(
+      "package contents: npm pack would ship no file for the bin " +
+        `${missing.join(", ")}; run \`npm run build\` before packing\n`,
     );
     return 1;
   }

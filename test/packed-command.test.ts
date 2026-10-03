@@ -17,6 +17,8 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { checkPackageContents } from "../scripts/check-package-contents.ts";
+import { collect } from "./support/collect.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..");
 const EXAMPLES = join(REPOSITORY, "spec/v1/examples");
@@ -43,6 +45,10 @@ beforeAll(() => {
   scratch = mkdtempSync(join(tmpdir(), "deploy-kit-packed-"));
   const tarballs = join(scratch, "tarballs");
   mkdirSync(tarballs);
+  // No hook builds on the way to a pack, so this does what every packing
+  // workflow does: build, then pack.
+  const built = npm(REPOSITORY, "run", "build");
+  if (built.status !== 0) throw new Error(`npm run build: ${built.stdout}`);
   const packed = npm(
     REPOSITORY,
     "pack",
@@ -88,6 +94,10 @@ afterAll(() => {
 });
 
 describe("the published package", () => {
+  it("is a pack the package-contents gate passes, once built", () => {
+    expect(checkPackageContents(REPOSITORY, collect())).toBe(0);
+  });
+
   it("puts a command on the path that is JavaScript, not the source", () => {
     const manifest = JSON.parse(
       readFileSync(

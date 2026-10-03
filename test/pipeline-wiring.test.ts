@@ -21,13 +21,12 @@ interface Pending {
 }
 
 // A script that runs in no workflow is normally a gate the wiring forgot.
-// These six are deliberate exceptions, not gates: two mutate the working
+// These four are deliberate exceptions, not gates: two mutate the working
 // tree, which no CI step may do, one is the fast local loop the coverage
-// variant supersedes in every workflow, one is the local aggregate of every
-// gate below, kept so a contributor can run the whole set in one command, and
-// two build the published command, which npm runs itself whenever a workflow
-// packs or publishes. None will ever gain a workflow step of its own, which
-// is what the ticket field says for each.
+// variant supersedes in every workflow, and one is the local aggregate of
+// every gate below, kept so a contributor can run the whole set in one
+// command. None will ever gain a workflow step of its own, which is what the
+// ticket field says for each.
 const PENDING: readonly Pending[] = [
   {
     script: "lint:fix",
@@ -51,21 +50,6 @@ const PENDING: readonly Pending[] = [
       "the local aggregate of every gate below; CI runs each gate as its " +
       "own job rather than the chain",
     ticket: "n/a, never run in CI by design",
-  },
-  {
-    script: "prepack",
-    reason:
-      "an npm lifecycle script: npm runs it before every pack and publish, " +
-      "which the package-contents gate, the release and the release " +
-      "candidate each do",
-    ticket: "n/a, run by npm, never by name",
-  },
-  {
-    script: "build",
-    reason:
-      "what prepack runs; the packed-command test and every workflow that " +
-      "packs exercise it through npm",
-    ticket: "n/a, run by prepack, never by name",
   },
 ];
 

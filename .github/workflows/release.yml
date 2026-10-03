@@ -51,6 +51,12 @@
           'scope': '@jorisjonkers-dev'
           'cache': 'npm'
       - 'run': 'npm ci --ignore-scripts'
+      # The package ships the built command, and no lifecycle hook builds it
+      # (RULE-072): build it, then refuse to publish a pack without its bin.
+      - 'name': 'Build the command'
+        'run': 'npm run build'
+      - 'name': 'Package contents'
+        'run': 'node scripts/check-package-contents.ts'
       - 'name': 'Publish npm package if version is new'
         'shell': 'bash'
         'run': |

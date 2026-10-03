@@ -99,7 +99,7 @@ runs the suite without enforcing coverage. `npm run test:coverage` (part of
 
 `deploy-kit` is the compiler's command line, in
 [`src/cli/`](src/cli/main.ts). The package ships it as a bin, built to
-JavaScript when the package is packed, so a repository that pins the package
+JavaScript before the package is packed, so a repository that pins the package
 runs `npx --no-install deploy-kit`; from a clone it runs as below, with no
 build. It has three commands. Each reads and writes directories
 and never the registry: a workflow pulls fragments into a directory, runs the

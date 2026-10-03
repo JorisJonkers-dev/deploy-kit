@@ -34,7 +34,6 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepack": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
