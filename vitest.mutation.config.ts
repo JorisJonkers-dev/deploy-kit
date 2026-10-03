@@ -4,19 +4,37 @@
 import { defineConfig } from "vitest/config";
 import { BaseSequencer, type TestSpecification } from "vitest/node";
 
+// Stryker stops at a mutant's first failing test, so the order of the suites
+// is the length of the run. Three tiers, cheapest killer first; vitest's own
+// order runs the slowest file first, the opposite.
+
+// A schema is built when its module loads, so Stryker cannot tell which test
+// reaches a mutant in one and runs every suite in order until one fails. These
+// four suites kill three quarters of those mutants, and a suite that runs
+// after the others pays for every suite before it, once per mutant.
+const SCHEMA_SUITES = [
+  "/test/model/descriptor.test.ts",
+  "/test/model/resolved-deployment.test.ts",
+  "/test/adapters/contract.test.ts",
+  "/test/published-schemas.test.ts",
+];
+
 // The suites under test/application/ and test/cli/ run the whole pipeline end
-// to end, so most mutants they kill a model suite kills sooner. Stryker stops
-// at a mutant's first failing test, so the model suites run first; vitest's
-// own order runs the slowest file first, the opposite.
+// to end, so most mutants they kill a model suite kills sooner.
 const END_TO_END = /\/test\/(application|cli)\//;
+
+const tier = (moduleId: string): number => {
+  const schema = SCHEMA_SUITES.findIndex((suite) => moduleId.endsWith(suite));
+  if (schema !== -1) return schema;
+  return SCHEMA_SUITES.length + Number(END_TO_END.test(moduleId));
+};
 
 class CheapestFirst extends BaseSequencer {
   override sort(files: TestSpecification[]): Promise<TestSpecification[]> {
     return Promise.resolve(
       [...files].sort(
         (a, b) =>
-          Number(END_TO_END.test(a.moduleId)) -
-            Number(END_TO_END.test(b.moduleId)) ||
+          tier(a.moduleId) - tier(b.moduleId) ||
           a.moduleId.localeCompare(b.moduleId),
       ),
     );
