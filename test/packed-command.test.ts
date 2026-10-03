@@ -55,22 +55,32 @@ beforeAll(() => {
 
   project = join(scratch, "consumer");
   mkdirSync(project);
+  // The package's two runtime dependencies are the copies this repository
+  // already installed, and npm's cache is an empty directory: the install
+  // resolves nothing from a registry, on any machine, so the suite still
+  // reaches no network.
+  const installed = (name: string) =>
+    `file:${join(REPOSITORY, "node_modules", name)}`;
   writeFileSync(
     join(project, "package.json"),
-    JSON.stringify({ name: "consumer", version: "0.0.0", private: true }),
+    JSON.stringify({
+      name: "consumer",
+      version: "0.0.0",
+      private: true,
+      overrides: { zod: installed("zod"), yaml: installed("yaml") },
+    }),
   );
-  // Offline: the two runtime dependencies come from the cache `npm ci` filled,
-  // so the suite still reaches no network.
-  const installed = npm(
+  const install = npm(
     project,
     "install",
     "--offline",
+    "--cache",
+    join(scratch, "cache"),
     "--no-audit",
     "--no-fund",
     join(tarballs, filename),
   );
-  if (installed.status !== 0)
-    throw new Error(`npm install: ${installed.stderr}`);
+  if (install.status !== 0) throw new Error(`npm install: ${install.stderr}`);
 }, SLOW);
 
 afterAll(() => {

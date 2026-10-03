@@ -71,7 +71,7 @@ they would each need another way to run it.
 - `package.json` gains a `bin`, `dist/` in `files`, and the `build` and
   `prepack` scripts.
 - The package-contents gate allows `dist/`, and only JavaScript under it.
-- A test packs the repository, installs the tarball offline into an empty
-  project, and runs the installed command.
+- A test packs the repository, installs the tarball into an empty project
+  with npm offline and its cache empty, and runs the installed command.
 - The emitted JavaScript targets the Node the package's `engines` field
   names; nothing is down-levelled.
