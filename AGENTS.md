@@ -89,6 +89,8 @@ table does not name, so a new gate cannot go undocumented.
 | `publish:rc` | publishes a release candidate from a pull request (CI only) |
 | `format` | Prettier, applied |
 | `format:check` | Prettier, checked only |
+| `build` | emits the command as JavaScript under `dist/`, from `src/` alone |
+| `prepack` | `build`, run by npm before it packs or publishes |
 | `typecheck` | `tsc --noEmit` |
 | `test` | the suite, no coverage enforced: the fast local loop |
 | `test:coverage` | the suite, with the coverage ratchet enforced |

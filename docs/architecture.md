@@ -471,7 +471,7 @@ proves the two never drift apart.
 | meaning | `npm run lint:meaning` | a retired term used outside a quotation, a stated count that no longer matches what it counts |
 | tests | `npm run test:coverage` | behaviour, plus the coverage ratchet |
 | mutation | `npm run test:mutation` | a change that keeps every line running but breaks what the line was for, which coverage alone rewards |
-| package contents | `node scripts/check-package-contents.ts` | `npm pack` shipping a file outside `docs/adr/` and `spec/`, the boundary the package's `files` field states but does not enforce on its own |
+| package contents | `node scripts/check-package-contents.ts` | `npm pack` shipping a file outside `docs/adr/`, `spec/` and the JavaScript under `dist/`, the boundary the package's `files` field states but does not enforce on its own |
 | actionlint | a pinned `actionlint` binary | invalid workflow syntax, an undefined `${{ }}` expression, a shellcheck finding inside a `run:` step |
 | secret scan | `npm run lint:secrets` | a committed secret matching the default ruleset, or this repository's own allowlist entries |
 | code scanning | CodeQL, called from `ci.yml` as the `codeql` job | any finding, of any severity, in JavaScript, TypeScript, workflow logic or the Java under `emf/`; a wrong one is filtered in `.github/codeql/codeql-config.yml` with its reason |
@@ -514,6 +514,26 @@ and the two together are what coverage was mistaken for.
 Every gate here carries negative fixtures.
 A gate that has only ever run against a clean tree is untested: nothing proves
 it would fail.
+
+## The published package
+
+The npm package ships three trees: the decision record (`docs/adr/`), the
+specification (`spec/`), and the command, built
+([0089](adr/architecture/0089-the-package-ships-the-command-built-when-it-is-packed.md)).
+
+The command is built when the package is packed, never before. `prepack` runs
+`tsc` over `src/` alone and writes JavaScript to `dist/`, and the package's
+`bin` names `dist/cli/index.js`. `dist/` is not committed and nothing in the
+repository reads it: the tests, the gates and a clone run `src/` directly, as
+[Tooling](#tooling) says. The build decides nothing. It strips the types and
+rewrites each relative import's extension, so the JavaScript that runs under
+`node_modules` is the TypeScript the suite ran, file for file.
+
+Two checks hold it. The package-contents gate asks npm what it would pack and
+refuses anything outside the three trees, and anything under `dist/` that is
+not JavaScript. A test packs the repository, installs the tarball into an empty
+project and runs the installed `deploy-kit`, so a package whose command does
+not start fails here and not in a consumer's workflow.
 
 ## Tooling
 

@@ -215,11 +215,11 @@
     'steps':
       - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
       - 'uses': './.github/actions/setup'
-      # Until the compiler exists, the npm package ships docs/adr and spec
-      # only (docs/adr/README.md). `files` in package.json states that, but
-      # npm always bundles package.json, README and LICENSE regardless of it,
-      # so this asks the real npm what it would ship rather than trusting the
-      # field.
+      # The npm package ships docs/adr, spec and the command built under dist
+      # (docs/architecture.md#the-published-package). `files` in package.json
+      # states that, but npm always bundles package.json, README and LICENSE
+      # regardless of it, so this asks the real npm what it would ship rather
+      # than trusting the field. Packing builds dist first, through prepack.
       - 'name': 'Package contents'
         'run': 'node scripts/check-package-contents.ts'
 

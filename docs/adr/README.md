@@ -166,6 +166,7 @@ Decisions about the compiler's own structure, not about the model; see
 | [0067](architecture/0067-every-spec-error-code-is-proved-by-a-test.md) | Every error code the specification defines is proved by a test, or pending on the ticket that will prove it | settled |
 | [0068](architecture/0068-two-implementations-meet-at-the-parity-table.md) | Two hand-written implementations meet at the oracles the parity table lists, each tree keeps its own rule for generated files, and constraint parity is checked by code | open |
 | [0088](architecture/0088-the-committed-schemas-and-their-corpus-are-the-contract.md) | The committed JSON Schemas and their accept/refuse corpus are the contract, and byte equality only proves the generator's output is committed | settled |
+| [0089](architecture/0089-the-package-ships-the-command-built-when-it-is-packed.md) | The package ships the command, built to JavaScript when it is packed, and the repository still runs its TypeScript directly | settled |
 
 ## Deferred
 

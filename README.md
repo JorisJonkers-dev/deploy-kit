@@ -98,8 +98,10 @@ runs the suite without enforcing coverage. `npm run test:coverage` (part of
 ## The command
 
 `deploy-kit` is the compiler's command line, in
-[`src/cli/`](src/cli/main.ts). The package does not ship it as a bin yet, so
-run it from a clone. It has three commands. Each reads and writes directories
+[`src/cli/`](src/cli/main.ts). The package ships it as a bin, built to
+JavaScript when the package is packed, so a repository that pins the package
+runs `npx --no-install deploy-kit`; from a clone it runs as below, with no
+build. It has three commands. Each reads and writes directories
 and never the registry: a workflow pulls fragments into a directory, runs the
 command, and pushes what it wrote.
 

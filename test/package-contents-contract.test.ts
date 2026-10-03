@@ -4,7 +4,7 @@
 // gate catches that against real npm, not only against a fabricated list.
 //
 // REQ-009 (docs/requirements.md): the npm package ships nothing outside
-// docs/adr/ and spec/.
+// docs/adr/, spec/ and the JavaScript under dist/.
 import { spawnSync } from "node:child_process";
 import { chmodSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -51,6 +51,14 @@ describe("isAllowed", () => {
   it("allows the two declared trees", () => {
     expect(isAllowed("docs/adr/README.md")).toBe(true);
     expect(isAllowed("spec/v1/00-overview.md")).toBe(true);
+  });
+
+  it("allows the built command, and only as JavaScript", () => {
+    expect(isAllowed("dist/cli/index.js")).toBe(true);
+    expect(isAllowed("dist/cli/index.ts")).toBe(false);
+    expect(isAllowed("dist/cli/index.js.map")).toBe(false);
+    expect(isAllowed("distribution/index.js")).toBe(false);
+    expect(isAllowed("src/dist/index.js")).toBe(false);
   });
 
   it("allows the files npm always bundles", () => {
@@ -126,7 +134,9 @@ describe("checkPackageContents", () => {
       "src/leak.ts": "x",
     });
     expect(checkPackageContents(root, output)).toBe(1);
-    expect(output.text()).toMatch(/ship files outside docs\/adr\/ and spec\//);
+    expect(output.text()).toMatch(
+      /ship files outside docs\/adr\/, spec\/ and dist\/\*\*\/\*\.js/,
+    );
     expect(output.text()).toMatch(/src\/leak\.ts/);
   });
 

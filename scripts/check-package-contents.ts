@@ -1,8 +1,9 @@
 // The npm package contents gate.
 //
-// The decision (docs/adr/README.md) is that until the compiler exists, the
-// package ships `docs/adr` and `spec` only. `files` in package.json is meant
-// to say that, but `files` is advisory, not enforced: npm always bundles
+// The package ships the decision record, the specification and the built
+// command (docs/architecture.md#the-published-package): `docs/adr`, `spec`,
+// and `dist`, which holds JavaScript only. `files` in package.json is meant to
+// say that, but `files` is advisory, not enforced: npm always bundles
 // package.json, README and LICENSE regardless of it, and a typo or a stray
 // glob widening `files` would ship silently. Nothing short of asking npm what
 // it would actually pack proves the boundary holds.
@@ -17,17 +18,21 @@ import { processOutput, type GateOutput } from "./lib/output.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..");
 
-// The two trees the decision names, and the files npm always bundles
+// The two authored trees, the built one, and the files npm always bundles
 // regardless of `files` (package.json, README, LICENSE, the main field; this
 // repository has no main field, so it is absent from the list npm reports).
 const ALLOWED_PREFIXES = ["docs/adr/", "spec/"];
+const BUILT = "dist/";
 const ALWAYS_INCLUDED = ["package.json", "README.md", "LICENSE"];
 
 /** True when `path`, a path `npm pack` reports, is inside the declared boundary. */
 export function isAllowed(path: string): boolean {
   return (
     ALWAYS_INCLUDED.includes(path) ||
-    ALLOWED_PREFIXES.some((prefix) => path.startsWith(prefix))
+    ALLOWED_PREFIXES.some((prefix) => path.startsWith(prefix)) ||
+    // The build emits JavaScript and nothing else: a source file, a map or a
+    // test under dist/ is a build that changed what it ships.
+    (path.startsWith(BUILT) && path.endsWith(".js"))
   );
 }
 
@@ -66,13 +71,13 @@ export function checkPackageContents(root: string, output: GateOutput): number {
   const offenders = violations(files);
   if (offenders.length > 0) {
     output.err(
-      "package contents: npm pack would ship files outside docs/adr/ and " +
-        `spec/: ${offenders.join(", ")}\n`,
+      "package contents: npm pack would ship files outside docs/adr/, " +
+        `spec/ and dist/**/*.js: ${offenders.join(", ")}\n`,
     );
     return 1;
   }
   output.out(
-    `package contents: ${files.length} files, all inside docs/adr/ and spec/\n`,
+    `package contents: ${files.length} files, all inside docs/adr/, spec/ and dist/\n`,
   );
   return 0;
 }
