@@ -48,6 +48,11 @@ function fakeNpm(output: string): string {
   return bin;
 }
 
+/** What npm reports for this repository once the command is built, and before. */
+const BUILT =
+  '[{"files":[{"path":"package.json"},{"path":"dist/cli/index.js"}]}]';
+const NOT_BUILT = '[{"files":[{"path":"package.json"}]}]';
+
 describe("isAllowed", () => {
   it("allows the two declared trees", () => {
     expect(isAllowed("docs/adr/README.md")).toBe(true);
@@ -200,7 +205,16 @@ describe("the command", () => {
   });
 
   it("checks this repository when no tree is named", () => {
+    // The pack is a stand-in's, so this does not wait on dist/ being built.
+    // The bin the pack must hold is read from the root's own package.json,
+    // and it is this repository's: that is what shows which tree was checked.
+    vi.stubEnv("PATH", `${fakeNpm(BUILT)}:${process.env.PATH}`);
     expect(main([], collect())).toBe(0);
+
+    const output = collect();
+    vi.stubEnv("PATH", `${fakeNpm(NOT_BUILT)}:${process.env.PATH}`);
+    expect(main([], output)).toBe(1);
+    expect(output.text()).toMatch(/no file for the bin dist\/cli\/index\.js/);
   });
 
   it("runs when Node starts the script, which is how CI runs it", () => {
@@ -230,6 +244,7 @@ describe("the entrypoint guard", () => {
     const originalArgv = process.argv;
     const originalExitCode = process.exitCode;
     process.argv = [process.argv[0] ?? "node", modulePath];
+    vi.stubEnv("PATH", `${fakeNpm(BUILT)}:${process.env.PATH}`);
     vi.resetModules();
     try {
       await import("../scripts/check-package-contents.ts");
