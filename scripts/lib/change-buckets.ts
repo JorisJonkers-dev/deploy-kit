@@ -42,6 +42,7 @@ const ROOT_TOOLING_FILES = new Set([
   "package.json",
   "package-lock.json",
   "tsconfig.json",
+  "tsconfig.build.json",
   "eslint.config.js",
   "vitest.config.ts",
   "vitest.mutation.config.ts",

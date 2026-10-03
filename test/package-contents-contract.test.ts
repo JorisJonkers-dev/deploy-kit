@@ -4,7 +4,7 @@
 // gate catches that against real npm, not only against a fabricated list.
 //
 // REQ-009 (docs/requirements.md): the npm package ships nothing outside
-// docs/adr/ and spec/.
+// docs/adr/, spec/ and the JavaScript under dist/.
 import { spawnSync } from "node:child_process";
 import { chmodSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -13,6 +13,7 @@ import {
   checkPackageContents,
   isAllowed,
   main,
+  missingBins,
   packedFiles,
   violations,
 } from "../scripts/check-package-contents.ts";
@@ -47,10 +48,23 @@ function fakeNpm(output: string): string {
   return bin;
 }
 
+/** What npm reports for this repository once the command is built, and before. */
+const BUILT =
+  '[{"files":[{"path":"package.json"},{"path":"dist/cli/index.js"}]}]';
+const NOT_BUILT = '[{"files":[{"path":"package.json"}]}]';
+
 describe("isAllowed", () => {
   it("allows the two declared trees", () => {
     expect(isAllowed("docs/adr/README.md")).toBe(true);
     expect(isAllowed("spec/v1/00-overview.md")).toBe(true);
+  });
+
+  it("allows the built command, and only as JavaScript", () => {
+    expect(isAllowed("dist/cli/index.js")).toBe(true);
+    expect(isAllowed("dist/cli/index.ts")).toBe(false);
+    expect(isAllowed("dist/cli/index.js.map")).toBe(false);
+    expect(isAllowed("distribution/index.js")).toBe(false);
+    expect(isAllowed("src/dist/index.js")).toBe(false);
   });
 
   it("allows the files npm always bundles", () => {
@@ -63,6 +77,24 @@ describe("isAllowed", () => {
     expect(isAllowed("src/index.ts")).toBe(false);
     expect(isAllowed("scripts/lint-adrs.ts")).toBe(false);
     expect(isAllowed("CHANGELOG.md")).toBe(false);
+  });
+});
+
+describe("missingBins", () => {
+  it("names, sorted, every bin the pack holds no file for", () => {
+    const root = pkg([]);
+    writeFileSync(
+      join(root, "package.json"),
+      JSON.stringify({ bin: { b: "dist/b.js", a: "./dist/a.js", c: "c.js" } }),
+    );
+    expect(missingBins(root, ["dist/b.js", "package.json"])).toStrictEqual([
+      "c.js",
+      "dist/a.js",
+    ]);
+  });
+
+  it("is empty for a package that names no bin", () => {
+    expect(missingBins(pkg([]), ["package.json"])).toStrictEqual([]);
   });
 });
 
@@ -126,7 +158,9 @@ describe("checkPackageContents", () => {
       "src/leak.ts": "x",
     });
     expect(checkPackageContents(root, output)).toBe(1);
-    expect(output.text()).toMatch(/ship files outside docs\/adr\/ and spec\//);
+    expect(output.text()).toMatch(
+      /ship files outside docs\/adr\/, spec\/ and dist\/\*\*\/\*\.js/,
+    );
     expect(output.text()).toMatch(/src\/leak\.ts/);
   });
 
@@ -138,8 +172,28 @@ describe("checkPackageContents", () => {
     expect(output.text()).toMatch(/^package contents: /);
   });
 
-  it("passes this repository's own tree", () => {
-    expect(checkPackageContents(REPOSITORY, collect())).toBe(0);
+  it("fails a pack that holds no file for a bin the package names", () => {
+    // What a pack made without the build is: lifecycle hooks are off, so
+    // nothing builds dist/ on the way to it.
+    const output = collect();
+    const root = pkg(["docs/adr/", "dist/"], { "docs/adr/a.md": "x" });
+    writeFileSync(
+      join(root, "package.json"),
+      JSON.stringify({
+        name: "fixture",
+        version: "0.0.0",
+        files: ["docs/adr/", "dist/"],
+        bin: { fixture: "./dist/cli/index.js" },
+      }),
+    );
+    expect(checkPackageContents(root, output)).toBe(1);
+    expect(output.text()).toMatch(
+      /ship no file for the bin dist\/cli\/index\.js; run `npm run build`/,
+    );
+
+    mkdirSync(join(root, "dist/cli"), { recursive: true });
+    writeFileSync(join(root, "dist/cli/index.js"), "#!/usr/bin/env node\n");
+    expect(checkPackageContents(root, collect())).toBe(0);
   });
 });
 
@@ -151,7 +205,16 @@ describe("the command", () => {
   });
 
   it("checks this repository when no tree is named", () => {
+    // The pack is a stand-in's, so this does not wait on dist/ being built.
+    // The bin the pack must hold is read from the root's own package.json,
+    // and it is this repository's: that is what shows which tree was checked.
+    vi.stubEnv("PATH", `${fakeNpm(BUILT)}:${process.env.PATH}`);
     expect(main([], collect())).toBe(0);
+
+    const output = collect();
+    vi.stubEnv("PATH", `${fakeNpm(NOT_BUILT)}:${process.env.PATH}`);
+    expect(main([], output)).toBe(1);
+    expect(output.text()).toMatch(/no file for the bin dist\/cli\/index\.js/);
   });
 
   it("runs when Node starts the script, which is how CI runs it", () => {
@@ -181,6 +244,7 @@ describe("the entrypoint guard", () => {
     const originalArgv = process.argv;
     const originalExitCode = process.exitCode;
     process.argv = [process.argv[0] ?? "node", modulePath];
+    vi.stubEnv("PATH", `${fakeNpm(BUILT)}:${process.env.PATH}`);
     vi.resetModules();
     try {
       await import("../scripts/check-package-contents.ts");

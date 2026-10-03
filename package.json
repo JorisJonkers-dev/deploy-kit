@@ -8,9 +8,13 @@
     "node": ">=24"
   },
   "files": [
+    "dist/",
     "docs/adr/",
     "spec/"
   ],
+  "bin": {
+    "deploy-kit": "dist/cli/index.js"
+  },
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -29,6 +33,7 @@
     "publish:rc": "node scripts/rc-publish.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
