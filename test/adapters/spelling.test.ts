@@ -822,6 +822,51 @@ describe("the vault-policy adapter", () => {
     });
   });
 
+  it("writes an identity's documents under the name Vault holds them by, and binds the role to that policy", () => {
+    const rendered = policy(GRANT);
+
+    expect(rendered.map(({ path }) => path)).toStrictEqual([
+      "apps/vso-secrets/policies/notes-system-notes-api.policy.json",
+      "apps/vso-secrets/policies/notes-system-notes-api.role.json",
+    ]);
+    expect(objectsAt(rendered, "role.json")).toStrictEqual([
+      {
+        bound_service_account_names: ["notes-api"],
+        bound_service_account_namespaces: ["notes-system"],
+        token_policies: ["notes-system-notes-api"],
+      },
+    ]);
+  });
+
+  it("makes two identities that derive one name claim one path, which the render refuses", () => {
+    // A hyphen does not keep two hyphenated names apart: `a-system` + `system-c`
+    // and `a-system-system` + `c` are one name, and so one role in Vault.
+    const held = (namespace: string, name: string) =>
+      renderVaultPolicy(
+        edited(
+          () => ({ namespace }),
+          () => ({ name, identity: name, secrets: [GRANT] }),
+        ),
+      );
+    const both = [
+      ...held("a-system", "system-c"),
+      ...held("a-system-system", "c"),
+    ];
+
+    expect(
+      collisions(both).map(({ code, message }) => [code, message]),
+    ).toStrictEqual([
+      [
+        "E_PATH_COLLISION",
+        "apps/vso-secrets/policies/a-system-system-c.policy.json is claimed by vault-policy and vault-policy",
+      ],
+      [
+        "E_PATH_COLLISION",
+        "apps/vso-secrets/policies/a-system-system-c.role.json is claimed by vault-policy and vault-policy",
+      ],
+    ]);
+  });
+
   it("stops at an access tier it does not spell yet, and at a grant outside the kv mount", () => {
     expect(() => policy({ ...GRANT, access: "custody" })).toThrow(
       "secret/data/notes/token: a custody grant is not rendered yet",

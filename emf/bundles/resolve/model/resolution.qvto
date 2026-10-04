@@ -1038,7 +1038,9 @@ query EffectiveProject::vaultFiles() : Sequence(Deliverable) =
 		->flatten();
 
 query vaultFilesOf(ns : String, holder : String, held : Sequence(ResolvedGrant)) : Sequence(Deliverable) =
-	let stem : String = POLICIES + ns + '/' + holder in
+	-- Each document is written under the name Vault holds it by, so two identities that derive
+	-- one name claim one path.
+	let stem : String = POLICIES + ns + '-' + holder in
 	Sequence{
 		object VaultPolicyFile {
 			path := stem + '.policy.json';

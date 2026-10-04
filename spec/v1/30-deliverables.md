@@ -164,7 +164,8 @@ no output at all, and a derivation with no output is not total
 
 The `vault-policy` adapter emits, **per identity that holds a grant** (each
 Process, and each backup identity that holds its destination's credential), two
-documents, at `apps/vso-secrets/policies/<namespace>/<identity>.{policy,role}.json`:
+documents, at `apps/vso-secrets/policies/<namespace>-<identity>.{policy,role}.json`,
+the name Vault holds both by:
 
 | document | derived from |
 |---|---|
@@ -252,7 +253,7 @@ Paths are assigned by the Resolved Deployment's path plan
 <gitopsRoot>/apps/<project>/namespace.yaml
 <gitopsRoot>/apps/<project>/networkpolicy.yaml
 <gitopsRoot>/apps/<project>/vaultconnection.yaml
-<gitopsRoot>/apps/vso-secrets/policies/<namespace>/<identity>.{policy,role}.json
+<gitopsRoot>/apps/vso-secrets/policies/<namespace>-<identity>.{policy,role}.json
 <gitopsRoot>/apps/edge/<tier>/<application>-<exposure>.yaml
 ```
 
@@ -286,7 +287,7 @@ spells only what the projection holds:
 | a backed-up volume's `backup` | `kubernetes` | a `CronJob` named for the backup claim at the plan's `schedule`, `concurrencyPolicy: Forbid`, running the `method` image as the plan's `uid` and `gid` under the backup identity's `ServiceAccount` with no token mounted; the volume mounted read-only at `/data`, the backup claim at `/backup`, `BACKUP_RETAIN` the `retain` count, `BACKUP_OFF_CLUSTER` the destination and the credential's Secret as variables where it copies off-cluster; the backup claim a second `PersistentVolumeClaim` at the volume's `size`, and both carrying `kustomize.toolkit.fluxcd.io/prune: disabled` |
 | an Asset | `kubernetes` | an immutable `ConfigMap` under the Asset's `name`, its one key the file name of `from`; a volume of that name, mounted at `mountAt` by that key, read-only |
 | a gated Application's `releaseGate` | `kubernetes` | a `ConfigMap` named `<application>-release-gate` in the Application's namespace, the first object of its `configmap.yaml`, labelled `part-of` the Application and `managed-by`; its one key `releaseGate.json`, the element as canonical JSON (RFC 8785) on one line. Not immutable: the name stays and the content changes with a release |
-| a grant's holder | `vault-policy` | a policy and an auth role, both to be written as `<namespace>-<identity>`, at `policies/<namespace>/<identity>.{policy,role}.json`; the role binds the identity's `ServiceAccount` in that namespace to that one policy |
+| a grant's holder | `vault-policy` | a policy and an auth role, at `policies/<namespace>-<identity>.{policy,role}.json`, each written into Vault under its file's name, so two identities deriving one name are a path collision; the role binds the identity's `ServiceAccount` in that namespace to that one policy |
 | a sidecar | `kubernetes` | a second container of the pod, its own `memory` and `cpu`, the same posture and the Process's variables |
 | a writable path | `kubernetes` | an `emptyDir` at the path's `size`, named `writable` and the path with every run of other characters a `-`, mounted at the path |
 | a secret reference | `kubernetes` | `valueFrom.secretKeyRef`, the grant's `destination` and the reference's `key` |

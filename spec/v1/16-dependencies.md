@@ -153,10 +153,17 @@ The Vault role and its policy carry one name, **`<namespace>-<process>`**:
 Secret Store has no namespaces: one `kubernetes` auth mount holds every
 project's roles, and one list holds every policy. A role named for the Process
 alone would be unique only as long as no two projects call a Process the same,
-which nothing checks and nothing should. The name is also where the
-`vault-policy` adapter writes the two documents,
-`policies/<namespace>/<identity>`, so the path and the name say the same thing
-([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)).
+which nothing checks and nothing should.
+
+The name is also the path the `vault-policy` adapter writes the two documents
+at, `policies/<namespace>-<identity>`
+([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)),
+and that is what keeps it unique. A hyphen does not separate two names that may
+hold hyphens: project `a` with a Process `system-c`, and project `a-system`
+with a Process `c`, both derive `a-system-system-c`. Written under the name,
+the two claim one path, and a path has one owner: the render is refused with
+`E_PATH_COLLISION` ([chapter 30](30-deliverables.md#path-allocation)) before
+either document exists, so no project's role is ever written over another's.
 A backup identity and a migration identity are named by the same rule.
 
 | project | Application | Processes | ServiceAccount, in the project's namespace | Vault role and policy |

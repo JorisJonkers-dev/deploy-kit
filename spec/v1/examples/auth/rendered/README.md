@@ -78,8 +78,8 @@ contributes routes and exposures to both; it owns neither object.
 | `apps/auth/migration.yaml` | `kubernetes` | `migration.changelog`, the Platform document's `migration` policy, the Application revision and the migration's `testedAgainst` | the owner credential's Vault role, which no adapter writes yet ([G-02](#g-02)). The file holds the migration identity, this revision's migration, and the suspended down that only the Release Gate runs ([chapter 55](../../../55-delivery.md#failure-and-undo)) |
 | `apps/auth/kustomization.yaml` | `kubernetes` | the file set of the Application | - |
 | `edge/ingressroutes.yaml` | `traefik`, for the tier each route's audience selects | the Application's `exposure`: `host` (authored, copied verbatim), each route's `path` + `match` → the rule, `process` + `surface` → the backend, `audience: anonymous` → no forward-auth, `contentPolicy: strict` → the security-headers middleware reference | entryPoint and TLS policy ([G-11](#g-11)); the `Middleware` objects both references resolve to: forward-auth elsewhere and security-headers here ([G-23](#g-23)) |
-| `apps/vso-secrets/policies/auth-api.policy.json` | `vault-policy` | the Process's grants and their access tiers, per engine: KV read plus its `metadata` sibling, `transit/sign` and `transit/keys/.../rotate` for the JWT key | none (0040, 0029, 0029) |
-| `apps/vso-secrets/policies/auth-api.role.json` | `vault-policy` | the Process's ServiceAccount and namespace, bound to that one policy | - |
+| `apps/vso-secrets/policies/auth-system-auth-api.policy.json` | `vault-policy` | the Process's grants and their access tiers, per engine: KV read plus its `metadata` sibling, `transit/sign` and `transit/keys/.../rotate` for the JWT key | none (0040, 0029, 0029) |
+| `apps/vso-secrets/policies/auth-system-auth-api.role.json` | `vault-policy` | the Process's ServiceAccount and namespace, bound to that one policy | - |
 
 ### Not emitted, with the reason
 

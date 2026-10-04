@@ -1,6 +1,6 @@
 {
   "_generated": "GENERATED. Never hand-edit.",
-  "name": "knowledge-api",
+  "name": "knowledge-system-knowledge-api",
   "policy": {
     "path": {
       "secret/data/knowledge-system/mcp-bearer": { "capabilities": ["read"] },

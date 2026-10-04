@@ -1,6 +1,6 @@
 {
   "_generated": "GENERATED. Never hand-edit.",
-  "name": "auth-api",
+  "name": "auth-system-auth-api",
   "policy": {
     "path": {
       "secret/data/platform/postgres/auth": { "capabilities": ["read"] },

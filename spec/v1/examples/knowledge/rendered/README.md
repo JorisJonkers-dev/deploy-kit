@@ -77,8 +77,8 @@ contributes routes and exposures to both; it owns neither object.
 | `apps/knowledge/kustomization.yaml` | `kubernetes` | the emitted file set | ownership of `vso.yaml` (**G-25**) |
 | `edge/ingressroutes.yaml` | `traefik`, for the tier each route's audience selects | the Application's `exposure`: authored `host`, the exposure `audience` and five routes, four overriding it to `anonymous`, each naming `knowledge-api` and its `http` surface | - |
 | `apps/knowledge/backup.yaml` | `kubernetes` | `durability: irreplaceable` plus `engine: files` on the vault clone | none (0018) |
-| `apps/vso-secrets/policies/knowledge-api.policy.json` | `vault-policy` | the three KV grants, each with its `metadata` sibling | none (0040, 0029) |
-| `apps/vso-secrets/policies/knowledge-api.role.json` | `vault-policy` | the Process's ServiceAccount and namespace | - |
+| `apps/vso-secrets/policies/knowledge-system-knowledge-api.policy.json` | `vault-policy` | the three KV grants, each with its `metadata` sibling | none (0040, 0029) |
+| `apps/vso-secrets/policies/knowledge-system-knowledge-api.role.json` | `vault-policy` | the Process's ServiceAccount and namespace | - |
 
 ## Deliberately absent, and correct
 

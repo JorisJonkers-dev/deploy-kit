@@ -51,9 +51,12 @@ project file, so the Process name is enough there. One Kubernetes auth mount
 holds every project's roles and one list holds every policy, so a role named for
 the Process alone stays unique only while no two projects call a Process the
 same. Nothing checks that, and a rule that did would make one project's naming
-another's concern. The policy was already written under `<namespace>-<identity>`,
-at a path that says the same; the role now carries that name too, and one name
-per identity is what the Vault policy job writes
+another's concern. The policy was already bound under `<namespace>-<identity>`;
+the role now carries that name too, and both documents are written at a path
+that is the name, which is what the Vault policy job writes them as. A hyphen
+does not keep two hyphenated names apart, so the name alone is not unique by
+construction: the path is what makes it so, because a second identity deriving
+the same name claims the same path and the render is refused
 ([chapter 30](../../../spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied)).
 
 **Delivery is the field the token reads.** "No grant, no token" gets
