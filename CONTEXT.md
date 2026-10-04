@@ -173,7 +173,10 @@ transaction ([chapter 55](spec/v1/55-delivery.md#migration-safety)).
 `<process>-backup`, apart from the Process so that only it holds the off-cluster
 destination's credential. Its **Backup Claim**, `<claim>-backup`, is the claim a
 volume's copies land on, of which the method keeps `retain`
-([0018](docs/adr/model/0018-durability-class-derives-a-backup.md)).
+([0018](docs/adr/model/0018-durability-class-derives-a-backup.md)). It has a
+network policy of its own: the surface its engine's method dumps, the cluster's
+DNS and the off-cluster destination's address ranges, and no ingress
+([0091](docs/adr/model/0091-a-backup-identity-has-a-policy-of-its-own.md)).
 
 **Engine**: what a Process *is*, where the platform must treat it
 specially: `postgres`, `rabbitmq`, `valkey`, `files`. Not `runtime`, which says

@@ -414,6 +414,11 @@
   <eClassifiers xsi:type="ecore:EClass" name="OffClusterCopy">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="destination" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="credential" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="egress" lowerBound="1" upperBound="-1" eType="#//DestinationRange" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="DestinationRange">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cidr" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="EnginePolicies">
     <eStructuralFeatures xsi:type="ecore:EReference" name="postgres" eType="#//EnginePolicy" containment="true"/>
@@ -423,6 +428,7 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="EnginePolicy">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="backup" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="surface" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="MonitorCadence">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

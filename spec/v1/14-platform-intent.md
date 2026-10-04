@@ -63,6 +63,7 @@ other resolves and every policy one asks for the other offers:
 | a tier's `traefik` names an Application no project file read beside it declares | `E_UNKNOWN_TIER_PROXY` |
 | an exposure's or a route's audience is carried by no tier | `E_NO_TIER_FOR_AUDIENCE` |
 | a Process's `engine` has no entry in `engines` | `E_NO_ENGINE_POLICY` |
+| a Process's `engine` names a `surface` in `engines` that the Process does not provide | `E_BACKUP_SURFACE_NOT_PROVIDED` |
 | a volume's Durability Class has no entry in `durability` | `E_NO_DURABILITY_POLICY` |
 | a grant delivered as `env` or `file` where `secretsEncryption` is false | `E_SECRETS_AT_REST_REQUIRED` |
 | a name in `delivery.machinery` names an Application no project file read beside it declares | `E_UNKNOWN_MACHINERY` |
@@ -269,9 +270,9 @@ One policy per Durability Class
 ([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)). The window
 is one node's IO and the destination one remote target, so both are
 platform-assigned. `retain` is how many copies a backup keeps, the newest, and
-`offCluster` names where an `irreplaceable` copy also goes and the Secret Store
-path of the credential that writes there. A volume whose class has no policy
-here is `E_NO_DURABILITY_POLICY`:
+`offCluster` names where an `irreplaceable` copy also goes, the Secret Store
+path of the credential that writes there, and where that destination is on the
+network. A volume whose class has no policy here is `E_NO_DURABILITY_POLICY`:
 
 ```yaml
 durability:
@@ -279,8 +280,18 @@ durability:
   recoverable:   {schedule: "15 3 * * *", retain: 14}
   irreplaceable: {schedule: "45 2 * * *", retain: 90,
                   offCluster: {destination: s3://backup-storage/jorisjonkers-dev,
-                               credential: secret/data/platform/backup/off-cluster}}
+                               credential: secret/data/platform/backup/off-cluster,
+                               egress: [{cidr: 203.0.113.0/24, port: 443}]}}
 ```
+
+`egress` is the destination as a network policy can say it: one or more address
+ranges, each with a port. A policy admits a range, never a hostname, so a
+destination written only as a name is one no backup pod could be let through to
+([chapter 16](16-dependencies.md#the-backup-identitys-policy),
+[0091](../../docs/adr/model/0091-a-backup-identity-has-a-policy-of-its-own.md)).
+It is stated here, beside the destination it locates, because the platform chose
+that destination and nobody else knows where it is. At least one range is
+required: an off-cluster copy with nowhere to go is not one.
 
 ## Engines
 
@@ -292,10 +303,21 @@ whose `engine` has no entry here is `E_NO_ENGINE_POLICY`.
 
 ```yaml
 engines:
-  postgres: {backup: postgres-backup}
-  rabbitmq: {backup: rabbitmq-backup}
+  postgres: {backup: postgres-backup, surface: postgres}
+  rabbitmq: {backup: rabbitmq-backup, surface: management}
   files:    {backup: file-backup}
 ```
+
+`surface` is the surface of the Process the method connects to, where it dumps
+over the network: `postgres` is dumped over its own protocol, `rabbitmq` through
+its management API. A method that reads the volume alone, as `files` does, names
+none. The platform says it, because the platform chose the image and only the
+image knows what it connects to; a project file has no word for it. It is the
+one peer inside the cluster a backup pod is let through to, and the peer the
+Process admits its own backups from
+([chapter 16](16-dependencies.md#the-backup-identitys-policy)). A Process whose
+engine names a surface it does not provide is `E_BACKUP_SURFACE_NOT_PROVIDED`:
+the backup would reach nothing.
 
 A shell command in an authored file is what [0014](../../docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)
 refuses for an Application, and it is refused here for the same reason: what the
@@ -628,6 +650,10 @@ classDiagram
         +string destination
         +VaultPath credential
     }
+    class DestinationRange {
+        +Cidr cidr
+        +int port
+    }
     class EnginePolicies {
         +EnginePolicy postgres
         +EnginePolicy rabbitmq
@@ -636,6 +662,7 @@ classDiagram
     }
     class EnginePolicy {
         +ImageAlias backup
+        +SurfaceName surface
     }
     class MonitorCadence {
         +Duration interval
@@ -700,5 +727,6 @@ classDiagram
     Bootstrap "1" *-- "1" VaultState : vault
     DurabilityPolicies "1" *-- "0..3" DurabilityPolicy : per class
     DurabilityPolicy "1" *-- "0..1" OffClusterCopy : offCluster
+    OffClusterCopy "1" *-- "1..*" DestinationRange : egress
     EnginePolicies "1" *-- "0..4" EnginePolicy : per engine
 ```

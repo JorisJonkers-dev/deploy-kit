@@ -187,6 +187,11 @@ export interface PolicyPeer {
   readonly podSelector?: { readonly matchLabels: Labels };
 }
 
+/** An address range outside the cluster: where no namespace or pod is the peer. */
+export interface PolicyRange {
+  readonly ipBlock: { readonly cidr: string };
+}
+
 export interface PolicyPort {
   readonly protocol: "TCP" | "UDP";
   readonly port: number;
@@ -204,7 +209,7 @@ export interface NetworkPolicy {
       readonly ports: readonly PolicyPort[];
     }[];
     readonly egress?: readonly {
-      readonly to: readonly PolicyPeer[];
+      readonly to: readonly (PolicyPeer | PolicyRange)[];
       readonly ports: readonly PolicyPort[];
     }[];
   };

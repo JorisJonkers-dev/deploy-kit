@@ -105,8 +105,52 @@
   [else]
     [for (p : resolveddeployment::ProcessPolicy | d.policies)]
       [p.policy()/]
+      [if (p.process.backups()->notEmpty())]
+        [p.process.backupPolicy(p.process.backups()->first().backup)/]
+      [/if]
     [/for]
   [/if]
+[/template]
+
+[comment A backup identity's own policy: every backup of a Process runs as one identity, whose
+  pods reach the Process they dump, the cluster's DNS and, for an off-cluster copy, the ranges the
+  destination is at. Nothing reaches them. /]
+[template private backupPolicy(p : resolveddeployment::ResolvedProcess, b : resolveddeployment::BackupPlan)]
+  ---
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: [b.identity/]
+    namespace: [p.application().namespace/]
+    labels:
+      [b.identity.labelSet('none', p.application().id)/]
+  spec:
+    podSelector:
+      matchLabels:
+        app.kubernetes.io/instance: [b.identity/]
+    policyTypes:
+      - Ingress
+      - Egress
+    egress:
+  [for (peer : resolveddeployment::PolicyPeer | b.egress)]
+        - to:
+            [peer.peer()/]
+          ports:
+    [if (peer.rule = 'cluster-dns')]
+              - protocol: UDP
+                port: [peer.port/]
+    [/if]
+            - protocol: TCP
+              port: [peer.port/]
+  [/for]
+  [for (range : resolveddeployment::AdmittedRange | b.destinations)]
+        - to:
+            - ipBlock:
+                cidr: [range.cidr/]
+          ports:
+            - protocol: TCP
+              port: [range.port/]
+  [/for]
 [/template]
 
 [template private policy(p : resolveddeployment::ProcessPolicy)]

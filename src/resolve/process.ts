@@ -314,7 +314,12 @@ export function resolveProcess(
   const dependencies = (process.dependsOn ?? []).map((edge) =>
     resolveEdge(edge, context.union, context.platform),
   );
-  const volumes = resolveVolumes(process, context.platform, context.lock);
+  const volumes = resolveVolumes(
+    process,
+    context.platform,
+    context.lock,
+    context.project,
+  );
   const secrets = resolveGrants(process);
   const assets = resolveAssets(process, context.assets, context.hash);
   const sidecars = resolveSidecars(process, context.lock);

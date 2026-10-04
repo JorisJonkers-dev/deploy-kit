@@ -216,6 +216,18 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="claim" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="credential" eType="#//ResolvedGrant" containment="true"/>
+    <!-- What the backup identity's own policy admits: the Process it dumps, on the
+         surface its engine's method connects to, and the cluster's DNS; and the
+         address ranges an off-cluster copy goes to. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="egress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="destinations" upperBound="-1" eType="#//AdmittedRange" containment="true"/>
+  </eClassifiers>
+
+  <!-- An address range outside the cluster a policy admits, on one port. Layer 1 states it as
+       a DestinationRange; a render admits it. -->
+  <eClassifiers xsi:type="ecore:EClass" name="AdmittedRange">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cidr" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
   </eClassifiers>
 
   <!-- A `kv` grant names its path, keys and access tier; a `transit` or `database`
@@ -270,7 +282,8 @@
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="PolicyPeer">
-    <!-- What admits the peer: a tier proxy, the metrics stack, a consumer, the DNS, the Secret Store.
+    <!-- What admits the peer: a tier proxy, the metrics stack, a consumer, the Process's own
+         backup, the DNS, the Secret Store, the datastore a backup dumps.
          Absent on an edge's own peer. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="rule" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

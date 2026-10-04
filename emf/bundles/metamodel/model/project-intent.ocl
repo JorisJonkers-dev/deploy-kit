@@ -120,6 +120,20 @@ context Process
 			and (engine = Engine::valkey implies policies.valkey <> null)
 			and (engine = Engine::files implies policies.files <> null))
 
+	-- Where the engine's method dumps over the network, the Process is what it
+	-- connects to, so the surface the platform names for the engine is one the
+	-- Process provides. A method that reads the volume alone names none.
+	inv E_BACKUP_SURFACE_NOT_PROVIDED:
+		EnginePolicies.allInstances()->forAll(policies |
+			let named : EnginePolicy =
+				if engine = Engine::postgres then policies.postgres
+				else if engine = Engine::rabbitmq then policies.rabbitmq
+				else if engine = Engine::valkey then policies.valkey
+				else if engine = Engine::files then policies.files
+				else null endif endif endif endif in
+			(named <> null and named.surface <> null)
+				implies provides->includes(named.surface))
+
 context Volume
 	-- A Durability Class names a guarantee only a platform policy keeps.
 	inv E_NO_DURABILITY_POLICY:

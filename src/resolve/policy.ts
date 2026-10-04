@@ -10,17 +10,20 @@ import type {
 } from "../model/effective-intent.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
-import { namespaceOf } from "../model/runtime-profiles.ts";
+import { backupIdentityOf, namespaceOf } from "../model/runtime-profiles.ts";
+import { dumpedSurfaceOf } from "../model/backup.ts";
 
 type Ingress = NonNullable<ResolvedProcess["ingress"]>[number];
 type Egress = NonNullable<ResolvedProcess["egress"]>[number];
 
 /** The DNS port every egress policy admits (spec/v1/16-dependencies.md#the-baseline). */
-const DNS_PORT = 53;
+export const DNS_PORT = 53;
 
 export interface PolicyContext {
   readonly platform: PlatformIntentDocument;
   readonly union: readonly EffectiveProject[];
+  /** The project the Process is declared in. */
+  readonly project: string;
 }
 
 /** Every Process of `application`, each as a peer in its own namespace. */
@@ -111,7 +114,22 @@ export function ingressOf(
       ),
     ),
   );
-  return distinct([...routes, ...metrics, ...consumers]);
+  // Its own backups, where it has any and the engine's method dumps over the
+  // network: the backup identity reaches the surface the platform names for
+  // the engine, which the Process provides (E_BACKUP_SURFACE_NOT_PROVIDED).
+  const dumped = dumpedSurfaceOf(process, context.platform);
+  const backups: Ingress[] =
+    dumped === undefined
+      ? []
+      : [
+          {
+            rule: "backup",
+            namespace: namespaceOf(context.project),
+            process: backupIdentityOf(process.name),
+            port: port(dumped),
+          },
+        ];
+  return distinct([...routes, ...metrics, ...consumers, ...backups]);
 }
 
 /** The surface the Secret Store answers every grant on. */

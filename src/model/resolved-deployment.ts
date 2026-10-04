@@ -56,10 +56,15 @@ export const INGRESS_RULES = [
   "tier-proxy",
   "metrics-stack",
   "consumer",
+  "backup",
 ] as const;
 
 /** Which rule admits an outbound peer beyond an edge: the baseline, or a grant. */
-export const EGRESS_RULES = ["cluster-dns", "secret-store"] as const;
+export const EGRESS_RULES = [
+  "cluster-dns",
+  "secret-store",
+  "datastore",
+] as const;
 
 /** What a gate member is analysed on beyond readiness, from its Runtime Profile. */
 export const ANALYSIS_CHECKS = ["error-rate", "latency"] as const;
@@ -213,6 +218,25 @@ const resolvedEngineGrant = z
 // The backup a Durability Class derives: the platform's terms for the class,
 // the engine's method image, the identity it runs as, the claim its copies
 // land on, and for an off-cluster copy the credential only that identity holds.
+const egressRule = z.enum(EGRESS_RULES).meta({ id: "EgressRule" });
+
+// An outbound peer the policy admits beyond the dependency edges: a whole
+// namespace where no single Process is the peer.
+const egressPeer = z
+  .strictObject({
+    rule: egressRule,
+    namespace: text,
+    process: text.exactOptional(),
+    port,
+  })
+  .meta({ id: "EgressPeer" });
+
+// An address range outside the cluster a policy admits, on one port: where an
+// off-cluster copy goes (spec/v1/14-platform-intent.md#durability-policy).
+const destinationRange = z
+  .strictObject({ cidr: text, port })
+  .meta({ id: "DestinationRange" });
+
 const backupPlan = z
   .strictObject({
     schedule: text,
@@ -225,6 +249,12 @@ const backupPlan = z
     identity: text,
     claim: text,
     credential: resolvedGrant.exactOptional(),
+    // What the backup identity's own policy admits: the Process it dumps, on
+    // the surface its engine's method connects to, and the cluster's DNS. Not
+    // the Secret Store: the operator reads the credential for it.
+    egress: z.array(egressPeer),
+    // Where an off-cluster copy goes, as the durability policy states it.
+    destinations: z.array(destinationRange).exactOptional(),
   })
   .meta({ id: "BackupPlan" });
 
@@ -270,23 +300,11 @@ const resolvedSurface = z
   .meta({ id: "ResolvedSurface" });
 
 const ingressRule = z.enum(INGRESS_RULES).meta({ id: "IngressRule" });
-const egressRule = z.enum(EGRESS_RULES).meta({ id: "EgressRule" });
 
 // An inbound peer the Process's policy admits, on one of its own ports.
 const ingressPeer = z
   .strictObject({ rule: ingressRule, namespace: text, process: text, port })
   .meta({ id: "IngressPeer" });
-
-// An outbound peer the policy admits beyond the dependency edges: a whole
-// namespace where no single Process is the peer.
-const egressPeer = z
-  .strictObject({
-    rule: egressRule,
-    namespace: text,
-    process: text.exactOptional(),
-    port,
-  })
-  .meta({ id: "EgressPeer" });
 
 const writablePath = z
   .strictObject({ path: text, size: text })
