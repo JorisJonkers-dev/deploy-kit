@@ -240,7 +240,7 @@ describe("how a Process switches, and how long it may take", () => {
     expect(resolved.releaseGate).toBeUndefined();
   });
 
-  it("rolls the delivery machinery, and gates none of it", () => {
+  it("rolls the delivery machinery, gates none of it, and leaves the Collector beside it what it declares", () => {
     const delivery = projectNamed(
       projects(one(serving("notes-api"))),
       "delivery",
@@ -254,6 +254,8 @@ describe("how a Process switches, and how long it may take", () => {
     ).toStrictEqual([
       ["rolling", undefined],
       ["rolling", undefined],
+      // Not machinery: it switches nothing, and it declares `interrupted`.
+      ["stop-start", undefined],
     ]);
   });
 

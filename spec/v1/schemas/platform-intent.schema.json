@@ -69,6 +69,9 @@
         "delivery": {
           "$ref": "#/$defs/DeliveryPolicy"
         },
+        "apiAccess": {
+          "$ref": "#/$defs/ApiAccessPolicy"
+        },
         "handover": {
           "$ref": "#/$defs/HandoverLedger"
         },
@@ -600,6 +603,32 @@
         "interval",
         "iterations",
         "threshold"
+      ],
+      "additionalProperties": false
+    },
+    "ApiAccessPolicy": {
+      "type": "object",
+      "properties": {
+        "holders": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "reference": "Application"
+          }
+        },
+        "server": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DestinationRange"
+          }
+        }
+      },
+      "required": [
+        "holders",
+        "server"
       ],
       "additionalProperties": false
     },

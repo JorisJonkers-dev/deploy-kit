@@ -434,7 +434,7 @@ scheduler drops without an event, a warning or a condition.
 | every `${secret:<path>#<key>}` placeholder byte-matches a grant's **derived read path** ([0029](../../docs/adr/model/0029-a-grant-is-a-union-on-engine.md)) | `E_UNAUTHORISED_SECRET_REFERENCE` |
 | `access: self-roll` on a path with other readers carries an acknowledgement | `E_ROLL_AFFECTS_OTHER_READERS` |
 | no literal secret value appears in an env file or an Asset | `E_RAW_SECRET` |
-| no rendered Deliverable grants a Process access to `secrets` | `E_PROCESS_RBAC_GRANT` |
+| no Process holds Kubernetes API access the Platform document did not admit ([chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted)) | `E_PROCESS_RBAC_GRANT` |
 
 Three points of precision, all following from the grant unit being the path
 ([0008](../../docs/adr/model/0008-vault-read-is-per-path.md),

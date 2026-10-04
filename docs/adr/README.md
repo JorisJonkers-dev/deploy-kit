@@ -114,7 +114,7 @@ and linted by the same script with `emf` as its root.
 | [0038](model/0038-bidirectional-ledgers.md) | Every accepted hole is a bidirectional ledger: an unlisted gap fails the build, and so does an entry that no longer matches | settled |
 | [0039](model/0039-the-label-set-is-fixed.md) | The object label set is fixed, and two of its labels are immutable | settled |
 | [0040](model/0040-vault-policy-is-a-deliverable.md) | The derived Vault policy and auth role are Deliverables of their own adapter | settled |
-| [0041](model/0041-no-process-rbac-in-v1.md) | v1 renders no process RBAC, and refuses any Deliverable that grants it | settled |
+| [0041](model/0041-no-process-rbac-in-v1.md) | v1 renders no RBAC for a Process that declares no API access, and refuses a declaration the platform did not admit | settled |
 
 ## Composition and the platform
 
@@ -130,6 +130,7 @@ and linted by the same script with `emf` as its root.
 | [0049](model/0049-datastore-and-restore.md) | Datastore, server count, and restore are recorded platform facts | open |
 | [0090](model/0090-composition-unions-each-fragments-share-of-the-images-lock.md) | Composition unions each fragment's share of the images lock, and an alias locked two ways is refused at the fragment that changed | settled |
 | [0091](model/0091-a-backup-identity-has-a-policy-of-its-own.md) | A backup identity has a network policy of its own, from facts the platform states: the surface its method dumps and where its off-cluster copy goes | settled |
+| [0092](model/0092-api-access-is-declared-on-the-process-and-admitted-by-the-platform.md) | A Process declares the Kubernetes API access it needs, and the Platform document admits who may hold any | settled |
 
 ## Delivery and release
 

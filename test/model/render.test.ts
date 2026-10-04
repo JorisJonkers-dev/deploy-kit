@@ -209,10 +209,12 @@ describe("renderIntentSet", () => {
     expect(serialized).toBe(0);
   });
 
-  it("stops at a project it cannot render yet: the rolling delivery machinery waits on its slice", () => {
-    expect(() => render(undefined, ["delivery"])).toThrow(
-      "flagger: a application Process that switches rolling is not rendered yet",
-    );
+  // REQ-048 (docs/requirements.md): the delivery machinery renders, rolling
+  // and ungated, with the API access each of its Processes declares.
+  it("renders the delivery machinery's share of the tree to its committed tree, byte for byte", () => {
+    expect(
+      asTree(artifact(render(undefined, ["delivery"]), "delivery")),
+    ).toStrictEqual(committed("delivery/rendered"));
   });
 
   it("stops at a file grant, which the render mounts in its own slice", () => {

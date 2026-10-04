@@ -15,8 +15,9 @@ The ServiceAccount is named for the Process alone: `auth-system.auth-api`, never
 and the Process, `auth-system-auth-api`. The policy bound to a Process's role is exactly its
 effective grant set ([0012](0012-shared-intent-descends-and-is-lowered.md)),
 never a sibling's, and no author writes an identity name.
-`automountServiceAccountToken` derives from `delivery`: true only for a Process
-holding a `delivery: self` grant, false everywhere else
+`automountServiceAccountToken` derives from what the pod presents its token to:
+true only for a Process holding a `delivery: self` grant or admitted Kubernetes
+API access, false everywhere else
 ([chapter 16](../../../spec/v1/16-dependencies.md#the-token-is-mounted-only-where-the-pod-authenticates)).
 
 ## Rests on
@@ -66,13 +67,14 @@ pod authenticates with its own token. A token mounted into a pod that never uses
 it is a credential in a container filesystem for no reason, the first thing an
 attacker reads.
 
-**A Kubernetes-API consumer is a ledger entry, not a declaration.** `agents-api`
-calls the Kubernetes API rather than Vault. The render gives it no token and no
-Role ([0041](0041-no-process-rbac-in-v1.md)); the gap is recorded in a
-Bidirectional Ledger ([0038](0038-bidirectional-ledgers.md)), because no
-override exists ([0022](0022-a-derived-value-has-one-declaring-site.md)) and a
-render input read from a review artifact would let a ledger edit silently change
-what is applied.
+**A Kubernetes-API consumer presents its token too, and says so.** A Process
+that calls the Kubernetes API rather than Vault authenticates with the same
+token, to another audience. It gets one from the declaration that gives it the
+access, `api`, once the platform admits its Application
+([0092](0092-api-access-is-declared-on-the-process-and-admitted-by-the-platform.md)):
+the token still follows from a field that says the pod authenticates, and no
+second field asks for it. No override exists
+([0022](0022-a-derived-value-has-one-declaring-site.md)), and none is needed.
 
 ## Alternatives
 
@@ -84,7 +86,7 @@ what is applied.
 | A composition-time check that Process names are unique estate-wide | keeps the short name | one project's naming becomes every other project's constraint, for a name nobody types |
 | Mount the token wherever a grant exists | one simple rule | wrong for `env` and `file`, where the pod presents nothing |
 | Default false with an authored opt-in | explicit | a second field for something derivable; a forgotten opt-in fails at runtime |
-| Derive the token from the ledger | covers `agents-api` | a review document silently changes what is applied |
+| Derive the token from a ledger entry | covers an API consumer with no vocabulary | a review document silently changes what is applied |
 
 ## Reversibility
 
@@ -102,5 +104,6 @@ them, because merging identities then widens a live grant.
   `${identity:vaultRole}` and so follows without an edit.
 - Every pod without a `self` grant runs with no token, so a Process that
   silently relied on the default mount fails at start and says so.
-- `agents-api` cannot reach the Kubernetes API from a render until the model
-  decides API access for Processes; its ledger entry is the record.
+- Every pod that holds neither a `self` grant nor admitted API access runs with
+  no token; a Process that calls the Kubernetes API gets one from its `api`
+  declaration and from nothing else.

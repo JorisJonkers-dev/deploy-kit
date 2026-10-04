@@ -69,6 +69,18 @@
           "value": "Project"
         }
       ]
+    },
+    {
+      "name": "API access with no server to admit",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/apiAccess/server"
+        }
+      ]
     }
   ]
 }

@@ -104,11 +104,6 @@ describe("the kubernetes adapter", () => {
       "notes-api: a job Process that switches blue-green is not rendered yet",
     );
     expect(() =>
-      renderKubernetes(edited(undefined, () => ({ switchover: "rolling" }))),
-    ).toThrow(
-      "notes-api: a application Process that switches rolling is not rendered yet",
-    );
-    expect(() =>
       renderKubernetes(
         edited(undefined, () => ({
           switchover: undefined,
@@ -208,6 +203,116 @@ describe("the kubernetes adapter", () => {
     expect(rendered.map(({ path }) => path.split("/").at(-1))).not.toContain(
       "canary.yaml",
     );
+  });
+
+  // REQ-048 (docs/requirements.md): a Process that holds admitted API access
+  // renders its ClusterRole, its binding and its egress to the API.
+  const API = {
+    reason: "it reads what the cluster holds",
+    rules: [
+      { group: "core", objects: ["configmaps", "pods"], verbs: ["get"] },
+      { group: "flagger.app", objects: ["canaries"], verbs: ["get", "list"] },
+    ],
+    server: [{ cidr: "10.43.0.1/32", port: 443 }],
+  } as const;
+
+  it("replaces a rolling Process pod by pod under its own count and never a pod more, with a Service and no Canary", () => {
+    const rendered = renderKubernetes(
+      edited(undefined, () => ({ switchover: "rolling", replicas: 2 })),
+    );
+    const [deployment] = objectsAt(rendered, "workload.yaml") as {
+      spec: { replicas: number; strategy: unknown };
+    }[];
+
+    expect(deployment?.spec.replicas).toBe(2);
+    expect(deployment?.spec.strategy).toStrictEqual({
+      type: "RollingUpdate",
+      rollingUpdate: { maxSurge: 0, maxUnavailable: 1 },
+    });
+    expect(
+      (objectsAt(rendered, "service.yaml") as { kind: string }[]).map(
+        ({ kind }) => kind,
+      ),
+    ).toStrictEqual(["Service"]);
+    expect(rendered.map(({ path }) => path.split("/").at(-1))).not.toContain(
+      "canary.yaml",
+    );
+  });
+
+  it("binds a Process that holds API access to a ClusterRole of its declared rules, the core group spelled as Kubernetes spells it", () => {
+    const rendered = renderKubernetes(edited(undefined, () => ({ api: API })));
+    const metadata = {
+      name: "notes-system-notes-api",
+      labels: {
+        "app.kubernetes.io/name": "notes-api",
+        "app.kubernetes.io/instance": "notes-api",
+        "app.kubernetes.io/part-of": "notes",
+        "app.kubernetes.io/managed-by": "deploy-kit",
+        "app.kubernetes.io/component": "node",
+      },
+    };
+
+    expect(objectsAt(rendered, "notes/rbac.yaml")).toStrictEqual([
+      {
+        apiVersion: "rbac.authorization.k8s.io/v1",
+        kind: "ClusterRole",
+        metadata,
+        rules: [
+          {
+            apiGroups: [""],
+            resources: ["configmaps", "pods"],
+            verbs: ["get"],
+          },
+          {
+            apiGroups: ["flagger.app"],
+            resources: ["canaries"],
+            verbs: ["get", "list"],
+          },
+        ],
+      },
+      {
+        apiVersion: "rbac.authorization.k8s.io/v1",
+        kind: "ClusterRoleBinding",
+        metadata,
+        roleRef: {
+          apiGroup: "rbac.authorization.k8s.io",
+          kind: "ClusterRole",
+          name: "notes-system-notes-api",
+        },
+        subjects: [
+          {
+            kind: "ServiceAccount",
+            name: "notes-api",
+            namespace: "notes-system",
+          },
+        ],
+      },
+    ]);
+    // A Process that holds none renders no RBAC at all.
+    expect(
+      renderKubernetes(edited()).map(({ path }) => path.split("/").at(-1)),
+    ).not.toContain("rbac.yaml");
+  });
+
+  it("admits where the Kubernetes API answers, by address, for a Process that holds access to it, and for no other", () => {
+    const egressOf = (project: ReturnType<typeof edited>) =>
+      (
+        objectsAt(
+          renderNetworking(project),
+          "notes/notes/networkpolicy.yaml",
+        ) as {
+          spec: { egress: unknown[] };
+        }[]
+      )[0]?.spec.egress ?? [];
+    const range = {
+      to: [{ ipBlock: { cidr: "10.43.0.1/32" } }],
+      ports: [{ protocol: "TCP", port: 443 }],
+    };
+
+    expect(
+      egressOf(edited(undefined, () => ({ api: API }))).at(-1),
+    ).toStrictEqual(range);
+    expect(egressOf(edited())).not.toContainEqual(range);
   });
 
   it("claims each volume ReadWriteOnce at its size, and writes no pruning guard on one nothing backs up", () => {

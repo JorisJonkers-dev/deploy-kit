@@ -192,6 +192,23 @@
           "path": "/processes/0/switchover"
         }
       ]
+    },
+    {
+      "name": "a Process that holds API access",
+      "verdict": "accept",
+      "file": "examples/delivery/expected/resolved.json"
+    },
+    {
+      "name": "held API access with nowhere the API answers",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/delivery/expected/resolved.json",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/processes/0/api/server"
+        }
+      ]
     }
   ]
 }

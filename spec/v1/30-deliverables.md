@@ -283,6 +283,8 @@ spells only what the projection holds:
 |---|---|---|
 | a `blue-green` Process | `kubernetes` | a `Deployment` with no `replicas` and a `RollingUpdate` of surge 1, unavailability 0, which Flagger scales and promotes; a `Canary` whose `service` is the Process's first surface and whose three webhooks are the gate's `endpoint` with `/may-start`, `/checks` and `/may-promote`, each carrying the Application, the Process and the Application revision |
 | a `stop-start` Process | `kubernetes` | a `Deployment` of its `replicas` with a `Recreate` strategy, and a `Service` named for the Process that selects its `instance` and serves each of its surfaces by name |
+| a `rolling` Process | `kubernetes` | a `Deployment` of its `replicas` with a `RollingUpdate` of surge 0, unavailability 1: pod by pod and never a pod more, because a proxy on a host port and a controller with no leader election cannot run two copies; the same `Service` a `stop-start` Process gets, and no `Canary`, because nothing gates the machinery |
+| a held `api` | `kubernetes` | a `ClusterRole` and a `ClusterRoleBinding` in the Application's `rbac.yaml`, both named `<namespace>-<identity>` and labelled as the Process is; one rule per declared rule, `apiGroups` its one `group` with `core` spelled `""`, `resources` its `objects`, `verbs` its `verbs`; the binding's one subject the Process's `ServiceAccount` in its namespace |
 | a volume | `kubernetes` | a `ReadWriteOnce` `PersistentVolumeClaim` named for the claim at the volume's `size`, mounted at its `mountAt`, the pod's `fsGroup` the image's `gid` |
 | a backed-up volume's `backup` | `kubernetes` | a `CronJob` named for the backup claim at the plan's `schedule`, `concurrencyPolicy: Forbid`, running the `method` image as the plan's `uid` and `gid` under the backup identity's `ServiceAccount` with no token mounted; the volume mounted read-only at `/data`, the backup claim at `/backup`, `BACKUP_RETAIN` the `retain` count, `BACKUP_OFF_CLUSTER` the destination and the credential's Secret as variables where it copies off-cluster; the backup claim a second `PersistentVolumeClaim` at the volume's `size`, and both carrying `kustomize.toolkit.fluxcd.io/prune: disabled` |
 | an Asset | `kubernetes` | an immutable `ConfigMap` under the Asset's `name`, its one key the file name of `from`; a volume of that name, mounted at `mountAt` by that key, read-only |
@@ -297,6 +299,7 @@ spells only what the projection holds:
 | `hardening: restricted` | `kubernetes` | `runAsNonRoot`, the images lock's `uid` and `gid`, seccomp `RuntimeDefault`, a read-only root filesystem, every capability dropped |
 | a probe's `period`, `timeout`, `failures` | `kubernetes` | `periodSeconds`, `timeoutSeconds`, `failureThreshold`; `initialDelaySeconds: 0` on readiness and liveness only |
 | `ingress`, `egress`, an edge's `peers` | `networking` | one rule per peer, from or to its namespace (by `kubernetes.io/metadata.name`) and, where the peer is a Process, its `instance`, on TCP; the `cluster-dns` peer on UDP and TCP both |
+| a held `api`'s `server` | `networking` | one egress rule per range in the Process's own policy, after its peers, to an `ipBlock` of its `cidr` on its port over TCP |
 | a backup plan's `egress` and `destinations` | `networking` | one `NetworkPolicy` per backup identity, named for it, beside its Process's in the Application's `networkpolicy.yaml`, selecting the identity's `instance`; `policyTypes` both and no ingress rule, so nothing reaches it; one egress rule per peer as above, and one per destination range, to an `ipBlock` of its `cidr` on its port over TCP. A Process with several backed-up volumes has one identity and so one policy, admitting what any of its backup plans names, each peer and each range once |
 | `scrape` of a `blue-green` Process | `prometheus` | a `PodMonitor` in the Application's namespace, `jobLabel` the `instance` label, the scrape's surface, path, interval and timeout |
 | `scrape` of a `stop-start` Process | `prometheus` | a `ServiceMonitor` over the Process's own `Service`, with the same selection and endpoint |
@@ -395,6 +398,9 @@ per Application from the scrape surface and exposure
 
 Every kind the 2026-08-31 survey found unrendered now has a decision: `Role` and
 `RoleBinding` are not rendered ([0041](../../docs/adr/model/0041-no-process-rbac-in-v1.md)),
+`ClusterRole` and `ClusterRoleBinding` are `kubernetes`'s, for a Process the
+platform admits to hold API access and for no other
+([0092](../../docs/adr/model/0092-api-access-is-declared-on-the-process-and-admitted-by-the-platform.md)),
 `NetworkPolicy` is `networking`'s ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)),
 `ServiceMonitor` and `PodMonitor` are `prometheus`'s, from the declared
 `observability.scrape` surface, and `PrometheusRule` is rendered by nothing here
@@ -438,7 +444,7 @@ needs a decision, not an allowlist entry."*
 
 | forbidden | why |
 |---|---|
-| a kind on the forbidden list, `Secret`, `ClusterRole`, `ClusterRoleBinding`, `CustomResourceDefinition` | `E_FORBIDDEN_KIND`; a CRD is a bootstrap fact ([chapter 14](14-platform-intent.md#the-bootstrap-set)), a Secret arrives through VSO, and RBAC is not rendered ([0041](../../docs/adr/model/0041-no-process-rbac-in-v1.md)) |
+| a kind on the forbidden list, `Secret`, `Role`, `RoleBinding`, `CustomResourceDefinition`, and a `ClusterRole` or `ClusterRoleBinding` that a held `api` did not derive | `E_FORBIDDEN_KIND`; a CRD is a bootstrap fact ([chapter 14](14-platform-intent.md#the-bootstrap-set)), a Secret arrives through VSO, and the only RBAC rendered is what a Process the platform admits declares ([0041](../../docs/adr/model/0041-no-process-rbac-in-v1.md), [chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted)) |
 | an object in a namespace the Application does not own | `E_FOREIGN_NAMESPACE` |
 | a floating image tag | `E_FLOATING_IMAGE`; digests only |
 | a path claimed by two adapters | `E_PATH_COLLISION`; attribution becomes ambiguous |

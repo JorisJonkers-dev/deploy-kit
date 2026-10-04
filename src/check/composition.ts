@@ -267,6 +267,19 @@ function projectRefusals(
           message: `the backup of engine ${process.engine as string} dumps the surface ${dumped}, which ${process.name} does not provide`,
           hint: "Provide the surface the Platform document's `engines` names for this engine, under that name.",
         });
+      // Kubernetes API access is the platform's to admit: a Process that
+      // declares it in an Application the Platform document does not name
+      // would hold a grant nobody with authority over the cluster gave.
+      if (
+        process.api !== undefined &&
+        platform.apiAccess?.holders.includes(application.id) !== true
+      )
+        refusals.push({
+          code: "E_PROCESS_RBAC_GRANT",
+          path: `${processAt}/api`,
+          message: `${process.name} declares Kubernetes API access, and the platform does not admit the Application ${application.id} to hold any`,
+          hint: "Name the Application in the Platform document's `apiAccess.holders`, or drop `api`.",
+        });
       for (const [v, volume] of volumes.entries())
         if (platform.durability[volume.durability] === undefined)
           refusals.push({
@@ -330,6 +343,23 @@ export function setDiagnostics(
             path: "/delivery",
             message: `no project file declares the Application ${name} the delivery machinery names`,
             hint: "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
+          },
+        ],
+  );
+  // A holder of API access names an Application a project file declares, as
+  // the machinery does.
+  const holders: Diagnostic[] = (
+    platform.document.apiAccess?.holders ?? []
+  ).flatMap((name) =>
+    declared.has(name)
+      ? []
+      : [
+          {
+            code: "E_UNKNOWN_API_HOLDER",
+            document: platform.name,
+            path: "/apiAccess",
+            message: `no project file declares the Application ${name} the platform admits to hold Kubernetes API access`,
+            hint: "Declare the Application in a project file the platform owns, or drop it from `apiAccess.holders`.",
           },
         ],
   );
@@ -408,6 +438,7 @@ export function setDiagnostics(
   return [
     ...proxies,
     ...machinery,
+    ...holders,
     ...telemetry,
     ...stack,
     ...release,

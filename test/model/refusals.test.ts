@@ -158,18 +158,20 @@ describe("the refusal fixtures", () => {
       "placement-incomplete",
       "prepare-forward-only",
       "prepare-process-serves",
+      "process-rbac-grant",
       "scrape-unknown-process",
       "secrets-at-rest-required",
       "secrets-at-rest-required-at-header",
       "shared-declaration-duplicated",
       "shared-intent-merged",
       "shared-quantity",
+      "unknown-api-holder",
       "unknown-machinery",
       "unknown-surface",
       "unknown-telemetry-collector",
       "unknown-tier-proxy",
     ]);
-    expect(refused).toHaveLength(35);
+    expect(refused).toHaveLength(37);
     expect(
       fixtures.length - refused.length,
       "the four accepted counterparts carry no oracle",

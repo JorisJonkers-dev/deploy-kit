@@ -34,6 +34,9 @@ const WORKED = [
 /** The worked Platform document's telemetry block, which a variant composed with fewer projects drops. */
 const TELEMETRY = /\ntelemetry:\n( {2}.*\n)+/;
 
+/** The worked Platform document's API access block, which names Applications a variant may not compose. */
+const API_ACCESS = /\napiAccess:\n( {2}.*\n)+/;
+
 /** The worked Platform document's delivery machinery. */
 const MACHINERY =
   "machinery: [traefik-public, traefik-lan, flagger, release-gate]";
@@ -128,7 +131,8 @@ describe("checkIntentSet", () => {
         .replace(MACHINERY, "machinery: [notes]")
         .replace("gate: release-gate", "gate: notes")
         .replace("secretStore: vault", "secretStore: notes")
-        .replace(TELEMETRY, "\n"),
+        .replace(TELEMETRY, "\n")
+        .replace(API_ACCESS, "\n"),
     };
     const result = checkIntentSet([
       platform,
@@ -151,7 +155,8 @@ describe("checkIntentSet", () => {
         .replace(MACHINERY, "machinery: [notes]")
         .replace("gate: release-gate", "gate: notes")
         .replace("secretStore: vault", "secretStore: notes")
-        .replace(TELEMETRY, "\n"),
+        .replace(TELEMETRY, "\n")
+        .replace(API_ACCESS, "\n"),
     };
     const result = checkIntentSet([
       platform,
@@ -216,7 +221,8 @@ describe("checkIntentSet", () => {
         .replace(MACHINERY, "machinery: [knowledge]")
         .replace("gate: release-gate", "gate: knowledge")
         .replace("secretStore: vault", "secretStore: knowledge")
-        .replace(TELEMETRY, "\n"),
+        .replace(TELEMETRY, "\n")
+        .replace(API_ACCESS, "\n"),
     };
     const knowledge = read("knowledge/knowledge.project.yml");
     const lanExposure = {

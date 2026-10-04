@@ -28,6 +28,7 @@ Platform returns Platform:
 	& ('ephemeral' ':' BEGIN ephemeral=EphemeralPolicy END)
 	& ('migration' ':' BEGIN migration=MigrationPolicy END)?
 	& ('delivery' ':' BEGIN delivery=DeliveryPolicy END)?
+	& ('apiAccess' ':' BEGIN apiAccess=ApiAccessPolicy END)?
 	& ('handover' ':' BEGIN handover=HandoverLedger END)?
 	& ('providers' ':' BEGIN (DASH BEGIN providers+=Provider END)+ END)?);
 
@@ -132,6 +133,13 @@ ProbeCadence returns ProbeCadence:
 EphemeralPolicy returns EphemeralPolicy:
 	'size' ':' size=Text;
 
+// Who may hold Kubernetes API access, and where the API answers. A holder names an
+// Application a project file declares, linked across the documents read together, as the
+// machinery is.
+ApiAccessPolicy returns ApiAccessPolicy:
+	(('holders' ':' BEGIN (DASH BEGIN holders+=[Application|Text] END | holders+=[Application|Text])+ END)
+	& ('server' ':' BEGIN (DASH BEGIN server+=DestinationRange END)+ END));
+
 // The machinery names Applications a project file declares, linked across the
 // documents read together, as a tier's proxy is.
 DeliveryPolicy returns DeliveryPolicy:
@@ -164,11 +172,11 @@ Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword | PlatformKeyword;
 
 PlatformKeyword:
-	'acme' | 'address' | 'analysis' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cidr' | 'cluster' | 'clusterDns' | 'cni' | 'collector' |
+	'acme' | 'address' | 'analysis' | 'apiAccess' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cidr' | 'cluster' | 'clusterDns' | 'cni' | 'collector' |
 	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'egress' | 'embedded' | 'engines' | 'ephemeral' | 'estate' | 'etcd' |
-	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'handover' | 'hardening' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
+	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'handover' | 'hardening' | 'holders' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
 	'metrics' | 'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'providers' | 'restricted' | 'retireBy' |
-	'repository' | 'retain' | 'runner' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'serverCount' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
+	'repository' | 'retain' | 'runner' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'server' | 'serverCount' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
 	'surfaces' | 'telemetry' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'vault';
 
 enum Datastore returns Datastore:

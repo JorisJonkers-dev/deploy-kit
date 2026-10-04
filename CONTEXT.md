@@ -300,8 +300,8 @@ charts.
 then treated as an input like any other.
 
 **Collector**: the read-only Application that captures the ClusterState
-snapshot inside the cluster and commits it to the estate repository when it
-changes. It reads; it never applies
+snapshot inside the cluster, on its own interval, and commits it to the estate
+repository when it changes. It reads; it never applies
 ([chapter 20](spec/v1/20-resolved-deployment.md#the-collector)).
 
 **Vault policy job**: the in-cluster Job that writes the rendered Vault policies
@@ -419,7 +419,18 @@ readiness gate.
 **Delivery machinery**: the Applications that perform a switch and are never
 switched by one: the Release Gate, Flagger and the edge proxies, listed in the
 Platform document. Their continuous Processes roll in place
-([chapter 14](spec/v1/14-platform-intent.md#delivery-policy)).
+([chapter 14](spec/v1/14-platform-intent.md#delivery-policy)). Not the same
+list as the API Holders: an edge proxy is machinery and holds no access.
+
+**API access**: what a Process may ask of the Kubernetes API: rules of a
+group, its objects and verbs, declared on the Process with a reason
+([chapter 10](spec/v1/10-project-intent.md#kubernetes-api-access)). Declared by
+the project, held only where the platform admits it
+([chapter 16](spec/v1/16-dependencies.md#kubernetes-api-access-is-declared-and-admitted)).
+
+**API Holder**: an Application the Platform document admits to hold API
+access. Flagger, the Release Gate and the Collector
+([chapter 14](spec/v1/14-platform-intent.md#kubernetes-api-access)).
 
 **Held**: the state of an Application whose release failed: its old version
 keeps serving while the pin names the new one, until a new pin lands

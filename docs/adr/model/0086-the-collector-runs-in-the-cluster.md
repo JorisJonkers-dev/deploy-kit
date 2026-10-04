@@ -12,8 +12,11 @@ rests-on: ["0001", "0006"]
 
 The ClusterState snapshot ([0034](0034-cluster-state-is-a-pinned-input.md)) is
 captured by the **Collector**, a declared Application of the `delivery` project
-running in the cluster on a schedule. It holds get and list on the objects the
-snapshot enumerates and nothing else. It commits `cluster-state.yml` to the
+running in the cluster: one long-running Process that captures on its own
+interval, because Project Intent has no schedule and gains none for one
+consumer. It holds get and list on the objects the snapshot enumerates and
+nothing else, which it declares
+([0092](0092-api-access-is-declared-on-the-process-and-admitted-by-the-platform.md)). It commits `cluster-state.yml` to the
 Estate repository through a GitHub App installed on that repository alone, and
 only when the facts it captured differ from the committed snapshot
 ([chapter 20](../../../spec/v1/20-resolved-deployment.md#the-collector)).
@@ -47,7 +50,7 @@ get and list PersistentVolumes, PersistentVolumeClaims and pods. It cannot
 write, so a compromised Collector can leak those facts and change nothing.
 
 **Commit on change, because the history is then the fact log.** A commit per run
-would put a timestamp change in the Estate repository every hour and a new
+would put a timestamp change in the Estate repository every interval and a new
 `clusterStateDigest` in every lock. Committing only a changed fact keeps the
 digest stable while the cluster is, which is what
 [0034](0034-cluster-state-is-a-pinned-input.md) asks of two captures of an
@@ -59,12 +62,12 @@ unchanged cluster.
 |---|---|---|
 | Capture from the composition workflow | no in-cluster component | a cluster credential in CI, which pull delivery exists to avoid |
 | A controller that writes the snapshot into a ConfigMap | no GitHub App | composition runs in CI and cannot read the cluster to fetch it |
-| Commit on every run | simplest | a new digest and a deploy-log entry every hour from nothing changing |
+| Commit on every capture | simplest | a new digest and a deploy-log entry every interval from nothing changing |
 | A human captures it | no machinery | the snapshot goes stale exactly when a PV rebinds after a failure |
 
 ## Reversibility
 
-Undo cost today: one CronJob and one GitHub App, an afternoon. Nothing depends on
+Undo cost today: one Application and one GitHub App, an afternoon. Nothing depends on
 who captures the snapshot, only on the document.
 
 ## Consequences

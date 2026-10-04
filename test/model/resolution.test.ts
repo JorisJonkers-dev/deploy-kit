@@ -111,6 +111,20 @@ describe("resolveIntentSet", () => {
     expect(canonicalJson(gate)).toBe(text("delivery/expected/resolved.json"));
   });
 
+  it.each([
+    ["flagger", "delivery/expected/resolved.flagger.json"],
+    ["collector", "delivery/expected/resolved.collector.json"],
+  ])(
+    "resolves %s, which holds Kubernetes API access, to its committed projection",
+    (id, oracle) => {
+      const holder = project(resolved(), "delivery").applications.find(
+        (application) => application.id === id,
+      );
+
+      expect(canonicalJson(holder)).toBe(text(oracle));
+    },
+  );
+
   describe("auth, composed with data, the same foundation and the files beside both", () => {
     const auth = () => {
       const result = resolveIntentSet(

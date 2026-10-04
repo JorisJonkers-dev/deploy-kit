@@ -287,8 +287,23 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	cpu := self.placement.cpu;
 	hardening := estate.hardening.spelling();
 	secrets := self.secrets->collect(g | g.resolvedFor(self));
-	-- The pod authenticates only where a grant is delivered `self`.
-	identityToken := self.secrets->exists(g | g.delivery = Delivery::selfDelivery);
+	-- The pod authenticates only where a grant is delivered `self`, or where it
+	-- holds Kubernetes API access.
+	identityToken := self.api <> null or self.secrets->exists(g | g.delivery = Delivery::selfDelivery);
+	-- The platform admits the holder, or E_PROCESS_RBAC_GRANT refused it, so the
+	-- block that says where the API answers is there.
+	if self.api <> null then api := object ResolvedApiAccess {
+		reason := self.api.reason;
+		rules := self.api.rules->collect(r | object ResolvedApiRule {
+			group := r.group;
+			objects := r.objects;
+			verbs := r.verbs->collect(v | v.toString());
+		});
+		server := estate.apiAccess.server->collect(range | object AdmittedRange {
+			cidr := range.cidr;
+			port := range.port;
+		});
+	} endif;
 	component := self.runtime.spelling();
 	if declared <> null and declared.readiness <> null then readiness := declared.readiness.cadenced() endif;
 	if declared <> null and declared.liveness <> null then liveness := declared.liveness.cadenced() endif;
@@ -852,6 +867,7 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 		self.processes->select(p | switchesBlueGreen(self, p))->collect(p | p.resolveone(ResolvedProcess)) in
 	let reached : Sequence(ResolvedProcess) = served->select(p |
 		p.switchover <> Switchover::blueGreen and p.surfaces->notEmpty()) in
+	let holding : Sequence(ResolvedProcess) = served->select(p | p.api <> null) in
 	let claimed : Sequence(ResolvedProcess) = served->select(p | p.volumes->notEmpty()) in
 	let configured : Sequence(ResolvedProcess) = served->select(p | p.assets->notEmpty()) in
 	let backedUp : Sequence(ResolvedProcess) = served->select(p | p.volumes->exists(v | v.backup <> null)) in
@@ -897,6 +913,11 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 				path := root + 'backup.yaml';
 				adapter := AdapterName::kubernetes;
 				processes := backedUp;
+			}.oclAsType(Deliverable)} else Sequence{} endif)
+		->union(if holding->notEmpty() then Sequence{object RbacFile {
+				path := root + 'rbac.yaml';
+				adapter := AdapterName::kubernetes;
+				processes := holding;
 			}.oclAsType(Deliverable)} else Sequence{} endif)
 		->union(monitor)
 		->union(if synced->notEmpty() then Sequence{object SecretFile {
@@ -1304,6 +1325,15 @@ query ResolvedProcess::json() : String =
 		Tuple{k = 'cpu', v = str(self.cpu)},
 		Tuple{k = 'hardening', v = str(self.hardening)},
 		Tuple{k = 'identityToken', v = bool(self.identityToken)},
+		Tuple{k = 'api', v = if self.api = null then null else obj(Sequence{
+			Tuple{k = 'reason', v = str(self.api.reason)},
+			Tuple{k = 'rules', v = arr(self.api.rules->collect(r | obj(Sequence{
+				Tuple{k = 'group', v = str(r.group)},
+				Tuple{k = 'objects', v = arr(r.objects->collect(x | str(x)))},
+				Tuple{k = 'verbs', v = arr(r.verbs->collect(x | str(x)))}})))},
+			Tuple{k = 'server', v = arr(self.api.server->collect(x | obj(Sequence{
+				Tuple{k = 'cidr', v = str(x.cidr)},
+				Tuple{k = 'port', v = num(x.port)}})))}}) endif},
 		Tuple{k = 'readiness', v = if self.readiness = null then null else self.readiness.json() endif},
 		Tuple{k = 'liveness', v = if self.liveness = null then null else self.liveness.json() endif},
 		Tuple{k = 'startup', v = if self.startup = null then null else self.startup.json() endif},

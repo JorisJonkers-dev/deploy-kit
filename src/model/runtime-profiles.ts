@@ -28,6 +28,14 @@ export const backupIdentityOf = (process: string): string =>
 export const vaultNameOf = (namespace: string, identity: string): string =>
   `${namespace}-${identity}`;
 
+/**
+ * The name an identity's cluster-scoped objects carry
+ * (spec/v1/16-dependencies.md#kubernetes-api-access-is-declared-and-admitted):
+ * no namespace holds them apart, so the name carries it.
+ */
+export const clusterNameOf = (namespace: string, identity: string): string =>
+  `${namespace}-${identity}`;
+
 /** The in-cluster address of one Process's port. */
 export const addressOf = (
   process: string,

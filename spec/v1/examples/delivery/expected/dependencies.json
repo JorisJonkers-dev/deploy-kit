@@ -1,1 +1,1 @@
-{"applications":[{"edges":[],"id":"flagger"},{"edges":[],"id":"release-gate"}]}
+{"applications":[{"edges":[{"address":"release-gate.delivery-system.svc.cluster.local:8080","application":"release-gate","consumer":"flagger","peers":[{"namespace":"delivery-system","port":8080,"process":"release-gate"}],"surface":"http"}],"id":"flagger"},{"edges":[],"id":"release-gate"},{"edges":[],"id":"collector"}]}

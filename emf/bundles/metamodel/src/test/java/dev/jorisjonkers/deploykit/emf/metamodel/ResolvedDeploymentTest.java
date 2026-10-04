@@ -225,8 +225,8 @@ class ResolvedDeploymentTest {
         // a namespace and indexes, workload resources with their identity,
         // network policy, edge routing, monitoring, and secret resources; and
         // what the rendered trees hold beyond it: Services, claims, Asset
-        // ConfigMaps, backups, the Secret Store connection, and Vault's own
-        // documents.
+        // ConfigMaps, backups, the Secret Store connection, Vault's own
+        // documents, and the RBAC of a Process that holds API access.
         assertThat(ResolvedDeploymentPackage.eINSTANCE.getEClassifiers().stream()
                         .filter(EClass.class::isInstance)
                         .map(EClass.class::cast)
@@ -247,6 +247,7 @@ class ResolvedDeploymentTest {
                         "MonitorFile",
                         "SecretFile",
                         "ServiceFile",
+                        "RbacFile",
                         "ClaimFile",
                         "ConfigMapFile",
                         "BackupFile",

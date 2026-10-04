@@ -12,6 +12,8 @@ import type {
   VaultStaticSecret,
 } from "./custom.ts";
 import type {
+  ClusterRole,
+  ClusterRoleBinding,
   ConfigMap,
   CronJob,
   Deployment,
@@ -36,6 +38,8 @@ export type RenderedObject =
   | ServiceMonitor
   | IngressRoute
   | ConfigMap
+  | ClusterRole
+  | ClusterRoleBinding
   | CronJob
   | VaultConnection
   | VaultAuth

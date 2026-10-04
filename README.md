@@ -132,11 +132,6 @@ node src/cli/index.ts compose --platform platform/ --fragments fragments/ \
   composition.json file holds each artifact's content hash and whether its pin
   moves, plus the commit statuses and the Project conditions the workflow
   reports.
-- **Composing the worked examples as they stand.** Their handover ledger
-  delivers the delivery machinery, which no adapter renders yet
-  (JorisJonkers-dev/deploy-kit#202). Until it does, compose them under a ledger
-  that hands only `notes`, `observability` and `secrets` to the estate path, as
-  [the CLI's own tests](test/cli/main.test.ts) do.
 
 ## Conventions
 

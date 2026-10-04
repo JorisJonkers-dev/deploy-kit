@@ -30,15 +30,15 @@
     through its one black box, and not the production implementation's digests,
     which are over a different shape (spec/v1/20-resolved-deployment.md#pinned-inputs).
   -->
-  <provenance renderHash="sha256:1467784ebed86433adeb5b59ccfb456f9cebe502f2bf5cbed9b13ceccb880c84" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
-    <inputDigests input="intent-fragment" name="delivery" digest="sha256:861217f488ba263bb918931f4565f3851136f3f6a370c923abb082e6a548d114"/>
+  <provenance renderHash="sha256:9f21e44dc72aec97da55f5717def97cc315db5fce142bbe8b2e99946fa662329" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+    <inputDigests input="intent-fragment" name="delivery" digest="sha256:0fefb45a0d33f5a4c3d36ba970bd3d1c27aa375ab2677b6f76dbd58c716b6082"/>
     <inputDigests input="intent-fragment" name="edge" digest="sha256:273c64ecd8c35ab69918664735661764e44e8e3ad04a58a11ab92dcb52ec1f4a"/>
     <inputDigests input="intent-fragment" name="notes" digest="sha256:252e68be274ac566d591709794fbfed79b35e24cabaa38e39d90242e3e3893df"/>
     <inputDigests input="intent-fragment" name="observability" digest="sha256:aac790f0f921ce56ea5fb7af1f5a85c48c2122fbcbd99923124aafe063f6594c"/>
     <inputDigests input="intent-fragment" name="secrets" digest="sha256:3b6b608aa89a7beebed377772c9905705861c2609f1c262a5ddcb757b70bcecc"/>
-    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:41cfbe3887e7ccf03be3cffbc62d4a5acdc0f4431d437bf8c963f7fce37d6293"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:21059c1a5edc7e726e7eeb222f5d2b410ff56fcdb0accf44a382dd597e4e0ffd"/>
     <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
-    <inputDigests input="images-lock" name="estate" digest="sha256:3d4bfc9cb007aec841365471fa66e5f9625592c993d18eca14a066cf6eb7d302"/>
+    <inputDigests input="images-lock" name="estate" digest="sha256:57bbe0148eae50cd1e5bfada4389f5d40868919f5186646acdf8a6fba0c9e3af"/>
     <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
   </provenance>
 

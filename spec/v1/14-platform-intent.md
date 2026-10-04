@@ -45,11 +45,11 @@ with the same schema refusals
 
 The Platform document's classes and how they compose. A policy keyed by a
 closed vocabulary is a class with one optional field per literal, so a policy
-the platform does not offer is a field it does not write. Seven fields refer
+the platform does not offer is a field it does not write. Eight fields refer
 into another document: a tier's `traefik`, each name in `delivery.machinery`,
-`delivery.gate`, `telemetry.collector`, `telemetry.metrics` and `secretStore`
-name an Application declared in a project file the platform owns, and the
-`handover` ledger names projects.
+`delivery.gate`, each name in `apiAccess.holders`, `telemetry.collector`,
+`telemetry.metrics` and `secretStore` name an Application declared in a project
+file the platform owns, and the `handover` ledger names projects.
 
 A Platform document is checked on its own and together with the project files
 read beside it. On its own, a tier that carries `authenticated` needs its
@@ -67,6 +67,8 @@ other resolves and every policy one asks for the other offers:
 | a volume's Durability Class has no entry in `durability` | `E_NO_DURABILITY_POLICY` |
 | a grant delivered as `env` or `file` where `secretsEncryption` is false | `E_SECRETS_AT_REST_REQUIRED` |
 | a name in `delivery.machinery` names an Application no project file read beside it declares | `E_UNKNOWN_MACHINERY` |
+| a name in `apiAccess.holders` names an Application no project file read beside it declares | `E_UNKNOWN_API_HOLDER` |
+| a Process declares `api` in an Application `apiAccess.holders` does not name | `E_PROCESS_RBAC_GRANT` |
 | `telemetry.collector` names no Application a project file read beside it declares with an `otlp` surface on one of its Processes | `E_UNKNOWN_TELEMETRY_COLLECTOR` |
 | `telemetry.metrics` names an Application no project file read beside it declares | `E_UNKNOWN_METRICS_STACK` |
 | `delivery.gate` names no Application a project file read beside it declares with an `http` surface on one of its Processes | `E_UNKNOWN_RELEASE_GATE` |
@@ -180,6 +182,7 @@ bootstrap:
     - traefik.io/v1alpha1
     - secrets.hashicorp.com/v1beta1
     - monitoring.coreos.com/v1
+    - flagger.app/v1beta1
 ```
 
 | in the set | why it cannot be declared |
@@ -483,6 +486,44 @@ serving: a `continuous` Application read beside it is `E_NO_DELIVERY_POLICY`,
 because its blue/green switch has no cadence to be analysed at. A platform whose
 every Application is `interrupted` needs neither the gate nor the block.
 
+## Kubernetes API access
+
+```yaml
+apiAccess:
+  holders: [flagger, release-gate, collector]
+  server:
+    - { cidr: 10.43.0.1/32, port: 443 }
+```
+
+Who may call the Kubernetes API, and where it answers
+([0092](../../docs/adr/model/0092-api-access-is-declared-on-the-process-and-admitted-by-the-platform.md)).
+Two facts, both the platform's:
+
+- **`holders`** names the Applications whose Processes may declare `api`
+  ([chapter 10](10-project-intent.md#kubernetes-api-access)). A Process says what
+  it asks of the API; the platform says who is allowed to ask at all, because
+  what a ServiceAccount may do to the cluster is a decision about the cluster,
+  and a shared resource is the platform's to assign
+  ([0004](../../docs/adr/model/0004-contention-decides-authority.md)). Each
+  name links to an Application a project file declares, as the machinery's do:
+  `E_UNKNOWN_API_HOLDER` otherwise. A declaration in an Application the list
+  does not name is `E_PROCESS_RBAC_GRANT`.
+- **`server`** is where the API answers, as address ranges and a port each. A
+  holder's egress policy admits them
+  ([chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted)):
+  the API server is no pod a selector reaches, so the policy needs an address,
+  exactly as an off-cluster backup copy does
+  ([Durability policy](#durability-policy)).
+
+The list is not `delivery.machinery`. Machinery is what performs a switch and
+is therefore never gated; a holder is what calls the API. Flagger and the
+Release Gate are both, the Collector
+([chapter 20](20-resolved-deployment.md#the-collector)) is a holder that switches
+nothing, and an edge proxy is machinery that holds no access.
+
+The block is optional. A Platform document without it admits nobody, and every
+`api` declaration read beside it is refused.
+
 ## The Secret Store
 
 ```yaml
@@ -685,6 +726,10 @@ classDiagram
         +ProjectName[] legacy
         +ProjectName[] estate
     }
+    class ApiAccessPolicy {
+        +ApplicationId[] holders
+        +DestinationRange[] server
+    }
     class DeliveryPolicy {
         +ApplicationId[] machinery
         +ApplicationId gate
@@ -718,6 +763,7 @@ classDiagram
     Platform "1" *-- "1" EphemeralPolicy : ephemeral
     Platform "1" *-- "0..1" MigrationPolicy : migration
     Platform "1" *-- "0..1" DeliveryPolicy : delivery
+    Platform "1" *-- "0..1" ApiAccessPolicy : apiAccess
     DeliveryPolicy "1" *-- "1" AnalysisPolicy : analysis
     Platform "1" *-- "0..1" HandoverLedger : handover
     Platform "1" *-- "0..*" Provider : providers

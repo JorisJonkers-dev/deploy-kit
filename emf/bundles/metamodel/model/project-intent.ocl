@@ -134,6 +134,17 @@ context Process
 			(named <> null and named.surface <> null)
 				implies provides->includes(named.surface))
 
+context ApiAccess
+	-- Kubernetes API access is the platform's to admit: a Process that declares
+	-- it in an Application the Platform document does not name would hold a
+	-- grant nobody with authority over the cluster gave. Read with no Platform
+	-- document, there is nobody to admit it and nothing to refuse.
+	inv E_PROCESS_RBAC_GRANT:
+		Platform.allInstances()->notEmpty() implies
+			ApiAccessPolicy.allInstances()->exists(policy |
+				policy.holders->exists(holder |
+					holder.processes->exists(process | process.api = self)))
+
 context Volume
 	-- A Durability Class names a guarantee only a platform policy keeps.
 	inv E_NO_DURABILITY_POLICY:

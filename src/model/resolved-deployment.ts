@@ -19,6 +19,7 @@ import {
 import {
   ACCESS_TIERS,
   ALERT_CLASSES,
+  API_VERBS,
   AUDIENCES,
   CONTENT_POLICIES,
   CUTOVERS,
@@ -231,8 +232,10 @@ const egressPeer = z
   })
   .meta({ id: "EgressPeer" });
 
-// An address range outside the cluster a policy admits, on one port: where an
-// off-cluster copy goes (spec/v1/14-platform-intent.md#durability-policy).
+// An address range a policy admits by address, on one port, because no
+// namespace or pod is the peer: where an off-cluster copy goes
+// (spec/v1/14-platform-intent.md#durability-policy), or where the Kubernetes
+// API answers (spec/v1/14-platform-intent.md#kubernetes-api-access).
 const destinationRange = z
   .strictObject({ cidr: text, port })
   .meta({ id: "DestinationRange" });
@@ -257,6 +260,26 @@ const backupPlan = z
     destinations: z.array(destinationRange).exactOptional(),
   })
   .meta({ id: "BackupPlan" });
+
+// The Kubernetes API access a Process holds
+// (spec/v1/16-dependencies.md#kubernetes-api-access-is-declared-and-admitted):
+// its rules as declared, the reason its owner gave, and where the platform
+// says the API answers, which its policy admits.
+const resolvedApiRule = z
+  .strictObject({
+    group: text,
+    objects: z.array(text).min(1),
+    verbs: z.array(z.enum(API_VERBS).meta({ id: "ApiVerb" })).min(1),
+  })
+  .meta({ id: "ResolvedApiRule" });
+
+const resolvedApiAccess = z
+  .strictObject({
+    reason: text,
+    rules: z.array(resolvedApiRule).min(1),
+    server: z.array(destinationRange).min(1),
+  })
+  .meta({ id: "ResolvedApiAccess" });
 
 const resolvedVolume = z
   .strictObject({
@@ -394,6 +417,7 @@ const resolvedProcess = stated(
     cpu: text,
     hardening: hardeningClass,
     identityToken: z.boolean(),
+    api: resolvedApiAccess.exactOptional(),
     readiness: resolvedProbe.exactOptional(),
     liveness: resolvedProbe.exactOptional(),
     startup: startupProbe.exactOptional(),

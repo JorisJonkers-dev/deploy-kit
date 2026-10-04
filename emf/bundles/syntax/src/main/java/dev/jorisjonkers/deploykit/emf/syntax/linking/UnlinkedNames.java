@@ -10,7 +10,8 @@ import org.eclipse.xtext.linking.impl.LinkingDiagnosticMessageProvider;
 /**
  * A name that links to nothing, as the code the specification gives it: `E_UNKNOWN_PROCESS` for a
  * Process, `E_UNKNOWN_SURFACE` for a surface, `E_UNKNOWN_TIER_PROXY` for a tier's proxy Application,
- * `E_UNKNOWN_MACHINERY` for an Application the delivery machinery names, `E_UNKNOWN_TELEMETRY_COLLECTOR` for
+ * `E_UNKNOWN_MACHINERY` for an Application the delivery machinery names, `E_UNKNOWN_API_HOLDER` for one
+ * the platform admits to hold Kubernetes API access, `E_UNKNOWN_TELEMETRY_COLLECTOR` for
  * the Application the telemetry block names, `E_UNKNOWN_SECRET_STORE` for the Application the Secret
  * Store names. A surface whose Process did not link is not reported
  * as well: there is no Process to look it up in, and the Process's own refusal already says so.
@@ -21,6 +22,7 @@ public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
     public static final String UNKNOWN_SURFACE = "E_UNKNOWN_SURFACE";
     public static final String UNKNOWN_TIER_PROXY = "E_UNKNOWN_TIER_PROXY";
     public static final String UNKNOWN_MACHINERY = "E_UNKNOWN_MACHINERY";
+    public static final String UNKNOWN_API_HOLDER = "E_UNKNOWN_API_HOLDER";
     public static final String UNKNOWN_TELEMETRY_COLLECTOR = "E_UNKNOWN_TELEMETRY_COLLECTOR";
     public static final String UNKNOWN_METRICS_STACK = "E_UNKNOWN_METRICS_STACK";
     public static final String UNKNOWN_RELEASE_GATE = "E_UNKNOWN_RELEASE_GATE";
@@ -30,6 +32,7 @@ public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
     public static final Set<String> ACROSS_DOCUMENTS = Set.of(
             UNKNOWN_TIER_PROXY,
             UNKNOWN_MACHINERY,
+            UNKNOWN_API_HOLDER,
             UNKNOWN_TELEMETRY_COLLECTOR,
             UNKNOWN_METRICS_STACK,
             UNKNOWN_RELEASE_GATE,
@@ -43,6 +46,13 @@ public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
                     "no project file declares the Application " + name + " the delivery machinery names",
                     Severity.ERROR,
                     UNKNOWN_MACHINERY);
+        }
+        if (context.getReference() == ProjectIntentPackage.Literals.API_ACCESS_POLICY__HOLDERS) {
+            return new DiagnosticMessage(
+                    "no project file declares the Application " + name
+                            + " the platform admits to hold Kubernetes API access",
+                    Severity.ERROR,
+                    UNKNOWN_API_HOLDER);
         }
         if (context.getReference() == ProjectIntentPackage.Literals.TELEMETRY_POLICY__COLLECTOR) {
             return new DiagnosticMessage(

@@ -77,6 +77,7 @@ Process returns Process:
 	& ('probes' ':' probes=ProbePolicy)?
 	& ('volumes' ':' BEGIN (DASH BEGIN volumes+=Volume END)+ END)?
 	& ('replicas' ':' BEGIN replicas=Capacity END)?
+	& ('api' ':' BEGIN api=ApiAccess END)?
 	& ('secrets' ':' BEGIN (DASH BEGIN secrets+=Grant END)+ END)?
 	& ('startupBudget' ':' startupBudget=Text)?
 	& ('cutover' ':' cutover=Cutover)?);
@@ -164,6 +165,16 @@ Capacity returns Capacity:
 	(('count' ':' count=Port)
 	& ('reason' ':' reason=Text));
 
+// The Kubernetes API access a Process needs: what it may ask of which objects, and why.
+ApiAccess returns ApiAccess:
+	(('reason' ':' reason=Text)
+	& ('rules' ':' BEGIN (DASH BEGIN rules+=ApiRule END)+ END));
+
+ApiRule returns ApiRule:
+	(('group' ':' group=Text)
+	& ('objects' ':' BEGIN (DASH BEGIN objects+=Text END | objects+=Text)+ END)
+	& ('verbs' ':' BEGIN (DASH BEGIN verbs+=ApiVerb END | verbs+=ApiVerb)+ END));
+
 Grant returns Grant:
 	KvGrant | DatabaseGrant | TransitGrant;
 
@@ -209,21 +220,21 @@ Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword;
 
 Keyword:
-	'access' | 'admin' | 'alertClass' | 'amd64' | 'anonymous' | 'apiVersion' | 'application' | 'applications' |
+	'access' | 'admin' | 'alertClass' | 'amd64' | 'anonymous' | 'api' | 'apiVersion' | 'application' | 'applications' |
 	'arch' | 'arm64' | 'assets' | 'audience' | 'authenticated' | 'business-hours' | 'capabilities' | 'changelog' | 'claim' |
-	'class' | 'contentPolicy' | 'continuous' | 'count' | 'cpu' | 'credentials' | 'custody' | 'cutover' | 'database' | 'decrypt' |
-	'delivery' | 'dependsOn' | 'disk' | 'durability' | 'encrypt' | 'engine' | 'env' | 'exact' |
-	'exposure' | 'false' | 'file' | 'fileMode' | 'files' | 'from' | 'gpu' | 'hdd' |
+	'class' | 'contentPolicy' | 'continuous' | 'count' | 'cpu' | 'create' | 'credentials' | 'custody' | 'cutover' | 'database' | 'decrypt' |
+	'delete' | 'delivery' | 'dependsOn' | 'disk' | 'durability' | 'encrypt' | 'engine' | 'env' | 'exact' |
+	'exposure' | 'false' | 'file' | 'fileMode' | 'files' | 'from' | 'get' | 'gpu' | 'group' | 'hdd' |
 	'host' | 'id' | 'image' | 'internal' | 'interrupted' | 'irreplaceable' | 'job' | 'jvm' | 'key' |
-	'keys' | 'kind' | 'kv' | 'lan' | 'lifecycle' | 'liveness' | 'match' | 'maxAge' |
-	'media' | 'memory' | 'migration' | 'mountAt' | 'name' | 'node' | 'none' | 'nvme' | 'observability' |
-	'operations' | 'owner' | 'page' | 'path' | 'placement' | 'port' | 'postgres' | 'prefix' | 'prepare' |
+	'keys' | 'kind' | 'kv' | 'lan' | 'lifecycle' | 'list' | 'liveness' | 'match' | 'maxAge' |
+	'media' | 'memory' | 'migration' | 'mountAt' | 'name' | 'node' | 'none' | 'nvme' | 'objects' | 'observability' |
+	'operations' | 'owner' | 'page' | 'patch' | 'path' | 'placement' | 'port' | 'postgres' | 'prefix' | 'prepare' |
 	'probes' | 'process' | 'processes' | 'project' | 'provides' | 'python' | 'rabbitmq' | 'read' |
 	'readiness' | 'reason' | 'reconstructible' | 'recoverable' | 'redirectTo' | 'reload' | 'replicas' |
-	'required' | 'restart' | 'role' | 'rotate' | 'rotation' | 'routes' | 'runtime' |
+	'required' | 'restart' | 'role' | 'rotate' | 'rotation' | 'routes' | 'rules' | 'runtime' |
 	'schemaVersion' | 'scrape' | 'secrets' | 'self' | 'self-renew' | 'self-roll' | 'sidecars' | 'sign' |
 	'site' | 'size' | 'ssd' | 'startupBudget' | 'static' | 'strict' | 'surface' | 'tcp' |
-	'tolerates' | 'transit' | 'true' | 'urgent' | 'valkey' | 'verify' | 'volumes' | 'workflow' |
+	'tolerates' | 'transit' | 'true' | 'update' | 'urgent' | 'valkey' | 'verbs' | 'verify' | 'volumes' | 'watch' | 'workflow' |
 	'writablePaths';
 
 enum Lifecycle returns Lifecycle:
@@ -267,6 +278,9 @@ enum TransitEngine returns TransitEngine:
 
 enum AccessTier returns AccessTier:
 	read='read' | selfRenew='self-renew' | selfRoll='self-roll' | custody='custody';
+
+enum ApiVerb returns ApiVerb:
+	get='get' | list='list' | watch='watch' | create='create' | update='update' | patch='patch' | delete='delete';
 
 enum TransitOp returns TransitOp:
 	sign='sign' | verify='verify' | encrypt='encrypt' | decrypt='decrypt' | rotate='rotate';

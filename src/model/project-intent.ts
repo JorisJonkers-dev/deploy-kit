@@ -5,13 +5,13 @@
 import { z } from "zod";
 import {
   ACCESS_TIERS,
-  DATABASE_ENGINES,
-  TRANSIT_ENGINES,
   ALERT_CLASSES,
+  API_VERBS,
   ARCHITECTURES,
   AUDIENCES,
   CONTENT_POLICIES,
   CUTOVERS,
+  DATABASE_ENGINES,
   DELIVERIES,
   DURABILITY_CLASSES,
   ENGINES,
@@ -21,6 +21,7 @@ import {
   PLACEHOLDER_KINDS,
   RUNTIMES,
   TOLERANCES,
+  TRANSIT_ENGINES,
   TRANSIT_OPERATIONS,
 } from "./vocabularies.ts";
 
@@ -45,6 +46,7 @@ const media = z.enum(MEDIA).meta({ id: "Media" });
 const runtime = z.enum(RUNTIMES).meta({ id: "Runtime" });
 const tolerance = z.enum(TOLERANCES).meta({ id: "Tolerance" });
 const transitOp = z.enum(TRANSIT_OPERATIONS).meta({ id: "TransitOp" });
+const apiVerb = z.enum(API_VERBS).meta({ id: "ApiVerb" });
 
 const placeholderKind = z
   .enum(PLACEHOLDER_KINDS)
@@ -183,6 +185,23 @@ const capacity = z
   .strictObject({ count: z.int().min(2), reason: text })
   .meta({ id: "Capacity" });
 
+// The Kubernetes API access a Process needs (spec/v1/10-project-intent.md#kubernetes-api-access):
+// what it may ask of which objects, and why. `core` names the API's core
+// group, which Kubernetes itself leaves unnamed. The fields are the model's own
+// words: `objects` is what Kubernetes RBAC spells `resources`, a field name
+// layer 2 may not carry (docs/adr/model/0011-authored-values-name-model-concepts.md).
+const apiRule = z
+  .strictObject({
+    group: text,
+    objects: z.array(text).min(1),
+    verbs: z.array(apiVerb).min(1),
+  })
+  .meta({ id: "ApiRule" });
+
+const apiAccess = z
+  .strictObject({ reason: text, rules: z.array(apiRule).min(1) })
+  .meta({ id: "ApiAccess" });
+
 // Spread into each of the three levels rather than nested under a key: the level
 // a family is written at is not itself a field an author writes.
 const sharedIntent = {
@@ -207,6 +226,7 @@ const process = z
     probes: z.union([noProbes, probes]).exactOptional(),
     volumes: z.array(volume).min(1).exactOptional(),
     replicas: capacity.exactOptional(),
+    api: apiAccess.exactOptional(),
     ...sharedIntent,
   })
   .meta({ id: "Process" });

@@ -135,6 +135,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="hardening" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <!-- True only where a grant carries `delivery: self` (docs/adr/model/0087). -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="identityToken" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="api" eType="#//ResolvedApiAccess" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="component" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="readiness" eType="#//ResolvedProbe" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="liveness" eType="#//ResolvedProbe" containment="true"/>
@@ -225,6 +226,19 @@
 
   <!-- An address range outside the cluster a policy admits, on one port. Layer 1 states it as
        a DestinationRange; a render admits it. -->
+  <!-- The Kubernetes API access a Process holds
+       (spec/v1/16-dependencies.md#kubernetes-api-access-is-declared-and-admitted): its rules
+       as declared, the reason its owner gave, and where the platform says the API answers. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedApiAccess">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="reason" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="rules" lowerBound="1" upperBound="-1" eType="#//ResolvedApiRule" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="server" lowerBound="1" upperBound="-1" eType="#//AdmittedRange" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedApiRule">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="group" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="objects" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="verbs" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="AdmittedRange">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cidr" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
@@ -428,6 +442,11 @@
 
   <!-- The Services of the Processes Flagger does not switch: each stop-start
        Process that serves a surface, reached on every surface it serves. -->
+  <!-- The ClusterRole and its binding of every Process that holds Kubernetes API access. -->
+  <eClassifiers xsi:type="ecore:EClass" name="RbacFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess"/>
+  </eClassifiers>
+
   <eClassifiers xsi:type="ecore:EClass" name="ServiceFile" eSuperTypes="#//Deliverable">
     <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess"/>
   </eClassifiers>
