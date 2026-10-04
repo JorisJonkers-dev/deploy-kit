@@ -152,3 +152,99 @@ export function unionOf(
         },
       };
 }
+
+/** A fragment, as composition hands it over for the lock. */
+export interface Carrier {
+  /** Where the fragment's files sit in the union. */
+  readonly directory: string;
+  readonly changed: boolean;
+  /** The document whose images the lock must cover: the project file, or the Platform document. */
+  readonly document: string;
+  /** Every alias that document names; none where it does not parse, which resolution reports. */
+  readonly names: readonly string[];
+  /** The lock file the fragment carries, where it carries one. */
+  readonly lock: AuthoredFile | undefined;
+}
+
+const unlockedIn = (
+  { document, names }: Carrier,
+  held: (alias: string) => boolean,
+): Diagnostic[] =>
+  names
+    .filter((alias) => !held(alias))
+    .map((alias) => ({
+      code: "E_UNLOCKED_IMAGE",
+      document,
+      path: "",
+      message: `no lock this document is resolved from holds an entry for ${alias}`,
+      hint: "Lock the alias in this fragment's own share or in the Platform document's lock: a fragment is never resolved from another Project's share.",
+    }));
+
+const fileOf = ({ directory }: Carrier): string =>
+  `${directory}/${IMAGES_LOCK}`;
+
+/**
+ * The one lock a composition resolves from. The Platform document's lock is
+ * read whole. A Project's share is read only for the aliases its own project
+ * file names, and every alias a document names must be locked by its own
+ * fragment or by the Platform document's lock, so no fragment decides the image
+ * another one runs.
+ */
+export function composedLock(
+  platform: Carrier,
+  projects: readonly Carrier[],
+  name: string,
+  schemaVersion: string,
+): Result<ImagesLockDocument> {
+  const own =
+    platform.lock === undefined
+      ? undefined
+      : readLock(platform.lock.text, fileOf(platform));
+  if (own?.ok === false) return own;
+  const estate = own?.value.images ?? {};
+  const shares: Share[] =
+    own === undefined
+      ? []
+      : [
+          {
+            directory: platform.directory,
+            changed: platform.changed,
+            lock: own.value,
+          },
+        ];
+  const diagnostics = unlockedIn(platform, (alias) =>
+    Object.hasOwn(estate, alias),
+  );
+
+  for (const project of projects) {
+    const read =
+      project.lock === undefined
+        ? undefined
+        : readLock(project.lock.text, fileOf(project));
+    if (read?.ok === false) {
+      diagnostics.push(...read.diagnostics);
+      continue;
+    }
+    const held = read?.value.images ?? {};
+    const images = Object.fromEntries(
+      project.names
+        .filter((alias) => Object.hasOwn(held, alias))
+        .map((alias) => [alias, held[alias] as LockedImage]),
+    );
+    if (read !== undefined)
+      shares.push({
+        directory: project.directory,
+        changed: project.changed,
+        lock: { ...read.value, images },
+      });
+    diagnostics.push(
+      ...unlockedIn(
+        project,
+        (alias) => Object.hasOwn(images, alias) || Object.hasOwn(estate, alias),
+      ),
+    );
+  }
+  return diagnostics.length > 0
+    ? { ok: false, diagnostics }
+    : unionOf(shares, name, schemaVersion);
+}

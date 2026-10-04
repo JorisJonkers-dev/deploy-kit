@@ -105,10 +105,18 @@ Platform document's `metadata.project`, and resolution reads it and no other.
 
 | the shares say | the union |
 |---|---|
-| one share locks an alias | holds that entry |
-| two shares lock an alias to the same repository, digest, `uid` and `gid` | holds it once: two Projects may run one third-party image |
+| a share locks an alias its own project file names | holds that entry |
+| a share locks an alias its own project file does not name | does not read it: a fragment locks its own images and no one else's |
+| two shares lock an alias to the same repository, digest, `uid` and `gid` | holds it once: two Projects may run one third-party image, each locking it |
 | two shares lock an alias differently | `E_IMAGE_LOCK_CONFLICT`, at the alias in the share of the fragment that changed |
-| no share locks an alias a document names | holds no entry, so the alias is `E_UNLOCKED_IMAGE` where it is named |
+| neither a document's own fragment nor the Platform document's lock holds an alias it names | `E_UNLOCKED_IMAGE`, at that document, whatever another Project's share holds |
+
+**A document is resolved from its own fragment and from the Platform
+document's lock, and from nothing else.** A project file's aliases are locked by
+its own share or by the platform's lock; the Platform document's own aliases,
+by its own lock. So no fragment decides the image another Project, or the
+platform, runs: the most a share can do to another fragment is disagree with
+it, and a disagreement is refused.
 
 One alias resolves to one image estate-wide, so a disagreement is refused, and
 it is refused where it was introduced. What the unchanged fragments hold

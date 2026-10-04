@@ -791,6 +791,122 @@ describe("composeEstate, over the fragments' shares of the images lock", () => {
     ]);
   });
 
+  it("never resolves another Project, or the Platform document, from a fragment's share", () => {
+    // notes now runs the image the Platform document's postgres backup names,
+    // and locks it in its own share. The platform's own lock no longer holds
+    // it, and the platform's files arrive in another order.
+    const squatting: Fragment = {
+      ...release("notes", "1.0.0", (body) =>
+        body.replace("image: notes-api", "image: postgres-backup"),
+      ),
+    };
+    const share = lockFile("notes", {
+      "postgres-backup": ESTATE_LOCK.images["postgres-backup"] as Locked,
+    });
+    const result = composeEstate(
+      {
+        platform: {
+          ...PLATFORM,
+          files: PLATFORM.files
+            .map((file) =>
+              file.name === "images.lock.yml"
+                ? lockFile(
+                    "estate",
+                    Object.fromEntries(
+                      Object.entries(ESTATE_LOCK.images).filter(
+                        ([alias]) => alias !== "postgres-backup",
+                      ),
+                    ),
+                  )
+                : file,
+            )
+            .reverse(),
+        },
+        fragments: [
+          { ...squatting, files: [...squatting.files, share] },
+          ...others,
+        ],
+        held: [],
+        pins: {},
+        clusterState: {
+          name: "cluster-state.yml",
+          text: text("platform/cluster-state.yml"),
+        },
+      },
+      OPTIONS,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        expect.objectContaining({
+          code: "E_UNLOCKED_IMAGE",
+          document: "_platform/platform.intent.yml",
+          message:
+            "no lock this document is resolved from holds an entry for postgres-backup",
+        }),
+      ],
+    });
+  });
+
+  it("reads names from the project file and the Platform document, and from no other file a fragment holds", () => {
+    // A file that would parse as a project file naming vault, beside a share
+    // that locks vault to another image: not the project file, so the share
+    // is not read for vault and disagrees with nothing.
+    const fragment = release("notes", "1.1.0");
+    const decoy: Fragment = {
+      ...fragment,
+      files: [
+        ...fragment.files,
+        {
+          name: "config/decoy.yml",
+          text: text("minimal/notes.project.yml").replace(
+            "image: notes-api",
+            "image: vault",
+          ),
+        },
+        lockFile("notes", {
+          "notes-api": NOTES_API,
+          vault: { ...NOTES_API, digest: `sha256:${"7".repeat(64)}` },
+        }),
+      ],
+    };
+    // And a file beside the Platform document that would parse as one naming
+    // a backup image nothing locks.
+    const drafted: Fragment = {
+      ...PLATFORM,
+      files: [
+        {
+          name: "platform.intent.yml.draft",
+          text: withLedger(
+            text("platform/platform.intent.yml"),
+            LEDGER,
+          ).replace("backup: postgres-backup", "backup: unlocked-backup"),
+        },
+        ...PLATFORM.files,
+      ],
+    };
+    const composed = after({
+      platform: drafted,
+      fragments: [decoy, ...others],
+    });
+
+    expect(composed.lock.spec.isolated).toBeUndefined();
+    expect(composed.lock.spec.fragments.notes?.ref).toBe(decoy.ref);
+  });
+
+  it("isolates a changed fragment whose project file cannot be read, share and all", () => {
+    const fragment = release("notes", "1.1.0", () => "kind: [");
+    const unreadable: Fragment = {
+      ...fragment,
+      files: [...fragment.files, lockFile("notes", { "notes-api": NOTES_API })],
+    };
+    const composed = after({ fragments: [unreadable, ...others] });
+
+    expect(composed.lock.spec.isolated?.notes?.refused).toBe(unreadable.ref);
+    expect(composed.lock.spec.fragments.notes?.ref).toBe(RELEASES[0]?.ref);
+  });
+
   it("fails the run on a Platform document's lock that cannot be read", () => {
     const result = composeEstate(
       {

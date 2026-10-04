@@ -41,6 +41,12 @@ takes it from the lock the build wrote and refuses an alias that lock does not
 hold, so a fragment never names an image nothing can pull, and never carries an
 entry for someone else's alias by accident.
 
+**A fragment locks its own images and no one else's.** Composition reads a
+share only for the aliases its own project file names, and resolves a document
+only from its own fragment's share and the Platform document's lock. Without
+that, a fragment could lock an alias another Project names and has not locked
+yet, or one the Platform document names, and decide the image they run.
+
 **The same image twice is one entry.** Two Projects may both run one
 third-party image under one alias. Requiring a single owner per alias would
 force that image into the Platform document's lock, and make the platform a
@@ -68,6 +74,7 @@ a release, and nobody else a deploy.
 | One owner per alias, a second lock of it refused even when identical | a simpler union | two Projects cannot share a third-party image without the platform owning it |
 | A Project's share overrides the platform's | no refusal between the two | a Project silently changes an image the platform locked, and the render depends on precedence nothing declares |
 | Refuse at every share that holds the alias | no notion of "changed" in the union | an unchanged fragment is named, and an error that names one fails the whole run: one bad release would stop every deploy |
+| Read every entry of every share | a simpler union | one fragment supplies the image another Project or the platform runs, which is the authority a share must not have |
 | Union inside resolution instead of composition | one place reads lock files | resolution's contract is one lock, which both implementations hold to; composition is where fragments meet |
 
 ## Reversibility
@@ -86,5 +93,10 @@ share into one file again.
 - The union is named by the Platform document's `metadata.project`, which is
   the name the composed lock's digest is recorded under.
 - `E_IMAGE_LOCK_CONFLICT` joins the codes a fragment can be isolated for.
+- Two Projects that share an alias each lock it in their own share. A Project
+  that names another Project's alias and locks it differently is refused while
+  it is the changed one; once it has composed, the other Project's next change
+  to that alias is the one refused. An alias is estate-wide, so naming one is a
+  claim on it, and this record does not settle who owns an alias.
 - The Platform document's fragment still carries the lock for the images the
   Platform document names itself.

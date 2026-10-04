@@ -22,13 +22,13 @@ import {
 } from "../model/pin-annotations.ts";
 import type { AuthoredFile } from "./check-intent-set.ts";
 import {
+  composedLock,
   IMAGES_LOCK,
-  readLock,
-  unionOf,
-  type Share,
+  type Carrier,
 } from "./images-lock-shares.ts";
-import type { ImagesLockDocument } from "../model/images-lock.ts";
+import { aliasesOf, type ImagesLockDocument } from "../model/images-lock.ts";
 import { parsePlatformIntent } from "./parse-platform-intent.ts";
+import { parseProjectIntent } from "./parse-project-intent.ts";
 import {
   renderResolvedSet,
   type RenderedFile,
@@ -145,10 +145,15 @@ function platformOf(fragment: Fragment): PlatformIntentDocument {
   ).value.document;
 }
 
+const PROJECT_FILE = ".project.yml";
+
 /**
  * The one images lock resolution reads: the Platform document's, where its
  * fragment carries one, and every composed fragment's share, as one lock named
- * after the Platform document (spec/v1/40-composition.md#fragments).
+ * after the Platform document (spec/v1/40-composition.md#fragments). Each
+ * document is handed over with the aliases it names, which are the document's
+ * own: no env file decides one. A document that does not parse names none
+ * here, and resolution reports it.
  */
 function imagesLockOf(
   platform: Fragment,
@@ -156,27 +161,47 @@ function imagesLockOf(
   previous: Readonly<Record<string, { readonly ref: string } | undefined>>,
   schemaVersion: string,
 ): Result<ImagesLockDocument> {
-  const shares: Share[] = [];
-  const diagnostics: Diagnostic[] = [];
-  const fragments: (readonly [string, Fragment, boolean])[] = [
-    // The platform's lock is never the changed side of a disagreement: an
-    // error that names it fails the run, as every platform error does.
-    [PLATFORM, platform, false],
-    ...[...candidates].map(
-      ([project, fragment]) =>
-        [project, fragment, fragment.ref !== previous[project]?.ref] as const,
-    ),
-  ];
-  for (const [directory, { files }, changed] of fragments) {
-    const file = files.find(({ name }) => name === IMAGES_LOCK);
-    if (file === undefined) continue;
-    const lock = readLock(file.text, `${directory}/${IMAGES_LOCK}`);
-    if (lock.ok) shares.push({ directory, changed, lock: lock.value });
-    else diagnostics.push(...lock.diagnostics);
-  }
-  return diagnostics.length > 0
-    ? { ok: false, diagnostics }
-    : unionOf(shares, platform.manifest.spec.project, schemaVersion);
+  const lockOf = (files: readonly AuthoredFile[]) =>
+    files.find(({ name }) => name === IMAGES_LOCK);
+  const projects = [...candidates].flatMap(([project, fragment]) =>
+    fragment.files
+      .filter(({ name }) => name.endsWith(PROJECT_FILE))
+      .map(({ name, text }): Carrier => {
+        const parsed = parseProjectIntent(text, []);
+        return {
+          directory: project,
+          changed: fragment.ref !== previous[project]?.ref,
+          document: `${project}/${name}`,
+          names: parsed.ok ? aliasesOf(parsed.value.effective) : [],
+          lock: lockOf(fragment.files),
+        };
+      }),
+  );
+  // The images the Platform document names itself: each engine's backup method.
+  const named = platform.files
+    .filter(({ name }) => name === PLATFORM_DOCUMENT)
+    .flatMap(({ text }) => {
+      const parsed = parsePlatformIntent(text);
+      return parsed.ok
+        ? Object.values(parsed.value.document.engines).map(
+            ({ backup }) => backup,
+          )
+        : [];
+    });
+  return composedLock(
+    {
+      directory: PLATFORM,
+      // The platform's lock is never the changed side of a disagreement: an
+      // error that names it fails the run, as every platform error does.
+      changed: false,
+      document: `${PLATFORM}/${PLATFORM_DOCUMENT}`,
+      names: named,
+      lock: lockOf(platform.files),
+    },
+    projects,
+    platform.manifest.spec.project,
+    schemaVersion,
+  );
 }
 
 /** A fragment by reference, which the caller owes for every reference it hands over. */
