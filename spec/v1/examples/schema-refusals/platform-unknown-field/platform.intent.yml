@@ -85,12 +85,20 @@ durability:
     offCluster:
       destination: "s3://backup-storage/jorisjonkers-dev"
       credential: secret/data/platform/backup/off-cluster
+      # Where that destination is, as a network policy can say it: a policy
+      # admits an address range and a port, never a hostname. It is what the
+      # backup identity's own policy lets its pods reach.
+      egress:
+        - { cidr: 203.0.113.0/24, port: 443 }
 
 # The method IS the image: one purpose-built image per engine, resolved through
 # the images lock. Nothing executable is authored.
 engines:
-  postgres: { backup: postgres-backup }
-  rabbitmq: { backup: rabbitmq-backup }
+  # `surface` is the surface of the Process the method connects to: postgres
+  # is dumped over its own protocol, rabbitmq through its management API. A
+  # method that reads the volume alone names none.
+  postgres: { backup: postgres-backup, surface: postgres }
+  rabbitmq: { backup: rabbitmq-backup, surface: management }
   files: { backup: file-backup }
 
 # One cadence for every rendered monitor, for the same reason the probe cadence

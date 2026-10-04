@@ -90,7 +90,7 @@ adapter reads the Resolved Deployment and nothing else
 are spelled; its `surfaces`, each a name and a port, which a route, a scrape and
 a policy name it by; and the peers its policy admits beyond its own edges: its
 `ingress`, each peer tagged with the allow-set rule that admits it (`tier-proxy`,
-`metrics-stack` or `consumer`), and its `egress`, the `cluster-dns` baseline and,
+`metrics-stack`, `consumer` or `backup`), and its `egress`, the `cluster-dns` baseline and,
 for a Process that holds a grant, the `secret-store`: the Process of the Secret
 Store's Application that answers on its `http` surface
 ([chapter 16](16-dependencies.md#the-derived-allow-set)). An Application records
@@ -640,7 +640,12 @@ Five rules carry most of the weight:
   and the backup claim its copies land on, of which it keeps `retain`;
   `irreplaceable` derives both plus an off-cluster copy and a derived grant for
   the destination, held by the backup identity; `reconstructible` derives
-  nothing. The schedule, retention and destination come
+  nothing. Every backup plan also carries what its identity's own policy
+  admits ([chapter 16](16-dependencies.md#the-backup-identitys-policy)): its
+  `egress`, the Process it dumps on the surface the engine's method connects to
+  (the `datastore` rule, absent where the method reads the volume alone) and
+  the `cluster-dns` baseline, and for an off-cluster copy its `destinations`,
+  the address ranges the class's policy states. The schedule, retention and destination come
   from the platform's per-class policy and the method from the Process's
   `engine`, so two Applications of the same class and engine derive the same objects
   with different volumes, which is the property that makes a restore rehearsal
@@ -1191,6 +1196,10 @@ processes:
           credential:                # the destination's, held by the backup identity alone
             {path: secret/data/platform/backup/off-cluster, access: read, delivery: env,
              destination: knowledge-ingest-worker-backup-platform-backup-off-cluster}
+          egress:                    # what the backup identity's own policy admits:
+            - {rule: cluster-dns, namespace: kube-system, port: 53}   # `files` dumps no surface
+          destinations:              # where the off-cluster copy goes, from the class's policy
+            - {cidr: 203.0.113.0/24, port: 443}
     secrets:
       - {path: secret/data/platform/postgres/kb, access: read, delivery: env}
       - {path: secret/data/platform/rabbitmq,    access: read, delivery: env}
@@ -1497,6 +1506,11 @@ classDiagram
         +Identity identity
         +ClaimName claim
         +ResolvedGrant credential
+        +EgressPeer egress
+    }
+    class DestinationRange {
+        +Cidr cidr
+        +int port
     }
     class ResolvedGrant {
         +VaultPath path
@@ -1607,6 +1621,7 @@ classDiagram
     ResolvedProcess "1" *-- "0..*" IngressPeer : ingress
     ResolvedProcess "1" *-- "0..*" EgressPeer : egress
     ResolvedVolume "1" *-- "0..1" BackupPlan : backup
+    BackupPlan "1" *-- "0..*" DestinationRange : destinations
     EnvEntry "1" *-- "0..1" SecretReference : secret
     ResolvedEngineGrant "1" *-- "1..*" PolicyPath : paths
     ResolvedEdge "1" *-- "0..*" PolicyPeer : peers

@@ -452,6 +452,167 @@ describe("the networking adapter", () => {
   });
 });
 
+describe("the networking adapter, for a backup identity", () => {
+  const PLAN = {
+    schedule: "45 2 * * *",
+    retain: 90,
+    method: "ghcr.io/x/postgres-backup@sha256:aa",
+    uid: 999,
+    gid: 999,
+    identity: "notes-api-backup",
+    claim: "data-backup",
+  };
+  const volume = (claim: string, backup?: object) => ({
+    claim,
+    mountAt: `/${claim}`,
+    size: "1Gi",
+    durability: "irreplaceable" as const,
+    ...(backup === undefined ? {} : { backup: { ...PLAN, ...backup } }),
+  });
+  const policies = (volumes: readonly unknown[]) =>
+    (
+      objectsAt(
+        renderNetworking(edited(undefined, () => ({ volumes }))),
+        // The Application's file, after its Process's own policy.
+        "notes/notes/networkpolicy.yaml",
+      ) as {
+        metadata: { name: string; labels: unknown };
+        spec: {
+          podSelector: unknown;
+          policyTypes: unknown;
+          ingress?: unknown;
+          egress: unknown;
+        };
+      }[]
+    ).slice(1);
+  const DNS = { rule: "cluster-dns", namespace: "kube-system", port: 53 };
+
+  it("admits it to the Process it dumps, the cluster's DNS and each range of the destination, and nothing to it", () => {
+    const [policy, ...others] = policies([
+      volume("data", {
+        egress: [
+          {
+            rule: "datastore",
+            namespace: "notes-system",
+            process: "notes-api",
+            port: 5432,
+          },
+          DNS,
+        ],
+        destinations: [
+          { cidr: "203.0.113.0/24", port: 443 },
+          { cidr: "198.51.100.7/32", port: 8443 },
+        ],
+      }),
+    ]);
+
+    expect(others).toStrictEqual([]);
+    expect(policy).toStrictEqual({
+      apiVersion: "networking.k8s.io/v1",
+      kind: "NetworkPolicy",
+      metadata: {
+        name: "notes-api-backup",
+        namespace: "notes-system",
+        labels: {
+          "app.kubernetes.io/name": "notes-api-backup",
+          "app.kubernetes.io/instance": "notes-api-backup",
+          "app.kubernetes.io/part-of": "notes",
+          "app.kubernetes.io/managed-by": "deploy-kit",
+          "app.kubernetes.io/component": "none",
+        },
+      },
+      spec: {
+        podSelector: {
+          matchLabels: { "app.kubernetes.io/instance": "notes-api-backup" },
+        },
+        policyTypes: ["Ingress", "Egress"],
+        egress: [
+          {
+            to: [
+              {
+                namespaceSelector: {
+                  matchLabels: {
+                    "kubernetes.io/metadata.name": "notes-system",
+                  },
+                },
+                podSelector: {
+                  matchLabels: { "app.kubernetes.io/instance": "notes-api" },
+                },
+              },
+            ],
+            ports: [{ protocol: "TCP", port: 5432 }],
+          },
+          {
+            to: [
+              {
+                namespaceSelector: {
+                  matchLabels: { "kubernetes.io/metadata.name": "kube-system" },
+                },
+              },
+            ],
+            ports: [
+              { protocol: "UDP", port: 53 },
+              { protocol: "TCP", port: 53 },
+            ],
+          },
+          {
+            to: [{ ipBlock: { cidr: "203.0.113.0/24" } }],
+            ports: [{ protocol: "TCP", port: 443 }],
+          },
+          {
+            to: [{ ipBlock: { cidr: "198.51.100.7/32" } }],
+            ports: [{ protocol: "TCP", port: 8443 }],
+          },
+        ],
+      },
+    });
+  });
+
+  it("writes one policy for the one identity every backup of a Process runs as, admitting what all of them need, each peer once", () => {
+    const here = { cidr: "203.0.113.0/24", port: 443 };
+    const there = { cidr: "198.51.100.7/32", port: 8443 };
+
+    // The first backup keeps its copies in the cluster; the others copy
+    // off-cluster, one of them to a second range as well.
+    expect(
+      policies([
+        volume("cache"),
+        volume("data", { egress: [DNS] }),
+        volume("more", { egress: [DNS], destinations: [here] }),
+        volume("most", { egress: [DNS], destinations: [here, there] }),
+      ]).map(({ metadata, spec }) => [metadata.name, spec.egress]),
+    ).toStrictEqual([
+      [
+        "notes-api-backup",
+        [
+          {
+            to: [
+              {
+                namespaceSelector: {
+                  matchLabels: { "kubernetes.io/metadata.name": "kube-system" },
+                },
+              },
+            ],
+            ports: [
+              { protocol: "UDP", port: 53 },
+              { protocol: "TCP", port: 53 },
+            ],
+          },
+          {
+            to: [{ ipBlock: { cidr: "203.0.113.0/24" } }],
+            ports: [{ protocol: "TCP", port: 443 }],
+          },
+          {
+            to: [{ ipBlock: { cidr: "198.51.100.7/32" } }],
+            ports: [{ protocol: "TCP", port: 8443 }],
+          },
+        ],
+      ],
+    ]);
+    expect(policies([volume("cache")])).toStrictEqual([]);
+  });
+});
+
 describe("the prometheus adapter", () => {
   it("renders no monitor for an Application that declares no observability", () => {
     expect(

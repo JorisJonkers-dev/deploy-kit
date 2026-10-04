@@ -88,8 +88,19 @@ const tier = z
   })
   .meta({ id: "Tier" });
 
+// Where an off-cluster copy's traffic goes, as a network policy can say it: a
+// policy admits an address range and a port, never a hostname
+// (spec/v1/14-platform-intent.md#durability-policy).
+const destinationRange = z
+  .strictObject({ cidr: text, port })
+  .meta({ id: "DestinationRange" });
+
 const offClusterCopy = z
-  .strictObject({ destination: text, credential: text })
+  .strictObject({
+    destination: text,
+    credential: text,
+    egress: z.array(destinationRange).min(1),
+  })
   .meta({ id: "OffClusterCopy" });
 
 const durabilityPolicy = z
@@ -108,8 +119,11 @@ const durabilityPolicies = z
   })
   .meta({ id: "DurabilityPolicies" });
 
+// The method image, and the surface of the Process it connects to where it
+// dumps over the network. An engine whose method reads the volume alone names
+// none.
 const enginePolicy = z
-  .strictObject({ backup: text })
+  .strictObject({ backup: text, surface: text.exactOptional() })
   .meta({ id: "EnginePolicy" });
 
 const enginePolicies = z

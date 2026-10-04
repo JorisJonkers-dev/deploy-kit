@@ -130,6 +130,7 @@ describe("the refusal fixtures", () => {
   it("are the ones this chapter carries, refused but for the accepted counterpart", () => {
     expect(fixtures).toStrictEqual([
       "alert-class-without-signal",
+      "backup-surface-not-provided",
       "credentials-without-database",
       "cutover-continuous-over-rwo",
       "cutover-interrupted-over-rwo",
@@ -168,7 +169,7 @@ describe("the refusal fixtures", () => {
       "unknown-telemetry-collector",
       "unknown-tier-proxy",
     ]);
-    expect(refused).toHaveLength(34);
+    expect(refused).toHaveLength(35);
     expect(
       fixtures.length - refused.length,
       "the four accepted counterparts carry no oracle",

@@ -1022,6 +1022,18 @@
         },
         "credential": {
           "$ref": "#/$defs/ResolvedGrant"
+        },
+        "egress": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EgressPeer"
+          }
+        },
+        "destinations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DestinationRange"
+          }
         }
       },
       "required": [
@@ -1031,7 +1043,8 @@
         "uid",
         "gid",
         "identity",
-        "claim"
+        "claim",
+        "egress"
       ],
       "additionalProperties": false
     },
@@ -1099,6 +1112,60 @@
         "file",
         "self"
       ]
+    },
+    "EgressPeer": {
+      "type": "object",
+      "properties": {
+        "rule": {
+          "$ref": "#/$defs/EgressRule"
+        },
+        "namespace": {
+          "type": "string",
+          "minLength": 1
+        },
+        "process": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      },
+      "required": [
+        "rule",
+        "namespace",
+        "port"
+      ],
+      "additionalProperties": false
+    },
+    "EgressRule": {
+      "type": "string",
+      "enum": [
+        "cluster-dns",
+        "secret-store",
+        "datastore"
+      ]
+    },
+    "DestinationRange": {
+      "type": "object",
+      "properties": {
+        "cidr": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      },
+      "required": [
+        "cidr",
+        "port"
+      ],
+      "additionalProperties": false
     },
     "ResolvedEngineGrant": {
       "type": "object",
@@ -1392,41 +1459,8 @@
       "enum": [
         "tier-proxy",
         "metrics-stack",
-        "consumer"
-      ]
-    },
-    "EgressPeer": {
-      "type": "object",
-      "properties": {
-        "rule": {
-          "$ref": "#/$defs/EgressRule"
-        },
-        "namespace": {
-          "type": "string",
-          "minLength": 1
-        },
-        "process": {
-          "type": "string",
-          "minLength": 1
-        },
-        "port": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 65535
-        }
-      },
-      "required": [
-        "rule",
-        "namespace",
-        "port"
-      ],
-      "additionalProperties": false
-    },
-    "EgressRule": {
-      "type": "string",
-      "enum": [
-        "cluster-dns",
-        "secret-store"
+        "consumer",
+        "backup"
       ]
     }
   }

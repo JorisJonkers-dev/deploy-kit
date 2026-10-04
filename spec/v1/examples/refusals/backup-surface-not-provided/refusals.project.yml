@@ -1,0 +1,42 @@
+# The project file this case's Platform document is read beside.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: store
+    processes:
+      - name: store
+        lifecycle: application
+        image: rabbitmq
+        runtime: none
+        engine: rabbitmq
+        # The platform's rabbitmq method dumps the `management` surface, and this
+        # Process provides none by that name.
+        provides:
+          amqp: 5672
+        placement: { memory: 256Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 5672 }
+        startupBudget: 60s
+        cutover: interrupted
+        volumes:
+          - claim: store-data
+            mountAt: /var/lib/rabbitmq
+            size: 1Gi
+            durability: recoverable
+  - id: edge-proxy
+    processes:
+      - name: edge-proxy
+        lifecycle: application
+        image: traefik
+        runtime: none
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 8080 }
+        startupBudget: 30s
+        cutover: continuous

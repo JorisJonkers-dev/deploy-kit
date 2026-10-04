@@ -129,6 +129,7 @@ and linted by the same script with `emf` as its root.
 | [0048](model/0048-node-facts-are-authored-once.md) | Node facts are authored once in the node contract, nix imports them, and a node may publish media no Process may ask for | settled |
 | [0049](model/0049-datastore-and-restore.md) | Datastore, server count, and restore are recorded platform facts | open |
 | [0090](model/0090-composition-unions-each-fragments-share-of-the-images-lock.md) | Composition unions each fragment's share of the images lock, and an alias locked two ways is refused at the fragment that changed | settled |
+| [0091](model/0091-a-backup-identity-has-a-policy-of-its-own.md) | A backup identity has a network policy of its own, from facts the platform states: the surface its method dumps and where its off-cluster copy goes | settled |
 
 ## Delivery and release
 

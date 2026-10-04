@@ -1,6 +1,7 @@
 // REQ-039 (docs/requirements.md), derivation by derivation: each mechanic
 // chapter 20 derives, read off a notes project written for it and resolved
 // through the use-case with the worked foundation and pinned inputs.
+import { backedUp, dumpedSurfaceOf } from "../../src/model/backup.ts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -1765,13 +1766,23 @@ ${serving("notes-api")}${serving("notes-web")}`);
 });
 
 describe("a volume and what its class derives", () => {
+  // The Process provides the surface the platform's rabbitmq method dumps.
   const holding = (volumes: string, engine = "") =>
     one(
-      serving("notes-store", `${engine}        volumes:\n${volumes}`).replace(
-        "cutover: continuous",
-        "cutover: interrupted",
-      ),
+      serving("notes-store", `${engine}        volumes:\n${volumes}`)
+        .replace("cutover: continuous", "cutover: interrupted")
+        .replace(
+          "provides: { http: 8080 }",
+          "provides: { http: 8080, management: 15672 }",
+        ),
     );
+  const DNS = { rule: "cluster-dns", namespace: "kube-system", port: 53 };
+  const DUMPED = {
+    rule: "datastore",
+    namespace: "notes-system",
+    process: "notes-store",
+    port: 15672,
+  };
 
   it("hands the Secret Store's endpoint to an Application whose backup holds the off-cluster credential, and to no other", () => {
     const store = (durability: string) =>
@@ -1850,6 +1861,9 @@ describe("a volume and what its class derives", () => {
           gid: LOCK.images["rabbitmq-backup"]?.gid,
           identity: "notes-store-backup",
           claim: "queue-backup",
+          // What the backup identity's own policy admits: the Process it
+          // dumps, on the surface the platform names for the engine, and DNS.
+          egress: [DUMPED, DNS],
         },
       ],
       [
@@ -1871,9 +1885,148 @@ describe("a volume and what its class derives", () => {
             delivery: "env",
             destination: "notes-store-backup-platform-backup-off-cluster",
           },
+          egress: [DUMPED, DNS],
+          // Where the off-cluster copy goes, as the class's policy states it.
+          destinations: [{ cidr: "203.0.113.0/24", port: 443 }],
         },
       ],
     ]);
+  });
+
+  it("admits a backup that reads the volume alone to the cluster's DNS and nowhere else", () => {
+    const [volume] =
+      processOf(
+        holding(
+          "          - { claim: keep, mountAt: /k, size: 1Gi, durability: recoverable }\n",
+          "        engine: files\n",
+        ),
+      ).volumes ?? [];
+
+    // The platform names no surface for `files`, and never the Secret Store:
+    // the operator reads a backup's credential for it.
+    expect(volume?.backup?.egress).toStrictEqual([DNS]);
+    expect(volume?.backup?.destinations).toBeUndefined();
+  });
+
+  it("admits a Process's backup identity on the surface it dumps, and no backup that dumps none", () => {
+    const admitted = (engine: string) =>
+      processOf(
+        holding(
+          "          - { claim: keep, mountAt: /k, size: 1Gi, durability: recoverable }\n",
+          `        engine: ${engine}\n`,
+        ),
+      ).ingress?.filter(({ rule }) => rule === "backup");
+
+    expect(admitted("rabbitmq")).toStrictEqual([
+      {
+        rule: "backup",
+        namespace: "notes-system",
+        process: "notes-store-backup",
+        port: 15672,
+      },
+    ]);
+    // No peer at all, so the Process carries no ingress.
+    expect(admitted("files")).toBeUndefined();
+  });
+
+  it("names a dumped surface only for a Process that is backed up, of an engine whose method dumps one", () => {
+    const platform = {
+      engines: {
+        postgres: { backup: "postgres-backup", surface: "postgres" },
+        files: { backup: "file-backup" },
+      },
+    } as unknown as Parameters<typeof dumpedSurfaceOf>[1];
+    const process = (engine: string | undefined, ...durabilities: string[]) =>
+      ({
+        name: "store",
+        ...(engine === undefined ? {} : { engine }),
+        ...(durabilities.length === 0
+          ? {}
+          : {
+              volumes: durabilities.map((durability) => ({
+                claim: "c",
+                mountAt: "/c",
+                size: "1Gi",
+                durability,
+              })),
+            }),
+      }) as unknown as Parameters<typeof dumpedSurfaceOf>[0];
+
+    expect(
+      dumpedSurfaceOf(process("postgres", "irreplaceable"), platform),
+    ).toBe("postgres");
+    expect(
+      dumpedSurfaceOf(
+        process("postgres", "reconstructible", "recoverable"),
+        platform,
+      ),
+    ).toBe("postgres");
+    // A method that reads the volume alone, an engine the platform does not
+    // name, and no engine at all dump nothing.
+    expect(
+      dumpedSurfaceOf(process("files", "recoverable"), platform),
+    ).toBeUndefined();
+    expect(
+      dumpedSurfaceOf(process("rabbitmq", "recoverable"), platform),
+    ).toBeUndefined();
+    expect(
+      dumpedSurfaceOf(process(undefined, "recoverable"), platform),
+    ).toBeUndefined();
+    // Nothing backs the Process up, so there is no backup to admit: not for a
+    // claim that is only a cache, and not where it holds no volume.
+    expect(
+      dumpedSurfaceOf(process("postgres", "reconstructible"), platform),
+    ).toBeUndefined();
+    expect(dumpedSurfaceOf(process("postgres"), platform)).toBeUndefined();
+    expect(backedUp(process("postgres"))).toBe(false);
+    expect(backedUp(process(undefined, "irreplaceable"))).toBe(true);
+  });
+
+  it("refuses an engine whose method dumps a surface the Process does not provide", () => {
+    const result = resolve(
+      one(
+        serving(
+          "notes-store",
+          "        engine: rabbitmq\n        volumes:\n          - { claim: keep, mountAt: /k, size: 1Gi, durability: recoverable }\n",
+        ).replace("cutover: continuous", "cutover: interrupted"),
+      ),
+    );
+
+    expect(
+      result.ok ||
+        result.diagnostics.map(({ code, path, message }) => [
+          code,
+          path,
+          message,
+        ]),
+    ).toStrictEqual([
+      [
+        "E_BACKUP_SURFACE_NOT_PROVIDED",
+        "/applications/0/processes/0",
+        "the backup of engine rabbitmq dumps the surface management, which notes-store does not provide",
+      ],
+    ]);
+  });
+
+  it("refuses it of a Process that provides no surface at all", () => {
+    const result = resolve(
+      one(
+        serving(
+          "notes-store",
+          "        engine: rabbitmq\n        volumes:\n          - { claim: keep, mountAt: /k, size: 1Gi, durability: recoverable }\n",
+        )
+          .replace("cutover: continuous", "cutover: interrupted")
+          .replace("        provides: { http: 8080 }\n", "")
+          .replace(
+            "          readiness: { path: /ready, port: 8080 }\n          liveness: { path: /live, port: 8080 }",
+            "          readiness: { tcp: 8080 }",
+          ),
+      ),
+    );
+
+    expect(result.ok || result.diagnostics.map(({ code }) => code)).toContain(
+      "E_BACKUP_SURFACE_NOT_PROVIDED",
+    );
   });
 
   it("stops at a class the platform derives a backup for with no schedule or retention", () => {
@@ -1946,8 +2099,8 @@ describe("a volume and what its class derives", () => {
     const result = resolve(one(serving("notes-api")), {
       platform: (platform) =>
         platform.replace(
-          "rabbitmq: { backup: rabbitmq-backup }",
-          "rabbitmq: { backup: unlocked }",
+          "rabbitmq: { backup: rabbitmq-backup, surface: management }",
+          "rabbitmq: { backup: unlocked, surface: management }",
         ),
     });
 

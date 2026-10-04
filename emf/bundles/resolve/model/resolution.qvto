@@ -433,7 +433,12 @@ query Volume::backupFor(p : PI::Process) : BackupPlan =
 		gid := methodImage.gid;
 		identity := holder;
 		claim := self.claim + '-backup';
+		egress := backupEgress(p);
 		if (policy.offCluster <> null) {
+			destinations := policy.offCluster.egress->collect(range | object AdmittedRange {
+				cidr := range.cidr;
+				port := range.port;
+			});
 			offCluster := policy.offCluster.destination;
 			credential := object ResolvedGrant {
 				path := policy.offCluster.credential;
@@ -450,6 +455,37 @@ query unplanned(claim : String) : BackupPlan {
 }
 
 -- The backup method the platform names for the Process's engine, an image alias.
+-- What a backup identity's own policy admits
+-- (spec/v1/16-dependencies.md#the-backup-identitys-policy): the Process it
+-- dumps, on the surface the engine's method connects to, and the cluster's DNS.
+-- A method that reads the volume alone names no surface. Never the Secret
+-- Store: the operator reads the backup's credential for it.
+query backupEgress(p : PI::Process) : Sequence(PolicyPeer) =
+	(if dumpedSurface(p) = null then Sequence{} else Sequence{object PolicyPeer {
+		rule := 'datastore';
+		namespace := namespaceOf(owner(p));
+		process := p.name;
+		port := p.provides->select(s | s.key = dumpedSurface(p))->any(true).value;
+	}} endif)
+	->union(Sequence{object PolicyPeer { rule := 'cluster-dns'; namespace := estate.substrate.clusterDns; port := DNS_PORT; }});
+
+-- The surface the platform names for the Process's engine, where the Process is
+-- backed up at all and its method dumps one.
+query dumpedSurface(p : PI::Process) : String =
+	if not p.oclAsType(ECORE::EObject).states('engine')
+		or not p.volumes->exists(v | v.durability <> PI::DurabilityClass::reconstructible) then null
+	else if p.engine = Engine::postgres then policySurface(estate.engines.postgres)
+	else if p.engine = Engine::rabbitmq then policySurface(estate.engines.rabbitmq)
+	else if p.engine = Engine::valkey then policySurface(estate.engines.valkey)
+	else policySurface(estate.engines.files) endif endif endif endif;
+
+query policySurface(policy : EnginePolicy) : String =
+	if policy = null then null else policy.surface endif;
+
+-- The project a Process is declared in.
+query owner(p : PI::Process) : String =
+	projects->select(prj | prj.applications.processes->includes(p))->first().project;
+
 query engineMethod(p : PI::Process) : String =
 	if not p.oclAsType(ECORE::EObject).states('engine') then unengined(p)
 	else if p.engine = Engine::postgres then estate.engines.postgres.backup
@@ -949,7 +985,8 @@ query ingressOf(p : PI::Process, app : EffectiveApplication) : Sequence(PolicyPe
 			and app.observability.scrape.process = p and estate.telemetry <> null
 		then peersOf(estate.telemetry.metrics.id, app.observability.scrape.surface.value, 'metrics-stack')
 		else Sequence{} endif)
-	->union(consumersOf(p, app)))
+	->union(consumersOf(p, app))
+	->union(backupsOf(p)))
 	->asOrderedSet()->asSequence()
 	->collect(peer | object PolicyPeer {
 		rule := peer.rule;
@@ -957,6 +994,13 @@ query ingressOf(p : PI::Process, app : EffectiveApplication) : Sequence(PolicyPe
 		process := peer.process;
 		port := peer.port;
 	});
+
+-- The Process's own backup identity, on the surface its backups dump.
+query backupsOf(p : PI::Process)
+		: Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)) =
+	if dumpedSurface(p) = null then Sequence{} else Sequence{Tuple{rule = 'backup',
+		namespace = namespaceOf(owner(p)), process = p.name + '-backup',
+		port = p.provides->select(s | s.key = dumpedSurface(p))->any(true).value}} endif;
 
 -- Every Process of the union whose edge names this Application and a surface this Process provides.
 query consumersOf(p : PI::Process, app : EffectiveApplication)
@@ -1338,7 +1382,12 @@ query ResolvedVolume::json() : String = obj(Sequence{
 		Tuple{k = 'gid', v = num(self.backup.gid)},
 		Tuple{k = 'identity', v = str(self.backup.identity)},
 		Tuple{k = 'claim', v = str(self.backup.claim)},
-		Tuple{k = 'credential', v = if self.backup.credential = null then null else self.backup.credential.json() endif}}) endif}});
+		Tuple{k = 'credential', v = if self.backup.credential = null then null else self.backup.credential.json() endif},
+		Tuple{k = 'egress', v = arr(self.backup.egress->collect(x | x.json()))},
+		Tuple{k = 'destinations', v = if self.backup.destinations->isEmpty() then null
+			else arr(self.backup.destinations->collect(x | obj(Sequence{
+				Tuple{k = 'cidr', v = str(x.cidr)},
+				Tuple{k = 'port', v = num(x.port)}}))) endif}}) endif}});
 
 query ResolvedGrant::json() : String = obj(Sequence{
 	Tuple{k = 'path', v = opt(self.path)},

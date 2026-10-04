@@ -94,7 +94,13 @@ DurabilityPolicy returns DurabilityPolicy:
 
 OffClusterCopy returns OffClusterCopy:
 	(('destination' ':' destination=Text)
-	& ('credential' ':' credential=Text));
+	& ('credential' ':' credential=Text)
+	& ('egress' ':' BEGIN (DASH BEGIN egress+=DestinationRange END)+ END));
+
+// Where an off-cluster copy goes, as a network policy can say it: a range and a port.
+DestinationRange returns DestinationRange:
+	(('cidr' ':' cidr=Text)
+	& ('port' ':' port=Port));
 
 EnginePolicies returns EnginePolicies:
 	{EnginePolicies}
@@ -103,8 +109,10 @@ EnginePolicies returns EnginePolicies:
 	& ('valkey' ':' BEGIN valkey=EnginePolicy END)?
 	& ('files' ':' BEGIN files=EnginePolicy END)?);
 
+// The method image, and the surface of the Process it dumps where it dumps over the network.
 EnginePolicy returns EnginePolicy:
-	'backup' ':' backup=Text;
+	(('backup' ':' backup=Text)
+	& ('surface' ':' surface=Text)?);
 
 MonitorCadence returns MonitorCadence:
 	(('interval' ':' interval=Text)
@@ -156,8 +164,8 @@ Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword | PlatformKeyword;
 
 PlatformKeyword:
-	'acme' | 'address' | 'analysis' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cluster' | 'clusterDns' | 'cni' | 'collector' |
-	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'embedded' | 'engines' | 'ephemeral' | 'estate' | 'etcd' |
+	'acme' | 'address' | 'analysis' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cidr' | 'cluster' | 'clusterDns' | 'cni' | 'collector' |
+	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'egress' | 'embedded' | 'engines' | 'ephemeral' | 'estate' | 'etcd' |
 	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'handover' | 'hardening' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
 	'metrics' | 'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'providers' | 'restricted' | 'retireBy' |
 	'repository' | 'retain' | 'runner' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'serverCount' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |

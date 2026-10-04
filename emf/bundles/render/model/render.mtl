@@ -105,8 +105,53 @@
   [else]
     [for (p : resolveddeployment::ProcessPolicy | d.policies)]
       [p.policy()/]
+      [if (p.process.backups()->notEmpty())]
+        [p.process.backupPolicy()/]
+      [/if]
     [/for]
   [/if]
+[/template]
+
+[comment A backup identity's own policy. Every backup of a Process runs as the one identity, so
+  the policy admits what all of them need: the Process they dump and the cluster's DNS, which
+  every plan of the Process shares, and each range any of them copies off-cluster to, once.
+  Nothing reaches the identity's pods. /]
+[template private backupPolicy(p : resolveddeployment::ResolvedProcess)]
+  ---
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: [p.backups()->first().backup.identity/]
+    namespace: [p.application().namespace/]
+    labels:
+      [p.backups()->first().backup.identity.labelSet('none', p.application().id)/]
+  spec:
+    podSelector:
+      matchLabels:
+        app.kubernetes.io/instance: [p.backups()->first().backup.identity/]
+    policyTypes:
+      - Ingress
+      - Egress
+    egress:
+  [for (peer : resolveddeployment::PolicyPeer | p.backups()->first().backup.egress)]
+        - to:
+            [peer.peer()/]
+          ports:
+    [if (peer.rule = 'cluster-dns')]
+              - protocol: UDP
+                port: [peer.port/]
+    [/if]
+            - protocol: TCP
+              port: [peer.port/]
+  [/for]
+  [for (range : String | p.backupRanges())]
+        - to:
+            - ipBlock:
+                cidr: [range.tokenize(' ')->first()/]
+          ports:
+            - protocol: TCP
+              port: [range.tokenize(' ')->last()/]
+  [/for]
 [/template]
 
 [template private policy(p : resolveddeployment::ProcessPolicy)]
@@ -798,6 +843,12 @@
     ->asOrderedSet()->sortedBy(r | r) /]
 
 [comment The volumes whose class derives a backup. /]
+[comment Every range a backup of the Process copies off-cluster to, as `<cidr> <port>`, once each
+  in the order met. /]
+[query private backupRanges(p : resolveddeployment::ResolvedProcess) : Sequence(String) =
+  p.backups().backup.destinations
+    ->collect(r | r.cidr + ' ' + r.port.toString())->asOrderedSet()->asSequence() /]
+
 [query private backups(p : resolveddeployment::ResolvedProcess) : Sequence(resolveddeployment::ResolvedVolume) =
   p.volumes->select(v | v.backup <> null) /]
 

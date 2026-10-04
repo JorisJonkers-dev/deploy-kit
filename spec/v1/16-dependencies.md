@@ -316,7 +316,9 @@ argument. Default-deny is expressible only because the edge set is complete: eve
 The producer is the `networking` adapter
 ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)): every
 `NetworkPolicy` in the estate, per Process from the allow set below plus the two
-baseline rules, and one namespace-wide default-deny per project. Nothing else
+baseline rules, per backup identity from its backup plan
+([The backup identity's policy](#the-backup-identitys-policy)), and one
+namespace-wide default-deny per project. Nothing else
 emits one, which is what makes the DNS assertion checkable against a single
 producer.
 
@@ -329,6 +331,7 @@ producer.
 | to the Secret Store | any grant in the Process's effective set | egress |
 | from the route tier carrying the audience | a route on the Application's `exposure` naming this Process | ingress |
 | from the metrics stack, to the scrape port | the Process's `scrape` surface | ingress |
+| from the Process's own backup identity, to the surface its backups dump | the surface the Platform document's `engines` names for the Process's `engine` | ingress |
 
 ### The baseline
 
@@ -348,6 +351,32 @@ to hold.
 A baseline rule is not authorable and not exceptable from an Application document. An
 exception to one is a change to the derivation, reviewed once, applied to every
 Process at once.
+
+### The backup identity's policy
+
+A backup runs as its own identity, in its own pods
+([chapter 10](10-project-intent.md#storage-and-durability)), and the namespace's default-deny
+selects those pods like any other. So each backup identity has a policy of its
+own, derived from its backup plan and from nothing an Application authors
+([0091](../../docs/adr/model/0091-a-backup-identity-has-a-policy-of-its-own.md)):
+
+| rule | derived from | direction |
+|---|---|---|
+| to the Process it backs up, on the surface the method dumps | the `surface` the Platform document's `engines` names for the Process's `engine` ([chapter 14](14-platform-intent.md#engines)); none where the method reads the volume alone | egress |
+| to the cluster DNS service | the baseline, as for every policy carrying `Egress` | egress |
+| to each address range of the off-cluster destination, on its port | the `egress` of the class's `offCluster` ([chapter 14](14-platform-intent.md#durability-policy)); none for a class that keeps its copies in the cluster | egress |
+
+Nothing reaches a backup pod: it serves nothing, so its policy admits no ingress.
+
+**The Secret Store is not a peer.** A backup holds its destination's credential
+through a grant delivered `env`, so the operator reads the Secret Store and the
+pod mounts no token and never calls it
+([The token is mounted only where the pod authenticates](#the-token-is-mounted-only-where-the-pod-authenticates)).
+A rule to a service the pod cannot authenticate to would admit nothing it uses.
+
+The other half is on the Process: its own policy admits its backup identity on
+the dumped surface, the last row of the allow set above. One without the other
+is a backup the datastore's own default-deny turns away.
 
 ### The token is mounted only where the pod authenticates
 

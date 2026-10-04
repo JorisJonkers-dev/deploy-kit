@@ -3,6 +3,7 @@
 // one asks for the other offers (spec/v1/14-platform-intent.md). A refusal
 // names the document it points into, because the object at fault can sit in
 // either.
+import { dumpedSurfaceOf } from "../model/backup.ts";
 import type { Diagnostic } from "../model/diagnostic.ts";
 import {
   OTLP_SURFACE,
@@ -254,6 +255,17 @@ function projectRefusals(
           path: processAt,
           message: `the platform names no backup image for engine ${process.engine}`,
           hint: "Add the engine to the Platform document's `engines`.",
+        });
+      // Where the engine's method dumps over the network, the Process is what
+      // it connects to: a surface the Process does not provide is a backup
+      // that reaches nothing, behind a policy that admits nothing.
+      const dumped = dumpedSurfaceOf(process, platform);
+      if (dumped !== undefined && process.provides?.[dumped] === undefined)
+        refusals.push({
+          code: "E_BACKUP_SURFACE_NOT_PROVIDED",
+          path: processAt,
+          message: `the backup of engine ${process.engine as string} dumps the surface ${dumped}, which ${process.name} does not provide`,
+          hint: "Provide the surface the Platform document's `engines` names for this engine, under that name.",
         });
       for (const [v, volume] of volumes.entries())
         if (platform.durability[volume.durability] === undefined)

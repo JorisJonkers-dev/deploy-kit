@@ -16,6 +16,10 @@ export const exports = (runtime: Runtime): boolean => EXPORTING.has(runtime);
 /** The namespace every Application of a project lives in. */
 export const namespaceOf = (project: string): string => `${project}-system`;
 
+/** The identity a Process's backups run as, apart from the Process's own. */
+export const backupIdentityOf = (process: string): string =>
+  `${process}-backup`;
+
 /**
  * What an identity's Vault auth role and its policy are both called
  * (spec/v1/16-dependencies.md#process-identity): one auth mount holds every
