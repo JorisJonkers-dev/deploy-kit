@@ -248,6 +248,7 @@ class ResolvedDeploymentTest {
                         "SecretFile",
                         "ServiceFile",
                         "RbacFile",
+                        "PolicyJobFile",
                         "ClaimFile",
                         "ConfigMapFile",
                         "BackupFile",

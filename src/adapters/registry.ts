@@ -59,7 +59,7 @@ export const ADAPTERS: readonly Adapter[] = [
   {
     name: VAULT_POLICY,
     defaultPath:
-      "apps/vso-secrets/policies/<namespace>/<process>.{policy,role}.json",
+      "apps/vso-secrets/policies/<namespace>-<identity>.{policy,role}.json",
     render: renderVaultPolicy,
   },
 ];

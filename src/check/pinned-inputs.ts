@@ -85,6 +85,22 @@ const methodRefusals = (set: PinnedSet, platform: string): Diagnostic[] =>
       hint: "Lock the alias, or name one the images lock holds.",
     }));
 
+/** The Vault policy job's image, where the platform names one, is an image the lock holds. */
+const policyJobRefusals = (set: PinnedSet, platform: string): Diagnostic[] => {
+  const image = set.platform.policyJob?.image;
+  return image === undefined || Object.hasOwn(set.imagesLock.images, image)
+    ? []
+    : [
+        {
+          code: "E_UNLOCKED_IMAGE",
+          document: platform,
+          path: "/policyJob/image",
+          message: `the images lock holds no entry for ${image}`,
+          hint: "Lock the alias, or name one the images lock holds.",
+        },
+      ];
+};
+
 /** Every Application that moves its schema with a changelog has its migration image locked. */
 const migrationRefusals = (set: PinnedSet, { document, effective }: Located) =>
   effective.applications.flatMap((application, a): Diagnostic[] => {
@@ -112,6 +128,7 @@ export const pinnedDiagnostics = (
 ): Diagnostic[] => [
   ...contractRefusals(set, contractDigest, platform),
   ...methodRefusals(set, platform),
+  ...policyJobRefusals(set, platform),
   ...located.flatMap((project) => processRefusals(set, project)),
   ...located.flatMap((project) => migrationRefusals(set, project)),
 ];

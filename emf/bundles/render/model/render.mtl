@@ -49,6 +49,8 @@
     [d.oclAsType(resolveddeployment::ServiceFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::RbacFile))]
     [d.oclAsType(resolveddeployment::RbacFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::PolicyJobFile))]
+    [d.oclAsType(resolveddeployment::PolicyJobFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::ClaimFile))]
     [d.oclAsType(resolveddeployment::ClaimFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::ConfigMapFile))]
@@ -844,6 +846,125 @@
       "[d.namespace/]-[d.identity/]"
     ]
   }
+[/template]
+
+[comment The Vault policy job: the ServiceAccount it runs as, the ConfigMap that hands it every
+  document of this render as canonical JSON on one line, the Job that writes them into the Secret
+  Store, and the job's own policy. The ConfigMap and the Job share the name the documents' digest
+  gives them. /]
+[template private objects(d : resolveddeployment::PolicyJobFile)]
+  [if (d.part = 'serviceaccount')]
+    ---
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: [d.job.identity/]
+      namespace: [d.job.namespace/]
+      labels:
+        [d.job.identity.labelSet('none', d.job.identity)/]
+  [elseif (d.part = 'configmap')]
+    ---
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: [d.name/]
+      namespace: [d.job.namespace/]
+      labels:
+        [d.job.identity.labelSet('none', d.job.identity)/]
+    immutable: true
+    data:
+    [for (document : resolveddeployment::PolicyDocument | d.documents)]
+        [document.file/]: |
+          [document.json/]
+    [/for]
+  [elseif (d.part = 'job')]
+    ---
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: [d.name/]
+      namespace: [d.job.namespace/]
+      labels:
+        [d.job.identity.labelSet('none', d.job.identity)/]
+    spec:
+      activeDeadlineSeconds: [d.job.deadline.seconds()/]
+      template:
+        metadata:
+          labels:
+            [d.job.identity.labelSet('none', d.job.identity)/]
+        spec:
+          serviceAccountName: [d.job.identity/]
+          automountServiceAccountToken: true
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: [d.job.uid/]
+            runAsGroup: [d.job.gid/]
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: [d.job.identity/]
+              image: [d.job.image/]
+              env:
+                - name: VAULT_ADDR
+                  value: [d.job.address/]
+                - name: VAULT_ROLE
+                  value: [d.job.role/]
+                - name: POLICIES_DIR
+                  value: /policies
+              resources:
+                requests:
+                  memory: [d.job.memory/]
+                  cpu: [d.job.cpu/]
+                limits:
+                  memory: [d.job.memory/]
+              securityContext:
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: policies
+                  mountPath: /policies
+                  readOnly: true
+          volumes:
+            - name: policies
+              configMap:
+                name: [d.name/]
+                items:
+    [for (document : resolveddeployment::PolicyDocument | d.documents)]
+                    - key: [document.file/]
+                      path: [document.file/]
+    [/for]
+  [else]
+    ---
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: [d.job.identity/]
+      namespace: [d.job.namespace/]
+      labels:
+        [d.job.identity.labelSet('none', d.job.identity)/]
+    spec:
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: [d.job.identity/]
+      policyTypes:
+        - Ingress
+        - Egress
+      egress:
+    [for (peer : resolveddeployment::PolicyPeer | d.job.egress)]
+          - to:
+              [peer.peer()/]
+            ports:
+      [if (peer.rule = 'cluster-dns')]
+                - protocol: UDP
+                  port: [peer.port/]
+      [/if]
+              - protocol: TCP
+                port: [peer.port/]
+    [/for]
+  [/if]
 [/template]
 
 [comment ============================================================ the edge /]

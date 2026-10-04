@@ -11,6 +11,7 @@ import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPacka
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.SharedIntent;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
 import dev.jorisjonkers.deploykit.emf.render.Rendering;
+import dev.jorisjonkers.deploykit.emf.resolve.Estate;
 import dev.jorisjonkers.deploykit.emf.resolve.Lowering;
 import dev.jorisjonkers.deploykit.emf.resolve.Resolution;
 import dev.jorisjonkers.deploykit.emf.syntax.ClusterStateStandaloneSetup;
@@ -167,6 +168,8 @@ public final class Pipeline {
             }
             deployments.add(resolved.deployment());
         }
+        // What no one project's resolution can derive is planned over all of them.
+        Estate.plan(deployments);
         Rendering.render(deployments, root);
         return List.of();
     }

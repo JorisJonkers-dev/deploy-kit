@@ -114,6 +114,79 @@ describe("renderIntentSet", () => {
     ).toStrictEqual(committed("_estate/rendered"));
   });
 
+  // REQ-049 (docs/requirements.md): the Vault policy job is handed exactly the
+  // documents of the render it belongs to, and is named by their digest.
+  describe("the Vault policy job", () => {
+    const estate = (
+      projects: readonly string[],
+      edits?: Readonly<Record<string, (text: string) => string>>,
+    ) => Object.keys(asTree(artifact(render(edits, projects), "_estate")));
+    const jobFiles = (paths: readonly string[]) =>
+      paths.filter(
+        (path) =>
+          path.startsWith("apps/vso-secrets/") && !path.includes("/policies/"),
+      );
+
+    it("is rendered beside the documents it writes, with its own policy and an index that applies it", () => {
+      expect(jobFiles(estate(["notes", "data"]))).toStrictEqual([
+        "apps/vso-secrets/configmap.yaml",
+        "apps/vso-secrets/job.yaml",
+        "apps/vso-secrets/kustomization.yaml",
+        "apps/vso-secrets/networkpolicy.yaml",
+        "apps/vso-secrets/serviceaccount.yaml",
+      ]);
+    });
+
+    it("is not rendered where the render holds no document for it to write", () => {
+      expect(jobFiles(estate(["notes"]))).toStrictEqual([]);
+    });
+
+    it("is not rendered where the platform names no job, though the documents are", () => {
+      const paths = estate(["data"], {
+        "platform/platform.intent.yml": (document) =>
+          document.replace(/\npolicyJob:\n( {2}.*\n)+/, "\n"),
+      });
+
+      expect(jobFiles(paths)).toStrictEqual([]);
+      expect(paths.filter((path) => path.includes("/policies/"))).toHaveLength(
+        4,
+      );
+    });
+
+    it("is named by the digest of the documents, each under its file name, and of nothing else", () => {
+      const digested: unknown[] = [];
+      const result = renderIntentSet(files(), {
+        ...OPTIONS,
+        projects: ["data"],
+        hash: (value) => {
+          digested.push(value);
+          return sha256Hasher(value);
+        },
+      });
+      if (!result.ok) throw new Error("data does not render");
+      const job = asTree(artifact(result.value, "_estate"))[
+        "apps/vso-secrets/job.yaml"
+      ];
+      // The last value hashed is the one the job is named for.
+      const documents = digested.at(-1) as Record<string, unknown>;
+
+      expect(Object.keys(documents)).toStrictEqual([
+        "data-system-postgres-backup.policy.json",
+        "data-system-postgres-backup.role.json",
+        "data-system-postgres.policy.json",
+        "data-system-postgres.role.json",
+      ]);
+      expect(documents["data-system-postgres.role.json"]).toStrictEqual({
+        bound_service_account_names: ["postgres"],
+        bound_service_account_namespaces: ["data-system"],
+        token_policies: ["data-system-postgres"],
+      });
+      expect(job).toContain(
+        `name: vault-policy-${sha256Hasher(documents).slice("sha256:".length, "sha256:".length + 12)}\n`,
+      );
+    });
+  });
+
   it("renders the same bytes twice from the same inputs, in one module and in a fresh one", async () => {
     vi.resetModules();
     const fresh = await import("../../src/index.ts");

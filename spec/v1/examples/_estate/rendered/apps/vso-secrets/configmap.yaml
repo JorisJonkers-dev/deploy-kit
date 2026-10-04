@@ -1,0 +1,23 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-policy-53808da6737e
+  namespace: secrets-system
+  labels:
+    app.kubernetes.io/name: vault-policy
+    app.kubernetes.io/instance: vault-policy
+    app.kubernetes.io/part-of: vault-policy
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+immutable: true
+data:
+  data-system-postgres-backup.policy.json: |
+    {"path":{"secret/data/platform/backup/off-cluster":{"capabilities":["read"]},"secret/metadata/platform/backup/off-cluster":{"capabilities":["read"]}}}
+  data-system-postgres-backup.role.json: |
+    {"bound_service_account_names":["postgres-backup"],"bound_service_account_namespaces":["data-system"],"token_policies":["data-system-postgres-backup"]}
+  data-system-postgres.policy.json: |
+    {"path":{"secret/data/platform/postgres/exporter":{"capabilities":["read"]},"secret/metadata/platform/postgres/exporter":{"capabilities":["read"]}}}
+  data-system-postgres.role.json: |
+    {"bound_service_account_names":["postgres"],"bound_service_account_namespaces":["data-system"],"token_policies":["data-system-postgres"]}

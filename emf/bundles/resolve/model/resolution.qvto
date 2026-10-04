@@ -53,6 +53,9 @@ property OTLP_SURFACE : String = 'otlp';
 property DNS_PORT : Integer = 53;
 -- The runtime a backup identity's labels name: it runs no Runtime Profile.
 property NO_RUNTIME : String = 'none';
+-- The identity the Vault policy job runs as.
+property POLICY_JOB : String = 'vault-policy';
+
 -- The estate-wide directory every identity's Vault documents land in, by namespace.
 property POLICIES : String = 'apps/vso-secrets/policies/';
 
@@ -70,6 +73,7 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 	reconcileUnits := Sequence{self.map unit()}->union(afterOf(self)->collect(n | object ReconcileUnit { name := n; }));
 	applications := self.applications->map application(self);
 	provenance := self.map provenance();
+	policyJob := policyJobOf();
 	deliverables := self.projectFiles()
 		->union(self.applications->collect(a | a.applicationFiles(self))->flatten())
 		->union(self.edgeFiles())
@@ -203,6 +207,28 @@ query unlocked(alias : String) : LockedImage {
 	assert fatal (false) with log(alias + ' is not locked: E_UNLOCKED_IMAGE');
 	return null;
 }
+
+-- The Vault policy job (spec/v1/20-resolved-deployment.md#the-vault-policy-job):
+-- derived where the platform names it and a Secret Store answers, as one
+-- identity in the Secret Store's own namespace. Every project's document carries
+-- the same one, because it belongs to none of them.
+query policyJobOf() : ResolvedPolicyJob =
+	if estate.policyJob = null or estate.secretStore = null or storePeers()->isEmpty() then null else
+	let own : LockedImage = locked(estate.policyJob.image) in
+	object ResolvedPolicyJob {
+		identity := POLICY_JOB;
+		namespace := storePeers()->first().namespace;
+		image := own.repository + '@' + own.digest;
+		uid := own.uid;
+		gid := own.gid;
+		role := estate.policyJob.role;
+		address := storeEndpoint();
+		memory := estate.policyJob.memory;
+		cpu := estate.policyJob.cpu;
+		deadline := inSeconds(seconds(estate.policyJob.deadline).floor());
+		egress := storePeers()->union(Sequence{object PolicyPeer {
+			rule := 'cluster-dns'; namespace := estate.substrate.clusterDns; port := DNS_PORT; }});
+	} endif;
 
 -- The Release Gate's endpoint: its `http` surface, which the platform names.
 query gateEndpoint() : String =

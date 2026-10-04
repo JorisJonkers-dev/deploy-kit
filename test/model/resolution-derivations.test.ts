@@ -2117,4 +2117,80 @@ describe("a volume and what its class derives", () => {
       "E_UNLOCKED_IMAGE /engines/rabbitmq/backup the images lock holds no entry for unlocked. Lock the alias, or name one the images lock holds.",
     ]);
   });
+
+  it("refuses a Vault policy job image the images lock does not hold, at the job that names it", () => {
+    const result = resolve(one(serving("notes-api")), {
+      platform: (platform) =>
+        platform.replace("image: vault-policy", "image: unlocked"),
+    });
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(
+            ({ code, path, message, hint }) =>
+              `${code} ${path} ${message}. ${hint}`,
+          ),
+    ).toStrictEqual([
+      "E_UNLOCKED_IMAGE /policyJob/image the images lock holds no entry for unlocked. Lock the alias, or name one the images lock holds.",
+    ]);
+  });
+});
+
+// REQ-049 (docs/requirements.md): the Vault policy job is derived where the
+// platform names it and a Secret Store answers.
+describe("the Vault policy job", () => {
+  const set = (platform?: (text: string) => string) => {
+    const result = resolve(
+      one(serving("notes-api")),
+      platform === undefined ? {} : { platform },
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.diagnostics));
+    return result.value;
+  };
+  const job = (platform?: (text: string) => string) => set(platform).policyJob;
+
+  it("runs in the Secret Store's namespace as its own identity, on the locked image, and reaches the Secret Store and the cluster's DNS", () => {
+    expect(job()).toStrictEqual({
+      identity: "vault-policy",
+      namespace: "secrets-system",
+      image:
+        "ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7",
+      uid: 65532,
+      gid: 65532,
+      role: "policy-admin",
+      address: "http://vault.secrets-system.svc.cluster.local:8200",
+      memory: "64Mi",
+      cpu: "10m",
+      deadline: "120s",
+      egress: [
+        {
+          rule: "secret-store",
+          namespace: "secrets-system",
+          process: "vault",
+          port: 8200,
+        },
+        { rule: "cluster-dns", namespace: "kube-system", port: 53 },
+      ],
+    });
+  });
+
+  it("is derived by nothing where the platform names no job, or no Secret Store to write into", () => {
+    expect(
+      job((platform) => platform.replace(/\npolicyJob:\n( {2}.*\n)+/, "\n")),
+    ).toBeUndefined();
+    // Not a job that is undefined: no job at all.
+    expect(
+      Object.keys(
+        set((platform) => platform.replace("secretStore: vault\n", "")),
+      ),
+    ).toStrictEqual(["projects"]);
+  });
+
+  it("states its deadline in seconds, whatever unit the platform wrote", () => {
+    expect(
+      job((platform) => platform.replace("deadline: 120s", "deadline: 3m"))
+        ?.deadline,
+    ).toBe("180s");
+  });
 });

@@ -996,6 +996,30 @@ the push design that would have read this ordering a second way is retired
 ([0050](../../docs/adr/model/0050-delivery-is-part-of-the-model.md)). The
 derivation does not change with its consumers; only their number does.
 
+## The Vault policy job
+
+One element of the estate-wide document belongs to no Application: `policyJob`,
+the job that writes the rendered Vault policies and auth roles into the Secret
+Store ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)).
+It is derived where the Platform document names the job
+([chapter 14](14-platform-intent.md#the-vault-policy-job)) and a Secret Store
+answers, and nowhere else:
+
+| field | authority | derived from |
+|---|---|---|
+| `identity` | derived | `vault-policy`: the ServiceAccount the platform's Vault role is bound to |
+| `namespace` | derived | the Secret Store's, the `<project>-system` of the project that declares it |
+| `image`, `uid`, `gid` | pinned | the images lock's entry for the alias the platform names |
+| `role`, `memory`, `cpu` | platform-assigned | the Platform document's `policyJob`, unchanged |
+| `deadline` | platform-assigned | the same, in whole seconds |
+| `address` | derived | the Secret Store's endpoint, the one every grant is read from |
+| `egress` | derived | the Secret Store on its `http` surface, and the cluster's DNS ([chapter 16](16-dependencies.md#the-baseline)) |
+
+It is in no Application's projection, because no project owns it: it is handed
+the documents of every project a render holds. The name its objects carry is
+not here either. It is the digest of those documents, which exist only once
+the render does.
+
 ## Publish back
 
 Because contended values are platform-arbitrated, an Application owner cannot read
@@ -1407,6 +1431,19 @@ classDiagram
         +UnitName name
         +UnitName[] after
     }
+    class ResolvedPolicyJob {
+        +string identity
+        +Namespace namespace
+        +ImageRef image
+        +int uid
+        +int gid
+        +string role
+        +string address
+        +Quantity memory
+        +Quantity cpu
+        +Duration deadline
+        +EgressPeer[] egress
+    }
     class ResolvedApplication {
         +ApplicationId id
         +Digest revision
@@ -1609,6 +1646,7 @@ classDiagram
     ResolvedDeployment "1" *-- "1" Provenance : provenance
     ResolvedDeployment "1" *-- "1..*" PathAssignment : pathPlan
     ResolvedDeployment "1" *-- "1..*" ReconcileUnit : reconcileUnits
+    ResolvedDeployment "1" *-- "0..1" ResolvedPolicyJob : policyJob
     ResolvedDeployment "1" *-- "1..*" ResolvedApplication : applications
     Provenance "1" *-- "1..*" InputDigest : inputDigests
 

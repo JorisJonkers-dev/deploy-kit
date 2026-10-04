@@ -193,6 +193,20 @@ export interface CronJob {
   };
 }
 
+/** A run to completion, once: what a changed input replaces rather than edits. */
+export interface Job {
+  readonly apiVersion: "batch/v1";
+  readonly kind: "Job";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly activeDeadlineSeconds: number;
+    readonly template: {
+      readonly metadata: { readonly labels: Labels };
+      readonly spec: PodSpec;
+    };
+  };
+}
+
 /**
  * A JSON document a ConfigMap carries as one value. The adapter hands over the
  * value and the serializer writes its canonical form, so the bytes of an

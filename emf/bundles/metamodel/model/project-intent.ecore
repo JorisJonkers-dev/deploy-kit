@@ -369,6 +369,7 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="migration" eType="#//MigrationPolicy" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="delivery" eType="#//DeliveryPolicy" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="apiAccess" eType="#//ApiAccessPolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="policyJob" eType="#//VaultPolicyJob" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="handover" eType="#//HandoverLedger" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="providers" upperBound="-1" eType="#//Provider" containment="true"/>
   </eClassifiers>
@@ -490,6 +491,15 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="iterations" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="threshold" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+  </eClassifiers>
+  <!-- The job that writes the rendered Vault policies and auth roles into the Secret Store
+       (spec/v1/14-platform-intent.md#the-vault-policy-job). The job itself is derived. -->
+  <eClassifiers xsi:type="ecore:EClass" name="VaultPolicyJob">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="role" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="deadline" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="MigrationPolicy">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="runner" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

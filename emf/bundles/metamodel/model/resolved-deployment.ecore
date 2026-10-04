@@ -27,8 +27,27 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="provenance" lowerBound="1" eType="#//Provenance" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="applications" lowerBound="1" upperBound="-1" eType="#//ResolvedApplication" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="reconcileUnits" lowerBound="1" upperBound="-1" eType="#//ReconcileUnit" containment="true"/>
+    <!-- The Vault policy job, where the platform names one and a Secret Store answers
+         (spec/v1/20-resolved-deployment.md#the-vault-policy-job). -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="policyJob" eType="#//ResolvedPolicyJob" containment="true"/>
     <!-- Layer 2 assigns every output path (docs/adr/model/0070). -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="deliverables" lowerBound="1" upperBound="-1" eType="#//Deliverable" containment="true"/>
+  </eClassifiers>
+
+  <!-- The one identity that writes the rendered Vault policies and auth roles into the Secret
+       Store, in the Secret Store's own namespace, with what its policy admits. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedPolicyJob">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="uid" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="gid" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="role" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="address" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="deadline" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="egress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="Provenance">
@@ -503,6 +522,21 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="grants" lowerBound="1" upperBound="-1" eType="#//ResolvedGrant"/>
+  </eClassifiers>
+
+  <!-- One file of the Vault policy job (spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied):
+       its ServiceAccount, the ConfigMap of the documents it is handed, the Job, or its policy.
+       `name` is the name the ConfigMap and the Job share, from the documents' digest. -->
+  <eClassifiers xsi:type="ecore:EClass" name="PolicyJobFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="part" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="job" lowerBound="1" eType="#//ResolvedPolicyJob"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="documents" lowerBound="1" upperBound="-1" eType="#//PolicyDocument" containment="true"/>
+  </eClassifiers>
+  <!-- One Vault document as the job is handed it: its file name and its canonical JSON. -->
+  <eClassifiers xsi:type="ecore:EClass" name="PolicyDocument">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="file" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="json" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <!-- The Kubernetes auth role that binds one identity to its policy. -->

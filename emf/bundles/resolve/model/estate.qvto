@@ -1,0 +1,108 @@
+-- The estate-wide pass (spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied):
+-- the Resolved Deployments of every project rendered together, to the one thing
+-- no single project's resolution can derive, the Vault policy job. The job is
+-- handed the documents of every project of the render and is named by their
+-- digest, so it is planned here, over all of them, and added to the first
+-- document's Deliverables.
+--
+-- Hashing is the one operation done outside the language, as in the resolution.
+import dev.jorisjonkers.deploykit.emf.hashing;
+
+modeltype RD uses 'https://jorisjonkers.dev/deploy-kit/resolved-deployment/1';
+
+transformation estate(inout rendered : RD)
+	access library Hashing;
+
+-- The estate-wide directory the job's objects land in, beside the documents.
+property DIRECTORY : String = 'apps/vso-secrets/';
+
+-- How many hex digits of the documents' digest the job's name carries, after
+-- the algorithm a digest opens with.
+property ALGORITHM : String = 'sha256:';
+property NAME_DIGITS : Integer = 12;
+
+main() {
+	var deployments : Sequence(ResolvedDeployment) := rendered.rootObjects()[ResolvedDeployment]->asSequence();
+	var jobs : Sequence(ResolvedPolicyJob) := deployments.policyJob->select(j | j <> null)->asSequence();
+	var held : Sequence(Tuple(file : String, json : String)) := deployments.deliverables
+		->collect(d | d.documentOf())->select(d | d <> null)->asSequence()->sortedBy(d | d.file);
+	-- One render has one platform, so every project's document carries the same job.
+	if (jobs->exists(j | j.namespace <> jobs->first().namespace or j.image <> jobs->first().image)) {
+		assert fatal (false) with log('the projects of one render carry different Vault policy jobs');
+	};
+	-- No job where the platform names none, or the render holds no document.
+	if (jobs->notEmpty() and held->notEmpty()) {
+		var planned : ResolvedPolicyJob := jobs->first();
+		var digest : String := ('{' + joined(held->collect(d | str(d.file) + ':' + d.json)) + '}').rawDigestOf();
+		var named : String := planned.identity + '-'
+			+ digest.substring(ALGORITHM.size() + 1, ALGORITHM.size() + NAME_DIGITS);
+		deployments->first().deliverables += Sequence{'configmap', 'job', 'serviceaccount', 'networkpolicy'}
+			->collect(piece | object PolicyJobFile {
+				path := DIRECTORY + piece + '.yaml';
+				adapter := if piece = 'networkpolicy' then AdapterName::networking else AdapterName::vaultPolicy endif;
+				part := piece;
+				name := named;
+				job := planned;
+				documents := held->collect(d | object PolicyDocument { file := d.file; json := d.json; });
+			});
+		-- A policy file is listed nowhere while the policy stage is render-only.
+		deployments->first().deliverables += object IndexFile {
+			path := DIRECTORY + 'kustomization.yaml';
+			adapter := AdapterName::kubernetes;
+			resources := Sequence{'configmap.yaml', 'job.yaml', 'serviceaccount.yaml'};
+		};
+	};
+}
+
+-- A Vault document as the job is handed it: its file name, and its content as
+-- canonical JSON. Any other Deliverable is none.
+query Deliverable::documentOf() : Tuple(file : String, json : String) =
+	if self.oclIsKindOf(VaultPolicyFile) then
+		Tuple{file = fileOf(self.path), json = self.oclAsType(VaultPolicyFile).policyJson()}
+	else if self.oclIsKindOf(VaultRoleFile) then
+		Tuple{file = fileOf(self.path), json = self.oclAsType(VaultRoleFile).roleJson()}
+	else null endif endif;
+
+-- What each grant may do: the paths a transit or database grant's engine
+-- derives, or `read` on a kv grant's path and on the same document's metadata.
+query VaultPolicyFile::policyJson() : String =
+	obj(Sequence{Tuple{k = 'path', v = obj(self.grants->collect(g | g.allowed())->flatten())}});
+
+query ResolvedGrant::allowed() : Sequence(Tuple(k : String, v : String)) =
+	if self.engine <> null then self.paths->collect(p |
+		Tuple{k = p.path, v = capabilities(p.allows->asSequence())})
+	else Sequence{
+		Tuple{k = self.path, v = capabilities(Sequence{'read'})},
+		Tuple{k = 'secret/metadata/' + self.path.substring(KV_DATA.size() + 1, self.path.size()),
+			v = capabilities(Sequence{'read'})}} endif;
+
+property KV_DATA : String = 'secret/data/';
+
+query capabilities(allows : Sequence(String)) : String =
+	obj(Sequence{Tuple{k = 'capabilities', v = arr(allows->collect(a | str(a)))}});
+
+-- The role that binds the identity's ServiceAccount, in its namespace, to the
+-- one policy of its name.
+query VaultRoleFile::roleJson() : String =
+	obj(Sequence{
+		Tuple{k = 'bound_service_account_names', v = arr(Sequence{str(self.identity)})},
+		Tuple{k = 'bound_service_account_namespaces', v = arr(Sequence{str(self.namespace)})},
+		Tuple{k = 'token_policies', v = arr(Sequence{str(self.namespace + '-' + self.identity)})}});
+
+-- The last segment of a path: the name a document is mounted and written under.
+query fileOf(path : String) : String = path.substring(path.lastIndexOf('/') + 1, path.size());
+
+-- ------------------------------------------------------------ canonical JSON
+
+-- An object of its entries, in key order.
+query obj(entries : Sequence(Tuple(k : String, v : String))) : String =
+	'{' + joined(entries->sortedBy(e | e.k)->collect(e | str(e.k) + ':' + e.v)) + '}';
+
+query arr(items : Sequence(String)) : String = '[' + joined(items) + ']';
+
+-- The items, comma-separated; no item is empty, since each is a JSON value.
+query joined(items : Sequence(String)) : String =
+	items->iterate(i; acc : String = '' | if acc = '' then i else acc + ',' + i endif);
+
+-- A JSON string. A Vault path and a Kubernetes name hold nothing JSON escapes.
+query str(s : String) : String = '"' + s + '"';

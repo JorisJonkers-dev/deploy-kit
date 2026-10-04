@@ -121,7 +121,7 @@ TREES = {"10-project-intent": {
         "PlatformMetadata", "Substrate", "Bootstrap", "Tier", "DurabilityPolicies",
         "EnginePolicies", "MonitorCadence", "TelemetryPolicy", "ProbeCadence",
         "EphemeralPolicy", "MigrationPolicy", "DeliveryPolicy", "ApiAccessPolicy",
-        "HandoverLedger", "Provider",
+        "VaultPolicyJob", "HandoverLedger", "Provider",
     ],
     "Bootstrap": ["FluxSource", "VaultState"],
     "FluxSource": ["RenderedArtifacts"],
@@ -135,7 +135,8 @@ TREES = {"10-project-intent": {
     # Sibling order puts GateMember next to ResolvedProbe, so the one
     # cross-link on the drawing joins two neighbours.
     "ResolvedDeployment": [
-        "Provenance", "PathAssignment", "ReconcileUnit", "ResolvedApplication",
+        "Provenance", "PathAssignment", "ReconcileUnit", "ResolvedPolicyJob",
+        "ResolvedApplication",
     ],
     "Provenance": ["InputDigest"],
     "ResolvedApplication": [
@@ -202,7 +203,8 @@ REPORT_LAYOUTS = {"10-project-intent": {
             ["PlatformMetadata", "Substrate", "MonitorCadence", "TelemetryPolicy", "ProbeCadence",
              "EphemeralPolicy"],
             ["Bootstrap"], ["Tier", "Provider"], ["DurabilityPolicies", "EnginePolicies"],
-            ["MigrationPolicy", "DeliveryPolicy", "ApiAccessPolicy", "HandoverLedger"],
+            ["MigrationPolicy", "DeliveryPolicy", "ApiAccessPolicy", "VaultPolicyJob",
+             "HandoverLedger"],
         ],
         "Bootstrap": [["FluxSource", "VaultState"]],
         "FluxSource": [["RenderedArtifacts"]],
@@ -217,7 +219,8 @@ REPORT_LAYOUTS = {"10-project-intent": {
     "gaps": {},
 }, "20-resolved-deployment": {
     "columns": {
-        "ResolvedDeployment": [["Provenance", "PathAssignment", "ReconcileUnit"],
+        "ResolvedDeployment": [["Provenance", "PathAssignment", "ReconcileUnit",
+                                "ResolvedPolicyJob"],
                                ["ResolvedApplication"]],
         "Provenance": [["InputDigest"]],
         "ResolvedApplication": [["ResolvedMigration", "ReleaseGate"], ["ResolvedProcess"],

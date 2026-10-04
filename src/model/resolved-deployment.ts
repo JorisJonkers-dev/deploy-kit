@@ -631,6 +631,28 @@ const pathAssignment = z
 const API_VERSION = "resolved.jorisjonkers.dev/v1";
 
 /** The estate-wide document: every assignment, in one place. */
+// The Vault policy job (spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied):
+// the one identity that writes the rendered policies and auth roles into the
+// Secret Store, in the Secret Store's own namespace, with what its policy
+// admits. Estate-wide, so it sits beside the Applications and in none.
+const resolvedPolicyJob = z
+  .strictObject({
+    identity: text,
+    namespace: text,
+    image: text,
+    uid: count,
+    gid: count,
+    // The Vault role the job logs in as, a platform fixture.
+    role: text,
+    // The Secret Store's endpoint, where the job writes.
+    address: text,
+    memory: text,
+    cpu: text,
+    deadline: duration,
+    egress: z.array(egressPeer),
+  })
+  .meta({ id: "ResolvedPolicyJob" });
+
 export const resolvedDeployment = z
   .strictObject({
     apiVersion: z.literal(API_VERSION),
@@ -639,6 +661,7 @@ export const resolvedDeployment = z
     pathPlan: z.array(pathAssignment).min(1),
     reconcileUnits: z.array(reconcileUnit).min(1),
     applications: z.array(resolvedApplication).min(1),
+    policyJob: resolvedPolicyJob.exactOptional(),
   })
   .meta({ id: "ResolvedDeployment" });
 
@@ -660,6 +683,7 @@ export const resolvedApplicationDocument = stated(
 );
 
 export type ResolvedDeploymentDocument = z.output<typeof resolvedDeployment>;
+export type ResolvedPolicyJob = z.output<typeof resolvedPolicyJob>;
 export type ResolvedApplicationDocument = z.output<
   typeof resolvedApplicationDocument
 >;

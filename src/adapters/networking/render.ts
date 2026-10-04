@@ -5,6 +5,7 @@
 import type { ResolvedProject } from "../../model/resolution.ts";
 import type {
   ResolvedApplicationDocument,
+  ResolvedPolicyJob,
   ResolvedProcess,
 } from "../../model/resolved-deployment.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";
@@ -156,6 +157,38 @@ function backupPoliciesOf(
   return first === undefined
     ? []
     : [backupPolicyOf([first, ...rest], application)];
+}
+
+/**
+ * The Vault policy job's own policy, beside its objects: egress to the Secret
+ * Store and to the cluster's DNS, and nothing reaches it.
+ */
+export function renderPolicyJobPolicy(job: ResolvedPolicyJob): Deliverable {
+  const policy: NetworkPolicy = {
+    apiVersion: "networking.k8s.io/v1",
+    kind: "NetworkPolicy",
+    metadata: {
+      name: job.identity,
+      namespace: job.namespace,
+      labels: labelsOf({ name: job.identity, runtime: "none" }, job.identity),
+    },
+    spec: {
+      podSelector: { matchLabels: instanceOf(job.identity) },
+      policyTypes: ["Ingress", "Egress"],
+      egress: job.egress.map((peer) => ({
+        to: [peerOf(peer.namespace, peer.process)],
+        ports:
+          peer.rule === DNS
+            ? [{ protocol: "UDP" as const, port: peer.port }, tcp(peer.port)]
+            : [tcp(peer.port)],
+      })),
+    },
+  };
+  return {
+    path: "apps/vso-secrets/networkpolicy.yaml",
+    adapter: ADAPTER,
+    objects: [policy],
+  };
 }
 
 export function renderNetworking(project: ResolvedProject): Deliverable[] {
