@@ -568,12 +568,18 @@ describe("the networking adapter, for a backup identity", () => {
     });
   });
 
-  it("writes one policy for the one identity every backup of a Process runs as, and none where nothing is backed up", () => {
+  it("writes one policy for the one identity every backup of a Process runs as, admitting what all of them need, each peer once", () => {
+    const here = { cidr: "203.0.113.0/24", port: 443 };
+    const there = { cidr: "198.51.100.7/32", port: 8443 };
+
+    // The first backup keeps its copies in the cluster; the others copy
+    // off-cluster, one of them to a second range as well.
     expect(
       policies([
         volume("cache"),
         volume("data", { egress: [DNS] }),
-        volume("more", { egress: [DNS], claim: "more-backup" }),
+        volume("more", { egress: [DNS], destinations: [here] }),
+        volume("most", { egress: [DNS], destinations: [here, there] }),
       ]).map(({ metadata, spec }) => [metadata.name, spec.egress]),
     ).toStrictEqual([
       [
@@ -591,6 +597,14 @@ describe("the networking adapter, for a backup identity", () => {
               { protocol: "UDP", port: 53 },
               { protocol: "TCP", port: 53 },
             ],
+          },
+          {
+            to: [{ ipBlock: { cidr: "203.0.113.0/24" } }],
+            ports: [{ protocol: "TCP", port: 443 }],
+          },
+          {
+            to: [{ ipBlock: { cidr: "198.51.100.7/32" } }],
+            ports: [{ protocol: "TCP", port: 8443 }],
           },
         ],
       ],

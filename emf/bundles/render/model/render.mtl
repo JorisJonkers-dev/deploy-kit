@@ -106,33 +106,34 @@
     [for (p : resolveddeployment::ProcessPolicy | d.policies)]
       [p.policy()/]
       [if (p.process.backups()->notEmpty())]
-        [p.process.backupPolicy(p.process.backups()->first().backup)/]
+        [p.process.backupPolicy()/]
       [/if]
     [/for]
   [/if]
 [/template]
 
-[comment A backup identity's own policy: every backup of a Process runs as one identity, whose
-  pods reach the Process they dump, the cluster's DNS and, for an off-cluster copy, the ranges the
-  destination is at. Nothing reaches them. /]
-[template private backupPolicy(p : resolveddeployment::ResolvedProcess, b : resolveddeployment::BackupPlan)]
+[comment A backup identity's own policy. Every backup of a Process runs as the one identity, so
+  the policy admits what all of them need: the Process they dump and the cluster's DNS, which
+  every plan of the Process shares, and each range any of them copies off-cluster to, once.
+  Nothing reaches the identity's pods. /]
+[template private backupPolicy(p : resolveddeployment::ResolvedProcess)]
   ---
   apiVersion: networking.k8s.io/v1
   kind: NetworkPolicy
   metadata:
-    name: [b.identity/]
+    name: [p.backups()->first().backup.identity/]
     namespace: [p.application().namespace/]
     labels:
-      [b.identity.labelSet('none', p.application().id)/]
+      [p.backups()->first().backup.identity.labelSet('none', p.application().id)/]
   spec:
     podSelector:
       matchLabels:
-        app.kubernetes.io/instance: [b.identity/]
+        app.kubernetes.io/instance: [p.backups()->first().backup.identity/]
     policyTypes:
       - Ingress
       - Egress
     egress:
-  [for (peer : resolveddeployment::PolicyPeer | b.egress)]
+  [for (peer : resolveddeployment::PolicyPeer | p.backups()->first().backup.egress)]
         - to:
             [peer.peer()/]
           ports:
@@ -143,13 +144,13 @@
             - protocol: TCP
               port: [peer.port/]
   [/for]
-  [for (range : resolveddeployment::AdmittedRange | b.destinations)]
+  [for (range : String | p.backupRanges())]
         - to:
             - ipBlock:
-                cidr: [range.cidr/]
+                cidr: [range.tokenize(' ')->first()/]
           ports:
             - protocol: TCP
-              port: [range.port/]
+              port: [range.tokenize(' ')->last()/]
   [/for]
 [/template]
 
@@ -842,6 +843,12 @@
     ->asOrderedSet()->sortedBy(r | r) /]
 
 [comment The volumes whose class derives a backup. /]
+[comment Every range a backup of the Process copies off-cluster to, as `<cidr> <port>`, once each
+  in the order met. /]
+[query private backupRanges(p : resolveddeployment::ResolvedProcess) : Sequence(String) =
+  p.backups().backup.destinations
+    ->collect(r | r.cidr + ' ' + r.port.toString())->asOrderedSet()->asSequence() /]
+
 [query private backups(p : resolveddeployment::ResolvedProcess) : Sequence(resolveddeployment::ResolvedVolume) =
   p.volumes->select(v | v.backup <> null) /]
 

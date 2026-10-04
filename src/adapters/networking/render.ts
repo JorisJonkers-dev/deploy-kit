@@ -80,25 +80,42 @@ type Backup = NonNullable<
 /** The cluster's DNS answers on UDP, and on TCP for a truncated response. */
 const DNS = "cluster-dns";
 
+/** Each value once, the first time it is met: two backups of one Process share their peers. */
+const distinct = <T>(values: readonly T[]): T[] => {
+  const met = new Set<string>();
+  return values.filter((value) => {
+    const key = JSON.stringify(value);
+    if (met.has(key)) return false;
+    met.add(key);
+    return true;
+  });
+};
+
 /**
- * A backup identity's own policy: its pods reach the Process they dump, the
- * cluster's DNS and, for an off-cluster copy, the ranges the destination is
- * at. Nothing reaches them.
+ * A backup identity's own policy. Every backup of a Process runs as the one
+ * identity, so the policy admits what all of them need: the Process they dump,
+ * the cluster's DNS and, for each that copies off-cluster, the ranges its
+ * destination is at. Nothing reaches the identity's pods.
  */
 function backupPolicyOf(
-  backup: Backup,
+  backups: readonly [Backup, ...Backup[]],
   application: ResolvedApplicationDocument,
 ): NetworkPolicy {
-  const peers = backup.egress.map((peer) => ({
-    to: [peerOf(peer.namespace, peer.process)],
-    ports:
-      peer.rule === DNS
-        ? [{ protocol: "UDP" as const, port: peer.port }, tcp(peer.port)]
-        : [tcp(peer.port)],
-  }));
-  // A missing list and an empty one admit the same nowhere.
-  // Stryker disable next-line ArrayDeclaration
-  const ranges = (backup.destinations ?? []).map(({ cidr, port }) => ({
+  const [{ identity }] = backups;
+  const peers = distinct(backups.flatMap(({ egress }) => egress)).map(
+    (peer) => ({
+      to: [peerOf(peer.namespace, peer.process)],
+      ports:
+        peer.rule === DNS
+          ? [{ protocol: "UDP" as const, port: peer.port }, tcp(peer.port)]
+          : [tcp(peer.port)],
+    }),
+  );
+  const ranges = distinct(
+    // A missing list and an empty one admit the same nowhere.
+    // Stryker disable next-line ArrayDeclaration
+    backups.flatMap(({ destinations }) => destinations ?? []),
+  ).map(({ cidr, port }) => ({
     to: [{ ipBlock: { cidr } }],
     ports: [tcp(port)],
   }));
@@ -106,15 +123,12 @@ function backupPolicyOf(
     apiVersion: "networking.k8s.io/v1",
     kind: "NetworkPolicy",
     metadata: {
-      name: backup.identity,
+      name: identity,
       namespace: application.namespace,
-      labels: labelsOf(
-        { name: backup.identity, runtime: "none" },
-        application.id,
-      ),
+      labels: labelsOf({ name: identity, runtime: "none" }, application.id),
     },
     spec: {
-      podSelector: { matchLabels: instanceOf(backup.identity) },
+      podSelector: { matchLabels: instanceOf(identity) },
       policyTypes: ["Ingress", "Egress"],
       egress: [...peers, ...ranges],
     },
@@ -122,16 +136,19 @@ function backupPolicyOf(
 }
 
 /** One policy per backup identity: a Process's backups run as one, whatever it backs up. */
-const backupPoliciesOf = (
+function backupPoliciesOf(
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
-): NetworkPolicy[] =>
+): NetworkPolicy[] {
   // A missing list and an empty one hold no backup alike.
   // Stryker disable next-line ArrayDeclaration
-  (process.volumes ?? [])
-    .flatMap(({ backup }) => (backup === undefined ? [] : [backup]))
-    .slice(0, 1)
-    .map((backup) => backupPolicyOf(backup, application));
+  const [first, ...rest] = (process.volumes ?? []).flatMap(({ backup }) =>
+    backup === undefined ? [] : [backup],
+  );
+  return first === undefined
+    ? []
+    : [backupPolicyOf([first, ...rest], application)];
+}
 
 export function renderNetworking(project: ResolvedProject): Deliverable[] {
   const [first] = project.applications;
