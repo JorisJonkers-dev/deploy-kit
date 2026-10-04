@@ -4,7 +4,7 @@
 // share that changed (spec/v1/40-composition.md#fragments).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   composedLock,
   readLock,
@@ -46,8 +46,15 @@ const ESTATE = {
   name: "ci/images.lock.yml",
   text: text("platform/images.lock.yml"),
 };
-const AUTH = project("auth/auth.project.yml");
-const NOTES = project("minimal/notes.project.yml", ["env/notes-api/base.env"]);
+// Lowered before each test, not once at import: a project lowered while the
+// file loads makes every mutant it reaches one no test is known to cover, and
+// a mutation run then runs the whole suite for each.
+let AUTH: EffectiveProject;
+let NOTES: EffectiveProject;
+beforeEach(() => {
+  AUTH = project("auth/auth.project.yml");
+  NOTES = project("minimal/notes.project.yml", ["env/notes-api/base.env"]);
+});
 
 const digest = (character: string): string => `sha256:${character.repeat(64)}`;
 const image = (character: string, uid = 1000, gid = 1000): LockedImage => ({
