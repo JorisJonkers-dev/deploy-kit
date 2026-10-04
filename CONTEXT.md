@@ -306,7 +306,8 @@ repository when it changes. It reads; it never applies
 
 **Vault policy job**: the in-cluster Job that writes the rendered Vault policies
 and auth roles into the Secret Store, before any Application holding a grant
-starts ([chapter 30](spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied)).
+starts. Derived from the Platform document's `policyJob`, never declared as a
+Process, and named by the digest of the documents it is handed ([chapter 30](spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied)).
 
 **Images lock**: every image alias a document names, resolved to one digest and
 the user the image runs as; a pinned input, and never a tag

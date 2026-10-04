@@ -171,6 +171,20 @@ const deliveryPolicy = z
   })
   .meta({ id: "DeliveryPolicy" });
 
+// The job that writes the rendered Vault policies and auth roles into the
+// Secret Store (spec/v1/14-platform-intent.md#the-vault-policy-job): its image
+// alias, the Vault role it logs in as, what it requests and how long it may
+// take. The job itself is derived, never declared as a Process.
+const vaultPolicyJob = z
+  .strictObject({
+    image: text,
+    role: text,
+    memory: text,
+    cpu: text,
+    deadline: text,
+  })
+  .meta({ id: "VaultPolicyJob" });
+
 // Who may hold Kubernetes API access, and where the API answers
 // (spec/v1/14-platform-intent.md#kubernetes-api-access): the Applications whose
 // Processes may declare `api`, and the ranges an egress policy admits for it.
@@ -242,6 +256,7 @@ export const platformIntent = z
     migration: migrationPolicy.exactOptional(),
     delivery: deliveryPolicy.exactOptional(),
     apiAccess: apiAccessPolicy.exactOptional(),
+    policyJob: vaultPolicyJob.exactOptional(),
     handover: handoverLedger.exactOptional(),
     providers: z.array(provider).min(1).exactOptional(),
   })

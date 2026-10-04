@@ -17,6 +17,7 @@ import type {
   ConfigMap,
   CronJob,
   Deployment,
+  Job,
   Kustomization,
   Namespace,
   NetworkPolicy,
@@ -41,6 +42,7 @@ export type RenderedObject =
   | ClusterRole
   | ClusterRoleBinding
   | CronJob
+  | Job
   | VaultConnection
   | VaultAuth
   | VaultStaticSecret

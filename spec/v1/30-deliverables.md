@@ -182,13 +182,35 @@ against a live system by an identity with privilege, which is delivery
 ([0087](../../docs/adr/model/0087-in-cluster-consumers-read-the-render.md)). The
 **Vault policy job** writes them: a Job in the `apps-vso-secrets` Reconcile Unit,
 so it runs before any Application that holds a grant, whose image is the
-`delivery` project's. The Reconcile Unit carries the documents into the job as a
-generated `ConfigMap`, so the job writes exactly the documents of the render
-that applied it, and nothing else. The job is named by the digest of those
-documents, `vault-policy-<12 hex>`: a Job's template cannot change once created,
-so a changed policy set is a new Job, and the one it replaces leaves the render
-with it. Until [#202](https://github.com/JorisJonkers-dev/deploy-kit/issues/202)
-lands, the render carries the documents alone, and no job applies them.
+`delivery` project's. It is derived and never declared as a Process: its input
+is the render itself, which no project file can name. The Platform document
+says which image it is, which Vault role it logs in as and what it requests
+([chapter 14](14-platform-intent.md#the-vault-policy-job)); where the platform
+names no job, or the render holds no document, none is rendered.
+
+The render hands the documents to the job in a `ConfigMap`, so the job writes
+exactly the documents of the render that applied it, and nothing else. The
+ConfigMap and the Job share one name, `vault-policy-<12 hex>`, the first twelve
+hex digits of the SHA-256 of the canonical JSON (RFC 8785) of one object: each
+document under its file name. A Job's template cannot change once created, so a
+changed policy set is a new Job, and the one it replaces leaves the render with
+it. Both implementations compute the name from the documents alone, so it is
+the same name wherever the same grants are rendered.
+
+Four files sit beside `policies/`, in `apps/vso-secrets/`, and the directory's
+index applies the first three:
+
+| file | adapter | holds |
+|---|---|---|
+| `configmap.yaml` | `vault-policy` | the immutable `ConfigMap`, each document under its file name as canonical JSON on one line, in name order |
+| `job.yaml` | `vault-policy` | the `Job`: the locked image, `VAULT_ADDR` the Secret Store's endpoint, `VAULT_ROLE` the platform's role, `POLICIES_DIR` where the ConfigMap is mounted read-only, `activeDeadlineSeconds` the platform's deadline, `restartPolicy: OnFailure`, the token mounted because the job logs in with it |
+| `serviceaccount.yaml` | `vault-policy` | the `ServiceAccount` `vault-policy`, the one identity the platform's role is bound to |
+| `networkpolicy.yaml` | `networking` | the job's own policy: egress to the Secret Store and the cluster's DNS, no ingress; listed by no index, like every policy |
+
+All four are in the **Secret Store's namespace**, the `<project>-system` of the
+project that declares it: the job runs beside the store it writes into, and the
+platform's fixture binds a pair in the namespace the platform already owns for
+it.
 
 - It authenticates as a dedicated **policy-admin** role, a platform fixture
   created with the auth method, because it cannot grant itself the privilege to

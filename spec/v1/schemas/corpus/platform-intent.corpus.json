@@ -81,6 +81,31 @@
           "path": "/apiAccess/server"
         }
       ]
+    },
+    {
+      "name": "a Vault policy job with no role to log in as",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/policyJob/role"
+        }
+      ]
+    },
+    {
+      "name": "a Vault policy job that names a namespace",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/policyJob/namespace",
+          "value": "delivery-system"
+        }
+      ]
     }
   ]
 }

@@ -136,7 +136,9 @@ export function ingressOf(
 const STORE_SURFACE = "http";
 
 /** The Secret Store's Process that answers on its `http` surface, as an egress peer. */
-function storeOf(context: PolicyContext): Egress {
+export function storeOf(
+  context: Pick<PolicyContext, "platform" | "union">,
+): Egress {
   const store = context.union
     .flatMap(({ project, applications }) =>
       applications

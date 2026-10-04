@@ -72,6 +72,9 @@
         "apiAccess": {
           "$ref": "#/$defs/ApiAccessPolicy"
         },
+        "policyJob": {
+          "$ref": "#/$defs/VaultPolicyJob"
+        },
         "handover": {
           "$ref": "#/$defs/HandoverLedger"
         },
@@ -629,6 +632,39 @@
       "required": [
         "holders",
         "server"
+      ],
+      "additionalProperties": false
+    },
+    "VaultPolicyJob": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu": {
+          "type": "string",
+          "minLength": 1
+        },
+        "deadline": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "image",
+        "role",
+        "memory",
+        "cpu",
+        "deadline"
       ],
       "additionalProperties": false
     },

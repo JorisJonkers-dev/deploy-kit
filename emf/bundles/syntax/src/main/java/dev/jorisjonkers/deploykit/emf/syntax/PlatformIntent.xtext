@@ -29,6 +29,7 @@ Platform returns Platform:
 	& ('migration' ':' BEGIN migration=MigrationPolicy END)?
 	& ('delivery' ':' BEGIN delivery=DeliveryPolicy END)?
 	& ('apiAccess' ':' BEGIN apiAccess=ApiAccessPolicy END)?
+	& ('policyJob' ':' BEGIN policyJob=VaultPolicyJob END)?
 	& ('handover' ':' BEGIN handover=HandoverLedger END)?
 	& ('providers' ':' BEGIN (DASH BEGIN providers+=Provider END)+ END)?);
 
@@ -158,6 +159,15 @@ MigrationPolicy returns MigrationPolicy:
 	& ('memory' ':' memory=Text)
 	& ('cpu' ':' cpu=Text));
 
+// The job that writes the rendered Vault policies and auth roles into the Secret Store: its
+// image alias, the Vault role it logs in as, what it requests and how long it may take.
+VaultPolicyJob returns VaultPolicyJob:
+	(('image' ':' image=Text)
+	& ('role' ':' role=Text)
+	& ('memory' ':' memory=Text)
+	& ('cpu' ':' cpu=Text)
+	& ('deadline' ':' deadline=Text));
+
 Provider returns Provider:
 	(('name' ':' name=Text)
 	& ('address' ':' address=Text)
@@ -175,7 +185,7 @@ PlatformKeyword:
 	'acme' | 'address' | 'analysis' | 'apiAccess' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cidr' | 'cluster' | 'clusterDns' | 'cni' | 'collector' |
 	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'egress' | 'embedded' | 'engines' | 'ephemeral' | 'estate' | 'etcd' |
 	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'handover' | 'hardening' | 'holders' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
-	'metrics' | 'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'providers' | 'restricted' | 'retireBy' |
+	'metrics' | 'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'policyJob' | 'providers' | 'restricted' | 'retireBy' |
 	'repository' | 'retain' | 'runner' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'server' | 'serverCount' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
 	'surfaces' | 'telemetry' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'vault';
 

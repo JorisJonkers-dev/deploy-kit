@@ -8,7 +8,10 @@ import {
   kustomizationsFor,
   type Adapter,
 } from "../adapters/registry.ts";
+import { renderPolicyJobPolicy } from "../adapters/networking/render.ts";
+import { documentsOf, renderPolicyJob } from "../adapters/vault-policy/job.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
+import type { Hasher } from "../model/hasher.ts";
 import type { Deliverable, RenderedObject } from "../objects/deliverable.ts";
 import type { AuthoredFile } from "./check-intent-set.ts";
 import {
@@ -78,18 +81,53 @@ export function renderIntentSet(
   return resolved.ok ? renderResolvedSet(resolved.value, options) : resolved;
 }
 
+/** Where every Vault document lands: what the Vault policy job is handed. */
+const VAULT_DOCUMENTS = "apps/vso-secrets/policies/";
+
+/**
+ * The Vault policy job of one render
+ * (spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied):
+ * its objects and its policy, where the platform names the job and the render
+ * holds a document for it to write. It is handed exactly the documents of this
+ * render and is named by their digest, so it spans the projects rendered and
+ * belongs to no one of them.
+ */
+function policyJobOf(
+  resolved: ResolvedSet,
+  rendered: readonly Deliverable[],
+  hash: Hasher,
+): Deliverable[] {
+  const documents = rendered.filter(({ path }) =>
+    path.startsWith(VAULT_DOCUMENTS),
+  );
+  return resolved.policyJob === undefined || documents.length === 0
+    ? []
+    : [
+        ...renderPolicyJob(
+          resolved.policyJob,
+          documents,
+          hash(documentsOf(documents)),
+        ),
+        renderPolicyJobPolicy(resolved.policyJob),
+      ];
+}
+
 /** A set already resolved, rendered: the half of {@link renderIntentSet} after resolution. */
 export function renderResolvedSet(
   resolved: ResolvedSet,
-  options: Omit<RenderOptions, keyof ResolveOptions>,
+  options: Omit<RenderOptions, Exclude<keyof ResolveOptions, "hash">>,
 ): Result<readonly RenderedArtifact[]> {
-  const rendered = resolved.projects
+  const projects = resolved.projects
     .filter(({ project }) => options.projects.includes(project))
     .flatMap((project) =>
       (options.adapters ?? ADAPTERS).flatMap((adapter) =>
         adapter.render(project),
       ),
     );
+  const rendered = [
+    ...projects,
+    ...policyJobOf(resolved, projects, options.hash),
+  ];
   const deliverables = [
     ...rendered,
     ...kustomizationsFor(rendered.map(({ path }) => path)),

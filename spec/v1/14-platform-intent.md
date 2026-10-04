@@ -527,6 +527,37 @@ nothing, and an edge proxy is machinery that holds no access.
 The block is optional. A Platform document without it admits nobody, and every
 `api` declaration read beside it is refused.
 
+## The Vault policy job
+
+```yaml
+policyJob:
+  image: vault-policy
+  role: policy-admin
+  memory: 64Mi
+  cpu: 10m
+  deadline: 120s
+```
+
+The job that writes the rendered Vault policies and auth roles into the Secret
+Store ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied),
+[0087](../../docs/adr/model/0087-in-cluster-consumers-read-the-render.md)). It is
+derived, like a backup and a migration, from facts the platform states and no
+project can:
+
+- **`image`** is an alias the images lock holds, `E_UNLOCKED_IMAGE` otherwise:
+  the binary the `delivery` project builds.
+- **`role`** is the Vault role the job logs in as. The role itself, and its
+  binding to the job's ServiceAccount, `vault-policy` in the Secret Store's
+  namespace, are a fixture created with the auth method
+  ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)):
+  the job cannot grant itself the privilege to write policies.
+- **`memory`** and **`cpu`** are what its one container requests, and
+  **`deadline`** how long a run may take before it is failed.
+
+The block is optional, and it derives a job only beside a `secretStore`: with no
+Secret Store there is nothing to write into, and with no block the render
+carries the documents alone and nothing applies them.
+
 ## The Secret Store
 
 ```yaml
@@ -733,6 +764,13 @@ classDiagram
         +ApplicationId[] holders
         +DestinationRange[] server
     }
+    class VaultPolicyJob {
+        +ImageAlias image
+        +string role
+        +Quantity memory
+        +Quantity cpu
+        +Duration deadline
+    }
     class DeliveryPolicy {
         +ApplicationId[] machinery
         +ApplicationId gate
@@ -767,6 +805,7 @@ classDiagram
     Platform "1" *-- "0..1" MigrationPolicy : migration
     Platform "1" *-- "0..1" DeliveryPolicy : delivery
     Platform "1" *-- "0..1" ApiAccessPolicy : apiAccess
+    Platform "1" *-- "0..1" VaultPolicyJob : policyJob
     DeliveryPolicy "1" *-- "1" AnalysisPolicy : analysis
     Platform "1" *-- "0..1" HandoverLedger : handover
     Platform "1" *-- "0..*" Provider : providers

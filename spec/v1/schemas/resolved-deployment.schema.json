@@ -36,6 +36,9 @@
           "items": {
             "$ref": "#/$defs/ResolvedApplication"
           }
+        },
+        "policyJob": {
+          "$ref": "#/$defs/ResolvedPolicyJob"
         }
       },
       "required": [
@@ -1628,6 +1631,73 @@
         "consumer",
         "backup"
       ]
+    },
+    "ResolvedPolicyJob": {
+      "type": "object",
+      "properties": {
+        "identity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "namespace": {
+          "type": "string",
+          "minLength": 1
+        },
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uid": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "gid": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "address": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu": {
+          "type": "string",
+          "minLength": 1
+        },
+        "deadline": {
+          "type": "string",
+          "pattern": "^\\d+(ms|s|m|h)$"
+        },
+        "egress": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EgressPeer"
+          }
+        }
+      },
+      "required": [
+        "identity",
+        "namespace",
+        "image",
+        "uid",
+        "gid",
+        "role",
+        "address",
+        "memory",
+        "cpu",
+        "deadline",
+        "egress"
+      ],
+      "additionalProperties": false
     }
   }
 }
