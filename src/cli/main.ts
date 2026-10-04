@@ -27,6 +27,7 @@ import {
   type Fragment,
   type Pin,
 } from "../application/compose-estate.ts";
+import { IMAGES_LOCK, shareOf } from "../application/images-lock-shares.ts";
 import { parsePlatformIntent } from "../application/parse-platform-intent.ts";
 import { parseProjectIntent } from "../application/parse-project-intent.ts";
 import { canonicalJson } from "../infrastructure/canonical-json.ts";
@@ -64,7 +65,8 @@ const REF = "ref";
 
 export const USAGE_TEXT = `usage:
   deploy-kit validate <file|directory>... [--json]
-  deploy-kit publish <project-file|platform.intent.yml> --repository <owner/name> --source-sha <sha> --version <x.y.z> --out <directory> [--json]
+  deploy-kit publish <project-file|platform.intent.yml> --repository <owner/name> --source-sha <sha> --version <x.y.z> --out <directory>
+                     [--images-lock <file>] [--json]
   deploy-kit compose --platform <directory> --fragments <directory> --cluster-state <file>
                      --schema-package-integrity <sha256:...> --out <directory>
                      [--held <directory>] [--pins <file>] [--lock <file> --lock-commit <sha>] [--json]
@@ -84,6 +86,7 @@ const OPTIONS = {
   lock: { type: "string" },
   "lock-commit": { type: "string" },
   "cluster-state": { type: "string" },
+  "images-lock": { type: "string" },
   "schema-package-integrity": { type: "string" },
 } as const;
 
@@ -207,11 +210,14 @@ interface Packed {
 
 /**
  * A project file's fragment: the file, its env files, the Asset files it names
- * and the proof beside it, the authored inputs and nothing generated.
+ * and the proof beside it, the authored inputs and nothing generated, and its
+ * share of the images lock it is handed
+ * (spec/v1/40-composition.md#fragments).
  */
 function packProject(
   file: string,
   text: string,
+  imagesLock: string | undefined,
 ): Packed | readonly Diagnostic[] {
   const beside = dirname(file);
   const env = existsSync(join(beside, "env"))
@@ -227,11 +233,22 @@ function packProject(
       (named ?? []).map(({ from }) => from),
     ),
   );
+  const share =
+    imagesLock === undefined
+      ? undefined
+      : shareOf(
+          { name: imagesLock, text: readFileSync(imagesLock, "utf8") },
+          parsed.value.effective,
+        );
+  if (share?.ok === false) return share.diagnostics;
   return {
     files: [
       { name: basename(file), text },
       ...env.map(({ path, text: body }) => ({ name: path, text: body })),
       ...besideFiles(beside, [...new Set(assets)].concat(PROOF)),
+      ...(share === undefined
+        ? []
+        : [{ name: IMAGES_LOCK, text: stringify(share.value) }]),
     ],
     project: parsed.value.document.project,
     schemaVersion: parsed.value.document.schemaVersion,
@@ -283,9 +300,14 @@ function publish(
   ]);
   if (absent !== undefined) return usage(`--${absent} is required`);
   const text = readFileSync(document, "utf8");
-  const packed = document.endsWith(PLATFORM_DOCUMENT)
+  const imagesLock = values["images-lock"] as string | undefined;
+  const platform = document.endsWith(PLATFORM_DOCUMENT);
+  // The Platform document publishes the lock beside it; a share is a project's.
+  if (platform && imagesLock !== undefined)
+    return usage("publish: --images-lock is for a project file");
+  const packed = platform
     ? packPlatform(document, text)
-    : packProject(document, text);
+    : packProject(document, text, imagesLock);
   if (!("files" in packed)) return refused(packed, json);
   const { files } = packed;
   const manifest = {

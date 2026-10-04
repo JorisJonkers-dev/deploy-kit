@@ -7,6 +7,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
+import { parse, stringify } from "yaml";
 import {
   composeEstate,
   type ComposeInput,
@@ -614,5 +615,356 @@ describe("composeEstate", () => {
         },
       }),
     ).toThrow("is not rendered yet");
+  });
+});
+
+// REQ-047 (docs/requirements.md): composition unions every fragment's share of
+// the images lock into the one lock resolution reads
+// (spec/v1/40-composition.md#fragments).
+describe("composeEstate, over the fragments' shares of the images lock", () => {
+  interface Locked {
+    repository: string;
+    digest: string;
+    uid: number;
+    gid: number;
+  }
+  interface Lock {
+    name: string;
+    images: Record<string, Locked>;
+  }
+  const ESTATE_LOCK = parse(text("platform/images.lock.yml")) as Lock;
+  const NOTES_API = ESTATE_LOCK.images["notes-api"] as Locked;
+
+  /** A lock file as a fragment carries it. */
+  const lockFile = (name: string, images: Lock["images"]) => ({
+    name: "images.lock.yml",
+    text: stringify({ ...ESTATE_LOCK, name, images }),
+  });
+
+  /** The Platform document's fragment, its lock holding everything but one Project's image. */
+  const PLATFORM_WITHOUT_NOTES: Fragment = {
+    ...PLATFORM,
+    files: PLATFORM.files.map((file) =>
+      file.name === "images.lock.yml"
+        ? lockFile(
+            "estate",
+            Object.fromEntries(
+              Object.entries(ESTATE_LOCK.images).filter(
+                ([alias]) => alias !== "notes-api",
+              ),
+            ),
+          )
+        : file,
+    ),
+  };
+
+  /** A release of notes that carries its share. */
+  const notesWith = (version: string, locked: Locked | string): Fragment => {
+    const fragment = release("notes", version);
+    const share =
+      typeof locked === "string"
+        ? { name: "images.lock.yml", text: locked }
+        : lockFile("notes", { "notes-api": locked });
+    return {
+      ...fragment,
+      ref: `${fragment.ref.slice(0, -8)}${hex(share.text, 8)}`,
+      files: [...fragment.files, share],
+    };
+  };
+  const others = RELEASES.filter(
+    ({ manifest }) => manifest.spec.project !== "notes",
+  );
+  const artifact = (composition: Composition, name: string) =>
+    composition.artifacts.find((candidate) => candidate.name === name);
+
+  it("resolves a Project's image from the share its own fragment carries", () => {
+    const composed = compose({
+      platform: PLATFORM_WITHOUT_NOTES,
+      fragments: [notesWith("1.0.0", NOTES_API), ...others],
+    });
+
+    // The same images, locked across two fragments instead of one, render
+    // the same objects.
+    expect(composed.lock.spec.isolated).toBeUndefined();
+    expect(artifact(composed, "notes")?.files).toEqual(
+      artifact(FIRST, "notes")?.files,
+    );
+  });
+
+  it("leaves a Project's image unlocked when no fragment carries it", () => {
+    const composed = compose({
+      platform: PLATFORM_WITHOUT_NOTES,
+      fragments: RELEASES,
+    });
+
+    expect(composed.lock.spec.isolated?.notes?.codes).toEqual([
+      "E_UNLOCKED_IMAGE",
+    ]);
+    expect(artifact(composed, "notes")).toBeUndefined();
+  });
+
+  it("renders the image a changed share locks, when nothing else locks the alias", () => {
+    const bumped = { ...NOTES_API, digest: `sha256:${"7".repeat(64)}` };
+    const first = compose({
+      platform: PLATFORM_WITHOUT_NOTES,
+      fragments: [notesWith("1.0.0", NOTES_API), ...others],
+    });
+    const composed = compose({
+      platform: PLATFORM_WITHOUT_NOTES,
+      fragments: [notesWith("1.1.0", bumped), ...others],
+      held: [notesWith("1.0.0", NOTES_API), ...others],
+      pins: pinned(first),
+      previous: { lock: first.lock, commit: hex("estate-commit", 40) },
+    });
+
+    expect(composed.lock.spec.isolated).toBeUndefined();
+    expect(artifact(composed, "notes")?.moves).toBe(true);
+    expect(
+      artifact(composed, "notes")?.files.some(({ text: body }) =>
+        body.includes(bumped.digest),
+      ),
+    ).toBe(true);
+  });
+
+  it("isolates a changed fragment whose share locks an alias another fragment locks differently", () => {
+    const conflicting = notesWith("1.1.0", {
+      ...NOTES_API,
+      digest: `sha256:${"7".repeat(64)}`,
+    });
+    const composed = after({
+      fragments: [conflicting, ...others],
+    });
+
+    expect(composed.lock.spec.isolated).toEqual({
+      notes: { refused: conflicting.ref, codes: ["E_IMAGE_LOCK_CONFLICT"] },
+    });
+    expect(composed.lock.spec.fragments.notes?.ref).toBe(RELEASES[0]?.ref);
+    expect(artifact(composed, "notes")?.moves).toBe(false);
+  });
+
+  it("isolates a changed fragment whose share cannot be read", () => {
+    const unreadable = notesWith("1.1.0", "images: [");
+    const composed = after({ fragments: [unreadable, ...others] });
+
+    expect(composed.lock.spec.isolated?.notes?.refused).toBe(unreadable.ref);
+    expect(composed.lock.spec.fragments.notes?.ref).toBe(RELEASES[0]?.ref);
+  });
+
+  it("fails the run when the share of a fragment that already composed is what disagrees", () => {
+    // notes composed with this share, so it is not what changed: the
+    // Platform document's lock is, and nothing isolates the platform.
+    const shared = notesWith("1.0.0", NOTES_API);
+    const first = compose({ fragments: [shared, ...others] });
+    const moved: Fragment = {
+      ...PLATFORM,
+      files: PLATFORM.files.map((file) =>
+        file.name === "images.lock.yml"
+          ? lockFile("estate", {
+              ...ESTATE_LOCK.images,
+              "notes-api": { ...NOTES_API, uid: 2000 },
+            })
+          : file,
+      ),
+    };
+    const result = composeEstate(
+      {
+        platform: moved,
+        fragments: [shared, ...others],
+        held: [shared, ...others],
+        pins: pinned(first),
+        clusterState: {
+          name: "cluster-state.yml",
+          text: text("platform/cluster-state.yml"),
+        },
+        previous: { lock: first.lock, commit: hex("estate-commit", 40) },
+      },
+      OPTIONS,
+    );
+
+    expect(result.ok).toBe(false);
+    expect(
+      !result.ok &&
+        result.diagnostics.map(({ code, document }) => [code, document]),
+    ).toEqual([
+      ["E_IMAGE_LOCK_CONFLICT", "_platform/images.lock.yml"],
+      ["E_IMAGE_LOCK_CONFLICT", "notes/images.lock.yml"],
+    ]);
+  });
+
+  it("never resolves another Project, or the Platform document, from a fragment's share", () => {
+    // notes now runs the image the Platform document's postgres backup names,
+    // and locks it in its own share. The platform's own lock no longer holds
+    // it, and the platform's files arrive in another order.
+    const squatting: Fragment = {
+      ...release("notes", "1.0.0", (body) =>
+        body.replace("image: notes-api", "image: postgres-backup"),
+      ),
+    };
+    const share = lockFile("notes", {
+      "postgres-backup": ESTATE_LOCK.images["postgres-backup"] as Locked,
+    });
+    const result = composeEstate(
+      {
+        platform: {
+          ...PLATFORM,
+          files: PLATFORM.files
+            .map((file) =>
+              file.name === "images.lock.yml"
+                ? lockFile(
+                    "estate",
+                    Object.fromEntries(
+                      Object.entries(ESTATE_LOCK.images).filter(
+                        ([alias]) => alias !== "postgres-backup",
+                      ),
+                    ),
+                  )
+                : file,
+            )
+            .reverse(),
+        },
+        fragments: [
+          { ...squatting, files: [...squatting.files, share] },
+          ...others,
+        ],
+        held: [],
+        pins: {},
+        clusterState: {
+          name: "cluster-state.yml",
+          text: text("platform/cluster-state.yml"),
+        },
+      },
+      OPTIONS,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        expect.objectContaining({
+          code: "E_UNLOCKED_IMAGE",
+          document: "_platform/platform.intent.yml",
+          message:
+            "no lock this document is resolved from holds an entry for postgres-backup",
+        }),
+      ],
+    });
+  });
+
+  it("reads names from the project file and the Platform document, and from no other file a fragment holds", () => {
+    // A file that would parse as a project file naming vault, beside a share
+    // that locks vault to another image: not the project file, so the share
+    // is not read for vault and disagrees with nothing.
+    const fragment = release("notes", "1.1.0");
+    const decoy: Fragment = {
+      ...fragment,
+      files: [
+        ...fragment.files,
+        {
+          name: "config/decoy.yml",
+          text: text("minimal/notes.project.yml").replace(
+            "image: notes-api",
+            "image: vault",
+          ),
+        },
+        lockFile("notes", {
+          "notes-api": NOTES_API,
+          vault: { ...NOTES_API, digest: `sha256:${"7".repeat(64)}` },
+        }),
+      ],
+    };
+    // And a file beside the Platform document that would parse as one naming
+    // a backup image nothing locks.
+    const drafted: Fragment = {
+      ...PLATFORM,
+      files: [
+        {
+          name: "platform.intent.yml.draft",
+          text: withLedger(
+            text("platform/platform.intent.yml"),
+            LEDGER,
+          ).replace("backup: postgres-backup", "backup: unlocked-backup"),
+        },
+        ...PLATFORM.files,
+      ],
+    };
+    const composed = after({
+      platform: drafted,
+      fragments: [decoy, ...others],
+    });
+
+    expect(composed.lock.spec.isolated).toBeUndefined();
+    expect(composed.lock.spec.fragments.notes?.ref).toBe(decoy.ref);
+  });
+
+  it("isolates a changed fragment whose project file cannot be read, share and all", () => {
+    const fragment = release("notes", "1.1.0", () => "kind: [");
+    const unreadable: Fragment = {
+      ...fragment,
+      files: [...fragment.files, lockFile("notes", { "notes-api": NOTES_API })],
+    };
+    const composed = after({ fragments: [unreadable, ...others] });
+
+    expect(composed.lock.spec.isolated?.notes?.refused).toBe(unreadable.ref);
+    expect(composed.lock.spec.fragments.notes?.ref).toBe(RELEASES[0]?.ref);
+  });
+
+  it("fails the run on a Platform document's lock that cannot be read", () => {
+    const result = composeEstate(
+      {
+        platform: {
+          ...PLATFORM,
+          files: PLATFORM.files.map((file) =>
+            file.name === "images.lock.yml"
+              ? { name: file.name, text: "images: [" }
+              : file,
+          ),
+        },
+        fragments: RELEASES,
+        held: [],
+        pins: {},
+        clusterState: {
+          name: "cluster-state.yml",
+          text: text("platform/cluster-state.yml"),
+        },
+      },
+      OPTIONS,
+    );
+
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.diagnostics[0]?.document).toBe(
+      "_platform/images.lock.yml",
+    );
+  });
+
+  it("composes with no lock beside the Platform document, every alias then unlocked", () => {
+    const result = composeEstate(
+      {
+        platform: {
+          ...PLATFORM,
+          files: PLATFORM.files.filter(
+            ({ name }) => name !== "images.lock.yml",
+          ),
+        },
+        fragments: RELEASES,
+        held: [],
+        pins: {},
+        clusterState: {
+          name: "cluster-state.yml",
+          text: text("platform/cluster-state.yml"),
+        },
+      },
+      OPTIONS,
+    );
+
+    // The images the Platform document itself names are unlocked too, and
+    // nothing isolates the platform.
+    expect(result.ok).toBe(false);
+    expect(
+      !result.ok &&
+        result.diagnostics.some(
+          ({ code, document }) =>
+            code === "E_UNLOCKED_IMAGE" &&
+            document === "_platform/platform.intent.yml",
+        ),
+    ).toBe(true);
   });
 });

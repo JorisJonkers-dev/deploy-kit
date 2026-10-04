@@ -112,7 +112,8 @@ node src/cli/index.ts validate spec/v1/examples/platform/platform.intent.yml \
 
 # Pack one release of a project file, or of the Platform document, as an Intent Fragment.
 node src/cli/index.ts publish spec/v1/examples/minimal/notes.project.yml \
-  --repository JorisJonkers-dev/notes --source-sha <commit> --version 1.4.0 --out fragment/
+  --repository JorisJonkers-dev/notes --source-sha <commit> --version 1.4.0 --out fragment/ \
+  [--images-lock images.lock.yml]   # packs the project's share of the lock its build wrote
 
 # Compose the estate from pulled fragments, each directory holding a fragment and the
 # `ref` its pull resolved, and write the artifacts, the lock and what to report.

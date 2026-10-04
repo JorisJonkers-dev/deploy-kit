@@ -307,7 +307,9 @@ starts ([chapter 30](spec/v1/30-deliverables.md#vault-configuration-is-rendered-
 
 **Images lock**: every image alias a document names, resolved to one digest and
 the user the image runs as; a pinned input, and never a tag
-([chapter 20](spec/v1/20-resolved-deployment.md#the-images-lock)).
+([chapter 20](spec/v1/20-resolved-deployment.md#the-images-lock)). A fragment
+carries its **share**, the aliases its project file names, and composition
+unions the shares ([chapter 40](spec/v1/40-composition.md#fragments)).
 
 **Authority**: which side declares a value. Platform-assigned if and only if it
 must be unique across the estate or draws on a shared finite resource

@@ -98,6 +98,42 @@ jobs:
             platform/knowledge.project.yml \
             platform/env
 
+      - uses: oras-project/setup-oras@v1
+        if: ${{ !cancelled() }}
+
+      - name: Lock the release's images
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Every image this repository builds, resolved to the digest THIS
+          # release's build pushed, with the user the image runs as, read from
+          # the image itself (docs/adr/model/0020-hardening-is-one-platform-posture.md).
+          # Nothing here names a digest by hand, and nothing later reads a tag.
+          echo "$GH_TOKEN" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+          TAG="${{ github.event.workflow_run.head_branch || github.ref_name }}"
+          {
+            echo "apiVersion: lock.jorisjonkers.dev/v1"
+            echo "kind: ImagesLock"
+            echo "schemaVersion: 1.0.0"
+            echo "name: knowledge"
+            echo "images:"
+            # The two Processes' images, and the migration image built FROM the
+            # platform's runner with the Application's changelog in it.
+            for alias in knowledge-api knowledge-ingest-worker knowledge-migration; do
+              repository="ghcr.io/${{ github.repository }}/${alias}"
+              digest="$(oras resolve "${repository}:${TAG}")"
+              # The user is the image's own, and numeric: a name is
+              # E_IMAGE_USER_NOT_NUMERIC, because the posture runs a number.
+              user="$(oras manifest fetch-config "${repository}@${digest}" | jq -r '.config.User')"
+              echo "  ${alias}:"
+              echo "    repository: ${repository}"
+              echo "    digest: \"${digest}\""
+              echo "    uid: ${user%%:*}"
+              echo "    gid: ${user##*:}"
+            done
+          } > images.lock.yml
+
       - name: Pack the fragment
         if: ${{ !cancelled() }}
         run: |
@@ -111,34 +147,28 @@ jobs:
           # and a hash that included generated output would change on every
           # publish and detect nothing.
           #
-          # The fragment's own share of the images lock -- each alias the
-          # project file names, resolved to the digest the build just pushed,
-          # with the UID and GID it runs as
-          # (docs/adr/model/0020-hardening-is-one-platform-posture.md) -- is
-          # not packed by the toolkit yet; until it is, the Platform document's
-          # fragment carries the estate's images lock.
+          # The fragment's own share of the images lock is packed from the
+          # lock the step above wrote: the aliases the project file names and
+          # no other. An alias that lock does not hold is E_UNLOCKED_IMAGE
+          # here, so a fragment never names an image nothing can pull
+          # (docs/adr/model/0090-composition-unions-each-fragments-share-of-the-images-lock.md).
           TAG="${{ github.event.workflow_run.head_branch || github.ref_name }}"
           npx --no-install deploy-kit publish platform/knowledge.project.yml \
             --repository "${{ github.repository }}" \
             --source-sha "${{ github.event.workflow_run.head_sha || github.sha }}" \
             --version "${TAG#v}" \
+            --images-lock images.lock.yml \
             --out fragment/
 
           # Per-file digests, so a consumer can verify the package it pulled.
           ( cd fragment && find . -type f -not -name MANIFEST.sha256 \
               | sort | xargs sha256sum > MANIFEST.sha256 )
 
-      - uses: oras-project/setup-oras@v1
-        if: ${{ !cancelled() }}
-
       - name: Push and resolve
         id: resolve
         if: ${{ success() }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           REF="ghcr.io/${{ github.repository_owner }}/intent-knowledge:latest"
-          echo "$GH_TOKEN" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
 
           # The release's version, without the tag's leading v.
           TAG="${{ github.event.workflow_run.head_branch || github.ref_name }}"

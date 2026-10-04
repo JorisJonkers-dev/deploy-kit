@@ -248,6 +248,118 @@ describe("deploy-kit publish", () => {
     expect(existsSync(join(bare, "env"))).toBe(false);
   });
 
+  it("packs a project's share of the images lock it is handed, and counts it among the inputs", () => {
+    const out = join(mkdtempSync(join(temporary(), "publish-")), "auth");
+    const arguments_ = [
+      "publish",
+      example("auth/auth.project.yml"),
+      "--repository",
+      "JorisJonkers-dev/auth",
+      "--source-sha",
+      hex("auth", 40),
+      "--version",
+      "1.0.0",
+      "--out",
+      out,
+    ];
+    expect(run(...arguments_).code).toBe(0);
+    expect(existsSync(join(out, "images.lock.yml"))).toBe(false);
+    const without = (
+      parse(readFileSync(join(out, "fragment.yml"), "utf8")) as {
+        spec: { inputsSha: string };
+      }
+    ).spec.inputsSha;
+
+    expect(
+      run(...arguments_, "--images-lock", example("platform/images.lock.yml")),
+    ).toEqual({ code: 0, stdout: `auth 1.0.0 packed in ${out}\n`, stderr: "" });
+    const share = parse(readFileSync(join(out, "images.lock.yml"), "utf8")) as {
+      name: string;
+      kind: string;
+      images: Record<string, unknown>;
+    };
+    expect(share.kind).toBe("ImagesLock");
+    expect(share.name).toBe("auth");
+    expect(Object.keys(share.images)).toEqual([
+      "auth-api",
+      "auth-migration",
+      "auth-ui",
+    ]);
+    // A new digest in the share is a new fragment.
+    expect(
+      (
+        parse(readFileSync(join(out, "fragment.yml"), "utf8")) as {
+          spec: { inputsSha: string };
+        }
+      ).spec.inputsSha,
+    ).not.toBe(without);
+  });
+
+  it("refuses to pack a project whose image the lock it is handed does not hold", () => {
+    const directory = mkdtempSync(join(temporary(), "publish-"));
+    const lock = join(directory, "images.lock.yml");
+    writeFileSync(
+      lock,
+      readFileSync(example("platform/images.lock.yml"), "utf8").replace(
+        /^ {2}auth-ui:\n(?: {4}.*\n)+/m,
+        "",
+      ),
+    );
+    const out = join(directory, "auth");
+    const outcome = run(
+      "publish",
+      example("auth/auth.project.yml"),
+      "--repository",
+      "JorisJonkers-dev/auth",
+      "--source-sha",
+      hex("auth", 40),
+      "--version",
+      "1.0.0",
+      "--out",
+      out,
+      "--images-lock",
+      lock,
+      "--json",
+    );
+
+    expect(outcome.code).toBe(1);
+    expect(JSON.parse(outcome.stdout)).toEqual([
+      {
+        code: "E_UNLOCKED_IMAGE",
+        document: lock,
+        path: "/images",
+        message: "the images lock holds no entry for auth-ui",
+        hint: "Lock every alias the project file names before its fragment is published.",
+      },
+    ]);
+    expect(existsSync(out)).toBe(false);
+  });
+
+  it("takes --images-lock for a project file only: the Platform document publishes the lock beside it", () => {
+    const out = join(mkdtempSync(join(temporary(), "publish-")), "platform");
+    const outcome = run(
+      "publish",
+      example("platform/platform.intent.yml"),
+      "--repository",
+      "JorisJonkers-dev/estate",
+      "--source-sha",
+      hex("estate", 40),
+      "--version",
+      "1.0.0",
+      "--out",
+      out,
+      "--images-lock",
+      example("platform/images.lock.yml"),
+    );
+
+    expect(outcome).toEqual({
+      code: 2,
+      stdout: "",
+      stderr: `publish: --images-lock is for a project file\n${USAGE_TEXT}`,
+    });
+    expect(existsSync(out)).toBe(false);
+  });
+
   it("packs the Platform document with the node contract and the images lock it publishes with", () => {
     const out = join(mkdtempSync(join(temporary(), "publish-")), "platform");
     published(example("platform/platform.intent.yml"), "estate", out);
@@ -315,6 +427,58 @@ describe("deploy-kit publish", () => {
 });
 
 describe("deploy-kit compose", () => {
+  it("composes a Project from the share its fragment carries, when the platform's lock no longer holds its image", () => {
+    const root = pulled();
+    // The platform's fragment, published again with a lock that leaves the
+    // Project's image out.
+    const authored = join(root, "authored");
+    const estate = readFileSync(join(authored, "images.lock.yml"), "utf8");
+    writeFileSync(
+      join(authored, "images.lock.yml"),
+      estate.replace(/^ {2}notes-api:\n(?: {4}.*\n)+/m, ""),
+    );
+    published(
+      join(authored, "platform.intent.yml"),
+      "estate",
+      join(root, "platform"),
+    );
+    expect(composeIn(root, "--out", join(root, "unlocked")).stdout).toBe(
+      "composed 2 artifacts; pins move for: observability, secrets\n",
+    );
+
+    // The Project's own release, published with the lock its build wrote.
+    const lock = join(root, "notes.lock.yml");
+    writeFileSync(lock, estate);
+    const notes = join(root, "fragments", "notes");
+    expect(
+      run(
+        "publish",
+        example("minimal/notes.project.yml"),
+        "--repository",
+        "JorisJonkers-dev/notes",
+        "--source-sha",
+        hex("notes", 40),
+        "--version",
+        "1.0.0",
+        "--out",
+        notes,
+        "--images-lock",
+        lock,
+      ).code,
+    ).toBe(0);
+    writeFileSync(
+      join(notes, "ref"),
+      `ghcr.io/jorisjonkers-dev/intent/notes@sha256:${hex("notes-share", 64)}\n`,
+    );
+
+    expect(composeIn(root, "--out", join(root, "shared"))).toEqual({
+      code: 0,
+      stdout:
+        "composed 3 artifacts; pins move for: notes, observability, secrets\n",
+      stderr: "",
+    });
+  });
+
   it("composes the estate from pulled fragments, then again from its own lock with nothing to move", () => {
     const root = pulled();
     const first = composeIn(root, "--out", join(root, "first"));
@@ -524,9 +688,12 @@ describe("deploy-kit", () => {
     expect(USAGE_TEXT.split("\n").slice(0, 4)).toEqual([
       "usage:",
       "  deploy-kit validate <file|directory>... [--json]",
-      "  deploy-kit publish <project-file|platform.intent.yml> --repository <owner/name> --source-sha <sha> --version <x.y.z> --out <directory> [--json]",
-      "  deploy-kit compose --platform <directory> --fragments <directory> --cluster-state <file>",
+      "  deploy-kit publish <project-file|platform.intent.yml> --repository <owner/name> --source-sha <sha> --version <x.y.z> --out <directory>",
+      "                     [--images-lock <file>] [--json]",
     ]);
+    expect(USAGE_TEXT).toContain(
+      "  deploy-kit compose --platform <directory> --fragments <directory> --cluster-state <file>",
+    );
   });
 
   it("asks for a command it knows, and an option it knows", () => {

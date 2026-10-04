@@ -412,6 +412,10 @@ An alias a Process or a sidecar names that the lock holds no entry for is
 `E_UNLOCKED_IMAGE`, at that `image`: a tag cannot stand in for it, because a tag
 is the mutable reference this lock exists to remove.
 
+In a composition the lock read is the union of the share each Intent Fragment
+carries, and a fragment's share is itself a document of this kind, named by its
+project ([chapter 40](40-composition.md#fragments)).
+
 | refused before resolution | error |
 |---|---|
 | the node contract's digest is not the Platform document's `metadata.nodeContract` | `E_NODE_CONTRACT_MISMATCH` |

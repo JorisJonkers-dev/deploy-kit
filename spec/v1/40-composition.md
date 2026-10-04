@@ -93,6 +93,41 @@ A fragment carries:
   non-transactional changeset
   ([chapter 55](55-delivery.md#migration-safety))
 
+**Composition unions the shares into the one images lock resolution reads**
+([0090](../../docs/adr/model/0090-composition-unions-each-fragments-share-of-the-images-lock.md)).
+A share holds the aliases its project file names and no other: each Process's
+image, each sidecar's, and the migration image of an Application that moves its
+schema with a changelog. The Platform document's fragment carries the lock for
+the images the Platform document itself names, its backup methods and its
+migration runner among them. The union is one images lock
+([chapter 20](20-resolved-deployment.md#the-images-lock)), named by the
+Platform document's `metadata.project`, and resolution reads it and no other.
+
+| the shares say | the union |
+|---|---|
+| a share locks an alias its own project file names | holds that entry |
+| a share locks an alias its own project file does not name | does not read it: a fragment locks its own images and no one else's |
+| two shares lock an alias to the same repository, digest, `uid` and `gid` | holds it once: two Projects may run one third-party image, each locking it |
+| two shares lock an alias differently | `E_IMAGE_LOCK_CONFLICT`, at the alias in the share of the fragment that changed |
+| neither a document's own fragment nor the Platform document's lock holds an alias it names | `E_UNLOCKED_IMAGE`, at that document, whatever another Project's share holds |
+
+**A document is resolved from its own fragment and from the Platform
+document's lock, and from nothing else.** A project file's aliases are locked by
+its own share or by the platform's lock; the Platform document's own aliases,
+by its own lock. So no fragment decides the image another Project, or the
+platform, runs: the most a share can do to another fragment is disagree with
+it, and a disagreement is refused.
+
+One alias resolves to one image estate-wide, so a disagreement is refused, and
+it is refused where it was introduced. What the unchanged fragments hold
+stands: a changed fragment whose share disagrees with them is the one refused,
+and it is isolated like any other refused fragment
+([A refused Project is isolated](#a-refused-project-is-isolated)). Where no
+unchanged fragment settles the alias, every changed share that holds it is
+refused. A disagreement that names only fragments that already composed, or
+the Platform document's own lock, has no changed fragment to isolate and fails
+the run.
+
 A fragment publishes **on a release tag, after that release's images are
 built**, with every alias it names already resolved
 ([0083](../../docs/adr/model/0083-a-fragment-publishes-on-a-release-tag.md),

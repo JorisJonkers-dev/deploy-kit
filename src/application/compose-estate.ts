@@ -21,7 +21,14 @@ import {
   type PinAnnotationsDocument,
 } from "../model/pin-annotations.ts";
 import type { AuthoredFile } from "./check-intent-set.ts";
+import {
+  composedLock,
+  IMAGES_LOCK,
+  type Carrier,
+} from "./images-lock-shares.ts";
+import { aliasesOf, type ImagesLockDocument } from "../model/images-lock.ts";
 import { parsePlatformIntent } from "./parse-platform-intent.ts";
+import { parseProjectIntent } from "./parse-project-intent.ts";
 import {
   renderResolvedSet,
   type RenderedFile,
@@ -44,9 +51,9 @@ export interface Pin {
 }
 
 export interface ComposeInput {
-  /** The Platform document's fragment: the document, the node contract and the images lock. */
+  /** The Platform document's fragment: the document, the node contract and, where it carries one, an images lock. */
   readonly platform: Fragment;
-  /** Every Project's newest fragment. */
+  /** Every Project's newest fragment, each with its share of the images lock where it has one. */
   readonly fragments: readonly Fragment[];
   /** Every earlier fragment a Rollback or the previous lock names, by reference. */
   readonly held: readonly Fragment[];
@@ -138,6 +145,65 @@ function platformOf(fragment: Fragment): PlatformIntentDocument {
   ).value.document;
 }
 
+const PROJECT_FILE = ".project.yml";
+
+/**
+ * The one images lock resolution reads: the Platform document's, where its
+ * fragment carries one, and every composed fragment's share, as one lock named
+ * after the Platform document (spec/v1/40-composition.md#fragments). Each
+ * document is handed over with the aliases it names, which are the document's
+ * own: no env file decides one. A document that does not parse names none
+ * here, and resolution reports it.
+ */
+function imagesLockOf(
+  platform: Fragment,
+  candidates: ReadonlyMap<string, Fragment>,
+  previous: Readonly<Record<string, { readonly ref: string } | undefined>>,
+  schemaVersion: string,
+): Result<ImagesLockDocument> {
+  const lockOf = (files: readonly AuthoredFile[]) =>
+    files.find(({ name }) => name === IMAGES_LOCK);
+  const projects = [...candidates].flatMap(([project, fragment]) =>
+    fragment.files
+      .filter(({ name }) => name.endsWith(PROJECT_FILE))
+      .map(({ name, text }): Carrier => {
+        const parsed = parseProjectIntent(text, []);
+        return {
+          directory: project,
+          changed: fragment.ref !== previous[project]?.ref,
+          document: `${project}/${name}`,
+          names: parsed.ok ? aliasesOf(parsed.value.effective) : [],
+          lock: lockOf(fragment.files),
+        };
+      }),
+  );
+  // The images the Platform document names itself: each engine's backup method.
+  const named = platform.files
+    .filter(({ name }) => name === PLATFORM_DOCUMENT)
+    .flatMap(({ text }) => {
+      const parsed = parsePlatformIntent(text);
+      return parsed.ok
+        ? Object.values(parsed.value.document.engines).map(
+            ({ backup }) => backup,
+          )
+        : [];
+    });
+  return composedLock(
+    {
+      directory: PLATFORM,
+      // The platform's lock is never the changed side of a disagreement: an
+      // error that names it fails the run, as every platform error does.
+      changed: false,
+      document: `${PLATFORM}/${PLATFORM_DOCUMENT}`,
+      names: named,
+      lock: lockOf(platform.files),
+    },
+    projects,
+    platform.manifest.spec.project,
+    schemaVersion,
+  );
+}
+
 /** A fragment by reference, which the caller owes for every reference it hands over. */
 function heldAt(held: readonly Fragment[], ref: string): Fragment {
   const fragment = held.find((candidate) => candidate.ref === ref);
@@ -185,7 +251,15 @@ export function composeEstate(
         placed(project, files),
       ),
     ];
-    const resolved = resolveIntentSet(files, options);
+    const lock = imagesLockOf(
+      input.platform,
+      candidates,
+      previous,
+      options.schemaVersion,
+    );
+    const resolved = lock.ok
+      ? resolveIntentSet(files, { ...options, imagesLock: lock.value })
+      : lock;
     const outcome = resolved.ok
       ? deliver(input, resolved.value, options)
       : resolved;
