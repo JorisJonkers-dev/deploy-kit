@@ -36,6 +36,16 @@ export const TRANSIT_OPERATIONS = [
   "decrypt",
   "rotate",
 ] as const;
+/** What a Process that holds Kubernetes API access may ask of a resource. */
+export const API_VERBS = [
+  "get",
+  "list",
+  "watch",
+  "create",
+  "update",
+  "patch",
+  "delete",
+] as const;
 export const DELIVERIES = ["env", "file", "self"] as const;
 export const TOLERANCES = ["restart", "reload"] as const;
 export const PLACEHOLDER_KINDS = [
@@ -61,5 +71,6 @@ export type DatabaseEngine = (typeof DATABASE_ENGINES)[number];
 export type TransitEngine = (typeof TRANSIT_ENGINES)[number];
 export type AccessTier = (typeof ACCESS_TIERS)[number];
 export type TransitOperation = (typeof TRANSIT_OPERATIONS)[number];
+export type ApiVerb = (typeof API_VERBS)[number];
 export type Delivery = (typeof DELIVERIES)[number];
 export type Tolerance = (typeof TOLERANCES)[number];

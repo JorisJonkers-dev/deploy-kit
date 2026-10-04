@@ -44,7 +44,7 @@ class RenderedTreeTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @CsvSource({"minimal, notes", "data, data"})
+    @CsvSource({"minimal, notes", "data, data", "delivery, delivery"})
     void aProjectsShareIsItsCommittedTreeByteForByte(String example, String project, @TempDir Path out)
             throws IOException {
         assertThat(Pipeline.render(union(), List.of(project), Outputs.INTEGRITY, out))

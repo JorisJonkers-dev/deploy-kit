@@ -1,0 +1,20 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: release-gate
+  namespace: delivery-system
+  labels:
+    app.kubernetes.io/name: release-gate
+    app.kubernetes.io/instance: release-gate
+    app.kubernetes.io/part-of: release-gate
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  selector:
+    app.kubernetes.io/instance: release-gate
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

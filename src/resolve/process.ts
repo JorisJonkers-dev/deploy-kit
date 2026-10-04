@@ -341,8 +341,25 @@ export function resolveProcess(
     memory: process.placement.memory,
     cpu: process.placement.cpu,
     hardening: context.platform.hardening,
-    // The pod authenticates only where a grant is delivered `self`.
-    identityToken: secrets.some(({ delivery }) => delivery === "self"),
+    // The pod authenticates only where a grant is delivered `self`, or where
+    // it holds Kubernetes API access.
+    identityToken:
+      process.api !== undefined ||
+      secrets.some(({ delivery }) => delivery === "self"),
+    ...(process.api === undefined
+      ? {}
+      : {
+          api: {
+            ...process.api,
+            // The platform admits the holder, or E_PROCESS_RBAC_GRANT refused
+            // it, so the block that says where the API answers is there.
+            server: (
+              context.platform.apiAccess as NonNullable<
+                PlatformIntentDocument["apiAccess"]
+              >
+            ).server,
+          },
+        }),
     ...probesOf(process, context.platform),
     placement: placementOf(process, context),
     ...(volumes.length === 0 ? {} : { volumes }),

@@ -1,15 +1,21 @@
 # The delivery machinery as Project Intent: the Applications that perform a
-# switch and are never switched by one (spec/v1/14-platform-intent.md#delivery-policy).
+# switch and are never switched by one (spec/v1/14-platform-intent.md#delivery-policy),
+# and the ClusterState Collector beside them.
 #
-# The Platform document names both in `delivery.machinery`, so this file is the
-# one project the platform owns outright. Both Applications answer `continuous`:
-# they must keep serving while they cut over. On any other Application that
-# derives a blue/green switch
-# the Release Gate decides; here it derives a rolling one, because a gate cannot
-# gate its own release, and nothing gates Flagger's
+# The Platform document names Flagger and the Release Gate in
+# `delivery.machinery`, so this file is the one project the platform owns
+# outright. Both answer `continuous`: they must keep serving while they cut
+# over. On any other Application that derives a blue/green switch the Release
+# Gate decides; here it derives a rolling one, because a gate cannot gate its
+# own release, and nothing gates Flagger's
 # (spec/v1/55-delivery.md#the-release-gate). The Release Gate's projection,
 # `expected/resolved.json`, records exactly that: a `rolling` switchover and no
 # release-gate inputs.
+#
+# All three call the Kubernetes API, which no other Process of the estate does.
+# Each declares what it asks and why, and the Platform document admits the
+# three by name in `apiAccess.holders`
+# (spec/v1/16-dependencies.md#kubernetes-api-access-is-declared-and-admitted).
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
@@ -31,6 +37,37 @@ applications:
           memory: 64Mi
           cpu: 10m
         writablePaths: [/tmp]
+        # Flagger asks the Release Gate its three questions. This is the one
+        # edge to the gate, so the gate's derived policy admits Flagger and
+        # nobody else.
+        dependsOn:
+          - { application: release-gate, surface: http }
+        api:
+          reason: >-
+            Flagger switches every blue-green Process, so it scales its
+            Deployment, generates its Services and copies, and records the
+            Canary
+          rules:
+            - group: flagger.app
+              objects: [canaries, canaries/status]
+              verbs: [get, list, watch, update, patch]
+            - group: apps
+              objects: [deployments]
+              verbs: [get, list, watch, create, update, patch, delete]
+            - group: autoscaling
+              objects: [horizontalpodautoscalers]
+              verbs: [get, list, watch, create, update, patch, delete]
+            - group: core
+              objects: [services, configmaps]
+              verbs: [get, list, watch, create, update, patch, delete]
+            # Reading a Secret a pod names is how Flagger learns it is excluded
+            # from configuration tracking; it copies none, so it writes none.
+            - group: core
+              objects: [secrets]
+              verbs: [get]
+            - group: core
+              objects: [events]
+              verbs: [create, update, patch]
         probes:
           readiness: { path: /healthz, port: 8080 }
           liveness: { path: /healthz, port: 8080 }
@@ -42,15 +79,67 @@ applications:
       - name: release-gate
         lifecycle: application
         image: release-gate
-        runtime: node
+        runtime: none # a static binary needs no Runtime Profile
         provides:
           http: 8080 # Flagger's webhooks, answered from the projection
         placement:
-          memory: 128Mi
+          memory: 64Mi
           cpu: 25m
-        writablePaths: [/tmp]
+        api:
+          reason: >-
+            the Release Gate answers Flagger from what the cluster holds, so it
+            reads each gated Application's inputs, Canaries, Deployments, Jobs
+            and pods, and writes nothing
+          rules:
+            - group: core
+              objects: [configmaps]
+              verbs: [get]
+            - group: core
+              objects: [pods]
+              verbs: [list]
+            - group: apps
+              objects: [deployments]
+              verbs: [get]
+            - group: batch
+              objects: [jobs]
+              verbs: [list]
+            - group: flagger.app
+              objects: [canaries]
+              verbs: [get]
         probes:
-          readiness: { path: /ready, port: 8080 }
-          liveness: { path: /live, port: 8080 }
-        startupBudget: 20s
+          readiness: { path: /readyz, port: 8080 }
+          liveness: { path: /healthz, port: 8080 }
+        startupBudget: 10s
         cutover: continuous
+
+  # The ClusterState Collector (spec/v1/20-resolved-deployment.md#the-collector):
+  # not machinery, since it switches nothing, so it is not in
+  # `delivery.machinery`. It captures on its own interval and holds no state, so
+  # stopping it for a release costs one capture: `interrupted`.
+  - id: collector
+    processes:
+      - name: collector
+        lifecycle: application
+        image: collector
+        runtime: none
+        provides:
+          http: 8080 # its probes; nothing calls it
+        placement:
+          memory: 64Mi
+          cpu: 10m
+        api:
+          reason: >-
+            the Collector captures where each bound claim and each rendered pod
+            is, so it lists the three kinds that say so, cluster-wide, and
+            writes nothing
+          rules:
+            - group: core
+              objects: [persistentvolumes, persistentvolumeclaims, pods]
+              verbs: [get, list]
+        probes:
+          readiness: { path: /readyz, port: 8080 }
+          # Whether a capture succeeded within twice its interval: a Collector
+          # that stopped succeeding is restarted.
+          liveness: { path: /fresh, port: 8080 }
+        startupBudget: 10s
+        cutover: interrupted

@@ -187,8 +187,9 @@
     'name': 'Mutation'
     'runs-on': 'ubuntu-latest'
     # A run covers every mutant on every pull request, so its length grows with
-    # src/; the limit only stops a hung run.
-    'timeout-minutes': 60
+    # src/; the limit only stops a hung run. At 5,267 mutants a run takes up to
+    # an hour on a slow runner, and one was cancelled at 99% with none surviving.
+    'timeout-minutes': 90
     'permissions':
       'contents': 'read'
     'steps':

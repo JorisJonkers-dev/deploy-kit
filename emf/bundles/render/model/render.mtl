@@ -47,6 +47,8 @@
     [d.oclAsType(resolveddeployment::IngressRouteFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::ServiceFile))]
     [d.oclAsType(resolveddeployment::ServiceFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::RbacFile))]
+    [d.oclAsType(resolveddeployment::RbacFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::ClaimFile))]
     [d.oclAsType(resolveddeployment::ClaimFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::ConfigMapFile))]
@@ -178,14 +180,14 @@
     [/for]
   [/if]
     egress:
-  [for (edge : resolveddeployment::ResolvedEdge | p.process.dependencies)]
-    [for (peer : resolveddeployment::PolicyPeer | edge.peers)]
-            - to:
-                [peer.peer()/]
-              ports:
-                - protocol: TCP
-                  port: [peer.port/]
-    [/for]
+  [comment Every peer of every edge, in one loop: a loop within a loop indents its lines by
+    where the policy's other blocks left off, which a policy with no ingress shows. /]
+  [for (peer : resolveddeployment::PolicyPeer | p.process.dependencies.peers)]
+        - to:
+            [peer.peer()/]
+          ports:
+            - protocol: TCP
+              port: [peer.port/]
   [/for]
   [comment The cluster's DNS answers on UDP, and on TCP for a truncated response. /]
   [for (peer : resolveddeployment::PolicyPeer | p.egress)]
@@ -197,6 +199,18 @@
             - protocol: TCP
               port: [peer.port/]
   [/for]
+  [comment Where the Kubernetes API answers, for a Process that holds access to it: an address,
+    because the API server is no pod a selector reaches. /]
+  [if (p.process.api <> null)]
+    [for (range : resolveddeployment::AdmittedRange | p.process.api.server)]
+          - to:
+              - ipBlock:
+                  cidr: [range.cidr/]
+            ports:
+              - protocol: TCP
+                port: [range.port/]
+    [/for]
+  [/if]
 [/template]
 
 [template private peer(peer : resolveddeployment::PolicyPeer)]
@@ -324,8 +338,10 @@
 [/template]
 
 [comment Flagger scales and promotes a blue-green Deployment, so it carries no replica count and
-  its new version starts beside the old one; a stop-start one keeps its count and stops before
-  it starts again. /]
+  its new version starts beside the old one; a rolling one is the delivery machinery's, pod by
+  pod under its own count and never a pod more, because a proxy on a host port and a controller
+  with no leader election cannot run two copies; a stop-start one keeps its count and stops
+  before it starts again. /]
 [template private workload(p : resolveddeployment::ResolvedProcess, d : resolveddeployment::WorkloadFile)]
   ---
   apiVersion: apps/v1
@@ -339,6 +355,13 @@
         rollingUpdate:
           maxSurge: 1
           maxUnavailable: 0
+  [elseif (p.switchover.toString() = 'rolling')]
+      replicas: [p.replicas/]
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 0
+          maxUnavailable: 1
   [else]
       replicas: [p.replicas/]
       strategy:
@@ -509,7 +532,51 @@
   [/if]
 [/template]
 
-[comment The Service a stop-start Process is reached by; Flagger generates a blue-green one's. /]
+[comment What a Process that holds Kubernetes API access may ask of it: a ClusterRole of its
+  declared rules, bound to its one ServiceAccount, both under the name its namespace and
+  identity make. `core` is the group Kubernetes itself spells as no name at all. /]
+[template private objects(d : resolveddeployment::RbacFile)]
+  [for (p : resolveddeployment::ResolvedProcess | d.processes)]
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      name: [p.application().namespace/]-[p.identity/]
+      labels:
+        [p.labels()/]
+    rules:
+    [for (r : resolveddeployment::ResolvedApiRule | p.api.rules)]
+        - apiGroups:
+            - [if (r.group = 'core')]""[else][r.group/][/if]
+          resources:
+      [for (o : String | r.objects)]
+              - [o/]
+      [/for]
+          verbs:
+      [for (v : String | r.verbs)]
+              - [v/]
+      [/for]
+    [/for]
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: [p.application().namespace/]-[p.identity/]
+      labels:
+        [p.labels()/]
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: [p.application().namespace/]-[p.identity/]
+    subjects:
+      - kind: ServiceAccount
+        name: [p.identity/]
+        namespace: [p.application().namespace/]
+  [/for]
+[/template]
+
+[comment The Service a Process Flagger does not switch is reached by; Flagger generates a
+  blue-green one's. /]
 [template private objects(d : resolveddeployment::ServiceFile)]
   [for (p : resolveddeployment::ResolvedProcess | d.processes)]
     ---

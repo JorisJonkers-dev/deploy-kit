@@ -602,8 +602,8 @@ describe("composeEstate", () => {
       }),
     ).toThrow("a held fragment the caller did not supply");
     // With no ledger, every Project is delivered, the delivery machinery too,
-    // which no adapter spells yet (JorisJonkers-dev/deploy-kit#202).
-    expect(() =>
+    // and the estate-scoped artifact with them: no Project is still legacy.
+    expect(
       compose({
         platform: {
           ...PLATFORM,
@@ -613,8 +613,15 @@ describe("composeEstate", () => {
               : file,
           ),
         },
-      }),
-    ).toThrow("is not rendered yet");
+      }).artifacts.map(({ name }) => name),
+    ).toEqual([
+      "_estate",
+      "data",
+      "delivery",
+      "notes",
+      "observability",
+      "secrets",
+    ]);
   });
 });
 

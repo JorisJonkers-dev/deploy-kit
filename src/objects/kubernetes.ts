@@ -30,6 +30,35 @@ export interface ServiceAccount {
   readonly metadata: ObjectMeta;
 }
 
+/** What a holder may ask of the Kubernetes API, cluster-wide. */
+export interface ClusterRole {
+  readonly apiVersion: "rbac.authorization.k8s.io/v1";
+  readonly kind: "ClusterRole";
+  readonly metadata: ObjectMeta;
+  readonly rules: readonly {
+    readonly apiGroups: readonly string[];
+    readonly resources: readonly string[];
+    readonly verbs: readonly string[];
+  }[];
+}
+
+/** The one ServiceAccount a ClusterRole is bound to. */
+export interface ClusterRoleBinding {
+  readonly apiVersion: "rbac.authorization.k8s.io/v1";
+  readonly kind: "ClusterRoleBinding";
+  readonly metadata: ObjectMeta;
+  readonly roleRef: {
+    readonly apiGroup: "rbac.authorization.k8s.io";
+    readonly kind: "ClusterRole";
+    readonly name: string;
+  };
+  readonly subjects: readonly {
+    readonly kind: "ServiceAccount";
+    readonly name: string;
+    readonly namespace: string;
+  }[];
+}
+
 export type Probe = (
   | { readonly httpGet: { readonly path: string; readonly port: number } }
   | { readonly tcpSocket: { readonly port: number } }

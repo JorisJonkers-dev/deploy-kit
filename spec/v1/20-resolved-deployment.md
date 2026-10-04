@@ -236,7 +236,8 @@ field's placement link to this anchor rather than copying rows.
 | `namespace` | derived | - | `<project>-system`, and nothing else ([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)); several Applications share one by construction |
 | requests and limits | derived | - | from `placement.memory` and `placement.cpu`: memory request equals memory limit, cpu request with no cpu limit |
 | `securityContext` | derived | - | from the one platform `hardening` posture and the Process's declared `writablePaths`; no Process authors a control and no exception relaxes one |
-| `automountServiceAccountToken` | derived | - | `true` only where a grant carries `delivery: self`; the pod authenticates in that case and in no other ([0031](../../docs/adr/model/0031-identity-per-process.md)) |
+| `automountServiceAccountToken` | derived | - | `true` only where a grant carries `delivery: self` or the Process holds Kubernetes API access; the pod presents its token in those cases and in no other ([0031](../../docs/adr/model/0031-identity-per-process.md)) |
+| `api` | authored, admitted by the platform | - | the Process's declared rules and reason, unchanged, with the Platform Intent's `apiAccess.server` beside them: what its ClusterRole holds and what its policy admits ([chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted)) |
 | the ephemeral mount per writable path, and its size | derived | - | one mount per declared path, sized from the Platform Intent's ephemeral `size` ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)) |
 | `runAsUser`, `runAsGroup`, `fsGroup` | derived | - | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Process holds a volume ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)) |
 | container probe timings | derived | - | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Platform Intent's probe policy ([0016](../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md)) |
@@ -517,24 +518,29 @@ digest.
 
 The snapshot is captured inside the cluster
 ([0086](../../docs/adr/model/0086-the-collector-runs-in-the-cluster.md)). The
-**Collector** is an Application of the `delivery` project, a `CronJob` whose
-ServiceAccount may get and list PersistentVolumes, PersistentVolumeClaims and
-pods, and nothing else. Each run captures the bindings and placements and
-compares them with the snapshot committed to the Estate repository
+**Collector** is an Application of the `delivery` project: one long-running
+Process that captures when it starts and then on its own interval. Project
+Intent has no schedule, and gains none for one consumer. Its ServiceAccount may
+get and list PersistentVolumes, PersistentVolumeClaims and pods, and nothing
+else, which it declares as its `api`
+([chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted)).
+Each capture reads the bindings and placements and compares them with the
+snapshot committed to the Estate repository
 ([chapter 60](60-setup.md#the-estate-repository)):
 
-- **Unchanged facts commit nothing.** `capturedAt` is not a fact, so a run that
-  sees what the snapshot already says leaves it, and its digest, as they are.
+- **Unchanged facts commit nothing.** `capturedAt` is not a fact, so a capture
+  that sees what the snapshot already says leaves it, and its digest, as they are.
 - **Changed facts are one commit** of `cluster-state.yml`, through the
   Collector's GitHub App, whose key the Collector reads from the Secret Store.
   The next composition reads it and records its new `clusterStateDigest`.
 - **It never applies.** The Collector writes to one file in one repository and
   to nothing in the cluster.
-- **Its liveness is an alert, not the file.** Because an unchanged run commits
-  nothing, a stopped Collector and a stable cluster look the same in the Estate
-  repository. Alertmanager raises it instead, from the `CronJob`'s last
-  successful run, when the Collector has not succeeded within twice its
-  schedule ([chapter 55](55-delivery.md#notifications)).
+- **Its liveness is a probe, not the file.** Because an unchanged capture
+  commits nothing, a stopped Collector and a stable cluster look the same in the
+  Estate repository. The Collector's liveness probe says which it is: it fails
+  once no capture has succeeded within twice the interval, so the Collector is
+  restarted, and its restarts are what Alertmanager raises
+  ([chapter 55](55-delivery.md#notifications)).
 
 Until the Collector is delivered, composition runs with an empty snapshot, which
 is valid.
@@ -897,7 +903,7 @@ So the classification, and the evidence it rests on:
 | `replicas` | irreducible local capacity knowledge | the named `replicas: {count, reason}` field, the one survivor |
 | `startupDeadline` | a process class (`runtime: static` starts in seconds, `jvm` in minutes) | repaired central rule over `startupBudget` and `runtime` |
 | `gateDeadline` | `max` over members, already a derivation, never a decision | derived, unchanged |
-| `automountToken` | a derivation from `delivery: self` | derived, unchanged ([0031](../../docs/adr/model/0031-identity-per-process.md)) |
+| `automountToken` | a derivation from `delivery: self`, and from a held `api` | derived, unchanged ([0031](../../docs/adr/model/0031-identity-per-process.md)) |
 | `ephemeralSize`, `probeCadence`, `backupTerms`, `monitorCadence` | platform policy over shared resources | platform, stated once |
 | `routePriority` | derived by design, to prevent hand-tuning | derived, unchanged ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)) |
 | `volumeSize` | the volume's authored `size` | authored, never derived |
@@ -1496,6 +1502,15 @@ classDiagram
         +Quantity size
         +DurabilityClass durability
     }
+    class ResolvedApiAccess {
+        +string reason
+        +DestinationRange[] server
+    }
+    class ResolvedApiRule {
+        +string group
+        +string[] objects
+        +ApiVerb[] verbs
+    }
     class BackupPlan {
         +Schedule schedule
         +int retain
@@ -1621,6 +1636,8 @@ classDiagram
     ResolvedProcess "1" *-- "0..*" IngressPeer : ingress
     ResolvedProcess "1" *-- "0..*" EgressPeer : egress
     ResolvedVolume "1" *-- "0..1" BackupPlan : backup
+    ResolvedProcess "1" *-- "0..1" ResolvedApiAccess : api
+    ResolvedApiAccess "1" *-- "1..*" ResolvedApiRule : rules
     BackupPlan "1" *-- "0..*" DestinationRange : destinations
     EnvEntry "1" *-- "0..1" SecretReference : secret
     ResolvedEngineGrant "1" *-- "1..*" PolicyPath : paths

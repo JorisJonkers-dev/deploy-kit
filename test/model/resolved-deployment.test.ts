@@ -570,6 +570,7 @@ describe("the metamodel names every class the chapter draws", () => {
       "AdapterName",
       "AlertClass",
       "AnalysisCheck",
+      "ApiVerb",
       "Audience",
       "CertificateSource",
       "ContentPolicy",

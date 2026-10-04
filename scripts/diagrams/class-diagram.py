@@ -113,13 +113,15 @@ TREES = {"10-project-intent": {
     # table and each family's own section.
     # Surface stays last, and Route stays Exposure's first, so the one
     # cross-link lands between neighbours.
-    "Process": ["Capacity", "Sidecar", "Probe", "Volume", "Surface"],
+    "Process": ["Capacity", "ApiAccess", "Sidecar", "Probe", "Volume", "Surface"],
+    "ApiAccess": ["ApiRule"],
     "Exposure": ["Route"],
 }, "14-platform-intent": {
     "Platform": [
         "PlatformMetadata", "Substrate", "Bootstrap", "Tier", "DurabilityPolicies",
         "EnginePolicies", "MonitorCadence", "TelemetryPolicy", "ProbeCadence",
-        "EphemeralPolicy", "MigrationPolicy", "DeliveryPolicy", "HandoverLedger", "Provider",
+        "EphemeralPolicy", "MigrationPolicy", "DeliveryPolicy", "ApiAccessPolicy",
+        "HandoverLedger", "Provider",
     ],
     "Bootstrap": ["FluxSource", "VaultState"],
     "FluxSource": ["RenderedArtifacts"],
@@ -142,12 +144,14 @@ TREES = {"10-project-intent": {
     ],
     "ReleaseGate": ["GateAnalysis", "GateMember"],
     "ResolvedProcess": [
-        "ResolvedProbe", "StartupProbe", "ResolvedPlacement", "ResolvedVolume",
+        "ResolvedProbe", "StartupProbe", "ResolvedPlacement", "ResolvedApiAccess",
+        "ResolvedVolume",
         "ResolvedGrant", "ResolvedEngineGrant", "ResolvedAsset",
         "ResolvedSidecar", "ResolvedEdge",
         "WritablePath", "EnvEntry", "ResolvedSurface", "IngressPeer",
         "EgressPeer",
     ],
+    "ResolvedApiAccess": ["ResolvedApiRule"],
     "ResolvedVolume": ["BackupPlan"],
     "BackupPlan": ["DestinationRange"],
     "EnvEntry": ["SecretReference"],
@@ -182,8 +186,9 @@ REPORT_LAYOUTS = {"10-project-intent": {
         "Grant": [["Rotation"]],
         # DependencyEdge and Surface open their columns, so both links into
         # Surface, from DependencyEdge and from Route, are straight lines
-        "Process": [["Capacity", "Sidecar", "Probe", "Asset"], ["Volume", "Placement"],
+        "Process": [["Capacity", "ApiAccess", "Sidecar", "Probe", "Asset"], ["Volume", "Placement"],
                     ["DependencyEdge", "EnvFile"], ["Surface"]],
+        "ApiAccess": [["ApiRule"]],
         "Placement": [["GpuRequest", "DiskRequest"]],
         "DependencyEdge": [["Credentials"]],
         "EnvFile": [["Placeholder"]],
@@ -197,7 +202,7 @@ REPORT_LAYOUTS = {"10-project-intent": {
             ["PlatformMetadata", "Substrate", "MonitorCadence", "TelemetryPolicy", "ProbeCadence",
              "EphemeralPolicy"],
             ["Bootstrap"], ["Tier", "Provider"], ["DurabilityPolicies", "EnginePolicies"],
-            ["MigrationPolicy", "DeliveryPolicy", "HandoverLedger"],
+            ["MigrationPolicy", "DeliveryPolicy", "ApiAccessPolicy", "HandoverLedger"],
         ],
         "Bootstrap": [["FluxSource", "VaultState"]],
         "FluxSource": [["RenderedArtifacts"]],
@@ -219,10 +224,11 @@ REPORT_LAYOUTS = {"10-project-intent": {
                                 ["ResolvedExposure"]],
         "ReleaseGate": [["GateMember", "GateAnalysis"]],
         "ResolvedProcess": [["ResolvedProbe", "StartupProbe", "ResolvedPlacement"],
-                            ["ResolvedVolume", "ResolvedEdge"],
+                            ["ResolvedVolume", "ResolvedEdge", "ResolvedApiAccess"],
                             ["ResolvedGrant", "WritablePath", "EnvEntry"]],
         "ResolvedVolume": [["BackupPlan"]],
         "BackupPlan": [["DestinationRange"]],
+        "ResolvedApiAccess": [["ResolvedApiRule"]],
         "ResolvedEdge": [["PolicyPeer"]],
         "ResolvedExposure": [["ResolvedRoute"]],
         "ResolvedRoute": [["MiddlewareStep"]],

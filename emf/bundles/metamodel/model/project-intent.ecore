@@ -98,6 +98,7 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="probes" eType="#//ProbePolicy" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="volumes" upperBound="-1" eType="#//Volume" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="replicas" eType="#//Capacity" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="api" eType="#//ApiAccess" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="EffectiveProject">
     <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
@@ -198,6 +199,17 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="size" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="durability" lowerBound="1" eType="#//DurabilityClass"/>
+  </eClassifiers>
+  <!-- The Kubernetes API access a Process needs (spec/v1/10-project-intent.md#kubernetes-api-access):
+       what it may ask of which objects, and why. `core` names the API's core group. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ApiAccess">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="reason" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="rules" lowerBound="1" upperBound="-1" eType="#//ApiRule" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ApiRule">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="group" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="objects" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="verbs" lowerBound="1" upperBound="-1" eType="#//ApiVerb"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Capacity">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="count" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
@@ -310,6 +322,15 @@
     <eLiterals name="selfRoll" value="2" literal="self-roll"/>
     <eLiterals name="custody" value="3" literal="custody"/>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="ApiVerb">
+    <eLiterals name="get" literal="get"/>
+    <eLiterals name="list" value="1" literal="list"/>
+    <eLiterals name="watch" value="2" literal="watch"/>
+    <eLiterals name="create" value="3" literal="create"/>
+    <eLiterals name="update" value="4" literal="update"/>
+    <eLiterals name="patch" value="5" literal="patch"/>
+    <eLiterals name="delete" value="6" literal="delete"/>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="TransitOp">
     <eLiterals name="sign" literal="sign"/>
     <eLiterals name="verify" value="1" literal="verify"/>
@@ -347,6 +368,7 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="ephemeral" lowerBound="1" eType="#//EphemeralPolicy" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="migration" eType="#//MigrationPolicy" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="delivery" eType="#//DeliveryPolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="apiAccess" eType="#//ApiAccessPolicy" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="handover" eType="#//HandoverLedger" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="providers" upperBound="-1" eType="#//Provider" containment="true"/>
   </eClassifiers>
@@ -455,6 +477,14 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="machinery" lowerBound="1" upperBound="-1" eType="#//Application"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="gate" lowerBound="1" eType="#//Application"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="analysis" lowerBound="1" eType="#//AnalysisPolicy" containment="true"/>
+  </eClassifiers>
+  <!-- Who may hold Kubernetes API access, and where the API answers
+       (spec/v1/14-platform-intent.md#kubernetes-api-access): the Applications whose Processes
+       may declare `api`, linked across the documents read together, and the ranges a holder's
+       egress policy admits. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ApiAccessPolicy">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="holders" lowerBound="1" upperBound="-1" eType="#//Application"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="server" lowerBound="1" upperBound="-1" eType="#//DestinationRange" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="AnalysisPolicy">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

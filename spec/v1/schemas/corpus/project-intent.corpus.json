@@ -117,6 +117,46 @@
           "value": "some"
         }
       ]
+    },
+    {
+      "name": "an API verb outside the vocabulary",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/delivery/delivery.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/1/processes/0/api/rules/0/verbs/0",
+          "value": "sudo"
+        }
+      ]
+    },
+    {
+      "name": "API access with no reason",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/delivery/delivery.project.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/applications/1/processes/0/api/reason"
+        }
+      ]
+    },
+    {
+      "name": "an API rule spelled with a Kubernetes field",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/delivery/delivery.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/1/processes/0/api/rules/0/resources",
+          "value": [
+            "secrets"
+          ]
+        }
+      ]
     }
   ]
 }

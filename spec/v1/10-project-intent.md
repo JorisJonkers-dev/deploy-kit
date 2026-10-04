@@ -600,6 +600,47 @@ required.
 on; which hostname reaches it, and on what path, is stated once on the Application
 ([Exposure](#exposure)).
 
+### Kubernetes API access
+
+A Process that calls the Kubernetes API says what it asks of it, and why
+([0092](../../docs/adr/model/0092-api-access-is-declared-on-the-process-and-admitted-by-the-platform.md)):
+
+```yaml
+api:
+  reason: the Release Gate answers Flagger from what the cluster holds
+  rules:
+    - group: core
+      objects: [configmaps]
+      verbs: [get]
+    - group: flagger.app
+      objects: [canaries]
+      verbs: [get]
+```
+
+- **`reason`** is required, and is carried into the projection the Process's
+  owner reads back, so the estate can say why each holder holds what it holds.
+- **`rules`** is at least one rule. A rule names one API `group`, the `objects`
+  of that group it asks for, and the `verbs` it may use on them, from the closed
+  `ApiVerb` list ([The closed vocabularies](#the-closed-vocabularies)). `core`
+  names the API's core group, which Kubernetes itself leaves unnamed. An object
+  may name a subresource, `canaries/status`.
+
+The fields are the model's own words. `objects` is what Kubernetes RBAC spells
+`resources`, a field name the model already keeps out of both layers because it
+means a container's requests there
+([0011](../../docs/adr/model/0011-authored-values-name-model-concepts.md)).
+
+`api` is a Process field and is never shared: no Application and no project
+declares it for the Processes below it, because a privilege every Process of a
+project inherits is one nobody asked for by name.
+
+Declaring it is not holding it. The Platform document admits the Applications
+whose Processes may declare `api`
+([chapter 14](14-platform-intent.md#kubernetes-api-access)), and a declaration
+in any other Application is `E_PROCESS_RBAC_GRANT`. What an admitted
+declaration derives, its ClusterRole, its mounted token and its policy's egress,
+is [chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted)'s.
+
 ### Sidecars
 
 A Process is one pod, and a pod holds more than one container three times in
@@ -2377,10 +2418,10 @@ genuinely special states it accurately, and the derivation reads it.
 
 ## The closed vocabularies
 
-Seventeen attributes take a value from a fixed list rather than a free string.
+Eighteen attributes take a value from a fixed list rather than a free string.
 Values are **exhaustive**: one absent from a list here fails schema validation,
 and adding one is a change to this chapter. The type in the class diagram names
-the list; the list itself is here rather than in the drawing, because seventeen
+the list; the list itself is here rather than in the drawing, because eighteen
 boxes of two or three words each told a reader nothing the type name had not
 already told them, and the lines reaching them made the model harder to read.
 
@@ -2403,6 +2444,7 @@ already told them, and the lines reaching them made the model harder to read.
 | `Delivery` | `Grant.delivery` | `env`, `file`, `self` |
 | `Tolerance` | `Rotation.tolerates` | `restart`, `reload` |
 | `PlaceholderKind` | `Placeholder.kind` | `secret`, `dependency`, `exposure`, `identity` |
+| `ApiVerb` | `ApiRule.verbs` | `get`, `list`, `watch`, `create`, `update`, `patch`, `delete` |
 
 ### Absent or `none`
 
@@ -2585,6 +2627,14 @@ classDiagram
         +int count
         +string reason
     }
+    class ApiAccess {
+        +string reason
+    }
+    class ApiRule {
+        +string group
+        +string[] objects
+        +ApiVerb[] verbs
+    }
     class Surface {
         +string name
         +int port
@@ -2638,6 +2688,8 @@ classDiagram
     Application "1" *-- "0..1" Observability : observability
     Observability "1" *-- "1" Scrape : scrape
     Process "1" *-- "0..1" Capacity : replicas
+    Process "1" *-- "0..1" ApiAccess : api
+    ApiAccess "1" *-- "1..*" ApiRule : rules
 
     Application "1" *-- "0..*" Exposure : exposure
     Exposure "1" *-- "1..*" Route : routes

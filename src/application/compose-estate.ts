@@ -334,10 +334,8 @@ function deliver(
         ok: true,
         value: {
           artifacts: rendered.value.filter(
-            // A ledger with no legacy Project delivers the machinery too, which
-            // no adapter renders yet (JorisJonkers-dev/deploy-kit#202), so no
-            // composition can deliver the estate-scoped artifact before then.
-            // Stryker disable next-line ConditionalExpression,OptionalChaining
+            // The estate-scoped artifact is every Project's, so it is
+            // delivered once no Project is still on the old path.
             ({ name }) => name !== ESTATE || ledger?.legacy === undefined,
           ),
           projects: resolved.projects,

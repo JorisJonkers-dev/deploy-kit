@@ -206,7 +206,7 @@ Process in the Resolved Deployment
 | `cutover` | switchover | what happens |
 |---|---|---|
 | `continuous` | `blue-green` | the new version starts beside the old one; the old keeps serving while the new is analysed, and traffic moves to the new version only once every member of the Application has passed |
-| `continuous`, on delivery machinery | `rolling` | the new version replaces the old one pod by pod, with no gate: the machinery that performs a switchover cannot be switched by itself ([The Release Gate](#the-release-gate)) |
+| `continuous`, on delivery machinery | `rolling` | the new version replaces the old one pod by pod, never a pod more than its count, with no gate: the machinery that performs a switchover cannot be switched by itself ([The Release Gate](#the-release-gate)) |
 | `interrupted` | `stop-start` | the old version stops, then the new one starts; the owner has accepted the gap |
 
 Four rules hold the table true:

@@ -53,6 +53,7 @@ bootstrap:
     - traefik.io/v1alpha1
     - secrets.hashicorp.com/v1beta1
     - monitoring.coreos.com/v1
+    - flagger.app/v1beta1 # the Canary every blue-green Process renders
 
 # Where the edge terminates. Four facts per tier; the traefik adapter owns every
 # Traefik spelling. A route's audience is the only way it reaches a tier, so a
@@ -163,6 +164,16 @@ delivery:
     interval: 30s
     iterations: 4
     threshold: 3
+
+# Who may hold Kubernetes API access, and where the API answers
+# (spec/v1/14-platform-intent.md#kubernetes-api-access). A Process declares
+# what it asks of the API; only a Process of an Application named here may, and
+# anyone else's declaration is E_PROCESS_RBAC_GRANT. `server` is what such a
+# Process's egress policy admits: the API server is no pod a selector reaches.
+apiAccess:
+  holders: [flagger, release-gate, collector]
+  server:
+    - { cidr: 10.43.0.1/32, port: 443 }
 
 # Which delivery path each Project is on while the estate moves off
 # fleet-infra's deploy/production branch, one Project at a time

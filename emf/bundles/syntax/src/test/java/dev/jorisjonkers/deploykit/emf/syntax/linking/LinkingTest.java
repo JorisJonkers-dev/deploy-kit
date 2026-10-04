@@ -238,4 +238,21 @@ class LinkingTest {
                 .containsExactly(
                         "E_UNKNOWN_MACHINERY no project file declares the Application gone the delivery machinery names");
     }
+
+    @Test
+    void aHolderOfApiAccessLinksToADeclaredApplicationAndReportsEachOneThatIsNot() throws IOException {
+        String server = "  server:\n    - { cidr: 10.43.0.1/32, port: 443 }\n";
+        Resource platform = platform("elsewhere", "apiAccess:\n  holders: [elsewhere]\n" + server);
+
+        assertThat(platform.getErrors()).isEmpty();
+        assertThat(((Platform) platform.getContents().get(0))
+                        .getApiAccess()
+                        .getHolders()
+                        .get(0)
+                        .getId())
+                .isEqualTo("elsewhere");
+        assertThat(codes(platform("elsewhere", "apiAccess:\n  holders: [elsewhere, gone]\n" + server)))
+                .containsExactly("E_UNKNOWN_API_HOLDER no project file declares the Application gone the platform"
+                        + " admits to hold Kubernetes API access");
+    }
 }

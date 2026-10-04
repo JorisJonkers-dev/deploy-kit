@@ -56,6 +56,14 @@ function policyOf(
     to: [peerOf(peer.namespace, peer.process)],
     ports: [{ protocol: "UDP" as const, port: peer.port }, tcp(peer.port)],
   }));
+  // Where the Kubernetes API answers, for a Process that holds access to it:
+  // an address, because the API server is no pod a selector reaches.
+  // A missing block and an empty list admit the same nowhere.
+  // Stryker disable next-line ArrayDeclaration
+  const api = (process.api?.server ?? []).map(({ cidr, port }) => ({
+    to: [{ ipBlock: { cidr } }],
+    ports: [tcp(port)],
+  }));
   return {
     apiVersion: "networking.k8s.io/v1",
     kind: "NetworkPolicy",
@@ -68,7 +76,7 @@ function policyOf(
       podSelector: { matchLabels: instanceOf(process.name) },
       policyTypes: ["Ingress", "Egress"],
       ...(ingress.length === 0 ? {} : { ingress }),
-      egress: [...edges, ...baseline],
+      egress: [...edges, ...baseline, ...api],
     },
   };
 }

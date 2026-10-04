@@ -734,6 +734,9 @@
         "replicas": {
           "$ref": "#/$defs/Capacity"
         },
+        "api": {
+          "$ref": "#/$defs/ApiAccess"
+        },
         "secrets": {
           "minItems": 1,
           "type": "array",
@@ -963,6 +966,69 @@
         "reason"
       ],
       "additionalProperties": false
+    },
+    "ApiAccess": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rules": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApiRule"
+          }
+        }
+      },
+      "required": [
+        "reason",
+        "rules"
+      ],
+      "additionalProperties": false
+    },
+    "ApiRule": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "type": "string",
+          "minLength": 1
+        },
+        "objects": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "verbs": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApiVerb"
+          }
+        }
+      },
+      "required": [
+        "group",
+        "objects",
+        "verbs"
+      ],
+      "additionalProperties": false
+    },
+    "ApiVerb": {
+      "type": "string",
+      "enum": [
+        "get",
+        "list",
+        "watch",
+        "create",
+        "update",
+        "patch",
+        "delete"
+      ]
     }
   }
 }

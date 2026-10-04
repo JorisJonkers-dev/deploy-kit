@@ -1,8 +1,9 @@
 // The `kubernetes` adapter (spec/v1/30-deliverables.md#adapters): per project
 // its Namespace, per Process its controller, ServiceAccount, claims and Asset
 // ConfigMaps, the backup each backed-up volume derives, the Canary of each
-// blue-green Process (#flagger-ready-objects), and the kustomize Kustomization
-// of every directory the render writes. It spells what layer 2
+// blue-green Process (#flagger-ready-objects), the ClusterRole and binding of
+// each Process that holds Kubernetes API access, and the kustomize
+// Kustomization of every directory the render writes. It spells what layer 2
 // decided and decides nothing: every value below is read off the projection.
 import type { ResolvedProject } from "../../model/resolution.ts";
 import type {
@@ -14,6 +15,8 @@ import type {
 import type { Canary, Webhook } from "../../objects/custom.ts";
 import type { Deliverable, RenderedObject } from "../../objects/deliverable.ts";
 import type {
+  ClusterRole,
+  ClusterRoleBinding,
   ConfigMap,
   Container,
   CronJob,
@@ -38,6 +41,7 @@ import {
 } from "../shared/labels.ts";
 import { applicationDirectory, projectDirectory } from "../shared/paths.ts";
 import { notSupported } from "../../model/internal-failure.ts";
+import { clusterNameOf } from "../../model/runtime-profiles.ts";
 
 export const ADAPTER = "kubernetes";
 
@@ -57,9 +61,7 @@ const BACKUP_TARGET = "/backup";
 
 /** A family this adapter does not spell yet stops the render rather than leaving it out. */
 function notYet(process: ResolvedProcess): void {
-  const switched =
-    process.switchover === "blue-green" || process.switchover === "stop-start";
-  if (process.lifecycle !== "application" || !switched)
+  if (process.lifecycle !== "application" || process.switchover === undefined)
     throw notSupported(
       `${process.name}: a ${process.lifecycle} Process that switches ${process.switchover ?? "nothing"} is not rendered yet`,
     );
@@ -92,9 +94,37 @@ const fileOf = (from: string): string => from.split("/").pop() as string;
 const writableOf = (path: string): string =>
   `writable${path.replaceAll(/[^a-z0-9]+/g, "-")}`;
 
-/** Flagger switches a blue-green Process; a stop-start one is replaced in place. */
+/** Flagger switches a blue-green Process; any other is replaced by its own Deployment. */
 const blueGreen = (process: ResolvedProcess): boolean =>
   process.switchover === "blue-green";
+
+/** How many pods a RollingUpdate may add beyond the count, and how many it may take away. */
+const rolling = (maxSurge: number, maxUnavailable: number) => ({
+  type: "RollingUpdate" as const,
+  rollingUpdate: { maxSurge, maxUnavailable },
+});
+
+/**
+ * How the Deployment replaces its pods
+ * (spec/v1/30-deliverables.md#flagger-ready-objects). Flagger scales and
+ * promotes a blue-green one, so it carries no replica count and its new
+ * version starts beside the old one. A rolling one is the delivery
+ * machinery's: pod by pod under its own count and never a pod more, because a
+ * proxy on a host port and a controller with no leader election cannot run
+ * two copies. A stop-start one stops before it starts again.
+ */
+function strategyOf(
+  process: ResolvedProcess,
+): Pick<Deployment["spec"], "replicas" | "strategy"> {
+  if (blueGreen(process)) return { strategy: rolling(1, 0) };
+  return {
+    replicas: process.replicas,
+    strategy:
+      process.switchover === "rolling"
+        ? rolling(0, 1)
+        : { type: "Recreate" as const },
+  };
+}
 
 const probeOf = (
   probe: ResolvedProbe | StartupProbe,
@@ -249,20 +279,7 @@ function deploymentOf(
     kind: "Deployment",
     metadata: { name: process.name, namespace: application.namespace, labels },
     spec: {
-      // Flagger scales and promotes a blue-green Deployment, so it carries no
-      // replica count and its new version starts beside the old one; a
-      // stop-start one keeps its count and stops before it starts again.
-      ...(blueGreen(process)
-        ? {
-            strategy: {
-              type: "RollingUpdate" as const,
-              rollingUpdate: { maxSurge: 1, maxUnavailable: 0 },
-            },
-          }
-        : {
-            replicas: process.replicas,
-            strategy: { type: "Recreate" as const },
-          }),
+      ...strategyOf(process),
       progressDeadlineSeconds: wholeSeconds(process.deadline),
       selector: {
         matchLabels: {
@@ -297,7 +314,7 @@ function deploymentOf(
   };
 }
 
-/** The Service a stop-start Process is reached by; Flagger generates a blue-green one's. */
+/** The Service a Process Flagger does not switch is reached by; Flagger generates a blue-green one's. */
 const serviceOf = (
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
@@ -511,6 +528,55 @@ const serviceAccountsOf = (
     })),
 ];
 
+/** The API's core group, which Kubernetes itself spells as no name at all. */
+const CORE = "core";
+
+/**
+ * What a Process that holds Kubernetes API access may ask of it
+ * (spec/v1/16-dependencies.md#kubernetes-api-access-is-declared-and-admitted):
+ * a ClusterRole of its declared rules, bound to its one ServiceAccount, both
+ * under the name its namespace and identity make.
+ */
+function rbacOf(
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+): (ClusterRole | ClusterRoleBinding)[] {
+  if (process.api === undefined) return [];
+  const metadata = {
+    name: clusterNameOf(application.namespace, process.identity),
+    labels: labelsOf(process, application.id),
+  };
+  return [
+    {
+      apiVersion: "rbac.authorization.k8s.io/v1",
+      kind: "ClusterRole",
+      metadata,
+      rules: process.api.rules.map(({ group, objects, verbs }) => ({
+        apiGroups: [group === CORE ? "" : group],
+        resources: objects,
+        verbs,
+      })),
+    },
+    {
+      apiVersion: "rbac.authorization.k8s.io/v1",
+      kind: "ClusterRoleBinding",
+      metadata,
+      roleRef: {
+        apiGroup: "rbac.authorization.k8s.io",
+        kind: "ClusterRole",
+        name: metadata.name,
+      },
+      subjects: [
+        {
+          kind: "ServiceAccount",
+          name: process.identity,
+          namespace: application.namespace,
+        },
+      ],
+    },
+  ];
+}
+
 function canaryOf(
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
@@ -601,6 +667,7 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
           ],
         ],
         ["backup.yaml", processes.flatMap((p) => backupsOf(p, application))],
+        ["rbac.yaml", processes.flatMap((p) => rbacOf(p, application))],
       ];
       // A file holds at least one object, or it is not written.
       return files

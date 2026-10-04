@@ -29,6 +29,9 @@ class IntentSetTest {
     /** The worked Platform document's telemetry block, which a variant composed with fewer projects drops. */
     private static final String TELEMETRY = "\ntelemetry:\n(  .*\n)+";
 
+    /** Its API access block, which names Applications a variant may not compose. */
+    private static final String API_ACCESS = "\napiAccess:\n(  .*\n)+";
+
     @Test
     void theWorkedEstateIsRefusedNowhere() {
         // The foundation is declared and secrets are encrypted at rest.
@@ -82,7 +85,8 @@ class IntentSetTest {
                                 "machinery: [traefik-public, traefik-lan, flagger, release-gate]", "machinery: [notes]")
                         .replace("gate: release-gate", "gate: notes")
                         .replace("secretStore: vault", "secretStore: notes")
-                        .replaceFirst(TELEMETRY, "\n"));
+                        .replaceFirst(TELEMETRY, "\n")
+                        .replaceFirst(API_ACCESS, "\n"));
 
         assertThat(Pipeline.check(List.of(platform, Examples.of("minimal/notes.project.yml"))))
                 .isEmpty();
@@ -121,7 +125,8 @@ class IntentSetTest {
                                 "machinery: [knowledge]")
                         .replace("gate: release-gate", "gate: knowledge")
                         .replace("secretStore: vault", "secretStore: knowledge")
-                        .replaceFirst(TELEMETRY, "\n"));
+                        .replaceFirst(TELEMETRY, "\n")
+                        .replaceFirst(API_ACCESS, "\n"));
         Path knowledge = Examples.write(
                 directory,
                 "knowledge.project.yml",
@@ -134,6 +139,45 @@ class IntentSetTest {
                         tuple("E_NO_TIER_FOR_AUDIENCE", "/applications/0/exposure/0/routes/1"),
                         tuple("E_NO_TIER_FOR_AUDIENCE", "/applications/0/exposure/0/routes/2"),
                         tuple("E_NO_TIER_FOR_AUDIENCE", "/applications/0/exposure/0/routes/3"));
+    }
+
+    @Test
+    void aHolderOfApiAccessIsRefusedWhereNoProjectFileDeclaresIt(@TempDir Path directory) {
+        Path platform = Examples.write(
+                directory,
+                "platform.intent.yml",
+                Examples.read("platform/platform.intent.yml")
+                        .replace("holders: [flagger, release-gate, collector]", "holders: [flagger, gone]"));
+        List<Path> admitted = new java.util.ArrayList<>(WORKED.subList(1, WORKED.size()));
+        admitted.add(0, platform);
+
+        // `gone` is declared nowhere, and the Release Gate and the Collector declare access the
+        // platform no longer admits.
+        assertThat(Pipeline.check(admitted))
+                .extracting(Diagnostic::code, Diagnostic::document, Diagnostic::path)
+                .containsExactlyInAnyOrder(
+                        tuple("E_UNKNOWN_API_HOLDER", "platform.intent.yml", "/apiAccess"),
+                        tuple("E_PROCESS_RBAC_GRANT", "delivery.project.yml", "/applications/1/processes/0/api"),
+                        tuple("E_PROCESS_RBAC_GRANT", "delivery.project.yml", "/applications/2/processes/0/api"));
+    }
+
+    @Test
+    void anIdTwoApplicationsCarryAdmitsNeitherToHoldApiAccess(@TempDir Path directory) {
+        Path impostor = Examples.write(
+                directory,
+                "impostor.project.yml",
+                Examples.read("refusals/process-rbac-grant/refusals.project.yml")
+                        .replace("id: edge-proxy", "id: flagger"));
+        List<Path> doubled = new java.util.ArrayList<>(WORKED);
+        doubled.add(impostor);
+
+        // The platform admits `flagger` by id, and nothing says which of the two it meant.
+        assertThat(Pipeline.check(doubled).stream()
+                        .filter(refusal -> refusal.code().equals("E_PROCESS_RBAC_GRANT")))
+                .extracting(Diagnostic::document, Diagnostic::path)
+                .containsExactlyInAnyOrder(
+                        tuple("delivery.project.yml", "/applications/0/processes/0/api"),
+                        tuple("impostor.project.yml", "/applications/0/processes/0/api"));
     }
 
     @Test

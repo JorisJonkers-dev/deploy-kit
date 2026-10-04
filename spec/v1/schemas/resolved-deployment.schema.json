@@ -687,6 +687,9 @@
         "identityToken": {
           "type": "boolean"
         },
+        "api": {
+          "$ref": "#/$defs/ResolvedApiAccess"
+        },
         "readiness": {
           "$ref": "#/$defs/ResolvedProbe"
         },
@@ -873,6 +876,96 @@
       "enum": [
         "restricted"
       ]
+    },
+    "ResolvedApiAccess": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rules": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResolvedApiRule"
+          }
+        },
+        "server": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DestinationRange"
+          }
+        }
+      },
+      "required": [
+        "reason",
+        "rules",
+        "server"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedApiRule": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "type": "string",
+          "minLength": 1
+        },
+        "objects": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "verbs": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApiVerb"
+          }
+        }
+      },
+      "required": [
+        "group",
+        "objects",
+        "verbs"
+      ],
+      "additionalProperties": false
+    },
+    "ApiVerb": {
+      "type": "string",
+      "enum": [
+        "get",
+        "list",
+        "watch",
+        "create",
+        "update",
+        "patch",
+        "delete"
+      ]
+    },
+    "DestinationRange": {
+      "type": "object",
+      "properties": {
+        "cidr": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      },
+      "required": [
+        "cidr",
+        "port"
+      ],
+      "additionalProperties": false
     },
     "ResolvedProbe": {
       "anyOf": [
@@ -1239,25 +1332,6 @@
         "secret-store",
         "datastore"
       ]
-    },
-    "DestinationRange": {
-      "type": "object",
-      "properties": {
-        "cidr": {
-          "type": "string",
-          "minLength": 1
-        },
-        "port": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 65535
-        }
-      },
-      "required": [
-        "cidr",
-        "port"
-      ],
-      "additionalProperties": false
     },
     "ResolvedEngineGrant": {
       "type": "object",

@@ -332,6 +332,7 @@ producer.
 | from the route tier carrying the audience | a route on the Application's `exposure` naming this Process | ingress |
 | from the metrics stack, to the scrape port | the Process's `scrape` surface | ingress |
 | from the Process's own backup identity, to the surface its backups dump | the surface the Platform document's `engines` names for the Process's `engine` | ingress |
+| to where the Kubernetes API answers, by address | the Process's `api`, and the Platform document's `apiAccess.server` ([Kubernetes API access is declared and admitted](#kubernetes-api-access-is-declared-and-admitted)) | egress |
 
 ### The baseline
 
@@ -380,31 +381,28 @@ is a backup the datastore's own default-deny turns away.
 
 ### The token is mounted only where the pod authenticates
 
-`automountServiceAccountToken` derives from **`delivery`**, and from nothing else
+`automountServiceAccountToken` derives from what the Process presents its token
+to, and from nothing else
 ([0031](../../docs/adr/model/0031-identity-per-process.md)):
 
-| the Process's grants | token |
+| the Process | token |
 |---|---|
-| at least one with `delivery: self` | mounted |
-| only `env` or `file`, or none at all | **not** mounted |
+| holds at least one grant with `delivery: self` | mounted |
+| declares `api`, and is admitted to hold it | mounted |
+| holds only `env` or `file` grants, or none at all, and declares no `api` | **not** mounted |
 
 The obvious rule (no grant, no token) is wrong, and `platform-postgres` is the
 counter-example. It holds a grant and needs no token: under `delivery: env` the
 VSO operator performs the Vault read and projects the result, so the pod never
 authenticates to anything. Under `delivery: file` the kubelet does the
-projecting. Only `delivery: self` means *the pod itself* presents its
-ServiceAccount token to Vault, which is the one case a token is for.
+projecting. `delivery: self` means *the pod itself* presents its ServiceAccount
+token to Vault, and `api` means it presents it to the Kubernetes API. Those are
+the two things a token is for.
 
 This is [0041](../../docs/adr/model/0041-no-process-rbac-in-v1.md)'s reasoning
 applied to the token instead of the Role, and it reaches the same place: the
 privilege a Process of this estate actually needs is smaller than the default,
 and the field that says so already exists.
-
-A Process that calls the **Kubernetes** API (`agents-api` creates Applications at
-runtime) needs a token that no grant implies. It declares so with a reason,
-recorded in the projection its owner reads back, which lets the estate count how
-many pods hold a token they were not derived one for
-([0031](../../docs/adr/model/0031-identity-per-process.md)).
 
 ### No Role grants what an absence already denies
 
@@ -415,20 +413,56 @@ checked property rather than rendering RBAC
 ([0041](../../docs/adr/model/0041-no-process-rbac-in-v1.md)).
 
 **v1 renders no `Role`, `ClusterRole`, `RoleBinding` or `ClusterRoleBinding` for
-a Process**, and no rendered Deliverable may grant access to `secrets`,
-`E_PROCESS_RBAC_GRANT`, a composition-time invariant
+a Process that declares no `api`**, and no Process holds Kubernetes API access
+the Platform document did not admit: `E_PROCESS_RBAC_GRANT`, checked where the
+project files are read beside the Platform document
+([chapter 14](14-platform-intent.md#kubernetes-api-access)) and held as an
+estate-wide invariant over the composed union
 ([chapter 40](40-composition.md#secrets)). Under `delivery: env` and
 `delivery: file` the kubelet projects the Secret and the pod never calls the API,
 so a least-privilege Role for these Processes grants nothing; rendering sixty
 objects that grant nothing would make an empty Role read as an oversight and
 give a future broad grant somewhere to hide.
 
-A Process that genuinely needs the Kubernetes API (`agents-api` creates
-Applications at runtime) is the case this rule refuses to guess at. It is an
-unregistered capability today, so it belongs in a Bidirectional Ledger with an
-owner until the model has vocabulary for it
-([0038](../../docs/adr/model/0038-bidirectional-ledgers.md)), not in an
-adapter's default.
+### Kubernetes API access is declared and admitted
+
+A Process that genuinely calls the Kubernetes API is the case the rule above
+refuses to guess at. It declares what it asks, in `api`
+([chapter 10](10-project-intent.md#kubernetes-api-access)), and the Platform
+document admits its Application by name
+([chapter 14](14-platform-intent.md#kubernetes-api-access),
+[0092](../../docs/adr/model/0092-api-access-is-declared-on-the-process-and-admitted-by-the-platform.md)).
+An admitted declaration derives four things, and nothing else derives any of
+them:
+
+| derived | from |
+|---|---|
+| a `ClusterRole` holding the declared rules, `core` spelled as the unnamed group | the Process's `api.rules` |
+| a `ClusterRoleBinding` of that role to the Process's one ServiceAccount | the Process's identity ([Process identity](#process-identity)) |
+| a mounted token | the declaration itself ([above](#the-token-is-mounted-only-where-the-pod-authenticates)) |
+| egress to where the API answers, by address | the Platform document's `apiAccess.server` |
+
+The role and its binding are cluster-scoped, so no namespace holds two apart:
+both are named **`<namespace>-<identity>`**, the name the identity's Vault role
+carries, for the same reason. The role is a `ClusterRole` and never a `Role`:
+every holder the estate has reads across the Projects' namespaces, and one of
+them reads a kind no namespace holds.
+
+Admission is by id, so it holds only for an id one Application carries. A
+second project that names an Application of its own after an admitted one is
+not the Application the platform meant, and nothing in the set says which is:
+both declarations are refused, rather than either rendered.
+
+Nothing narrows a rule: the model renders the rules as declared. What keeps a
+grant small is that it is written down, with a reason, in the repository whose
+code needs it, and that the platform names who may write one at all. A rule on
+`secrets` is legal for an admitted holder and is exactly as visible as any
+other: Flagger reads the Secret a pod names to learn that it is excluded from
+configuration tracking ([chapter 55](55-delivery.md#secret-rotation)), and it
+declares that one verb.
+
+The worked [`delivery`](examples/delivery/delivery.project.yml) project holds the
+estate's three holders: Flagger, the Release Gate and the Collector.
 
 ### Audit before enforce
 
@@ -696,6 +730,7 @@ flowchart LR
         d_vol["volumes + durability"]
         d_plc["placement<br/>hard dimensions:<br/>memory, cpu, arch,<br/>site, disk, gpu,<br/>capabilities"]
         d_rep["replicas<br/>count + reason"]
+        d_api["api<br/>rules + reason"]
     end
 
     subgraph PIN["Pinned inputs, each carried by digest (chapter 20)"]
@@ -736,6 +771,7 @@ flowchart LR
         k_sm["ServiceMonitor / PodMonitor"]
         k_can["Canary"]
         k_hpa["HorizontalPodAutoscaler"]
+        k_rbac["ClusterRole + ClusterRoleBinding"]
     end
 
     d_dom --> r_ns
@@ -831,6 +867,10 @@ flowchart LR
     r_rep --> k_can
     d_wl --> k_hpa
     r_rep --> k_hpa
+    d_api --> k_rbac
+    d_api --> k_np
+    d_api --> k_dep
+    r_sa --> k_rbac
 ```
 
 ### Worked trace: one exposure declaration

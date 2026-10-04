@@ -171,6 +171,16 @@ const deliveryPolicy = z
   })
   .meta({ id: "DeliveryPolicy" });
 
+// Who may hold Kubernetes API access, and where the API answers
+// (spec/v1/14-platform-intent.md#kubernetes-api-access): the Applications whose
+// Processes may declare `api`, and the ranges an egress policy admits for it.
+const apiAccessPolicy = z
+  .strictObject({
+    holders: z.array(text.meta({ reference: "Application" })).min(1),
+    server: z.array(destinationRange).min(1),
+  })
+  .meta({ id: "ApiAccessPolicy" });
+
 // Which delivery path each Project is on while the estate moves off the old
 // one (spec/v1/60-setup.md#handing-over-one-project-at-a-time): `legacy` is
 // still delivered by the old path, `estate` by its pin, and `retireBy` is the
@@ -231,6 +241,7 @@ export const platformIntent = z
     ephemeral: ephemeralPolicy,
     migration: migrationPolicy.exactOptional(),
     delivery: deliveryPolicy.exactOptional(),
+    apiAccess: apiAccessPolicy.exactOptional(),
     handover: handoverLedger.exactOptional(),
     providers: z.array(provider).min(1).exactOptional(),
   })
