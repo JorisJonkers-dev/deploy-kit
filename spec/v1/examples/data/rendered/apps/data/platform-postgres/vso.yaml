@@ -16,7 +16,7 @@ spec:
   method: kubernetes
   mount: kubernetes
   kubernetes:
-    role: postgres
+    role: data-system-postgres
     serviceAccount: postgres
 ---
 apiVersion: secrets.hashicorp.com/v1beta1
@@ -61,7 +61,7 @@ spec:
   method: kubernetes
   mount: kubernetes
   kubernetes:
-    role: postgres-backup
+    role: data-system-postgres-backup
     serviceAccount: postgres-backup
 ---
 apiVersion: secrets.hashicorp.com/v1beta1

@@ -8,6 +8,12 @@ const MANAGED_BY = { "app.kubernetes.io/managed-by": "deploy-kit" } as const;
 /** What an estate- or project-scoped object carries: it belongs to no Process. */
 export const managedOnly = (): Labels => ({ ...MANAGED_BY });
 
+/** What an object of the Application itself carries: it belongs to no one Process of it. */
+export const applicationLabels = (application: string): Labels => ({
+  "app.kubernetes.io/part-of": application,
+  ...MANAGED_BY,
+});
+
 /** The five labels of one Process of one Application. */
 export const labelsOf = (
   process: { readonly name: string; readonly runtime: string },

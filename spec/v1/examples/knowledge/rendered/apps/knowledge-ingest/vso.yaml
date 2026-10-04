@@ -14,7 +14,7 @@ spec:
   method: kubernetes
   mount: kubernetes
   kubernetes:
-    role: knowledge-ingest-worker
+    role: knowledge-system-knowledge-ingest-worker
     serviceAccount: knowledge-ingest-worker
 ---
 apiVersion: secrets.hashicorp.com/v1beta1

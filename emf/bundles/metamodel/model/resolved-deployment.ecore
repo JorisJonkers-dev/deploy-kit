@@ -425,10 +425,14 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess"/>
   </eClassifiers>
 
-  <!-- One immutable ConfigMap per Asset the Processes mount, under its
-       content-named name. -->
+  <!-- The ConfigMaps of one Application: first, where it is gated, the one the
+       Release Gate reads, named for the Application and holding its release-gate
+       inputs as one line of canonical JSON; then one immutable ConfigMap per
+       Asset the Processes mount, under its content-named name. -->
   <eClassifiers xsi:type="ecore:EClass" name="ConfigMapFile" eSuperTypes="#//Deliverable">
-    <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="processes" upperBound="-1" eType="#//ResolvedProcess"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="application" lowerBound="1" eType="#//ResolvedApplication"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="releaseGate" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <!-- One scheduled backup per backed-up volume of the Processes, from the plan

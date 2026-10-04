@@ -1,10 +1,10 @@
 {
   "_generated": "GENERATED. Never hand-edit.",
-  "name": "knowledge-api",
+  "name": "knowledge-system-knowledge-api",
   "role": {
     "bound_service_account_names": ["knowledge-api"],
     "bound_service_account_namespaces": ["knowledge-system"],
-    "token_policies": ["knowledge-api"],
+    "token_policies": ["knowledge-system-knowledge-api"],
     "token_ttl": "1h"
   }
 }

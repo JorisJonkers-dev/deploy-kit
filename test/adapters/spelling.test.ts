@@ -235,16 +235,67 @@ describe("the kubernetes adapter", () => {
   });
 
   it("writes no Service for a stop-start Process that serves nothing, and no file with nothing in it", () => {
+    // An Application none of whose Processes switches blue-green carries no gate.
     const rendered = renderKubernetes(
-      edited(undefined, () => ({
-        switchover: "stop-start",
-        surfaces: undefined,
-      })),
+      edited(
+        () => ({ releaseGate: undefined }),
+        () => ({ switchover: "stop-start", surfaces: undefined }),
+      ),
     );
 
     expect(
       rendered.map(({ path }) => path.split("/").at(-1)).sort(),
     ).toStrictEqual(["namespace.yaml", "serviceaccount.yaml", "workload.yaml"]);
+  });
+
+  it("hands the Release Gate a gated Application's inputs in a ConfigMap named for it, which stays mutable", () => {
+    const project = minimal();
+    const [application] = project.applications;
+
+    expect(
+      objectsAt(renderKubernetes(project), "notes/configmap.yaml"),
+    ).toStrictEqual([
+      {
+        apiVersion: "v1",
+        kind: "ConfigMap",
+        metadata: {
+          name: "notes-release-gate",
+          namespace: "notes-system",
+          labels: {
+            "app.kubernetes.io/part-of": "notes",
+            "app.kubernetes.io/managed-by": "deploy-kit",
+          },
+        },
+        data: { "releaseGate.json": { json: application?.releaseGate } },
+      },
+    ]);
+  });
+
+  it("writes the gate's inputs before the Assets of the Application's Processes", () => {
+    const rendered = renderKubernetes(
+      edited(undefined, () => ({
+        assets: [
+          {
+            name: "notes-api-settings-0a1b2c3d",
+            from: "config/settings.toml",
+            mountAt: "/etc/notes/settings.toml",
+            content: "mode = 'lite'\n",
+          },
+        ],
+      })),
+    );
+
+    expect(
+      (
+        objectsAt(rendered, "notes/configmap.yaml") as {
+          metadata: { name: string };
+          immutable?: true;
+        }[]
+      ).map(({ metadata, immutable }) => [metadata.name, immutable]),
+    ).toStrictEqual([
+      ["notes-release-gate", undefined],
+      ["notes-api-settings-0a1b2c3d", true],
+    ]);
   });
 
   it("writes no readiness probe for a Process that publishes none", () => {
@@ -726,6 +777,19 @@ describe("the vso adapter", () => {
     ]);
   });
 
+  it("authenticates as the identity's ServiceAccount, for the role that carries its namespace", () => {
+    const [auth] = objectsAt(vso([GRANT]), "vso.yaml") as {
+      spec: { kubernetes: unknown };
+    }[];
+
+    // The Secret Store has no namespaces: the role's name carries the one the
+    // identity is unique in, and it is the policy's name too.
+    expect(auth?.spec.kubernetes).toStrictEqual({
+      role: "notes-system-notes-api",
+      serviceAccount: "notes-api",
+    });
+  });
+
   it("stops at a grant outside the kv mount", () => {
     expect(() => vso([{ ...GRANT, path: "kv/secret/data/x" }])).toThrow(
       "kv/secret/data/x: a grant outside the secret mount is not rendered yet",
@@ -756,6 +820,51 @@ describe("the vault-policy adapter", () => {
         "transit/keys/notes-jwt/rotate": { capabilities: ["update"] },
       },
     });
+  });
+
+  it("writes an identity's documents under the name Vault holds them by, and binds the role to that policy", () => {
+    const rendered = policy(GRANT);
+
+    expect(rendered.map(({ path }) => path)).toStrictEqual([
+      "apps/vso-secrets/policies/notes-system-notes-api.policy.json",
+      "apps/vso-secrets/policies/notes-system-notes-api.role.json",
+    ]);
+    expect(objectsAt(rendered, "role.json")).toStrictEqual([
+      {
+        bound_service_account_names: ["notes-api"],
+        bound_service_account_namespaces: ["notes-system"],
+        token_policies: ["notes-system-notes-api"],
+      },
+    ]);
+  });
+
+  it("makes two identities that derive one name claim one path, which the render refuses", () => {
+    // A hyphen does not keep two hyphenated names apart: `a-system` + `system-c`
+    // and `a-system-system` + `c` are one name, and so one role in Vault.
+    const held = (namespace: string, name: string) =>
+      renderVaultPolicy(
+        edited(
+          () => ({ namespace }),
+          () => ({ name, identity: name, secrets: [GRANT] }),
+        ),
+      );
+    const both = [
+      ...held("a-system", "system-c"),
+      ...held("a-system-system", "c"),
+    ];
+
+    expect(
+      collisions(both).map(({ code, message }) => [code, message]),
+    ).toStrictEqual([
+      [
+        "E_PATH_COLLISION",
+        "apps/vso-secrets/policies/a-system-system-c.policy.json is claimed by vault-policy and vault-policy",
+      ],
+      [
+        "E_PATH_COLLISION",
+        "apps/vso-secrets/policies/a-system-system-c.role.json is claimed by vault-policy and vault-policy",
+      ],
+    ]);
   });
 
   it("stops at an access tier it does not spell yet, and at a grant outside the kv mount", () => {

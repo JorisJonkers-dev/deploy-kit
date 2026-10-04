@@ -271,6 +271,7 @@ class ResolvedDeploymentTest {
                         "apps/notes/notes/workload.yaml",
                         "apps/notes/notes/canary.yaml",
                         "apps/notes/notes/serviceaccount.yaml",
+                        "apps/notes/notes/configmap.yaml",
                         "apps/notes/notes/podmonitor.yaml",
                         "apps/notes/notes/networkpolicy.yaml",
                         "apps/edge/public-frankfurt/notes-public.yaml",

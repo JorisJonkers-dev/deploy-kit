@@ -141,22 +141,44 @@ union on engine.
 
 Every Process authenticates as its own principal. The ServiceAccount, the
 Vault Kubernetes auth role and the Vault policy bound to it are derived **per
-Process** and named for the **Process alone**
-([0031](../../docs/adr/model/0031-identity-per-process.md)). The namespace is the
+Process** ([0031](../../docs/adr/model/0031-identity-per-process.md)). The
+ServiceAccount is named for the **Process alone**. The namespace is the
 project's, `<project>-system`
 ([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)), so the principal a
 Pod presents is `<project>-system.<process>`. No author writes an identity name
 ([0021](../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)).
 
-| project | Application | Processes | derived identity |
-|---|---|---|---|
-| `auth` | `auth` | `auth-api`, `auth-ui` | `auth-system.auth-api`, the identity already live, `VAULT_KUBERNETES_ROLE: auth-api`, and `auth-system.auth-ui` |
-| `knowledge` | `knowledge`, `knowledge-ingest` | `knowledge-api`; `knowledge-ingest-worker` | `knowledge-system.knowledge-api`, `knowledge-system.knowledge-ingest-worker` |
+The Vault role and its policy carry one name, **`<namespace>-<process>`**:
+`auth-system-auth-api`. A ServiceAccount is unique in its namespace, and the
+Secret Store has no namespaces: one `kubernetes` auth mount holds every
+project's roles, and one list holds every policy. A role named for the Process
+alone would be unique only as long as no two projects call a Process the same,
+which nothing checks and nothing should.
+
+The name is also the path the `vault-policy` adapter writes the two documents
+at, `policies/<namespace>-<identity>`
+([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)),
+and that is what keeps it unique. A hyphen does not separate two names that may
+hold hyphens: project `a` with a Process `system-c`, and project `a-system`
+with a Process `c`, both derive `a-system-system-c`. Written under the name,
+the two claim one path, and a path has one owner: the render is refused with
+`E_PATH_COLLISION` ([chapter 30](30-deliverables.md#path-allocation)) before
+either document exists, so no project's role is ever written over another's.
+A backup identity and a migration identity are named by the same rule.
+
+| project | Application | Processes | ServiceAccount, in the project's namespace | Vault role and policy |
+|---|---|---|---|---|
+| `auth` | `auth` | `auth-api`, `auth-ui` | `auth-api`, `auth-ui` | `auth-system-auth-api`, `auth-system-auth-ui` |
+| `knowledge` | `knowledge`, `knowledge-ingest` | `knowledge-api`; `knowledge-ingest-worker` | `knowledge-api`, `knowledge-ingest-worker` | `knowledge-system-knowledge-api`, `knowledge-system-knowledge-ingest-worker` |
+
+The live cluster carries `auth-api` as that Process's role today. A role is
+renamed when its Project is handed over to this path, by the Vault policy job
+writing the new name; the old one is reported and a human removes it
+([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)).
 
 A `<application>-<process>` prefix is what the project file makes absurd. Application
 `auth` holds Process `auth-api`, so the prefixed rule would render
-`auth-system.auth-auth-api` for no gain: `auth-api` is the process name, and it
-is the role the live cluster already carries. The uniqueness the prefix existed
+`auth-system.auth-auth-api` for no gain: `auth-api` is the process name. The uniqueness the prefix existed
 to give moves to where a reader can check it: two Processes in one project may
 not share a name, `E_DUPLICATE_PROCESS_NAME` at composition
 ([chapter 40](40-composition.md#identity)).

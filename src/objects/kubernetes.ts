@@ -164,12 +164,22 @@ export interface CronJob {
   };
 }
 
+/**
+ * A JSON document a ConfigMap carries as one value. The adapter hands over the
+ * value and the serializer writes its canonical form, so the bytes of an
+ * embedded document are the serializer's like every other byte.
+ */
+export interface EmbeddedJson {
+  readonly json: unknown;
+}
+
 export interface ConfigMap {
   readonly apiVersion: "v1";
   readonly kind: "ConfigMap";
   readonly metadata: ObjectMeta;
-  readonly immutable: true;
-  readonly data: Readonly<Record<string, string>>;
+  /** Set on an Asset, whose name changes with its content; absent on one whose name stays. */
+  readonly immutable?: true;
+  readonly data: Readonly<Record<string, string | EmbeddedJson>>;
 }
 
 export interface PolicyPeer {

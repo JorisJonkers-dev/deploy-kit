@@ -226,7 +226,7 @@ field's placement link to this anchor rather than copying rows.
 | monitor `interval` and `timeout` | platform | pool | the metrics stack's ingest budget is shared, so it is one estate-wide value in the Platform document ([chapter 14](14-platform-intent.md#monitor-cadence)) |
 | the backup identity's grant on the destination | platform | pool | derived, never authored: the platform chose the destination, so it owns the credential, and only the backup identity holds it, never the serving Process |
 | Reconcile Unit and its ordering | platform | unique, arbitrated | one estate-wide DAG ([The Reconcile Unit](#the-reconcile-unit)) |
-| identity name, Vault role, Vault policy | platform | pool | named for the **Process alone**; the auth role namespace is shared ([chapter 16](16-dependencies.md#process-identity)) |
+| identity name, Vault role, Vault policy | platform | pool | the identity named for the **Process alone**, the role and the policy `<namespace>-<process>`: the auth role namespace is shared by every project ([chapter 16](16-dependencies.md#process-identity)) |
 | Secret Store path layout and grants | platform | pool | one path per reader set; `E_SUBTREE_PREFIX_COLLISION` across Subtrees ([chapter 40](40-composition.md#identity)) |
 | image digest | platform | unique, arbitrated | one image reference resolves to one digest estate-wide, from the pinned images lock |
 | eligible node set, `nodeSelector` and affinity | platform | pool | every declared dimension matched against the node contract; no eligible node is `E_PLACEMENT_UNSATISFIABLE` ([Derived mechanics](#derived-mechanics)) |
@@ -762,8 +762,6 @@ renders them into the cluster as one `ConfigMap` per gated Application,
 gate reads that ConfigMap and nothing else. What is rendered for the gate is
 that ConfigMap and a Canary per member naming the gate's endpoint, and nothing
 that decides ([chapter 55](55-delivery.md#what-the-render-leaves-to-flagger)).
-Until [#199](https://github.com/JorisJonkers-dev/deploy-kit/issues/199) lands,
-the rendered trees carry no gate ConfigMap.
 
 An `interrupted` Application carries no gate: its Processes stop before their
 new versions start, so there is no moment at which an old version serves while

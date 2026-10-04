@@ -339,7 +339,8 @@ derived (`<project>-system`), so no step below names one.
    Processes; each Process
    carries its `image`, the ports it `provides`, and its `placement`. Process
    names are unique within the project (`E_DUPLICATE_PROCESS_NAME`), because the
-   ServiceAccount and the Vault role are the Process name alone
+   ServiceAccount is the Process name alone, and the Vault role is the namespace
+   and that name
    ([0031](../../docs/adr/model/0031-identity-per-process.md)). Two Processes that
    must switch together belong to one Application: an Application is the unit of atomic
    release ([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)), and

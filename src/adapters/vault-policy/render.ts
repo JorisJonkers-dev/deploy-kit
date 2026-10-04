@@ -6,12 +6,18 @@
 import type { ResolvedProject } from "../../model/resolution.ts";
 import type { VaultPolicy, VaultRole } from "../../objects/custom.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";
+import { vaultNameOf } from "../../model/runtime-profiles.ts";
 import { holdersOf, type Grant } from "../shared/holders.ts";
 import { notSupported } from "../../model/internal-failure.ts";
 
 export const ADAPTER = "vault-policy";
 
-/** The estate-wide directory every identity's documents land in, by namespace. */
+/**
+ * The estate-wide directory every identity's documents land in, each under the
+ * name Vault holds it by. Two identities that derive one name claim one path,
+ * and a path has one owner (`E_PATH_COLLISION`): no render overwrites one
+ * project's role with another's.
+ */
 const POLICIES = "apps/vso-secrets/policies";
 const KV_DATA = /^secret\/data\//;
 const KV_METADATA = "secret/metadata/";
@@ -44,14 +50,15 @@ function pathsOf(grant: Grant): [string, { capabilities: string[] }][] {
 export function renderVaultPolicy(project: ResolvedProject): Deliverable[] {
   return project.applications.flatMap((application) =>
     holdersOf(application).flatMap(({ identity, grants }): Deliverable[] => {
-      const stem = `${POLICIES}/${application.namespace}/${identity}`;
+      const name = vaultNameOf(application.namespace, identity);
+      const stem = `${POLICIES}/${name}`;
       const policy: VaultPolicy = {
         path: Object.fromEntries(grants.flatMap(pathsOf)),
       };
       const role: VaultRole = {
         bound_service_account_names: [identity],
         bound_service_account_namespaces: [application.namespace],
-        token_policies: [`${application.namespace}-${identity}`],
+        token_policies: [name],
       };
       return [
         { path: `${stem}.policy.json`, adapter: ADAPTER, objects: [policy] },
