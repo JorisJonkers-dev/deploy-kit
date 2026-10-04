@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **46** rows. The compiler's behaviours join it as they land.
+This ledger holds **47** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -69,3 +69,4 @@ This ledger holds **46** rows. The compiler's behaviours join it as they land.
 | REQ-044 | Composition, at its use-case seam, composes every Project's newest fragment with the Platform document's and the ClusterState snapshot, whatever order they arrive in: a refused fragment isolates its Project at the fragment the previous lock recorded, an error naming no changed fragment fails the run, a paused Project moves no pin, a Rollback composes its held fragment, an unchanged render moves no pin, and only the Projects the handover ledger delivers are published | [test/application/compose.test.ts](../test/application/compose.test.ts) |
 | REQ-045 | The `deploy-kit` command validates a set of authored files, packs a project file's or the Platform document's Intent Fragment, and composes the estate from pulled fragments, exiting 0 when accepted, 1 when refused, with the diagnostics for a human or as JSON, and 2 on a wrong call | [test/cli/main.test.ts](../test/cli/main.test.ts) |
 | REQ-046 | The published package runs the command: the tarball `npm pack` builds, installed into an empty project, puts `deploy-kit` on the path, and it accepts a worked example, refuses a broken one with its code, and exits 2 on a wrong call | [test/packed-command.test.ts](../test/packed-command.test.ts) |
+| REQ-047 | A fragment's share of the images lock holds the aliases its project file names and no other, refusing one the lock it is handed does not hold; composition unions every share into the one lock resolution reads, taking an alias locked to the same image as one entry and refusing one locked differently at the share of the fragment that changed, which isolates that Project | [test/application/images-lock-shares.test.ts](../test/application/images-lock-shares.test.ts) |

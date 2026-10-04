@@ -47,6 +47,7 @@ export default defineConfig({
       "test/model/**/*.test.ts",
       "test/application/compose.test.ts",
       "test/application/fragment.test.ts",
+      "test/application/images-lock-shares.test.ts",
       // The CLI in process; its process-level runs reach no instrumented code.
       "test/cli/main.test.ts",
       "test/cli/index.test.ts",

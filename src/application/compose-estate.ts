@@ -21,6 +21,13 @@ import {
   type PinAnnotationsDocument,
 } from "../model/pin-annotations.ts";
 import type { AuthoredFile } from "./check-intent-set.ts";
+import {
+  IMAGES_LOCK,
+  readLock,
+  unionOf,
+  type Share,
+} from "./images-lock-shares.ts";
+import type { ImagesLockDocument } from "../model/images-lock.ts";
 import { parsePlatformIntent } from "./parse-platform-intent.ts";
 import {
   renderResolvedSet,
@@ -44,9 +51,9 @@ export interface Pin {
 }
 
 export interface ComposeInput {
-  /** The Platform document's fragment: the document, the node contract and the images lock. */
+  /** The Platform document's fragment: the document, the node contract and, where it carries one, an images lock. */
   readonly platform: Fragment;
-  /** Every Project's newest fragment. */
+  /** Every Project's newest fragment, each with its share of the images lock where it has one. */
   readonly fragments: readonly Fragment[];
   /** Every earlier fragment a Rollback or the previous lock names, by reference. */
   readonly held: readonly Fragment[];
@@ -138,6 +145,40 @@ function platformOf(fragment: Fragment): PlatformIntentDocument {
   ).value.document;
 }
 
+/**
+ * The one images lock resolution reads: the Platform document's, where its
+ * fragment carries one, and every composed fragment's share, as one lock named
+ * after the Platform document (spec/v1/40-composition.md#fragments).
+ */
+function imagesLockOf(
+  platform: Fragment,
+  candidates: ReadonlyMap<string, Fragment>,
+  previous: Readonly<Record<string, { readonly ref: string } | undefined>>,
+  schemaVersion: string,
+): Result<ImagesLockDocument> {
+  const shares: Share[] = [];
+  const diagnostics: Diagnostic[] = [];
+  const fragments: (readonly [string, Fragment, boolean])[] = [
+    // The platform's lock is never the changed side of a disagreement: an
+    // error that names it fails the run, as every platform error does.
+    [PLATFORM, platform, false],
+    ...[...candidates].map(
+      ([project, fragment]) =>
+        [project, fragment, fragment.ref !== previous[project]?.ref] as const,
+    ),
+  ];
+  for (const [directory, { files }, changed] of fragments) {
+    const file = files.find(({ name }) => name === IMAGES_LOCK);
+    if (file === undefined) continue;
+    const lock = readLock(file.text, `${directory}/${IMAGES_LOCK}`);
+    if (lock.ok) shares.push({ directory, changed, lock: lock.value });
+    else diagnostics.push(...lock.diagnostics);
+  }
+  return diagnostics.length > 0
+    ? { ok: false, diagnostics }
+    : unionOf(shares, platform.manifest.spec.project, schemaVersion);
+}
+
 /** A fragment by reference, which the caller owes for every reference it hands over. */
 function heldAt(held: readonly Fragment[], ref: string): Fragment {
   const fragment = held.find((candidate) => candidate.ref === ref);
@@ -185,7 +226,15 @@ export function composeEstate(
         placed(project, files),
       ),
     ];
-    const resolved = resolveIntentSet(files, options);
+    const lock = imagesLockOf(
+      input.platform,
+      candidates,
+      previous,
+      options.schemaVersion,
+    );
+    const resolved = lock.ok
+      ? resolveIntentSet(files, { ...options, imagesLock: lock.value })
+      : lock;
     const outcome = resolved.ok
       ? deliver(input, resolved.value, options)
       : resolved;

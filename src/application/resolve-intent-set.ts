@@ -5,6 +5,7 @@
 import { pinnedDiagnostics } from "../check/pinned-inputs.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { ScopedEnv } from "../model/env.ts";
+import type { ImagesLockDocument } from "../model/images-lock.ts";
 import type { Hasher } from "../model/hasher.ts";
 import type { EffectiveProject } from "../model/effective-intent.ts";
 import type { InputDigest, PinnedSet } from "../model/resolution.ts";
@@ -24,6 +25,11 @@ export interface ResolveOptions {
   readonly hash: Hasher;
   /** The integrity of the schema package the render was made with. */
   readonly schemaPackageIntegrity: string;
+  /**
+   * The images lock, where the caller already holds it: composition's union
+   * of every fragment's share. Without it the set's own lock file is read.
+   */
+  readonly imagesLock?: ImagesLockDocument | undefined;
 }
 
 export interface ResolvedSet {
@@ -142,7 +148,7 @@ const assetsInPathOrder = (
 
 export function resolveIntentSet(
   files: readonly AuthoredFile[],
-  { hash, schemaPackageIntegrity }: ResolveOptions,
+  { hash, schemaPackageIntegrity, imagesLock }: ResolveOptions,
 ): Result<ResolvedSet> {
   const composed = composeIntentSet(files);
   if (!composed.ok) return composed;
@@ -150,7 +156,10 @@ export function resolveIntentSet(
   if (platform === undefined)
     return { ok: false, diagnostics: [missing("a Platform document")] };
   const contract = pinned(files, NODE_CONTRACT, readNodeContract);
-  const lock = pinned(files, IMAGES_LOCK, readImagesLock);
+  const lock: Result<ImagesLockDocument> =
+    imagesLock === undefined
+      ? pinned(files, IMAGES_LOCK, readImagesLock)
+      : { ok: true, value: imagesLock };
   const state = pinned(files, CLUSTER_STATE, readClusterState);
   const proofs = proofsOf(
     projects.map(({ name, value }) => ({
