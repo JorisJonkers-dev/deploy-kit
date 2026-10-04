@@ -137,13 +137,17 @@ context Process
 context ApiAccess
 	-- Kubernetes API access is the platform's to admit: a Process that declares
 	-- it in an Application the Platform document does not name would hold a
-	-- grant nobody with authority over the cluster gave. Read with no Platform
-	-- document, there is nobody to admit it and nothing to refuse.
+	-- grant nobody with authority over the cluster gave. The platform admits by
+	-- id, so an id two Applications carry admits neither: a second project
+	-- naming its own Application `flagger` is not the one the platform meant.
+	-- Read with no Platform document, there is nobody to admit it and nothing
+	-- to refuse.
 	inv E_PROCESS_RBAC_GRANT:
 		Platform.allInstances()->notEmpty() implies
 			ApiAccessPolicy.allInstances()->exists(policy |
 				policy.holders->exists(holder |
-					holder.processes->exists(process | process.api = self)))
+					holder.processes->exists(process | process.api = self)
+					and Application.allInstances()->select(other | other.id = holder.id)->size() = 1))
 
 context Volume
 	-- A Durability Class names a guarantee only a platform policy keeps.

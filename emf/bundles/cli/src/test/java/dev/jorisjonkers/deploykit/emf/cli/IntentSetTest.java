@@ -162,6 +162,25 @@ class IntentSetTest {
     }
 
     @Test
+    void anIdTwoApplicationsCarryAdmitsNeitherToHoldApiAccess(@TempDir Path directory) {
+        Path impostor = Examples.write(
+                directory,
+                "impostor.project.yml",
+                Examples.read("refusals/process-rbac-grant/refusals.project.yml")
+                        .replace("id: edge-proxy", "id: flagger"));
+        List<Path> doubled = new java.util.ArrayList<>(WORKED);
+        doubled.add(impostor);
+
+        // The platform admits `flagger` by id, and nothing says which of the two it meant.
+        assertThat(Pipeline.check(doubled).stream()
+                        .filter(refusal -> refusal.code().equals("E_PROCESS_RBAC_GRANT")))
+                .extracting(Diagnostic::document, Diagnostic::path)
+                .containsExactlyInAnyOrder(
+                        tuple("delivery.project.yml", "/applications/0/processes/0/api"),
+                        tuple("impostor.project.yml", "/applications/0/processes/0/api"));
+    }
+
+    @Test
     void theFoundationsNamesAreRefusedWhereNoProjectFileDeclaresThem() {
         assertThat(Pipeline.check(WORKED.stream()
                         .filter(path -> !path.toString().contains("/edge/")

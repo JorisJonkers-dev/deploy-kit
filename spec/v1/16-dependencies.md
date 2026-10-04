@@ -448,6 +448,11 @@ carries, for the same reason. The role is a `ClusterRole` and never a `Role`:
 every holder the estate has reads across the Projects' namespaces, and one of
 them reads a kind no namespace holds.
 
+Admission is by id, so it holds only for an id one Application carries. A
+second project that names an Application of its own after an admitted one is
+not the Application the platform meant, and nothing in the set says which is:
+both declarations are refused, rather than either rendered.
+
 Nothing narrows a rule: the model renders the rules as declared. What keeps a
 grant small is that it is written down, with a reason, in the repository whose
 code needs it, and that the platform names who may write one at all. A rule on

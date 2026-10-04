@@ -104,6 +104,9 @@ platform would have to take back.
   delivered by the estate path.
 - `ClusterRole` and `ClusterRoleBinding` leave the forbidden list for exactly
   the objects a held `api` derives; `Role` and `RoleBinding` stay unrendered.
+- Admission is by id, and an id is unique only by check. Where two
+  Applications carry an admitted id, neither is admitted: the grant is refused
+  rather than given to whichever project chose the name second.
 - A cluster-scoped name is `<namespace>-<identity>`, the name the identity's
   Vault role carries. Nothing but the Project's name keeps two of them apart,
   so the rule that constrains a Project's name constrains these too.

@@ -68,7 +68,7 @@ other resolves and every policy one asks for the other offers:
 | a grant delivered as `env` or `file` where `secretsEncryption` is false | `E_SECRETS_AT_REST_REQUIRED` |
 | a name in `delivery.machinery` names an Application no project file read beside it declares | `E_UNKNOWN_MACHINERY` |
 | a name in `apiAccess.holders` names an Application no project file read beside it declares | `E_UNKNOWN_API_HOLDER` |
-| a Process declares `api` in an Application `apiAccess.holders` does not name | `E_PROCESS_RBAC_GRANT` |
+| a Process declares `api` in an Application `apiAccess.holders` does not name, or under an id a second Application also carries | `E_PROCESS_RBAC_GRANT` |
 | `telemetry.collector` names no Application a project file read beside it declares with an `otlp` surface on one of its Processes | `E_UNKNOWN_TELEMETRY_COLLECTOR` |
 | `telemetry.metrics` names an Application no project file read beside it declares | `E_UNKNOWN_METRICS_STACK` |
 | `delivery.gate` names no Application a project file read beside it declares with an `http` surface on one of its Processes | `E_UNKNOWN_RELEASE_GATE` |
@@ -507,7 +507,10 @@ Two facts, both the platform's:
   ([0004](../../docs/adr/model/0004-contention-decides-authority.md)). Each
   name links to an Application a project file declares, as the machinery's do:
   `E_UNKNOWN_API_HOLDER` otherwise. A declaration in an Application the list
-  does not name is `E_PROCESS_RBAC_GRANT`.
+  does not name is `E_PROCESS_RBAC_GRANT`. A name admits one Application: where
+  two Applications of the set carry the id, neither is admitted, and each one's
+  declaration is `E_PROCESS_RBAC_GRANT`, whatever else refuses the duplicate
+  ([chapter 40](40-composition.md#the-estate-wide-invariants)).
 - **`server`** is where the API answers, as address ranges and a port each. A
   holder's egress policy admits them
   ([chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted)):

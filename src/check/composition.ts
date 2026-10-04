@@ -52,6 +52,8 @@ function grantRefusals(
 interface Estate {
   /** Every Application some project file declares. */
   readonly declared: ReadonlySet<string>;
+  /** Every id more than one Application carries, so that the id names no one of them. */
+  readonly repeated: ReadonlySet<string>;
   /** The Applications whose engine owns databases, whose consumers derive one. */
   readonly databases: ReadonlySet<string>;
 }
@@ -269,16 +271,22 @@ function projectRefusals(
         });
       // Kubernetes API access is the platform's to admit: a Process that
       // declares it in an Application the Platform document does not name
-      // would hold a grant nobody with authority over the cluster gave.
+      // would hold a grant nobody with authority over the cluster gave. The
+      // platform admits by id, so an id two Applications carry admits
+      // neither: a second project naming its own Application `flagger` is
+      // not the one the platform meant, and nothing here can tell which is.
       if (
         process.api !== undefined &&
-        platform.apiAccess?.holders.includes(application.id) !== true
+        (platform.apiAccess?.holders.includes(application.id) !== true ||
+          estate.repeated.has(application.id))
       )
         refusals.push({
           code: "E_PROCESS_RBAC_GRANT",
           path: `${processAt}/api`,
-          message: `${process.name} declares Kubernetes API access, and the platform does not admit the Application ${application.id} to hold any`,
-          hint: "Name the Application in the Platform document's `apiAccess.holders`, or drop `api`.",
+          message: estate.repeated.has(application.id)
+            ? `${process.name} declares Kubernetes API access, and more than one Application carries the id ${application.id}, so the platform admits none of them`
+            : `${process.name} declares Kubernetes API access, and the platform does not admit the Application ${application.id} to hold any`,
+          hint: "Name the Application in the Platform document's `apiAccess.holders`, under an id no other Application carries, or drop `api`.",
         });
       for (const [v, volume] of volumes.entries())
         if (platform.durability[volume.durability] === undefined)
@@ -306,8 +314,12 @@ export function setDiagnostics(
       document.applications.map(({ id }) => id),
     ),
   );
+  const ids = projects.flatMap(({ document }) =>
+    document.applications.map(({ id }) => id),
+  );
   const estate: Estate = {
     declared,
+    repeated: new Set(ids.filter((id, at) => ids.indexOf(id) !== at)),
     databases: new Set(
       projects.flatMap(({ document }) =>
         document.applications

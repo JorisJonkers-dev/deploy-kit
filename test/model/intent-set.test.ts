@@ -353,6 +353,71 @@ describe("checkIntentSet", () => {
     ]);
   });
 
+  // REQ-048 (docs/requirements.md): the platform admits a holder by id, so an
+  // id two Applications carry admits neither of them.
+  it("admits no Application to hold API access under an id a second project also carries", () => {
+    const impostor = read("refusals/process-rbac-grant/refusals.project.yml");
+    const result = checkIntentSet([
+      ...WORKED,
+      {
+        name: "impostor/impostor.project.yml",
+        text: impostor.text.replace("id: edge-proxy", "id: flagger"),
+      },
+    ]);
+    const refused = result.ok
+      ? []
+      : result.diagnostics.filter(
+          ({ code }) => code === "E_PROCESS_RBAC_GRANT",
+        );
+
+    expect(
+      refused.map(({ document, path, message }) => [document, path, message]),
+    ).toStrictEqual([
+      [
+        "delivery/delivery.project.yml",
+        "/applications/0/processes/0/api",
+        "flagger declares Kubernetes API access, and more than one Application carries the id flagger, so the platform admits none of them",
+      ],
+      [
+        "impostor/impostor.project.yml",
+        "/applications/0/processes/0/api",
+        "edge-proxy declares Kubernetes API access, and more than one Application carries the id flagger, so the platform admits none of them",
+      ],
+    ]);
+  });
+
+  it("says which Application the platform does not admit, where its id is its own", () => {
+    const [platform, ...projects] = WORKED;
+    const result = checkIntentSet([
+      {
+        name: (platform as AuthoredFile).name,
+        text: (platform as AuthoredFile).text.replace(
+          "holders: [flagger, release-gate, collector]",
+          "holders: [flagger, release-gate]",
+        ),
+      },
+      ...projects,
+    ]);
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, path, message, hint }) => [
+            code,
+            path,
+            message,
+            hint,
+          ]),
+    ).toStrictEqual([
+      [
+        "E_PROCESS_RBAC_GRANT",
+        "/applications/2/processes/0/api",
+        "collector declares Kubernetes API access, and the platform does not admit the Application collector to hold any",
+        "Name the Application in the Platform document's `apiAccess.holders`, under an id no other Application carries, or drop `api`.",
+      ],
+    ]);
+  });
+
   it("refuses a collector that provides no otlp surface, as it refuses one nothing declares", () => {
     const observability = read("observability/observability.project.yml");
     const deaf = {
