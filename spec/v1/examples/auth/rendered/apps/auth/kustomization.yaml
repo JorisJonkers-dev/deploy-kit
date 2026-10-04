@@ -5,6 +5,7 @@ namespace: auth-system
 resources:
 - workload.yaml
 - canary.yaml
+- configmap.yaml
 - serviceaccount.yaml
 - pdb.yaml
 - servicemonitor.yaml

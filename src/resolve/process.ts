@@ -19,7 +19,11 @@ import type {
   ResolvedProcess,
   StartupProbe,
 } from "../model/resolved-deployment.ts";
-import { exports, namespaceOf } from "../model/runtime-profiles.ts";
+import {
+  exports,
+  namespaceOf,
+  vaultNameOf,
+} from "../model/runtime-profiles.ts";
 import type { Hasher } from "../model/hasher.ts";
 import { resolveEdge } from "./dependencies.ts";
 import { resolveAssets, resolveGrants, resolveSidecars } from "./secrets.ts";
@@ -216,12 +220,16 @@ function entryOf(
       name,
       value: exposureOf(variable, value.source, context) + suffix,
     };
-  // The Vault role and the ServiceAccount are both the Process's own name.
+  // What the platform derived about this Process
+  // (spec/v1/10-project-intent.md#configuration): its namespace, its
+  // ServiceAccount, which is its own name, and its Vault role, which is both.
+  const namespace = namespaceOf(context.project);
+  if (value.source === "namespace") return { name, value: namespace + suffix };
   return {
     name,
     value:
-      (value.source === "namespace"
-        ? namespaceOf(context.project)
+      (value.source === "vaultRole"
+        ? vaultNameOf(namespace, process.name)
         : process.name) + suffix,
   };
 }

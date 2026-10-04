@@ -1,0 +1,12 @@
+# GENERATED. Never hand-edit.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-release-gate
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+data:
+  releaseGate.json: |
+    {"analysis":{"interval":"30s","iterations":4,"threshold":3},"deadline":"1800s","endpoint":"http://release-gate.delivery-system.svc.cluster.local:8080","members":[{"checks":["error-rate","latency"],"process":"auth-api","readiness":{"path":"/api/actuator/health/readiness","port":8081}},{"process":"auth-ui","readiness":{"path":"/","port":8080}}]}

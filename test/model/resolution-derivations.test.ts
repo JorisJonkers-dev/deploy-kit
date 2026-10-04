@@ -422,16 +422,20 @@ describe("the environment a Process runs with", () => {
       env: [
         env(
           "notes-api/base.env",
-          "NS=${identity:namespace}\nROLE=${identity:vaultRole}\n",
+          "NS=${identity:namespace}\nROLE=${identity:vaultRole}\nSA=${identity:serviceAccount}\n",
         ),
       ],
     });
 
     expect(
-      resolved.environment?.filter(({ name }) => ["NS", "ROLE"].includes(name)),
+      resolved.environment?.filter(({ name }) =>
+        ["NS", "ROLE", "SA"].includes(name),
+      ),
     ).toStrictEqual([
       { name: "NS", value: "notes-system" },
-      { name: "ROLE", value: "notes-api" },
+      // The Secret Store has no namespaces, so the role's name carries one.
+      { name: "ROLE", value: "notes-system-notes-api" },
+      { name: "SA", value: "notes-api" },
     ]);
   });
 

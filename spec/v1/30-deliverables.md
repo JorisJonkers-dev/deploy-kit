@@ -169,7 +169,7 @@ documents, at `apps/vso-secrets/policies/<namespace>/<identity>.{policy,role}.js
 | document | derived from |
 |---|---|
 | the Vault policy | the Process's grants and their access tiers: `read` on the granted path, `patch` for `self-roll`, `create`/`update`/`delete` on a prefix for `custody`, nothing for `self-renew` |
-| the Kubernetes auth role | the identity's ServiceAccount and namespace ([0031](../../docs/adr/model/0031-identity-per-process.md)), bound to that one policy by its name, `<namespace>-<identity>`; the role is named for the identity, which is what its `VaultAuth` asks for |
+| the Kubernetes auth role | the identity's ServiceAccount and namespace ([0031](../../docs/adr/model/0031-identity-per-process.md)), bound to that one policy by its name, `<namespace>-<identity>`; the role carries the same name, which is what its `VaultAuth` asks for ([chapter 16](16-dependencies.md#process-identity)) |
 
 One document per identity, not per Application: identity is per Process, so a
 two-Process Application produces two policies and a diff says which principal's
@@ -186,7 +186,7 @@ generated `ConfigMap`, so the job writes exactly the documents of the render
 that applied it, and nothing else. The job is named by the digest of those
 documents, `vault-policy-<12 hex>`: a Job's template cannot change once created,
 so a changed policy set is a new Job, and the one it replaces leaves the render
-with it. Until [#199](https://github.com/JorisJonkers-dev/deploy-kit/issues/199)
+with it. Until [#202](https://github.com/JorisJonkers-dev/deploy-kit/issues/202)
 lands, the render carries the documents alone, and no job applies them.
 
 - It authenticates as a dedicated **policy-admin** role, a platform fixture
@@ -285,11 +285,13 @@ spells only what the projection holds:
 | a volume | `kubernetes` | a `ReadWriteOnce` `PersistentVolumeClaim` named for the claim at the volume's `size`, mounted at its `mountAt`, the pod's `fsGroup` the image's `gid` |
 | a backed-up volume's `backup` | `kubernetes` | a `CronJob` named for the backup claim at the plan's `schedule`, `concurrencyPolicy: Forbid`, running the `method` image as the plan's `uid` and `gid` under the backup identity's `ServiceAccount` with no token mounted; the volume mounted read-only at `/data`, the backup claim at `/backup`, `BACKUP_RETAIN` the `retain` count, `BACKUP_OFF_CLUSTER` the destination and the credential's Secret as variables where it copies off-cluster; the backup claim a second `PersistentVolumeClaim` at the volume's `size`, and both carrying `kustomize.toolkit.fluxcd.io/prune: disabled` |
 | an Asset | `kubernetes` | an immutable `ConfigMap` under the Asset's `name`, its one key the file name of `from`; a volume of that name, mounted at `mountAt` by that key, read-only |
+| a gated Application's `releaseGate` | `kubernetes` | a `ConfigMap` named `<application>-release-gate` in the Application's namespace, the first object of its `configmap.yaml`, labelled `part-of` the Application and `managed-by`; its one key `releaseGate.json`, the element as canonical JSON (RFC 8785) on one line. Not immutable: the name stays and the content changes with a release |
+| a grant's holder | `vault-policy` | a policy and an auth role, both to be written as `<namespace>-<identity>`, at `policies/<namespace>/<identity>.{policy,role}.json`; the role binds the identity's `ServiceAccount` in that namespace to that one policy |
 | a sidecar | `kubernetes` | a second container of the pod, its own `memory` and `cpu`, the same posture and the Process's variables |
 | a writable path | `kubernetes` | an `emptyDir` at the path's `size`, named `writable` and the path with every run of other characters a `-`, mounted at the path |
 | a secret reference | `kubernetes` | `valueFrom.secretKeyRef`, the grant's `destination` and the reference's `key` |
 | the `secretStore` endpoint | `vso` | a `VaultConnection` named `secret-store` in the project's namespace, at that address, `skipTLSVerify: false` |
-| a grant delivered `env` or `file` | `vso` | a `VaultAuth` per holding identity, its role and `ServiceAccount` that identity, over the `secret-store` connection; a `VaultStaticSecret` named for the `destination`, `kv-v2` on the `secret` mount at the path below `secret/data/`, `refreshAfter: 1h`, its destination created and `flagger.app/config-tracking: disabled`, each restart target a `Deployment`, a `blue-green` Process's `-primary` |
+| a grant delivered `env` or `file` | `vso` | a `VaultAuth` per holding identity, its `ServiceAccount` that identity and its role `<namespace>-<identity>`, over the `secret-store` connection; a `VaultStaticSecret` named for the `destination`, `kv-v2` on the `secret` mount at the path below `secret/data/`, `refreshAfter: 1h`, its destination created and `flagger.app/config-tracking: disabled`, each restart target a `Deployment`, a `blue-green` Process's `-primary` |
 | a `read` grant | `vault-policy` | `read` on its path and on the same document's `secret/metadata/` path |
 | `hardening: restricted` | `kubernetes` | `runAsNonRoot`, the images lock's `uid` and `gid`, seccomp `RuntimeDefault`, a read-only root filesystem, every capability dropped |
 | a probe's `period`, `timeout`, `failures` | `kubernetes` | `periodSeconds`, `timeoutSeconds`, `failureThreshold`; `initialDelaySeconds: 0` on readiness and liveness only |

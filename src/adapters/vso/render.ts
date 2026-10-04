@@ -10,6 +10,7 @@ import type {
   ResolvedProcess,
 } from "../../model/resolved-deployment.ts";
 import type { VaultAuth, VaultStaticSecret } from "../../objects/custom.ts";
+import { vaultNameOf } from "../../model/runtime-profiles.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";
 import {
   holdersOf,
@@ -98,7 +99,10 @@ const authOf = (
     vaultConnectionRef: CONNECTION,
     method: "kubernetes",
     mount: "kubernetes",
-    kubernetes: { role: holder.identity, serviceAccount: holder.identity },
+    kubernetes: {
+      role: vaultNameOf(application.namespace, holder.identity),
+      serviceAccount: holder.identity,
+    },
   },
 });
 

@@ -518,8 +518,24 @@
         storage: [size/]
 [/template]
 
-[comment An immutable ConfigMap per Asset, under the content-named name an edit changes. /]
+[comment The Release Gate's inputs first, in a ConfigMap named for the Application that keeps its
+  name across releases and so is not immutable; then an immutable ConfigMap per Asset, under the
+  content-named name an edit changes. /]
 [template private objects(d : resolveddeployment::ConfigMapFile)]
+  [if (d.releaseGate <> null)]
+    ---
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: [d.application.id/]-release-gate
+      namespace: [d.application.namespace/]
+      labels:
+        app.kubernetes.io/part-of: [d.application.id/]
+        app.kubernetes.io/managed-by: deploy-kit
+    data:
+      releaseGate.json: |
+        [d.releaseGate/]
+  [/if]
   [for (p : resolveddeployment::ResolvedProcess | d.processes)]
     [for (a : resolveddeployment::ResolvedAsset | p.assets)]
       ---
@@ -646,7 +662,7 @@
       method: kubernetes
       mount: kubernetes
       kubernetes:
-        role: [h.identity/]
+        role: [d.application.namespace/]-[h.identity/]
         serviceAccount: [h.identity/]
     [for (g : resolveddeployment::ResolvedGrant | h.grants)]
       ---

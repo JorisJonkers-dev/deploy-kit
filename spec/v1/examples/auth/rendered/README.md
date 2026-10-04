@@ -85,7 +85,7 @@ contributes routes and exposures to both; it owns neither object.
 
 | file | why |
 |---|---|
-| `configmap.yaml` | No Process declares `assets`, and env-file entries render as inline `env:` on the container (chapter 10 partitions the file; only `${secret:…}` keys become `envFrom`). auth-ui's env file is not reproduced in this example set ([G-12](#g-12)) |
+| a `ConfigMap` per Asset or per env file | `configmap.yaml` holds one object, the Release Gate's inputs (`auth-release-gate`, [chapter 20](../../../20-resolved-deployment.md#the-release-gate)). No Process declares `assets`, and env-file entries render as inline `env:` on the container (chapter 10 partitions the file; only `${secret:…}` keys become `envFrom`). auth-ui's env file is not reproduced in this example set ([G-12](#g-12)) |
 | `pvc.yaml` | Neither Process declares `volumes`. No storage, therefore no `storageClassName`: nothing here renders `local-path`, and nothing renders Longhorn |
 | `podmonitor.yaml` | The only scrape surface is fronted by an Application |
 | `vso.yaml` | All three grants are `delivery: self`. No `VaultStaticSecret`, no `Secret`, no `envFrom`: the pod fetches at runtime. The secrets-at-rest gate does not apply, and the dead-grant check correctly does not fire on three grants with zero `${secret:…}` placeholders |

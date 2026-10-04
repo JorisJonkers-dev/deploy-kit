@@ -120,7 +120,7 @@
       path="apps/notes/networkpolicy.yaml" adapter="networking"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/notes/kustomization.yaml" adapter="kubernetes"
-      resources="canary.yaml podmonitor.yaml serviceaccount.yaml workload.yaml"/>
+      resources="canary.yaml configmap.yaml podmonitor.yaml serviceaccount.yaml workload.yaml"/>
   <deliverables xsi:type="resolveddeployment:WorkloadFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/notes/workload.yaml" adapter="kubernetes" processes="//@applications.0/@processes.0"
       controller="Deployment" strategy="RollingUpdate"/>
@@ -128,6 +128,10 @@
       path="apps/notes/notes/canary.yaml" adapter="kubernetes" processes="//@applications.0/@processes.0"/>
   <deliverables xsi:type="resolveddeployment:IdentityFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/notes/serviceaccount.yaml" adapter="kubernetes" processes="//@applications.0/@processes.0"/>
+  <!-- What the Release Gate reads of the Application: its release-gate inputs, as canonical JSON. -->
+  <deliverables xsi:type="resolveddeployment:ConfigMapFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      path="apps/notes/notes/configmap.yaml" adapter="kubernetes" application="//@applications.0"
+      releaseGate="{&quot;analysis&quot;:{&quot;interval&quot;:&quot;30s&quot;,&quot;iterations&quot;:4,&quot;threshold&quot;:3},&quot;deadline&quot;:&quot;60s&quot;,&quot;endpoint&quot;:&quot;http://release-gate.delivery-system.svc.cluster.local:8080&quot;,&quot;members&quot;:[{&quot;checks&quot;:[&quot;error-rate&quot;,&quot;latency&quot;],&quot;process&quot;:&quot;notes-api&quot;,&quot;readiness&quot;:{&quot;path&quot;:&quot;/healthz/ready&quot;,&quot;port&quot;:8080}}]}"/>
   <deliverables xsi:type="resolveddeployment:MonitorFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/notes/podmonitor.yaml" adapter="prometheus" process="//@applications.0/@processes.0"
       surface="http" scrapePath="/metrics" interval="30s" timeout="10s" kind="PodMonitor"/>

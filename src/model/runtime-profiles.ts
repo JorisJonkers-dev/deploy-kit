@@ -16,6 +16,14 @@ export const exports = (runtime: Runtime): boolean => EXPORTING.has(runtime);
 /** The namespace every Application of a project lives in. */
 export const namespaceOf = (project: string): string => `${project}-system`;
 
+/**
+ * What an identity's Vault auth role and its policy are both called
+ * (spec/v1/16-dependencies.md#process-identity): one auth mount holds every
+ * project's, so the name carries the namespace the identity is unique in.
+ */
+export const vaultNameOf = (namespace: string, identity: string): string =>
+  `${namespace}-${identity}`;
+
 /** The in-cluster address of one Process's port. */
 export const addressOf = (
   process: string,

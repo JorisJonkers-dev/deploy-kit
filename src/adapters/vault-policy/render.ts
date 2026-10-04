@@ -6,6 +6,7 @@
 import type { ResolvedProject } from "../../model/resolution.ts";
 import type { VaultPolicy, VaultRole } from "../../objects/custom.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";
+import { vaultNameOf } from "../../model/runtime-profiles.ts";
 import { holdersOf, type Grant } from "../shared/holders.ts";
 import { notSupported } from "../../model/internal-failure.ts";
 
@@ -51,7 +52,7 @@ export function renderVaultPolicy(project: ResolvedProject): Deliverable[] {
       const role: VaultRole = {
         bound_service_account_names: [identity],
         bound_service_account_namespaces: [application.namespace],
-        token_policies: [`${application.namespace}-${identity}`],
+        token_policies: [vaultNameOf(application.namespace, identity)],
       };
       return [
         { path: `${stem}.policy.json`, adapter: ADAPTER, objects: [policy] },

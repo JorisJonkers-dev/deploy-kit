@@ -30,7 +30,12 @@ import type {
 } from "../../objects/kubernetes.ts";
 import { wholeSeconds } from "../shared/durations.ts";
 import { isSynced, type KvGrant } from "../shared/holders.ts";
-import { instanceOf, labelsOf, managedOnly } from "../shared/labels.ts";
+import {
+  applicationLabels,
+  instanceOf,
+  labelsOf,
+  managedOnly,
+} from "../shared/labels.ts";
 import { applicationDirectory, projectDirectory } from "../shared/paths.ts";
 import { notSupported } from "../../model/internal-failure.ts";
 
@@ -367,6 +372,33 @@ const configMapsOf = (
     data: { [fileOf(from)]: content },
   }));
 
+/** The one key of a gate ConfigMap: the Application's `releaseGate` element, as JSON. */
+const GATE_KEY = "releaseGate.json";
+
+/**
+ * What the Release Gate reads of a gated Application
+ * (spec/v1/20-resolved-deployment.md#the-release-gate): its `releaseGate`
+ * element, in a ConfigMap named for the Application. The name stays across
+ * releases, so the object is not immutable.
+ */
+const gateConfigMapOf = (
+  application: ResolvedApplicationDocument,
+): ConfigMap[] =>
+  application.releaseGate === undefined
+    ? []
+    : [
+        {
+          apiVersion: "v1",
+          kind: "ConfigMap",
+          metadata: {
+            name: `${application.id}-release-gate`,
+            namespace: application.namespace,
+            labels: applicationLabels(application.id),
+          },
+          data: { [GATE_KEY]: { json: application.releaseGate } },
+        },
+      ];
+
 /** The labels of a backup's own identity: never the Process's, which a Service selects. */
 const backupLabels = (
   backup: Backed["backup"],
@@ -563,7 +595,10 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
         ["pvc.yaml", processes.flatMap((p) => claimsOf(p, application))],
         [
           "configmap.yaml",
-          processes.flatMap((p) => configMapsOf(p, application)),
+          [
+            ...gateConfigMapOf(application),
+            ...processes.flatMap((p) => configMapsOf(p, application)),
+          ],
         ],
         ["backup.yaml", processes.flatMap((p) => backupsOf(p, application))],
       ];

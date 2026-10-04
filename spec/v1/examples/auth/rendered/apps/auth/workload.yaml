@@ -98,7 +98,7 @@ spec:
         - name: VAULT_AUTHENTICATION
           value: KUBERNETES
         - name: VAULT_KUBERNETES_ROLE
-          value: auth-api
+          value: auth-system-auth-api
         - name: VAULT_DB_ENABLED
           value: 'true'
         - name: VAULT_ADDR

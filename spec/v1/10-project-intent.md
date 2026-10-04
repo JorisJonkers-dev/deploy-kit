@@ -442,9 +442,9 @@ string. `E_DUPLICATE_APPLICATION_ID` fires at composition (chapter 40), and the
 window in which two repositories both claim an id is an accepted cost.
 
 Process names carry a second uniqueness rule, and it is scoped to the **project
-file** rather than to the Application, because the ServiceAccount and the Vault role
-are the Process name alone: `auth-system.auth-api`, never
-`auth-system.auth-auth-api` ([0031](../../docs/adr/model/0031-identity-per-process.md),
+file** rather than to the Application, because the ServiceAccount is the Process
+name alone, and the Vault role is the namespace and that name:
+`auth-system.auth-api`, never `auth-system.auth-auth-api` ([0031](../../docs/adr/model/0031-identity-per-process.md),
 derived in chapter 16). Two Applications in one file therefore cannot both call a
 Process `api`: that is `E_DUPLICATE_PROCESS_NAME` at composition (chapter 40),
 raised where a reader can see both declarations at once.
@@ -736,7 +736,7 @@ derived about **this** Process
 
 | key | value |
 |---|---|
-| `${identity:vaultRole}` | the Process's Vault role, its own name ([0031](../../docs/adr/model/0031-identity-per-process.md)) |
+| `${identity:vaultRole}` | the Process's Vault role, `<namespace>-<process>` ([0031](../../docs/adr/model/0031-identity-per-process.md)) |
 | `${identity:serviceAccount}` | the Process's ServiceAccount name |
 | `${identity:namespace}` | `<project>-system` |
 
@@ -1822,9 +1822,9 @@ no removal syntax: a Process that must *not* hold a shared secret at all is
 evidence the secret was never shared, and it moves down a level.
 
 The levels are an access boundary **only** because identity is per Process.
-The ServiceAccount and Vault role are derived as the **Process name alone** (
-`auth-system.auth-api`, never `auth-system.auth-auth-api`) unique within the
-project file ([0031](../../docs/adr/model/0031-identity-per-process.md), specified in
+The ServiceAccount is derived as the **Process name alone** (
+`auth-system.auth-api`, never `auth-system.auth-auth-api`), unique within the
+project file, and the Vault role as the namespace and that name ([0031](../../docs/adr/model/0031-identity-per-process.md), specified in
 chapter 16). At review time they were not: `serviceAccountName()` in
 `src/adapters/kubernetes.ts:665-669` returned `applicationName`, so two Processes of
 one Application authenticated as the same principal and received the union of both

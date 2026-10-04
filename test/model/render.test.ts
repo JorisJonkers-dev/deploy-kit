@@ -154,6 +154,7 @@ describe("renderIntentSet", () => {
       "apps/notes/namespace.yaml": "kubernetes",
       "apps/notes/networkpolicy.yaml": "networking",
       "apps/notes/notes/canary.yaml": "kubernetes",
+      "apps/notes/notes/configmap.yaml": "kubernetes",
       "apps/notes/notes/kustomization.yaml": "kubernetes",
       "apps/notes/notes/networkpolicy.yaml": "networking",
       "apps/notes/notes/podmonitor.yaml": "prometheus",
@@ -251,6 +252,7 @@ describe("renderIntentSet", () => {
       "apps/notes/namespace.yaml",
       "apps/notes/networkpolicy.yaml",
       "apps/notes/notes/canary.yaml",
+      "apps/notes/notes/configmap.yaml",
       "apps/notes/notes/kustomization.yaml",
       "apps/notes/notes/networkpolicy.yaml",
       "apps/notes/notes/podmonitor.yaml",
@@ -317,6 +319,26 @@ describe("renderIntentSet", () => {
       ]),
     ).toBe(
       "# GENERATED. Never hand-edit.\n---\napiVersion: v1\nkind: Namespace\nmetadata:\n  name: a\n  labels: {}\n---\napiVersion: v1\nkind: Namespace\nmetadata:\n  name: b\n  labels: {}\n",
+    );
+  });
+
+  it("writes a JSON document a ConfigMap carries in its canonical form, and leaves a string as it is", () => {
+    const configMap = (json: unknown) =>
+      serializeYaml([
+        {
+          apiVersion: "v1",
+          kind: "ConfigMap",
+          metadata: { name: "a", namespace: "n", labels: {} },
+          data: { "a.json": { json }, "b.conf": "port = 1\n" },
+        },
+      ]);
+
+    expect(configMap({ b: [2, "it's"], a: { d: true, c: "30s" } })).toBe(
+      '# GENERATED. Never hand-edit.\n---\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: a\n  namespace: n\n  labels: {}\ndata:\n  a.json: |\n    {"a":{"c":"30s","d":true},"b":[2,"it\'s"]}\n  b.conf: |\n    port = 1\n',
+    );
+    // The order a value's keys were built in decides nothing.
+    expect(configMap({ a: { c: "30s", d: true }, b: [2, "it's"] })).toBe(
+      configMap({ b: [2, "it's"], a: { d: true, c: "30s" } }),
     );
   });
 });

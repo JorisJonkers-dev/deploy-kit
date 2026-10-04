@@ -1,0 +1,13 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notes-release-gate
+  namespace: notes-system
+  labels:
+    app.kubernetes.io/part-of: notes
+    app.kubernetes.io/managed-by: deploy-kit
+data:
+  releaseGate.json: |
+    {"analysis":{"interval":"30s","iterations":4,"threshold":3},"deadline":"60s","endpoint":"http://release-gate.delivery-system.svc.cluster.local:8080","members":[{"checks":["error-rate","latency"],"process":"notes-api","readiness":{"path":"/healthz/ready","port":8080}}]}

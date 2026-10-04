@@ -2,6 +2,18 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: knowledge-release-gate
+  namespace: knowledge-system
+  labels:
+    app.kubernetes.io/part-of: knowledge
+    app.kubernetes.io/managed-by: deploy-kit
+data:
+  releaseGate.json: |
+    {"analysis":{"interval":"30s","iterations":4,"threshold":3},"deadline":"1800s","endpoint":"http://release-gate.delivery-system.svc.cluster.local:8080","members":[{"checks":["error-rate","latency"],"process":"knowledge-api","readiness":{"path":"/api/actuator/health/readiness","port":8080}}]}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: knowledge-api-env
   namespace: knowledge-system
   labels:

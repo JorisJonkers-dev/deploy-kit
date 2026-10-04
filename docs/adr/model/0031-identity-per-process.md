@@ -9,9 +9,10 @@ rests-on: ["0005", "0008"]
 
 # Each Process holds its own identity, and its ServiceAccount token is mounted only where the pod itself authenticates
 
-The ServiceAccount and the Vault Kubernetes auth role are derived per Process
-and named for the Process alone: `auth-system.auth-api`, never
-`auth-system.auth-auth-api`. The policy bound to a Process's role is exactly its
+The ServiceAccount and the Vault Kubernetes auth role are derived per Process.
+The ServiceAccount is named for the Process alone: `auth-system.auth-api`, never
+`auth-system.auth-auth-api`. The role and its policy are named for the namespace
+and the Process, `auth-system-auth-api`. The policy bound to a Process's role is exactly its
 effective grant set ([0012](0012-shared-intent-descends-and-is-lowered.md)),
 never a sibling's, and no author writes an identity name.
 `automountServiceAccountToken` derives from `delivery`: true only for a Process
@@ -44,6 +45,17 @@ vault's SSH deploy key. Under one identity the internet-facing Process
 authenticated as the principal holding that key. The identity is the only place
 that boundary can exist.
 
+**A role's name carries the namespace, because the Secret Store has none.** A
+ServiceAccount is unique in its namespace, and a Process name is unique in its
+project file, so the Process name is enough there. One Kubernetes auth mount
+holds every project's roles and one list holds every policy, so a role named for
+the Process alone stays unique only while no two projects call a Process the
+same. Nothing checks that, and a rule that did would make one project's naming
+another's concern. The policy was already written under `<namespace>-<identity>`,
+at a path that says the same; the role now carries that name too, and one name
+per identity is what the Vault policy job writes
+([chapter 30](../../../spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied)).
+
 **Delivery is the field the token reads.** "No grant, no token" gets
 `platform-postgres` backwards: under `env` the VSO operator reads Vault and under
 `file` the kubelet projects, so the pod presents nothing. Only `self` means the
@@ -65,6 +77,8 @@ what is applied.
 |---|---|---|
 | One identity per Application | fewer ServiceAccounts and roles | a public Process authenticates as the holder of a sibling's private key |
 | Identity per Application with per-grant policy tricks | no rename | Vault binds no finer than the ServiceAccount |
+| The role named for the Process alone | the name the live cluster already carries; no rename at handover | two projects with a Process of one name write one role, and the second binding replaces the first |
+| A composition-time check that Process names are unique estate-wide | keeps the short name | one project's naming becomes every other project's constraint, for a name nobody types |
 | Mount the token wherever a grant exists | one simple rule | wrong for `env` and `file`, where the pod presents nothing |
 | Default false with an authored opt-in | explicit | a second field for something derivable; a forgotten opt-in fails at runtime |
 | Derive the token from the ledger | covers `agents-api` | a review document silently changes what is applied |
@@ -79,6 +93,10 @@ them, because merging identities then widens a live grant.
 
 - Twice the ServiceAccounts and roles for a two-Process Application, paid in
   render size and in one re-creation of the roles.
+- Every role is renamed once, at its Project's handover to this path: the Vault
+  policy job writes the new name, and the old one is reported for a human to
+  remove. A Process that wires its own Vault client reads the name through
+  `${identity:vaultRole}` and so follows without an edit.
 - Every pod without a `self` grant runs with no token, so a Process that
   silently relied on the default mount fails at start and says so.
 - `agents-api` cannot reach the Kubernetes API from a render until the model

@@ -21,7 +21,7 @@ export const isSynced = (
   "destination" in grant;
 
 export interface Holder {
-  /** The ServiceAccount, and the Vault role it authenticates as. */
+  /** The ServiceAccount the holder runs as. */
   readonly identity: string;
   readonly labels: Labels;
   readonly grants: readonly Grant[];

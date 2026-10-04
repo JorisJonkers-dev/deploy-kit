@@ -621,8 +621,10 @@ query Placeholder::textFor(owner : PI::Process, prj : EffectiveProject) : String
 	if self.kind = PlaceholderKind::dependency then dependencyValue(self.source, owner)
 	else if self.kind = PlaceholderKind::exposure then exposureValue(self.source)
 	else if self.source = 'namespace' then namespaceOf(prj.project)
-	-- The Vault role and the ServiceAccount are both the Process's own name.
-	else owner.name endif endif endif;
+	-- The Secret Store has no namespaces, so the Vault role's name carries the one the Process
+	-- is unique in; the ServiceAccount is the Process's own name.
+	else if self.source = 'vaultRole' then namespaceOf(prj.project) + '-' + owner.name
+	else owner.name endif endif endif endif;
 
 -- `${dependency:<application>.<coordinate>}`: one coordinate of the Process's own edge.
 query dependencyValue(source : String, owner : PI::Process) : String =
@@ -803,7 +805,8 @@ query EffectiveProject::projectFiles() : Sequence(Deliverable) =
 -- What one Application writes under its own directory: its index over every
 -- file below that a kustomization applies, the workloads of its Processes, the
 -- Canaries of those that switch blue-green and the Services of those that do
--- not, their identities, their claims, Asset ConfigMaps and backups, its monitor
+-- not, their identities, their claims, the Release Gate's inputs where it is
+-- gated and its Asset ConfigMaps, its backups, its monitor
 -- where it is scraped, what the operator syncs for it, and one policy per
 -- Process. A file that would hold no object is not written.
 query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(Deliverable) =
@@ -846,10 +849,13 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 				adapter := AdapterName::kubernetes;
 				processes := claimed;
 			}.oclAsType(Deliverable)} else Sequence{} endif)
-		->union(if configured->notEmpty() then Sequence{object ConfigMapFile {
+		->union(if configured->notEmpty() or gated(self) then Sequence{object ConfigMapFile {
 				path := root + 'configmap.yaml';
 				adapter := AdapterName::kubernetes;
+				application := self.resolveone(ResolvedApplication);
 				processes := configured;
+				-- The element as the Release Gate reads it: canonical JSON, on one line.
+				releaseGate := if gated(self) then self.resolveone(ResolvedApplication).releaseGate.json() else null endif;
 			}.oclAsType(Deliverable)} else Sequence{} endif)
 		->union(if backedUp->notEmpty() then Sequence{object BackupFile {
 				path := root + 'backup.yaml';
