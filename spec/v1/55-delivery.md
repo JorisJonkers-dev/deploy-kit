@@ -102,7 +102,7 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   signer, with one Kustomization per Reconcile Unit of the Project applying its
   path. Composition writes the file the first time a Project composes, from the
   Platform document and the Reconcile Unit DAG, and afterwards changes only its
-  `ref.digest`. Removing a Project's file takes it off the estate path, which
+  `ref.digest` ([What a pin source holds](#what-a-pin-source-holds)). Removing a Project's file takes it off the estate path, which
   only a handover step reversed or a Project's retirement does
   ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)). After publishing, composition commits to the
   estate repository's `main` the moved `ref.digest` of every Project whose
@@ -131,6 +131,28 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
 image's signature when a pod is admitted, only the render's when it is fetched.
 The owner is joris, and the policy that closes it is part of the estate's
 delivery machinery ([#148](https://github.com/JorisJonkers-dev/deploy-kit/issues/148)).
+
+### What a pin source holds
+
+The file composition writes for an artifact that has no pin yet. Everything in
+it derives; nothing is authored, and the cadence is this chapter's, stated once
+as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied):
+
+| object | field | value |
+|---|---|---|
+| `OCIRepository` | name, namespace | `project-<project>`, or `estate` for the estate-scoped artifact, which no Project's source can be named; the namespace of the Platform document's `bootstrap.flux.sourceRef` |
+| | `url` | `oci://<repository>/<artifact>`, the Platform document's `bootstrap.flux.artifacts.repository` |
+| | `ref.digest` | the digest of the published artifact. Until the first publish it is sixty-four zeros, which names no artifact: a source applied before its digest is set fetches nothing, where one with no `ref` would fetch whatever `latest` names |
+| | `verify` | `cosign`, against the Platform document's signer. Flux reads an identity as a pattern, so the issuer and the subject are each written anchored and escaped: the one workflow on the one branch, and no branch whose name merely begins the same |
+| | `interval` | `10m` |
+| `Kustomization`, one per Reconcile Unit the artifact holds | name | the unit's ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)) |
+| | `sourceRef`, `path` | the `OCIRepository` above, and the unit's directory in the artifact |
+| | `dependsOn` | every unit this one follows, by name, in name order; absent where it follows none. The whole of the DAG's answer, whether or not the units it names are delivered yet, since the file is written once |
+| | `interval`, `prune`, `wait` | `10m`, `true`, `true`: a unit is Ready when what it applied is, so a Job that fails holds every unit that follows it |
+
+A Project's artifact holds its one unit. The estate-scoped artifact holds
+`apps-vso-secrets` where it carries the Vault policy job, and one
+`apps-edge-<tier>` per tier it carries routes for.
 
 ## Pause and Rollback
 

@@ -18,6 +18,7 @@ import type { LockedImage } from "../model/images-lock.ts";
 import type { MigrationProofDocument } from "../model/migration-proof.ts";
 import { applicationRevision } from "../model/revision.ts";
 import { migrationImage } from "../model/migration-proof.ts";
+import { SECRETS_UNIT, unitOf } from "../model/reconcile-units.ts";
 import { exports, namespaceOf } from "../model/runtime-profiles.ts";
 import { resolveExposure } from "./exposure.ts";
 import { egressOf, ingressOf } from "./policy.ts";
@@ -41,8 +42,6 @@ export interface ApplicationContext extends Omit<ProcessContext, "machinery"> {
   /** The migration proof beside the project file, where CI wrote one. */
   readonly proof: MigrationProofDocument | undefined;
 }
-
-const unitOf = (project: string): string => `apps-${project}`;
 
 /**
  * A managed migration (spec/v1/20-resolved-deployment.md#the-migration): its
@@ -89,9 +88,6 @@ const synced = (processes: readonly ResolvedProcess[]): boolean =>
       secrets !== undefined ||
       volumes?.some(({ backup }) => backup?.credential !== undefined) === true,
   );
-
-/** The unit that materialises every grant's credentials before a Process may hold one. */
-const SECRETS_UNIT = "apps-vso-secrets";
 
 /**
  * The units that must be Ready first: every other project an edge reaches, and

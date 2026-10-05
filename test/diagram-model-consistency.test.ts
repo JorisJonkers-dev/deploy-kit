@@ -330,6 +330,9 @@ test("every rendered kind is a column of the deliverables matrix", () => {
   // Namespace-scoped operator objects are rendered once per namespace, not per
   // Application, so the per-Application map does not carry a column for them.
   const perNamespace = new Set(["VaultAuth", "VaultConnection", "Namespace"]);
+  // A pin source is committed to the Estate repository, not rendered into an
+  // artifact, so it is no Deliverable and the map carries no column for it.
+  const pinned = new Set(["OCIRepository"]);
   const alias: Readonly<Record<string, string>> = {
     Kustomization: "kustomization",
     VaultDynamicSecret: "VaultDynami",
@@ -342,7 +345,7 @@ test("every rendered kind is a column of the deliverables matrix", () => {
       kinds.add(m[1] ?? "");
   expect(kinds.size, "no rendered fixtures found").toBeGreaterThan(5);
   for (const kind of kinds) {
-    if (perNamespace.has(kind)) continue;
+    if (perNamespace.has(kind) || pinned.has(kind)) continue;
     expect(
       xml.includes(alias[kind] ?? kind),
       `rendered kind ${kind} has no column`,

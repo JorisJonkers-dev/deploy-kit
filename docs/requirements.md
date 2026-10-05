@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **50** rows. The compiler's behaviours join it as they land.
+This ledger holds **51** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -73,3 +73,4 @@ This ledger holds **50** rows. The compiler's behaviours join it as they land.
 | REQ-048 | A Process that declares Kubernetes API access holds it only where the Platform document admits its Application: an admitted one renders a ClusterRole of its declared rules bound to its one ServiceAccount, a mounted token and egress to where the API answers, and the delivery machinery it is declared for renders, rolling and ungated, to its committed tree; a declaration nobody admitted is refused, and so is a holder no project file declares | [test/adapters/spelling.test.ts](../test/adapters/spelling.test.ts) |
 | REQ-049 | The Vault policy job is rendered where the Platform document names it, a Secret Store answers and the render holds a document to write: a ServiceAccount, a ConfigMap of exactly this render's documents and a Job, in the Secret Store's namespace, the ConfigMap and the Job named by the digest of those documents, with a policy of its own | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-050 | Composition reads the participants list: a participant that published nothing, or nothing within its age, is held at the fragment it last composed at, a fragment the list does not name is left out, and each is recorded in the lock with its code; a Platform document that is missing, stale or unlisted, and a dormant entry past its review, stop the run | [test/application/compose.test.ts](../test/application/compose.test.ts) |
+| REQ-051 | Composition returns the pin source of every artifact it delivers and was handed no pin for: an `OCIRepository` naming the artifact by a digest that names none until it is published, verified keyless against the Platform document's signer matched whole, and one Kustomization per Reconcile Unit the artifact holds, each after the units it follows; an artifact pinned already has none written | [test/application/compose.test.ts](../test/application/compose.test.ts) |

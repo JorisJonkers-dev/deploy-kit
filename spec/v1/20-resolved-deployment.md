@@ -944,6 +944,18 @@ The Reconcile Unit is **derived from the dependency graph**, never declared
 [chapter 16](16-dependencies.md#dependency-edges) projected onto projects, plus an
 edge to the secrets-provisioning unit wherever an Application holds any grant.
 
+Two kinds of unit belong to no Project, because what they apply is
+estate-scoped ([The path plan](#the-path-plan)):
+
+| unit | applies | follows |
+|---|---|---|
+| `apps-vso-secrets` | `apps/vso-secrets/`: the Vault policy job and the documents it is handed ([The Vault policy job](#the-vault-policy-job)) | the unit of the project that declares the Secret Store, which the job writes into |
+| `apps-edge-<tier>`, one per tier a route reaches | `apps/edge/<tier>/`: the routes that tier's proxy serves | the unit of the project that declares the tier's proxy, and of every project with an exposure on the tier, so no route is applied before its proxy or its own namespace exists |
+
+A tier has a unit of its own so that one tier's refused route holds only that
+tier. These are the units the estate-scoped artifact's pin applies
+([chapter 55](55-delivery.md#rendered-artifacts-and-pins)).
+
 ![The Reconcile Unit DAG](diagrams/20-reconcile-unit-dag.drawio.svg)
 
 <sub>[Diagram source](#the-reconcile-unit-dag) · edit by opening the SVG in draw.io</sub>

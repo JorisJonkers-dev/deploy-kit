@@ -7,7 +7,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
-import { parse, stringify } from "yaml";
+import { parse, parseAllDocuments, stringify } from "yaml";
 import {
   composeEstate,
   type ComposeInput,
@@ -15,6 +15,7 @@ import {
   type Fragment,
   type Pin,
 } from "../../src/application/compose-estate.ts";
+import { pinSources } from "../../src/application/pin-sources.ts";
 import { PIN_ANNOTATIONS } from "../../src/model/pin-annotations.ts";
 import { serialize, sha256Hasher } from "../../src/index.ts";
 
@@ -649,6 +650,147 @@ describe("composeEstate", () => {
       "observability",
       "secrets",
     ]);
+  });
+});
+
+// REQ-051 (docs/requirements.md): the first time an artifact is delivered,
+// composition writes its pin source, from the Platform document and the
+// Reconcile Unit DAG (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
+describe("composeEstate, for an artifact with no pin yet", () => {
+  /** Every Project delivered: the worked Platform document with no handover ledger. */
+  const delivered = (input: Partial<ComposeInput> = {}) =>
+    compose({
+      platform: {
+        ...PLATFORM,
+        files: PLATFORM.files.map((file) =>
+          file.name === "platform.intent.yml"
+            ? { ...file, text: withLedger(file.text, "") }
+            : file,
+        ),
+      },
+      ...input,
+    });
+  const committed = (path: string): string => text(`pins/rendered/${path}`);
+
+  it("writes each artifact's pin source to its committed file, byte for byte", () => {
+    const { sources } = delivered();
+
+    expect(sources.map(({ name, path }) => [name, path])).toStrictEqual([
+      ["_estate", "projects/_estate/source.yaml"],
+      ["data", "projects/data/source.yaml"],
+      ["delivery", "projects/delivery/source.yaml"],
+      ["notes", "projects/notes/source.yaml"],
+      ["observability", "projects/observability/source.yaml"],
+      ["secrets", "projects/secrets/source.yaml"],
+    ]);
+    for (const { path, text: body } of sources)
+      expect(body, path).toBe(committed(path));
+  });
+
+  it("writes none for an artifact that is pinned already, whatever its pin holds", () => {
+    const first = delivered();
+    const again = delivered({
+      held: RELEASES,
+      pins: pinned(first),
+      previous: { lock: first.lock, commit: hex("estate-commit", 40) },
+    });
+
+    expect(again.sources).toStrictEqual([]);
+    // A pin for one artifact leaves every other's source to be written.
+    const { notes: _kept, ...unpinned } = pinned(first);
+    expect(
+      delivered({
+        held: RELEASES,
+        pins: { notes: _kept as Pin },
+        previous: { lock: first.lock, commit: hex("estate-commit", 40) },
+      }).sources.map(({ name }) => name),
+    ).toStrictEqual(Object.keys(unpinned).sort());
+  });
+
+  it("gives each tier's routes a unit that follows that tier's proxy and the Projects it serves, and no unit where the artifact holds no index", () => {
+    // Two tiers, a Project on each, and their proxies in a third: enough of a
+    // resolved union to tell one tier's Projects from the other's.
+    const project = (
+      name: string,
+      applications: readonly Record<string, unknown>[],
+    ) => ({ project: name, applications });
+    const [estate] = pinSources(
+      [
+        {
+          name: "_estate",
+          files: [
+            "apps/edge/public/kustomization.yaml",
+            "apps/edge/public/shop-public.yaml",
+            "apps/edge/lan/kustomization.yaml",
+            // Vault documents with no job beside them: no index, so no unit.
+            "apps/vso-secrets/policies/shop-system-api.policy.json",
+          ].map((path) => ({ path, adapter: "traefik", text: "" })),
+        },
+      ],
+      [
+        project("shop", [{ id: "shop", exposure: [{ tier: "public" }] }]),
+        project("wiki", [{ id: "wiki", exposure: [{ tier: "lan" }] }]),
+        project("edge", [{ id: "proxy-public" }, { id: "proxy-lan" }]),
+      ] as never,
+      {
+        tiers: [
+          { name: "public", traefik: "proxy-public" },
+          { name: "lan", traefik: "proxy-lan" },
+          // A tier no route reaches: the artifact holds no index for it.
+          { name: "idle", traefik: "proxy-lan" },
+        ],
+        bootstrap: {
+          flux: {
+            sourceRef: "flux-system/platform",
+            artifacts: {
+              repository: "ghcr.io/x/render",
+              signer: { issuer: "i", subject: "s" },
+            },
+          },
+        },
+      } as never,
+      serialize,
+    );
+    const applied = (
+      parseAllDocuments(estate?.text ?? "") as { toJS(): unknown }[]
+    )
+      .map(
+        (document) =>
+          document.toJS() as {
+            kind: string;
+            metadata: { name: string; namespace: string };
+            spec: { path?: string; dependsOn?: { name: string }[] };
+          },
+      )
+      .filter(({ kind }) => kind === "Kustomization")
+      .map(({ metadata, spec }) => [
+        metadata.name,
+        metadata.namespace,
+        spec.path,
+        spec.dependsOn?.map(({ name }) => name),
+      ]);
+
+    expect(applied).toStrictEqual([
+      [
+        "apps-edge-public",
+        "flux-system",
+        "./apps/edge/public",
+        ["apps-edge", "apps-shop"],
+      ],
+      [
+        "apps-edge-lan",
+        "flux-system",
+        "./apps/edge/lan",
+        ["apps-edge", "apps-wiki"],
+      ],
+    ]);
+  });
+
+  it("writes a source only for what it delivers: a Project still on the old path has none", () => {
+    expect(FIRST.sources.map(({ name }) => name)).toStrictEqual(
+      FIRST.artifacts.map(({ name }) => name),
+    );
+    expect(FIRST.sources.map(({ name }) => name)).not.toContain("data");
   });
 });
 
