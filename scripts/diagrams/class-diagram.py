@@ -144,7 +144,7 @@ TREES = {"10-project-intent": {
         "ResolvedMigration", "ReleaseGate", "ResolvedScrape", "ResolvedProcess",
         "ResolvedExposure",
     ],
-    "ReleaseGate": ["GateAnalysis", "GateMember"],
+    "ReleaseGate": ["GateMigration", "GateAnalysis", "GateMember"],
     "ResolvedMigration": ["MigratedDatabase"],
     "ResolvedProcess": [
         "ResolvedProbe", "StartupProbe", "ResolvedPlacement", "ResolvedApiAccess",
@@ -227,7 +227,7 @@ REPORT_LAYOUTS = {"10-project-intent": {
         "Provenance": [["InputDigest"]],
         "ResolvedApplication": [["ResolvedMigration", "ReleaseGate"], ["ResolvedProcess"],
                                 ["ResolvedExposure"]],
-        "ReleaseGate": [["GateMember", "GateAnalysis"]],
+        "ReleaseGate": [["GateMember", "GateAnalysis", "GateMigration"]],
         "ResolvedMigration": [["MigratedDatabase"]],
         "ResolvedProcess": [["ResolvedProbe", "StartupProbe", "ResolvedPlacement"],
                             ["ResolvedVolume", "ResolvedEdge", "ResolvedApiAccess"],

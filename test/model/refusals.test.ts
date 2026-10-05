@@ -146,6 +146,7 @@ describe("the refusal fixtures", () => {
       "illegal-delivery-for-access",
       "migration-owner-duplicated",
       "migration-undeclared",
+      "migration-ungated",
       "migration-without-database",
       "no-delivery-policy",
       "no-durability-policy",
@@ -171,7 +172,7 @@ describe("the refusal fixtures", () => {
       "unknown-telemetry-collector",
       "unknown-tier-proxy",
     ]);
-    expect(refused).toHaveLength(37);
+    expect(refused).toHaveLength(38);
     expect(
       fixtures.length - refused.length,
       "the four accepted counterparts carry no oracle",

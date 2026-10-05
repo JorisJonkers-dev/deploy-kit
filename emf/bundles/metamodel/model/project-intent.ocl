@@ -367,6 +367,17 @@ context Migration
 	inv E_NO_MIGRATION_POLICY:
 		self.oclIsKindOf(ManagedMigration) implies Platform.allInstances()->forAll(migration <> null)
 
+	-- The Release Gate starts a migration, and it holds only an Application a
+	-- Process of which switches blue/green: one that is continuous, on an
+	-- Application the platform does not list as delivery machinery.
+	inv E_MIGRATION_UNGATED:
+		let application : Application = oclContainer().oclAsType(Application) in
+		(Platform.allInstances()->notEmpty() and self.oclIsKindOf(ManagedMigration)) implies
+			(application.processes->exists(lifecycle = Lifecycle::application
+					and effectiveCutover = Cutover::continuous)
+				and Platform.allInstances()->forAll(p | p.delivery = null
+					or p.delivery.machinery->excludes(application)))
+
 context Credentials
 	-- Only an edge to a database derives a credential to rotate.
 	inv E_CREDENTIALS_WITHOUT_DATABASE:

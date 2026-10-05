@@ -231,9 +231,11 @@ describe("checkIntentSet", () => {
     };
 
     expect(
-      refusalsOf([lanOnly, lanExposure]).map(
-        ({ code, path }) => `${code} ${path}`,
-      ),
+      refusalsOf([lanOnly, lanExposure])
+        // knowledge stands in for the machinery here, and a changelog on the
+        // machinery is its own refusal.
+        .filter(({ code }) => code === "E_NO_TIER_FOR_AUDIENCE")
+        .map(({ code, path }) => `${code} ${path}`),
     ).toStrictEqual([
       "E_NO_TIER_FOR_AUDIENCE /applications/0/exposure/0/routes/0",
       "E_NO_TIER_FOR_AUDIENCE /applications/0/exposure/0/routes/1",
@@ -460,7 +462,7 @@ owner: o
       - {name: edge-proxy, lifecycle: application, image: t, runtime: none, provides: {http: 8080}, placement: {memory: 1Mi, cpu: 1m}, cutover: continuous}
 `;
   const process = (name: string, extra = ""): string =>
-    `      - {name: ${name}, lifecycle: application, image: ${name}, runtime: none, placement: {memory: 1Mi, cpu: 1m}, cutover: interrupted${extra}}\n`;
+    `      - {name: ${name}, lifecycle: application, image: ${name}, runtime: none, placement: {memory: 1Mi, cpu: 1m}, cutover: continuous${extra}}\n`;
   const check = (applications: string, header = HEADER) =>
     refusalsOf([
       withPolicy,
@@ -560,6 +562,110 @@ applications:
         `${process("api", "application", "continuous")}${process("once", "job", "interrupted")}`,
       ),
     ).toStrictEqual(["E_NO_DELIVERY_POLICY /applications/1"]);
+  });
+});
+
+// REQ-031, the gated-migration half (spec/v1/10-project-intent.md#migration): the
+// Release Gate starts a migration, so a changelog needs an Application it holds.
+describe("the gated migration rule across documents", () => {
+  const platform = read("refusals/migration-ungated/platform.intent.yml");
+  const project = read("refusals/migration-ungated/refusals.project.yml");
+  const api = (edit: (text: string) => string): AuthoredFile => ({
+    name: project.name,
+    text: edit(project.text),
+  });
+  const continuous = (text: string): string =>
+    text.replace(
+      "startupBudget: 20s\n        cutover: interrupted",
+      "startupBudget: 20s\n        cutover: continuous",
+    );
+  const REFUSED = [
+    {
+      code: "E_MIGRATION_UNGATED",
+      document: "refusals/migration-ungated/refusals.project.yml",
+      path: "/applications/2/migration",
+    },
+  ];
+
+  it("refuses a changelog on an Application that stops before it starts again, and says how to fix it", () => {
+    const result = checkIntentSet([platform, project]);
+
+    expect(result.ok ? [] : result.diagnostics).toStrictEqual([
+      {
+        ...REFUSED[0],
+        message:
+          "no Process of this Application switches blue/green, so nothing starts its migration",
+        hint: "Give a Process a `continuous` cutover, or let the image migrate with `migration: self`.",
+      },
+    ]);
+  });
+
+  it("accepts the changelog once a serving Process is continuous, and an image that migrates itself either way", () => {
+    expect(refusalsOf([platform, api(continuous)])).toStrictEqual([]);
+    expect(
+      refusalsOf([
+        platform,
+        api((text) =>
+          text.replace(
+            "migration:\n      changelog: api/db/changelog.yml",
+            "migration: self",
+          ),
+        ),
+      ]),
+    ).toStrictEqual([]);
+  });
+
+  it("asks for one serving Process that is continuous, not for every Process: a job beside it changes nothing", () => {
+    expect(
+      refusalsOf([
+        platform,
+        api(
+          (text) =>
+            `${continuous(text).trimEnd()}\n      - {name: once, lifecycle: job, image: api, runtime: none, placement: {memory: 1Mi, cpu: 1m}, cutover: interrupted}\n`,
+        ),
+      ]),
+    ).toStrictEqual([]);
+  });
+
+  it("counts no job: a continuous one switches nothing, so the changelog beside it is still ungated", () => {
+    expect(
+      refusalsOf([
+        platform,
+        api((text) =>
+          continuous(text).replace(
+            "      - name: api\n        lifecycle: application",
+            "      - name: api\n        lifecycle: job",
+          ),
+        ),
+      ]),
+    ).toStrictEqual(REFUSED);
+  });
+
+  it("refuses a changelog on the delivery machinery, which switches rolling and is never gated", () => {
+    expect(
+      refusalsOf([
+        {
+          name: platform.name,
+          text: platform.text.replace(
+            "machinery: [edge-proxy]",
+            "machinery: [edge-proxy, api]",
+          ),
+        },
+        api(continuous),
+      ]),
+    ).toStrictEqual(REFUSED);
+  });
+
+  it("refuses it under a platform with no delivery policy too, which names no machinery", () => {
+    expect(
+      refusalsOf([
+        {
+          name: platform.name,
+          text: platform.text.replace(/\ndelivery:\n( {2}.*\n)+/, "\n"),
+        },
+        project,
+      ]).filter(({ code }) => code === "E_MIGRATION_UNGATED"),
+    ).toStrictEqual(REFUSED);
   });
 });
 

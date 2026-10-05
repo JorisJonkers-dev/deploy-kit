@@ -206,7 +206,7 @@ query synced(app : ResolvedApplication) : Boolean =
 mapping EffectiveApplication::migrationOf(in prj : EffectiveProject) : ResolvedMigration {
 	init {
 		var runnerImage : LockedImage := locked(self.id + '-migration');
-		var proven : ProvenApplication := proofs->select(a | a.id = self.id)->any(true);
+		var proven : ProvenApplication := proofOf(self);
 		var held : Sequence(PolicyPeer) := datastoreOf(self);
 		var store : PolicyPeer := if held->isEmpty() then unreached(self.id) else held->first() endif;
 		var owned : String := prj.project;
@@ -336,6 +336,8 @@ mapping EffectiveApplication::gate() : ReleaseGate {
 	init {
 		var waiting : Sequence(PI::Process) := self.processes->select(p |
 			switchesBlueGreen(self, p) and readinessOf(p) <> null)->asSequence();
+		var moved : String := self.id;
+		var proven : ProvenApplication := proofOf(self);
 	}
 	assert fatal (waiting->notEmpty())
 		with log('a blue/green Application that publishes no readiness is E_RELEASE_UNIT_NO_READINESS');
@@ -354,7 +356,17 @@ mapping EffectiveApplication::gate() : ReleaseGate {
 		checks := if exportsTelemetry(p) then Sequence{AnalysisCheck::errorRate, AnalysisCheck::latency}
 			else Sequence{} endif;
 	});
+	-- What the gate starts and may undo, where the Application has a migration.
+	if managed(self) then migration := object GateMigration {
+		identity := moved + '-migration';
+		if proven <> null and proven.testedAgainst <> null then testedAgainst := proven.testedAgainst endif;
+		nonTransactional := proven <> null and proven.nonTransactional;
+	} endif;
 }
+
+-- What the proof beside the project records of an Application's release, or nothing.
+query proofOf(app : EffectiveApplication) : ProvenApplication =
+	proofs->select(a | a.id = app.id)->any(true);
 
 -- ================================================================ the Process
 
@@ -1412,7 +1424,11 @@ query ReleaseGate::json() : String = obj(Sequence{
 		Tuple{k = 'process', v = str(m.process.name)},
 		Tuple{k = 'readiness', v = m.readiness.json()},
 		Tuple{k = 'checks', v = if m.checks->isEmpty() then null
-			else arr(m.checks->collect(c | str(c.spelling()))) endif}})))}
+			else arr(m.checks->collect(c | str(c.spelling()))) endif}})))},
+	Tuple{k = 'migration', v = if self.migration = null then null else obj(Sequence{
+		Tuple{k = 'identity', v = str(self.migration.identity)},
+		Tuple{k = 'testedAgainst', v = opt(self.migration.testedAgainst)},
+		Tuple{k = 'nonTransactional', v = bool(self.migration.nonTransactional)}}) endif}
 });
 
 query ResolvedExposure::json() : String = obj(Sequence{

@@ -510,6 +510,19 @@ const gateAnalysis = z
   .strictObject({ interval: duration, iterations: count, threshold: count })
   .meta({ id: "GateAnalysis" });
 
+// What the gate needs of a migration to start it and to undo it
+// (spec/v1/55-delivery.md#failure-and-undo): the identity its Jobs are named
+// for, the serving revision the release was proven against, and whether a
+// changeset of it cannot run in a transaction. The Jobs' names are not here:
+// they carry the revision's tag, and the revision covers this element.
+const gateMigration = z
+  .strictObject({
+    identity: text,
+    testedAgainst: digest.exactOptional(),
+    nonTransactional: z.boolean(),
+  })
+  .meta({ id: "GateMigration" });
+
 const releaseGate = z
   .strictObject({
     // Where every Canary of the Application asks the Release Gate.
@@ -521,6 +534,8 @@ const releaseGate = z
     // no member. A continuous Application where every Process does is refused
     // at composition with E_RELEASE_UNIT_NO_READINESS.
     members: z.array(gateMember).min(1),
+    // Present where the Application moves its schema with a changelog.
+    migration: gateMigration.exactOptional(),
   })
   .meta({ id: "ReleaseGate" });
 

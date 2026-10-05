@@ -236,6 +236,9 @@
           "items": {
             "$ref": "#/$defs/GateMember"
           }
+        },
+        "migration": {
+          "$ref": "#/$defs/GateMigration"
         }
       },
       "required": [
@@ -340,6 +343,27 @@
         "error-rate",
         "latency"
       ]
+    },
+    "GateMigration": {
+      "type": "object",
+      "properties": {
+        "identity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "testedAgainst": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+:[a-f0-9]+$"
+        },
+        "nonTransactional": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "identity",
+        "nonTransactional"
+      ],
+      "additionalProperties": false
     },
     "ResolvedMigration": {
       "type": "object",

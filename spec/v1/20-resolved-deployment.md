@@ -756,12 +756,24 @@ Layer 2 therefore carries, per Application a Process of which switches
 | each member's analysis checks | its Runtime Profile: `error-rate` and `latency` where the profile exposes HTTP server metrics (`jvm`, `node`, `python`), none where it does not (`static`, `none`) |
 | the analysis cadence | the Platform document's `delivery.analysis` ([chapter 14](14-platform-intent.md#delivery-policy)) |
 | the gate deadline | `max` over the members of `progressDeadlineSeconds`, itself `startupBudget × 3` |
+| the migration | where the Application moves its schema with a changelog: the migration identity, `testedAgainst` where the proof records one, and `nonTransactional`, each copied from the migration plan ([The migration](#the-migration)) |
 
 `max` is the reading "held, not partial" requires: the unit waits for its
 slowest legitimate starter. `auth` declares a 600-second budget on `auth-api`
 and 30 seconds on `auth-ui`, so its gate deadline is 1800 seconds: the API's,
 because a UI that is ready in 30 seconds must still not receive traffic while
 the API it talks to is inside its own legitimate startup window.
+
+The migration entry is what lets the gate decide without reading anything
+else: it starts the up Job only while every primary runs `testedAgainst`, and
+unsuspends the down only where `nonTransactional` is `false`
+([chapter 55](55-delivery.md#failure-and-undo)). It does not name the Jobs.
+Their names carry the revision's tag, the revision is the digest of an element
+these inputs are part of, and the gate already learns the revision from the
+Canary that asks it: `<identity>-<tag>` and `<identity>-down-<tag>` are its to
+spell. An Application that declares a changelog always carries a gate
+(`E_MIGRATION_UNGATED`, [chapter 10](10-project-intent.md#migration)), so no
+migration is rendered that nothing starts.
 
 **The inputs are all the gate reads.** They live in the Resolved Deployment and in
 each Application's projection, which is where decisions live
@@ -1169,6 +1181,10 @@ releaseGate:                         # what the Release Gate reads (0052)
       checks: [error-rate, latency]  # the jvm profile exposes HTTP server metrics
   # A continuous Application whose Processes ALL declare `probes: none` is
   # E_RELEASE_UNIT_NO_READINESS at composition: nothing could gate its switch.
+  migration:                         # what the gate starts, and may undo
+    identity: knowledge-migration    # its Jobs are this, then the revision's tag
+    testedAgainst: sha256:…          # the revision every primary must run first
+    nonTransactional: false
 
 exposure:                            # on the Application: one host, its routes
   - name: public
@@ -1513,6 +1529,11 @@ classDiagram
         +Url endpoint
         +Duration deadline
     }
+    class GateMigration {
+        +Identity identity
+        +Digest testedAgainst
+        +bool nonTransactional
+    }
     class ResolvedScrape {
         +string process
         +string surface
@@ -1727,6 +1748,7 @@ classDiagram
     ResolvedApplication "1" *-- "0..1" ResolvedScrape : scrape
     ReleaseGate "1" *-- "1" GateAnalysis : analysis
     ReleaseGate "1" *-- "1..*" GateMember : members
+    ReleaseGate "1" *-- "0..1" GateMigration : migration
 
     ResolvedProcess "1" *-- "0..1" ResolvedProbe : readiness
     ResolvedProcess "1" *-- "0..1" ResolvedProbe : liveness

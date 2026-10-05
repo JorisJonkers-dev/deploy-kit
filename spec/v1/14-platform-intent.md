@@ -74,6 +74,7 @@ other resolves and every policy one asks for the other offers:
 | `delivery.gate` names no Application a project file read beside it declares with an `http` surface on one of its Processes | `E_UNKNOWN_RELEASE_GATE` |
 | `secretStore` names no Application a project file read beside it declares with an `http` surface on one of its Processes | `E_UNKNOWN_SECRET_STORE` |
 | an Application moves its schema with a changelog and the platform declares no `migration` policy | `E_NO_MIGRATION_POLICY` |
+| an Application moves its schema with a changelog and no Process of it switches `blue-green`: none is `continuous`, or the Application is `delivery.machinery` | `E_MIGRATION_UNGATED` |
 | an Application's cutover is `continuous` and the platform declares no `delivery` policy | `E_NO_DELIVERY_POLICY` |
 | a project file names a project the `handover` ledger puts on neither delivery path | `E_HANDOVER_UNLISTED` |
 

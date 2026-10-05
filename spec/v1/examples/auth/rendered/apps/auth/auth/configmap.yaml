@@ -10,4 +10,4 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
 data:
   releaseGate.json: |
-    {"analysis":{"interval":"30s","iterations":4,"threshold":3},"deadline":"1800s","endpoint":"http://release-gate.delivery-system.svc.cluster.local:8080","members":[{"checks":["error-rate","latency"],"process":"auth-api","readiness":{"path":"/api/actuator/health/readiness","port":8081}},{"process":"auth-ui","readiness":{"path":"/","port":8080}}]}
+    {"analysis":{"interval":"30s","iterations":4,"threshold":3},"deadline":"1800s","endpoint":"http://release-gate.delivery-system.svc.cluster.local:8080","members":[{"checks":["error-rate","latency"],"process":"auth-api","readiness":{"path":"/api/actuator/health/readiness","port":8081}},{"process":"auth-ui","readiness":{"path":"/","port":8080}}],"migration":{"identity":"auth-migration","nonTransactional":false,"testedAgainst":"sha256:2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a"}}

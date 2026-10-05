@@ -132,7 +132,9 @@ class IntentSetTest {
                 "knowledge.project.yml",
                 Examples.read("knowledge/knowledge.project.yml").replace("audience: authenticated", "audience: lan"));
 
-        assertThat(Pipeline.check(List.of(platform, knowledge)))
+        // knowledge stands in for the machinery here, and a changelog on the machinery is its own refusal.
+        assertThat(Pipeline.check(List.of(platform, knowledge)).stream()
+                        .filter(refusal -> refusal.code().equals("E_NO_TIER_FOR_AUDIENCE")))
                 .extracting(Diagnostic::code, Diagnostic::path)
                 .containsExactly(
                         tuple("E_NO_TIER_FOR_AUDIENCE", "/applications/0/exposure/0/routes/0"),

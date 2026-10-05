@@ -83,6 +83,8 @@ bound to a host port cannot run two copies, so the machinery rolls in place
 | Inputs in layer 2 with nothing reading them | no controller to write | the release-unit rule stays a promise |
 | Loadtester scripts rendered into each Canary | ships today | executable code in a Deliverable |
 | An edge-level atomic flip | one flip at the edge | east-west traffic still staggers |
+| The gate remembers what serves in memory alone | no write access for the gate | a restart loses it, and every migration is then held until someone states the serving revision by hand |
+| The serving revision as an annotation on the rendered gate inputs | one object fewer | the render and the gate would both write one object, where every other object here has one writer |
 | Fail open | releases continue during an outage | the barrier lapses exactly then |
 
 ## Reversibility
@@ -99,5 +101,9 @@ merged Application's id, or releases depend on the gate.
 - A lockstep pair that cannot merge is evidence the boundary is drawn wrong,
   judged one pair at a time by joris.
 - The estate writes and runs one controller, the Release Gate, paid by joris.
+- The gate holds one piece of state, the revision each Application serves, in
+  a `ConfigMap` of its own per Application. It needs write access for that and
+  for the `suspend` of the Jobs it starts, and nothing else it reads is its to
+  write.
 - Chapter 55 also has the gate read which revision each primary runs, which is
   not layer-2 data; naming the live facts it may read is an open proposal.
