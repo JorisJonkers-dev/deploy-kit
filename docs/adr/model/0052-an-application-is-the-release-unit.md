@@ -102,7 +102,8 @@ merged Application's id, or releases depend on the gate.
   judged one pair at a time by joris.
 - The estate writes and runs one controller, the Release Gate, paid by joris.
 - The gate holds one piece of state, the revision each Application serves, in
-  a `ConfigMap` of its own per Application. It needs write access for that and
+  a `ConfigMap` of its own per Application, kept in the gate's namespace so no
+  Application can write what the gate decides from. It needs write access for that and
   for the `suspend` of the Jobs it starts, and nothing else it reads is its to
   write.
 - Chapter 55 also has the gate read which revision each primary runs, which is
