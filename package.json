@@ -1,6 +1,6 @@
 {
   "name": "@jorisjonkers-dev/deploy-kit",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Deployment toolkit: the Project Intent model, its decision record, and the compiler that renders it.",
   "type": "module",
   "license": "LicenseRef-JorisJonkers-Proprietary-1.0",

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.5.0...v0.5.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* keep the estate-scoped tree out of apps/, so a Project named edge is delivered as itself ([#255](https://github.com/JorisJonkers-dev/deploy-kit/issues/255)) ([319f714](https://github.com/JorisJonkers-dev/deploy-kit/commit/319f714c1697fed9712d516755951d1558596197)), closes [#253](https://github.com/JorisJonkers-dev/deploy-kit/issues/253)
+
 ## [0.5.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.4.0...v0.5.0) (2026-10-05)
 
 
