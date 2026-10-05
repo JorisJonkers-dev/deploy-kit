@@ -85,8 +85,17 @@ committed tree is deleted.
 ## Consequences
 
 - The estate repository holds one Flux source per Project and the Reconcile
-  Units' Kustomizations, and nothing else rendered, paid once by joris
-  ([#148](https://github.com/JorisJonkers-dev/deploy-kit/issues/148)).
+  Units' Kustomizations, and nothing else rendered. Composition writes each
+  the first time its artifact is delivered and afterwards moves only its
+  digest, so nobody writes one by hand.
+- A source written before its artifact exists carries a digest that names
+  none. It fetches nothing if it is ever applied so, where a source with no
+  reference would fetch whatever `latest` names.
+- The signer's identity is written into each source as a pattern, anchored
+  and escaped, because that is how Flux reads it: the one workflow on the one
+  branch, and no branch whose name begins the same.
+- The cadence of a source and of a unit is the chapter's, one value, not the
+  Platform document's: nothing has needed to vary it.
 - The Platform document records where artifacts live and who signs them, paid
   by the platform's owner.
 - An intent-only change waits for its repository's release and image build

@@ -75,6 +75,11 @@ own output, the uniform `apps-core` string is not a fallback to restore.
   owner, in one more indirection between symptom and fix.
 - A dependency cycle becomes a build failure instead of a reconcile deadlock,
   paid by whoever introduces the cycle, at build time rather than in the cluster.
+- What is estate-scoped has units of its own, derived like the rest: the one
+  that provisions secrets follows the Secret Store's project, and each tier's
+  routes are one unit, which follows the tier's proxy and every project it
+  serves. One unit per tier, so a refused route holds its own tier and no
+  other.
 - The fourteen-node graph stops being hand-maintained and is rendered, paid by
   the platform owner once, in the renderer.
 - `layer` leaving the cluster-state `required` list is a breaking change for the

@@ -129,7 +129,8 @@ node src/cli/index.ts compose --fragments fragments/ --participants participants
   stdout as an array.
 - **What compose writes.** Under its output directory, `artifacts/<name>/`
   holds one directory per delivered Project, and `_estate` once no Project is
-  legacy. Beside it, the lock.json file holds the composition lock, and the
+  legacy. `projects/<name>/source.yaml` is the pin source of each artifact it
+  was handed no pin for, to commit to the Estate repository once. Beside it, the lock.json file holds the composition lock, and the
   composition.json file holds each artifact's content hash and whether its pin
   moves, plus the commit statuses and the Project conditions the workflow
   reports.

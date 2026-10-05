@@ -36,6 +36,7 @@ import {
 import { aliasesOf, type ImagesLockDocument } from "../model/images-lock.ts";
 import { parsePlatformIntent } from "./parse-platform-intent.ts";
 import { parseProjectIntent } from "./parse-project-intent.ts";
+import { pinSources, type PinSource } from "./pin-sources.ts";
 import {
   renderResolvedSet,
   type RenderedFile,
@@ -123,6 +124,11 @@ export interface Condition {
 
 export interface Composition {
   readonly artifacts: readonly ComposedArtifact[];
+  /**
+   * The pin source of every artifact delivered here that has no pin yet: the
+   * file the Estate repository commits for it, once.
+   */
+  readonly sources: readonly PinSource[];
   readonly lock: CompositionLockDocument;
   readonly statuses: readonly CommitStatus[];
   readonly conditions: readonly Condition[];
@@ -603,6 +609,12 @@ function composition(
 
   return {
     artifacts,
+    sources: pinSources(
+      rendered.filter(({ name }) => !Object.hasOwn(input.pins, name)),
+      projects,
+      platformOf(input.platform),
+      options.serialize,
+    ),
     lock,
     statuses: statusesOf(input, isolated),
     conditions: conditionsOf(input, isolated),

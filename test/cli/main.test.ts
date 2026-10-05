@@ -535,6 +535,16 @@ describe("deploy-kit compose", () => {
     };
     expect(report.statuses).toHaveLength(7);
     expect(report.conditions).toEqual([]);
+    // REQ-051 (docs/requirements.md): an artifact with no pin yet has its pin
+    // source written, at the path the Estate repository commits it under.
+    expect(
+      readFileSync(
+        join(root, "first", "projects", "notes", "source.yaml"),
+        "utf8",
+      ),
+    ).toBe(
+      readFileSync(example("pins/rendered/projects/notes/source.yaml"), "utf8"),
+    );
 
     const pins = join(root, "pins.json");
     writeFileSync(
@@ -563,6 +573,8 @@ describe("deploy-kit compose", () => {
     );
 
     expect(again.stdout).toBe("composed 3 artifacts; pins move for: none\n");
+    // Pinned already, so no source is written a second time.
+    expect(existsSync(join(root, "again", "projects"))).toBe(false);
   });
 
   it("isolates a refused fragment that never composed, and composes the rest", () => {

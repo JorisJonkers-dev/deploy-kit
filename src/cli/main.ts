@@ -449,10 +449,19 @@ function compose(values: Options, json: boolean, world: World): Outcome {
   );
   if (!result.ok) return refused(result.diagnostics, json);
   const out = given(values, "out");
-  const { artifacts, lock: written, statuses, conditions } = result.value;
+  const {
+    artifacts,
+    sources,
+    lock: written,
+    statuses,
+    conditions,
+  } = result.value;
   for (const { name, files } of artifacts)
     for (const { path, text } of files)
       write(join(out, "artifacts", name, path), text);
+  // The pin source of each artifact delivered for the first time, at the path
+  // the Estate repository commits it under.
+  for (const { path, text } of sources) write(join(out, path), text);
   write(join(out, "lock.json"), `${canonicalJson(written)}\n`);
   write(
     join(out, "composition.json"),

@@ -94,6 +94,47 @@ export interface ServiceMonitor {
   };
 }
 
+/**
+ * A Project's pin (spec/v1/55-delivery.md#rendered-artifacts-and-pins): the
+ * one artifact Flux fetches for it, by digest, and whose keyless signature it
+ * accepts.
+ */
+export interface OciRepository {
+  readonly apiVersion: "source.toolkit.fluxcd.io/v1";
+  readonly kind: "OCIRepository";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly interval: string;
+    readonly url: string;
+    readonly ref: { readonly digest: string };
+    readonly verify: {
+      readonly provider: "cosign";
+      readonly matchOIDCIdentity: readonly {
+        readonly issuer: string;
+        readonly subject: string;
+      }[];
+    };
+  };
+}
+
+/** One Reconcile Unit as Flux applies it: a path of a pinned artifact, after the units it follows. */
+export interface FluxKustomization {
+  readonly apiVersion: "kustomize.toolkit.fluxcd.io/v1";
+  readonly kind: "Kustomization";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly interval: string;
+    readonly prune: true;
+    readonly wait: true;
+    readonly sourceRef: {
+      readonly kind: "OCIRepository";
+      readonly name: string;
+    };
+    readonly path: string;
+    readonly dependsOn?: readonly { readonly name: string }[];
+  };
+}
+
 /** The operator's connection to the Secret Store, one per project namespace. */
 export interface VaultConnection {
   readonly apiVersion: "secrets.hashicorp.com/v1beta1";
