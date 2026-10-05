@@ -900,6 +900,26 @@ describe("composeEstate, against the participants list", () => {
     ]);
   });
 
+  it("reads what a fragment declares from its project files and its Platform document, and from no other file it carries", () => {
+    // A copy of the Platform document under another name declares nothing,
+    // whatever project it names.
+    const withCopy = {
+      ...PLATFORM,
+      files: [
+        ...PLATFORM.files,
+        {
+          name: "archive/platform.intent.yml.bak",
+          text: text("platform/platform.intent.yml").replace(
+            "project: jorisjonkers.dev",
+            "project: elsewhere.example",
+          ),
+        },
+      ],
+    };
+
+    expect(refused({ platform: withCopy })).toStrictEqual([]);
+  });
+
   it("reads a publish time for an entry of its own, too", () => {
     const named = {
       ...NOTES,
