@@ -37,21 +37,21 @@ spec:
         metadata:
           application: auth
           process: auth-api
-          revision: sha256:0ac595e0038d8d92a4008e3ef233a62a8b567c96a78242d6764d321f1d1a7b25
+          revision: sha256:b87d7fecf08d4ac6b91ac3ca9ac84b10a193d9a90a32929e194a2650ea2e8cca
       - name: checks
         type: rollout
         url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
         metadata:
           application: auth
           process: auth-api
-          revision: sha256:0ac595e0038d8d92a4008e3ef233a62a8b567c96a78242d6764d321f1d1a7b25
+          revision: sha256:b87d7fecf08d4ac6b91ac3ca9ac84b10a193d9a90a32929e194a2650ea2e8cca
       - name: may-promote
         type: confirm-promotion
         url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
         metadata:
           application: auth
           process: auth-api
-          revision: sha256:0ac595e0038d8d92a4008e3ef233a62a8b567c96a78242d6764d321f1d1a7b25
+          revision: sha256:b87d7fecf08d4ac6b91ac3ca9ac84b10a193d9a90a32929e194a2650ea2e8cca
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -105,18 +105,18 @@ spec:
         metadata:
           application: auth
           process: auth-ui
-          revision: sha256:0ac595e0038d8d92a4008e3ef233a62a8b567c96a78242d6764d321f1d1a7b25
+          revision: sha256:b87d7fecf08d4ac6b91ac3ca9ac84b10a193d9a90a32929e194a2650ea2e8cca
       - name: checks
         type: rollout
         url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
         metadata:
           application: auth
           process: auth-ui
-          revision: sha256:0ac595e0038d8d92a4008e3ef233a62a8b567c96a78242d6764d321f1d1a7b25
+          revision: sha256:b87d7fecf08d4ac6b91ac3ca9ac84b10a193d9a90a32929e194a2650ea2e8cca
       - name: may-promote
         type: confirm-promotion
         url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
         metadata:
           application: auth
           process: auth-ui
-          revision: sha256:0ac595e0038d8d92a4008e3ef233a62a8b567c96a78242d6764d321f1d1a7b25
+          revision: sha256:b87d7fecf08d4ac6b91ac3ca9ac84b10a193d9a90a32929e194a2650ea2e8cca

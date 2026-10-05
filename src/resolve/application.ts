@@ -11,6 +11,7 @@ import type { Hasher } from "../model/hasher.ts";
 import type {
   ReleaseGate,
   ResolvedApplicationDocument,
+  ResolvedMigration,
   ResolvedProcess,
 } from "../model/resolved-deployment.ts";
 import type { MigrationProofDocument } from "../model/migration-proof.ts";
@@ -114,6 +115,7 @@ interface Resolved {
 function releaseGateOf(
   pairs: readonly Resolved[],
   { platform, gate }: ApplicationContext,
+  plan: ResolvedMigration | undefined,
 ): ReleaseGate | undefined {
   const gated = pairs.filter(
     ({ resolved }) => resolved.switchover === "blue-green",
@@ -145,6 +147,18 @@ function releaseGateOf(
         ? { checks: ["error-rate" as const, "latency" as const] }
         : {}),
     })),
+    // What the gate starts and undoes, where the Application has a migration.
+    ...(plan === undefined
+      ? {}
+      : {
+          migration: {
+            identity: plan.identity,
+            ...(plan.testedAgainst === undefined
+              ? {}
+              : { testedAgainst: plan.testedAgainst }),
+            nonTransactional: plan.nonTransactional,
+          },
+        }),
   };
 }
 
@@ -167,7 +181,10 @@ export function resolveApplication(
   });
   const processes = pairs.map(({ resolved }) => resolved);
   const after = reconcileAfter(application, context);
-  const gate = releaseGateOf(pairs, context);
+  const plan = managed(application)
+    ? resolveMigration(application, context)
+    : undefined;
+  const gate = releaseGateOf(pairs, context, plan);
   const scrape = application.observability?.scrape;
   const element = {
     id: application.id,
@@ -190,9 +207,7 @@ export function resolveApplication(
           },
         }),
     ...(gate === undefined ? {} : { releaseGate: gate }),
-    ...(managed(application)
-      ? { migration: resolveMigration(application, context) }
-      : {}),
+    ...(plan === undefined ? {} : { migration: plan }),
     // A migration reads its owner credential from the store itself.
     ...(synced(processes) || managed(application)
       ? { secretStore: storeFor(context) }

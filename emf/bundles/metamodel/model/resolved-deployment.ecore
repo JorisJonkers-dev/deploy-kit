@@ -138,6 +138,19 @@
     <!-- The Platform document's cadence, carried so the projection is all the gate reads. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="analysis" lowerBound="1" eType="#//GateAnalysis" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="members" lowerBound="1" upperBound="-1" eType="#//GateMember" containment="true"/>
+    <!-- Present where the Application moves its schema with a changelog. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="migration" eType="#//GateMigration" containment="true"/>
+  </eClassifiers>
+
+  <!-- What the gate needs of a migration to start it and to undo it
+       (spec/v1/55-delivery.md#failure-and-undo): the identity its Jobs are named for, the
+       serving revision the release was proven against, and whether a changeset of it cannot
+       run in a transaction. The Jobs' names are not here: they carry the revision's tag, and
+       the revision covers this element. -->
+  <eClassifiers xsi:type="ecore:EClass" name="GateMigration">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="testedAgainst" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="nonTransactional" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="GateAnalysis">

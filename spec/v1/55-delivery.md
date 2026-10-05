@@ -272,7 +272,7 @@ two questions, from the Resolved Deployment and nothing else
 | may this member be promoted? | after the member's own analysis passes | every member of the Application has passed its analysis for this revision, or did not change in it ([What the render leaves to Flagger](#what-the-render-leaves-to-flagger)): the barrier |
 
 It reads the Application's release-gate inputs (its members, their readiness,
-their analysis checks and the gate deadline;
+their analysis checks, the gate deadline and, where it has one, its migration;
 [chapter 20](20-resolved-deployment.md#the-release-gate)) from the
 `<application>-release-gate` ConfigMap the render puts in the Application's
 namespace, and names the release
@@ -293,6 +293,25 @@ checked for readiness alone. Nothing about analysis is authored per Application.
 **The gate fails closed.** When the gate cannot answer, it answers no: every
 switch waits, the old versions keep serving, and an alert fires. A release is
 never let through because the thing that would stop it is down.
+
+**The gate keeps one record, and writes two things.** What an Application
+*serves* is the last revision under which every member's primary ran what the
+render held for it. No rendered object says so: once Flux applies a new
+revision, every object in the cluster names the new one. So the gate records
+it, in a `ConfigMap` of its own, `<application>-release-record` in the gate's
+own namespace, naming the Application's namespace inside, which it advances
+whenever that holds for the current revision. The render never carries the
+record, so it has one writer, and it sits where no Application can write: a
+record beside the Application would let anything that writes a `ConfigMap`
+there say which revision serves, and so start a migration whose proof went
+stale. A record that names another namespace than the Application's is one the
+gate cannot answer from. The gate
+reads it for the proof ([Migration safety](#migration-safety)), for the down
+([Failure and undo](#failure-and-undo)) and for the pair a held release is
+reported as ([Held releases](#held-releases)). An Application with no record
+serves nothing under the model, which is a first release; a record that is
+there and cannot be read is a question the gate cannot answer. Besides the
+record, the gate writes one field: `suspend`, on the Jobs it starts.
 
 **Delivery machinery is never gated.** Flagger, the Release Gate and the edge
 proxies are listed in the Platform document as the delivery machinery

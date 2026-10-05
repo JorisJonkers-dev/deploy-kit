@@ -161,6 +161,39 @@ function runnerRefusals(
   );
 }
 
+/**
+ * The Release Gate starts a migration, and it holds only an Application a
+ * Process of which switches blue/green (spec/v1/10-project-intent.md#migration):
+ * a changelog on any other would render Jobs nothing ever starts.
+ */
+function ungatedRefusals(
+  project: ProjectIntentDocument,
+  platform: PlatformIntentDocument,
+): Omit<Diagnostic, "document">[] {
+  // A platform with no delivery policy names no machinery.
+  // Stryker disable next-line ArrayDeclaration
+  const machinery = new Set(platform.delivery?.machinery ?? []);
+  return project.applications.flatMap((application, a) =>
+    typeof application.migration === "object" &&
+    (machinery.has(application.id) ||
+      !application.processes.some(
+        (process) =>
+          process.lifecycle === "application" &&
+          effectiveCutover([process, application, project]) === "continuous",
+      ))
+      ? [
+          {
+            code: "E_MIGRATION_UNGATED",
+            path: `/applications/${a}/migration`,
+            message:
+              "no Process of this Application switches blue/green, so nothing starts its migration",
+            hint: "Give a Process a `continuous` cutover, or let the image migrate with `migration: self`.",
+          },
+        ]
+      : [],
+  );
+}
+
 /** While the handover lasts, every Project is on one path the ledger names. */
 function handoverRefusals(
   project: ProjectIntentDocument,
@@ -231,6 +264,7 @@ function projectRefusals(
   refusals.push(...migrationRefusals(project, estate));
   refusals.push(...credentialsRefusals(project.dependsOn, "", estate));
   refusals.push(...runnerRefusals(project, platform));
+  refusals.push(...ungatedRefusals(project, platform));
   refusals.push(...deliveryRefusals(project, platform));
   refusals.push(...handoverRefusals(project, platform));
   for (const [a, application] of project.applications.entries()) {

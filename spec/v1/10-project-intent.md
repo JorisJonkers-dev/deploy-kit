@@ -2310,6 +2310,13 @@ several. It must exist and parse when the Intent Fragment is published.
   credential its database edge derives.
 - **A changelog needs a runner.** A Platform document offering no migration
   policy cannot build one: `E_NO_MIGRATION_POLICY`.
+- **A changelog needs a gate.** The Release Gate starts a migration, and it
+  holds only an Application a Process of which switches `blue-green`
+  ([chapter 55](55-delivery.md#release-order)). A changelog on an Application
+  that stops before it starts again, or on one of the delivery machinery, would
+  render Jobs nothing ever starts: `E_MIGRATION_UNGATED`, at the Application's
+  `migration`. Such an Application migrates with `self`, until a decision says
+  who starts a migration no gate holds.
 - **A missing changelog** is `E_CHANGELOG_MISSING`, raised where the fragment is
   published, because only the repository holds the file.
 

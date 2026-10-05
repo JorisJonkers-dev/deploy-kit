@@ -1368,6 +1368,31 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
     );
   });
 
+  it("hands the gate the migration it starts and may undo: its identity and what the proof records, and nothing where none is declared", () => {
+    const proof = PROOF(
+      `  - { id: notes, testedAgainst: "sha256:${"8".repeat(64)}", nonTransactional: true }\n`,
+    );
+    const gate = (files: readonly AuthoredFile[], applications = managed) =>
+      application(applications, { lock: LOCKED, env: [...files, ...DATA] })
+        .releaseGate;
+
+    expect(gate([])?.migration).toStrictEqual({
+      identity: "notes-migration",
+      nonTransactional: false,
+    });
+    expect(gate([proof])?.migration).toStrictEqual({
+      identity: "notes-migration",
+      testedAgainst: `sha256:${"8".repeat(64)}`,
+      nonTransactional: true,
+    });
+    const unmanaged = gate(
+      [],
+      managed.replace("{ changelog: db/changelog.yml }", "self"),
+    );
+    expect(unmanaged?.members).toHaveLength(1);
+    expect(Object.keys(unmanaged ?? {})).not.toContain("migration");
+  });
+
   it("is admitted by no Process but the datastore's own: neither another of its namespace nor one of its name elsewhere", () => {
     const named = `${managed}${serving("postgres")}`;
     const all = projects(named, { lock: LOCKED, env: DATA });

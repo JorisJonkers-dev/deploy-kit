@@ -76,6 +76,17 @@ rotated by hand. An application Process that can alter the schema holds the
 privilege a separate migration identity exists to withhold, so a hand-written
 owner-role grant is refused.
 
+**The gate starts it, so the gate must hold it.** The Release Gate starts a
+migration once its proof holds and undoes it only under its conditions, and it
+decides from its inputs alone ([0052](0052-an-application-is-the-release-unit.md)).
+So the inputs carry what those decisions read: the migration identity, the
+revision the release was proven against, and whether a changeset of it cannot
+run in a transaction. They do not carry the Jobs' names, which hold the
+revision's tag: the revision is the digest of an element the inputs are part
+of, and the gate learns it from the Canary that asks. An Application nothing
+gates has nobody to start its migration, so a changelog there is refused
+rather than rendered as Jobs that never run.
+
 **Derived, and written down once.** The identity, the owner role, the
 database, the deadline and the requests are functions of the Application id,
 the project and the Platform document, so none is authored. They are still
@@ -98,6 +109,8 @@ member needs, so automatic undo stops there and the gate alerts instead.
 | Per-tool runners chosen per Application | no porting | every proof, undo and linter once per tool |
 | One database per consuming Application | no project join | wrong for the live estate |
 | Record three facts of a migration and hand the adapters the Platform document for the rest | the Resolved Deployment stays smaller | layer 3 would derive the identity, the database and the terms while serialising, a decision no projection shows |
+| Let the gate read `testedAgainst` and `nonTransactional` off the Jobs it unsuspends | no change to the gate's inputs | the gate's decisions would read two kinds of object, and a first release, which has no down Job, would have nowhere to say so |
+| Render an ungated Application's migration Jobs unsuspended | an `interrupted` Application could declare a changelog | the migration would run with no proof checked and nothing to hold the rollout on its result |
 | Render the init script from a template | matches today exactly | a procedure in the render surface |
 | A static credential per consumer at a KV path | no database engine | a hand-rotated database password |
 | Trust authors to write compatible changesets | no CI work | the convention fails silently mid-release |
