@@ -10,8 +10,13 @@ import type {
 } from "../model/effective-intent.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
-import { backupIdentityOf, namespaceOf } from "../model/runtime-profiles.ts";
+import {
+  backupIdentityOf,
+  migrationIdentityOf,
+  namespaceOf,
+} from "../model/runtime-profiles.ts";
 import { dumpedSurfaceOf } from "../model/backup.ts";
+import { datastoreOf, managed } from "./database.ts";
 
 type Ingress = NonNullable<ResolvedProcess["ingress"]>[number];
 type Egress = NonNullable<ResolvedProcess["egress"]>[number];
@@ -129,7 +134,31 @@ export function ingressOf(
             port: port(dumped),
           },
         ];
-  return distinct([...routes, ...metrics, ...consumers, ...backups]);
+  // The migration of every Application whose database this Process holds:
+  // its identity reaches the surface that Application's own edge names.
+  const here = namespaceOf(context.project);
+  const migrations = context.union.flatMap(({ project, applications }) =>
+    applications.filter(managed).flatMap((consumer): Ingress[] => {
+      const datastore = datastoreOf(consumer, context.union);
+      return datastore?.namespace === here && datastore.process === process.name
+        ? [
+            {
+              rule: "migration",
+              namespace: namespaceOf(project),
+              process: migrationIdentityOf(consumer.id),
+              port: datastore.port,
+            },
+          ]
+        : [];
+    }),
+  );
+  return distinct([
+    ...routes,
+    ...metrics,
+    ...consumers,
+    ...backups,
+    ...migrations,
+  ]);
 }
 
 /** The surface the Secret Store answers every grant on. */

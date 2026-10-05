@@ -31,6 +31,14 @@ import type {
   Volume,
   VolumeMount,
 } from "../../objects/kubernetes.ts";
+import {
+  autoscaled,
+  autoscalerOf,
+  blueGreen,
+  budgetOf,
+  scaled,
+} from "./capacity.ts";
+import { migrationOf } from "./migration.ts";
 import { wholeSeconds } from "../shared/durations.ts";
 import { isSynced, type KvGrant } from "../shared/holders.ts";
 import {
@@ -93,10 +101,6 @@ const fileOf = (from: string): string => from.split("/").pop() as string;
 /** A writable path's volume, named for the path. */
 const writableOf = (path: string): string =>
   `writable${path.replaceAll(/[^a-z0-9]+/g, "-")}`;
-
-/** Flagger switches a blue-green Process; any other is replaced by its own Deployment. */
-const blueGreen = (process: ResolvedProcess): boolean =>
-  process.switchover === "blue-green";
 
 /** How many pods a RollingUpdate may add beyond the count, and how many it may take away. */
 const rolling = (maxSurge: number, maxUnavailable: number) => ({
@@ -611,6 +615,15 @@ function canaryOf(
         kind: "Deployment",
         name: process.name,
       },
+      ...(autoscaled(process)
+        ? {
+            autoscalerRef: {
+              apiVersion: "autoscaling/v2" as const,
+              kind: "HorizontalPodAutoscaler" as const,
+              name: process.name,
+            },
+          }
+        : {}),
       progressDeadlineSeconds: wholeSeconds(process.deadline),
       service: {
         port: (served as { port: number }).port,
@@ -650,8 +663,18 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
         ],
         [
           "canary.yaml",
-          processes.filter(blueGreen).map((p) => canaryOf(p, application)),
+          processes
+            .filter(blueGreen)
+            .flatMap((p) => [
+              canaryOf(p, application),
+              ...(autoscaled(p) ? [autoscalerOf(p, application)] : []),
+            ]),
         ],
+        [
+          "pdb.yaml",
+          processes.filter(scaled).map((p) => budgetOf(p, application)),
+        ],
+        ["migration.yaml", migrationOf(application)],
         [
           "service.yaml",
           processes

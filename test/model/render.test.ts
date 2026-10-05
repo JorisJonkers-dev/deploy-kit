@@ -114,7 +114,26 @@ describe("renderIntentSet", () => {
     ).toStrictEqual(committed("_estate/rendered"));
   });
 
-  // REQ-049 (docs/requirements.md): the Vault policy job is handed exactly the
+  // REQ-052 (docs/requirements.md): auth's render carries its migration Jobs,
+  // its autoscaler and its disruption budget, and equals its committed tree.
+  it("renders auth's share of the tree and its estate-scoped share to its committed tree, byte for byte", () => {
+    const result = renderIntentSet(
+      [
+        ...SET.filter((name) => !name.startsWith("minimal/")),
+        "auth/auth.project.yml",
+        "auth/env/auth-api/base.env",
+        "auth/migration-proof.yml",
+      ].map((name) => ({ name, text: text(name) })),
+      { ...OPTIONS, projects: ["auth"] },
+    );
+    const artifacts = result.ok ? result.value : [];
+
+    expect({
+      ...asTree(artifact(artifacts, "auth")),
+      ...asTree(artifact(artifacts, "_estate")),
+    }).toStrictEqual(committed("auth/rendered"));
+  });
+
   // documents of the render it belongs to, and is named by their digest.
   describe("the Vault policy job", () => {
     const estate = (

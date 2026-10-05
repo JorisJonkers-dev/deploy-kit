@@ -1,6 +1,7 @@
 // The identities of one Application that hold a grant
 // (spec/v1/16-dependencies.md#what-a-grant-confers): each Process holding one,
-// and each backup identity holding its destination's credential. The `vso`
+// each backup identity holding its destination's credential, and the migration
+// identity holding its database's owner credential. The `vso`
 // and `vault-policy` adapters both read them, so neither derives them twice.
 import type {
   ResolvedApplicationDocument,
@@ -27,6 +28,10 @@ export interface Holder {
   readonly grants: readonly Grant[];
 }
 
+/** The labels of an identity that is no Process: it runs no Runtime Profile. */
+const apart = (identity: string, application: string): Labels =>
+  labelsOf({ name: identity, runtime: "none" }, application);
+
 /** A backup identity holds the one credential its Process's backups share. */
 function backupHolder(process: ResolvedProcess, application: string): Holder[] {
   // A missing list and an empty one hold no backup alike.
@@ -38,14 +43,31 @@ function backupHolder(process: ResolvedProcess, application: string): Holder[] {
   return [
     {
       identity: backup.identity,
-      labels: labelsOf({ name: backup.identity, runtime: "none" }, application),
+      labels: apart(backup.identity, application),
       grants: [backup.credential as Grant],
     },
   ];
 }
 
-export const holdersOf = (application: ResolvedApplicationDocument): Holder[] =>
-  application.processes.flatMap((process) => [
+/** A migration identity holds the owner credential of its project's database. */
+const migrationHolder = ({
+  id,
+  migration,
+}: ResolvedApplicationDocument): Holder[] =>
+  migration === undefined
+    ? []
+    : [
+        {
+          identity: migration.identity,
+          labels: apart(migration.identity, id),
+          grants: [migration.credential],
+        },
+      ];
+
+export const holdersOf = (
+  application: ResolvedApplicationDocument,
+): Holder[] => [
+  ...application.processes.flatMap((process) => [
     ...(process.secrets === undefined
       ? []
       : [
@@ -56,4 +78,6 @@ export const holdersOf = (application: ResolvedApplicationDocument): Holder[] =>
           },
         ]),
     ...backupHolder(process, application.id),
-  ]);
+  ]),
+  ...migrationHolder(application),
+];

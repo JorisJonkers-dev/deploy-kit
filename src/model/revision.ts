@@ -14,6 +14,17 @@ const NOT_THE_APPLICATION = new Set([
   "revision",
 ]);
 
+/** How many hex digits of a revision name its release wherever a name must be short. */
+const TAG_DIGITS = 12;
+
+/**
+ * The tag of a revision (spec/v1/55-delivery.md#failure-and-undo): its first
+ * twelve hex digits, which the migration Jobs are named by and the runner
+ * marks the database with.
+ */
+export const tagOf = (revision: string): string =>
+  (revision.split(":")[1] as string).slice(0, TAG_DIGITS);
+
 /** The revision of an Application's element, or of the projection publishing it. */
 export function applicationRevision(
   application: Readonly<Record<string, unknown>>,

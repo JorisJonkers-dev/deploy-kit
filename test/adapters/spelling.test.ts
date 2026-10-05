@@ -1142,3 +1142,341 @@ describe("the vault-policy adapter", () => {
     );
   });
 });
+
+describe("what a migration plan and a count above one render", () => {
+  const STORE = "http://vault.secrets-system.svc.cluster.local:8200";
+  const PLAN = {
+    runner: "ghcr.io/x/notes-migration@sha256:aa",
+    uid: 1001,
+    gid: 1002,
+    nonTransactional: false,
+    identity: "notes-migration",
+    deadline: "10m",
+    memory: "256Mi",
+    cpu: "100m",
+    scratch: "64Mi",
+    database: {
+      host: "postgres.data-system.svc",
+      port: 5432,
+      name: "notes_db",
+    },
+    credential: {
+      engine: "database" as const,
+      delivery: "self" as const,
+      paths: [{ path: "database/creds/notes-owner", allows: ["read"] }],
+    },
+    egress: [
+      {
+        rule: "datastore" as const,
+        namespace: "data-system",
+        process: "postgres",
+        port: 5432,
+      },
+      {
+        rule: "secret-store" as const,
+        namespace: "secrets-system",
+        process: "vault",
+        port: 8200,
+      },
+      { rule: "cluster-dns" as const, namespace: "kube-system", port: 53 },
+    ],
+  };
+  const SERVING = `sha256:${"b".repeat(64)}`;
+  const migrating = (plan: object = {}) =>
+    edited(() => ({
+      revision: `sha256:0123456789abcdef${"0".repeat(48)}`,
+      secretStore: STORE,
+      migration: { ...PLAN, ...plan },
+    }));
+  const LABELS = {
+    "app.kubernetes.io/name": "notes-migration",
+    "app.kubernetes.io/instance": "notes-migration",
+    "app.kubernetes.io/part-of": "notes",
+    "app.kubernetes.io/managed-by": "deploy-kit",
+    "app.kubernetes.io/component": "none",
+  };
+  const job = (name: string, args: readonly string[]) => ({
+    apiVersion: "batch/v1",
+    kind: "Job",
+    metadata: {
+      name,
+      namespace: "notes-system",
+      labels: LABELS,
+      annotations: { "kustomize.toolkit.fluxcd.io/ssa": "IfNotPresent" },
+    },
+    spec: {
+      suspend: true,
+      backoffLimit: 0,
+      activeDeadlineSeconds: 600,
+      template: {
+        metadata: { labels: LABELS },
+        spec: {
+          serviceAccountName: "notes-migration",
+          automountServiceAccountToken: true,
+          restartPolicy: "Never",
+          securityContext: {
+            runAsNonRoot: true,
+            runAsUser: 1001,
+            runAsGroup: 1002,
+            seccompProfile: { type: "RuntimeDefault" },
+          },
+          containers: [
+            {
+              name: "migration",
+              image: "ghcr.io/x/notes-migration@sha256:aa",
+              args,
+              env: [
+                { name: "DATABASE_HOST", value: "postgres.data-system.svc" },
+                { name: "DATABASE_PORT", value: "5432" },
+                { name: "DATABASE_NAME", value: "notes_db" },
+                { name: "VAULT_ADDR", value: STORE },
+                { name: "VAULT_ROLE", value: "notes-system-notes-migration" },
+                {
+                  name: "VAULT_CREDENTIALS_PATH",
+                  value: "database/creds/notes-owner",
+                },
+              ],
+              resources: {
+                requests: { memory: "256Mi", cpu: "100m" },
+                limits: { memory: "256Mi" },
+              },
+              securityContext: {
+                readOnlyRootFilesystem: true,
+                capabilities: { drop: ["ALL"] },
+              },
+              volumeMounts: [{ name: "scratch", mountPath: "/tmp" }],
+            },
+          ],
+          volumes: [{ name: "scratch", emptyDir: { sizeLimit: "64Mi" } }],
+        },
+      },
+    },
+  });
+
+  it("renders the migration identity and the up Job named by the revision's tag, suspended and created once", () => {
+    expect(
+      objectsAt(renderKubernetes(migrating()), "notes/notes/migration.yaml"),
+    ).toStrictEqual([
+      {
+        apiVersion: "v1",
+        kind: "ServiceAccount",
+        metadata: {
+          name: "notes-migration",
+          namespace: "notes-system",
+          labels: LABELS,
+        },
+      },
+      job("notes-migration-0123456789ab", ["up", "0123456789ab"]),
+    ]);
+  });
+
+  it("renders the down Job to the tag of the revision the release was proven against, and none on a first release", () => {
+    const [, , down, ...more] = objectsAt(
+      renderKubernetes(migrating({ testedAgainst: SERVING })),
+      "notes/notes/migration.yaml",
+    );
+
+    expect(down).toStrictEqual(
+      job("notes-migration-down-0123456789ab", ["down", "bbbbbbbbbbbb"]),
+    );
+    expect(more).toStrictEqual([]);
+  });
+
+  it("renders no migration file for an Application that moves no schema", () => {
+    expect(
+      renderKubernetes(edited()).filter(({ path }) =>
+        path.endsWith("migration.yaml"),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("gives the migration identity a policy of its own: what its plan admits, DNS on both protocols, and nothing in", () => {
+    const policies = objectsAt(
+      renderNetworking(migrating()),
+      "notes/notes/networkpolicy.yaml",
+    );
+
+    expect(policies.slice(1)).toStrictEqual([
+      {
+        apiVersion: "networking.k8s.io/v1",
+        kind: "NetworkPolicy",
+        metadata: {
+          name: "notes-migration",
+          namespace: "notes-system",
+          labels: LABELS,
+        },
+        spec: {
+          podSelector: {
+            matchLabels: { "app.kubernetes.io/instance": "notes-migration" },
+          },
+          policyTypes: ["Ingress", "Egress"],
+          egress: [
+            {
+              to: [
+                {
+                  namespaceSelector: {
+                    matchLabels: {
+                      "kubernetes.io/metadata.name": "data-system",
+                    },
+                  },
+                  podSelector: {
+                    matchLabels: { "app.kubernetes.io/instance": "postgres" },
+                  },
+                },
+              ],
+              ports: [{ protocol: "TCP", port: 5432 }],
+            },
+            {
+              to: [
+                {
+                  namespaceSelector: {
+                    matchLabels: {
+                      "kubernetes.io/metadata.name": "secrets-system",
+                    },
+                  },
+                  podSelector: {
+                    matchLabels: { "app.kubernetes.io/instance": "vault" },
+                  },
+                },
+              ],
+              ports: [{ protocol: "TCP", port: 8200 }],
+            },
+            {
+              to: [
+                {
+                  namespaceSelector: {
+                    matchLabels: {
+                      "kubernetes.io/metadata.name": "kube-system",
+                    },
+                  },
+                },
+              ],
+              ports: [
+                { protocol: "UDP", port: 53 },
+                { protocol: "TCP", port: 53 },
+              ],
+            },
+          ],
+        },
+      },
+    ]);
+    expect(
+      objectsAt(renderNetworking(edited()), "notes/notes/networkpolicy.yaml"),
+    ).toHaveLength(1);
+  });
+
+  it("writes the migration identity's owner credential as its own policy and role, and syncs nothing for it", () => {
+    const rendered = renderVaultPolicy(migrating());
+
+    expect(rendered.map(({ path }) => path)).toStrictEqual([
+      "estate/vso-secrets/policies/notes-system-notes-migration.policy.json",
+      "estate/vso-secrets/policies/notes-system-notes-migration.role.json",
+    ]);
+    expect(rendered.flatMap(({ objects }) => objects)).toStrictEqual([
+      { path: { "database/creds/notes-owner": { capabilities: ["read"] } } },
+      {
+        bound_service_account_names: ["notes-migration"],
+        bound_service_account_namespaces: ["notes-system"],
+        token_policies: ["notes-system-notes-migration"],
+      },
+    ]);
+    expect(
+      renderVso(migrating()).filter(({ path }) => path.endsWith("vso.yaml")),
+    ).toStrictEqual([]);
+  });
+
+  const SCALED_LABELS = {
+    "app.kubernetes.io/name": "notes-api",
+    "app.kubernetes.io/instance": "notes-api",
+    "app.kubernetes.io/part-of": "notes",
+    "app.kubernetes.io/managed-by": "deploy-kit",
+    "app.kubernetes.io/component": "node",
+  };
+  const budget = (matchLabels: object) => ({
+    apiVersion: "policy/v1",
+    kind: "PodDisruptionBudget",
+    metadata: {
+      name: "notes-api",
+      namespace: "notes-system",
+      labels: SCALED_LABELS,
+    },
+    spec: { maxUnavailable: 1, selector: { matchLabels } },
+  });
+
+  it("holds a blue-green Process's count in an autoscaler the Canary names, and budgets its primary", () => {
+    const rendered = renderKubernetes(
+      edited(undefined, () => ({ replicas: 3 })),
+    );
+    const [canary, autoscaler, ...more] = objectsAt(
+      rendered,
+      "canary.yaml",
+    ) as [{ spec: { autoscalerRef?: unknown } }, ...unknown[]];
+
+    expect(canary.spec.autoscalerRef).toStrictEqual({
+      apiVersion: "autoscaling/v2",
+      kind: "HorizontalPodAutoscaler",
+      name: "notes-api",
+    });
+    expect(autoscaler).toStrictEqual({
+      apiVersion: "autoscaling/v2",
+      kind: "HorizontalPodAutoscaler",
+      metadata: {
+        name: "notes-api",
+        namespace: "notes-system",
+        labels: SCALED_LABELS,
+      },
+      spec: {
+        scaleTargetRef: {
+          apiVersion: "apps/v1",
+          kind: "Deployment",
+          name: "notes-api",
+        },
+        minReplicas: 3,
+        maxReplicas: 3,
+      },
+    });
+    expect(more).toStrictEqual([]);
+    expect(objectsAt(rendered, "pdb.yaml")).toStrictEqual([
+      budget({ "app.kubernetes.io/name": "notes-api-primary" }),
+    ]);
+  });
+
+  it("leaves a Process Flagger does not switch its own count, with no autoscaler, and budgets its own pods", () => {
+    const rendered = renderKubernetes(
+      edited(
+        () => ({ releaseGate: undefined }),
+        () => ({
+          replicas: 2,
+          switchover: "stop-start",
+          cutover: "interrupted",
+        }),
+      ),
+    );
+
+    expect(
+      rendered.filter(({ path }) => path.endsWith("canary.yaml")),
+    ).toStrictEqual([]);
+    expect(
+      (
+        objectsAt(rendered, "workload.yaml") as { spec: { replicas: number } }[]
+      ).map(({ spec }) => spec.replicas),
+    ).toStrictEqual([2]);
+    expect(objectsAt(rendered, "pdb.yaml")).toStrictEqual([
+      budget({ "app.kubernetes.io/instance": "notes-api" }),
+    ]);
+  });
+
+  it("renders neither an autoscaler nor a budget at the one derived replica", () => {
+    const rendered = renderKubernetes(edited());
+    const [canary, ...more] = objectsAt(rendered, "canary.yaml") as [
+      { spec: object },
+      ...unknown[],
+    ];
+
+    expect(Object.keys(canary.spec)).not.toContain("autoscalerRef");
+    expect(more).toStrictEqual([]);
+    expect(
+      rendered.filter(({ path }) => path.endsWith("pdb.yaml")),
+    ).toStrictEqual([]);
+  });
+});

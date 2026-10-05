@@ -317,7 +317,9 @@ The producer is the `networking` adapter
 ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)): every
 `NetworkPolicy` in the estate, per Process from the allow set below plus the two
 baseline rules, per backup identity from its backup plan
-([The backup identity's policy](#the-backup-identitys-policy)), and one
+([The backup identity's policy](#the-backup-identitys-policy)), per migration
+identity from its migration plan
+([The migration identity's policy](#the-migration-identitys-policy)), and one
 namespace-wide default-deny per project. Nothing else
 emits one, which is what makes the DNS assertion checkable against a single
 producer.
@@ -332,6 +334,7 @@ producer.
 | from the route tier carrying the audience | a route on the Application's `exposure` naming this Process | ingress |
 | from the metrics stack, to the scrape port | the Process's `scrape` surface | ingress |
 | from the Process's own backup identity, to the surface its backups dump | the surface the Platform document's `engines` names for the Process's `engine` | ingress |
+| from the migration identity of each Application whose database the Process holds, to the surface that Application's edge names | every Application of the union that moves its schema with a changelog and reaches this Process's database ([The database catalog](#the-database-catalog)) | ingress |
 | to where the Kubernetes API answers, by address | the Process's `api`, and the Platform document's `apiAccess.server` ([Kubernetes API access is declared and admitted](#kubernetes-api-access-is-declared-and-admitted)) | egress |
 
 ### The baseline
@@ -378,6 +381,29 @@ A rule to a service the pod cannot authenticate to would admit nothing it uses.
 The other half is on the Process: its own policy admits its backup identity on
 the dumped surface, the last row of the allow set above. One without the other
 is a backup the datastore's own default-deny turns away.
+
+### The migration identity's policy
+
+A migration runs as its own identity too, in the pods of its two Jobs
+([chapter 55](55-delivery.md#failure-and-undo)), and the default-deny selects
+them like any other. Its policy is derived from the migration plan
+([chapter 20](20-resolved-deployment.md#the-migration)):
+
+| rule | derived from | direction |
+|---|---|---|
+| to the datastore holding the project's database, on the surface the Application's edge names | the plan's `database` | egress |
+| to the Secret Store | the plan's `credential`: the runner logs in and reads the owner credential itself | egress |
+| to the cluster DNS service | the baseline, as for every policy carrying `Egress` | egress |
+
+Nothing reaches a migration pod, so its policy admits no ingress. Here the
+Secret Store **is** a peer, where for a backup it is not: the credential is
+delivered `self`, so the pod mounts its token and calls the store.
+
+The other half is on the datastore: its own policy admits the migration
+identity on that surface, a row of the allow set above. The admission is
+derived for an Application that declares a changelog and for no other, so an
+Application that migrates itself is admitted as the consumer it already is,
+and never as an identity it does not have.
 
 ### The token is mounted only where the pod authenticates
 

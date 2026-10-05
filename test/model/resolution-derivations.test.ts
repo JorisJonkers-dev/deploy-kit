@@ -1,6 +1,8 @@
 // REQ-039 (docs/requirements.md), derivation by derivation: each mechanic
 // chapter 20 derives, read off a notes project written for it and resolved
 // through the use-case with the worked foundation and pinned inputs.
+import { datastoreOf } from "../../src/resolve/database.ts";
+import { resolveMigration } from "../../src/resolve/migration.ts";
 import { backedUp, dumpedSurfaceOf } from "../../src/model/backup.ts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -1190,18 +1192,218 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
   });
   const migration = (files: readonly AuthoredFile[] = []) =>
     application(managed, { lock: LOCKED, env: [...files, ...DATA] }).migration;
+  /** What the plan holds whatever the proof says: the platform's terms and the project's database. */
+  const PLAN = {
+    identity: "notes-migration",
+    deadline: "10m",
+    memory: "256Mi",
+    cpu: "100m",
+    scratch: "64Mi",
+    database: {
+      host: "postgres.data-system.svc.cluster.local",
+      port: 5432,
+      name: "notes_db",
+    },
+    credential: {
+      engine: "database",
+      delivery: "self",
+      paths: [{ path: "database/creds/notes-owner", allows: ["read"] }],
+    },
+    egress: [
+      {
+        rule: "datastore",
+        namespace: "data-system",
+        process: "postgres",
+        port: 5432,
+      },
+      {
+        rule: "secret-store",
+        namespace: "secrets-system",
+        process: "vault",
+        port: 8200,
+      },
+      { rule: "cluster-dns", namespace: "kube-system", port: 53 },
+    ],
+  };
 
   it("runs the image the lock holds for the Application, as a first release where no proof names it", () => {
     expect(migration()).toStrictEqual({
       runner: `ghcr.io/jorisjonkers-dev/notes/notes-migration@sha256:${"7".repeat(64)}`,
+      uid: 1000,
+      gid: 1000,
       nonTransactional: false,
+      ...PLAN,
     });
     expect(
       migration([PROOF("  - { id: other, nonTransactional: true }\n")]),
     ).toStrictEqual({
       runner: `ghcr.io/jorisjonkers-dev/notes/notes-migration@sha256:${"7".repeat(64)}`,
+      uid: 1000,
+      gid: 1000,
       nonTransactional: false,
+      ...PLAN,
     });
+  });
+
+  it("runs as the image's own user, under the platform's terms for a migration", () => {
+    const plan = application(managed, {
+      lock: (lock) =>
+        LOCKED(lock).replace(
+          /uid: 1000\n {4}gid: 1000\n$/,
+          "uid: 1001\n    gid: 1002\n",
+        ),
+      platform: (platform) =>
+        platform
+          .replace("deadline: 10m", "deadline: 15m")
+          .replace(
+            /(migration:\n(?: {2}.*\n)*? {2}memory: )256Mi\n {2}cpu: 100m/,
+            "$1384Mi\n  cpu: 150m",
+          ),
+      env: DATA,
+    }).migration;
+
+    expect([plan?.uid, plan?.gid]).toStrictEqual([1001, 1002]);
+    expect([plan?.deadline, plan?.memory, plan?.cpu]).toStrictEqual([
+      "15m",
+      "384Mi",
+      "150m",
+    ]);
+  });
+
+  it("names the Secret Store and follows the unit that provisions secrets, though no Process holds a grant", () => {
+    const held = application(managed, { lock: LOCKED, env: DATA });
+    const unheld = application(
+      managed.replace("{ changelog: db/changelog.yml }", "self"),
+      { env: DATA },
+    );
+
+    expect(held.processes.map(({ secrets }) => secrets)).toStrictEqual([
+      undefined,
+    ]);
+    expect([held.secretStore, held.reconcileAfter]).toStrictEqual([
+      "http://vault.secrets-system.svc.cluster.local:8200",
+      ["apps-data", "estate-vso-secrets"],
+    ]);
+    expect([unheld.secretStore, unheld.reconcileAfter]).toStrictEqual([
+      undefined,
+      ["apps-data"],
+    ]);
+  });
+
+  it("finds its datastore through the first edge that names a surface of a Process whose engine owns databases", () => {
+    const reaching = (...edges: readonly [string, string][]) =>
+      ({
+        processes: [
+          {},
+          {
+            dependsOn: edges.map(([provider, surface]) => ({
+              application: provider,
+              surface,
+            })),
+          },
+        ],
+      }) as never;
+    const union = [
+      {
+        project: "other",
+        applications: [
+          {
+            id: "other-db",
+            processes: [
+              { name: "pg", engine: "postgres", provides: { sql: 1 } },
+            ],
+          },
+        ],
+      },
+      {
+        project: "data",
+        applications: [
+          {
+            id: "db",
+            processes: [
+              { name: "cache", provides: { sql: 2 } },
+              { name: "idle", engine: "postgres" },
+              {
+                name: "postgres",
+                engine: "postgres",
+                provides: { metrics: 9187, sql: 5432 },
+              },
+            ],
+          },
+        ],
+      },
+    ] as never;
+
+    expect(
+      datastoreOf(reaching(["db", "http"], ["db", "sql"]), union),
+    ).toStrictEqual({
+      rule: "datastore",
+      namespace: "data-system",
+      process: "postgres",
+      port: 5432,
+    });
+    expect(datastoreOf(reaching(["db", "http"]), union)).toBeUndefined();
+  });
+
+  it("stops at an Application whose edges name no surface of the datastore holding its database", () => {
+    expect(() =>
+      resolveMigration(
+        { id: "notes", processes: [{ dependsOn: [] }] } as never,
+        {
+          platform: { migration: {} },
+          lock: { images: { "notes-migration": {} } },
+          project: "notes",
+          union: [],
+          proof: undefined,
+        } as never,
+      ),
+    ).toThrow(
+      "notes: a migration whose Application reaches no surface of the datastore holding its database is not checked yet",
+    );
+  });
+
+  it("stops at the edge, not at the migration, where the datastore is not among the files read", () => {
+    expect(() => resolve(managed, { lock: LOCKED })).toThrow(
+      "platform-postgres.postgres: no provider in the union",
+    );
+  });
+
+  it("is admitted by no Process but the datastore's own: neither another of its namespace nor one of its name elsewhere", () => {
+    const named = `${managed}${serving("postgres")}`;
+    const all = projects(named, { lock: LOCKED, env: DATA });
+    const admitting = all.flatMap(({ applications }) =>
+      applications.flatMap(({ namespace, processes }) =>
+        processes
+          .filter(({ ingress }) =>
+            (ingress ?? []).some(({ rule }) => rule === "migration"),
+          )
+          .map(({ name }) => `${namespace}/${name}`),
+      ),
+    );
+
+    expect(admitting).toStrictEqual(["data-system/postgres"]);
+  });
+
+  it("is admitted by the datastore that holds its database, on the surface its edge names, and no unmanaged Application is", () => {
+    const admitted = (applications: string, options: Options) =>
+      projectNamed(projects(applications, options), "data")
+        .applications.find(({ id }) => id === "platform-postgres")
+        ?.processes.flatMap(({ ingress }) => ingress ?? [])
+        .filter(({ rule }) => rule === "migration");
+
+    expect(admitted(managed, { lock: LOCKED, env: DATA })).toStrictEqual([
+      {
+        rule: "migration",
+        namespace: "notes-system",
+        process: "notes-migration",
+        port: 5432,
+      },
+    ]);
+    expect(
+      admitted(managed.replace("{ changelog: db/changelog.yml }", "self"), {
+        env: DATA,
+      }),
+    ).toStrictEqual([]);
   });
 
   it("carries what the proof beside the project records, and covers it with the fragment's digest", () => {
@@ -1216,8 +1418,11 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
 
     expect(migration([proof])).toStrictEqual({
       runner: `ghcr.io/jorisjonkers-dev/notes/notes-migration@sha256:${"7".repeat(64)}`,
+      uid: 1000,
+      gid: 1000,
       testedAgainst: `sha256:${"8".repeat(64)}`,
       nonTransactional: true,
+      ...PLAN,
     });
     expect(digest([proof])).not.toBe(digest([]));
   });

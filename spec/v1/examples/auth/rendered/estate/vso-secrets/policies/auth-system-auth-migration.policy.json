@@ -1,0 +1,9 @@
+{
+  "path": {
+    "database/creds/auth-owner": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

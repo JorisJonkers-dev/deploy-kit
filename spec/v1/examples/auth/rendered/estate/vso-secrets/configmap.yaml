@@ -1,0 +1,23 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-policy-c0ff01c6f875
+  namespace: secrets-system
+  labels:
+    app.kubernetes.io/name: vault-policy
+    app.kubernetes.io/instance: vault-policy
+    app.kubernetes.io/part-of: vault-policy
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+immutable: true
+data:
+  auth-system-auth-api.policy.json: |
+    {"path":{"secret/data/auth-api":{"capabilities":["read"]},"secret/data/platform/postgres/auth":{"capabilities":["read"]},"secret/metadata/auth-api":{"capabilities":["read"]},"secret/metadata/platform/postgres/auth":{"capabilities":["read"]},"transit/keys/auth-api-jwt/rotate":{"capabilities":["update"]},"transit/sign/auth-api-jwt":{"capabilities":["update"]}}}
+  auth-system-auth-api.role.json: |
+    {"bound_service_account_names":["auth-api"],"bound_service_account_namespaces":["auth-system"],"token_policies":["auth-system-auth-api"]}
+  auth-system-auth-migration.policy.json: |
+    {"path":{"database/creds/auth-owner":{"capabilities":["read"]}}}
+  auth-system-auth-migration.role.json: |
+    {"bound_service_account_names":["auth-migration"],"bound_service_account_namespaces":["auth-system"],"token_policies":["auth-system-auth-migration"]}

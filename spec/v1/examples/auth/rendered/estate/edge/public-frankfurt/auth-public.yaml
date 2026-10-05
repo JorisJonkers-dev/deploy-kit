@@ -1,0 +1,36 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: auth-public
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`auth.jorisjonkers.dev`) && PathPrefix(`/api`)
+      priority: 999
+      middlewares:
+        - name: security-headers-strict
+          namespace: edge-system
+      services:
+        - name: auth-api
+          namespace: auth-system
+          port: 8080
+    - kind: Rule
+      match: Host(`auth.jorisjonkers.dev`) && PathPrefix(`/`)
+      priority: 998
+      middlewares:
+        - name: security-headers-strict
+          namespace: edge-system
+      services:
+        - name: auth-ui
+          namespace: auth-system
+          port: 8080
+  tls:
+    certResolver: acme
