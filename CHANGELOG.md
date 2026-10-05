@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.4.0...v0.5.0) (2026-10-05)
+
+
+### Features
+
+* check the participants list in composition, and isolate a participant that is missing, stale or unlisted ([#250](https://github.com/JorisJonkers-dev/deploy-kit/issues/250)) ([323e73f](https://github.com/JorisJonkers-dev/deploy-kit/commit/323e73f373f524b4371b84355986d7380214918b))
+* write an artifact's pin source the first time it is delivered ([#254](https://github.com/JorisJonkers-dev/deploy-kit/issues/254)) ([f7d0a96](https://github.com/JorisJonkers-dev/deploy-kit/commit/f7d0a96b035d2aa5f1756724673ee2e0fc2d7c4a)), closes [#232](https://github.com/JorisJonkers-dev/deploy-kit/issues/232)
+
 ## [0.4.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.3.0...v0.4.0) (2026-10-04)
 
 
