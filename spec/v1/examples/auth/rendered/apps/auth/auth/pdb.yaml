@@ -1,4 +1,5 @@
 # GENERATED. Never hand-edit.
+---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -11,8 +12,7 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: jvm
 spec:
+  maxUnavailable: 1
   selector:
     matchLabels:
-      # The primary: Flagger rewrites this label on the Deployment it promotes into.
       app.kubernetes.io/name: auth-api-primary
-  maxUnavailable: 1

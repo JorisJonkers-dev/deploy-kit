@@ -19,11 +19,13 @@ import type {
   ConfigMap,
   CronJob,
   Deployment,
+  HorizontalPodAutoscaler,
   Job,
   Kustomization,
   Namespace,
   NetworkPolicy,
   PersistentVolumeClaim,
+  PodDisruptionBudget,
   Service,
   ServiceAccount,
 } from "./kubernetes.ts";
@@ -45,6 +47,8 @@ export type RenderedObject =
   | ClusterRoleBinding
   | CronJob
   | Job
+  | HorizontalPodAutoscaler
+  | PodDisruptionBudget
   | OciRepository
   | FluxKustomization
   | VaultConnection

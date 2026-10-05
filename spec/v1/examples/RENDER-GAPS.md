@@ -2,9 +2,10 @@
 
 Rendered by hand from the three worked projects, against the six registered
 adapters. Every row is something a renderer must produce and cannot produce from
-intent as declared today. Read `auth/rendered/README.md`,
-`knowledge/rendered/README.md` and `data/RENDER-GAPS.md` for the per-file
-detail; this is the ordered list.
+intent as declared today. Read `knowledge/rendered/README.md` and
+`data/RENDER-GAPS.md` for the per-file detail; this is the ordered list. The
+`auth` tree has since been replaced by the renderer's own output, bound byte
+for byte, and its per-file notes left with the hand-written files.
 
 Fifty rendered files across `auth/`, `knowledge/` and `data/`. All parse.
 

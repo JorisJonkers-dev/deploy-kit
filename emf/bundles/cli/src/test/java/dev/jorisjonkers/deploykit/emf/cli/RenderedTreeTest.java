@@ -55,6 +55,20 @@ class RenderedTreeTest {
     }
 
     @Test
+    void authsShareAndTheEstateShareItDerivesAreItsCommittedTreeByteForByte(@TempDir Path out) throws IOException {
+        assertThat(Pipeline.render(
+                        Outputs.AUTH_UNION.documents().stream()
+                                .map(Examples::of)
+                                .toList(),
+                        Outputs.AUTH_UNION.projects(),
+                        Outputs.INTEGRITY,
+                        out))
+                .isEmpty();
+
+        assertSameTree(out, Examples.of("auth/rendered"));
+    }
+
+    @Test
     void theEstateShareMinimalAndDataHoldBetweenThemIsTheCommittedEstateTree(@TempDir Path out) throws IOException {
         assertThat(Pipeline.render(union(), Outputs.RENDERED_UNION.projects(), Outputs.INTEGRITY, out))
                 .isEmpty();

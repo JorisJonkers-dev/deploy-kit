@@ -76,6 +76,15 @@ rotated by hand. An application Process that can alter the schema holds the
 privilege a separate migration identity exists to withhold, so a hand-written
 owner-role grant is refused.
 
+**Derived, and written down once.** The identity, the owner role, the
+database, the deadline and the requests are functions of the Application id,
+the project and the Platform document, so none is authored. They are still
+recorded, in the Resolved Deployment's migration plan, because the adapters
+read that document and nothing else
+([0003](0003-three-model-pipeline.md)): an adapter handed three facts about a
+migration would have to derive the rest while serialising, which is a decision
+taken where no schema, no lock and no projection shows it.
+
 **Expand then contract, enforced.** "Stop using it in N, remove it in N+1" is a
 convention teams forget. Running N's suite against N+1's schema makes the early
 removal a red build. A down after any member was promoted removes a schema that
@@ -88,6 +97,7 @@ member needs, so automatic undo stops there and the gate alerts instead.
 | A migration as a `prepare` Process holding the owner role | the Process machinery stays authorable | the discriminator is a combination of fields |
 | Per-tool runners chosen per Application | no porting | every proof, undo and linter once per tool |
 | One database per consuming Application | no project join | wrong for the live estate |
+| Record three facts of a migration and hand the adapters the Platform document for the rest | the Resolved Deployment stays smaller | layer 3 would derive the identity, the database and the terms while serialising, a decision no projection shows |
 | Render the init script from a template | matches today exactly | a procedure in the render surface |
 | A static credential per consumer at a KV path | no database engine | a hand-rotated database password |
 | Trust authors to write compatible changesets | no CI work | the convention fails silently mid-release |

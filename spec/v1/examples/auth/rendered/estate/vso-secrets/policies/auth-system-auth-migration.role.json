@@ -1,11 +1,11 @@
 {
   "bound_service_account_names": [
-    "auth-api"
+    "auth-migration"
   ],
   "bound_service_account_namespaces": [
     "auth-system"
   ],
   "token_policies": [
-    "auth-system-auth-api"
+    "auth-system-auth-migration"
   ]
 }

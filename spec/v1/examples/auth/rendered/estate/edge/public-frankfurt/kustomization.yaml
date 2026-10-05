@@ -3,6 +3,4 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - auth
-  - namespace.yaml
-  - vaultconnection.yaml
+  - auth-public.yaml

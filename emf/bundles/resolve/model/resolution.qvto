@@ -55,6 +55,8 @@ property DNS_PORT : Integer = 53;
 property NO_RUNTIME : String = 'none';
 -- The identity the Vault policy job runs as.
 property POLICY_JOB : String = 'vault-policy';
+-- How many hex digits of a revision its tag carries: what the migration Jobs are named by.
+property TAG_DIGITS : Integer = 12;
 
 -- The estate-wide directory every identity's Vault documents land in, by namespace.
 property POLICIES : String = 'estate/vso-secrets/policies/';
@@ -88,6 +90,10 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 			var res : ResolvedApplication := src.resolveone(ResolvedApplication);
 			res.revision := res.elementJson(src, self).rawDigestOf();
 		};
+		-- A migration's Jobs are named by the revision's tag, so only now do they have one.
+		result.deliverables[MigrationFile]->forEach(planned) {
+			planned.upTag := tagOf(planned.application.revision);
+		};
 	}
 }
 
@@ -107,6 +113,7 @@ query afterOf(prj : EffectiveProject) : Sequence(String) =
 		->select(other | other <> null and other <> prj.project)
 		->collect(other | unitOf(other))
 	->union(if prj.applications.processes->exists(p | p.secrets->notEmpty())
+			or prj.applications->exists(a | managed(a))
 		then Sequence{SECRETS_UNIT} else Sequence{} endif))
 	->asSet()->sortedBy(n | n)->asSequence();
 
@@ -173,29 +180,90 @@ mapping EffectiveApplication::application(in prj : EffectiveProject) : ResolvedA
 		}
 	endif;
 	releaseGate := if gated(self) then self.map gate() else null endif;
-	if self.migration <> null and self.migration.oclIsKindOf(ManagedMigration) then
-		migration := self.map migrationOf()
-	endif;
+	if managed(self) then migration := self.map migrationOf(prj) endif;
 	-- The operator syncs from the Secret Store wherever a grant or a backup's
-	-- off-cluster credential is delivered anywhere but to the Process itself.
-	if synced(result) then secretStore := storeEndpoint() endif;
+	-- off-cluster credential is delivered anywhere but to the Process itself,
+	-- and a migration reads its owner credential from the store itself.
+	if synced(result) or managed(self) then secretStore := storeEndpoint() endif;
 }
+
+-- Whether an Application moves its schema with a changelog the platform's runner applies.
+query managed(app : EffectiveApplication) : Boolean =
+	app.migration <> null and app.migration.oclIsKindOf(ManagedMigration);
+
+-- The tag of a revision (spec/v1/55-delivery.md#failure-and-undo): its first twelve hex digits.
+query tagOf(revision : String) : String = revision.substring(8, 7 + TAG_DIGITS);
 
 query synced(app : ResolvedApplication) : Boolean =
 	app.processes->exists(p | p.secrets->notEmpty()
 		or p.volumes->exists(v | v.backup <> null and v.backup.credential <> null));
 
--- A managed migration (spec/v1/20-resolved-deployment.md#the-migration): its
--- locked runner, and what the proof beside the project records about this
--- release; an Application no proof names is a first release.
-mapping EffectiveApplication::migrationOf() : ResolvedMigration {
+-- A managed migration's plan (spec/v1/20-resolved-deployment.md#the-migration):
+-- its locked runner and the user it runs as, what the proof beside the project
+-- records about this release (an Application no proof names is a first
+-- release), and everything its Jobs run with, each a function of the
+-- Application id, the project and the Platform document.
+mapping EffectiveApplication::migrationOf(in prj : EffectiveProject) : ResolvedMigration {
 	init {
 		var runnerImage : LockedImage := locked(self.id + '-migration');
 		var proven : ProvenApplication := proofs->select(a | a.id = self.id)->any(true);
+		var held : Sequence(PolicyPeer) := datastoreOf(self);
+		var store : PolicyPeer := if held->isEmpty() then unreached(self.id) else held->first() endif;
+		var owned : String := prj.project;
 	}
 	runner := runnerImage.repository + '@' + runnerImage.digest;
+	uid := runnerImage.uid;
+	gid := runnerImage.gid;
 	if proven <> null and proven.testedAgainst <> null then testedAgainst := proven.testedAgainst endif;
 	nonTransactional := proven <> null and proven.nonTransactional;
+	identity := self.id + '-migration';
+	deadline := estate.migration.deadline;
+	memory := estate.migration.memory;
+	cpu := estate.migration.cpu;
+	scratch := estate.ephemeral.size;
+	database := object MigratedDatabase {
+		host := store.process + '.' + store.namespace + '.svc.cluster.local';
+		port := store.port;
+		name := owned + '_db';
+	};
+	-- The owner role changes the schema, and only the migration holds it.
+	credential := object ResolvedGrant {
+		engine := 'database';
+		delivery := 'self';
+		paths := Sequence{object PolicyPath {
+			path := 'database/creds/' + owned + '-owner';
+			allows := Sequence{'read'};
+		}};
+	};
+	egress := Sequence{store}->union(storePeers())->append(object PolicyPeer {
+		rule := 'cluster-dns';
+		namespace := estate.substrate.clusterDns;
+		port := DNS_PORT;
+	});
+}
+
+-- Where the project's database answers
+-- (spec/v1/16-dependencies.md#the-database-catalog): each edge of the
+-- Application that reaches a Process whose engine owns databases, on the
+-- surface that edge names, the first of which is the datastore.
+query datastoreOf(app : EffectiveApplication) : Sequence(PolicyPeer) =
+	app.processes.dependsOn->collect(e |
+		projects->collect(prj | prj.applications->select(a | a.id = e.application).processes
+			->select(p | ownsDatabases(p) and p.provides->exists(s | s.key = e.surface))
+			->collect(p | object PolicyPeer {
+				rule := 'datastore';
+				namespace := namespaceOf(prj.project);
+				process := p.name;
+				port := p.provides->select(s | s.key = e.surface)->any(true).value;
+			})))->flatten()->asSequence();
+
+-- Whether a Process's inbound edges derive a database.
+query ownsDatabases(p : PI::Process) : Boolean =
+	p.oclAsType(ECORE::EObject).states('engine') and p.engine = Engine::postgres;
+
+query unreached(application : String) : PolicyPeer {
+	assert fatal (false) with log(application + ': a migration whose Application reaches no surface of the datastore holding its database is not checked yet');
+	return null;
 }
 
 -- The image the lock holds for `alias`, or E_UNLOCKED_IMAGE refused the set.
@@ -898,6 +966,8 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 	let configured : Sequence(ResolvedProcess) = served->select(p | p.assets->notEmpty()) in
 	let backedUp : Sequence(ResolvedProcess) = served->select(p | p.volumes->exists(v | v.backup <> null)) in
 	let synced : Sequence(SecretHolder) = served->collect(p | holdersOf(p))->flatten() in
+	let scaled : Sequence(ResolvedProcess) = served->select(p | p.replicas > 1) in
+	let moved : ResolvedApplication = self.resolveone(ResolvedApplication) in
 	let monitor : Sequence(Deliverable) = monitorOf(self, root) in
 	let files : Sequence(Deliverable) =
 		Sequence{object WorkloadFile {
@@ -940,6 +1010,19 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 				adapter := AdapterName::kubernetes;
 				processes := backedUp;
 			}.oclAsType(Deliverable)} else Sequence{} endif)
+		->union(if scaled->notEmpty() then Sequence{object BudgetFile {
+				path := root + 'pdb.yaml';
+				adapter := AdapterName::kubernetes;
+				processes := scaled;
+			}.oclAsType(Deliverable)} else Sequence{} endif)
+		->union(if moved.migration <> null then Sequence{object MigrationFile {
+				path := root + 'migration.yaml';
+				adapter := AdapterName::kubernetes;
+				application := moved;
+				-- A down returns to the revision the release was proven against; a first release has none.
+				if moved.migration.testedAgainst <> null then downTag := tagOf(moved.migration.testedAgainst) endif;
+				role := moved.namespace + '-' + moved.migration.identity;
+			}.oclAsType(Deliverable)} else Sequence{} endif)
 		->union(if holding->notEmpty() then Sequence{object RbacFile {
 				path := root + 'rbac.yaml';
 				adapter := AdapterName::kubernetes;
@@ -967,6 +1050,7 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 				ingress := ingressOf(p, self);
 				egress := egressOf(p);
 			});
+			migration := moved.migration;
 		}.oclAsType(Deliverable));
 
 -- The monitor of a scraped Application (spec/v1/30-deliverables.md#adapters): a
@@ -1033,7 +1117,8 @@ query ingressOf(p : PI::Process, app : EffectiveApplication) : Sequence(PolicyPe
 		then peersOf(estate.telemetry.metrics.id, app.observability.scrape.surface.value, 'metrics-stack')
 		else Sequence{} endif)
 	->union(consumersOf(p, app))
-	->union(backupsOf(p)))
+	->union(backupsOf(p))
+	->union(migrationsOf(p)))
 	->asOrderedSet()->asSequence()
 	->collect(peer | object PolicyPeer {
 		rule := peer.rule;
@@ -1048,6 +1133,17 @@ query backupsOf(p : PI::Process)
 	if dumpedSurface(p) = null then Sequence{} else Sequence{Tuple{rule = 'backup',
 		namespace = namespaceOf(owner(p)), process = p.name + '-backup',
 		port = p.provides->select(s | s.key = dumpedSurface(p))->any(true).value}} endif;
+
+-- The migration identity of every Application whose database this Process
+-- holds, on the surface that Application's own edge names
+-- (spec/v1/16-dependencies.md#the-migration-identitys-policy).
+query migrationsOf(p : PI::Process)
+		: Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)) =
+	projects->collect(prj | prj.applications->select(a | managed(a))->collect(a |
+		(if datastoreOf(a)->isEmpty() then Sequence{} else Sequence{datastoreOf(a)->first()} endif)
+			->select(d | d.namespace = namespaceOf(owner(p)) and d.process = p.name)
+			->collect(d | Tuple{rule = 'migration', namespace = namespaceOf(prj.project),
+				process = a.id + '-migration', port = d.port})))->flatten();
 
 -- Every Process of the union whose edge names this Application and a surface this Process provides.
 query consumersOf(p : PI::Process, app : EffectiveApplication)
@@ -1125,7 +1221,9 @@ query EffectiveProject::vaultFiles() : Sequence(Deliverable) =
 			(if p.secrets->isEmpty() then Sequence{} else
 				vaultFilesOf(app.namespace, p.identity, p.secrets->asSequence()) endif)
 			->union(if backupOf(p) = null then Sequence{} else
-				vaultFilesOf(app.namespace, backupOf(p).identity, Sequence{backupOf(p).credential}) endif)))
+				vaultFilesOf(app.namespace, backupOf(p).identity, Sequence{backupOf(p).credential}) endif))
+		->union(if app.migration = null then Sequence{} else
+			vaultFilesOf(app.namespace, app.migration.identity, Sequence{app.migration.credential}) endif))
 		->flatten();
 
 query vaultFilesOf(ns : String, holder : String, held : Sequence(ResolvedGrant)) : Sequence(Deliverable) =
@@ -1270,8 +1368,21 @@ query ResolvedApplication::elementJson(src : EffectiveApplication, prj : Effecti
 		Tuple{k = 'releaseGate', v = if self.releaseGate = null then null else self.releaseGate.json() endif},
 		Tuple{k = 'migration', v = if self.migration = null then null else obj(Sequence{
 			Tuple{k = 'runner', v = str(self.migration.runner)},
+			Tuple{k = 'uid', v = num(self.migration.uid)},
+			Tuple{k = 'gid', v = num(self.migration.gid)},
 			Tuple{k = 'testedAgainst', v = opt(self.migration.testedAgainst)},
-			Tuple{k = 'nonTransactional', v = bool(self.migration.nonTransactional)}}) endif},
+			Tuple{k = 'nonTransactional', v = bool(self.migration.nonTransactional)},
+			Tuple{k = 'identity', v = str(self.migration.identity)},
+			Tuple{k = 'deadline', v = str(self.migration.deadline)},
+			Tuple{k = 'memory', v = str(self.migration.memory)},
+			Tuple{k = 'cpu', v = str(self.migration.cpu)},
+			Tuple{k = 'scratch', v = str(self.migration.scratch)},
+			Tuple{k = 'database', v = obj(Sequence{
+				Tuple{k = 'host', v = str(self.migration.database.host)},
+				Tuple{k = 'port', v = num(self.migration.database.port)},
+				Tuple{k = 'name', v = str(self.migration.database.name)}})},
+			Tuple{k = 'credential', v = self.migration.credential.json()},
+			Tuple{k = 'egress', v = arr(self.migration.egress->collect(x | x.json()))}}) endif},
 		Tuple{k = 'secretStore', v = opt(self.secretStore)},
 		Tuple{k = 'exposure', v = if self.exposure->isEmpty() then null
 			else arr(self.exposure->collect(e | e.json())) endif},
@@ -1286,7 +1397,7 @@ query appAfterOf(app : EffectiveApplication, prj : EffectiveProject) : Sequence(
 		->collect(e | projectOf(e.application))
 		->select(other | other <> null and other <> prj.project)
 		->collect(other | unitOf(other))
-	->union(if app.processes->exists(p | p.secrets->notEmpty())
+	->union(if app.processes->exists(p | p.secrets->notEmpty()) or managed(app)
 		then Sequence{SECRETS_UNIT} else Sequence{} endif))
 	->asSet()->sortedBy(n | n)->asSequence();
 

@@ -163,7 +163,8 @@ no output at all, and a derivation with no output is not total
 ([0005](../../docs/adr/model/0005-derivation-is-total.md)).
 
 The `vault-policy` adapter emits, **per identity that holds a grant** (each
-Process, and each backup identity that holds its destination's credential), two
+Process, each backup identity that holds its destination's credential, and
+each migration identity, which holds its database's owner credential), two
 documents, at `estate/vso-secrets/policies/<namespace>-<identity>.{policy,role}.json`,
 the name Vault holds both by:
 
@@ -282,8 +283,9 @@ Paths are assigned by the Resolved Deployment's path plan
 The project's `networkpolicy.yaml` is its one namespace-wide default-deny
 ([chapter 16](16-dependencies.md#network-policy)), a per-project object with an
 owner, the `networking` adapter. Under an Application's directory the objects
-are `workload.yaml`, `serviceaccount.yaml` and `canary.yaml` (`kubernetes`),
-`networkpolicy.yaml` (`networking`) and `podmonitor.yaml` (`prometheus`). Every
+are `workload.yaml`, `serviceaccount.yaml`, `canary.yaml`, `pdb.yaml` and
+`migration.yaml` (`kubernetes`), `networkpolicy.yaml` (`networking`) and
+`podmonitor.yaml` (`prometheus`), each written only where it holds an object. Every
 directory the render writes carries a `kustomization.yaml` (`kubernetes`)
 listing what that directory applies: its files and, for a project's directory,
 each Application's directory beside its `namespace.yaml`. **No kustomization
@@ -311,6 +313,10 @@ spells only what the projection holds:
 | a `blue-green` Process | `kubernetes` | a `Deployment` with no `replicas` and a `RollingUpdate` of surge 1, unavailability 0, which Flagger scales and promotes; a `Canary` whose `service` is the Process's first surface and whose three webhooks are the gate's `endpoint` with `/may-start`, `/checks` and `/may-promote`, each carrying the Application, the Process and the Application revision |
 | a `stop-start` Process | `kubernetes` | a `Deployment` of its `replicas` with a `Recreate` strategy, and a `Service` named for the Process that selects its `instance` and serves each of its surfaces by name |
 | a `rolling` Process | `kubernetes` | a `Deployment` of its `replicas` with a `RollingUpdate` of surge 0, unavailability 1: pod by pod and never a pod more, because a proxy on a host port and a controller with no leader election cannot run two copies; the same `Service` a `stop-start` Process gets, and no `Canary`, because nothing gates the machinery |
+| a `blue-green` Process of more than one replica | `kubernetes` | a `HorizontalPodAutoscaler` of the Process's name beside its `Canary` in `canary.yaml`, scaling its `Deployment` between a `minReplicas` and a `maxReplicas` that are both the count; the Canary's `autoscalerRef` names it, so Flagger keeps a copy for the primary |
+| any Process of more than one replica | `kubernetes` | a `PodDisruptionBudget` of the Process's name in the Application's `pdb.yaml`, `maxUnavailable: 1`; a `blue-green` Process's selects `app.kubernetes.io/name: <name>-primary`, any other's the Process's `instance` |
+| an Application's `migration` | `kubernetes` | in the Application's `migration.yaml`: the `ServiceAccount` of the plan's `identity`, the `Job` `<identity>-<tag>` and, where the plan holds `testedAgainst`, the `Job` `<identity>-down-<tag>`, the tag the first 12 hex digits of the Application revision. Each is labelled as the identity with `component: none`, so every pod keeps the identity as its `instance`; carries `kustomize.toolkit.fluxcd.io/ssa: IfNotPresent`, so the applier creates it and never updates it; and has `suspend: true`, `backoffLimit: 0`, `restartPolicy: Never` and the plan's `deadline` as `activeDeadlineSeconds`. Its one container, `migration`, runs the `runner` as the plan's `uid` and `gid` with the token mounted, the plan's `memory` as request and limit and its `cpu` as request, an `emptyDir` of the plan's `scratch` at `/tmp`, and the arguments `up <tag>`, or `down` and the tag of `testedAgainst`. Its variables are the runner's contract ([chapter 55](55-delivery.md#failure-and-undo)): the plan's `database`, the Application's `secretStore`, the role `<namespace>-<identity>` and the one path of the plan's `credential` |
+| a migration plan's `egress` | `networking` | one `NetworkPolicy` named for the migration identity, after every Process's in the Application's `networkpolicy.yaml`, selecting the identity's `instance`; `policyTypes` both and no ingress rule; one egress rule per peer as above |
 | a held `api` | `kubernetes` | a `ClusterRole` and a `ClusterRoleBinding` in the Application's `rbac.yaml`, both named `<namespace>-<identity>` and labelled as the Process is; one rule per declared rule, `apiGroups` its one `group` with `core` spelled `""`, `resources` its `objects`, `verbs` its `verbs`; the binding's one subject the Process's `ServiceAccount` in its namespace |
 | a volume | `kubernetes` | a `ReadWriteOnce` `PersistentVolumeClaim` named for the claim at the volume's `size`, mounted at its `mountAt`, the pod's `fsGroup` the image's `gid` |
 | a backed-up volume's `backup` | `kubernetes` | a `CronJob` named for the backup claim at the plan's `schedule`, `concurrencyPolicy: Forbid`, running the `method` image as the plan's `uid` and `gid` under the backup identity's `ServiceAccount` with no token mounted; the volume mounted read-only at `/data`, the backup claim at `/backup`, `BACKUP_RETAIN` the `retain` count, `BACKUP_OFF_CLUSTER` the destination and the credential's Secret as variables where it copies off-cluster; the backup claim a second `PersistentVolumeClaim` at the volume's `size`, and both carrying `kustomize.toolkit.fluxcd.io/prune: disabled` |

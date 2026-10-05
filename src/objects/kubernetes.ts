@@ -112,7 +112,7 @@ export type Volume =
 export interface PodSpec {
   readonly serviceAccountName: string;
   readonly automountServiceAccountToken: boolean;
-  readonly restartPolicy?: "OnFailure";
+  readonly restartPolicy?: "OnFailure" | "Never";
   readonly securityContext: {
     readonly runAsNonRoot: true;
     readonly runAsUser: number;
@@ -127,6 +127,7 @@ export interface PodSpec {
 export interface Container {
   readonly name: string;
   readonly image: string;
+  readonly args?: readonly string[];
   readonly ports?: readonly {
     readonly name: string;
     readonly containerPort: number;
@@ -199,11 +200,40 @@ export interface Job {
   readonly kind: "Job";
   readonly metadata: ObjectMeta;
   readonly spec: {
+    /** Set on a Job the Release Gate starts, which alone writes it afterwards. */
+    readonly suspend?: true;
+    /** Zero on a Job that is never retried: its failure is an answer. */
+    readonly backoffLimit?: 0;
     readonly activeDeadlineSeconds: number;
     readonly template: {
       readonly metadata: { readonly labels: Labels };
       readonly spec: PodSpec;
     };
+  };
+}
+
+export interface HorizontalPodAutoscaler {
+  readonly apiVersion: "autoscaling/v2";
+  readonly kind: "HorizontalPodAutoscaler";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly scaleTargetRef: {
+      readonly apiVersion: "apps/v1";
+      readonly kind: "Deployment";
+      readonly name: string;
+    };
+    readonly minReplicas: number;
+    readonly maxReplicas: number;
+  };
+}
+
+export interface PodDisruptionBudget {
+  readonly apiVersion: "policy/v1";
+  readonly kind: "PodDisruptionBudget";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly maxUnavailable: 1;
+    readonly selector: { readonly matchLabels: Labels };
   };
 }
 

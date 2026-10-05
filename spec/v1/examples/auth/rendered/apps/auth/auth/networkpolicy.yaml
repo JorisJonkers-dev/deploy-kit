@@ -1,0 +1,182 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: auth-api
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-api
+    app.kubernetes.io/instance: auth-api
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: jvm
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: auth-api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: edge-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: traefik-public
+      ports:
+        - protocol: TCP
+          port: 8080
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: prometheus
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: valkey
+      ports:
+        - protocol: TCP
+          port: 6379
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: rabbitmq
+      ports:
+        - protocol: TCP
+          port: 5672
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: secrets-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: vault
+      ports:
+        - protocol: UDP
+          port: 8200
+        - protocol: TCP
+          port: 8200
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: auth-ui
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-ui
+    app.kubernetes.io/instance: auth-ui
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: static
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: auth-ui
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: edge-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: traefik-public
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: auth-migration
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-migration
+    app.kubernetes.io/instance: auth-migration
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: auth-migration
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: secrets-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: vault
+      ports:
+        - protocol: TCP
+          port: 8200
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

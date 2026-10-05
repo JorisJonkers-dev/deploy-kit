@@ -195,6 +195,43 @@ export function renderPolicyJobPolicy(job: ResolvedPolicyJob): Deliverable {
   };
 }
 
+/**
+ * The migration identity's own policy
+ * (spec/v1/16-dependencies.md#the-migration-identitys-policy): what its plan
+ * admits, and nothing in. Its Jobs' pods carry the identity as their instance.
+ */
+function migrationPoliciesOf(
+  application: ResolvedApplicationDocument,
+): NetworkPolicy[] {
+  const plan = application.migration;
+  if (plan === undefined) return [];
+  return [
+    {
+      apiVersion: "networking.k8s.io/v1",
+      kind: "NetworkPolicy",
+      metadata: {
+        name: plan.identity,
+        namespace: application.namespace,
+        labels: labelsOf(
+          { name: plan.identity, runtime: "none" },
+          application.id,
+        ),
+      },
+      spec: {
+        podSelector: { matchLabels: instanceOf(plan.identity) },
+        policyTypes: ["Ingress", "Egress"],
+        egress: plan.egress.map((peer) => ({
+          to: [peerOf(peer.namespace, peer.process)],
+          ports:
+            peer.rule === DNS
+              ? [{ protocol: "UDP" as const, port: peer.port }, tcp(peer.port)]
+              : [tcp(peer.port)],
+        })),
+      },
+    },
+  ];
+}
+
 export function renderNetworking(project: ResolvedProject): Deliverable[] {
   const [first] = project.applications;
   const namespace = (first as ResolvedApplicationDocument).namespace;
@@ -216,10 +253,13 @@ export function renderNetworking(project: ResolvedProject): Deliverable[] {
     ...project.applications.map((application): Deliverable => ({
       path: `${applicationDirectory(project.project, application.id)}/networkpolicy.yaml`,
       adapter: ADAPTER,
-      objects: application.processes.flatMap((process) => [
-        policyOf(process, application),
-        ...backupPoliciesOf(process, application),
-      ]),
+      objects: [
+        ...application.processes.flatMap((process) => [
+          policyOf(process, application),
+          ...backupPoliciesOf(process, application),
+        ]),
+        ...migrationPoliciesOf(application),
+      ],
     })),
   ];
 }

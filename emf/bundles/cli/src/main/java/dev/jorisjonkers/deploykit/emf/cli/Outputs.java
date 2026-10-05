@@ -99,6 +99,14 @@ public final class Outputs {
     public static final Union RENDERED_UNION =
             new Union(List.of("notes", "data"), withFoundation("minimal/notes.project.yml", "data/data.project.yml"));
 
+    /**
+     * auth, rendered alone beside the project that holds its database: its tree is the committed {@code
+     * auth/rendered/}, its own share and the estate-scoped share it alone derives.
+     */
+    public static final Union AUTH_UNION = new Union(
+            List.of("auth"),
+            withFoundation("auth/auth.project.yml", "auth/migration-proof.yml", "data/data.project.yml"));
+
     /** The integrity the worked projections record for the schema package they were rendered against. */
     public static final String INTEGRITY = "sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b";
 

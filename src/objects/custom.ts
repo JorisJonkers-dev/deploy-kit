@@ -21,6 +21,12 @@ export interface Canary {
       readonly kind: "Deployment";
       readonly name: string;
     };
+    /** The autoscaler holding the count, where the Process declares one above one. */
+    readonly autoscalerRef?: {
+      readonly apiVersion: "autoscaling/v2";
+      readonly kind: "HorizontalPodAutoscaler";
+      readonly name: string;
+    };
     readonly progressDeadlineSeconds: number;
     readonly service: {
       readonly port: number;

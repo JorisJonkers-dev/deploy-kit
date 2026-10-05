@@ -813,8 +813,8 @@ shape computes the revision over that form, not over its model.
 ## The migration
 
 An Application declaring `migration: {changelog}`
-([chapter 10](10-project-intent.md#migration)) carries a `migration` block, and
-it records three things only:
+([chapter 10](10-project-intent.md#migration)) carries a `migration` block: the
+**migration plan**. Three of its fields say what was proven about this release:
 
 | field | derived from |
 |---|---|
@@ -822,12 +822,29 @@ it records three things only:
 | `testedAgainst` | the serving revision the compatibility of this changelog was proven against, recorded by the migration proof beside the project file; absent on a first release, when nothing serves, which is also what an Application the proof does not name is ([chapter 55](55-delivery.md#migration-safety)) |
 | `nonTransactional` | whether the release holds a changeset that cannot run in a transaction, recorded by the same proof, and `false` where it names none; such a release is never undone automatically ([chapter 55](55-delivery.md#failure-and-undo)) |
 
-Everything else about a migration is a fixed function of the Application id,
-the project and the Platform document, so recording it would repeat a
-derivation, not a decision: the identity `<application>-migration`, the owner
-role `<project>-owner`, the database, the deadline and the requests
+The rest is what the migration's Jobs run with. Each is a fixed function of the
+Application id, the project and the Platform document, and none is authored
 ([0026](../../docs/adr/model/0026-migration-is-declared-on-the-application.md)).
-An Application declaring `self` or `none` carries no block.
+The plan records them because layer 3 reads nothing but this document
+([0003](../../docs/adr/model/0003-three-model-pipeline.md)): a value an adapter
+needs and the plan does not hold is a value the adapter would have to derive.
+
+| field | derived from |
+|---|---|
+| `uid`, `gid` | the user the images lock records for the migration image |
+| `identity` | `<application>-migration`, an identity of its own, apart from every Process's ([chapter 16](16-dependencies.md#process-identity)) |
+| `deadline`, `memory`, `cpu` | the Platform document's migration policy ([chapter 14](14-platform-intent.md#migration-policy)) |
+| `scratch` | the size of the runner's one writable path, the Platform document's ephemeral size |
+| `database` | where the project's database answers: the `host` and `port` of the datastore surface the Application's edge to it reaches, and its `name`, `<project>_db` ([chapter 16](16-dependencies.md#the-database-catalog)) |
+| `credential` | the owner credential, `read` on `database/creds/<project>-owner`, delivered `self`: the identity reads it from the Secret Store itself, and no Process holds it |
+| `egress` | what the identity's own policy admits: that datastore surface, the Secret Store and the cluster's DNS ([chapter 16](16-dependencies.md#the-migration-identitys-policy)) |
+
+A migration reads the Secret Store, so an Application that carries the block
+names `secretStore` and follows the unit that provisions secrets, whether or
+not a Process of it holds a grant. An Application whose edges name no surface
+of the datastore holding its database has no address to migrate at, and
+resolution stops there. An Application declaring `self` or `none` carries no
+block.
 
 ## The path plan
 
@@ -1119,8 +1136,28 @@ reconcileAfter: [apps-core, apps-data, estate-vso-secrets]
 
 migration:                           # it declares a changelog (chapter 10)
   runner: ghcr.io/jorisjonkers-dev/knowledge/knowledge-migration@sha256:…
+  uid: 1000                          # the image's own user, from the images lock
+  gid: 1000
   testedAgainst: sha256:…            # the serving revision the proof ran against
   nonTransactional: false            # so a held release may be undone automatically
+  identity: knowledge-migration      # <application>-migration, apart from every Process
+  deadline: 10m                      # the Platform document's migration policy
+  memory: 256Mi
+  cpu: 100m
+  scratch: 64Mi                      # the runner's one writable path, at the platform's ephemeral size
+  database:                          # the project's one database, where its datastore answers
+    host: postgres.data-system.svc.cluster.local
+    port: 5432
+    name: knowledge_db
+  credential:                        # the owner role, held by this identity alone
+    engine: database
+    delivery: self
+    paths:
+      - {path: database/creds/knowledge-owner, allows: [read]}
+  egress:                            # what the identity's own policy admits
+    - {rule: datastore, namespace: data-system, process: postgres, port: 5432}
+    - {rule: secret-store, namespace: secrets-system, process: vault, port: 8200}
+    - {rule: cluster-dns, namespace: kube-system, port: 53}
 
 releaseGate:                         # what the Release Gate reads (0052)
   endpoint: 'http://release-gate.delivery-system.svc.cluster.local:8080'   # the gate the platform names, on its http surface
@@ -1485,8 +1522,22 @@ classDiagram
     }
     class ResolvedMigration {
         +ImageRef runner
+        +int uid
+        +int gid
         +Digest testedAgainst
         +bool nonTransactional
+        +Identity identity
+        +Duration deadline
+        +Quantity memory
+        +Quantity cpu
+        +Quantity scratch
+        +ResolvedEngineGrant credential
+        +EgressPeer egress
+    }
+    class MigratedDatabase {
+        +string host
+        +int port
+        +string name
     }
     class GateMember {
         +string process
@@ -1670,6 +1721,7 @@ classDiagram
 
     ResolvedApplication "1" *-- "0..1" ReleaseGate : releaseGate
     ResolvedApplication "1" *-- "0..1" ResolvedMigration : migration
+    ResolvedMigration "1" *-- "1" MigratedDatabase : database
     ResolvedApplication "1" *-- "1..*" ResolvedProcess : processes
     ResolvedApplication "1" *-- "0..*" ResolvedExposure : exposure
     ResolvedApplication "1" *-- "0..1" ResolvedScrape : scrape

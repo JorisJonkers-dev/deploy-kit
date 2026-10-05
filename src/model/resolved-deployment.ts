@@ -58,6 +58,7 @@ export const INGRESS_RULES = [
   "metrics-stack",
   "consumer",
   "backup",
+  "migration",
 ] as const;
 
 /** Which rule admits an outbound peer beyond an edge: the baseline, or a grant. */
@@ -523,18 +524,40 @@ const releaseGate = z
   })
   .meta({ id: "ReleaseGate" });
 
-// What layer 2 records of a migration (spec/v1/20-resolved-deployment.md#the-migration):
-// the runner image the Application's changelog was built into, the serving
-// revision its compatibility was proven against (absent on a first release,
-// when nothing serves), and whether the release holds a changeset that cannot
-// run in a transaction, which no automatic undo may touch
-// (spec/v1/55-delivery.md#failure-and-undo). Everything else about it is a
-// fixed function of the Application id and the Platform document.
+// The database a migration moves: where the project's datastore answers, and
+// the one database of the project on it.
+const migratedDatabase = z
+  .strictObject({ host: text, port, name: text })
+  .meta({ id: "MigratedDatabase" });
+
+// The migration plan (spec/v1/20-resolved-deployment.md#the-migration): what
+// the proof beside the project records about this release, and everything the
+// Jobs of it run with. The runner image the Application's changelog was built
+// into and the user it runs as; the serving revision its compatibility was
+// proven against (absent on a first release, when nothing serves) and whether
+// the release holds a changeset that cannot run in a transaction, which no
+// automatic undo may touch (spec/v1/55-delivery.md#failure-and-undo); the
+// identity it runs as, the platform's terms for a migration, the database it
+// moves, the owner credential only that identity holds, and what its own
+// policy admits.
 const resolvedMigration = z
   .strictObject({
     runner: text,
+    uid: count,
+    gid: count,
     testedAgainst: digest.exactOptional(),
     nonTransactional: z.boolean(),
+    identity: text,
+    deadline: duration,
+    memory: text,
+    cpu: text,
+    // The runner's one writable path, at the platform's ephemeral size.
+    scratch: text,
+    database: migratedDatabase,
+    credential: resolvedEngineGrant,
+    // The datastore on the surface the Application's edge reaches, the Secret
+    // Store the identity reads its credential from itself, and the cluster's DNS.
+    egress: z.array(egressPeer),
   })
   .meta({ id: "ResolvedMigration" });
 

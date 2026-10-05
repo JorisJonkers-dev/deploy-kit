@@ -226,7 +226,8 @@ class ResolvedDeploymentTest {
         // network policy, edge routing, monitoring, and secret resources; and
         // what the rendered trees hold beyond it: Services, claims, Asset
         // ConfigMaps, backups, the Secret Store connection, Vault's own
-        // documents, and the RBAC of a Process that holds API access.
+        // documents, the RBAC of a Process that holds API access, the budget
+        // of a count above one, and a migration's identity and Jobs.
         assertThat(ResolvedDeploymentPackage.eINSTANCE.getEClassifiers().stream()
                         .filter(EClass.class::isInstance)
                         .map(EClass.class::cast)
@@ -249,6 +250,8 @@ class ResolvedDeploymentTest {
                         "ServiceFile",
                         "RbacFile",
                         "PolicyJobFile",
+                        "BudgetFile",
+                        "MigrationFile",
                         "ClaimFile",
                         "ConfigMapFile",
                         "BackupFile",
