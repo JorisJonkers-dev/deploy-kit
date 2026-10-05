@@ -298,14 +298,17 @@ never let through because the thing that would stop it is down.
 *serves* is the last revision under which every member's primary ran what the
 render held for it. No rendered object says so: once Flux applies a new
 revision, every object in the cluster names the new one. So the gate records
-it, in a `ConfigMap` of its own, `<application>-release-record` in the gate's
-own namespace, naming the Application's namespace inside, which it advances
+it, in a `ConfigMap` of its own, `<namespace>.<application>-release-record` in
+the gate's own namespace, naming the Application's namespace inside, which it advances
 whenever that holds for the current revision. The render never carries the
 record, so it has one writer, and it sits where no Application can write: a
 record beside the Application would let anything that writes a `ConfigMap`
 there say which revision serves, and so start a migration whose proof went
-stale. A record that names another namespace than the Application's is one the
-gate cannot answer from. The gate
+stale. The name carries the namespace as well as the Application, and a
+namespace is a DNS label with no dot, so an Application of the same id in
+another namespace names another record and can neither claim this one first nor
+write over it. A record that names another namespace than the Application's is
+one the gate cannot answer from. The gate
 reads it for the proof ([Migration safety](#migration-safety)), for the down
 ([Failure and undo](#failure-and-undo)) and for the pair a held release is
 reported as ([Held releases](#held-releases)). An Application with no record
