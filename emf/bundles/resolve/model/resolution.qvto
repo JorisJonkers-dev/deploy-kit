@@ -38,7 +38,7 @@ property proofs : Sequence(ProvenApplication) =
 property assetFiles : Sequence(AssetFile) = pinned.rootObjects()[AssetFile]->asSequence();
 
 -- The unit that materialises every grant's credentials before a Process may hold one.
-property SECRETS_UNIT : String = 'apps-vso-secrets';
+property SECRETS_UNIT : String = 'estate-vso-secrets';
 -- The surface a Release Gate and a Secret Store answer on.
 property HTTP_SURFACE : String = 'http';
 -- How many hex digits of an Asset's content digest its name carries.
@@ -57,7 +57,7 @@ property NO_RUNTIME : String = 'none';
 property POLICY_JOB : String = 'vault-policy';
 
 -- The estate-wide directory every identity's Vault documents land in, by namespace.
-property POLICIES : String = 'apps/vso-secrets/policies/';
+property POLICIES : String = 'estate/vso-secrets/policies/';
 
 main() {
 	projects->select(p | p.project = project)->any(true).map deployment();
@@ -1103,14 +1103,14 @@ query EffectiveProject::edgeFiles() : Sequence(Deliverable) =
 	routed->collect(r |
 		let tier : Tier = tierFor(r.exposure.audience) in
 		object IngressRouteFile {
-			path := 'apps/edge/' + tier.name + '/' + routeFile(r.app, r.exposure);
+			path := 'estate/edge/' + tier.name + '/' + routeFile(r.app, r.exposure);
 			adapter := AdapterName::traefik;
 			exposure := r.exposure.resolveone(ResolvedExposure);
 			entryPoint := if tier.listener = Listener::tls then 'websecure' else 'web' endif;
 			if tier.certificates = CertificateSource::acme then certificateResolver := 'acme' endif;
 		}.oclAsType(Deliverable))
 	->union(tiers->collect(t | object IndexFile {
-		path := 'apps/edge/' + t.name + '/kustomization.yaml';
+		path := 'estate/edge/' + t.name + '/kustomization.yaml';
 		adapter := AdapterName::kubernetes;
 		resources := routed->select(r | tierFor(r.exposure.audience) = t)
 			->collect(r | routeFile(r.app, r.exposure))->sortedBy(f | f);

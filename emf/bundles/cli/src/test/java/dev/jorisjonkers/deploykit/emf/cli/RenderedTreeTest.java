@@ -59,7 +59,7 @@ class RenderedTreeTest {
         assertThat(Pipeline.render(union(), Outputs.RENDERED_UNION.projects(), Outputs.INTEGRITY, out))
                 .isEmpty();
 
-        // Everything outside the two projects' own directories is the estate's.
+        // Everything under estate/ is the estate's, and no project's.
         Path estate = Examples.of("_estate/rendered");
         for (Path file : filesUnder(estate)) {
             assertThat(Files.readString(out.resolve(file)))
@@ -67,7 +67,7 @@ class RenderedTreeTest {
                     .isEqualTo(Files.readString(estate.resolve(file)));
         }
         assertThat(filesUnder(out).stream()
-                        .filter(file -> !file.startsWith("apps/notes") && !file.startsWith("apps/data"))
+                        .filter(file -> file.startsWith("estate"))
                         .toList())
                 .isEqualTo(filesUnder(estate));
     }

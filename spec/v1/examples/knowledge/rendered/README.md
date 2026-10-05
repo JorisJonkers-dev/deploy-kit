@@ -77,8 +77,8 @@ contributes routes and exposures to both; it owns neither object.
 | `apps/knowledge/kustomization.yaml` | `kubernetes` | the emitted file set | ownership of `vso.yaml` (**G-25**) |
 | `edge/ingressroutes.yaml` | `traefik`, for the tier each route's audience selects | the Application's `exposure`: authored `host`, the exposure `audience` and five routes, four overriding it to `anonymous`, each naming `knowledge-api` and its `http` surface | - |
 | `apps/knowledge/backup.yaml` | `kubernetes` | `durability: irreplaceable` plus `engine: files` on the vault clone | none (0018) |
-| `apps/vso-secrets/policies/knowledge-system-knowledge-api.policy.json` | `vault-policy` | the three KV grants, each with its `metadata` sibling | none (0040, 0029) |
-| `apps/vso-secrets/policies/knowledge-system-knowledge-api.role.json` | `vault-policy` | the Process's ServiceAccount and namespace | - |
+| `estate/vso-secrets/policies/knowledge-system-knowledge-api.policy.json` | `vault-policy` | the three KV grants, each with its `metadata` sibling | none (0040, 0029) |
+| `estate/vso-secrets/policies/knowledge-system-knowledge-api.role.json` | `vault-policy` | the Process's ServiceAccount and namespace | - |
 
 ## Deliberately absent, and correct
 
@@ -242,7 +242,7 @@ nothing grants `get secrets` in `knowledge-system`, and there is no `rbac`
 adapter to render such a Role, nor to prove none exists.
 
 **G-25** `vso.yaml` sits in the Application directory here but the registered adapter
-writes to `apps/vso-secrets/<name>.yaml` with its own kustomization. Three
+writes to `estate/vso-secrets/<name>.yaml` with its own kustomization. Three
 central adapters already declare the same `platform/cluster/flux/apps` prefix
 and `E_PATH_COLLISION` has zero occurrences under `src/`.
 

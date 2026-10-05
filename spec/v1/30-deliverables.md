@@ -151,7 +151,7 @@ Process or a backup identity, in its Application's directory; and one
 `VaultStaticSecret` per such grant, beside it, or a `VaultDynamicSecret`. A
 grant delivered `self` is read by the Process itself and syncs nothing. The
 objects are applied with the Application they serve, not by
-`apps-vso-secrets`: the namespace and the ServiceAccount a `VaultAuth` names
+`estate-vso-secrets`: the namespace and the ServiceAccount a `VaultAuth` names
 exist only once the Application's own unit applies, and its pod waits on the
 Secret. Every destination Secret it asks for is excluded from
 Flagger's configuration tracking, and a restart target names a `blue-green`
@@ -164,7 +164,7 @@ no output at all, and a derivation with no output is not total
 
 The `vault-policy` adapter emits, **per identity that holds a grant** (each
 Process, and each backup identity that holds its destination's credential), two
-documents, at `apps/vso-secrets/policies/<namespace>-<identity>.{policy,role}.json`,
+documents, at `estate/vso-secrets/policies/<namespace>-<identity>.{policy,role}.json`,
 the name Vault holds both by:
 
 | document | derived from |
@@ -180,7 +180,7 @@ serializer own key order.
 **Rendered here, applied in the cluster.** Writing a policy into Vault is an act
 against a live system by an identity with privilege, which is delivery
 ([0087](../../docs/adr/model/0087-in-cluster-consumers-read-the-render.md)). The
-**Vault policy job** writes them: a Job in the `apps-vso-secrets` Reconcile Unit,
+**Vault policy job** writes them: a Job in the `estate-vso-secrets` Reconcile Unit,
 so it runs before any Application that holds a grant, whose image is the
 `delivery` project's. It is derived and never declared as a Process: its input
 is the render itself, which no project file can name. The Platform document
@@ -197,7 +197,7 @@ changed policy set is a new Job, and the one it replaces leaves the render with
 it. Both implementations compute the name from the documents alone, so it is
 the same name wherever the same grants are rendered.
 
-Four files sit beside `policies/`, in `apps/vso-secrets/`, and the directory's
+Four files sit beside `policies/`, in `estate/vso-secrets/`, and the directory's
 index applies the first three:
 
 | file | adapter | holds |
@@ -275,8 +275,8 @@ Paths are assigned by the Resolved Deployment's path plan
 <gitopsRoot>/apps/<project>/namespace.yaml
 <gitopsRoot>/apps/<project>/networkpolicy.yaml
 <gitopsRoot>/apps/<project>/vaultconnection.yaml
-<gitopsRoot>/apps/vso-secrets/policies/<namespace>-<identity>.{policy,role}.json
-<gitopsRoot>/apps/edge/<tier>/<application>-<exposure>.yaml
+<gitopsRoot>/estate/vso-secrets/policies/<namespace>-<identity>.{policy,role}.json
+<gitopsRoot>/estate/edge/<tier>/<application>-<exposure>.yaml
 ```
 
 The project's `networkpolicy.yaml` is its one namespace-wide default-deny
@@ -290,10 +290,15 @@ each Application's directory beside its `namespace.yaml`. **No kustomization
 lists a `networkpolicy.yaml`** while chapter 16's stage is render-only
 ([Audit before enforce](16-dependencies.md#audit-before-enforce)): the policy set
 is in the artifact, reviewed and signed with everything else, and applied by
-nothing, and none lists a Vault document, which is no Kubernetes object. The
-paths under `apps/edge/` and `apps/vso-secrets/` are estate-scoped, so they are
-the `_estate` artifact's ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)),
-while each IngressRoute stays in its Application's own namespace
+nothing, and none lists a Vault document, which is no Kubernetes object.
+
+Everything under `apps/<project>/` is that Project's share, whatever the
+Project is named, and everything under `estate/` is estate-scoped, so it is
+the `_estate` artifact's ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)).
+The two roots never meet: an estate-scoped directory under `apps/` would be
+the directory of whichever Project carried its name, and that Project's whole
+render would be published as the estate's. Each IngressRoute still stays in
+its Application's own namespace
 ([Forbidden in a Deliverable](#forbidden-in-a-deliverable)).
 
 ### How each adapter spells the projection

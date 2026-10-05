@@ -3,13 +3,13 @@
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: OCIRepository
 metadata:
-  name: project-data
+  name: project-edge
   namespace: flux-system
   labels:
     app.kubernetes.io/managed-by: deploy-kit
 spec:
   interval: 10m
-  url: oci://ghcr.io/jorisjonkers-dev/render/data
+  url: oci://ghcr.io/jorisjonkers-dev/render/edge
   ref:
     digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
   verify:
@@ -21,7 +21,7 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: apps-data
+  name: apps-edge
   namespace: flux-system
   labels:
     app.kubernetes.io/managed-by: deploy-kit
@@ -31,7 +31,5 @@ spec:
   wait: true
   sourceRef:
     kind: OCIRepository
-    name: project-data
-  path: ./apps/data
-  dependsOn:
-    - name: estate-vso-secrets
+    name: project-edge
+  path: ./apps/edge

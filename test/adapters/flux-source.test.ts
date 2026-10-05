@@ -30,7 +30,7 @@ describe("a pin source", () => {
       {
         name: "apps-notes-late",
         path: "apps/notes/late",
-        after: ["apps-data", "apps-vso-secrets"],
+        after: ["apps-data", "estate-vso-secrets"],
       },
     ],
     FLUX,
@@ -109,7 +109,7 @@ describe("a pin source", () => {
     });
     expect(
       (second as { spec: Record<string, unknown> }).spec["dependsOn"],
-    ).toStrictEqual([{ name: "apps-data" }, { name: "apps-vso-secrets" }]);
+    ).toStrictEqual([{ name: "apps-data" }, { name: "estate-vso-secrets" }]);
   });
 
   it("names the estate's own source apart from any Project's", () => {

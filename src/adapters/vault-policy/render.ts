@@ -9,6 +9,7 @@ import type { Deliverable } from "../../objects/deliverable.ts";
 import { vaultNameOf } from "../../model/runtime-profiles.ts";
 import { holdersOf, type Grant } from "../shared/holders.ts";
 import { notSupported } from "../../model/internal-failure.ts";
+import { SECRETS_DIRECTORY } from "../shared/paths.ts";
 
 export const ADAPTER = "vault-policy";
 
@@ -18,7 +19,7 @@ export const ADAPTER = "vault-policy";
  * and a path has one owner (`E_PATH_COLLISION`): no render overwrites one
  * project's role with another's.
  */
-const POLICIES = "apps/vso-secrets/policies";
+const POLICIES = `${SECRETS_DIRECTORY}/policies`;
 const KV_DATA = /^secret\/data\//;
 const KV_METADATA = "secret/metadata/";
 

@@ -13,10 +13,11 @@ import type {
 } from "../../objects/kubernetes.ts";
 import { wholeSeconds } from "../shared/durations.ts";
 import { labelsOf } from "../shared/labels.ts";
+import { SECRETS_DIRECTORY } from "../shared/paths.ts";
 import { ADAPTER } from "./render.ts";
 
 /** The estate-wide directory the job's own objects land in, beside the documents. */
-const DIRECTORY = "apps/vso-secrets";
+const DIRECTORY = SECRETS_DIRECTORY;
 /** How many hex digits of the documents' digest the job's name carries. */
 const NAME_DIGITS = 12;
 /** Where the job reads the documents, each under its own file name. */

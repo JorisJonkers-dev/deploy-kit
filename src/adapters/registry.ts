@@ -48,7 +48,7 @@ export const ADAPTERS: readonly Adapter[] = [
   },
   {
     name: TRAEFIK,
-    defaultPath: "apps/edge/<tier>/<application>-<exposure>.yaml",
+    defaultPath: "estate/edge/<tier>/<application>-<exposure>.yaml",
     render: renderTraefik,
   },
   {
@@ -59,7 +59,7 @@ export const ADAPTERS: readonly Adapter[] = [
   {
     name: VAULT_POLICY,
     defaultPath:
-      "apps/vso-secrets/policies/<namespace>-<identity>.{policy,role}.json",
+      "estate/vso-secrets/policies/<namespace>-<identity>.{policy,role}.json",
     render: renderVaultPolicy,
   },
 ];

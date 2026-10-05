@@ -940,12 +940,12 @@ describe("what a grant derives", () => {
 
   it("orders an Application holding a grant after the unit that materialises its credentials", () => {
     expect(application(granted(SELF)).reconcileAfter).toStrictEqual([
-      "apps-vso-secrets",
+      "estate-vso-secrets",
     ]);
     // One Process holding a grant is enough.
     expect(
       application(`${granted(SELF)}${serving("notes-worker")}`).reconcileAfter,
-    ).toStrictEqual(["apps-vso-secrets"]);
+    ).toStrictEqual(["estate-vso-secrets"]);
     expect(
       application(one(serving("notes-api"))).reconcileAfter,
     ).toBeUndefined();

@@ -646,6 +646,7 @@ describe("composeEstate", () => {
       "_estate",
       "data",
       "delivery",
+      "edge",
       "notes",
       "observability",
       "secrets",
@@ -679,6 +680,7 @@ describe("composeEstate, for an artifact with no pin yet", () => {
       ["_estate", "projects/_estate/source.yaml"],
       ["data", "projects/data/source.yaml"],
       ["delivery", "projects/delivery/source.yaml"],
+      ["edge", "projects/edge/source.yaml"],
       ["notes", "projects/notes/source.yaml"],
       ["observability", "projects/observability/source.yaml"],
       ["secrets", "projects/secrets/source.yaml"],
@@ -719,11 +721,11 @@ describe("composeEstate, for an artifact with no pin yet", () => {
         {
           name: "_estate",
           files: [
-            "apps/edge/public/kustomization.yaml",
-            "apps/edge/public/shop-public.yaml",
-            "apps/edge/lan/kustomization.yaml",
+            "estate/edge/public/kustomization.yaml",
+            "estate/edge/public/shop-public.yaml",
+            "estate/edge/lan/kustomization.yaml",
             // Vault documents with no job beside them: no index, so no unit.
-            "apps/vso-secrets/policies/shop-system-api.policy.json",
+            "estate/vso-secrets/policies/shop-system-api.policy.json",
           ].map((path) => ({ path, adapter: "traefik", text: "" })),
         },
       ],
@@ -772,15 +774,15 @@ describe("composeEstate, for an artifact with no pin yet", () => {
 
     expect(applied).toStrictEqual([
       [
-        "apps-edge-public",
+        "estate-edge-public",
         "flux-system",
-        "./apps/edge/public",
+        "./estate/edge/public",
         ["apps-edge", "apps-shop"],
       ],
       [
-        "apps-edge-lan",
+        "estate-edge-lan",
         "flux-system",
-        "./apps/edge/lan",
+        "./estate/edge/lan",
         ["apps-edge", "apps-wiki"],
       ],
     ]);

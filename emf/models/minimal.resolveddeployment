@@ -120,7 +120,7 @@
   <!--
     One entry per file the templates write, each with the path layer 2 assigned
     it. The project's share is the tree under spec/v1/examples/minimal/rendered/,
-    and the route under apps/edge/ is estate-scoped, in spec/v1/examples/_estate/rendered/.
+    and the route under estate/ is estate-scoped, in spec/v1/examples/_estate/rendered/.
   -->
   <deliverables xsi:type="resolveddeployment:NamespaceFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/namespace.yaml" adapter="kubernetes" namespace="notes-system"/>
@@ -157,8 +157,8 @@
     </policies>
   </deliverables>
   <deliverables xsi:type="resolveddeployment:IngressRouteFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="apps/edge/public-frankfurt/notes-public.yaml" adapter="traefik" exposure="//@applications.0/@exposure.0"
+      path="estate/edge/public-frankfurt/notes-public.yaml" adapter="traefik" exposure="//@applications.0/@exposure.0"
       entryPoint="websecure" certificateResolver="acme"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="apps/edge/public-frankfurt/kustomization.yaml" adapter="kubernetes" resources="notes-public.yaml"/>
+      path="estate/edge/public-frankfurt/kustomization.yaml" adapter="kubernetes" resources="notes-public.yaml"/>
 </resolveddeployment:ResolvedDeployment>

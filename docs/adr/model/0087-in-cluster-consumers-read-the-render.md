@@ -11,7 +11,7 @@ rests-on: ["0006"]
 # An in-cluster job applies the rendered Vault policies, and the Release Gate reads its inputs from a rendered ConfigMap
 
 The Vault policies and auth roles the `vault-policy` adapter renders are written
-into Vault by the **Vault policy job**, a Job in the `apps-vso-secrets` Reconcile
+into Vault by the **Vault policy job**, a Job in the `estate-vso-secrets` Reconcile
 Unit that runs before any Application holding a grant, authenticating as a
 dedicated policy-admin role. The job is derived from what the Platform document
 states about it, runs in the Secret Store's namespace, and is named by the
@@ -41,7 +41,7 @@ open who writes the policies. Writing from CI would need a Vault credential
 outside the cluster, the push path pull delivery rules out
 ([0050](0050-delivery-is-part-of-the-model.md)). A Job applied by Flux from the
 same artifact writes exactly what the render holds, and the existing Reconcile
-Unit order already runs `apps-vso-secrets` before any Application that reads a
+Unit order already runs `estate-vso-secrets` before any Application that reads a
 grant.
 
 **The gate needs no lock reader.** The gate's inputs are derived in layer 2
@@ -93,7 +93,7 @@ reader, a day.
 
 - A policy-admin Vault role exists, created as a platform fixture with the auth
   method, since the job cannot grant itself its own privilege, paid once.
-- A changed grant reaches Vault on the next apply of `apps-vso-secrets`, before
+- A changed grant reaches Vault on the next apply of `estate-vso-secrets`, before
   the Application that needs it starts, through a new Job named by the
   documents' digest, paid in one Job run per change.
 - Every gated Application carries one more ConfigMap, paid in render size.
