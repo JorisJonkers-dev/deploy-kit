@@ -11,6 +11,7 @@
 import { z } from "zod";
 import { clusterState } from "./cluster-state.ts";
 import { compositionLock } from "./composition-lock.ts";
+import { participants } from "./participants.ts";
 import { pinAnnotations } from "./pin-annotations.ts";
 import { platformIntent } from "./platform-intent.ts";
 import { projectIntent } from "./project-intent.ts";
@@ -64,6 +65,10 @@ export const PUBLISHED_SCHEMAS: readonly Published[] = [
   {
     path: "spec/v1/schemas/cluster-state-snapshot.schema.json",
     document: clusterState,
+  },
+  {
+    path: "spec/v1/schemas/participants.schema.json",
+    document: participants,
   },
 ];
 

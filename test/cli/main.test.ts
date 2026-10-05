@@ -79,8 +79,13 @@ function published(document: string, name: string, out: string): string {
     join(out, "ref"),
     `ghcr.io/jorisjonkers-dev/intent/${name}@sha256:${hex(`${name}-ref`, 64)}\n`,
   );
+  // When the pull's registry says the fragment was pushed: the day before the run.
+  writeFileSync(join(out, "published"), "2026-10-01T09:00:00Z\n");
   return out;
 }
+
+/** A participants list that expects every project of the union, and the Platform document. */
+const LISTED = `participants:\n${["jorisjonkers.dev", ...PROJECTS.map(([, name]) => name)].map((name) => `  ${name}: {}\n`).join("")}`;
 
 /** Every fragment pulled into one workspace, under a ledger whose delivered Projects the adapters spell. */
 function pulled(): string {
@@ -98,6 +103,7 @@ function pulled(): string {
     ),
   );
   published(document, "estate", join(root, "platform"));
+  writeFileSync(join(root, "participants.yml"), LISTED);
   return root;
 }
 
@@ -108,6 +114,8 @@ const composeIn = (root: string, ...extra: string[]) =>
     join(root, "platform"),
     "--fragments",
     join(root, "fragments"),
+    "--participants",
+    join(root, "participants.yml"),
     "--cluster-state",
     example("platform/cluster-state.yml"),
     "--schema-package-integrity",
@@ -650,6 +658,82 @@ describe("deploy-kit compose", () => {
     });
   });
 
+  // REQ-050 (docs/requirements.md): the command hands composition the
+  // participants list and each fragment's publish time.
+  it("isolates a participant that published nothing, and records it in the lock with no fragment", () => {
+    const root = pulled();
+    rmSync(join(root, "fragments", "notes"), { recursive: true });
+
+    expect(composeIn(root, "--out", join(root, "out")).code).toBe(0);
+    const lock = JSON.parse(
+      readFileSync(join(root, "out", "lock.json"), "utf8"),
+    ) as { spec: { isolated: Record<string, unknown> } };
+    expect(lock.spec.isolated).toStrictEqual({
+      notes: { codes: ["E_PARTICIPANT_MISSING"] },
+    });
+  });
+
+  it("refuses a run with no Platform document's fragment at all, as a participant that is missing", () => {
+    const root = pulled();
+    const outcome = run(
+      "compose",
+      "--fragments",
+      join(root, "fragments"),
+      "--participants",
+      join(root, "participants.yml"),
+      "--cluster-state",
+      example("platform/cluster-state.yml"),
+      "--schema-package-integrity",
+      INTEGRITY,
+      "--out",
+      join(root, "out"),
+    );
+
+    expect(outcome.code).toBe(1);
+    expect(outcome.stderr).toContain(
+      "E_PARTICIPANT_MISSING participants.yml#/participants: the Platform document published no fragment",
+    );
+  });
+
+  it("refuses a participants list that is not one, at the file it was handed", () => {
+    const root = pulled();
+    writeFileSync(
+      join(root, "participants.yml"),
+      "participants:\n  notes: { maxAge: 21d }\n",
+    );
+
+    const outcome = composeIn(root, "--out", join(root, "out"), "--json");
+
+    expect(outcome.code).toBe(1);
+    expect(JSON.parse(outcome.stdout)).toMatchObject([
+      {
+        code: "schema",
+        document: "participants.yml",
+        path: "/participants/notes/reason",
+      },
+    ]);
+  });
+
+  it("asks for the publish time a pull records beside each reference", () => {
+    const root = pulled();
+    rmSync(join(root, "fragments", "notes", "published"));
+    expect(composeIn(root, "--out", join(root, "out")).stderr).toBe(
+      `notes: no publish time recorded beside its reference\n${USAGE_TEXT}`,
+    );
+    writeFileSync(join(root, "fragments", "notes", "published"), "yesterday\n");
+    expect(composeIn(root, "--out", join(root, "out")).stderr).toBe(
+      `notes: no publish time recorded beside its reference\n${USAGE_TEXT}`,
+    );
+    writeFileSync(
+      join(root, "fragments", "notes", "published"),
+      "2026-10-01T09:00:00Z\n",
+    );
+    rmSync(join(root, "platform", "published"));
+    expect(composeIn(root, "--out", join(root, "out")).stderr).toBe(
+      `jorisjonkers.dev: no publish time recorded beside its reference\n${USAGE_TEXT}`,
+    );
+  });
+
   it("asks for a pulled fragment, the commit of a lock it is handed, and every required option", () => {
     const root = pulled();
     const notesRef = readFileSync(
@@ -680,6 +764,9 @@ describe("deploy-kit compose", () => {
     expect(run("compose").stderr).toBe(
       `--cluster-state is required\n${USAGE_TEXT}`,
     );
+    expect(
+      run("compose", "--cluster-state", "x", "--fragments", "y").stderr,
+    ).toBe(`--participants is required\n${USAGE_TEXT}`);
   });
 });
 
@@ -692,8 +779,9 @@ describe("deploy-kit", () => {
       "                     [--images-lock <file>] [--json]",
     ]);
     expect(USAGE_TEXT).toContain(
-      "  deploy-kit compose --platform <directory> --fragments <directory> --cluster-state <file>",
+      "  deploy-kit compose --fragments <directory> --participants <file> --cluster-state <file>",
     );
+    expect(USAGE_TEXT).toContain("[--platform <directory>]");
   });
 
   it("asks for a command it knows, and an option it knows", () => {

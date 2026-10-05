@@ -4,7 +4,10 @@
 // it names, not the run: a changed fragment it names is isolated at the
 // fragment the previous lock recorded for its Project, and the union is
 // composed again, until no error names a changed fragment
-// (spec/v1/40-composition.md#a-refused-project-is-isolated). A Pause holds a
+// (spec/v1/40-composition.md#a-refused-project-is-isolated). The participants
+// list says who is expected: a participant that published nothing, or nothing
+// lately, and a fragment the list does not name, are isolated before the union
+// is composed at all (spec/v1/40-composition.md#participants). A Pause holds a
 // Project's pin, and a Rollback composes it at its held fragment
 // (spec/v1/55-delivery.md#pause-and-rollback). What comes out is one artifact
 // per Project and the estate, which pins move, the lock, and what the workflow
@@ -15,6 +18,10 @@ import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { FragmentManifest } from "../model/fragment.ts";
 import type { Hasher } from "../model/hasher.ts";
 import { brokenInvariant } from "../model/internal-failure.ts";
+import {
+  DEFAULT_MAX_AGE,
+  type ParticipantsDocument,
+} from "../model/participants.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import {
   PIN_ANNOTATIONS,
@@ -51,10 +58,17 @@ export interface Pin {
 }
 
 export interface ComposeInput {
-  /** The Platform document's fragment: the document, the node contract and, where it carries one, an images lock. */
-  readonly platform: Fragment;
+  /**
+   * The Platform document's fragment: the document, the node contract and,
+   * where it carries one, an images lock. None where none was published.
+   */
+  readonly platform: Fragment | undefined;
   /** Every Project's newest fragment, each with its share of the images lock where it has one. */
   readonly fragments: readonly Fragment[];
+  /** Who is expected to have published: `participants.yml` of the Estate repository. */
+  readonly participants: ParticipantsDocument;
+  /** When each newest fragment was published, by the project it declares, the platform's among them. */
+  readonly published: Readonly<Record<string, string>>;
   /** Every earlier fragment a Rollback or the previous lock names, by reference. */
   readonly held: readonly Fragment[];
   /** The pin of every Project and of the estate that has been delivered, by artifact name. */
@@ -119,10 +133,119 @@ const PLATFORM = "_platform";
 const ESTATE = "_estate";
 const CLUSTER_STATE = "cluster-state.yml";
 const PLATFORM_DOCUMENT = "platform.intent.yml";
+const PROJECT_FILE = ".project.yml";
 
+/** Why a Project stayed where it was; a participant that published nothing has no fragment to name. */
 interface Isolation {
-  readonly refused: Fragment;
+  readonly refused: Fragment | undefined;
   readonly codes: readonly string[];
+}
+
+/** A composition whose Platform document is there to compose with. */
+type Composing = ComposeInput & { readonly platform: Fragment };
+
+/** Codes as a report names them. */
+const named = (codes: readonly string[]): string => codes.join(", ");
+
+const DAY_MS = 86_400_000;
+
+/**
+ * A record's own entry under `key`, and never one its prototype answers for:
+ * a project may be named `constructor`, and a list that holds no such entry
+ * must say so.
+ */
+const own = <T>(
+  record: Readonly<Record<string, T>>,
+  key: string,
+): T | undefined => (Object.hasOwn(record, key) ? record[key] : undefined);
+
+/**
+ * Every project a fragment's own files declare: its project files', and the
+ * Platform document's where it holds one. A file that does not parse declares
+ * none here, and resolution reports it.
+ */
+function declaredBy({ files }: Fragment): string[] {
+  return files.flatMap(({ name, text }) => {
+    if (name.endsWith(PROJECT_FILE)) {
+      const parsed = parseProjectIntent(text, []);
+      return parsed.ok ? [parsed.value.effective.project] : [];
+    }
+    if (name !== PLATFORM_DOCUMENT) return [];
+    const parsed = parsePlatformIntent(text);
+    return parsed.ok ? [parsed.value.document.metadata.project] : [];
+  });
+}
+
+/**
+ * What the participants list says of one project's newest fragment, as the
+ * code that holds it back, or nothing where it stands
+ * (spec/v1/40-composition.md#participants). The list admits a project by
+ * name, so a fragment is the participant its manifest names only where the
+ * files it carries declare that project and no other: what composes is what
+ * the files say.
+ */
+function standingOf(
+  input: ComposeInput,
+  generatedAt: string,
+  project: string,
+  fragment: Fragment | undefined,
+): string | undefined {
+  const entry = own(input.participants.participants, project);
+  if (entry === undefined) return "E_PARTICIPANT_UNLISTED";
+  if (fragment === undefined) return "E_PARTICIPANT_MISSING";
+  if (declaredBy(fragment).some((declared) => declared !== project))
+    return "E_PARTICIPANT_UNLISTED";
+  // Dormant exempts a participant from its age, and from nothing else.
+  if (entry.dormant === true) return undefined;
+  const at = own(input.published, project);
+  if (at === undefined)
+    throw brokenInvariant(
+      `${project}: a fragment whose publish time the caller did not supply`,
+    );
+  const days = Number((entry.maxAge ?? DEFAULT_MAX_AGE).slice(0, -1));
+  return Date.parse(generatedAt) - Date.parse(at) > days * DAY_MS
+    ? "E_PARTICIPANT_STALE"
+    : undefined;
+}
+
+const PARTICIPANTS = "participants.yml";
+
+/** What stops the run before anything composes: the list's own entries, and the platform's standing. */
+function listRefusals(input: ComposeInput, generatedAt: string): Diagnostic[] {
+  const today = generatedAt.slice(0, "2026-01-01".length);
+  const overdue = Object.entries(input.participants.participants)
+    // An entry with no review date is not one that is past it.
+    .filter(([, { reviewBy }]) => (reviewBy ?? today) < today)
+    .map(([project, { reviewBy }]): Diagnostic => ({
+      code: "E_LEDGER_REVIEW_OVERDUE",
+      document: PARTICIPANTS,
+      path: `/participants/${project}/reviewBy`,
+      message: `${project} is dormant until a review on ${reviewBy as string}, which has passed`,
+      hint: "Review the participant: set a later date with its reason, or drop `dormant`.",
+    }));
+  const platform = input.platform;
+  const project = platform?.manifest.spec.project;
+  const standing =
+    project === undefined
+      ? "E_PARTICIPANT_MISSING"
+      : standingOf(input, generatedAt, project, platform);
+  return [
+    ...overdue,
+    ...(standing === undefined
+      ? []
+      : [
+          {
+            code: standing,
+            document: PARTICIPANTS,
+            path: "/participants",
+            message:
+              project === undefined
+                ? "the Platform document published no fragment"
+                : `the Platform document's fragment, ${project}, cannot be composed with: ${standing}`,
+            hint: "No render is composed without a current, listed Platform document: publish it, or correct its entry.",
+          } as Diagnostic,
+        ]),
+  ];
 }
 
 const placed = (directory: string, files: readonly AuthoredFile[]) =>
@@ -144,8 +267,6 @@ function platformOf(fragment: Fragment): PlatformIntentDocument {
     >
   ).value.document;
 }
-
-const PROJECT_FILE = ".project.yml";
 
 /**
  * The one images lock resolution reads: the Platform document's, where its
@@ -221,6 +342,18 @@ export function composeEstate(
   input: ComposeInput,
   options: ComposeOptions,
 ): Result<Composition> {
+  // A dormant entry past its review, and a Platform document that is missing,
+  // stale or unlisted, stop the run: there is nothing to isolate.
+  const refusals = listRefusals(input, options.generatedAt);
+  return refusals.length > 0
+    ? { ok: false, diagnostics: refusals }
+    : composed(input as Composing, options);
+}
+
+function composed(
+  input: Composing,
+  options: ComposeOptions,
+): Result<Composition> {
   const previous = input.previous?.lock.spec.fragments ?? {};
   const annotations = (project: string): PinAnnotationsDocument =>
     input.pins[project]?.annotations ?? {};
@@ -242,6 +375,34 @@ export function composeEstate(
     }),
   );
   const isolated = new Map<string, Isolation>();
+
+  // A participant's own standing holds it back, changed or not: at the
+  // fragment it last composed at where it has one, and out of the render where
+  // it has none or the list does not name it.
+  const expected = Object.keys(input.participants.participants).filter(
+    (project) => project !== input.platform.manifest.spec.project,
+  );
+  const newest = new Map(
+    input.fragments.map((fragment) => [
+      fragment.manifest.spec.project,
+      fragment,
+    ]),
+  );
+  for (const project of [...new Set([...expected, ...newest.keys()])]) {
+    const fragment = newest.get(project);
+    const code = standingOf(input, options.generatedAt, project, fragment);
+    if (code === undefined) continue;
+    isolated.set(project, { refused: fragment, codes: [code] });
+    const earlier = previous[project]?.ref;
+    if (code === "E_PARTICIPANT_UNLISTED" || earlier === undefined)
+      candidates.delete(project);
+    else
+      candidates.set(
+        project,
+        // A stale fragment is very often the one last composed at.
+        fragment?.ref === earlier ? fragment : heldAt(input.held, earlier),
+      );
+  }
 
   for (;;) {
     const files = [
@@ -285,7 +446,7 @@ export function composeEstate(
     }
     for (const [project, diagnostics] of blamed) {
       isolated.set(project, {
-        refused: candidates.get(project) as Fragment,
+        refused: candidates.get(project),
         codes: [...new Set(diagnostics.map(({ code }) => code))],
       });
       // A Project that has never composed has nothing to stay at, and is left out.
@@ -313,7 +474,7 @@ interface Delivered {
  * artifact waits until no Project is legacy.
  */
 function deliver(
-  input: ComposeInput,
+  input: Composing,
   resolved: ResolvedSet,
   options: ComposeOptions,
 ): Result<Delivered> {
@@ -346,7 +507,7 @@ function deliver(
 }
 
 function composition(
-  input: ComposeInput,
+  input: Composing,
   options: ComposeOptions,
   candidates: ReadonlyMap<string, Fragment>,
   isolated: ReadonlyMap<string, Isolation>,
@@ -425,10 +586,15 @@ function composition(
         ? {}
         : {
             isolated: Object.fromEntries(
-              [...isolated].map(([project, { refused, codes }]) => [
-                project,
-                { refused: refused.ref, codes: [...codes] },
-              ]),
+              [...isolated]
+                .sort(([a], [b]) => byText(a, b))
+                .map(([project, { refused, codes }]) => [
+                  project,
+                  {
+                    ...(refused === undefined ? {} : { refused: refused.ref }),
+                    codes: [...codes],
+                  },
+                ]),
             ),
           }),
       clusterStateDigest: hash(input.clusterState.text),
@@ -445,7 +611,7 @@ function composition(
 
 /** Whether each newest fragment composed, on the commit that published it. */
 function statusesOf(
-  input: ComposeInput,
+  input: Composing,
   isolated: ReadonlyMap<string, Isolation>,
 ): CommitStatus[] {
   return [input.platform, ...input.fragments]
@@ -454,12 +620,15 @@ function statusesOf(
       const { project, version } = fragment.manifest.spec;
       const { repository, sourceSha: sha } = fragment.manifest.metadata;
       const refusal = isolated.get(project);
-      if (refusal?.refused.ref === fragment.ref)
+      // A participant isolated with no fragment published none, so it is
+      // never one of the fragments walked here.
+      // Stryker disable next-line OptionalChaining
+      if (refusal?.refused?.ref === fragment.ref)
         return {
           repository,
           sha,
           state: "failure",
-          description: `${project} ${version} isolated: ${refusal.codes.join(", ")}`,
+          description: `${project} ${version} isolated: ${named(refusal.codes)}`,
         };
       const rollback = (input.pins[project]?.annotations ?? {}) as Record<
         string,
@@ -480,19 +649,27 @@ function statusesOf(
 
 /** Every Project condition that holds after this composition, one per pair. */
 function conditionsOf(
-  input: ComposeInput,
+  input: Composing,
   isolated: ReadonlyMap<string, Isolation>,
 ): Condition[] {
   const conditions: Condition[] = [...isolated]
     .sort(([a], [b]) => byText(a, b))
-    .map(([project, { refused, codes }]) => {
+    .map(([project, { refused, codes }]): Condition => {
+      if (refused === undefined)
+        return {
+          project,
+          condition: "isolated",
+          title: `${project}: no fragment published`,
+          body: `The participants list expects ${project}, and it published no fragment: ${named(codes)}. ${project} stays at the fragment it last composed at, and its pin does not move until a release composes.`,
+          discord: `${project} published no fragment: ${named(codes)}`,
+        };
       const { version } = refused.manifest.spec;
       return {
         project,
         condition: "isolated",
         title: `${project}: ${version} isolated`,
-        body: `The fragment ${refused.ref} was refused with ${codes.join(", ")}. ${project} stays at the fragment it last composed at, and its pin does not move until a release composes.`,
-        discord: `${project} ${version} isolated: ${codes.join(", ")}`,
+        body: `The fragment ${refused.ref} was refused with ${named(codes)}. ${project} stays at the fragment it last composed at, and its pin does not move until a release composes.`,
+        discord: `${project} ${version} isolated: ${named(codes)}`,
       };
     });
   for (const project of Object.keys(input.pins).sort(byText)) {

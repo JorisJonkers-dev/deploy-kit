@@ -113,15 +113,30 @@ jobs:
           # fragment lands in its own directory beside the `ref` its pull
           # resolved: an artefact cannot contain its own digest, so the puller
           # records it (spec/v1/40-composition.md#publication-and-why-the-lock-is-an-output).
-          for project in $(yq '.participants | keys | .[]' participants.yml); do
-            ref="$(oras resolve "ghcr.io/${{ github.repository_owner }}/intent-${project}:latest")"
-            oras pull "ghcr.io/${{ github.repository_owner }}/intent-${project}@${ref}" --output "fragments/${project}/"
-            echo "ghcr.io/${{ github.repository_owner }}/intent-${project}@${ref}" > "fragments/${project}/ref"
-          done
+          #
+          # Beside `ref` goes `published`: when the fragment was pushed, from
+          # the manifest's own created annotation. A fragment is deterministic
+          # and carries no time, so staleness is read here
+          # (spec/v1/40-composition.md#participants).
+          created() { oras manifest fetch "$1" | jq -r '.annotations["org.opencontainers.image.created"]'; }
           # The Platform document is a participant like any project, pinned by
           # digest rather than resolved from a tag.
           oras pull "$CONTEXT_REF" --output platform/
           echo "$CONTEXT_REF" > platform/ref
+          created "$CONTEXT_REF" > platform/published
+          platform="$(yq '.spec.project' platform/fragment.yml)"
+          mkdir -p fragments
+          for project in $(yq '.participants | keys | .[]' participants.yml); do
+            [ "$project" = "$platform" ] && continue
+            image="ghcr.io/${{ github.repository_owner }}/intent-${project}"
+            # A participant that published nothing is not pulled, and is not a
+            # failure of this step: composition reads its absence against the
+            # list and reports E_PARTICIPANT_MISSING.
+            ref="$(oras resolve "${image}:latest" 2>/dev/null)" || continue
+            oras pull "${image}@${ref}" --output "fragments/${project}/"
+            echo "${image}@${ref}" > "fragments/${project}/ref"
+            created "${image}@${ref}" > "fragments/${project}/published"
+          done
 
           # The previous lock, and the estate commit it was committed in, READ
           # FROM THE REGISTRY and the repository rather than a variable no step
@@ -157,9 +172,9 @@ jobs:
           done
           # E_PARTICIPANT_MISSING and E_PARTICIPANT_STALE, past the
           # participant's maxAge -- seven days by default
-          # (docs/adr/model/0043-participants-list-staleness.md) -- are not
-          # checked by the toolkit yet; a participant whose pull fails above
-          # fails the run instead.
+          # (docs/adr/model/0043-participants-list-staleness.md) -- are the
+          # toolkit's to say: `compose` is handed the list and each publish
+          # time, and isolates the participant rather than failing the run.
 
       - name: Verify each package against its own manifest
         if: ${{ !cancelled() }}
@@ -206,6 +221,7 @@ jobs:
           npx --no-install deploy-kit compose \
             --platform platform/ \
             --fragments fragments/ \
+            --participants participants.yml \
             --held held/ \
             --pins pins.json \
             $LOCK \
