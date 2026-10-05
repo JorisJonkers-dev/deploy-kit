@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.3.0...v0.4.0) (2026-10-04)
+
+
+### Features
+
+* a Process declares the Kubernetes API access it needs, the platform admits who may hold any, and the delivery machinery renders ([#245](https://github.com/JorisJonkers-dev/deploy-kit/issues/245)) ([eb3afa7](https://github.com/JorisJonkers-dev/deploy-kit/commit/eb3afa74668250d00595fd71bdc85fe0eafc09bf))
+* give each backup identity a network policy of its own, from the surface its method dumps and where its off-cluster copy goes ([#243](https://github.com/JorisJonkers-dev/deploy-kit/issues/243)) ([5377ee3](https://github.com/JorisJonkers-dev/deploy-kit/commit/5377ee3af055ac6980898c4672c852ad08c32f59))
+* render the Release Gate's inputs as a ConfigMap, and name a Vault role for its namespace and identity ([#239](https://github.com/JorisJonkers-dev/deploy-kit/issues/239)) ([131a8e3](https://github.com/JorisJonkers-dev/deploy-kit/commit/131a8e35b8e7d7655304a06324b0a3f9fe020cf1))
+* render the Vault policy job, named by the digest of the documents it writes ([#246](https://github.com/JorisJonkers-dev/deploy-kit/issues/246)) ([885d7aa](https://github.com/JorisJonkers-dev/deploy-kit/commit/885d7aafa4c9012348aa46cedc74f838c5f4c616)), closes [#202](https://github.com/JorisJonkers-dev/deploy-kit/issues/202)
+
 ## [0.3.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.2.0...v0.3.0) (2026-10-04)
 
 
