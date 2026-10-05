@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.5.1...v0.6.0) (2026-10-05)
+
+
+### Features
+
+* hand the Release Gate the migration it starts, and refuse a changelog nothing gates ([#263](https://github.com/JorisJonkers-dev/deploy-kit/issues/263)) ([4cfbdd9](https://github.com/JorisJonkers-dev/deploy-kit/commit/4cfbdd9b418a7e902407b40921c14a7853b1268b))
+* render auth, with its migration Jobs, its autoscaler and its disruption budget ([#260](https://github.com/JorisJonkers-dev/deploy-kit/issues/260)) ([f417250](https://github.com/JorisJonkers-dev/deploy-kit/commit/f4172509dc54ffb7ef97efbd78e59ee9c82ff14b))
+
 ## [0.5.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.5.0...v0.5.1) (2026-10-05)
 
 
