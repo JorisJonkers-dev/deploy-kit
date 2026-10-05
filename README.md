@@ -115,11 +115,12 @@ node src/cli/index.ts publish spec/v1/examples/minimal/notes.project.yml \
   --repository JorisJonkers-dev/notes --source-sha <commit> --version 1.4.0 --out fragment/ \
   [--images-lock images.lock.yml]   # packs the project's share of the lock its build wrote
 
-# Compose the estate from pulled fragments, each directory holding a fragment and the
-# `ref` its pull resolved, and write the artifacts, the lock and what to report.
-node src/cli/index.ts compose --platform platform/ --fragments fragments/ \
+# Compose the estate from pulled fragments, each directory holding a fragment, the
+# `ref` its pull resolved and when it was `published`, against the participants
+# list, and write the artifacts, the lock and what to report.
+node src/cli/index.ts compose --fragments fragments/ --participants participants.yml \
   --cluster-state cluster-state.yml --schema-package-integrity <sha256:...> --out composed/ \
-  [--held held/] [--pins pins.json] [--lock lock.json --lock-commit <commit>]
+  [--platform platform/] [--held held/] [--pins pins.json] [--lock lock.json --lock-commit <commit>]
 ```
 
 - **Exit status.** A command exits 0 when the inputs are accepted, 1 when they

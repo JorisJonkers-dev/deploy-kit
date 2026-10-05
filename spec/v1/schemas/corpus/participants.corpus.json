@@ -1,0 +1,106 @@
+{
+  "schema": "participants.schema.json",
+  "cases": [
+    {
+      "name": "a list with a default, an override and a dormant participant",
+      "verdict": "accept",
+      "instance": {
+        "participants": {
+          "jorisjonkers.dev": {
+            "dormant": true,
+            "owner": "joris",
+            "reason": "the Platform document changes when the platform does, not weekly",
+            "reviewBy": "2027-03-31"
+          },
+          "notes": {},
+          "media": {
+            "maxAge": "21d",
+            "reason": "releases batch with the upstream chart, roughly fortnightly"
+          }
+        }
+      }
+    },
+    {
+      "name": "a list that expects nobody",
+      "verdict": "accept",
+      "instance": {
+        "participants": {}
+      }
+    },
+    {
+      "name": "a field the model does not have",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "case": "a list with a default, an override and a dormant participant",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/participants/notes/repository",
+          "value": "JorisJonkers-dev/notes"
+        }
+      ]
+    },
+    {
+      "name": "a document with no list",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "case": "a list with a default, an override and a dormant participant",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/participants"
+        }
+      ]
+    },
+    {
+      "name": "an age written as a number",
+      "verdict": "refuse",
+      "breaks": "wrong-type",
+      "case": "a list with a default, an override and a dormant participant",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/participants/media/maxAge",
+          "value": 21
+        }
+      ]
+    },
+    {
+      "name": "a participant that is dormant: false",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "case": "a list with a default, an override and a dormant participant",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/participants/notes/dormant",
+          "value": false
+        }
+      ]
+    },
+    {
+      "name": "an age other than the default with no reason",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "case": "a list with a default, an override and a dormant participant",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/participants/media/reason"
+        }
+      ]
+    },
+    {
+      "name": "a dormant participant with no review date",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "case": "a list with a default, an override and a dormant participant",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/participants/jorisjonkers.dev/reviewBy"
+        }
+      ]
+    }
+  ]
+}

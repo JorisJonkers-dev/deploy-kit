@@ -111,6 +111,7 @@ describe("the published JSON Schemas", () => {
       "spec/v1/schemas/composition-lock.schema.json",
       "spec/v1/schemas/pin-annotations.schema.json",
       "spec/v1/schemas/cluster-state-snapshot.schema.json",
+      "spec/v1/schemas/participants.schema.json",
     ]);
   });
 

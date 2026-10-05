@@ -28,6 +28,7 @@ import {
   type Pin,
 } from "../application/compose-estate.ts";
 import { IMAGES_LOCK, shareOf } from "../application/images-lock-shares.ts";
+import { parseParticipants } from "../application/parse-participants.ts";
 import { parsePlatformIntent } from "../application/parse-platform-intent.ts";
 import { parseProjectIntent } from "../application/parse-project-intent.ts";
 import { canonicalJson } from "../infrastructure/canonical-json.ts";
@@ -62,14 +63,17 @@ const PLATFORM_DOCUMENT = "platform.intent.yml";
 const PROOF = "migration-proof.yml";
 const PLATFORM_INPUTS = ["node-contract.yml", "images.lock.yml"];
 const REF = "ref";
+/** When the fragment was published, written beside its reference by the workflow that pulled it. */
+const PUBLISHED = "published";
 
 export const USAGE_TEXT = `usage:
   deploy-kit validate <file|directory>... [--json]
   deploy-kit publish <project-file|platform.intent.yml> --repository <owner/name> --source-sha <sha> --version <x.y.z> --out <directory>
                      [--images-lock <file>] [--json]
-  deploy-kit compose --platform <directory> --fragments <directory> --cluster-state <file>
+  deploy-kit compose --fragments <directory> --participants <file> --cluster-state <file>
                      --schema-package-integrity <sha256:...> --out <directory>
-                     [--held <directory>] [--pins <file>] [--lock <file> --lock-commit <sha>] [--json]
+                     [--platform <directory>] [--held <directory>] [--pins <file>]
+                     [--lock <file> --lock-commit <sha>] [--json]
 `;
 
 /** The options every command reads, by name. */
@@ -86,6 +90,7 @@ const OPTIONS = {
   lock: { type: "string" },
   "lock-commit": { type: "string" },
   "cluster-state": { type: "string" },
+  participants: { type: "string" },
   "images-lock": { type: "string" },
   "schema-package-integrity": { type: "string" },
 } as const;
@@ -167,6 +172,26 @@ function fragmentAt(directory: string): Fragment | string {
   if (parsed?.success !== true || ref === undefined)
     return `${directory}: not a pulled fragment`;
   return { ref: ref.text.trim(), manifest: parsed.data, files };
+}
+
+/**
+ * When each fragment was published, by the project it declares, as the
+ * workflow that pulled it recorded beside its reference; or which says nothing.
+ */
+function publishTimes(
+  fragments: readonly Fragment[],
+): Record<string, string> | string {
+  const times: [string, string][] = [];
+  for (const { manifest, files } of fragments) {
+    // No file reads as a time no more than a file that holds none does.
+    const at = String(
+      files.find(({ name }) => name === PUBLISHED)?.text.trim(),
+    );
+    if (Number.isNaN(Date.parse(at)))
+      return `${manifest.spec.project}: no publish time recorded beside its reference`;
+    times.push([manifest.spec.project, at]);
+  }
+  return Object.fromEntries(times);
 }
 
 /** Every fragment directory below `root`, or why the first that is not one is not. */
@@ -350,13 +375,18 @@ function compose(values: Options, json: boolean, world: World): Outcome {
       ? "lock-commit"
       : absentOf(values, [
           "cluster-state",
-          "platform",
+          "participants",
           "fragments",
           "schema-package-integrity",
           "out",
         ]);
   if (absent !== undefined) return usage(`--${absent} is required`);
-  const platform = fragmentAt(given(values, "platform"));
+  // No --platform is a Platform document that published nothing, which the
+  // participants list refuses: it is not a call made wrongly.
+  const platform =
+    typeof values.platform === "string"
+      ? fragmentAt(values.platform)
+      : undefined;
   const fragments = fragmentsUnder(given(values, "fragments"));
   const held =
     // No --held and an empty directory hold no fragment alike.
@@ -366,12 +396,29 @@ function compose(values: Options, json: boolean, world: World): Outcome {
     (read) => typeof read === "string",
   );
   if (wrong !== undefined) return usage(wrong);
+  const published = publishTimes([
+    ...(platform === undefined ? [] : [platform as Fragment]),
+    ...(fragments as Fragment[]),
+  ]);
+  if (typeof published === "string") return usage(published);
+  const listed = given(values, "participants");
+  const participants = parseParticipants(readFileSync(listed, "utf8"));
+  if (!participants.ok)
+    return refused(
+      participants.diagnostics.map((diagnostic) => ({
+        ...diagnostic,
+        document: basename(listed),
+      })),
+      json,
+    );
   const pins = values.pins;
   const clusterState = given(values, "cluster-state");
   const result = composeEstate(
     {
-      platform: platform as Fragment,
+      platform: platform as Fragment | undefined,
       fragments: fragments as Fragment[],
+      participants: participants.value,
+      published,
       held: held as Fragment[],
       pins:
         typeof pins === "string"

@@ -223,12 +223,19 @@ composes as if nothing happened.
   the error is about that participant alone, so it is the one held back. A
   toolkit upgrade that no participant's version accepts therefore holds every
   Project still and fails nothing, until each republishes.
+- **A fragment nobody expected is left out.** A fragment whose project the
+  participants list does not name is `E_PARTICIPANT_UNLISTED`: it is isolated
+  and not composed at all, whether or not its Project composed before. Nobody
+  joins the estate by publishing; the list is the admission
+  ([Participants](#participants)).
 - **A dependant is isolated in turn.** A fragment whose reference resolves only
   against an isolated fragment's new content fails its own reference check on the
   next pass and is isolated too.
-- **Some errors still fail the run.** A refused Platform document, and an error
-  between fragments that names no changed one (a collision the toolkit or the
-  Platform document caused), stop the composition: there is nothing to isolate, and no pin moves.
+- **Some errors still fail the run.** A refused Platform document, one that is
+  missing, stale or unlisted, a dormant participant past its review date, and an
+  error between fragments that names no changed one (a collision the toolkit or
+  the Platform document caused), stop the composition: there is nothing to
+  isolate, and no pin moves.
 - **A Project that has never composed** has no earlier fragment to stay at. It is
   left out of the render and its handover waits; it was not delivered, so
   nothing is pruned.
@@ -463,6 +470,7 @@ Three points of precision, all following from the grant unit being the path
 |---|---|
 | every expected participant resolves | `E_PARTICIPANT_MISSING` |
 | every participant's publish is within its `maxAge` | `E_PARTICIPANT_STALE` |
+| every fragment composed is of a project the participants list names | `E_PARTICIPANT_UNLISTED` |
 | reachability equals derived ∪ registered exactly | `E_UNREGISTERED_SURFACE` |
 | every live object is attributable or ledgered (chapter 30) | `E_UNATTRIBUTED_OBJECT` |
 | every ledger entry still matches something | `E_LEDGER_ENTRY_STALE` |
@@ -501,19 +509,39 @@ project file out of a repository that still publishes its others is
 
 ```yaml
 participants:
-  intent-nodes:      {}          # maxAge defaults to 7d
-  intent-data:       {}
-  intent-knowledge:  {}
-  intent-agents:     {}
-  intent-media:
+  jorisjonkers.dev:                # the Platform document, under its own project
+    dormant: true
+    owner: joris
+    reason: changes when the platform does, not weekly
+    reviewBy: 2027-03-31
+  data:          {}                # maxAge defaults to 7d
+  knowledge:     {}
+  agents:        {}
+  media:
     maxAge: 21d
     reason: releases batch with the upstream chart, roughly fortnightly
-  intent-observability:
+  observability:
     dormant: true
     owner: joris
     reason: stable since 2026-03; no declaration change expected before v1
     reviewBy: 2026-11-30
 ```
+
+**An entry is keyed by the project's name**, the one its fragment declares, and
+the Platform document's by its own `metadata.project`. So a fragment is matched
+to its entry by what it says it is, and one that says a name the list does not
+hold is `E_PARTICIPANT_UNLISTED`
+([A refused Project is isolated](#a-refused-project-is-isolated)). What a
+fragment says it is has to be what it carries: a fragment published as one
+project whose own project file declares another is not the participant the list
+admitted, and is `E_PARTICIPANT_UNLISTED` as well, since what composes is what
+the files declare.
+
+**When a fragment was published is not in the fragment.** A fragment is
+deterministic: packing the same inputs twice gives one digest, so it carries no
+time. The workflow that pulls it records the time beside the reference it
+resolved, from the registry's own record of the push, and composition reads
+staleness from there against the one clock reading of its run.
 
 **`maxAge` defaults to 7 days.** The number is measured, not chosen for
 roundness: `CHANGELOG.md` records 26 releases between 2026-06-09 and 2026-08-20 (
@@ -526,7 +554,7 @@ an override without one is a build error.
 
 `dormant: true` is the separate exemption and is a Bidirectional Ledger entry
 like any other (chapter 30): owner, reason, review date, and a date in the past
-fails the build. It exempts a participant from `maxAge` **and from nothing
+fails the build, `E_LEDGER_REVIEW_OVERDUE`. It exempts a participant from `maxAge` **and from nothing
 else**: a dormant fragment still unions, still satisfies every invariant above,
 and still has to sit inside the accepted version range below. A project nobody is
 otherwise touching must therefore still be republished when the model moves.
@@ -766,10 +794,12 @@ spec:
       sourceSha: 22b9d33…             # the full 40-digit commit
       inputsSha: 84021c5…             # 64 hex digits, no algorithm prefix
     intent-data: {…}
-  isolated:                           # Projects composed at an earlier fragment
+  isolated:                           # Projects that stayed where they were
     data:
       refused: ghcr.io/jorisjonkers-dev/intent-data@sha256:…
       codes: [E_DUPLICATE_HOST]
+    media:                            # published nothing: no fragment to name
+      codes: [E_PARTICIPANT_MISSING]
   clusterStateDigest: sha256:…        # the pinned snapshot, chapter 20
 ```
 

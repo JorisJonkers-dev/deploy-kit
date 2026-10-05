@@ -127,9 +127,33 @@ const OPTIONS = {
 
 const RELEASES = Object.keys(PROJECTS).map((project) => release(project));
 
+/**
+ * A participants list that expects exactly these fragments and the Platform
+ * document's, each published as the composition runs.
+ */
+const expecting = (
+  fragments: readonly Fragment[],
+  platform: Fragment = PLATFORM,
+): Pick<ComposeInput, "participants" | "published"> => {
+  const projects = [platform, ...fragments].map(
+    ({ manifest }) => manifest.spec.project,
+  );
+  return {
+    participants: {
+      participants: Object.fromEntries(projects.map((name) => [name, {}])),
+    },
+    published: Object.fromEntries(
+      projects.map((name) => [name, OPTIONS.generatedAt]),
+    ),
+  };
+};
+
+const EXPECTED = expecting(RELEASES);
+
 function compose(input: Partial<ComposeInput> = {}): Composition {
   const result = composeEstate(
     {
+      ...EXPECTED,
       platform: PLATFORM,
       fragments: RELEASES,
       held: [],
@@ -486,6 +510,7 @@ describe("composeEstate", () => {
     const unchangedButBroken = release("notes", "1.0.0", broken);
     const result = composeEstate(
       {
+        ...EXPECTED,
         platform: PLATFORM,
         fragments: RELEASES.map((fragment) =>
           fragment.manifest.spec.project === "notes"
@@ -536,6 +561,7 @@ describe("composeEstate", () => {
     });
     const result = composeEstate(
       {
+        ...EXPECTED,
         platform: PLATFORM,
         fragments: RELEASES,
         held: [],
@@ -556,6 +582,7 @@ describe("composeEstate", () => {
   it("fails the run on a refused Platform document, which nothing isolates", () => {
     const result = composeEstate(
       {
+        ...EXPECTED,
         platform: {
           ...PLATFORM,
           files: PLATFORM.files.map((file) =>
@@ -622,6 +649,367 @@ describe("composeEstate", () => {
       "observability",
       "secrets",
     ]);
+  });
+});
+
+// REQ-050 (docs/requirements.md): composition reads the participants list, and
+// a participant's own standing isolates it before the union is composed
+// (spec/v1/40-composition.md#participants).
+describe("composeEstate, against the participants list", () => {
+  const notes = (composition: Composition) => ({
+    locked: composition.lock.spec.fragments["notes"]?.ref,
+    isolated: composition.lock.spec.isolated?.["notes"],
+    moves: composition.artifacts.find(({ name }) => name === "notes")?.moves,
+  });
+  const NOTES = RELEASES.find(
+    ({ manifest }) => manifest.spec.project === "notes",
+  ) as Fragment;
+  const others = RELEASES.filter((fragment) => fragment !== NOTES);
+  const publishedAt = (time: string) => ({
+    published: { ...EXPECTED.published, notes: time },
+  });
+  const listing = (entry: Record<string, unknown>) => ({
+    participants: {
+      participants: { ...EXPECTED.participants.participants, notes: entry },
+    },
+  });
+  const refused = (input: Partial<ComposeInput>) => {
+    const result = composeEstate(
+      {
+        ...EXPECTED,
+        platform: PLATFORM,
+        fragments: RELEASES,
+        held: [],
+        pins: {},
+        clusterState: {
+          name: "cluster-state.yml",
+          text: text("platform/cluster-state.yml"),
+        },
+        ...input,
+      },
+      OPTIONS,
+    );
+    return result.ok
+      ? []
+      : result.diagnostics.map(
+          ({ code, document, path, message }) =>
+            `${code} ${String(document)} ${path} ${message}`,
+        );
+  };
+
+  it("holds a participant that published nothing at the fragment it last composed at, and records no fragment for it", () => {
+    const composed = after({ fragments: others });
+
+    expect(notes(composed)).toStrictEqual({
+      locked: NOTES.ref,
+      isolated: { codes: ["E_PARTICIPANT_MISSING"] },
+      moves: false,
+    });
+    expect(
+      composed.conditions.find(({ project }) => project === "notes"),
+    ).toStrictEqual({
+      project: "notes",
+      condition: "isolated",
+      title: "notes: no fragment published",
+      body: "The participants list expects notes, and it published no fragment: E_PARTICIPANT_MISSING. notes stays at the fragment it last composed at, and its pin does not move until a release composes.",
+      discord: "notes published no fragment: E_PARTICIPANT_MISSING",
+    });
+    // No commit published it, so no commit is told.
+    expect(
+      composed.statuses.filter(({ repository }) =>
+        repository.endsWith("/notes"),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("leaves a participant that published nothing and never composed out of the render, and still records it", () => {
+    const composed = compose({ fragments: others });
+
+    expect(notes(composed)).toStrictEqual({
+      locked: undefined,
+      isolated: { codes: ["E_PARTICIPANT_MISSING"] },
+      moves: undefined,
+    });
+  });
+
+  it("holds a participant whose newest publish is older than seven days, to the second", () => {
+    // Seven days before the run, to the second, is still within the bound.
+    expect(
+      notes(after(publishedAt("2026-09-25T09:00:00Z"))).isolated,
+    ).toBeUndefined();
+
+    const stale = after({ ...publishedAt("2026-09-25T08:59:59Z"), held: [] });
+
+    // The stale fragment is the one it last composed at, so it stays there
+    // with nothing held handed over.
+    expect(notes(stale)).toStrictEqual({
+      locked: NOTES.ref,
+      isolated: { refused: NOTES.ref, codes: ["E_PARTICIPANT_STALE"] },
+      moves: false,
+    });
+    expect(
+      stale.statuses.find(({ repository }) => repository.endsWith("/notes"))
+        ?.description,
+    ).toBe("notes 1.0.0 isolated: E_PARTICIPANT_STALE");
+  });
+
+  it("holds a stale participant's newer fragment back, at the one it last composed at", () => {
+    const newer = release("notes", "1.1.0", (body) =>
+      body.replace("memory: 256Mi", "memory: 512Mi"),
+    );
+    const composed = after({
+      fragments: [newer, ...others],
+      ...publishedAt("2026-09-01T09:00:00Z"),
+    });
+
+    expect(notes(composed)).toStrictEqual({
+      locked: NOTES.ref,
+      isolated: { refused: newer.ref, codes: ["E_PARTICIPANT_STALE"] },
+      moves: false,
+    });
+  });
+
+  it("leaves a stale participant that never composed out of the render", () => {
+    expect(notes(compose(publishedAt("2026-09-01T09:00:00Z")))).toStrictEqual({
+      locked: undefined,
+      isolated: { refused: NOTES.ref, codes: ["E_PARTICIPANT_STALE"] },
+      moves: undefined,
+    });
+  });
+
+  it("reads a participant's own age where its entry states one, and none where it is dormant", () => {
+    const old = publishedAt("2026-09-12T09:00:00Z");
+    const explained = { maxAge: "21d", reason: "releases batch fortnightly" };
+
+    // Twenty days old: past the default, within its own bound.
+    expect(
+      notes(after({ ...old, ...listing(explained) })).isolated,
+    ).toBeUndefined();
+    expect(
+      notes(
+        after({
+          ...publishedAt("2026-09-11T08:59:59Z"),
+          ...listing(explained),
+        }),
+      ).isolated,
+    ).toStrictEqual({ refused: NOTES.ref, codes: ["E_PARTICIPANT_STALE"] });
+    // Dormant exempts it from its age, with no publish time read at all.
+    expect(
+      notes(
+        after({
+          published: Object.fromEntries(
+            Object.entries(EXPECTED.published).filter(
+              ([project]) => project !== "notes",
+            ),
+          ),
+          ...listing({
+            dormant: true,
+            owner: "joris",
+            reason: "stable",
+            reviewBy: "2026-10-02",
+          }),
+        }),
+      ).isolated,
+    ).toBeUndefined();
+  });
+
+  it("leaves a fragment the list does not name out of the render, though its Project composed before", () => {
+    const { notes: _dropped, ...listed } = EXPECTED.participants.participants;
+    const composed = after({ participants: { participants: listed } });
+
+    expect(notes(composed)).toStrictEqual({
+      locked: undefined,
+      isolated: { refused: NOTES.ref, codes: ["E_PARTICIPANT_UNLISTED"] },
+      moves: undefined,
+    });
+    expect(
+      composed.statuses.find(({ repository }) => repository.endsWith("/notes")),
+    ).toMatchObject({
+      state: "failure",
+      description: "notes 1.0.0 isolated: E_PARTICIPANT_UNLISTED",
+    });
+  });
+
+  it("reads the list for an entry of its own, so a project named for something every object has is not listed", () => {
+    // `constructor` is a name every plain object answers to.
+    const named = {
+      ...NOTES,
+      ref: NOTES.ref.replace("/notes@", "/constructor@"),
+      manifest: {
+        ...NOTES.manifest,
+        spec: { ...NOTES.manifest.spec, project: "constructor" },
+      },
+      files: NOTES.files.map(({ name, text: body }) => ({
+        name,
+        text: body.replace("project: notes", "project: constructor"),
+      })),
+    };
+    const composed = compose({
+      fragments: [named, ...others],
+      participants: EXPECTED.participants,
+      published: EXPECTED.published,
+    });
+
+    expect(composed.lock.spec.isolated?.["constructor"]).toStrictEqual({
+      refused: named.ref,
+      codes: ["E_PARTICIPANT_UNLISTED"],
+    });
+    expect(Object.keys(composed.lock.spec.fragments)).not.toContain(
+      "constructor",
+    );
+  });
+
+  it("holds a fragment to the project its own files declare: one published as a listed project and declaring another is not that participant", () => {
+    const disguised = {
+      ...NOTES,
+      files: NOTES.files.map(({ name, text: body }) => ({
+        name,
+        text: body.replace("project: notes", "project: kube"),
+      })),
+    };
+    const composed = after({ fragments: [disguised, ...others] });
+
+    expect(notes(composed)).toStrictEqual({
+      locked: undefined,
+      isolated: { refused: NOTES.ref, codes: ["E_PARTICIPANT_UNLISTED"] },
+      moves: undefined,
+    });
+    expect(composed.artifacts.map(({ name }) => name)).not.toContain("kube");
+  });
+
+  it("holds the Platform document's fragment to the project its own document declares", () => {
+    expect(
+      refused({
+        platform: {
+          ...PLATFORM,
+          files: PLATFORM.files.map((file) =>
+            file.name === "platform.intent.yml"
+              ? {
+                  ...file,
+                  text: file.text.replace(
+                    "project: jorisjonkers.dev",
+                    "project: elsewhere.example",
+                  ),
+                }
+              : file,
+          ),
+        },
+      }),
+    ).toStrictEqual([
+      "E_PARTICIPANT_UNLISTED participants.yml /participants the Platform document's fragment, jorisjonkers.dev, cannot be composed with: E_PARTICIPANT_UNLISTED",
+    ]);
+  });
+
+  it("reads a publish time for an entry of its own, too", () => {
+    const named = {
+      ...NOTES,
+      manifest: {
+        ...NOTES.manifest,
+        spec: { ...NOTES.manifest.spec, project: "constructor" },
+      },
+      files: NOTES.files.map(({ name, text: body }) => ({
+        name,
+        text: body.replace("project: notes", "project: constructor"),
+      })),
+    };
+
+    expect(() =>
+      compose({
+        fragments: [named, ...others],
+        participants: {
+          participants: {
+            ...EXPECTED.participants.participants,
+            constructor: {},
+          },
+        },
+        published: EXPECTED.published,
+      }),
+    ).toThrow(
+      "constructor: a fragment whose publish time the caller did not supply",
+    );
+  });
+
+  it("records every isolated Project in name order, whatever order they were found in", () => {
+    const { data: _dropped, ...listed } = EXPECTED.participants.participants;
+    const composed = compose({
+      fragments: others,
+      participants: { participants: listed },
+    });
+
+    expect(Object.keys(composed.lock.spec.isolated ?? {})).toStrictEqual([
+      "data",
+      "notes",
+    ]);
+  });
+
+  it("stops the run where the Platform document published nothing, is stale, or is not listed", () => {
+    expect(refused({ platform: undefined })).toStrictEqual([
+      "E_PARTICIPANT_MISSING participants.yml /participants the Platform document published no fragment",
+    ]);
+    expect(
+      refused({
+        published: {
+          ...EXPECTED.published,
+          "jorisjonkers.dev": "2026-09-01T09:00:00Z",
+        },
+      }),
+    ).toStrictEqual([
+      "E_PARTICIPANT_STALE participants.yml /participants the Platform document's fragment, jorisjonkers.dev, cannot be composed with: E_PARTICIPANT_STALE",
+    ]);
+    const { "jorisjonkers.dev": _dropped, ...listed } =
+      EXPECTED.participants.participants;
+    expect(refused({ participants: { participants: listed } })).toStrictEqual([
+      "E_PARTICIPANT_UNLISTED participants.yml /participants the Platform document's fragment, jorisjonkers.dev, cannot be composed with: E_PARTICIPANT_UNLISTED",
+    ]);
+  });
+
+  it("stops the run where a dormant participant is past its review, and not on the day of it", () => {
+    const dormant = (reviewBy: string) =>
+      listing({ dormant: true, owner: "joris", reason: "stable", reviewBy });
+
+    expect(refused(dormant("2026-10-01"))).toStrictEqual([
+      "E_LEDGER_REVIEW_OVERDUE participants.yml /participants/notes/reviewBy notes is dormant until a review on 2026-10-01, which has passed",
+    ]);
+    expect(refused(dormant("2026-10-02"))).toStrictEqual([]);
+  });
+
+  it("says how to clear what stops the run", () => {
+    const result = composeEstate(
+      {
+        ...EXPECTED,
+        ...listing({
+          dormant: true,
+          owner: "joris",
+          reason: "stable",
+          reviewBy: "2026-01-01",
+        }),
+        platform: undefined,
+        fragments: RELEASES,
+        held: [],
+        pins: {},
+        clusterState: { name: "cluster-state.yml", text: "" },
+      },
+      OPTIONS,
+    );
+
+    expect(
+      result.ok ? [] : result.diagnostics.map(({ hint }) => hint),
+    ).toStrictEqual([
+      "Review the participant: set a later date with its reason, or drop `dormant`.",
+      "No render is composed without a current, listed Platform document: publish it, or correct its entry.",
+    ]);
+  });
+
+  it("asks for the publish time of every fragment whose age it reads", () => {
+    expect(() =>
+      compose({
+        published: Object.fromEntries(
+          Object.entries(EXPECTED.published).filter(
+            ([project]) => project !== "notes",
+          ),
+        ),
+      }),
+    ).toThrow("notes: a fragment whose publish time the caller did not supply");
   });
 });
 
@@ -775,6 +1163,7 @@ describe("composeEstate, over the fragments' shares of the images lock", () => {
     };
     const result = composeEstate(
       {
+        ...EXPECTED,
         platform: moved,
         fragments: [shared, ...others],
         held: [shared, ...others],
@@ -812,6 +1201,7 @@ describe("composeEstate, over the fragments' shares of the images lock", () => {
     });
     const result = composeEstate(
       {
+        ...EXPECTED,
         platform: {
           ...PLATFORM,
           files: PLATFORM.files
@@ -917,6 +1307,7 @@ describe("composeEstate, over the fragments' shares of the images lock", () => {
   it("fails the run on a Platform document's lock that cannot be read", () => {
     const result = composeEstate(
       {
+        ...EXPECTED,
         platform: {
           ...PLATFORM,
           files: PLATFORM.files.map((file) =>
@@ -945,6 +1336,7 @@ describe("composeEstate, over the fragments' shares of the images lock", () => {
   it("composes with no lock beside the Platform document, every alias then unlocked", () => {
     const result = composeEstate(
       {
+        ...EXPECTED,
         platform: {
           ...PLATFORM,
           files: PLATFORM.files.filter(

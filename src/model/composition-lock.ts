@@ -29,9 +29,11 @@ const lockedFragment = z
   })
   .meta({ id: "LockedFragment" });
 
+// Why a Project stayed where it was. `refused` is the fragment composition
+// would not take; a participant that published none has none to name.
 const isolation = z
   .strictObject({
-    refused: reference,
+    refused: reference.exactOptional(),
     codes: z.array(z.string().regex(/^E_[A-Z0-9_]+$/)).min(1),
   })
   .meta({ id: "Isolation" });
