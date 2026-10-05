@@ -20,7 +20,11 @@ import {
   managedOnly,
   namespaceSelector,
 } from "../shared/labels.ts";
-import { applicationDirectory, projectDirectory } from "../shared/paths.ts";
+import {
+  applicationDirectory,
+  projectDirectory,
+  SECRETS_DIRECTORY,
+} from "../shared/paths.ts";
 
 export const ADAPTER = "networking";
 
@@ -185,7 +189,7 @@ export function renderPolicyJobPolicy(job: ResolvedPolicyJob): Deliverable {
     },
   };
   return {
-    path: "apps/vso-secrets/networkpolicy.yaml",
+    path: `${SECRETS_DIRECTORY}/networkpolicy.yaml`,
     adapter: ADAPTER,
     objects: [policy],
   };

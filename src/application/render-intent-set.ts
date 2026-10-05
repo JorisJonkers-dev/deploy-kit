@@ -9,6 +9,10 @@ import {
   type Adapter,
 } from "../adapters/registry.ts";
 import { renderPolicyJobPolicy } from "../adapters/networking/render.ts";
+import {
+  ESTATE_DIRECTORY,
+  SECRETS_DIRECTORY,
+} from "../adapters/shared/paths.ts";
 import { documentsOf, renderPolicyJob } from "../adapters/vault-policy/job.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { Hasher } from "../model/hasher.ts";
@@ -48,7 +52,7 @@ export interface RenderedArtifact {
 }
 
 /** The estate-scoped paths, which the `_estate` artifact publishes (spec/v1/55-delivery.md#rendered-artifacts-and-pins). */
-const ESTATE_SCOPED = /^apps\/(edge|vso-secrets)\//;
+const ESTATE_SCOPED = `${ESTATE_DIRECTORY}/`;
 const ESTATE = "_estate";
 
 export function collisions(deliverables: readonly Deliverable[]): Diagnostic[] {
@@ -82,7 +86,7 @@ export function renderIntentSet(
 }
 
 /** Where every Vault document lands: what the Vault policy job is handed. */
-const VAULT_DOCUMENTS = "apps/vso-secrets/policies/";
+const VAULT_DOCUMENTS = `${SECRETS_DIRECTORY}/policies/`;
 
 /**
  * The Vault policy job of one render
@@ -137,7 +141,7 @@ export function renderResolvedSet(
 
   const artifacts = new Map<string, RenderedFile[]>();
   for (const { path, adapter, objects } of deliverables) {
-    const name = ESTATE_SCOPED.test(path)
+    const name = path.startsWith(ESTATE_SCOPED)
       ? ESTATE
       : (path.split("/")[1] as string);
     artifacts.set(name, [

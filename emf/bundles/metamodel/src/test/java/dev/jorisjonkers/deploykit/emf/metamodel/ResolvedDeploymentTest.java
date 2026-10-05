@@ -276,8 +276,8 @@ class ResolvedDeploymentTest {
                         "apps/notes/notes/configmap.yaml",
                         "apps/notes/notes/podmonitor.yaml",
                         "apps/notes/notes/networkpolicy.yaml",
-                        "apps/edge/public-frankfurt/notes-public.yaml",
-                        "apps/edge/public-frankfurt/kustomization.yaml");
+                        "estate/edge/public-frankfurt/notes-public.yaml",
+                        "estate/edge/public-frankfurt/kustomization.yaml");
     }
 
     @Test
@@ -297,7 +297,7 @@ class ResolvedDeploymentTest {
                         .toList());
     }
 
-    private static final String ESTATE_SCOPED = "apps/edge/";
+    private static final String ESTATE_SCOPED = "estate/";
 
     private static Set<String> yamlUnder(Path rendered) throws IOException {
         try (var files = Files.walk(rendered)) {

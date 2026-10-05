@@ -42,12 +42,12 @@ class EstateTest {
             ResolvedGrant grant = MODEL.createResolvedGrant();
             grant.setPath("secret/data/platform/" + identity);
             VaultPolicyFile policy = MODEL.createVaultPolicyFile();
-            policy.setPath("apps/vso-secrets/policies/data-system-" + identity + ".policy.json");
+            policy.setPath("estate/vso-secrets/policies/data-system-" + identity + ".policy.json");
             policy.setNamespace("data-system");
             policy.setIdentity(identity);
             policy.getGrants().add(grant);
             VaultRoleFile role = MODEL.createVaultRoleFile();
-            role.setPath("apps/vso-secrets/policies/data-system-" + identity + ".role.json");
+            role.setPath("estate/vso-secrets/policies/data-system-" + identity + ".role.json");
             role.setNamespace("data-system");
             role.setIdentity(identity);
             deployment.getDeliverables().addAll(List.of(policy, role));
@@ -75,12 +75,12 @@ class EstateTest {
                 .extracting(Deliverable::getPath, Deliverable::getAdapter)
                 .containsExactly(
                         org.assertj.core.groups.Tuple.tuple(
-                                "apps/vso-secrets/configmap.yaml", AdapterName.VAULT_POLICY),
-                        org.assertj.core.groups.Tuple.tuple("apps/vso-secrets/job.yaml", AdapterName.VAULT_POLICY),
+                                "estate/vso-secrets/configmap.yaml", AdapterName.VAULT_POLICY),
+                        org.assertj.core.groups.Tuple.tuple("estate/vso-secrets/job.yaml", AdapterName.VAULT_POLICY),
                         org.assertj.core.groups.Tuple.tuple(
-                                "apps/vso-secrets/serviceaccount.yaml", AdapterName.VAULT_POLICY),
+                                "estate/vso-secrets/serviceaccount.yaml", AdapterName.VAULT_POLICY),
                         org.assertj.core.groups.Tuple.tuple(
-                                "apps/vso-secrets/networkpolicy.yaml", AdapterName.NETWORKING));
+                                "estate/vso-secrets/networkpolicy.yaml", AdapterName.NETWORKING));
         // Both projects' documents, in name order, each as canonical JSON.
         assertThat(files.get(0).getDocuments())
                 .extracting(PolicyDocument::getFile, PolicyDocument::getJson)
@@ -115,7 +115,7 @@ class EstateTest {
                         .toList())
                 .singleElement()
                 .satisfies(index -> {
-                    assertThat(index.getPath()).isEqualTo("apps/vso-secrets/kustomization.yaml");
+                    assertThat(index.getPath()).isEqualTo("estate/vso-secrets/kustomization.yaml");
                     assertThat(index.getResources())
                             .containsExactly("configmap.yaml", "job.yaml", "serviceaccount.yaml");
                 });

@@ -45,7 +45,7 @@ The derivation is available and exact, because the fourteen-node Flux
 `apps-knowledge` depends on `apps-data` because `knowledge` depends on
 `platform-postgres` and `platform-rabbitmq`; `apps-agents` depends on
 `apps-knowledge` because the agent applications consume `knowledge`, and on
-`apps-vso-secrets` because they claim credentials
+`estate-vso-secrets` because they claim credentials
 ([0012](0012-shared-intent-descends-and-is-lowered.md)); everything depends on
 `apps-core`.
 The derived unit has one consumer: delivery writes one Flux `Kustomization`
@@ -57,7 +57,7 @@ in order ([0050](0050-delivery-is-part-of-the-model.md)).
 |---|---|---|
 | Keep `platform.layer` as the declaration | ~30 repositories re-author the field, and a validator must check each value against the live graph on every change | It was wrong in 100% of observed cases, and it is not merely wrong but inexpressible for `agents-login`, which spans two units |
 | Declare the units centrally in one hand-maintained file (the v2 state) | Every new Application and every new dependency needs a second edit in `fleet-infra`, in a file no Application owner owns; the fourteen nodes stay hand-kept | Two records of one fact drift; the ordering is already implied by `dependsOn` and Claims, so the central copy is a transcription with no independent authority |
-| Derive from `dependsOn` only, ignoring Claims | Loses the `apps-agents` → `apps-vso-secrets` edge: agent processes apply before the Secrets their Claims provision exist, and crash-loop until the next reconcile | A Claim is an ordering edge: a Process cannot start before the credential it claims is materialised |
+| Derive from `dependsOn` only, ignoring Claims | Loses the `apps-agents` → `estate-vso-secrets` edge: agent processes apply before the Secrets their Claims provision exist, and crash-loop until the next reconcile | A Claim is an ordering edge: a Process cannot start before the credential it claims is materialised |
 
 ## Reversibility
 Undo cost today: reintroduce `platform.layer` into the Project Intent schema and
@@ -79,7 +79,9 @@ own output, the uniform `apps-core` string is not a fallback to restore.
   that provisions secrets follows the Secret Store's project, and each tier's
   routes are one unit, which follows the tier's proxy and every project it
   serves. One unit per tier, so a refused route holds its own tier and no
-  other.
+  other. They are named `estate-`, never `apps-`: the `apps-` names are a
+  function of the Project's name alone, so a Project may be called `edge` or
+  `vso-secrets` and still own the one unit that name gives it.
 - The fourteen-node graph stops being hand-maintained and is rendered, paid by
   the platform owner once, in the renderer.
 - `layer` leaving the cluster-state `required` list is a breaking change for the

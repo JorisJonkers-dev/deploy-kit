@@ -12,6 +12,7 @@ import {
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import { edgeUnitOf, SECRETS_UNIT, unitOf } from "../model/reconcile-units.ts";
 import type { ResolvedProject } from "../model/resolution.ts";
+import { SECRETS_DIRECTORY, tierDirectory } from "../adapters/shared/paths.ts";
 import type { RenderedFile, Serializer } from "./render-intent-set.ts";
 
 /** One pin source: the artifact it pins, and the file the Estate repository commits for it. */
@@ -29,9 +30,7 @@ interface Artifact {
 
 const ESTATE = "_estate";
 const INDEX = "/kustomization.yaml";
-const SECRETS = "apps/vso-secrets";
-/** Where each tier's routes land, by the tier's name. */
-const EDGE = "apps/edge/";
+const SECRETS = SECRETS_DIRECTORY;
 
 // Unit names are distinct within the list they sort, so `<=` would order the
 // same list.
@@ -84,10 +83,10 @@ function unitsOf(
     files.some(({ path }) => path === `${directory}${INDEX}`);
   return [
     ...platform.tiers
-      .filter((tier) => indexed(`${EDGE}${tier.name}`))
+      .filter((tier) => indexed(tierDirectory(tier.name)))
       .map((tier): SourceUnit => ({
         name: edgeUnitOf(tier.name),
-        path: `${EDGE}${tier.name}`,
+        path: tierDirectory(tier.name),
         // A route needs its tier's proxy and its own Project's namespace:
         // every Project the tier serves, delivered already or not, since the
         // file is written once.

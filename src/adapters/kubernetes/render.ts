@@ -711,7 +711,7 @@ export function kustomizationsFor(paths: readonly string[]): Deliverable[] {
   // An Application's directory is applied by its project's.
   for (const directory of [...listed.keys()]) {
     const parent = directory.slice(0, directory.lastIndexOf("/"));
-    if (/^apps\/[^/]+$/.test(parent) && parent !== "apps/edge")
+    if (/^apps\/[^/]+$/.test(parent))
       list(parent, directory.slice(parent.length + 1));
   }
   // The render sorts every artifact's files, so the order here decides nothing.

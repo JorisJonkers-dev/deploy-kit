@@ -14,7 +14,7 @@ transformation estate(inout rendered : RD)
 	access library Hashing;
 
 -- The estate-wide directory the job's objects land in, beside the documents.
-property DIRECTORY : String = 'apps/vso-secrets/';
+property DIRECTORY : String = 'estate/vso-secrets/';
 
 -- How many hex digits of the documents' digest the job's name carries, after
 -- the algorithm a digest opens with.

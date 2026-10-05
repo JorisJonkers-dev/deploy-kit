@@ -36,6 +36,16 @@ only because the adapter owns the path rather than the Application. Under an
 adapter-computed path both outcomes are accidents; under a plan both are
 assignments with an owner.
 
+The plan keeps two roots that never meet. A Project's share is everything
+under `apps/<project>/`, and what is estate-scoped (a tier's routes, the Vault
+documents and the job that writes them) is under `estate/`. While the
+estate-scoped directories sat under `apps/` beside the Projects', the
+directory `apps/edge/` was both the routes' and the directory of a Project
+named `edge`, and the estate has one: its whole render was attributed to the
+estate-scoped artifact, and the Project could never be published or pinned as
+itself. A path's first segment now says whose it is, with no name a Project
+has to avoid.
+
 Moving authority up also moves a check earlier. `E_PATH_COLLISION` has zero
 occurrences under `src/` today while the writer applies each prepared file in
 turn, two adapters sharing a path both write, second wins, silently, both
@@ -55,6 +65,7 @@ not let one Adapter write into another's.
 |---|---|---|
 | Keep the path a function of the adapter and the object | No spec edit; matches the sentence chapter 30 already carries | Leaves the per-project object and the estate-scoped Deliverable unresolvable, and keeps collision detection at the writer, where it has never existed |
 | A layout policy module consulted by both layers | An explicit seam, testable alone | A component holding decisions while sitting outside the three layers is the unnamed middle the three-model pipeline exists to prevent, and it would own authority no chapter assigns it |
+| Keep the estate-scoped directories under `apps/`, and reserve their names | No path moves; `edge` and `vso-secrets` join the names no Project may take | The estate's own edge Project is named `edge`, so the reservation refuses a name already in use, and every later estate-scoped directory reserves another |
 | Let the writer resolve collisions by precedence | Nothing to design; deterministic given an order | Encodes authority as evaluation order, which is invisible in every artifact a reviewer reads, and makes adding an adapter a change to what an existing one emits |
 
 ## Reversibility

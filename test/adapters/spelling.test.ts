@@ -875,7 +875,7 @@ describe("the kustomizations", () => {
         "apps/notes/notes/workload.yaml",
         "apps/notes/notes/networkpolicy.yaml",
         "apps/notes/notes/deeper/nested.yaml",
-        "apps/edge/public-frankfurt/notes-public.yaml",
+        "estate/edge/public-frankfurt/notes-public.yaml",
         "xapps/notes/stray.yaml",
         "x/apps/notes/sub/deep.yaml",
       ]).map(({ path, objects }) => [
@@ -888,7 +888,7 @@ describe("the kustomizations", () => {
       "apps/notes/kustomization.yaml": ["namespace.yaml", "notes"],
       "apps/notes/notes/kustomization.yaml": ["workload.yaml"],
       "apps/notes/notes/deeper/kustomization.yaml": ["nested.yaml"],
-      "apps/edge/public-frankfurt/kustomization.yaml": ["notes-public.yaml"],
+      "estate/edge/public-frankfurt/kustomization.yaml": ["notes-public.yaml"],
       "xapps/notes/kustomization.yaml": ["stray.yaml"],
       "x/apps/notes/sub/kustomization.yaml": ["deep.yaml"],
     });
@@ -1092,8 +1092,8 @@ describe("the vault-policy adapter", () => {
     const rendered = policy(GRANT);
 
     expect(rendered.map(({ path }) => path)).toStrictEqual([
-      "apps/vso-secrets/policies/notes-system-notes-api.policy.json",
-      "apps/vso-secrets/policies/notes-system-notes-api.role.json",
+      "estate/vso-secrets/policies/notes-system-notes-api.policy.json",
+      "estate/vso-secrets/policies/notes-system-notes-api.role.json",
     ]);
     expect(objectsAt(rendered, "role.json")).toStrictEqual([
       {
@@ -1124,11 +1124,11 @@ describe("the vault-policy adapter", () => {
     ).toStrictEqual([
       [
         "E_PATH_COLLISION",
-        "apps/vso-secrets/policies/a-system-system-c.policy.json is claimed by vault-policy and vault-policy",
+        "estate/vso-secrets/policies/a-system-system-c.policy.json is claimed by vault-policy and vault-policy",
       ],
       [
         "E_PATH_COLLISION",
-        "apps/vso-secrets/policies/a-system-system-c.role.json is claimed by vault-policy and vault-policy",
+        "estate/vso-secrets/policies/a-system-system-c.role.json is claimed by vault-policy and vault-policy",
       ],
     ]);
   });

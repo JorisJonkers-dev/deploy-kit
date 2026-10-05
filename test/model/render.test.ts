@@ -124,16 +124,17 @@ describe("renderIntentSet", () => {
     const jobFiles = (paths: readonly string[]) =>
       paths.filter(
         (path) =>
-          path.startsWith("apps/vso-secrets/") && !path.includes("/policies/"),
+          path.startsWith("estate/vso-secrets/") &&
+          !path.includes("/policies/"),
       );
 
     it("is rendered beside the documents it writes, with its own policy and an index that applies it", () => {
       expect(jobFiles(estate(["notes", "data"]))).toStrictEqual([
-        "apps/vso-secrets/configmap.yaml",
-        "apps/vso-secrets/job.yaml",
-        "apps/vso-secrets/kustomization.yaml",
-        "apps/vso-secrets/networkpolicy.yaml",
-        "apps/vso-secrets/serviceaccount.yaml",
+        "estate/vso-secrets/configmap.yaml",
+        "estate/vso-secrets/job.yaml",
+        "estate/vso-secrets/kustomization.yaml",
+        "estate/vso-secrets/networkpolicy.yaml",
+        "estate/vso-secrets/serviceaccount.yaml",
       ]);
     });
 
@@ -165,7 +166,7 @@ describe("renderIntentSet", () => {
       });
       if (!result.ok) throw new Error("data does not render");
       const job = asTree(artifact(result.value, "_estate"))[
-        "apps/vso-secrets/job.yaml"
+        "estate/vso-secrets/job.yaml"
       ];
       // The last value hashed is the one the job is named for.
       const documents = digested.at(-1) as Record<string, unknown>;
@@ -335,12 +336,12 @@ describe("renderIntentSet", () => {
       "apps/notes/notes/workload.yaml",
     ]);
     expect(paths("_estate")).toStrictEqual([
-      "apps/edge/public-frankfurt/kustomization.yaml",
-      "apps/edge/public-frankfurt/notes-public.yaml",
+      "estate/edge/public-frankfurt/kustomization.yaml",
+      "estate/edge/public-frankfurt/notes-public.yaml",
     ]);
   });
 
-  it("puts a path under apps/edge in the _estate artifact, and one merely naming edge in its project's", () => {
+  it("puts a path under estate/ in the _estate artifact, and a Project named for an estate directory in its own", () => {
     const result = renderIntentSet(files(), {
       ...OPTIONS,
       adapters: [
@@ -349,11 +350,12 @@ describe("renderIntentSet", () => {
           defaultPath: "apps/<project>/x.yaml",
           render: () => [
             {
-              path: "apps/notes/apps/edge/x.yaml",
+              path: "apps/notes/estate/edge/x.yaml",
               adapter: "probe",
               objects: [],
             },
-            { path: "apps/edge/lan/x.yaml", adapter: "probe", objects: [] },
+            { path: "estate/edge/lan/x.yaml", adapter: "probe", objects: [] },
+            { path: "apps/edge/proxy/x.yaml", adapter: "probe", objects: [] },
           ],
         },
       ],
@@ -367,12 +369,23 @@ describe("renderIntentSet", () => {
           held.map(({ path }) => path),
         ]),
     ).toStrictEqual([
-      ["_estate", ["apps/edge/lan/kustomization.yaml", "apps/edge/lan/x.yaml"]],
+      [
+        "_estate",
+        ["estate/edge/lan/kustomization.yaml", "estate/edge/lan/x.yaml"],
+      ],
+      [
+        "edge",
+        [
+          "apps/edge/kustomization.yaml",
+          "apps/edge/proxy/kustomization.yaml",
+          "apps/edge/proxy/x.yaml",
+        ],
+      ],
       [
         "notes",
         [
-          "apps/notes/apps/edge/kustomization.yaml",
-          "apps/notes/apps/edge/x.yaml",
+          "apps/notes/estate/edge/kustomization.yaml",
+          "apps/notes/estate/edge/x.yaml",
         ],
       ],
     ]);

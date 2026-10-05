@@ -949,12 +949,18 @@ estate-scoped ([The path plan](#the-path-plan)):
 
 | unit | applies | follows |
 |---|---|---|
-| `apps-vso-secrets` | `apps/vso-secrets/`: the Vault policy job and the documents it is handed ([The Vault policy job](#the-vault-policy-job)) | the unit of the project that declares the Secret Store, which the job writes into |
-| `apps-edge-<tier>`, one per tier a route reaches | `apps/edge/<tier>/`: the routes that tier's proxy serves | the unit of the project that declares the tier's proxy, and of every project with an exposure on the tier, so no route is applied before its proxy or its own namespace exists |
+| `estate-vso-secrets` | `estate/vso-secrets/`: the Vault policy job and the documents it is handed ([The Vault policy job](#the-vault-policy-job)) | the unit of the project that declares the Secret Store, which the job writes into |
+| `estate-edge-<tier>`, one per tier a route reaches | `estate/edge/<tier>/`: the routes that tier's proxy serves | the unit of the project that declares the tier's proxy, and of every project with an exposure on the tier, so no route is applied before its proxy or its own namespace exists |
 
 A tier has a unit of its own so that one tier's refused route holds only that
 tier. These are the units the estate-scoped artifact's pin applies
 ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)).
+
+Neither kind is named `apps-`, and neither directory is under `apps/`. That
+prefix and that directory are a Project's own: `apps-<project>` and
+`apps/<project>/` hold for every Project whatever it is called, so a Project
+named `edge` or `vso-secrets` renders, is published and is pinned like any
+other, and nothing estate-scoped can be mistaken for its share.
 
 ![The Reconcile Unit DAG](diagrams/20-reconcile-unit-dag.drawio.svg)
 
@@ -963,7 +969,7 @@ tier. These are the units the estate-scoped artifact's pin applies
 An arrow means *must be Ready first*. `apps-knowledge` follows `apps-data`
 because `knowledge` depends on `platform-postgres` and `platform-rabbitmq`;
 `apps-agents` follows `apps-knowledge` because the agent applications consume
-`knowledge`, and follows `apps-vso-secrets` because they hold grants: a
+`knowledge`, and follows `estate-vso-secrets` because they hold grants: a
 Process cannot start before the credential it holds is materialised. That is
 the fourteen-node graph `fleet-infra` maintains by hand today, rendered instead.
 
@@ -1109,7 +1115,7 @@ provenance:
 
 namespace: knowledge-system          # <project>-system, derived, not arbitrated
 reconcileUnit: apps-knowledge
-reconcileAfter: [apps-core, apps-data, apps-vso-secrets]
+reconcileAfter: [apps-core, apps-data, estate-vso-secrets]
 
 migration:                           # it declares a changelog (chapter 10)
   runner: ghcr.io/jorisjonkers-dev/knowledge/knowledge-migration@sha256:…
@@ -1738,7 +1744,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    core["apps-core"] --> vso["apps-vso-secrets"]
+    core["apps-core"] --> vso["estate-vso-secrets"]
     core --> data["apps-data"]
     core --> sl["apps-stateless"]
     data --> know["apps-knowledge"]

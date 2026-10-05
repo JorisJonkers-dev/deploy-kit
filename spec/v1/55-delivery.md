@@ -151,8 +151,8 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 | | `interval`, `prune`, `wait` | `10m`, `true`, `true`: a unit is Ready when what it applied is, so a Job that fails holds every unit that follows it |
 
 A Project's artifact holds its one unit. The estate-scoped artifact holds
-`apps-vso-secrets` where it carries the Vault policy job, and one
-`apps-edge-<tier>` per tier it carries routes for.
+`estate-vso-secrets` where it carries the Vault policy job, and one
+`estate-edge-<tier>` per tier it carries routes for.
 
 ## Pause and Rollback
 
