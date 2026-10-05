@@ -133,17 +133,19 @@ TREES = {"10-project-intent": {
     "DeliveryPolicy": ["AnalysisPolicy"],
 }, "20-resolved-deployment": {
     # Sibling order puts GateMember next to ResolvedProbe, so the one
-    # cross-link on the drawing joins two neighbours.
+    # cross-link on the drawing joins two neighbours: the migration, whose
+    # database sits a layer down, comes before the gate and not between them.
     "ResolvedDeployment": [
         "Provenance", "PathAssignment", "ReconcileUnit", "ResolvedPolicyJob",
         "ResolvedApplication",
     ],
     "Provenance": ["InputDigest"],
     "ResolvedApplication": [
-        "ReleaseGate", "ResolvedMigration", "ResolvedScrape", "ResolvedProcess",
+        "ResolvedMigration", "ReleaseGate", "ResolvedScrape", "ResolvedProcess",
         "ResolvedExposure",
     ],
     "ReleaseGate": ["GateAnalysis", "GateMember"],
+    "ResolvedMigration": ["MigratedDatabase"],
     "ResolvedProcess": [
         "ResolvedProbe", "StartupProbe", "ResolvedPlacement", "ResolvedApiAccess",
         "ResolvedVolume",
@@ -226,6 +228,7 @@ REPORT_LAYOUTS = {"10-project-intent": {
         "ResolvedApplication": [["ResolvedMigration", "ReleaseGate"], ["ResolvedProcess"],
                                 ["ResolvedExposure"]],
         "ReleaseGate": [["GateMember", "GateAnalysis"]],
+        "ResolvedMigration": [["MigratedDatabase"]],
         "ResolvedProcess": [["ResolvedProbe", "StartupProbe", "ResolvedPlacement"],
                             ["ResolvedVolume", "ResolvedEdge", "ResolvedApiAccess"],
                             ["ResolvedGrant", "WritablePath", "EnvEntry"]],

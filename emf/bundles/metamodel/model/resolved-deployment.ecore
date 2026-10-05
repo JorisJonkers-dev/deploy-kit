@@ -98,14 +98,37 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
-  <!-- The runner image the changelog was built into, and the serving revision its
-       compatibility was proven against (spec/v1/20-resolved-deployment.md#the-migration). -->
+  <!-- The migration plan (spec/v1/20-resolved-deployment.md#the-migration): the runner image
+       the changelog was built into, the serving revision its compatibility was proven
+       against, and everything its Jobs run with. -->
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedMigration">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="runner" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="testedAgainst" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <!-- Whether the release holds a changeset that cannot run in a transaction:
          no automatic undo touches such a release (spec/v1/55-delivery.md#failure-and-undo). -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="nonTransactional" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
+    <!-- What the migration's Jobs run with: the runner image's own user, the identity
+         apart from every Process's, the platform's terms for a migration, the size of
+         the runner's one writable path, the database it moves, the owner credential
+         only that identity holds, and what its own policy admits. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="uid" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="gid" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="deadline" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="scratch" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="database" lowerBound="1" eType="#//MigratedDatabase" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="credential" lowerBound="1" eType="#//ResolvedGrant" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="egress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
+  </eClassifiers>
+
+  <!-- The database a migration moves: where the project's datastore answers, and
+       the one database of the project on it. -->
+  <eClassifiers xsi:type="ecore:EClass" name="MigratedDatabase">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="host" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="ReleaseGate">
@@ -431,6 +454,23 @@
        one policy per Process. -->
   <eClassifiers xsi:type="ecore:EClass" name="NetworkPolicyFile" eSuperTypes="#//Deliverable">
     <eStructuralFeatures xsi:type="ecore:EReference" name="policies" upperBound="-1" eType="#//ProcessPolicy" containment="true"/>
+    <!-- The Application's migration, whose identity has a policy of its own after every Process's. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="migration" eType="#//ResolvedMigration"/>
+  </eClassifiers>
+
+  <!-- The migration identity and its Jobs (spec/v1/55-delivery.md#failure-and-undo): `upTag` names
+       this revision's, `downTag` the revision a down returns to, absent on a first release, and
+       `role` is the Vault role the identity logs in as. -->
+  <eClassifiers xsi:type="ecore:EClass" name="MigrationFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="application" lowerBound="1" eType="#//ResolvedApplication"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="upTag" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="downTag" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="role" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- The disruption budget of every Process of an Application above one replica. -->
+  <eClassifiers xsi:type="ecore:EClass" name="BudgetFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess"/>
   </eClassifiers>
 
   <!-- Who may reach one Process, and what it may reach. -->

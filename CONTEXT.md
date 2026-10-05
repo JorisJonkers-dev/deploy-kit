@@ -129,6 +129,10 @@ derives a credential for it ([chapter 16](spec/v1/16-dependencies.md#the-databas
 resources, which every managed migration builds on
 ([chapter 14](spec/v1/14-platform-intent.md#migration-policy)).
 
+**Migration plan**: the Resolved Deployment's record of one managed migration:
+what was proven about the release, and everything its Jobs run with
+([chapter 20](spec/v1/20-resolved-deployment.md#the-migration)).
+
 **Compatibility proof**: what an application's CI proves before its fragment
 publishes a changelog: the serving revision's own test suite passes against the
 newly migrated schema, every changeset rolls back, and a non-transactional

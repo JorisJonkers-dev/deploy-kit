@@ -21,7 +21,7 @@ name a real model row, it may not also be witnessed, and its count is stated
 beside the witness count, so the gate keeps its teeth while the work is
 outstanding.
 
-This list holds **14** witnesses, and **1** pending.
+This list holds **15** witnesses, and **1** pending.
 
 | id | JUnit test |
 |---|---|
@@ -39,6 +39,7 @@ This list holds **14** witnesses, and **1** pending.
 | REQ-039 | `ParityTest#the resolved dependency edges equal the committed oracle` |
 | REQ-040 | `RenderedTreeTest#aProjectsShareIsItsCommittedTreeByteForByte` |
 | REQ-049 | `RenderedTreeTest#theEstateShareMinimalAndDataHoldBetweenThemIsTheCommittedEstateTree` |
+| REQ-052 | `RenderedTreeTest#authsShareAndTheEstateShareItDerivesAreItsCommittedTreeByteForByte` |
 
 ## Pending
 

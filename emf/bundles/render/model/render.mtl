@@ -47,6 +47,10 @@
     [d.oclAsType(resolveddeployment::IngressRouteFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::ServiceFile))]
     [d.oclAsType(resolveddeployment::ServiceFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::BudgetFile))]
+    [d.oclAsType(resolveddeployment::BudgetFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::MigrationFile))]
+    [d.oclAsType(resolveddeployment::MigrationFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::RbacFile))]
     [d.oclAsType(resolveddeployment::RbacFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::PolicyJobFile))]
@@ -113,7 +117,42 @@
         [p.process.backupPolicy()/]
       [/if]
     [/for]
+    [if (d.migration <> null)]
+      [d.migration.migrationPolicy()/]
+    [/if]
   [/if]
+[/template]
+
+[comment The migration identity's own policy: what its plan admits, and nothing in. Its Jobs' pods
+  carry the identity as their instance. /]
+[template private migrationPolicy(m : resolveddeployment::ResolvedMigration)]
+  ---
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: [m.identity/]
+    namespace: [m.application().namespace/]
+    labels:
+      [m.identity.labelSet('none', m.application().id)/]
+  spec:
+    podSelector:
+      matchLabels:
+        app.kubernetes.io/instance: [m.identity/]
+    policyTypes:
+      - Ingress
+      - Egress
+    egress:
+  [for (peer : resolveddeployment::PolicyPeer | m.egress)]
+        - to:
+            [peer.peer()/]
+          ports:
+    [if (peer.rule = 'cluster-dns')]
+              - protocol: UDP
+                port: [peer.port/]
+    [/if]
+            - protocol: TCP
+              port: [peer.port/]
+  [/for]
 [/template]
 
 [comment A backup identity's own policy. Every backup of a Process runs as the one identity, so
@@ -307,6 +346,12 @@
         apiVersion: apps/v1
         kind: Deployment
         name: [p.name/]
+    [if (p.replicas > 1)]
+        autoscalerRef:
+          apiVersion: autoscaling/v2
+          kind: HorizontalPodAutoscaler
+          name: [p.name/]
+    [/if]
       progressDeadlineSeconds: [p.deadline.seconds()/]
       service:
         port: [p.surfaces->first().port/]
@@ -320,7 +365,129 @@
           [p.webhook('may-start', 'confirm-rollout')/]
           [p.webhook('checks', 'rollout')/]
           [p.webhook('may-promote', 'confirm-promotion')/]
+    [if (p.replicas > 1)]
+      ---
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        [p.metadata()/]
+      spec:
+        scaleTargetRef:
+          apiVersion: apps/v1
+          kind: Deployment
+          name: [p.name/]
+        minReplicas: [p.replicas/]
+        maxReplicas: [p.replicas/]
+    [/if]
   [/for]
+[/template]
+
+[comment The budget of a Process above one replica. A blue-green one's selects the primary by the
+  name Flagger gives it, which is what serves between releases; any other's its own pods. /]
+[template private objects(d : resolveddeployment::BudgetFile)]
+  [for (p : resolveddeployment::ResolvedProcess | d.processes)]
+    ---
+    apiVersion: policy/v1
+    kind: PodDisruptionBudget
+    metadata:
+      [p.metadata()/]
+    spec:
+      maxUnavailable: 1
+      selector:
+        matchLabels:
+    [if (p.switchover.toString() = 'blue-green')]
+            app.kubernetes.io/name: [p.name/]-primary
+    [else]
+            app.kubernetes.io/instance: [p.name/]
+    [/if]
+  [/for]
+[/template]
+
+[comment The migration identity and its Jobs (spec/v1/55-delivery.md#failure-and-undo): the up of
+  this revision and, where the release was proven against a serving one, the down to it. Both are
+  named by the revision's tag, suspended, and created once: the Release Gate alone writes
+  `suspend` afterwards. /]
+[template private objects(d : resolveddeployment::MigrationFile)]
+  ---
+  apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: [d.application.migration.identity/]
+    namespace: [d.application.namespace/]
+    labels:
+      [d.application.migration.identity.labelSet('none', d.application.id)/]
+  [d.migrationJob(d.application.migration.identity + '-' + d.upTag, 'up', d.upTag)/]
+  [if (d.downTag <> null)]
+    [d.migrationJob(d.application.migration.identity + '-down-' + d.upTag, 'down', d.downTag)/]
+  [/if]
+[/template]
+
+[template private migrationJob(d : resolveddeployment::MigrationFile, name : String, command : String, tag : String)]
+  ---
+  apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: [name/]
+    namespace: [d.application.namespace/]
+    labels:
+      [d.application.migration.identity.labelSet('none', d.application.id)/]
+    annotations:
+      kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+  spec:
+    suspend: true
+    backoffLimit: 0
+    activeDeadlineSeconds: [d.application.migration.deadline.seconds()/]
+    template:
+      metadata:
+        labels:
+          [d.application.migration.identity.labelSet('none', d.application.id)/]
+      spec:
+        serviceAccountName: [d.application.migration.identity/]
+        automountServiceAccountToken: true
+        restartPolicy: Never
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: [d.application.migration.uid/]
+          runAsGroup: [d.application.migration.gid/]
+          seccompProfile:
+            type: RuntimeDefault
+        containers:
+          - name: migration
+            image: [d.application.migration.runner/]
+            args:
+              - [command/]
+              - [tag.scalar()/]
+            env:
+              - name: DATABASE_HOST
+                value: [d.application.migration.database.host/]
+              - name: DATABASE_PORT
+                value: [d.application.migration.database.port.toString().scalar()/]
+              - name: DATABASE_NAME
+                value: [d.application.migration.database.name/]
+              - name: VAULT_ADDR
+                value: [d.application.secretStore/]
+              - name: VAULT_ROLE
+                value: [d.role/]
+              - name: VAULT_CREDENTIALS_PATH
+                value: [d.application.migration.credential.paths->first().path/]
+            resources:
+              requests:
+                memory: [d.application.migration.memory/]
+                cpu: [d.application.migration.cpu/]
+              limits:
+                memory: [d.application.migration.memory/]
+            securityContext:
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+            volumeMounts:
+              - name: scratch
+                mountPath: /tmp
+        volumes:
+          - name: scratch
+            emptyDir:
+              sizeLimit: [d.application.migration.scratch/]
 [/template]
 
 [template private webhook(p : resolveddeployment::ResolvedProcess, name : String, type : String)]
@@ -1013,6 +1180,9 @@
 
 [query private application(p : resolveddeployment::ResolvedProcess) : resolveddeployment::ResolvedApplication =
   p.eContainer().oclAsType(resolveddeployment::ResolvedApplication) /]
+
+[query private application(m : resolveddeployment::ResolvedMigration) : resolveddeployment::ResolvedApplication =
+  m.eContainer().oclAsType(resolveddeployment::ResolvedApplication) /]
 
 [query private application(e : resolveddeployment::ResolvedExposure) : resolveddeployment::ResolvedApplication =
   e.eContainer().oclAsType(resolveddeployment::ResolvedApplication) /]
