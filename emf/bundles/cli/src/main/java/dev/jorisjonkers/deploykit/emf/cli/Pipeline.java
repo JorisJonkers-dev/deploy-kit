@@ -32,6 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
@@ -51,8 +52,10 @@ import org.eclipse.xtext.resource.XtextResourceSet;
  * It is the seam the parity suite runs every case through.
  *
  * <p>Which language reads a file is the file name's to say: {@code platform.intent.yml} is a Platform
- * document and {@code *.project.yml} a project file. A set of files is read into one resource set, so
- * a tier's proxy links to an Application another file declares.
+ * document and {@code *.project.yml} a project file. A set handed to {@link #check} also reads any other
+ * YAML file whose document says {@code kind: Project} as one, as a composition fixture standing in for a
+ * published fragment does (spec/v1/10-project-intent.md#two-artefacts). A set of files is read into one
+ * resource set, so a tier's proxy links to an Application another file declares.
  */
 public final class Pipeline {
 
@@ -64,6 +67,10 @@ public final class Pipeline {
 
     private static final String PLATFORM = "platform.intent.yml";
     private static final String PROJECT = ".project.yml";
+    private static final String YAML = ".yml";
+
+    /** A document's own {@code kind: Project}, at the top level, with an optional comment after it. */
+    private static final Pattern DECLARES_PROJECT = Pattern.compile("(?m)^kind:[ \\t]*Project[ \\t]*(#.*)?$");
 
     /** The pinned inputs resolution reads beside the intent, each by its own file name. */
     private static final String NODE_CONTRACT = "node-contract.yml";
@@ -311,8 +318,7 @@ public final class Pipeline {
      */
     public static List<Diagnostic> check(List<Path> files) {
         List<Path> documents = files.stream()
-                .filter(file ->
-                        isPlatform(file) || file.getFileName().toString().endsWith(PROJECT))
+                .filter(file -> isPlatform(file) || isProject(file))
                 .toList();
         List<Diagnostic> refusals = new ArrayList<>();
         for (Path document : documents) {
@@ -329,6 +335,24 @@ public final class Pipeline {
 
     private static boolean isPlatform(Path file) {
         return file.getFileName().toString().endsWith(PLATFORM);
+    }
+
+    /** A project file by its name, or another YAML file, never the Platform document, whose document says it is one. */
+    private static boolean isProject(Path file) {
+        String name = file.getFileName().toString();
+        if (name.endsWith(PROJECT)) {
+            return true;
+        }
+        if (!name.endsWith(YAML)) {
+            return false;
+        }
+        try {
+            return DECLARES_PROJECT
+                    .matcher(Files.readString(file, StandardCharsets.UTF_8))
+                    .find();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     /** Every file loaded into one resource set, by the language its name says, then linked. */

@@ -1,16 +1,16 @@
-# Fragment A: project knowledge declares the Application `search`.
+# Fragment B: another project, the same Application id `search`.
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
 schemaVersion: 1.0.0
-project: knowledge
+project: notes
 owner: joris
 cutover: interrupted
 
 applications:
   - id: search
     processes:
-      - name: search-api
+      - name: notes-search
         lifecycle: application
         image: notes-api
         runtime: node

@@ -2,6 +2,8 @@
 // chapter 20 derives, read off a notes project written for it and resolved
 // through the use-case with the worked foundation and pinned inputs.
 import { datastoreOf } from "../../src/resolve/database.ts";
+import { resolveEdge } from "../../src/resolve/dependencies.ts";
+import type { PlatformIntentDocument } from "../../src/model/platform-intent.ts";
 import { resolveMigration } from "../../src/resolve/migration.ts";
 import { backedUp, dumpedSurfaceOf } from "../../src/model/backup.ts";
 import { readFileSync } from "node:fs";
@@ -89,6 +91,10 @@ interface Options {
   readonly env?: readonly AuthoredFile[];
   readonly lock?: (lock: string) => string;
 }
+
+/** The codes a resolution refused with, in the order it reported them. */
+const codesOf = (result: ReturnType<typeof resolve>): string[] =>
+  result.ok ? [] : result.diagnostics.map(({ code }) => code);
 
 function resolve(applications: string, options: Options = {}) {
   return resolveIntentSet(
@@ -773,17 +779,23 @@ ${serving("notes-worker").replace("provides: { http: 8080 }", "provides: { jobs:
     );
   });
 
-  it("stops at an edge the union and the register cannot resolve, rather than writing no address", () => {
-    expect(() =>
-      resolve(
-        consumer("          - { application: stalwart, surface: imap }\n"),
+  it("refuses an edge to a surface neither the Application nor the register provides, rather than writing no address", () => {
+    expect(
+      codesOf(
+        resolve(
+          consumer("          - { application: stalwart, surface: imap }\n"),
+        ),
       ),
-    ).toThrow("stalwart.imap: no provider in the union");
-    expect(() =>
-      resolve(
-        consumer("          - { application: notes-worker, surface: http }\n"),
+    ).toStrictEqual(["E_UNKNOWN_SURFACE"]);
+    expect(
+      codesOf(
+        resolve(
+          consumer(
+            "          - { application: notes-worker, surface: http }\n",
+          ),
+        ),
       ),
-    ).toThrow("notes-worker.http: no provider in the union");
+    ).toStrictEqual(["E_UNKNOWN_SURFACE"]);
   });
 });
 
@@ -1362,10 +1374,10 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
     );
   });
 
-  it("stops at the edge, not at the migration, where the datastore is not among the files read", () => {
-    expect(() => resolve(managed, { lock: LOCKED })).toThrow(
-      "platform-postgres.postgres: no provider in the union",
-    );
+  it("refuses the edge, not the migration, where the datastore is not among the files read", () => {
+    expect(codesOf(resolve(managed, { lock: LOCKED }))).toStrictEqual([
+      "E_UNRESOLVED_APPLICATION",
+    ]);
   });
 
   it("hands the gate the migration it starts and may undo: its identity and what the proof records, and nothing where none is declared", () => {
@@ -1729,20 +1741,22 @@ describe("the order edges impose, and a platform with no register", () => {
   });
 
   it("resolves nothing against a register the platform does not keep", () => {
-    expect(() =>
-      resolve(
-        one(
-          serving(
-            "notes-api",
-            "        dependsOn:\n          - { application: stalwart, surface: smtp }\n",
+    expect(
+      codesOf(
+        resolve(
+          one(
+            serving(
+              "notes-api",
+              "        dependsOn:\n          - { application: stalwart, surface: smtp }\n",
+            ),
           ),
+          {
+            platform: (platform) =>
+              platform.replace(/\nproviders:\n(.*\n?)+$/, "\n"),
+          },
         ),
-        {
-          platform: (platform) =>
-            platform.replace(/\nproviders:\n(.*\n?)+$/, "\n"),
-        },
       ),
-    ).toThrow("stalwart.smtp: no provider in the union");
+    ).toStrictEqual(["E_UNRESOLVED_APPLICATION"]);
   });
 });
 
@@ -2423,4 +2437,52 @@ describe("the Vault policy job", () => {
         ?.deadline,
     ).toBe("180s");
   });
+});
+
+describe("an edge resolved against the union and the register", () => {
+  const PLATFORM = {
+    providers: [
+      { name: "relay", address: "relay.example", surfaces: { smtp: 25 } },
+      {
+        name: "stalwart",
+        address: "mail.example",
+        surfaces: { imap: 993, smtp: 587 },
+      },
+    ],
+  } as unknown as PlatformIntentDocument;
+
+  it("takes the provider named, on the surface named, wherever it sits in the register", () => {
+    expect(
+      resolveEdge({ application: "stalwart", surface: "smtp" }, [], PLATFORM),
+    ).toStrictEqual({
+      application: "stalwart",
+      surface: "smtp",
+      address: "mail.example:587",
+    });
+  });
+
+  it.each([
+    [
+      "a provider the register does not list",
+      { application: "nowhere", surface: "smtp" },
+      PLATFORM,
+    ],
+    [
+      "a surface the provider does not list",
+      { application: "relay", surface: "imap" },
+      PLATFORM,
+    ],
+    [
+      "a platform that keeps no register",
+      { application: "stalwart", surface: "smtp" },
+      {} as PlatformIntentDocument,
+    ],
+  ])(
+    "is an internal failure for %s, which the union's references refuse first",
+    (_, edge, platform) => {
+      expect(() => resolveEdge(edge, [], platform)).toThrow(
+        `${edge.application}.${edge.surface}: no provider in the union`,
+      );
+    },
+  );
 });

@@ -486,7 +486,7 @@ owner: o
     ]);
   });
 
-  it("decides nothing while a provider the Application reaches was not read", () => {
+  it("decides nothing while a provider the Application reaches was not read, and refuses only the edge", () => {
     const edges =
       ", dependsOn: [{application: edge-proxy, surface: http}, {application: elsewhere, surface: s}]";
 
@@ -494,13 +494,19 @@ owner: o
       check(
         `  - id: api\n    migration: {changelog: c}\n    processes:\n${process("api", edges)}`,
       ),
-    ).toStrictEqual([]);
+    ).toStrictEqual([
+      {
+        code: "E_UNRESOLVED_APPLICATION",
+        document: "p.project.yml",
+        path: "/applications/1/processes/0/dependsOn/1/application",
+      },
+    ]);
   });
 
   it("counts a provider as a database when any one of its Processes is", () => {
     const store = `  - id: store
     processes:
-      - {name: store, lifecycle: application, image: s, runtime: none, engine: postgres, placement: {memory: 1Mi, cpu: 1m}, cutover: interrupted, volumes: [{claim: d, mountAt: /d, size: 1Gi, durability: recoverable}]}
+      - {name: store, lifecycle: application, image: s, runtime: none, engine: postgres, provides: {postgres: 5432}, placement: {memory: 1Mi, cpu: 1m}, cutover: interrupted, volumes: [{claim: d, mountAt: /d, size: 1Gi, durability: recoverable}]}
       - {name: exporter, lifecycle: application, image: e, runtime: none, placement: {memory: 1Mi, cpu: 1m}, cutover: interrupted}
 `;
     const api = `  - id: api\n    processes:\n${process("api", ", dependsOn: [{application: store, surface: postgres}]")}`;
