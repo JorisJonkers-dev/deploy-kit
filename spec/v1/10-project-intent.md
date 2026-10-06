@@ -77,6 +77,14 @@ meant to make composition fail, at least one of them
 that discovers project files by the `.project.yml` suffix is meant to find
 only the former, and must keep finding only the former.
 
+**A set handed to validation directly reads a project file by its kind as
+well.** Where documents are checked as they are given (`deploy-kit validate`,
+and the fixtures above), a YAML file whose document says `kind: Project` is a
+project file whatever its name, so a fixture is read rather than silently
+passed over. A published fragment's project file is still found by its name
+alone: the publish step named it, and another YAML file the fragment carries,
+an Asset among them, is never read as a second project.
+
 The split that matters is not file-level but concern-level. A secret's **access**
 is declared in the project file, beside the `dependsOn` edge that motivates it; the
 **environment variable** that carries it is a placeholder in the env file. Each
@@ -2588,7 +2596,10 @@ demonstrates the check does not false-positive on runtime fetch. The byte-match 
 changes how each placeholder is spelled, not how many there are. No dead grants, no
 unauthorised references, and no `delivery: env` paired with `tolerates: reload`.
 
-Two negative fixtures sit beside them: `negative/duplicate-application-id/` asserts
+Negative fixtures sit beside them, one per estate-wide invariant chapter 40
+answers over the union, each with its diagnostics committed beside it as
+`negative/<fixture>.diagnostics.json` ([`negative/README.md`](examples/negative/README.md)).
+Among them `negative/duplicate-application-id/` asserts
 `E_DUPLICATE_APPLICATION_ID` across two repositories, and
 `negative/duplicate-process-name/` asserts `E_DUPLICATE_PROCESS_NAME` for two
 Applications in one project reusing a Process name: the check that lets a

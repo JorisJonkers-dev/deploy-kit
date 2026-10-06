@@ -4,12 +4,12 @@ Two Intent Fragments declaring the same Application Id. Composition must reject
 this union, **with this error code**.
 
 Each fragment is one project file (`intent-a/knowledge.yml` and
-`intent-b/agents.yml`), because Intent is authored one file per project and one
+`intent-b/notes.yml`), because Intent is authored one file per project and one
 file is one Intent Fragment
 ([0009](../../../../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)). The two
 declare different projects and the same `id`, which is the case the invariant
 exists for: the namespace derives from `project`, so nothing would collide at
-apply, while every `dependsOn: {application: knowledge, …}` edge in the estate
+apply, while every `dependsOn: {application: search, …}` edge in the estate
 becomes ambiguous. Identity is flat and estate-unique
 ([0010](../../../../../docs/adr/model/0010-flat-application-identity.md)); the project
 header does not namespace it.

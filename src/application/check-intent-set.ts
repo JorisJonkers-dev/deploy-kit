@@ -1,12 +1,16 @@
 // A set of authored files read together: every file parsed on its own, and,
 // where one Platform document is among them, the rules the documents answer
 // together. A file is a Platform document, a project file or an env file by its
-// name, and an env file reaches the project its `env/` directory sits beside.
+// name; a set handed to the checker directly also reads a YAML file whose
+// document says `kind: Project` as a project file. An env file reaches the
+// project its `env/` directory sits beside.
 import { setDiagnostics } from "../check/composition.ts";
+import { unionDiagnostics } from "../check/union.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { EffectiveProject } from "../model/effective-intent.ts";
 import type { EnvSource } from "../model/env.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
+import { readYaml } from "../read/yaml.ts";
 import {
   parsePlatformIntent,
   type ParsedPlatformIntent,
@@ -31,7 +35,25 @@ type Parsed<R> = Extract<R, { readonly ok: true }>;
 
 const PLATFORM = "platform.intent.yml";
 const PROJECT = ".project.yml";
+const YAML = ".yml";
 const ENV = ".env";
+
+/**
+ * Whether a file is a project file: named one, or, where `byKind`, any other
+ * YAML file whose document says it is one, as a composition fixture standing
+ * in for a published fragment does (spec/v1/10-project-intent.md#two-artefacts).
+ * A published fragment's project file is named by the step that packed it, so
+ * an Asset that happens to be YAML is never read as a second one.
+ */
+function isProject({ name, text }: AuthoredFile, byKind: boolean): boolean {
+  if (name.endsWith(PROJECT)) return true;
+  if (!byKind || !name.endsWith(YAML)) return false;
+  const read = readYaml(text);
+  // A scalar or a list says no kind, exactly as a mapping without one does.
+  return (
+    read.ok && (read.value as { kind?: unknown } | null)?.kind === "Project"
+  );
+}
 
 /** Everything before a path's last segment, or nothing where it has one. */
 const directoryOf = (path: string): string =>
@@ -65,6 +87,7 @@ export interface ComposedSet {
 
 export function composeIntentSet(
   files: readonly AuthoredFile[],
+  byKind = false,
 ): Result<ComposedSet> {
   const refusals: Diagnostic[] = [];
   const tagged = (name: string, diagnostics: readonly Diagnostic[]): void => {
@@ -77,7 +100,7 @@ export function composeIntentSet(
     .filter(({ name }) => name.endsWith(PLATFORM))
     .map(({ name, text }) => ({ name, result: parsePlatformIntent(text) }));
   const projects = files
-    .filter(({ name }) => name.endsWith(PROJECT))
+    .filter((file) => isProject(file, byKind))
     .map(({ name, text }) => ({
       name,
       result: parseProjectIntent(text, envBeside(name, files)),
@@ -98,6 +121,15 @@ export function composeIntentSet(
   }));
 
   const [platform] = parsedPlatforms;
+  refusals.push(
+    ...unionDiagnostics(
+      parsedProjects.map(({ name, value }) => ({
+        name,
+        document: value.document,
+      })),
+      platform?.value.document,
+    ),
+  );
   if (platform !== undefined)
     refusals.push(
       ...setDiagnostics(
@@ -116,7 +148,7 @@ export function composeIntentSet(
 export function checkIntentSet(
   files: readonly AuthoredFile[],
 ): Result<IntentSet> {
-  const composed = composeIntentSet(files);
+  const composed = composeIntentSet(files, true);
   if (!composed.ok) return composed;
   const { platform, projects } = composed.value;
   return {

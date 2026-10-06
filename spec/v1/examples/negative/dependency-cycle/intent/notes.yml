@@ -1,0 +1,30 @@
+# Two Processes that each require the other: neither can start first.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: notes
+owner: joris
+cutover: interrupted
+
+applications:
+  - id: notes
+    processes:
+      - name: notes-api
+        lifecycle: application
+        image: notes-api
+        runtime: node
+        provides: { http: 8080 }
+        placement: { memory: 64Mi, cpu: 10m }
+        dependsOn:
+          - { application: notes-search, surface: http }
+  - id: notes-search
+    processes:
+      - name: notes-search
+        lifecycle: application
+        image: notes-api
+        runtime: node
+        provides: { http: 8081 }
+        placement: { memory: 64Mi, cpu: 10m }
+        dependsOn:
+          - { application: notes, surface: http }

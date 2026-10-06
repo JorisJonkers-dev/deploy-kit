@@ -62,15 +62,10 @@ export const PENDING: readonly Pending[] = [
     ],
   },
   {
-    ticket: "#46",
-    reason: "an invariant over the composed union, which needs composition",
+    ticket: "#204",
+    reason:
+      "an invariant over the composed union the registry does not answer yet: secrets, completeness and placement",
     codes: [
-      "E_DEPENDENCY_CYCLE",
-      "E_DUPLICATE_APPLICATION_ID",
-      "E_DUPLICATE_EXPOSURE_NAME",
-      "E_DUPLICATE_HOST",
-      "E_DUPLICATE_PROCESS_NAME",
-      "E_DUPLICATE_PROJECT",
       "E_PROVIDER_WITHOUT_COORDINATES",
       "E_RAW_SECRET",
       "E_READER_NOT_DECLARED",
@@ -80,7 +75,6 @@ export const PENDING: readonly Pending[] = [
       "E_UNAUTHORISED_SECRET_REFERENCE",
       "E_UNBOUND_SECRET_GRANT",
       "E_UNDECLARED_SECRET_PATH",
-      "E_UNRESOLVED_APPLICATION",
     ],
   },
   {

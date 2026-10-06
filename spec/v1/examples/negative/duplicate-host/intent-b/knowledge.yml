@@ -1,0 +1,25 @@
+# Fragment B: knowledge claims the same host from another repository.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: knowledge
+owner: joris
+cutover: interrupted
+
+applications:
+  - id: knowledge
+    exposure:
+      - name: public
+        host: notes.jorisjonkers.dev
+        audience: anonymous
+        contentPolicy: strict
+        routes:
+          - { path: /, match: prefix, process: knowledge-api, surface: http }
+    processes:
+      - name: knowledge-api
+        lifecycle: application
+        image: notes-api
+        runtime: node
+        provides: { http: 8080 }
+        placement: { memory: 64Mi, cpu: 10m }

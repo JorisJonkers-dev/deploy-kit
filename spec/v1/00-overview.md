@@ -262,7 +262,7 @@ parse-checked in CI.
 | `examples/{auth,knowledge,knowledge-platform,data,minimal}/env/<process>/base.env` | env files, one set **per Process** in a directory named for it, threaded with `${dependency:…}` and `${secret:<granted-path>#<key>}` placeholders whose paths byte-match a granted path |
 | `examples/workflows/project-publish-fragment.yml` | publish after the image build, with every image digest resolved, `oras push` then `oras resolve`, read back |
 | `examples/workflows/compose.yml` | pull participants, assert the estate-wide invariants, **prove the gate can fail**, then publish one signed artifact per Project and commit the moved pins |
-| `examples/negative/duplicate-application-id/` | a negative fixture, so an invariant that stops running is detectable |
+| [`examples/negative/`](examples/negative/README.md) | one negative fixture per estate-wide invariant over the union, each with its diagnostics beside it, so an invariant that stops running is detectable |
 | [`examples/refusals/`](examples/refusals/README.md) | the refusal fixtures: an alert class with no signal, the `continuous`/`interrupted` pair over RWO storage, and a mixed-cutover Application |
 | [`examples/schema-refusals/`](examples/schema-refusals/README.md) | the files the reader refuses before any rule runs: a class outside the vocabulary, an unknown, missing or mistyped field, a value matching no shape, and text outside the YAML subset |
 

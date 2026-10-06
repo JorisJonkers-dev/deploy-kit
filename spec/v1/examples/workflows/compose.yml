@@ -192,10 +192,21 @@ jobs:
           # that accepted any non-zero exit would keep printing success while
           # proving a different invariant -- exactly the failure this fixture
           # exists to detect, one level up.
-          for fixture in duplicate-application-id:E_DUPLICATE_APPLICATION_ID \
-                         duplicate-process-name:E_DUPLICATE_PROCESS_NAME; do
+          # Each is read beside the worked foundation, because the reference
+          # invariants resolve against the Platform document's providers.
+          examples=spec/v1/examples
+          for fixture in duplicate-project:E_DUPLICATE_PROJECT \
+                         duplicate-application-id:E_DUPLICATE_APPLICATION_ID \
+                         duplicate-process-name:E_DUPLICATE_PROCESS_NAME \
+                         duplicate-exposure-name:E_DUPLICATE_EXPOSURE_NAME \
+                         duplicate-host:E_DUPLICATE_HOST \
+                         unresolved-application:E_UNRESOLVED_APPLICATION \
+                         unknown-surface:E_UNKNOWN_SURFACE \
+                         dependency-cycle:E_DEPENDENCY_CYCLE; do
             set +e
-            out="$(npx --no-install deploy-kit validate "spec/v1/examples/negative/${fixture%%:*}/" --json)"
+            out="$(npx --no-install deploy-kit validate "$examples/platform/platform.intent.yml" \
+              "$examples/delivery/" "$examples/edge/" "$examples/observability/" "$examples/secrets/" \
+              "$examples/negative/${fixture%%:*}/" --json)"
             status=$?
             set -e
             [ "$status" -eq 1 ] || { echo "${fixture%%:*}: gate did not refuse (exit ${status})"; exit 1; }

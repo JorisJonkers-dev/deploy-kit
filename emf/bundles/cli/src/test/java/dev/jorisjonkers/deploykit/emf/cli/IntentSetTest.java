@@ -1,8 +1,10 @@
 package dev.jorisjonkers.deploykit.emf.cli;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
 
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -36,6 +38,25 @@ class IntentSetTest {
     void theWorkedEstateIsRefusedNowhere() {
         // The foundation is declared and secrets are encrypted at rest.
         assertThat(Pipeline.check(WORKED)).isEmpty();
+    }
+
+    @Test
+    void aYamlFileThatSaysItIsAProjectIsReadAsOneWhateverItsName(@TempDir Path directory) {
+        String broken = Examples.read("minimal/notes.project.yml").replace("runtime: node", "runtime: rust");
+
+        assertThat(Pipeline.check(List.of(Examples.write(directory, "notes.yml", broken))))
+                .extracting(Diagnostic::document)
+                .containsOnly("notes.yml");
+        assertThat(Pipeline.check(List.of(
+                        Examples.write(directory, "asset.yml", broken.replace("kind: Project", "kind: Asset")),
+                        Examples.write(directory, "notes.txt", broken))))
+                .isEmpty();
+    }
+
+    @Test
+    void aYamlFileThatCannotBeReadIsAnErrorRatherThanAProjectOrNot(@TempDir Path directory) {
+        assertThatThrownBy(() -> Pipeline.check(List.of(directory.resolve("missing.yml"))))
+                .isInstanceOf(UncheckedIOException.class);
     }
 
     @Test
