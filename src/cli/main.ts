@@ -51,10 +51,11 @@ export interface World {
   readonly toolkitVersion: string;
 }
 
-/** A command accepted, refused, or called wrongly. */
-const ACCEPTED = 0;
-const REFUSED = 1;
-const USAGE = 2;
+/**
+ * Every status the command exits with, and nothing else
+ * (docs/architecture-rules.md, RULE-044): accepted, refused, or called wrongly.
+ */
+export const EXIT = { accepted: 0, refused: 1, usage: 2 } as const;
 
 /** The model version this toolkit writes. */
 const SCHEMA_VERSION = "1.0.0";
@@ -67,6 +68,7 @@ const REF = "ref";
 const PUBLISHED = "published";
 
 export const USAGE_TEXT = `usage:
+  deploy-kit --help
   deploy-kit validate <file|directory>... [--json]
   deploy-kit publish <project-file|platform.intent.yml> --repository <owner/name> --source-sha <sha> --version <x.y.z> --out <directory>
                      [--images-lock <file>] [--json]
@@ -78,6 +80,7 @@ export const USAGE_TEXT = `usage:
 
 /** The options every command reads, by name. */
 const OPTIONS = {
+  help: { type: "boolean", short: "h" },
   json: { type: "boolean" },
   repository: { type: "string" },
   "source-sha": { type: "string" },
@@ -99,7 +102,7 @@ type Options = Readonly<Record<string, string | boolean | undefined>>;
 
 /** A wrong call: the usage, after what was wrong with it. */
 const usage = (message: string): Outcome => ({
-  code: USAGE,
+  code: EXIT.usage,
   stdout: "",
   stderr: `${message}\n${USAGE_TEXT}`,
 });
@@ -107,7 +110,7 @@ const usage = (message: string): Outcome => ({
 /** Diagnostics for a human, or verbatim under `--json`. */
 function refused(diagnostics: readonly Diagnostic[], json: boolean): Outcome {
   return {
-    code: REFUSED,
+    code: EXIT.refused,
     stdout: json ? `${JSON.stringify(diagnostics)}\n` : "",
     stderr: json
       ? ""
@@ -120,10 +123,15 @@ function refused(diagnostics: readonly Diagnostic[], json: boolean): Outcome {
   };
 }
 
-const accepted = (stdout: string): Outcome => ({
-  code: ACCEPTED,
-  stdout,
-  stderr: "",
+/**
+ * What a command did, for a human. Under `--json` stdout carries data alone:
+ * the diagnostics, of which an accepted run has none, and the summary goes to
+ * stderr.
+ */
+const accepted = (summary: string, json: boolean): Outcome => ({
+  code: EXIT.accepted,
+  stdout: json ? "[]\n" : summary,
+  stderr: json ? summary : "",
 });
 
 /** Every file under `root`, by its path below it, in path order. */
@@ -213,7 +221,7 @@ function validate(paths: readonly string[], json: boolean): Outcome {
   const files = paths.flatMap(filesAt);
   const checked = checkIntentSet(files);
   return checked.ok
-    ? accepted(`accepted (${String(files.length)} read)\n`)
+    ? accepted(`accepted (${String(files.length)} read)\n`, json)
     : refused(checked.diagnostics, json);
 }
 
@@ -359,6 +367,7 @@ function publish(
   write(join(out, MANIFEST), stringify(checked.data));
   return accepted(
     `${manifest.spec.project} ${manifest.spec.version} packed in ${out}\n`,
+    json,
   );
 }
 
@@ -478,6 +487,7 @@ function compose(values: Options, json: boolean, world: World): Outcome {
   const moving = artifacts.filter(({ moves }) => moves).map(({ name }) => name);
   return accepted(
     `composed ${String(artifacts.length)} artifacts; pins move for: ${moving.length === 0 ? "none" : moving.join(", ")}\n`,
+    json,
   );
 }
 
@@ -493,6 +503,9 @@ export function main(argv: readonly string[], world: World): Outcome {
   });
   const unknown = Object.keys(values).find((name) => !(name in OPTIONS));
   if (unknown !== undefined) return usage(`Unknown option '--${unknown}'`);
+  // Help asked for is the answer, not a wrong call: on stdout, accepted.
+  if (values.help === true || command === "--help" || command === "-h")
+    return { code: EXIT.accepted, stdout: USAGE_TEXT, stderr: "" };
   const json = values.json === true;
   switch (command) {
     case "validate":

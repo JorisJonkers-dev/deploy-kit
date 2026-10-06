@@ -784,8 +784,9 @@ describe("deploy-kit compose", () => {
 
 describe("deploy-kit", () => {
   it("prints the usage of all three commands", () => {
-    expect(USAGE_TEXT.split("\n").slice(0, 4)).toEqual([
+    expect(USAGE_TEXT.split("\n").slice(0, 5)).toEqual([
       "usage:",
+      "  deploy-kit --help",
       "  deploy-kit validate <file|directory>... [--json]",
       "  deploy-kit publish <project-file|platform.intent.yml> --repository <owner/name> --source-sha <sha> --version <x.y.z> --out <directory>",
       "                     [--images-lock <file>] [--json]",
@@ -794,6 +795,32 @@ describe("deploy-kit", () => {
       "  deploy-kit compose --fragments <directory> --participants <file> --cluster-state <file>",
     );
     expect(USAGE_TEXT).toContain("[--platform <directory>]");
+  });
+
+  it("answers help on stdout, accepted, however it is asked for", () => {
+    const help = { code: 0, stdout: USAGE_TEXT, stderr: "" };
+    for (const argv of [
+      ["--help"],
+      ["-h"],
+      ["validate", "--help"],
+      ["compose", "-h"],
+    ])
+      expect(run(...argv), argv.join(" ")).toEqual(help);
+  });
+
+  it("writes data alone under --json for an accepted run, and its summary for a human", () => {
+    const file = example("minimal/notes.project.yml");
+
+    expect(run("validate", file, "--json")).toEqual({
+      code: 0,
+      stdout: "[]\n",
+      stderr: "accepted (1 read)\n",
+    });
+    expect(run("validate", file)).toEqual({
+      code: 0,
+      stdout: "accepted (1 read)\n",
+      stderr: "",
+    });
   });
 
   it("asks for a command it knows, and an option it knows", () => {

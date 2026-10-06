@@ -35,10 +35,9 @@ has to outlive every opinion about where the rule belongs.
 
 Eleven, the set [issue #21](https://github.com/JorisJonkers-dev/deploy-kit/issues/21)
 named, each normalised to one word. None was added and none dropped: what this
-repository's own enforcement changed is which families have enforced members
-today (`layering`, `purity`, `graph`, `dependencies`, `naming`, `tests`,
-`toolchain`, `diagnostics` and `gates`) and which are entirely pending until the
-compiler exists (`cli` and `registry`). A family declared here and used by no rule
+repository's own enforcement changed is which families have enforced members:
+today every one of the eleven has at least one, `cli` and `registry` since the
+compiler landed. A family declared here and used by no rule
 fails the gate, so the taxonomy cannot grow entries nothing stands behind.
 
 | family | covers |
@@ -57,7 +56,7 @@ fails the gate, so the taxonomy cannot grow entries nothing stands behind.
 
 ## Rules
 
-This ledger holds **74** rules, **3** of them pending.
+This ledger holds **74** rules, **2** of them pending.
 
 A row is enforced or pending, never both. An enforced row names its enforcer as
 `kind:value`: `depcruise:` a rule in
@@ -119,7 +118,7 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-041 | toolchain | No default export outside a tool configuration file | `eslint:no-restricted-exports` | [test/seams.test.ts](../test/seams.test.ts) `RULE-041 refuses a default export` |
 | RULE-042 | toolchain | Shipped code is ESM, and the one CommonJS file is the dependency-cruiser configuration that cannot be anything else | `eslint:deploy-kit/esm-only` | [test/code-rules.test.ts](../test/code-rules.test.ts) `is CommonJS; this package is ESM` |
 | RULE-043 | toolchain | Generated artifacts are committed, and CI fails when regenerating one produces a diff | `file:src/model/json-schema.ts` | [test/model/descriptor.test.ts](../test/model/descriptor.test.ts) `regenerates without a diff` |
-| RULE-044 | cli | The CLI prints help on `--help` and `-h`, data on stdout and diagnostics on stderr, emits only data under `--json`, maps failures through one exit-code enum, honours `NO_COLOR`, and never prompts | pending (n/a): each clause needs a process-level test, and no ticket has brought the CLI ring yet | pending |
+| RULE-044 | cli | The CLI prints help on `--help` and `-h`, data on stdout and diagnostics on stderr, emits only data under `--json`, maps failures through one exit-code enum, honours `NO_COLOR`, and never prompts | `file:test/cli/conventions.test.ts` | [test/cli/conventions.test.ts](../test/cli/conventions.test.ts) `RULE-044 refuses a CLI that breaks its conventions` |
 | RULE-045 | registry | Every registered adapter satisfies the adapter port, attributes every Deliverable to itself, and renders deterministically | `file:test/adapters/contract.test.ts` | [test/adapters/contract.test.ts](../test/adapters/contract.test.ts) `names an adapter that attributes, places or renders wrongly` |
 | RULE-046 | registry | Every estate-wide invariant is registered with its code, its spec anchor and its test, so an unregistered one is detectable rather than merely absent | pending (#44): the invariant registry is that ticket's deliverable | pending |
 | RULE-047 | diagnostics | Every diagnostic carries a code, a document path, a message and a non-empty hint, enforced by its type rather than by review | pending (#38): the `Diagnostic` type is the enforcement, and it lands with the first parser | pending |

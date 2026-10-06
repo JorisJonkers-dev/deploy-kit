@@ -123,10 +123,13 @@ node src/cli/index.ts compose --fragments fragments/ --participants participants
   [--platform platform/] [--held held/] [--pins pins.json] [--lock lock.json --lock-commit <commit>]
 ```
 
+- **Help.** `deploy-kit --help` or `-h`, alone or after a command, prints the
+  usage on stdout and exits 0.
 - **Exit status.** A command exits 0 when the inputs are accepted, 1 when they
   are refused, and 2 when it was called wrongly.
-- **Diagnostics.** They go to stderr for a human. Under `--json` they go to
-  stdout as an array.
+- **Diagnostics.** They go to stderr for a human. Under `--json`, stdout holds
+  data alone: the diagnostics as an array, `[]` for an accepted run, whose
+  summary then goes to stderr. Nothing is coloured, and nothing waits for input.
 - **What compose writes.** Under its output directory, `artifacts/<name>/`
   holds one directory per delivered Project, and `_estate` once no Project is
   legacy. `projects/<name>/source.yaml` is the pin source of each artifact it
