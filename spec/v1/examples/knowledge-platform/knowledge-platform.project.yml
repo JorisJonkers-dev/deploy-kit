@@ -19,6 +19,10 @@ schemaVersion: 1.0.0
 project: knowledge-platform
 owner: joris
 
+# Shared Intent at the header: every Process here holds a volume or serves one
+# that does, so each runs one copy at a time and is replaced in place.
+cutover: interrupted
+
 applications:
   # ============================================================ docling-serve
   # Parses PDFs and office documents into text. Its archive is the evidence
@@ -40,7 +44,6 @@ applications:
           readiness: { path: /health, port: 8000 }
           liveness: { path: /health, port: 8000 }
         startupBudget: 120s
-        cutover: interrupted # it holds a volume: one copy at a time
         volumes:
           - claim: docling-serve-archive
             mountAt: /archive
@@ -53,6 +56,10 @@ applications:
   # the four release together: a new API against an old worker is a broken queue.
   - id: hindsight
     migration: self # the API migrates its own schema at startup
+    # Shared Intent at the Application: the four run on one site, beside the
+    # model cache and the database they read.
+    placement:
+      site: enschede
     exposure:
       - name: console
         host: memory.jorisjonkers.dev
@@ -76,7 +83,6 @@ applications:
         placement:
           memory: 1Gi
           cpu: 500m
-          site: enschede
         dependsOn:
           - { application: platform-postgres, surface: postgres }
           - { application: hindsight, surface: embeddings }
@@ -90,7 +96,6 @@ applications:
           readiness: { path: /health, port: 8888 }
           liveness: { path: /health/live, port: 8888 }
         startupBudget: 120s
-        cutover: interrupted
 
       - name: hindsight-worker
         lifecycle: application
@@ -101,7 +106,6 @@ applications:
         placement:
           memory: 1Gi
           cpu: 500m
-          site: enschede
         dependsOn:
           - { application: platform-postgres, surface: postgres }
           - { application: hindsight, surface: embeddings }
@@ -115,7 +119,6 @@ applications:
           readiness: { path: /health, port: 8889 }
           liveness: { path: /health/live, port: 8889 }
         startupBudget: 120s
-        cutover: interrupted
 
       - name: hindsight-control-plane
         lifecycle: application
@@ -126,14 +129,12 @@ applications:
         placement:
           memory: 512Mi
           cpu: 250m
-          site: enschede
         dependsOn:
           - { application: hindsight, surface: api }
         probes:
           readiness: { tcp: 3000 }
           liveness: { tcp: 3000 }
         startupBudget: 60s
-        cutover: interrupted
 
       - name: hindsight-tei-embedding
         lifecycle: application
@@ -144,12 +145,10 @@ applications:
         placement:
           memory: 6Gi
           cpu: 500m
-          site: enschede
         probes:
           readiness: { path: /health, port: 8091 }
           liveness: { path: /health, port: 8091 }
         startupBudget: 300s # the first start downloads the model into the cache
-        cutover: interrupted
         volumes:
           - claim: hindsight-tei-model-cache
             mountAt: /data
@@ -197,7 +196,6 @@ applications:
           readiness: { tcp: 8000 }
           liveness: { tcp: 8000 }
         startupBudget: 120s
-        cutover: interrupted
         volumes:
           # A clone: the repository on GitHub is the copy that matters.
           - claim: basic-memory-vault
@@ -251,7 +249,6 @@ applications:
           readiness: { path: /api/health, port: 3000 }
           liveness: { path: /api/health, port: 3000 }
         startupBudget: 200s
-        cutover: interrupted
         volumes:
           - claim: karakeep-data
             mountAt: /data
