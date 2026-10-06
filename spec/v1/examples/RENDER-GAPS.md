@@ -60,6 +60,27 @@ decisions owe the example set.
 | R25 | **No scrape `interval` or `scrapeTimeout` is derivable**, so omitting them silently takes the metrics stack's global default, decided outside the model. **Closed** by [0025](../../../docs/adr/model/0025-observability-is-one-optional-block.md): the Platform document states one `monitors: {interval, timeout}` for the estate and every emitted monitor names it, so the metrics stack's global default stops being an input nobody declared. | auth |
 | R26 | **Estate-scoped Deliverables land in another project's namespace.** The Gatus endpoints ConfigMap is one object in `utility-system`; `E_FOREIGN_NAMESPACE` is satisfied only because the adapter owns the path rather than the Application. **Closed** by [0036](../../../docs/adr/model/0036-path-authority-is-layer-2.md): an estate-scoped Deliverable is assigned its path and its owner rather than inheriting the emitting adapter's. | auth |
 
+## The knowledge platform
+
+[`knowledge-platform/`](knowledge-platform/knowledge-platform.project.yml) is
+fleet-infra's knowledge platform (`cluster/flux/apps/knowledge-platform/` in
+JorisJonkers-dev/fleet-infra), declared as intent and rendered by the compiler
+into [`knowledge-platform/rendered/`](knowledge-platform/rendered/), bound byte
+for byte in both implementations. Every row is something the live manifests do
+that the declaration cannot say yet. None of them is guessed at in the project
+file.
+
+| # | gap | seen in |
+|---|---|---|
+| K1 | **A URL composed of two coordinates is not an env value.** A value holds one placeholder, with text only after it, so `http://${dependency:hindsight.host}:${dependency:hindsight.port}` is refused. Hindsight reads its embedding endpoint, its database and the console's API each as one URL, so `HINDSIGHT_API_EMBEDDINGS_TEI_URL`, `HINDSIGHT_API_DATABASE_URL` and `HINDSIGHT_CP_DATAPLANE_API_URL` are left out; the edges stay, and the egress they derive is right. Tracked as JorisJonkers-dev/deploy-kit#269. | hindsight |
+| K2 | **Hindsight's database credential is not delivered.** Live, hindsight reads `hindsight_db` as its own user, with a static password held in its own Secret. The declaration grants no credential for it: the edge to `platform-postgres` derives the address and the egress, and the URL that would carry a credential is K1's. | hindsight |
+| K3 | **No egress to the internet.** Every Application here calls out: OpenRouter for hindsight and karakeep, GitHub over SSH for git-sync, any page for the bookmark browser, the model hub for the embedding cache. The rendered NetworkPolicies admit only the declared edges, so each call is denied once the policies are loaded ([0035](../../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md) keeps them render-only today). Tracked as JorisJonkers-dev/deploy-kit#270. | all four |
+| K4 | **A sidecar mounts no volume of its own and runs no probe.** git-sync works in `/vault` and meilisearch writes `/meili_data`, and both volumes mount into the Process's container only; a sidecar gets the Process's variables and its file grants, nothing else. Live, git-sync also runs as an init container to clone before the server starts, which the model has no word for. Tracked as JorisJonkers-dev/deploy-kit#271. | basic-memory, karakeep |
+| K5 | **Images that write their own root filesystem.** docling-serve, karakeep and chrome write under their home directories, which the restricted posture mounts read-only; no `writablePaths` are declared, because the paths are the images' internals rather than anything fleet-infra states. | docling-serve, karakeep |
+| K6 | **Images that run as root.** karakeep, meilisearch and chrome run as the image's own user, root, live; the lock pins `uid` and `gid` 1000 for each, which the images have not been proven to run as. | karakeep |
+| K7 | **Node pinning by hostname is not rendered.** fleet-infra pins each workload to one node; the declaration names only the site, and placement renders no affinity yet (JorisJonkers-dev/deploy-kit#259). | all four |
+| K8 | **Left out: what is not one Process.** The ingest worker is parked at zero replicas and its copy Job is one-off; a Process has no zero and a one-off migration is no Process. LightRAG still runs in `knowledge-system`, so it stays with the `knowledge` example. Tracked as JorisJonkers-dev/deploy-kit#272. | knowledge-platform |
+
 ## Missing inputs, not missing derivations
 
 **Discharged on 2026-09-08**: every input this section lists is a block of the

@@ -69,6 +69,21 @@ class RenderedTreeTest {
     }
 
     @Test
+    void theKnowledgePlatformsShareAndTheEstateShareItDerivesAreItsCommittedTreeByteForByte(@TempDir Path out)
+            throws IOException {
+        assertThat(Pipeline.render(
+                        Outputs.KNOWLEDGE_PLATFORM_UNION.documents().stream()
+                                .map(Examples::of)
+                                .toList(),
+                        Outputs.KNOWLEDGE_PLATFORM_UNION.projects(),
+                        Outputs.INTEGRITY,
+                        out))
+                .isEmpty();
+
+        assertSameTree(out, Examples.of("knowledge-platform/rendered"));
+    }
+
+    @Test
     void theEstateShareMinimalAndDataHoldBetweenThemIsTheCommittedEstateTree(@TempDir Path out) throws IOException {
         assertThat(Pipeline.render(union(), Outputs.RENDERED_UNION.projects(), Outputs.INTEGRITY, out))
                 .isEmpty();

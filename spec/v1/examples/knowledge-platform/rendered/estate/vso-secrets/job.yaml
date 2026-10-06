@@ -1,0 +1,83 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-policy-986af2387fc0
+  namespace: secrets-system
+  labels:
+    app.kubernetes.io/name: vault-policy
+    app.kubernetes.io/instance: vault-policy
+    app.kubernetes.io/part-of: vault-policy
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  activeDeadlineSeconds: 120
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vault-policy
+        app.kubernetes.io/instance: vault-policy
+        app.kubernetes.io/part-of: vault-policy
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+    spec:
+      serviceAccountName: vault-policy
+      automountServiceAccountToken: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: vault-policy
+          image: ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7
+          env:
+            - name: VAULT_ADDR
+              value: http://vault.secrets-system.svc.cluster.local:8200
+            - name: VAULT_ROLE
+              value: policy-admin
+            - name: POLICIES_DIR
+              value: /policies
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 10m
+            limits:
+              memory: 64Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: policies
+              mountPath: /policies
+              readOnly: true
+      volumes:
+        - name: policies
+          configMap:
+            name: vault-policy-986af2387fc0
+            items:
+              - key: knowledge-platform-system-basic-memory.policy.json
+                path: knowledge-platform-system-basic-memory.policy.json
+              - key: knowledge-platform-system-basic-memory.role.json
+                path: knowledge-platform-system-basic-memory.role.json
+              - key: knowledge-platform-system-docling-serve-backup.policy.json
+                path: knowledge-platform-system-docling-serve-backup.policy.json
+              - key: knowledge-platform-system-docling-serve-backup.role.json
+                path: knowledge-platform-system-docling-serve-backup.role.json
+              - key: knowledge-platform-system-hindsight-api.policy.json
+                path: knowledge-platform-system-hindsight-api.policy.json
+              - key: knowledge-platform-system-hindsight-api.role.json
+                path: knowledge-platform-system-hindsight-api.role.json
+              - key: knowledge-platform-system-hindsight-worker.policy.json
+                path: knowledge-platform-system-hindsight-worker.policy.json
+              - key: knowledge-platform-system-hindsight-worker.role.json
+                path: knowledge-platform-system-hindsight-worker.role.json
+              - key: knowledge-platform-system-karakeep.policy.json
+                path: knowledge-platform-system-karakeep.policy.json
+              - key: knowledge-platform-system-karakeep.role.json
+                path: knowledge-platform-system-karakeep.role.json

@@ -192,7 +192,7 @@ policyJob:
 # both, and after retireBy the old path is removed.
 handover:
   retireBy: 2027-03-31
-  legacy: [auth, data, knowledge, notes]
+  legacy: [auth, data, knowledge, knowledge-platform, notes]
   estate: [delivery, edge, observability, secrets]
 
 # Things the estate runs and does not deploy, that an Application depends on. A fact

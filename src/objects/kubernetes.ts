@@ -107,6 +107,17 @@ export type Volume =
   | {
       readonly name: string;
       readonly emptyDir: { readonly sizeLimit: string };
+    }
+  | {
+      readonly name: string;
+      readonly secret: {
+        readonly secretName: string;
+        readonly items: readonly {
+          readonly key: string;
+          readonly path: string;
+        }[];
+        readonly defaultMode: number;
+      };
     };
 
 export interface PodSpec {

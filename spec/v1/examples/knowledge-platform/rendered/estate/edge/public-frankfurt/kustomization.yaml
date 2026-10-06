@@ -1,0 +1,9 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - basic-memory-mcp.yaml
+  - hindsight-api.yaml
+  - hindsight-console.yaml
+  - karakeep-public.yaml

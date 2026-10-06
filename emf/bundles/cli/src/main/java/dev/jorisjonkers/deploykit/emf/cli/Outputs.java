@@ -50,8 +50,8 @@ public final class Outputs {
      * The cases this implementation resolves, each with the project it resolves and the set of
      * documents it is read with: the case's own documents, the foundation it composes with, and the
      * pinned inputs beside the Platform document (spec/v1/20-resolved-deployment.md#pinned-inputs).
-     * Every case the production implementation resolves is here; `knowledge` joins when the
-     * production implementation resolves it (JorisJonkers-dev/deploy-kit#201).
+     * Every case the production implementation resolves is here; `knowledge` is resolved by
+     * neither, and retires with the project it models (JorisJonkers-dev/deploy-kit#272).
      */
     public static final Map<String, Resolving> RESOLVED = Map.of(
             "minimal",
@@ -62,6 +62,10 @@ public final class Outputs {
                     withFoundation("auth/auth.project.yml", "auth/migration-proof.yml", "data/data.project.yml")),
             "data",
             new Resolving("data", withFoundation("data/data.project.yml")),
+            "knowledge-platform",
+            new Resolving(
+                    "knowledge-platform",
+                    withFoundation("knowledge-platform/knowledge-platform.project.yml", "data/data.project.yml")),
             "delivery",
             new Resolving("delivery", withFoundation()),
             "edge",
@@ -106,6 +110,15 @@ public final class Outputs {
     public static final Union AUTH_UNION = new Union(
             List.of("auth"),
             withFoundation("auth/auth.project.yml", "auth/migration-proof.yml", "data/data.project.yml"));
+
+    /**
+     * The knowledge platform, rendered alone beside the project that holds its database: its tree is the
+     * committed {@code knowledge-platform/rendered/}, its own share and the estate-scoped share it alone
+     * derives.
+     */
+    public static final Union KNOWLEDGE_PLATFORM_UNION = new Union(
+            List.of("knowledge-platform"),
+            withFoundation("knowledge-platform/knowledge-platform.project.yml", "data/data.project.yml"));
 
     /** The integrity the worked projections record for the schema package they were rendered against. */
     public static final String INTEGRITY = "sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b";

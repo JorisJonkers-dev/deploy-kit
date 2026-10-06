@@ -1,0 +1,11 @@
+{
+  "bound_service_account_names": [
+    "hindsight-api"
+  ],
+  "bound_service_account_namespaces": [
+    "knowledge-platform-system"
+  ],
+  "token_policies": [
+    "knowledge-platform-system-hindsight-api"
+  ]
+}

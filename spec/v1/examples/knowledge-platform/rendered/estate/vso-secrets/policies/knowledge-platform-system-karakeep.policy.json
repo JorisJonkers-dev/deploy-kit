@@ -1,0 +1,14 @@
+{
+  "path": {
+    "secret/data/platform/karakeep": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/platform/karakeep": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

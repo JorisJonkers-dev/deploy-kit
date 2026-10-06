@@ -90,6 +90,7 @@ describe("parseProjectIntent", () => {
       "delivery",
       "edge",
       "knowledge",
+      "knowledge-platform",
       "minimal",
       "observability",
       "secrets",

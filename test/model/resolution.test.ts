@@ -203,6 +203,51 @@ describe("resolveIntentSet", () => {
     });
   });
 
+  describe("the knowledge platform, composed with data, the same foundation and the files beside both", () => {
+    const knowledgePlatform = () => {
+      const result = resolveIntentSet(
+        [
+          ...files().filter(({ name }) => !name.startsWith("minimal/")),
+          ...[
+            "data/data.project.yml",
+            "data/env/postgres/base.env",
+            "data/config/postgresql.conf",
+            "knowledge-platform/knowledge-platform.project.yml",
+            ...[
+              "docling-serve",
+              "hindsight-api",
+              "hindsight-worker",
+              "hindsight-control-plane",
+              "hindsight-tei-embedding",
+              "basic-memory",
+              "karakeep",
+            ].map((process) => `knowledge-platform/env/${process}/base.env`),
+          ].map((name) => ({ name, text: text(name) })),
+        ],
+        options,
+      );
+      if (!result.ok)
+        throw new Error(
+          JSON.stringify(result.diagnostics.map(({ code }) => code)),
+        );
+      return project([...result.value.projects], "knowledge-platform");
+    };
+
+    it("resolves hindsight, four Processes released together, to its committed projection, byte for byte", () => {
+      expect(
+        canonicalJson(
+          knowledgePlatform().applications.find(({ id }) => id === "hindsight"),
+        ),
+      ).toBe(text("knowledge-platform/expected/resolved.hindsight.json"));
+    });
+
+    it("resolves the knowledge platform's dependency edges, its in-project ones among them, to its committed oracle, byte for byte", () => {
+      expect(canonicalJson(knowledgePlatform().dependencies)).toBe(
+        text("knowledge-platform/expected/dependencies.json"),
+      );
+    });
+  });
+
   it("resolves minimal's dependency edges to its committed oracle, byte for byte", () => {
     expect(canonicalJson(project(resolved(), "notes").dependencies)).toBe(
       text("minimal/expected/dependencies.json"),

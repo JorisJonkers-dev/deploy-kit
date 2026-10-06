@@ -1,0 +1,43 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: docling-serve-backup
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: docling-serve-backup
+    app.kubernetes.io/instance: docling-serve-backup
+    app.kubernetes.io/part-of: docling-serve
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: knowledge-platform-system-docling-serve-backup
+    serviceAccount: docling-serve-backup
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: docling-serve-backup-platform-backup-off-cluster
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: docling-serve-backup
+    app.kubernetes.io/instance: docling-serve-backup
+    app.kubernetes.io/part-of: docling-serve
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: docling-serve-backup
+  mount: secret
+  type: kv-v2
+  path: platform/backup/off-cluster
+  refreshAfter: 1h
+  destination:
+    name: docling-serve-backup-platform-backup-off-cluster
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled

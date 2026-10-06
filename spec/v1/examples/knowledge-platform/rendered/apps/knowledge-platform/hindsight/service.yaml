@@ -1,0 +1,77 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hindsight-api
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: hindsight-api
+    app.kubernetes.io/instance: hindsight-api
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: python
+spec:
+  selector:
+    app.kubernetes.io/instance: hindsight-api
+  ports:
+    - name: api
+      port: 8888
+      targetPort: api
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hindsight-worker
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: hindsight-worker
+    app.kubernetes.io/instance: hindsight-worker
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: python
+spec:
+  selector:
+    app.kubernetes.io/instance: hindsight-worker
+  ports:
+    - name: worker
+      port: 8889
+      targetPort: worker
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hindsight-control-plane
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: hindsight-control-plane
+    app.kubernetes.io/instance: hindsight-control-plane
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: node
+spec:
+  selector:
+    app.kubernetes.io/instance: hindsight-control-plane
+  ports:
+    - name: console
+      port: 3000
+      targetPort: console
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hindsight-tei-embedding
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: hindsight-tei-embedding
+    app.kubernetes.io/instance: hindsight-tei-embedding
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  selector:
+    app.kubernetes.io/instance: hindsight-tei-embedding
+  ports:
+    - name: embeddings
+      port: 8091
+      targetPort: embeddings

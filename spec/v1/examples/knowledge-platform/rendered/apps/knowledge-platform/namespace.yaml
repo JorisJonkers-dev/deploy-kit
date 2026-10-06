@@ -1,0 +1,8 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: knowledge-platform-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit

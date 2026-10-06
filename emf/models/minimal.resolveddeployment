@@ -30,15 +30,15 @@
     through its one black box, and not the production implementation's digests,
     which are over a different shape (spec/v1/20-resolved-deployment.md#pinned-inputs).
   -->
-  <provenance renderHash="sha256:d2a6d3828b71c66031a59b6c375ab6f949993bbb68468603e416cd3375e073b7" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+  <provenance renderHash="sha256:513e289cd214746314009ea36c6de5529c10654f8fbf4ebaf9941f2e8c215968" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
     <inputDigests input="intent-fragment" name="delivery" digest="sha256:0fefb45a0d33f5a4c3d36ba970bd3d1c27aa375ab2677b6f76dbd58c716b6082"/>
     <inputDigests input="intent-fragment" name="edge" digest="sha256:273c64ecd8c35ab69918664735661764e44e8e3ad04a58a11ab92dcb52ec1f4a"/>
     <inputDigests input="intent-fragment" name="notes" digest="sha256:252e68be274ac566d591709794fbfed79b35e24cabaa38e39d90242e3e3893df"/>
     <inputDigests input="intent-fragment" name="observability" digest="sha256:aac790f0f921ce56ea5fb7af1f5a85c48c2122fbcbd99923124aafe063f6594c"/>
     <inputDigests input="intent-fragment" name="secrets" digest="sha256:3b6b608aa89a7beebed377772c9905705861c2609f1c262a5ddcb757b70bcecc"/>
-    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:24a753973f78eec23aaa55f92aee60fc44809ec35b497b4712b5eb353c2ccd5e"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:bcce015e0202af1a849172a59d112e7c57992dc6524d70f4c3d4a2a8eb513dd5"/>
     <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
-    <inputDigests input="images-lock" name="estate" digest="sha256:4e6cdc1fc35739fae33bf8d97a71f7dc6f67e58a6f4e26c13204bf1fdfcc2c46"/>
+    <inputDigests input="images-lock" name="estate" digest="sha256:c90b71a8ad863de3ed3c2598d636d906aca639918531531ff26c8cfb88f993fd"/>
     <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
   </provenance>
 
