@@ -80,6 +80,7 @@ file.
 | K6 | **Images that run as root.** karakeep, meilisearch and chrome run as the image's own user, root, live; the lock pins `uid` and `gid` 1000 for each, which the images have not been proven to run as. | karakeep |
 | K7 | **Node pinning by hostname is not rendered.** fleet-infra pins each workload to one node; the declaration names only the site, and placement renders no affinity yet (JorisJonkers-dev/deploy-kit#259). | all four |
 | K8 | **Left out: what is not one Process.** The ingest worker is parked at zero replicas and its copy Job is one-off; a Process has no zero and a one-off migration is no Process. LightRAG still runs in `knowledge-system`, so it stays with the `knowledge` example. Tracked as JorisJonkers-dev/deploy-kit#272. | knowledge-platform |
+| K9 | **A grant reaches every container of the pod.** A sidecar gets the Process's variables and file grants, so the vault deploy key is mounted into the MCP server as well as git-sync, and karakeep's three secrets reach meilisearch and the page-loading chrome sidecar. Live, each container gets only what it uses; no field scopes a grant to one container. Tracked as JorisJonkers-dev/deploy-kit#274. | basic-memory, karakeep |
 
 ## Missing inputs, not missing derivations
 
