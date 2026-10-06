@@ -172,6 +172,26 @@ describe("parseProjectIntent", () => {
     );
   });
 
+  it("lowers the knowledge platform to its committed effective oracle, byte for byte, the header's cutover and an Application's site held by every Process below them", () => {
+    const directory = join(EXAMPLES, "knowledge-platform");
+    const result = parseProjectIntent(
+      readFileSync(join(directory, "knowledge-platform.project.yml"), "utf8"),
+      readdirSync(join(directory, "env"))
+        .sort()
+        .map((process) => ({
+          path: `knowledge-platform/env/${process}/base.env`,
+          text: readFileSync(
+            join(directory, "env", process, "base.env"),
+            "utf8",
+          ),
+        })),
+    );
+
+    expect(result.ok && canonicalJson(result.value.effective)).toBe(
+      readFileSync(join(directory, "expected", "effective.json"), "utf8"),
+    );
+  });
+
   it("names a route's and a scrape's Process and surface as written, each one the lowered Application holds", () => {
     const result = parseProjectIntent(MINIMAL);
     const application = result.ok
