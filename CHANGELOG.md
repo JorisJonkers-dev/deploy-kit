@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.6.0...v0.7.0) (2026-10-06)
+
+
+### Features
+
+* hold the CLI to its conventions at the process seam, and answer help and --json as they say ([#267](https://github.com/JorisJonkers-dev/deploy-kit/issues/267)) ([e9518b2](https://github.com/JorisJonkers-dev/deploy-kit/commit/e9518b2edecb3c85ec53480269fefbc8802efc08))
+
 ## [0.6.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.5.1...v0.6.0) (2026-10-05)
 
 
