@@ -1,0 +1,28 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: basic-memory-mcp
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/part-of: basic-memory
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`memory-mcp.jorisjonkers.dev`) && PathPrefix(`/`)
+      priority: 999
+      middlewares:
+        - name: forward-auth
+          namespace: edge-system
+        - name: security-headers-strict
+          namespace: edge-system
+      services:
+        - name: basic-memory
+          namespace: knowledge-platform-system
+          port: 8000
+  tls:
+    certResolver: acme

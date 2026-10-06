@@ -1,0 +1,222 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: basic-memory
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: basic-memory
+    app.kubernetes.io/instance: basic-memory
+    app.kubernetes.io/part-of: basic-memory
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: python
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  progressDeadlineSeconds: 360
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: basic-memory
+      app.kubernetes.io/instance: basic-memory
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: basic-memory
+        app.kubernetes.io/instance: basic-memory
+        app.kubernetes.io/part-of: basic-memory
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: python
+    spec:
+      serviceAccountName: basic-memory
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: basic-memory
+          image: ghcr.io/basicmachines-co/basic-memory@sha256:939f1173d96626c280763e14622f2381d49fbbb7db17cae2e832f4f639405643
+          ports:
+            - name: mcp
+              containerPort: 8000
+          env:
+            - name: BASIC_MEMORY_CONFIG_DIR
+              value: /app/.basic-memory
+            - name: BASIC_MEMORY_DEFAULT_PROJECT
+              value: main
+            - name: BASIC_MEMORY_DISABLE_PERMALINKS
+              value: "true"
+            - name: BASIC_MEMORY_ENSURE_FRONTMATTER_ON_SYNC
+              value: "false"
+            - name: BASIC_MEMORY_HOME
+              value: /vault
+            - name: BASIC_MEMORY_LOG_LEVEL
+              value: INFO
+            - name: BASIC_MEMORY_PROJECT_ROOT
+              value: /vault
+            - name: BASIC_MEMORY_SEMANTIC_EMBEDDING_CACHE_DIR
+              value: /app/.basic-memory/fastembed
+            - name: BASIC_MEMORY_SYNC_CHANGES
+              value: "true"
+            - name: BASIC_MEMORY_SYNC_DELAY
+              value: "1000"
+            - name: DEPLOYMENT_ENVIRONMENT
+              value: production
+            - name: GIT_CONFIG_COUNT
+              value: "1"
+            - name: GIT_CONFIG_KEY_0
+              value: safe.directory
+            - name: GIT_CONFIG_VALUE_0
+              value: /vault
+            - name: LOG_LEVEL
+              value: INFO
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observability-system.svc.cluster.local:4317
+            - name: OTEL_SERVICE_NAME
+              value: basic-memory
+            - name: POLL_SECONDS
+              value: "10"
+            - name: PORT
+              value: "8000"
+            - name: PUSH
+              value: "true"
+            - name: VAULT_AUTHOR_EMAIL
+              value: basicmemory@knowledge.local
+            - name: VAULT_AUTHOR_NAME
+              value: basic-memory-vault
+            - name: VAULT_BRANCH
+              value: main
+            - name: VAULT_CLONE_URL
+              value: git@github.com:JorisJonkers-dev/knowledge-vault.git
+            - name: VAULT_DIR
+              value: /vault
+            - name: VAULT_SSH_KEY_PATH
+              value: /run/secrets/knowledge-vault/id_ed25519
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+            limits:
+              memory: 1Gi
+          securityContext:
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: basic-memory-vault
+              mountPath: /vault
+            - name: basic-memory-config
+              mountPath: /app/.basic-memory
+            - name: secret-basic-memory-knowledge-system-vault-deploy-key
+              mountPath: /run/secrets/knowledge-vault
+              readOnly: true
+          readinessProbe:
+            tcpSocket:
+              port: 8000
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          livenessProbe:
+            tcpSocket:
+              port: 8000
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          startupProbe:
+            tcpSocket:
+              port: 8000
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 24
+        - name: git-sync
+          image: ghcr.io/jorisjonkers-dev/knowledge/basic-memory-git-sync@sha256:7507f69d7e903da30006f07d84091d892dfa42c359c125cccaec05506af36e50
+          env:
+            - name: BASIC_MEMORY_CONFIG_DIR
+              value: /app/.basic-memory
+            - name: BASIC_MEMORY_DEFAULT_PROJECT
+              value: main
+            - name: BASIC_MEMORY_DISABLE_PERMALINKS
+              value: "true"
+            - name: BASIC_MEMORY_ENSURE_FRONTMATTER_ON_SYNC
+              value: "false"
+            - name: BASIC_MEMORY_HOME
+              value: /vault
+            - name: BASIC_MEMORY_LOG_LEVEL
+              value: INFO
+            - name: BASIC_MEMORY_PROJECT_ROOT
+              value: /vault
+            - name: BASIC_MEMORY_SEMANTIC_EMBEDDING_CACHE_DIR
+              value: /app/.basic-memory/fastembed
+            - name: BASIC_MEMORY_SYNC_CHANGES
+              value: "true"
+            - name: BASIC_MEMORY_SYNC_DELAY
+              value: "1000"
+            - name: DEPLOYMENT_ENVIRONMENT
+              value: production
+            - name: GIT_CONFIG_COUNT
+              value: "1"
+            - name: GIT_CONFIG_KEY_0
+              value: safe.directory
+            - name: GIT_CONFIG_VALUE_0
+              value: /vault
+            - name: LOG_LEVEL
+              value: INFO
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observability-system.svc.cluster.local:4317
+            - name: OTEL_SERVICE_NAME
+              value: basic-memory
+            - name: POLL_SECONDS
+              value: "10"
+            - name: PORT
+              value: "8000"
+            - name: PUSH
+              value: "true"
+            - name: VAULT_AUTHOR_EMAIL
+              value: basicmemory@knowledge.local
+            - name: VAULT_AUTHOR_NAME
+              value: basic-memory-vault
+            - name: VAULT_BRANCH
+              value: main
+            - name: VAULT_CLONE_URL
+              value: git@github.com:JorisJonkers-dev/knowledge-vault.git
+            - name: VAULT_DIR
+              value: /vault
+            - name: VAULT_SSH_KEY_PATH
+              value: /run/secrets/knowledge-vault/id_ed25519
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 50m
+            limits:
+              memory: 64Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: secret-basic-memory-knowledge-system-vault-deploy-key
+              mountPath: /run/secrets/knowledge-vault
+              readOnly: true
+      volumes:
+        - name: basic-memory-vault
+          persistentVolumeClaim:
+            claimName: basic-memory-vault
+        - name: basic-memory-config
+          persistentVolumeClaim:
+            claimName: basic-memory-config
+        - name: secret-basic-memory-knowledge-system-vault-deploy-key
+          secret:
+            secretName: basic-memory-knowledge-system-vault-deploy-key
+            items:
+              - key: private_key
+                path: id_ed25519
+            defaultMode: 256

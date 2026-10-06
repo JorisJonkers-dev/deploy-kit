@@ -129,7 +129,9 @@ describe("the kubernetes adapter", () => {
           ],
         })),
       ),
-    ).toThrow("notes-api: a file grant is not rendered yet");
+    ).toThrow(
+      "notes-api: a file grant other than one key at a mode, below a directory, is not rendered yet",
+    );
   });
 
   const stopStart = () =>
@@ -953,14 +955,84 @@ describe("the kubernetes adapter, for what data holds", () => {
     ]);
   });
 
-  it("stops at a file grant among others", () => {
-    expect(() =>
-      renderKubernetes(
-        edited(undefined, () => ({
-          secrets: [GRANT, { ...GRANT, delivery: "file", mountAt: "/run/k" }],
-        })),
-      ),
-    ).toThrow("notes-api: a file grant is not rendered yet");
+  describe("a file grant", () => {
+    const FILE = {
+      ...GRANT,
+      delivery: "file" as const,
+      destination: "notes-api-notes-key",
+      mountAt: "/run/secrets/notes/id_ed25519",
+      fileMode: "0400",
+    };
+    const pod = (file: Record<string, unknown> = FILE) =>
+      (
+        objectsAt(
+          renderKubernetes(
+            edited(undefined, () => ({
+              secrets: [GRANT, file],
+              sidecars: [
+                {
+                  name: "sync",
+                  image: "x@sha256:0",
+                  memory: "32Mi",
+                  cpu: "5m",
+                },
+              ],
+            })),
+          ),
+          "workload.yaml",
+        ) as {
+          spec: {
+            template: {
+              spec: {
+                containers: { volumeMounts?: unknown[]; env?: unknown[] }[];
+                volumes?: unknown[];
+              };
+            };
+          };
+        }[]
+      )[0]?.spec.template.spec;
+
+    it("projects its one key as the file at its place, at its mode, beside the other grants", () => {
+      expect(pod()?.volumes).toContainEqual({
+        name: "secret-notes-api-notes-key",
+        secret: {
+          secretName: "notes-api-notes-key",
+          items: [{ key: "token", path: "id_ed25519" }],
+          defaultMode: 0o400,
+        },
+      });
+    });
+
+    it("mounts the file's directory read-only into the Process and every sidecar, so a rotation reaches it", () => {
+      const mount = {
+        name: "secret-notes-api-notes-key",
+        mountPath: "/run/secrets/notes",
+        readOnly: true,
+      };
+
+      expect(
+        pod()?.containers.map(({ volumeMounts }) => volumeMounts),
+      ).toStrictEqual([expect.arrayContaining([mount]), [mount]]);
+    });
+
+    it("puts nothing of it in the environment", () => {
+      expect(JSON.stringify(pod()?.containers[0]?.env)).not.toContain(
+        "notes-api-notes-key",
+      );
+    });
+
+    it.each([
+      ["no key", { keys: undefined }],
+      ["two keys", { keys: ["a", "b"] }],
+      ["no mode", { fileMode: undefined }],
+      ["no place", { mountAt: undefined }],
+      ["a place directly in /", { mountAt: "/id_ed25519" }],
+      ["a relative place", { mountAt: "run/id_ed25519" }],
+    ])("stops at one with %s, rather than placing it wrongly", (_, edit) => {
+      expect(() => pod({ ...FILE, ...edit })).toThrow(
+        "notes-api: a file grant other than one key at a mode, below a directory, is not rendered yet",
+      );
+    });
   });
 
   it("gives a sidecar no variables where the Process has none", () => {

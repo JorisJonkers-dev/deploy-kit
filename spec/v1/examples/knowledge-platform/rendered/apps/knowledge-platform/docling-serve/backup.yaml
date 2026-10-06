@@ -1,0 +1,67 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: docling-serve-archive-backup
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: docling-serve-backup
+    app.kubernetes.io/instance: docling-serve-backup
+    app.kubernetes.io/part-of: docling-serve
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  schedule: 45 2 * * *
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: docling-serve-backup
+            app.kubernetes.io/instance: docling-serve-backup
+            app.kubernetes.io/part-of: docling-serve
+            app.kubernetes.io/managed-by: deploy-kit
+            app.kubernetes.io/component: none
+        spec:
+          serviceAccountName: docling-serve-backup
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: backup
+              image: ghcr.io/jorisjonkers-dev/platform/file-backup@sha256:2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d
+              env:
+                - name: BACKUP_RETAIN
+                  value: "90"
+                - name: BACKUP_OFF_CLUSTER
+                  value: s3://backup-storage/jorisjonkers-dev
+              envFrom:
+                - secretRef:
+                    name: docling-serve-backup-platform-backup-off-cluster
+              securityContext:
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                  readOnly: true
+                - name: backup
+                  mountPath: /backup
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: docling-serve-archive
+                readOnly: true
+            - name: backup
+              persistentVolumeClaim:
+                claimName: docling-serve-archive-backup

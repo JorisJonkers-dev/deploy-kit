@@ -1,0 +1,28 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: hindsight-console
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`memory.jorisjonkers.dev`) && PathPrefix(`/`)
+      priority: 999
+      middlewares:
+        - name: forward-auth
+          namespace: edge-system
+        - name: security-headers-strict
+          namespace: edge-system
+      services:
+        - name: hindsight-control-plane
+          namespace: knowledge-platform-system
+          port: 3000
+  tls:
+    certResolver: acme

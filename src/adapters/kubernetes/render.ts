@@ -77,8 +77,55 @@ function notYet(process: ResolvedProcess): void {
     throw notSupported(
       `${process.name}: a blue-green Process that serves no surface is not rendered yet`,
     );
-  if (process.secrets?.some(({ delivery }) => delivery === "file") === true)
-    throw notSupported(`${process.name}: a file grant is not rendered yet`);
+  // A file grant is one file: of several keys, which would land in it is not
+  // decided, and neither is a file with no mode, or no absolute directory to
+  // mount: `/` itself would be covered entirely.
+  if (
+    filesOf(process).some(
+      ({ keys, fileMode, mountAt }) =>
+        keys?.length !== 1 ||
+        fileMode === undefined ||
+        mountAt === undefined ||
+        !directoryOf(mountAt).startsWith("/"),
+    )
+  )
+    throw notSupported(
+      `${process.name}: a file grant other than one key at a mode, below a directory, is not rendered yet`,
+    );
+}
+
+type FileGrant = KvGrant & { readonly destination: string };
+
+/** The Process's grants delivered as files. */
+const filesOf = (process: ResolvedProcess): FileGrant[] =>
+  // A missing list and an empty one hold no grant alike.
+  // Stryker disable next-line ArrayDeclaration
+  (process.secrets ?? []).filter(
+    (grant): grant is FileGrant => isSynced(grant) && grant.delivery === "file",
+  );
+
+/** Where a file grant's file lands; notYet refused one without it. */
+const placeOf = (grant: FileGrant): string => grant.mountAt as string;
+
+/** The directory a file lands in, empty for a file directly in `/`. */
+const directoryOf = (place: string): string =>
+  place.slice(0, place.lastIndexOf("/"));
+
+/** A file grant's volume, named for the Secret it projects. */
+const secretVolumeOf = (grant: FileGrant): string =>
+  `secret-${grant.destination}`;
+
+/**
+ * Where a file grant's file lands, and the volume that projects it there: the
+ * directory of `mountAt`, so a rotated value reaches the file, which a mount of
+ * the one file would never see again.
+ */
+function fileMountsOf(process: ResolvedProcess): VolumeMount[] {
+  return filesOf(process).map((grant) => ({
+    name: secretVolumeOf(grant),
+    mountPath: directoryOf(placeOf(grant)),
+    readOnly: true as const,
+  }));
 }
 
 type Backed = NonNullable<ResolvedProcess["volumes"]>[number] & {
@@ -204,6 +251,7 @@ function mountsOf(process: ResolvedProcess): VolumeMount[] {
       name: writableOf(path),
       mountPath: path,
     })),
+    ...fileMountsOf(process),
   ];
 }
 
@@ -225,13 +273,32 @@ function volumesOf(process: ResolvedProcess): Volume[] {
       name: writableOf(path),
       emptyDir: { sizeLimit: size },
     })),
+    ...filesOf(process).map((grant) => ({
+      name: secretVolumeOf(grant),
+      secret: {
+        secretName: grant.destination,
+        items: [
+          {
+            // notYet refused a file grant of other than one key, or no mode.
+            key: (grant.keys as readonly string[])[0] as string,
+            path: placeOf(grant).slice(placeOf(grant).lastIndexOf("/") + 1),
+          },
+        ],
+        defaultMode: Number.parseInt(grant.fileMode as string, 8),
+      },
+    })),
   ];
 }
 
-/** A container beside the Process, under the same posture and the same variables. */
+/**
+ * A container beside the Process, under the same posture, the same variables
+ * and the same file grants: a grant is the Process's, and every container of
+ * its pod is the Process.
+ */
 function sidecarOf(
   sidecar: NonNullable<ResolvedProcess["sidecars"]>[number],
   env: readonly EnvVar[],
+  files: readonly VolumeMount[],
 ): Container {
   return {
     name: sidecar.name,
@@ -239,6 +306,7 @@ function sidecarOf(
     ...(env.length === 0 ? {} : { env }),
     resources: resourcesOf(sidecar.memory, sidecar.cpu),
     securityContext: RESTRICTED,
+    ...(files.length === 0 ? {} : { volumeMounts: files }),
   };
 }
 
@@ -308,7 +376,7 @@ function deploymentOf(
             containerOf(process),
             // Stryker disable next-line ArrayDeclaration
             ...(process.sidecars ?? []).map((sidecar) =>
-              sidecarOf(sidecar, envOf(process)),
+              sidecarOf(sidecar, envOf(process), fileMountsOf(process)),
             ),
           ],
           ...(volumes.length === 0 ? {} : { volumes }),

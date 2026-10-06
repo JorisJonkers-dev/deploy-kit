@@ -1,0 +1,53 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: basic-memory
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: basic-memory
+    app.kubernetes.io/instance: basic-memory
+    app.kubernetes.io/part-of: basic-memory
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: python
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: basic-memory
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: edge-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: traefik-public
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: secrets-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: vault
+      ports:
+        - protocol: UDP
+          port: 8200
+        - protocol: TCP
+          port: 8200

@@ -1,0 +1,20 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: karakeep
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: karakeep
+    app.kubernetes.io/instance: karakeep
+    app.kubernetes.io/part-of: karakeep
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: node
+spec:
+  selector:
+    app.kubernetes.io/instance: karakeep
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http

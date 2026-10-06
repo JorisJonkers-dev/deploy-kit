@@ -1,0 +1,263 @@
+# Worked example: the knowledge platform, as fleet-infra runs it
+#
+#   cluster/flux/apps/knowledge-platform/ in JorisJonkers-dev/fleet-infra
+#
+# The platform that replaces knowledge-system (JorisJonkers-dev/fleet-infra#237):
+# a document parser, a memory service with its embedding model and worker, a
+# notes server whose vault is a git repository, and a bookmark archive. What the
+# model cannot say about any of it is a row in RENDER-GAPS.md beside this file,
+# never a guess here.
+#
+# Left out, deliberately: the ingest worker, parked at zero replicas, and its
+# one-off copy Job (a Process has no zero, and a one-off migration is no
+# Process); and LightRAG, which still runs in knowledge-system.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: knowledge-platform
+owner: joris
+
+applications:
+  # ============================================================ docling-serve
+  # Parses PDFs and office documents into text. Its archive is the evidence
+  # layer: the original bytes, kept by content hash, which no rebuild recovers.
+  - id: docling-serve
+    processes:
+      - name: docling-serve
+        lifecycle: application
+        image: docling-serve
+        runtime: python
+        engine: files
+        provides:
+          http: 8000
+        placement:
+          memory: 1Gi
+          cpu: 500m
+          site: frankfurt
+        probes:
+          readiness: { path: /health, port: 8000 }
+          liveness: { path: /health, port: 8000 }
+        startupBudget: 120s
+        cutover: interrupted # it holds a volume: one copy at a time
+        volumes:
+          - claim: docling-serve-archive
+            mountAt: /archive
+            size: 50Gi
+            durability: irreplaceable
+
+  # ================================================================= hindsight
+  # The memory service: an API, its control plane, a worker that runs the jobs
+  # the API queues, and the embedding model both read. One Application, because
+  # the four release together: a new API against an old worker is a broken queue.
+  - id: hindsight
+    migration: self # the API migrates its own schema at startup
+    exposure:
+      - name: console
+        host: memory.jorisjonkers.dev
+        audience: authenticated
+        contentPolicy: strict
+        routes:
+          - { path: /, match: prefix, process: hindsight-control-plane, surface: console }
+      - name: api
+        host: memory-api.jorisjonkers.dev
+        audience: authenticated
+        contentPolicy: strict
+        routes:
+          - { path: /, match: prefix, process: hindsight-api, surface: api }
+    processes:
+      - name: hindsight-api
+        lifecycle: application
+        image: hindsight-api
+        runtime: python
+        provides:
+          api: 8888
+        placement:
+          memory: 1Gi
+          cpu: 500m
+          site: enschede
+        dependsOn:
+          - { application: platform-postgres, surface: postgres }
+          - { application: hindsight, surface: embeddings }
+        secrets:
+          - path: secret/data/platform/hindsight
+            keys: [llm-api-key]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+        probes:
+          readiness: { path: /health, port: 8888 }
+          liveness: { path: /health/live, port: 8888 }
+        startupBudget: 120s
+        cutover: interrupted
+
+      - name: hindsight-worker
+        lifecycle: application
+        image: hindsight-api # the same image, started as the worker
+        runtime: python
+        provides:
+          worker: 8889
+        placement:
+          memory: 1Gi
+          cpu: 500m
+          site: enschede
+        dependsOn:
+          - { application: platform-postgres, surface: postgres }
+          - { application: hindsight, surface: embeddings }
+        secrets:
+          - path: secret/data/platform/hindsight
+            keys: [llm-api-key]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+        probes:
+          readiness: { path: /health, port: 8889 }
+          liveness: { path: /health/live, port: 8889 }
+        startupBudget: 120s
+        cutover: interrupted
+
+      - name: hindsight-control-plane
+        lifecycle: application
+        image: hindsight-control-plane
+        runtime: node
+        provides:
+          console: 3000
+        placement:
+          memory: 512Mi
+          cpu: 250m
+          site: enschede
+        dependsOn:
+          - { application: hindsight, surface: api }
+        probes:
+          readiness: { tcp: 3000 }
+          liveness: { tcp: 3000 }
+        startupBudget: 60s
+        cutover: interrupted
+
+      - name: hindsight-tei-embedding
+        lifecycle: application
+        image: text-embeddings-inference
+        runtime: none
+        provides:
+          embeddings: 8091
+        placement:
+          memory: 6Gi
+          cpu: 500m
+          site: enschede
+        probes:
+          readiness: { path: /health, port: 8091 }
+          liveness: { path: /health, port: 8091 }
+        startupBudget: 300s # the first start downloads the model into the cache
+        cutover: interrupted
+        volumes:
+          - claim: hindsight-tei-model-cache
+            mountAt: /data
+            size: 8Gi
+            durability: reconstructible # the model downloads again
+
+  # ============================================================== basic-memory
+  # A notes server whose notes are a git clone of knowledge-vault, kept in sync
+  # by a sidecar that pulls and pushes with the repository's deploy key.
+  - id: basic-memory
+    exposure:
+      - name: mcp
+        host: memory-mcp.jorisjonkers.dev
+        audience: authenticated
+        contentPolicy: strict
+        routes:
+          - { path: /, match: prefix, process: basic-memory, surface: mcp }
+    processes:
+      - name: basic-memory
+        lifecycle: application
+        image: basic-memory
+        runtime: python
+        provides:
+          mcp: 8000
+        placement:
+          memory: 1Gi
+          cpu: 500m
+          site: frankfurt
+        sidecars:
+          - name: git-sync
+            image: basic-memory-git-sync
+            memory: 64Mi
+            cpu: 50m
+        secrets:
+          # The deploy key git-sync pushes with, as a file SSH accepts. A file
+          # grant is mounted into every container of the pod.
+          - path: secret/data/knowledge-system/vault-deploy-key
+            keys: [private_key]
+            access: read
+            delivery: file
+            mountAt: /run/secrets/knowledge-vault/id_ed25519
+            fileMode: "0400"
+            rotation: { tolerates: restart }
+        probes:
+          readiness: { tcp: 8000 }
+          liveness: { tcp: 8000 }
+        startupBudget: 120s
+        cutover: interrupted
+        volumes:
+          # A clone: the repository on GitHub is the copy that matters.
+          - claim: basic-memory-vault
+            mountAt: /vault
+            size: 5Gi
+            durability: reconstructible
+          - claim: basic-memory-config
+            mountAt: /app/.basic-memory
+            size: 2Gi
+            durability: reconstructible
+
+  # ================================================================== karakeep
+  # A bookmark archive, with its search index and a headless browser that reads
+  # pages beside it in the same pod.
+  - id: karakeep
+    exposure:
+      - name: public
+        host: karakeep.jorisjonkers.dev
+        audience: authenticated
+        contentPolicy: strict
+        routes:
+          - { path: /, match: prefix, process: karakeep, surface: http }
+    processes:
+      - name: karakeep
+        lifecycle: application
+        image: karakeep
+        runtime: node
+        engine: files
+        provides:
+          http: 3000
+        placement:
+          memory: 512Mi
+          cpu: 200m
+          site: frankfurt
+        sidecars:
+          - name: meilisearch
+            image: meilisearch
+            memory: 256Mi
+            cpu: 100m
+          - name: chrome
+            image: karakeep-chrome
+            memory: 512Mi
+            cpu: 500m
+        secrets:
+          - path: secret/data/platform/karakeep
+            keys: [nextauth-secret, meili-master-key, openrouter-api-key]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+        probes:
+          readiness: { path: /api/health, port: 3000 }
+          liveness: { path: /api/health, port: 3000 }
+        startupBudget: 200s
+        cutover: interrupted
+        volumes:
+          - claim: karakeep-data
+            mountAt: /data
+            size: 50Gi
+            durability: recoverable
+          - claim: meilisearch-data
+            mountAt: /meili_data
+            size: 20Gi
+            durability: reconstructible # the index rebuilds from the archive

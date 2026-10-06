@@ -1,0 +1,100 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docling-serve
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: docling-serve
+    app.kubernetes.io/instance: docling-serve
+    app.kubernetes.io/part-of: docling-serve
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: python
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  progressDeadlineSeconds: 360
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: docling-serve
+      app.kubernetes.io/instance: docling-serve
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: docling-serve
+        app.kubernetes.io/instance: docling-serve
+        app.kubernetes.io/part-of: docling-serve
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: python
+    spec:
+      serviceAccountName: docling-serve
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: docling-serve
+          image: ghcr.io/docling-project/docling-serve@sha256:5d1a649d48b5715e23ec4906bb0624632b1971a1d975a4bc57d0f723114c7c6e
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: DEPLOYMENT_ENVIRONMENT
+              value: production
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observability-system.svc.cluster.local:4317
+            - name: OTEL_SERVICE_NAME
+              value: docling-serve
+            - name: PORT
+              value: "8000"
+            - name: UVICORN_HOST
+              value: 0.0.0.0
+            - name: UVICORN_PORT
+              value: "8000"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+            limits:
+              memory: 1Gi
+          securityContext:
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: docling-serve-archive
+              mountPath: /archive
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 24
+      volumes:
+        - name: docling-serve-archive
+          persistentVolumeClaim:
+            claimName: docling-serve-archive

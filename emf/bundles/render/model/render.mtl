@@ -563,7 +563,7 @@
   [for (c : resolveddeployment::ResolvedSidecar | p.sidecars)]
             [c.sidecar(p)/]
   [/for]
-  [if (p.volumes->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty())]
+  [if (p.volumes->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty())]
           volumes:
     [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
               - name: [v.claim/]
@@ -583,10 +583,20 @@
                 emptyDir:
                   sizeLimit: [w.size/]
     [/for]
+    [for (g : resolveddeployment::ResolvedGrant | p.files())]
+              - name: secret-[g.destination/]
+                secret:
+                  secretName: [g.destination/]
+                  items:
+                    - key: [g.keys->first()/]
+                      path: [g.mountAt.fileOf()/]
+                  defaultMode: [g.fileMode.octal()/]
+    [/for]
   [/if]
 [/template]
 
-[comment A container beside the Process, under the same posture and the same variables. /]
+[comment A container beside the Process, under the same posture, the same variables and the same
+  file grants: a grant is the Process's, and every container of its pod is the Process. /]
 [template private sidecar(c : resolveddeployment::ResolvedSidecar, p : resolveddeployment::ResolvedProcess)]
   - name: [c.name/]
     image: [c.image/]
@@ -605,6 +615,14 @@
       capabilities:
         drop:
           - ALL
+  [if (p.files()->notEmpty())]
+      volumeMounts:
+    [for (g : resolveddeployment::ResolvedGrant | p.files())]
+          - name: secret-[g.destination/]
+            mountPath: [g.directoryOf()/]
+            readOnly: true
+    [/for]
+  [/if]
 [/template]
 
 [comment A variable as written, or a secret reference as one key of the Secret its grant syncs to. /]
@@ -648,7 +666,7 @@
       capabilities:
         drop:
           - ALL
-  [if (p.volumes->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty())]
+  [if (p.volumes->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty())]
       volumeMounts:
     [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
           - name: [v.claim/]
@@ -663,6 +681,11 @@
     [for (w : resolveddeployment::WritablePath | p.writablePaths)]
           - name: [w.path.writableOf()/]
             mountPath: [w.path/]
+    [/for]
+    [for (g : resolveddeployment::ResolvedGrant | p.files())]
+          - name: secret-[g.destination/]
+            mountPath: [g.directoryOf()/]
+            readOnly: true
     [/for]
   [/if]
   [if (p.readiness <> null)]
@@ -1217,6 +1240,20 @@
 [query private writableOf(path : String) : String = 'writable' + path.replaceAll('[^a-z0-9]+', '-') /]
 
 [comment The Secret a kv grant on `path` syncs to, for the Process's own variables. /]
+[comment The Process's grants delivered as files, each synced to a Secret. /]
+[query private files(p : resolveddeployment::ResolvedProcess) : OrderedSet(resolveddeployment::ResolvedGrant) =
+  p.secrets->select(g | g.delivery = 'file' and g.destination <> null) /]
+
+[comment Where a file grant's file lands is mounted whole, the directory of its mountAt, so a rotated
+  value reaches the file, which a mount of the one file would never see again. /]
+[query private directoryOf(g : resolveddeployment::ResolvedGrant) : String =
+  g.mountAt.substring(1, g.mountAt.size() - g.mountAt.fileOf().size() - 1) /]
+
+[comment An octal file mode, such as 0400, as the number a volume's defaultMode holds. /]
+[query private octal(mode : String) : Integer =
+  if mode.size() = 1 then mode.toInteger()
+  else mode.substring(1, mode.size() - 1).octal() * 8 + mode.substring(mode.size(), mode.size()).toInteger() endif /]
+
 [query private destinationOf(p : resolveddeployment::ResolvedProcess, path : String) : String =
   p.secrets->select(g | g.destination <> null and g.path = path)->first().destination /]
 

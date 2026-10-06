@@ -1,0 +1,46 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: basic-memory
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: basic-memory
+    app.kubernetes.io/instance: basic-memory
+    app.kubernetes.io/part-of: basic-memory
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: python
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: knowledge-platform-system-basic-memory
+    serviceAccount: basic-memory
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: basic-memory-knowledge-system-vault-deploy-key
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: basic-memory
+    app.kubernetes.io/instance: basic-memory
+    app.kubernetes.io/part-of: basic-memory
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: python
+spec:
+  vaultAuthRef: basic-memory
+  mount: secret
+  type: kv-v2
+  path: knowledge-system/vault-deploy-key
+  refreshAfter: 1h
+  destination:
+    name: basic-memory-knowledge-system-vault-deploy-key
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: basic-memory

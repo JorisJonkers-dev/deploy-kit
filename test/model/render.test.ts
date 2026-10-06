@@ -42,6 +42,20 @@ const SET = [
   "data/config/postgresql.conf",
 ];
 
+/** The knowledge platform's project file and one env file per Process. */
+const KNOWLEDGE_PLATFORM = [
+  "knowledge-platform/knowledge-platform.project.yml",
+  ...[
+    "docling-serve",
+    "hindsight-api",
+    "hindsight-worker",
+    "hindsight-control-plane",
+    "hindsight-tei-embedding",
+    "basic-memory",
+    "karakeep",
+  ].map((process) => `knowledge-platform/env/${process}/base.env`),
+];
+
 const OPTIONS = {
   hash: sha256Hasher,
   schemaPackageIntegrity:
@@ -310,16 +324,23 @@ describe("renderIntentSet", () => {
     ).toStrictEqual(committed("delivery/rendered"));
   });
 
-  it("stops at a file grant, which the render mounts in its own slice", () => {
-    expect(() =>
-      render({
-        "minimal/notes.project.yml": (document) =>
-          document.replace(
-            "        runtime: node\n",
-            "        runtime: node\n        secrets:\n          - { path: secret/data/notes/key, keys: [key], access: read, delivery: file, mountAt: /run/key, rotation: {tolerates: restart} }\n",
-          ),
-      }),
-    ).toThrow("notes-api: a file grant is not rendered yet");
+  // REQ-053 (docs/requirements.md): the knowledge platform, fleet-infra's
+  // replacement for knowledge-system, renders with its file grant, its sidecars
+  // and its in-project edges, and equals its committed tree.
+  it("renders the knowledge platform's share of the tree and its estate-scoped share to its committed tree, byte for byte", () => {
+    const result = renderIntentSet(
+      [
+        ...SET.filter((name) => !name.startsWith("minimal/")),
+        ...KNOWLEDGE_PLATFORM,
+      ].map((name) => ({ name, text: text(name) })),
+      { ...OPTIONS, projects: ["knowledge-platform"] },
+    );
+    const artifacts = result.ok ? result.value : [];
+
+    expect({
+      ...asTree(artifact(artifacts, "knowledge-platform")),
+      ...asTree(artifact(artifacts, "_estate")),
+    }).toStrictEqual(committed("knowledge-platform/rendered"));
   });
 
   it("orders the tree whatever order the adapters hand it out in", () => {
