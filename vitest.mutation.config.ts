@@ -51,6 +51,7 @@ export default defineConfig({
       // The CLI in process; its process-level runs reach no instrumented code.
       "test/cli/main.test.ts",
       "test/cli/index.test.ts",
+      "test/cli/conventions.test.ts",
       "test/adapters/contract.test.ts",
       "test/adapters/flux-source.test.ts",
       "test/adapters/spelling.test.ts",
