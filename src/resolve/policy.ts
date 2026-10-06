@@ -139,8 +139,10 @@ export function ingressOf(
   const here = namespaceOf(context.project);
   const migrations = context.union.flatMap(({ project, applications }) =>
     applications.filter(managed).flatMap((consumer): Ingress[] => {
-      const datastore = datastoreOf(consumer, context.union);
-      return datastore?.namespace === here && datastore.process === process.name
+      // A managed Application derives a database, or E_MIGRATION_WITHOUT_DATABASE
+      // refused it, and its edge resolves, or the union's references refused it.
+      const datastore = datastoreOf(consumer, context.union) as Egress;
+      return datastore.namespace === here && datastore.process === process.name
         ? [
             {
               rule: "migration",

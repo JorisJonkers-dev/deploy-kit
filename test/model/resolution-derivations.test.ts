@@ -2,6 +2,8 @@
 // chapter 20 derives, read off a notes project written for it and resolved
 // through the use-case with the worked foundation and pinned inputs.
 import { datastoreOf } from "../../src/resolve/database.ts";
+import { resolveEdge } from "../../src/resolve/dependencies.ts";
+import type { PlatformIntentDocument } from "../../src/model/platform-intent.ts";
 import { resolveMigration } from "../../src/resolve/migration.ts";
 import { backedUp, dumpedSurfaceOf } from "../../src/model/backup.ts";
 import { readFileSync } from "node:fs";
@@ -2435,4 +2437,52 @@ describe("the Vault policy job", () => {
         ?.deadline,
     ).toBe("180s");
   });
+});
+
+describe("an edge resolved against the union and the register", () => {
+  const PLATFORM = {
+    providers: [
+      { name: "relay", address: "relay.example", surfaces: { smtp: 25 } },
+      {
+        name: "stalwart",
+        address: "mail.example",
+        surfaces: { imap: 993, smtp: 587 },
+      },
+    ],
+  } as unknown as PlatformIntentDocument;
+
+  it("takes the provider named, on the surface named, wherever it sits in the register", () => {
+    expect(
+      resolveEdge({ application: "stalwart", surface: "smtp" }, [], PLATFORM),
+    ).toStrictEqual({
+      application: "stalwart",
+      surface: "smtp",
+      address: "mail.example:587",
+    });
+  });
+
+  it.each([
+    [
+      "a provider the register does not list",
+      { application: "nowhere", surface: "smtp" },
+      PLATFORM,
+    ],
+    [
+      "a surface the provider does not list",
+      { application: "relay", surface: "imap" },
+      PLATFORM,
+    ],
+    [
+      "a platform that keeps no register",
+      { application: "stalwart", surface: "smtp" },
+      {} as PlatformIntentDocument,
+    ],
+  ])(
+    "is an internal failure for %s, which the union's references refuse first",
+    (_, edge, platform) => {
+      expect(() => resolveEdge(edge, [], platform)).toThrow(
+        `${edge.application}.${edge.surface}: no provider in the union`,
+      );
+    },
+  );
 });
