@@ -43,8 +43,10 @@ With access, fetch them in place:
 git submodule update --init docs/mde/course-material
 ```
 
-The submodule then holds `lectures/` for the decks, `background/` for the reading
-set per lecture, and `INDEX.md`. Read that index first. It is the one entry point
+The submodule then holds `lectures/` for the decks and each lecture's Eclipse
+example projects, `background/` for the reading set per lecture, `practicals/`,
+`project/` and `exam/` for the Canvas pages of the practical sessions, the
+project and the final exam as posted, and `INDEX.md`. Read that index first. It is the one entry point
 for the whole course. It gives a week-by-week view of each lecture with its
 slides, recording, reading and practical session, and it links back here to the
 tasks, their reports and the practical sessions. It then maps topics to

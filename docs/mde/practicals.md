@@ -179,4 +179,5 @@ transformation produced from the stereotyped test model, as an archive
 export.
 
 The page's figures (run configurations, the simplified UML metamodel and the
-two rules drawn graphically) are on Canvas only.
+two rules drawn graphically) are filed with its full text in the private
+submodule, under `course-material/practicals/`.
