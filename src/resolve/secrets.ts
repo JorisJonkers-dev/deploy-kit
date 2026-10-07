@@ -6,7 +6,7 @@ import type { EffectiveProcess } from "../model/effective-intent.ts";
 import type { Hasher } from "../model/hasher.ts";
 import type { ImagesLockDocument, LockedImage } from "../model/images-lock.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
-import { notChecked, notSupported } from "../model/internal-failure.ts";
+import { notSupported } from "../model/internal-failure.ts";
 
 type ResolvedGrant = NonNullable<ResolvedProcess["secrets"]>[number];
 type ResolvedAsset = NonNullable<ResolvedProcess["assets"]>[number];
@@ -88,11 +88,8 @@ export function resolveAssets(
   // A missing list and an empty one hold no Asset alike.
   // Stryker disable next-line ArrayDeclaration
   return (process.assets ?? []).map(({ from, mountAt }) => {
-    const content = files.get(from);
-    if (content === undefined)
-      throw notChecked(
-        `${from}: an Asset whose file is not read beside its project is refused, which is not checked yet`,
-      );
+    // The file is read beside its project, or E_ASSET_NOT_FOUND refused it.
+    const content = files.get(from) as string;
     if (content.includes("${"))
       throw notSupported(
         `${from}: a placeholder in an Asset is not resolved yet`,

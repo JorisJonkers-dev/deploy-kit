@@ -393,4 +393,97 @@ context Project
 			or handover.legacy->includes(self.project)
 			or handover.estate->includes(self.project))
 
+-- Every refusal resolution used to stop at (deploy-kit#204), each answered here
+-- over the authored model with its env files attached, at the Process or the
+-- Application the production implementation names.
+
+context Process
+	-- What every level of the Process holds: its own declarations and each
+	-- level's above it.
+	def: envFiles : Sequence(EnvFile) =
+		env->asSequence()->union(levelsAbove->asSequence()->collect(l | l.env)->asSequence())
+
+	def: placeholdersOf(k : PlaceholderKind) : Sequence(Placeholder) =
+		envFiles->collect(entries)->collect(value)
+			->select(v | v.oclIsKindOf(Placeholder))->collect(v | v.oclAsType(Placeholder))
+			->select(p | p.kind = k)
+
+	def: envGrants : Sequence(KvGrant) =
+		secrets->asSequence()->union(levelsAbove->asSequence()->collect(l | l.secrets)->asSequence())
+			->select(g | g.oclIsKindOf(KvGrant))->collect(g | g.oclAsType(KvGrant))
+			->select(g | g.delivery = Delivery::env)
+
+	def: heldEdges : Sequence(DependencyEdge) =
+		dependsOn->asSequence()->union(levelsAbove->asSequence()->collect(l | l.dependsOn)->asSequence())
+
+	-- A placeholder reads one key of a path an env grant of the Process lists.
+	inv E_UNAUTHORISED_SECRET_REFERENCE:
+		placeholdersOf(PlaceholderKind::secret)->forAll(p |
+			envGrants->exists(g | g.keys->exists(k | p.source = g.path + '#' + k)))
+
+	-- An env grant nothing reads is a dead grant; a Process no env file reaches
+	-- is undecided, its files perhaps not among those read.
+	inv E_UNBOUND_SECRET_GRANT:
+		envFiles->notEmpty() implies envGrants->forAll(g |
+			placeholdersOf(PlaceholderKind::secret)->exists(p | p.source.startsWith(g.path + '#')))
+
+	-- A dependency placeholder names the Application of one edge the Process
+	-- holds and a coordinate it hands out; an exposure placeholder, an exposure
+	-- an Application of the set declares and a field of it. An Application the
+	-- set does not declare is not this invariant's to say.
+	inv E_UNRESOLVED_PLACEHOLDER:
+		placeholdersOf(PlaceholderKind::dependency)->forAll(p |
+			Sequence{'host', 'port'}->exists(c |
+				heldEdges->select(e | e.application + '.' + c = p.source)->size() = 1
+				and heldEdges->select(e | p.source.startsWith(e.application + '.'))->size() = 1))
+		and placeholdersOf(PlaceholderKind::exposure)->forAll(p |
+			Application.allInstances()->forAll(a | not p.source.startsWith(a.id + '.')
+				or a.exposure->exists(x | Sequence{'url', 'host', 'scheme'}->exists(f |
+					p.source = a.id + '.' + x.name + '#' + f))))
+
+	-- The Runtime Profile injects these, so an env file writing one is a second
+	-- answer to a question the model already answers.
+	inv E_PROFILE_KEY_AUTHORED:
+		(Platform.allInstances()->notEmpty()
+			and (runtime = Runtime::jvm or runtime = Runtime::node or runtime = Runtime::python))
+			implies envFiles->collect(entries)->forAll(e |
+				e.name <> 'DEPLOYMENT_ENVIRONMENT' and e.name <> 'OTEL_SERVICE_NAME'
+				and (provides->size() = 1 implies e.name <> 'PORT')
+				and (Platform.allInstances()->exists(t | t.telemetry <> null)
+					implies e.name <> 'OTEL_EXPORTER_OTLP_ENDPOINT'))
+
+context Application
+	-- The gate waits for readiness, so an Application that switches blue/green
+	-- publishes it on at least one member.
+	inv E_RELEASE_UNIT_NO_READINESS:
+		(Platform.allInstances()->notEmpty()
+			and Platform.allInstances()->forAll(p | p.delivery = null or p.delivery.machinery->excludes(self)))
+			implies
+				let gated : OrderedSet(Process) = processes->select(lifecycle = Lifecycle::application
+					and effectiveCutover = Cutover::continuous) in
+				gated->notEmpty() implies gated->exists(g |
+					g.probes <> null and g.probes.oclIsKindOf(Probes)
+					and g.probes.oclAsType(Probes).readiness <> null)
+
+	-- A grant, an off-cluster backup and a managed migration each read a
+	-- credential from the Secret Store, so a platform naming none offers none.
+	inv E_NO_SECRET_STORE:
+		Platform.allInstances()->forAll(p | p.secretStore <> null
+			or not ((migration <> null and migration.oclIsKindOf(ManagedMigration))
+				or processes->exists(pr | pr.envGrants->notEmpty()
+					or pr.secrets->notEmpty()
+					or pr.levelsAbove->exists(l | l.secrets->notEmpty())
+					or pr.volumes->exists(v |
+						(v.durability = DurabilityClass::recoverable and p.durability.recoverable <> null
+							and p.durability.recoverable.offCluster <> null)
+						or (v.durability = DurabilityClass::irreplaceable and p.durability.irreplaceable <> null
+							and p.durability.irreplaceable.offCluster <> null)))))
+
+context DurabilityPolicy
+	-- A class that derives a backup says when it runs and how many copies it keeps.
+	inv E_DURABILITY_POLICY_INCOMPLETE:
+		let policies : DurabilityPolicies = oclContainer().oclAsType(DurabilityPolicies) in
+		(policies.recoverable = self or policies.irreplaceable = self)
+			implies (schedule <> null and retain <> null)
+
 endpackage

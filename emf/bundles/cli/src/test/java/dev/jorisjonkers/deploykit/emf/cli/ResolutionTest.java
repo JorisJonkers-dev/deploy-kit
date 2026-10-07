@@ -1,7 +1,7 @@
 package dev.jorisjonkers.deploykit.emf.cli;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.groups.Tuple.tuple;
 
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeploymentPackage;
@@ -115,15 +115,16 @@ class ResolutionTest {
     }
 
     @Test
-    void anAssetWhoseFileIsNotBesideItsProjectStopsTheResolution(@TempDir Path directory) throws IOException {
+    void anAssetWhoseFileIsNotBesideItsProjectIsRefusedBeforeResolution(@TempDir Path directory) throws IOException {
         Path data = Examples.write(directory, "data.project.yml", Examples.read("data/data.project.yml"));
         List<Path> files = Outputs.RESOLVED.get("data").documents().stream()
                 .map(file -> file.equals("data/data.project.yml") ? data : Examples.of(file))
                 .toList();
 
-        assertThatThrownBy(() -> Pipeline.resolve(files, "data", Outputs.INTEGRITY))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageStartingWith("data did not resolve");
+        assertThat(Pipeline.resolve(files, "data", Outputs.INTEGRITY).diagnostics())
+                .extracting(Diagnostic::code, Diagnostic::document, Diagnostic::path)
+                .containsExactly(
+                        tuple("E_ASSET_NOT_FOUND", "data.project.yml", "/applications/0/processes/0/assets/0/from"));
     }
 
     /**

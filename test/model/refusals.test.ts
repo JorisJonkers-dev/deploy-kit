@@ -130,6 +130,7 @@ describe("the refusal fixtures", () => {
   it("are the ones this chapter carries, refused but for the accepted counterpart", () => {
     expect(fixtures).toStrictEqual([
       "alert-class-without-signal",
+      "asset-not-found",
       "backup-surface-not-provided",
       "credentials-without-database",
       "cutover-continuous-over-rwo",
@@ -137,6 +138,7 @@ describe("the refusal fixtures", () => {
       "cutover-missing",
       "cutover-mixed",
       "duplicate-route-match",
+      "durability-policy-incomplete",
       "durability-without-engine",
       "engine-owns-databases",
       "engine-without-durability",
@@ -153,6 +155,7 @@ describe("the refusal fixtures", () => {
       "no-engine-policy",
       "no-forward-auth-endpoint",
       "no-migration-policy",
+      "no-secret-store",
       "no-tier-for-audience",
       "non-kv-delivery",
       "owner-role-granted",
@@ -160,19 +163,24 @@ describe("the refusal fixtures", () => {
       "prepare-forward-only",
       "prepare-process-serves",
       "process-rbac-grant",
+      "profile-key-authored",
+      "release-unit-no-readiness",
       "scrape-unknown-process",
       "secrets-at-rest-required",
       "secrets-at-rest-required-at-header",
       "shared-declaration-duplicated",
       "shared-intent-merged",
       "shared-quantity",
+      "unauthorised-secret-reference",
+      "unbound-secret-grant",
       "unknown-api-holder",
       "unknown-machinery",
       "unknown-surface",
       "unknown-telemetry-collector",
       "unknown-tier-proxy",
+      "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(38);
+    expect(refused).toHaveLength(46);
     expect(
       fixtures.length - refused.length,
       "the four accepted counterparts carry no oracle",

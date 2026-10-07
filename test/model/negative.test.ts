@@ -77,18 +77,25 @@ const refusalsOf = (files: readonly AuthoredFile[]): Triple[] => {
 };
 
 describe("the negative fixtures", () => {
-  it("cover every invariant the registry answers over the union", () => {
-    const fired = fixtures.flatMap((fixture) =>
-      (
-        JSON.parse(
-          readFileSync(join(NEGATIVE, `${fixture}.diagnostics.json`), "utf8"),
-        ) as Triple[]
-      ).map(({ code }) => code),
+  it("and the refusal fixtures cover every invariant the registry answers over the union", () => {
+    const REFUSALS = join(EXAMPLES, "refusals");
+    const oracles = [
+      ...fixtures.map((fixture) =>
+        join(NEGATIVE, `${fixture}.diagnostics.json`),
+      ),
+      ...readdirSync(REFUSALS)
+        .filter((name) => name.endsWith(".diagnostics.json"))
+        .map((name) => join(REFUSALS, name)),
+    ];
+    const fired = new Set(
+      oracles.flatMap((oracle) =>
+        (JSON.parse(readFileSync(oracle, "utf8")) as Triple[]).map(
+          ({ code }) => code,
+        ),
+      ),
     );
 
-    expect(new Set(fired)).toStrictEqual(
-      new Set(INVARIANTS.map(({ code }) => code)),
-    );
+    for (const { code } of INVARIANTS) expect(fired, code).toContain(code);
   });
 
   it.each(fixtures)(
@@ -246,7 +253,11 @@ describe("the reference invariants, read against the platform's providers", () =
       ) as string,
     );
     if (!result.ok) throw new Error("the consumer does not parse");
-    return { name: "notes.yml", document: result.value.document };
+    return {
+      name: "notes.yml",
+      document: result.value.document,
+      effective: result.value.effective,
+    };
   };
   const answered = (code: string, edge: string) =>
     (
