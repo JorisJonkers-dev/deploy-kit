@@ -82,7 +82,9 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   `<repository>/_estate`, published and pinned exactly like a Project's; the
   underscore keeps it from ever naming a Project. While the estate is handed
   over, a Project still on the old path is rendered and checked but not
-  published, and the `_estate` artifact is published only once no Project is
+  published, and the `_estate` artifact holds only `estate-vso-secrets`, the
+  Vault policy job for the Projects already on the estate path, whose units
+  depend on it; the edge units join it once no Project is on the old path
   ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)).
 - **Signed keyless, and annotated.** The artifact is signed by the composition
   workflow's own OIDC identity, the Platform document's
@@ -152,7 +154,8 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 
 A Project's artifact holds its one unit. The estate-scoped artifact holds
 `estate-vso-secrets` where it carries the Vault policy job, and one
-`estate-edge-<tier>` per tier it carries routes for.
+`estate-edge-<tier>` per tier it carries routes for; while a Project is on the
+old path, it carries no route.
 
 ## Pause and Rollback
 
