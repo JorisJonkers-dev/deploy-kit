@@ -282,6 +282,9 @@
           <targetTests><param>dev.jorisjonkers.deploykit.emf.*</param></targetTests>
           <mutationThreshold>${emf.mutation.threshold}</mutationThreshold>
           <threads>${emf.mutation.threads}</threads>
+          <!-- A test that writes the parity module's inputs writes them apart
+               when the code under it is a mutant. -->
+          <jvmArgs><param>-Demf.mutation=true</param></jvmArgs>
           <outputFormats><param>XML</param><param>HTML</param></outputFormats>
           <timestampedReports>false</timestampedReports>
           <exportLineCoverage>true</exportLineCoverage>
