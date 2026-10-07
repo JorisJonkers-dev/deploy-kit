@@ -38,6 +38,21 @@ spec:
         fsGroup: 999
         seccompProfile:
           type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - enschede-t1000-1
+                      - enschede-rx7900xtx-1
+                      - enschede-gtx-960m-1
+                      - enschede-pi-1
+                      - enschede-pi-2
+                      - enschede-pi-3
+                      - frankfurt-contabo-1
       containers:
         - name: rabbitmq
           image: docker.io/library/rabbitmq@sha256:2d4f6b8a0c2e4d6f8b0a2c4e6d8f0b2a4c6e8d0f2b4a6c8e0d2f4b6a8c0e2d4f

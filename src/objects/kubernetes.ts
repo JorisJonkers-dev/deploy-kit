@@ -131,8 +131,24 @@ export interface PodSpec {
     readonly fsGroup?: number;
     readonly seccompProfile: { readonly type: "RuntimeDefault" };
   };
+  readonly affinity?: NodeAffinity;
   readonly containers: readonly Container[];
   readonly volumes?: readonly Volume[];
+}
+
+/** The nodes a pod may be scheduled on, by name: required, never preferred. */
+export interface NodeAffinity {
+  readonly nodeAffinity: {
+    readonly requiredDuringSchedulingIgnoredDuringExecution: {
+      readonly nodeSelectorTerms: readonly {
+        readonly matchExpressions: readonly {
+          readonly key: "kubernetes.io/hostname";
+          readonly operator: "In";
+          readonly values: readonly string[];
+        }[];
+      }[];
+    };
+  };
 }
 
 export interface Container {

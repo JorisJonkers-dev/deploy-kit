@@ -97,6 +97,43 @@ const objectsAt = (
 ) => deliverables.find(({ path }) => path.endsWith(suffix))?.objects ?? [];
 
 describe("the kubernetes adapter", () => {
+  it("holds a Process to the node its volume is bound to, and otherwise to every node eligible for it, by name", () => {
+    const nodesOf = (project: ResolvedProject): unknown =>
+      renderKubernetes(project)
+        .flatMap(({ objects }) => objects)
+        .flatMap((object) =>
+          "kind" in object && object.kind === "Deployment"
+            ? [
+                object.spec.template.spec.affinity?.nodeAffinity
+                  .requiredDuringSchedulingIgnoredDuringExecution
+                  .nodeSelectorTerms,
+              ]
+            : [],
+        );
+    const placed = (placement: Process["placement"]) =>
+      nodesOf(edited(undefined, () => ({ placement })));
+    const term = (values: readonly string[]) => [
+      [
+        {
+          matchExpressions: [
+            { key: "kubernetes.io/hostname", operator: "In", values },
+          ],
+        },
+      ],
+    ];
+
+    expect(placed({ eligibleNodes: ["a", "b"] })).toStrictEqual(
+      term(["a", "b"]),
+    );
+    expect(
+      placed({
+        eligibleNodes: ["a", "b"],
+        boundTo: "b",
+        from: "cluster-state",
+      }),
+    ).toStrictEqual(term(["b"]));
+  });
+
   it("stops at a Process it does not spell yet, rather than rendering it wrongly", () => {
     expect(() =>
       renderKubernetes(edited(undefined, () => ({ lifecycle: "job" }))),

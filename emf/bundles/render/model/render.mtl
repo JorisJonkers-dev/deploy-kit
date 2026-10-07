@@ -558,6 +558,22 @@
   [/if]
           seccompProfile:
             type: RuntimeDefault
+  [comment The node its volume is bound to, or every node eligible for it, each by name. /]
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: kubernetes.io/hostname
+                      operator: In
+                      values:
+  [if (p.placement.boundTo <> null)]
+                          - [p.placement.boundTo/]
+  [else]
+    [for (n : String | p.placement.eligibleNodes)]
+                            - [n/]
+    [/for]
+  [/if]
         containers:
           [p.container()/]
   [for (c : resolveddeployment::ResolvedSidecar | p.sidecars)]

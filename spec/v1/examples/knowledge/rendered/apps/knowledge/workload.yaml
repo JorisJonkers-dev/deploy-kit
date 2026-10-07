@@ -39,8 +39,15 @@ spec:
           type: RuntimeDefault
         runAsUser: 1000
         runAsGroup: 1000
-      nodeSelector:
-        platform.jorisjonkers.dev/capability-public-ingress: 'true'
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - frankfurt-contabo-1
       containers:
       - name: knowledge-api
         image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-api@sha256:1ad39d5c0f4b8e2a7d61c3f95b8047ae2c9d1e6b3a5f8027c4d9e1b6a3f75c28
