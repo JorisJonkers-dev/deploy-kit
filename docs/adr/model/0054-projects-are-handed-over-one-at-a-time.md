@@ -49,6 +49,14 @@ fragment still meets every invariant, and its render is diffed against the live
 objects. By the time it moves, the render already reproduces what runs, and the
 handover step changes only which source applies it.
 
+**The estate's secrets unit first, its edge last.** An `estate` Project's unit
+depends on `estate-vso-secrets`, whose Vault policy job writes the roles its
+grants read; the old path writes none for a Project it never delivered. So the
+estate-scoped artifact is published from the first handover, holding that unit
+alone, for the `estate` Projects only. Its edge units would be a second source
+for the routes the old path still serves, so they wait until no Project is
+`legacy`.
+
 **A retirement date, so the old path ends.** Without one, the last few
 Projects stay on the old path indefinitely and the estate keeps two delivery
 paths forever.
@@ -60,6 +68,8 @@ paths forever.
 | Move every Project in one cut-over | one step | one failed adoption blocks the whole estate, and a rollback is estate-wide |
 | Track the handover outside the model, in the estate repository's README | no schema change | nothing checks it, and a Project can end up on both paths unnoticed |
 | Let the estate path prune the old objects and recreate them | no orphaning step | every Process restarts at handover, and a stateful one can lose its claim |
+| Hold the whole estate-scoped artifact until no Project is `legacy` | one rule | no `estate` Project's unit ever becomes Ready, since the unit it depends on is never applied, so the handover cannot start |
+| Have the old path declare a unit named `estate-vso-secrets` | no change here | ties the old path to the new path's names, and still writes no Vault role for an `estate` Project |
 
 ## Reversibility
 

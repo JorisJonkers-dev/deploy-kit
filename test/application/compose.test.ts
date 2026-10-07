@@ -616,6 +616,42 @@ describe("composeEstate", () => {
     ).toEqual([["E_HANDOVER_BOTH_PATHS", "_platform/platform.intent.yml"]]);
   });
 
+  // deploy-kit#286: an estate-path Project's unit depends on the secrets unit,
+  // so it is delivered while the old path still serves the edge.
+  it("delivers the secrets unit alone of the estate-scoped artifact while a Project is legacy", () => {
+    const under = (ledger: string): Composition =>
+      compose({
+        platform: {
+          ...PLATFORM,
+          files: PLATFORM.files.map((file) =>
+            file.name === "platform.intent.yml"
+              ? { ...file, text: withLedger(file.text, ledger) }
+              : file,
+          ),
+        },
+      });
+    const estateOf = (composition: Composition) =>
+      composition.artifacts.find(({ name }) => name === "_estate");
+    const handingOver = under(
+      "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, edge, knowledge, notes, observability, secrets]\n  estate: [data, delivery]\n",
+    );
+    const whole = estateOf(under(""))?.files.map(({ path }) => path) ?? [];
+    const cut = estateOf(handingOver)?.files.map(({ path }) => path) ?? [];
+
+    expect(cut).not.toEqual([]);
+    expect(cut.every((path) => path.startsWith("estate/vso-secrets/"))).toBe(
+      true,
+    );
+    expect(whole.some((path) => path.startsWith("estate/edge/"))).toBe(true);
+    // Its pin source applies the secrets unit and no edge unit.
+    const source = handingOver.sources.find(({ name }) => name === "_estate");
+    expect(source?.text).toContain("name: estate-vso-secrets");
+    expect(source?.text).not.toContain("estate-edge-");
+    // Where no estate-path Project's render holds a secrets document, there
+    // is no estate-scoped artifact at all.
+    expect(estateOf(FIRST)).toBeUndefined();
+  });
+
   it("asks for every held fragment a reference names, and composes every Project when no ledger is kept", () => {
     expect(() =>
       after({

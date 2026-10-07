@@ -13,6 +13,7 @@
 // per Project and the estate, which pins move, the lock, and what the workflow
 // reports (spec/v1/55-delivery.md#notifications). Nothing here performs IO.
 import type { Adapter } from "../adapters/registry.ts";
+import { SECRETS_DIRECTORY } from "../adapters/shared/paths.ts";
 import type { CompositionLockDocument } from "../model/composition-lock.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { FragmentManifest } from "../model/fragment.ts";
@@ -39,6 +40,7 @@ import { parseProjectIntent } from "./parse-project-intent.ts";
 import { pinSources, type PinSource } from "./pin-sources.ts";
 import {
   renderResolvedSet,
+  type RenderedArtifact,
   type RenderedFile,
   type Serializer,
 } from "./render-intent-set.ts";
@@ -476,8 +478,10 @@ interface Delivered {
 /**
  * A resolved union rendered for the Projects the ledger hands to the estate
  * path; a legacy one is composed and checked, never published
- * (spec/v1/60-setup.md#handing-over-one-project-at-a-time). The estate-scoped
- * artifact waits until no Project is legacy.
+ * (spec/v1/60-setup.md#handing-over-one-project-at-a-time). While a Project is
+ * legacy, the estate-scoped artifact holds the secrets unit alone: the Vault
+ * policy job for the estate-path Projects, which their units depend on. The
+ * edge units wait until no Project is legacy.
  */
 function deliver(
   input: Composing,
@@ -500,16 +504,29 @@ function deliver(
     ? {
         ok: true,
         value: {
-          artifacts: rendered.value.filter(
-            // The estate-scoped artifact is every Project's, so it is
-            // delivered once no Project is still on the old path.
-            ({ name }) => name !== ESTATE || ledger?.legacy === undefined,
-          ),
+          artifacts:
+            ledger?.legacy === undefined
+              ? rendered.value
+              : rendered.value.flatMap(handingOver),
           projects: resolved.projects,
           cluster: platform.metadata.cluster,
         },
       }
     : rendered;
+}
+
+/**
+ * One artifact as the handover delivers it: a Project's whole, and the
+ * estate-scoped one cut to its secrets unit, or nothing where it holds none.
+ * The old path still serves the edge, so an estate-scoped route would be a
+ * second source for it.
+ */
+function handingOver(artifact: RenderedArtifact): RenderedArtifact[] {
+  if (artifact.name !== ESTATE) return [artifact];
+  const files = artifact.files.filter(({ path }) =>
+    path.startsWith(`${SECRETS_DIRECTORY}/`),
+  );
+  return files.length === 0 ? [] : [{ name: ESTATE, files }];
 }
 
 function composition(

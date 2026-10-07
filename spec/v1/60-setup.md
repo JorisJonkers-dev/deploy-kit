@@ -490,10 +490,14 @@ handover:
 - **A `legacy` Project is composed, never delivered.** Its fragment is checked
   against every estate-wide invariant, and its render is diffed against the
   live objects ([Adopting a live Application](#adopting-a-live-application)),
-  but composition publishes no artifact and moves no pin for it. The
-  estate-scoped artifact waits until no Project is `legacy`
-  ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)); until then the old
-  path keeps applying the estate-scoped objects.
+  but composition publishes no artifact and moves no pin for it. While any
+  Project is `legacy`, the estate-scoped artifact holds `estate-vso-secrets`
+  alone, writing the Vault policies and roles of the `estate` Projects, whose
+  units depend on it; the old path keeps serving the edge, and the edge units
+  join the artifact once no Project is `legacy`
+  ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)). Where no `estate`
+  Project's render holds a Vault document, there is no estate-scoped artifact
+  yet.
 
 **One step moves one Project, in three changes, in this order**, so that at no
 moment do two sources apply it:
