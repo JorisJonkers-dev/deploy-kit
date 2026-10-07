@@ -278,15 +278,12 @@ jobs:
           : > moved.txt
           for row in $(jq -r '.artifacts[] | select(.moves) | "\(.name)=\(.contentHash)"' composed/composition.json); do
             project="${row%%=*}"; content="${row#*=}"
-            # An artifact delivered for the first time has no pinned source
-            # yet. The toolkit wrote one, from the Platform document and the
-            # Reconcile Unit DAG, for exactly the artifacts whose pin it was
-            # not handed; it is taken once, and afterwards only its digest
-            # moves (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
-            if [ ! -f "projects/${project}/source.yaml" ]; then
-              mkdir -p "projects/${project}"
-              cp "composed/projects/${project}/source.yaml" "projects/${project}/source.yaml"
-            fi
+            # The toolkit wrote the source of every artifact whose pin moves,
+            # from the Platform document and the Reconcile Unit DAG; it
+            # replaces the committed one, so a unit the artifact gains is
+            # applied (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
+            mkdir -p "projects/${project}"
+            cp "composed/projects/${project}/source.yaml" "projects/${project}/source.yaml"
             # The digest is taken from the push itself, never re-read through a
             # mutable tag another run could move in between.
             DIGEST="$( cd "composed/artifacts/${project}" && oras push "${REPOSITORY}/${project}:${content#sha256:}" \

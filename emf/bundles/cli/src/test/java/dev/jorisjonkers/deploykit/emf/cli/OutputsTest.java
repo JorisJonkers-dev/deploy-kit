@@ -23,17 +23,30 @@ class OutputsTest {
     /** Where a run of this module leaves what the parity contract compares, under its build output. */
     private static final Path OUTPUT = Path.of("target", "parity");
 
+    /** Set by the mutation gate, whose every run of this test is of a mutant (emf/pom.xml). */
+    private static final String MUTATING = "emf.mutation";
+
     /** The cases whose committed rendered trees the composed union writes between them. */
     private static final java.util.Set<String> RENDERED_CASES = java.util.Set.of("minimal", "data", "_estate");
 
     @Test
     void aRunLeavesEveryCaseUnderTheModulesBuildOutput() throws IOException {
         Path examples = Examples.of("");
-        deleteTree(OUTPUT);
+        // Under the mutation gate the run is a mutant's, several at once, so
+        // each writes apart and the parity module reads the build's own run.
+        boolean mutating = Boolean.getBoolean(MUTATING);
+        Path output = mutating ? Files.createTempDirectory("parity") : OUTPUT;
+        try {
+            deleteTree(output);
 
-        Outputs.write(examples, OUTPUT);
+            Outputs.write(examples, output);
 
-        assertThat(files(OUTPUT)).containsExactlyElementsOf(everyCasesPairedFile(examples));
+            assertThat(files(output)).containsExactlyElementsOf(everyCasesPairedFile(examples));
+        } finally {
+            if (mutating) {
+                deleteTree(output);
+            }
+        }
     }
 
     @Test

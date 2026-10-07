@@ -1,8 +1,9 @@
-// The pin source of every artifact a composition delivers for the first time
+// The pin source of every artifact whose pin a composition moves
 // (spec/v1/55-delivery.md#rendered-artifacts-and-pins): derived from the
-// Platform document and the Reconcile Unit DAG, written once, and afterwards
-// changed only in its digest. A Project's artifact holds its one unit; the
-// estate-scoped one holds the unit that provisions secrets and one per tier.
+// Platform document and the Reconcile Unit DAG, and rewritten whole with each
+// move, so the units it applies are always the ones its artifact holds. A
+// Project's artifact holds its one unit; the estate-scoped one holds the unit
+// that provisions secrets and one per tier it carries routes for.
 import {
   ESTATE_SOURCE,
   renderPinSource,
@@ -88,8 +89,7 @@ function unitsOf(
         name: edgeUnitOf(tier.name),
         path: tierDirectory(tier.name),
         // A route needs its tier's proxy and its own Project's namespace:
-        // every Project the tier serves, delivered already or not, since the
-        // file is written once.
+        // every Project the tier serves, delivered already or not.
         after: units([
           ...declaring(tier.traefik),
           ...projects

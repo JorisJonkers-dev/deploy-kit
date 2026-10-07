@@ -102,13 +102,14 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   Project, `projects/<project>/source.yaml`: an `OCIRepository` naming
   `<repository>/<project>` by `ref.digest` and verifying keyless against the
   signer, with one Kustomization per Reconcile Unit of the Project applying its
-  path. Composition writes the file the first time a Project composes, from the
-  Platform document and the Reconcile Unit DAG, and afterwards changes only its
-  `ref.digest` ([What a pin source holds](#what-a-pin-source-holds)). Removing a Project's file takes it off the estate path, which
+  path. Composition writes the file whole, from the Platform document and the
+  Reconcile Unit DAG, each time it moves the pin, the first time a Project
+  composes among them, so the units it applies are always the ones its artifact
+  holds ([What a pin source holds](#what-a-pin-source-holds)). Removing a Project's file takes it off the estate path, which
   only a handover step reversed or a Project's retirement does
   ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)). After publishing, composition commits to the
-  estate repository's `main` the moved `ref.digest` of every Project whose
-  artifact changed, marked `[ci skip]` so the estate repository's push checks
+  estate repository's `main` the rewritten source of every Project whose
+  artifact changed, at its new `ref.digest`, marked `[ci skip]` so the estate repository's push checks
   do not run on a commit that only moves digests. That commit is the deploy.
   These files are the only committed objects; the Deliverables themselves exist
   only inside artifacts.
@@ -136,8 +137,9 @@ delivery machinery ([#148](https://github.com/JorisJonkers-dev/deploy-kit/issues
 
 ### What a pin source holds
 
-The file composition writes for an artifact that has no pin yet. Everything in
-it derives; nothing is authored, and the cadence is this chapter's, stated once
+The file composition writes for an artifact whose pin moves, a first delivery
+among them, replacing whatever was committed before. Everything in it derives;
+nothing is authored, and the cadence is this chapter's, stated once
 as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied):
 
 | object | field | value |
@@ -149,13 +151,17 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 | | `interval` | `10m` |
 | `Kustomization`, one per Reconcile Unit the artifact holds | name | the unit's ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)) |
 | | `sourceRef`, `path` | the `OCIRepository` above, and the unit's directory in the artifact |
-| | `dependsOn` | every unit this one follows, by name, in name order; absent where it follows none. The whole of the DAG's answer, whether or not the units it names are delivered yet, since the file is written once |
+| | `dependsOn` | every unit this one follows, by name, in name order; absent where it follows none. The whole of the DAG's answer, whether or not the units it names are delivered yet |
 | | `interval`, `prune`, `wait` | `10m`, `true`, `true`: a unit is Ready when what it applied is, so a Job that fails holds every unit that follows it |
 
 A Project's artifact holds its one unit. The estate-scoped artifact holds
 `estate-vso-secrets` where it carries the Vault policy job, and one
 `estate-edge-<tier>` per tier it carries routes for; while a Project is on the
-old path, it carries no route.
+old path, it carries no route. A unit the artifact gains changes what it holds,
+so its pin moves and the rewritten source applies the new unit: the edge units
+when the last Project leaves the old path, and a tier's unit when the tier first
+carries a route. A moving pin carries no Pause, so the rewrite drops no
+annotation ([Pause and Rollback](#pause-and-rollback)).
 
 ## Pause and Rollback
 

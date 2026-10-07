@@ -647,6 +647,21 @@ describe("composeEstate", () => {
     const source = handingOver.sources.find(({ name }) => name === "_estate");
     expect(source?.text).toContain("name: estate-vso-secrets");
     expect(source?.text).not.toContain("estate-edge-");
+    // When the last Project leaves the old path, the artifact gains the edge
+    // units, its pin moves, and its source is rewritten to apply them.
+    const handedOver = compose({
+      platform: {
+        ...PLATFORM,
+        files: PLATFORM.files.map((file) =>
+          file.name === "platform.intent.yml"
+            ? { ...file, text: withLedger(file.text, "") }
+            : file,
+        ),
+      },
+      pins: pinned(handingOver),
+    }).sources.find(({ name }) => name === "_estate");
+    expect(handedOver?.text).toContain("name: estate-vso-secrets");
+    expect(handedOver?.text).toContain("name: estate-edge-");
     // Where no estate-path Project's render holds a secrets document, there
     // is no estate-scoped artifact at all.
     expect(estateOf(FIRST)).toBeUndefined();
@@ -690,10 +705,11 @@ describe("composeEstate", () => {
   });
 });
 
-// REQ-051 (docs/requirements.md): the first time an artifact is delivered,
-// composition writes its pin source, from the Platform document and the
-// Reconcile Unit DAG (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
-describe("composeEstate, for an artifact with no pin yet", () => {
+// REQ-051 (docs/requirements.md): whenever an artifact's pin moves, the first
+// delivery among them, composition writes its pin source, from the Platform
+// document and the Reconcile Unit DAG
+// (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
+describe("composeEstate, for an artifact whose pin moves", () => {
   /** Every Project delivered: the worked Platform document with no handover ledger. */
   const delivered = (input: Partial<ComposeInput> = {}) =>
     compose({
@@ -725,15 +741,32 @@ describe("composeEstate, for an artifact with no pin yet", () => {
       expect(body, path).toBe(committed(path));
   });
 
-  it("writes none for an artifact that is pinned already, whatever its pin holds", () => {
+  it("writes none for an artifact whose pin stays, and rewrites one whose pin moves unless it is paused", () => {
     const first = delivered();
-    const again = delivered({
-      held: RELEASES,
-      pins: pinned(first),
-      previous: { lock: first.lock, commit: hex("estate-commit", 40) },
-    });
+    const previous = { lock: first.lock, commit: hex("estate-commit", 40) };
+    const again = delivered({ held: RELEASES, pins: pinned(first), previous });
 
     expect(again.sources).toStrictEqual([]);
+    // A pin on other content moves, and its source is written whole again.
+    const stale = {
+      ...pinned(first),
+      notes: { contentHash: sha256Hasher("older notes"), annotations: {} },
+    };
+    expect(
+      delivered({ held: RELEASES, pins: stale, previous }).sources.map(
+        ({ name }) => name,
+      ),
+    ).toStrictEqual(["notes"]);
+    expect(
+      delivered({
+        held: RELEASES,
+        pins: {
+          ...stale,
+          notes: { ...(stale.notes as Pin), annotations: PAUSE },
+        },
+        previous,
+      }).sources,
+    ).toStrictEqual([]);
     // A pin for one artifact leaves every other's source to be written.
     const { notes: _kept, ...unpinned } = pinned(first);
     expect(

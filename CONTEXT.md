@@ -381,8 +381,8 @@ it. A deploy is a pin commit applied; the estate's git history is its deploy log
 
 **Pin source**: the file that holds a pin, `projects/<project>/source.yaml` in
 the Estate repository: the artifact by digest, whose signature is accepted, and
-one Kustomization per Reconcile Unit. Composition writes it once
-([chapter 55](spec/v1/55-delivery.md#what-a-pin-source-holds)).
+one Kustomization per Reconcile Unit. Composition writes it whole each time it
+moves the pin ([chapter 55](spec/v1/55-delivery.md#what-a-pin-source-holds)).
 
 **Rollback**: re-composing one Project at the fragment of an earlier release,
 asked for by a human, while the database schema stays at its newest: no
