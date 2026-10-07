@@ -3,8 +3,7 @@
 // `OCIRepository` names the artifact by digest and says whose keyless
 // signature it accepts, and one Kustomization per Reconcile Unit applies that
 // unit's path inside it, after the units it follows. Composition writes the
-// file once, when the artifact is first delivered; afterwards only its digest
-// moves.
+// file whenever the artifact's pin moves, the first delivery among them.
 import type { FluxKustomization, OciRepository } from "../../objects/custom.ts";
 import type { RenderedObject } from "../../objects/deliverable.ts";
 import { managedOnly } from "../shared/labels.ts";
