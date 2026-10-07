@@ -78,6 +78,28 @@ describe("the mutation gate", () => {
     expect(mutationJob).toContain("'path': 'reports/mutation'");
   });
 
+  // The job runs as shards, each mutating a disjoint share of the files the
+  // config names; test/mutation-shard.test.ts holds the split itself.
+  it("runs as one shard per matrix entry, each handed the shard count the matrix lists", () => {
+    const workflow = readFileSync(
+      join(REPOSITORY, ".github", "workflows", "ci.yml"),
+      "utf8",
+    );
+    const mutationJob =
+      workflow.split("'mutation':\n")[1]?.split("\n\n")[0] ?? "";
+    const shards = /'shard': \[([\d, ]+)\]/.exec(mutationJob)?.[1] ?? "";
+    const count = shards.split(",").length;
+
+    expect(shards.split(",").map(Number)).toStrictEqual(
+      Array.from({ length: count }, (_, index) => index + 1),
+    );
+    expect(count).toBeGreaterThan(1);
+    expect(mutationJob).toContain(
+      `files="$(node scripts/mutation-shard.ts "$SHARD" ${String(count)})"`,
+    );
+    expect(mutationJob).toContain('npm run test:mutation -- --mutate "$files"');
+  });
+
   it("runs every test file that imports from src/", () => {
     const runner = readFileSync(
       join(REPOSITORY, config.vitest.configFile),
