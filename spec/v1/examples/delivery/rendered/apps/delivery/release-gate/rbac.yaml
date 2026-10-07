@@ -17,6 +17,9 @@ rules:
       - configmaps
     verbs:
       - get
+      - list
+      - create
+      - update
   - apiGroups:
       - ""
     resources:
@@ -35,6 +38,7 @@ rules:
       - jobs
     verbs:
       - list
+      - patch
   - apiGroups:
       - flagger.app
     resources:

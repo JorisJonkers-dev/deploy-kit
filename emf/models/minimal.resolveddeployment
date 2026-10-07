@@ -30,8 +30,8 @@
     through its one black box, and not the production implementation's digests,
     which are over a different shape (spec/v1/20-resolved-deployment.md#pinned-inputs).
   -->
-  <provenance renderHash="sha256:513e289cd214746314009ea36c6de5529c10654f8fbf4ebaf9941f2e8c215968" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
-    <inputDigests input="intent-fragment" name="delivery" digest="sha256:0fefb45a0d33f5a4c3d36ba970bd3d1c27aa375ab2677b6f76dbd58c716b6082"/>
+  <provenance renderHash="sha256:75d15e87a55e58925ca3e96813eac0afa5eff1468be98209763eba67e8b63577" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+    <inputDigests input="intent-fragment" name="delivery" digest="sha256:fc0a990c0e2b4e8861dc97d08db744b2c44c6ff86b4c8da31873816e3f87b4a9"/>
     <inputDigests input="intent-fragment" name="edge" digest="sha256:273c64ecd8c35ab69918664735661764e44e8e3ad04a58a11ab92dcb52ec1f4a"/>
     <inputDigests input="intent-fragment" name="notes" digest="sha256:252e68be274ac566d591709794fbfed79b35e24cabaa38e39d90242e3e3893df"/>
     <inputDigests input="intent-fragment" name="observability" digest="sha256:aac790f0f921ce56ea5fb7af1f5a85c48c2122fbcbd99923124aafe063f6594c"/>
