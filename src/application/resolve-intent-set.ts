@@ -105,10 +105,15 @@ function assetsOf(
   );
   const beside = directoryOf(name);
   return new Map(
-    [...named].flatMap((from) => {
-      const file = files.find((candidate) => candidate.name === beside + from);
-      return file === undefined ? [] : [[from, file.text] as const];
-    }),
+    // The set holds every Asset's file, or E_ASSET_NOT_FOUND refused it.
+    [...named].map((from) => [
+      from,
+      (
+        files.find(
+          (candidate) => candidate.name === beside + from,
+        ) as AuthoredFile
+      ).text,
+    ]),
   );
 }
 

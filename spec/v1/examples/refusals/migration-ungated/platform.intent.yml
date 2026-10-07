@@ -42,6 +42,7 @@ delivery:
     interval: 30s
     iterations: 4
     threshold: 3
+secretStore: edge-proxy
 durability:
   reconstructible: {}
   recoverable: { schedule: "15 3 * * *", retain: 14 }

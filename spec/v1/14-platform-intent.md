@@ -73,6 +73,7 @@ other resolves and every policy one asks for the other offers:
 | `telemetry.metrics` names an Application no project file read beside it declares | `E_UNKNOWN_METRICS_STACK` |
 | `delivery.gate` names no Application a project file read beside it declares with an `http` surface on one of its Processes | `E_UNKNOWN_RELEASE_GATE` |
 | `secretStore` names no Application a project file read beside it declares with an `http` surface on one of its Processes | `E_UNKNOWN_SECRET_STORE` |
+| an Application holds a grant, a backup that copies off-cluster, or a changelog, and the platform names no `secretStore` | `E_NO_SECRET_STORE` |
 | an Application moves its schema with a changelog and the platform declares no `migration` policy | `E_NO_MIGRATION_POLICY` |
 | an Application moves its schema with a changelog and no Process of it switches `blue-green`: none is `continuous`, or the Application is `delivery.machinery` | `E_MIGRATION_UNGATED` |
 | an Application's cutover is `continuous` and the platform declares no `delivery` policy | `E_NO_DELIVERY_POLICY` |
@@ -276,7 +277,10 @@ is one node's IO and the destination one remote target, so both are
 platform-assigned. `retain` is how many copies a backup keeps, the newest, and
 `offCluster` names where an `irreplaceable` copy also goes, the Secret Store
 path of the credential that writes there, and where that destination is on the
-network. A volume whose class has no policy here is `E_NO_DURABILITY_POLICY`:
+network. A volume whose class has no policy here is `E_NO_DURABILITY_POLICY`,
+and a policy for a class that derives a backup (`recoverable`, `irreplaceable`)
+names both `schedule` and `retain`, or the document is refused on its own with
+`E_DURABILITY_POLICY_INCOMPLETE`:
 
 ```yaml
 durability:
@@ -577,7 +581,8 @@ that materialises its credentials
 The platform owns the Secret Store's Application in a project file of its own,
 the worked [`secrets`](examples/secrets/secrets.project.yml) project. The field
 is optional, and a platform that omits it offers no store: nothing it resolves
-may hold a grant.
+may hold a grant, copy a backup off-cluster or run a managed migration, each of
+which reads a credential from the store (`E_NO_SECRET_STORE`).
 
 ## Handover ledger
 

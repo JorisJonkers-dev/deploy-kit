@@ -10,7 +10,6 @@ import { backupIdentityOf, namespaceOf } from "../model/runtime-profiles.ts";
 import { BACKED_UP, dumpedSurfaceOf } from "../model/backup.ts";
 import { DNS_PORT } from "./policy.ts";
 import { destinationOf } from "./secrets.ts";
-import { notChecked } from "../model/internal-failure.ts";
 
 export type ResolvedVolume = NonNullable<ResolvedProcess["volumes"]>[number];
 type BackupPlan = NonNullable<ResolvedVolume["backup"]>;
@@ -62,10 +61,8 @@ function backupOf(
   const policy = platform.durability[durability] as NonNullable<
     PlatformIntentDocument["durability"]["recoverable"]
   >;
-  if (policy.schedule === undefined || policy.retain === undefined)
-    throw notChecked(
-      `the ${durability} policy derives a backup, and names no schedule and retention`,
-    );
+  // E_DURABILITY_POLICY_INCOMPLETE refused a backed-up class with no schedule
+  // or retention.
   const method = platform.engines[
     process.engine as NonNullable<EffectiveProcess["engine"]>
   ] as { readonly backup: string };
@@ -73,8 +70,8 @@ function backupOf(
   const identity = backupIdentityOf(process.name);
   const { offCluster } = policy;
   return {
-    schedule: policy.schedule,
-    retain: policy.retain,
+    schedule: policy.schedule as string,
+    retain: policy.retain as number,
     ...(offCluster === undefined ? {} : { offCluster: offCluster.destination }),
     method: `${image.repository}@${image.digest}`,
     uid: image.uid,

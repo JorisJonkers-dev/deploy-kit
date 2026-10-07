@@ -1,0 +1,32 @@
+# The project file this case's Platform document is read beside.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: api
+    processes:
+      - name: api
+        lifecycle: application
+        image: api
+        runtime: node
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 25m }
+        startupBudget: 20s
+        cutover: continuous
+  - id: edge-proxy
+    processes:
+      - name: edge-proxy
+        lifecycle: application
+        image: traefik
+        runtime: none
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 8080 }
+        startupBudget: 30s
+        cutover: continuous

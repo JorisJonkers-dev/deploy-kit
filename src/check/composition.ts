@@ -54,8 +54,12 @@ interface Estate {
   readonly declared: ReadonlySet<string>;
   /** Every id more than one Application carries, so that the id names no one of them. */
   readonly repeated: ReadonlySet<string>;
-  /** The Applications whose engine owns databases, whose consumers derive one. */
-  readonly databases: ReadonlySet<string>;
+  /**
+   * The surfaces a Process whose engine owns databases provides, by its
+   * Application: an edge to one of them derives a database, and an edge to
+   * another surface of the same Application, an exporter's, derives none.
+   */
+  readonly databases: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 type Edge = NonNullable<Application["dependsOn"]>[number];
@@ -70,6 +74,10 @@ const edgesOf = (
   ...application.processes.flatMap((process) => process.dependsOn ?? []),
 ];
 
+/** Whether an edge reaches a surface of a Process that owns databases. */
+const derivesDatabase = (edge: Edge, estate: Estate): boolean =>
+  estate.databases.get(edge.application)?.has(edge.surface) === true;
+
 /** `credentials` on an edge whose provider was read and owns no database. */
 function credentialsRefusals(
   edges: readonly Edge[] | undefined,
@@ -81,7 +89,7 @@ function credentialsRefusals(
   return (edges ?? []).flatMap((edge, e) =>
     edge.credentials !== undefined &&
     estate.declared.has(edge.application) &&
-    !estate.databases.has(edge.application)
+    !derivesDatabase(edge, estate)
       ? [
           {
             code: "E_CREDENTIALS_WITHOUT_DATABASE",
@@ -108,9 +116,7 @@ function migrationRefusals(
   for (const [a, application] of project.applications.entries()) {
     const at = `/applications/${a}`;
     const edges = edgesOf(application, project);
-    const consumes = edges.some((edge) =>
-      estate.databases.has(edge.application),
-    );
+    const consumes = edges.some((edge) => derivesDatabase(edge, estate));
     const decided = edges.every((edge) =>
       estate.declared.has(edge.application),
     );
@@ -354,11 +360,16 @@ export function setDiagnostics(
   const estate: Estate = {
     declared,
     repeated: new Set(ids.filter((id, at) => ids.indexOf(id) !== at)),
-    databases: new Set(
+    databases: new Map(
       projects.flatMap(({ document }) =>
-        document.applications
-          .filter((application) => application.processes.some(ownsDatabases))
-          .map(({ id }) => id),
+        document.applications.map(({ id, processes }) => [
+          id,
+          new Set(
+            processes
+              .filter(ownsDatabases)
+              .flatMap(({ provides }) => Object.keys(provides ?? {})),
+          ),
+        ]),
       ),
     ),
   };

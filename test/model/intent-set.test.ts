@@ -29,6 +29,8 @@ const WORKED = [
   "minimal/notes.project.yml",
   "observability/observability.project.yml",
   "secrets/secrets.project.yml",
+  // The Asset data's Process mounts, read beside its project file.
+  "data/config/postgresql.conf",
 ].map(read);
 
 /** The worked Platform document's telemetry block, which a variant composed with fewer projects drops. */
@@ -462,7 +464,7 @@ owner: o
       - {name: edge-proxy, lifecycle: application, image: t, runtime: none, provides: {http: 8080}, placement: {memory: 1Mi, cpu: 1m}, cutover: continuous}
 `;
   const process = (name: string, extra = ""): string =>
-    `      - {name: ${name}, lifecycle: application, image: ${name}, runtime: none, placement: {memory: 1Mi, cpu: 1m}, cutover: continuous${extra}}\n`;
+    `      - {name: ${name}, lifecycle: application, image: ${name}, runtime: none, placement: {memory: 1Mi, cpu: 1m}, probes: {readiness: {tcp: 1}}, cutover: continuous${extra}}\n`;
   const check = (applications: string, header = HEADER) =>
     refusalsOf([
       withPolicy,
@@ -583,7 +585,9 @@ describe("the gated migration rule across documents", () => {
   const continuous = (text: string): string =>
     text.replace(
       "startupBudget: 20s\n        cutover: interrupted",
-      "startupBudget: 20s\n        cutover: continuous",
+      // A Process that switches blue/green publishes readiness, or the
+      // release gate has nothing to wait on.
+      "startupBudget: 20s\n        probes: { readiness: { tcp: 8080 } }\n        cutover: continuous",
     );
   const REFUSED = [
     {

@@ -1,6 +1,7 @@
 // The rules one Platform document answers on its own
 // (spec/v1/14-platform-intent.md): each carries the code the specification
 // gives it and the JSON Pointer of what it refuses.
+import { BACKED_UP } from "../model/backup.ts";
 import type { Diagnostic } from "../model/diagnostic.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 
@@ -37,10 +38,28 @@ function handoverRefusals(document: PlatformIntentDocument): Diagnostic[] {
       ];
 }
 
+/** A class that derives a backup says when it runs and how many copies it keeps. */
+function durabilityRefusals(document: PlatformIntentDocument): Diagnostic[] {
+  return Object.entries(document.durability).flatMap(([durability, policy]) =>
+    BACKED_UP.has(durability) &&
+    (policy.schedule === undefined || policy.retain === undefined)
+      ? [
+          {
+            code: "E_DURABILITY_POLICY_INCOMPLETE",
+            path: `/durability/${durability}`,
+            message: `the ${durability} class derives a backup, and its policy names no ${policy.schedule === undefined ? "schedule" : "retention"}`,
+            hint: "Give the policy a `schedule` and a `retain` count.",
+          },
+        ]
+      : [],
+  );
+}
+
 /** Every refusal the Platform document earns on its own. */
 export const platformDiagnostics = (
   document: PlatformIntentDocument,
 ): readonly Diagnostic[] => [
   ...forwardAuthRefusals(document),
   ...handoverRefusals(document),
+  ...durabilityRefusals(document),
 ];

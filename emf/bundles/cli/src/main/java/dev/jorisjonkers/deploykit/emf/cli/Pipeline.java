@@ -62,6 +62,9 @@ public final class Pipeline {
     /** The Complete OCL file the metamodel carries, beside its classes. */
     private static final String CONSTRAINTS = "project-intent.ocl";
 
+    /** The code an Asset earns whose file is not beside its project file. */
+    private static final String ASSET_NOT_FOUND = "E_ASSET_NOT_FOUND";
+
     /** The code an env file earns whose scope directory names no level of the project file. */
     private static final String UNKNOWN_ENV_SCOPE = "E_UNKNOWN_ENV_SCOPE";
 
@@ -183,20 +186,19 @@ public final class Pipeline {
 
     /**
      * The file each Asset of {@code project} names, read as text from beside its project file
-     * (spec/v1/10-project-intent.md#assets). A file that is not there is left out, and the
-     * transformation, which reads one per Asset, stops on its absence.
+     * (spec/v1/10-project-intent.md#assets). Every one is there, or {@link #check} refused the set
+     * with E_ASSET_NOT_FOUND.
      */
     private static List<AssetFile> assetFiles(Project project, Path file) throws IOException {
         List<AssetFile> read = new ArrayList<>();
         for (Asset asset : EcoreUtil2.getAllContentsOfType(project, Asset.class)) {
-            Path content = file.toAbsolutePath().resolveSibling(asset.getFrom());
-            if (Files.isRegularFile(content)) {
-                AssetFile assetFile = PinnedInputsFactory.eINSTANCE.createAssetFile();
-                assetFile.setProject(project.getProject());
-                assetFile.setFrom(asset.getFrom());
-                assetFile.setContent(Files.readString(content, StandardCharsets.UTF_8));
-                read.add(assetFile);
-            }
+            AssetFile assetFile = PinnedInputsFactory.eINSTANCE.createAssetFile();
+            assetFile.setProject(project.getProject());
+            assetFile.setFrom(asset.getFrom());
+            // check refused an Asset whose file is not beside the project.
+            assetFile.setContent(
+                    Files.readString(besideProject(file, asset.getFrom()).orElseThrow(), StandardCharsets.UTF_8));
+            read.add(assetFile);
         }
         return read;
     }
@@ -327,10 +329,59 @@ public final class Pipeline {
         if (!refusals.isEmpty()) {
             return refusals;
         }
-        for (Resource document : read(documents)) {
+        List<Resource> read = read(documents);
+        for (int i = 0; i < documents.size(); i++) {
+            if (read.get(i).getContents().get(0) instanceof Project project) {
+                // What a Process holds reaches it through the env files beside its project too.
+                attachEnv(project, documents.get(i));
+                refusals.addAll(unreadAssets(project, documents.get(i)));
+            }
+        }
+        for (Resource document : read) {
             refusals.addAll(refusals(document, true));
         }
         return refusals;
+    }
+
+    /** The env files beside {@code file}, each on the level its scope directory names. */
+    private static void attachEnv(Project project, Path file) {
+        try {
+            for (EnvFiles.Scoped scoped : EnvFiles.read(envBeside(file)).files()) {
+                levelOf(project, scoped.scope())
+                        .ifPresent(level -> level.getEnv().add(scoped.file()));
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * The file {@code from} names below the directory of {@code file}, if one is there: a path that
+     * leaves that directory, absolute or through {@code ..}, names no file beside the project, exactly
+     * as the production implementation, which reads only the files of the set, finds none.
+     */
+    private static Optional<Path> besideProject(Path file, String from) {
+        Path directory = file.toAbsolutePath().normalize().getParent();
+        Path target = directory.resolve(from).normalize();
+        return target.startsWith(directory) && Files.isRegularFile(target) ? Optional.of(target) : Optional.empty();
+    }
+
+    /**
+     * Every Asset of {@code project} whose file is not beside {@code file}: an Asset mounts a file its
+     * fragment carries (spec/v1/10-project-intent.md#assets).
+     */
+    private static List<Diagnostic> unreadAssets(Project project, Path file) {
+        List<Diagnostic> unread = new ArrayList<>();
+        for (Asset asset : EcoreUtil2.getAllContentsOfType(project, Asset.class)) {
+            if (besideProject(file, asset.getFrom()).isEmpty()) {
+                unread.add(new Diagnostic(
+                        ASSET_NOT_FOUND,
+                        file.getFileName().toString(),
+                        Pointer.of(asset) + "/from",
+                        "no file " + asset.getFrom() + " is read beside the project file"));
+            }
+        }
+        return unread;
     }
 
     private static boolean isPlatform(Path file) {

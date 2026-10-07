@@ -186,7 +186,7 @@ describe("the scope a directory names", () => {
 });
 
 describe("the worked knowledge example", () => {
-  it("shares nine variables at the project scope, the one both Applications hold", () => {
+  it("shares eight variables at the project scope, the one both Applications hold", () => {
     const shared = sources().find(
       ({ path }) => path === "env/_project/base.env",
     );
@@ -195,7 +195,6 @@ describe("the worked knowledge example", () => {
     expect(file?.ok === true && names(file.value)).toStrictEqual([
       "DB_HOST",
       "DB_PORT",
-      "DB_NAME",
       "RABBITMQ_HOST",
       "RABBITMQ_PORT",
       "DB_USER",
@@ -229,7 +228,6 @@ describe("the worked knowledge example", () => {
       "KNOWLEDGE_MCP_TOKENS_WORKSTATION",
       "DB_HOST",
       "DB_PORT",
-      "DB_NAME",
       "RABBITMQ_HOST",
       "RABBITMQ_PORT",
       "DB_USER",
@@ -237,13 +235,13 @@ describe("the worked knowledge example", () => {
       "RABBITMQ_USER",
       "RABBITMQ_PASSWORD",
     ]);
-    // The worker holds fewer of its own and the same nine from above it.
+    // The worker holds fewer of its own and the same eight from above it.
     expect(envOf("knowledge-ingest-worker").slice(0, 3)).toStrictEqual([
       "INGEST_QUEUE",
       "INGEST_PREFETCH",
       "LOG_LEVEL",
     ]);
-    expect(envOf("knowledge-ingest-worker")).toHaveLength(12);
+    expect(envOf("knowledge-ingest-worker")).toHaveLength(11);
   });
 });
 

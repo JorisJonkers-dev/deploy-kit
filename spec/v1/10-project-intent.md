@@ -796,7 +796,9 @@ derived: written as a literal it is the same staleness class as the
 disagreed and nothing noticed. Writing a derived value as a literal is a build
 error, and so is writing a Runtime Profile key at all: `OTEL_*` and
 `PYROSCOPE_*` come from `runtime`, and an exceptional value is not a layer-1
-concept: there is no `overrides` field to put it in. Ten `OTEL_*` variables are
+concept: there is no `overrides` field to put it in. A key the Process's
+Runtime Profile injects, written in an env file that reaches it, is
+`E_PROFILE_KEY_AUTHORED`. Ten `OTEL_*` variables are
 byte-identical today across `auth-api`,
 `agents-api` and `knowledge-api` except `OTEL_SERVICE_NAME`, sixty duplicated
 lines that leave the project repositories under this rule. What a Runtime Profile
@@ -877,7 +879,11 @@ Application: a CA bundle or a shared logging configuration mounted into every
 Process is one declaration rather than one per Process. Two Assets reaching one `mountAt` are one
 declaration, so the lower level's `from` is the file that arrives there, and the
 same `from` mounted at the same path by two levels is
-`E_SHARED_DECLARATION_DUPLICATED`.
+`E_SHARED_DECLARATION_DUPLICATED`. `from` is a path beside the project file, and
+a file the set does not hold there is `E_ASSET_NOT_FOUND`, at the Asset that
+names it: the fragment carries its Assets, so an Asset that mounts nothing is an
+authoring mistake, not a missing input. A `from` that leaves the project's
+directory, absolute or through `..`, names no file beside it either.
 
 **Change propagation is unconditional and there is no `onChange` field**
 ([0014](../../docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)).
@@ -2177,7 +2183,11 @@ secrets.
 Both halves of the address are checked at composition, over the union that
 already checks the other two sources: the Application must resolve in it, exactly as
 a `dependsOn` target must (`E_UNRESOLVED_APPLICATION`), and it must declare an
-exposure by that name. Reading a host this way is **not** a dependency edge: it
+exposure by that name, with `url`, `host` or `scheme` after it
+(`E_UNRESOLVED_PLACEHOLDER`). A `${dependency:…}` placeholder names the
+Application of exactly one edge the Process holds, and `host` or `port`, or it
+is `E_UNRESOLVED_PLACEHOLDER` too. A refused placeholder is reported at the
+Process the env file reaches, naming the variable. Reading a host this way is **not** a dependency edge: it
 resolves to a string at build time and derives no egress, so a Process that
 actually calls the host still declares `dependsOn`
 ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)).
@@ -2185,14 +2195,16 @@ actually calls the host still declares `dependsOn`
 ### Validation
 
 Because binding and access live in different files, each checks the other. The
-first four run at composition, over the union
+first six run at composition, over the union
 ([chapter 40](40-composition.md)); the rest are schema or render-time refusals
 this chapter owns:
 
 | condition | error | when |
 |---|---|---|
-| a `delivery: env` grant with no matching `${secret:…}` placeholder | `E_UNBOUND_SECRET_GRANT` | composition |
-| a `${secret:…}` placeholder whose path matches no grant | `E_UNAUTHORISED_SECRET_REFERENCE` | composition |
+| a `delivery: env` grant with no matching `${secret:…}` placeholder, on a Process an env file reaches | `E_UNBOUND_SECRET_GRANT` | composition |
+| a `${secret:…}` placeholder whose path and key match no `delivery: env` grant of the Process | `E_UNAUTHORISED_SECRET_REFERENCE` | composition |
+| a `${dependency:…}` or `${exposure:…}` placeholder that names no one edge, coordinate, exposure or field | `E_UNRESOLVED_PLACEHOLDER` | composition |
+| a Runtime Profile key written in an env file | `E_PROFILE_KEY_AUTHORED` | composition |
 | `access: self-roll` on a path with other readers, unacknowledged | `E_ROLL_AFFECTS_OTHER_READERS` | composition |
 | a literal secret value in an env file or an Asset | `E_RAW_SECRET` | composition |
 | `delivery: env` with `rotation.tolerates: reload` | `E_ENV_CANNOT_RELOAD` | schema |
@@ -2303,8 +2315,9 @@ several. It must exist and parse when the Intent Fragment is published.
 **The rules**, each at the object an author changes:
 
 - **Required where a database is derived, refused elsewhere.** An Application
-  whose Processes reach a provider whose engine owns databases derives the
-  project's database ([chapter 16](16-dependencies.md#the-database-catalog)), and
+  whose Processes reach a surface of a Process whose engine owns databases
+  derives the project's database (an edge to the same provider's exporter
+  derives none) ([chapter 16](16-dependencies.md#the-database-catalog)), and
   must answer: `E_MIGRATION_UNDECLARED`. An Application that derives none has no
   schema to move: `E_MIGRATION_WITHOUT_DATABASE`. Both are decided across the
   documents read together, and only where every provider the Application reaches

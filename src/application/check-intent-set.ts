@@ -4,6 +4,7 @@
 // name; a set handed to the checker directly also reads a YAML file whose
 // document says `kind: Project` as a project file. An env file reaches the
 // project its `env/` directory sits beside.
+import { assetDiagnostics } from "../check/assets.ts";
 import { setDiagnostics } from "../check/composition.ts";
 import { unionDiagnostics } from "../check/union.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
@@ -120,12 +121,21 @@ export function composeIntentSet(
     value: (result as Parsed<typeof result>).value,
   }));
 
+  // An Asset mounts a file the set holds beside its project file.
+  for (const { name, value } of parsedProjects)
+    tagged(
+      name,
+      assetDiagnostics(value.document, (from) =>
+        files.some((file) => file.name === directoryOf(name) + from),
+      ),
+    );
   const [platform] = parsedPlatforms;
   refusals.push(
     ...unionDiagnostics(
       parsedProjects.map(({ name, value }) => ({
         name,
         document: value.document,
+        effective: value.effective,
       })),
       platform?.value.document,
     ),
