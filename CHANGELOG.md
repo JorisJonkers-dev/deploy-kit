@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.8.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.7.0...v0.8.0) (2026-10-07)
+
+
+### Features
+
+* answer the union's identity and reference invariants in the model-driven implementation ([#283](https://github.com/JorisJonkers-dev/deploy-kit/issues/283)) ([b5de85b](https://github.com/JorisJonkers-dev/deploy-kit/commit/b5de85b258b12e35011c7b60c8cf9dabb55edc41))
+* declare the knowledge platform's shared intent above the Process ([#277](https://github.com/JorisJonkers-dev/deploy-kit/issues/277)) ([18ab8c1](https://github.com/JorisJonkers-dev/deploy-kit/commit/18ab8c162f5952971126fa9cf91d88f3e0309c23))
+* deliver the estate's secrets unit while a Project is still legacy ([#288](https://github.com/JorisJonkers-dev/deploy-kit/issues/288)) ([3c124ff](https://github.com/JorisJonkers-dev/deploy-kit/commit/3c124fff45b551916872adaec4c0a3c1682d3882))
+* hand a backup method the Process it dumps and the credential it logs in with ([#293](https://github.com/JorisJonkers-dev/deploy-kit/issues/293)) ([28248d4](https://github.com/JorisJonkers-dev/deploy-kit/commit/28248d4b6b37b6593d35f78869f8ed00718804df)), closes [#284](https://github.com/JorisJonkers-dev/deploy-kit/issues/284)
+* model and render the knowledge platform, with its file grant mounted ([#273](https://github.com/JorisJonkers-dev/deploy-kit/issues/273)) ([790b124](https://github.com/JorisJonkers-dev/deploy-kit/commit/790b1246cc46dbf685d8f1a68bf28c77526518c1))
+* refuse every authored mistake before resolution, in both implementations ([#279](https://github.com/JorisJonkers-dev/deploy-kit/issues/279)) ([05ec550](https://github.com/JorisJonkers-dev/deploy-kit/commit/05ec5503ff360a9acc5111dcbb3b0c93b0874213))
+* refuse the identity and reference invariants over the composed union ([#278](https://github.com/JorisJonkers-dev/deploy-kit/issues/278)) ([6d3ec7d](https://github.com/JorisJonkers-dev/deploy-kit/commit/6d3ec7deeaf1ca51d096d033cdd44dcb5953a193))
+
+
+### Bug Fixes
+
+* rewrite an artifact's pin source whenever its pin moves ([#291](https://github.com/JorisJonkers-dev/deploy-kit/issues/291)) ([b5b6cae](https://github.com/JorisJonkers-dev/deploy-kit/commit/b5b6cae67a14ce5b8be8bd6227b4f5cc5829599c)), closes [#287](https://github.com/JorisJonkers-dev/deploy-kit/issues/287)
+
 ## [0.7.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.6.0...v0.7.0) (2026-10-06)
 
 
