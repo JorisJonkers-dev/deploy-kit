@@ -272,11 +272,24 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="claim" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="credential" eType="#//ResolvedGrant" containment="true"/>
+    <!-- Where a method that dumps over the network connects; none for one that
+         reads the volume alone. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="peer" eType="#//BackupPeer" containment="true"/>
     <!-- What the backup identity's own policy admits: the Process it dumps, on the
          surface its engine's method connects to, and the cluster's DNS; and the
          address ranges an off-cluster copy goes to. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="egress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="destinations" upperBound="-1" eType="#//AdmittedRange" containment="true"/>
+  </eClassifiers>
+
+  <!-- The Process a method dumps over the network, and the credential it logs in
+       with: the Process's Service on the port of the surface the platform names
+       for its engine, and a path derived from the Process, held by the backup
+       identity alone. -->
+  <eClassifiers xsi:type="ecore:EClass" name="BackupPeer">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="host" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="credential" lowerBound="1" eType="#//ResolvedGrant" containment="true"/>
   </eClassifiers>
 
   <!-- An address range outside the cluster a policy admits, on one port. Layer 1 states it as
@@ -554,7 +567,7 @@
   </eClassifiers>
 
   <!-- An identity that holds grants: a Process, or a backup identity holding
-       its destination's credential. Its name is its ServiceAccount, its Vault
+       its destination's and its peer's credentials. Its name is its ServiceAccount, its Vault
        role and its label set's name. -->
   <eClassifiers xsi:type="ecore:EClass" name="SecretHolder">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

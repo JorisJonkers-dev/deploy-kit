@@ -908,10 +908,22 @@
                     - name: BACKUP_OFF_CLUSTER
                       value: [b.offCluster.scalar()/]
   [/if]
-  [if (b.credential <> null)]
+  [if (b.peer <> null)]
+                    - name: BACKUP_HOST
+                      value: [b.peer.host/]
+                    - name: BACKUP_PORT
+                      value: [b.peer.port.toString().scalar()/]
+  [/if]
+  [if (b.credential <> null or b.peer <> null)]
                   envFrom:
+  [/if]
+  [if (b.credential <> null)]
                     - secretRef:
                         name: [b.credential.destination/]
+  [/if]
+  [if (b.peer <> null)]
+                    - secretRef:
+                        name: [b.peer.credential.destination/]
   [/if]
                 securityContext:
                   readOnlyRootFilesystem: true

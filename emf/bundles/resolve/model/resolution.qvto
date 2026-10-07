@@ -182,7 +182,7 @@ mapping EffectiveApplication::application(in prj : EffectiveProject) : ResolvedA
 	releaseGate := if gated(self) then self.map gate() else null endif;
 	if managed(self) then migration := self.map migrationOf(prj) endif;
 	-- The operator syncs from the Secret Store wherever a grant or a backup's
-	-- off-cluster credential is delivered anywhere but to the Process itself,
+	-- off-cluster or peer credential is delivered anywhere but to the Process itself,
 	-- and a migration reads its owner credential from the store itself.
 	if synced(result) or managed(self) then secretStore := storeEndpoint() endif;
 }
@@ -196,7 +196,8 @@ query tagOf(revision : String) : String = revision.substring(8, 7 + TAG_DIGITS);
 
 query synced(app : ResolvedApplication) : Boolean =
 	app.processes->exists(p | p.secrets->notEmpty()
-		or p.volumes->exists(v | v.backup <> null and v.backup.credential <> null));
+		or p.volumes->exists(v | v.backup <> null
+			and (v.backup.credential <> null or v.backup.peer <> null)));
 
 -- A managed migration's plan (spec/v1/20-resolved-deployment.md#the-migration):
 -- its locked runner and the user it runs as, what the proof beside the project
@@ -555,6 +556,20 @@ query Volume::backupFor(p : PI::Process) : BackupPlan =
 		identity := holder;
 		claim := self.claim + '-backup';
 		egress := backupEgress(p);
+		-- A method that dumps over the network is told where, and logs in with
+		-- a credential derived from the Process, which only its backups hold.
+		if (dumpedSurface(p) <> null) {
+			peer := object BackupPeer {
+				host := p.name + '.' + namespaceOf(owner(p)) + '.svc.cluster.local';
+				port := p.provides->select(s | s.key = dumpedSurface(p))->any(true).value;
+				credential := object ResolvedGrant {
+					path := backupCredentialOf(p);
+					_access := 'read';
+					delivery := 'env';
+					destination := destinationOf(holder, backupCredentialOf(p));
+				};
+			};
+		} endif;
 		if (policy.offCluster <> null) {
 			destinations := policy.offCluster.egress->collect(range | object AdmittedRange {
 				cidr := range.cidr;
@@ -569,6 +584,11 @@ query Volume::backupFor(p : PI::Process) : BackupPlan =
 			};
 		} endif;
 	} endif;
+
+-- Where a method that dumps a Process over the network reads the credential it
+-- logs in with: one path per Process, which its name keeps distinct within its project.
+query backupCredentialOf(p : PI::Process) : String =
+	'secret/data/' + owner(p) + '/' + p.name + '/backup';
 
 query unplanned(claim : String) : BackupPlan {
 	assert fatal (false) with log(claim + ': its Durability Class derives a backup, and the platform names no schedule and retention for it');
@@ -1087,9 +1107,9 @@ query monitorOf(app : EffectiveApplication, root : String) : Sequence(Deliverabl
 
 -- The identities of one Process that sync a grant
 -- (spec/v1/16-dependencies.md#what-a-grant-confers): the Process itself for each
--- grant delivered anywhere but to itself, and its backup identity for the one
--- off-cluster credential its backups share. A Process that syncs nothing
--- holds nothing here.
+-- grant delivered anywhere but to itself, and its backup identity for the
+-- off-cluster credential its backups share and the one its method dumps the
+-- Process with. A Process that syncs nothing holds nothing here.
 query holdersOf(p : ResolvedProcess) : Sequence(SecretHolder) =
 	(if p.secrets->forAll(g | g.destination = null) then Sequence{} else
 	Sequence{object SecretHolder {
@@ -1097,11 +1117,20 @@ query holdersOf(p : ResolvedProcess) : Sequence(SecretHolder) =
 		component := p.component;
 		grants := p.secrets->select(g | g.destination <> null);
 	}} endif)
-	->union(if backupOf(p) = null then Sequence{} else Sequence{object SecretHolder {
-		identity := backupOf(p).identity;
+	->union(if backupGrants(p)->isEmpty() then Sequence{} else Sequence{object SecretHolder {
+		identity := p.volumes->select(v | v.backup <> null)->first().backup.identity;
 		component := NO_RUNTIME;
-		grants := Sequence{backupOf(p).credential};
+		grants := backupGrants(p);
 	}} endif);
+
+-- What a Process's backup identity holds: the off-cluster credential, where a
+-- backup copies off-cluster, then the peer's, where its method dumps over the
+-- network, which every backup of the Process shares.
+query backupGrants(p : ResolvedProcess) : Sequence(ResolvedGrant) =
+	let plans : Sequence(BackupPlan) = p.volumes->select(v | v.backup <> null).backup->asSequence() in
+	(if backupOf(p) = null then Sequence{} else Sequence{backupOf(p).credential} endif)
+	->union(if plans->isEmpty() or plans->first().peer = null then Sequence{}
+		else Sequence{plans->first().peer.credential} endif);
 
 -- The plan whose off-cluster credential every backup of one Process shares, where one has it.
 query backupOf(p : ResolvedProcess) : BackupPlan =
@@ -1226,14 +1255,16 @@ query EffectiveProject::edgeFiles() : Sequence(Deliverable) =
 
 -- Per identity that holds a grant, one Vault policy over every grant it holds
 -- and one Kubernetes auth role bound to it, estate-scoped by namespace: the
--- Process for all of its grants, and its backup identity for the credential.
+-- Process for all of its grants, and its backup identity for its credentials.
 query EffectiveProject::vaultFiles() : Sequence(Deliverable) =
 	self.applications->collect(a | a.resolveone(ResolvedApplication))->collect(app |
 		app.processes->collect(p |
 			(if p.secrets->isEmpty() then Sequence{} else
 				vaultFilesOf(app.namespace, p.identity, p.secrets->asSequence()) endif)
-			->union(if backupOf(p) = null then Sequence{} else
-				vaultFilesOf(app.namespace, backupOf(p).identity, Sequence{backupOf(p).credential}) endif))
+			->union(if backupGrants(p)->isEmpty() then Sequence{} else
+				vaultFilesOf(app.namespace,
+					p.volumes->select(v | v.backup <> null)->first().backup.identity,
+					backupGrants(p)) endif))
 		->union(if app.migration = null then Sequence{} else
 			vaultFilesOf(app.namespace, app.migration.identity, Sequence{app.migration.credential}) endif))
 		->flatten();
@@ -1566,6 +1597,10 @@ query ResolvedVolume::json() : String = obj(Sequence{
 		Tuple{k = 'identity', v = str(self.backup.identity)},
 		Tuple{k = 'claim', v = str(self.backup.claim)},
 		Tuple{k = 'credential', v = if self.backup.credential = null then null else self.backup.credential.json() endif},
+		Tuple{k = 'peer', v = if self.backup.peer = null then null else obj(Sequence{
+			Tuple{k = 'host', v = str(self.backup.peer.host)},
+			Tuple{k = 'port', v = num(self.backup.peer.port)},
+			Tuple{k = 'credential', v = self.backup.peer.credential.json()}}) endif},
 		Tuple{k = 'egress', v = arr(self.backup.egress->collect(x | x.json()))},
 		Tuple{k = 'destinations', v = if self.backup.destinations->isEmpty() then null
 			else arr(self.backup.destinations->collect(x | obj(Sequence{

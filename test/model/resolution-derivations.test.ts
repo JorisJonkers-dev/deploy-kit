@@ -2045,6 +2045,16 @@ describe("a volume and what its class derives", () => {
     process: "notes-store",
     port: 15672,
   };
+  const PEER = {
+    host: "notes-store.notes-system.svc.cluster.local",
+    port: 15672,
+    credential: {
+      path: "secret/data/notes/notes-store/backup",
+      access: "read",
+      delivery: "env",
+      destination: "notes-store-backup-notes-notes-store-backup",
+    },
+  };
 
   it("hands the Secret Store's endpoint to an Application whose backup holds the off-cluster credential, and to no other", () => {
     const store = (durability: string) =>
@@ -2068,6 +2078,15 @@ describe("a volume and what its class derives", () => {
       ).secretStore,
     ).toBe("http://vault.secrets-system.svc.cluster.local:8200");
     expect(store("recoverable")).toBeUndefined();
+    // A backup that dumps over the network holds its peer's credential.
+    expect(
+      application(
+        holding(
+          "          - { claim: keep, mountAt: /k, size: 1Gi, durability: recoverable }\n",
+          "        engine: rabbitmq\n",
+        ),
+      ).secretStore,
+    ).toBe("http://vault.secrets-system.svc.cluster.local:8200");
   });
 
   it("refuses a backup holding the off-cluster credential under a platform that names no Secret Store", () => {
@@ -2085,6 +2104,28 @@ describe("a volume and what its class derives", () => {
         ),
       ),
     ).toStrictEqual(["E_NO_SECRET_STORE"]);
+    // A backup that dumps its Process over the network logs in with a
+    // credential the Secret Store holds; one that reads the volume does not.
+    // One such Process is enough, beside one that holds nothing.
+    const unstored = (engine: string) =>
+      codesOf(
+        resolve(
+          holding(
+            "          - { claim: keep, mountAt: /k, size: 1Gi, durability: recoverable }\n",
+            `        engine: ${engine}\n`,
+          ) +
+            serving("notes-web").replace(
+              "cutover: continuous",
+              "cutover: interrupted",
+            ),
+          {
+            platform: (document) =>
+              document.replace("secretStore: vault\n", ""),
+          },
+        ),
+      );
+    expect(unstored("rabbitmq")).toStrictEqual(["E_NO_SECRET_STORE"]);
+    expect(unstored("files")).toStrictEqual([]);
   });
 
   it("carries a reconstructible claim with no backup plan", () => {
@@ -2124,6 +2165,10 @@ describe("a volume and what its class derives", () => {
           gid: LOCK.images["rabbitmq-backup"]?.gid,
           identity: "notes-store-backup",
           claim: "queue-backup",
+          // The method dumps the Process over the network: its Service, on
+          // the surface the platform names for the engine, logging in with a
+          // credential derived from the Process.
+          peer: PEER,
           // What the backup identity's own policy admits: the Process it
           // dumps, on the surface the platform names for the engine, and DNS.
           egress: [DUMPED, DNS],
@@ -2148,6 +2193,7 @@ describe("a volume and what its class derives", () => {
             delivery: "env",
             destination: "notes-store-backup-platform-backup-off-cluster",
           },
+          peer: PEER,
           egress: [DUMPED, DNS],
           // Where the off-cluster copy goes, as the class's policy states it.
           destinations: [{ cidr: "203.0.113.0/24", port: 443 }],
@@ -2169,6 +2215,8 @@ describe("a volume and what its class derives", () => {
     // the operator reads a backup's credential for it.
     expect(volume?.backup?.egress).toStrictEqual([DNS]);
     expect(volume?.backup?.destinations).toBeUndefined();
+    // Nothing is dumped over the network, so there is no peer to log in to.
+    expect(volume?.backup).not.toHaveProperty("peer");
   });
 
   it("admits a Process's backup identity on the surface it dumps, and no backup that dumps none", () => {

@@ -47,6 +47,8 @@ delivery:
     interval: 30s
     iterations: 4
     threshold: 3
+# The method logs in with a credential the Secret Store holds.
+secretStore: edge-proxy
 durability:
   reconstructible: {}
   recoverable: { schedule: "15 3 * * *", retain: 14 }

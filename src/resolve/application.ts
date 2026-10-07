@@ -44,8 +44,9 @@ export interface ApplicationContext extends Omit<ProcessContext, "machinery"> {
 
 /**
  * Whether the operator syncs anything for these Processes: a grant one holds,
- * or the off-cluster credential one's backup holds. Either is read from the
- * Secret Store the platform names, or the set was refused before resolution.
+ * or a credential one's backup holds, for its off-cluster copy or its peer.
+ * Each is read from the Secret Store the platform names, or the set was
+ * refused before resolution.
  */
 function storeFor({ store }: ApplicationContext): string {
   // A platform with no Secret Store holds nothing that reads one, or
@@ -57,7 +58,10 @@ const synced = (processes: readonly ResolvedProcess[]): boolean =>
   processes.some(
     ({ secrets, volumes }) =>
       secrets !== undefined ||
-      volumes?.some(({ backup }) => backup?.credential !== undefined) === true,
+      volumes?.some(
+        ({ backup }) =>
+          backup?.credential !== undefined || backup?.peer !== undefined,
+      ) === true,
   );
 
 /**

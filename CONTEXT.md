@@ -175,7 +175,7 @@ transaction ([chapter 55](spec/v1/55-delivery.md#migration-safety)).
 
 **Backup Identity**: the identity a Process's backups run as,
 `<process>-backup`, apart from the Process so that only it holds the off-cluster
-destination's credential. Its **Backup Claim**, `<claim>-backup`, is the claim a
+destination's credential and the one its method dumps the Process with. Its **Backup Claim**, `<claim>-backup`, is the claim a
 volume's copies land on, of which the method keeps `retain`
 ([0018](docs/adr/model/0018-durability-class-derives-a-backup.md)). It has a
 network policy of its own: the surface its engine's method dumps, the cluster's

@@ -3,7 +3,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: vault-policy-53808da6737e
+  name: vault-policy-e1007db4f56e
   namespace: secrets-system
   labels:
     app.kubernetes.io/name: vault-policy
@@ -59,7 +59,7 @@ spec:
       volumes:
         - name: policies
           configMap:
-            name: vault-policy-53808da6737e
+            name: vault-policy-e1007db4f56e
             items:
               - key: data-system-postgres-backup.policy.json
                 path: data-system-postgres-backup.policy.json
@@ -69,3 +69,7 @@ spec:
                 path: data-system-postgres.policy.json
               - key: data-system-postgres.role.json
                 path: data-system-postgres.role.json
+              - key: data-system-rabbitmq-backup.policy.json
+                path: data-system-rabbitmq-backup.policy.json
+              - key: data-system-rabbitmq-backup.role.json
+                path: data-system-rabbitmq-backup.role.json

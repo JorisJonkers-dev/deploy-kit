@@ -41,6 +41,13 @@ spec:
               env:
                 - name: BACKUP_RETAIN
                   value: "14"
+                - name: BACKUP_HOST
+                  value: rabbitmq.data-system.svc.cluster.local
+                - name: BACKUP_PORT
+                  value: "15672"
+              envFrom:
+                - secretRef:
+                    name: rabbitmq-backup-data-rabbitmq-backup
               securityContext:
                 readOnlyRootFilesystem: true
                 capabilities:

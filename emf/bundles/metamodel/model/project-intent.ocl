@@ -465,8 +465,9 @@ context Application
 					g.probes <> null and g.probes.oclIsKindOf(Probes)
 					and g.probes.oclAsType(Probes).readiness <> null)
 
-	-- A grant, an off-cluster backup and a managed migration each read a
-	-- credential from the Secret Store, so a platform naming none offers none.
+	-- A grant, an off-cluster backup, a backup that dumps over the network and a
+	-- managed migration each read a credential from the Secret Store, so a
+	-- platform naming none offers none.
 	inv E_NO_SECRET_STORE:
 		Platform.allInstances()->forAll(p | p.secretStore <> null
 			or not ((migration <> null and migration.oclIsKindOf(ManagedMigration))
@@ -477,7 +478,15 @@ context Application
 						(v.durability = DurabilityClass::recoverable and p.durability.recoverable <> null
 							and p.durability.recoverable.offCluster <> null)
 						or (v.durability = DurabilityClass::irreplaceable and p.durability.irreplaceable <> null
-							and p.durability.irreplaceable.offCluster <> null)))))
+							and p.durability.irreplaceable.offCluster <> null))
+					or (pr.volumes->exists(v | v.durability <> DurabilityClass::reconstructible)
+						and (let named : EnginePolicy =
+							if pr.engine = Engine::postgres then p.engines.postgres
+							else if pr.engine = Engine::rabbitmq then p.engines.rabbitmq
+							else if pr.engine = Engine::valkey then p.engines.valkey
+							else if pr.engine = Engine::files then p.engines.files
+							else null endif endif endif endif in
+						named <> null and named.surface <> null)))))
 
 context DurabilityPolicy
 	-- A class that derives a backup says when it runs and how many copies it keeps.

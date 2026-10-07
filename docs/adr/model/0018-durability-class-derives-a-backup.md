@@ -78,6 +78,14 @@ so the grant is derived, recorded in the projection
 ([0032](0032-the-resolved-deployment-is-a-versioned-artifact.md)) and visible in
 the derived Vault policy ([0040](0040-vault-policy-is-a-deliverable.md)).
 
+**A method that dumps over the network is told where, and logs in with a
+derived credential.** It is handed the Process's Service and the port of the
+surface its engine names, under one pair of names every method reads, so the
+renderer knows no engine's own variables. It logs in with a credential at a path
+derived from the Process, one per Process, held by the backup identity alone:
+two servers of one engine never share a login, and the serving Process never
+holds what dumps it.
+
 **The class that orders the backup forbids the delete.** Flux deletes an object
 a new render no longer names; a Process leaving the render, a renamed claim or a
 moved claim all look like a delete. A derived mark on the claim stops it, from
@@ -97,6 +105,9 @@ disagree.
 | `retain` as an age in days | matches a `find -mtime` sweep | a failing backup then deletes the last good copies on schedule; a count keeps them |
 | Run the backup as the serving Process | one identity fewer | the long-running Process holds the off-cluster credential it never uses |
 | Copy off-cluster only, for every backed-up class | no on-cluster claim | `recoverable` gains a destination and a credential it was defined not to need |
+| One dump credential per engine, named in the Platform document | explicit, one field | every Process of one engine shares one login, which two servers of that engine cannot |
+| A dynamic database role the backup identity reads itself | short-lived credentials | `postgres` only; a broker's management API still needs a static one |
+| Each engine's own variables (`PGHOST`, a management URL) | an image reads its tool's names unchanged | the renderer learns every engine's names, and a new engine is a renderer change |
 
 ## Reversibility
 
@@ -115,6 +126,8 @@ delivered render and the mark is the only thing that kept it.
   one for a new engine.
 - The platform owns a credential that writes to an off-cluster destination, and
   its blast radius is visible in the derived policy.
+- Whoever runs a datastore writes its dump credential at the derived path
+  before its first backup runs; until then the method fails, loudly, at 03:00.
 - A volume whose engine has no method cannot derive a backup, so a new datastore
   engine is a platform change first.
 - A backed-up claim that leaves the render stays bound until deleted by hand,

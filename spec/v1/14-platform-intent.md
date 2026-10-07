@@ -73,7 +73,7 @@ other resolves and every policy one asks for the other offers:
 | `telemetry.metrics` names an Application no project file read beside it declares | `E_UNKNOWN_METRICS_STACK` |
 | `delivery.gate` names no Application a project file read beside it declares with an `http` surface on one of its Processes | `E_UNKNOWN_RELEASE_GATE` |
 | `secretStore` names no Application a project file read beside it declares with an `http` surface on one of its Processes | `E_UNKNOWN_SECRET_STORE` |
-| an Application holds a grant, a backup that copies off-cluster, or a changelog, and the platform names no `secretStore` | `E_NO_SECRET_STORE` |
+| an Application holds a grant, a backup that copies off-cluster, a backup that dumps over the network, or a changelog, and the platform names no `secretStore` | `E_NO_SECRET_STORE` |
 | an Application moves its schema with a changelog and the platform declares no `migration` policy | `E_NO_MIGRATION_POLICY` |
 | an Application moves its schema with a changelog and no Process of it switches `blue-green`: none is `continuous`, or the Application is `delivery.machinery` | `E_MIGRATION_UNGATED` |
 | an Application's cutover is `continuous` and the platform declares no `delivery` policy | `E_NO_DELIVERY_POLICY` |
@@ -333,8 +333,15 @@ image does is versioned and digested; a string in YAML is neither.
 
 What a method image is handed is fixed, so one image serves every volume of its
 engine: the volume, read-only, at `/data`; the backup claim at `/backup`; the
-count to keep as `BACKUP_RETAIN`; and for an off-cluster copy the destination as
-`BACKUP_OFF_CLUSTER` and its credential's keys as variables. It runs as the
+count to keep as `BACKUP_RETAIN`; for an off-cluster copy the destination as
+`BACKUP_OFF_CLUSTER` and its credential's keys as variables; and for a method
+that dumps over the network the Process it dumps, as `BACKUP_HOST`, the
+Process's Service, and `BACKUP_PORT`, the port of the engine's `surface`, with
+the keys of the credential it logs in with as variables. That credential is
+derived, one per Process: the Secret Store's
+`secret/data/<project>/<process>/backup`, held by the backup identity alone,
+never the serving Process. The platform's operator writes it, because the
+platform chose the method and only the method knows what it logs in as. It runs as the
 user the images lock records for it, writes one copy, and prunes `/backup` to
 the newest `BACKUP_RETAIN` before it exits.
 

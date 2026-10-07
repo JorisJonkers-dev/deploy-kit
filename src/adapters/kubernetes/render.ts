@@ -510,7 +510,21 @@ function backupsOf(
       ...(backup.offCluster === undefined
         ? []
         : [{ name: "BACKUP_OFF_CLUSTER", value: backup.offCluster }]),
+      ...(backup.peer === undefined
+        ? []
+        : [
+            { name: "BACKUP_HOST", value: backup.peer.host },
+            { name: "BACKUP_PORT", value: String(backup.peer.port) },
+          ]),
     ];
+    // Each credential's keys reach the method as variables: the off-cluster
+    // destination's, and the peer's.
+    const credentials = [backup.credential, backup.peer?.credential].flatMap(
+      (grant) =>
+        grant === undefined
+          ? []
+          : [{ secretRef: { name: grant.destination as string } }],
+    );
     const pod: PodSpec = {
       serviceAccountName: backup.identity,
       automountServiceAccountToken: false,
@@ -527,17 +541,7 @@ function backupsOf(
           name: "backup",
           image: backup.method,
           env,
-          ...(backup.credential === undefined
-            ? {}
-            : {
-                envFrom: [
-                  {
-                    secretRef: {
-                      name: backup.credential.destination as string,
-                    },
-                  },
-                ],
-              }),
+          ...(credentials.length === 0 ? {} : { envFrom: credentials }),
           securityContext: RESTRICTED,
           volumeMounts: [
             { name: "data", mountPath: BACKUP_SOURCE, readOnly: true },

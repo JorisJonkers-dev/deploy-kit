@@ -86,3 +86,26 @@ spec:
     create: true
     annotations:
       flagger.app/config-tracking: disabled
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: postgres-backup-data-postgres-backup
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres-backup
+    app.kubernetes.io/instance: postgres-backup
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: postgres-backup
+  mount: secret
+  type: kv-v2
+  path: data/postgres/backup
+  refreshAfter: 1h
+  destination:
+    name: postgres-backup-data-postgres-backup
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled

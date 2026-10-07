@@ -8,4 +8,5 @@ resources:
   - service.yaml
   - serviceaccount.yaml
   - servicemonitor.yaml
+  - vso.yaml
   - workload.yaml

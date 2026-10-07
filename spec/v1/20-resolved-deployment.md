@@ -225,6 +225,7 @@ field's placement link to this anchor rather than copying rows.
 | alert rules, their severity and their receiver | the monitoring stack | pool | derived nowhere in this model. `alertClass` is published as a resolved fact and the stack that reads it decides what a class means ([chapter 10](10-project-intent.md#observability)) |
 | monitor `interval` and `timeout` | platform | pool | the metrics stack's ingest budget is shared, so it is one estate-wide value in the Platform document ([chapter 14](14-platform-intent.md#monitor-cadence)) |
 | the backup identity's grant on the destination | platform | pool | derived, never authored: the platform chose the destination, so it owns the credential, and only the backup identity holds it, never the serving Process |
+| the backup identity's peer and its grant on the peer's credential | platform | pool | derived, never authored, where the engine's method dumps over the network: the Process's Service on the port of the engine's surface, and `secret/data/<project>/<process>/backup`, held by the backup identity alone ([chapter 14](14-platform-intent.md#engines)) |
 | Reconcile Unit and its ordering | platform | unique, arbitrated | one estate-wide DAG ([The Reconcile Unit](#the-reconcile-unit)) |
 | identity name, Vault role, Vault policy | platform | pool | the identity named for the **Process alone**, the role and the policy `<namespace>-<process>`: the auth role namespace is shared by every project ([chapter 16](16-dependencies.md#process-identity)) |
 | Secret Store path layout and grants | platform | pool | one path per reader set; `E_SUBTREE_PREFIX_COLLISION` across Subtrees ([chapter 40](40-composition.md#identity)) |
@@ -651,7 +652,10 @@ Five rules carry most of the weight:
   `egress`, the Process it dumps on the surface the engine's method connects to
   (the `datastore` rule, absent where the method reads the volume alone) and
   the `cluster-dns` baseline, and for an off-cluster copy its `destinations`,
-  the address ranges the class's policy states. The schedule, retention and destination come
+  the address ranges the class's policy states. Where the method dumps over the
+  network, the plan carries its `peer` as well: the host and port it connects
+  to, and the credential it logs in with, derived per Process and held by the
+  backup identity ([chapter 14](14-platform-intent.md#engines)). The schedule, retention and destination come
   from the platform's per-class policy and the method from the Process's
   `engine`, so two Applications of the same class and engine derive the same objects
   with different volumes, which is the property that makes a restore rehearsal
@@ -1650,6 +1654,11 @@ classDiagram
         +ResolvedGrant credential
         +EgressPeer egress
     }
+    class BackupPeer {
+        +string host
+        +int port
+        +ResolvedGrant credential
+    }
     class DestinationRange {
         +Cidr cidr
         +int port
@@ -1768,6 +1777,7 @@ classDiagram
     ResolvedVolume "1" *-- "0..1" BackupPlan : backup
     ResolvedProcess "1" *-- "0..1" ResolvedApiAccess : api
     ResolvedApiAccess "1" *-- "1..*" ResolvedApiRule : rules
+    BackupPlan "1" *-- "0..1" BackupPeer : peer
     BackupPlan "1" *-- "0..*" DestinationRange : destinations
     EnvEntry "1" *-- "0..1" SecretReference : secret
     ResolvedEngineGrant "1" *-- "1..*" PolicyPath : paths
