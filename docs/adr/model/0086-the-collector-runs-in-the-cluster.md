@@ -75,7 +75,11 @@ who captures the snapshot, only on the document.
 - The `delivery` project carries the Collector, built and released like any
   first-party Application, paid once in its repository.
 - A GitHub App installation with write access to the Estate repository's
-  contents exists, its key held in the Secret Store, paid in one more key.
+  contents exists, its key held in the Secret Store, paid in one more key. It
+  is the only actor besides a pull request that writes `main`, so the
+  composition workflow commits the moved pins through it too, its key also a
+  secret of the Estate repository alone rather than a third App
+  ([chapter 60](../../../spec/v1/60-setup.md#the-estate-repository)).
 - A stopped Collector is invisible in the Estate repository, so its liveness
   is an Alertmanager rule on its last successful run, paid once in the
   observability project's rules.

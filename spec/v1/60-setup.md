@@ -458,11 +458,14 @@ token; each is used through a short-lived installation token:
 |---|---|---|---|
 | **dispatch** | the Estate repository | `actions: write`, to start the composition workflow; `contents: read`, to read the lock for a dry run | an application repository's publish workflow |
 | | every application repository | `statuses: write`, to report a composition on the commit that published | the composition workflow ([chapter 55](55-delivery.md#notifications)) |
-| **Collector** | the Estate repository | `contents: write`, to commit the snapshot | the Collector, its key read from the Secret Store |
+| **Collector** | the Estate repository | `contents: write`, to commit the snapshot and the moved pins | the Collector, its key read from the Secret Store; the composition workflow, its key a secret of the Estate repository alone ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)) |
 
 `actions: write` starts a workflow and cannot push a commit, so an application
-repository can ask for a composition and never write a pin. The composition
-workflow's own token opens and closes the Estate repository's issues.
+repository can ask for a composition and never write a pin. Only the Collector
+writes to `main` without a pull request: the snapshot, and composition's pin
+commit, which goes to `main` directly. Its key is never an organization secret,
+so no other repository's workflow can push a pin. The composition workflow's
+own token opens and closes the Estate repository's issues.
 
 ## Handing over one Project at a time
 
