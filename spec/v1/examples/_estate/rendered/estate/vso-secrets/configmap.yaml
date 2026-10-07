@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: vault-policy-53808da6737e
+  name: vault-policy-e1007db4f56e
   namespace: secrets-system
   labels:
     app.kubernetes.io/name: vault-policy
@@ -14,10 +14,14 @@ metadata:
 immutable: true
 data:
   data-system-postgres-backup.policy.json: |
-    {"path":{"secret/data/platform/backup/off-cluster":{"capabilities":["read"]},"secret/metadata/platform/backup/off-cluster":{"capabilities":["read"]}}}
+    {"path":{"secret/data/data/postgres/backup":{"capabilities":["read"]},"secret/data/platform/backup/off-cluster":{"capabilities":["read"]},"secret/metadata/data/postgres/backup":{"capabilities":["read"]},"secret/metadata/platform/backup/off-cluster":{"capabilities":["read"]}}}
   data-system-postgres-backup.role.json: |
     {"bound_service_account_names":["postgres-backup"],"bound_service_account_namespaces":["data-system"],"token_policies":["data-system-postgres-backup"]}
   data-system-postgres.policy.json: |
     {"path":{"secret/data/platform/postgres/exporter":{"capabilities":["read"]},"secret/metadata/platform/postgres/exporter":{"capabilities":["read"]}}}
   data-system-postgres.role.json: |
     {"bound_service_account_names":["postgres"],"bound_service_account_namespaces":["data-system"],"token_policies":["data-system-postgres"]}
+  data-system-rabbitmq-backup.policy.json: |
+    {"path":{"secret/data/data/rabbitmq/backup":{"capabilities":["read"]},"secret/metadata/data/rabbitmq/backup":{"capabilities":["read"]}}}
+  data-system-rabbitmq-backup.role.json: |
+    {"bound_service_account_names":["rabbitmq-backup"],"bound_service_account_namespaces":["data-system"],"token_policies":["data-system-rabbitmq-backup"]}

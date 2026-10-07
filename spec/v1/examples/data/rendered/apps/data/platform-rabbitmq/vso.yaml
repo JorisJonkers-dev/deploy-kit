@@ -1,0 +1,43 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: rabbitmq-backup
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: rabbitmq-backup
+    app.kubernetes.io/instance: rabbitmq-backup
+    app.kubernetes.io/part-of: platform-rabbitmq
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: data-system-rabbitmq-backup
+    serviceAccount: rabbitmq-backup
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: rabbitmq-backup-data-rabbitmq-backup
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: rabbitmq-backup
+    app.kubernetes.io/instance: rabbitmq-backup
+    app.kubernetes.io/part-of: platform-rabbitmq
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: rabbitmq-backup
+  mount: secret
+  type: kv-v2
+  path: data/rabbitmq/backup
+  refreshAfter: 1h
+  destination:
+    name: rabbitmq-backup-data-rabbitmq-backup
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled

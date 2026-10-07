@@ -54,6 +54,7 @@ export default defineConfig({
       "test/cli/conventions.test.ts",
       "test/adapters/contract.test.ts",
       "test/adapters/flux-source.test.ts",
+      "test/adapters/holders.test.ts",
       "test/adapters/spelling.test.ts",
       "test/canonical-json.test.ts",
       "test/published-schemas.test.ts",

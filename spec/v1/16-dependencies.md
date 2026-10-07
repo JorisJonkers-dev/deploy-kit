@@ -372,8 +372,8 @@ own, derived from its backup plan and from nothing an Application authors
 
 Nothing reaches a backup pod: it serves nothing, so its policy admits no ingress.
 
-**The Secret Store is not a peer.** A backup holds its destination's credential
-through a grant delivered `env`, so the operator reads the Secret Store and the
+**The Secret Store is not a peer.** A backup holds its destination's credential,
+and the credential it dumps its Process with, through grants delivered `env`, so the operator reads the Secret Store and the
 pod mounts no token and never calls it
 ([The token is mounted only where the pod authenticates](#the-token-is-mounted-only-where-the-pod-authenticates)).
 A rule to a service the pod cannot authenticate to would admit nothing it uses.

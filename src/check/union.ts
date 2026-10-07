@@ -19,6 +19,7 @@ import type {
   ProjectIntentDocument,
 } from "../model/project-intent.ts";
 import { collectorEndpoint, exports } from "../model/runtime-profiles.ts";
+import { dumpedSurfaceOf } from "../model/backup.ts";
 
 export interface Fragment {
   readonly name: string;
@@ -625,6 +626,11 @@ export const INVARIANTS: readonly Invariant[] = [
                     ({ durability }) =>
                       platform.durability[durability]?.offCluster !== undefined,
                   ) === true,
+              ) ||
+              // A method that dumps over the network logs in with a credential
+              // the Secret Store holds.
+              application.processes.some(
+                (process) => dumpedSurfaceOf(process, platform) !== undefined,
               )
                 ? [
                     {

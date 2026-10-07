@@ -20,6 +20,14 @@ export const namespaceOf = (project: string): string => `${project}-system`;
 export const backupIdentityOf = (process: string): string =>
   `${process}-backup`;
 
+/**
+ * Where a method that dumps a Process over the network reads the credential it
+ * logs in with: one path per Process, which a Process's name keeps distinct
+ * within its project.
+ */
+export const backupCredentialOf = (project: string, process: string): string =>
+  `secret/data/${project}/${process}/backup`;
+
 /** The identity an Application's migration runs as, apart from every Process's. */
 export const migrationIdentityOf = (application: string): string =>
   `${application}-migration`;

@@ -9,6 +9,16 @@
       "capabilities": [
         "read"
       ]
+    },
+    "secret/data/data/postgres/backup": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/data/postgres/backup": {
+      "capabilities": [
+        "read"
+      ]
     }
   }
 }

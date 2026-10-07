@@ -43,9 +43,15 @@ spec:
                   value: "90"
                 - name: BACKUP_OFF_CLUSTER
                   value: s3://backup-storage/jorisjonkers-dev
+                - name: BACKUP_HOST
+                  value: postgres.data-system.svc.cluster.local
+                - name: BACKUP_PORT
+                  value: "5432"
               envFrom:
                 - secretRef:
                     name: postgres-backup-platform-backup-off-cluster
+                - secretRef:
+                    name: postgres-backup-data-postgres-backup
               securityContext:
                 readOnlyRootFilesystem: true
                 capabilities:

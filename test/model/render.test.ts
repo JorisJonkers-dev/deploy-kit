@@ -183,7 +183,7 @@ describe("renderIntentSet", () => {
 
       expect(jobFiles(paths)).toStrictEqual([]);
       expect(paths.filter((path) => path.includes("/policies/"))).toHaveLength(
-        4,
+        6,
       );
     });
 
@@ -209,6 +209,8 @@ describe("renderIntentSet", () => {
         "data-system-postgres-backup.role.json",
         "data-system-postgres.policy.json",
         "data-system-postgres.role.json",
+        "data-system-rabbitmq-backup.policy.json",
+        "data-system-rabbitmq-backup.role.json",
       ]);
       expect(documents["data-system-postgres.role.json"]).toStrictEqual({
         bound_service_account_names: ["postgres"],

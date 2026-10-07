@@ -241,6 +241,18 @@ const destinationRange = z
   .strictObject({ cidr: text, port })
   .meta({ id: "DestinationRange" });
 
+// The Process a method dumps over the network, and the credential it logs in
+// with (spec/v1/20-resolved-deployment.md#derived-mechanics): the Process's
+// Service on the port of the surface the platform names for its engine, and a
+// path derived from the Process, held by the backup identity alone.
+const backupPeer = z
+  .strictObject({
+    host: text,
+    port,
+    credential: resolvedGrant,
+  })
+  .meta({ id: "BackupPeer" });
+
 const backupPlan = z
   .strictObject({
     schedule: text,
@@ -253,6 +265,9 @@ const backupPlan = z
     identity: text,
     claim: text,
     credential: resolvedGrant.exactOptional(),
+    // Where a method that dumps over the network connects; none for one that
+    // reads the volume alone.
+    peer: backupPeer.exactOptional(),
     // What the backup identity's own policy admits: the Process it dumps, on
     // the surface its engine's method connects to, and the cluster's DNS. Not
     // the Secret Store: the operator reads the credential for it.

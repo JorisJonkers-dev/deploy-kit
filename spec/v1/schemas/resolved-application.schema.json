@@ -1309,6 +1309,9 @@
         "credential": {
           "$ref": "#/$defs/ResolvedGrant"
         },
+        "peer": {
+          "$ref": "#/$defs/BackupPeer"
+        },
         "egress": {
           "type": "array",
           "items": {
@@ -1398,6 +1401,29 @@
         "file",
         "self"
       ]
+    },
+    "BackupPeer": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "credential": {
+          "$ref": "#/$defs/ResolvedGrant"
+        }
+      },
+      "required": [
+        "host",
+        "port",
+        "credential"
+      ],
+      "additionalProperties": false
     },
     "ResolvedAsset": {
       "type": "object",

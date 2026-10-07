@@ -1,0 +1,14 @@
+{
+  "path": {
+    "secret/data/data/rabbitmq/backup": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/data/rabbitmq/backup": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

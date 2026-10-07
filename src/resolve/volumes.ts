@@ -6,7 +6,11 @@ import type { EffectiveProcess } from "../model/effective-intent.ts";
 import type { ImagesLockDocument, LockedImage } from "../model/images-lock.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
-import { backupIdentityOf, namespaceOf } from "../model/runtime-profiles.ts";
+import {
+  backupCredentialOf,
+  backupIdentityOf,
+  namespaceOf,
+} from "../model/runtime-profiles.ts";
 import { BACKED_UP, dumpedSurfaceOf } from "../model/backup.ts";
 import { DNS_PORT } from "./policy.ts";
 import { destinationOf } from "./secrets.ts";
@@ -69,6 +73,8 @@ function backupOf(
   const image = lock.images[method.backup] as LockedImage;
   const identity = backupIdentityOf(process.name);
   const { offCluster } = policy;
+  const surface = dumpedSurfaceOf(process, platform);
+  const dumps = backupCredentialOf(project, process.name);
   return {
     schedule: policy.schedule as string,
     retain: policy.retain as number,
@@ -90,12 +96,24 @@ function backupOf(
             destination: destinationOf(identity, offCluster.credential),
           },
         }),
-    egress: egressOf(
-      process,
-      dumpedSurfaceOf(process, platform),
-      project,
-      platform,
-    ),
+    // A method that dumps over the network is told where, and logs in with a
+    // credential derived from the Process, which only its backups hold.
+    ...(surface === undefined
+      ? {}
+      : {
+          peer: {
+            host: `${process.name}.${namespaceOf(project)}.svc.cluster.local`,
+            // E_BACKUP_SURFACE_NOT_PROVIDED refused a surface it does not provide.
+            port: process.provides?.[surface] as number,
+            credential: {
+              path: dumps,
+              access: "read" as const,
+              delivery: "env" as const,
+              destination: destinationOf(identity, dumps),
+            },
+          },
+        }),
+    egress: egressOf(process, surface, project, platform),
     ...(offCluster === undefined ? {} : { destinations: offCluster.egress }),
   };
 }
