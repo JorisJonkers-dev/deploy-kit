@@ -127,8 +127,9 @@ export interface Condition {
 export interface Composition {
   readonly artifacts: readonly ComposedArtifact[];
   /**
-   * The pin source of every artifact delivered here that has no pin yet: the
-   * file the Estate repository commits for it, once.
+   * The pin source of every artifact whose pin moves, a first delivery among
+   * them: the file the Estate repository commits for it, whole, with the
+   * moved digest.
    */
   readonly sources: readonly PinSource[];
   readonly lock: CompositionLockDocument;
@@ -626,8 +627,11 @@ function composition(
 
   return {
     artifacts,
+    // Rewritten whenever the pin moves, so a unit an artifact gains is
+    // applied. A moving pin carries no Pause, so the rewrite drops no
+    // annotation.
     sources: pinSources(
-      rendered.filter(({ name }) => !Object.hasOwn(input.pins, name)),
+      artifacts.filter(({ moves }) => moves),
       projects,
       platformOf(input.platform),
       options.serialize,
