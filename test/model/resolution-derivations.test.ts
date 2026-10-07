@@ -4,7 +4,6 @@
 import { datastoreOf } from "../../src/resolve/database.ts";
 import { resolveEdge } from "../../src/resolve/dependencies.ts";
 import type { PlatformIntentDocument } from "../../src/model/platform-intent.ts";
-import { resolveMigration } from "../../src/resolve/migration.ts";
 import { backedUp, dumpedSurfaceOf } from "../../src/model/backup.ts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -390,17 +389,19 @@ describe("probes and the release gate", () => {
     });
   });
 
-  it("stops at a blue/green Application no member of which publishes readiness, which is refused before it is gated", () => {
-    expect(() =>
-      resolve(
-        one(
-          serving("notes-api").replace(
-            "        probes:\n          readiness: { path: /ready, port: 8080 }\n          liveness: { path: /live, port: 8080 }\n",
-            "        probes: none\n",
+  it("refuses a blue/green Application no member of which publishes readiness", () => {
+    expect(
+      codesOf(
+        resolve(
+          one(
+            serving("notes-api").replace(
+              "        probes:\n          readiness: { path: /ready, port: 8080 }\n          liveness: { path: /live, port: 8080 }\n",
+              "        probes: none\n",
+            ),
           ),
         ),
       ),
-    ).toThrow("whose Processes publish no readiness");
+    ).toStrictEqual(["E_RELEASE_UNIT_NO_READINESS"]);
   });
 });
 
@@ -490,52 +491,59 @@ describe("the environment a Process runs with", () => {
       "a coordinate an edge does not hand out",
       "${dependency:platform-postgres.url}",
     ],
-  ])("stops at a dependency placeholder naming %s", (_, placeholder) => {
-    expect(() =>
-      resolve(
-        reaching(
-          serving(
-            "notes-api",
-            "        dependsOn:\n          - { application: platform-postgres, surface: postgres }\n",
+  ])("refuses a dependency placeholder naming %s", (_, placeholder) => {
+    expect(
+      codesOf(
+        resolve(
+          reaching(
+            serving(
+              "notes-api",
+              "        dependsOn:\n          - { application: platform-postgres, surface: postgres }\n",
+            ),
           ),
+          { env: [env("notes-api/base.env", `X=${placeholder}\n`), ...DATA] },
         ),
-        { env: [env("notes-api/base.env", `X=${placeholder}\n`), ...DATA] },
       ),
-    ).toThrow(
-      "X: a dependency placeholder names no one edge of the Process and no coordinate of it, which is not checked yet",
-    );
+    ).toStrictEqual(["E_UNRESOLVED_PLACEHOLDER"]);
   });
 
-  it("stops at a dependency placeholder on a Process that has no edge at all", () => {
-    expect(() =>
-      resolve(one(serving("notes-api")), {
-        env: [
-          env("notes-api/base.env", "X=${dependency:platform-postgres.host}\n"),
-        ],
-      }),
-    ).toThrow("X: a dependency placeholder names no one edge of the Process");
-  });
-
-  it("stops at a dependency placeholder naming an Application the Process has two edges to", () => {
-    expect(() =>
-      resolve(
-        reaching(
-          serving(
-            "notes-api",
-            "        dependsOn:\n          - { application: platform-postgres, surface: postgres }\n          - { application: platform-postgres, surface: metrics }\n",
-          ),
-        ),
-        {
+  it("refuses a dependency placeholder on a Process that has no edge at all", () => {
+    expect(
+      codesOf(
+        resolve(one(serving("notes-api")), {
           env: [
             env(
               "notes-api/base.env",
               "X=${dependency:platform-postgres.host}\n",
             ),
-            ...DATA,
           ],
-        },
+        }),
       ),
-    ).toThrow("X: a dependency placeholder names no one edge of the Process");
+    ).toStrictEqual(["E_UNRESOLVED_PLACEHOLDER"]);
+  });
+
+  it("refuses a dependency placeholder naming an Application the Process has two edges to", () => {
+    expect(
+      codesOf(
+        resolve(
+          reaching(
+            serving(
+              "notes-api",
+              "        dependsOn:\n          - { application: platform-postgres, surface: postgres }\n          - { application: platform-postgres, surface: metrics }\n",
+            ),
+          ),
+          {
+            env: [
+              env(
+                "notes-api/base.env",
+                "X=${dependency:platform-postgres.host}\n",
+              ),
+              ...DATA,
+            ],
+          },
+        ),
+      ),
+    ).toStrictEqual(["E_UNRESOLVED_PLACEHOLDER"]);
   });
 
   it("resolves an exposure placeholder to its url, host or scheme, by the tier that carries it", () => {
@@ -567,26 +575,39 @@ ${serving("notes-api")}`;
   });
 
   it.each([
-    ["an exposure the union does not declare", "${exposure:notes.gone#url}"],
-    ["an Application the union does not hold", "${exposure:gone.app#url}"],
+    [
+      "an exposure the union does not declare",
+      "${exposure:notes.gone#url}",
+      "E_UNRESOLVED_PLACEHOLDER",
+    ],
+    [
+      "an Application the union does not hold",
+      "${exposure:gone.app#url}",
+      "E_UNRESOLVED_APPLICATION",
+    ],
     [
       "an Application that declares no exposure",
       "${exposure:release-gate.app#url}",
+      "E_UNRESOLVED_PLACEHOLDER",
     ],
-    ["a field an exposure does not hand out", "${exposure:notes.app#path}"],
-  ])("stops at an exposure placeholder naming %s", (_, placeholder) => {
-    expect(() =>
-      resolve(
-        `  - id: notes
+    [
+      "a field an exposure does not hand out",
+      "${exposure:notes.app#path}",
+      "E_UNRESOLVED_PLACEHOLDER",
+    ],
+  ])("refuses an exposure placeholder naming %s", (_, placeholder, code) => {
+    expect(
+      codesOf(
+        resolve(
+          `  - id: notes
     exposure:
       - { name: app, host: notes.jorisjonkers.dev, audience: authenticated, routes: [{ path: /, match: prefix, process: notes-api, surface: http }] }
     processes:
 ${serving("notes-api")}`,
-        { env: [env("notes-api/base.env", `X=${placeholder}\n`)] },
+          { env: [env("notes-api/base.env", `X=${placeholder}\n`)] },
+        ),
       ),
-    ).toThrow(
-      "X: an exposure placeholder names no exposure of the union and no field of it, which is not checked yet",
-    );
+    ).toStrictEqual([code]);
   });
 
   it("injects no Runtime Profile where the runtime exports nothing, and no PORT beside two surfaces", () => {
@@ -965,26 +986,32 @@ describe("what a grant derives", () => {
     ).toBeUndefined();
   });
 
-  it("stops at a grant under a platform that names no Secret Store", () => {
-    expect(() =>
-      resolve(granted(SELF), {
-        platform: (document) => document.replace("secretStore: vault\n", ""),
-      }),
-    ).toThrow(
-      "a grant under a platform that names no Secret Store is not checked yet",
-    );
+  it("refuses a grant under a platform that names no Secret Store", () => {
+    expect(
+      codesOf(
+        resolve(granted(SELF), {
+          platform: (document) => document.replace("secretStore: vault\n", ""),
+        }),
+      ),
+    ).toStrictEqual(["E_NO_SECRET_STORE"]);
   });
 
   it.each([
-    ["a path no grant names", "${secret:secret/data/notes/other#token}"],
+    [
+      // The grant's own path is then read by nothing.
+      "a path no grant names",
+      "${secret:secret/data/notes/other#token}",
+      ["E_UNAUTHORISED_SECRET_REFERENCE", "E_UNBOUND_SECRET_GRANT"],
+    ],
     [
       "a key the grant does not list",
       "${secret:secret/data/notes/token#other}",
+      ["E_UNAUTHORISED_SECRET_REFERENCE"],
     ],
-  ])("stops at a placeholder naming %s", (_, placeholder) => {
-    expect(() =>
-      resolve(granted(ENV), bound(`TOKEN=${placeholder}\n`)),
-    ).toThrow("TOKEN: a placeholder no env grant of the Process holds is");
+  ])("refuses a placeholder naming %s", (_, placeholder, codes) => {
+    expect(
+      codesOf(resolve(granted(ENV), bound(`TOKEN=${placeholder}\n`))),
+    ).toStrictEqual(codes);
   });
 
   it.each([
@@ -994,22 +1021,26 @@ describe("what a grant derives", () => {
       "        secrets:\n          - { engine: database, role: notes, delivery: self, rotation: {tolerates: reload} }\n",
       "",
     ],
-  ])("stops at a placeholder on a Process holding %s", (_, block) => {
-    expect(() =>
-      resolve(
-        one(serving("notes-api", block)),
-        bound("TOKEN=${secret:secret/data/notes/token#token}\n"),
+  ])("refuses a placeholder on a Process holding %s", (_, block) => {
+    expect(
+      codesOf(
+        resolve(
+          one(serving("notes-api", block)),
+          bound("TOKEN=${secret:secret/data/notes/token#token}\n"),
+        ),
       ),
-    ).toThrow("TOKEN: a placeholder no env grant of the Process holds is");
+    ).toStrictEqual(["E_UNAUTHORISED_SECRET_REFERENCE"]);
   });
 
-  it("stops at a placeholder naming a grant the Process reads itself", () => {
-    expect(() =>
-      resolve(
-        granted(SELF),
-        bound("TOKEN=${secret:secret/data/notes/token#token}\n"),
+  it("refuses a placeholder naming a grant the Process reads itself", () => {
+    expect(
+      codesOf(
+        resolve(
+          granted(SELF),
+          bound("TOKEN=${secret:secret/data/notes/token#token}\n"),
+        ),
       ),
-    ).toThrow("TOKEN: a placeholder no env grant of the Process holds is");
+    ).toStrictEqual(["E_UNAUTHORISED_SECRET_REFERENCE"]);
   });
 });
 
@@ -1094,13 +1125,13 @@ describe("what an Asset and a sidecar derive", () => {
   });
 
   it("reads an Asset only from beside its own project", () => {
-    expect(() =>
-      resolve(one(serving("notes-api", ASSET)), {
-        env: [{ name: "other/config/notes.yml", text: "a: 1\n" }],
-      }),
-    ).toThrow(
-      "config/notes.yml: an Asset whose file is not read beside its project is refused, which is not checked yet",
-    );
+    expect(
+      codesOf(
+        resolve(one(serving("notes-api", ASSET)), {
+          env: [{ name: "other/config/notes.yml", text: "a: 1\n" }],
+        }),
+      ),
+    ).toStrictEqual(["E_ASSET_NOT_FOUND"]);
   });
 
   it("stops at a placeholder in an Asset", () => {
@@ -1355,23 +1386,6 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
       port: 5432,
     });
     expect(datastoreOf(reaching(["db", "http"]), union)).toBeUndefined();
-  });
-
-  it("stops at an Application whose edges name no surface of the datastore holding its database", () => {
-    expect(() =>
-      resolveMigration(
-        { id: "notes", processes: [{ dependsOn: [] }] } as never,
-        {
-          platform: { migration: {} },
-          lock: { images: { "notes-migration": {} } },
-          project: "notes",
-          union: [],
-          proof: undefined,
-        } as never,
-      ),
-    ).toThrow(
-      "notes: a migration whose Application reaches no surface of the datastore holding its database is not checked yet",
-    );
   });
 
   it("refuses the edge, not the migration, where the datastore is not among the files read", () => {
@@ -1811,14 +1825,16 @@ ${serving("notes-api")}      - name: notes-worker
 });
 
 describe("what the review found", () => {
-  it("stops at a Runtime Profile key written in an env file, rather than rendering it twice", () => {
-    expect(() =>
-      resolve(one(serving("notes-api")), {
-        env: [{ name: "minimal/env/notes-api/base.env", text: "PORT=9000\n" }],
-      }),
-    ).toThrow(
-      "PORT: a Runtime Profile key written in an env file is a build error",
-    );
+  it("refuses a Runtime Profile key written in an env file", () => {
+    expect(
+      codesOf(
+        resolve(one(serving("notes-api")), {
+          env: [
+            { name: "minimal/env/notes-api/base.env", text: "PORT=9000\n" },
+          ],
+        }),
+      ),
+    ).toStrictEqual(["E_PROFILE_KEY_AUTHORED"]);
   });
 
   it("asks the tier carrying a route's own audience for its forward-auth endpoint", () => {
@@ -2054,20 +2070,21 @@ describe("a volume and what its class derives", () => {
     expect(store("recoverable")).toBeUndefined();
   });
 
-  it("stops at a backup holding the off-cluster credential under a platform that names no Secret Store", () => {
-    expect(() =>
-      resolve(
-        holding(
-          "          - { claim: keep, mountAt: /k, size: 1Gi, durability: irreplaceable }\n",
-          "        engine: files\n",
+  it("refuses a backup holding the off-cluster credential under a platform that names no Secret Store", () => {
+    expect(
+      codesOf(
+        resolve(
+          holding(
+            "          - { claim: keep, mountAt: /k, size: 1Gi, durability: irreplaceable }\n",
+            "        engine: files\n",
+          ),
+          {
+            platform: (document) =>
+              document.replace("secretStore: vault\n", ""),
+          },
         ),
-        {
-          platform: (document) => document.replace("secretStore: vault\n", ""),
-        },
       ),
-    ).toThrow(
-      "a grant under a platform that names no Secret Store is not checked yet",
-    );
+    ).toStrictEqual(["E_NO_SECRET_STORE"]);
   });
 
   it("carries a reconstructible claim with no backup plan", () => {
@@ -2275,30 +2292,32 @@ describe("a volume and what its class derives", () => {
     );
   });
 
-  it("stops at a class the platform derives a backup for with no schedule or retention", () => {
-    expect(() =>
-      resolve(
-        holding(
-          "          - { claim: queue, mountAt: /q, size: 20Gi, durability: recoverable }\n",
-          "        engine: rabbitmq\n",
+  it("refuses a class the platform derives a backup for with no schedule or retention", () => {
+    expect(
+      codesOf(
+        resolve(
+          holding(
+            "          - { claim: queue, mountAt: /q, size: 20Gi, durability: recoverable }\n",
+            "        engine: rabbitmq\n",
+          ),
+          {
+            platform: (platform) =>
+              platform.replace('    schedule: "15 3 * * *"\n', ""),
+          },
         ),
-        {
-          platform: (platform) =>
-            platform.replace('    schedule: "15 3 * * *"\n', ""),
-        },
       ),
-    ).toThrow(
-      "the recoverable policy derives a backup, and names no schedule and retention",
-    );
-    expect(() =>
-      resolve(
-        holding(
-          "          - { claim: queue, mountAt: /q, size: 20Gi, durability: recoverable }\n",
-          "        engine: rabbitmq\n",
+    ).toStrictEqual(["E_DURABILITY_POLICY_INCOMPLETE"]);
+    expect(
+      codesOf(
+        resolve(
+          holding(
+            "          - { claim: queue, mountAt: /q, size: 20Gi, durability: recoverable }\n",
+            "        engine: rabbitmq\n",
+          ),
+          { platform: (platform) => platform.replace("    retain: 14\n", "") },
         ),
-        { platform: (platform) => platform.replace("    retain: 14\n", "") },
       ),
-    ).toThrow("names no schedule and retention");
+    ).toStrictEqual(["E_DURABILITY_POLICY_INCOMPLETE"]);
   });
 
   it("holds a Process to the node its bound claim is on, from the ClusterState snapshot", () => {

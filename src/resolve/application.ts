@@ -23,7 +23,6 @@ import { managed } from "./database.ts";
 import { resolveMigration } from "./migration.ts";
 import { egressOf, ingressOf } from "./policy.ts";
 import { resolveProcess, type ProcessContext } from "./process.ts";
-import { notChecked } from "../model/internal-failure.ts";
 
 /** An Application's element: the projection without its document header and provenance. */
 export type ResolvedElement = Omit<
@@ -49,11 +48,9 @@ export interface ApplicationContext extends Omit<ProcessContext, "machinery"> {
  * Secret Store the platform names, or the set was refused before resolution.
  */
 function storeFor({ store }: ApplicationContext): string {
-  if (store === undefined)
-    throw notChecked(
-      "a grant under a platform that names no Secret Store is not checked yet",
-    );
-  return store;
+  // A platform with no Secret Store holds nothing that reads one, or
+  // E_NO_SECRET_STORE refused it.
+  return store as string;
 }
 
 const synced = (processes: readonly ResolvedProcess[]): boolean =>
@@ -124,10 +121,8 @@ function releaseGateOf(
   const members = gated.filter(
     ({ process }) => readinessOf(process) !== undefined,
   );
-  if (members.length === 0)
-    throw notChecked(
-      "a blue/green Application whose Processes publish no readiness is E_RELEASE_UNIT_NO_READINESS, which is not checked yet",
-    );
+  // A member publishes readiness, or E_RELEASE_UNIT_NO_READINESS refused the
+  // Application.
   // The unit waits for its slowest member, and only a member is waited on.
   const deadline = Math.max(
     ...members.map(({ resolved }) => seconds(resolved.deadline)),

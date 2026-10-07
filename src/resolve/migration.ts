@@ -7,7 +7,6 @@ import type {
   EffectiveProject,
 } from "../model/effective-intent.ts";
 import type { ImagesLockDocument, LockedImage } from "../model/images-lock.ts";
-import { notChecked } from "../model/internal-failure.ts";
 import {
   migrationImage,
   type MigrationProofDocument,
@@ -46,11 +45,11 @@ export function resolveMigration(
   const proven = context.proof?.applications.find(
     ({ id }) => id === application.id,
   );
-  const datastore = datastoreOf(application, context.union);
-  if (datastore === undefined)
-    throw notChecked(
-      `${application.id}: a migration whose Application reaches no surface of the datastore holding its database is not checked yet`,
-    );
+  // A changelog reaches a database surface, or E_MIGRATION_WITHOUT_DATABASE
+  // refused it, and the edge resolves, or the union's references refused it.
+  const datastore = datastoreOf(application, context.union) as NonNullable<
+    ReturnType<typeof datastoreOf>
+  >;
   return {
     runner: `${image.repository}@${image.digest}`,
     uid: image.uid,

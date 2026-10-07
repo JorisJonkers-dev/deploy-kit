@@ -4,8 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
 
+import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -57,6 +60,44 @@ class IntentSetTest {
     void aYamlFileThatCannotBeReadIsAnErrorRatherThanAProjectOrNot(@TempDir Path directory) {
         assertThatThrownBy(() -> Pipeline.check(List.of(directory.resolve("missing.yml"))))
                 .isInstanceOf(UncheckedIOException.class);
+    }
+
+    @Test
+    void theEnvFilesBesideAProjectFileReachTheProcessesTheyName() {
+        assertThat(Pipeline.check(List.of(
+                        Examples.of("refusals/unbound-secret-grant/platform.intent.yml"),
+                        Examples.of("refusals/unbound-secret-grant/refusals.project.yml"))))
+                .extracting(Diagnostic::code, Diagnostic::path)
+                .containsExactly(tuple("E_UNBOUND_SECRET_GRANT", "/applications/0/processes/0"));
+    }
+
+    @Test
+    void anAssetIsReadOnlyFromBelowItsProjectsDirectory(@TempDir Path directory) throws IOException {
+        Path project = Files.createDirectories(directory.resolve("project"));
+        Files.writeString(directory.resolve("outside.conf"), "a = 1\n");
+        String notes = Examples.read("minimal/notes.project.yml")
+                .replace(
+                        "        cutover: continuous",
+                        "        assets:\n          - { from: FROM, mountAt: /etc/a.conf }\n        cutover: continuous");
+
+        for (String from :
+                List.of("../outside.conf", directory.resolve("outside.conf").toString())) {
+            assertThat(Pipeline.check(
+                            List.of(Examples.write(project, "notes.project.yml", notes.replace("FROM", from)))))
+                    .as(from)
+                    .extracting(Diagnostic::code)
+                    .containsExactly("E_ASSET_NOT_FOUND");
+        }
+    }
+
+    @Test
+    void anEnvFileThatCannotBeReadIsAnErrorRatherThanARefusal(@TempDir Path directory) throws IOException {
+        Path project = Examples.write(directory, "notes.project.yml", Examples.read("minimal/notes.project.yml"));
+        Path env = Files.createDirectories(directory.resolve("env/notes-api"));
+        Path unreadable = Files.writeString(env.resolve("base.env"), "A=1\n");
+        Files.setPosixFilePermissions(unreadable, PosixFilePermissions.fromString("---------"));
+
+        assertThatThrownBy(() -> Pipeline.check(List.of(project))).isInstanceOf(UncheckedIOException.class);
     }
 
     @Test

@@ -31,6 +31,7 @@ applications:
         runtime: node
         placement: { memory: 128Mi, cpu: 25m }
         startupBudget: 20s
+        probes: { readiness: { tcp: 8080 } }
         cutover: continuous
         dependsOn:
           - { application: edge-proxy, surface: http, credentials: { rotation: { tolerates: restart } } }

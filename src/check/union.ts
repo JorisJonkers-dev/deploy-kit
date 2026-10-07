@@ -7,15 +7,24 @@
 // fragment that introduced one is the one isolated
 // (spec/v1/40-composition.md#a-refused-project-is-isolated).
 import type { Diagnostic, RefusalCode } from "../model/diagnostic.ts";
+import type {
+  EffectiveApplication,
+  EffectiveProcess,
+  EffectiveProject,
+} from "../model/effective-intent.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import type {
   DependencyEdge,
+  EnvVariable,
   ProjectIntentDocument,
 } from "../model/project-intent.ts";
+import { collectorEndpoint, exports } from "../model/runtime-profiles.ts";
 
 export interface Fragment {
   readonly name: string;
   readonly document: ProjectIntentDocument;
+  /** The same project lowered, where a rule reads what each Process holds. */
+  readonly effective: EffectiveProject;
 }
 
 type Application = ProjectIntentDocument["applications"][number];
@@ -152,6 +161,8 @@ const keyOf = (project: string, process: Process): string =>
 
 /** Every edge that lies on a cycle of required edges between Processes. */
 function cyclic(union: readonly Fragment[]): Placed<Held>[] {
+  // Stryker disable next-line ArrayDeclaration: an arc no Process names is
+  // reached from nothing and reaches nothing.
   const arcs: { from: string; to: string; edge: Placed<Held> }[] = [];
   for (const fragment of union)
     for (const placed of edgesOf(fragment))
@@ -167,6 +178,8 @@ function cyclic(union: readonly Fragment[]): Placed<Held>[] {
               edge: placed,
             });
   const reaches = (from: string, to: string): boolean => {
+    // Stryker disable next-line ArrayDeclaration: the start is visited once
+    // either way, as the first entry of the queue or as an arc's end.
     const seen = new Set<string>([from]);
     const queue = [from];
     for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
@@ -185,6 +198,130 @@ function cyclic(union: readonly Fragment[]): Placed<Held>[] {
   for (const { edge } of onCycle)
     written.set(`${edge.document}#${edge.path}`, edge);
   return [...written.values()];
+}
+
+/** A lowered Process, where its authored self sits, and the Application holding it. */
+interface Lowered {
+  readonly document: string;
+  readonly path: string;
+  readonly application: EffectiveApplication;
+  readonly process: EffectiveProcess;
+}
+
+const heldIn = ({ name, effective }: Fragment): Lowered[] =>
+  effective.applications.flatMap((application, a) =>
+    application.processes.map((process, p) => ({
+      document: name,
+      path: `/applications/${String(a)}/processes/${String(p)}`,
+      application,
+      process,
+    })),
+  );
+
+/**
+ * A Process's env files: read through its own key, which a lint reading
+ * `process.env` as the ambient environment would mistake for it.
+ */
+const envOf = ({ env }: EffectiveProcess) => env;
+
+type Placeholder = Exclude<EnvVariable["value"], { readonly text: string }>;
+
+/** Every variable of every env file a Process holds whose value is a placeholder of `kind`. */
+const placeholders = (
+  process: EffectiveProcess,
+  kind: Placeholder["kind"],
+): { readonly name: string; readonly source: string }[] =>
+  // Stryker disable next-line ArrayDeclaration: a Process with no env file
+  // and one with an empty list hold no placeholder alike.
+  (envOf(process) ?? []).flatMap(({ entries }) =>
+    entries.flatMap(({ name, value }) =>
+      "kind" in value && value.kind === kind
+        ? [{ name, source: value.source }]
+        : [],
+    ),
+  );
+
+/** The env grants a Process holds, each by its path and keys. */
+const envGrants = (process: EffectiveProcess) =>
+  // Stryker disable next-line ArrayDeclaration: a Process with no grant and
+  // one with an empty list hold none alike.
+  (process.secrets ?? []).flatMap((grant) =>
+    "path" in grant && grant.delivery === "env" ? [grant] : [],
+  );
+
+/** The source of a `${secret:<path>#<key>}`, split at its last `#`. */
+const pathAndKey = (source: string): readonly [string, string] => {
+  const cut = source.lastIndexOf("#");
+  return [source.slice(0, cut), source.slice(cut + 1)];
+};
+
+/** Whether a fragment of the union declares the Application `id`. */
+const inUnion = (union: readonly Fragment[], id: string): boolean =>
+  union.some(({ document }) =>
+    document.applications.some((application) => application.id === id),
+  );
+
+/** The coordinates an edge hands its consumer (spec/v1/10-project-intent.md#three-placeholder-sources). */
+const COORDINATES: ReadonlySet<string> = new Set(["host", "port"]);
+
+/** The fields of an exposure a placeholder may read. */
+const FIELDS: ReadonlySet<string> = new Set(["url", "host", "scheme"]);
+
+/** Why a placeholder names nothing, or nothing where it resolves; an Application nothing declares is not its to say. */
+function unresolved(
+  kind: "dependency" | "exposure",
+  source: string,
+  process: EffectiveProcess,
+  union: readonly Fragment[],
+): string | undefined {
+  if (kind === "dependency") {
+    const cut = source.lastIndexOf(".");
+    const application = source.slice(0, cut);
+    // Stryker disable next-line ArrayDeclaration: a Process with no edge and
+    // one with an empty list hold no edge alike.
+    const edges = (process.dependsOn ?? []).filter(
+      (edge) => edge.application === application,
+    );
+    if (edges.length !== 1)
+      return `the Process holds ${edges.length === 0 ? "no" : "more than one"} edge to ${application}`;
+    return COORDINATES.has(source.slice(cut + 1))
+      ? undefined
+      : `an edge hands no coordinate ${source.slice(cut + 1)}`;
+  }
+  const hash = source.lastIndexOf("#");
+  const dot = source.lastIndexOf(".", hash);
+  const application = source.slice(0, dot);
+  const name = source.slice(dot + 1, hash);
+  const declared = union
+    .flatMap(({ effective }) => effective.applications)
+    .find(({ id }) => id === application);
+  if (declared === undefined) return undefined;
+  if (declared.exposure?.some((exposure) => exposure.name === name) !== true)
+    return `${application} declares no exposure ${name}`;
+  return FIELDS.has(source.slice(hash + 1))
+    ? undefined
+    : `an exposure has no field ${source.slice(hash + 1)}`;
+}
+
+/** The keys a Process's Runtime Profile injects, which no env file may write (spec/v1/10-project-intent.md#runtime-profiles). */
+function profileKeys(
+  process: EffectiveProcess,
+  platform: PlatformIntentDocument,
+  union: readonly Fragment[],
+): ReadonlySet<string> {
+  if (!exports(process.runtime)) return new Set();
+  const collects =
+    collectorEndpoint(
+      platform,
+      union.map(({ document }) => document),
+    ) !== undefined;
+  const injected: readonly (readonly [string, boolean])[] = [
+    ["DEPLOYMENT_ENVIRONMENT", true],
+    ["OTEL_SERVICE_NAME", true],
+    ["OTEL_EXPORTER_OTLP_ENDPOINT", collects],
+    ["PORT", Object.keys(process.provides ?? {}).length === 1],
+  ];
+  return new Set(injected.filter(([, is]) => is).map(([key]) => key));
 }
 
 export const INVARIANTS: readonly Invariant[] = [
@@ -273,13 +410,12 @@ export const INVARIANTS: readonly Invariant[] = [
   {
     code: "E_UNRESOLVED_APPLICATION",
     needsPlatform: true,
-    answer: (union, platform) =>
-      union.flatMap(edgesOf).flatMap((placed) => {
+    answer: (union, platform) => [
+      ...union.flatMap(edgesOf).flatMap((placed) => {
         const { application } = placed.value.edge;
         const declared =
-          union.some(({ document }) =>
-            document.applications.some(({ id }) => id === application),
-          ) || platform.providers?.some(({ name }) => name === application);
+          inUnion(union, application) ||
+          platform.providers?.some(({ name }) => name === application);
         return declared === true
           ? []
           : [
@@ -292,6 +428,30 @@ export const INVARIANTS: readonly Invariant[] = [
               ),
             ];
       }),
+      // An exposure placeholder addresses an Application of the union; a
+      // provider declares no exposure.
+      ...union.flatMap(heldIn).flatMap((held) =>
+        placeholders(held.process, "exposure").flatMap(
+          ({ name, source }): Diagnostic[] => {
+            const application = source.slice(
+              0,
+              source.lastIndexOf(".", source.lastIndexOf("#")),
+            );
+            return inUnion(union, application)
+              ? []
+              : [
+                  {
+                    code: "E_UNRESOLVED_APPLICATION",
+                    document: held.document,
+                    path: held.path,
+                    message: `${name} reads an exposure of ${application}, and no fragment declares that Application`,
+                    hint: "Name an Application a fragment declares, and an exposure it carries.",
+                  },
+                ];
+          },
+        ),
+      ),
+    ],
   },
   {
     code: "E_UNKNOWN_SURFACE",
@@ -336,6 +496,156 @@ export const INVARIANTS: readonly Invariant[] = [
           "Mark one edge on the cycle `required: false`, if its Process starts without that peer, or remove it.",
         ),
       ),
+  },
+  {
+    code: "E_UNAUTHORISED_SECRET_REFERENCE",
+    needsPlatform: false,
+    answer: (union) =>
+      union.flatMap(heldIn).flatMap((held) =>
+        placeholders(held.process, "secret").flatMap(({ name, source }) => {
+          const [path, key] = pathAndKey(source);
+          return envGrants(held.process).some(
+            (grant) => grant.path === path && grant.keys.includes(key),
+          )
+            ? []
+            : [
+                {
+                  code: "E_UNAUTHORISED_SECRET_REFERENCE",
+                  document: held.document,
+                  path: held.path,
+                  message: `${name} reads ${source}, and no grant the Process holds delivers that key of that path to its environment`,
+                  hint: "Grant the path to this Process with `delivery: env` and the key in `keys`, or read a path it is granted.",
+                },
+              ];
+        }),
+      ),
+  },
+  {
+    code: "E_UNBOUND_SECRET_GRANT",
+    needsPlatform: false,
+    answer: (union) =>
+      // A Process no env file reaches is undecided: its files may simply not
+      // be among those read, as where a project file is checked alone.
+      union.flatMap(heldIn).flatMap((held) => {
+        if (envOf(held.process) === undefined) return [];
+        const read = new Set(
+          placeholders(held.process, "secret").map(
+            ({ source }) => pathAndKey(source)[0],
+          ),
+        );
+        return envGrants(held.process)
+          .filter(({ path }) => !read.has(path))
+          .map(({ path }) => ({
+            code: "E_UNBOUND_SECRET_GRANT",
+            document: held.document,
+            path: held.path,
+            message: `${held.process.name} is granted ${path} into its environment, and no env file reads it`,
+            hint: "Read the path with a `${secret:…}` placeholder, or remove the grant: a grant nothing reads is a dead grant.",
+          }));
+      }),
+  },
+  {
+    code: "E_UNRESOLVED_PLACEHOLDER",
+    needsPlatform: false,
+    answer: (union) =>
+      union.flatMap(heldIn).flatMap((held) =>
+        (["dependency", "exposure"] as const).flatMap((kind) =>
+          placeholders(held.process, kind).flatMap(({ name, source }) => {
+            const why = unresolved(kind, source, held.process, union);
+            return why === undefined
+              ? []
+              : [
+                  {
+                    code: "E_UNRESOLVED_PLACEHOLDER",
+                    document: held.document,
+                    path: held.path,
+                    message: `${name} reads \${${kind}:${source}}, and ${why}`,
+                    hint: "A dependency placeholder names the Application of one edge the Process holds and `host` or `port`; an exposure placeholder names an exposure the Application declares and `url`, `host` or `scheme`.",
+                  },
+                ];
+          }),
+        ),
+      ),
+  },
+  {
+    code: "E_PROFILE_KEY_AUTHORED",
+    needsPlatform: true,
+    answer: (union, platform) =>
+      union.flatMap(heldIn).flatMap((held) => {
+        const injected = profileKeys(held.process, platform, union);
+        return (envOf(held.process) ?? []).flatMap(({ entries }) =>
+          entries
+            .filter(({ name }) => injected.has(name))
+            .map(({ name }) => ({
+              code: "E_PROFILE_KEY_AUTHORED",
+              document: held.document,
+              path: held.path,
+              message: `${name} is written in an env file, and the Runtime Profile injects it`,
+              hint: "Delete the line: the model sets this variable for every Process of the runtime.",
+            })),
+        );
+      }),
+  },
+  {
+    code: "E_RELEASE_UNIT_NO_READINESS",
+    needsPlatform: true,
+    answer: (union, platform) =>
+      union.flatMap(({ name, effective }) =>
+        effective.applications.flatMap((application, a) => {
+          // Machinery rolls rather than switches, so nothing gates it.
+          if (platform.delivery?.machinery.includes(application.id) === true)
+            return [];
+          const gated = application.processes.filter(
+            ({ lifecycle, cutover }) =>
+              lifecycle === "application" && cutover === "continuous",
+          );
+          return gated.length > 0 &&
+            gated.every(
+              ({ probes }) =>
+                typeof probes !== "object" || probes.readiness === undefined,
+            )
+            ? [
+                {
+                  code: "E_RELEASE_UNIT_NO_READINESS",
+                  document: name,
+                  path: `/applications/${String(a)}`,
+                  message: `no Process of ${application.id} that switches blue/green publishes readiness, so nothing can gate its switch`,
+                  hint: "Declare a readiness probe on a continuous Process of this Application.",
+                },
+              ]
+            : [];
+        }),
+      ),
+  },
+  {
+    code: "E_NO_SECRET_STORE",
+    needsPlatform: true,
+    answer: (union, platform) =>
+      platform.secretStore !== undefined
+        ? []
+        : union.flatMap(({ name, effective }) =>
+            effective.applications.flatMap((application, a) =>
+              typeof application.migration === "object" ||
+              application.processes.some(
+                ({ secrets, volumes }) =>
+                  (secrets?.length ?? 0) > 0 ||
+                  volumes?.some(
+                    ({ durability }) =>
+                      platform.durability[durability]?.offCluster !== undefined,
+                  ) === true,
+              )
+                ? [
+                    {
+                      code: "E_NO_SECRET_STORE",
+                      document: name,
+                      path: `/applications/${String(a)}`,
+                      message: `${application.id} reads from the Secret Store, and the platform names none`,
+                      hint: "Name the Secret Store in the Platform document's `secretStore`.",
+                    },
+                  ]
+                : [],
+            ),
+          ),
   },
 ];
 

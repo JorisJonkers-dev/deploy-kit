@@ -4,6 +4,7 @@
 // pinned platform facts. Nothing here is authored and nothing may be.
 import type { ClusterStateDocument } from "../model/cluster-state.ts";
 import type {
+  EffectiveApplication,
   EffectiveProcess,
   EffectiveProject,
 } from "../model/effective-intent.ts";
@@ -12,7 +13,14 @@ import { eligibleNodes } from "../model/eligibility.ts";
 import type { ImagesLockDocument, LockedImage } from "../model/images-lock.ts";
 import type { NodeContractDocument } from "../model/node-contract.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
-import type { EnvFile, EnvVariable } from "../model/project-intent.ts";
+import type {
+  ApplicationDocument,
+  DependencyEdge,
+  EnvFile,
+  EnvVariable,
+} from "../model/project-intent.ts";
+
+type Exposure = NonNullable<ApplicationDocument["exposure"]>[number];
 import type {
   EnvEntry,
   ResolvedProbe,
@@ -28,7 +36,6 @@ import type { Hasher } from "../model/hasher.ts";
 import { resolveEdge } from "./dependencies.ts";
 import { resolveAssets, resolveGrants, resolveSidecars } from "./secrets.ts";
 import { resolveVolumes } from "./volumes.ts";
-import { notChecked } from "../model/internal-failure.ts";
 
 /** What resolving one Process reads beyond the Process itself. */
 export interface ProcessContext {
@@ -119,64 +126,38 @@ function entriesFor(
 }
 
 /** `${secret:<path>#<key>}`: one key of a grant the Process holds, delivered `env`. */
-function secretOf(
-  variable: EnvVariable,
-  source: string,
-  process: EffectiveProcess,
-): EnvEntry {
+function secretOf(variable: EnvVariable, source: string): EnvEntry {
+  // An env grant of the Process holds the key, or
+  // E_UNAUTHORISED_SECRET_REFERENCE refused the placeholder.
   const cut = source.lastIndexOf("#");
-  const path = source.slice(0, cut);
-  const key = source.slice(cut + 1);
-  const granted = (process.secrets ?? []).some(
-    (grant) =>
-      "path" in grant &&
-      grant.path === path &&
-      grant.delivery === "env" &&
-      grant.keys.includes(key),
-  );
-  if (!granted)
-    throw notChecked(
-      `${variable.name}: a placeholder no env grant of the Process holds is E_UNAUTHORISED_SECRET_REFERENCE, which is not checked yet`,
-    );
-  return { name: variable.name, secret: { path, key } };
+  return {
+    name: variable.name,
+    secret: { path: source.slice(0, cut), key: source.slice(cut + 1) },
+  };
 }
-
-/** The coordinates an edge hands its consumer (spec/v1/10-project-intent.md#secret-references). */
-const COORDINATES = ["host", "port"] as const;
 
 /** `${dependency:<application>.<coordinate>}`: one coordinate of the Process's own edge. */
 function dependencyOf(
-  variable: EnvVariable,
   source: string,
   process: EffectiveProcess,
   context: ProcessContext,
 ): string {
+  // The Process holds one edge to the Application and the coordinate is
+  // `host` or `port`, or E_UNRESOLVED_PLACEHOLDER refused the placeholder.
   const cut = source.lastIndexOf(".");
   const application = source.slice(0, cut);
-  const coordinate = COORDINATES.find((one) => one === source.slice(cut + 1));
-  // A missing list and an empty one hold no edge alike.
-  // Stryker disable next-line ArrayDeclaration
-  const edges = (process.dependsOn ?? []).filter(
-    (edge) => edge.application === application,
-  );
-  const [edge] = edges;
-  if (edge === undefined || edges.length > 1 || coordinate === undefined)
-    throw notChecked(
-      `${variable.name}: a dependency placeholder names no one edge of the Process and no coordinate of it, which is not checked yet`,
-    );
+  const edge = (process.dependsOn as readonly DependencyEdge[]).find(
+    (candidate) => candidate.application === application,
+  ) as DependencyEdge;
   const { address } = resolveEdge(edge, context.union, context.platform);
   const port = address.lastIndexOf(":");
-  return coordinate === "host"
+  return source.slice(cut + 1) === "host"
     ? address.slice(0, port)
     : address.slice(port + 1);
 }
 
 /** `${exposure:<application>.<name>#<field>}`: one field of an exposure the union declares. */
-function exposureOf(
-  variable: EnvVariable,
-  source: string,
-  context: ProcessContext,
-): string {
+function exposureOf(source: string, context: ProcessContext): string {
   const hash = source.lastIndexOf("#");
   const dot = source.lastIndexOf(".", hash);
   const [application, name, field] = [
@@ -184,14 +165,13 @@ function exposureOf(
     source.slice(dot + 1, hash),
     source.slice(hash + 1),
   ];
-  const exposure = context.union
-    .flatMap(({ applications }) => applications)
-    .find(({ id }) => id === application)
-    ?.exposure?.find((candidate) => candidate.name === name);
-  if (exposure === undefined || !["url", "host", "scheme"].includes(field))
-    throw notChecked(
-      `${variable.name}: an exposure placeholder names no exposure of the union and no field of it, which is not checked yet`,
-    );
+  // The union declares the exposure and the field is one it hands out, or
+  // E_UNRESOLVED_APPLICATION or E_UNRESOLVED_PLACEHOLDER refused it.
+  const exposure = (
+    context.union
+      .flatMap(({ applications }) => applications)
+      .find(({ id }) => id === application) as EffectiveApplication
+  ).exposure?.find((candidate) => candidate.name === name) as Exposure;
   // A tier carries the exposure's audience, or E_NO_TIER_FOR_AUDIENCE refused it.
   const tier = context.platform.tiers.find(({ audiences }) =>
     audiences.includes(exposure.audience),
@@ -208,17 +188,17 @@ function entryOf(
 ): EnvEntry {
   const { name, value } = variable;
   if ("text" in value) return { name, value: value.text };
-  if (value.kind === "secret") return secretOf(variable, value.source, process);
+  if (value.kind === "secret") return secretOf(variable, value.source);
   const suffix = value.suffix ?? "";
   if (value.kind === "dependency")
     return {
       name,
-      value: dependencyOf(variable, value.source, process, context) + suffix,
+      value: dependencyOf(value.source, process, context) + suffix,
     };
   if (value.kind === "exposure")
     return {
       name,
-      value: exposureOf(variable, value.source, context) + suffix,
+      value: exposureOf(value.source, context) + suffix,
     };
   // What the platform derived about this Process
   // (spec/v1/10-project-intent.md#configuration): its namespace, its
@@ -266,14 +246,9 @@ function environmentOf(
   const authored = entriesFor(files, context.platform.metadata.cluster).map(
     (variable) => entryOf(variable, process, context),
   );
-  const profile = profileOf(process, context);
-  const injected = new Set(profile.map(({ name }) => name));
-  const written = authored.find(({ name }) => injected.has(name));
-  if (written !== undefined)
-    throw notChecked(
-      `${written.name}: a Runtime Profile key written in an env file is a build error, which is not checked yet`,
-    );
-  const entries = [...authored, ...profile];
+  // No env file writes a key the profile injects, or E_PROFILE_KEY_AUTHORED
+  // refused it.
+  const entries = [...authored, ...profileOf(process, context)];
   // No two entries share a name, so `<=` would order the same list.
   // Stryker disable next-line EqualityOperator
   return entries.sort((a, b) => (a.name < b.name ? -1 : 1));
