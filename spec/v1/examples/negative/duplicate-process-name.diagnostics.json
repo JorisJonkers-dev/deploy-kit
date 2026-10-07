@@ -1,1 +1,1 @@
-[{"code":"E_DUPLICATE_PROCESS_NAME","document":"intent/notes.yml","path":"/applications/0/processes/0/name"},{"code":"E_DUPLICATE_PROCESS_NAME","document":"intent/notes.yml","path":"/applications/1/processes/0/name"}]
+[{"code":"E_DUPLICATE_PROCESS_NAME","document":"notes.yml","path":"/applications/0/processes/0"},{"code":"E_DUPLICATE_PROCESS_NAME","document":"notes.yml","path":"/applications/1/processes/0"}]

@@ -1,1 +1,1 @@
-[{"code":"E_DUPLICATE_EXPOSURE_NAME","document":"intent/notes.yml","path":"/applications/0/exposure/0/name"},{"code":"E_DUPLICATE_EXPOSURE_NAME","document":"intent/notes.yml","path":"/applications/0/exposure/1/name"}]
+[{"code":"E_DUPLICATE_EXPOSURE_NAME","document":"notes.yml","path":"/applications/0/exposure/0"},{"code":"E_DUPLICATE_EXPOSURE_NAME","document":"notes.yml","path":"/applications/0/exposure/1"}]

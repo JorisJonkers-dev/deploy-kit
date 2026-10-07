@@ -1,1 +1,1 @@
-[{"code":"E_DUPLICATE_APPLICATION_ID","document":"intent-a/knowledge.yml","path":"/applications/0/id"},{"code":"E_DUPLICATE_APPLICATION_ID","document":"intent-b/notes.yml","path":"/applications/0/id"}]
+[{"code":"E_DUPLICATE_APPLICATION_ID","document":"knowledge.yml","path":"/applications/0"},{"code":"E_DUPLICATE_APPLICATION_ID","document":"notes.yml","path":"/applications/0"}]

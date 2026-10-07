@@ -21,7 +21,7 @@ name a real model row, it may not also be witnessed, and its count is stated
 beside the witness count, so the gate keeps its teeth while the work is
 outstanding.
 
-This list holds **16** witnesses, and **2** pending.
+This list holds **17** witnesses, and **1** pending.
 
 | id | JUnit test |
 |---|---|
@@ -41,10 +41,10 @@ This list holds **16** witnesses, and **2** pending.
 | REQ-049 | `RenderedTreeTest#theEstateShareMinimalAndDataHoldBetweenThemIsTheCommittedEstateTree` |
 | REQ-052 | `RenderedTreeTest#authsShareAndTheEstateShareItDerivesAreItsCommittedTreeByteForByte` |
 | REQ-053 | `RenderedTreeTest#theKnowledgePlatformsShareAndTheEstateShareItDerivesAreItsCommittedTreeByteForByte` |
+| REQ-054 | `ParityTest#a negative fixture equals its committed diagnostics in either order` |
 
 ## Pending
 
 | id | why no witness yet | ticket |
 |---|---|---|
 | REQ-035 | `resolved.json` binds the production implementation only, so the shared claim is the rendered tree, which REQ-040's witness holds; the row's own last clause, knowledge's resolved edges, is resolved by neither implementation, and leaves with the example when knowledge-system retires ([the parity contract](../../docs/architecture.md#the-parity-contract)) | #272 |
-| REQ-054 | the identity and reference invariants over the composed union are the production implementation's alone so far; this implementation answers them as Complete OCL over the union, against the same negative fixtures | #89 |

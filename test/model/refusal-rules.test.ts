@@ -191,7 +191,7 @@ describe("an edge written above the Process", () => {
         header: "dependsOn:\n  - { application: gone, surface: http }\n",
       }).map(({ code, path }) => ({ code, path })),
     ).toStrictEqual([
-      { code: "E_UNRESOLVED_APPLICATION", path: "/dependsOn/0/application" },
+      { code: "E_UNRESOLVED_APPLICATION", path: "/dependsOn/0" },
     ]);
   });
 });

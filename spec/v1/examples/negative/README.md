@@ -33,7 +33,9 @@ the same fragments yield the same diagnostics whichever is read first, and the
 fragment that introduced the collision is the one composition isolates
 ([chapter 40](../../40-composition.md#a-refused-project-is-isolated)).
 
-**Which implementation meets them.** The production implementation, in
-[`test/model/negative.test.ts`](../../../../test/model/negative.test.ts). The
-model-driven implementation answers the same invariants under
-JorisJonkers-dev/deploy-kit#89, and meets these oracles there.
+**Both implementations meet them**, each in either order the fragments are read
+in: the production implementation in
+[`test/model/negative.test.ts`](../../../../test/model/negative.test.ts), and the
+model-driven one, whose invariants are Complete OCL over the documents read
+together, in `emf/tests/parity`'s `ParityTest`. A refusal names the document by
+its file name and the path of the object refused, as every other oracle does.

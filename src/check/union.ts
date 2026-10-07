@@ -136,10 +136,9 @@ function edgesOf(fragment: Fragment): Placed<Held>[] {
 const refusal = (
   code: RefusalCode,
   { document, path }: Placed<unknown>,
-  at: string,
   message: string,
   hint: string,
-): Diagnostic => ({ code, document, path: `${path}${at}`, message, hint });
+): Diagnostic => ({ code, document, path, message, hint });
 
 /** The Processes of the union that provide `surface` under the Application id `application`. */
 const providing = (
@@ -333,7 +332,7 @@ export const INVARIANTS: readonly Invariant[] = [
         ({ name, document }) => ({
           code: "E_DUPLICATE_PROJECT",
           document: name,
-          path: "/project",
+          path: "",
           message: `more than one fragment declares the project ${document.project}`,
           hint: "A project sits in exactly one repository: rename one of them, or merge the two files.",
         }),
@@ -348,7 +347,6 @@ export const INVARIANTS: readonly Invariant[] = [
           refusal(
             "E_DUPLICATE_APPLICATION_ID",
             application,
-            "/id",
             `more than one Application carries the id ${application.value.id}, so an edge to it names none of them`,
             "Application ids are unique across the estate: rename one of them.",
           ),
@@ -364,7 +362,6 @@ export const INVARIANTS: readonly Invariant[] = [
             refusal(
               "E_DUPLICATE_PROCESS_NAME",
               process,
-              "/name",
               `more than one Process of project ${fragment.document.project} is named ${process.value.name}, and the name is its identity in the namespace`,
               "Process names are unique within their project: rename one of them.",
             ),
@@ -383,7 +380,6 @@ export const INVARIANTS: readonly Invariant[] = [
               refusal(
                 "E_DUPLICATE_EXPOSURE_NAME",
                 exposure,
-                "/name",
                 `more than one exposure of ${application.value.id} is named ${exposure.value.name}`,
                 "Exposure names are unique within their Application: rename one of them.",
               ),
@@ -401,7 +397,6 @@ export const INVARIANTS: readonly Invariant[] = [
         refusal(
           "E_DUPLICATE_HOST",
           exposure,
-          "/host",
           `more than one exposure claims the host ${exposure.value.host}`,
           "A host is unique across the estate: route the paths of one host from one exposure, or choose another host.",
         ),
@@ -422,7 +417,6 @@ export const INVARIANTS: readonly Invariant[] = [
               refusal(
                 "E_UNRESOLVED_APPLICATION",
                 placed,
-                "/application",
                 `no fragment declares an Application ${application}, and the platform names no provider of that name`,
                 "Name an Application a fragment declares, or a provider the Platform document lists.",
               ),
@@ -476,7 +470,6 @@ export const INVARIANTS: readonly Invariant[] = [
               refusal(
                 "E_UNKNOWN_SURFACE",
                 placed,
-                "/surface",
                 `${edge.application} provides no surface ${edge.surface}`,
                 "Name a surface a Process of that Application provides, or one the provider lists.",
               ),
@@ -491,7 +484,6 @@ export const INVARIANTS: readonly Invariant[] = [
         refusal(
           "E_DEPENDENCY_CYCLE",
           placed,
-          "",
           `this required edge to ${placed.value.edge.application} closes a cycle of required edges, so no Process on it can start first`,
           "Mark one edge on the cycle `required: false`, if its Process starts without that peer, or remove it.",
         ),

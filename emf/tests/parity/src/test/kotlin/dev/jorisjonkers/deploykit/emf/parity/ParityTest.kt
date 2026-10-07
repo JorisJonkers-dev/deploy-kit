@@ -47,6 +47,17 @@ class ParityTest {
     }
 
     @ParameterizedTest(name = "{0}")
+    @MethodSource("negativeFixtures")
+    fun `a negative fixture equals its committed diagnostics in either order`(oracle: Path) {
+        val stem = oracle.fileName.toString().removeSuffix(".$DIAGNOSTICS")
+        val written = output(PIPELINE_OUTPUT, oracle.resolveSibling(stem))
+
+        assertThat(left(written, EXIT)).isEqualTo("1")
+        assertThat(left(written, DIAGNOSTICS)).isEqualTo(read(oracle))
+        assertThat(left(written, REVERSED)).isEqualTo(read(oracle))
+    }
+
+    @ParameterizedTest(name = "{0}")
     @MethodSource("casesTheResolutionReaches")
     fun `the resolved dependency edges equal the committed oracle`(directory: Path) {
         val written = output(PIPELINE_OUTPUT, directory)
@@ -100,6 +111,7 @@ class ParityTest {
         private const val INTENT = "intent.json"
         private const val EFFECTIVE = "effective.json"
         private const val DIAGNOSTICS = "diagnostics.json"
+        private const val REVERSED = "diagnostics.reversed.json"
         private const val DESCRIPTOR = "descriptor.json"
         private const val DEPENDENCIES = "dependencies.json"
 
@@ -151,6 +163,16 @@ class ParityTest {
                     .asSequence()
                     .filter { it.endsWith("expected/$EFFECTIVE") }
                     .map { it.parent.parent }
+                    .sorted()
+                    .toList()
+            }
+
+        @JvmStatic
+        fun negativeFixtures(): List<Path> =
+            Files.list(examples().resolve("negative")).use { files ->
+                files
+                    .asSequence()
+                    .filter { it.fileName.toString().endsWith(".$DIAGNOSTICS") }
                     .sorted()
                     .toList()
             }
