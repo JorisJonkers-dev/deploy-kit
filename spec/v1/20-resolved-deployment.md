@@ -230,7 +230,7 @@ field's placement link to this anchor rather than copying rows.
 | identity name, Vault role, Vault policy | platform | pool | the identity named for the **Process alone**, the role and the policy `<namespace>-<process>`: the auth role namespace is shared by every project ([chapter 16](16-dependencies.md#process-identity)) |
 | Secret Store path layout and grants | platform | pool | one path per reader set; `E_SUBTREE_PREFIX_COLLISION` across Subtrees ([chapter 40](40-composition.md#identity)) |
 | image digest | platform | unique, arbitrated | one image reference resolves to one digest estate-wide, from the pinned images lock |
-| eligible node set, `nodeSelector` and affinity | platform | pool | every declared dimension matched against the node contract; no eligible node is `E_PLACEMENT_UNSATISFIABLE` ([Derived mechanics](#derived-mechanics)) |
+| eligible node set, and the affinity that spells it | platform | pool | every declared dimension matched against the node contract; no eligible node is `E_PLACEMENT_UNSATISFIABLE` ([Derived mechanics](#derived-mechanics)) |
 | recorded PV binding | platform | pool | one `local-path` PV lives on one node; read from the ClusterState snapshot |
 | `replicas` | derived | - | **1**; more than one is the `replicas: {count, reason}` declaration ([0022](../../docs/adr/model/0022-a-derived-value-has-one-declaring-site.md)) |
 | `PodDisruptionBudget` | derived | - | emitted only where `replicas` exceeds one, as `maxUnavailable: 1`; a budget over a single replica is a drain deadlock |
@@ -691,7 +691,8 @@ Earlier drafts said layer 2 decides "which node". That is wrong. Kubernetes
 schedules pods; the platform only constrains where they may land. Layer 2
 computes an **eligible node set** from the placement dimensions the Process
 declared ([chapter 10](10-project-intent.md#placement)) matched against the node
-contract, and emits a **selector and an affinity** that express it.
+contract, and the render spells that set as a required node affinity by node
+name ([chapter 30](30-deliverables.md#how-each-adapter-spells-the-projection)).
 
 Every dimension is hard. A list is a set of equally acceptable values ( `arch:
 [arm64, amd64]` is a fallback written down, not a ranking) and there is no soft

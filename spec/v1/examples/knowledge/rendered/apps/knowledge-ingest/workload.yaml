@@ -37,6 +37,15 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - enschede-t1000-1
       containers:
       - name: knowledge-ingest-worker
         image: ghcr.io/jorisjonkers-dev/knowledge/knowledge-ingest-worker@sha256:7c2e91b4a8d05f36e1b7c94a2d68f03b5e7a1c94d2b60f83a5e19c47b0d82f61

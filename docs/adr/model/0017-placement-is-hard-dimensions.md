@@ -63,6 +63,14 @@ because the same quantity authored twice would disagree with nothing detecting
 it. `disk.media` stays authored: `platform-postgres` wants NVMe for latency, not
 room. `storageClassName` stays absent: everything takes `local-path`.
 
+**The render names the eligible nodes.** The eligible set is resolved against the
+pinned node contract, so the pod template holds a required affinity over those
+nodes by name, or over the one its volume is bound to, and nothing the scheduler
+may drop. Naming the set rather than the labels behind it means a node whose
+labels drifted from the contract cannot quietly qualify, and a node added to the
+contract re-renders every Project anyway. The set is written whole even where it
+is every node, because the adapter reads the resolved Project, not the contract.
+
 ## Alternatives
 
 | option | cost if taken | why rejected |
@@ -72,6 +80,8 @@ room. `storageClassName` stays absent: everything takes `local-path`.
 | Scored best-match | an unmet term still places the pod | hands back the silence |
 | A size class per engine or Durability Class | nothing new authored | a table of guesses about data size |
 | `placement.disk.size` as the only capacity | no new field | a Process with two volumes cannot say which gets what |
+| Render the dimensions as node-label terms (`kubernetes.io/arch`, a capability label) | a new node with the right labels qualifies without a re-render | the cluster's labels must match the contract, and a drift between them goes unseen |
+| Render no affinity where every node is eligible | smaller trees | the resolved placement gains a marker in both implementations for what only saves lines |
 
 ## Reversibility
 

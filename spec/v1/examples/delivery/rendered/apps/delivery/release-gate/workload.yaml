@@ -40,6 +40,21 @@ spec:
         runAsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - enschede-t1000-1
+                      - enschede-rx7900xtx-1
+                      - enschede-gtx-960m-1
+                      - enschede-pi-1
+                      - enschede-pi-2
+                      - enschede-pi-3
+                      - frankfurt-contabo-1
       containers:
         - name: release-gate
           image: ghcr.io/jorisjonkers-dev/delivery/release-gate@sha256:3e7a9c1d5b2f8e4a6c0d9b7e5f3a1c8d6e4b2a0f9c7e5d3b1a8f6e4c2d0b9a7e

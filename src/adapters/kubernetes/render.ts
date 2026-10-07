@@ -23,6 +23,7 @@ import type {
   Deployment,
   EnvVar,
   Kustomization,
+  NodeAffinity,
   PersistentVolumeClaim,
   PodSpec,
   Probe,
@@ -340,6 +341,34 @@ function containerOf(process: ResolvedProcess): Container {
   };
 }
 
+/**
+ * Where a Process's pods may be scheduled
+ * (spec/v1/30-deliverables.md#how-each-adapter-spells-the-projection): the
+ * node its volume is bound to, where it has one, and otherwise every node
+ * eligible for it, each by name. Layer 2 resolved the set from the pinned node
+ * contract, so the render names it whole, even where it is every node.
+ */
+const affinityOf = ({ placement }: ResolvedProcess): NodeAffinity => ({
+  nodeAffinity: {
+    requiredDuringSchedulingIgnoredDuringExecution: {
+      nodeSelectorTerms: [
+        {
+          matchExpressions: [
+            {
+              key: "kubernetes.io/hostname",
+              operator: "In",
+              values:
+                placement.boundTo === undefined
+                  ? placement.eligibleNodes
+                  : [placement.boundTo],
+            },
+          ],
+        },
+      ],
+    },
+  },
+});
+
 function deploymentOf(
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
@@ -372,6 +401,7 @@ function deploymentOf(
             ...(process.volumes === undefined ? {} : { fsGroup: process.gid }),
             seccompProfile: { type: "RuntimeDefault" },
           },
+          affinity: affinityOf(process),
           containers: [
             containerOf(process),
             // Stryker disable next-line ArrayDeclaration
