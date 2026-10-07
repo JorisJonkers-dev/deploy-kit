@@ -34,6 +34,9 @@
     <emf.coverage.line.minimum>1.00</emf.coverage.line.minimum>
     <emf.coverage.branch.minimum>1.00</emf.coverage.branch.minimum>
     <emf.mutation.threshold>100</emf.mutation.threshold>
+    <!-- How many minions PIT runs mutants in at once: a CI runner's four
+         vCPUs. Speed only; the threshold above is what the gate accepts. -->
+    <emf.mutation.threads>4</emf.mutation.threads>
 
     <junit.version>6.1.3</junit.version>
     <assertj.version>3.27.7</assertj.version>
@@ -278,6 +281,7 @@
           <targetClasses><param>dev.jorisjonkers.deploykit.emf.*</param></targetClasses>
           <targetTests><param>dev.jorisjonkers.deploykit.emf.*</param></targetTests>
           <mutationThreshold>${emf.mutation.threshold}</mutationThreshold>
+          <threads>${emf.mutation.threads}</threads>
           <outputFormats><param>XML</param><param>HTML</param></outputFormats>
           <timestampedReports>false</timestampedReports>
           <exportLineCoverage>true</exportLineCoverage>
