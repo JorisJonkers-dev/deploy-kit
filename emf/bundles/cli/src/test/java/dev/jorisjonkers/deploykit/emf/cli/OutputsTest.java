@@ -232,6 +232,13 @@ class OutputsTest {
         if (oracle.endsWith("expected/effective.json")) {
             return Stream.of(relative(examples, oracle.getParent().getParent()) + "/effective.json");
         }
+        // A negative fixture is read in both orders of its fragments.
+        if (name.endsWith(".diagnostics.json")
+                && oracle.getParent().getFileName().toString().equals("negative")) {
+            String directory = "negative/" + name.replace(".diagnostics.json", "");
+            return Stream.of(
+                    directory + "/diagnostics.json", directory + "/diagnostics.reversed.json", directory + "/exit");
+        }
         // Only a refusal under refusals/ binds this implementation; a schema refusal binds the
         // production implementation alone (docs/architecture.md#the-parity-contract).
         if (name.endsWith(".diagnostics.json")

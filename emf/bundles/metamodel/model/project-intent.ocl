@@ -486,4 +486,72 @@ context DurabilityPolicy
 		(policies.recoverable = self or policies.irreplaceable = self)
 			implies (schedule <> null and retain <> null)
 
+-- The identity and reference invariants over the composed union
+-- (spec/v1/40-composition.md#the-estate-wide-invariants): every document read
+-- together is one extent, so `allInstances` is the union. Every collision is
+-- refused at each of its sides, so the set reads the same in any order.
+
+context Project
+	inv E_DUPLICATE_PROJECT:
+		Project.allInstances()->select(p | p.project = self.project)->size() = 1
+
+context Application
+	inv E_DUPLICATE_APPLICATION_ID:
+		Application.allInstances()->select(a | a.id = self.id)->size() = 1
+
+context Process
+	-- The name is the Process's identity in the project's namespace.
+	inv E_DUPLICATE_PROCESS_NAME:
+		oclContainer().oclContainer().oclAsType(Project).applications.processes
+			->select(p | p.name = self.name)->size() = 1
+
+	-- The Processes every required edge the Process holds reaches.
+	def: requiredPeers : Set(Process) =
+		heldEdges->select(e | e.required <> false)->collect(e | e.providing)->asSet()
+
+context Exposure
+	inv E_DUPLICATE_EXPOSURE_NAME:
+		oclContainer().oclAsType(Application).exposure->select(x | x.name = self.name)->size() = 1
+
+	inv E_DUPLICATE_HOST:
+		Exposure.allInstances()->select(x | x.host = self.host)->size() = 1
+
+context DependencyEdge
+	-- Every Process below the level the edge is written at holds it.
+	def: holders : Set(Process) =
+		let owner : OclElement = oclContainer() in
+		if owner.oclIsKindOf(Process) then Set{owner.oclAsType(Process)}
+		else
+			if owner.oclIsKindOf(Application) then owner.oclAsType(Application).processes->asSet()
+			else owner.oclAsType(Project).applications.processes->asSet()
+			endif
+		endif
+
+	-- The Processes of the union that provide the surface under the Application id.
+	def: providing : Set(Process) =
+		Application.allInstances()->select(a | a.id = application).processes
+			->select(p | p.provides->includes(surface))->asSet()
+
+	def: declared : Boolean = Application.allInstances()->exists(a | a.id = application)
+
+	def: provider : Boolean =
+		Platform.allInstances()->exists(p | p.providers->exists(v | v.name = application))
+
+	-- A reference resolves against the union or the Platform document's providers.
+	inv E_UNRESOLVED_APPLICATION:
+		Platform.allInstances()->notEmpty() implies (declared or provider)
+
+	inv E_UNKNOWN_SURFACE:
+		(Platform.allInstances()->notEmpty() and (declared or provider)) implies
+			(providing->notEmpty()
+				or Platform.allInstances()->exists(p | p.providers->exists(v |
+					v.name = application and v.surfaces->includes(surface))))
+
+	-- A required edge closes a cycle where a Process it reaches reaches back to
+	-- a Process that holds it; an optional one starts without its peer.
+	inv E_DEPENDENCY_CYCLE:
+		(Platform.allInstances()->notEmpty() and required <> false) implies
+			not holders->exists(h | providing->exists(p |
+				p = h or p.requiredPeers->closure(q | q.requiredPeers)->includes(h)))
+
 endpackage

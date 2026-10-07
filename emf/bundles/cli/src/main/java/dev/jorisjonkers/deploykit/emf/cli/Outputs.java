@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
@@ -138,6 +139,11 @@ public final class Outputs {
     private static final String EFFECTIVE_ORACLE = "expected/effective.json";
     private static final String DIAGNOSTICS_ORACLE = ".diagnostics.json";
     private static final String PROJECT = ".project.yml";
+
+    /** The directory of the negative fixtures, and the file a reversed reading of one writes. */
+    private static final String NEGATIVE = "negative";
+
+    private static final String REVERSED = "diagnostics.reversed.json";
     private static final String PLATFORM = "platform.intent.yml";
 
     private Outputs() {}
@@ -159,6 +165,7 @@ public final class Outputs {
         if (Files.isDirectory(examples.resolve(ESTATE_TREE))) {
             writeRendered(out.resolve(RENDERED_TREE), examples);
         }
+        writeNegative(examples, out);
         for (Path oracle : refusalsWithADiagnosticsOracle(examples)) {
             String stem = oracle.getFileName().toString().replace(DIAGNOSTICS_ORACLE, "");
             Path set = oracle.resolveSibling(stem);
@@ -171,6 +178,47 @@ public final class Outputs {
             } else {
                 writeParsed(directory, oracle.resolveSibling(stem + PROJECT));
             }
+        }
+    }
+
+    /**
+     * Every negative fixture's fragments, read beside the foundation and the Platform document they
+     * compose with, once in the order their paths sort and once in the reverse: composition is
+     * order-independent, so both write the one set its oracle names
+     * (spec/v1/40-composition.md#the-composition-run).
+     */
+    private static void writeNegative(Path examples, Path out) throws IOException {
+        if (!Files.isDirectory(examples.resolve(NEGATIVE))) {
+            return;
+        }
+        List<Path> foundation = withFoundation().stream().map(examples::resolve).toList();
+        for (Path oracle : negativeOracles(examples)) {
+            String stem = oracle.getFileName().toString().replace(DIAGNOSTICS_ORACLE, "");
+            List<Path> fragments;
+            // Every file below the fixture; check reads the documents among them and no other.
+            try (Stream<Path> tree = Files.walk(oracle.resolveSibling(stem))) {
+                fragments = tree.sorted().toList();
+            }
+            Path directory = out.resolve(examples.relativize(oracle.resolveSibling(stem)));
+            List<Path> forwards = new ArrayList<>(foundation);
+            forwards.addAll(fragments);
+            writeDiagnostics(directory, Pipeline.check(forwards));
+            List<Path> backwards = IntStream.range(0, forwards.size())
+                    .mapToObj(i -> forwards.get(forwards.size() - 1 - i))
+                    .toList();
+            Files.writeString(
+                    directory.resolve(REVERSED),
+                    CanonicalJson.write(triples(Pipeline.check(backwards))),
+                    StandardCharsets.UTF_8);
+        }
+    }
+
+    /** The diagnostics oracles beside the fixtures under {@code negative/}. */
+    private static List<Path> negativeOracles(Path examples) throws IOException {
+        try (Stream<Path> tree = Files.list(examples.resolve(NEGATIVE))) {
+            return tree.filter(path -> path.getFileName().toString().endsWith(DIAGNOSTICS_ORACLE))
+                    .sorted()
+                    .toList();
         }
     }
 

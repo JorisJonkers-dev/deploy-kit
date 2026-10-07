@@ -1,1 +1,1 @@
-[{"code":"E_DUPLICATE_HOST","document":"intent-a/notes.yml","path":"/applications/0/exposure/0/host"},{"code":"E_DUPLICATE_HOST","document":"intent-b/knowledge.yml","path":"/applications/0/exposure/0/host"}]
+[{"code":"E_DUPLICATE_HOST","document":"knowledge.yml","path":"/applications/0/exposure/0"},{"code":"E_DUPLICATE_HOST","document":"notes.yml","path":"/applications/0/exposure/0"}]

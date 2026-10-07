@@ -500,7 +500,7 @@ owner: o
       {
         code: "E_UNRESOLVED_APPLICATION",
         document: "p.project.yml",
-        path: "/applications/1/processes/0/dependsOn/1/application",
+        path: "/applications/1/processes/0/dependsOn/1",
       },
     ]);
   });

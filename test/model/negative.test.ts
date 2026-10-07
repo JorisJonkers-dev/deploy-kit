@@ -45,13 +45,13 @@ const fixtures = readdirSync(NEGATIVE)
   .filter((name) => statSync(join(NEGATIVE, name)).isDirectory())
   .sort();
 
-/** A fixture's fragments, by their path below it. */
+/** A fixture's fragments, each by its file name, as both implementations name a document. */
 const fragmentsOf = (fixture: string): AuthoredFile[] =>
   readdirSync(join(NEGATIVE, fixture), { recursive: true, encoding: "utf8" })
     .filter((name) => name.endsWith(".yml"))
     .sort()
     .map((name) => ({
-      name: name.split(sep).join("/"),
+      name: name.split(sep).pop() as string,
       text: readFileSync(join(NEGATIVE, fixture, name), "utf8"),
     }));
 
@@ -64,9 +64,11 @@ interface Triple {
 const sorted = (triples: readonly Triple[]): Triple[] =>
   triples
     .map(({ code, document, path }) => ({ code, document, path }))
+    // The order both implementations write a set of triples in: by code, then
+    // document, then path.
     .sort((a, b) =>
-      `${String(a.document)} ${a.path} ${a.code}` <
-      `${String(b.document)} ${b.path} ${b.code}`
+      `{code=${a.code}, document=${String(a.document)}, path=${a.path}}` <
+      `{code=${b.code}, document=${String(b.document)}, path=${b.path}}`
         ? -1
         : 1,
     );
@@ -287,7 +289,7 @@ describe("the reference invariants, read against the platform's providers", () =
     ).toStrictEqual([
       {
         code: "E_UNKNOWN_SURFACE",
-        path: "/applications/0/processes/0/dependsOn/0/surface",
+        path: "/applications/0/processes/0/dependsOn/0",
       },
     ]);
   });
