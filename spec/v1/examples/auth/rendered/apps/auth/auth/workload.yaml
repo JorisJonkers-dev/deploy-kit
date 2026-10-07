@@ -44,7 +44,7 @@ spec:
           image: ghcr.io/jorisjonkers-dev/auth/auth-api@sha256:3e5a7c9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3c5b7d9f1e3a5c7b9d1f3e5a
           ports:
             - name: http
-              containerPort: 8080
+              containerPort: 8081
           env:
             - name: AUTH_ISSUER
               value: https://auth.jorisjonkers.dev
@@ -67,7 +67,7 @@ spec:
             - name: OTEL_SERVICE_NAME
               value: auth-api
             - name: PORT
-              value: "8080"
+              value: "8081"
             - name: SESSION_COOKIE_SECURE
               value: "true"
             - name: SPRING_CONFIG_IMPORT

@@ -21,7 +21,7 @@ spec:
       services:
         - name: auth-api
           namespace: auth-system
-          port: 8080
+          port: 8081
     - kind: Rule
       match: Host(`auth.jorisjonkers.dev`) && PathPrefix(`/`)
       priority: 998

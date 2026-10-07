@@ -28,7 +28,7 @@ spec:
               app.kubernetes.io/instance: traefik-public
       ports:
         - protocol: TCP
-          port: 8080
+          port: 8081
     - from:
         - namespaceSelector:
             matchLabels:
@@ -38,7 +38,7 @@ spec:
               app.kubernetes.io/instance: prometheus
       ports:
         - protocol: TCP
-          port: 8080
+          port: 8081
   egress:
     - to:
         - namespaceSelector:

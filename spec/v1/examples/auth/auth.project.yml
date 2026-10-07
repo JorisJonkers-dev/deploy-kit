@@ -158,12 +158,12 @@ applications:
         # names are unique within an Application, and a consumer names the Application,
         # never a Process.
         provides:
-          http: 8080            # not 80: a port below 1024 cannot be bound by a
+          http: 8081            # not 80: a port below 1024 cannot be bound by a
                                 # non-root process without CAP_NET_BIND_SERVICE,
                                 # which `restricted` drops
                                 # (docs/adr/model/0020-hardening-is-one-platform-posture.md).
                                 # A route names a surface, not a number, so the
-                                # edge is unchanged.81
+                                # edge is unchanged.
 
         # Placement is a set of HARD dimensions, every one of which must match
         # (docs/adr/model/0017-placement-is-hard-dimensions.md). A list is a SET of
