@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.8.1...v0.9.0) (2026-10-08)
+
+
+### Features
+
+* move a rolled-back Project's pin to the release it was rolled back to ([#303](https://github.com/JorisJonkers-dev/deploy-kit/issues/303)) ([cc4340a](https://github.com/JorisJonkers-dev/deploy-kit/commit/cc4340a78c26ab2daed3e91f89095bd7f59900d4)), closes [#301](https://github.com/JorisJonkers-dev/deploy-kit/issues/301)
+
+
+### Bug Fixes
+
+* publish the estate-scoped artifact beside the Projects' repository ([#305](https://github.com/JorisJonkers-dev/deploy-kit/issues/305)) ([d7f69a3](https://github.com/JorisJonkers-dev/deploy-kit/commit/d7f69a36bcdc67910037e6be04da58fe3a7db885)), closes [#304](https://github.com/JorisJonkers-dev/deploy-kit/issues/304)
+
 ## [0.8.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.8.0...v0.8.1) (2026-10-08)
 
 
