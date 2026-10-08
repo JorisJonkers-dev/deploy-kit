@@ -5,6 +5,7 @@
 // Project's artifact holds its one unit; the estate-scoped one holds the unit
 // that provisions secrets and one per tier it carries routes for.
 import {
+  ESTATE_ARTIFACT,
   ESTATE_SOURCE,
   renderPinSource,
   sourceOf,
@@ -29,7 +30,7 @@ interface Artifact {
   readonly files: readonly RenderedFile[];
 }
 
-const ESTATE = "_estate";
+const ESTATE = ESTATE_ARTIFACT;
 const INDEX = "/kustomization.yaml";
 const SECRETS = SECRETS_DIRECTORY;
 

@@ -116,4 +116,16 @@ describe("a pin source", () => {
     expect(ESTATE_SOURCE).toBe("estate");
     expect(sourceOf("estate")).toBe("project-estate");
   });
+
+  it("pins the estate's artifact beside the Projects' repository, where an OCI name can hold it", () => {
+    const urlOf = (artifact: string) =>
+      (renderPinSource("s", artifact, [], FLUX)[0] as OciRepository).spec.url;
+
+    expect(urlOf("_estate")).toBe(
+      "oci://ghcr.io/jorisjonkers-dev/render-estate",
+    );
+    expect(urlOf("estate")).toBe(
+      "oci://ghcr.io/jorisjonkers-dev/render/estate",
+    );
+  });
 });

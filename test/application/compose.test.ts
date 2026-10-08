@@ -744,6 +744,16 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     ]);
     for (const { path, text: body } of sources)
       expect(body, path).toBe(committed(path));
+    // Each is published where its source points: the estate's beside the
+    // Projects' repository, since an OCI name cannot start with an underscore.
+    expect(
+      delivered()
+        .artifacts.filter(({ name }) => ["_estate", "notes"].includes(name))
+        .map(({ name, repository }) => [name, repository]),
+    ).toStrictEqual([
+      ["_estate", "ghcr.io/jorisjonkers-dev/render-estate"],
+      ["notes", "ghcr.io/jorisjonkers-dev/render/notes"],
+    ]);
   });
 
   it("writes none for an artifact whose pin stays, and rewrites one whose pin moves unless it is paused", () => {

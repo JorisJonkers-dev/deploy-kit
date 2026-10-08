@@ -475,9 +475,10 @@ function compose(values: Options, json: boolean, world: World): Outcome {
   write(
     join(out, "composition.json"),
     `${canonicalJson({
-      artifacts: artifacts.map(({ name, contentHash, moves }) => ({
+      artifacts: artifacts.map(({ name, contentHash, repository, moves }) => ({
         name,
         contentHash,
+        repository,
         moves,
       })),
       statuses,

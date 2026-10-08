@@ -79,8 +79,10 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)). The paths the
   path plan scopes to the estate rather than to a Project
   ([chapter 20](20-resolved-deployment.md#the-path-plan)) form one more artifact,
-  `<repository>/_estate`, published and pinned exactly like a Project's; the
-  underscore keeps it from ever naming a Project. While the estate is handed
+  `_estate`, published and pinned exactly like a Project's, at the sibling
+  repository `<repository>-estate`: an OCI repository's path components start
+  with a letter or a digit, and nothing below `<repository>/` is the estate's,
+  so no Project can ever name it. While the estate is handed
   over, a Project still on the old path is rendered and checked but not
   published, and the `_estate` artifact holds only `estate-vso-secrets`, the
   Vault policy job for the Projects already on the estate path, whose units
@@ -145,7 +147,7 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 | object | field | value |
 |---|---|---|
 | `OCIRepository` | name, namespace | `project-<project>`, or `estate` for the estate-scoped artifact, which no Project's source can be named; the namespace of the Platform document's `bootstrap.flux.sourceRef` |
-| | `url` | `oci://<repository>/<artifact>`, the Platform document's `bootstrap.flux.artifacts.repository` |
+| | `url` | `oci://<repository>/<project>` for a Project's artifact and `oci://<repository>-estate` for the estate-scoped one, `<repository>` the Platform document's `bootstrap.flux.artifacts.repository` |
 | | `ref.digest` | the digest of the published artifact. Until the first publish it is sixty-four zeros, which names no artifact: a source applied before its digest is set fetches nothing, where one with no `ref` would fetch whatever `latest` names |
 | | `verify` | `cosign`, against the Platform document's signer. Flux reads an identity as a pattern, so the issuer and the subject are each written anchored and escaped: the one workflow on the one branch, and no branch whose name merely begins the same |
 | | `interval` | `10m` |

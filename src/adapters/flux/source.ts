@@ -49,6 +49,24 @@ export const sourceOf = (project: string): string => `project-${project}`;
 /** The estate-scoped artifact's source. No Project's can be named so: a Project's carries a prefix. */
 export const ESTATE_SOURCE = "estate";
 
+/** The estate-scoped artifact, as composition names it: no Project's name starts with an underscore. */
+export const ESTATE_ARTIFACT = "_estate";
+
+/**
+ * Where an artifact is published: a Project's below the Platform document's
+ * repository, and the estate-scoped one beside it, at `<repository>-estate`.
+ * An OCI repository's path components start with a letter or a digit, so
+ * `_estate` cannot be one, and nothing below the repository is the estate's,
+ * so no Project's name can collide with it.
+ */
+export const artifactRepositoryOf = (
+  repository: string,
+  artifact: string,
+): string =>
+  artifact === ESTATE_ARTIFACT
+    ? `${repository}-estate`
+    : `${repository}/${artifact}`;
+
 export function renderPinSource(
   source: string,
   artifact: string,
@@ -65,7 +83,7 @@ export function renderPinSource(
     },
     spec: {
       interval: INTERVAL,
-      url: `oci://${flux.repository}/${artifact}`,
+      url: `oci://${artifactRepositoryOf(flux.repository, artifact)}`,
       ref: { digest: UNPUBLISHED },
       verify: {
         provider: "cosign",
