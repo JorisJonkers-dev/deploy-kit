@@ -1,6 +1,7 @@
 package dev.jorisjonkers.deploykit.emf.cli;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,22 +32,56 @@ class OutputsTest {
 
     @Test
     void aRunLeavesEveryCaseUnderTheModulesBuildOutput() throws IOException {
+        // The parity module reads what this run leaves, so it is the build's
+        // own run. Under the mutation gate every run is a mutant's, writing the
+        // whole corpus once per mutant: the tests beside it, on smaller
+        // corpora in their own directories, cover what it covers.
+        assumeFalse(Boolean.getBoolean(MUTATING), "the mutation gate writes no parity outputs");
         Path examples = Examples.of("");
-        // Under the mutation gate the run is a mutant's, several at once, so
-        // each writes apart and the parity module reads the build's own run.
-        boolean mutating = Boolean.getBoolean(MUTATING);
-        Path output = mutating ? Files.createTempDirectory("parity") : OUTPUT;
-        try {
-            deleteTree(output);
+        deleteTree(OUTPUT);
 
-            Outputs.write(examples, output);
+        Outputs.write(examples, OUTPUT);
 
-            assertThat(files(output)).containsExactlyElementsOf(everyCasesPairedFile(examples));
-        } finally {
-            if (mutating) {
-                deleteTree(output);
-            }
+        assertThat(files(OUTPUT)).containsExactlyElementsOf(everyCasesPairedFile(examples));
+    }
+
+    @Test
+    void anEffectiveCaseAndANegativeFixtureLeaveTheirFiles(@TempDir Path root) throws IOException {
+        Path examples = root.resolve("examples");
+        Path out = root.resolve("out");
+        accepted(examples, "minimal");
+        touch(examples.resolve("minimal").resolve("expected").resolve("effective.json"));
+        for (String document : List.of(
+                "platform/platform.intent.yml",
+                "platform/node-contract.yml",
+                "platform/images.lock.yml",
+                "platform/cluster-state.yml",
+                "delivery/delivery.project.yml",
+                "edge/edge.project.yml",
+                "observability/observability.project.yml",
+                "secrets/secrets.project.yml")) {
+            copy(Examples.of(document), examples.resolve(document));
         }
+        copy(
+                Examples.of("negative/dependency-cycle/intent/notes.yml"),
+                examples.resolve("negative/dependency-cycle/intent/notes.yml"));
+        touch(examples.resolve("negative/dependency-cycle.diagnostics.json"));
+        // A file beside the oracles that is no oracle names no fixture.
+        touch(examples.resolve("negative/README.md"));
+        Files.createDirectories(examples.resolve("refusals"));
+
+        Outputs.write(examples, out);
+
+        assertThat(read(out.resolve("minimal/effective.json"))).startsWith("{").endsWith("}");
+        Path cycle = out.resolve("negative/dependency-cycle");
+        assertThat(files(out.resolve("negative")))
+                .containsExactly(
+                        "dependency-cycle/diagnostics.json",
+                        "dependency-cycle/diagnostics.reversed.json",
+                        "dependency-cycle/exit");
+        assertThat(read(cycle.resolve("diagnostics.json")))
+                .contains("E_DEPENDENCY_CYCLE")
+                .isEqualTo(read(cycle.resolve("diagnostics.reversed.json")));
     }
 
     @Test
