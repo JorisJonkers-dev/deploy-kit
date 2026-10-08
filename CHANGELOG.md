@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.9.1...v0.10.0) (2026-10-08)
+
+
+### Features
+
+* pull each render with the Secret the Platform document names for a private artifact repository ([#312](https://github.com/JorisJonkers-dev/deploy-kit/issues/312)) ([de76810](https://github.com/JorisJonkers-dev/deploy-kit/commit/de768109515bc5c8c0ef8454d62b211f5805989c))
+
 ## [0.9.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.9.0...v0.9.1) (2026-10-08)
 
 
