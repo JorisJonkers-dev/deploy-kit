@@ -643,10 +643,15 @@ describe("composeEstate", () => {
       true,
     );
     expect(whole.some((path) => path.startsWith("estate/edge/"))).toBe(true);
-    // Its pin source applies the secrets unit and no edge unit.
+    // Its pin source applies the secrets unit and no edge unit, and does not
+    // follow the Secret Store's unit while secrets is still on the old path.
     const source = handingOver.sources.find(({ name }) => name === "_estate");
     expect(source?.text).toContain("name: estate-vso-secrets");
     expect(source?.text).not.toContain("estate-edge-");
+    expect(source?.text).not.toContain("apps-secrets");
+    expect(
+      handingOver.sources.find(({ name }) => name === "data")?.text,
+    ).toContain("- name: estate-vso-secrets");
     // When the last Project leaves the old path, the artifact gains the edge
     // units, its pin moves, and its source is rewritten to apply them.
     const handedOver = compose({
@@ -785,63 +790,65 @@ describe("composeEstate, for an artifact whose pin moves", () => {
       name: string,
       applications: readonly Record<string, unknown>[],
     ) => ({ project: name, applications });
-    const [estate] = pinSources(
-      [
+    const estateArtifact = {
+      name: "_estate",
+      files: [
+        "estate/edge/public/kustomization.yaml",
+        "estate/edge/public/shop-public.yaml",
+        "estate/edge/lan/kustomization.yaml",
+        // Vault documents with no job beside them: no index, so no unit.
+        "estate/vso-secrets/policies/shop-system-api.policy.json",
+      ].map((path) => ({ path, adapter: "traefik", text: "" })),
+    };
+    const artifact = (name: string) => ({ name, files: [] });
+    /** The estate source's units, with every Project in `delivered` on the estate path. */
+    const applied = (delivered: readonly string[]) => {
+      const [estate] = pinSources(
+        [estateArtifact],
+        [estateArtifact, ...delivered.map(artifact)],
+        [
+          project("shop", [{ id: "shop", exposure: [{ tier: "public" }] }]),
+          project("wiki", [{ id: "wiki", exposure: [{ tier: "lan" }] }]),
+          project("edge", [{ id: "proxy-public" }, { id: "proxy-lan" }]),
+        ] as never,
         {
-          name: "_estate",
-          files: [
-            "estate/edge/public/kustomization.yaml",
-            "estate/edge/public/shop-public.yaml",
-            "estate/edge/lan/kustomization.yaml",
-            // Vault documents with no job beside them: no index, so no unit.
-            "estate/vso-secrets/policies/shop-system-api.policy.json",
-          ].map((path) => ({ path, adapter: "traefik", text: "" })),
-        },
-      ],
-      [
-        project("shop", [{ id: "shop", exposure: [{ tier: "public" }] }]),
-        project("wiki", [{ id: "wiki", exposure: [{ tier: "lan" }] }]),
-        project("edge", [{ id: "proxy-public" }, { id: "proxy-lan" }]),
-      ] as never,
-      {
-        tiers: [
-          { name: "public", traefik: "proxy-public" },
-          { name: "lan", traefik: "proxy-lan" },
-          // A tier no route reaches: the artifact holds no index for it.
-          { name: "idle", traefik: "proxy-lan" },
-        ],
-        bootstrap: {
-          flux: {
-            sourceRef: "flux-system/platform",
-            artifacts: {
-              repository: "ghcr.io/x/render",
-              signer: { issuer: "i", subject: "s" },
+          tiers: [
+            { name: "public", traefik: "proxy-public" },
+            { name: "lan", traefik: "proxy-lan" },
+            // A tier no route reaches: the artifact holds no index for it.
+            { name: "idle", traefik: "proxy-lan" },
+          ],
+          bootstrap: {
+            flux: {
+              sourceRef: "flux-system/platform",
+              artifacts: {
+                repository: "ghcr.io/x/render",
+                signer: { issuer: "i", subject: "s" },
+              },
             },
           },
-        },
-      } as never,
-      serialize,
-    );
-    const applied = (
-      parseAllDocuments(estate?.text ?? "") as { toJS(): unknown }[]
-    )
-      .map(
-        (document) =>
-          document.toJS() as {
-            kind: string;
-            metadata: { name: string; namespace: string };
-            spec: { path?: string; dependsOn?: { name: string }[] };
-          },
-      )
-      .filter(({ kind }) => kind === "Kustomization")
-      .map(({ metadata, spec }) => [
-        metadata.name,
-        metadata.namespace,
-        spec.path,
-        spec.dependsOn?.map(({ name }) => name),
-      ]);
+        } as never,
+        serialize,
+      );
+      return (parseAllDocuments(estate?.text ?? "") as { toJS(): unknown }[])
+        .map(
+          (document) =>
+            document.toJS() as {
+              kind: string;
+              metadata: { name: string; namespace: string };
+              spec: { path?: string; dependsOn?: { name: string }[] };
+            },
+        )
+        .filter(({ kind }) => kind === "Kustomization")
+        .map(({ metadata, spec }) => [
+          metadata.name,
+          metadata.namespace,
+          spec.path,
+          spec.dependsOn?.map(({ name }) => name),
+        ]);
+    };
 
-    expect(applied).toStrictEqual([
+    expect(applied(["edge", "shop", "wiki"])).toStrictEqual([
       [
         "estate-edge-public",
         "flux-system",
@@ -854,6 +861,21 @@ describe("composeEstate, for an artifact whose pin moves", () => {
         "./estate/edge/lan",
         ["apps-edge", "apps-wiki"],
       ],
+    ]);
+    // A Project still on the old path has no unit here, which would never
+    // become Ready; it is running where the old path put it.
+    expect(applied(["edge", "shop"])).toStrictEqual([
+      [
+        "estate-edge-public",
+        "flux-system",
+        "./estate/edge/public",
+        ["apps-edge", "apps-shop"],
+      ],
+      ["estate-edge-lan", "flux-system", "./estate/edge/lan", ["apps-edge"]],
+    ]);
+    expect(applied([])).toStrictEqual([
+      ["estate-edge-public", "flux-system", "./estate/edge/public", undefined],
+      ["estate-edge-lan", "flux-system", "./estate/edge/lan", undefined],
     ]);
   });
 

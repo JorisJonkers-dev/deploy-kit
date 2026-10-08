@@ -89,7 +89,8 @@ function unitsOf(
         name: edgeUnitOf(tier.name),
         path: tierDirectory(tier.name),
         // A route needs its tier's proxy and its own Project's namespace:
-        // every Project the tier serves, delivered already or not.
+        // every Project the tier serves, of which pinSources keeps those
+        // on the estate path.
         after: units([
           ...declaring(tier.traefik),
           ...projects
@@ -116,13 +117,24 @@ function unitsOf(
   ];
 }
 
-/** The pin source of each of `artifacts`, as the file the Estate repository commits. */
+/**
+ * The pin source of each of `artifacts`, as the file the Estate repository
+ * commits. A unit follows only units `delivered` holds: a Project still on the
+ * old path has no unit on this one, which would never become Ready, and is
+ * already running where the old path put it.
+ */
 export function pinSources(
   artifacts: readonly Artifact[],
+  delivered: readonly Artifact[],
   projects: readonly ResolvedProject[],
   platform: PlatformIntentDocument,
   serialize: Serializer,
 ): PinSource[] {
+  const onPath = new Set(
+    delivered.flatMap((artifact) =>
+      unitsOf(artifact, projects, platform).map(({ name }) => name),
+    ),
+  );
   const { sourceRef, artifacts: published } = platform.bootstrap.flux;
   const flux = {
     // `sourceRef` names Flux's own source as `<namespace>/<name>`.
@@ -139,7 +151,10 @@ export function pinSources(
         renderPinSource(
           artifact.name === ESTATE ? ESTATE_SOURCE : sourceOf(artifact.name),
           artifact.name,
-          unitsOf(artifact, projects, platform),
+          unitsOf(artifact, projects, platform).map((unit) => ({
+            ...unit,
+            after: unit.after.filter((name) => onPath.has(name)),
+          })),
           flux,
         ),
         path,
