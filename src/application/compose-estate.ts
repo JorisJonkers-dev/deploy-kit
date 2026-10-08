@@ -650,6 +650,7 @@ function composition(
           annotations as Readonly<Record<string, string>>,
         ]),
       ),
+      new Set(Object.keys(input.pins)),
     ),
     lock,
     statuses: statusesOf(input, isolated),

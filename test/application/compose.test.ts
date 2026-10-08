@@ -834,6 +834,46 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     ).toStrictEqual(Object.keys(unpinned).sort());
   });
 
+  it("recreates a Project's Deployments on its first delivery alone, and never the estate's", () => {
+    /** Whether each written source's units carry the recreation patch. */
+    const recreating = (composition: Composition) =>
+      composition.sources.map(({ name, text: body }) => [
+        name,
+        parseAllDocuments(body)
+          .map((document) => document.toJSON() as Record<string, unknown>)
+          .filter(({ kind }) => kind === "Kustomization")
+          .every(
+            ({ spec }) => (spec as { patches?: unknown }).patches !== undefined,
+          ),
+      ]);
+    const first = delivered();
+
+    // No pin yet: every Project's source is a first delivery, the handover's.
+    expect(recreating(first)).toStrictEqual([
+      ["_estate", false],
+      ["data", true],
+      ["delivery", true],
+      ["edge", true],
+      ["notes", true],
+      ["observability", true],
+      ["secrets", true],
+    ]);
+    // A pin that moves is rewritten without it.
+    const stale = {
+      ...pinned(first),
+      notes: { contentHash: sha256Hasher("older notes"), annotations: {} },
+    };
+    expect(
+      recreating(
+        delivered({
+          held: RELEASES,
+          pins: stale,
+          previous: { lock: first.lock, commit: hex("estate-commit", 40) },
+        }),
+      ),
+    ).toStrictEqual([["notes", false]]);
+  });
+
   it("gives each tier's routes a unit that follows that tier's proxy and the Projects it serves, and no unit where the artifact holds no index", () => {
     // Two tiers, a Project on each, and their proxies in a third: enough of a
     // resolved union to tell one tier's Projects from the other's.

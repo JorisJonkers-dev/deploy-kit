@@ -155,6 +155,7 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 | | `sourceRef`, `path` | the `OCIRepository` above, and the unit's directory in the artifact |
 | | `dependsOn` | every unit this one follows that is on the estate path, by name, in name order; absent where it follows none. A unit of a Project still on the old path ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)) is left out: it has no Kustomization here, so Flux would wait on it for ever, and the Project is already running where the old path put it. The source is rewritten on the dependent's next pin move after that Project hands over, and the edge returns then |
 | | `interval`, `prune`, `wait` | `10m`, `true`, `true`: a unit is Ready when what it applied is, so a Job that fails holds every unit that follows it |
+| | `patches` | on a Project's first delivery alone, the one that hands it over ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)): one patch, targeting kind `Deployment`, that annotates each `kustomize.toolkit.fluxcd.io/force: Enabled`, so Flux recreates a Deployment whose selector the old path set differently rather than refuse it. Absent from every later rewrite, and from the estate-scoped artifact's source. No other kind is marked: a claim recreated is a claim emptied |
 
 A Project's artifact holds its one unit. The estate-scoped artifact holds
 `estate-vso-secrets` where it carries the Vault policy job, and one

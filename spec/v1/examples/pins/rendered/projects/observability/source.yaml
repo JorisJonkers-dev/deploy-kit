@@ -33,3 +33,13 @@ spec:
     kind: OCIRepository
     name: project-observability
   path: ./apps/observability
+  patches:
+    - patch: |
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: any
+          annotations:
+            kustomize.toolkit.fluxcd.io/force: Enabled
+      target:
+        kind: Deployment

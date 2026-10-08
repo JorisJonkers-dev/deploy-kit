@@ -3,7 +3,8 @@
 // `OCIRepository` names the artifact by digest and says whose keyless
 // signature it accepts, and one Kustomization per Reconcile Unit applies that
 // unit's path inside it, after the units it follows. Composition writes the
-// file whenever the artifact's pin moves, the first delivery among them.
+// file whenever the artifact's pin moves, the first delivery among them, and
+// a Project's first delivery recreates a Deployment it cannot update in place.
 import type { FluxKustomization, OciRepository } from "../../objects/custom.ts";
 import type { RenderedObject } from "../../objects/deliverable.ts";
 import { managedOnly } from "../shared/labels.ts";
@@ -43,6 +44,33 @@ export const UNPUBLISHED = `sha256:${"0".repeat(64)}`;
 const exactly = (text: string): string =>
   `^${text.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)}$`;
 
+/**
+ * Flux's per-object policy: an object whose immutable fields differ from what
+ * is live is deleted and recreated rather than refused.
+ */
+export const FORCE_ANNOTATION = "kustomize.toolkit.fluxcd.io/force";
+
+/**
+ * The patch a Project's first delivery applies: every Deployment it holds is
+ * marked for recreation. A live Deployment that the old path applied selects
+ * on fewer labels than the render's, and a selector is immutable, so taking it
+ * over in place is refused (spec/v1/60-setup.md#handing-over-one-project-at-a-time).
+ * Nothing else is marked: a claim recreated is a claim emptied.
+ */
+export const RECREATE_DEPLOYMENTS = {
+  patch: [
+    "apiVersion: apps/v1",
+    "kind: Deployment",
+    "metadata:",
+    // With a target, the name in the patch is not read.
+    "  name: any",
+    "  annotations:",
+    `    ${FORCE_ANNOTATION}: Enabled`,
+    "",
+  ].join("\n"),
+  target: { kind: "Deployment" },
+} as const;
+
 /** The name a Project's source carries; the estate's own is {@link ESTATE_SOURCE}. */
 export const sourceOf = (project: string): string => `project-${project}`;
 
@@ -73,6 +101,7 @@ export function renderPinSource(
   units: readonly SourceUnit[],
   flux: FluxFacts,
   annotations: Readonly<Record<string, string>> = {},
+  recreate = false,
 ): RenderedObject[] {
   const repository: OciRepository = {
     apiVersion: "source.toolkit.fluxcd.io/v1",
@@ -117,6 +146,7 @@ export function renderPinSource(
         ...(after.length === 0
           ? {}
           : { dependsOn: after.map((unit) => ({ name: unit })) }),
+        ...(recreate ? { patches: [RECREATE_DEPLOYMENTS] } : {}),
       },
     })),
   ];
