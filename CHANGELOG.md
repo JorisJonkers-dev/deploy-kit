@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.8.0...v0.8.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* depend only on units on the estate path while the estate is handed over ([#299](https://github.com/JorisJonkers-dev/deploy-kit/issues/299)) ([685e305](https://github.com/JorisJonkers-dev/deploy-kit/commit/685e305720b03a0b6a834722620d67a4f553d7a4)), closes [#298](https://github.com/JorisJonkers-dev/deploy-kit/issues/298)
+* hold each Process's pods to the nodes its placement resolved ([#296](https://github.com/JorisJonkers-dev/deploy-kit/issues/296)) ([5415788](https://github.com/JorisJonkers-dev/deploy-kit/commit/5415788af12ddb31b1b1cd27785b60f226d14621)), closes [#259](https://github.com/JorisJonkers-dev/deploy-kit/issues/259)
+
 ## [0.8.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.7.0...v0.8.0) (2026-10-07)
 
 
