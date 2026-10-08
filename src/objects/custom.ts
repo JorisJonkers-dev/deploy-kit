@@ -113,6 +113,7 @@ export interface OciRepository {
     readonly interval: string;
     readonly url: string;
     readonly ref: { readonly digest: string };
+    readonly secretRef?: { readonly name: string };
     readonly verify: {
       readonly provider: "cosign";
       readonly matchOIDCIdentity: readonly {

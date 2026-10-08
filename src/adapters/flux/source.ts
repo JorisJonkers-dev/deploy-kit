@@ -23,6 +23,8 @@ export interface FluxFacts {
   /** Where each artifact is published, one below it per Project. */
   readonly repository: string;
   readonly signer: { readonly issuer: string; readonly subject: string };
+  /** The Secret in Flux's namespace a private repository is pulled with; none for a public one. */
+  readonly pullSecret?: string | undefined;
 }
 
 /** How often a source is fetched and a unit is reconciled: one cadence, stated by the chapter. */
@@ -118,6 +120,9 @@ export function renderPinSource(
       interval: INTERVAL,
       url: `oci://${artifactRepositoryOf(flux.repository, artifact)}`,
       ref: { digest: UNPUBLISHED },
+      ...(flux.pullSecret === undefined
+        ? {}
+        : { secretRef: { name: flux.pullSecret } }),
       verify: {
         provider: "cosign",
         matchOIDCIdentity: [

@@ -63,7 +63,8 @@ FluxSource returns FluxSource:
 
 RenderedArtifacts returns RenderedArtifacts:
 	(('repository' ':' repository=Text)
-	& ('signer' ':' BEGIN signer=ArtifactSigner END));
+	& ('signer' ':' BEGIN signer=ArtifactSigner END)
+	& ('pullSecret' ':' pullSecret=Text)?);
 
 ArtifactSigner returns ArtifactSigner:
 	(('issuer' ':' issuer=Text)
@@ -185,7 +186,7 @@ PlatformKeyword:
 	'acme' | 'address' | 'analysis' | 'apiAccess' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cidr' | 'cluster' | 'clusterDns' | 'cni' | 'collector' |
 	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'egress' | 'embedded' | 'engines' | 'ephemeral' | 'estate' | 'etcd' |
 	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'handover' | 'hardening' | 'holders' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
-	'metrics' | 'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'policyJob' | 'providers' | 'restricted' | 'retireBy' |
+	'metrics' | 'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'policyJob' | 'providers' | 'pullSecret' | 'restricted' | 'retireBy' |
 	'repository' | 'retain' | 'runner' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'server' | 'serverCount' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
 	'surfaces' | 'telemetry' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'vault';
 

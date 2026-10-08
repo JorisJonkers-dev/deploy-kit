@@ -146,6 +146,7 @@ export function pinSources(
     namespace: sourceRef.split("/")[0] as string,
     repository: published.repository,
     signer: published.signer,
+    pullSecret: published.pullSecret,
   };
   return artifacts.map((artifact) => {
     const path = `projects/${artifact.name}/source.yaml`;

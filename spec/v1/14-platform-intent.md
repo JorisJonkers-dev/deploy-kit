@@ -178,6 +178,7 @@ bootstrap:
       signer:                                # the keyless identity Flux verifies against
         issuer: "https://token.actions.githubusercontent.com"
         subject: "https://github.com/JorisJonkers-dev/estate/.github/workflows/compose.yml@refs/heads/main"
+      pullSecret: render-pull                # optional: the Secret a private repository is pulled with
   vault:
     unsealed: true                           # unseal is out of band
   crds:                                      # cluster-scoped schema, pinned
@@ -190,7 +191,7 @@ bootstrap:
 | in the set | why it cannot be declared |
 |---|---|
 | k3s itself | it is what applies |
-| the Flux source | `sourceRef` pulls the estate repository, which holds every Project's pinned source; `artifacts` says where those sources fetch each Project's render and whose keyless signature they accept ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)) |
+| the Flux source | `sourceRef` pulls the estate repository, which holds every Project's pinned source; `artifacts` says where those sources fetch each Project's render and whose keyless signature they accept ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)), and, where that repository is private, `pullSecret` names the Secret in Flux's namespace each source pulls it with. The Secret is the bootstrap's, written beside Flux's own credentials: a pull credential is a secret value the model never holds, so the model names it and nothing more |
 | Vault's unseal | a secret the model must never hold |
 | the CRDs the estate uses | cluster-scoped schema that must exist before any object of that kind can apply; the components that *use* them are declared Applications |
 

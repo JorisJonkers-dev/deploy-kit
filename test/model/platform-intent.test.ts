@@ -91,6 +91,29 @@ describe("parsePlatformIntent", () => {
     ]);
   });
 
+  it("reads the Secret a private artifact repository is pulled with, and refuses an empty name", () => {
+    // The worked estate names none; a private repository names the Secret
+    // Flux pulls it with (spec/v1/14-platform-intent.md#the-bootstrap-set).
+    const withSecret = (name: string) =>
+      WORKED.replace(
+        "      repository: ghcr.io/jorisjonkers-dev/render\n",
+        `      repository: ghcr.io/jorisjonkers-dev/render\n      pullSecret: ${name}\n`,
+      );
+    const pulled = parsePlatformIntent(withSecret("render-pull"));
+    const worked = parsePlatformIntent(WORKED);
+
+    expect(
+      pulled.ok && pulled.value.document.bootstrap.flux.artifacts.pullSecret,
+    ).toBe("render-pull");
+    expect(
+      worked.ok &&
+        "pullSecret" in worked.value.document.bootstrap.flux.artifacts,
+    ).toBe(false);
+    expect(refusalsOf(withSecret('""'))).toStrictEqual([
+      { code: "schema", path: "/bootstrap/flux/artifacts/pullSecret" },
+    ]);
+  });
+
   it("refuses a handover ledger that puts a Project on both paths, naming each", () => {
     // Two sources applying one Project prune each other
     // (spec/v1/60-setup.md#handing-over-one-project-at-a-time).
