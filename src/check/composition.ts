@@ -492,6 +492,40 @@ export function setDiagnostics(
             hint: "Declare the Secret Store in a project file the platform owns, with an `http` surface on one of its Processes.",
           },
         ];
+  // A stated location stands for an Application the old path still runs, and
+  // an instance for its one Process.
+  const legacy = new Set(platform.document.handover?.legacy);
+  const serving: Diagnostic[] = (
+    platform.document.handover?.serving ?? []
+  ).flatMap((location, index) =>
+    projects.flatMap(({ document }) =>
+      document.applications
+        .filter(({ id }) => id === location.application)
+        .flatMap(({ processes }) =>
+          !legacy.has(document.project)
+            ? [
+                {
+                  code: "E_HANDOVER_SERVING" as const,
+                  document: platform.name,
+                  path: `/handover/serving/${String(index)}`,
+                  message: `the handover ledger states where ${location.application} serves, but its project ${document.project} is not legacy`,
+                  hint: "Remove the location in the change that moves the Project to `estate`.",
+                },
+              ]
+            : location.instance !== undefined && processes.length > 1
+              ? [
+                  {
+                    code: "E_HANDOVER_SERVING" as const,
+                    document: platform.name,
+                    path: `/handover/serving/${String(index)}`,
+                    message: `the handover ledger states one instance for ${location.application}, which runs ${String(processes.length)} Processes`,
+                    hint: "State only the namespace, or split the Application.",
+                  },
+                ]
+              : [],
+        ),
+    ),
+  );
   return [
     ...proxies,
     ...machinery,
@@ -500,6 +534,7 @@ export function setDiagnostics(
     ...stack,
     ...release,
     ...secrets,
+    ...serving,
     ...projects.flatMap(({ name, document }) =>
       projectRefusals(document, platform.document, estate).map((refusal) => ({
         ...refusal,

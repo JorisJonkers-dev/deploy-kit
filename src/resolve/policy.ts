@@ -12,6 +12,7 @@ import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
 import {
   backupIdentityOf,
+  homeOf,
   migrationIdentityOf,
   namespaceOf,
 } from "../model/runtime-profiles.ts";
@@ -33,17 +34,15 @@ export interface PolicyContext {
 
 /** Every Process of `application`, each as a peer in its own namespace. */
 export const peersOf = (
+  platform: Pick<PlatformIntentDocument, "handover">,
   application: string | undefined,
   union: readonly EffectiveProject[],
 ): { readonly namespace: string; readonly process: string }[] =>
   union.flatMap(({ project, applications }) =>
     applications
       .filter(({ id }) => id === application)
-      .flatMap(({ processes }) =>
-        processes.map(({ name }) => ({
-          namespace: namespaceOf(project),
-          process: name,
-        })),
+      .flatMap(({ id, processes }) =>
+        processes.map(({ name }) => homeOf(platform, project, id, name)),
       ),
   );
 
@@ -81,26 +80,30 @@ export function ingressOf(
         const tier = context.platform.tiers.find(({ audiences }) =>
           audiences.includes(audience),
         ) as PlatformIntentDocument["tiers"][number];
-        return peersOf(tier.traefik, context.union).map((peer): Ingress => ({
-          rule: "tier-proxy",
-          ...peer,
-          port: port(route.surface),
-        }));
+        return peersOf(context.platform, tier.traefik, context.union).map(
+          (peer): Ingress => ({
+            rule: "tier-proxy",
+            ...peer,
+            port: port(route.surface),
+          }),
+        );
       }),
   );
   const scrape = application.observability?.scrape;
   const metrics =
     scrape?.process === process.name
-      ? peersOf(context.platform.telemetry?.metrics, context.union).map(
-          (peer): Ingress => ({
-            rule: "metrics-stack",
-            ...peer,
-            port: port(scrape.surface),
-          }),
-        )
+      ? peersOf(
+          context.platform,
+          context.platform.telemetry?.metrics,
+          context.union,
+        ).map((peer): Ingress => ({
+          rule: "metrics-stack",
+          ...peer,
+          port: port(scrape.surface),
+        }))
       : [];
   const consumers = context.union.flatMap(({ project, applications }) =>
-    applications.flatMap(({ processes }) =>
+    applications.flatMap(({ id, processes }) =>
       processes.flatMap((consumer) =>
         // A missing list and an empty one admit the same nothing.
         // Stryker disable next-line ArrayDeclaration
@@ -112,8 +115,7 @@ export function ingressOf(
           )
           .map((edge): Ingress => ({
             rule: "consumer",
-            namespace: namespaceOf(project),
-            process: consumer.name,
+            ...homeOf(context.platform, project, id, consumer.name),
             port: port(edge.surface),
           })),
       ),
@@ -136,13 +138,23 @@ export function ingressOf(
         ];
   // The migration of every Application whose database this Process holds:
   // its identity reaches the surface that Application's own edge names.
-  const here = namespaceOf(context.project);
+  const here = homeOf(
+    context.platform,
+    context.project,
+    application.id,
+    process.name,
+  );
   const migrations = context.union.flatMap(({ project, applications }) =>
     applications.filter(managed).flatMap((consumer): Ingress[] => {
       // A managed Application derives a database, or E_MIGRATION_WITHOUT_DATABASE
       // refused it, and its edge resolves, or the union's references refused it.
-      const datastore = datastoreOf(consumer, context.union) as Egress;
-      return datastore.namespace === here && datastore.process === process.name
+      const datastore = datastoreOf(
+        consumer,
+        context.union,
+        context.platform,
+      ) as Egress;
+      return datastore.namespace === here.namespace &&
+        datastore.process === here.process
         ? [
             {
               rule: "migration",
@@ -174,15 +186,14 @@ export function storeOf(
     .flatMap(({ project, applications }) =>
       applications
         .filter(({ id }) => id === context.platform.secretStore)
-        .flatMap(({ processes }) =>
+        .flatMap(({ id, processes }) =>
           processes.flatMap(({ name, provides }) =>
             provides?.[STORE_SURFACE] === undefined
               ? []
               : [
                   {
                     rule: "secret-store" as const,
-                    namespace: namespaceOf(project),
-                    process: name,
+                    ...homeOf(context.platform, project, id, name),
                     port: provides[STORE_SURFACE],
                   },
                 ],

@@ -78,6 +78,7 @@ other resolves and every policy one asks for the other offers:
 | an Application moves its schema with a changelog and no Process of it switches `blue-green`: none is `continuous`, or the Application is `delivery.machinery` | `E_MIGRATION_UNGATED` |
 | an Application's cutover is `continuous` and the platform declares no `delivery` policy | `E_NO_DELIVERY_POLICY` |
 | a project file names a project the `handover` ledger puts on neither delivery path | `E_HANDOVER_UNLISTED` |
+| a `handover.serving` location names an Application a project file read beside it declares in a Project the ledger does not put on `legacy`, or states an `instance` for an Application of more than one Process | `E_HANDOVER_SERVING` |
 
 A refusal names the document it points into as well as the path, because the
 object at fault can sit in either: a proxy nothing declares is the tier's, and an
@@ -597,8 +598,14 @@ which reads a credential from the store (`E_NO_SECRET_STORE`).
 ```yaml
 handover:
   retireBy: 2027-03-31
-  legacy: [auth, data, knowledge, notes]
-  estate: [delivery, edge, observability, secrets]
+  legacy: [auth, data, edge, knowledge, notes, secrets]
+  estate: [delivery, observability]
+  serving:                       # where the old path runs what the estate path reaches
+    - application: vault
+      namespace: data-system
+    - application: traefik-public
+      namespace: ingress-system
+      instance: traefik-ingress-system
 ```
 
 Which delivery path each Project is on while the estate moves off `fleet-infra`:
@@ -608,6 +615,21 @@ checked on this document alone; a project file read beside it and named on
 neither is `E_HANDOVER_UNLISTED`. The steps are
 [chapter 60](60-setup.md#handing-over-one-project-at-a-time)'s. The block is
 optional, and is removed once `legacy` is empty.
+
+**`serving` says where the old path actually runs a `legacy` Application** that
+the estate path reaches: the Secret Store a grant reads, the tier's Traefik a
+route is admitted from, a datastore an edge names. The old path did not place
+them where their own declarations do, so while their Project is `legacy`, the
+estate path reaches each one at its stated `namespace`, through the `instance`
+label its pods and its Service carry (the Process's own name where `instance` is
+left out). Every peer a policy admits or reaches, every address a Process is
+handed, and the Vault policy job's own namespace follow the statement. A
+location stands only while its Project is `legacy`, and is removed in the
+change that moves the Project to `estate`, which then runs it where its
+declaration says; a location for an Application of an `estate` Project, or one
+`instance` for an Application of more than one Process, is `E_HANDOVER_SERVING`.
+A location naming an Application no project file read beside it declares is not
+refused, as the ledger's own names are not.
 
 ## Providers
 
@@ -774,6 +796,11 @@ classDiagram
         +ProjectName[] legacy
         +ProjectName[] estate
     }
+    class ServingLocation {
+        +string application
+        +string namespace
+        +string instance
+    }
     class ApiAccessPolicy {
         +ApplicationId[] holders
         +DestinationRange[] server
@@ -822,6 +849,7 @@ classDiagram
     Platform "1" *-- "0..1" VaultPolicyJob : policyJob
     DeliveryPolicy "1" *-- "1" AnalysisPolicy : analysis
     Platform "1" *-- "0..1" HandoverLedger : handover
+    HandoverLedger "1" *-- "0..*" ServingLocation : serving
     Platform "1" *-- "0..*" Provider : providers
     Bootstrap "1" *-- "1" FluxSource : flux
     FluxSource "1" *-- "1" RenderedArtifacts : artifacts

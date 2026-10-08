@@ -5,7 +5,7 @@ import type { EffectiveProject } from "../model/effective-intent.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import type { DependencyEdge } from "../model/project-intent.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
-import { addressOf, namespaceOf } from "../model/runtime-profiles.ts";
+import { addressOf, homeOf } from "../model/runtime-profiles.ts";
 import { brokenInvariant } from "../model/internal-failure.ts";
 
 export type ResolvedEdge = NonNullable<ResolvedProcess["dependencies"]>[number];
@@ -22,19 +22,15 @@ export function resolveEdge(
       if (declared.id === application)
         for (const process of declared.processes) {
           const port = process.provides?.[surface];
-          if (port !== undefined)
+          if (port !== undefined) {
+            const home = homeOf(platform, project, application, process.name);
             return {
               application,
               surface,
-              address: addressOf(process.name, project, port),
-              peers: [
-                {
-                  namespace: namespaceOf(project),
-                  process: process.name,
-                  port,
-                },
-              ],
+              address: addressOf(home, port),
+              peers: [{ ...home, port }],
             };
+          }
         }
   const provider = platform.providers?.find(
     ({ name, surfaces }) =>

@@ -337,6 +337,13 @@ producer.
 | from the migration identity of each Application whose database the Process holds, to the surface that Application's edge names | every Application of the union that moves its schema with a changelog and reaches this Process's database ([The database catalog](#the-database-catalog)) | ingress |
 | to where the Kubernetes API answers, by address | the Process's `api`, and the Platform document's `apiAccess.server` ([Kubernetes API access is declared and admitted](#kubernetes-api-access-is-declared-and-admitted)) | egress |
 
+A peer on another Application is admitted, and reached, where it runs: the
+`<project>-system` of the project that declares it, under its Process's name.
+While that project is still `legacy`, the old path may run it elsewhere, so the
+peer is where the handover ledger's `serving` states it runs, and so is the
+address a Process is handed for it
+([chapter 14](14-platform-intent.md#handover-ledger)).
+
 ### The baseline
 
 Two rules are in the rendered set for every Process and appear in no

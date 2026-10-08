@@ -20,6 +20,7 @@ one defect so the refusal has a single cause.
 | [`migration-without-database/`](migration-without-database/) | `E_MIGRATION_WITHOUT_DATABASE` | a changelog on an Application that derives no database ([chapter 10](../../10-project-intent.md#migration)) |
 | [`credentials-without-database/`](credentials-without-database/) | `E_CREDENTIALS_WITHOUT_DATABASE` | `credentials` on an edge to a provider that owns no database ([chapter 10](../../10-project-intent.md#migration)) |
 | [`handover-both-paths/`](handover-both-paths/) | `E_HANDOVER_BOTH_PATHS` | a handover ledger naming one Project on both delivery paths ([chapter 60](../../60-setup.md#handing-over-one-project-at-a-time)) |
+| [`handover-serving/`](handover-serving/) | `E_HANDOVER_SERVING` | a handover ledger stating where the old path runs an Application whose Project is on the estate path ([chapter 14](../../14-platform-intent.md#handover-ledger)) |
 | [`handover-unlisted/`](handover-unlisted/) | `E_HANDOVER_UNLISTED` | a project file read beside a handover ledger that names it on no path ([chapter 60](../../60-setup.md#handing-over-one-project-at-a-time)) |
 | [`no-delivery-policy/`](no-delivery-policy/) | `E_NO_DELIVERY_POLICY` | a continuous Application read beside a Platform document that offers no `delivery` policy ([chapter 14](../../14-platform-intent.md#delivery-policy)) |
 | [`no-migration-policy/`](no-migration-policy/) | `E_NO_MIGRATION_POLICY` | a changelog read beside a Platform document that offers no runner ([chapter 14](../../14-platform-intent.md#migration-policy)) |

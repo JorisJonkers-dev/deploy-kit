@@ -253,8 +253,8 @@ query datastoreOf(app : EffectiveApplication) : Sequence(PolicyPeer) =
 			->select(p | ownsDatabases(p) and p.provides->exists(s | s.key = e.surface))
 			->collect(p | object PolicyPeer {
 				rule := 'datastore';
-				namespace := namespaceOf(prj.project);
-				process := p.name;
+				namespace := homeNamespace(prj.project, e.application);
+				process := homeProcess(e.application, p.name);
 				port := p.provides->select(s | s.key = e.surface)->any(true).value;
 			})))->flatten()->asSequence();
 
@@ -627,6 +627,27 @@ query policySurface(policy : EnginePolicy) : String =
 query owner(p : PI::Process) : String =
 	projects->select(prj | prj.applications.processes->includes(p))->first().project;
 
+-- The Application a Process belongs to.
+query applicationOf(p : PI::Process) : String =
+	projects.applications->select(a | a.processes->includes(p))->first().id;
+
+-- Where the handover ledger states the old path runs `application`: one
+-- location, or none (spec/v1/14-platform-intent.md#handover-ledger).
+query stated(application : String) : Sequence(ServingLocation) =
+	if estate.handover = null then Sequence{}
+	else estate.handover.serving->select(l | l.application = application)->asSequence() endif;
+
+-- Where one Process of `application` serves: its project's namespace under its
+-- own name, or, while its project is legacy, where the ledger states it runs.
+query homeNamespace(prj : String, application : String) : String =
+	if stated(application)->isEmpty() then namespaceOf(prj)
+	else stated(application)->first().namespace endif;
+
+query homeProcess(application : String, process : String) : String =
+	if stated(application)->isEmpty() then process
+	else if stated(application)->first().instance = null then process
+	else stated(application)->first().instance endif endif;
+
 query engineMethod(p : PI::Process) : String =
 	if not p.oclAsType(ECORE::EObject).states('engine') then unengined(p)
 	else if p.engine = Engine::postgres then estate.engines.postgres.backup
@@ -687,10 +708,11 @@ query edgeOf(e : DependencyEdge) : ResolvedEdge =
 		object ResolvedEdge {
 			application := e.application;
 			surface := e.surface;
-			address := first.process.name + '.' + namespaceOf(first.project) + '.svc.cluster.local:' + at.toString();
+			address := homeProcess(e.application, first.process.name) + '.'
+				+ homeNamespace(first.project, e.application) + '.svc.cluster.local:' + at.toString();
 			peers := Sequence{object PolicyPeer {
-				namespace := namespaceOf(first.project);
-				process := first.process.name;
+				namespace := homeNamespace(first.project, e.application);
+				process := homeProcess(e.application, first.process.name);
 				port := at;
 			}};
 		}
@@ -885,8 +907,8 @@ query surfaceAddress(application : String, surface : String) : String =
 			->collect(p | Tuple{project = prj.project, process = p}))->flatten() in
 	if providers->isEmpty() then null
 	else let first : Tuple(project : String, process : PI::Process) = providers->first() in
-		first.process.name + '.' + namespaceOf(first.project) + '.svc.cluster.local:'
-			+ first.process.provides->select(s | s.key = surface)->any(true).value.toString()
+		homeProcess(application, first.process.name) + '.' + homeNamespace(first.project, application)
+			+ '.svc.cluster.local:' + first.process.provides->select(s | s.key = surface)->any(true).value.toString()
 	endif;
 
 -- ================================================================== exposure
@@ -903,7 +925,8 @@ mapping Exposure::exposure(in app : EffectiveApplication, in prj : EffectiveProj
 	listener := if tierFor(self.audience).listener = Listener::tls then 'tls' else 'plain' endif;
 	certificates := if tierFor(self.audience).certificates = CertificateSource::acme then 'acme' else 'none' endif;
 	proxyApplication := tierFor(self.audience).traefik.id;
-	proxyNamespace := namespaceOf(projectOf(tierFor(self.audience).traefik.id));
+	proxyNamespace := homeNamespace(projectOf(tierFor(self.audience).traefik.id),
+		tierFor(self.audience).traefik.id);
 	routes := self.routes->collect(r | object ResolvedRoute {
 		path := r.path;
 		match := r.match.resolvedMatch();
@@ -1182,17 +1205,19 @@ query migrationsOf(p : PI::Process)
 		: Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)) =
 	projects->collect(prj | prj.applications->select(a | managed(a))->collect(a |
 		(if datastoreOf(a)->isEmpty() then Sequence{} else Sequence{datastoreOf(a)->first()} endif)
-			->select(d | d.namespace = namespaceOf(owner(p)) and d.process = p.name)
+			->select(d | d.namespace = homeNamespace(owner(p), applicationOf(p))
+				and d.process = homeProcess(applicationOf(p), p.name))
 			->collect(d | Tuple{rule = 'migration', namespace = namespaceOf(prj.project),
 				process = a.id + '-migration', port = d.port})))->flatten();
 
 -- Every Process of the union whose edge names this Application and a surface this Process provides.
 query consumersOf(p : PI::Process, app : EffectiveApplication)
 		: Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)) =
-	projects->collect(prj | prj.applications.processes->collect(consumer |
+	projects->collect(prj | prj.applications->collect(a | a.processes->collect(consumer |
 		consumer.dependsOn->select(e | e.application = app.id and p.provides->exists(s | s.key = e.surface))
-			->collect(e | Tuple{rule = 'consumer', namespace = namespaceOf(prj.project), process = consumer.name,
-				port = p.provides->select(s | s.key = e.surface)->any(true).value})))->flatten();
+			->collect(e | Tuple{rule = 'consumer', namespace = homeNamespace(prj.project, a.id),
+				process = homeProcess(a.id, consumer.name),
+				port = p.provides->select(s | s.key = e.surface)->any(true).value}))))->flatten();
 
 -- What a Process may reach beyond its edges: the cluster's DNS, and the Secret
 -- Store where it holds a grant.
@@ -1210,8 +1235,8 @@ query storePeers() : Sequence(PolicyPeer) =
 		let first : Tuple(project : String, process : PI::Process) = providers->first() in
 		Sequence{object PolicyPeer {
 			rule := 'secret-store';
-			namespace := namespaceOf(first.project);
-			process := first.process.name;
+			namespace := homeNamespace(first.project, estate.secretStore.id);
+			process := homeProcess(estate.secretStore.id, first.process.name);
 			port := first.process.provides->select(s | s.key = HTTP_SURFACE)->any(true).value;
 		}}
 	endif;
@@ -1220,7 +1245,8 @@ query storePeers() : Sequence(PolicyPeer) =
 query peersOf(application : String, at : Integer, admits : String)
 		: Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)) =
 	projects->collect(prj | prj.applications->select(a | a.id = application).processes
-		->collect(p | Tuple{rule = admits, namespace = namespaceOf(prj.project), process = p.name, port = at}))
+		->collect(p | Tuple{rule = admits, namespace = homeNamespace(prj.project, application),
+			process = homeProcess(application, p.name), port = at}))
 		->flatten();
 
 -- The port of `application`'s Process that provides this surface.

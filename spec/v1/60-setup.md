@@ -501,6 +501,14 @@ handover:
   ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)). Where no `estate`
   Project's render holds a Vault document, there is no estate-scoped artifact
   yet.
+- **The estate path reaches a `legacy` Application where the old path runs
+  it.** The foundation is handed over last, so until then the Secret Store a
+  grant reads and the Traefik a route is admitted from are the old path's, and
+  they do not run where their own declarations put them. The ledger's `serving`
+  states each one's namespace and instance
+  ([chapter 14](14-platform-intent.md#handover-ledger)), and the policy job, the
+  addresses and the policies follow it. Moving such a Project to `estate`
+  removes its location in the same change.
 
 **One step moves one Project, in three changes, in this order**, so that at no
 moment do two sources apply it:

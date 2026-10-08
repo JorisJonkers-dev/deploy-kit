@@ -55,7 +55,13 @@ Bootstrap returns Bootstrap:
 HandoverLedger returns HandoverLedger:
 	(('retireBy' ':' retireBy=Text)
 	& ('legacy' ':' BEGIN (DASH BEGIN legacy+=Text END | legacy+=Text)+ END)?
-	& ('estate' ':' BEGIN (DASH BEGIN estate+=Text END | estate+=Text)+ END)?);
+	& ('estate' ':' BEGIN (DASH BEGIN estate+=Text END | estate+=Text)+ END)?
+	& ('serving' ':' BEGIN (DASH BEGIN serving+=ServingLocation END)+ END)?);
+
+ServingLocation returns ServingLocation:
+	(('application' ':' application=Text)
+	& ('namespace' ':' namespace=Text)
+	& ('instance' ':' instance=Text)?);
 
 FluxSource returns FluxSource:
 	(('sourceRef' ':' sourceRef=Text)
@@ -185,9 +191,9 @@ Text returns ecore::EString:
 PlatformKeyword:
 	'acme' | 'address' | 'analysis' | 'apiAccess' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cidr' | 'cluster' | 'clusterDns' | 'cni' | 'collector' |
 	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'egress' | 'embedded' | 'engines' | 'ephemeral' | 'estate' | 'etcd' |
-	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'handover' | 'hardening' | 'holders' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
-	'metrics' | 'monitors' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'policyJob' | 'providers' | 'pullSecret' | 'restricted' | 'retireBy' |
-	'repository' | 'retain' | 'runner' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'server' | 'serverCount' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
+	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'handover' | 'hardening' | 'holders' | 'instance' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
+	'metrics' | 'monitors' | 'namespace' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'policyJob' | 'providers' | 'pullSecret' | 'restricted' | 'retireBy' |
+	'repository' | 'retain' | 'runner' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'server' | 'serverCount' | 'serving' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
 	'surfaces' | 'telemetry' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'vault';
 
 enum Datastore returns Datastore:
