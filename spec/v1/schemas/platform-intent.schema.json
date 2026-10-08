@@ -234,6 +234,10 @@
         },
         "signer": {
           "$ref": "#/$defs/ArtifactSigner"
+        },
+        "pullSecret": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [

@@ -797,6 +797,38 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     ]);
   });
 
+  it("pulls every pinned artifact with the Secret the Platform document names for a private repository", () => {
+    const { sources } = delivered({
+      platform: {
+        ...PLATFORM,
+        files: PLATFORM.files.map((file) =>
+          file.name === "platform.intent.yml"
+            ? {
+                ...file,
+                text: withLedger(file.text, "").replace(
+                  "      repository: ghcr.io/jorisjonkers-dev/render\n",
+                  "      repository: ghcr.io/jorisjonkers-dev/render\n      pullSecret: render-pull\n",
+                ),
+              }
+            : file,
+        ),
+      },
+    });
+
+    expect(
+      sources.map(({ name, text: body }) => [
+        name,
+        (
+          parseAllDocuments(body)
+            .map((document) => document.toJSON() as Record<string, unknown>)
+            .find(({ kind }) => kind === "OCIRepository")?.["spec"] as {
+            secretRef?: unknown;
+          }
+        ).secretRef,
+      ]),
+    ).toStrictEqual(sources.map(({ name }) => [name, { name: "render-pull" }]));
+  });
+
   it("writes none for an artifact whose pin stays, and rewrites one whose pin moves unless it is paused", () => {
     const first = delivered();
     const previous = { lock: first.lock, commit: hex("estate-commit", 40) };

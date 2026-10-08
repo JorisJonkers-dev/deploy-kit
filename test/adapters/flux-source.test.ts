@@ -143,6 +143,23 @@ describe("a pin source", () => {
     expect(FORCE_ANNOTATION).toBe("kustomize.toolkit.fluxcd.io/force");
   });
 
+  it("pulls a private repository with the Secret the Platform document names, and a public one with none", () => {
+    const secretOf = (pullSecret?: string) =>
+      (
+        renderPinSource("project-notes", "notes", [], {
+          ...FLUX,
+          pullSecret,
+        })[0] as OciRepository
+      ).spec.secretRef;
+
+    expect(secretOf("render-pull")).toStrictEqual({ name: "render-pull" });
+    expect(secretOf()).toBeUndefined();
+    expect(
+      "secretRef" in
+        (renderPinSource("s", "notes", [], FLUX)[0] as OciRepository).spec,
+    ).toBe(false);
+  });
+
   it("names the estate's own source apart from any Project's", () => {
     expect(ESTATE_SOURCE).toBe("estate");
     expect(sourceOf("estate")).toBe("project-estate");

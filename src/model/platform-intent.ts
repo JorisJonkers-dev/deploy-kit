@@ -55,13 +55,16 @@ const substrate = z
 
 // Where each Project's render is published and who signs it
 // (spec/v1/55-delivery.md#rendered-artifacts-and-pins): one artifact per
-// Project under `repository`, verified keyless against the signer's identity.
+// Project under `repository`, verified keyless against the signer's identity,
+// and pulled with the Secret `pullSecret` names where the repository is
+// private.
 const renderedArtifacts = z
   .strictObject({
     repository: text,
     signer: z
       .strictObject({ issuer: text, subject: text })
       .meta({ id: "ArtifactSigner" }),
+    pullSecret: text.optional(),
   })
   .meta({ id: "RenderedArtifacts" });
 

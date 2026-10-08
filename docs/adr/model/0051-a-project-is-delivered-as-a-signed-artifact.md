@@ -65,6 +65,12 @@ start rather than at composition. Publishing after the build, with digests
 resolved into the fragment's share of the images lock, moves that failure to
 the one place that can refuse it.
 
+**The renders stay private.** A render names every namespace, hostname, image
+digest and Vault path of the estate, so the repository it is published to is
+private, and Flux pulls it with a Secret the Platform document names and the
+bootstrap writes. The model holds the Secret's name, never its value, the same
+line it draws for every other credential.
+
 ## Alternatives
 
 | option | cost if taken | why rejected |
@@ -74,6 +80,7 @@ the one place that can refuse it.
 | A signing key held as a repository secret | works without OIDC | a long-lived secret to rotate and to leak |
 | Flux image automation writing tags back | built into Flux | reads a mutable tag, which the pinned-input rule forbids, and writes to application repositories |
 | Keep publishing fragments independently of images | intent-only changes publish sooner | a render can name a digest that does not exist yet |
+| Publish the renders publicly, so Flux pulls them with no credential | no Secret to bootstrap | every namespace, hostname, image digest and Vault path of the estate is readable by anyone |
 
 ## Reversibility
 
