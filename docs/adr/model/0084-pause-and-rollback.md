@@ -16,8 +16,9 @@ Flux still reconciles the pinned render, but no pin commit moves it. A
 named by its version, while the database schema stays at its newest. It is
 offered only for a release proven against the current schema, the one the
 current Migration Proof's `testedAgainst` names. It first takes a backup of the
-data the Project reaches, kept 7 days, moves the pin only once that backup has
-succeeded, and leaves the Project paused. Both are recorded as annotations on
+data the Project reaches, kept 7 days, and only once that backup has succeeded
+records its target, which composition moves the pin to, the one move a paused
+Project makes; it leaves the Project paused. Both are recorded as annotations on
 the Project's pin file
 ([chapter 55](../../../spec/v1/55-delivery.md#pause-and-rollback)).
 
@@ -31,7 +32,8 @@ human's pace, and a backup kept a week covers the time it takes to notice that
 the Rollback itself was wrong.
 
 **False if:** a Rollback to the release `testedAgainst` names fails against the
-newest schema, or a paused Project's pin moves. **Settled by:** roll back a
+newest schema, or a paused Project's pin moves anywhere but to the release its
+Rollback names. **Settled by:** roll back a
 Project with a database one release, read its data through the earlier release,
 resume it, and check that the pin moved exactly twice and the pre-rollback
 backup exists.
