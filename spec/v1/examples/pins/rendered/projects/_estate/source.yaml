@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
 spec:
   interval: 10m
-  url: oci://ghcr.io/jorisjonkers-dev/render/_estate
+  url: oci://ghcr.io/jorisjonkers-dev/render-estate
   ref:
     digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
   verify:

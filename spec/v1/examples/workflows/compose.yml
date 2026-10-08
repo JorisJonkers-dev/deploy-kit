@@ -159,12 +159,13 @@ jobs:
           # Each delivered Project's pin: the content hash its pinned artifact
           # carries, and the Pause and Rollback annotations on its source
           # (spec/v1/55-delivery.md#pause-and-rollback).
-          REPOSITORY="$(yq '.bootstrap.flux.artifacts.repository' platform/platform.intent.yml)"
           echo '{}' > pins.json
           for source in projects/*/source.yaml; do
             [ -f "$source" ] || continue
             project="$(basename "$(dirname "$source")")"
-            content="$(oras manifest fetch "${REPOSITORY}/${project}@$(yq '.spec.ref.digest' "$source")" \
+            # Where the artifact lives is what its own source names.
+            artifact="$(yq 'select(.kind == "OCIRepository") | .spec.url' "$source")"
+            content="$(oras manifest fetch "${artifact#oci://}@$(yq 'select(.kind == "OCIRepository") | .spec.ref.digest' "$source")" \
               | jq -r '.annotations["dev.jorisjonkers.content-hash"]')"
             jq --arg p "$project" --arg c "$content" \
                --argjson a "$(yq -o=json '.metadata.annotations // {} | with_entries(select(.key | test("^estate\\.jorisjonkers\\.dev/")))' "$source")" \
@@ -273,11 +274,13 @@ jobs:
         run: |
           # The toolkit decided which pins move: an unchanged render, and a
           # paused Project, move none (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
-          REPOSITORY="$(yq '.bootstrap.flux.artifacts.repository' platform/platform.intent.yml)"
           RENDER_HASH="$(jq -r '.spec.composedDigest' composed/lock.json)"
           : > moved.txt
-          for row in $(jq -r '.artifacts[] | select(.moves) | "\(.name)=\(.contentHash)"' composed/composition.json); do
-            project="${row%%=*}"; content="${row#*=}"
+          # Each artifact is published where its pin source points: a
+          # Project's below the repository, the estate's beside it
+          # (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
+          jq -r '.artifacts[] | select(.moves) | "\(.name) \(.repository) \(.contentHash)"' composed/composition.json |
+          while read -r project artifact content; do
             # The toolkit wrote the source of every artifact whose pin moves,
             # from the Platform document and the Reconcile Unit DAG; it
             # replaces the committed one, so a unit the artifact gains is
@@ -286,7 +289,7 @@ jobs:
             cp "composed/projects/${project}/source.yaml" "projects/${project}/source.yaml"
             # The digest is taken from the push itself, never re-read through a
             # mutable tag another run could move in between.
-            DIGEST="$( cd "composed/artifacts/${project}" && oras push "${REPOSITORY}/${project}:${content#sha256:}" \
+            DIGEST="$( cd "composed/artifacts/${project}" && oras push "${artifact}:${content#sha256:}" \
                 --annotation "dev.jorisjonkers.content-hash=${content}" \
                 --annotation "dev.jorisjonkers.render-hash=${RENDER_HASH}" \
                 --annotation "dev.jorisjonkers.lock-digest=${COMPOSED}" \
@@ -294,17 +297,15 @@ jobs:
                 --format go-template='{{.digest}}' . )"
             # Keyless: the identity is this run's OIDC token, so no signing key
             # exists to store, rotate or leak.
-            cosign sign --yes "${REPOSITORY}/${project}@${DIGEST}"
-            echo "${project} ${DIGEST}" >> moved.txt
+            cosign sign --yes "${artifact}@${DIGEST}"
+            echo "${project} ${artifact} ${DIGEST}" >> moved.txt
           done
-          echo "repository=${REPOSITORY}" >> "$GITHUB_OUTPUT"
           echo "issuer=$(yq '.bootstrap.flux.artifacts.signer.issuer' platform/platform.intent.yml)" >> "$GITHUB_OUTPUT"
           echo "subject=$(yq '.bootstrap.flux.artifacts.signer.subject' platform/platform.intent.yml)" >> "$GITHUB_OUTPUT"
 
       - name: Verify the value, not the command
         if: ${{ success() && github.ref == 'refs/heads/main' }}
         env:
-          REPOSITORY: ${{ steps.render.outputs.repository }}
           ISSUER: ${{ steps.render.outputs.issuer }}
           SUBJECT: ${{ steps.render.outputs.subject }}
         run: |
@@ -312,8 +313,8 @@ jobs:
           # accept what it fetches. Verify each new artifact the way Flux will:
           # by digest, against the signer the Platform document records, not
           # against whichever identity this run happens to have.
-          while read -r project digest; do
-            cosign verify "${REPOSITORY}/${project}@${digest}" \
+          while read -r project artifact digest; do
+            cosign verify "${artifact}@${digest}" \
               --certificate-oidc-issuer "$ISSUER" \
               --certificate-identity "$SUBJECT" \
               > /dev/null
@@ -332,7 +333,7 @@ jobs:
           test -s moved.txt || { echo "no render changed; nothing to deploy"; exit 0; }
           # A source file holds the pin and the units that apply it: the digest
           # is the OCIRepository's, and no other object's.
-          while read -r project digest; do
+          while read -r project _ digest; do
             DIGEST="$digest" yq -i '(select(.kind == "OCIRepository") | .spec.ref.digest) = strenv(DIGEST)' "projects/${project}/source.yaml"
           done < moved.txt
           git config user.name "estate-composition"

@@ -12,6 +12,7 @@
 // (spec/v1/55-delivery.md#pause-and-rollback). What comes out is one artifact
 // per Project and the estate, which pins move, the lock, and what the workflow
 // reports (spec/v1/55-delivery.md#notifications). Nothing here performs IO.
+import { artifactRepositoryOf } from "../adapters/flux/source.ts";
 import type { Adapter } from "../adapters/registry.ts";
 import { SECRETS_DIRECTORY } from "../adapters/shared/paths.ts";
 import type { CompositionLockDocument } from "../model/composition-lock.ts";
@@ -99,11 +100,13 @@ export interface ComposeOptions {
   readonly adapters?: readonly Adapter[];
 }
 
-/** One artifact's files, the hash of what it holds, and whether its pin moves. */
+/** One artifact's files, the hash of what it holds, where it is published, and whether its pin moves. */
 export interface ComposedArtifact {
   readonly name: string;
   readonly files: readonly RenderedFile[];
   readonly contentHash: string;
+  /** The OCI repository it is published to, the one its pin source names. */
+  readonly repository: string;
   readonly moves: boolean;
 }
 
@@ -540,12 +543,14 @@ function composition(
   const { hash } = options;
   const held = (name: string, annotation: string): boolean =>
     annotation in (input.pins[name]?.annotations ?? {});
+  const published = platformOf(input.platform).bootstrap.flux.artifacts;
   const artifacts = rendered.map(({ name, files }): ComposedArtifact => {
     const contentHash = hash(files.map(({ path, text }) => ({ path, text })));
     return {
       name,
       files,
       contentHash,
+      repository: artifactRepositoryOf(published.repository, name),
       // An unchanged render publishes nothing, and a paused Project moves no
       // pin, save to the release a Rollback composed it at.
       moves:
