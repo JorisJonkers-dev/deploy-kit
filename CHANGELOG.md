@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.9.0...v0.9.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* recreate a Project's Deployments on its first delivery, since a live selector cannot be updated in place ([#308](https://github.com/JorisJonkers-dev/deploy-kit/issues/308)) ([f077383](https://github.com/JorisJonkers-dev/deploy-kit/commit/f077383149e2884030a1d72cd1f60ed0c261f46b))
+
 ## [0.9.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.8.1...v0.9.0) (2026-10-08)
 
 
