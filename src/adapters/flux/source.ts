@@ -72,6 +72,7 @@ export function renderPinSource(
   artifact: string,
   units: readonly SourceUnit[],
   flux: FluxFacts,
+  annotations: Readonly<Record<string, string>> = {},
 ): RenderedObject[] {
   const repository: OciRepository = {
     apiVersion: "source.toolkit.fluxcd.io/v1",
@@ -80,6 +81,9 @@ export function renderPinSource(
       name: source,
       namespace: flux.namespace,
       labels: managedOnly(),
+      // A Pause or a Rollback recorded on the pin
+      // (spec/v1/55-delivery.md#pause-and-rollback): a rewrite keeps it.
+      ...(Object.keys(annotations).length === 0 ? {} : { annotations }),
     },
     spec: {
       interval: INTERVAL,

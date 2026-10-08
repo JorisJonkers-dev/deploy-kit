@@ -475,7 +475,7 @@ describe("composeEstate", () => {
     ]);
   });
 
-  it("composes a rolled-back Project at its held fragment, and moves no pin", () => {
+  it("composes a rolled-back Project at its held fragment, which its pin already holds", () => {
     const newest = release("notes", "1.1.0", paged);
     const composed = after({
       fragments: RELEASES.map((fragment) =>
@@ -501,10 +501,51 @@ describe("composeEstate", () => {
         project: "notes",
         condition: "rolled-back",
         title: "notes: rolled back to 1.0.0",
-        body: "Rolled back to 1.0.0 by joris at 2026-10-02T08:00:00Z: a bad release. It is composed at that release's fragment and moves no pin until it is resumed.",
+        body: "Rolled back to 1.0.0 by joris at 2026-10-02T08:00:00Z: a bad release. It is composed at that release's fragment, and its pin moves to no newer release until it is resumed.",
         discord: "notes rolled back to 1.0.0 by joris: a bad release",
       },
     ]);
+  });
+
+  it("moves a rolled-back Project's pin to the release it was rolled back to, keeping the record on its source", () => {
+    const newest = release("notes", "1.1.0", (body) =>
+      body.replace("memory: 256Mi", "memory: 320Mi"),
+    );
+    const rollback = {
+      ...PAUSE,
+      [PIN_ANNOTATIONS.rollbackVersion]: "1.0.0",
+      [PIN_ANNOTATIONS.rollbackFragment]: RELEASES[0]?.ref as string,
+    };
+    const fragments = RELEASES.map((fragment) =>
+      fragment.manifest.spec.project === "notes" ? newest : fragment,
+    );
+    // 1.1.0 is what the pin holds when the Rollback is recorded.
+    const deployed = after({ fragments });
+    const composed = after({
+      fragments,
+      pins: {
+        ...pinned(deployed),
+        notes: { ...(pinned(deployed).notes as Pin), annotations: rollback },
+      },
+      previous: { lock: deployed.lock, commit: hex("estate-commit", 40) },
+    });
+    const notes = composed.artifacts.find(({ name }) => name === "notes");
+
+    expect(notes?.moves).toBe(true);
+    expect(notes?.contentHash).toBe(
+      FIRST.artifacts.find(({ name }) => name === "notes")?.contentHash,
+    );
+    const source = composed.sources.find(({ name }) => name === "notes")?.text;
+    const [repository] = parseAllDocuments(source ?? "")
+      .map(
+        (document) =>
+          document.toJS() as {
+            kind: string;
+            metadata: { annotations?: unknown };
+          },
+      )
+      .filter(({ kind }) => kind === "OCIRepository");
+    expect(repository?.metadata.annotations).toStrictEqual(rollback);
   });
 
   it("fails the run on an error that names no changed fragment", () => {

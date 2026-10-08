@@ -130,6 +130,7 @@ export function pinSources(
   projects: readonly ResolvedProject[],
   platform: PlatformIntentDocument,
   serialize: Serializer,
+  held: Readonly<Record<string, Readonly<Record<string, string>>>> = {},
 ): PinSource[] {
   const onPath = new Set(
     delivered.flatMap((artifact) =>
@@ -157,6 +158,7 @@ export function pinSources(
             after: unit.after.filter((name) => onPath.has(name)),
           })),
           flux,
+          held[artifact.name],
         ),
         path,
       ),

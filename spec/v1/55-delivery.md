@@ -162,8 +162,8 @@ A Project's artifact holds its one unit. The estate-scoped artifact holds
 old path, it carries no route. A unit the artifact gains changes what it holds,
 so its pin moves and the rewritten source applies the new unit: the edge units
 when the last Project leaves the old path, and a tier's unit when the tier first
-carries a route. A moving pin carries no Pause, so the rewrite drops no
-annotation ([Pause and Rollback](#pause-and-rollback)).
+carries a route. The rewrite keeps the annotations a Pause or a Rollback
+recorded on the pin ([Pause and Rollback](#pause-and-rollback)).
 
 ## Pause and Rollback
 
@@ -203,7 +203,10 @@ one the current inputs produce. In order:
    datastore its edges reach. That backup is kept for 7 days beside the
    Durability Class's own copies, which it never counts against.
 3. **The pin moves only once the backup has succeeded.** A backup that fails
-   stops the Rollback with the pin where it was, and reports it.
+   stops the Rollback with the pin where it was, and reports it. Once it has
+   succeeded, the Rollback records its target on the pin file, and composition
+   moves the pin to that release's render: the one move a paused Project
+   makes.
 4. **The Project is left paused.** Its repository still publishes its newest
    release; without the Pause the next composition would deploy exactly what
    the Rollback removed. Resuming is a human's statement that the fix has
@@ -224,8 +227,9 @@ paused what, when and why:
 Their JSON Schema is
 [`schemas/pin-annotations.schema.json`](schemas/pin-annotations.schema.json).
 Composition reads the annotations as an input: a Project carrying
-`paused-by` moves no pin, and one carrying `rollback-fragment` is composed at
-that fragment. Resuming removes all five.
+`paused-by` moves no pin, save that one carrying `rollback-fragment` is
+composed at that fragment and its pin moves to that render wherever it holds
+another. A rewritten pin source keeps all of them. Resuming removes all five.
 
 ## Switchover
 

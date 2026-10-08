@@ -541,8 +541,8 @@ function composition(
   { artifacts: rendered, projects, cluster }: Delivered,
 ): Composition {
   const { hash } = options;
-  const paused = (name: string): boolean =>
-    PIN_ANNOTATIONS.pausedBy in (input.pins[name]?.annotations ?? {});
+  const held = (name: string, annotation: string): boolean =>
+    annotation in (input.pins[name]?.annotations ?? {});
   const published = platformOf(input.platform).bootstrap.flux.artifacts;
   const artifacts = rendered.map(({ name, files }): ComposedArtifact => {
     const contentHash = hash(files.map(({ path, text }) => ({ path, text })));
@@ -551,8 +551,12 @@ function composition(
       files,
       contentHash,
       repository: artifactRepositoryOf(published.repository, name),
-      // An unchanged render publishes nothing, and a held Project moves no pin.
-      moves: !paused(name) && input.pins[name]?.contentHash !== contentHash,
+      // An unchanged render publishes nothing, and a paused Project moves no
+      // pin, save to the release a Rollback composed it at.
+      moves:
+        (!held(name, PIN_ANNOTATIONS.pausedBy) ||
+          held(name, PIN_ANNOTATIONS.rollbackFragment)) &&
+        input.pins[name]?.contentHash !== contentHash,
     };
   });
 
@@ -633,14 +637,19 @@ function composition(
   return {
     artifacts,
     // Rewritten whenever the pin moves, so a unit an artifact gains is
-    // applied. A moving pin carries no Pause, so the rewrite drops no
-    // annotation.
+    // applied, keeping what a Pause or a Rollback recorded on the pin.
     sources: pinSources(
       artifacts.filter(({ moves }) => moves),
       rendered,
       projects,
       platformOf(input.platform),
       options.serialize,
+      Object.fromEntries(
+        Object.entries(input.pins).map(([name, { annotations }]) => [
+          name,
+          annotations as Readonly<Record<string, string>>,
+        ]),
+      ),
     ),
     lock,
     statuses: statusesOf(input, isolated),
@@ -734,7 +743,7 @@ function conditionsOf(
             project,
             condition: "rolled-back",
             title: `${project}: rolled back to ${target}`,
-            body: `Rolled back to ${target} by ${by} at ${at}: ${reason}. It is composed at that release's fragment and moves no pin until it is resumed.`,
+            body: `Rolled back to ${target} by ${by} at ${at}: ${reason}. It is composed at that release's fragment, and its pin moves to no newer release until it is resumed.`,
             discord: `${project} rolled back to ${target} by ${by}: ${reason}`,
           },
     );
