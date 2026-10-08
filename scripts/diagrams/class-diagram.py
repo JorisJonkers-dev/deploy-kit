@@ -131,6 +131,7 @@ TREES = {"10-project-intent": {
     "OffClusterCopy": ["DestinationRange"],
     "EnginePolicies": ["EnginePolicy"],
     "DeliveryPolicy": ["AnalysisPolicy"],
+    "HandoverLedger": ["ServingLocation"],
 }, "20-resolved-deployment": {
     # Sibling order puts GateMember next to ResolvedProbe, so the one
     # cross-link on the drawing joins two neighbours: the migration, whose

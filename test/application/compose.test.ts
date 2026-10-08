@@ -713,6 +713,52 @@ describe("composeEstate", () => {
     expect(estateOf(FIRST)).toBeUndefined();
   });
 
+  // deploy-kit#316, #310: while the Secret Store and the edge are legacy, the
+  // estate path reaches them where the ledger states the old path runs them.
+  it("reaches a legacy Application where the handover ledger states it serves", () => {
+    const composed = compose({
+      platform: {
+        ...PLATFORM,
+        files: PLATFORM.files.map((file) =>
+          file.name === "platform.intent.yml"
+            ? {
+                ...file,
+                text: withLedger(
+                  file.text,
+                  "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, edge, knowledge, observability, secrets]\n  estate: [data, delivery, notes]\n  serving:\n    - application: vault\n      namespace: data-system\n    - application: traefik-public\n      namespace: ingress-system\n      instance: traefik-ingress-system\n",
+                ),
+              }
+            : file,
+        ),
+      },
+    });
+    const text = (name: string): string =>
+      (
+        composed.artifacts.find((artifact) => artifact.name === name)?.files ??
+        []
+      )
+        .map((file) => file.text)
+        .join("\n");
+
+    expect(composed.conditions).toEqual([]);
+    // The Vault policy job runs beside the Vault the old path runs.
+    expect(text("_estate")).toContain("namespace: data-system");
+    expect(text("_estate")).not.toContain("secrets-system");
+    // A grant reads the Secret Store at its stated address, and a routed
+    // Process admits the Traefik that serves it.
+    expect(text("data")).toContain(
+      "http://vault.data-system.svc.cluster.local:8200",
+    );
+    expect(text("data")).not.toContain("secrets-system");
+    expect(text("notes")).toContain(
+      "kubernetes.io/metadata.name: ingress-system",
+    );
+    expect(text("notes")).toContain(
+      "app.kubernetes.io/instance: traefik-ingress-system",
+    );
+    expect(text("notes")).not.toContain("edge-system");
+  });
+
   it("asks for every held fragment a reference names, and composes every Project when no ledger is kept", () => {
     expect(() =>
       after({

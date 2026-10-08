@@ -1378,14 +1378,29 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
     ] as never;
 
     expect(
-      datastoreOf(reaching(["db", "http"], ["db", "sql"]), union),
+      datastoreOf(reaching(["db", "http"], ["db", "sql"]), union, {}),
     ).toStrictEqual({
       rule: "datastore",
       namespace: "data-system",
       process: "postgres",
       port: 5432,
     });
-    expect(datastoreOf(reaching(["db", "http"]), union)).toBeUndefined();
+    expect(datastoreOf(reaching(["db", "http"]), union, {})).toBeUndefined();
+    expect(
+      datastoreOf(reaching(["db", "sql"]), union, {
+        handover: {
+          retireBy: "2027-03-31",
+          serving: [
+            { application: "db", namespace: "storage", instance: "pg" },
+          ],
+        },
+      }),
+    ).toStrictEqual({
+      rule: "datastore",
+      namespace: "storage",
+      process: "pg",
+      port: 5432,
+    });
   });
 
   it("refuses the edge, not the migration, where the datastore is not among the files read", () => {

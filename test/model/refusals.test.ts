@@ -144,6 +144,7 @@ describe("the refusal fixtures", () => {
       "engine-without-durability",
       "env-cannot-reload",
       "handover-both-paths",
+      "handover-serving",
       "handover-unlisted",
       "illegal-delivery-for-access",
       "migration-owner-duplicated",
@@ -180,7 +181,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(46);
+    expect(refused).toHaveLength(47);
     expect(
       fixtures.length - refused.length,
       "the four accepted counterparts carry no oracle",

@@ -75,7 +75,7 @@ function resolveOne(
 ): ResolvedExposure {
   const tier = tierFor(exposure.audience, platform);
   // The tier's proxy is declared, or E_UNKNOWN_TIER_PROXY refused the set.
-  const [proxy] = peersOf(tier.traefik, union);
+  const [proxy] = peersOf(platform, tier.traefik, union);
   const precedence = precedenceAmong(exposure.routes);
   return {
     name: exposure.name,
