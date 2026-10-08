@@ -122,7 +122,9 @@ function unitsOf(
  * The pin source of each of `artifacts`, as the file the Estate repository
  * commits. A unit follows only units `delivered` holds: a Project still on the
  * old path has no unit on this one, which would never become Ready, and is
- * already running where the old path put it.
+ * already running where the old path put it. A Project's artifact that is not
+ * yet `pinned` is a first delivery, the handover's, and recreates the
+ * Deployments it cannot take over in place.
  */
 export function pinSources(
   artifacts: readonly Artifact[],
@@ -131,6 +133,7 @@ export function pinSources(
   platform: PlatformIntentDocument,
   serialize: Serializer,
   held: Readonly<Record<string, Readonly<Record<string, string>>>> = {},
+  pinned: ReadonlySet<string> = new Set(),
 ): PinSource[] {
   const onPath = new Set(
     delivered.flatMap((artifact) =>
@@ -159,6 +162,7 @@ export function pinSources(
           })),
           flux,
           held[artifact.name],
+          artifact.name !== ESTATE && !pinned.has(artifact.name),
         ),
         path,
       ),

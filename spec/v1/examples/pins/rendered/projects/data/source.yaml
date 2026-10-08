@@ -35,3 +35,13 @@ spec:
   path: ./apps/data
   dependsOn:
     - name: estate-vso-secrets
+  patches:
+    - patch: |
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: any
+          annotations:
+            kustomize.toolkit.fluxcd.io/force: Enabled
+      target:
+        kind: Deployment

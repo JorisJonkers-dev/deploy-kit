@@ -14,8 +14,9 @@ The move from `fleet-infra`'s `deploy/production` branch to the estate
 repository's pins happens one Project per step. The Platform document's
 `handover` ledger names the path each Project is on, and the documents are
 refused when a Project is on both paths or on neither. A `legacy` Project is
-composed and diffed but never delivered. The old path is removed on the
-ledger's `retireBy` date. The steps are
+composed and diffed but never delivered. A Project's first delivery recreates
+its Deployments once, since a live selector cannot be updated in place, and
+never touches a claim. The old path is removed on the ledger's `retireBy` date. The steps are
 [chapter 60](../../../spec/v1/60-setup.md#handing-over-one-project-at-a-time)'s;
 the pin is [0051](0051-a-project-is-delivered-as-a-signed-artifact.md)'s.
 
@@ -28,10 +29,10 @@ composition already reads is enough coordination. No migration service is
 needed.
 
 **False if:** a Project is applied by both `fleet-infra` and its estate pin in
-the same reconcile, or a Project's objects are deleted and recreated during its
-handover. **Settled by:** hand over `data` and observe the live Postgres pod's
-UID unchanged across the step, and the `fleet-infra` Kustomization no longer
-listing it.
+the same reconcile, or a claim is deleted or recreated during its handover.
+**Settled by:** hand over `app` and observe `app-ui` recreated once and
+serving, and the `fleet-infra` Kustomization no longer listing it; hand over
+`data` and observe every claim's UID unchanged across the step.
 
 ## Why
 
@@ -48,6 +49,15 @@ that would have delivered it.
 fragment still meets every invariant, and its render is diffed against the live
 objects. By the time it moves, the render already reproduces what runs, and the
 handover step changes only which source applies it.
+
+**Deployments are recreated once, claims never.** The old path's Deployments
+select on `app.kubernetes.io/name` alone, and the render's on the fixed label
+set, so the two disagree on a field Kubernetes will not change in place. The
+first pin source therefore marks every Deployment of the Project for
+recreation, Flux's own per-object policy: each is deleted and created again on
+the first apply, and the pods restart once. The mark targets Deployments and
+nothing else, because a claim recreated is a claim emptied, and it is gone from
+the source the next time the pin moves, so it never outlives the handover.
 
 **The estate's secrets unit first, its edge last.** An `estate` Project's unit
 depends on `estate-vso-secrets`, whose Vault policy job writes the roles its
@@ -67,7 +77,10 @@ paths forever.
 |---|---|---|
 | Move every Project in one cut-over | one step | one failed adoption blocks the whole estate, and a rollback is estate-wide |
 | Track the handover outside the model, in the estate repository's README | no schema change | nothing checks it, and a Project can end up on both paths unnoticed |
-| Let the estate path prune the old objects and recreate them | no orphaning step | every Process restarts at handover, and a stateful one can lose its claim |
+| Let the estate path prune the old objects and recreate them | no orphaning step | the old path's prune and the new path's apply race, and a claim pruned is a claim lost |
+| Recreate every object of the Project at handover, `force` on the whole Kustomization | one field | a claim whose spec differs is deleted and recreated empty |
+| Create the render's Deployment beside the live one, then retire the old one | no gap in serving | the derived name changes, and the Service selects both during the overlap |
+| Keep the live selector for a Process taken over, recorded in a Bidirectional Ledger | no restart | the fixed label set gains an exception per handed-over Project, each to be undone by the recreate it postponed |
 | Hold the whole estate-scoped artifact until no Project is `legacy` | one rule | no `estate` Project's unit ever becomes Ready, since the unit it depends on is never applied, so the handover cannot start |
 | Have the old path declare a unit named `estate-vso-secrets` | no change here | ties the old path to the new path's names, and still writes no Vault role for an `estate` Project |
 
@@ -82,4 +95,6 @@ decision expires once `legacy` is empty, when the block is removed.
   ledger, paid per Project by joris.
 - A new project file must be named in the ledger while it exists, paid by its
   author in one line.
+- Every Deployment of a handed-over Project restarts once at its first apply:
+  a gap of one pod start where it runs one replica, paid at each handover.
 - The `retireBy` date is a commitment: moving it is a recorded decision.

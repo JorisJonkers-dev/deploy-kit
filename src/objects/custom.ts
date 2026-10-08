@@ -138,6 +138,10 @@ export interface FluxKustomization {
     };
     readonly path: string;
     readonly dependsOn?: readonly { readonly name: string }[];
+    readonly patches?: readonly {
+      readonly patch: string;
+      readonly target: { readonly kind: string };
+    }[];
   };
 }
 

@@ -513,7 +513,15 @@ moment do two sources apply it:
 3. **Move it to the estate path.** The Platform document's ledger moves the
    Project from `legacy` to `estate`. The next composition publishes its
    artifact and writes its source and first pin, and the estate path applies
-   objects that already exist and takes them over without recreating them.
+   objects that already exist and takes them over. Most take over in place. A
+   Deployment does not: the old path's select on `app.kubernetes.io/name`
+   alone, the render's on the fixed label set
+   ([chapter 10](10-project-intent.md#the-label-set)), and a selector is immutable.
+   So a Project's first pin source marks every Deployment it applies for
+   recreation ([chapter 55](55-delivery.md#what-a-pin-source-holds)), and each
+   is deleted and created again once, its pods with it. A claim is never
+   marked, and keeps its data. The mark is gone from the source the next time
+   the pin moves.
    The estate source's own prune mark is not in the render and is dropped on
    that first apply, so from then on the estate path prunes the Project
    normally; a claim whose Durability Class derives a backup keeps its own

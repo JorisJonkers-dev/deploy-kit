@@ -2,8 +2,11 @@
 // says whose keyless signature it accepts, and applies each Reconcile Unit's
 // path after the units it follows (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 import {
   ESTATE_SOURCE,
+  FORCE_ANNOTATION,
+  RECREATE_DEPLOYMENTS,
   renderPinSource,
   sourceOf,
   UNPUBLISHED,
@@ -110,6 +113,34 @@ describe("a pin source", () => {
     expect(
       (second as { spec: Record<string, unknown> }).spec["dependsOn"],
     ).toStrictEqual([{ name: "apps-data" }, { name: "estate-vso-secrets" }]);
+  });
+
+  it("marks every Deployment for recreation on a first delivery, in each unit, and nothing else", () => {
+    const units = [
+      { name: "apps-notes", path: "apps/notes", after: [] },
+      { name: "apps-notes-late", path: "apps/notes/late", after: [] },
+    ];
+    const patchesOf = (recreate: boolean) =>
+      renderPinSource("project-notes", "notes", units, FLUX, {}, recreate)
+        .slice(1)
+        .map(
+          (unit) => (unit as { spec: Record<string, unknown> }).spec["patches"],
+        );
+
+    expect(patchesOf(true)).toStrictEqual([
+      [RECREATE_DEPLOYMENTS],
+      [RECREATE_DEPLOYMENTS],
+    ]);
+    expect(patchesOf(false)).toStrictEqual([undefined, undefined]);
+    // The patch targets Deployments alone, and what it sets is Flux's own
+    // policy, under the key and value Flux reads.
+    expect(RECREATE_DEPLOYMENTS.target).toStrictEqual({ kind: "Deployment" });
+    expect(parse(RECREATE_DEPLOYMENTS.patch)).toStrictEqual({
+      apiVersion: "apps/v1",
+      kind: "Deployment",
+      metadata: { name: "any", annotations: { [FORCE_ANNOTATION]: "Enabled" } },
+    });
+    expect(FORCE_ANNOTATION).toBe("kustomize.toolkit.fluxcd.io/force");
   });
 
   it("names the estate's own source apart from any Project's", () => {
