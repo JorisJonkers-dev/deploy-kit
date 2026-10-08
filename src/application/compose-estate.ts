@@ -632,6 +632,7 @@ function composition(
     // annotation.
     sources: pinSources(
       artifacts.filter(({ moves }) => moves),
+      rendered,
       projects,
       platformOf(input.platform),
       options.serialize,

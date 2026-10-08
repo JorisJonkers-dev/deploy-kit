@@ -151,7 +151,7 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 | | `interval` | `10m` |
 | `Kustomization`, one per Reconcile Unit the artifact holds | name | the unit's ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)) |
 | | `sourceRef`, `path` | the `OCIRepository` above, and the unit's directory in the artifact |
-| | `dependsOn` | every unit this one follows, by name, in name order; absent where it follows none. The whole of the DAG's answer, whether or not the units it names are delivered yet |
+| | `dependsOn` | every unit this one follows that is on the estate path, by name, in name order; absent where it follows none. A unit of a Project still on the old path ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)) is left out: it has no Kustomization here, so Flux would wait on it for ever, and the Project is already running where the old path put it. The source is rewritten on the dependent's next pin move after that Project hands over, and the edge returns then |
 | | `interval`, `prune`, `wait` | `10m`, `true`, `true`: a unit is Ready when what it applied is, so a Job that fails holds every unit that follows it |
 
 A Project's artifact holds its one unit. The estate-scoped artifact holds
