@@ -88,6 +88,10 @@ coordinates through `${dependency:…}` placeholders.
 
 - Every provider surface is declared once and referred to by name, so a port
   change is one edit, paid by the provider's author.
+- The coordinate an edge derives is the surface's Stable Address, never the
+  providing Process's own Service, so where a provider runs is a fact no
+  consumer's render carries
+  ([0093](0093-a-provider-is-reached-through-its-stable-address.md)).
 - A dependency on a host the estate does not deploy needs a provider record in
   the Platform document, paid by the platform owner.
 - Every registered hostname carries a review date, and an overdue one fails

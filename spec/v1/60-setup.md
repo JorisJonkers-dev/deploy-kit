@@ -50,7 +50,11 @@ duplication shows in the output: the generated contract emits **110 labels for
 `personal-stack/*`, named after an archived repository that rejects pushes.
 
 v1 requires the single source
-([0048](../../docs/adr/model/0048-node-facts-are-authored-once.md)):
+([0048](../../docs/adr/model/0048-node-facts-are-authored-once.md)), and gives
+it a model: the per-node files become one Infrastructure document, the third
+authored document ([chapter 15](15-infrastructure-intent.md)), from which
+everything below is generated. Until its reader lands (#324), the per-node
+files are that source:
 
 | artefact | authored or generated | holds |
 |---|---|---|

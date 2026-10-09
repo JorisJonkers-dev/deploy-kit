@@ -131,8 +131,12 @@ delivered render and the mark is the only thing that kept it.
 - A volume whose engine has no method cannot derive a backup, so a new datastore
   engine is a platform change first.
 - A backed-up claim that leaves the render stays bound until deleted by hand,
-  and renaming one gives the Process a new, empty claim; moving the data is a
-  manual step, paid by whoever renames.
+  and renaming one gives the Process a new, empty claim, paid by whoever
+  renames. A Move's retired source claim leaves the render the same way and
+  stays bound until deleted by hand, but its data has already been carried to
+  the target and kept replicated back for the platform's retention
+  ([0094](0094-a-move-is-derived-from-one-authored-edit.md)): moving a
+  datastore's data is a Move, not a manual step.
 - `E_ENGINE_WITHOUT_DURABILITY` and `E_DURABILITY_WITHOUT_ENGINE` make `engine`
   and a backed-up class mandatory together
   ([0019](0019-engine-is-process-vocabulary.md)).

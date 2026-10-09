@@ -78,6 +78,9 @@ other resolves and every policy one asks for the other offers:
 | an Application moves its schema with a changelog and no Process of it switches `blue-green`: none is `continuous`, or the Application is `delivery.machinery` | `E_MIGRATION_UNGATED` |
 | an Application's cutover is `continuous` and the platform declares no `delivery` policy | `E_NO_DELIVERY_POLICY` |
 | a project file names a project the `handover` ledger puts on neither delivery path | `E_HANDOVER_UNLISTED` |
+| a change derives a [Move](55-delivery.md#moves) of a Process whose `engine` entry carries no `move` | `E_MOVE_UNSUPPORTED` |
+| a change derives a Move and the platform declares no `delivery.move` | `E_NO_MOVE_POLICY` |
+| a Process declares `availability: replicated` and its `engine` entry maps no mechanism to it | `E_AVAILABILITY_UNSUPPORTED` |
 
 A refusal names the document it points into as well as the path, because the
 object at fault can sit in either: a proxy nothing declares is the tier's, and an
@@ -346,6 +349,52 @@ platform chose the method and only the method knows what it logs in as. It runs 
 user the images lock records for it, writes one copy, and prunes `/backup` to
 the newest `BACKUP_RETAIN` before it exits.
 
+### Move methods
+
+An engine whose data can be carried from one Instance to another names how, in
+the same entry, the same way: as an image, and as the two facts about the
+engine a [Move](55-delivery.md#moves) is derived from
+([0095](../../docs/adr/model/0095-each-engine-states-how-its-data-moves.md)).
+
+```yaml
+engines:
+  postgres:
+    backup: postgres-backup
+    surface: postgres
+    move: {image: postgres-move, breaksOn: major, reverse: same-major}
+```
+
+| field | means |
+|---|---|
+| `move.image` | the method: one image whose entrypoint performs each step of a Move for this engine, named by the step it is handed |
+| `move.breaksOn` | which change of the engine's version leaves the data unreadable in place, so that the change is a Move rather than a switchover: `major` or `minor`, read off the `version` the images lock records ([chapter 20](20-resolved-deployment.md#the-images-lock)) |
+| `move.reverse` | when the method can replicate from the new Instance back to the old one, which a lossless rollback needs: `always`, `same-major` or `never` |
+
+An entry with no `move` offers none: a change that needs one, of an engine whose
+entry carries no `move`, is `E_MOVE_UNSUPPORTED`, and a Process of that engine
+keeps the binding its data already has ([chapter 20](20-resolved-deployment.md#cluster-state)).
+`reverse` is a statement about the engine that only running it can confirm, so
+each value carries the drill that settled it in the Platform document's own
+repository; an engine whose reverse direction has not been rehearsed says
+`never`, which costs a rollback its replication and nothing else.
+
+What the method image is handed is fixed, as a backup method's is: the step it
+performs as `MOVE_STEP` (`sync`, `lag`, `fence`, `unfence`, `reverse`, `retire`),
+the source and target Instances' hosts and the engine's `surface` port as
+`MOVE_SOURCE_HOST`, `MOVE_TARGET_HOST` and `MOVE_PORT`, and the keys of the
+credential it logs in with as variables. That credential is derived, one per
+Process with an open Move, the Secret Store's
+`secret/data/<project>/<process>/move`, held by the move identity alone
+([chapter 16](16-dependencies.md#process-identity)); the platform's operator
+writes it, because only the method knows what it logs in as. A step exits zero
+when it holds and non-zero when it does not; the `lag` step exits zero only
+once the target has applied everything the source has committed.
+
+What each engine's method does at each step is the method's, and the
+engine catalog in [`docs/research/provider-moves.md`](../../docs/research/provider-moves.md#a-move-method-per-engine)
+records the mechanism each one can use, with its sources. The facts this
+document states are the two a derivation needs, and no more.
+
 ## Monitor cadence
 
 ```yaml
@@ -488,6 +537,22 @@ facts, all the platform's:
 - **`analysis`** is the cadence every `blue-green` member is analysed at: how
   often a check runs, how many passing checks promote, and how many failing ones
   roll back. No Application authors its own.
+- **`move`** bounds a [Move](55-delivery.md#moves): `timeout`, how long the
+  steps from the fence to the unfence may take before the gate puts the source
+  back, and `retention`, how long the source Instance is kept, with reverse
+  replication running, once the flip has held. Both are the platform's: the
+  write pause a timeout allows and the storage a retention costs are estate
+  decisions, not an Application's.
+
+```yaml
+delivery:
+  move:
+    timeout: 300s
+    retention: 7d
+```
+
+A platform that omits `move` offers no Move: a change that derives one is
+`E_NO_MOVE_POLICY`.
 
 The platform owns the machinery's Applications in a project file of its own, the
 worked [`delivery`](examples/delivery/delivery.project.yml) project, whose

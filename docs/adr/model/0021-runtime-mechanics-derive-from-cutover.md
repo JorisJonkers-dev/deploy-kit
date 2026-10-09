@@ -104,3 +104,8 @@ the values cost to learn.
 - A `continuous` Process needs twice its room on some eligible node.
 - The Resolved Deployment records the derived switchover beside the declared
   cutover.
+- A change an engine's data cannot follow in place (a major version, a new
+  Project, a placement its volume's node no longer satisfies) derives a Move
+  instead of the switchover, so `interrupted` over RWO storage is no longer the
+  only path for a datastore's upgrade
+  ([0094](0094-a-move-is-derived-from-one-authored-edit.md)).

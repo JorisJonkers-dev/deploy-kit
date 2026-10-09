@@ -2283,6 +2283,50 @@ to keep serving, and neither answer is true of the unit:
 serving (the one holding storage, as a rule) becomes an Application of its own;
 `knowledge-ingest` is the worked case.
 
+### Availability
+
+```yaml
+- name: postgres
+  engine: postgres
+  availability: single
+```
+
+`availability` is the owner's answer to a second question, asked only of a
+Process with an `engine`: must it keep serving when the node it runs on is lost
+or drained, and through a restart its version allows in place? It names the
+promise, not a mechanism, as `cutover` does
+([0096](../../docs/adr/model/0096-availability-is-declared-on-an-engine.md)):
+
+| value | means | validation |
+|---|---|---|
+| `single` | one Instance serves; losing its node, or a restart, interrupts it until it is back, and a change its data cannot follow in place is a [Move](55-delivery.md#moves) | the default |
+| `replicated` | the engine runs as a primary with replicas, so a node loss or an in-place upgrade costs a switch of primary rather than an outage | refused until the engine's entry in the Platform document maps it to a mechanism: `E_AVAILABILITY_UNSUPPORTED` |
+
+On a Process with no `engine` it says nothing the model can act on, and it is
+`E_AVAILABILITY_WITHOUT_ENGINE`. `replicated` is vocabulary the model holds
+before any engine offers it, so that choosing a replication operator later is a
+Platform document change rather than a new authored word; until then every
+engine Process is `single`, and that is written down rather than assumed.
+
+### Rollback
+
+```yaml
+- name: valkey
+  engine: valkey
+  rollback: forward-only   # a major upgrade: an older Valkey is not known to load a newer one's data
+```
+
+A [Move](55-delivery.md#moves) keeps its source Instance, with the new Instance
+replicating back into it, for the platform's retention period, so that a
+rollback loses nothing ([chapter 20](20-resolved-deployment.md#the-move)). Some
+engines cannot replicate from a newer version to an older one, and for them that
+promise cannot be kept: such a Move is `E_MOVE_IRREVERSIBLE` unless the owner
+writes `rollback: forward-only`, the one value the field takes, accepting that a
+rollback after the flip restores the source as it was at the fence and loses
+what was written since. It acknowledges the Move derived in the same release and
+nothing else, so written where no irreversible Move is derived it is
+`E_FORWARD_ONLY_UNUSED`, and the release after the Move removes it.
+
 ## Migration
 
 ```yaml
