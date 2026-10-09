@@ -59,6 +59,7 @@ between people, and build only the first set until there is a second person.
 | option | cost if taken | why rejected |
 |---|---|---|
 | Design for the team this might become | Complexity paid now for a future that may not arrive: RED-013's arithmetic put the already-specified organisation-scale build at 400–900 hours of one person's evenings, and RED-006 found "the controls that cost the most to build are the ones that deliver least at this headcount" | Nine review findings trace to exactly this premise having been assumed implicitly; making it explicit and rejected is the point of this file |
+| Model several clusters and tenants now, for customers with dashboards and data of their own | Tenancy layers (namespace, virtual control plane, cluster) and cross-cluster addressing designed before any second cluster or tenant exists; each layer above the namespace costs a control plane | A second cluster or tenant is the falsifying observation this premise names; the questions it would raise are parked with the research behind them in [0097](../deferred/0097-multi-cluster-and-multi-tenancy-are-parked.md), and Infrastructure Intent writes the one cluster down so a second is an instance, not a new model |
 | Design for exactly today, with no horizon | Any growth, a second maintainer, a second cluster, falsifies undated assumptions silently, and the rework arrives unplanned and unbudgeted | A dated horizon costs one review entry per 24 months and turns "the estate outgrew the design" from a surprise into a scheduled observation |
 
 ## Reversibility

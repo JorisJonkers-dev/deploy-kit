@@ -220,12 +220,13 @@ repository already uses between a chapter and an ADR.
 |---|---|---|
 | [`10-project-intent.md`](10-project-intent.md) | Application, Process, and every layer-1 field by concern: identity, configuration, assets, probes, storage and durability, hardening and size, placement, exposure, observability, secrets and grants, release units | drawn |
 | [`14-platform-intent.md`](14-platform-intent.md) | the second authored document: substrate facts, the bootstrap set, the declared foundation, tiers as edge facts, durability policy, engines as images, providers, and no observability policy, which the observability application owns | drawn |
-| [`16-dependencies.md`](16-dependencies.md) | dependency edges, per-Process identity, derived network policy, the derivation map | drawn |
+| [`15-infrastructure-intent.md`](15-infrastructure-intent.md) | the third authored document: the cluster, its sites and nodes, what each node has, the label set generated from it, and the node contract placement reads | not yet |
+| [`16-dependencies.md`](16-dependencies.md) | dependency edges, the Stable Address, per-Process identity, derived network policy, the derivation map | drawn |
 | [`20-resolved-deployment.md`](20-resolved-deployment.md) | the Resolved Deployment, the authority table in one place, the pinned input set including ClusterState, derived mechanics, the one capacity exception, the Reconcile Unit, publish-back | drawn |
 | [`30-deliverables.md`](30-deliverables.md) | adapters, the adapter port, attribution, ledgers, coverage re-derived from the registry | drawn |
 | [`40-composition.md`](40-composition.md) | Intent Fragments, participants and the staleness bound, schema versioning and rollout, unmanaged surfaces | drawn |
 | [`50-lifecycle.md`](50-lifecycle.md) | model-level lifecycle: Release Unit switchover, expand/contract for cross-Application contract changes, lock lifecycle | drawn |
-| [`55-delivery.md`](55-delivery.md) | delivery: rendered artifacts and pins, blue/green switchover, the Release Gate, held releases, migrations, release order, failure and undo | not yet |
+| [`55-delivery.md`](55-delivery.md) | delivery: rendered artifacts and pins, blue/green switchover, the Release Gate, held releases, migrations, release order, failure and undo, Moves | not yet |
 | [`60-setup.md`](60-setup.md) | bootstrap order, secrets at rest, CNI selection, node facts, restore, onboarding and adoption | drawn |
 
 **Chapter 16's derivation map is the load-bearing artefact**, and its value is
@@ -372,6 +373,8 @@ through, with the deciding ADR named.
      horizon review (2028-08-31) or on the day a second production cluster is
      proposed, whichever comes first.
    - **Blocks:** nothing today; it is recorded so the assumption is not silent.
+     The questions a second cluster would raise, and what would unpark them, are
+     [0097](../../docs/adr/deferred/0097-multi-cluster-and-multi-tenancy-are-parked.md)'s.
 
 7. **Fragment signing** (chapter 40). Composition verifies `MANIFEST.sha256`
    per file and pins every fragment by digest
@@ -385,6 +388,24 @@ through, with the deciding ADR named.
      test is a fragment published by an identity outside the estate failing
      composition.
    - **Blocks:** nothing in v1's render.
+
+8. **Specified ahead of both implementations.** The
+   [Stable Address](16-dependencies.md#the-stable-address), the derived
+   [Move](55-delivery.md#moves) with its [layer-2 element](20-resolved-deployment.md#the-move)
+   and [engine methods](14-platform-intent.md#move-methods),
+   [`availability`](10-project-intent.md#availability),
+   [`rollback`](10-project-intent.md#rollback) and
+   [Infrastructure Intent](15-infrastructure-intent.md) are specified before
+   either implementation carries them, so the worked examples' oracle files
+   still resolve `${dependency:…}` to a Process's own Service and read node
+   facts from the per-node files.
+   - **Owner:** joris.
+   - **Settled by:** #324: both implementations, the schemas, and a
+     hand-written Postgres 16 to 17 move example with its resolved oracle,
+     after which every code these sections define leaves the pending list of
+     `scripts/lint-codes.ts`.
+   - **Blocks:** rendering any of them; until #324 lands, a render carries
+     none, and a provider changes the way it did before.
 
 ### Retired since the rebuild
 

@@ -94,6 +94,63 @@ Which test suites exercise a provider together with its consumers is the same
 inbound question. Whether that membership gates anything is not settled in this
 specification, see [Delivery and co-testing](#delivery-and-co-testing).
 
+### The Stable Address
+
+A consumer never learns where its provider runs. Every surface that at least one
+edge in the union names derives a **Stable Address**: a name that stays the same
+for as long as the surface exists, whichever Instance of the provider currently
+serves it
+([0093](../../docs/adr/model/0093-a-provider-is-reached-through-its-stable-address.md)).
+
+| part | derives as |
+|---|---|
+| name | `<application>-<surface>`, an Application Id and a surface name joined; both are DNS labels, and the pair is unique because the Id is unique in the union and the surface is unique in its Application |
+| namespace | `estate-system`, one namespace for every Stable Address, rendered by the estate-scoped artifact ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)), so that no Project's own namespace, and no move of a Project, changes it |
+| target | the active Instance's address for that surface: the Process's Service in its Project's namespace, or for a provider the Platform document records, its `address` ([chapter 14](14-platform-intent.md#providers)) |
+| port | the surface's port, unchanged: the name is an alias, not a proxy, so it cannot remap a port |
+
+`${dependency:<application>.host}` resolves to the Stable Address,
+`<application>-<surface>.estate-system.svc.cluster.local`, and
+`${dependency:<application>.port}` to the surface's port. A consumer's rendered
+configuration therefore depends on the provider's Id and surface alone, never on
+its namespace, its Project or its version, and a provider that moves changes
+one object, its Stable Address, rather than every consumer's render.
+
+The `kubernetes` adapter renders a Stable Address as a Service of type
+`ExternalName` whose `externalName` is the target's DNS name. That choice has
+three consequences, all recorded here because they bound what a Stable Address
+can promise:
+
+- **It flips new connections, not old ones.** The cluster DNS answers with a
+  short TTL and a lookup after the flip returns the new target, but an
+  established connection stays where it is. Moving a provider's consumers
+  is therefore the job of the [Fence](55-delivery.md#moves), which closes the
+  old Instance's connections; a consumer must reconnect and resolve its
+  provider again when a connection drops, an obligation every consumer of a
+  surface carries.
+- **It cannot hide a port change.** A surface that changes its port still
+  changes in two steps ([chapter 50](50-lifecycle.md#expand-and-contract)).
+- **It is not a policy target.** Network policy selects pods, never Services,
+  so a consumer's egress still names the provider's pods: while a
+  [Move](55-delivery.md#moves) is open, the pods of every Instance of the
+  provider ([The derived allow set](#the-derived-allow-set)).
+
+An HTTP surface reached through name-based routing or TLS sees the Stable
+Address as its `Host` and as the name to present a certificate for; a provider
+whose surface depends on either declares the Stable Address among the names it
+answers to. The estate's in-cluster HTTP surfaces route by Service and carry no
+TLS between Processes, so none does today.
+
+The forward-auth endpoint a tier names is a platform fact, not an edge
+([chapter 20](20-resolved-deployment.md#the-forward-auth-endpoint)), and the
+tier writes the authenticating surface's Stable Address as that endpoint, so a
+move of `auth` repoints the edge's middleware with everything else. A surface
+therefore derives a Stable Address when an edge names it or a tier's
+forward-auth endpoint is its Stable Address, and no other surface does: a
+Stable Address nobody resolves would be a declaration with out-degree zero,
+which [property 3](#3-no-dead-declarations-no-declaration-has-out-degree-zero)
+forbids.
+
 ### The database catalog
 
 The first row of that table has a producer
@@ -164,7 +221,12 @@ with a Process `c`, both derive `a-system-system-c`. Written under the name,
 the two claim one path, and a path has one owner: the render is refused with
 `E_PATH_COLLISION` ([chapter 30](30-deliverables.md#path-allocation)) before
 either document exists, so no project's role is ever written over another's.
-A backup identity and a migration identity are named by the same rule.
+A backup identity, a migration identity and a move identity are named by the
+same rule. A **move identity**, `<process>-move`, exists only while a
+[Move](55-delivery.md#moves) of its Process is open: it holds the engine
+method's credential on both Instances and one Kubernetes permission, to update
+the Stable Addresses that name the source, and it leaves the render with the
+source's retirement.
 
 | project | Application | Processes | ServiceAccount, in the project's namespace | Vault role and policy |
 |---|---|---|---|---|
@@ -336,6 +398,14 @@ producer.
 | from the Process's own backup identity, to the surface its backups dump | the surface the Platform document's `engines` names for the Process's `engine` | ingress |
 | from the migration identity of each Application whose database the Process holds, to the surface that Application's edge names | every Application of the union that moves its schema with a changelog and reaches this Process's database ([The database catalog](#the-database-catalog)) | ingress |
 | to where the Kubernetes API answers, by address | the Process's `api`, and the Platform document's `apiAccess.server` ([Kubernetes API access is declared and admitted](#kubernetes-api-access-is-declared-and-admitted)) | egress |
+| between a provider's Instances, on the surface its engine's move method syncs over | an open Move of the provider ([chapter 55](55-delivery.md#moves)): from the target Instance to the source while the sync runs, and back while reverse replication runs | egress and ingress |
+
+While a [Move](55-delivery.md#moves) of a provider is open, every rule above
+that names the provider's pods names the pods of **every** Instance of it: a
+consumer's egress admits the source and the target alike, and both admit the
+consumer. The flip of the [Stable Address](#the-stable-address) then needs no
+policy change in any consumer's Project, which is what lets it happen at once,
+and the rules narrow to the one remaining Instance when the source is retired.
 
 ### The baseline
 

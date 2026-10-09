@@ -45,6 +45,13 @@ Intent, and the contention test decides which of the two a value lives in
 [0045](docs/adr/model/0045-platform-intent-is-the-second-authored-document.md)).
 Formerly the *Cluster Context*, which had no chapter.
 
+**Infrastructure Intent**: layer 1, the third authored document. What the
+machines are: the one cluster, its sites, and each node's totals, reserve,
+GPUs, disks, capabilities and taints, under one label prefix the estate owns.
+The node contract, the k3s label set and the nix host data are generated from
+it ([chapter 15](spec/v1/15-infrastructure-intent.md),
+[0048](docs/adr/model/0048-node-facts-are-authored-once.md)).
+
 **Resolved Deployment**: layer 2. Every platform decision, derived and never
 authored, as a pure function of the pinned input set. A versioned, reviewable
 artifact ([chapter 20](spec/v1/20-resolved-deployment.md)).
@@ -108,6 +115,12 @@ it replaces the old one: `continuous` or `interrupted`. Required, answered alike
 by every Process of one Application, and the input the Switchover derives from
 ([chapter 10](spec/v1/10-project-intent.md#cutover-is-declared-not-promised),
 [0021](docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)).
+
+**Availability**: the owner's answer, on a Process with an `engine`, to whether
+it keeps serving through the loss of its node and an in-place restart:
+`single`, the default, or `replicated`, which no engine offers yet
+([chapter 10](spec/v1/10-project-intent.md#availability),
+[0096](docs/adr/model/0096-availability-is-declared-on-an-engine.md)).
 
 **Migration**: how an Application's database schema moves when its new version
 replaces the old: a Liquibase changelog the platform's runner applies, the image
@@ -186,6 +199,13 @@ DNS and the off-cluster destination's address ranges, and no ingress
 specially: `postgres`, `rabbitmq`, `valkey`, `files`. Not `runtime`, which says
 how a process is instrumented
 ([0019](docs/adr/model/0019-engine-is-process-vocabulary.md)).
+
+**Move method**: an engine's image that performs each step of a Move, and the
+two facts a Move is derived from: which version change breaks the data in
+place (`breaksOn`), and when the method can replicate back (`reverse`). Carried
+by the engine's entry in the Platform document
+([chapter 14](spec/v1/14-platform-intent.md#move-methods),
+[0095](docs/adr/model/0095-each-engine-states-how-its-data-moves.md)).
 
 **Durability policy**: the platform's terms for one Durability Class: the
 backup window, the retention count, and the off-cluster destination. Carried by
@@ -278,9 +298,16 @@ the ClusterState snapshot, each carried by digest. Nothing at render time reads 
 state ([0006](docs/adr/model/0006-pinned-inputs.md),
 [0034](docs/adr/model/0034-cluster-state-is-a-pinned-input.md)).
 
-**Node contract**: the node facts a cluster publishes, authored once where nix
-reads them and named by the Platform document by digest
+**Node contract**: the node facts a cluster publishes, generated from
+Infrastructure Intent and named by the Platform document by digest; what
+placement reads
 ([0048](docs/adr/model/0048-node-facts-are-authored-once.md)).
+
+**Stable Address**: the name a consumer reaches a provider's Surface by,
+`<application>-<surface>` in `estate-system`, whichever Instance serves it. An
+alias, not a proxy: it flips new connections and names no port of its own
+([chapter 16](spec/v1/16-dependencies.md#the-stable-address),
+[0093](docs/adr/model/0093-a-provider-is-reached-through-its-stable-address.md)).
 
 **Tier**: where the edge terminates: four facts, `audiences`, `listener`,
 `certificates`, `forwardAuth`, plus the Traefik Application that is its proxy. A
@@ -415,6 +442,26 @@ blue/green, where its new Processes start beside the old and receive traffic
 only once every member has passed analysis; stop-start, where the old stop
 before the new start; or rolling, pod by pod with no gate, for delivery
 machinery alone ([chapter 55](spec/v1/55-delivery.md#switchover)).
+
+**Instance**: one running copy of an engine Process's data and the version
+serving it, in one namespace and on one node. A Process has one active Instance,
+and two only while a Move is open: the source and the target
+([chapter 20](spec/v1/20-resolved-deployment.md#the-move)).
+
+**Move**: how a provider changes to an Instance its data must be carried to,
+because its new version cannot read the data in place or because it now runs
+somewhere else. Derived from one authored edit, never declared; run by the
+Release Gate inside the provider's release as sync, lag, fence, final lag,
+flip, unfence and reverse; ended by the source's retirement after the platform's
+retention ([chapter 55](spec/v1/55-delivery.md#moves),
+[0094](docs/adr/model/0094-a-move-is-derived-from-one-authored-edit.md)). Not a
+**Migration**, which moves a schema, and not a **Handover**, which moves a
+Project between delivery paths.
+
+**Fence**: the Move step that stops writes on the source Instance and closes
+its client connections. The write pause runs from the fence to the unfence on
+the target, bounded by the platform's move timeout
+([chapter 55](spec/v1/55-delivery.md#moves)).
 
 **Primary**: the copy of a `blue-green` Process that serves between releases,
 promoted into by Flagger once the barrier opens; the render never writes it
