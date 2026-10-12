@@ -25,6 +25,7 @@ here and a record there disagree, the record wins.
 | [`modelling-languages.md`](modelling-languages.md) | What else models Kubernetes deployments (the three named tools, application-model DSLs, configuration languages, the MDE literature), and what deploy-kit does that none of them does |
 | [`provider-moves.md`](provider-moves.md) | How a provider can be changed under its consumers: indirection mechanics, the closest industry analogue, and a move method per engine |
 | [`infrastructure-and-tenancy.md`](infrastructure-and-tenancy.md) | How others model node capabilities and generate hosts, and what multi-cluster and multi-tenant estates would require |
+| [`unsupported-claims.md`](unsupported-claims.md) | Which claims about a third-party tool or the live estate the map's settled decisions rest on, and whether each holds, holds with a condition or fails |
 
 ## Method
 
