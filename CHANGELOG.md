@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.11.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.10.0...v0.11.0) (2026-10-12)
+
+
+### Features
+
+* reach a legacy Application where the handover ledger states the old path runs it ([#319](https://github.com/JorisJonkers-dev/deploy-kit/issues/319)) ([ef35f6c](https://github.com/JorisJonkers-dev/deploy-kit/commit/ef35f6c8490da0e3b3abd35b8697486caaec2689))
+
+
+### Bug Fixes
+
+* rewrite a pin source when what it holds changes, not only when its artifact moves ([#410](https://github.com/JorisJonkers-dev/deploy-kit/issues/410)) ([57c60e9](https://github.com/JorisJonkers-dev/deploy-kit/commit/57c60e9dd5cc663491cb65f2a2399d6c049c885f))
+
 ## [0.10.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.9.1...v0.10.0) (2026-10-08)
 
 
