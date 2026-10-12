@@ -513,6 +513,18 @@ handover:
   ([chapter 14](14-platform-intent.md#handover-ledger)), and the policy job, the
   addresses and the policies follow it. Moving such a Project to `estate`
   removes its location in the same change.
+- **The old route names the port the Surface declares, before the step
+  starts.** While the edge is `legacy`, a handed-over Project's route is still
+  the old path's `IngressRoute`, orphaned and serving, and it names the
+  Project's Service by port. The render's Service exposes each surface on the
+  port `provides` declares, and on no other
+  ([chapter 30](30-deliverables.md#how-each-adapter-spells-the-projection)),
+  so a route that names any other port stops answering at the third change
+  below. Where the old path's Service exposes another port than the container
+  listens on, a `fleet-infra` commit first adds the declared port to that
+  Service, beside the one it has, and points the route at it. Most of the old
+  path's routes already name the container's own port; the ones that do not
+  are a Service on 80 in front of a container on another port.
 
 **One step moves one Project, in three changes, in this order**, so that at no
 moment do two sources apply it:

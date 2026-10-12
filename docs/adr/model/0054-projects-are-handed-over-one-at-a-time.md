@@ -117,6 +117,10 @@ decision expires once `legacy` is empty, when the block is removed.
   author in one line.
 - Every Deployment of a handed-over Project restarts once at its first apply:
   a gap of one pod start where it runs one replica, paid at each handover.
+- A Project's old route keeps serving after the Project hands over, until the
+  edge does. It must name a port the render's Service exposes, so a route that
+  names another is repointed in `fleet-infra` first, paid once per such
+  Project.
 - The `retireBy` date is a commitment: moving it is a recorded decision.
 - Each `legacy` provider an `estate` Project reaches is stated in the ledger
   until it moves, one entry per Application, paid by joris at the handover that
