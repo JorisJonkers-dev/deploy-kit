@@ -220,6 +220,62 @@ Deliverables:
 > - The transformation specification, source models and the generated code, with
 >   evidences that the transformation works.
 
+The Canvas assignment, posted on 9 October (10 points), adds the hand-in and
+the marking:
+
+> In this assignment you have to deliver a report and the artefacts (code and
+> models) for Task 3 of the project. The results should be delivered in one
+> compressed (.zip) file, where the artefacts are packaged in one or more
+> Eclipse/EMF modelling projects. The report should not exceed 15 pages (minimum
+> font size 10 pt), so in the report you should concentrate on the essence of
+> what you have done.
+
+### Correction criteria
+
+> For the marking of task 3 again mainly the report will be evaluated, although
+> the code will be inspected to take away any doubts about the project. At least
+> the following information should be given in the report, with its relative
+> importance indicated between parentheses:
+>
+> - **Alternatives and justification of chosen solution (20%).** This
+>   information concerns the identification of choices and the justification of
+>   the chosen solutions (transformation language, transformation structure,
+>   etc.) in general terms, not in detail.
+> - **Solution design (40%).** This information concerns the more specific
+>   decisions and how they have taken when designing your model to text
+>   transformation(s). The discussion should be as much as possible
+>   self-contained so that the reader does not have to inspect the project to
+>   understand what has been done (only for very specific details). Use figures,
+>   diagrams and tables in so far as they can help clarify how the
+>   transformation(s) has/have been structured.
+> - **Tests and evaluation (20%).** This information concerns the testing
+>   strategy (how the transformation(s) has/have been tested) and the evidences
+>   that your transformation(s) is/are appropriate for the purpose of the project.
+>   For this task this should be done by applying the transformation(s) to some
+>   source models and showing that the transformation(s) generate appropriate
+>   text (code). Limitations of your transformation(s) should also be discussed
+>   here.
+> - **Reflection (20%).** This information concerns a critical discussion of how
+>   the project has been performed and its final results. You should mention
+>   what went well, what could have been better and what you have learned during
+>   the project.
+>
+> Only the presence of the information above in the report of course is not
+> enough for a maximal mark. The report will be also evaluated for its
+> readability, suitability and consistency of the solution, coverage (depth) and
+> the reflection on the results (choices and limitations). It is possible that
+> when developing the transformations you had to change the metamodels and
+> transformations you defined in tasks 1 and 2. These changes should be
+> described in an appendix to the task 3 report. This appendix does not count
+> for the 15 pages limit, but it should not exceed 10 pages (minimum font size
+> 10 pt).
+
+In short: the same 15-page report and 10-page appendix as Task 2, but the
+appendix now covers changes to the Task 2 transformations as well as the
+Task 1 metamodels. Task 2's *purpose* criterion is gone, tests drop from 30%
+to 20%, and a new **reflection** criterion (20%) asks what went well, what
+could have been better and what was learned over the whole project.
+
 Mirror: `task-3-code-generation/` — not started. "Load the generated code in a
 tool that can handle the code" is, for this project, applying the generated
 manifests to a Kubernetes cluster, or validating them against the API server.
@@ -257,6 +313,23 @@ So each partner presents once, for 10 minutes plus 5 minutes of questions.
 The 8 October talk covers the project and its metamodels (Task 1), and the
 22 October talk covers the transformation and the code generation (Tasks 2
 and 3).
+
+The *Project presentations* assignment on Canvas, posted on 9 October (10
+points, due 22 October), takes the slides and states how a talk is graded:
+
+> Please submit your presentation here. If you have not used a presentation
+> then inform us about this.
+>
+> Grading criteria:
+>
+> - Organisation/structure (30%): Is the presentation logically structured? Is
+>   the presentation structure suitable for the contents?
+> - Technical content (50%): What is the quality of the technical content of
+>   the presentation?
+> - Language/communication (20%): How was the use of language and media in the
+>   presentation?
+>
+> The presentations will be graded individually!
 
 ### How the course is graded
 
