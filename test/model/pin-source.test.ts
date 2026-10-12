@@ -11,10 +11,15 @@ describe("readPinSource", () => {
   it("reads the digest the source pins, and that a unit with no patch recreates nothing", () => {
     expect(
       readPinSource([repository, unit("  path: ./apps/notes\n")].join("---\n")),
-    ).toStrictEqual({ digest: DIGEST, recreates: false });
+    ).toStrictEqual({
+      digest: DIGEST,
+      recreates: false,
+      units: [{ kind: "Kustomization", spec: { path: "./apps/notes" } }],
+    });
     expect(readPinSource(repository)).toStrictEqual({
       digest: DIGEST,
       recreates: false,
+      units: [],
     });
   });
 
@@ -27,7 +32,14 @@ describe("readPinSource", () => {
           unit("  path: ./b\n  patches: []\n"),
         ].join("---\n"),
       ),
-    ).toStrictEqual({ digest: DIGEST, recreates: true });
+    ).toStrictEqual({
+      digest: DIGEST,
+      recreates: true,
+      units: [
+        { kind: "Kustomization", spec: { path: "./a" } },
+        { kind: "Kustomization", spec: { path: "./b", patches: [] } },
+      ],
+    });
   });
 
   it("reads no recreation from a patch on anything that is not a unit", () => {
@@ -35,7 +47,7 @@ describe("readPinSource", () => {
       readPinSource(
         `kind: OCIRepository\nspec:\n  patches: []\n  ref:\n    digest: ${DIGEST}\n`,
       ),
-    ).toStrictEqual({ digest: DIGEST, recreates: false });
+    ).toStrictEqual({ digest: DIGEST, recreates: false, units: [] });
   });
 
   it.each([

@@ -108,8 +108,8 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   Reconcile Unit DAG, each time it moves the pin, the first time a Project
   composes among them, so the units it applies are always the ones its artifact
   holds ([What a pin source holds](#what-a-pin-source-holds)). It also reads
-  the committed file of every pinned artifact that is not paused, and writes
-  the file again when the one it derives differs, though the pin stays: the Platform document's
+  the committed file of every pinned artifact, and writes the file again when
+  the one it derives differs, though the pin stays: the Platform document's
   repository, signer or pull Secret changed, or a unit this one follows joined
   the estate path. A file written while its pin stays keeps its `ref.digest`,
   so it deploys nothing. Removing a Project's file takes it off the estate path, which
@@ -146,8 +146,10 @@ delivery machinery ([#148](https://github.com/JorisJonkers-dev/deploy-kit/issues
 ### What a pin source holds
 
 The file composition writes for an artifact whose pin moves, a first delivery
-among them, and for a pinned artifact that is not paused whose committed file
-differs from the one derived now, replacing whatever was committed before. Everything in it derives;
+among them, and for a pinned artifact whose committed file differs from the one
+derived now, replacing whatever was committed before. For a paused Project the
+`Kustomization` rows below are not derived again: they stay as committed
+([Pause and Rollback](#pause-and-rollback)). Everything in it derives;
 nothing is authored, and the cadence is this chapter's, stated once
 as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied):
 
@@ -185,9 +187,11 @@ file. Neither is a second applier: Flux still applies whatever the pin names.
 **A Pause freezes the pin.** While a Project is paused, composition still checks
 its newest fragment against every estate-wide invariant and reports what it
 finds, and Flux still reconciles the pinned render, but no pin commit moves the
-Project, and its pin file stays as committed: what composition would derive for
-it now comes from a fragment a human is holding back, so nothing of it is
-written until the Project is resumed. Resuming removes the Pause, and the next composition moves the pin to
+Project, and its pin file keeps the units it was committed with: what
+composition would derive for them now comes from a fragment a human is holding
+back. What the file says of the path itself still follows the Platform
+document, so a paused Project never goes on verifying against a signer, or
+pulling from a repository, that the Platform document no longer names. Resuming removes the Pause, and the next composition moves the pin to
 the Project's newest fragment, as for any other Project.
 
 **A Rollback re-composes an earlier release.** It names its target by the

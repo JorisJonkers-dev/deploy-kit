@@ -14,11 +14,13 @@ import {
   type SourceUnit,
 } from "../adapters/flux/source.ts";
 import { brokenInvariant } from "../model/internal-failure.ts";
+import { PIN_ANNOTATIONS } from "../model/pin-annotations.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import { edgeUnitOf, SECRETS_UNIT, unitOf } from "../model/reconcile-units.ts";
 import type { ResolvedProject } from "../model/resolution.ts";
 import { readPinSource } from "../read/pin-source.ts";
 import { SECRETS_DIRECTORY, tierDirectory } from "../adapters/shared/paths.ts";
+import type { RenderedObject } from "../objects/deliverable.ts";
 import type { RenderedFile, Serializer } from "./render-intent-set.ts";
 
 /** One pin source: the artifact it pins, and the file the Estate repository commits for it. */
@@ -127,7 +129,11 @@ function unitsOf(
  * commits: that of each of `moving`, whose pin moves, and that of every other
  * artifact of `delivered` whose `committed` source differs from the one
  * derived now. A source written while its pin stays keeps the digest it is
- * committed at, and stays a first delivery's where it is one.
+ * committed at, and stays a first delivery's where it is one. A paused
+ * Project's keeps its units as committed, since the ones derived now come from
+ * a fragment a human is holding back; what it says of the path itself, the
+ * repository, the signer and the pull Secret, follows the Platform document
+ * all the same.
  *
  * A unit follows only units `delivered` holds: a Project still on the old path
  * has no unit on this one, which would never become Ready, and is already
@@ -162,32 +168,41 @@ export function pinSources(
   return delivered.flatMap((artifact): PinSource[] => {
     const { name } = artifact;
     const path = `projects/${name}/source.yaml`;
-    const written = (recreate: boolean, digest?: string): PinSource => ({
+    const derive = (recreate: boolean, digest?: string): RenderedObject[] =>
+      renderPinSource(
+        name === ESTATE ? ESTATE_SOURCE : sourceOf(name),
+        name,
+        unitsOf(artifact, projects, platform).map((unit) => ({
+          ...unit,
+          after: unit.after.filter((followed) => onPath.has(followed)),
+        })),
+        flux,
+        held[name],
+        recreate,
+        digest,
+      );
+    const file = (objects: readonly RenderedObject[]): PinSource => ({
       name,
       path,
-      text: serialize(
-        renderPinSource(
-          name === ESTATE ? ESTATE_SOURCE : sourceOf(name),
-          name,
-          unitsOf(artifact, projects, platform).map((unit) => ({
-            ...unit,
-            after: unit.after.filter((followed) => onPath.has(followed)),
-          })),
-          flux,
-          held[name],
-          recreate,
-          digest,
-        ),
-        path,
-      ),
+      text: serialize(objects, path),
     });
-    if (moves.has(name)) return [written(name !== ESTATE && !pinned.has(name))];
+    if (moves.has(name))
+      return [file(derive(name !== ESTATE && !pinned.has(name)))];
     const before = committed[name];
     if (before === undefined) return [];
     const pin = readPinSource(before);
     if (pin === undefined)
       throw brokenInvariant(`${path}: a committed pin source names no digest`);
-    const derived = written(pin.recreates, pin.digest);
-    return derived.text === before ? [] : [derived];
+    const derived = derive(pin.recreates, pin.digest);
+    const written = file(
+      PIN_ANNOTATIONS.pausedBy in (held[name] ?? {})
+        ? // The source itself is derived; its units stay the committed ones.
+          [
+            ...derived.slice(0, 1),
+            ...(pin.units as unknown as RenderedObject[]),
+          ]
+        : derived,
+    );
+    return written.text === before ? [] : [written];
   });
 }

@@ -1936,28 +1936,62 @@ describe("composeEstate, for an artifact whose pin stays", () => {
     );
   });
 
-  it("leaves a paused Project's source as committed, whatever it would derive, until the Project is resumed", () => {
+  it("keeps a paused Project's units as committed, and still gives its source what the Platform document says", () => {
     const withPullSecret = (platform: string): string =>
       platform.replace(
         "      repository: ghcr.io/jorisjonkers-dev/render\n",
         "      repository: ghcr.io/jorisjonkers-dev/render\n      pullSecret: render-pull\n",
       );
-    const paused = { ...settled, pins: pinned(first, { notes: PAUSE }) };
+    const pins = pinned(first, { notes: PAUSE });
+    // The source as the Pause committed it: the annotations, at the same digest.
+    const [paused] = withPlatform((same) => same, { ...settled, pins }).sources;
+    expect(paused?.name).toBe("notes");
+    // Its unit is one composition would not derive now, as a held-back
+    // fragment's would differ from the pinned artifact's.
+    const committed = (paused?.text ?? "").replace(
+      "path: ./apps/notes",
+      "path: ./apps/notes-as-pinned",
+    );
+    const held = {
+      ...settled,
+      pins,
+      sources: { ...settled.sources, notes: committed },
+    };
 
-    // Every other source is rewritten; the paused one is held still.
-    expect(
-      withPlatform(withPullSecret, paused).sources.map(({ name }) => name),
-    ).toStrictEqual(NAMES.filter((name) => name !== "notes"));
-    // Resumed, it is rewritten like any other, at the digest it is committed at.
-    const resumed = withPlatform(withPullSecret, settled).sources.find(
+    // Nothing the Platform document says changed, so the unit alone moves nothing.
+    expect(withPlatform((same) => same, held).sources).toStrictEqual([]);
+    const notes = withPlatform(withPullSecret, held).sources.find(
       ({ name }) => name === "notes",
     );
-    expect(repositoryOf(resumed?.text ?? "")?.secretRef?.name).toBe(
+    expect(notes?.path).toBe("projects/notes/source.yaml");
+    expect(repositoryOf(notes?.text ?? "")?.secretRef?.name).toBe(
       "render-pull",
     );
-    expect(repositoryOf(resumed?.text ?? "")?.ref?.digest).toBe(
+    expect(repositoryOf(notes?.text ?? "")?.ref?.digest).toBe(
       digestOf("notes"),
     );
+    expect(
+      objectsOf(notes?.text ?? "").find(({ kind }) => kind === "OCIRepository")
+        ?.metadata.annotations,
+    ).toStrictEqual(PAUSE);
+    // Every unit is byte for byte the committed one.
+    const unitsOf = (body: string): string =>
+      body.slice(body.indexOf("kind: Kustomization"));
+    expect(unitsOf(notes?.text ?? "")).toBe(unitsOf(committed));
+    expect(unitsOf(committed)).toContain("path: ./apps/notes-as-pinned");
+    // Resumed, the unit is derived again like any other Project's.
+    const resumed = withPlatform((same) => same, {
+      ...settled,
+      sources: {
+        ...settled.sources,
+        notes: (settled.sources["notes"] ?? "").replace(
+          "path: ./apps/notes",
+          "path: ./apps/notes-as-pinned",
+        ),
+      },
+    }).sources;
+    expect(resumed.map(({ name }) => name)).toStrictEqual(["notes"]);
+    expect(resumed[0]?.text).toBe(settled.sources["notes"]);
   });
 
   it("writes a source only for a pin that moves where the caller supplies no committed source", () => {
