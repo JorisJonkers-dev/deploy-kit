@@ -1842,15 +1842,26 @@ describe("composeEstate, for an artifact whose pin stays", () => {
   const recreates = (body: string): boolean =>
     objectsOf(body).some(({ spec }) => spec.patches !== undefined);
 
-  const first = withPlatform((same) => same);
-  const previous = { lock: first.lock, commit: hex("estate-commit", 40) };
-  const settled = {
-    held: RELEASES,
-    pins: pinned(first),
-    sources: committedBy(first),
-    previous,
+  // Composed before each test rather than as the suite is collected, so a
+  // mutation run sees which test reaches which code.
+  let first: Composition;
+  let settled: {
+    held: readonly Fragment[];
+    pins: Record<string, Pin>;
+    sources: Record<string, string>;
+    previous: NonNullable<ComposeInput["previous"]>;
   };
-  const NAMES = first.artifacts.map(({ name }) => name);
+  let NAMES: string[];
+  beforeEach(() => {
+    first = withPlatform((same) => same);
+    settled = {
+      held: RELEASES,
+      pins: pinned(first),
+      sources: committedBy(first),
+      previous: { lock: first.lock, commit: hex("estate-commit", 40) },
+    };
+    NAMES = first.artifacts.map(({ name }) => name);
+  });
 
   it("writes no source when the committed one already says what composition derives", () => {
     expect(withPlatform((same) => same, settled).sources).toStrictEqual([]);
