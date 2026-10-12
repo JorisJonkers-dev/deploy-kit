@@ -6,8 +6,10 @@
 import {
   cpSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -575,6 +577,63 @@ describe("deploy-kit compose", () => {
     expect(again.stdout).toBe("composed 3 artifacts; pins move for: none\n");
     // Pinned already, so no source is written a second time.
     expect(existsSync(join(root, "again", "projects"))).toBe(false);
+
+    // REQ-051 (docs/requirements.md): handed the Estate repository's
+    // `projects` directory, it rewrites a source that says something else.
+    const DIGEST = `sha256:${hex("published", 64)}`;
+    const committed = join(root, "estate", "projects");
+    const source = (name: string): string =>
+      readFileSync(
+        join(root, "first", "projects", name, "source.yaml"),
+        "utf8",
+      ).replace(`sha256:${"0".repeat(64)}`, DIGEST);
+    for (const { name } of report.artifacts) {
+      mkdirSync(join(committed, name), { recursive: true });
+      writeFileSync(join(committed, name, "source.yaml"), source(name));
+    }
+    // Neither a directory with no source in it nor a file is an artifact's.
+    mkdirSync(join(committed, "_canary"));
+    writeFileSync(join(committed, "README.md"), "");
+    const against = (out: string) =>
+      composeIn(
+        root,
+        "--held",
+        join(root, "fragments"),
+        "--pins",
+        pins,
+        "--sources",
+        committed,
+        "--lock",
+        join(root, "first", "lock.json"),
+        "--lock-commit",
+        hex("estate", 40),
+        "--out",
+        join(root, out),
+      );
+
+    expect(against("same").stdout).toBe(
+      "composed 3 artifacts; pins move for: none\n",
+    );
+    expect(existsSync(join(root, "same", "projects"))).toBe(false);
+
+    for (const name of ["notes", "observability"])
+      writeFileSync(
+        join(committed, name, "source.yaml"),
+        source(name).replace("interval: 10m", "interval: 1h"),
+      );
+    expect(against("stale").stdout).toBe(
+      "composed 3 artifacts; pins move for: none; sources rewritten for: notes, observability\n",
+    );
+    expect(readdirSync(join(root, "stale", "projects"))).toStrictEqual([
+      "notes",
+      "observability",
+    ]);
+    expect(
+      readFileSync(
+        join(root, "stale", "projects", "notes", "source.yaml"),
+        "utf8",
+      ),
+    ).toBe(source("notes"));
   });
 
   it("isolates a refused fragment that never composed, and composes the rest", () => {

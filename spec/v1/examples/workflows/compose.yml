@@ -236,6 +236,7 @@ jobs:
             --participants participants.yml \
             --held held/ \
             --pins pins.json \
+            --sources projects/ \
             $LOCK \
             --cluster-state cluster-state.yml \
             --schema-package-integrity "$(node -p "require('./package-lock.json').packages['node_modules/@jorisjonkers-dev/deploy-kit'].integrity")" \
@@ -330,16 +331,36 @@ jobs:
           # digests. A rollback is a revert in the application repository,
           # which moves the pin forward again; reverting this commit directly
           # is break-glass.
-          test -s moved.txt || { echo "no render changed; nothing to deploy"; exit 0; }
+          #
           # A source file holds the pin and the units that apply it: the digest
           # is the OCIRepository's, and no other object's.
           while read -r project _ digest; do
             DIGEST="$digest" yq -i '(select(.kind == "OCIRepository") | .spec.ref.digest) = strenv(DIGEST)' "projects/${project}/source.yaml"
           done < moved.txt
+          # The toolkit also wrote the source of each pinned artifact whose
+          # committed one differs from the one it derives now: the Platform
+          # document's repository, signer or pull Secret changed, or a unit it
+          # follows handed over. Each already names the digest it was committed
+          # at, so committing it deploys nothing
+          # (spec/v1/55-delivery.md#what-a-pin-source-holds).
+          : > rewritten.txt
+          for source in composed/projects/*/source.yaml; do
+            [ -f "$source" ] || continue
+            project="$(basename "$(dirname "$source")")"
+            grep -q "^${project} " moved.txt && continue
+            cp "$source" "projects/${project}/source.yaml"
+            echo "$project" >> rewritten.txt
+          done
+          git add projects/
+          git diff --cached --quiet && { echo "no render and no pin source changed; nothing to commit"; exit 0; }
+          if [ -s moved.txt ]; then
+            subject="chore(deploy): $(cut -d' ' -f1 moved.txt | paste -sd, -)"
+          else
+            subject="chore(deploy): rewrite the pin source of $(paste -sd, - < rewritten.txt)"
+          fi
           git config user.name "estate-composition"
           git config user.email "estate-composition@users.noreply.github.com"
-          git add projects/
-          git commit -m "chore(deploy): $(cut -d' ' -f1 moved.txt | paste -sd, -) [ci skip]"
+          git commit -m "${subject} [ci skip]"
           git push origin HEAD:main
 
       - name: Report what composition decided

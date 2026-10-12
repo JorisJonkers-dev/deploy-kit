@@ -120,7 +120,8 @@ node src/cli/index.ts publish spec/v1/examples/minimal/notes.project.yml \
 # list, and write the artifacts, the lock and what to report.
 node src/cli/index.ts compose --fragments fragments/ --participants participants.yml \
   --cluster-state cluster-state.yml --schema-package-integrity <sha256:...> --out composed/ \
-  [--platform platform/] [--held held/] [--pins pins.json] [--lock lock.json --lock-commit <commit>]
+  [--platform platform/] [--held held/] [--pins pins.json] [--sources projects/] \
+  [--lock lock.json --lock-commit <commit>]
 ```
 
 - **Help.** `deploy-kit --help` or `-h`, alone or after a command, prints the
@@ -133,7 +134,8 @@ node src/cli/index.ts compose --fragments fragments/ --participants participants
 - **What compose writes.** Under its output directory, `artifacts/<name>/`
   holds one directory per delivered Project, and `_estate`: its Vault policy
   job alone while any Project is legacy, and its edge units too once none is. `projects/<name>/source.yaml` is the pin source of each artifact whose
-  pin moves, to commit to the Estate repository in place of the one there. Beside it, the lock.json file holds the composition lock, and the
+  pin moves, to commit to the Estate repository in place of the one there. With `--sources`, the Estate repository's `projects` directory, it also
+  holds the source of each pinned artifact whose committed one says something composition no longer derives, at the digest that one is committed at. Beside it, the lock.json file holds the composition lock, and the
   composition.json file holds each artifact's content hash, the repository it
   is published to, and whether its pin moves, plus the commit statuses and the Project conditions the workflow
   reports.

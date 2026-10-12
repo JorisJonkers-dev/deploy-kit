@@ -1,9 +1,11 @@
-// The pin source of every artifact whose pin a composition moves
+// The pin source of every artifact a composition writes one for
 // (spec/v1/55-delivery.md#rendered-artifacts-and-pins): derived from the
-// Platform document and the Reconcile Unit DAG, and rewritten whole with each
-// move, so the units it applies are always the ones its artifact holds. A
-// Project's artifact holds its one unit; the estate-scoped one holds the unit
-// that provisions secrets and one per tier it carries routes for.
+// Platform document and the Reconcile Unit DAG, and written whole, so the
+// units it applies are always the ones its artifact holds. One is written
+// when the pin moves, and when the committed one no longer says what
+// composition derives. A Project's artifact holds its one unit; the
+// estate-scoped one holds the unit that provisions secrets and one per tier
+// it carries routes for.
 import {
   ESTATE_ARTIFACT,
   ESTATE_SOURCE,
@@ -11,9 +13,11 @@ import {
   sourceOf,
   type SourceUnit,
 } from "../adapters/flux/source.ts";
+import { brokenInvariant } from "../model/internal-failure.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import { edgeUnitOf, SECRETS_UNIT, unitOf } from "../model/reconcile-units.ts";
 import type { ResolvedProject } from "../model/resolution.ts";
+import { readPinSource } from "../read/pin-source.ts";
 import { SECRETS_DIRECTORY, tierDirectory } from "../adapters/shared/paths.ts";
 import type { RenderedFile, Serializer } from "./render-intent-set.ts";
 
@@ -119,21 +123,27 @@ function unitsOf(
 }
 
 /**
- * The pin source of each of `artifacts`, as the file the Estate repository
- * commits. A unit follows only units `delivered` holds: a Project still on the
- * old path has no unit on this one, which would never become Ready, and is
- * already running where the old path put it. A Project's artifact that is not
- * yet `pinned` is a first delivery, the handover's, and recreates the
+ * The pin source composition writes, as the file the Estate repository
+ * commits: that of each of `moving`, whose pin moves, and that of every other
+ * artifact of `delivered` whose `committed` source differs from the one
+ * derived now. A source written while its pin stays keeps the digest it is
+ * committed at, and stays a first delivery's where it is one.
+ *
+ * A unit follows only units `delivered` holds: a Project still on the old path
+ * has no unit on this one, which would never become Ready, and is already
+ * running where the old path put it. A Project's artifact that moves and is
+ * not yet `pinned` is a first delivery, the handover's, and recreates the
  * Deployments it cannot take over in place.
  */
 export function pinSources(
-  artifacts: readonly Artifact[],
+  moving: readonly Artifact[],
   delivered: readonly Artifact[],
   projects: readonly ResolvedProject[],
   platform: PlatformIntentDocument,
   serialize: Serializer,
   held: Readonly<Record<string, Readonly<Record<string, string>>>> = {},
   pinned: ReadonlySet<string> = new Set(),
+  committed: Readonly<Record<string, string>> = {},
 ): PinSource[] {
   const onPath = new Set(
     delivered.flatMap((artifact) =>
@@ -148,25 +158,36 @@ export function pinSources(
     signer: published.signer,
     pullSecret: published.pullSecret,
   };
-  return artifacts.map((artifact) => {
-    const path = `projects/${artifact.name}/source.yaml`;
-    return {
-      name: artifact.name,
+  const moves = new Set(moving.map(({ name }) => name));
+  return delivered.flatMap((artifact): PinSource[] => {
+    const { name } = artifact;
+    const path = `projects/${name}/source.yaml`;
+    const written = (recreate: boolean, digest?: string): PinSource => ({
+      name,
       path,
       text: serialize(
         renderPinSource(
-          artifact.name === ESTATE ? ESTATE_SOURCE : sourceOf(artifact.name),
-          artifact.name,
+          name === ESTATE ? ESTATE_SOURCE : sourceOf(name),
+          name,
           unitsOf(artifact, projects, platform).map((unit) => ({
             ...unit,
-            after: unit.after.filter((name) => onPath.has(name)),
+            after: unit.after.filter((followed) => onPath.has(followed)),
           })),
           flux,
-          held[artifact.name],
-          artifact.name !== ESTATE && !pinned.has(artifact.name),
+          held[name],
+          recreate,
+          digest,
         ),
         path,
       ),
-    };
+    });
+    if (moves.has(name)) return [written(name !== ESTATE && !pinned.has(name))];
+    const before = committed[name];
+    if (before === undefined) return [];
+    const pin = readPinSource(before);
+    if (pin === undefined)
+      throw brokenInvariant(`${path}: a committed pin source names no digest`);
+    const derived = written(pin.recreates, pin.digest);
+    return derived.text === before ? [] : [derived];
   });
 }

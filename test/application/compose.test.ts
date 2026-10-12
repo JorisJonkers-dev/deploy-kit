@@ -1791,3 +1791,272 @@ describe("composeEstate, over the fragments' shares of the images lock", () => {
     ).toBe(true);
   });
 });
+
+// REQ-051 (docs/requirements.md): a pin source says what composition derives
+// now, whether or not its pin moves
+// (spec/v1/55-delivery.md#what-a-pin-source-holds).
+describe("composeEstate, for an artifact whose pin stays", () => {
+  const UNPUBLISHED = `sha256:${"0".repeat(64)}`;
+  const digestOf = (name: string): string => `sha256:${hex(name, 64)}`;
+  const withPlatform = (
+    edit: (platform: string) => string,
+    input: Partial<ComposeInput> = {},
+  ): Composition =>
+    compose({
+      platform: {
+        ...PLATFORM,
+        files: PLATFORM.files.map((file) =>
+          file.name === "platform.intent.yml"
+            ? { ...file, text: edit(withLedger(file.text, "")) }
+            : file,
+        ),
+      },
+      ...input,
+    });
+  /** What the Estate repository holds once `composition` is published: each source at its artifact's digest. */
+  const committedBy = (composition: Composition): Record<string, string> =>
+    Object.fromEntries(
+      composition.sources.map(({ name, text: body }) => [
+        name,
+        body.replace(UNPUBLISHED, digestOf(name)),
+      ]),
+    );
+  const objectsOf = (body: string) =>
+    parseAllDocuments(body).map(
+      (document) =>
+        document.toJSON() as {
+          kind: string;
+          metadata: { annotations?: Record<string, string> };
+          spec: {
+            ref?: { digest: string };
+            secretRef?: { name: string };
+            verify?: { matchOIDCIdentity: { subject: string }[] };
+            url?: string;
+            patches?: unknown;
+            dependsOn?: { name: string }[];
+          };
+        },
+    );
+  const repositoryOf = (body: string) =>
+    objectsOf(body).find(({ kind }) => kind === "OCIRepository")?.spec;
+  const recreates = (body: string): boolean =>
+    objectsOf(body).some(({ spec }) => spec.patches !== undefined);
+
+  const first = withPlatform((same) => same);
+  const previous = { lock: first.lock, commit: hex("estate-commit", 40) };
+  const settled = {
+    held: RELEASES,
+    pins: pinned(first),
+    sources: committedBy(first),
+    previous,
+  };
+  const NAMES = first.artifacts.map(({ name }) => name);
+
+  it("writes no source when the committed one already says what composition derives", () => {
+    expect(withPlatform((same) => same, settled).sources).toStrictEqual([]);
+  });
+
+  it.each([
+    [
+      "pull Secret",
+      (platform: string) =>
+        platform.replace(
+          "      repository: ghcr.io/jorisjonkers-dev/render\n",
+          "      repository: ghcr.io/jorisjonkers-dev/render\n      pullSecret: render-pull\n",
+        ),
+      (body: string) => repositoryOf(body)?.secretRef?.name === "render-pull",
+    ],
+    [
+      "repository",
+      (platform: string) =>
+        platform.replace(
+          "      repository: ghcr.io/jorisjonkers-dev/render\n",
+          "      repository: ghcr.io/jorisjonkers-dev/moved\n",
+        ),
+      (body: string) =>
+        repositoryOf(body)?.url?.startsWith(
+          "oci://ghcr.io/jorisjonkers-dev/moved",
+        ) === true,
+    ],
+    [
+      "signer",
+      (platform: string) =>
+        platform.replace(
+          /(\n {6}signer:\n(?: {8}.*\n)*? {8}subject: ).*\n/,
+          "$1https://github.com/x/estate/.github/workflows/other.yml@refs/heads/main\n",
+        ),
+      (body: string) =>
+        repositoryOf(body)?.verify?.matchOIDCIdentity[0]?.subject.includes(
+          "other",
+        ) === true,
+    ],
+  ])(
+    "rewrites every source when the Platform document's %s changes, and moves no digest",
+    (_fact, edit, says) => {
+      const changed = withPlatform(edit, settled);
+
+      expect(changed.artifacts.filter(({ moves }) => moves)).toStrictEqual([]);
+      expect(changed.sources.map(({ name }) => name)).toStrictEqual(NAMES);
+      for (const { name, path, text: body } of changed.sources) {
+        expect(path, name).toBe(`projects/${name}/source.yaml`);
+        expect(says(body), name).toBe(true);
+        expect(repositoryOf(body)?.ref?.digest, name).toBe(digestOf(name));
+        // What the first delivery recreates, it still recreates: the next
+        // move of the pin is what ends a handover, not a rewrite beside it.
+        expect(recreates(body), name).toBe(name !== "_estate");
+      }
+    },
+  );
+
+  it("leaves a source that is no longer a first delivery's without the recreation patch", () => {
+    // notes moved once since its handover, so its committed source carries no patch.
+    const moved = withPlatform((same) => same, {
+      ...settled,
+      pins: {
+        ...settled.pins,
+        notes: { contentHash: sha256Hasher("older notes"), annotations: {} },
+      },
+    });
+    const committed = { ...settled.sources, ...committedBy(moved) };
+    expect(recreates(committed["notes"] ?? "")).toBe(false);
+
+    const changed = withPlatform(
+      (platform) =>
+        platform.replace(
+          "      repository: ghcr.io/jorisjonkers-dev/render\n",
+          "      repository: ghcr.io/jorisjonkers-dev/render\n      pullSecret: render-pull\n",
+        ),
+      { ...settled, sources: committed },
+    );
+
+    expect(
+      changed.sources.map(({ name, text: body }) => [name, recreates(body)]),
+    ).toStrictEqual(
+      NAMES.map((name) => [name, name !== "_estate" && name !== "notes"]),
+    );
+  });
+
+  it("keeps what a Pause recorded on a pin whose source it rewrites", () => {
+    const pins = pinned(first, { notes: PAUSE });
+    // The source as the Pause committed it: the annotations, at the same digest.
+    const [held] = withPlatform((same) => same, { ...settled, pins }).sources;
+    expect(held?.name).toBe("notes");
+    const paused = {
+      ...settled,
+      pins,
+      sources: { ...settled.sources, notes: held?.text ?? "" },
+    };
+    expect(withPlatform((same) => same, paused).sources).toStrictEqual([]);
+
+    const notes = withPlatform(
+      (platform) =>
+        platform.replace(
+          "      repository: ghcr.io/jorisjonkers-dev/render\n",
+          "      repository: ghcr.io/jorisjonkers-dev/render\n      pullSecret: render-pull\n",
+        ),
+      paused,
+    ).sources.find(({ name }) => name === "notes");
+
+    expect(
+      objectsOf(notes?.text ?? "").find(({ kind }) => kind === "OCIRepository")
+        ?.metadata.annotations,
+    ).toStrictEqual(PAUSE);
+    expect(repositoryOf(notes?.text ?? "")?.ref?.digest).toBe(
+      digestOf("notes"),
+    );
+  });
+
+  it("writes a source only for a pin that moves where the caller supplies no committed source", () => {
+    const { notes: _notes, ...others } = settled.sources;
+    const changed = withPlatform(
+      (platform) =>
+        platform.replace(
+          "      repository: ghcr.io/jorisjonkers-dev/render\n",
+          "      repository: ghcr.io/jorisjonkers-dev/render\n      pullSecret: render-pull\n",
+        ),
+      { ...settled, sources: others },
+    );
+
+    expect(changed.sources.map(({ name }) => name)).toStrictEqual(
+      NAMES.filter((name) => name !== "notes"),
+    );
+  });
+
+  // The unit that provisions secrets follows the Secret Store's unit, which
+  // is on the estate path only once its Project has handed over.
+  it("gives a unit the unit it follows as soon as that one hands over, though its own pin stays", () => {
+    const under = (
+      ledger: string,
+      input: Partial<ComposeInput> = {},
+    ): Composition =>
+      compose({
+        platform: {
+          ...PLATFORM,
+          files: PLATFORM.files.map((file) =>
+            file.name === "platform.intent.yml"
+              ? { ...file, text: withLedger(file.text, ledger) }
+              : file,
+          ),
+        },
+        ...input,
+      });
+    const followedBySecrets = (body: string | undefined) =>
+      objectsOf(body ?? "").find(
+        ({ kind, spec }) =>
+          kind === "Kustomization" && spec.dependsOn !== undefined,
+      )?.spec.dependsOn;
+    const before = under(
+      "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, edge, knowledge, notes, observability, secrets]\n  estate: [data, delivery]\n",
+    );
+    expect(
+      followedBySecrets(
+        before.sources.find(({ name }) => name === "_estate")?.text,
+      ),
+    ).toBeUndefined();
+    const handedOver = {
+      held: RELEASES,
+      pins: pinned(before),
+      previous: { lock: before.lock, commit: hex("estate-commit", 40) },
+    };
+    const LEDGER_AFTER =
+      "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, edge, knowledge, notes, observability]\n  estate: [data, delivery, secrets]\n";
+
+    const after = under(LEDGER_AFTER, {
+      ...handedOver,
+      sources: committedBy(before),
+    });
+
+    expect(
+      after.artifacts.filter(({ moves }) => moves).map(({ name }) => name),
+    ).toStrictEqual(["secrets"]);
+    expect(after.sources.map(({ name }) => name)).toStrictEqual([
+      "_estate",
+      "secrets",
+    ]);
+    const [estate, secrets] = after.sources;
+    expect(followedBySecrets(estate?.text)).toStrictEqual([
+      { name: "apps-secrets" },
+    ]);
+    expect(repositoryOf(estate?.text ?? "")?.ref?.digest).toBe(
+      digestOf("_estate"),
+    );
+    // The Project that hands over is a first delivery, at no digest yet.
+    expect(repositoryOf(secrets?.text ?? "")?.ref?.digest).toBe(UNPUBLISHED);
+    expect(recreates(secrets?.text ?? "")).toBe(true);
+    // With no committed source to compare, the edge waits for a pin move.
+    expect(
+      under(LEDGER_AFTER, handedOver).sources.map(({ name }) => name),
+    ).toStrictEqual(["secrets"]);
+  });
+
+  it("refuses to go on from a committed source that names no digest", () => {
+    expect(() =>
+      withPlatform((same) => same, {
+        ...settled,
+        sources: { ...settled.sources, notes: "kind: OCIRepository\n" },
+      }),
+    ).toThrow(
+      "projects/notes/source.yaml: a committed pin source names no digest",
+    );
+  });
+});

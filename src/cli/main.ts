@@ -66,6 +66,8 @@ const PLATFORM_INPUTS = ["node-contract.yml", "images.lock.yml"];
 const REF = "ref";
 /** When the fragment was published, written beside its reference by the workflow that pulled it. */
 const PUBLISHED = "published";
+/** A pin source, in the directory the Estate repository names for its artifact. */
+const SOURCE = "source.yaml";
 
 export const USAGE_TEXT = `usage:
   deploy-kit --help
@@ -75,7 +77,7 @@ export const USAGE_TEXT = `usage:
   deploy-kit compose --fragments <directory> --participants <file> --cluster-state <file>
                      --schema-package-integrity <sha256:...> --out <directory>
                      [--platform <directory>] [--held <directory>] [--pins <file>]
-                     [--lock <file> --lock-commit <sha>] [--json]
+                     [--sources <directory>] [--lock <file> --lock-commit <sha>] [--json]
 `;
 
 /** The options every command reads, by name. */
@@ -90,6 +92,7 @@ const OPTIONS = {
   fragments: { type: "string" },
   held: { type: "string" },
   pins: { type: "string" },
+  sources: { type: "string" },
   lock: { type: "string" },
   "lock-commit": { type: "string" },
   "cluster-state": { type: "string" },
@@ -215,6 +218,20 @@ function fragmentsUnder(root: string): Fragment[] | string {
     (read as Fragment[])
   );
 }
+
+/**
+ * Every pin source under `root`, the Estate repository's `projects`
+ * directory, by the artifact its directory names.
+ */
+const sourcesUnder = (root: string): Record<string, string> =>
+  Object.fromEntries(
+    readdirSync(root)
+      .filter((artifact) => existsSync(join(root, artifact, SOURCE)))
+      .map((artifact) => [
+        artifact,
+        readFileSync(join(root, artifact, SOURCE), "utf8"),
+      ]),
+  );
 
 function validate(paths: readonly string[], json: boolean): Outcome {
   if (paths.length === 0) return usage("validate: name a file or a directory");
@@ -433,6 +450,10 @@ function compose(values: Options, json: boolean, world: World): Outcome {
         typeof pins === "string"
           ? (JSON.parse(readFileSync(pins, "utf8")) as Record<string, Pin>)
           : {},
+      sources:
+        typeof values.sources === "string"
+          ? sourcesUnder(values.sources)
+          : undefined,
       clusterState: {
         name: basename(clusterState),
         text: readFileSync(clusterState, "utf8"),
@@ -468,8 +489,9 @@ function compose(values: Options, json: boolean, world: World): Outcome {
   for (const { name, files } of artifacts)
     for (const { path, text } of files)
       write(join(out, "artifacts", name, path), text);
-  // The pin source of each artifact whose pin moves, at the path the Estate
-  // repository commits it under.
+  // The pin source of each artifact whose pin moves, and of each whose
+  // committed source says something else, at the path the Estate repository
+  // commits it under.
   for (const { path, text } of sources) write(join(out, path), text);
   write(join(out, "lock.json"), `${canonicalJson(written)}\n`);
   write(
@@ -486,8 +508,11 @@ function compose(values: Options, json: boolean, world: World): Outcome {
     })}\n`,
   );
   const moving = artifacts.filter(({ moves }) => moves).map(({ name }) => name);
+  const rewritten = sources
+    .map(({ name }) => name)
+    .filter((name) => !moving.includes(name));
   return accepted(
-    `composed ${String(artifacts.length)} artifacts; pins move for: ${moving.length === 0 ? "none" : moving.join(", ")}\n`,
+    `composed ${String(artifacts.length)} artifacts; pins move for: ${moving.length === 0 ? "none" : moving.join(", ")}${rewritten.length === 0 ? "" : `; sources rewritten for: ${rewritten.join(", ")}`}\n`,
     json,
   );
 }

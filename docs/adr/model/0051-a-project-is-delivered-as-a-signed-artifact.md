@@ -93,8 +93,9 @@ committed tree is deleted.
 
 - The estate repository holds one Flux source per Project and the Reconcile
   Units' Kustomizations, and nothing else rendered. Composition writes each
-  whole whenever it moves the pin, so the units it applies follow what the
-  artifact holds and nobody writes one by hand.
+  whole whenever it moves the pin, and whenever the committed one differs from
+  the one it derives, so the units it applies follow what the artifact holds
+  and nobody writes one by hand.
 - A source written before its artifact exists carries a digest that names
   none. It fetches nothing if it is ever applied so, where a source with no
   reference would fetch whatever `latest` names.
