@@ -1,4 +1,5 @@
-// REQ-022 (docs/requirements.md): the mutation gate over src/.
+// REQ-022 (docs/requirements.md): the mutation gate over src/, on a pull
+// request and in the weekly full run.
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -23,6 +24,17 @@ const OUTSIDE_THE_SANDBOX: Readonly<Record<string, string>> = {
   "test/oracles.test.ts":
     "lists oracle files from the git index; test/canonical-json.test.ts covers the writer",
 };
+
+const workflow = (name: string): string =>
+  readFileSync(join(REPOSITORY, ".github", "workflows", name), "utf8");
+
+const ci = workflow("ci.yml");
+const full = workflow("mutation-full.yml");
+/** One job's text: from its key to the blank line that ends it. */
+const jobOf = (text: string, key: string): string =>
+  text.split(`  '${key}':\n`)[1]?.split("\n\n")[0] ?? "";
+const pullRequestJob = jobOf(ci, "mutation");
+const shardJob = jobOf(full, "shard");
 
 function testFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -66,38 +78,94 @@ describe("the mutation gate", () => {
   });
 
   it("uploads the html report as a CI artifact, even when the mutation step fails", () => {
-    const workflow = readFileSync(
-      join(REPOSITORY, ".github", "workflows", "ci.yml"),
-      "utf8",
-    );
-    const mutationJob =
-      workflow.split("'mutation':\n")[1]?.split("\n\n")[0] ?? "";
-
-    expect(mutationJob).toContain("actions/upload-artifact@");
-    expect(mutationJob).toContain("'if': 'always()'");
-    expect(mutationJob).toContain("'path': 'reports/mutation'");
+    for (const job of [pullRequestJob, shardJob]) {
+      expect(job).toContain("actions/upload-artifact@");
+      expect(job).toContain("'if': 'always()'");
+      expect(job).toContain("'path': 'reports/mutation'");
+    }
   });
 
-  // The job runs as shards, each mutating a disjoint share of the files the
-  // config names; test/mutation-shard.test.ts holds the split itself.
-  it("runs as one shard per matrix entry, each handed the shard count the matrix lists", () => {
-    const workflow = readFileSync(
-      join(REPOSITORY, ".github", "workflows", "ci.yml"),
-      "utf8",
+  // RULE-064. Stryker tests a mutant again when its module changed or a test
+  // file that covered it changed, and takes every other result from the
+  // report it is handed, so the score is still over every mutant.
+  it("re-tests on a pull request what the change reaches, against the last green run on main, npm run test:mutation -- --incremental", () => {
+    expect(pullRequestJob).toContain(
+      "'run': 'npm run test:mutation -- --incremental'",
     );
-    const mutationJob =
-      workflow.split("'mutation':\n")[1]?.split("\n\n")[0] ?? "";
-    const shards = /'shard': \[([\d, ]+)\]/.exec(mutationJob)?.[1] ?? "";
+    expect(pullRequestJob).toContain(
+      'gh run list --repo "${REPO}" --workflow ci.yml --branch main --event push --status success --limit 1',
+    );
+    expect(pullRequestJob).toContain(
+      'gh run download "${run}" --repo "${REPO}" --name mutation-incremental --dir reports',
+    );
+    // One job over every module: a matrix would hand each shard a report
+    // that holds the other shards' mutants too.
+    expect(pullRequestJob).not.toContain("'matrix':");
+    expect(pullRequestJob).not.toContain("--mutate");
+    expect(ci).toMatch(/'pipeline-complete':[\s\S]*?- 'mutation'\n/);
+  });
+
+  it("uploads the report the next run reads from a push to main, and from nothing else", () => {
+    const upload = pullRequestJob.split("'name': 'Upload the report")[1] ?? "";
+
+    expect(upload).toContain(
+      `'if': "github.event_name == 'push' && github.ref == 'refs/heads/main'"`,
+    );
+    expect(upload).toContain("'name': 'mutation-incremental'");
+    // Where Stryker writes it when no other path is named.
+    expect(upload).toContain("'path': 'reports/stryker-incremental.json'");
+    expect(JSON.stringify(config)).not.toContain("incrementalFile");
+  });
+
+  // The full run is shards, each mutating a disjoint share of the files the
+  // config names; test/mutation-shard.test.ts holds the split itself.
+  it("runs the full run as one shard per matrix entry, each handed the shard count the matrix lists", () => {
+    const shards = /'shard': \[([\d, ]+)\]/.exec(shardJob)?.[1] ?? "";
     const count = shards.split(",").length;
 
     expect(shards.split(",").map(Number)).toStrictEqual(
       Array.from({ length: count }, (_, index) => index + 1),
     );
     expect(count).toBeGreaterThan(1);
-    expect(mutationJob).toContain(
+    expect(shardJob).toContain(
       `files="$(node scripts/mutation-shard.ts "$SHARD" ${String(count)})"`,
     );
-    expect(mutationJob).toContain('npm run test:mutation -- --mutate "$files"');
+    expect(shardJob).toContain('npm run test:mutation -- --mutate "$files"');
+    expect(shardJob).not.toContain("--incremental");
+  });
+
+  it("runs the full run on a weekly schedule and on request, and on no push or pull request", () => {
+    const triggers = full.split("'on':\n")[1]?.split("\n\n")[0] ?? "";
+
+    expect(triggers).toMatch(
+      /'schedule':\n(\s+#.*\n)*\s+- 'cron': '\d+ \d+ \* \* \d'/,
+    );
+    expect(triggers).toContain("'workflow_dispatch':");
+    expect(triggers).not.toContain("'pull_request'");
+    expect(triggers).not.toContain("'push'");
+    expect(triggers).not.toContain("'workflow_call'");
+  });
+
+  it("opens an issue naming the survivors of the full run, and gates nothing", () => {
+    const survivors = full.split("  'survivors':\n")[1] ?? "";
+
+    expect(survivors).toContain("'if': 'always()'");
+    expect(survivors).toContain("'issues': 'write'");
+    expect(survivors).toContain(
+      'body="$(node scripts/mutation-survivors.ts reports/shards)"',
+    );
+    expect(survivors).toContain("gh issue create");
+    expect(survivors).toContain("gh issue comment");
+    // The issue it comments on is one it opened: a title is anyone's to copy.
+    expect(survivors).toContain(
+      '.user.login == "github-actions[bot]" and .title == env.TITLE',
+    );
+    expect(survivors).not.toContain("--search");
+    // Only the job that writes the issue may write one.
+    expect(shardJob).not.toContain("'issues'");
+    // `Pipeline Complete` needs only jobs of ci.yml, which never calls this.
+    expect(ci).not.toContain("'uses': './.github/workflows/mutation-full.yml'");
+    expect(full).not.toContain("'workflow_call'");
   });
 
   it("runs every test file that imports from src/", () => {

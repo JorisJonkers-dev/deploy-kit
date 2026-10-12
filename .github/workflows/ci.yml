@@ -180,45 +180,62 @@
       - 'name': 'Test'
         'run': 'npm run test:coverage'
 
-  # Every module under src/, mutated; a surviving mutant below the break
-  # threshold in stryker.config.json fails the job. The threshold is the
-  # measured score and only rises, like the coverage ratchet. The gate runs as
-  # parallel shards, each mutating a disjoint share of the files the config
-  # names (scripts/mutation-shard.ts): the break score is 100, so every shard
-  # scoring 100 is the whole gate scoring 100, and a pull request waits for
-  # the slowest shard rather than the whole run.
+  # A pull request re-tests the mutants its change reaches, not every mutant.
+  # Stryker's incremental mode compares the tree with the report of the last
+  # green run on main, and tests a mutant again when its module changed or a
+  # test file that covered it changed; every other result is taken from that
+  # report. The score is still over every mutant, and a score below the break
+  # threshold in stryker.config.json fails the job. The full run, which tests
+  # every mutant, is weekly: .github/workflows/mutation-full.yml. See
+  # docs/adr/architecture/0063-coverage-and-mutation-are-ratchets.md.
   'mutation':
-    'name': 'Mutation (${{ matrix.shard }}/6)'
+    'name': 'Mutation'
     'runs-on': 'ubuntu-latest'
-    # One shard holds a sixth of the mutants; the limit only stops a hung run.
-    'timeout-minutes': 60
+    # A run that finds no report on main tests every mutant in this one job.
+    'timeout-minutes': 180
     'permissions':
       'contents': 'read'
-    'strategy':
-      # Every failing shard reports, not only the first.
-      'fail-fast': false
-      'matrix':
-        'shard': [1, 2, 3, 4, 5, 6]
+      # Reads the list of runs on main, and one run's artifact.
+      'actions': 'read'
     'steps':
       - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
       - 'uses': './.github/actions/setup'
-      - 'name': 'Mutation'
+      # No report is not a failure: Stryker then tests every mutant, which is
+      # slower and never weaker.
+      - 'name': 'Fetch the report of the last green run on main'
+        'shell': 'bash'
         'env':
-          'SHARD': '${{ matrix.shard }}'
-        # The list is taken first, so a shard script that fails stops the
-        # step, rather than handing Stryker an empty list.
+          'GH_TOKEN': '${{ github.token }}'
+          'REPO': '${{ github.repository }}'
         'run': |
-          files="$(node scripts/mutation-shard.ts "$SHARD" 6)"
-          npm run test:mutation -- --mutate "$files"
+          set -euo pipefail
+          run="$(gh run list --repo "${REPO}" --workflow ci.yml --branch main --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+          if [ -z "${run}" ]; then
+            echo "::warning::No green run on main: every mutant is tested."
+          elif ! gh run download "${run}" --repo "${REPO}" --name mutation-incremental --dir reports; then
+            echo "::warning::Run ${run} holds no mutation-incremental report: every mutant is tested."
+          fi
+      - 'name': 'Mutation'
+        'run': 'npm run test:mutation -- --incremental'
       # A failing run is exactly when the report is needed, so the upload
       # runs whether or not the step above passed.
       - 'name': 'Upload mutation report'
         'if': 'always()'
         'uses': 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a' # v7.0.1
         'with':
-          'name': 'mutation-report-${{ matrix.shard }}'
+          'name': 'mutation-report'
           'path': 'reports/mutation'
           'if-no-files-found': 'error'
+      # What the next pull request compares itself with. Only a green run on
+      # main uploads it, so a report holding a survivor is never the baseline.
+      - 'name': 'Upload the report the next run reads'
+        'if': "github.event_name == 'push' && github.ref == 'refs/heads/main'"
+        'uses': 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a' # v7.0.1
+        'with':
+          'name': 'mutation-incremental'
+          'path': 'reports/stryker-incremental.json'
+          'if-no-files-found': 'error'
+          'retention-days': 90
 
   'package-contents':
     'name': 'Package contents'
