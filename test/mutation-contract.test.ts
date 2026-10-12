@@ -156,6 +156,11 @@ describe("the mutation gate", () => {
     );
     expect(survivors).toContain("gh issue create");
     expect(survivors).toContain("gh issue comment");
+    // The issue it comments on is one it opened: a title is anyone's to copy.
+    expect(survivors).toContain(
+      '.user.login == "github-actions[bot]" and .title == env.TITLE',
+    );
+    expect(survivors).not.toContain("--search");
     // Only the job that writes the issue may write one.
     expect(shardJob).not.toContain("'issues'");
     // `Pipeline Complete` needs only jobs of ci.yml, which never calls this.

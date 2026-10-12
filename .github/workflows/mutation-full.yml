@@ -81,6 +81,7 @@
           'REPO': '${{ github.repository }}'
           'RUN_ID': '${{ github.run_id }}'
           'RUN_URL': '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+          'TITLE': 'Mutants survive the weekly full mutation run'
         'run': |
           set -euo pipefail
 
@@ -94,14 +95,18 @@
             exit 0
           fi
 
-          title='Mutants survive the weekly full mutation run'
           body="${body}"$'\n\n'"Run: ${RUN_URL}"
-          open="$(gh issue list --repo "${REPO}" --state open --search "\"${title}\" in:title" --json number --jq '.[0].number // empty')"
+
+          # Only an issue this workflow's own identity opened is reused. Anyone
+          # can open an issue with this title, and a match on the title alone
+          # would send every later report into theirs.
+          open="$(gh api "repos/${REPO}/issues?state=open&creator=app/github-actions&per_page=100" \
+            --jq '[.[] | select(.pull_request == null and .user.login == "github-actions[bot]" and .title == env.TITLE)][0].number // empty')"
 
           if [ -n "${open}" ]; then
             gh issue comment "${open}" --repo "${REPO}" --body "${body}"
           else
-            gh issue create --repo "${REPO}" --title "${title}" --body "${body}" \
+            gh issue create --repo "${REPO}" --title "${TITLE}" --body "${body}" \
               --label 'type: bug' --label 'area: tooling' --label 'component: tests' \
               --label 'priority: P2' --label 'status: triage'
           fi
