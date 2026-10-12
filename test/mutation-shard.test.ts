@@ -1,4 +1,4 @@
-// REQ-022 (docs/requirements.md): the mutation gate over src/, run as shards.
+// REQ-022 (docs/requirements.md): the full mutation run over src/, as shards.
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

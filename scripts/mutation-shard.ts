@@ -1,10 +1,10 @@
-// One shard of the mutation gate.
+// One shard of the full mutation run.
 //
-// The Mutation job ran every mutant in one job, and its length grew with
-// src/ past an hour. CI now runs the gate as parallel shards, each handed a
-// disjoint share of the files stryker.config.json mutates. The break score is
-// 100, so every shard scoring 100 is the whole gate scoring 100: sharding
-// changes how long the gate takes, never what it accepts.
+// Testing every mutant in one job grew with src/ past an hour. The weekly
+// full run (.github/workflows/mutation-full.yml) is parallel shards, each
+// handed a disjoint share of the files stryker.config.json mutates. The break
+// score is 100, so every shard scoring 100 is the whole run scoring 100:
+// sharding changes how long the run takes, never what it accepts.
 //
 // A library first: tests call shardFiles() and run() in-process. The command
 // is `node scripts/mutation-shard.ts <shard> <count>`, which prints the

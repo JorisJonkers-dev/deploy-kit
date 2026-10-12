@@ -1,0 +1,107 @@
+# The full mutation run: every module under src/, every mutant.
+#
+# A pull request re-tests only the mutants its own change reaches (the
+# `mutation` job in ci.yml), so this run is the check on that shortcut. It
+# runs once a week, as parallel shards, each mutating a disjoint share of the
+# files stryker.config.json names (scripts/mutation-shard.ts). When a mutant
+# is left undetected it opens an issue naming every one of them, or comments
+# on the open one.
+#
+# It gates nothing. No pull request waits for it and ci.yml does not call it,
+# so it never joins `Pipeline Complete`: see
+# docs/adr/architecture/0063-coverage-and-mutation-are-ratchets.md.
+'name': 'Mutation (full)'
+
+'on':
+  'schedule':
+    # Monday, 03:17 UTC: off the hour, where scheduled runs queue longest.
+    - 'cron': '17 3 * * 1'
+  'workflow_dispatch':
+
+'concurrency':
+  'group': 'mutation-full'
+  'cancel-in-progress': false
+
+'permissions':
+  'contents': 'read'
+
+'jobs':
+  'shard':
+    'name': 'Mutation (${{ matrix.shard }}/6)'
+    'runs-on': 'ubuntu-latest'
+    # One shard holds a sixth of the mutants; the limit only stops a hung run.
+    'timeout-minutes': 60
+    'permissions':
+      'contents': 'read'
+    'strategy':
+      # Every shard reports, not only the first to find a survivor.
+      'fail-fast': false
+      'matrix':
+        'shard': [1, 2, 3, 4, 5, 6]
+    'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+      - 'uses': './.github/actions/setup'
+      - 'name': 'Mutation'
+        'env':
+          'SHARD': '${{ matrix.shard }}'
+        # The list is taken first, so a shard script that fails stops the
+        # step, rather than handing Stryker an empty list.
+        'run': |
+          files="$(node scripts/mutation-shard.ts "$SHARD" 6)"
+          npm run test:mutation -- --mutate "$files"
+      # A shard with a survivor fails, and its report is what names it.
+      - 'name': 'Upload mutation report'
+        'if': 'always()'
+        'uses': 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a' # v7.0.1
+        'with':
+          'name': 'mutation-report-${{ matrix.shard }}'
+          'path': 'reports/mutation'
+          'if-no-files-found': 'error'
+
+  'survivors':
+    'name': 'Report survivors'
+    'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 10
+    'needs':
+      - 'shard'
+    # A shard that found a survivor failed, which is when this has to run.
+    'if': 'always()'
+    'permissions':
+      'contents': 'read'
+      # Reads this run's own artifacts.
+      'actions': 'read'
+      'issues': 'write'
+    'steps':
+      - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+      - 'uses': './.github/actions/setup'
+      - 'name': 'Open or update the issue that names the survivors'
+        'shell': 'bash'
+        'env':
+          'GH_TOKEN': '${{ github.token }}'
+          'REPO': '${{ github.repository }}'
+          'RUN_ID': '${{ github.run_id }}'
+          'RUN_URL': '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+        'run': |
+          set -euo pipefail
+
+          # No report at all fails here: a run that reported nothing proves
+          # nothing, and a red scheduled run is what says so.
+          gh run download "${RUN_ID}" --repo "${REPO}" --pattern 'mutation-report-*' --dir reports/shards
+          body="$(node scripts/mutation-survivors.ts reports/shards)"
+
+          if [ -z "${body}" ]; then
+            echo "Every mutant was detected."
+            exit 0
+          fi
+
+          title='Mutants survive the weekly full mutation run'
+          body="${body}"$'\n\n'"Run: ${RUN_URL}"
+          open="$(gh issue list --repo "${REPO}" --state open --search "\"${title}\" in:title" --json number --jq '.[0].number // empty')"
+
+          if [ -n "${open}" ]; then
+            gh issue comment "${open}" --repo "${REPO}" --body "${body}"
+          else
+            gh issue create --repo "${REPO}" --title "${title}" --body "${body}" \
+              --label 'type: bug' --label 'area: tooling' --label 'component: tests' \
+              --label 'priority: P2' --label 'status: triage'
+          fi
