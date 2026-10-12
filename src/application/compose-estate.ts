@@ -77,6 +77,12 @@ export interface ComposeInput {
   readonly held: readonly Fragment[];
   /** The pin of every Project and of the estate that has been delivered, by artifact name. */
   readonly pins: Readonly<Record<string, Pin>>;
+  /**
+   * The pin source the Estate repository holds for each pinned artifact, by
+   * artifact name, as committed. An artifact with none here is written a
+   * source only when its pin moves.
+   */
+  readonly sources?: Readonly<Record<string, string>> | undefined;
   readonly clusterState: AuthoredFile;
   /** The previous lock, and the estate commit it was committed in; none before the first composition. */
   readonly previous?:
@@ -131,8 +137,10 @@ export interface Composition {
   readonly artifacts: readonly ComposedArtifact[];
   /**
    * The pin source of every artifact whose pin moves, a first delivery among
-   * them: the file the Estate repository commits for it, whole, with the
-   * moved digest.
+   * them, and of every artifact whose committed source no longer says what
+   * composition derives: the file the Estate repository commits for it,
+   * whole. One whose pin moves is committed at the moved digest; one whose
+   * pin stays already names the digest it was committed at.
    */
   readonly sources: readonly PinSource[];
   readonly lock: CompositionLockDocument;
@@ -637,7 +645,8 @@ function composition(
   return {
     artifacts,
     // Rewritten whenever the pin moves, so a unit an artifact gains is
-    // applied, keeping what a Pause or a Rollback recorded on the pin.
+    // applied, and whenever what the Platform document or the unit DAG says
+    // of it changes, keeping what a Pause or a Rollback recorded on the pin.
     sources: pinSources(
       artifacts.filter(({ moves }) => moves),
       rendered,
@@ -651,6 +660,7 @@ function composition(
         ]),
       ),
       new Set(Object.keys(input.pins)),
+      input.sources,
     ),
     lock,
     statuses: statusesOf(input, isolated),

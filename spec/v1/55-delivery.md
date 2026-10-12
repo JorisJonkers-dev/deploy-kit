@@ -107,11 +107,17 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   path. Composition writes the file whole, from the Platform document and the
   Reconcile Unit DAG, each time it moves the pin, the first time a Project
   composes among them, so the units it applies are always the ones its artifact
-  holds ([What a pin source holds](#what-a-pin-source-holds)). Removing a Project's file takes it off the estate path, which
+  holds ([What a pin source holds](#what-a-pin-source-holds)). It also reads
+  the committed file of every pinned artifact, and writes the file again when
+  the one it derives differs, though the pin stays: the Platform document's
+  repository, signer or pull Secret changed, or a unit this one follows joined
+  the estate path. A file written while its pin stays keeps its `ref.digest`,
+  so it deploys nothing. Removing a Project's file takes it off the estate path, which
   only a handover step reversed or a Project's retirement does
   ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)). After publishing, composition commits to the
   estate repository's `main` the rewritten source of every Project whose
-  artifact changed, at its new `ref.digest`, marked `[ci skip]` so the estate repository's push checks
+  artifact changed, at its new `ref.digest`, and with it every source rewritten
+  while its pin stayed, marked `[ci skip]` so the estate repository's push checks
   do not run on a commit that only moves digests. That commit is the deploy.
   These files are the only committed objects; the Deliverables themselves exist
   only inside artifacts.
@@ -140,7 +146,10 @@ delivery machinery ([#148](https://github.com/JorisJonkers-dev/deploy-kit/issues
 ### What a pin source holds
 
 The file composition writes for an artifact whose pin moves, a first delivery
-among them, replacing whatever was committed before. Everything in it derives;
+among them, and for a pinned artifact whose committed file differs from the one
+derived now, replacing whatever was committed before. For a paused Project the
+`Kustomization` rows below are not derived again: they stay as committed
+([Pause and Rollback](#pause-and-rollback)). Everything in it derives;
 nothing is authored, and the cadence is this chapter's, stated once
 as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied):
 
@@ -148,15 +157,15 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 |---|---|---|
 | `OCIRepository` | name, namespace | `project-<project>`, or `estate` for the estate-scoped artifact, which no Project's source can be named; the namespace of the Platform document's `bootstrap.flux.sourceRef` |
 | | `url` | `oci://<repository>/<project>` for a Project's artifact and `oci://<repository>-estate` for the estate-scoped one, `<repository>` the Platform document's `bootstrap.flux.artifacts.repository` |
-| | `ref.digest` | the digest of the published artifact. Until the first publish it is sixty-four zeros, which names no artifact: a source applied before its digest is set fetches nothing, where one with no `ref` would fetch whatever `latest` names |
+| | `ref.digest` | the digest of the published artifact. Until the first publish it is sixty-four zeros, which names no artifact: a source applied before its digest is set fetches nothing, where one with no `ref` would fetch whatever `latest` names. A file written while its pin stays keeps the digest it is committed at |
 | | `secretRef` | the Platform document's `bootstrap.flux.artifacts.pullSecret`, by name, where it names one; absent for a public repository ([chapter 14](14-platform-intent.md#the-bootstrap-set)) |
 | | `verify` | `cosign`, against the Platform document's signer. Flux reads an identity as a pattern, so the issuer and the subject are each written anchored and escaped: the one workflow on the one branch, and no branch whose name merely begins the same |
 | | `interval` | `10m` |
 | `Kustomization`, one per Reconcile Unit the artifact holds | name | the unit's ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)) |
 | | `sourceRef`, `path` | the `OCIRepository` above, and the unit's directory in the artifact |
-| | `dependsOn` | every unit this one follows that is on the estate path, by name, in name order; absent where it follows none. A unit of a Project still on the old path ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)) is left out: it has no Kustomization here, so Flux would wait on it for ever, and the Project is already running where the old path put it. The source is rewritten on the dependent's next pin move after that Project hands over, and the edge returns then |
+| | `dependsOn` | every unit this one follows that is on the estate path, by name, in name order; absent where it follows none. A unit of a Project still on the old path ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)) is left out: it has no Kustomization here, so Flux would wait on it for ever, and the Project is already running where the old path put it. The first composition after that Project hands over rewrites the source, whether or not the dependent's own pin moves, and the edge returns then |
 | | `interval`, `prune`, `wait` | `10m`, `true`, `true`: a unit is Ready when what it applied is, so a Job that fails holds every unit that follows it |
-| | `patches` | on a Project's first delivery alone, the one that hands it over ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)): one patch, targeting kind `Deployment`, that annotates each `kustomize.toolkit.fluxcd.io/force: Enabled`, so Flux recreates a Deployment whose selector the old path set differently rather than refuse it. Absent from every later rewrite, and from the estate-scoped artifact's source. No other kind is marked: a claim recreated is a claim emptied |
+| | `patches` | on a Project's first delivery alone, the one that hands it over ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)): one patch, targeting kind `Deployment`, that annotates each `kustomize.toolkit.fluxcd.io/force: Enabled`, so Flux recreates a Deployment whose selector the old path set differently rather than refuse it. A rewrite that leaves the pin where it is keeps it, since the first delivery may not have been applied yet; the first rewrite that moves the pin drops it, and it is absent from the estate-scoped artifact's source. No other kind is marked: a claim recreated is a claim emptied |
 
 A Project's artifact holds its one unit. The estate-scoped artifact holds
 `estate-vso-secrets` where it carries the Vault policy job, and one
@@ -178,7 +187,11 @@ file. Neither is a second applier: Flux still applies whatever the pin names.
 **A Pause freezes the pin.** While a Project is paused, composition still checks
 its newest fragment against every estate-wide invariant and reports what it
 finds, and Flux still reconciles the pinned render, but no pin commit moves the
-Project. Resuming removes the Pause, and the next composition moves the pin to
+Project, and its pin file keeps the units it was committed with: what
+composition would derive for them now comes from a fragment a human is holding
+back. What the file says of the path itself still follows the Platform
+document, so a paused Project never goes on verifying against a signer, or
+pulling from a repository, that the Platform document no longer names. Resuming removes the Pause, and the next composition moves the pin to
 the Project's newest fragment, as for any other Project.
 
 **A Rollback re-composes an earlier release.** It names its target by the

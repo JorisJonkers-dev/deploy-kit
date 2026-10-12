@@ -104,6 +104,7 @@ export function renderPinSource(
   flux: FluxFacts,
   annotations: Readonly<Record<string, string>> = {},
   recreate = false,
+  digest: string = UNPUBLISHED,
 ): RenderedObject[] {
   const repository: OciRepository = {
     apiVersion: "source.toolkit.fluxcd.io/v1",
@@ -119,7 +120,7 @@ export function renderPinSource(
     spec: {
       interval: INTERVAL,
       url: `oci://${artifactRepositoryOf(flux.repository, artifact)}`,
-      ref: { digest: UNPUBLISHED },
+      ref: { digest },
       ...(flux.pullSecret === undefined
         ? {}
         : { secretRef: { name: flux.pullSecret } }),
