@@ -407,6 +407,13 @@ consumer. The flip of the [Stable Address](#the-stable-address) then needs no
 policy change in any consumer's Project, which is what lets it happen at once,
 and the rules narrow to the one remaining Instance when the source is retired.
 
+A peer on another Application is admitted, and reached, where it runs: the
+`<project>-system` of the project that declares it, under its Process's name.
+While that project is still `legacy`, the old path may run it elsewhere, so the
+peer is where the handover ledger's `serving` states it runs, and so is the
+address a Process is handed for it
+([chapter 14](14-platform-intent.md#handover-ledger)).
+
 ### The baseline
 
 Two rules are in the rendered set for every Process and appear in no

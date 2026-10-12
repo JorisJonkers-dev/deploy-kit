@@ -47,9 +47,11 @@ export function resolveMigration(
   );
   // A changelog reaches a database surface, or E_MIGRATION_WITHOUT_DATABASE
   // refused it, and the edge resolves, or the union's references refused it.
-  const datastore = datastoreOf(application, context.union) as NonNullable<
-    ReturnType<typeof datastoreOf>
-  >;
+  const datastore = datastoreOf(
+    application,
+    context.union,
+    context.platform,
+  ) as NonNullable<ReturnType<typeof datastoreOf>>;
   return {
     runner: `${image.repository}@${image.digest}`,
     uid: image.uid,

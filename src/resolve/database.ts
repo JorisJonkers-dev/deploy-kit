@@ -10,7 +10,8 @@ import type {
 } from "../model/effective-intent.ts";
 import { ownsDatabases } from "../model/project-intent-queries.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
-import { namespaceOf } from "../model/runtime-profiles.ts";
+import type { PlatformIntentDocument } from "../model/platform-intent.ts";
+import { homeOf } from "../model/runtime-profiles.ts";
 
 type Egress = NonNullable<ResolvedProcess["egress"]>[number];
 
@@ -32,6 +33,7 @@ const edgesOf = ({ dependsOn }: EffectiveProcess) => dependsOn ?? [];
 export function datastoreOf(
   application: EffectiveApplication,
   union: readonly EffectiveProject[],
+  platform: Pick<PlatformIntentDocument, "handover">,
 ): Egress | undefined {
   return application.processes
     .flatMap(edgesOf)
@@ -39,15 +41,14 @@ export function datastoreOf(
       union.flatMap(({ project, applications }) =>
         applications
           .filter(({ id }) => id === edge.application)
-          .flatMap(({ processes }) =>
+          .flatMap(({ id, processes }) =>
             processes.filter(ownsDatabases).flatMap(({ name, provides }) =>
               provides?.[edge.surface] === undefined
                 ? []
                 : [
                     {
                       rule: "datastore" as const,
-                      namespace: namespaceOf(project),
-                      process: name,
+                      ...homeOf(platform, project, id, name),
                       port: provides[edge.surface] as number,
                     },
                   ],

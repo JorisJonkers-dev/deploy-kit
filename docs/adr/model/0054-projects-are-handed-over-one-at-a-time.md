@@ -16,7 +16,9 @@ repository's pins happens one Project per step. The Platform document's
 refused when a Project is on both paths or on neither. A `legacy` Project is
 composed and diffed but never delivered. A Project's first delivery recreates
 its Deployments once, since a live selector cannot be updated in place, and
-never touches a claim. The old path is removed on the ledger's `retireBy` date. The steps are
+never touches a claim. While a Project is `legacy`, the estate path reaches its
+Applications where the ledger states the old path runs them. The old path is
+removed on the ledger's `retireBy` date. The steps are
 [chapter 60](../../../spec/v1/60-setup.md#handing-over-one-project-at-a-time)'s;
 the pin is [0051](0051-a-project-is-delivered-as-a-signed-artifact.md)'s.
 
@@ -29,10 +31,13 @@ composition already reads is enough coordination. No migration service is
 needed.
 
 **False if:** a Project is applied by both `fleet-infra` and its estate pin in
-the same reconcile, or a claim is deleted or recreated during its handover.
+the same reconcile, a claim is deleted or recreated during its handover, or an
+`estate` Project cannot reach a `legacy` provider the ledger states.
 **Settled by:** hand over `app` and observe `app-ui` recreated once and
 serving, and the `fleet-infra` Kustomization no longer listing it; hand over
-`data` and observe every claim's UID unchanged across the step.
+`data` and observe every claim's UID unchanged across the step; observe
+`estate-vso-secrets` Ready against the old path's Vault while `secrets` is
+`legacy`.
 
 ## Why
 
@@ -67,6 +72,19 @@ alone, for the `estate` Projects only. Its edge units would be a second source
 for the routes the old path still serves, so they wait until no Project is
 `legacy`.
 
+**A `legacy` provider is reached where it runs, stated in the ledger.** The
+foundation is handed over last, so the first `estate` Projects depend on the
+old path's Vault and Traefik. The old path never put them where their own
+declarations do: on 2026-10-08 Vault ran in `data-system`, not `secrets-system`,
+and the public Traefik in `ingress-system` under another instance label. A unit
+that derives their home from the declaration cannot apply, or admits a proxy
+that serves nothing. So the ledger states, per `legacy` Application, the
+namespace and instance it actually runs under, and every peer, address and the
+policy job follow the statement until the Project moves. One rule covers every
+provider, the Secret Store and the edge alike, and handing a Project over
+deletes its statement in the same change, which the refusal of a location on an
+`estate` Project enforces.
+
 **A retirement date, so the old path ends.** Without one, the last few
 Projects stay on the old path indefinitely and the estate keeps two delivery
 paths forever.
@@ -83,6 +101,8 @@ paths forever.
 | Keep the live selector for a Process taken over, recorded in a Bidirectional Ledger | no restart | the fixed label set gains an exception per handed-over Project, each to be undone by the recreate it postponed |
 | Hold the whole estate-scoped artifact until no Project is `legacy` | one rule | no `estate` Project's unit ever becomes Ready, since the unit it depends on is never applied, so the handover cannot start |
 | Have the old path declare a unit named `estate-vso-secrets` | no change here | ties the old path to the new path's names, and still writes no Vault role for an `estate` Project |
+| Hand the foundation over first, Vault and Traefik before any tenant | no location to state | Vault's data moves namespaces and the edge cuts over at the very first step, the riskiest order, not the one with nothing to lose |
+| Special-case each provider: the policy job in its own namespace by address, a policy admitting both Traefiks | no schema change | two exceptions where one rule serves, and the next `legacy` provider an `estate` Project reaches needs a third |
 
 ## Reversibility
 
@@ -98,3 +118,6 @@ decision expires once `legacy` is empty, when the block is removed.
 - Every Deployment of a handed-over Project restarts once at its first apply:
   a gap of one pod start where it runs one replica, paid at each handover.
 - The `retireBy` date is a commitment: moving it is a recorded decision.
+- Each `legacy` provider an `estate` Project reaches is stated in the ledger
+  until it moves, one entry per Application, paid by joris at the handover that
+  first needs it.

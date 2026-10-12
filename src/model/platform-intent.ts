@@ -201,12 +201,26 @@ const apiAccessPolicy = z
 // Which delivery path each Project is on while the estate moves off the old
 // one (spec/v1/60-setup.md#handing-over-one-project-at-a-time): `legacy` is
 // still delivered by the old path, `estate` by its pin, and `retireBy` is the
-// date after which the old path is removed.
+// date after which the old path is removed. `serving` states where the old
+// path runs a legacy Application the estate path reaches: the namespace its
+// pods run in, and the instance label they and their Service carry where it is
+// not the Process's own name.
+const servingLocation = z
+  .strictObject({
+    // A name, not a reference: an Application no file read declares is not
+    // refused, as the ledger's own Project names are not.
+    application: text,
+    namespace: text,
+    instance: text.exactOptional(),
+  })
+  .meta({ id: "ServingLocation" });
+
 const handoverLedger = z
   .strictObject({
     retireBy: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     legacy: z.array(text).min(1).exactOptional(),
     estate: z.array(text).min(1).exactOptional(),
+    serving: z.array(servingLocation).min(1).exactOptional(),
   })
   .meta({ id: "HandoverLedger" });
 

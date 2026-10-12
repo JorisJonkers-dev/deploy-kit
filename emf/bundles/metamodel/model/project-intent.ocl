@@ -393,6 +393,16 @@ context Project
 			or handover.legacy->includes(self.project)
 			or handover.estate->includes(self.project))
 
+context ServingLocation
+	-- A location stands for an Application the old path still runs, so its
+	-- Project is legacy; and one instance stands for one Process.
+	inv E_HANDOVER_SERVING:
+		let ledger : HandoverLedger = oclContainer().oclAsType(HandoverLedger) in
+		Project.allInstances()->forAll(p |
+			p.applications->select(a | a.id = self.application)->forAll(a |
+				ledger.legacy->includes(p.project)
+				and (self.instance <> null implies a.processes->size() = 1)))
+
 -- Every refusal resolution used to stop at (deploy-kit#204), each answered here
 -- over the authored model with its env files attached, at the Process or the
 -- Application the production implementation names.

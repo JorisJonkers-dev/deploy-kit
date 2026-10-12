@@ -48,13 +48,34 @@ export const vaultNameOf = (namespace: string, identity: string): string =>
 export const clusterNameOf = (namespace: string, identity: string): string =>
   `${namespace}-${identity}`;
 
-/** The in-cluster address of one Process's port. */
-export const addressOf = (
-  process: string,
+/** Where one Process serves: the namespace its pods run in, and their instance. */
+export interface Home {
+  readonly namespace: string;
+  readonly process: string;
+}
+
+/**
+ * Where one Process of `application` serves: its project's namespace under its
+ * own name, or, while its project is legacy, where the handover ledger states
+ * the old path runs it (spec/v1/14-platform-intent.md#handover-ledger).
+ */
+export function homeOf(
+  platform: Pick<PlatformIntentDocument, "handover">,
   project: string,
-  port: number,
-): string =>
-  `${process}.${namespaceOf(project)}.svc.cluster.local:${String(port)}`;
+  application: string,
+  process: string,
+): Home {
+  const stated = platform.handover?.serving?.find(
+    (location) => location.application === application,
+  );
+  return stated === undefined
+    ? { namespace: namespaceOf(project), process }
+    : { namespace: stated.namespace, process: stated.instance ?? process };
+}
+
+/** The in-cluster address of one Process's port. */
+export const addressOf = ({ namespace, process }: Home, port: number): string =>
+  `${process}.${namespace}.svc.cluster.local:${String(port)}`;
 
 /** Enough of a project to find a Process's port: authored or lowered. */
 interface Declares {
@@ -70,6 +91,7 @@ interface Declares {
 
 /** The address of the Process of `application` that provides `surface`, where one does. */
 export function surfaceAddress(
+  platform: Pick<PlatformIntentDocument, "handover">,
   projects: readonly Declares[],
   application: string | undefined,
   surface: string,
@@ -79,7 +101,8 @@ export function surfaceAddress(
       if (id === application)
         for (const process of processes) {
           const port = process.provides?.[surface];
-          if (port !== undefined) return addressOf(process.name, project, port);
+          if (port !== undefined)
+            return addressOf(homeOf(platform, project, id, process.name), port);
         }
   return undefined;
 }
@@ -99,7 +122,12 @@ export const collectorEndpoint = (
   projects: readonly Declares[],
 ): string | undefined =>
   endpoint(
-    surfaceAddress(projects, platform.telemetry?.collector, OTLP_SURFACE),
+    surfaceAddress(
+      platform,
+      projects,
+      platform.telemetry?.collector,
+      OTLP_SURFACE,
+    ),
   );
 
 /**
@@ -110,14 +138,16 @@ export const gateEndpoint = (
   platform: PlatformIntentDocument,
   projects: readonly Declares[],
 ): string | undefined =>
-  endpoint(surfaceAddress(projects, platform.delivery?.gate, GATE_SURFACE));
+  endpoint(
+    surfaceAddress(platform, projects, platform.delivery?.gate, GATE_SURFACE),
+  );
 
 /** The Secret Store every grant reads from: its `http` surface, where the platform names one. */
 export const secretStoreAddress = (
   platform: PlatformIntentDocument,
   projects: readonly Declares[],
 ): string | undefined =>
-  surfaceAddress(projects, platform.secretStore, GATE_SURFACE);
+  surfaceAddress(platform, projects, platform.secretStore, GATE_SURFACE);
 
 /** The endpoint the secrets operator connects to the Secret Store through. */
 export const secretStoreEndpoint = (

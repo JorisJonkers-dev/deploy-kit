@@ -398,6 +398,15 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="retireBy" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="legacy" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="estate" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="serving" upperBound="-1" eType="#//ServingLocation" containment="true"/>
+  </eClassifiers>
+  <!-- Where the old path runs a legacy Application the estate path reaches
+       (spec/v1/14-platform-intent.md#handover-ledger). The application is a
+       name, not a reference: one no file read declares is not refused. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ServingLocation">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="application" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="instance" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="FluxSource">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="sourceRef" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

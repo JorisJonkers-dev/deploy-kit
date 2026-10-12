@@ -209,9 +209,11 @@ index applies the first three:
 | `networkpolicy.yaml` | `networking` | the job's own policy: egress to the Secret Store and the cluster's DNS, no ingress; listed by no index, like every policy |
 
 All four are in the **Secret Store's namespace**, the `<project>-system` of the
-project that declares it: the job runs beside the store it writes into, and the
-platform's fixture binds a pair in the namespace the platform already owns for
-it.
+project that declares it, or, while that project is `legacy`, the namespace the
+handover ledger states the old path runs the store in
+([chapter 14](14-platform-intent.md#handover-ledger)): the job runs beside the
+store it writes into, and the platform's fixture binds a pair in the namespace
+the platform already owns for it.
 
 - It authenticates as a dedicated **policy-admin** role, a platform fixture
   created with the auth method, because it cannot grant itself the privilege to

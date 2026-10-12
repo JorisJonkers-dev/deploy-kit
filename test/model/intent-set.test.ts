@@ -709,6 +709,50 @@ describe("the handover rule across documents", () => {
     ).toStrictEqual(["E_HANDOVER_UNLISTED"]);
   });
 
+  it("accepts where the old path runs an Application of a legacy project, or of a project not read", () => {
+    const serving =
+      "  serving:\n    - application: edge-proxy\n      namespace: ingress-system\n      instance: traefik\n";
+    expect(
+      refusalsOf([withLedger(`  legacy: [refusals]\n${serving}`), project]),
+    ).toStrictEqual([]);
+    expect(
+      refusalsOf([
+        withLedger(
+          "  legacy: [refusals]\n  serving:\n    - application: elsewhere\n      namespace: ingress-system\n",
+        ),
+        project,
+      ]),
+    ).toStrictEqual([]);
+  });
+
+  it("refuses one instance stated for an Application of more than one Process, at the location", () => {
+    const twice: AuthoredFile = {
+      name: project.name,
+      text: project.text.replace(
+        /\n$/,
+        "\n      - name: edge-admin\n        lifecycle: application\n        image: traefik\n        runtime: none\n        placement: { memory: 64Mi, cpu: 10m }\n        cutover: interrupted\n",
+      ),
+    };
+    const located =
+      "  legacy: [refusals]\n  serving:\n    - application: edge-proxy\n      namespace: ingress-system\n";
+    const result = checkIntentSet([
+      withLedger(`${located}      instance: traefik\n`),
+      twice,
+    ]);
+    expect(result.ok ? [] : result.diagnostics).toStrictEqual([
+      {
+        code: "E_HANDOVER_SERVING",
+        document: platform.name,
+        path: "/handover/serving/0",
+        message:
+          "the handover ledger states one instance for edge-proxy, which runs 2 Processes",
+        hint: "State only the namespace, or split the Application.",
+      },
+    ]);
+    // A namespace alone stands for every Process of the Application.
+    expect(refusalsOf([withLedger(located), twice])).toStrictEqual([]);
+  });
+
   it("refuses a project on neither path, at the project file", () => {
     expect(
       refusalsOf([
