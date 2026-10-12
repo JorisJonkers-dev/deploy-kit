@@ -80,7 +80,7 @@ export interface ComposeInput {
   /**
    * The pin source the Estate repository holds for each pinned artifact, by
    * artifact name, as committed. An artifact with none here is written a
-   * source only when its pin moves.
+   * source only when its pin moves, as a paused one is whatever is here.
    */
   readonly sources?: Readonly<Record<string, string>> | undefined;
   readonly clusterState: AuthoredFile;
@@ -660,7 +660,13 @@ function composition(
         ]),
       ),
       new Set(Object.keys(input.pins)),
-      input.sources,
+      // A Pause holds the Project's pin file still: only a move writes it,
+      // and the one move a paused Project makes is its Rollback's.
+      Object.fromEntries(
+        Object.entries(input.sources ?? {}).filter(
+          ([name]) => !held(name, PIN_ANNOTATIONS.pausedBy),
+        ),
+      ),
     ),
     lock,
     statuses: statusesOf(input, isolated),

@@ -1936,32 +1936,26 @@ describe("composeEstate, for an artifact whose pin stays", () => {
     );
   });
 
-  it("keeps what a Pause recorded on a pin whose source it rewrites", () => {
-    const pins = pinned(first, { notes: PAUSE });
-    // The source as the Pause committed it: the annotations, at the same digest.
-    const [held] = withPlatform((same) => same, { ...settled, pins }).sources;
-    expect(held?.name).toBe("notes");
-    const paused = {
-      ...settled,
-      pins,
-      sources: { ...settled.sources, notes: held?.text ?? "" },
-    };
-    expect(withPlatform((same) => same, paused).sources).toStrictEqual([]);
+  it("leaves a paused Project's source as committed, whatever it would derive, until the Project is resumed", () => {
+    const withPullSecret = (platform: string): string =>
+      platform.replace(
+        "      repository: ghcr.io/jorisjonkers-dev/render\n",
+        "      repository: ghcr.io/jorisjonkers-dev/render\n      pullSecret: render-pull\n",
+      );
+    const paused = { ...settled, pins: pinned(first, { notes: PAUSE }) };
 
-    const notes = withPlatform(
-      (platform) =>
-        platform.replace(
-          "      repository: ghcr.io/jorisjonkers-dev/render\n",
-          "      repository: ghcr.io/jorisjonkers-dev/render\n      pullSecret: render-pull\n",
-        ),
-      paused,
-    ).sources.find(({ name }) => name === "notes");
-
+    // Every other source is rewritten; the paused one is held still.
     expect(
-      objectsOf(notes?.text ?? "").find(({ kind }) => kind === "OCIRepository")
-        ?.metadata.annotations,
-    ).toStrictEqual(PAUSE);
-    expect(repositoryOf(notes?.text ?? "")?.ref?.digest).toBe(
+      withPlatform(withPullSecret, paused).sources.map(({ name }) => name),
+    ).toStrictEqual(NAMES.filter((name) => name !== "notes"));
+    // Resumed, it is rewritten like any other, at the digest it is committed at.
+    const resumed = withPlatform(withPullSecret, settled).sources.find(
+      ({ name }) => name === "notes",
+    );
+    expect(repositoryOf(resumed?.text ?? "")?.secretRef?.name).toBe(
+      "render-pull",
+    );
+    expect(repositoryOf(resumed?.text ?? "")?.ref?.digest).toBe(
       digestOf("notes"),
     );
   });
