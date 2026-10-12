@@ -222,6 +222,29 @@ whether a consumer at an older lock is still serving is a delivery question, and
 [chapter 55](55-delivery.md) owns any stronger guarantee that wants to read live
 state.
 
+## A provider that moves
+
+Expand and contract assumes the old and the new can serve side by side while
+consumers migrate. Two changes break that assumption, and neither goes through
+it:
+
+- **Where a provider runs.** A consumer reaches a provider through its
+  [Stable Address](16-dependencies.md#the-stable-address), never through the
+  provider's namespace, so a provider that changes Project or node changes no
+  consumer's declaration and no consumer's render. There is nothing to expand
+  and nothing to contract.
+- **What a provider's data can be read by.** A datastore whose new version
+  cannot read its old data cannot serve beside its old self on one copy of
+  that data, and two copies that both accept writes diverge. That change is a
+  [Move](55-delivery.md#moves): the new Instance is filled while the old one
+  serves, writes pause for as long as the last of them takes to cross, and the
+  Stable Address flips every consumer at once.
+
+What still needs expand and contract is a change to what a provider *offers*:
+a surface added, removed or moved to another port, a database renamed, a
+contract a consumer reads. A Stable Address names a surface; it does not
+change one.
+
 ## The change, end to end
 
 ![The change, end to end](diagrams/50-change-end-to-end.drawio.svg)

@@ -33,7 +33,7 @@ resolves without knowing which domain it lands in.
 |---|---|---|---|
 | [`model/`](model/) | the v1 model: the layers, composition, derivation, the adapters, delivery | `spec/v1/` | yes |
 | [`architecture/`](architecture/README.md) | the compiler's own structure: layering, the trace, the error model, gates | `docs/architecture.md`, `docs/architecture-rules.md` | yes |
-| [`deferred/`](deferred/README.md) | co-testing, parked | sections the chapters deliberately lack | no |
+| [`deferred/`](deferred/README.md) | co-testing and multi-cluster estates, parked | sections the chapters deliberately lack | no |
 
 The model-driven implementation keeps its records at
 [`emf/docs/adr/`](../../emf/docs/adr/README.md), numbered from the same sequence
@@ -76,6 +76,7 @@ and linted by the same script with `emf` as its root.
 | [0020](model/0020-hardening-is-one-platform-posture.md) | Hardening is one platform posture with no exception surface: writable paths are declared, the user comes from the images lock, and a privileged port is refused | open |
 | [0021](model/0021-runtime-mechanics-derive-from-cutover.md) | Runtime mechanics derive from declared intent, and `cutover` names the promise: `continuous` derives a blue/green switchover, `interrupted` a stop-start one | open |
 | [0022](model/0022-a-derived-value-has-one-declaring-site.md) | A derived value has one declaring site, and `replicas: {count, reason}` is the sole local exception | settled |
+| [0096](model/0096-availability-is-declared-on-an-engine.md) | Availability is declared on an engine Process as the owner's promise, and `replicated` is refused until an engine offers a mechanism for it | open |
 
 ## Exposure, dependencies, observability and migration
 
@@ -83,6 +84,7 @@ and linted by the same script with `emf` as its root.
 |---|---|---|
 | [0023](model/0023-exposure-is-declared-by-audience.md) | Exposure is declared by Audience on an authored host, route precedence is derived, and the tier names its forward-auth endpoint | settled |
 | [0024](model/0024-dependency-edges-resolve-against-the-union.md) | A dependency edge names the provider, the surface and necessity, and resolves against the union or a provider the Platform document records | settled |
+| [0093](model/0093-a-provider-is-reached-through-its-stable-address.md) | A consumer reaches a provider's surface through its Stable Address, an alias in one estate namespace that names whichever Instance serves | open |
 | [0025](model/0025-observability-is-one-optional-block.md) | Observability is one optional block on the Application, whole or absent, and the model derives only the monitor from it | settled |
 | [0026](model/0026-migration-is-declared-on-the-application.md) | Migration is declared on the Application: one Liquibase system, one derived database per project, a proof against the serving version, and an undo only while nothing new serves | open |
 | [0027](model/0027-prepare-processes-are-forward-only-setup.md) | A prepare Process is forward-only setup that runs after the migration and before the new version, and serves nothing | open |
@@ -126,11 +128,12 @@ and linted by the same script with `emf` as its root.
 | [0045](model/0045-platform-intent-is-the-second-authored-document.md) | Platform Intent is the second authored document, published as an Intent Fragment | settled |
 | [0046](model/0046-the-foundation-is-declared.md) | The foundation is declared as Applications, nothing hand-written enters the render, and what must exist first is a recorded bootstrap table | open |
 | [0047](model/0047-one-publication-path.md) | A repository publishes its Intent Fragment and nothing else, and every derivation runs once, centrally | settled |
-| [0048](model/0048-node-facts-are-authored-once.md) | Node facts are authored once in the node contract, nix imports them, and a node may publish media no Process may ask for | settled |
+| [0048](model/0048-node-facts-are-authored-once.md) | Node facts are authored once, as Infrastructure Intent, the third authored document; the node contract, the k3s labels and the nix host data are generated from it, and a node may publish media no Process may ask for | open |
 | [0049](model/0049-datastore-and-restore.md) | Datastore, server count, and restore are recorded platform facts | open |
 | [0090](model/0090-composition-unions-each-fragments-share-of-the-images-lock.md) | Composition unions each fragment's share of the images lock, and an alias locked two ways is refused at the fragment that changed | settled |
 | [0091](model/0091-a-backup-identity-has-a-policy-of-its-own.md) | A backup identity has a network policy of its own, from facts the platform states: the surface its method dumps and where its off-cluster copy goes | settled |
 | [0092](model/0092-api-access-is-declared-on-the-process-and-admitted-by-the-platform.md) | A Process declares the Kubernetes API access it needs, and the Platform document admits who may hold any | settled |
+| [0095](model/0095-each-engine-states-how-its-data-moves.md) | Each engine states how its data moves: a method image, which version change breaks the data in place, and when it can replicate back | open |
 
 ## Delivery and release
 
@@ -147,6 +150,7 @@ and linted by the same script with `emf` as its root.
 | [0085](model/0085-composition-isolates-a-refused-project.md) | Composition isolates a refused Project, and every other Project still composes | open |
 | [0086](model/0086-the-collector-runs-in-the-cluster.md) | The ClusterState Collector runs in the cluster, reads only, and commits the snapshot when it changes | open |
 | [0087](model/0087-in-cluster-consumers-read-the-render.md) | An in-cluster job applies the rendered Vault policies, and the Release Gate reads its inputs from a rendered ConfigMap | open |
+| [0094](model/0094-a-move-is-derived-from-one-authored-edit.md) | A Move is derived from one authored edit, and the Release Gate runs it as sync, lag, fence, flip, unfence and reverse inside the provider's release | open |
 
 ## Architecture
 
@@ -176,3 +180,4 @@ Decisions about the compiler's own structure, not about the model; see
 | # | title | claim |
 |---|---|---|
 | [0069](deferred/0069-co-testing-is-parked.md) | Co-testing is parked: if it is taken up, an Aggregator owns each relationship's system tests and gates the pin commit | open |
+| [0097](deferred/0097-multi-cluster-and-multi-tenancy-are-parked.md) | Multi-cluster and multi-tenant estates are parked: v1 writes its one cluster down as a seam, and records what a second cluster or a second tenant would require | open |

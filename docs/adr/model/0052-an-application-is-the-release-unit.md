@@ -108,3 +108,8 @@ merged Application's id, or releases depend on the gate.
   write.
 - Chapter 55 also has the gate read which revision each primary runs, which is
   not layer-2 data; naming the live facts it may read is an open proposal.
+- The gate also runs a provider's Move inside its release, by starting the
+  Move's Jobs in order and recording the Move's phase and when its flip held
+  ([0094](0094-a-move-is-derived-from-one-authored-edit.md)). Its write access
+  does not grow: the steps run as the Move's own identity, and the gate still
+  writes only `suspend` and its record.

@@ -404,12 +404,24 @@ images:
     digest: "sha256:9c1e…"
     uid: 1000
     gid: 1000
+  postgres:
+    repository: docker.io/library/postgres
+    digest: "sha256:4f2a…"
+    version: 17.2.0
+    uid: 999
+    gid: 999
 ```
 
 One entry per image alias a document names, keyed by the alias. It resolves the
 alias to one image, written `<repository>@<digest>` wherever it is rendered, and
 records the user the image runs as, which the hardening posture needs and no
 Process authors ([chapter 10](10-project-intent.md#the-uid-is-a-pinned-input-and-the-volume-needs-a-group)).
+An image a Process with an `engine` runs also records its `version`, the
+release the digest was resolved from, as `major.minor.patch`: it is the one
+fact a [Move](#the-move) is derived from that a digest cannot carry, and an
+engine Process whose image the lock holds without one is
+`E_ENGINE_VERSION_MISSING`. A version is recorded, never authored: bumping it
+is moving the digest, which is the one edit a provider's owner makes.
 An alias a Process or a sidecar names that the lock holds no entry for is
 `E_UNLOCKED_IMAGE`, at that `image`: a tag cannot stand in for it, because a tag
 is the mutable reference this lock exists to remove.
@@ -466,8 +478,9 @@ the snapshot. Nothing reads the live cluster.
 
 | the snapshot enumerates | used by |
 |---|---|
-| PersistentVolume bindings, with the node holding each | recording where a Process's data already sits; `E_DISK_BINDING_CONFLICT` where a declared `disk` dimension contradicts the binding |
+| PersistentVolume bindings, with the node holding each | recording where a Process's data already sits; `E_DISK_BINDING_CONFLICT` where a declared `disk` dimension contradicts the binding and the Process's engine has no move method |
 | current placements | detecting a move before it is rendered |
+| each engine Process's active Instance: its version, namespace and node, and for an open Move, its phase and when its flip held | deriving a [Move](#the-move), and retiring its source |
 
 **What a node can hold is not on that list.** `allocatable`, `site`, `arch`,
 `gpus[]` and `disks[]` are *declared* platform facts: authored once per node and
@@ -493,9 +506,10 @@ still needs the arbitration [open item 5](#open-in-this-chapter) names.
 **The PV binding outranks the `disk` dimension.** `disk` filters where a volume
 may first land; once the PersistentVolume exists, the binding recorded in the
 snapshot is the fact. A `disk` dimension that no longer admits the node holding
-the bound volume is `E_DISK_BINDING_CONFLICT` at composition, a build error,
-never a silent re-placement, because moving the data is a state-move-plan and
-not a re-render.
+the bound volume is never a silent re-placement, because moving the data is not
+a re-render. For a Process whose engine has a move method, the contradiction
+derives a [Move](#the-move) to a node the dimension admits; for any other
+Process it is `E_DISK_BINDING_CONFLICT` at composition, a build error.
 
 The snapshot is a document of its own:
 
@@ -507,7 +521,13 @@ cluster: production
 capturedAt: "2026-09-30T00:00:00Z"   # quoted: a plain scalar holds no colon
 bindings:   [{claim: postgres-data, node: enschede-t1000-1}]
 placements: [{process: postgres, node: enschede-t1000-1}]
+instances:
+  - {application: platform-postgres, instance: postgres, version: 17.2.0, namespace: data-system, node: enschede-t1000-1}
 ```
+
+`instances` is what the Release Gate records as serving, read by the Collector
+from the gate's own record ([chapter 55](55-delivery.md#moves)); an open Move
+adds its `phase` and, once the flip has held, `flippedAt`.
 
 `capturedAt` is written quoted, as every value carrying a colon is in the
 documents the model reads. It is when the Collector first captured these facts, not when it last
@@ -715,9 +735,10 @@ A `local-path` volume binds to the node holding its PersistentVolume; that
 binding is a fact read from the pinned ClusterState snapshot, so recording it is
 an assignment like any other, a pure function of an input, carrying the
 provenance of the digest it came from. What it is not is a re-schedulable
-choice: moving the data requires a state-move-plan, not a re-render, and a
-declared `disk` dimension that contradicts the binding is
-`E_DISK_BINDING_CONFLICT` rather than a quiet move.
+choice: moving the data is a [Move](#the-move), derived and run as one, never
+a re-render, and a declared `disk` dimension that contradicts the binding of a
+Process that cannot move is `E_DISK_BINDING_CONFLICT` rather than a quiet
+move.
 
 ### The forward-auth endpoint
 
@@ -736,6 +757,11 @@ were a dependency edge would make the edge tree depend on resolving an Applicati
 and would write one Application's id into a platform derivation. It is a platform
 fact, so it sits where platform facts sit: the Platform Intent, pinned by
 digest ([Pinned inputs](#pinned-inputs)).
+
+The address the tier writes is the authenticating surface's
+[Stable Address](16-dependencies.md#the-stable-address), never its Process's
+own Service: a platform fact stays authored, and a Stable Address is the name of
+that surface which survives a [Move](#the-move) of the Application behind it.
 
 A route declaring `audience: authenticated` on a tier whose declaration carries
 no endpoint is `E_NO_FORWARD_AUTH_ENDPOINT`, checked when the chain is derived
@@ -862,6 +888,64 @@ not a Process of it holds a grant. An Application whose edges name no surface
 of the datastore holding its database has no address to migrate at, and
 resolution stops there. An Application declaring `self` or `none` carries no
 block.
+
+## The move
+
+A provider's data outlives its Instance, so a change that the data cannot follow
+in place is not a switchover: it is a **Move**, from the Instance that serves to
+a new one, run by the Release Gate inside the provider's release
+([chapter 55](55-delivery.md#moves),
+[0094](../../docs/adr/model/0094-a-move-is-derived-from-one-authored-edit.md)).
+Nobody declares a Move. Its owner edits one thing, the provider's version or
+where it runs, and composition derives the Move by comparing what the Process
+now resolves to with the active Instance the pinned ClusterState records
+([Cluster state](#cluster-state)):
+
+| the Process now resolves to | against the active Instance | derives |
+|---|---|---|
+| an engine `version` that differs from the active one in the component its engine's `move.breaksOn` names ([chapter 14](14-platform-intent.md#move-methods)) | a different version in that component | a Move |
+| a namespace other than the active Instance's: its Application was declared in another Project | a different namespace | a Move |
+| an eligible node set that excludes the node holding its bound volume | a binding the placement no longer admits | a Move |
+| any other change | | the Application's switchover, as before ([chapter 55](55-delivery.md#switchover)) |
+
+A Process with no `engine` has no data to carry, and a change of its namespace
+derives a Move with no sync: a second Instance in the new namespace, the flip of
+its [Stable Address](16-dependencies.md#the-stable-address), and the old
+Instance's retirement. That is how a stateless provider such as `auth` changes
+Project without its consumers noticing.
+
+Layer 2 carries, per Process a Move is derived for:
+
+| field | derived from |
+|---|---|
+| the source Instance | the active Instance in ClusterState: its version, namespace and node |
+| the target Instance | the Process as it now resolves: its image, namespace and eligible node set, and a volume of its own, the same size and Durability Class as the source's |
+| the method | the engine's `move.image`, through the images lock; absent for a Process with no engine |
+| the move identity | one per Process with an open Move, `<process>-move`, holding the method's credential and nothing else ([chapter 16](16-dependencies.md#process-identity)) |
+| the Stable Addresses it flips | every Stable Address whose target is the source Instance |
+| `reversible` | the engine's `move.reverse` read against the two versions: `always` is true, `same-major` is true only when both versions share a major, `never` is false |
+| the bounds | the Platform document's `delivery.move`: `timeout` and `retention` ([chapter 14](14-platform-intent.md#delivery-policy)) |
+
+A Move whose `reversible` is false cannot keep the promise a rollback makes, so
+it is refused, `E_MOVE_IRREVERSIBLE`, unless the Process acknowledges it with
+`rollback: forward-only` ([chapter 10](10-project-intent.md#rollback)). The
+acknowledgement acknowledges one Move and nothing else: written where no
+irreversible Move is derived, it is `E_FORWARD_ONLY_UNUSED`, so it never
+outlives the release it was written for.
+
+**One Move at a time.** While a Process's Move is open (its source not yet
+retired), a second change that would derive another is `E_MOVE_OPEN`: the
+target of the first is not yet the Instance a second could start from. A
+release that changes nothing a Move derives from leaves an open Move as it is.
+
+**Retirement is derived too.** Once ClusterState records the flip as held for
+longer than `retention`, composition derives the source's retirement: its
+Instance, its volume's claim and its reverse replication leave the render, and
+every rule that named both Instances narrows to the target. The source's claim
+carries the prune-disabled mark every backed-up claim does
+([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)), so
+leaving the render does not delete it: it stays bound, with data the Move has
+already carried and kept replicated back, until it is deleted by hand.
 
 ## The path plan
 

@@ -49,6 +49,24 @@ export const RETIRED: Readonly<Record<string, string>> = {
 
 export const PENDING: readonly Pending[] = [
   {
+    ticket: "#324",
+    reason:
+      "specified ahead of both implementations: the Stable Address, the derived Move, availability and Infrastructure Intent",
+    codes: [
+      "E_AVAILABILITY_UNSUPPORTED",
+      "E_AVAILABILITY_WITHOUT_ENGINE",
+      "E_DUPLICATE_NODE",
+      "E_ENGINE_VERSION_MISSING",
+      "E_FORWARD_ONLY_UNUSED",
+      "E_MOVE_IRREVERSIBLE",
+      "E_MOVE_OPEN",
+      "E_MOVE_UNSUPPORTED",
+      "E_NO_MOVE_POLICY",
+      "E_RESERVE_EXCEEDS_TOTAL",
+      "E_UNKNOWN_SITE",
+    ],
+  },
+  {
     ticket: "#44",
     reason: "a code the rule registry retires or rehomes: one rule, one code",
     codes: [

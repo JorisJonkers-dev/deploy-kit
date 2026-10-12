@@ -526,6 +526,82 @@ Undoing is never a side effect of a new pin: the down runs against the release
 that failed, before anything replaces it, and a revision's Jobs leave the render
 with the revision.
 
+## Moves
+
+A **Move** carries a provider from the Instance that serves to a new one,
+inside the provider's own release, while its consumers keep the one name they
+reach it by: its [Stable Address](16-dependencies.md#the-stable-address). It is
+derived, never declared: a change of the provider's engine version that its
+data cannot follow in place, or a change of where it runs, derives one, and
+layer 2 carries its source, target, method, identity and bounds
+([chapter 20](20-resolved-deployment.md#the-move),
+[0094](../../docs/adr/model/0094-a-move-is-derived-from-one-authored-edit.md)).
+A release that derives a Move does not switch the Process over: the Move is its
+switchover.
+
+The Release Gate runs it, as it runs a migration: every step is a Job the
+render creates suspended and applies once, named by the revision's tag and the
+step, run as the move identity with the engine's method image, and the gate
+writes `suspend` and nothing else on it. A step's Job exits zero when the step
+holds.
+
+| step | what holds when it exits zero | serving meanwhile |
+|---|---|---|
+| **start** | the target Instance runs the new version with a volume of its own, and passes its readiness | the source, alone |
+| **sync** | the method replicates from the source into the target, initial copy included | the source |
+| **lag** | the target has applied everything the source has committed, polled until it holds | the source |
+| **fence** | the source accepts no write and holds no client connection; what the method cannot carry continuously (a PostgreSQL sequence, say) is copied now | nobody writes: the write pause begins |
+| **final lag** | the target has applied the last write the source accepted | nobody writes |
+| **flip** | every Stable Address that named the source names the target | the target, for new connections |
+| **unfence** | the target accepts writes | the target: the write pause ends |
+| **reverse** | the method replicates from the target back into the source, where layer 2 records the Move as `reversible` | the target |
+
+**The write pause is bounded.** From the fence to the unfence the platform's
+`delivery.move.timeout` runs ([chapter 14](14-platform-intent.md#delivery-policy)).
+A step that fails, or a timeout that expires, puts the source back: the gate
+unfences the source, flips any Stable Address the Move already flipped back to
+it, and holds the release ([Held releases](#held-releases)). The steps before
+the fence can fail without anyone noticing a thing, because the source serves
+throughout; that is why the guardrails sit there, and the `lag` step holds only
+once the target has caught up, never on a timer.
+
+**The flip is the Move's, not the render's.** The render creates each Stable
+Address once, naming the Instance ClusterState records as active, and leaves
+its target to the Move: Flux creates the object if it is absent and never
+updates it afterwards, exactly as it creates a migration Job, so the flip Job is
+the target's only writer while a Move is open. The flip runs as the move
+identity, whose one Kubernetes permission is to update the Stable Addresses
+that name the source ([chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted)).
+Once the Collector captures the flip, the render names the target as well, so
+the object and its source agree again.
+
+**Consumers reconnect.** The fence closes the source's connections, and a
+consumer that loses one resolves its provider again and reaches the target:
+that is the obligation every consumer of a surface carries
+([chapter 16](16-dependencies.md#the-stable-address)). After the flip the gate
+watches every Application with a required edge to the provider, and an
+Application whose readiness does not hold again within its own gate deadline is
+reported, urgent, naming the provider and the Move. The gate does nothing more:
+the provider is already serving from the target, and restarting a consumer is
+its owner's call.
+
+**Retention, then retirement.** Once the flip has held, the gate records it,
+and the source stays, with the target replicating back into it, for the
+platform's `delivery.move.retention`. A Rollback inside that window
+([Pause and Rollback](#pause-and-rollback)) derives the Move back, whose sync is
+the reverse replication already running. After it, composition derives the
+source's retirement and the render drops the source, its claim and the reverse
+step ([chapter 20](20-resolved-deployment.md#the-move)). A Move acknowledged
+`rollback: forward-only` runs no reverse step, so a Rollback inside its window
+restores the source as it was at the fence
+([chapter 10](10-project-intent.md#rollback)).
+
+**What the gate records.** The record the gate keeps per Application
+([The Release Gate](#the-release-gate)) holds, for an open Move, its phase and
+when its flip held. The Collector reads it into ClusterState, which is how a
+composition learns that a Move it derived has finished
+([chapter 20](20-resolved-deployment.md#cluster-state)).
+
 ## Notifications
 
 What reaches a human, and where, depends on which side noticed. **The cluster's

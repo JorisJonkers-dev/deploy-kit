@@ -191,12 +191,19 @@ invariant, never only the first.
 The constraints a Platform document and the project files beside it answer
 together are invariants in the same file. Eclipse OCL binds one Complete OCL
 document to a package for the thread that first loads it, so a second file for
-the same package is never evaluated. Such an invariant reads the other
-documents through `allInstances()`, whose extent is the resource set a document
-was read into, and holds trivially over a document read alone. The pipeline
-reads each file of a set alone first, and reads the set together only once
-every file holds, so the second reading refuses exactly what the documents
-break together. A diagnostic names the file its path points into.
+the same package is never evaluated. Such an invariant is written in the
+context of an **Estate** root that contains every document of the set, and
+navigates containment from it; no invariant calls `allInstances()`
+([0098](adr/emf/0098-cross-file-invariants-navigate-an-estate-root.md)). A set is
+read once, into its Estate, so an invariant's scope is the set it was handed
+rather than whatever resource set a document happened to be read into. A
+diagnostic names the file its path points into.
+
+Until [#324](https://github.com/JorisJonkers-dev/deploy-kit/issues/324) lands
+the Estate root, the cross-file invariants still read the other documents
+through `allInstances()`, whose extent is the resource set, and hold trivially
+over a document read alone; the pipeline therefore reads each file of a set
+alone first, and the set together only once every file holds.
 
 Three consequences of evaluating OCL over Ecore, all recorded here because they
 shaped the metamodel. The constraints import the metamodel by its `nsURI`, not
