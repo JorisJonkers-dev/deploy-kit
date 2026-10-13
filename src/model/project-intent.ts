@@ -59,9 +59,20 @@ const text = z.string().min(1);
 const processReference = text.meta({ reference: "Process" });
 const surfaceReference = text.meta({ reference: "Surface" });
 const port = z.int().min(1).max(65535);
+// A path something requests: it opens with a slash and holds no whitespace.
+// The edge matches it, the kubelet asks it, and the Release Gate requests it
+// (spec/v1/55-delivery.md#the-release-gate), so it is never free text.
+const requestPath = z.string().regex(/^\/\S*$/);
+// A DNS name, lower case: the edge serves it and the Release Gate warms it
+// up, so it names a host and nothing more.
+const hostname = z
+  .string()
+  .regex(
+    /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/,
+  );
 
 const httpProbe = z
-  .strictObject({ path: text, port })
+  .strictObject({ path: requestPath, port })
   .meta({ id: "HttpProbe" });
 const tcpProbe = z.strictObject({ tcp: port }).meta({ id: "TcpProbe" });
 const probe = z.union([httpProbe, tcpProbe]);
@@ -233,7 +244,7 @@ const process = z
 
 const route = z
   .strictObject({
-    path: text,
+    path: requestPath,
     match: match,
     process: processReference,
     surface: surfaceReference,
@@ -245,7 +256,7 @@ const route = z
 const exposure = z
   .strictObject({
     name: text,
-    host: text,
+    host: hostname,
     audience: audience,
     contentPolicy: contentPolicy.exactOptional(),
     routes: z.array(route).min(1),

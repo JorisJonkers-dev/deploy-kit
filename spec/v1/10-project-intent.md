@@ -1469,11 +1469,11 @@ applications:
 | field | level | required | notes |
 |---|---|---|---|
 | `name` | exposure | yes | Unique within the Application. It is what `E_DUPLICATE_EXPOSURE_NAME` checks and what a `${exposure:…}` placeholder addresses. An Application serving two hostnames (`jellyfin` public and lan) needs it to tell them apart. |
-| `host` | exposure | yes | The full FQDN, written out. Unique across the estate. |
+| `host` | exposure | yes | The full FQDN, written out. Unique across the estate. A DNS name in lower case and nothing else: no scheme, port, path or space, because the edge serves it and the Release Gate requests through it ([chapter 55](55-delivery.md#the-release-gate)). |
 | `audience` | exposure | yes | `anonymous` \| `authenticated` \| `internal` \| `lan`. The default for every route beneath it. |
 | `contentPolicy` | exposure | no | `strict` \| `admin` \| `workflow`. The Content-Security-Policy profile: the one header choice an author makes, from a closed list. |
 | `routes` | exposure | yes | One or more. |
-| `path` | route | yes | The path this rule matches. |
+| `path` | route | yes | The path this rule matches. It opens with `/` and holds no whitespace: the Release Gate requests it as written. |
 | `match` | route | yes | `prefix` \| `exact`. |
 | `process` | route | yes | A Process of **this** Application. |
 | `surface` | route | yes | A surface that Process declares in `provides`: a name, never a port integer. |

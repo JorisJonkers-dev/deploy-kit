@@ -330,6 +330,91 @@ describe("parseProjectIntent", () => {
     ]);
   });
 
+  // REQ-057 (docs/requirements.md): what the edge serves, the kubelet asks and
+  // the Release Gate requests is never free text, so a list of them holds
+  // exactly what was authored and a request goes where the model says.
+  it("refuses a Route path or a probe path that is no request path, and a host that is no DNS name", () => {
+    const codesAt = (document: string) => {
+      const parsed = parseProjectIntent(document);
+      return parsed.ok
+        ? []
+        : parsed.diagnostics.map(({ code, path }) => [code, path]);
+    };
+    const ROUTE = "/applications/0/exposure/0/routes/0/path";
+    const PROBE = "/applications/0/processes/0/probes/readiness/path";
+    const HOST = "/applications/0/exposure/0/host";
+    const quoted = (value: string): string => JSON.stringify(value);
+
+    expect(codesAt(MINIMAL)).toStrictEqual([]);
+    for (const path of [
+      "api",
+      "/a b",
+      "/a\tb",
+      "@evil.example/",
+      "http://evil.example/",
+      " /",
+      "/ ",
+    ])
+      expect(
+        codesAt(
+          MINIMAL.replace("{ path: /, match", `{ path: ${quoted(path)}, match`),
+        ),
+        path,
+      ).toStrictEqual([["schema", ROUTE]]);
+    for (const path of ["/", "/api", "/install.sh", "/a,b", "/mcp/"])
+      expect(
+        codesAt(
+          MINIMAL.replace("{ path: /, match", `{ path: ${quoted(path)}, match`),
+        ),
+        path,
+      ).toStrictEqual([]);
+    expect(
+      codesAt(
+        MINIMAL.replace(
+          "readiness: { path: /healthz/ready,",
+          'readiness: { path: "healthz ready",',
+        ),
+      ),
+    ).toStrictEqual([["schema", PROBE]]);
+    for (const host of [
+      "notes.jorisjonkers.dev other.internal",
+      "Notes.jorisjonkers.dev",
+      "notes.jorisjonkers.dev/path",
+      "user@notes.jorisjonkers.dev",
+      "https://notes.jorisjonkers.dev",
+      "notes..dev",
+      "-notes.dev",
+      "notes-.dev",
+      "notes.dev.",
+      "notes.dev:8443",
+      `${"a".repeat(64)}.dev`,
+    ])
+      expect(
+        codesAt(
+          MINIMAL.replace(
+            "host: notes.jorisjonkers.dev",
+            `host: ${quoted(host)}`,
+          ),
+        ),
+        host,
+      ).toStrictEqual([["schema", HOST]]);
+    for (const host of [
+      "notes",
+      "a.b",
+      "n0tes-1.jorisjonkers.dev",
+      `${"a".repeat(63)}.dev`,
+    ])
+      expect(
+        codesAt(
+          MINIMAL.replace(
+            "host: notes.jorisjonkers.dev",
+            `host: ${quoted(host)}`,
+          ),
+        ),
+        host,
+      ).toStrictEqual([]);
+  });
+
   it("refuses a field outside the language at its JSON Pointer", () => {
     const diagnostics = refused(
       withApplications(
