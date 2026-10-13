@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.11.0...v0.11.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* hold a committed pin source against the derived one by the objects it holds, not its text ([#413](https://github.com/JorisJonkers-dev/deploy-kit/issues/413)) ([e22d569](https://github.com/JorisJonkers-dev/deploy-kit/commit/e22d569eb558b50178ce48409c6e3d5d2b5cf591)), closes [#412](https://github.com/JorisJonkers-dev/deploy-kit/issues/412)
+
 ## [0.11.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.10.0...v0.11.0) (2026-10-12)
 
 
