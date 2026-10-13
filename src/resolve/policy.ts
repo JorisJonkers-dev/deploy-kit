@@ -8,7 +8,12 @@ import type {
   EffectiveProcess,
   EffectiveProject,
 } from "../model/effective-intent.ts";
-import type { PlatformIntentDocument } from "../model/platform-intent.ts";
+import {
+  FLUX_NOTIFIER,
+  fluxNamespaceOf,
+  REPORTER_SURFACE,
+  type PlatformIntentDocument,
+} from "../model/platform-intent.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
 import {
   backupIdentityOf,
@@ -166,12 +171,34 @@ export function ingressOf(
         : [];
     }),
   );
+  // Flux's events about every Project's unit
+  // (spec/v1/55-delivery.md#rollouts): its notification controller reaches
+  // the Reporter where the Provider sends them, the first Process of the
+  // Reporter that provides the surface.
+  const receiver =
+    context.platform.delivery?.reporter === application.id
+      ? application.processes.find(
+          ({ provides }) => provides?.[REPORTER_SURFACE] !== undefined,
+        )
+      : undefined;
+  const events: Ingress[] =
+    receiver?.name === process.name
+      ? [
+          {
+            rule: "flux-events",
+            namespace: fluxNamespaceOf(context.platform),
+            process: FLUX_NOTIFIER,
+            port: port(REPORTER_SURFACE),
+          },
+        ]
+      : [];
   return distinct([
     ...routes,
     ...metrics,
     ...consumers,
     ...backups,
     ...migrations,
+    ...events,
   ]);
 }
 

@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **57** rows. The compiler's behaviours join it as they land.
+This ledger holds **58** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -80,3 +80,4 @@ This ledger holds **57** rows. The compiler's behaviours join it as they land.
 | REQ-055 | The weekly full mutation run names every mutant under `src/` that no test detected, in an issue, and gates nothing | [test/mutation-survivors.test.ts](../test/mutation-survivors.test.ts) |
 | REQ-056 | Composition records one Rollout for every Project whose pin moves, the repository, commit and version of the fragment it composed at in the environment `production`, and none for the estate-scoped artifact or where no pin moves; the Project's unit carries it on its pin source as the annotations Flux copies into its events, and a source written again while its pin stays keeps the one it is committed with | [test/application/compose.test.ts](../test/application/compose.test.ts) |
 | REQ-057 | Each webhook of a Canary hands the Release Gate what its checks request and must stay under: the path of every Route to the Process, the path its readiness is asked on, the host of every Route the internet reaches, each list once and in order, and the Platform document's two thresholds, which a delivery policy without either is refused for; a key with nothing to carry is absent, and Flagger's own analysis holds the cadence alone | [test/model/render.test.ts](../test/model/render.test.ts) |
+| REQ-058 | The Platform document names the Reporter as it names the gate, an Application whose Process provides an `http` surface, refused as `E_UNKNOWN_REPORTER` otherwise and asked for nothing where it names none; the first Process of the Reporter that provides the surface admits Flux's notification controller, from Flux's namespace, on that port, and no other Process does | [test/model/intent-set.test.ts](../test/model/intent-set.test.ts) |

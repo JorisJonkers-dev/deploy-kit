@@ -132,6 +132,7 @@ describe("checkIntentSet", () => {
         .replace("traefik: traefik-lan", "traefik: notes")
         .replace(MACHINERY, "machinery: [notes]")
         .replace("gate: release-gate", "gate: notes")
+        .replace("reporter: reporter", "reporter: notes")
         .replace("secretStore: vault", "secretStore: notes")
         .replace(TELEMETRY, "\n")
         .replace(API_ACCESS, "\n"),
@@ -156,6 +157,7 @@ describe("checkIntentSet", () => {
         .replace("traefik: traefik-lan", "traefik: notes")
         .replace(MACHINERY, "machinery: [notes]")
         .replace("gate: release-gate", "gate: notes")
+        .replace("reporter: reporter", "reporter: notes")
         .replace("secretStore: vault", "secretStore: notes")
         .replace(TELEMETRY, "\n")
         .replace(API_ACCESS, "\n"),
@@ -271,6 +273,49 @@ describe("checkIntentSet", () => {
       "Declare the collector in a project file the platform owns, with an `otlp` surface on one of its Processes.",
       "Declare the metrics stack in a project file the platform owns.",
     ]);
+  });
+
+  // REQ-058 (docs/requirements.md): the Reporter is named by the Platform
+  // document and linked as the gate is.
+  it("refuses a Reporter no project file declares with an http surface, and asks for none where the platform names none", () => {
+    const platform = read("platform/platform.intent.yml");
+    const naming = (reporter: string) =>
+      refusalsOf([
+        {
+          name: platform.name,
+          text: platform.text.replace("reporter: reporter", reporter),
+        },
+        ...WORKED.slice(1),
+      ]);
+    const gone = checkIntentSet([
+      {
+        name: platform.name,
+        text: platform.text.replace("reporter: reporter", "reporter: gone"),
+      },
+      ...WORKED.slice(1),
+    ]);
+    const [unknown, ...others] = gone.ok ? [] : gone.diagnostics;
+
+    expect(naming("reporter: reporter")).toStrictEqual([]);
+    expect(others).toStrictEqual([]);
+    expect(unknown).toStrictEqual({
+      code: "E_UNKNOWN_REPORTER",
+      document: "platform/platform.intent.yml",
+      path: "/delivery",
+      message:
+        "no project file declares an Application gone whose Process provides an `http` surface",
+      hint: "Declare the Reporter in a project file the platform owns, with an `http` surface on one of its Processes, or drop `delivery.reporter`.",
+    });
+    // An Application that answers on another surface alone is no Reporter.
+    expect(naming("reporter: otel-collector")).toStrictEqual([
+      {
+        code: "E_UNKNOWN_REPORTER",
+        document: "platform/platform.intent.yml",
+        path: "/delivery",
+      },
+    ]);
+    // The field is optional: the platform that names none is asked for none.
+    expect(naming("# no reporter")).toStrictEqual([]);
   });
 
   it("says what a Release Gate that answers nowhere was refused for, and how to fix it", () => {
@@ -396,8 +441,8 @@ describe("checkIntentSet", () => {
       {
         name: (platform as AuthoredFile).name,
         text: (platform as AuthoredFile).text.replace(
-          "holders: [flagger, release-gate, collector]",
-          "holders: [flagger, release-gate]",
+          "holders: [flagger, release-gate, collector, reporter]",
+          "holders: [flagger, release-gate, reporter]",
         ),
       },
       ...projects,

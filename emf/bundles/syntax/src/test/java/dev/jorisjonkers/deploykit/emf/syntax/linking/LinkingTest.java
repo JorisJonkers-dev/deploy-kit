@@ -217,6 +217,19 @@ class LinkingTest {
     }
 
     @Test
+    void theReporterLinksOnlyToADeclaredApplicationThatAnswersOnHttp() throws IOException {
+        // `elsewhere` provides `http`, so it may be the Reporter; `gone` is declared nowhere.
+        String analysis = "analysis: { interval: 30s, iterations: 4, threshold: 3, errorRate: 1%, latency: 500ms } }\n";
+        String linked = "delivery: { machinery: [elsewhere], gate: elsewhere, reporter: elsewhere, " + analysis;
+        String unlinked = "delivery: { machinery: [elsewhere], gate: elsewhere, reporter: gone, " + analysis;
+
+        assertThat(codes(platform("elsewhere", linked))).isEmpty();
+        assertThat(codes(platform("elsewhere", unlinked)))
+                .containsExactly("E_UNKNOWN_REPORTER no project file declares an Application gone whose Process"
+                        + " provides an `http` surface");
+    }
+
+    @Test
     void theSecretStoreLinksOnlyToADeclaredApplicationThatAnswersOnHttp() throws IOException {
         // `elsewhere` provides `http`, so it may be the Secret Store; `gone` is declared nowhere.
         Resource platform = platform("elsewhere", "secretStore: elsewhere\n");

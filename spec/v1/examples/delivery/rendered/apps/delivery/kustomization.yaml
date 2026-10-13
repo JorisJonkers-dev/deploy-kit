@@ -7,3 +7,4 @@ resources:
   - flagger
   - namespace.yaml
   - release-gate
+  - reporter

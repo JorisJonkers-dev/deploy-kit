@@ -1766,7 +1766,8 @@
         "metrics-stack",
         "consumer",
         "backup",
-        "migration"
+        "migration",
+        "flux-events"
       ]
     },
     "ResolvedPolicyJob": {

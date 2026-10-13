@@ -183,6 +183,10 @@ const deliveryPolicy = z
     // (spec/v1/55-delivery.md#the-release-gate).
     gate: text.meta({ reference: "Application" }),
     analysis: analysisPolicy,
+    // The Reporter, which Flux's events about every Project's unit are sent
+    // to, on its `http` surface (spec/v1/55-delivery.md#rollouts). A platform
+    // that names none reports no Rollout past `pinned`.
+    reporter: text.meta({ reference: "Application" }).exactOptional(),
   })
   .meta({ id: "DeliveryPolicy" });
 
@@ -244,6 +248,21 @@ export const OTLP_SURFACE = "otlp";
 
 /** The surface the Release Gate answers Flagger's webhooks on. */
 export const GATE_SURFACE = "http";
+
+/** The surface the Reporter receives Flux's events on. */
+export const REPORTER_SURFACE = "http";
+
+/**
+ * Flux's notification controller, by the `app` label its own install gives
+ * its pods: the one peer of the bootstrap set a policy names, since it is the
+ * one that calls an Application.
+ */
+export const FLUX_NOTIFIER = "notification-controller";
+
+/** The namespace Flux's own objects live in: `sourceRef` names its source as `<namespace>/<name>`. */
+export const fluxNamespaceOf = (platform: {
+  readonly bootstrap: { readonly flux: { readonly sourceRef: string } };
+}): string => platform.bootstrap.flux.sourceRef.split("/")[0] as string;
 
 const telemetryPolicy = z
   .strictObject({

@@ -1,0 +1,48 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: delivery-system-reporter
+  labels:
+    app.kubernetes.io/name: reporter
+    app.kubernetes.io/instance: reporter
+    app.kubernetes.io/part-of: reporter
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+rules:
+  - apiGroups:
+      - kustomize.toolkit.fluxcd.io
+    resources:
+      - kustomizations
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - flagger.app
+    resources:
+      - canaries
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: delivery-system-reporter
+  labels:
+    app.kubernetes.io/name: reporter
+    app.kubernetes.io/instance: reporter
+    app.kubernetes.io/part-of: reporter
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: delivery-system-reporter
+subjects:
+  - kind: ServiceAccount
+    name: reporter
+    namespace: delivery-system

@@ -26,6 +26,7 @@ public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
     public static final String UNKNOWN_TELEMETRY_COLLECTOR = "E_UNKNOWN_TELEMETRY_COLLECTOR";
     public static final String UNKNOWN_METRICS_STACK = "E_UNKNOWN_METRICS_STACK";
     public static final String UNKNOWN_RELEASE_GATE = "E_UNKNOWN_RELEASE_GATE";
+    public static final String UNKNOWN_REPORTER = "E_UNKNOWN_REPORTER";
     public static final String UNKNOWN_SECRET_STORE = "E_UNKNOWN_SECRET_STORE";
 
     /** The codes of names that link into another document, reported only when the documents are read together. */
@@ -36,6 +37,7 @@ public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
             UNKNOWN_TELEMETRY_COLLECTOR,
             UNKNOWN_METRICS_STACK,
             UNKNOWN_RELEASE_GATE,
+            UNKNOWN_REPORTER,
             UNKNOWN_SECRET_STORE);
 
     @Override
@@ -71,6 +73,12 @@ public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
                     "no project file declares an Application " + name + " whose Process provides an `http` surface",
                     Severity.ERROR,
                     UNKNOWN_RELEASE_GATE);
+        }
+        if (context.getReference() == ProjectIntentPackage.Literals.DELIVERY_POLICY__REPORTER) {
+            return new DiagnosticMessage(
+                    "no project file declares an Application " + name + " whose Process provides an `http` surface",
+                    Severity.ERROR,
+                    UNKNOWN_REPORTER);
         }
         if (context.getReference() == ProjectIntentPackage.Literals.PLATFORM__SECRET_STORE) {
             return new DiagnosticMessage(

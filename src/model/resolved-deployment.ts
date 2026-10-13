@@ -61,6 +61,7 @@ export const INGRESS_RULES = [
   "consumer",
   "backup",
   "migration",
+  "flux-events",
 ] as const;
 
 /** Which rule admits an outbound peer beyond an edge: the baseline, or a grant. */

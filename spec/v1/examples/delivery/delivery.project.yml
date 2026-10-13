@@ -145,3 +145,35 @@ applications:
           liveness: { path: /fresh, port: 8080 }
         startupBudget: 10s
         cutover: interrupted
+
+  # The Reporter (spec/v1/55-delivery.md#rollouts): not machinery, since it
+  # switches nothing, so it is not in `delivery.machinery`. It writes each
+  # Rollout's statuses from the cluster's own events, and on start it reads
+  # every unit and Canary again and corrects a status that lags, so stopping it
+  # for a release costs nothing a status does not catch up on: `interrupted`.
+  - id: reporter
+    processes:
+      - name: reporter
+        lifecycle: application
+        image: reporter
+        runtime: none
+        provides:
+          http: 8080 # Flux's events, and its probes
+        placement:
+          memory: 64Mi
+          cpu: 10m
+        api:
+          reason: >-
+            the Reporter reads every Project's unit and every Canary again on start and on an interval, to correct a status an event it missed left behind, and writes nothing
+          rules:
+            - group: kustomize.toolkit.fluxcd.io
+              objects: [kustomizations]
+              verbs: [get, list, watch]
+            - group: flagger.app
+              objects: [canaries]
+              verbs: [get, list, watch]
+        probes:
+          readiness: { path: /readyz, port: 8080 }
+          liveness: { path: /healthz, port: 8080 }
+        startupBudget: 10s
+        cutover: interrupted

@@ -41,6 +41,8 @@ property assetFiles : Sequence(AssetFile) = pinned.rootObjects()[AssetFile]->asS
 property SECRETS_UNIT : String = 'estate-vso-secrets';
 -- The surface a Release Gate and a Secret Store answer on.
 property HTTP_SURFACE : String = 'http';
+-- Flux's notification controller, by the `app` label its own install gives its pods.
+property FLUX_NOTIFIER : String = 'notification-controller';
 -- How many hex digits of an Asset's content digest its name carries.
 property CONTENT_DIGITS : Integer = 10;
 
@@ -1184,7 +1186,8 @@ query ingressOf(p : PI::Process, app : EffectiveApplication) : Sequence(PolicyPe
 		else Sequence{} endif)
 	->union(consumersOf(p, app))
 	->union(backupsOf(p))
-	->union(migrationsOf(p)))
+	->union(migrationsOf(p))
+	->union(eventsOf(p, app)))
 	->asOrderedSet()->asSequence()
 	->collect(peer | object PolicyPeer {
 		rule := peer.rule;
@@ -1192,6 +1195,21 @@ query ingressOf(p : PI::Process, app : EffectiveApplication) : Sequence(PolicyPe
 		process := peer.process;
 		port := peer.port;
 	});
+
+-- Flux's events about every Project's unit (spec/v1/55-delivery.md#rollouts): its
+-- notification controller reaches the Reporter where the Provider sends them, the first
+-- Process of the Reporter that provides the surface.
+query eventsOf(p : PI::Process, app : EffectiveApplication)
+		: Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)) =
+	if estate.delivery = null or estate.delivery.reporter = null
+			or estate.delivery.reporter.id <> app.id then Sequence{}
+	else let receivers : Sequence(PI::Process) =
+			app.processes->select(c | c.provides->exists(s | s.key = HTTP_SURFACE))->asSequence() in
+		if receivers->isEmpty() or receivers->first() <> p then Sequence{}
+		else Sequence{Tuple{rule = 'flux-events',
+			namespace = estate.bootstrap.flux.sourceRef.substringBefore('/'),
+			process = FLUX_NOTIFIER,
+			port = p.provides->select(s | s.key = HTTP_SURFACE)->any(true).value}} endif endif;
 
 -- The Process's own backup identity, on the surface its backups dump.
 query backupsOf(p : PI::Process)

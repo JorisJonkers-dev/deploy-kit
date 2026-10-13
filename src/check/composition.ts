@@ -12,6 +12,7 @@ import {
 import {
   collectorEndpoint,
   gateEndpoint,
+  reporterEndpoint,
   secretStoreAddress,
 } from "../model/runtime-profiles.ts";
 import type { ProjectIntentDocument } from "../model/project-intent.ts";
@@ -473,6 +474,25 @@ export function setDiagnostics(
             hint: "Declare the Release Gate in a project file the platform owns, with an `http` surface on one of its Processes.",
           },
         ];
+  // The Reporter receives Flux's events on its `http` surface.
+  const reporter = platform.document.delivery?.reporter;
+  const receives =
+    reporterEndpoint(
+      platform.document,
+      projects.map(({ document }) => document),
+    ) !== undefined;
+  const reporting: Diagnostic[] =
+    reporter === undefined || receives
+      ? []
+      : [
+          {
+            code: "E_UNKNOWN_REPORTER",
+            document: platform.name,
+            path: "/delivery",
+            message: `no project file declares an Application ${reporter} whose Process provides an \`http\` surface`,
+            hint: "Declare the Reporter in a project file the platform owns, with an `http` surface on one of its Processes, or drop `delivery.reporter`.",
+          },
+        ];
   // The Secret Store answers every grant on its `http` surface.
   const store = platform.document.secretStore;
   const serves =
@@ -532,6 +552,7 @@ export function setDiagnostics(
     ...telemetry,
     ...stack,
     ...release,
+    ...reporting,
     ...secrets,
     ...serving,
     ...projects.flatMap(({ name, document }) =>

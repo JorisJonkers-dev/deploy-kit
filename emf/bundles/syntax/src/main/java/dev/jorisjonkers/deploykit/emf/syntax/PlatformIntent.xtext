@@ -153,6 +153,7 @@ ApiAccessPolicy returns ApiAccessPolicy:
 DeliveryPolicy returns DeliveryPolicy:
 	(('machinery' ':' BEGIN (DASH BEGIN machinery+=[Application|Text] END | machinery+=[Application|Text])+ END)
 	& ('gate' ':' gate=[Application|Text])
+	& ('reporter' ':' reporter=[Application|Text])?
 	& ('analysis' ':' BEGIN analysis=AnalysisPolicy END));
 
 AnalysisPolicy returns AnalysisPolicy:
@@ -195,7 +196,7 @@ PlatformKeyword:
 	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'egress' | 'embedded' | 'engines' | 'ephemeral' | 'errorRate' | 'estate' | 'etcd' |
 	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'handover' | 'hardening' | 'holders' | 'instance' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'latency' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
 	'metrics' | 'monitors' | 'namespace' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'policyJob' | 'providers' | 'pullSecret' | 'restricted' | 'retireBy' |
-	'repository' | 'retain' | 'runner' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'server' | 'serverCount' | 'serving' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
+	'reporter' | 'repository' | 'retain' | 'runner' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'server' | 'serverCount' | 'serving' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
 	'surfaces' | 'telemetry' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'vault';
 
 enum Datastore returns Datastore:

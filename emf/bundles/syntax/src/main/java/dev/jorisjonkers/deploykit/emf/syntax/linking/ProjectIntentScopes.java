@@ -36,6 +36,7 @@ public class ProjectIntentScopes implements IScopeProvider {
             return providing(context, OTLP);
         }
         if (reference == ProjectIntentPackage.Literals.DELIVERY_POLICY__GATE
+                || reference == ProjectIntentPackage.Literals.DELIVERY_POLICY__REPORTER
                 || reference == ProjectIntentPackage.Literals.PLATFORM__SECRET_STORE) {
             return providing(context, HTTP);
         }
