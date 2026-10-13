@@ -360,12 +360,22 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991
+        },
+        "errorRate": {
+          "type": "string",
+          "pattern": "^(100|\\d{1,2}(\\.\\d{1,2})?)%$"
+        },
+        "latency": {
+          "type": "string",
+          "pattern": "^[1-9]\\d*(ms|s)$"
         }
       },
       "required": [
         "interval",
         "iterations",
-        "threshold"
+        "threshold",
+        "errorRate",
+        "latency"
       ],
       "additionalProperties": false
     },

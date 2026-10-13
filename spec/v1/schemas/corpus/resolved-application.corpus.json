@@ -157,7 +157,9 @@
             "analysis": {
               "interval": "30s",
               "iterations": 4,
-              "threshold": 3
+              "threshold": 3,
+              "errorRate": "1%",
+              "latency": "500ms"
             },
             "deadline": "1800s",
             "endpoint": "http://release-gate.delivery-system.svc.cluster.local:8080",

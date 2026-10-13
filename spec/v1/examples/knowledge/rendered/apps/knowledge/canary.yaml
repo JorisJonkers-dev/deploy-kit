@@ -39,6 +39,11 @@ spec:
         application: knowledge
         process: knowledge-api
         revision: "sha256:6325500a2c541ed3970d3003aa61fd3fa1e9f98d673c1a2095323b90dc2363df"
+        paths: / /install-agents.sh /install.sh /mcp /mcp/
+        readiness: /api/actuator/health/readiness
+        hostnames: knowledge.jorisjonkers.dev
+        errorRate: 1%
+        latency: 500ms
     - name: checks
       type: rollout
       url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
@@ -46,6 +51,11 @@ spec:
         application: knowledge
         process: knowledge-api
         revision: "sha256:6325500a2c541ed3970d3003aa61fd3fa1e9f98d673c1a2095323b90dc2363df"
+        paths: / /install-agents.sh /install.sh /mcp /mcp/
+        readiness: /api/actuator/health/readiness
+        hostnames: knowledge.jorisjonkers.dev
+        errorRate: 1%
+        latency: 500ms
     - name: may-promote
       type: confirm-promotion
       url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
@@ -53,3 +63,8 @@ spec:
         application: knowledge
         process: knowledge-api
         revision: "sha256:6325500a2c541ed3970d3003aa61fd3fa1e9f98d673c1a2095323b90dc2363df"
+        paths: / /install-agents.sh /install.sh /mcp /mcp/
+        readiness: /api/actuator/health/readiness
+        hostnames: knowledge.jorisjonkers.dev
+        errorRate: 1%
+        latency: 500ms

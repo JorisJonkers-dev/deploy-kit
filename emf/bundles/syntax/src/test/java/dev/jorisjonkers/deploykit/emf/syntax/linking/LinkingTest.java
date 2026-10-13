@@ -207,7 +207,7 @@ class LinkingTest {
     void theReleaseGateAndTheMetricsStackLinkOnlyToWhatTheyNeed() throws IOException {
         // `elsewhere` provides `http`, so it may be the gate; `gone` is declared nowhere.
         String delivery = "delivery: { machinery: [elsewhere], gate: gone, "
-                + "analysis: { interval: 30s, iterations: 4, threshold: 3 } }\n";
+                + "analysis: { interval: 30s, iterations: 4, threshold: 3, errorRate: 1%, latency: 500ms } }\n";
 
         assertThat(codes(platform("elsewhere", delivery + "telemetry: { collector: gone, metrics: gone }\n")))
                 .contains(
@@ -232,7 +232,7 @@ class LinkingTest {
     @Test
     void theDeliveryMachineryLinksToDeclaredApplicationsAndReportsEachOneThatIsNot() throws IOException {
         String delivery = "delivery: { machinery: [elsewhere, gone], gate: elsewhere, "
-                + "analysis: { interval: 30s, iterations: 4, threshold: 3 } }\n";
+                + "analysis: { interval: 30s, iterations: 4, threshold: 3, errorRate: 1%, latency: 500ms } }\n";
 
         assertThat(codes(platform("elsewhere", delivery)))
                 .containsExactly(

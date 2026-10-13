@@ -5,8 +5,10 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import { parseAllDocuments } from "yaml";
 import {
   renderIntentSet,
+  resolveIntentSet,
   serialize,
   serializeYaml,
   sha256Hasher,
@@ -14,6 +16,9 @@ import {
   type RenderedArtifact,
 } from "../../src/index.ts";
 import { ADAPTERS } from "../../src/adapters/registry.ts";
+import { renderKubernetes } from "../../src/adapters/kubernetes/render.ts";
+import type { ResolvedProject } from "../../src/model/resolution.ts";
+import type { Canary } from "../../src/objects/custom.ts";
 
 const EXAMPLES = join(
   import.meta.dirname,
@@ -220,6 +225,230 @@ describe("renderIntentSet", () => {
       expect(job).toContain(
         `name: vault-policy-${sha256Hasher(documents).slice("sha256:".length, "sha256:".length + 12)}\n`,
       );
+    });
+  });
+
+  // REQ-057 (docs/requirements.md): the Release Gate is handed what its
+  // checks request and what they must stay under through the Canary's
+  // webhooks, and nothing about a Project is configured on the gate.
+  describe("a Canary's webhooks", () => {
+    const PROJECT = "minimal/notes.project.yml";
+    const PLATFORM = "platform/platform.intent.yml";
+    /** The Canary of notes-api: its Flagger analysis, and each webhook's metadata. */
+    const canary = (
+      edits?: Readonly<Record<string, (text: string) => string>>,
+    ) => {
+      const body = asTree(artifact(render(edits), "notes"))[
+        "apps/notes/notes/canary.yaml"
+      ] as string;
+      const { spec } = parseAllDocuments(body)
+        .map(
+          (document) =>
+            document.toJSON() as {
+              kind: string;
+              spec: {
+                analysis: Record<string, unknown> & {
+                  webhooks: { metadata: Record<string, string> }[];
+                };
+              };
+            },
+        )
+        .find(({ kind }) => kind === "Canary") as {
+        spec: {
+          analysis: Record<string, unknown> & {
+            webhooks: { metadata: Record<string, string> }[];
+          };
+        };
+      };
+      return {
+        analysis: spec.analysis,
+        metadata: spec.analysis.webhooks.map(({ metadata }) => metadata),
+      };
+    };
+    const route =
+      "{ path: /, match: prefix, process: notes-api, surface: http }";
+
+    it("carry every Route's path, the readiness path, the public hostname and the platform's thresholds, the same on all three", () => {
+      const { analysis, metadata } = canary();
+
+      expect(metadata).toHaveLength(3);
+      for (const carried of metadata)
+        expect(carried).toStrictEqual({
+          application: "notes",
+          process: "notes-api",
+          revision: metadata[0]?.["revision"],
+          paths: "/",
+          readiness: "/healthz/ready",
+          hostnames: "notes.jorisjonkers.dev",
+          errorRate: "1%",
+          latency: "500ms",
+        });
+      // Flagger is given its cadence and no threshold of the gate's.
+      expect(Object.keys(analysis)).toStrictEqual([
+        "interval",
+        "iterations",
+        "threshold",
+        "webhooks",
+      ]);
+    });
+
+    it("carry the thresholds the Platform document states", () => {
+      const [carried] = canary({
+        [PLATFORM]: (platform) =>
+          platform
+            .replace("errorRate: 1%", "errorRate: 2.5%")
+            .replace("latency: 500ms", "latency: 2s"),
+      }).metadata;
+
+      expect(carried?.["errorRate"]).toBe("2.5%");
+      expect(carried?.["latency"]).toBe("2s");
+    });
+
+    it("list each path once, in order, whatever order the Routes are authored in", () => {
+      const [carried] = canary({
+        [PROJECT]: (project) =>
+          project.replace(
+            `          - ${route}\n`,
+            [
+              `          - ${route.replace("path: /,", "path: /b,")}\n`,
+              `          - ${route}\n`,
+              `          - ${route.replace("path: /,", "path: /a,")}\n`,
+              `          - ${route.replace("path: /,", "path: /b/exact,").replace("prefix", "exact")}\n`,
+            ].join(""),
+          ),
+      }).metadata;
+
+      expect(carried?.["paths"]).toBe("/ /a /b /b/exact");
+      expect(carried?.["hostnames"]).toBe("notes.jorisjonkers.dev");
+    });
+
+    it("carry the hostname of a Route the internet reaches signed in, and none for one it does not reach", () => {
+      const as = (audience: string) =>
+        canary({
+          [PROJECT]: (project) =>
+            project.replace("audience: anonymous", `audience: ${audience}`),
+        }).metadata[0];
+
+      expect(as("authenticated")?.["hostnames"]).toBe("notes.jorisjonkers.dev");
+      const lan = as("lan") as Record<string, string>;
+      expect("hostnames" in lan).toBe(false);
+      // The path is still the gate's to request, on the Canary service.
+      expect(lan["paths"]).toBe("/");
+    });
+
+    // On the rendered object, not its YAML: a key that holds nothing is
+    // dropped when the file is written, and must not be there to drop.
+    describe("as the adapter renders them", () => {
+      /** The notes Project resolved, and each webhook's metadata of the Canary rendered from it. */
+      const resolvedNotes = (
+        edits?: Readonly<Record<string, (text: string) => string>>,
+      ): ResolvedProject => {
+        const result = resolveIntentSet(files(edits), OPTIONS);
+        if (!result.ok)
+          throw new Error(
+            JSON.stringify(result.diagnostics.map(({ code }) => code)),
+          );
+        return result.value.projects.find(
+          ({ project }) => project === "notes",
+        ) as ResolvedProject;
+      };
+      const metadataOf = (project: ResolvedProject) =>
+        renderKubernetes(project)
+          .flatMap(({ objects }) => objects)
+          .filter(
+            (object): object is Canary =>
+              (object as { kind?: string }).kind === "Canary",
+          )
+          .flatMap(({ spec }) => spec.analysis.webhooks)
+          .map(({ metadata }) => metadata);
+      const KEYS = [
+        "application",
+        "process",
+        "revision",
+        "paths",
+        "readiness",
+        "hostnames",
+        "errorRate",
+        "latency",
+      ];
+
+      it("hold every key for a member with a Route the internet reaches", () => {
+        const metadata = metadataOf(resolvedNotes());
+
+        expect(metadata).toHaveLength(3);
+        for (const carried of metadata)
+          expect(Object.keys(carried)).toStrictEqual(KEYS);
+      });
+
+      it("hold no readiness key for a member whose readiness is a port that opens", () => {
+        const [carried] = metadataOf(
+          resolvedNotes({
+            [PROJECT]: (project) =>
+              project.replace(
+                "readiness: { path: /healthz/ready, port: 8080 }",
+                "readiness: { tcp: 8080 }",
+              ),
+          }),
+        );
+
+        expect(Object.keys(carried ?? {})).toStrictEqual(
+          KEYS.filter((key) => key !== "readiness"),
+        );
+      });
+
+      it("hold no readiness key for a Process that is no member of the gate", () => {
+        const notes = resolvedNotes();
+        const [application] = notes.applications;
+        const gate = application?.releaseGate as NonNullable<
+          ResolvedProject["applications"][number]["releaseGate"]
+        >;
+        // Another Process holds the gate, as one declaring no probes leaves it to.
+        const unwaited: ResolvedProject = {
+          ...notes,
+          applications: [
+            {
+              ...(application as ResolvedProject["applications"][number]),
+              releaseGate: {
+                ...gate,
+                members: gate.members.map((member) => ({
+                  ...member,
+                  process: "another",
+                })),
+              },
+            },
+          ],
+        };
+        const [carried] = metadataOf(unwaited);
+
+        expect(Object.keys(carried ?? {})).toStrictEqual(
+          KEYS.filter((key) => key !== "readiness"),
+        );
+      });
+
+      it("hold no paths and no hostnames key for a Process no Route reaches", () => {
+        const notes = resolvedNotes();
+        const [application] = notes.applications;
+        const { exposure: _exposure, ...unexposed } =
+          application as ResolvedProject["applications"][number];
+        const [carried] = metadataOf({ ...notes, applications: [unexposed] });
+
+        expect(Object.keys(carried ?? {})).toStrictEqual(
+          KEYS.filter((key) => key !== "paths" && key !== "hostnames"),
+        );
+      });
+    });
+
+    it("carry no readiness path for a member whose readiness is a port that opens", () => {
+      const [carried] = canary({
+        [PROJECT]: (project) =>
+          project.replace(
+            "readiness: { path: /healthz/ready, port: 8080 }",
+            "readiness: { tcp: 8080 }",
+          ),
+      }).metadata;
+
+      expect(carried === undefined || "readiness" in carried).toBe(false);
+      expect(carried?.["paths"]).toBe("/");
     });
   });
 

@@ -63,6 +63,8 @@ class IntentJsonTest {
         analysis.setInterval("30s");
         analysis.setIterations(4);
         analysis.setThreshold(3);
+        analysis.setErrorRate("1%");
+        analysis.setLatency("500ms");
         delivery.setAnalysis(analysis);
         for (String id : new String[] {"flagger", "release-gate"}) {
             Application application = MODEL.createApplication();

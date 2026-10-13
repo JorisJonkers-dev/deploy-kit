@@ -158,7 +158,9 @@ DeliveryPolicy returns DeliveryPolicy:
 AnalysisPolicy returns AnalysisPolicy:
 	(('interval' ':' interval=Text)
 	& ('iterations' ':' iterations=Port)
-	& ('threshold' ':' threshold=Port));
+	& ('threshold' ':' threshold=Port)
+	& ('errorRate' ':' errorRate=Text)
+	& ('latency' ':' latency=Text));
 
 MigrationPolicy returns MigrationPolicy:
 	(('runner' ':' runner=Text)
@@ -190,8 +192,8 @@ Text returns ecore::EString:
 
 PlatformKeyword:
 	'acme' | 'address' | 'analysis' | 'apiAccess' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cidr' | 'cluster' | 'clusterDns' | 'cni' | 'collector' |
-	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'egress' | 'embedded' | 'engines' | 'ephemeral' | 'estate' | 'etcd' |
-	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'handover' | 'hardening' | 'holders' | 'instance' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
+	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'egress' | 'embedded' | 'engines' | 'ephemeral' | 'errorRate' | 'estate' | 'etcd' |
+	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'handover' | 'hardening' | 'holders' | 'instance' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'latency' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
 	'metrics' | 'monitors' | 'namespace' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'policyJob' | 'providers' | 'pullSecret' | 'restricted' | 'retireBy' |
 	'repository' | 'retain' | 'runner' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'server' | 'serverCount' | 'serving' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
 	'surfaces' | 'telemetry' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'vault';

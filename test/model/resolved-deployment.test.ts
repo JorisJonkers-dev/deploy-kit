@@ -426,7 +426,13 @@ describe("the committed oracles", () => {
       releaseGate: {
         endpoint: "http://gate",
         deadline: "360s",
-        analysis: { interval: "30s", iterations: 4, threshold: 3 },
+        analysis: {
+          interval: "30s",
+          iterations: 4,
+          threshold: 3,
+          errorRate: "1%",
+          latency: "500ms",
+        },
         members: [{ process: "x", readiness: { tcp: 1 } }],
       },
     };

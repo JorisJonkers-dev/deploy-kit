@@ -47,6 +47,8 @@ delivery:
     interval: 30s
     iterations: 4
     threshold: 3
+    errorRate: 1%
+    latency: 500ms
 durability:
   reconstructible: {}
   recoverable: { schedule: "15 3 * * *", retain: 14 }

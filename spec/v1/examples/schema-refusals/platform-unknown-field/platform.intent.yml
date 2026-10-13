@@ -164,6 +164,8 @@ delivery:
     interval: 30s
     iterations: 4
     threshold: 3
+    errorRate: 1%
+    latency: 500ms
 
 # Which delivery path each Project is on while the estate moves off
 # fleet-infra's deploy/production branch, one Project at a time

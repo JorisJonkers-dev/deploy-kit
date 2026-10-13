@@ -47,6 +47,8 @@ delivery:
     interval: 30s
     iterations: 4
     threshold: 3
+    errorRate: 1%
+    latency: 500ms
 # The method logs in with a credential the Secret Store holds.
 secretStore: edge-proxy
 durability:

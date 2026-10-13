@@ -30,13 +30,13 @@
     through its one black box, and not the production implementation's digests,
     which are over a different shape (spec/v1/20-resolved-deployment.md#pinned-inputs).
   -->
-  <provenance renderHash="sha256:75d15e87a55e58925ca3e96813eac0afa5eff1468be98209763eba67e8b63577" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+  <provenance renderHash="sha256:1fe83b0e82c18eec75bc7bd1f3dae8c47f54b09e75b865106372e9f37ef3a84b" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
     <inputDigests input="intent-fragment" name="delivery" digest="sha256:fc0a990c0e2b4e8861dc97d08db744b2c44c6ff86b4c8da31873816e3f87b4a9"/>
     <inputDigests input="intent-fragment" name="edge" digest="sha256:273c64ecd8c35ab69918664735661764e44e8e3ad04a58a11ab92dcb52ec1f4a"/>
     <inputDigests input="intent-fragment" name="notes" digest="sha256:252e68be274ac566d591709794fbfed79b35e24cabaa38e39d90242e3e3893df"/>
     <inputDigests input="intent-fragment" name="observability" digest="sha256:aac790f0f921ce56ea5fb7af1f5a85c48c2122fbcbd99923124aafe063f6594c"/>
     <inputDigests input="intent-fragment" name="secrets" digest="sha256:3b6b608aa89a7beebed377772c9905705861c2609f1c262a5ddcb757b70bcecc"/>
-    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:bcce015e0202af1a849172a59d112e7c57992dc6524d70f4c3d4a2a8eb513dd5"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:157e23bf1247f462f104632ea4d04c0cd404ab3def26543aa7066ad7008954e0"/>
     <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
     <inputDigests input="images-lock" name="estate" digest="sha256:c90b71a8ad863de3ed3c2598d636d906aca639918531531ff26c8cfb88f993fd"/>
     <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
@@ -56,11 +56,11 @@
     <egress rule="cluster-dns" namespace="kube-system" port="53"/>
   </policyJob>
 
-  <applications id="notes" revision="sha256:493fb16ace2e5e7bebf96ea8490f20c2f1dd82fbbf8ce4a9d6b67963b0bcb048" project="notes" namespace="notes-system"
+  <applications id="notes" revision="sha256:03410c20d919ef65b7ff527eda5dd719584662bf21d1acb036894023f21a014c" project="notes" namespace="notes-system"
       alertClass="business-hours" reconcileUnit="//@reconcileUnits.0">
     <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="60s">
       <!-- The Platform document's cadence, carried for the Release Gate. -->
-      <analysis interval="30s" iterations="4" threshold="3"/>
+      <analysis interval="30s" iterations="4" threshold="3" errorRate="1%" latency="500ms"/>
       <members process="//@applications.0/@processes.0">
         <readiness xsi:type="resolveddeployment:HttpTarget" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             path="/healthz/ready" port="8080"/>
@@ -142,7 +142,7 @@
   <!-- What the Release Gate reads of the Application: its release-gate inputs, as canonical JSON. -->
   <deliverables xsi:type="resolveddeployment:ConfigMapFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/notes/configmap.yaml" adapter="kubernetes" application="//@applications.0"
-      releaseGate="{&quot;analysis&quot;:{&quot;interval&quot;:&quot;30s&quot;,&quot;iterations&quot;:4,&quot;threshold&quot;:3},&quot;deadline&quot;:&quot;60s&quot;,&quot;endpoint&quot;:&quot;http://release-gate.delivery-system.svc.cluster.local:8080&quot;,&quot;members&quot;:[{&quot;checks&quot;:[&quot;error-rate&quot;,&quot;latency&quot;],&quot;process&quot;:&quot;notes-api&quot;,&quot;readiness&quot;:{&quot;path&quot;:&quot;/healthz/ready&quot;,&quot;port&quot;:8080}}]}"/>
+      releaseGate="{&quot;analysis&quot;:{&quot;errorRate&quot;:&quot;1%&quot;,&quot;interval&quot;:&quot;30s&quot;,&quot;iterations&quot;:4,&quot;latency&quot;:&quot;500ms&quot;,&quot;threshold&quot;:3},&quot;deadline&quot;:&quot;60s&quot;,&quot;endpoint&quot;:&quot;http://release-gate.delivery-system.svc.cluster.local:8080&quot;,&quot;members&quot;:[{&quot;checks&quot;:[&quot;error-rate&quot;,&quot;latency&quot;],&quot;process&quot;:&quot;notes-api&quot;,&quot;readiness&quot;:{&quot;path&quot;:&quot;/healthz/ready&quot;,&quot;port&quot;:8080}}]}"/>
   <deliverables xsi:type="resolveddeployment:MonitorFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/notes/podmonitor.yaml" adapter="prometheus" process="//@applications.0/@processes.0"
       surface="http" scrapePath="/metrics" interval="30s" timeout="10s" kind="PodMonitor"/>
