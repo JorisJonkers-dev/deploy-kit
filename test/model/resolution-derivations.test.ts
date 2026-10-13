@@ -263,6 +263,8 @@ describe("how a Process switches, and how long it may take", () => {
       ["rolling", undefined],
       // Not machinery: it switches nothing, and it declares `interrupted`.
       ["stop-start", undefined],
+      // Nor is the Reporter, which only reports.
+      ["stop-start", undefined],
     ]);
   });
 

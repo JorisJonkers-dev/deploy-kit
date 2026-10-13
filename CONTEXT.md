@@ -482,8 +482,9 @@ Not a Kubernetes `Deployment`, which is one Process's pods, and not a
 **Switchover**, which is how one Application's new version replaces the old.
 
 **Reporter**: the Application of the platform's `delivery` Project that writes a
-Rollout's statuses from the cluster's own events. It reports and decides
-nothing ([chapter 55](spec/v1/55-delivery.md#rollouts)). Not the **Collector**,
+Rollout's statuses from the cluster's own events, named by the Platform
+document. It reports and decides nothing
+([chapter 55](spec/v1/55-delivery.md#rollouts)). Not the **Collector**,
 which reads the cluster's state for composition and writes nowhere.
 
 **Delivery machinery**: the Applications that perform a switch and are never

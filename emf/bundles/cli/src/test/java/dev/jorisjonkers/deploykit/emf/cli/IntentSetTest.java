@@ -146,6 +146,7 @@ class IntentSetTest {
                         .replace(
                                 "machinery: [traefik-public, traefik-lan, flagger, release-gate]", "machinery: [notes]")
                         .replace("gate: release-gate", "gate: notes")
+                        .replace("reporter: reporter", "reporter: notes")
                         .replace("secretStore: vault", "secretStore: notes")
                         .replaceFirst(TELEMETRY, "\n")
                         .replaceFirst(API_ACCESS, "\n"));
@@ -186,6 +187,7 @@ class IntentSetTest {
                                 "machinery: [traefik-public, traefik-lan, flagger, release-gate]",
                                 "machinery: [knowledge]")
                         .replace("gate: release-gate", "gate: knowledge")
+                        .replace("reporter: reporter", "reporter: knowledge")
                         .replace("secretStore: vault", "secretStore: knowledge")
                         .replaceFirst(TELEMETRY, "\n")
                         .replaceFirst(API_ACCESS, "\n"));
@@ -211,18 +213,19 @@ class IntentSetTest {
                 directory,
                 "platform.intent.yml",
                 Examples.read("platform/platform.intent.yml")
-                        .replace("holders: [flagger, release-gate, collector]", "holders: [flagger, gone]"));
+                        .replace("holders: [flagger, release-gate, collector, reporter]", "holders: [flagger, gone]"));
         List<Path> admitted = new java.util.ArrayList<>(WORKED.subList(1, WORKED.size()));
         admitted.add(0, platform);
 
-        // `gone` is declared nowhere, and the Release Gate and the Collector declare access the
-        // platform no longer admits.
+        // `gone` is declared nowhere, and the Release Gate, the Collector and the Reporter declare
+        // access the platform no longer admits.
         assertThat(Pipeline.check(admitted))
                 .extracting(Diagnostic::code, Diagnostic::document, Diagnostic::path)
                 .containsExactlyInAnyOrder(
                         tuple("E_UNKNOWN_API_HOLDER", "platform.intent.yml", "/apiAccess"),
                         tuple("E_PROCESS_RBAC_GRANT", "delivery.project.yml", "/applications/1/processes/0/api"),
-                        tuple("E_PROCESS_RBAC_GRANT", "delivery.project.yml", "/applications/2/processes/0/api"));
+                        tuple("E_PROCESS_RBAC_GRANT", "delivery.project.yml", "/applications/2/processes/0/api"),
+                        tuple("E_PROCESS_RBAC_GRANT", "delivery.project.yml", "/applications/3/processes/0/api"));
     }
 
     @Test

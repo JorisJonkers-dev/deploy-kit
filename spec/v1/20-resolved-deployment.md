@@ -90,7 +90,7 @@ adapter reads the Resolved Deployment and nothing else
 are spelled; its `surfaces`, each a name and a port, which a route, a scrape and
 a policy name it by; and the peers its policy admits beyond its own edges: its
 `ingress`, each peer tagged with the allow-set rule that admits it (`tier-proxy`,
-`metrics-stack`, `consumer` or `backup`), and its `egress`, the `cluster-dns` baseline and,
+`metrics-stack`, `consumer`, `backup`, `migration` or `flux-events`), and its `egress`, the `cluster-dns` baseline and,
 for a Process that holds a grant, the `secret-store`: the Process of the Secret
 Store's Application that answers on its `http` surface
 ([chapter 16](16-dependencies.md#the-derived-allow-set)). An Application records

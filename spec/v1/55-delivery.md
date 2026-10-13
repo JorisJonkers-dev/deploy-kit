@@ -708,7 +708,12 @@ commit that published it.
 **Every status after `pinned` is the Reporter's**: an Application of the
 platform's `delivery` Project that follows the cluster's own events and writes
 each stage it sees to the Deployment. Like every notification, it reports and
-decides nothing.
+decides nothing. The Platform document names it, `delivery.reporter`
+([chapter 14](14-platform-intent.md#delivery-policy)), and that name is all the
+model needs of it: its Process that provides `http` admits Flux's notification
+controller ([chapter 16](16-dependencies.md#the-derived-allow-set)), which is
+the one peer of the bootstrap set a policy names. A platform that names no
+Reporter delivers the same, and reports nothing past `pinned`.
 
 ## Secret rotation
 

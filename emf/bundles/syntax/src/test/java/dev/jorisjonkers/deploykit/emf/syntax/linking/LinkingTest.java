@@ -217,6 +217,40 @@ class LinkingTest {
     }
 
     @Test
+    void theReporterLinksOnlyToADeclaredApplicationThatAnswersOnHttp() throws IOException {
+        // `elsewhere` provides `http` beside the gate, so it may be the Reporter; `gone` is declared nowhere.
+        String analysis = "analysis: { interval: 30s, iterations: 4, threshold: 3, errorRate: 1%, latency: 500ms } }\n";
+        String linked = "delivery: { machinery: [elsewhere], gate: elsewhere, reporter: elsewhere, " + analysis;
+        String unlinked = "delivery: { machinery: [elsewhere], gate: elsewhere, reporter: gone, " + analysis;
+
+        assertThat(codes(platform("elsewhere", linked))).isEmpty();
+        assertThat(codes(platform("elsewhere", unlinked)))
+                .containsExactly("E_UNKNOWN_REPORTER the project file that declares the Release Gate declares no"
+                        + " Application gone whose Process provides an `http` surface");
+    }
+
+    @Test
+    void theReporterLinksToNothingWhereNoProjectFileDeclaresTheGate() throws IOException {
+        // The Reporter is declared beside the gate, so a gate that links nowhere leaves it nowhere
+        // to be declared, however many Applications of its name the set holds.
+        String analysis = "analysis: { interval: 30s, iterations: 4, threshold: 3, errorRate: 1%, latency: 500ms } }\n";
+        String refused = "E_UNKNOWN_REPORTER the project file that declares the Release Gate declares no"
+                + " Application elsewhere whose Process provides an `http` surface";
+
+        assertThat(codes(platform(
+                        "elsewhere",
+                        "delivery: { machinery: [elsewhere], gate: gone, reporter: elsewhere, " + analysis)))
+                .contains(refused);
+        // A delivery policy that names no gate at all is the parser's to refuse; the Reporter
+        // still links to nothing.
+        assertThat(platform("elsewhere", "delivery: { machinery: [elsewhere], reporter: elsewhere, " + analysis)
+                        .getErrors())
+                .filteredOn(XtextLinkingDiagnostic.class::isInstance)
+                .extracting(error -> ((XtextLinkingDiagnostic) error).getCode() + " " + error.getMessage())
+                .contains(refused);
+    }
+
+    @Test
     void theSecretStoreLinksOnlyToADeclaredApplicationThatAnswersOnHttp() throws IOException {
         // `elsewhere` provides `http`, so it may be the Secret Store; `gone` is declared nowhere.
         Resource platform = platform("elsewhere", "secretStore: elsewhere\n");

@@ -15,7 +15,10 @@ import {
 } from "../adapters/flux/source.ts";
 import { brokenInvariant } from "../model/internal-failure.ts";
 import { PIN_ANNOTATIONS } from "../model/pin-annotations.ts";
-import type { PlatformIntentDocument } from "../model/platform-intent.ts";
+import {
+  fluxNamespaceOf,
+  type PlatformIntentDocument,
+} from "../model/platform-intent.ts";
 import { edgeUnitOf, SECRETS_UNIT, unitOf } from "../model/reconcile-units.ts";
 import type { ResolvedProject } from "../model/resolution.ts";
 import { rolloutAnnotations, type Rollout } from "../model/rollout.ts";
@@ -159,10 +162,9 @@ export function pinSources(
       unitsOf(artifact, projects, platform).map(({ name }) => name),
     ),
   );
-  const { sourceRef, artifacts: published } = platform.bootstrap.flux;
+  const { artifacts: published } = platform.bootstrap.flux;
   const flux = {
-    // `sourceRef` names Flux's own source as `<namespace>/<name>`.
-    namespace: sourceRef.split("/")[0] as string,
+    namespace: fluxNamespaceOf(platform),
     repository: published.repository,
     signer: published.signer,
     pullSecret: published.pullSecret,

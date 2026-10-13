@@ -3,6 +3,7 @@
 // export telemetry and HTTP server metrics inject anything.
 import {
   GATE_SURFACE,
+  REPORTER_SURFACE,
   OTLP_SURFACE,
   type PlatformIntentDocument,
 } from "./platform-intent.ts";
@@ -140,6 +141,40 @@ export const gateEndpoint = (
 ): string | undefined =>
   endpoint(
     surfaceAddress(platform, projects, platform.delivery?.gate, GATE_SURFACE),
+  );
+
+/**
+ * The Projects that declare the Release Gate: the delivery machinery's own.
+ * The Reporter is declared beside the gate or nowhere, so the name alone
+ * never binds the role: a project file that declares an Application called
+ * what the platform calls its Reporter gains nothing by it, unless it is the
+ * one that already holds the gate.
+ */
+export const gateProjects = <Project extends Declares>(
+  platform: PlatformIntentDocument,
+  projects: readonly Project[],
+): Project[] =>
+  projects.filter(({ applications }) =>
+    applications.some(({ id }) => id === platform.delivery?.gate),
+  );
+
+/**
+ * Where Flux's events about every Project's unit are sent
+ * (spec/v1/55-delivery.md#rollouts): the named Reporter's `http` surface, or
+ * nothing where the platform names no Reporter or the Project that declares
+ * the Release Gate declares none that answers there.
+ */
+export const reporterEndpoint = (
+  platform: PlatformIntentDocument,
+  projects: readonly Declares[],
+): string | undefined =>
+  endpoint(
+    surfaceAddress(
+      platform,
+      gateProjects(platform, projects),
+      platform.delivery?.reporter,
+      REPORTER_SURFACE,
+    ),
   );
 
 /** The Secret Store every grant reads from: its `http` surface, where the platform names one. */

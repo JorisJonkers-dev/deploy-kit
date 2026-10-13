@@ -40,12 +40,26 @@ const peerOf = (
     : { podSelector: { matchLabels: instanceOf(process) } }),
 });
 
+/**
+ * Flux's notification controller is no Process: nothing renders it, and its
+ * pods carry the labels Flux's own install gives them, of which `app` names
+ * the controller.
+ */
+const fluxPeerOf = (namespace: string, controller: string): PolicyPeer => ({
+  namespaceSelector: { matchLabels: namespaceSelector(namespace) },
+  podSelector: { matchLabels: { app: controller } },
+});
+
 function policyOf(
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
 ): NetworkPolicy {
   const ingress = (process.ingress ?? []).map((peer) => ({
-    from: [peerOf(peer.namespace, peer.process)],
+    from: [
+      peer.rule === "flux-events"
+        ? fluxPeerOf(peer.namespace, peer.process)
+        : peerOf(peer.namespace, peer.process),
+    ],
     ports: [tcp(peer.port)],
   }));
   // A missing list and an empty one admit the same nothing.

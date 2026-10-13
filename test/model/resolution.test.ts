@@ -111,9 +111,101 @@ describe("resolveIntentSet", () => {
     expect(canonicalJson(gate)).toBe(text("delivery/expected/resolved.json"));
   });
 
+  // REQ-058 (docs/requirements.md): Flux's notification controller is
+  // admitted where the Provider sends its events, and nowhere else.
+  describe("the Reporter's admission of Flux's events", () => {
+    const DELIVERY = "delivery/delivery.project.yml";
+    const PLATFORM = "platform/platform.intent.yml";
+    /** Each Process of the delivery project, with the events peers its policy admits. */
+    const admitted = (
+      edits?: Readonly<Record<string, (text: string) => string>>,
+    ) =>
+      Object.fromEntries(
+        project(resolved(edits), "delivery").applications.flatMap(
+          ({ processes }) =>
+            processes.map(({ name, ingress }) => [
+              name,
+              (ingress ?? []).filter(({ rule }) => rule === "flux-events"),
+            ]),
+        ),
+      );
+    const peer = {
+      rule: "flux-events",
+      namespace: "flux-system",
+      process: "notification-controller",
+      port: 8080,
+    };
+    const process = (name: string, provides: string): string =>
+      [
+        `      - name: ${name}`,
+        "        lifecycle: application",
+        "        image: reporter",
+        "        runtime: none",
+        provides,
+        "        placement: { memory: 64Mi, cpu: 10m }",
+        "        probes: none",
+        "        startupBudget: 10s",
+        "        cutover: interrupted",
+        "",
+      ].join("\n");
+
+    it("admits the controller to the Reporter's Process alone, on its http port, from Flux's namespace", () => {
+      expect(admitted()).toStrictEqual({
+        flagger: [],
+        "release-gate": [],
+        collector: [],
+        reporter: [peer],
+      });
+      expect(
+        admitted({
+          [PLATFORM]: (platform) =>
+            platform.replace(
+              "sourceRef: flux-system/platform",
+              "sourceRef: gitops/platform",
+            ),
+        })["reporter"],
+      ).toStrictEqual([{ ...peer, namespace: "gitops" }]);
+    });
+
+    it("admits nothing where the platform names no Reporter", () => {
+      expect(
+        admitted({
+          [PLATFORM]: (platform) =>
+            platform.replace("  reporter: reporter\n", ""),
+        }),
+      ).toStrictEqual({
+        flagger: [],
+        "release-gate": [],
+        collector: [],
+        reporter: [],
+      });
+    });
+
+    it("admits it to the first Process that provides the surface, and to no other of the Reporter", () => {
+      const reporter = admitted({
+        [DELIVERY]: (delivery) =>
+          delivery
+            .replace(
+              "      - name: reporter\n",
+              // One that provides nothing at all, and one that provides another surface.
+              `${process("reporter-idle", "        startupBudget: 10s").replace("        startupBudget: 10s\n        placement", "        placement")}${process("reporter-worker", "        provides: { metrics: 9090 }")}      - name: reporter\n`,
+            )
+            .concat(
+              process("reporter-second", "        provides: { http: 8081 }"),
+            ),
+      });
+
+      expect(reporter["reporter-idle"]).toStrictEqual([]);
+      expect(reporter["reporter-worker"]).toStrictEqual([]);
+      expect(reporter["reporter"]).toStrictEqual([peer]);
+      expect(reporter["reporter-second"]).toStrictEqual([]);
+    });
+  });
+
   it.each([
     ["flagger", "delivery/expected/resolved.flagger.json"],
     ["collector", "delivery/expected/resolved.collector.json"],
+    ["reporter", "delivery/expected/resolved.reporter.json"],
   ])(
     "resolves %s, which holds Kubernetes API access, to its committed projection",
     (id, oracle) => {

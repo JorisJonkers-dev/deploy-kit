@@ -487,6 +487,9 @@
   <eClassifiers xsi:type="ecore:EClass" name="DeliveryPolicy">
     <eStructuralFeatures xsi:type="ecore:EReference" name="machinery" lowerBound="1" upperBound="-1" eType="#//Application"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="gate" lowerBound="1" eType="#//Application"/>
+    <!-- The Reporter, which Flux's events about every Project's unit are sent to, on its
+         `http` surface (spec/v1/55-delivery.md#rollouts); a platform may name none. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="reporter" eType="#//Application"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="analysis" lowerBound="1" eType="#//AnalysisPolicy" containment="true"/>
   </eClassifiers>
   <!-- Who may hold Kubernetes API access, and where the API answers

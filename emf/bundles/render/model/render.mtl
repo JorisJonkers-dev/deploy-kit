@@ -261,7 +261,7 @@
   [if (peer.process <> null)]
       podSelector:
         matchLabels:
-          app.kubernetes.io/instance: [peer.process/]
+          [if (peer.rule = 'flux-events')]app[else]app.kubernetes.io/instance[/if]: [peer.process/]
   [/if]
 [/template]
 

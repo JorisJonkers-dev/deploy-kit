@@ -160,6 +160,7 @@ migration:
 delivery:
   machinery: [traefik-public, traefik-lan, flagger, release-gate]
   gate: release-gate
+  reporter: reporter
   analysis:
     interval: 30s
     iterations: 4
@@ -173,7 +174,7 @@ delivery:
 # anyone else's declaration is E_PROCESS_RBAC_GRANT. `server` is what such a
 # Process's egress policy admits: the API server is no pod a selector reaches.
 apiAccess:
-  holders: [flagger, release-gate, collector]
+  holders: [flagger, release-gate, collector, reporter]
   server:
     - { cidr: 10.43.0.1/32, port: 443 }
 

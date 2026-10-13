@@ -1,6 +1,7 @@
 package dev.jorisjonkers.deploykit.emf.syntax.linking;
 
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Application;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.DeliveryPolicy;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
 import java.util.List;
@@ -35,6 +36,9 @@ public class ProjectIntentScopes implements IScopeProvider {
         if (reference == ProjectIntentPackage.Literals.TELEMETRY_POLICY__COLLECTOR) {
             return providing(context, OTLP);
         }
+        if (reference == ProjectIntentPackage.Literals.DELIVERY_POLICY__REPORTER) {
+            return besideTheGate((DeliveryPolicy) context);
+        }
         if (reference == ProjectIntentPackage.Literals.DELIVERY_POLICY__GATE
                 || reference == ProjectIntentPackage.Literals.PLATFORM__SECRET_STORE) {
             return providing(context, HTTP);
@@ -62,13 +66,32 @@ public class ProjectIntentScopes implements IScopeProvider {
 
     /** The Applications of the set one of whose Processes provides {@code surface}. */
     private static IScope providing(EObject context, String surface) {
+        return providing(applications(context.eResource().getResourceSet()), surface);
+    }
+
+    /** Those of {@code candidates} one of whose Processes provides {@code surface}. */
+    private static IScope providing(List<Application> candidates, String surface) {
         return Scopes.scopeFor(
-                applications(context.eResource().getResourceSet()).stream()
+                candidates.stream()
                         .filter(application -> application.getProcesses().stream()
                                 .anyMatch(process -> process.getProvides().containsKey(surface)))
                         .toList(),
                 application -> QualifiedName.create(((Application) application).getId()),
                 IScope.NULLSCOPE);
+    }
+
+    /**
+     * The Applications the Reporter may be: those declared in the project document that
+     * declares the Release Gate, one of whose Processes provides {@code http}. The name alone
+     * binds nothing, so a project file that declares an Application called what the platform
+     * calls its Reporter gains nothing by it (spec/v1/14-platform-intent.md#delivery-policy).
+     */
+    private static IScope besideTheGate(DeliveryPolicy delivery) {
+        Application gate = delivery.getGate();
+        if (gate == null || gate.eIsProxy()) {
+            return IScope.NULLSCOPE;
+        }
+        return providing(EcoreUtil2.getContainerOfType(gate, Project.class).getApplications(), HTTP);
     }
 
     /** The surface a telemetry collector receives on. */
