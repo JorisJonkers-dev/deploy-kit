@@ -95,7 +95,9 @@ committed tree is deleted.
   Units' Kustomizations, and nothing else rendered. Composition writes each
   whole whenever it moves the pin, and whenever the committed one differs from
   the one it derives, so the units it applies follow what the artifact holds
-  and nobody writes one by hand.
+  and nobody writes one by hand. The comparison is of the objects each holds:
+  the estate's history is its deploy log, and a commit that only requotes what
+  a Pause wrote would be an entry that records nothing.
 - A source written before its artifact exists carries a digest that names
   none. It fetches nothing if it is ever applied so, where a source with no
   reference would fetch whatever `latest` names.

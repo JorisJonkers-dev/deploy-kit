@@ -111,7 +111,9 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   the committed file of every pinned artifact, and writes the file again when
   the one it derives differs, though the pin stays: the Platform document's
   repository, signer or pull Secret changed, or a unit this one follows joined
-  the estate path. A file written while its pin stays keeps its `ref.digest`,
+  the estate path. The two differ when they hold different objects, never when
+  they are only written differently: a Pause is written by another tool, whose
+  quoting is its own. A file written while its pin stays keeps its `ref.digest`,
   so it deploys nothing. Removing a Project's file takes it off the estate path, which
   only a handover step reversed or a Project's retirement does
   ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)). After publishing, composition commits to the
@@ -146,8 +148,8 @@ delivery machinery ([#148](https://github.com/JorisJonkers-dev/deploy-kit/issues
 ### What a pin source holds
 
 The file composition writes for an artifact whose pin moves, a first delivery
-among them, and for a pinned artifact whose committed file differs from the one
-derived now, replacing whatever was committed before. For a paused Project the
+among them, and for a pinned artifact whose committed file holds other objects
+than the one derived now, replacing whatever was committed before. For a paused Project the
 `Kustomization` rows below are not derived again: they stay as committed
 ([Pause and Rollback](#pause-and-rollback)). Everything in it derives;
 nothing is authored, and the cadence is this chapter's, stated once

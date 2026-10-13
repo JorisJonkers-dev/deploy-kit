@@ -18,7 +18,7 @@ import { PIN_ANNOTATIONS } from "../model/pin-annotations.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import { edgeUnitOf, SECRETS_UNIT, unitOf } from "../model/reconcile-units.ts";
 import type { ResolvedProject } from "../model/resolution.ts";
-import { readPinSource } from "../read/pin-source.ts";
+import { readPinSource, samePinSource } from "../read/pin-source.ts";
 import { SECRETS_DIRECTORY, tierDirectory } from "../adapters/shared/paths.ts";
 import type { RenderedObject } from "../objects/deliverable.ts";
 import type { RenderedFile, Serializer } from "./render-intent-set.ts";
@@ -127,8 +127,8 @@ function unitsOf(
 /**
  * The pin source composition writes, as the file the Estate repository
  * commits: that of each of `moving`, whose pin moves, and that of every other
- * artifact of `delivered` whose `committed` source differs from the one
- * derived now. A source written while its pin stays keeps the digest it is
+ * artifact of `delivered` whose `committed` source holds other objects than
+ * the one derived now; how either is written says nothing. A source written while its pin stays keeps the digest it is
  * committed at, and stays a first delivery's where it is one. A paused
  * Project's keeps its units as committed, since the ones derived now come from
  * a fragment a human is holding back; what it says of the path itself, the
@@ -203,6 +203,6 @@ export function pinSources(
           ]
         : derived,
     );
-    return written.text === before ? [] : [written];
+    return samePinSource(written.text, before) ? [] : [written];
   });
 }

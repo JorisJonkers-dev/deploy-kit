@@ -1867,6 +1867,41 @@ describe("composeEstate, for an artifact whose pin stays", () => {
     expect(withPlatform((same) => same, settled).sources).toStrictEqual([]);
   });
 
+  it("writes no source when the committed one says the same and is only written differently", () => {
+    const reworded = Object.fromEntries(
+      Object.entries(settled.sources).map(([name, body]) => [
+        name,
+        `# committed by hand\n${body
+          .replace(/^( +interval): (.*)$/gm, '$1: "$2"')
+          .replace(/^( +)(prune: .*)\n( +)(wait: .*)$/gm, "$3$4\n$1$2")}`,
+      ]),
+    );
+    for (const name of NAMES)
+      expect(reworded[name], name).not.toBe(settled.sources[name]);
+
+    expect(
+      withPlatform((same) => same, { ...settled, sources: reworded }).sources,
+    ).toStrictEqual([]);
+  });
+
+  it("writes no source for a Pause whose time is committed quoted, as the tool that pauses writes it", () => {
+    const pins = pinned(first, { notes: PAUSE });
+    const [paused] = withPlatform((same) => same, { ...settled, pins }).sources;
+    const at = PAUSE[PIN_ANNOTATIONS.pausedAt];
+    // Composition writes the time bare; `yq` quotes a string that reads as one.
+    expect(paused?.text).toContain(`: ${at}\n`);
+    const committed = (paused?.text ?? "").replace(`: ${at}\n`, `: "${at}"\n`);
+    expect(committed).not.toBe(paused?.text);
+
+    expect(
+      withPlatform((same) => same, {
+        ...settled,
+        pins,
+        sources: { ...settled.sources, notes: committed },
+      }).sources,
+    ).toStrictEqual([]);
+  });
+
   it.each([
     [
       "pull Secret",
