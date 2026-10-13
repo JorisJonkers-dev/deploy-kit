@@ -14,6 +14,8 @@ export interface SourceUnit {
   readonly name: string;
   readonly path: string;
   readonly after: readonly string[];
+  /** What the unit's own metadata carries: a Project's Rollout, which Flux copies into its events. */
+  readonly annotations?: Readonly<Record<string, string>>;
 }
 
 /** What the Platform document says of the path every pin is on. */
@@ -137,23 +139,30 @@ export function renderPinSource(
   };
   return [
     repository,
-    ...units.map(({ name, path, after }): FluxKustomization => ({
-      apiVersion: "kustomize.toolkit.fluxcd.io/v1",
-      kind: "Kustomization",
-      metadata: { name, namespace: flux.namespace, labels: managedOnly() },
-      spec: {
-        interval: INTERVAL,
-        prune: true,
-        // A unit is Ready when what it applied is: a Job that fails holds
-        // every unit that follows it.
-        wait: true,
-        sourceRef: { kind: "OCIRepository", name: source },
-        path: `./${path}`,
-        ...(after.length === 0
-          ? {}
-          : { dependsOn: after.map((unit) => ({ name: unit })) }),
-        ...(recreate ? { patches: [RECREATE_DEPLOYMENTS] } : {}),
-      },
-    })),
+    ...units.map(
+      ({ name, path, after, annotations: carried }): FluxKustomization => ({
+        apiVersion: "kustomize.toolkit.fluxcd.io/v1",
+        kind: "Kustomization",
+        metadata: {
+          name,
+          namespace: flux.namespace,
+          labels: managedOnly(),
+          ...(carried === undefined ? {} : { annotations: carried }),
+        },
+        spec: {
+          interval: INTERVAL,
+          prune: true,
+          // A unit is Ready when what it applied is: a Job that fails holds
+          // every unit that follows it.
+          wait: true,
+          sourceRef: { kind: "OCIRepository", name: source },
+          path: `./${path}`,
+          ...(after.length === 0
+            ? {}
+            : { dependsOn: after.map((unit) => ({ name: unit })) }),
+          ...(recreate ? { patches: [RECREATE_DEPLOYMENTS] } : {}),
+        },
+      }),
+    ),
   ];
 }

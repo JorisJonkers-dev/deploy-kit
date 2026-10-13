@@ -532,11 +532,23 @@ describe("deploy-kit compose", () => {
       readFileSync(join(root, "first", "composition.json"), "utf8"),
     ) as {
       artifacts: { name: string; contentHash: string; moves: boolean }[];
+      rollouts: unknown[];
       statuses: unknown[];
       conditions: unknown[];
     };
     expect(report.statuses).toHaveLength(7);
     expect(report.conditions).toEqual([]);
+    // REQ-056 (docs/requirements.md): one Rollout per Project whose pin
+    // moves, as the release that published its fragment names itself.
+    expect(report.rollouts).toEqual(
+      ["notes", "observability", "secrets"].map((project) => ({
+        project,
+        repository: `JorisJonkers-dev/${project}`,
+        sha: hex(project, 40),
+        environment: "production",
+        version: "1.0.0",
+      })),
+    );
     // REQ-051 (docs/requirements.md): an artifact with no pin yet has its pin
     // source written, at the path the Estate repository commits it under.
     expect(
@@ -545,7 +557,14 @@ describe("deploy-kit compose", () => {
         "utf8",
       ),
     ).toBe(
-      readFileSync(example("pins/rendered/projects/notes/source.yaml"), "utf8"),
+      // The committed file's release is another commit; the rest is the same.
+      readFileSync(
+        example("pins/rendered/projects/notes/source.yaml"),
+        "utf8",
+      ).replace(
+        /(event\.toolkit\.fluxcd\.io\/sha: ).*/,
+        `$1${hex("notes", 40)}`,
+      ),
     );
 
     const pins = join(root, "pins.json");
@@ -577,6 +596,13 @@ describe("deploy-kit compose", () => {
     expect(again.stdout).toBe("composed 3 artifacts; pins move for: none\n");
     // Pinned already, so no source is written a second time.
     expect(existsSync(join(root, "again", "projects"))).toBe(false);
+    expect(
+      (
+        JSON.parse(
+          readFileSync(join(root, "again", "composition.json"), "utf8"),
+        ) as { rollouts: unknown[] }
+      ).rollouts,
+    ).toEqual([]);
 
     // REQ-051 (docs/requirements.md): handed the Estate repository's
     // `projects` directory, it rewrites a source that says something else.

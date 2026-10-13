@@ -473,6 +473,19 @@ version start, and may it be promoted
 ([chapter 55](spec/v1/55-delivery.md#the-release-gate)). Not the Kubernetes
 readiness gate.
 
+**Rollout**: one Project's release as its repository shows it, from the moment
+composition moves its pin until it is promoted, rolled back or superseded: a
+GitHub Deployment in the environment `production`
+([chapter 55](spec/v1/55-delivery.md#rollouts),
+[0099](docs/adr/model/0099-a-rollout-is-a-github-deployment-driven-by-the-clusters-events.md)).
+Not a Kubernetes `Deployment`, which is one Process's pods, and not a
+**Switchover**, which is how one Application's new version replaces the old.
+
+**Reporter**: the Application of the platform's `delivery` Project that writes a
+Rollout's statuses from the cluster's own events. It reports and decides
+nothing ([chapter 55](spec/v1/55-delivery.md#rollouts)). Not the **Collector**,
+which reads the cluster's state for composition and writes nowhere.
+
 **Delivery machinery**: the Applications that perform a switch and are never
 switched by one: the Release Gate, Flagger and the edge proxies, listed in the
 Platform document. Their continuous Processes roll in place

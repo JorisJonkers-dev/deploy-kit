@@ -12,6 +12,7 @@
 // is not one to write again.
 import { isDeepStrictEqual } from "node:util";
 import { parseAllDocuments } from "yaml";
+import { ROLLOUT_ANNOTATIONS } from "../model/rollout.ts";
 
 type Fields = Readonly<Record<string, unknown>>;
 
@@ -20,6 +21,11 @@ export interface CommittedPin {
   readonly recreates: boolean;
   /** Each Reconcile Unit's Kustomization, as committed, in the order committed. */
   readonly units: readonly Fields[];
+  /**
+   * The Rollout its first unit carries, as the annotations that hold it: the
+   * release that last moved the pin, which no later composition derives.
+   */
+  readonly rollout: Readonly<Record<string, string>>;
 }
 
 /** The fields of a mapping, and none of anything else. */
@@ -47,9 +53,16 @@ export function readPinSource(text: string): CommittedPin | undefined {
     .find((value) => typeof value === "string");
   if (digest === undefined) return undefined;
   const units = objects.filter(({ kind }) => kind === "Kustomization");
+  const carried = fieldsOf(fieldsOf(units[0]?.["metadata"])["annotations"]);
   return {
     digest,
     recreates: units.some(({ spec }) => "patches" in fieldsOf(spec)),
     units,
+    rollout: Object.fromEntries(
+      Object.values(ROLLOUT_ANNOTATIONS).flatMap((key) => {
+        const value = carried[key];
+        return typeof value === "string" ? [[key, value]] : [];
+      }),
+    ),
   };
 }

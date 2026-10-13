@@ -18,6 +18,7 @@ import { PIN_ANNOTATIONS } from "../model/pin-annotations.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import { edgeUnitOf, SECRETS_UNIT, unitOf } from "../model/reconcile-units.ts";
 import type { ResolvedProject } from "../model/resolution.ts";
+import { rolloutAnnotations, type Rollout } from "../model/rollout.ts";
 import { readPinSource, samePinSource } from "../read/pin-source.ts";
 import { SECRETS_DIRECTORY, tierDirectory } from "../adapters/shared/paths.ts";
 import type { RenderedObject } from "../objects/deliverable.ts";
@@ -34,6 +35,8 @@ export interface PinSource {
 interface Artifact {
   readonly name: string;
   readonly files: readonly RenderedFile[];
+  /** The Rollout a Project's moving pin starts. */
+  readonly rollout?: Rollout | undefined;
 }
 
 const ESTATE = ESTATE_ARTIFACT;
@@ -164,17 +167,24 @@ export function pinSources(
     signer: published.signer,
     pullSecret: published.pullSecret,
   };
-  const moves = new Set(moving.map(({ name }) => name));
+  const moves = new Map(moving.map(({ name, rollout }) => [name, rollout]));
   return delivered.flatMap((artifact): PinSource[] => {
     const { name } = artifact;
     const path = `projects/${name}/source.yaml`;
-    const derive = (recreate: boolean, digest?: string): RenderedObject[] =>
+    const derive = (
+      recreate: boolean,
+      rollout: Readonly<Record<string, string>>,
+      digest?: string,
+    ): RenderedObject[] =>
       renderPinSource(
         name === ESTATE ? ESTATE_SOURCE : sourceOf(name),
         name,
         unitsOf(artifact, projects, platform).map((unit) => ({
           ...unit,
           after: unit.after.filter((followed) => onPath.has(followed)),
+          ...(Object.keys(rollout).length === 0
+            ? {}
+            : { annotations: rollout }),
         })),
         flux,
         held[name],
@@ -186,14 +196,25 @@ export function pinSources(
       path,
       text: serialize(objects, path),
     });
-    if (moves.has(name))
-      return [file(derive(name !== ESTATE && !pinned.has(name)))];
+    if (moves.has(name)) {
+      const rollout = moves.get(name);
+      return [
+        file(
+          derive(
+            name !== ESTATE && !pinned.has(name),
+            rollout === undefined ? {} : rolloutAnnotations(rollout),
+          ),
+        ),
+      ];
+    }
     const before = committed[name];
     if (before === undefined) return [];
     const pin = readPinSource(before);
     if (pin === undefined)
       throw brokenInvariant(`${path}: a committed pin source names no digest`);
-    const derived = derive(pin.recreates, pin.digest);
+    // The Rollout stays the committed one: the release that moved the pin,
+    // which a later release that renders the same does not replace.
+    const derived = derive(pin.recreates, pin.rollout, pin.digest);
     const written = file(
       PIN_ANNOTATIONS.pausedBy in (held[name] ?? {})
         ? // The source itself is derived; its units stay the committed ones.

@@ -115,6 +115,41 @@ describe("a pin source", () => {
     ).toStrictEqual([{ name: "apps-data" }, { name: "estate-vso-secrets" }]);
   });
 
+  it("carries a unit's annotations on that unit alone, and none where it is given none", () => {
+    const carried = { "event.toolkit.fluxcd.io/version": "1.2.0" };
+    const [source, annotated, bare] = renderPinSource(
+      "project-notes",
+      "notes",
+      [
+        {
+          name: "apps-notes",
+          path: "apps/notes",
+          after: [],
+          annotations: carried,
+        },
+        { name: "apps-notes-late", path: "apps/notes/late", after: [] },
+      ],
+      FLUX,
+    ) as unknown as { metadata: Record<string, unknown> }[];
+
+    expect(annotated?.metadata).toStrictEqual({
+      name: "apps-notes",
+      namespace: "flux-system",
+      labels: LABELS,
+      annotations: carried,
+    });
+    expect(Object.keys(bare?.metadata ?? {})).toStrictEqual([
+      "name",
+      "namespace",
+      "labels",
+    ]);
+    expect(Object.keys(source?.metadata ?? {})).toStrictEqual([
+      "name",
+      "namespace",
+      "labels",
+    ]);
+  });
+
   it("marks every Deployment for recreation on a first delivery, in each unit, and nothing else", () => {
     const units = [
       { name: "apps-notes", path: "apps/notes", after: [] },

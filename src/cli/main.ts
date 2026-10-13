@@ -482,6 +482,7 @@ function compose(values: Options, json: boolean, world: World): Outcome {
   const {
     artifacts,
     sources,
+    rollouts,
     lock: written,
     statuses,
     conditions,
@@ -503,6 +504,7 @@ function compose(values: Options, json: boolean, world: World): Outcome {
         repository,
         moves,
       })),
+      rollouts,
       statuses,
       conditions,
     })}\n`,

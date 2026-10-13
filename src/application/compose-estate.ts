@@ -29,6 +29,7 @@ import {
   PIN_ANNOTATIONS,
   type PinAnnotationsDocument,
 } from "../model/pin-annotations.ts";
+import { ROLLOUT_ENVIRONMENT, type Rollout } from "../model/rollout.ts";
 import type { AuthoredFile } from "./check-intent-set.ts";
 import {
   composedLock,
@@ -114,6 +115,8 @@ export interface ComposedArtifact {
   /** The OCI repository it is published to, the one its pin source names. */
   readonly repository: string;
   readonly moves: boolean;
+  /** The Rollout a Project's moving pin starts; the estate-scoped artifact is no Project's release. */
+  readonly rollout?: Rollout;
 }
 
 /** A commit status on the commit that published a fragment. */
@@ -143,6 +146,12 @@ export interface Composition {
    * pin stays already names the digest it was committed at.
    */
   readonly sources: readonly PinSource[];
+  /**
+   * One Rollout per Project whose pin moves
+   * (spec/v1/55-delivery.md#rollouts): what the composition workflow creates
+   * each GitHub Deployment from.
+   */
+  readonly rollouts: readonly Rollout[];
   readonly lock: CompositionLockDocument;
   readonly statuses: readonly CommitStatus[];
   readonly conditions: readonly Condition[];
@@ -554,17 +563,32 @@ function composition(
   const published = platformOf(input.platform).bootstrap.flux.artifacts;
   const artifacts = rendered.map(({ name, files }): ComposedArtifact => {
     const contentHash = hash(files.map(({ path, text }) => ({ path, text })));
+    // An unchanged render publishes nothing, and a paused Project moves no
+    // pin, save to the release a Rollback composed it at.
+    const moves =
+      (!held(name, PIN_ANNOTATIONS.pausedBy) ||
+        held(name, PIN_ANNOTATIONS.rollbackFragment)) &&
+      input.pins[name]?.contentHash !== contentHash;
+    // A Project's artifact is rendered from the fragment it composed at,
+    // which is the release its pin moves to.
+    const released = candidates.get(name)?.manifest;
     return {
       name,
       files,
       contentHash,
       repository: artifactRepositoryOf(published.repository, name),
-      // An unchanged render publishes nothing, and a paused Project moves no
-      // pin, save to the release a Rollback composed it at.
-      moves:
-        (!held(name, PIN_ANNOTATIONS.pausedBy) ||
-          held(name, PIN_ANNOTATIONS.rollbackFragment)) &&
-        input.pins[name]?.contentHash !== contentHash,
+      moves,
+      ...(moves && released !== undefined
+        ? {
+            rollout: {
+              project: name,
+              repository: released.metadata.repository,
+              sha: released.metadata.sourceSha,
+              environment: ROLLOUT_ENVIRONMENT,
+              version: released.spec.version,
+            },
+          }
+        : {}),
     };
   });
 
@@ -662,6 +686,7 @@ function composition(
       new Set(Object.keys(input.pins)),
       input.sources,
     ),
+    rollouts: artifacts.flatMap(({ rollout }) => rollout ?? []),
     lock,
     statuses: statusesOf(input, isolated),
     conditions: conditionsOf(input, isolated),

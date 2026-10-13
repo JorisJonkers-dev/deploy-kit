@@ -15,11 +15,13 @@ describe("readPinSource", () => {
       digest: DIGEST,
       recreates: false,
       units: [{ kind: "Kustomization", spec: { path: "./apps/notes" } }],
+      rollout: {},
     });
     expect(readPinSource(repository)).toStrictEqual({
       digest: DIGEST,
       recreates: false,
       units: [],
+      rollout: {},
     });
   });
 
@@ -39,6 +41,7 @@ describe("readPinSource", () => {
         { kind: "Kustomization", spec: { path: "./a" } },
         { kind: "Kustomization", spec: { path: "./b", patches: [] } },
       ],
+      rollout: {},
     });
   });
 
@@ -47,7 +50,54 @@ describe("readPinSource", () => {
       readPinSource(
         `kind: OCIRepository\nspec:\n  patches: []\n  ref:\n    digest: ${DIGEST}\n`,
       ),
-    ).toStrictEqual({ digest: DIGEST, recreates: false, units: [] });
+    ).toStrictEqual({
+      digest: DIGEST,
+      recreates: false,
+      units: [],
+      rollout: {},
+    });
+  });
+
+  it("reads the Rollout its first unit carries, and no other annotation", () => {
+    const carrying = (annotations: string): string =>
+      `kind: Kustomization\nmetadata:\n  annotations:\n${annotations}spec:\n  path: ./a\n`;
+    const read = (...units: string[]) =>
+      readPinSource([repository, ...units].join("---\n"))?.rollout;
+
+    expect(
+      read(
+        carrying(
+          [
+            "    event.toolkit.fluxcd.io/repository: JorisJonkers-dev/notes\n",
+            "    event.toolkit.fluxcd.io/sha: abc\n",
+            "    event.toolkit.fluxcd.io/environment: production\n",
+            '    event.toolkit.fluxcd.io/version: "1.2.0"\n',
+            "    event.toolkit.fluxcd.io/other: kept out\n",
+            "    example.com/note: kept out\n",
+          ].join(""),
+        ),
+      ),
+    ).toStrictEqual({
+      "event.toolkit.fluxcd.io/repository": "JorisJonkers-dev/notes",
+      "event.toolkit.fluxcd.io/sha": "abc",
+      "event.toolkit.fluxcd.io/environment": "production",
+      "event.toolkit.fluxcd.io/version": "1.2.0",
+    });
+    // A value that is no text is no part of a Rollout.
+    expect(
+      read(carrying("    event.toolkit.fluxcd.io/version: 12\n")),
+    ).toStrictEqual({});
+    // Only the first unit's: a Project's artifact holds one.
+    expect(
+      read(
+        unit("  path: ./a\n"),
+        carrying("    event.toolkit.fluxcd.io/version: 1.0.0\n"),
+      ),
+    ).toStrictEqual({});
+    expect(read(`kind: Kustomization\nmetadata: {}\n`)).toStrictEqual({});
+    expect(
+      read(`kind: Kustomization\nmetadata:\n  annotations: none\n`),
+    ).toStrictEqual({});
   });
 
   it.each([

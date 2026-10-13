@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **55** rows. The compiler's behaviours join it as they land.
+This ledger holds **56** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -78,3 +78,4 @@ This ledger holds **55** rows. The compiler's behaviours join it as they land.
 | REQ-053 | A file grant of one key renders as a projected Secret volume carrying that key as the file at `mountAt`, at `fileMode`, its directory mounted read-only into the Process and every sidecar and nothing of it in the environment; a file grant of other than one key, with no mode, or directly in `/` stops the render. The knowledge platform's share and its estate-scoped share equal their committed tree byte for byte | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-054 | Composition refuses every identity and reference invariant it answers over the union (a duplicated project, Application id, Process name within a project, exposure name within an Application or host, an edge to an Application nothing declares or a surface nothing provides, and a cycle of required edges) at each side of a collision, the same in every order the fragments are read; identity needs no Platform document and references are answered only beside one. Each negative fixture, read by its `kind: Project`, fires its own code and nothing else, at the triples its committed diagnostics name | [test/model/negative.test.ts](../test/model/negative.test.ts) |
 | REQ-055 | The weekly full mutation run names every mutant under `src/` that no test detected, in an issue, and gates nothing | [test/mutation-survivors.test.ts](../test/mutation-survivors.test.ts) |
+| REQ-056 | Composition records one Rollout for every Project whose pin moves, the repository, commit and version of the fragment it composed at in the environment `production`, and none for the estate-scoped artifact or where no pin moves; the Project's unit carries it on its pin source as the annotations Flux copies into its events, and a source written again while its pin stays keeps the one it is committed with | [test/application/compose.test.ts](../test/application/compose.test.ts) |

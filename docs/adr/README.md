@@ -151,6 +151,7 @@ and linted by the same script with `emf` as its root.
 | [0086](model/0086-the-collector-runs-in-the-cluster.md) | The ClusterState Collector runs in the cluster, reads only, and commits the snapshot when it changes | open |
 | [0087](model/0087-in-cluster-consumers-read-the-render.md) | An in-cluster job applies the rendered Vault policies, and the Release Gate reads its inputs from a rendered ConfigMap | open |
 | [0094](model/0094-a-move-is-derived-from-one-authored-edit.md) | A Move is derived from one authored edit, and the Release Gate runs it as sync, lag, fence, flip, unfence and reverse inside the provider's release | open |
+| [0099](model/0099-a-rollout-is-a-github-deployment-driven-by-the-clusters-events.md) | A Rollout is a GitHub Deployment that composition names and the cluster's own events drive | open |
 
 ## Architecture
 
