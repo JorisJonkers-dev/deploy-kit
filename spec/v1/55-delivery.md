@@ -775,16 +775,17 @@ metadata, which names the release and hands the gate what its checks request:
 A webhook's metadata is text alone, which is why a list is one value: a space
 separates its entries because neither a path nor a hostname holds one. The
 schema keeps that true: a Route's path and a probe's path are URL path
-segments each opened by one `/`, and an Exposure's host is a DNS name and
-never an address ([chapter 10](10-project-intent.md#exposure)). A project file
-therefore cannot author a second entry into a list, or a path that names
-another host.
+segments each opened by one `/`, and an Exposure's host is a DNS name, never
+an address and never a name under the cluster's own suffixes
+([chapter 10](10-project-intent.md#exposure)). A project file therefore cannot
+author a second entry into a list, a path that names another host, or a host
+that is plainly a Service.
 
 **The schema does not decide where a hostname leads, so the gate does.** The
 gate holds API access and requests from inside the cluster, and a name that is
-well formed can still resolve to an address only the cluster reaches. No list
-of forbidden names closes that, because the address is not in the name. A
-warmup therefore:
+well formed can still resolve to an address only the cluster reaches. The
+schema's refusal of the cluster's suffixes is a first filter; no list of names
+closes this, because the address is not in the name. A warmup therefore:
 
 - resolves the hostname as an absolute name, so the cluster's search path
   never completes it into a Service;

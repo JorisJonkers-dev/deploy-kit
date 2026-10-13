@@ -410,6 +410,12 @@ describe("parseProjectIntent", () => {
       "0x7f.0.0.1",
       "notes.1dev",
       "notes.jorisjonkers.dev\n",
+      "vault.secrets-system.svc",
+      "vault.secrets-system.svc.cluster.local",
+      "notes.svc.example.dev",
+      "printer.local",
+      "db.internal",
+      "notes.localhost",
     ])
       expect(
         codesAt(
@@ -425,9 +431,9 @@ describe("parseProjectIntent", () => {
       "notes.lan",
       "n0tes-1.jorisjonkers.dev",
       "1.notes.dev",
-      // A name is held to its syntax alone: where it resolves is checked by
-      // whoever connects to it, which no pattern can do.
-      "vault.secrets-system.svc",
+      "services.example.dev",
+      // Well formed, and it resolves to a private address: no pattern can
+      // know that, which is why the gate checks the address it connects to.
       "10.0.0.1.nip.io",
       `${"a".repeat(63)}.dev`,
     ])
