@@ -1,7 +1,7 @@
 // What composition keeps of a committed pin source
 // (spec/v1/55-delivery.md#what-a-pin-source-holds).
 import { describe, expect, it } from "vitest";
-import { readPinSource } from "../../src/read/pin-source.ts";
+import { readPinSource, samePinSource } from "../../src/read/pin-source.ts";
 
 const DIGEST = `sha256:${"a".repeat(64)}`;
 const repository = `kind: OCIRepository\nspec:\n  ref:\n    digest: ${DIGEST}\n`;
@@ -66,5 +66,82 @@ describe("readPinSource", () => {
     ],
   ])("reads no pin from %s", (_what, text) => {
     expect(readPinSource(text)).toBeUndefined();
+  });
+});
+
+describe("samePinSource", () => {
+  const source = [
+    repository,
+    unit("  path: ./apps/notes\n  interval: 10m\n"),
+  ].join("---\n");
+
+  it.each([
+    ["itself", source],
+    ["a comment", `# GENERATED. Never hand-edit.\n${source}# a note\n`],
+    [
+      "a quoted string",
+      source
+        .replace("interval: 10m", 'interval: "10m"')
+        .replace(DIGEST, `'${DIGEST}'`),
+    ],
+    [
+      "its keys in another order",
+      source.replace(
+        "  path: ./apps/notes\n  interval: 10m\n",
+        "  interval: 10m\n  path: ./apps/notes\n",
+      ),
+    ],
+    [
+      "a mapping written in flow style",
+      source.replace(
+        `  ref:\n    digest: ${DIGEST}\n`,
+        `  ref: { digest: ${DIGEST} }\n`,
+      ),
+    ],
+    ["a leading document marker", `---\n${source}`],
+  ])("holds a source and %s as the same", (_how, written) => {
+    expect(written === source).toBe(_how === "itself");
+    expect(samePinSource(source, written)).toBe(true);
+    expect(samePinSource(written, source)).toBe(true);
+  });
+
+  it("reads a time a Pause wrote quoted as the text composition writes bare", () => {
+    const paused = (at: string): string =>
+      `kind: OCIRepository\nmetadata:\n  annotations:\n    paused-at: ${at}\nspec:\n  ref:\n    digest: ${DIGEST}\n`;
+
+    expect(
+      samePinSource(
+        paused("2026-10-13T07:34:26Z"),
+        paused('"2026-10-13T07:34:26Z"'),
+      ),
+    ).toBe(true);
+    expect(
+      samePinSource(
+        paused("2026-10-13T07:34:26Z"),
+        paused("2026-10-13T07:34:27Z"),
+      ),
+    ).toBe(false);
+  });
+
+  it.each([
+    ["another value", source.replace("./apps/notes", "./apps/other")],
+    [
+      "a value of another type",
+      source.replace("interval: 10m", "interval: 10"),
+    ],
+    ["a field more", `${source}  prune: true\n`],
+    ["a field fewer", source.replace("  interval: 10m\n", "")],
+    ["a unit more", [source, unit("  path: ./b\n")].join("---\n")],
+    ["a unit fewer", repository],
+    [
+      "its documents in another order",
+      [unit("  path: ./apps/notes\n  interval: 10m\n"), repository].join(
+        "---\n",
+      ),
+    ],
+    ["nothing", ""],
+  ])("holds a source and one with %s as different", (_what, written) => {
+    expect(samePinSource(source, written)).toBe(false);
+    expect(samePinSource(written, source)).toBe(false);
   });
 });
