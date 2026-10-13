@@ -98,3 +98,8 @@ releases delivered and unreported. Nothing in the render depends on a Rollout.
   no Application, so nothing else could say who may receive its events: the
   named Application's `http` Process admits Flux's notification controller, the
   one peer of the bootstrap set a policy names.
+- The Reporter is declared beside the Release Gate, in the same project file.
+  The Platform document names it by id, and an id is something any project
+  file can declare, so the id alone would hand every Project's events to
+  whoever published the name first. Held to the gate's Project, the role can
+  only be taken by a Project that already decides every promotion.

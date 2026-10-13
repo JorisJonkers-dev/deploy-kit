@@ -72,7 +72,7 @@ other resolves and every policy one asks for the other offers:
 | `telemetry.collector` names no Application a project file read beside it declares with an `otlp` surface on one of its Processes | `E_UNKNOWN_TELEMETRY_COLLECTOR` |
 | `telemetry.metrics` names an Application no project file read beside it declares | `E_UNKNOWN_METRICS_STACK` |
 | `delivery.gate` names no Application a project file read beside it declares with an `http` surface on one of its Processes | `E_UNKNOWN_RELEASE_GATE` |
-| `delivery.reporter` names no Application a project file read beside it declares with an `http` surface on one of its Processes | `E_UNKNOWN_REPORTER` |
+| `delivery.reporter` names no Application that the project file declaring the Release Gate declares with an `http` surface on one of its Processes | `E_UNKNOWN_REPORTER` |
 | `secretStore` names no Application a project file read beside it declares with an `http` surface on one of its Processes | `E_UNKNOWN_SECRET_STORE` |
 | an Application holds a grant, a backup that copies off-cluster, a backup that dumps over the network, or a changelog, and the platform names no `secretStore` | `E_NO_SECRET_STORE` |
 | an Application moves its schema with a changelog and the platform declares no `migration` policy | `E_NO_MIGRATION_POLICY` |
@@ -541,10 +541,14 @@ facts, all the platform's:
   `E_UNKNOWN_RELEASE_GATE` otherwise.
 - **`reporter`** names the Reporter: the Application Flux's events about every
   Project's unit are sent to, on its `http` surface, so each Rollout's stages
-  reach its repository ([chapter 55](55-delivery.md#rollouts)). It links as the
-  gate does: `E_UNKNOWN_REPORTER` otherwise. It is no machinery, since it
-  switches nothing. The field is optional, and a platform that names no
-  Reporter reports no Rollout past `pinned`.
+  reach its repository ([chapter 55](55-delivery.md#rollouts)). It links to an
+  Application whose Process provides that surface, declared in the project file
+  that declares the Release Gate: `E_UNKNOWN_REPORTER` otherwise. The name
+  alone binds nothing. A project file that declares an Application called what
+  the platform calls its Reporter gains nothing by it, unless it is the one
+  that already holds the gate, so the role cannot be claimed by publishing a
+  name. It is no machinery, since it switches nothing. The field is optional,
+  and a platform that names no Reporter reports no Rollout past `pinned`.
 - **`analysis`** is the cadence every `blue-green` member is analysed at, and
   what a check must stay under. `interval`, `iterations` and `threshold` are how
   often a check runs, how many passing checks promote, and how many failing

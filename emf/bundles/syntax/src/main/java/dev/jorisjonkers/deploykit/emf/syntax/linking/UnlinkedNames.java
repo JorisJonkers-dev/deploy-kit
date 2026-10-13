@@ -76,7 +76,8 @@ public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
         }
         if (context.getReference() == ProjectIntentPackage.Literals.DELIVERY_POLICY__REPORTER) {
             return new DiagnosticMessage(
-                    "no project file declares an Application " + name + " whose Process provides an `http` surface",
+                    "the project file that declares the Release Gate declares no Application " + name
+                            + " whose Process provides an `http` surface",
                     Severity.ERROR,
                     UNKNOWN_REPORTER);
         }

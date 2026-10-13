@@ -489,8 +489,8 @@ export function setDiagnostics(
             code: "E_UNKNOWN_REPORTER",
             document: platform.name,
             path: "/delivery",
-            message: `no project file declares an Application ${reporter} whose Process provides an \`http\` surface`,
-            hint: "Declare the Reporter in a project file the platform owns, with an `http` surface on one of its Processes, or drop `delivery.reporter`.",
+            message: `the project file that declares the Release Gate declares no Application ${reporter} whose Process provides an \`http\` surface`,
+            hint: "Declare the Reporter beside the Release Gate, in the same project file, with an `http` surface on one of its Processes, or drop `delivery.reporter`.",
           },
         ];
   // The Secret Store answers every grant on its `http` surface.

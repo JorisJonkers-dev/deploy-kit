@@ -303,11 +303,21 @@ describe("checkIntentSet", () => {
       document: "platform/platform.intent.yml",
       path: "/delivery",
       message:
-        "no project file declares an Application gone whose Process provides an `http` surface",
-      hint: "Declare the Reporter in a project file the platform owns, with an `http` surface on one of its Processes, or drop `delivery.reporter`.",
+        "the project file that declares the Release Gate declares no Application gone whose Process provides an `http` surface",
+      hint: "Declare the Reporter beside the Release Gate, in the same project file, with an `http` surface on one of its Processes, or drop `delivery.reporter`.",
     });
     // An Application that answers on another surface alone is no Reporter.
     expect(naming("reporter: otel-collector")).toStrictEqual([
+      {
+        code: "E_UNKNOWN_REPORTER",
+        document: "platform/platform.intent.yml",
+        path: "/delivery",
+      },
+    ]);
+    // Nor is one that answers on `http` in another Project than the gate's:
+    // the name alone binds nothing, so declaring an Application called what
+    // the platform calls its Reporter gains a project file nothing.
+    expect(naming("reporter: vault")).toStrictEqual([
       {
         code: "E_UNKNOWN_REPORTER",
         document: "platform/platform.intent.yml",

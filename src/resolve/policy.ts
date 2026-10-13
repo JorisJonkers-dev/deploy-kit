@@ -175,6 +175,9 @@ export function ingressOf(
   // (spec/v1/55-delivery.md#rollouts): its notification controller reaches
   // the Reporter where the Provider sends them, the first Process of the
   // Reporter that provides the surface.
+  // The Application the platform names is the one declared beside the
+  // Release Gate, or E_UNKNOWN_REPORTER refused the set, and no other carries
+  // its id, or E_DUPLICATE_APPLICATION_ID did.
   const receiver =
     context.platform.delivery?.reporter === application.id
       ? application.processes.find(

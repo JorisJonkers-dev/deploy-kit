@@ -144,10 +144,25 @@ export const gateEndpoint = (
   );
 
 /**
+ * The Projects that declare the Release Gate: the delivery machinery's own.
+ * The Reporter is declared beside the gate or nowhere, so the name alone
+ * never binds the role: a project file that declares an Application called
+ * what the platform calls its Reporter gains nothing by it, unless it is the
+ * one that already holds the gate.
+ */
+export const gateProjects = <Project extends Declares>(
+  platform: PlatformIntentDocument,
+  projects: readonly Project[],
+): Project[] =>
+  projects.filter(({ applications }) =>
+    applications.some(({ id }) => id === platform.delivery?.gate),
+  );
+
+/**
  * Where Flux's events about every Project's unit are sent
  * (spec/v1/55-delivery.md#rollouts): the named Reporter's `http` surface, or
- * nothing where the platform names no Reporter or the union declares none
- * that answers there.
+ * nothing where the platform names no Reporter or the Project that declares
+ * the Release Gate declares none that answers there.
  */
 export const reporterEndpoint = (
   platform: PlatformIntentDocument,
@@ -156,7 +171,7 @@ export const reporterEndpoint = (
   endpoint(
     surfaceAddress(
       platform,
-      projects,
+      gateProjects(platform, projects),
       platform.delivery?.reporter,
       REPORTER_SURFACE,
     ),
