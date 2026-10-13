@@ -907,7 +907,11 @@ stays parked in [docs/adr/deferred/README.md](../../docs/adr/deferred/README.md)
      then asserting a tampered fragment with a valid `MANIFEST.sha256` is
      rejected.
    - **Blocks:** nothing today; it bounds what a compromised publish credential
-     can do.
+     can do. That now includes where a fragment's own claims are written to: a
+     commit status and a Rollout
+     ([chapter 55](55-delivery.md#rollouts)) both go to the repository the
+     fragment names, so until composition verifies provenance the composition
+     workflow must.
 5. **Composition asserts eligibility, never fleet capacity.** The same question
    as [chapter 20](20-resolved-deployment.md#open-in-this-chapter)'s fifth item
    (nothing compares the sum of what the estate declared against what the

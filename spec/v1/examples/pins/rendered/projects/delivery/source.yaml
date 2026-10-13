@@ -25,6 +25,11 @@ metadata:
   namespace: flux-system
   labels:
     app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    event.toolkit.fluxcd.io/repository: JorisJonkers-dev/delivery
+    event.toolkit.fluxcd.io/sha: f735bfe482448637bc6c64d584717817fa63879f
+    event.toolkit.fluxcd.io/environment: production
+    event.toolkit.fluxcd.io/version: 1.0.0
 spec:
   interval: 10m
   prune: true

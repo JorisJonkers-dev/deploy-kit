@@ -17,6 +17,7 @@ import {
 } from "../../src/application/compose-estate.ts";
 import { pinSources } from "../../src/application/pin-sources.ts";
 import { PIN_ANNOTATIONS } from "../../src/model/pin-annotations.ts";
+import type { Rollout } from "../../src/model/rollout.ts";
 import { serialize, sha256Hasher } from "../../src/index.ts";
 
 const EXAMPLES = join(
@@ -2132,5 +2133,171 @@ describe("composeEstate, for an artifact whose pin stays", () => {
     ).toThrow(
       "projects/notes/source.yaml: a committed pin source names no digest",
     );
+  });
+});
+
+// REQ-056 (docs/requirements.md): a Rollout is one Project's release from the
+// moment its pin moves, and its identity is what composition records and what
+// the pin source hands Flux (spec/v1/55-delivery.md#rollouts).
+describe("composeEstate, for a Rollout", () => {
+  const identityOf = (project: string, version = "1.0.0") => ({
+    project,
+    repository: `JorisJonkers-dev/${project}`,
+    sha: release(project, version).manifest.metadata.sourceSha,
+    environment: "production" as const,
+    version,
+  });
+  /** A composition with no Project left on the old path, so the estate-scoped artifact is delivered. */
+  const handedOver = (): Composition =>
+    compose({
+      platform: {
+        ...PLATFORM,
+        files: PLATFORM.files.map((file) =>
+          file.name === "platform.intent.yml"
+            ? { ...file, text: withLedger(file.text, "") }
+            : file,
+        ),
+      },
+    });
+  /** The annotations each Kustomization of a source carries, by the unit's name. */
+  const annotated = (body: string): Record<string, unknown> =>
+    Object.fromEntries(
+      parseAllDocuments(body)
+        .map(
+          (document) =>
+            document.toJSON() as {
+              kind: string;
+              metadata: { name: string; annotations?: Record<string, string> };
+            },
+        )
+        .filter(({ kind }) => kind === "Kustomization")
+        .map(({ metadata }) => [metadata.name, metadata.annotations]),
+    );
+  const eventsOf = ({ project: _project, ...identity }: Rollout) =>
+    Object.fromEntries(
+      Object.entries(identity).map(([field, value]) => [
+        `event.toolkit.fluxcd.io/${field}`,
+        value,
+      ]),
+    );
+  const sourceOf = (composition: Composition, name: string): string =>
+    composition.sources.find((source) => source.name === name)?.text ?? "";
+  const bumped = (project: string, edit?: (text: string) => string) =>
+    RELEASES.map((fragment) =>
+      fragment.manifest.spec.project === project
+        ? release(project, "1.1.0", edit)
+        : fragment,
+    );
+  const heavier = (body: string): string =>
+    body.replace("memory: 256Mi", "memory: 320Mi");
+
+  it("records one for every Project whose pin moves, and none for the estate-scoped artifact", () => {
+    const first = handedOver();
+    const projects = first.artifacts
+      .map(({ name }) => name)
+      .filter((name) => name !== "_estate");
+
+    expect(first.artifacts.map(({ name }) => name)).toContain("_estate");
+    expect(first.artifacts.every(({ moves }) => moves)).toBe(true);
+    expect(first.rollouts).toStrictEqual(
+      projects.map((project) => identityOf(project)),
+    );
+  });
+
+  it("hands Flux a moved Project's Rollout on its unit, and nothing on an estate unit", () => {
+    expect(annotated(sourceOf(FIRST, "notes"))).toStrictEqual({
+      "apps-notes": {
+        "event.toolkit.fluxcd.io/repository": "JorisJonkers-dev/notes",
+        "event.toolkit.fluxcd.io/sha": identityOf("notes").sha,
+        "event.toolkit.fluxcd.io/environment": "production",
+        "event.toolkit.fluxcd.io/version": "1.0.0",
+      },
+    });
+    const estate = annotated(sourceOf(handedOver(), "_estate"));
+    expect(Object.keys(estate)).not.toStrictEqual([]);
+    expect(Object.values(estate)).toStrictEqual(
+      Object.keys(estate).map(() => undefined),
+    );
+  });
+
+  it("records none where no pin moves, a release that renders the same among them", () => {
+    expect(after({}).rollouts).toStrictEqual([]);
+    const same = after({ fragments: bumped("notes") });
+
+    expect(same.lock.spec.fragments.notes?.version).toBe("1.1.0");
+    expect(same.rollouts).toStrictEqual([]);
+    expect(same.sources).toStrictEqual([]);
+  });
+
+  it("records the release a pin moves to, and that one alone", () => {
+    const next = after({ fragments: bumped("notes", heavier) });
+
+    expect(next.rollouts).toStrictEqual([identityOf("notes", "1.1.0")]);
+    expect(annotated(sourceOf(next, "notes"))).toStrictEqual({
+      "apps-notes": eventsOf(identityOf("notes", "1.1.0")),
+    });
+  });
+
+  it("records none for a paused Project, and the release a Rollback moves its pin to", () => {
+    const fragments = bumped("notes", heavier);
+    expect(
+      after({ fragments, pins: pinned(FIRST, { notes: PAUSE }) }).rollouts,
+    ).toStrictEqual([]);
+    // 1.1.0 is what the pin holds when the Rollback to 1.0.0 is recorded.
+    const deployed = after({ fragments });
+    const back = after({
+      fragments,
+      pins: pinned(deployed, {
+        notes: {
+          ...PAUSE,
+          [PIN_ANNOTATIONS.rollbackVersion]: "1.0.0",
+          [PIN_ANNOTATIONS.rollbackFragment]: RELEASES.find(
+            ({ manifest }) => manifest.spec.project === "notes",
+          )?.ref as string,
+        },
+      }),
+      previous: { lock: deployed.lock, commit: hex("estate-commit", 40) },
+    });
+
+    expect(back.rollouts).toStrictEqual([identityOf("notes", "1.0.0")]);
+    expect(annotated(sourceOf(back, "notes"))).toStrictEqual({
+      "apps-notes": eventsOf(identityOf("notes", "1.0.0")),
+    });
+  });
+
+  it("keeps the Rollout a source is committed with when the source is written again and its pin stays", () => {
+    const committed = Object.fromEntries(
+      FIRST.sources.map(({ name, text: body }) => [name, body]),
+    );
+    // A later release that renders the same moves no pin: the unit still
+    // applies what 1.0.0 put there.
+    const rewritten = compose({
+      platform: {
+        ...PLATFORM,
+        files: PLATFORM.files.map((file) =>
+          file.name === "platform.intent.yml"
+            ? {
+                ...file,
+                text: file.text.replace(
+                  "      repository: ghcr.io/jorisjonkers-dev/render\n",
+                  "      repository: ghcr.io/jorisjonkers-dev/render\n      pullSecret: render-pull\n",
+                ),
+              }
+            : file,
+        ),
+      },
+      fragments: bumped("notes"),
+      held: RELEASES,
+      pins: pinned(FIRST),
+      sources: committed,
+      previous: { lock: FIRST.lock, commit: hex("estate-commit", 40) },
+    });
+
+    expect(rewritten.rollouts).toStrictEqual([]);
+    expect(rewritten.lock.spec.fragments.notes?.version).toBe("1.1.0");
+    expect(annotated(sourceOf(rewritten, "notes"))).toStrictEqual({
+      "apps-notes": eventsOf(identityOf("notes", "1.0.0")),
+    });
+    expect(sourceOf(rewritten, "notes")).toContain("name: render-pull");
   });
 });

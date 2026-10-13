@@ -164,6 +164,7 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 | | `verify` | `cosign`, against the Platform document's signer. Flux reads an identity as a pattern, so the issuer and the subject are each written anchored and escaped: the one workflow on the one branch, and no branch whose name merely begins the same |
 | | `interval` | `10m` |
 | `Kustomization`, one per Reconcile Unit the artifact holds | name | the unit's ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)) |
+| | `annotations` | on a Project's unit alone, its Rollout ([Rollouts](#rollouts)): `event.toolkit.fluxcd.io/repository`, `sha`, `environment` and `version`, written when the pin moves. A file written while its pin stays keeps the ones it is committed with, and the estate-scoped artifact's units carry none |
 | | `sourceRef`, `path` | the `OCIRepository` above, and the unit's directory in the artifact |
 | | `dependsOn` | every unit this one follows that is on the estate path, by name, in name order; absent where it follows none. A unit of a Project still on the old path ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)) is left out: it has no Kustomization here, so Flux would wait on it for ever, and the Project is already running where the old path put it. The first composition after that Project hands over rewrites the source, whether or not the dependent's own pin moves, and the edge returns then |
 | | `interval`, `prune`, `wait` | `10m`, `true`, `true`: a unit is Ready when what it applied is, so a Job that fails holds every unit that follows it |
@@ -634,6 +635,54 @@ cluster. It writes each condition three ways:
 
 Nothing here is a second applier or a gate: a notification reports what
 composition decided and never changes it.
+
+### Rollouts
+
+A **Rollout** is one Project's release as its repository shows it: a GitHub
+Deployment in the environment `production`, for the commit that published the
+release. It starts when composition moves the Project's pin and ends when the
+release is promoted, rolled back or superseded by a later one
+([0099](../../docs/adr/model/0099-a-rollout-is-a-github-deployment-driven-by-the-clusters-events.md)).
+
+**Composition gives a Rollout its identity.** `composition.json` carries one
+entry under `rollouts` for every Project whose pin moves:
+
+| field | what it is |
+|---|---|
+| `project` | the Project |
+| `repository` | the repository that released it, the fragment's `metadata.repository` |
+| `sha` | the commit the fragment was published from, its `metadata.sourceSha` |
+| `environment` | `production` |
+| `version` | the release, the fragment's `spec.version` |
+
+The fragment is the one the Project composed at, so the Rollout of a pin that a
+Rollback moves names the release it went back to. A composition that moves no
+pin records none: a release whose render is the one already pinned changes
+nothing in the cluster. The estate-scoped artifact is no Project's release and
+has no Rollout. The composition workflow creates each Deployment from these
+fields, with the first status `pinned`, and derives none of them.
+
+**The identity is what the fragment says of itself.** Composition reads a
+fragment's files and checks no signature
+([chapter 40](40-composition.md#open-in-this-chapter)), so `repository` and `sha` are
+claims until something outside it has held them to who published the fragment.
+A Rollout writes to the repository it names, as a commit status does. The
+composition workflow therefore reads a fragment only where its signature was
+made by a run in the repository the fragment names, before composition sees it,
+and creates no Deployment and writes no status for one it did not hold to that.
+
+**The pin source carries the same identity** on the Project's unit
+([What a pin source holds](#what-a-pin-source-holds)). Flux copies every
+annotation under `event.toolkit.fluxcd.io/` into the metadata of each event
+about the object, so an event about a Project's unit names the release the unit
+is applying. The annotations are on the pin source and never in the artifact: a
+render's content hash, and so whether its pin moves, does not change with the
+commit that published it.
+
+**Every status after `pinned` is the Reporter's**: an Application of the
+platform's `delivery` Project that follows the cluster's own events and writes
+each stage it sees to the Deployment. Like every notification, it reports and
+decides nothing.
 
 ## Secret rotation
 
