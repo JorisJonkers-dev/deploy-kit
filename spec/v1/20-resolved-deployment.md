@@ -785,7 +785,7 @@ Layer 2 therefore carries, per Application a Process of which switches
 | the member list | the Application's `blue-green` Processes; membership is structural, and a job or a prepare Process switches nothing, so neither is a member |
 | each member's readiness reference | that Process's `probes.readiness`: its `path` + `port`, or its `tcp` port |
 | each member's analysis checks | its Runtime Profile: `error-rate` and `latency` where the profile exposes HTTP server metrics (`jvm`, `node`, `python`), none where it does not (`static`, `none`) |
-| the analysis cadence | the Platform document's `delivery.analysis` ([chapter 14](14-platform-intent.md#delivery-policy)) |
+| the analysis cadence, and the two thresholds a check must stay under | the Platform document's `delivery.analysis` ([chapter 14](14-platform-intent.md#delivery-policy)) |
 | the gate deadline | `max` over the members of `progressDeadlineSeconds`, itself `startupBudget × 3` |
 | the migration | where the Application moves its schema with a changelog: the migration identity, `testedAgainst` where the proof records one, and `nonTransactional`, each copied from the migration plan ([The migration](#the-migration)) |
 
@@ -1263,7 +1263,7 @@ migration:                           # it declares a changelog (chapter 10)
 releaseGate:                         # what the Release Gate reads (0052)
   endpoint: 'http://release-gate.delivery-system.svc.cluster.local:8080'   # the gate the platform names, on its http surface
   deadline: 1800s                    # max over the members
-  analysis: {interval: 30s, iterations: 4, threshold: 3}   # the Platform document's cadence
+  analysis: {interval: 30s, iterations: 4, threshold: 3, errorRate: 1%, latency: 500ms}   # the Platform document's cadence and thresholds
   members:
     - process: knowledge-api
       readiness: {path: /api/actuator/health/readiness, port: 8080}
@@ -1657,6 +1657,8 @@ classDiagram
         +Duration interval
         +int iterations
         +int threshold
+        +Percentage errorRate
+        +Duration latency
     }
     class ResolvedProcess {
         +string name

@@ -386,6 +386,8 @@ describe("probes and the release gate", () => {
       interval: "30s",
       iterations: 4,
       threshold: 3,
+      errorRate: "1%",
+      latency: "500ms",
     });
   });
 

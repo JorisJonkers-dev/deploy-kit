@@ -500,6 +500,7 @@ adapter renders so that Flux and Flagger never own the same field
 | rule | adapter | why |
 |---|---|---|
 | one `Canary` per `blue-green` Process, its cadence the Platform document's `delivery.analysis` and its three webhooks the Release Gate's | `kubernetes` | the Canary is how Flagger is told to switch the Process, and the gate is who decides |
+| each webhook's metadata carries what the gate's checks request and must stay under: the Process's Route paths, its readiness path, the hosts the internet reaches it on and the platform's two thresholds ([chapter 55](55-delivery.md#what-the-render-leaves-to-flagger)) | `kubernetes` | the gate is configured with nothing about a Project, so a Project that changes a Route changes what is checked in the same render |
 | no `Service` named `<name>`, `<name>-primary` or `<name>-canary` for such a Process | `kubernetes` | Flagger generates all three; a rendered one would have two owners |
 | no `replicas` on its Deployment; a `replicas` declaration becomes a `HorizontalPodAutoscaler` with `minReplicas` equal to `maxReplicas`, named by the Canary | `kubernetes` | Flagger scales the Deployment it watches to zero and owns the primary's count, so a count in the render is a field Flux would reset |
 | a `blue-green` Process's `PodDisruptionBudget` selects `app.kubernetes.io/name: <name>-primary` | `kubernetes` | the primary is what serves between releases; the budget protects it, not the scaled-down source |

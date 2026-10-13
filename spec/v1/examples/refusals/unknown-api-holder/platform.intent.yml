@@ -51,7 +51,7 @@ ephemeral: { size: 64Mi }
 delivery:
   machinery: [edge-proxy]
   gate: edge-proxy
-  analysis: { interval: 30s, iterations: 4, threshold: 3 }
+  analysis: { interval: 30s, iterations: 4, threshold: 3, errorRate: 1%, latency: 500ms }
 
 # The refusal: `collector` is admitted to hold Kubernetes API access, and no
 # project file declares it (spec/v1/14-platform-intent.md#kubernetes-api-access).

@@ -1469,11 +1469,11 @@ applications:
 | field | level | required | notes |
 |---|---|---|---|
 | `name` | exposure | yes | Unique within the Application. It is what `E_DUPLICATE_EXPOSURE_NAME` checks and what a `${exposure:…}` placeholder addresses. An Application serving two hostnames (`jellyfin` public and lan) needs it to tell them apart. |
-| `host` | exposure | yes | The full FQDN, written out. Unique across the estate. |
+| `host` | exposure | yes | The full FQDN, written out. Unique across the estate. A DNS name in lower case and nothing else: two labels or more, the last opening with a letter, with no scheme, port, path or space, so it is a name and never an address. A name the cluster itself resolves is refused too: one ending in `svc`, `local`, `internal` or `localhost`, or holding a `svc` label. That is a first filter and not the boundary, since where a name resolves is not in the name: the Release Gate, which requests through it from inside the cluster, checks the address it connects to ([chapter 55](55-delivery.md#the-release-gate)). |
 | `audience` | exposure | yes | `anonymous` \| `authenticated` \| `internal` \| `lan`. The default for every route beneath it. |
 | `contentPolicy` | exposure | no | `strict` \| `admin` \| `workflow`. The Content-Security-Policy profile: the one header choice an author makes, from a closed list. |
 | `routes` | exposure | yes | One or more. |
-| `path` | route | yes | The path this rule matches. |
+| `path` | route | yes | The path this rule matches. `/`, or segments of URL path characters each opened by one `/`: no whitespace, quote, backtick, backslash, `?` or `#`, and never `//`, which a client reads as another host. The edge writes it into its rule and the Release Gate requests it as written. |
 | `match` | route | yes | `prefix` \| `exact`. |
 | `process` | route | yes | A Process of **this** Application. |
 | `surface` | route | yes | A surface that Process declares in `provides`: a name, never a port integer. |

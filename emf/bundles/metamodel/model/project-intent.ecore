@@ -501,6 +501,10 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="iterations" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="threshold" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <!-- What a check of the Release Gate must stay under: the share of its requests that may
+         fail, and their p95 latency (spec/v1/14-platform-intent.md#delivery-policy). -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="errorRate" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="latency" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <!-- The job that writes the rendered Vault policies and auth roles into the Secret Store
        (spec/v1/14-platform-intent.md#the-vault-policy-job). The job itself is derived. -->

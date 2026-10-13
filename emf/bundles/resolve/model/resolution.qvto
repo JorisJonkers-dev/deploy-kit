@@ -350,6 +350,8 @@ mapping EffectiveApplication::gate() : ReleaseGate {
 		interval := estate.delivery.analysis.interval;
 		iterations := estate.delivery.analysis.iterations;
 		threshold := estate.delivery.analysis.threshold;
+		errorRate := estate.delivery.analysis.errorRate;
+		latency := estate.delivery.analysis.latency;
 	};
 	members := waiting->collect(p | object GateMember {
 		process := p.resolveone(ResolvedProcess);
@@ -1474,8 +1476,10 @@ query ReleaseGate::json() : String = obj(Sequence{
 	Tuple{k = 'endpoint', v = str(self.endpoint)},
 	Tuple{k = 'deadline', v = str(self.deadline)},
 	Tuple{k = 'analysis', v = obj(Sequence{
+		Tuple{k = 'errorRate', v = str(self.analysis.errorRate)},
 		Tuple{k = 'interval', v = str(self.analysis.interval)},
 		Tuple{k = 'iterations', v = num(self.analysis.iterations)},
+		Tuple{k = 'latency', v = str(self.analysis.latency)},
 		Tuple{k = 'threshold', v = num(self.analysis.threshold)}})},
 	Tuple{k = 'members', v = arr(self.members->collect(m | obj(Sequence{
 		Tuple{k = 'process', v = str(m.process.name)},

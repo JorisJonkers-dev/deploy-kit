@@ -321,13 +321,131 @@ describe("parseProjectIntent", () => {
     expect(
       refused(
         withApplications(
-          `  - id: batch\n    processes: []\n  - id: web\n    exposure:\n      - { name: e, host: h, audience: lan, contentPolicy: admin, routes: [] }\n    processes:\n${PROCESS}`,
+          `  - id: batch\n    processes: []\n  - id: web\n    exposure:\n      - { name: e, host: h.lan, audience: lan, contentPolicy: admin, routes: [] }\n    processes:\n${PROCESS}`,
         ),
       ).map(({ path }) => path),
     ).toStrictEqual([
       "/applications/0/processes",
       "/applications/1/exposure/0/routes",
     ]);
+  });
+
+  // REQ-057 (docs/requirements.md): what the edge serves, the kubelet asks and
+  // the Release Gate requests is never free text, so a list of them holds
+  // exactly what was authored and a request goes where the model says.
+  it("refuses a Route path or a probe path that is no request path, and a host that is no DNS name", () => {
+    const codesAt = (document: string) => {
+      const parsed = parseProjectIntent(document);
+      return parsed.ok
+        ? []
+        : parsed.diagnostics.map(({ code, path }) => [code, path]);
+    };
+    const ROUTE = "/applications/0/exposure/0/routes/0/path";
+    const PROBE = "/applications/0/processes/0/probes/readiness/path";
+    const HOST = "/applications/0/exposure/0/host";
+    const quoted = (value: string): string => JSON.stringify(value);
+
+    expect(codesAt(MINIMAL)).toStrictEqual([]);
+    for (const path of [
+      "api",
+      "/a b",
+      "/a\tb",
+      "@evil.example/",
+      "http://evil.example/",
+      " /",
+      "/ ",
+      "//evil.example/",
+      "/a//b",
+      "/a`) || Host(`evil.example",
+      "/a?b=c",
+      "/a#b",
+      "/a\\b",
+      "/a'b\"c",
+      "/a<b>",
+    ])
+      expect(
+        codesAt(
+          MINIMAL.replace("{ path: /, match", `{ path: ${quoted(path)}, match`),
+        ),
+        path,
+      ).toStrictEqual([["schema", ROUTE]]);
+    for (const path of [
+      "/",
+      "/api",
+      "/install.sh",
+      "/a,b",
+      "/mcp/",
+      "/@scope/pkg",
+      "/a%20b/c_d~e",
+    ])
+      expect(
+        codesAt(
+          MINIMAL.replace("{ path: /, match", `{ path: ${quoted(path)}, match`),
+        ),
+        path,
+      ).toStrictEqual([]);
+    expect(
+      codesAt(
+        MINIMAL.replace(
+          "readiness: { path: /healthz/ready,",
+          'readiness: { path: "healthz ready",',
+        ),
+      ),
+    ).toStrictEqual([["schema", PROBE]]);
+    for (const host of [
+      "notes.jorisjonkers.dev other.internal",
+      "Notes.jorisjonkers.dev",
+      "notes.jorisjonkers.dev/path",
+      "user@notes.jorisjonkers.dev",
+      "https://notes.jorisjonkers.dev",
+      "notes..dev",
+      "-notes.dev",
+      "notes-.dev",
+      "notes.dev.",
+      "notes.dev:8443",
+      `${"a".repeat(64)}.dev`,
+      "notes",
+      "10.0.0.1",
+      "169.254.169.254",
+      "0x7f.0.0.1",
+      "notes.1dev",
+      "notes.jorisjonkers.dev\n",
+      "vault.secrets-system.svc",
+      "vault.secrets-system.svc.cluster.local",
+      "notes.svc.example.dev",
+      "printer.local",
+      "db.internal",
+      "notes.localhost",
+    ])
+      expect(
+        codesAt(
+          MINIMAL.replace(
+            "host: notes.jorisjonkers.dev",
+            `host: ${quoted(host)}`,
+          ),
+        ),
+        host,
+      ).toStrictEqual([["schema", HOST]]);
+    for (const host of [
+      "a.b",
+      "notes.lan",
+      "n0tes-1.jorisjonkers.dev",
+      "1.notes.dev",
+      "services.example.dev",
+      // Well formed, and it resolves to a private address: no pattern can
+      // know that, which is why the gate checks the address it connects to.
+      "10.0.0.1.nip.io",
+      `${"a".repeat(63)}.dev`,
+    ])
+      expect(
+        codesAt(
+          MINIMAL.replace(
+            "host: notes.jorisjonkers.dev",
+            `host: ${quoted(host)}`,
+          ),
+        ),
+        host,
+      ).toStrictEqual([]);
   });
 
   it("refuses a field outside the language at its JSON Pointer", () => {

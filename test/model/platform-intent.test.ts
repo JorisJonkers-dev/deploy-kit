@@ -69,7 +69,13 @@ describe("parsePlatformIntent", () => {
     expect(offered.ok && offered.value.document.delivery).toStrictEqual({
       machinery: ["traefik-public", "traefik-lan", "flagger", "release-gate"],
       gate: "release-gate",
-      analysis: { interval: "30s", iterations: 4, threshold: 3 },
+      analysis: {
+        interval: "30s",
+        iterations: 4,
+        threshold: 3,
+        errorRate: "1%",
+        latency: "500ms",
+      },
     });
     expect(ungated.ok && "delivery" in ungated.value.document).toBe(false);
   });
@@ -78,6 +84,40 @@ describe("parsePlatformIntent", () => {
     expect(
       refusalsOf(WORKED.replace("listener: plain", "listener: quic")),
     ).toStrictEqual([{ code: "schema", path: "/tiers/1/listener" }]);
+  });
+
+  // REQ-057 (docs/requirements.md): the Release Gate's two thresholds are
+  // the platform's to state, and a delivery policy without one is refused.
+  it("refuses an analysis that states no threshold, or one that is no share or no latency", () => {
+    const codesAt = (document: string) => {
+      const parsed = parsePlatformIntent(document);
+      return parsed.ok
+        ? []
+        : parsed.diagnostics.map(({ code, path }) => [code, path]);
+    };
+    const stating = (field: string, value: string): string =>
+      WORKED.replace(
+        new RegExp(`\\n( +)${field}: .*\\n`),
+        `\n$1${field}: ${value}\n`,
+      );
+
+    for (const field of ["errorRate", "latency"])
+      expect(
+        codesAt(WORKED.replace(new RegExp(`\\n +${field}: .*\\n`), "\n")),
+        field,
+      ).toStrictEqual([["schema", `/delivery/analysis/${field}`]]);
+    for (const share of ["101%", "1", "1.234%", "-1%", "1 %", "one%"])
+      expect(codesAt(stating("errorRate", share)), share).toStrictEqual([
+        ["schema", "/delivery/analysis/errorRate"],
+      ]);
+    for (const share of ["0%", "0.5%", "12.25%", "100%"])
+      expect(codesAt(stating("errorRate", share)), share).toStrictEqual([]);
+    for (const bound of ["0ms", "500", "1.5s", "5m", "ms"])
+      expect(codesAt(stating("latency", bound)), bound).toStrictEqual([
+        ["schema", "/delivery/analysis/latency"],
+      ]);
+    for (const bound of ["1ms", "250ms", "2s"])
+      expect(codesAt(stating("latency", bound)), bound).toStrictEqual([]);
   });
 
   it("refuses rendered artifacts that name no signer, at the artifacts", () => {

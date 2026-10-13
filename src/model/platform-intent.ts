@@ -22,6 +22,10 @@ export type HardeningClass = (typeof HARDENING_CLASSES)[number];
 
 const text = z.string().min(1);
 const count = z.int().min(1);
+/** A share of requests, as a percentage up to 100 with at most two decimals. */
+export const ERROR_RATE = /^(100|\d{1,2}(\.\d{1,2})?)%$/;
+/** A latency bound: whole milliseconds or seconds. */
+export const LATENCY = /^[1-9]\d*(ms|s)$/;
 const port = z.int().min(1).max(65535);
 
 const audience = z.enum(AUDIENCES).meta({ id: "Audience" });
@@ -159,9 +163,17 @@ const migrationPolicy = z
 
 // How the platform switches a release (spec/v1/14-platform-intent.md#delivery-policy):
 // the Applications that perform the switch and are never switched by it, and
-// the cadence every analysis runs at.
+// the cadence every analysis runs at, and what a check of the Release Gate
+// must stay under: the share of its requests that may fail, and their p95
+// latency.
 const analysisPolicy = z
-  .strictObject({ interval: text, iterations: count, threshold: count })
+  .strictObject({
+    interval: text,
+    iterations: count,
+    threshold: count,
+    errorRate: z.string().regex(ERROR_RATE),
+    latency: z.string().regex(LATENCY),
+  })
   .meta({ id: "AnalysisPolicy" });
 
 const deliveryPolicy = z

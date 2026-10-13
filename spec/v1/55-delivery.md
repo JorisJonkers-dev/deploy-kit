@@ -316,12 +316,38 @@ answers no
 No executable code is rendered for it: a Canary names the gate's endpoint, and
 the decision is the gate's, from data.
 
-**Analysis** is the platform's. Its cadence (interval, iterations, threshold) is
-the Platform document's `delivery.analysis`
-([chapter 14](14-platform-intent.md#delivery-policy)), and the checks a member
-is analysed on derive from its Runtime Profile: a profile that exposes HTTP
-server metrics is checked for error rate and latency, and one that does not is
-checked for readiness alone. Nothing about analysis is authored per Application.
+**Analysis** is the platform's. Its cadence (interval, iterations, threshold)
+and the two thresholds a check must stay under (`errorRate`, `latency`) are the
+Platform document's `delivery.analysis`
+([chapter 14](14-platform-intent.md#delivery-policy)). Nothing about analysis is
+authored per Application.
+
+**A check sends its own traffic.** Flagger switches a `blue-green` member
+without sending it a user's request, so the new copy's own request metrics hold
+nothing but the kubelet's probes, and a static runtime exports none at all. On
+each analysis iteration the gate therefore requests, at the member's Canary
+service, every path the Canary hands it: the path of each Route to the Process,
+and the path its readiness is asked on. It measures two things against the
+platform's thresholds: the share of those requests that failed, and their p95
+latency. A request fails on a 5xx response or a timeout and on nothing else, so
+a `401` or a `404` on a path the gate asks without credentials passes: the
+member answered, and what it answers a stranger is the Application's own
+business. An iteration in which every request times out fails, because no data
+is no.
+
+**After promotion the gate warms up.** It requests the same paths once more
+through each hostname the Canary hands it, the host of every Route the internet
+reaches, so the request crosses the edge to the new primary. A 5xx there fails
+the release's Rollout ([Rollouts](#rollouts)) and rolls nothing back.
+
+**The Canary hands the gate everything those requests need**, as the metadata
+of each of its three webhooks
+([What the render leaves to Flagger](#what-the-render-leaves-to-flagger)).
+Nothing about a Project is configured on the gate itself. The checks a
+member's Runtime Profile derives
+([chapter 20](20-resolved-deployment.md#the-release-gate)) name what its own
+HTTP server metrics could be held to as well; the gate's traffic does not wait
+on them.
 
 **The gate fails closed.** When the gate cannot answer, it answers no: every
 switch waits, the old versions keep serving, and an alert fires. A release is
@@ -735,9 +761,43 @@ The Canary's analysis runs at the Platform document's cadence and asks the
 Release Gate three questions through webhooks: `confirm-rollout` before the new
 copy starts, `rollout` on each analysis iteration, which the gate answers from
 the member's `checks`, and `confirm-promotion` at the barrier
-([The Release Gate](#the-release-gate)). Each webhook carries the Application,
-the Process and the Application revision, and nothing else: the gate reads the
-rest from the Resolved Deployment.
+([The Release Gate](#the-release-gate)). Each webhook carries the same
+metadata, which names the release and hands the gate what its checks request:
+
+| key | what it carries |
+|---|---|
+| `application`, `process`, `revision` | the Application, the Process and the Application revision |
+| `paths` | the path of every Route to the Process, each once, in order, separated by a space; absent where no Route reaches it |
+| `readiness` | the path the member's readiness is asked on; absent for a Process that is no member, and for one whose readiness is a port that opens |
+| `hostnames` | the host of every Route to the Process whose audience is `anonymous` or `authenticated`, the two the internet reaches, each once, in order, separated by a space; absent where it has none, and then nothing is warmed |
+| `errorRate`, `latency` | the Platform document's two thresholds |
+
+A webhook's metadata is text alone, which is why a list is one value: a space
+separates its entries because neither a path nor a hostname holds one. The
+schema keeps that true: a Route's path and a probe's path are URL path
+segments each opened by one `/`, and an Exposure's host is a DNS name, never
+an address and never a name under the cluster's own suffixes
+([chapter 10](10-project-intent.md#exposure)). A project file therefore cannot
+author a second entry into a list, a path that names another host, or a host
+that is plainly a Service.
+
+**The schema does not decide where a hostname leads, so the gate does.** The
+gate holds API access and requests from inside the cluster, and a name that is
+well formed can still resolve to an address only the cluster reaches. The
+schema's refusal of the cluster's suffixes is a first filter; no list of names
+closes this, because the address is not in the name. A warmup therefore:
+
+- resolves the hostname as an absolute name, so the cluster's search path
+  never completes it into a Service;
+- connects only to an address that is public, deciding on the address it
+  connects to and not on the name, and refuses a loopback, link-local or
+  private address and any in the cluster's own ranges;
+- requests `https` on the default port and nothing else;
+- never follows a redirect: a `3xx` is an answer, and it passes.
+
+A check during analysis asks the member's Canary service, which the gate
+names itself and no project file does. The gate reads everything else from
+the Resolved Deployment.
 
 **A member that did not change starts no analysis.** Flagger analyses a Canary
 only when its target's pod template, or a configuration object it tracks,
@@ -745,8 +805,8 @@ changes; a new Application revision that leaves one member's template as it was
 (an `auth` release that changes `auth-api` alone) starts nothing for that
 member. The gate counts such a member as passed for the revision, because what
 its primary serves is already exactly what the revision renders for it, and the
-barrier waits only on the members that did change. No metric query and no threshold is rendered;
-what a check measures is the gate's. Every rule, with the adapter that keeps it,
+barrier waits only on the members that did change. No metric query is rendered, and Flagger is
+given no threshold of the gate's: its `analysis` holds the cadence and the webhooks alone. Every rule, with the adapter that keeps it,
 is [chapter 30](30-deliverables.md#flagger-ready-objects)'s.
 
 Two marks keep Flux from undoing what it must not. A migration or prepare Job is

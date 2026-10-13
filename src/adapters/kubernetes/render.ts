@@ -683,6 +683,26 @@ function rbacOf(
   ];
 }
 
+/** The audiences the internet reaches: the ones a warmup through the public hostname can ask as. */
+const PUBLIC_AUDIENCES: readonly string[] = ["anonymous", "authenticated"];
+
+// The values are distinct, so `<=` would order the same list.
+// Stryker disable next-line EqualityOperator
+const byText = (a: string, b: string): number => (a < b ? -1 : 1);
+
+/**
+ * A webhook's metadata is text alone, so a list is its distinct values in
+ * order, separated by a space, which no path or hostname holds. An empty list
+ * is no key at all.
+ */
+const listed = (
+  key: string,
+  values: readonly string[],
+): Record<string, string> =>
+  values.length === 0
+    ? {}
+    : { [key]: [...new Set(values)].sort(byText).join(" ") };
+
 function canaryOf(
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
@@ -692,6 +712,20 @@ function canaryOf(
     ResolvedApplicationDocument["releaseGate"]
   >;
   const [served] = process.surfaces as NonNullable<ResolvedProcess["surfaces"]>;
+  const { interval, iterations, threshold, errorRate, latency } = gate.analysis;
+  // Every Route to the Process, with the host it is served on.
+  const routes = (application.exposure ?? []).flatMap(({ host, routes: all }) =>
+    all
+      .filter((route) => route.process === process.name)
+      .map((route) => ({ host, ...route })),
+  );
+  // A member's readiness is asked over HTTP or by opening a port, and only
+  // the first has a path to request.
+  const probe = gate.members.find(
+    (member) => member.process === process.name,
+  )?.readiness;
+  const readiness =
+    probe !== undefined && "path" in probe ? probe.path : undefined;
   const webhooks: Webhook[] = WEBHOOKS.map(([name, type]) => ({
     name,
     type,
@@ -700,6 +734,22 @@ function canaryOf(
       application: application.id,
       process: process.name,
       revision: application.revision,
+      // What the gate's checks request and what they must stay under
+      // (spec/v1/55-delivery.md#the-release-gate): nothing about a Project is
+      // configured on the gate itself.
+      ...listed(
+        "paths",
+        routes.map(({ path }) => path),
+      ),
+      ...(readiness === undefined ? {} : { readiness }),
+      ...listed(
+        "hostnames",
+        routes
+          .filter(({ audience }) => PUBLIC_AUDIENCES.includes(audience))
+          .map(({ host }) => host),
+      ),
+      errorRate,
+      latency,
     },
   }));
   return {
@@ -732,7 +782,7 @@ function canaryOf(
         targetPort: (served as { name: string }).name,
         portName: (served as { name: string }).name,
       },
-      analysis: { ...gate.analysis, webhooks },
+      analysis: { interval, iterations, threshold, webhooks },
     },
   };
 }

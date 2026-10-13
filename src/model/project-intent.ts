@@ -59,9 +59,29 @@ const text = z.string().min(1);
 const processReference = text.meta({ reference: "Process" });
 const surfaceReference = text.meta({ reference: "Surface" });
 const port = z.int().min(1).max(65535);
+// A path something requests: `/`, or segments of URL path characters, each
+// opened by one slash. The edge writes it into a rule, the kubelet asks it and
+// the Release Gate requests it (spec/v1/55-delivery.md#the-release-gate), so
+// it holds no whitespace, quote, backtick, backslash, query or fragment, and
+// never opens with two slashes, which a client reads as another host.
+const requestPath = z
+  .string()
+  .regex(/^\/$|^(\/[A-Za-z0-9._~!$&'()*+,;=:@%-]+)+\/?$/);
+// A DNS name, lower case, of two labels or more, its last one opening with a
+// letter: a name, never an address. A name the cluster itself resolves (under
+// `svc`, `local`, `internal` or `localhost`) is refused as well, because no
+// edge serves one. That refusal is a first filter and not the boundary: the
+// address a name resolves to is not in the name, so whoever requests through
+// a host still checks the address it connects to
+// (spec/v1/55-delivery.md#the-release-gate).
+const hostname = z
+  .string()
+  .regex(
+    /^(?!.*\.(svc|local|internal|localhost)$)(?!.*\.svc\.)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$/,
+  );
 
 const httpProbe = z
-  .strictObject({ path: text, port })
+  .strictObject({ path: requestPath, port })
   .meta({ id: "HttpProbe" });
 const tcpProbe = z.strictObject({ tcp: port }).meta({ id: "TcpProbe" });
 const probe = z.union([httpProbe, tcpProbe]);
@@ -233,7 +253,7 @@ const process = z
 
 const route = z
   .strictObject({
-    path: text,
+    path: requestPath,
     match: match,
     process: processReference,
     surface: surfaceReference,
@@ -245,7 +265,7 @@ const route = z
 const exposure = z
   .strictObject({
     name: text,
-    host: text,
+    host: hostname,
     audience: audience,
     contentPolicy: contentPolicy.exactOptional(),
     routes: z.array(route).min(1),

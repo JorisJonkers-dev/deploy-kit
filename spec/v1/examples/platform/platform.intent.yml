@@ -164,6 +164,8 @@ delivery:
     interval: 30s
     iterations: 4
     threshold: 3
+    errorRate: 1%
+    latency: 500ms
 
 # Who may hold Kubernetes API access, and where the API answers
 # (spec/v1/14-platform-intent.md#kubernetes-api-access). A Process declares

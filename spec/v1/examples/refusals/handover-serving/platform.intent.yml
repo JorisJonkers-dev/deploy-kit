@@ -45,6 +45,8 @@ delivery:
     interval: 30s
     iterations: 4
     threshold: 3
+    errorRate: 1%
+    latency: 500ms
 handover:
   retireBy: 2027-03-31
   legacy: [media]

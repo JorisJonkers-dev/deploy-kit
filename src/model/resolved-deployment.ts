@@ -13,7 +13,9 @@
 import { z } from "zod";
 import {
   CERTIFICATE_SOURCES,
+  ERROR_RATE,
   HARDENING_CLASSES,
+  LATENCY,
   LISTENERS,
 } from "./platform-intent.ts";
 import {
@@ -522,7 +524,14 @@ const gateMember = z
 
 // The Platform document's cadence, carried so the projection is all the gate reads.
 const gateAnalysis = z
-  .strictObject({ interval: duration, iterations: count, threshold: count })
+  .strictObject({
+    interval: duration,
+    iterations: count,
+    threshold: count,
+    // What a check must stay under, the same for every Application.
+    errorRate: z.string().regex(ERROR_RATE),
+    latency: z.string().regex(LATENCY),
+  })
   .meta({ id: "GateAnalysis" });
 
 // What the gate needs of a migration to start it and to undo it

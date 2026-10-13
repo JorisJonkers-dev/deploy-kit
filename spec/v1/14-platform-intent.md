@@ -518,6 +518,8 @@ delivery:
     interval: 30s
     iterations: 4
     threshold: 3
+    errorRate: 1%
+    latency: 500ms
 ```
 
 How a release is switched ([chapter 55](55-delivery.md#the-release-gate),
@@ -535,9 +537,15 @@ facts, all the platform's:
   every Canary's three webhooks ask, on its `http` surface. It links as a
   collector does, to an Application whose Process provides that surface:
   `E_UNKNOWN_RELEASE_GATE` otherwise.
-- **`analysis`** is the cadence every `blue-green` member is analysed at: how
-  often a check runs, how many passing checks promote, and how many failing ones
-  roll back. No Application authors its own.
+- **`analysis`** is the cadence every `blue-green` member is analysed at, and
+  what a check must stay under. `interval`, `iterations` and `threshold` are how
+  often a check runs, how many passing checks promote, and how many failing
+  ones roll back. `errorRate` is the share of a check's requests that may fail,
+  a percentage of at most two decimals up to `100%`, and `latency` is the p95
+  those requests must stay under, in whole milliseconds or seconds
+  ([chapter 55](55-delivery.md#the-release-gate)). All five are required: a
+  threshold nobody stated is not one the gate enforces. No Application authors
+  its own, so every one is held to the same two numbers.
 - **`move`** bounds a [Move](55-delivery.md#moves): `timeout`, how long the
   steps from the fence to the unfence may take before the gate puts the source
   back, and `retention`, how long the source Instance is kept, with reverse
@@ -885,6 +893,8 @@ classDiagram
         +Duration interval
         +int iterations
         +int threshold
+        +Percentage errorRate
+        +Duration latency
     }
     class MigrationPolicy {
         +ImageAlias runner

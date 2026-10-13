@@ -64,6 +64,15 @@ would be executable code in a Deliverable
 ([0014](0014-file-shaped-configuration-is-an-asset.md)) reading live objects to
 decide what the model already says.
 
+**The gate sends its own traffic, and the Canary tells it where.** Flagger's
+blue/green sends the new copy no user's request before it promotes, so the
+copy's own metrics hold only the kubelet's probes, and a static runtime exports
+none. A check that waited on metrics would pass on silence. The gate requests
+the member's Route paths and its readiness path itself and holds the answers to
+two thresholds the platform states once. Those paths, the hosts to warm
+afterwards and the thresholds ride in each webhook's metadata, as data: the
+gate carries no list of Projects to drift from the render.
+
 **Staggered promotion, one barrier.** Promotion copies each Canary onto its
 primary member by member, and Process-to-Process traffic crosses their own
 Services, so no mechanism flips an Application at one instant. The rule the model
@@ -86,6 +95,9 @@ bound to a host port cannot run two copies, so the machinery rolls in place
 | The gate remembers what serves in memory alone | no write access for the gate | a restart loses it, and every migration is then held until someone states the serving revision by hand |
 | The serving revision as an annotation on the rendered gate inputs | one object fewer | the render and the gate would both write one object, where every other object here has one writer |
 | Fail open | releases continue during an outage | the barrier lapses exactly then |
+| Checks read the member's own request metrics | no traffic of the gate's | a copy that receives no request reports none, so the check passes on silence, and a static runtime has no metrics to read |
+| Thresholds per Application | each team tunes its own | a threshold an Application sets is one it can set to pass; the platform's two numbers hold every release to the same bar |
+| The gate's check inputs in its own configuration | nothing in the Canary | a second list of every Project's paths, which a Route change would have to reach by hand |
 
 ## Reversibility
 
@@ -101,6 +113,9 @@ merged Application's id, or releases depend on the gate.
 - A lockstep pair that cannot merge is evidence the boundary is drawn wrong,
   judged one pair at a time by joris.
 - The estate writes and runs one controller, the Release Gate, paid by joris.
+- A Platform document that states a delivery policy states both thresholds.
+  Changing one changes every gated Application's revision, as changing the
+  cadence does, so every such Application is released again.
 - The gate holds one piece of state, the revision each Application serves, in
   a `ConfigMap` of its own per Application, kept in the gate's namespace so no
   Application can write what the gate decides from. It needs write access for that and

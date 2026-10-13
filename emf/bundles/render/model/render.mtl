@@ -498,6 +498,17 @@
       application: [p.application().id/]
       process: [p.name/]
       revision: [p.application().revision/]
+      [if (p.paths()->notEmpty())]
+        paths: [p.paths()->sep(' ')/]
+      [/if]
+      [if (p.readinessPath() <> null)]
+        readiness: [p.readinessPath()/]
+      [/if]
+      [if (p.hostnames()->notEmpty())]
+        hostnames: [p.hostnames()->sep(' ')/]
+      [/if]
+      errorRate: [p.application().releaseGate.analysis.errorRate/]
+      latency: [p.application().releaseGate.analysis.latency/]
 [/template]
 
 [template private objects(d : resolveddeployment::WorkloadFile)]
@@ -1231,6 +1242,25 @@
 
 [query private application(p : resolveddeployment::ResolvedProcess) : resolveddeployment::ResolvedApplication =
   p.eContainer().oclAsType(resolveddeployment::ResolvedApplication) /]
+
+[comment What the Release Gate's checks request (spec/v1/55-delivery.md#the-release-gate): every
+  Route's path to the Process, the path its readiness is asked on, and the host of each Route the
+  internet reaches. Each list holds a value once, in order. /]
+[query private routed(p : resolveddeployment::ResolvedProcess) : Sequence(resolveddeployment::ResolvedRoute) =
+  p.application().exposure->collect(e | e.routes)->select(r | r.process = p)->asSequence() /]
+
+[query private paths(p : resolveddeployment::ResolvedProcess) : Sequence(String) =
+  p.routed()->collect(r | r.path)->asOrderedSet()->sortedBy(v | v)->asSequence() /]
+
+[query private hostnames(p : resolveddeployment::ResolvedProcess) : Sequence(String) =
+  p.application().exposure
+    ->select(e | e.routes->exists(r | r.process = p and (r.audience = 'anonymous' or r.audience = 'authenticated')))
+    ->collect(e | e.host)->asOrderedSet()->sortedBy(v | v)->asSequence() /]
+
+[query private readinessPath(p : resolveddeployment::ResolvedProcess) : String =
+  p.application().releaseGate.members
+    ->select(m | m.process = p and m.readiness.oclIsKindOf(resolveddeployment::HttpTarget))
+    ->collect(m | m.readiness.oclAsType(resolveddeployment::HttpTarget).path)->first() /]
 
 [query private application(m : resolveddeployment::ResolvedMigration) : resolveddeployment::ResolvedApplication =
   m.eContainer().oclAsType(resolveddeployment::ResolvedApplication) /]
