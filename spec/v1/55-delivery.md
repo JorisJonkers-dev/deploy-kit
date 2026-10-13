@@ -662,6 +662,15 @@ nothing in the cluster. The estate-scoped artifact is no Project's release and
 has no Rollout. The composition workflow creates each Deployment from these
 fields, with the first status `pinned`, and derives none of them.
 
+**The identity is what the fragment says of itself.** Composition reads a
+fragment's files and checks no signature
+([chapter 40](40-composition.md#open-in-this-chapter)), so `repository` and `sha` are
+claims until something outside it has held them to who published the fragment.
+A Rollout writes to the repository it names, as a commit status does. The
+composition workflow therefore reads a fragment only where its signature was
+made by a run in the repository the fragment names, before composition sees it,
+and creates no Deployment and writes no status for one it did not hold to that.
+
 **The pin source carries the same identity** on the Project's unit
 ([What a pin source holds](#what-a-pin-source-holds)). Flux copies every
 annotation under `event.toolkit.fluxcd.io/` into the metadata of each event

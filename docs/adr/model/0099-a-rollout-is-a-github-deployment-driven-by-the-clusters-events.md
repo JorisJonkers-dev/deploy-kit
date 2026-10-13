@@ -87,5 +87,9 @@ releases delivered and unreported. Nothing in the render depends on a Rollout.
   again while its pin stays keeps the one it is committed with, since the
   release that moved the pin is not something a later composition derives.
 - The estate-scoped artifact has no Rollout: it is no Project's release.
+- A Rollout's repository and commit are the fragment's own claims, and
+  composition verifies no provenance. Whatever creates the Deployment must
+  first have held the fragment to a signature made in the repository it names,
+  or a fragment could open a Deployment on a repository that never released it.
 - The Reporter is an Application of the platform's `delivery` Project with its
   own GitHub App, holding `deployments: write` and nothing else.
