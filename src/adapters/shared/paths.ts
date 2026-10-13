@@ -10,6 +10,9 @@ export const ESTATE_DIRECTORY = "estate";
 /** Where the Vault documents and the job that writes them land. */
 export const SECRETS_DIRECTORY = `${ESTATE_DIRECTORY}/vso-secrets`;
 
+/** Where the route Flux's events take to the Reporter lands. */
+export const EVENTS_DIRECTORY = `${ESTATE_DIRECTORY}/rollout-events`;
+
 export const projectDirectory = (project: string): string => `apps/${project}`;
 
 export const applicationDirectory = (

@@ -99,10 +99,13 @@ function pulled(): string {
   const document = join(platform, "platform.intent.yml");
   writeFileSync(
     document,
-    readFileSync(document, "utf8").replace(
-      /\nhandover:\n(?: {2}.*\n)+/,
-      "\nhandover:\n  retireBy: 2027-03-31\n  legacy: [auth, data, delivery, edge, knowledge]\n  estate: [notes, observability, secrets]\n",
-    ),
+    readFileSync(document, "utf8")
+      // No Reporter, so the estate-scoped artifact holds no route to one.
+      .replace("  reporter: reporter\n", "")
+      .replace(
+        /\nhandover:\n(?: {2}.*\n)+/,
+        "\nhandover:\n  retireBy: 2027-03-31\n  legacy: [auth, data, delivery, edge, knowledge]\n  estate: [notes, observability, secrets]\n",
+      ),
   );
   published(document, "estate", join(root, "platform"));
   writeFileSync(join(root, "participants.yml"), LISTED);

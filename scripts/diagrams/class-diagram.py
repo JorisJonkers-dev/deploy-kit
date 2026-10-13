@@ -138,6 +138,7 @@ TREES = {"10-project-intent": {
     # database sits a layer down, comes before the gate and not between them.
     "ResolvedDeployment": [
         "Provenance", "PathAssignment", "ReconcileUnit", "ResolvedPolicyJob",
+        "ResolvedEvents",
         "ResolvedApplication",
     ],
     "Provenance": ["InputDigest"],
@@ -223,7 +224,7 @@ REPORT_LAYOUTS = {"10-project-intent": {
 }, "20-resolved-deployment": {
     "columns": {
         "ResolvedDeployment": [["Provenance", "PathAssignment", "ReconcileUnit",
-                                "ResolvedPolicyJob"],
+                                "ResolvedPolicyJob", "ResolvedEvents"],
                                ["ResolvedApplication"]],
         "Provenance": [["InputDigest"]],
         "ResolvedApplication": [["ResolvedMigration", "ReleaseGate"], ["ResolvedProcess"],

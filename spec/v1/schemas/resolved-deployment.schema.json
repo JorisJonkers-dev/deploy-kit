@@ -39,6 +39,9 @@
         },
         "policyJob": {
           "$ref": "#/$defs/ResolvedPolicyJob"
+        },
+        "events": {
+          "$ref": "#/$defs/ResolvedEvents"
         }
       },
       "required": [
@@ -1834,6 +1837,24 @@
         "cpu",
         "deadline",
         "egress"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedEvents": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "minLength": 1
+        },
+        "address": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "namespace",
+        "address"
       ],
       "additionalProperties": false
     }

@@ -55,6 +55,7 @@
     <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
     <egress rule="cluster-dns" namespace="kube-system" port="53"/>
   </policyJob>
+  <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
 
   <applications id="notes" revision="sha256:03410c20d919ef65b7ff527eda5dd719584662bf21d1acb036894023f21a014c" project="notes" namespace="notes-system"
       alertClass="business-hours" reconcileUnit="//@reconcileUnits.0">

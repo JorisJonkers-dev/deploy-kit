@@ -227,7 +227,8 @@ class ResolvedDeploymentTest {
         // what the rendered trees hold beyond it: Services, claims, Asset
         // ConfigMaps, backups, the Secret Store connection, Vault's own
         // documents, the RBAC of a Process that holds API access, the budget
-        // of a count above one, and a migration's identity and Jobs.
+        // of a count above one, a migration's identity and Jobs, and the route
+        // Flux's events take to the Reporter.
         assertThat(ResolvedDeploymentPackage.eINSTANCE.getEClassifiers().stream()
                         .filter(EClass.class::isInstance)
                         .map(EClass.class::cast)
@@ -250,6 +251,7 @@ class ResolvedDeploymentTest {
                         "ServiceFile",
                         "RbacFile",
                         "PolicyJobFile",
+                        "EventsFile",
                         "BudgetFile",
                         "MigrationFile",
                         "ClaimFile",

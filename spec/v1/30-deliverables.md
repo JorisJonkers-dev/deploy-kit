@@ -234,6 +234,24 @@ platform's secrets project ([0046](../../docs/adr/model/0046-the-foundation-is-d
 [chapter 60](60-setup.md#secrets-at-rest)) rather than per-Application render. The
 per-Application render owns what varies per Process and nothing else.
 
+## The rollout events
+
+Where the Platform document names a Reporter
+([chapter 14](14-platform-intent.md#delivery-policy)), every render that holds
+a Project also holds the route Flux's events take to it: a `Provider` and an
+`Alert`, both `notification.toolkit.fluxcd.io/v1beta3`, at
+`estate/rollout-events/provider.yaml` and `estate/rollout-events/alert.yaml`,
+with the index that applies them. What each says is
+[chapter 55](55-delivery.md#rollouts)'s. They are derived once per render, as
+the Vault policy job is, from two facts the model already holds: the namespace
+Flux's own objects live in, and the address of the Reporter's `http` surface.
+A render of no Project holds neither.
+
+Both are attributed to the `kubernetes` adapter, which owns the indexes and
+every object no other subsystem does. They are Flux's kinds and not a
+workload's, but a seventh adapter for two objects that vary with nothing but
+one address would be a registration with no subsystem behind it.
+
 ## Attribution
 
 **Every Deliverable is attributed to exactly one Adapter**

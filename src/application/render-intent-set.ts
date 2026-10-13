@@ -8,6 +8,7 @@ import {
   kustomizationsFor,
   type Adapter,
 } from "../adapters/registry.ts";
+import { renderEvents } from "../adapters/kubernetes/events.ts";
 import { renderPolicyJobPolicy } from "../adapters/networking/render.ts";
 import {
   ESTATE_DIRECTORY,
@@ -131,6 +132,12 @@ export function renderResolvedSet(
   const rendered = [
     ...projects,
     ...policyJobOf(resolved, projects, options.hash),
+    // The route Flux's events take is the estate's, whichever Projects
+    // render; a render of no Project puts no unit on the estate path to
+    // report on.
+    ...(resolved.events === undefined || projects.length === 0
+      ? []
+      : renderEvents(resolved.events)),
   ];
   const deliverables = [
     ...rendered,

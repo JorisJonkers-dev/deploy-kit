@@ -55,6 +55,8 @@
     [d.oclAsType(resolveddeployment::RbacFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::PolicyJobFile))]
     [d.oclAsType(resolveddeployment::PolicyJobFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::EventsFile))]
+    [d.oclAsType(resolveddeployment::EventsFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::ClaimFile))]
     [d.oclAsType(resolveddeployment::ClaimFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::ConfigMapFile))]
@@ -1081,6 +1083,41 @@
   document of this render as canonical JSON on one line, the Job that writes them into the Secret
   Store, and the job's own policy. The ConfigMap and the Job share the name the documents' digest
   gives them. /]
+[comment The route Flux's events take to the Reporter (spec/v1/30-deliverables.md#the-rollout-events):
+  a generic Provider that names where they are posted, and an Alert that sends it every event of a
+  unit the render manages. Both live in Flux's namespace. /]
+[template private objects(d : resolveddeployment::EventsFile)]
+  ---
+  apiVersion: notification.toolkit.fluxcd.io/v1beta3
+  [if (d.part = 'provider')]
+    kind: Provider
+    metadata:
+      name: reporter
+      namespace: [d.events.namespace/]
+      labels:
+        app.kubernetes.io/managed-by: deploy-kit
+    spec:
+      type: generic
+      address: [d.events.address/]
+  [else]
+    kind: Alert
+    metadata:
+      name: rollouts
+      namespace: [d.events.namespace/]
+      labels:
+        app.kubernetes.io/managed-by: deploy-kit
+    spec:
+      providerRef:
+        name: reporter
+      eventSeverity: info
+      eventSources:
+        - kind: Kustomization
+          name: "*"
+          matchLabels:
+            app.kubernetes.io/managed-by: deploy-kit
+  [/if]
+[/template]
+
 [template private objects(d : resolveddeployment::PolicyJobFile)]
   [if (d.part = 'serviceaccount')]
     ---

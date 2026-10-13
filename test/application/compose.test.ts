@@ -51,6 +51,8 @@ const LEDGER = `handover:
   legacy: [auth, data, delivery, edge, knowledge]
   estate: [notes, observability, secrets]
 `;
+/** The line of the worked Platform document that names its Reporter. */
+const REPORTER = "  reporter: reporter\n";
 const withLedger = (platform: string, ledger: string): string =>
   platform.replace(/\nhandover:\n(?: {2}.*\n)+/, `\n${ledger}`);
 
@@ -110,7 +112,12 @@ const PLATFORM: Fragment = {
   files: [
     {
       name: "platform.intent.yml",
-      text: withLedger(text("platform/platform.intent.yml"), LEDGER),
+      // Without a Reporter, so the estate-scoped artifact holds what each
+      // test below gives it; the Reporter's own tests name one again.
+      text: withLedger(
+        text("platform/platform.intent.yml").replace(REPORTER, ""),
+        LEDGER,
+      ),
     },
     { name: "node-contract.yml", text: text("platform/node-contract.yml") },
     { name: "images.lock.yml", text: text("platform/images.lock.yml") },
@@ -2299,5 +2306,113 @@ describe("composeEstate, for a Rollout", () => {
       "apps-notes": eventsOf(identityOf("notes", "1.0.0")),
     });
     expect(sourceOf(rewritten, "notes")).toContain("name: render-pull");
+  });
+});
+
+// REQ-059 (docs/requirements.md): where the platform names a Reporter, the
+// estate-scoped artifact holds the route Flux's events take to it, as a unit
+// of its own (spec/v1/55-delivery.md#rollouts).
+describe("composeEstate, for the route Flux's events take", () => {
+  const EVENTS = "estate/rollout-events/";
+  const LEGACY =
+    "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, edge, knowledge, notes, observability, secrets]\n  estate: [data, delivery]\n";
+  /** A composition under `ledger`, the Platform document naming its Reporter or not. */
+  const composed = (ledger: string, named: boolean): Composition =>
+    compose({
+      platform: {
+        ...PLATFORM,
+        files: PLATFORM.files.map((file) =>
+          file.name === "platform.intent.yml"
+            ? {
+                ...file,
+                text: withLedger(
+                  named
+                    ? file.text.replace(
+                        "  gate: release-gate\n",
+                        `  gate: release-gate\n${REPORTER}`,
+                      )
+                    : file.text,
+                  ledger,
+                ),
+              }
+            : file,
+        ),
+      },
+    });
+  const estate = (composition: Composition) =>
+    composition.artifacts.find(({ name }) => name === "_estate");
+  const paths = (composition: Composition): string[] =>
+    estate(composition)?.files.map(({ path }) => path) ?? [];
+  /** Each unit the estate-scoped artifact's pin source applies, as written. */
+  const units = (composition: Composition) =>
+    parseAllDocuments(
+      composition.sources.find(({ name }) => name === "_estate")?.text ?? "",
+    )
+      .map(
+        (document) =>
+          document.toJSON() as {
+            kind: string;
+            metadata: Record<string, unknown>;
+            spec: { path?: string; dependsOn?: unknown };
+          },
+      )
+      .filter(({ kind }) => kind === "Kustomization");
+
+  it("holds the Provider and the Alert, and applies them as a unit that follows nothing", () => {
+    const whole = composed("", true);
+    const unit = units(whole).find(
+      ({ metadata }) => metadata["name"] === "estate-rollout-events",
+    );
+
+    expect(
+      paths(whole).filter((path) => path.startsWith(EVENTS)),
+    ).toStrictEqual([
+      `${EVENTS}alert.yaml`,
+      `${EVENTS}kustomization.yaml`,
+      `${EVENTS}provider.yaml`,
+    ]);
+    expect(unit?.spec.path).toBe("./estate/rollout-events");
+    expect(unit === undefined || "dependsOn" in unit.spec).toBe(false);
+    // It is no Project's release, so it carries no Rollout.
+    expect(unit === undefined || "annotations" in unit.metadata).toBe(false);
+    const provider = parse(
+      estate(whole)?.files.find(({ path }) => path === `${EVENTS}provider.yaml`)
+        ?.text ?? "",
+    ) as { metadata: { namespace: string }; spec: { address: string } };
+    expect(provider.metadata.namespace).toBe("flux-system");
+    expect(provider.spec.address).toBe(
+      "http://reporter.delivery-system.svc.cluster.local:8080/flux",
+    );
+  });
+
+  it("holds neither, and applies no such unit, where the platform names no Reporter", () => {
+    const whole = composed("", false);
+
+    expect(paths(whole)).not.toStrictEqual([]);
+    expect(
+      paths(whole).filter((path) => path.startsWith(EVENTS)),
+    ).toStrictEqual([]);
+    expect(units(whole).map(({ metadata }) => metadata["name"])).not.toContain(
+      "estate-rollout-events",
+    );
+  });
+
+  it("keeps the route beside the secrets unit while a Project is legacy, and still no edge", () => {
+    const handingOver = composed(LEGACY, true);
+
+    expect(
+      [...new Set(paths(handingOver).map((path) => path.split("/")[1]))].sort(),
+    ).toStrictEqual(["rollout-events", "vso-secrets"]);
+    expect(
+      units(handingOver)
+        .map(({ metadata }) => metadata["name"])
+        .sort(),
+    ).toStrictEqual(["estate-rollout-events", "estate-vso-secrets"]);
+    // Without a Reporter the same handover leaves the secrets unit alone.
+    expect([
+      ...new Set(
+        paths(composed(LEGACY, false)).map((path) => path.split("/")[1]),
+      ),
+    ]).toStrictEqual(["vso-secrets"]);
   });
 });

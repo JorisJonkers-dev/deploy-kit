@@ -14,7 +14,10 @@
 // reports (spec/v1/55-delivery.md#notifications). Nothing here performs IO.
 import { artifactRepositoryOf } from "../adapters/flux/source.ts";
 import type { Adapter } from "../adapters/registry.ts";
-import { SECRETS_DIRECTORY } from "../adapters/shared/paths.ts";
+import {
+  EVENTS_DIRECTORY,
+  SECRETS_DIRECTORY,
+} from "../adapters/shared/paths.ts";
 import type { CompositionLockDocument } from "../model/composition-lock.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { FragmentManifest } from "../model/fragment.ts";
@@ -544,8 +547,10 @@ function deliver(
  */
 function handingOver(artifact: RenderedArtifact): RenderedArtifact[] {
   if (artifact.name !== ESTATE) return [artifact];
-  const files = artifact.files.filter(({ path }) =>
-    path.startsWith(`${SECRETS_DIRECTORY}/`),
+  const files = artifact.files.filter(
+    ({ path }) =>
+      path.startsWith(`${SECRETS_DIRECTORY}/`) ||
+      path.startsWith(`${EVENTS_DIRECTORY}/`),
   );
   return files.length === 0 ? [] : [{ name: ESTATE, files }];
 }

@@ -98,6 +98,10 @@ releases delivered and unreported. Nothing in the render depends on a Rollout.
   no Application, so nothing else could say who may receive its events: the
   named Application's `http` Process admits Flux's notification controller, the
   one peer of the bootstrap set a policy names.
+- The estate-scoped artifact holds the `Provider` and the `Alert` that send
+  Flux's events to the Reporter, as a unit of its own. The Alert selects units
+  by the label every pin source's unit carries, so no Project is named in it
+  and none has to be added to it.
 - The Reporter is declared beside the Release Gate, in the same project file.
   The Platform document names it by id, and an id is something any project
   file can declare, so the id alone would hand every Project's events to

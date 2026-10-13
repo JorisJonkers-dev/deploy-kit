@@ -716,6 +716,13 @@ const resolvedPolicyJob = z
   })
   .meta({ id: "ResolvedPolicyJob" });
 
+// Where Flux's events about every Project's unit go
+// (spec/v1/55-delivery.md#rollouts): the namespace Flux's own objects live
+// in, and the address of the Reporter's `http` surface that receives them.
+const resolvedEvents = z
+  .strictObject({ namespace: text, address: text })
+  .meta({ id: "ResolvedEvents" });
+
 export const resolvedDeployment = z
   .strictObject({
     apiVersion: z.literal(API_VERSION),
@@ -725,6 +732,8 @@ export const resolvedDeployment = z
     reconcileUnits: z.array(reconcileUnit).min(1),
     applications: z.array(resolvedApplication).min(1),
     policyJob: resolvedPolicyJob.exactOptional(),
+    // Present where the platform names a Reporter.
+    events: resolvedEvents.exactOptional(),
   })
   .meta({ id: "ResolvedDeployment" });
 
@@ -747,6 +756,7 @@ export const resolvedApplicationDocument = stated(
 
 export type ResolvedDeploymentDocument = z.output<typeof resolvedDeployment>;
 export type ResolvedPolicyJob = z.output<typeof resolvedPolicyJob>;
+export type ResolvedEvents = z.output<typeof resolvedEvents>;
 export type ResolvedApplicationDocument = z.output<
   typeof resolvedApplicationDocument
 >;
