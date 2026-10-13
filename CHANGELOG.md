@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.12.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.11.1...v0.12.0) (2026-10-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* delivery.analysis requires errorRate and latency. A Platform document that states a delivery policy without them is refused.
+
+### Features
+
+* hand the Release Gate its check paths, warmup hostnames and thresholds through the Canary ([#417](https://github.com/JorisJonkers-dev/deploy-kit/issues/417)) ([2d521a1](https://github.com/JorisJonkers-dev/deploy-kit/commit/2d521a1b2d26ec0aa9b23b2bb3bc9aa7efe2cfb5))
+* name the Reporter in the Platform document, and admit Flux's events to it ([#418](https://github.com/JorisJonkers-dev/deploy-kit/issues/418)) ([d25765e](https://github.com/JorisJonkers-dev/deploy-kit/commit/d25765e268c9a85ee7bca56a352cec03403c3b2e))
+* record a Rollout for every moved pin, and carry it on the pin source ([#415](https://github.com/JorisJonkers-dev/deploy-kit/issues/415)) ([3dc9bec](https://github.com/JorisJonkers-dev/deploy-kit/commit/3dc9becb52f255edaf524112ca352e5f0644b80c))
+* send Flux's events about every unit to the Reporter, from the estate-scoped artifact ([#420](https://github.com/JorisJonkers-dev/deploy-kit/issues/420)) ([f5b4109](https://github.com/JorisJonkers-dev/deploy-kit/commit/f5b4109ea296aee93f79e207f5571b25bafbe0e7))
+
 ## [0.11.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.11.0...v0.11.1) (2026-10-13)
 
 
