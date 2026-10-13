@@ -59,16 +59,23 @@ const text = z.string().min(1);
 const processReference = text.meta({ reference: "Process" });
 const surfaceReference = text.meta({ reference: "Surface" });
 const port = z.int().min(1).max(65535);
-// A path something requests: it opens with a slash and holds no whitespace.
-// The edge matches it, the kubelet asks it, and the Release Gate requests it
-// (spec/v1/55-delivery.md#the-release-gate), so it is never free text.
-const requestPath = z.string().regex(/^\/\S*$/);
-// A DNS name, lower case: the edge serves it and the Release Gate warms it
-// up, so it names a host and nothing more.
+// A path something requests: `/`, or segments of URL path characters, each
+// opened by one slash. The edge writes it into a rule, the kubelet asks it and
+// the Release Gate requests it (spec/v1/55-delivery.md#the-release-gate), so
+// it holds no whitespace, quote, backtick, backslash, query or fragment, and
+// never opens with two slashes, which a client reads as another host.
+const requestPath = z
+  .string()
+  .regex(/^\/$|^(\/[A-Za-z0-9._~!$&'()*+,;=:@%-]+)+\/?$/);
+// A DNS name the edge serves, lower case, of two labels or more, its last one
+// opening with a letter: no address, and no name the cluster itself resolves
+// (`svc`, `local`, `internal`, `localhost`). The Release Gate requests
+// through it from inside the cluster, so it must not name what only the
+// cluster reaches.
 const hostname = z
   .string()
   .regex(
-    /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/,
+    /^(?!.*\.(svc|local|internal|localhost)$)(?!.*\.svc\.)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$/,
   );
 
 const httpProbe = z

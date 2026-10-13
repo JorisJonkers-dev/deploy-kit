@@ -321,7 +321,7 @@ describe("parseProjectIntent", () => {
     expect(
       refused(
         withApplications(
-          `  - id: batch\n    processes: []\n  - id: web\n    exposure:\n      - { name: e, host: h, audience: lan, contentPolicy: admin, routes: [] }\n    processes:\n${PROCESS}`,
+          `  - id: batch\n    processes: []\n  - id: web\n    exposure:\n      - { name: e, host: h.lan, audience: lan, contentPolicy: admin, routes: [] }\n    processes:\n${PROCESS}`,
         ),
       ).map(({ path }) => path),
     ).toStrictEqual([
@@ -354,6 +354,14 @@ describe("parseProjectIntent", () => {
       "http://evil.example/",
       " /",
       "/ ",
+      "//evil.example/",
+      "/a//b",
+      "/a`) || Host(`evil.example",
+      "/a?b=c",
+      "/a#b",
+      "/a\\b",
+      "/a'b\"c",
+      "/a<b>",
     ])
       expect(
         codesAt(
@@ -361,7 +369,15 @@ describe("parseProjectIntent", () => {
         ),
         path,
       ).toStrictEqual([["schema", ROUTE]]);
-    for (const path of ["/", "/api", "/install.sh", "/a,b", "/mcp/"])
+    for (const path of [
+      "/",
+      "/api",
+      "/install.sh",
+      "/a,b",
+      "/mcp/",
+      "/@scope/pkg",
+      "/a%20b/c_d~e",
+    ])
       expect(
         codesAt(
           MINIMAL.replace("{ path: /, match", `{ path: ${quoted(path)}, match`),
@@ -388,6 +404,16 @@ describe("parseProjectIntent", () => {
       "notes.dev.",
       "notes.dev:8443",
       `${"a".repeat(64)}.dev`,
+      "notes",
+      "10.0.0.1",
+      "169.254.169.254",
+      "vault.secrets-system.svc",
+      "vault.secrets-system.svc.cluster.local",
+      "notes.svc.example.dev",
+      "printer.local",
+      "db.internal",
+      "notes.localhost",
+      "notes.1dev",
     ])
       expect(
         codesAt(
@@ -399,9 +425,11 @@ describe("parseProjectIntent", () => {
         host,
       ).toStrictEqual([["schema", HOST]]);
     for (const host of [
-      "notes",
       "a.b",
+      "notes.lan",
       "n0tes-1.jorisjonkers.dev",
+      "1.notes.dev",
+      "services.example.dev",
       `${"a".repeat(63)}.dev`,
     ])
       expect(

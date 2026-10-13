@@ -774,12 +774,16 @@ metadata, which names the release and hands the gate what its checks request:
 
 A webhook's metadata is text alone, which is why a list is one value: a space
 separates its entries because neither a path nor a hostname holds one. The
-schema keeps that true: a Route's path and a probe's path open with `/` and
-hold no whitespace, and an Exposure's host is a DNS name
+schema keeps that true: a Route's path and a probe's path are URL path
+segments each opened by one `/`, and an Exposure's host is a DNS name the
+cluster does not itself resolve
 ([chapter 10](10-project-intent.md#exposure)). The gate holds API access and
 sends these requests from inside the cluster, so a project file must not be
-able to author a second entry into a list, or a path that is another
-authority. The gate reads everything else from the Resolved Deployment.
+able to author a second entry into a list, a path that names another host, or
+a host that is a Service or an address. What the schema cannot rule out is a
+public name that resolves somewhere it should not, so the gate requests a
+hostname through the tier's proxy and never follows a redirect. The gate
+reads everything else from the Resolved Deployment.
 
 **A member that did not change starts no analysis.** Flagger analyses a Canary
 only when its target's pod template, or a configuration object it tracks,
