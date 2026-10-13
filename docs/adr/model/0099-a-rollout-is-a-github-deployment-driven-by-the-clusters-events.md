@@ -102,6 +102,10 @@ releases delivered and unreported. Nothing in the render depends on a Rollout.
   Flux's events to the Reporter, as a unit of its own. The Alert selects units
   by the label every pin source's unit carries, so no Project is named in it
   and none has to be added to it.
+- An event tells the Reporter which unit to read and nothing more. The route
+  is unsigned, so a status is written only from what the Reporter itself reads
+  from the cluster, and a forged event changes none. Signing the route would
+  need a key shared with Flux's namespace, which the model does not place yet.
 - The Reporter is declared beside the Release Gate, in the same project file.
   The Platform document names it by id, and an id is something any project
   file can declare, so the id alone would hand every Project's events to

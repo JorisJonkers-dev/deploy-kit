@@ -4,6 +4,10 @@
 // a unit the render put on the estate path. Both are Flux's own kinds and
 // live in Flux's namespace, so they belong to no Project and land in the
 // estate-scoped tree.
+//
+// The Provider is generic and unsigned: the Reporter's policy admits Flux's
+// notification controller alone, and the Reporter takes an event as a prompt
+// to read the unit itself, never as evidence of what happened to it.
 import type { ResolvedEvents } from "../../model/resolved-deployment.ts";
 import type { FluxAlert, FluxProvider } from "../../objects/custom.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";

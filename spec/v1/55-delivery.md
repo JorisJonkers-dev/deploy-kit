@@ -736,6 +736,18 @@ Reporter too, which has nothing to write for it. The two objects join the
 estate-scoped artifact beside the secrets unit while any Project is `legacy`,
 since reporting a release does not wait on the edge.
 
+**An event is a prompt to look, never evidence.** The Provider posts over the
+cluster's own network, unsigned: nothing in the request proves Flux sent it,
+and the only thing that keeps another pod from posting one is the Reporter's
+policy, which admits Flux's notification controller alone
+([chapter 16](16-dependencies.md#the-derived-allow-set)). The Reporter
+therefore takes nothing from an event but which unit to read. It reads that
+unit, and its Canaries, from the cluster itself, and writes a status only from
+what it reads there: the Rollout from the unit's own annotations, the stage
+from the unit's and the Canary's own conditions. A forged event then costs a
+read and changes no status, and an event that never arrives is caught by the
+same read on the Reporter's own interval.
+
 ## Secret rotation
 
 Rotating a secret is not a release, so it never starts a switchover
