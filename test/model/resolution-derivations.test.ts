@@ -2514,7 +2514,9 @@ describe("the Vault policy job", () => {
       Object.keys(
         set((platform) => platform.replace("secretStore: vault\n", "")),
       ),
-    ).toStrictEqual(["projects"]);
+      // What the set does derive is where Flux's events go: the worked
+      // platform names a Reporter.
+    ).toStrictEqual(["projects", "events"]);
   });
 
   it("states its deadline in seconds, whatever unit the platform wrote", () => {

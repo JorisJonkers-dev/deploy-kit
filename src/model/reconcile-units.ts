@@ -11,5 +11,8 @@ export const unitOf = (project: string): string => `apps-${project}`;
 /** The unit that materialises every grant's credentials before a Process may hold one. */
 export const SECRETS_UNIT = "estate-vso-secrets";
 
+/** The unit that applies the route Flux's events take to the Reporter. */
+export const EVENTS_UNIT = "estate-rollout-events";
+
 /** The unit that applies the routes one tier's proxy serves. */
 export const edgeUnitOf = (tier: string): string => `estate-edge-${tier}`;

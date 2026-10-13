@@ -18,9 +18,13 @@ import {
 } from "../read/pinned-inputs.ts";
 import { readYaml } from "../read/yaml.ts";
 import type { ResolvedProject } from "../model/resolution.ts";
+import { resolveEvents } from "../resolve/events.ts";
 import { resolvePolicyJob } from "../resolve/policy-job.ts";
 import { resolveUnion } from "../resolve/union.ts";
-import type { ResolvedPolicyJob } from "../model/resolved-deployment.ts";
+import type {
+  ResolvedEvents,
+  ResolvedPolicyJob,
+} from "../model/resolved-deployment.ts";
 import { composeIntentSet, type AuthoredFile } from "./check-intent-set.ts";
 
 export interface ResolveOptions {
@@ -38,6 +42,8 @@ export interface ResolvedSet {
   readonly projects: readonly ResolvedProject[];
   /** The Vault policy job, where the platform names one and a Secret Store answers. */
   readonly policyJob?: ResolvedPolicyJob;
+  /** Where Flux's events go, where the platform names a Reporter. */
+  readonly events?: ResolvedEvents;
 }
 
 const NODE_CONTRACT = "node-contract.yml";
@@ -249,11 +255,13 @@ export function resolveIntentSet(
   );
   if (refusals.length > 0) return { ok: false, diagnostics: refusals };
   const job = resolvePolicyJob(set);
+  const events = resolveEvents(set);
   return {
     ok: true,
     value: {
       projects: resolveUnion(set, digests, schemaPackageIntegrity, hash),
       ...(job === undefined ? {} : { policyJob: job }),
+      ...(events === undefined ? {} : { events }),
     },
   };
 }

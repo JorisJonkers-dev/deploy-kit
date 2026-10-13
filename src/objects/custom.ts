@@ -124,6 +124,30 @@ export interface OciRepository {
   };
 }
 
+/** Where Flux posts its events: a generic webhook, named by its address. */
+export interface FluxProvider {
+  readonly apiVersion: "notification.toolkit.fluxcd.io/v1beta3";
+  readonly kind: "Provider";
+  readonly metadata: ObjectMeta;
+  readonly spec: { readonly type: "generic"; readonly address: string };
+}
+
+/** Which of Flux's events go to a Provider: every event of the objects it selects. */
+export interface FluxAlert {
+  readonly apiVersion: "notification.toolkit.fluxcd.io/v1beta3";
+  readonly kind: "Alert";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly providerRef: { readonly name: string };
+    readonly eventSeverity: "info";
+    readonly eventSources: readonly {
+      readonly kind: "Kustomization";
+      readonly name: "*";
+      readonly matchLabels: Labels;
+    }[];
+  };
+}
+
 /** One Reconcile Unit as Flux applies it: a path of a pinned artifact, after the units it follows. */
 export interface FluxKustomization {
   readonly apiVersion: "kustomize.toolkit.fluxcd.io/v1";

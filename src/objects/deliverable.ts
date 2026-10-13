@@ -2,7 +2,9 @@
 // render, the objects it holds, and the one adapter it is attributed to.
 import type {
   Canary,
+  FluxAlert,
   FluxKustomization,
+  FluxProvider,
   IngressRoute,
   OciRepository,
   PodMonitor,
@@ -51,6 +53,8 @@ export type RenderedObject =
   | PodDisruptionBudget
   | OciRepository
   | FluxKustomization
+  | FluxProvider
+  | FluxAlert
   | VaultConnection
   | VaultAuth
   | VaultStaticSecret

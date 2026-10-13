@@ -30,8 +30,18 @@
     <!-- The Vault policy job, where the platform names one and a Secret Store answers
          (spec/v1/20-resolved-deployment.md#the-vault-policy-job). -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="policyJob" eType="#//ResolvedPolicyJob" containment="true"/>
+    <!-- Where Flux's events about every Project's unit go, where the platform names a
+         Reporter (spec/v1/55-delivery.md#rollouts). -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="events" eType="#//ResolvedEvents" containment="true"/>
     <!-- Layer 2 assigns every output path (docs/adr/model/0070). -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="deliverables" lowerBound="1" upperBound="-1" eType="#//Deliverable" containment="true"/>
+  </eClassifiers>
+
+  <!-- The route Flux's events take to the Reporter: the namespace Flux's own objects live in,
+       and the address of the Reporter's `http` surface that receives them. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedEvents">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="address" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <!-- The one identity that writes the rendered Vault policies and auth roles into the Secret
@@ -601,6 +611,12 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="job" lowerBound="1" eType="#//ResolvedPolicyJob"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="documents" lowerBound="1" upperBound="-1" eType="#//PolicyDocument" containment="true"/>
+  </eClassifiers>
+  <!-- One file of the route Flux's events take (spec/v1/30-deliverables.md#the-rollout-events):
+       the Provider that names where they are posted, or the Alert that sends them. -->
+  <eClassifiers xsi:type="ecore:EClass" name="EventsFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="part" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="events" lowerBound="1" eType="#//ResolvedEvents"/>
   </eClassifiers>
   <!-- One Vault document as the job is handed it: its file name and its canonical JSON. -->
   <eClassifiers xsi:type="ecore:EClass" name="PolicyDocument">

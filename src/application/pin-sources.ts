@@ -19,11 +19,20 @@ import {
   fluxNamespaceOf,
   type PlatformIntentDocument,
 } from "../model/platform-intent.ts";
-import { edgeUnitOf, SECRETS_UNIT, unitOf } from "../model/reconcile-units.ts";
+import {
+  edgeUnitOf,
+  EVENTS_UNIT,
+  SECRETS_UNIT,
+  unitOf,
+} from "../model/reconcile-units.ts";
 import type { ResolvedProject } from "../model/resolution.ts";
 import { rolloutAnnotations, type Rollout } from "../model/rollout.ts";
 import { readPinSource, samePinSource } from "../read/pin-source.ts";
-import { SECRETS_DIRECTORY, tierDirectory } from "../adapters/shared/paths.ts";
+import {
+  EVENTS_DIRECTORY,
+  SECRETS_DIRECTORY,
+  tierDirectory,
+} from "../adapters/shared/paths.ts";
 import type { RenderedObject } from "../objects/deliverable.ts";
 import type { RenderedFile, Serializer } from "./render-intent-set.ts";
 
@@ -124,6 +133,20 @@ function unitsOf(
             // The Vault policy job writes into the Secret Store, which its
             // project's unit brings up.
             after: declaring(platform.secretStore),
+          },
+        ]
+      : []),
+    ...(indexed(EVENTS_DIRECTORY)
+      ? [
+          {
+            name: EVENTS_UNIT,
+            path: EVENTS_DIRECTORY,
+            // A Provider and an Alert apply whether or not the Reporter is
+            // up: an event sent before it is ready is one it reads again. A
+            // unit followed that is not on the estate path is left out, so
+            // any name here that is no unit's follows nothing alike.
+            // Stryker disable next-line ArrayDeclaration
+            after: [],
           },
         ]
       : []),

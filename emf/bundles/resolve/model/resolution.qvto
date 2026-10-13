@@ -41,6 +41,8 @@ property assetFiles : Sequence(AssetFile) = pinned.rootObjects()[AssetFile]->asS
 property SECRETS_UNIT : String = 'estate-vso-secrets';
 -- The surface a Release Gate and a Secret Store answer on.
 property HTTP_SURFACE : String = 'http';
+-- The path of the Reporter's `http` surface that receives Flux's events.
+property EVENTS_PATH : String = '/flux';
 -- Flux's notification controller, by the `app` label its own install gives its pods.
 property FLUX_NOTIFIER : String = 'notification-controller';
 -- How many hex digits of an Asset's content digest its name carries.
@@ -78,6 +80,7 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 	applications := self.applications->map application(self);
 	provenance := self.map provenance();
 	policyJob := policyJobOf();
+	events := eventsRouteOf();
 	deliverables := self.projectFiles()
 		->union(self.applications->collect(a | a.applicationFiles(self))->flatten())
 		->union(self.edgeFiles())
@@ -302,6 +305,16 @@ query policyJobOf() : ResolvedPolicyJob =
 	} endif;
 
 -- The Release Gate's endpoint: its `http` surface, which the platform names.
+-- Where Flux's events about every Project's unit go (spec/v1/55-delivery.md#rollouts):
+-- the Reporter's `http` surface, where the platform names a Reporter. The Reporter links
+-- only to an Application declared beside the gate, so the address is that one's.
+query eventsRouteOf() : ResolvedEvents =
+	if estate.delivery = null or estate.delivery.reporter = null then null
+	else object ResolvedEvents {
+		namespace := estate.bootstrap.flux.sourceRef.substringBefore('/');
+		address := 'http://' + surfaceAddress(estate.delivery.reporter.id, HTTP_SURFACE) + EVENTS_PATH;
+	} endif;
+
 query gateEndpoint() : String =
 	let address : String = if estate.delivery = null then null
 		else surfaceAddress(estate.delivery.gate.id, HTTP_SURFACE) endif in

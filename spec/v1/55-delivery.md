@@ -86,7 +86,8 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   over, a Project still on the old path is rendered and checked but not
   published, and the `_estate` artifact holds only `estate-vso-secrets`, the
   Vault policy job for the Projects already on the estate path, whose units
-  depend on it; the edge units join it once no Project is on the old path
+  depend on it, and `estate-rollout-events` where the platform names a
+  Reporter; the edge units join them once no Project is on the old path
   ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)).
 - **Signed keyless, and annotated.** The artifact is signed by the composition
   workflow's own OIDC identity, the Platform document's
@@ -171,9 +172,10 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 | | `patches` | on a Project's first delivery alone, the one that hands it over ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)): one patch, targeting kind `Deployment`, that annotates each `kustomize.toolkit.fluxcd.io/force: Enabled`, so Flux recreates a Deployment whose selector the old path set differently rather than refuse it. A rewrite that leaves the pin where it is keeps it, since the first delivery may not have been applied yet; the first rewrite that moves the pin drops it, and it is absent from the estate-scoped artifact's source. No other kind is marked: a claim recreated is a claim emptied |
 
 A Project's artifact holds its one unit. The estate-scoped artifact holds
-`estate-vso-secrets` where it carries the Vault policy job, and one
-`estate-edge-<tier>` per tier it carries routes for; while a Project is on the
-old path, it carries no route. A unit the artifact gains changes what it holds,
+`estate-vso-secrets` where it carries the Vault policy job,
+`estate-rollout-events` where the platform names a Reporter
+([Rollouts](#rollouts)), and one `estate-edge-<tier>` per tier it carries
+routes for; while a Project is on the old path, it carries no route. A unit the artifact gains changes what it holds,
 so its pin moves and the rewritten source applies the new unit: the edge units
 when the last Project leaves the old path, and a tier's unit when the tier first
 carries a route. The rewrite keeps the annotations a Pause or a Rollback
@@ -714,6 +716,37 @@ model needs of it: its Process that provides `http` admits Flux's notification
 controller ([chapter 16](16-dependencies.md#the-derived-allow-set)), which is
 the one peer of the bootstrap set a policy names. A platform that names no
 Reporter delivers the same, and reports nothing past `pinned`.
+
+**The estate path sends the Reporter every event about a unit.** Where the
+platform names a Reporter, the estate-scoped artifact holds two of Flux's own
+objects, in Flux's namespace, applied by the unit `estate-rollout-events`
+([chapter 30](30-deliverables.md#the-rollout-events)):
+
+| object | what it says |
+|---|---|
+| a `Provider` named `reporter` | type `generic`, and the address events are posted to: the Reporter's `http` surface, at `/flux` |
+| an `Alert` named `rollouts` | every event, of severity `info` and up, about any `Kustomization` in the namespace that carries `app.kubernetes.io/managed-by: deploy-kit`, sent through that Provider |
+
+Every unit a pin source applies carries that label
+([What a pin source holds](#what-a-pin-source-holds)), so the Alert follows
+each Project's unit and the estate's own without naming one, and a Project
+that joins the estate path is reported from its first apply. An event about a
+unit that carries no Rollout, the estate's own among them, reaches the
+Reporter too, which has nothing to write for it. The two objects join the
+estate-scoped artifact beside the secrets unit while any Project is `legacy`,
+since reporting a release does not wait on the edge.
+
+**An event is a prompt to look, never evidence.** The Provider posts over the
+cluster's own network, unsigned: nothing in the request proves Flux sent it,
+and the only thing that keeps another pod from posting one is the Reporter's
+policy, which admits Flux's notification controller alone
+([chapter 16](16-dependencies.md#the-derived-allow-set)). The Reporter
+therefore takes nothing from an event but which unit to read. It reads that
+unit, and its Canaries, from the cluster itself, and writes a status only from
+what it reads there: the Rollout from the unit's own annotations, the stage
+from the unit's and the Canary's own conditions. A forged event then costs a
+read and changes no status, and an event that never arrives is caught by the
+same read on the Reporter's own interval.
 
 ## Secret rotation
 

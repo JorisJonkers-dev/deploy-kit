@@ -111,6 +111,43 @@ describe("resolveIntentSet", () => {
     expect(canonicalJson(gate)).toBe(text("delivery/expected/resolved.json"));
   });
 
+  // REQ-059 (docs/requirements.md): the set says where Flux's events go,
+  // where the platform names a Reporter.
+  it("derives where Flux's events go from the Reporter the platform names, and nothing where it names none", () => {
+    const eventsOf = (
+      edits?: Readonly<Record<string, (text: string) => string>>,
+    ) => {
+      const result = resolveIntentSet(files(edits), options);
+      if (!result.ok)
+        throw new Error(
+          JSON.stringify(result.diagnostics.map(({ code }) => code)),
+        );
+      return result.value;
+    };
+    const PLATFORM = "platform/platform.intent.yml";
+
+    expect(eventsOf().events).toStrictEqual({
+      namespace: "flux-system",
+      address: "http://reporter.delivery-system.svc.cluster.local:8080/flux",
+    });
+    expect(
+      eventsOf({
+        [PLATFORM]: (platform) =>
+          platform.replace(
+            "sourceRef: flux-system/platform",
+            "sourceRef: gitops/platform",
+          ),
+      }).events?.namespace,
+    ).toBe("gitops");
+    expect(
+      "events" in
+        eventsOf({
+          [PLATFORM]: (platform) =>
+            platform.replace("  reporter: reporter\n", ""),
+        }),
+    ).toBe(false);
+  });
+
   // REQ-058 (docs/requirements.md): Flux's notification controller is
   // admitted where the Provider sends its events, and nowhere else.
   describe("the Reporter's admission of Flux's events", () => {

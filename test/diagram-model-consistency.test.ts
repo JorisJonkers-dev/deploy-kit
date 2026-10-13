@@ -333,6 +333,9 @@ test("every rendered kind is a column of the deliverables matrix", () => {
   // A pin source is committed to the Estate repository, not rendered into an
   // artifact, so it is no Deliverable and the map carries no column for it.
   const pinned = new Set(["OCIRepository"]);
+  // The route Flux's events take is rendered once per render, into the
+  // estate-scoped tree, so the per-Application map carries no column for it.
+  const perRender = new Set(["Alert", "Provider"]);
   const alias: Readonly<Record<string, string>> = {
     Kustomization: "kustomization",
     VaultDynamicSecret: "VaultDynami",
@@ -345,7 +348,8 @@ test("every rendered kind is a column of the deliverables matrix", () => {
       kinds.add(m[1] ?? "");
   expect(kinds.size, "no rendered fixtures found").toBeGreaterThan(5);
   for (const kind of kinds) {
-    if (perNamespace.has(kind) || pinned.has(kind)) continue;
+    if (perNamespace.has(kind) || pinned.has(kind) || perRender.has(kind))
+      continue;
     expect(
       xml.includes(alias[kind] ?? kind),
       `rendered kind ${kind} has no column`,

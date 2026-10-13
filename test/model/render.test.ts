@@ -609,6 +609,9 @@ describe("renderIntentSet", () => {
     expect(paths("_estate")).toStrictEqual([
       "estate/edge/public-frankfurt/kustomization.yaml",
       "estate/edge/public-frankfurt/notes-public.yaml",
+      "estate/rollout-events/alert.yaml",
+      "estate/rollout-events/kustomization.yaml",
+      "estate/rollout-events/provider.yaml",
     ]);
   });
 
@@ -642,7 +645,13 @@ describe("renderIntentSet", () => {
     ).toStrictEqual([
       [
         "_estate",
-        ["estate/edge/lan/kustomization.yaml", "estate/edge/lan/x.yaml"],
+        [
+          "estate/edge/lan/kustomization.yaml",
+          "estate/edge/lan/x.yaml",
+          "estate/rollout-events/alert.yaml",
+          "estate/rollout-events/kustomization.yaml",
+          "estate/rollout-events/provider.yaml",
+        ],
       ],
       [
         "edge",
