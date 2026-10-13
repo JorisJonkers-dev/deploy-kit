@@ -407,13 +407,9 @@ describe("parseProjectIntent", () => {
       "notes",
       "10.0.0.1",
       "169.254.169.254",
-      "vault.secrets-system.svc",
-      "vault.secrets-system.svc.cluster.local",
-      "notes.svc.example.dev",
-      "printer.local",
-      "db.internal",
-      "notes.localhost",
+      "0x7f.0.0.1",
       "notes.1dev",
+      "notes.jorisjonkers.dev\n",
     ])
       expect(
         codesAt(
@@ -429,7 +425,10 @@ describe("parseProjectIntent", () => {
       "notes.lan",
       "n0tes-1.jorisjonkers.dev",
       "1.notes.dev",
-      "services.example.dev",
+      // A name is held to its syntax alone: where it resolves is checked by
+      // whoever connects to it, which no pattern can do.
+      "vault.secrets-system.svc",
+      "10.0.0.1.nip.io",
       `${"a".repeat(63)}.dev`,
     ])
       expect(

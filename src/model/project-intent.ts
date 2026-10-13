@@ -67,15 +67,15 @@ const port = z.int().min(1).max(65535);
 const requestPath = z
   .string()
   .regex(/^\/$|^(\/[A-Za-z0-9._~!$&'()*+,;=:@%-]+)+\/?$/);
-// A DNS name the edge serves, lower case, of two labels or more, its last one
-// opening with a letter: no address, and no name the cluster itself resolves
-// (`svc`, `local`, `internal`, `localhost`). The Release Gate requests
-// through it from inside the cluster, so it must not name what only the
-// cluster reaches.
+// A DNS name, lower case, of two labels or more, its last one opening with a
+// letter: a name, never an address. This is syntax and no more. Which
+// address a name resolves to is not something a pattern can know, so whoever
+// requests through a host checks the address it connects to
+// (spec/v1/55-delivery.md#the-release-gate).
 const hostname = z
   .string()
   .regex(
-    /^(?!.*\.(svc|local|internal|localhost)$)(?!.*\.svc\.)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$/,
+    /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$/,
   );
 
 const httpProbe = z
