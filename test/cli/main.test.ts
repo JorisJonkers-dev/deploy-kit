@@ -550,6 +550,10 @@ describe("deploy-kit compose", () => {
         sha: hex(project, 40),
         environment: "production",
         version: "1.0.0",
+        // Where the release is reachable, for the one with an exposure.
+        ...(project === "notes"
+          ? { url: "https://notes.jorisjonkers.dev" }
+          : {}),
       })),
     );
     // REQ-051 (docs/requirements.md): an artifact with no pin yet has its pin

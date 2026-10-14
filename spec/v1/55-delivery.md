@@ -166,7 +166,7 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 | | `verify` | `cosign`, against the Platform document's signer. Flux reads an identity as a pattern, so the issuer and the subject are each written anchored and escaped: the one workflow on the one branch, and no branch whose name merely begins the same |
 | | `interval` | `10m` |
 | `Kustomization`, one per Reconcile Unit the artifact holds | name | the unit's ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)) |
-| | `annotations` | on a Project's unit alone, its Rollout ([Rollouts](#rollouts)): `event.toolkit.fluxcd.io/repository`, `sha`, `environment` and `version`, written when the pin moves. A file written while its pin stays keeps the ones it is committed with, and the estate-scoped artifact's units carry none |
+| | `annotations` | on a Project's unit alone, its Rollout ([Rollouts](#rollouts)): `event.toolkit.fluxcd.io/repository`, `sha`, `environment` and `version`, and `url` where the Rollout has one, written when the pin moves. A file written while its pin stays keeps the ones it is committed with, and the estate-scoped artifact's units carry none |
 | | `sourceRef`, `path` | the `OCIRepository` above, and the unit's directory in the artifact |
 | | `dependsOn` | every unit this one follows that is on the estate path, by name, in name order; absent where it follows none. A unit of a Project still on the old path ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)) is left out: it has no Kustomization here, so Flux would wait on it for ever, and the Project is already running where the old path put it. The first composition after that Project hands over rewrites the source, whether or not the dependent's own pin moves, and the edge returns then |
 | | `interval`, `prune`, `wait` | `10m`, `true`, `true`: a unit is Ready when what it applied is, so a Job that fails holds every unit that follows it |
@@ -702,13 +702,15 @@ entry under `rollouts` for every Project whose pin moves:
 | `sha` | the commit the fragment was published from, its `metadata.sourceSha` |
 | `environment` | `production` |
 | `version` | the release, the fragment's `spec.version` |
+| `url` | where the release is reachable: the host of the Project's first exposure, in the order its file declares them, over `https` where the tier's listener is `tls` and `http` where it is `plain`; absent for a Project with no exposure |
 
 The fragment is the one the Project composed at, so the Rollout of a pin that a
 Rollback moves names the release it went back to. A composition that moves no
 pin records none: a release whose render is the one already pinned changes
 nothing in the cluster. The estate-scoped artifact is no Project's release and
 has no Rollout. The composition workflow creates each Deployment from these
-fields, with the first status `pinned`, and derives none of them.
+fields, with the first status `pinned` and `url` as its environment URL, and
+derives none of them.
 
 **The identity is what the fragment says of itself.** Composition reads a
 fragment's files and checks no signature
