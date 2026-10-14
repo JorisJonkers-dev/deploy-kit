@@ -30,6 +30,7 @@ metadata:
     event.toolkit.fluxcd.io/sha: bda7ae704e0fa239fc4dba8286cc498c1fa9c144
     event.toolkit.fluxcd.io/environment: production
     event.toolkit.fluxcd.io/version: 1.0.0
+    event.toolkit.fluxcd.io/url: https://notes.jorisjonkers.dev
 spec:
   interval: 10m
   prune: true

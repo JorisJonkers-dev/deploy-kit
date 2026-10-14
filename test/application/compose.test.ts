@@ -17,7 +17,11 @@ import {
 } from "../../src/application/compose-estate.ts";
 import { pinSources } from "../../src/application/pin-sources.ts";
 import { PIN_ANNOTATIONS } from "../../src/model/pin-annotations.ts";
-import type { Rollout } from "../../src/model/rollout.ts";
+import {
+  rolloutAnnotations,
+  rolloutUrlOf,
+  type Rollout,
+} from "../../src/model/rollout.ts";
 import { serialize, sha256Hasher } from "../../src/index.ts";
 
 const EXAMPLES = join(
@@ -2147,12 +2151,18 @@ describe("composeEstate, for an artifact whose pin stays", () => {
 // moment its pin moves, and its identity is what composition records and what
 // the pin source hands Flux (spec/v1/55-delivery.md#rollouts).
 describe("composeEstate, for a Rollout", () => {
+  /** Where each worked Project with an exposure is reachable: its first exposure's host, over https. */
+  const URLS: Readonly<Record<string, string>> = {
+    data: "https://rabbitmq.jorisjonkers.dev",
+    notes: "https://notes.jorisjonkers.dev",
+  };
   const identityOf = (project: string, version = "1.0.0") => ({
     project,
     repository: `JorisJonkers-dev/${project}`,
     sha: release(project, version).manifest.metadata.sourceSha,
     environment: "production" as const,
     version,
+    ...(project in URLS ? { url: URLS[project] } : {}),
   });
   /** A composition with no Project left on the old path, so the estate-scoped artifact is delivered. */
   const handedOver = (): Composition =>
@@ -2211,6 +2221,38 @@ describe("composeEstate, for a Rollout", () => {
     );
   });
 
+  it("is reachable at its Project's first exposure, over the scheme the tier's listener serves", () => {
+    const exposed = (...hosts: [string, "tls" | "plain"][][]) => ({
+      applications: hosts.map((exposure) => ({
+        exposure: exposure.map(([host, listener]) => ({ host, listener })),
+      })),
+    });
+
+    expect(rolloutUrlOf(exposed([["a.example", "tls"]]))).toBe(
+      "https://a.example",
+    );
+    expect(rolloutUrlOf(exposed([["lan.example", "plain"]]))).toBe(
+      "http://lan.example",
+    );
+    expect(
+      rolloutUrlOf(
+        exposed(
+          [],
+          [
+            ["b.example", "plain"],
+            ["c.example", "tls"],
+          ],
+        ),
+      ),
+    ).toBe("http://b.example");
+    expect(rolloutUrlOf({ applications: [{}] })).toBeUndefined();
+    expect(rolloutUrlOf({ applications: [] })).toBeUndefined();
+    // A Rollout with nowhere to reach hands Flux no URL at all, not an empty one.
+    expect(
+      Object.keys(rolloutAnnotations(identityOf("observability"))),
+    ).not.toContain("event.toolkit.fluxcd.io/url");
+  });
+
   it("hands Flux a moved Project's Rollout on its unit, and nothing on an estate unit", () => {
     expect(annotated(sourceOf(FIRST, "notes"))).toStrictEqual({
       "apps-notes": {
@@ -2218,6 +2260,7 @@ describe("composeEstate, for a Rollout", () => {
         "event.toolkit.fluxcd.io/sha": identityOf("notes").sha,
         "event.toolkit.fluxcd.io/environment": "production",
         "event.toolkit.fluxcd.io/version": "1.0.0",
+        "event.toolkit.fluxcd.io/url": "https://notes.jorisjonkers.dev",
       },
     });
     const estate = annotated(sourceOf(handedOver(), "_estate"));

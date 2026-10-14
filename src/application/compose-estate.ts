@@ -33,7 +33,11 @@ import {
   PIN_ANNOTATIONS,
   type PinAnnotationsDocument,
 } from "../model/pin-annotations.ts";
-import { ROLLOUT_ENVIRONMENT, type Rollout } from "../model/rollout.ts";
+import {
+  ROLLOUT_ENVIRONMENT,
+  rolloutUrlOf,
+  type Rollout,
+} from "../model/rollout.ts";
 import type { AuthoredFile } from "./check-intent-set.ts";
 import {
   composedLock,
@@ -602,6 +606,8 @@ function composition(
     // A Project's artifact is rendered from the fragment it composed at,
     // which is the release its pin moves to.
     const released = candidates.get(name)?.manifest;
+    const resolved = projects.find(({ project }) => project === name);
+    const url = resolved === undefined ? undefined : rolloutUrlOf(resolved);
     return {
       name,
       files,
@@ -616,6 +622,7 @@ function composition(
               sha: released.metadata.sourceSha,
               environment: ROLLOUT_ENVIRONMENT,
               version: released.spec.version,
+              ...(url === undefined ? {} : { url }),
             },
           }
         : {}),
