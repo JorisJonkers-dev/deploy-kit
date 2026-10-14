@@ -2452,6 +2452,8 @@ describe("composeEstate, for a Rollback's backup", () => {
   const estateFiles = (composition: Composition) =>
     composition.artifacts.find(({ name }) => name === "_estate")?.files ?? [];
   interface RenderedJob {
+    apiVersion: string;
+    kind: string;
     metadata: {
       name: string;
       namespace: string;
@@ -2489,7 +2491,8 @@ describe("composeEstate, for a Rollback's backup", () => {
       `postgres-data-backup-${REQUEST}`,
       `rabbitmq-data-backup-${REQUEST}`,
     ]);
-    for (const { metadata, spec } of jobs) {
+    for (const { apiVersion, kind, metadata, spec } of jobs) {
+      expect([apiVersion, kind]).toStrictEqual(["batch/v1", "Job"]);
       expect(metadata.namespace).toBe("data-system");
       expect(metadata.labels["estate.jorisjonkers.dev/rollback-backup"]).toBe(
         REQUEST,
@@ -2585,6 +2588,23 @@ describe("composeEstate, for a Rollback's backup", () => {
         estateFiles(composition).some(({ path }) => path.startsWith(BACKUPS)),
       ).toBe(false);
     expect(paused.lock.spec.fragments["data"]?.version).toBe("1.1.0");
+  });
+
+  it("renders nothing for a Project on the estate path with no backed-up volume", () => {
+    const first = compose({ platform: PLATFORM_HANDED_OVER });
+    const composition = compose({
+      platform: PLATFORM_HANDED_OVER,
+      held: RELEASES,
+      pins: pinned(first, { secrets: ASKED }),
+      previous: { lock: first.lock, commit: hex("estate-commit", 40) },
+    });
+
+    expect(
+      estateFiles(composition).some(({ path }) => path.startsWith(BACKUPS)),
+    ).toBe(false);
+    expect(
+      composition.artifacts.find(({ name }) => name === "secrets")?.moves,
+    ).toBe(false);
   });
 
   it("renders nothing for a Project still on the old path", () => {

@@ -3,17 +3,23 @@ package dev.jorisjonkers.deploykit.emf.cli;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
+import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.BackupOutcome;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.ClusterState;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.Disk;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.ImagesLock;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.Node;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.NodeContract;
+import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.RollbackBackup;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Media;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /** The pinned inputs beside the Platform document, each read by the language its file name says. */
 class PinnedInputsTest {
@@ -99,5 +105,37 @@ class PinnedInputsTest {
         assertThat(state.getCapturedAt()).isEqualTo("2026-09-30T00:00:00Z");
         assertThat(state.getBindings()).isEmpty();
         assertThat(state.getPlacements()).isEmpty();
+        assertThat(state.getBackups()).isEmpty();
+    }
+
+    @Test
+    void aSnapshotRecordsHowEachRollbacksBackupEnded(@TempDir Path directory) throws IOException {
+        Path snapshot = directory.resolve("cluster-state.yml");
+        Files.writeString(
+                snapshot,
+                Files.readString(Examples.of("platform/cluster-state.yml"))
+                        + "backups:\n"
+                        + "  - request: \"38526643693\"\n"
+                        + "    project: data\n"
+                        + "    job: postgres-data-backup-38526643693\n"
+                        + "    outcome: failed\n"
+                        + "    finishedAt: \"2026-09-30T00:20:00Z\"\n");
+        Resource resource = Pipeline.read(List.of(snapshot)).get(0);
+        assertThat(resource.getErrors()).isEmpty();
+        ClusterState state = (ClusterState) resource.getContents().get(0);
+
+        assertThat(state.getBackups())
+                .extracting(
+                        RollbackBackup::getRequest,
+                        RollbackBackup::getProject,
+                        RollbackBackup::getJob,
+                        RollbackBackup::getOutcome,
+                        RollbackBackup::getFinishedAt)
+                .containsExactly(tuple(
+                        "38526643693",
+                        "data",
+                        "postgres-data-backup-38526643693",
+                        BackupOutcome.FAILED,
+                        "2026-09-30T00:20:00Z"));
     }
 }

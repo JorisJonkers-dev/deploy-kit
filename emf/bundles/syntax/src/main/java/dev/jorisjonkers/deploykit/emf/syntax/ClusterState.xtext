@@ -15,7 +15,8 @@ ClusterState returns ClusterState:
 	& ('cluster' ':' cluster=Text)
 	& ('capturedAt' ':' capturedAt=Text)
 	& ('bindings' ':' BEGIN (DASH BEGIN bindings+=Binding END)* END)
-	& ('placements' ':' BEGIN (DASH BEGIN placements+=CurrentPlacement END)* END));
+	& ('placements' ':' BEGIN (DASH BEGIN placements+=CurrentPlacement END)* END)
+	& ('backups' ':' BEGIN (DASH BEGIN backups+=RollbackBackup END)* END)?);
 
 Binding returns Binding:
 	(('claim' ':' claim=Text)
@@ -25,10 +26,22 @@ CurrentPlacement returns CurrentPlacement:
 	(('process' ':' process=Text)
 	& ('node' ':' node=Text));
 
+// How a Rollback's one-shot backup Job ended, as the Collector reports it.
+RollbackBackup returns RollbackBackup:
+	(('request' ':' request=Text)
+	& ('project' ':' project=Text)
+	& ('job' ':' job=Text)
+	& ('outcome' ':' outcome=BackupOutcome)
+	& ('finishedAt' ':' finishedAt=Text));
+
+enum BackupOutcome returns BackupOutcome:
+	succeeded | failed;
+
 // Every keyword this document adds is also a scalar, as the project language's are.
 @Override
 Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword | ClusterStateKeyword;
 
 ClusterStateKeyword:
-	'bindings' | 'capturedAt' | 'cluster' | 'placements';
+	'backups' | 'bindings' | 'capturedAt' | 'cluster' | 'failed' | 'finishedAt' | 'outcome'
+	| 'placements' | 'request' | 'succeeded';
