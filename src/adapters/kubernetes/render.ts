@@ -23,6 +23,7 @@ import type {
   Deployment,
   EnvVar,
   Kustomization,
+  Labels,
   NodeAffinity,
   PersistentVolumeClaim,
   PodSpec,
@@ -129,7 +130,7 @@ function fileMountsOf(process: ResolvedProcess): VolumeMount[] {
   }));
 }
 
-type Backed = NonNullable<ResolvedProcess["volumes"]>[number] & {
+export type Backed = NonNullable<ResolvedProcess["volumes"]>[number] & {
   readonly backup: NonNullable<
     NonNullable<ResolvedProcess["volumes"]>[number]["backup"]
   >;
@@ -525,86 +526,110 @@ const backupLabels = (
 ) => labelsOf({ name: backup.identity, runtime: "none" }, application.id);
 
 /**
- * A backup CronJob per backed-up volume, at its class's schedule: the engine's
- * method image, run as the backup identity, reading the volume at `/data` and
- * writing its copies to the backup claim at `/backup`, pruned to `retain`.
+ * The pod one backed-up volume's method runs in: the engine's method image, as
+ * the backup identity, reading the volume at `/data` and writing its copies to
+ * the backup claim at `/backup`. `more` is what a one-shot run is handed beside
+ * what every run is.
+ */
+export function backupPodOf(
+  { claim, backup }: Backed,
+  more: readonly EnvVar[] = [],
+): PodSpec {
+  const env: EnvVar[] = [
+    { name: "BACKUP_RETAIN", value: String(backup.retain) },
+    ...(backup.offCluster === undefined
+      ? []
+      : [{ name: "BACKUP_OFF_CLUSTER", value: backup.offCluster }]),
+    ...(backup.peer === undefined
+      ? []
+      : [
+          { name: "BACKUP_HOST", value: backup.peer.host },
+          { name: "BACKUP_PORT", value: String(backup.peer.port) },
+        ]),
+    ...more,
+  ];
+  // Each credential's keys reach the method as variables: the off-cluster
+  // destination's, and the peer's.
+  const credentials = [backup.credential, backup.peer?.credential].flatMap(
+    (grant) =>
+      grant === undefined
+        ? []
+        : [{ secretRef: { name: grant.destination as string } }],
+  );
+  return {
+    serviceAccountName: backup.identity,
+    automountServiceAccountToken: false,
+    restartPolicy: "OnFailure",
+    securityContext: {
+      runAsNonRoot: true,
+      runAsUser: backup.uid,
+      runAsGroup: backup.gid,
+      fsGroup: backup.gid,
+      seccompProfile: { type: "RuntimeDefault" },
+    },
+    containers: [
+      {
+        name: "backup",
+        image: backup.method,
+        env,
+        ...(credentials.length === 0 ? {} : { envFrom: credentials }),
+        securityContext: RESTRICTED,
+        volumeMounts: [
+          { name: "data", mountPath: BACKUP_SOURCE, readOnly: true },
+          { name: "backup", mountPath: BACKUP_TARGET },
+        ],
+      },
+    ],
+    volumes: [
+      {
+        name: "data",
+        persistentVolumeClaim: { claimName: claim, readOnly: true },
+      },
+      { name: "backup", persistentVolumeClaim: { claimName: backup.claim } },
+    ],
+  };
+}
+
+/**
+ * A backup CronJob per backed-up volume, at its class's schedule, pruned to
+ * `retain`.
  */
 function backupsOf(
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
 ): CronJob[] {
-  return backedUp(process).map(({ claim, backup }) => {
-    const labels = backupLabels(backup, application);
-    const env: EnvVar[] = [
-      { name: "BACKUP_RETAIN", value: String(backup.retain) },
-      ...(backup.offCluster === undefined
-        ? []
-        : [{ name: "BACKUP_OFF_CLUSTER", value: backup.offCluster }]),
-      ...(backup.peer === undefined
-        ? []
-        : [
-            { name: "BACKUP_HOST", value: backup.peer.host },
-            { name: "BACKUP_PORT", value: String(backup.peer.port) },
-          ]),
-    ];
-    // Each credential's keys reach the method as variables: the off-cluster
-    // destination's, and the peer's.
-    const credentials = [backup.credential, backup.peer?.credential].flatMap(
-      (grant) =>
-        grant === undefined
-          ? []
-          : [{ secretRef: { name: grant.destination as string } }],
-    );
-    const pod: PodSpec = {
-      serviceAccountName: backup.identity,
-      automountServiceAccountToken: false,
-      restartPolicy: "OnFailure",
-      securityContext: {
-        runAsNonRoot: true,
-        runAsUser: backup.uid,
-        runAsGroup: backup.gid,
-        fsGroup: backup.gid,
-        seccompProfile: { type: "RuntimeDefault" },
-      },
-      containers: [
-        {
-          name: "backup",
-          image: backup.method,
-          env,
-          ...(credentials.length === 0 ? {} : { envFrom: credentials }),
-          securityContext: RESTRICTED,
-          volumeMounts: [
-            { name: "data", mountPath: BACKUP_SOURCE, readOnly: true },
-            { name: "backup", mountPath: BACKUP_TARGET },
-          ],
-        },
-      ],
-      volumes: [
-        {
-          name: "data",
-          persistentVolumeClaim: { claimName: claim, readOnly: true },
-        },
-        { name: "backup", persistentVolumeClaim: { claimName: backup.claim } },
-      ],
-    };
+  return backedUp(process).map((volume) => {
+    const labels = backupLabels(volume.backup, application);
     return {
       apiVersion: "batch/v1",
       kind: "CronJob",
       metadata: {
-        name: backup.claim,
+        name: volume.backup.claim,
         namespace: application.namespace,
         labels,
       },
       spec: {
-        schedule: backup.schedule,
+        schedule: volume.backup.schedule,
         concurrencyPolicy: "Forbid",
         jobTemplate: {
-          spec: { template: { metadata: { labels }, spec: pod } },
+          spec: {
+            template: { metadata: { labels }, spec: backupPodOf(volume) },
+          },
         },
       },
     };
   });
 }
+
+/** The backed-up volumes of a Process, each with its identity's labels. */
+export const backupsToRun = (
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+): { readonly volume: Backed; readonly labels: Labels }[] =>
+  backedUp(process).map((volume) => ({
+    volume,
+    labels: backupLabels(volume.backup, application),
+  }));
 
 /** The Process's own ServiceAccount, and one per backup identity it derives. */
 const serviceAccountsOf = (

@@ -16,6 +16,7 @@ import { artifactRepositoryOf } from "../adapters/flux/source.ts";
 import type { Adapter } from "../adapters/registry.ts";
 import {
   EVENTS_DIRECTORY,
+  ROLLBACK_BACKUPS_DIRECTORY,
   SECRETS_DIRECTORY,
 } from "../adapters/shared/paths.ts";
 import type { CompositionLockDocument } from "../model/composition-lock.ts";
@@ -394,15 +395,34 @@ function composed(
       PIN_ANNOTATIONS.rollbackFragment
     ];
 
-  // A Rollback composes its Project at the held fragment; every other Project
-  // at its newest.
+  // A Rollback's backup runs against what the Project is pinned to, so it is
+  // composed at the fragment it last composed at; one that never composed has
+  // nothing to back up.
+  const backups = new Map(
+    Object.entries(input.pins).flatMap(([project, { annotations }]) => {
+      const request = (annotations as Record<string, string>)[
+        PIN_ANNOTATIONS.rollbackBackup
+      ];
+      return request === undefined || previous[project] === undefined
+        ? []
+        : [[project, request] as const];
+    }),
+  );
+
+  // A Rollback composes its Project at the held fragment, and its backup at
+  // the pinned one; every other Project at its newest.
   const candidates = new Map<string, Fragment>(
     input.fragments.map((fragment) => {
       const project = fragment.manifest.spec.project;
       const rollback = rollbackOf(project);
+      const pinned = previous[project]?.ref;
       return [
         project,
-        rollback === undefined ? fragment : heldAt(input.held, rollback),
+        rollback !== undefined
+          ? heldAt(input.held, rollback)
+          : backups.has(project)
+            ? heldAt(input.held, pinned as string)
+            : fragment,
       ];
     }),
   );
@@ -454,7 +474,7 @@ function composed(
       ? resolveIntentSet(files, { ...options, imagesLock: lock.value })
       : lock;
     const outcome = resolved.ok
-      ? deliver(input, resolved.value, options)
+      ? deliver(input, resolved.value, options, backups)
       : resolved;
     if (outcome.ok)
       return {
@@ -503,20 +523,23 @@ interface Delivered {
  * A resolved union rendered for the Projects the ledger hands to the estate
  * path; a legacy one is composed and checked, never published
  * (spec/v1/60-setup.md#handing-over-one-project-at-a-time). While a Project is
- * legacy, the estate-scoped artifact holds the secrets unit alone: the Vault
- * policy job for the estate-path Projects, which their units depend on. The
- * edge units wait until no Project is legacy.
+ * legacy, the estate-scoped artifact holds the secrets unit, the Vault policy
+ * job for the estate-path Projects, which their units depend on, beside the
+ * route Flux's events take and any Rollback's backup. The edge units wait
+ * until no Project is legacy.
  */
 function deliver(
   input: Composing,
   resolved: ResolvedSet,
   options: ComposeOptions,
+  rollbackBackups: ReadonlyMap<string, string>,
 ): Result<Delivered> {
   // A resolved set holds a Platform document that parsed.
   const platform = platformOf(input.platform);
   const ledger = platform.handover;
   const rendered = renderResolvedSet(resolved, {
     ...options,
+    rollbackBackups,
     projects: resolved.projects
       .map(({ project }) => project)
       .filter(
@@ -541,7 +564,8 @@ function deliver(
 
 /**
  * One artifact as the handover delivers it: a Project's whole, and the
- * estate-scoped one cut to its secrets unit, or nothing where it holds none.
+ * estate-scoped one cut to its secrets, events and backup units, or nothing
+ * where it holds none.
  * The old path still serves the edge, so an estate-scoped route would be a
  * second source for it.
  */
@@ -550,7 +574,8 @@ function handingOver(artifact: RenderedArtifact): RenderedArtifact[] {
   const files = artifact.files.filter(
     ({ path }) =>
       path.startsWith(`${SECRETS_DIRECTORY}/`) ||
-      path.startsWith(`${EVENTS_DIRECTORY}/`),
+      path.startsWith(`${EVENTS_DIRECTORY}/`) ||
+      path.startsWith(`${ROLLBACK_BACKUPS_DIRECTORY}/`),
   );
   return files.length === 0 ? [] : [{ name: ESTATE, files }];
 }

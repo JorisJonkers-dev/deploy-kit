@@ -481,6 +481,7 @@ the snapshot. Nothing reads the live cluster.
 | PersistentVolume bindings, with the node holding each | recording where a Process's data already sits; `E_DISK_BINDING_CONFLICT` where a declared `disk` dimension contradicts the binding and the Process's engine has no move method |
 | current placements | detecting a move before it is rendered |
 | each engine Process's active Instance: its version, namespace and node, and for an open Move, its phase and when its flip held | deriving a [Move](#the-move), and retiring its source |
+| each Rollback's one-shot backup `Job`: the request it ran for, its Project, and whether it succeeded or failed, and when | the rollback workflow, which moves a pin only once every Job of its request succeeded ([chapter 55](55-delivery.md#pause-and-rollback)) |
 
 **What a node can hold is not on that list.** `allocatable`, `site`, `arch`,
 `gpus[]` and `disks[]` are *declared* platform facts: authored once per node and
@@ -523,11 +524,20 @@ bindings:   [{claim: postgres-data, node: enschede-t1000-1}]
 placements: [{process: postgres, node: enschede-t1000-1}]
 instances:
   - {application: platform-postgres, instance: postgres, version: 17.2.0, namespace: data-system, node: enschede-t1000-1}
+backups:
+  - {request: "38526643693", project: data, job: postgres-data-backup-38526643693, outcome: succeeded, finishedAt: "2026-09-30T00:20:00Z"}
 ```
 
 `instances` is what the Release Gate records as serving, read by the Collector
 from the gate's own record ([chapter 55](55-delivery.md#moves)); an open Move
 adds its `phase` and, once the flip has held, `flippedAt`.
+
+`backups` is optional, and lists each finished Job carrying the label
+`estate.jorisjonkers.dev/rollback-backup`: its value is the `request`, and the
+Job's namespace names its `project`. A Job still running is not listed, and its
+`outcome` is `succeeded` or `failed` and nothing else. Composition reads none of
+it; the rollback workflow does, from the Estate repository's committed
+snapshot ([chapter 55](55-delivery.md#pause-and-rollback)).
 
 `capturedAt` is written quoted, as every value carrying a colon is in the
 documents the model reads. It is when the Collector first captured these facts, not when it last
@@ -1070,6 +1080,7 @@ estate-scoped ([The path plan](#the-path-plan)):
 | `estate-vso-secrets` | `estate/vso-secrets/`: the Vault policy job and the documents it is handed ([The Vault policy job](#the-vault-policy-job)) | the unit of the project that declares the Secret Store, which the job writes into |
 | `estate-edge-<tier>`, one per tier a route reaches | `estate/edge/<tier>/`: the routes that tier's proxy serves | the unit of the project that declares the tier's proxy, and of every project with an exposure on the tier, so no route is applied before its proxy or its own namespace exists |
 | `estate-rollout-events`, where the platform names a Reporter | `estate/rollout-events/`: the `Provider` and the `Alert` that send Flux's events about every unit to the Reporter ([chapter 55](55-delivery.md#rollouts)) | nothing: both apply whether or not the Reporter is up, and an event sent before it is ready is one it reads again |
+| `estate-rollback-backups`, while a Rollback's backup is asked for | `estate/rollback-backups/<project>.yaml`: one one-shot backup `Job` per backed-up volume of each Project whose pin asks for one ([chapter 55](55-delivery.md#pause-and-rollback)) | nothing: each Job runs in a Project already on the estate path, as the backup identity that Project's unit brought up |
 
 A tier has a unit of its own so that one tier's refused route holds only that
 tier. These are the units the estate-scoped artifact's pin applies

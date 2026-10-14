@@ -1,7 +1,8 @@
 // The pin annotations (spec/v1/55-delivery.md#pause-and-rollback): how a
 // Pause and a Rollback are recorded on a Project's OCIRepository in the Estate
 // repository. A Pause carries who, when and why; a Rollback carries those and
-// the release it went to. A Project carrying none of them is not paused.
+// first the backup it asked for, then the release it went to. A Project
+// carrying none of them is not paused.
 import { z } from "zod";
 import { reference, semver } from "./composition-lock.ts";
 
@@ -14,7 +15,11 @@ export const PIN_ANNOTATIONS = {
   pausedReason: "estate.jorisjonkers.dev/paused-reason",
   rollbackVersion: "estate.jorisjonkers.dev/rollback-version",
   rollbackFragment: "estate.jorisjonkers.dev/rollback-fragment",
+  rollbackBackup: "estate.jorisjonkers.dev/rollback-backup",
 } as const;
+
+/** A backup request's id: the workflow run that asked, as a label value can hold it. */
+export const BACKUP_REQUEST = /^[A-Za-z0-9]([A-Za-z0-9-]{0,18}[A-Za-z0-9])?$/;
 
 const pause = {
   [PIN_ANNOTATIONS.pausedBy]: text,
@@ -22,11 +27,18 @@ const pause = {
   [PIN_ANNOTATIONS.pausedReason]: text,
 };
 
-/** Not paused, paused, or rolled back and paused: never a Rollback without its Pause. */
+/**
+ * Not paused, paused, paused while a Rollback's backup runs, or rolled back
+ * and paused: never a Rollback, or its backup, without its Pause.
+ */
 export const pinAnnotations = z
   .union([
     z.strictObject({}),
     z.strictObject(pause),
+    z.strictObject({
+      ...pause,
+      [PIN_ANNOTATIONS.rollbackBackup]: z.string().regex(BACKUP_REQUEST),
+    }),
     z.strictObject({
       ...pause,
       [PIN_ANNOTATIONS.rollbackVersion]: semver,

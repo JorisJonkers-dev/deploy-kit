@@ -22,6 +22,7 @@ import {
 import {
   edgeUnitOf,
   EVENTS_UNIT,
+  ROLLBACK_BACKUPS_UNIT,
   SECRETS_UNIT,
   unitOf,
 } from "../model/reconcile-units.ts";
@@ -30,6 +31,7 @@ import { rolloutAnnotations, type Rollout } from "../model/rollout.ts";
 import { readPinSource, samePinSource } from "../read/pin-source.ts";
 import {
   EVENTS_DIRECTORY,
+  ROLLBACK_BACKUPS_DIRECTORY,
   SECRETS_DIRECTORY,
   tierDirectory,
 } from "../adapters/shared/paths.ts";
@@ -145,6 +147,18 @@ function unitsOf(
             // up: an event sent before it is ready is one it reads again. A
             // unit followed that is not on the estate path is left out, so
             // any name here that is no unit's follows nothing alike.
+            // Stryker disable next-line ArrayDeclaration
+            after: [],
+          },
+        ]
+      : []),
+    ...(indexed(ROLLBACK_BACKUPS_DIRECTORY)
+      ? [
+          {
+            name: ROLLBACK_BACKUPS_UNIT,
+            path: ROLLBACK_BACKUPS_DIRECTORY,
+            // Each Job runs in a Project already on the estate path, as the
+            // backup identity that Project's unit brought up.
             // Stryker disable next-line ArrayDeclaration
             after: [],
           },

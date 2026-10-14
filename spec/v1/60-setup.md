@@ -500,8 +500,9 @@ handover:
   but composition publishes no artifact and moves no pin for it. While any
   Project is `legacy`, the estate-scoped artifact holds `estate-vso-secrets`,
   writing the Vault policies and roles of the `estate` Projects, whose
-  units depend on it, and `estate-rollout-events` where the platform names a
-  Reporter, and nothing else; the old path keeps serving the edge, and the edge units
+  units depend on it, `estate-rollout-events` where the platform names a
+  Reporter, and `estate-rollback-backups` while a Rollback's backup is asked
+  for, and nothing else; the old path keeps serving the edge, and the edge units
   join the artifact once no Project is `legacy`
   ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)). Where no `estate`
   Project's render holds a Vault document, there is no estate-scoped artifact

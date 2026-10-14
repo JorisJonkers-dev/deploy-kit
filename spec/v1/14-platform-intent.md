@@ -351,6 +351,12 @@ platform chose the method and only the method knows what it logs in as. It runs 
 user the images lock records for it, writes one copy, and prunes `/backup` to
 the newest `BACKUP_RETAIN` before it exits.
 
+A Rollback's one-shot run ([chapter 55](55-delivery.md#pause-and-rollback)) is
+handed the same, and the request it runs for as `BACKUP_ROLLBACK`. It writes
+its copy under a name of its own that the `BACKUP_RETAIN` count never counts,
+and every run of the method, scheduled or one-shot, deletes such a copy once it
+is 7 days old.
+
 ### Move methods
 
 An engine whose data can be carried from one Instance to another names how, in

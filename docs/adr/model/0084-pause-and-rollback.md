@@ -65,6 +65,15 @@ release reads data the newer one wrote, and a wrong guess about compatibility
 costs that data. A backup taken immediately before, kept a week beside the
 Durability Class's own copies, makes the Rollback itself undoable.
 
+**The backup runs through Flux, in two phases.** The workflow runs outside the
+cluster and holds no credential to it, and giving it one would make the Estate
+repository's Actions a second applier. So its first commit only asks: composition
+renders one-shot backup Jobs beside the Project, Flux applies them, and the
+Collector, which already commits what only the cluster can say, reports how
+they ended. The workflow reads that and only then commits the Rollback itself.
+The Jobs are estate-scoped, at the render the Project is pinned to, so asking
+for a backup restarts nothing of the Project it protects.
+
 ## Alternatives
 
 | option | cost if taken | why rejected |
@@ -74,6 +83,8 @@ Durability Class's own copies, makes the Rollback itself undoable.
 | Roll the schema back with the release | any release is a target | drops what the newer release wrote; the Release Gate's down exists for a release that never served |
 | Offer any earlier release | more choice | a release not proven against the current schema may not start against it |
 | No backup before a Rollback | faster | the one operation most likely to damage data has no undo of its own |
+| The workflow runs the backup itself, with a cluster credential | one phase, no Collector change | a cluster credential in Actions, and a second applier beside Flux |
+| The backup Jobs in the Project's own render | no estate-scoped unit | re-rendering with today's Platform document can roll the Project during its own backup |
 
 ## Reversibility
 
@@ -87,5 +98,8 @@ Becomes expensive once the dashboard and notifications read the annotations.
 - A Rollback reaches only one release back while the Migration Proof names one
   `testedAgainst`, paid by whoever wants an older one: they fix forward.
 - Every Rollback costs one backup kept 7 days, paid in storage.
+- A Rollback waits on Flux and on the Collector's next snapshot before its pin
+  moves, up to 45 minutes, paid in time to recover: a backup that has not ended
+  by then stops the Rollback and leaves the Project paused.
 - A rolled-back Project stays paused until a human resumes it, so a forgotten
   Pause holds the Project back; the Pause's notification is the reminder.

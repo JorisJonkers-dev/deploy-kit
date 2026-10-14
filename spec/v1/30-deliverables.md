@@ -252,6 +252,33 @@ every object no other subsystem does. They are Flux's kinds and not a
 workload's, but a seventh adapter for two objects that vary with nothing but
 one address would be a registration with no subsystem behind it.
 
+## A Rollback's backup
+
+While a Project's pin asks for a Rollback's backup
+([chapter 55](55-delivery.md#pause-and-rollback)), composition renders that
+Project at the release it is pinned to and adds
+`estate/rollback-backups/<project>.yaml`, with the index that applies it: one
+`batch/v1` `Job` per backed-up volume, named `<backup claim>-<request>`. Each
+runs the pod the volume's scheduled backup runs, as the same backup identity,
+reading the same volume and writing to the same backup claim, with the request
+handed to the method as `BACKUP_ROLLBACK`
+([chapter 14](14-platform-intent.md#engines)). It is never retried
+(`backoffLimit: 0`, `restartPolicy: Never`), it gives up after two hours as the
+method does, and it and its pod carry the label
+`estate.jorisjonkers.dev/rollback-backup: <request>`, which is how the
+Collector finds it.
+
+The Jobs are estate-scoped rather than the Project's own, so the Project's
+render and its pin do not move while the backup runs, and they are attributed
+to the `kubernetes` adapter, which renders the scheduled backups they copy. A
+Project with no backed-up volume renders no file, and a Project still on the old
+path renders none either: the old path runs its backups.
+
+The dump of the Project's own database, which chapter 55 also asks for, runs
+with the database grant the Project's Application already holds. It is not
+rendered yet: JorisJonkers-dev/deploy-kit#423 renders it beside the volume
+Jobs.
+
 ## Attribution
 
 **Every Deliverable is attributed to exactly one Adapter**
