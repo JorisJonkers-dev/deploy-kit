@@ -9,6 +9,7 @@ import {
   type Adapter,
 } from "../adapters/registry.ts";
 import { renderEvents } from "../adapters/kubernetes/events.ts";
+import { renderRollbackBackups } from "../adapters/kubernetes/rollback-backups.ts";
 import { renderPolicyJobPolicy } from "../adapters/networking/render.ts";
 import {
   ESTATE_DIRECTORY,
@@ -37,6 +38,11 @@ export interface RenderOptions extends ResolveOptions {
   readonly adapters?: readonly Adapter[];
   /** The projects whose share of the tree to render. */
   readonly projects: readonly string[];
+  /**
+   * The Rollback backups asked for, by Project: each one rendered, as one-shot
+   * Jobs, where that Project's share of the tree is.
+   */
+  readonly rollbackBackups?: ReadonlyMap<string, string>;
 }
 
 /** One rendered file, attributed to the adapter that produced it. */
@@ -122,13 +128,18 @@ export function renderResolvedSet(
   resolved: ResolvedSet,
   options: Omit<RenderOptions, Exclude<keyof ResolveOptions, "hash">>,
 ): Result<readonly RenderedArtifact[]> {
-  const projects = resolved.projects
-    .filter(({ project }) => options.projects.includes(project))
-    .flatMap((project) =>
-      (options.adapters ?? ADAPTERS).flatMap((adapter) =>
-        adapter.render(project),
-      ),
-    );
+  const rendering = resolved.projects.filter(({ project }) =>
+    options.projects.includes(project),
+  );
+  const projects = rendering.flatMap((project) =>
+    (options.adapters ?? ADAPTERS).flatMap((adapter) =>
+      adapter.render(project),
+    ),
+  );
+  const backups = rendering.flatMap((project) => {
+    const request = options.rollbackBackups?.get(project.project);
+    return request === undefined ? [] : renderRollbackBackups(project, request);
+  });
   const rendered = [
     ...projects,
     ...policyJobOf(resolved, projects, options.hash),
@@ -138,6 +149,7 @@ export function renderResolvedSet(
     ...(resolved.events === undefined || projects.length === 0
       ? []
       : renderEvents(resolved.events)),
+    ...backups,
   ];
   const deliverables = [
     ...rendered,

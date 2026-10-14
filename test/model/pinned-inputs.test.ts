@@ -91,4 +91,30 @@ describe("the ClusterState snapshot", () => {
       clusterState.safeParse({ ...STATE, placements: [{ node: "n" }] }).success,
     ).toBe(false);
   });
+
+  it("records how each Rollback's backup Job ended, and only that it succeeded or failed", () => {
+    const ended = {
+      request: "38526643693",
+      project: "data",
+      job: "postgres-data-backup-38526643693",
+      outcome: "succeeded",
+      finishedAt: "2026-10-14T10:00:00Z",
+    };
+
+    expect(clusterState.safeParse({ ...STATE, backups: [ended] }).success).toBe(
+      true,
+    );
+    expect(
+      clusterState.safeParse({
+        ...STATE,
+        backups: [{ ...ended, outcome: "running" }],
+      }).success,
+    ).toBe(false);
+    expect(
+      clusterState.safeParse({
+        ...STATE,
+        backups: [{ ...ended, finishedAt: undefined }],
+      }).success,
+    ).toBe(false);
+  });
 });

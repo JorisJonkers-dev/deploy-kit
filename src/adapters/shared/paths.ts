@@ -13,6 +13,9 @@ export const SECRETS_DIRECTORY = `${ESTATE_DIRECTORY}/vso-secrets`;
 /** Where the route Flux's events take to the Reporter lands. */
 export const EVENTS_DIRECTORY = `${ESTATE_DIRECTORY}/rollout-events`;
 
+/** Where a Rollback's one-shot backup Jobs land, while one is asked for. */
+export const ROLLBACK_BACKUPS_DIRECTORY = `${ESTATE_DIRECTORY}/rollback-backups`;
+
 export const projectDirectory = (project: string): string => `apps/${project}`;
 
 export const applicationDirectory = (

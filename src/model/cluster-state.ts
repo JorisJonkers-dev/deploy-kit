@@ -11,6 +11,19 @@ const binding = z.strictObject({ claim: text, node: text });
 /** Where a Process ran when the snapshot was taken. */
 const placement = z.strictObject({ process: text, node: text });
 
+/**
+ * A Rollback's one-shot backup Job, and how it ended
+ * (spec/v1/55-delivery.md#pause-and-rollback): what the rollback workflow
+ * waits on before it moves a pin.
+ */
+const backup = z.strictObject({
+  request: text,
+  project: text,
+  job: text,
+  outcome: z.enum(["succeeded", "failed"]),
+  finishedAt: z.iso.datetime(),
+});
+
 export const clusterState = z.strictObject({
   apiVersion: z.literal("state.jorisjonkers.dev/v1"),
   kind: z.literal("ClusterState"),
@@ -19,6 +32,7 @@ export const clusterState = z.strictObject({
   capturedAt: z.iso.datetime(),
   bindings: z.array(binding),
   placements: z.array(placement),
+  backups: z.array(backup).exactOptional(),
 });
 
 export type ClusterStateDocument = z.output<typeof clusterState>;

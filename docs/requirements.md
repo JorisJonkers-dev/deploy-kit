@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **59** rows. The compiler's behaviours join it as they land.
+This ledger holds **60** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -82,3 +82,4 @@ This ledger holds **59** rows. The compiler's behaviours join it as they land.
 | REQ-057 | Each webhook of a Canary hands the Release Gate what its checks request and must stay under: the path of every Route to the Process, the path its readiness is asked on, the host of every Route the internet reaches, each list once and in order, and the Platform document's two thresholds, which a delivery policy without either is refused for; a key with nothing to carry is absent, and Flagger's own analysis holds the cadence alone | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-058 | The Platform document names the Reporter, an Application whose Process provides an `http` surface and that the project file declaring the Release Gate declares, refused as `E_UNKNOWN_REPORTER` otherwise, one of that name in another Project among them, and asked for nothing where it names none; the first Process of the Reporter that provides the surface admits Flux's notification controller, from Flux's namespace, on that port, and no other Process does | [test/model/intent-set.test.ts](../test/model/intent-set.test.ts) |
 | REQ-059 | Where the platform names a Reporter, the estate-scoped artifact holds a generic `Provider` naming the Reporter's `http` surface and an `Alert` sending it every event of a unit the render manages, both in Flux's namespace, applied by a unit of their own that follows nothing and kept beside the secrets unit while a Project is legacy; a platform that names none, and a render of no Project, hold neither | [test/application/compose.test.ts](../test/application/compose.test.ts) |
+| REQ-060 | A Project paused with `rollback-backup` is composed at the release it is pinned to, and its pin does not move; the estate-scoped artifact holds one never-retried one-shot `Job` per backed-up volume, running the scheduled backup's pod and identity with the request handed as `BACKUP_ROLLBACK` and set as a label, applied by a unit of its own that follows nothing; a Project only paused, one that never composed, and one still on the old path get none | [test/application/compose.test.ts](../test/application/compose.test.ts) |

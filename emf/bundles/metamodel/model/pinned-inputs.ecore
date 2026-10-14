@@ -87,6 +87,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="capturedAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="bindings" upperBound="-1" eType="#//Binding" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="placements" upperBound="-1" eType="#//CurrentPlacement" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="backups" upperBound="-1" eType="#//RollbackBackup" containment="true"/>
   </eClassifiers>
 
   <!-- A bound PersistentVolume, and the node holding it. -->
@@ -99,6 +100,21 @@
   <eClassifiers xsi:type="ecore:EClass" name="CurrentPlacement">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="process" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="node" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- A Rollback's one-shot backup Job, and how it ended (spec/v1/55-delivery.md#pause-and-rollback). -->
+  <eClassifiers xsi:type="ecore:EClass" name="RollbackBackup">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="request" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="project" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="job" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="outcome" lowerBound="1" eType="#//BackupOutcome"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="finishedAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- Whether a Rollback's backup Job succeeded: a running one is not reported. -->
+  <eClassifiers xsi:type="ecore:EEnum" name="BackupOutcome">
+    <eLiterals name="succeeded"/>
+    <eLiterals name="failed" value="1"/>
   </eClassifiers>
 
   <!-- ================================================ the migration proof -->
