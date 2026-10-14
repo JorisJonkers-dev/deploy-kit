@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.13.0...v0.14.0) (2026-10-14)
+
+
+### Features
+
+* give a Rollout the URL its release is reachable at ([#426](https://github.com/JorisJonkers-dev/deploy-kit/issues/426)) ([3530241](https://github.com/JorisJonkers-dev/deploy-kit/commit/3530241b94936334d4a1b2c21d8b4646ed695a99))
+
 ## [0.13.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.12.0...v0.13.0) (2026-10-14)
 
 
