@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.12.0...v0.13.0) (2026-10-14)
+
+
+### Features
+
+* render a Rollback's backup as one-shot Jobs while its pin asks for one ([#424](https://github.com/JorisJonkers-dev/deploy-kit/issues/424)) ([c40f6fc](https://github.com/JorisJonkers-dev/deploy-kit/commit/c40f6fc7e918070135234efac9d7e728663203fc))
+
 ## [0.12.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.11.1...v0.12.0) (2026-10-13)
 
 
