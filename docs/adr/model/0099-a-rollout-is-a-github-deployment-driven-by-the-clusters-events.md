@@ -87,6 +87,10 @@ releases delivered and unreported. Nothing in the render depends on a Rollout.
   again while its pin stays keeps the one it is committed with, since the
   release that moved the pin is not something a later composition derives.
 - The estate-scoped artifact has no Rollout: it is no Project's release.
+- The unit that carries a Rollout also labels every pod it applies with the
+  Rollout's `version`, by patch, for the same reason the annotations are on
+  the pin source ([0039](0039-the-label-set-is-fixed.md)): a pod, and its
+  logs, name their own release, and the render still says nothing of it.
 - A Rollout's repository and commit are the fragment's own claims, and
   composition verifies no provenance. Whatever creates the Deployment must
   first have held the fragment to a signature made in the repository it names,

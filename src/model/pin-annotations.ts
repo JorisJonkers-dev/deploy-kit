@@ -18,6 +18,9 @@ export const PIN_ANNOTATIONS = {
   rollbackBackup: "estate.jorisjonkers.dev/rollback-backup",
 } as const;
 
+/** Flux's policy to recreate an object it cannot update; a first delivery sets it. */
+export const FORCE_ANNOTATION = "kustomize.toolkit.fluxcd.io/force";
+
 /** A backup request's id: the workflow run that asked, as a label value can hold it. */
 export const BACKUP_REQUEST = /^[A-Za-z0-9]([A-Za-z0-9-]{0,18}[A-Za-z0-9])?$/;
 

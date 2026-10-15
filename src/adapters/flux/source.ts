@@ -5,6 +5,8 @@
 // unit's path inside it, after the units it follows. Composition writes the
 // file whenever the artifact's pin moves, the first delivery among them, and
 // a Project's first delivery recreates a Deployment it cannot update in place.
+import { FORCE_ANNOTATION } from "../../model/pin-annotations.ts";
+import { ROLLOUT_ANNOTATIONS } from "../../model/rollout.ts";
 import type { FluxKustomization, OciRepository } from "../../objects/custom.ts";
 import type { RenderedObject } from "../../objects/deliverable.ts";
 import { managedOnly } from "../shared/labels.ts";
@@ -48,11 +50,7 @@ export const UNPUBLISHED = `sha256:${"0".repeat(64)}`;
 const exactly = (text: string): string =>
   `^${text.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)}$`;
 
-/**
- * Flux's per-object policy: an object whose immutable fields differ from what
- * is live is deleted and recreated rather than refused.
- */
-export const FORCE_ANNOTATION = "kustomize.toolkit.fluxcd.io/force";
+export { FORCE_ANNOTATION };
 
 /**
  * The patch a Project's first delivery applies: every Deployment it holds is
@@ -74,6 +72,47 @@ export const RECREATE_DEPLOYMENTS = {
   ].join("\n"),
   target: { kind: "Deployment" },
 } as const;
+
+export const VERSION_LABEL = "app.kubernetes.io/version";
+
+/** Label every pod template a unit applies with its release; a selector is never touched. */
+export const versionPatches = (version: string) => {
+  const labelled = (depth: number): string[] =>
+    [
+      "template:",
+      "  metadata:",
+      "    labels:",
+      `      ${VERSION_LABEL}: ${JSON.stringify(version)}`,
+    ].map((line) => `${"  ".repeat(depth)}${line}`);
+  return [
+    {
+      patch: [
+        "apiVersion: apps/v1",
+        "kind: Deployment",
+        "metadata:",
+        "  name: any",
+        "spec:",
+        ...labelled(1),
+        "",
+      ].join("\n"),
+      target: { kind: "Deployment|StatefulSet|DaemonSet|Job" },
+    },
+    {
+      patch: [
+        "apiVersion: batch/v1",
+        "kind: CronJob",
+        "metadata:",
+        "  name: any",
+        "spec:",
+        "  jobTemplate:",
+        "    spec:",
+        ...labelled(3),
+        "",
+      ].join("\n"),
+      target: { kind: "CronJob" },
+    },
+  ] as const;
+};
 
 /** The name a Project's source carries; the estate's own is {@link ESTATE_SOURCE}. */
 export const sourceOf = (project: string): string => `project-${project}`;
@@ -140,29 +179,36 @@ export function renderPinSource(
   return [
     repository,
     ...units.map(
-      ({ name, path, after, annotations: carried }): FluxKustomization => ({
-        apiVersion: "kustomize.toolkit.fluxcd.io/v1",
-        kind: "Kustomization",
-        metadata: {
-          name,
-          namespace: flux.namespace,
-          labels: managedOnly(),
-          ...(carried === undefined ? {} : { annotations: carried }),
-        },
-        spec: {
-          interval: INTERVAL,
-          prune: true,
-          // A unit is Ready when what it applied is: a Job that fails holds
-          // every unit that follows it.
-          wait: true,
-          sourceRef: { kind: "OCIRepository", name: source },
-          path: `./${path}`,
-          ...(after.length === 0
-            ? {}
-            : { dependsOn: after.map((unit) => ({ name: unit })) }),
-          ...(recreate ? { patches: [RECREATE_DEPLOYMENTS] } : {}),
-        },
-      }),
+      ({ name, path, after, annotations: carried }): FluxKustomization => {
+        const version = carried?.[ROLLOUT_ANNOTATIONS.version];
+        const patches = [
+          ...(recreate ? [RECREATE_DEPLOYMENTS] : []),
+          ...(version === undefined ? [] : versionPatches(version)),
+        ];
+        return {
+          apiVersion: "kustomize.toolkit.fluxcd.io/v1",
+          kind: "Kustomization",
+          metadata: {
+            name,
+            namespace: flux.namespace,
+            labels: managedOnly(),
+            ...(carried === undefined ? {} : { annotations: carried }),
+          },
+          spec: {
+            interval: INTERVAL,
+            prune: true,
+            // A unit is Ready when what it applied is: a Job that fails holds
+            // every unit that follows it.
+            wait: true,
+            sourceRef: { kind: "OCIRepository", name: source },
+            path: `./${path}`,
+            ...(after.length === 0
+              ? {}
+              : { dependsOn: after.map((unit) => ({ name: unit })) }),
+            ...(patches.length === 0 ? {} : { patches }),
+          },
+        };
+      },
     ),
   ];
 }

@@ -16,6 +16,7 @@ import {
   type Pin,
 } from "../../src/application/compose-estate.ts";
 import { pinSources } from "../../src/application/pin-sources.ts";
+import { RECREATE_DEPLOYMENTS } from "../../src/adapters/flux/source.ts";
 import { PIN_ANNOTATIONS } from "../../src/model/pin-annotations.ts";
 import {
   rolloutAnnotations,
@@ -933,7 +934,10 @@ describe("composeEstate, for an artifact whose pin moves", () => {
           .map((document) => document.toJSON() as Record<string, unknown>)
           .filter(({ kind }) => kind === "Kustomization")
           .every(
-            ({ spec }) => (spec as { patches?: unknown }).patches !== undefined,
+            ({ spec }) =>
+              (spec as { patches?: { patch: string }[] }).patches?.some(
+                ({ patch }) => patch === RECREATE_DEPLOYMENTS.patch,
+              ) === true,
           ),
       ]);
     const first = delivered();
@@ -1844,7 +1848,7 @@ describe("composeEstate, for an artifact whose pin stays", () => {
             secretRef?: { name: string };
             verify?: { matchOIDCIdentity: { subject: string }[] };
             url?: string;
-            patches?: unknown;
+            patches?: { patch: string }[];
             dependsOn?: { name: string }[];
           };
         },
@@ -1852,7 +1856,12 @@ describe("composeEstate, for an artifact whose pin stays", () => {
   const repositoryOf = (body: string) =>
     objectsOf(body).find(({ kind }) => kind === "OCIRepository")?.spec;
   const recreates = (body: string): boolean =>
-    objectsOf(body).some(({ spec }) => spec.patches !== undefined);
+    objectsOf(body).some(
+      ({ spec }) =>
+        spec.patches?.some(
+          ({ patch }) => patch === RECREATE_DEPLOYMENTS.patch,
+        ) === true,
+    );
 
   // Composed before each test rather than as the suite is collected, so a
   // mutation run sees which test reaches which code.

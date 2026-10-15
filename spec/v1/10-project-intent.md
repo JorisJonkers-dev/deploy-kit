@@ -499,10 +499,16 @@ That is why every selector the render writes names `instance`, except a
 ([chapter 30](30-deliverables.md#flagger-ready-objects)). The set itself stays
 fixed: the rewrite is Flagger's, on an object the render never writes.
 
-No `app.kubernetes.io/version`. A version label would have to come from the
-images lock, so it changes on every image bump, for a label that no selector
-may use and that the image digest already states exactly, on the object, where
-a reader looks anyway.
+`app.kubernetes.io/version` is not in the set, and the render never writes it.
+A Project's Reconcile Unit puts it on every pod template and every `Job` it
+applies, set to the release its Rollout names
+([chapter 55](55-delivery.md#what-a-pin-source-holds)), so a pod, and every
+line it logs, says which release it ran. It is never a selector: it moves with
+every release, and a selector cannot move. It stays out of the render because
+the release is the fragment's claim about itself, not something the render
+derives: in the render, a release whose objects are otherwise the ones already
+pinned would still publish a new artifact, move its pin and restart every pod
+for nothing.
 
 An estate-scoped Deliverable carries `managed-by` and nothing else: it belongs
 to no Process and to no Application, and `part-of` on such an object would name a
