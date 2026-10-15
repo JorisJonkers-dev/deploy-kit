@@ -675,7 +675,7 @@ claiming there is nothing to build. The sequence:
 |---|---|---|
 | 1. publish the toolkit at the new model version | release operator | pull by digest, read `schemaVersion` back out |
 | 2. republish each fragment or context carrying documents at that version | that project's owner | pull by digest, read `schemaVersion` back out |
-| 3. open the pin bump in each consumer | Renovate | the ordering gate |
+| 3. open the pin bump in each consumer: the Estate repository and the shared Publish Fragment workflow | Renovate | the ordering gate |
 | 4. merge | a human | the gate, green |
 
 Steps 1 and 2 are manual and outside CI, and they are verified **by pulling the
@@ -683,8 +683,9 @@ artefact by digest and reading `schemaVersion` back out of it, never by the
 publish step's exit code**. That is the estate's own rule applied to its own
 publish path.
 
-Step 3 rides **Renovate**, because `renovate.json` is already present in every
-pinning repository; no new bump automation is built. The only machinery this
+Step 3 rides **Renovate**, because `renovate.json` is already present in both
+pinning repositories; no new bump automation is built. An application
+repository pins no toolkit, so it opens no bump. The only machinery this
 specification adds is the **ordering gate**, and it exists because Renovate
 cannot be sequenced: a consumer's pin PR may appear before the republish in step
 2 has landed and will sit red until it does.

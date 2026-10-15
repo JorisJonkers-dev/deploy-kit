@@ -18,13 +18,13 @@ suite, the gates and a clone run the TypeScript as it is written.
 
 Every assignment is a function of pinned inputs
 ([0006](../model/0006-pinned-inputs.md)), and the toolkit that composes is one
-of them: a workflow must run the command at the version its own lockfile pins,
-which it can only do if the pinned package contains the command.
+of them: a workflow must run the command at the version a lockfile beside that
+workflow pins, which it can only do if the pinned package contains the command.
 
 **False if:** a workflow can pin the toolkit some other way that its lockfile
 records and Renovate moves, without the package carrying the command.
-**Settled by:** the worked workflows calling `npx --no-install deploy-kit`,
-which resolves only what the lockfile installed.
+**Settled by:** the worked workflows running only the `deploy-kit` the
+lockfile installed.
 
 ## Why
 
@@ -68,11 +68,15 @@ the installed command.
 ## Reversibility
 
 Undo cost today: remove the `bin`, the two scripts and one test, an hour.
-Becomes costly once application repositories pin the package for its command:
-they would each need another way to run it.
+Becomes costly once the composition and Publish Fragment workflows pin the
+package for its command: each would need another way to run it.
 
 ## Consequences
 
+- Two workflows run the command, each from a lockfile beside it: the Estate
+  repository's composition, and the shared Publish Fragment workflow every
+  application repository calls. An application repository pins no toolkit of
+  its own ([0047](../model/0047-one-publication-path.md)).
 - `package.json` gains a `bin`, `dist/` in `files`, and the `build` script.
 - The release, the release candidate and the package-contents job each build
   before they pack.
