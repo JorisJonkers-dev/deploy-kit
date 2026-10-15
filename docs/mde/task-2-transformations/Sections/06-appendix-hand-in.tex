@@ -1,16 +1,17 @@
 \section{The Hand-in Archive}
 \label{app:handin}
 
-The archive holds report.pdf, a README.md with the steps from
+The archive holds \path{report.pdf}, a \path{README.md} with the steps from
 Appendix~\ref{app:running}, and two folders.
 
-task-2-transformations/ is an Eclipse project for reading the models
+\path{task-2-transformations/} is an Eclipse project for reading the models
 (Table~\ref{tab:handin}), imported via File > Import > Existing Projects
 into Workspace. It contains no Java, so the transformations do not run from
-it: the resolution and estate pass call the Hashing library, which the
-implementation plug-in registers.
+it: the resolution and estate pass call the \texttt{Hashing} library, which
+the implementation plug-in registers.
 
-implementation/ holds the EMF implementation and the examples the tests read.
+\path{implementation/} holds the EMF implementation and the examples the
+tests read.
 
 \begin{table}[!htbp]
 \centering
@@ -18,34 +19,36 @@ implementation/ holds the EMF implementation and the examples the tests read.
 \hline
 \textbf{Path} & \textbf{Contents} \\
 \hline
-model/ & The source, pinned-inputs and target metamodels. \\
-transforms/ & lower.qvto, resolution.qvto and estate.qvto. \\
-examples/platform/ & The Platform Intent and the pinned inputs every example reads. \\
-examples/<example>/authored/ & The Project Intent with its env and configuration files. \\
-examples/<example>/resolution.intent.xmi & The intent extent: authored and lowered Projects, plus Platform Intent. \\
-examples/<example>/resolution.pinned.xmi & The pinned extent. \\
-examples/<example>/<project>.resolveddeployment & The Resolved Deployment the transformation wrote. \\
-examples/<example>/dependencies.json & The edges exported from it, beside expected-dependencies.json, a copy of the oracle expected/dependencies.json. \\
-examples/minimal/minimal.hand-written.resolveddeployment & The hand-written target model from Task~1, updated in Appendix~\ref{app:target}. \\
-examples/secrets/secrets.expected.resolveddeployment & The complete expected model of secrets (Section~\ref{sec:thin}). \\
+\path{model/} & The source, pinned-inputs and target metamodels. \\
+\path{transforms/} & \path{lower.qvto}, \path{resolution.qvto} and \path{estate.qvto}. \\
+\path{examples/platform/} & The \texttt{Platform Intent} and the pinned inputs every example reads. \\
+\path{examples/<example>/authored/} & The \texttt{Project Intent} with its env and configuration files. \\
+\path{examples/<example>/resolution.intent.xmi} & The intent extent: authored and lowered \texttt{Project}s, plus \texttt{Platform Intent}. \\
+\path{examples/<example>/resolution.pinned.xmi} & The pinned extent. \\
+\path{examples/<example>/<project>.resolveddeployment} & The \texttt{Resolved Deployment} the transformation wrote. \\
+\path{examples/<example>/dependencies.json} & The edges exported from it, beside \path{expected-dependencies.json}, a copy of the oracle \path{expected/dependencies.json}. \\
+\path{examples/minimal/minimal.hand-written.resolveddeployment} & The hand-written target model from Task~1, updated in Appendix~\ref{app:target}. \\
+\path{examples/secrets/secrets.expected.resolveddeployment} & The complete expected model of \texttt{secrets} (Section~\ref{sec:thin}). \\
 \hline
 \end{tabular}
 \caption{The Models Project of the Archive, One Folder per Example of Table~\ref{tab:results}}
 \label{tab:handin}
 \end{table}
 
-Every XMI declares its metamodel in xsi:schemaLocation, so Eclipse opens it
-in the Sample Reflective Ecore Model Editor without a registered package.
+Every XMI declares its metamodel in \texttt{xsi:schemaLocation}, so Eclipse
+opens it in the Sample Reflective Ecore Model Editor without a registered
+package.
 
 \subsection{Running the Transformations}
 \label{app:running}
 
-In implementation/emf, run ./mvnw clean verify with JDK~21. It builds the
-implementation, runs every test, and writes each example's models and edges
-under bundles/cli/target/parity/<example>/. It takes about 17 seconds.
+In \path{implementation/emf}, run \path{./mvnw clean verify} with JDK~21. It
+builds the implementation, runs every test, and writes each example's models
+and edges under \path{bundles/cli/target/parity/<example>/}. It takes
+about four minutes.
 
 In Eclipse Modeling Tools with the QVT-Operational SDK, import
-implementation/emf as existing Maven Projects.
+\path{implementation/emf} as existing Maven projects.
 
-Run resolution.launch in dev.jorisjonkers.deploykit.emf.resolve. It resolves
-minimal from the extents step 1 wrote.
+Run \path{resolution.launch} in \path{dev.jorisjonkers.deploykit.emf.resolve}.
+It resolves \texttt{minimal} from the extents Step~1 wrote.

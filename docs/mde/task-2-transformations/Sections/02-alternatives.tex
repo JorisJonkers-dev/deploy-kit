@@ -1,16 +1,16 @@
 \section{Alternatives and Justification}
 \label{sec:alternatives}
 
-This section examines whether existing Kubernetes modelling tools could replace the
-transformation, which transformation language fits best, and how the
-transformation should be structured.
+This section examines which transformation language fits the work and how
+the transformation should be structured.
 
 \subsection{Existing Kubernetes Modelling Tools}
 \label{sec:existingtools}
 
-Three open-source tools were reviewed to see if they could produce the Resolved
-Deployment from Project Intent and Platform Intent, or at least take part in the
-pipeline. Table~\ref{tab:tools} compares them.
+Three open-source tools were reviewed to see if they could produce the
+\texttt{Resolved Deployment} from \texttt{Project Intent} and
+\texttt{Platform Intent}, or at least take part in the pipeline.
+Table~\ref{tab:tools} compares them.
 
 \begin{table}[!htbp]
 \centering
@@ -20,11 +20,11 @@ pipeline. Table~\ref{tab:tools} compares them.
 \hline
 KubeDiagrams \cite{kubediagrams} &
   Draws diagrams from Kubernetes files or a live cluster, mapping kinds to icons. &
-  It goes the reverse direction, from files to pictures, and derives nothing. &
+  It works from files to pictures, not from models to models, and derives nothing. &
   It could visualize the generated files to show links produced by a project document. \\
 KubeOrch \cite{kubeorch} &
   A drag-and-drop editor: its back end wires ports, fills templates, writes files, deploys. &
-  It has no metamodel, no constraints, rules are Go code, and it deploys directly, not via Flux. &
+  It has no metamodel, no constraints and its rules are Go code; it deploys directly, not via Flux. &
   Its graph notation could inform a project document editor. \\
 kubert \cite{kubert} &
   A command-line tool to switch cluster contexts and run commands on multiple clusters. &
@@ -36,17 +36,17 @@ kubert \cite{kubert} &
 \label{tab:tools}
 \end{table}
 
-None of the three derives values from authored declarations. KubeOrch comes
-closest: it resolves a link between two services to an address and port,
-similar to how the resolution resolves dependency edges. But it lacks a Platform
-Intent, node contract, images lock and snapshot, so it cannot derive placement,
-image digests, backups or network peers. Its output is not a model that OCL
-constraints or oracles can verify. The tools can therefore complement the
-transformation, not replace it. This leads to two possible integrations: the
-resolved dependency edges and network peers could feed a KubeDiagrams view of the
-Task~3 files for visual verification; and a KubeOrch-style graphical editor
-could write Project Intent documents, since both would work from the same Ecore
-metamodel.
+None of the three derives values from authored declarations. KubeOrch
+comes closest: it resolves a link between two services to an address and
+port, similar to how the resolution resolves dependency edges. But it lacks
+a \texttt{Platform Intent}, node contract, images lock and snapshot, so it
+cannot derive placement, image digests, backups or network peers. Its output
+is not a model that OCL constraints or oracles can verify. The tools can
+therefore complement the transformation, not replace it. Two integrations are
+possible: the resolved dependency edges and network peers could feed a
+KubeDiagrams view of the Task~3 files for visual verification; and a
+KubeOrch-style graphical editor could write \texttt{Project Intent} documents,
+since both would work from the same Ecore metamodel.
 
 \subsection{The Transformation Language}
 \label{sec:language}
@@ -59,35 +59,33 @@ synchronisation offer no benefit for a one-way derivation. Published experiments
 also showed its engine exhausted heap space on larger models~\cite{amstel2011}.
 
 ATL, QVTo and Java were compared against the specific needs of this
-transformation. Most values in a Resolved Deployment do not derive from a single
-source element: a process's eligible machines depend on the node contract, a
-route's precedence on other routes, and a process's ingress peers on every
-process in the cluster that depends on it. ATL excels when one source element
-maps to one target element through matched rules whose order the engine
-chooses. Here most work would end up in helpers and called rules, turning ATL
-into imperative code without the pattern matching. Several values need the
-rest of the model to exist first, which ATL does not handle as naturally.
+transformation. Most values in a \texttt{Resolved Deployment} do not derive
+from a single source element: a process's eligible machines depend on the
+node contract, a route's precedence on other routes, and a process's ingress
+peers on every process in the cluster that depends on it. ATL excels when
+one source element maps to one target element through matched rules whose
+order the engine chooses. Here most work would end up in helpers and called
+rules, turning ATL into imperative code without the pattern matching. Several
+values need the rest of the model to exist first, which ATL does not handle
+as naturally.
 
-QVTo makes both requirements visible. The caller explicitly decides the order of
-execution, and every reference from one created element to another goes through
-the trace, which QVTo manages automatically. Its expressions use OCL, the same
-language Task~1's constraints already use. QVTo is also the second most-used
-transformation language after ATL, and users cite its maturity and standard
-as key advantages~\cite{burgueno2019}.
+QVTo meets these needs. The caller explicitly decides the order of execution,
+and every reference from one created element to another goes through the
+trace. Its expressions use OCL, the same language Task~1's constraints already
+use. QVTo is also the second most-used transformation language after ATL, and
+users cite its maturity and its status as a standard as advantages~\cite{burgueno2019}.
 
-A Java transformation would be easiest to debug and offers full control. However,
-it requires maintaining the trace by hand and hides transformation rules inside
-general-purpose code, which practitioners report as difficult to maintain for
-model management~\cite{burgueno2019}.
+A Java transformation would be easiest to debug and offers full control.
+However, it requires maintaining the trace by hand and hides transformation
+rules inside general-purpose code, which practitioners report as difficult to
+maintain for model management~\cite{burgueno2019}.
 
 QVTo was chosen. The one operation QVTo cannot express directly, computing a
 SHA-256 hash, uses QVT's black-box mechanism: a Java library called through a
 contextual operation (Section~\ref{sec:blackbox}). Speed was not decisive:
-QVTo ran more than five times slower than ATL in published experiments~\cite{amstel2011},
-but this is acceptable for a cluster of about ten projects. The choice aligns
-with Lecture~5, which describes QVTo's explicit trace, caller-controlled
-scheduling and OCL-based expressions as fitting for complex derivations where
-order matters and cross-model references are explicit.
+QVTo ran more than five times slower than ATL in published experiments
+~\cite{amstel2011}, but this is acceptable for a cluster of about ten
+projects.
 
 \subsection{The Structure of the Transformation}
 \label{sec:structure}
@@ -97,30 +95,30 @@ value needs to be in a model that tests can compare, so derivation must happen
 in a model-to-model step before code generation. This allows oracles to verify
 values independently of the templates.
 
-A single transformation from authored model to Resolved Deployment would work,
-but splitting it into a chain offers advantages.
+A single transformation from authored model to \texttt{Resolved Deployment}
+would work, but splitting it into a chain offers advantages.
 
 \subsubsection{A Lowering Before the Resolution}
 \label{sec:twotransformations}
 
-The lowering first copies shared declarations down to each Process, producing
-Effective Intent. This means the resolution reads values from one level
-instead of three, simplifying each rule. The estate pass then adds files that
-belong to no single Project, which no individual resolution can compute. The
-chain also matches QVT specification Section~8.1.13, which uses a preparation
-step before the main transformation.
+The lowering first copies shared declarations down to each \texttt{Process},
+producing \texttt{Effective Intent}. This means the resolution reads values
+from one level instead of three, simplifying each rule. The estate pass then
+adds files that belong to no single \texttt{Project}, which no individual
+resolution can compute. The chain also matches QVT specification Section~8.1.13,
+which uses a preparation step before the main transformation.
 
-The scope of each run affects both structure and correctness. Processing one
-project per run while reading all projects matches the production
-implementation and its oracles.
+Processing one project per run while reading all projects matches the
+production implementation and its oracles.
 
 \subsubsection{One Project per Run, All Projects as Input}
 \label{sec:perproject}
 
-It keeps each model small while preserving the cluster-wide view that edges,
-routes and reverse dependencies need. The cost is that one value, the digest
-over all secret-store policies, needs every project's output. The estate pass
-computes this.
+Processing one project per run while reading all projects keeps each
+model small while preserving the cluster-wide view that edges, routes and
+reverse dependencies need. The cost is that one value, the digest over all
+secret-store policies, needs every project's output. The estate pass computes
+this.
 
 \subsubsection{Typed Extents Instead of a Global Scan}
 \label{sec:extentsalternative}
@@ -138,8 +136,6 @@ with an error message prevents this, though it requires the caller to handle
 the failure. The transformation uses fatal assertions in stop queries to
 halt when a value cannot be derived (Section~\ref{sec:stops}).
 
-These structural decisions balance correctness, maintainability and
-verifiability. The model-to-model approach makes every derivation testable.
-The chain structure keeps rules focused. The per-project output matches existing
-oracles. The extent-based approach avoids accidental dependencies. The stop
-strategy prevents silent failures.
+These choices give the transformation the structure it needs: a chain of
+model-to-model steps that each run tests can verify, with explicit control
+flow and predictable inputs.
