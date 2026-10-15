@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.14.0...v0.15.0) (2026-10-15)
+
+
+### Features
+
+* label every pod a Project's unit applies with its release ([#433](https://github.com/JorisJonkers-dev/deploy-kit/issues/433)) ([57d2630](https://github.com/JorisJonkers-dev/deploy-kit/commit/57d26303d9c9ce4447b10f67602abfe63fd60fc4))
+
 ## [0.14.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.13.0...v0.14.0) (2026-10-14)
 
 
