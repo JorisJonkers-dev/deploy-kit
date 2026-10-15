@@ -45,10 +45,7 @@ const documentsOf = (text: string): unknown[] =>
 export const samePinSource = (one: string, other: string): boolean =>
   isDeepStrictEqual(documentsOf(one), documentsOf(other));
 
-/**
- * Whether a unit still recreates its Deployments: one of its patches sets
- * Flux's force policy. A unit's other patches label its pods with a release.
- */
+/** A unit still recreates while one of its patches sets Flux's force policy. */
 const recreating = (unit: Fields): boolean => {
   const patches = fieldsOf(unit["spec"])["patches"];
   return (

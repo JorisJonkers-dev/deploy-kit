@@ -5,7 +5,6 @@
 // unit's path inside it, after the units it follows. Composition writes the
 // file whenever the artifact's pin moves, the first delivery among them, and
 // a Project's first delivery recreates a Deployment it cannot update in place.
-// A Project's unit labels every pod it applies with the release it applies.
 import { FORCE_ANNOTATION } from "../../model/pin-annotations.ts";
 import { ROLLOUT_ANNOTATIONS } from "../../model/rollout.ts";
 import type { FluxKustomization, OciRepository } from "../../objects/custom.ts";
@@ -74,17 +73,9 @@ export const RECREATE_DEPLOYMENTS = {
   target: { kind: "Deployment" },
 } as const;
 
-/** The label a Project's unit puts on every pod it applies: the release, as its Rollout names it. */
 export const VERSION_LABEL = "app.kubernetes.io/version";
 
-/**
- * The patches that label a unit's pods with its release
- * (spec/v1/10-project-intent.md#the-label-set): one for every kind whose pod
- * template is `spec.template`, and one for a CronJob's, a level deeper. A
- * strategic merge creates the label map where a template has none, and a
- * selector is never touched, so the label moves with each release without
- * recreating anything.
- */
+/** Label every pod template a unit applies with its release; a selector is never touched. */
 export const versionPatches = (version: string) => {
   const labelled = (depth: number): string[] =>
     [

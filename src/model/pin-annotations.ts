@@ -18,12 +18,7 @@ export const PIN_ANNOTATIONS = {
   rollbackBackup: "estate.jorisjonkers.dev/rollback-backup",
 } as const;
 
-/**
- * Flux's per-object policy: an object whose immutable fields differ from what
- * is live is deleted and recreated rather than refused. A Project's first
- * delivery sets it on every Deployment, and a committed source that still
- * does is still the first delivery's.
- */
+/** Flux's policy to recreate an object it cannot update; a first delivery sets it. */
 export const FORCE_ANNOTATION = "kustomize.toolkit.fluxcd.io/force";
 
 /** A backup request's id: the workflow run that asked, as a label value can hold it. */
