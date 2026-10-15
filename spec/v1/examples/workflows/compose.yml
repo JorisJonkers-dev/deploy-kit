@@ -65,27 +65,17 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oras-project/setup-oras@v1
 
-      - name: Install the toolkit at this repository's pinned version
+      - name: Install the toolkit toolkit.yml pins
         id: toolkit
         run: |
-          # Bare `npx deploy-kit` resolves from the registry at
-          # invocation time, so two runs of the same inputs could compose with
-          # different toolkits and produce different render hashes. Every step
-          # below calls `npx --no-install`, which can only use what this step
-          # installed.
-          #
-          # The version comes from this repository's own lockfile, bumped by
-          # Renovate behind the ordering gate
-          # (docs/adr/model/0047-one-publication-path.md). It is NOT read from any
-          # document's schemaVersion: schemaVersion is the data model's own
-          # semver and no longer tracks the package version
-          # (docs/adr/model/0044-artifact-schema-versioning.md).
-          npm ci
-          TOOLKIT="$(node -p "require('./package-lock.json') \
-            .packages['node_modules/@jorisjonkers-dev/deploy-kit'].version")"
-          test -n "$TOOLKIT"
+          # The one pin (spec/v1/60-setup.md#the-estate-repository); never a schemaVersion.
+          TOOLKIT="$(yq -er '."deploy-kit"' toolkit.yml)"
+          npm install --no-save --ignore-scripts "@jorisjonkers-dev/deploy-kit@${TOOLKIT}"
+          INTEGRITY="$(node -p "require('./node_modules/.package-lock.json') \
+            .packages['node_modules/@jorisjonkers-dev/deploy-kit'].integrity")"
+          test "$(node -p "require('@jorisjonkers-dev/deploy-kit/package.json').version")" = "$TOOLKIT"
           echo "toolkit=${TOOLKIT}" >> "$GITHUB_OUTPUT"
-          echo "composing with toolkit ${TOOLKIT}"
+          echo "integrity=${INTEGRITY}" >> "$GITHUB_OUTPUT"
 
       - name: Require a digest-pinned Platform document
         if: ${{ !cancelled() }}
@@ -239,7 +229,7 @@ jobs:
             --sources projects/ \
             $LOCK \
             --cluster-state cluster-state.yml \
-            --schema-package-integrity "$(node -p "require('./package-lock.json').packages['node_modules/@jorisjonkers-dev/deploy-kit'].integrity")" \
+            --schema-package-integrity "${{ steps.toolkit.outputs.integrity }}" \
             --out composed/
 
       - name: Publish the lock

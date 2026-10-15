@@ -438,6 +438,7 @@ composition reads and what it records, and nothing rendered:
 | path | what it is | who writes it |
 |---|---|---|
 | `platform.intent.yml` | the Platform document ([chapter 14](14-platform-intent.md)) | a human, by pull request |
+| `toolkit.yml` | the deploy-kit release every workflow on the estate path runs | a human, by pull request |
 | the composition lock | the inputs the last composition rendered from ([chapter 40](40-composition.md)) | the composition workflow |
 | `cluster-state.yml` | the ClusterState snapshot ([0034](../../docs/adr/model/0034-cluster-state-is-a-pinned-input.md)) | the Collector |
 | `projects/<project>/source.yaml` | one pin per Project ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)) | the composition workflow |
@@ -452,16 +453,29 @@ the render diff on the pull request, and publishes nothing.
 for a run with a `workflow_dispatch` of the composition workflow, and a nightly
 schedule runs it anyway,
 so a dispatch that never arrives costs a day, not a deploy. Runs are serialised:
-one composition at a time. The toolkit is the npm package at the exact version
-this repository's lockfile pins, so a toolkit upgrade is a reviewed pull request
-here and never a side effect of a publish elsewhere.
+one composition at a time.
+
+**`toolkit.yml` is the one toolkit pin.** It holds one field, `deploy-kit`, an
+exact release such as `0.15.0`, and the repository holds no `package.json` or
+lockfile. Every workflow on the estate path installs that release and runs
+nothing else: composition, Pause, Resume and Rollback here, and the shared
+Publish Fragment workflow and its dry run, which read the file from this
+repository at one resolved commit when they start. A workflow that cannot read
+it, or cannot install exactly that release, fails; none falls back to another.
+Composition records the integrity of the package it installed in the lock
+([chapter 40](40-composition.md#the-composition-lock)). A toolkit upgrade is
+therefore one reviewed pull request here, which Renovate proposes, and no
+application repository changes. A release a fragment needs never arrives
+before composition runs it, since both read the same file; a fragment
+published by an older release composes as any older fragment does
+([chapter 40](40-composition.md#versioning)).
 
 **Two GitHub Apps reach it, and nothing else does.** Neither holds a long-lived
 token; each is used through a short-lived installation token:
 
 | App | installed on | may | used by |
 |---|---|---|---|
-| **dispatch** | the Estate repository | `actions: write`, to start the composition workflow; `contents: read`, to read the lock for a dry run | an application repository's publish workflow |
+| **dispatch** | the Estate repository | `actions: write`, to start the composition workflow; `contents: read`, to read `toolkit.yml`, and the lock for a dry run | an application repository's publish workflow |
 | | every application repository | `statuses: write`, to report a composition on the commit that published | the composition workflow ([chapter 55](55-delivery.md#notifications)) |
 | **Collector** | the Estate repository | `contents: write`, to commit the snapshot and the moved pins | the Collector, its key read from the Secret Store; the composition workflow, its key a secret of the Estate repository alone ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)) |
 
