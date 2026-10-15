@@ -106,9 +106,13 @@ models, in the target metamodel's own XMI. They belong to no module because
 two use them from opposite ends. `minimal.resolveddeployment` is what the
 Acceleo templates are first run against, and what the QVT-Operational
 transformation produces for `minimal`: the pipeline's resolution test holds the
-two equal, so a change to either is a change to both. It is **not a parity
-oracle**: `resolved.json` binds the production implementation only, for the
-reason [Metamodels](#metamodels) gives, and nothing outside `emf/` reads it.
+two equal, so a change to either is a change to both.
+`secrets.resolveddeployment` is the complete expected model of `secrets`, whose
+dependencies oracle holds no edge and which has no production `resolved.json`:
+the same test holds the transformation's output equal to it, so it is the one
+check on the rest of that case's resolution. Neither is a **parity oracle**:
+`resolved.json` binds the production implementation only, for the reason
+[Metamodels](#metamodels) gives, and nothing outside `emf/` reads them.
 
 A module may depend on the modules above it in this table and on nothing
 below. `tests/parity` depends on no module at all: it reads the files a run
