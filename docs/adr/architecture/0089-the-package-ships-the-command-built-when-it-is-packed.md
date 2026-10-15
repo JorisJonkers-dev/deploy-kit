@@ -75,8 +75,7 @@ package for its command: each would need another way to run it.
 ## Consequences
 
 - Every workflow on the estate path installs the command at the release the
-  Estate repository's `toolkit.yml` names: composition, Pause, Resume and
-  Rollback there, and the shared Publish Fragment workflow every application
+  Estate repository's `toolkit.yml` names: composition there, and the shared Publish Fragment workflow every application
   repository calls. No workflow keeps a lockfile for it, and an application
   repository pins no toolkit of its own
   ([0047](../model/0047-one-publication-path.md)). An upgrade is one pull

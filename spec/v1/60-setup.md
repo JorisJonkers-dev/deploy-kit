@@ -458,8 +458,7 @@ one composition at a time.
 **`toolkit.yml` is the one toolkit pin.** It holds one field, `deploy-kit`, an
 exact release such as `0.15.0`, and the repository holds no `package.json` or
 lockfile. Every workflow on the estate path installs that release and runs
-nothing else: composition, Pause, Resume and Rollback here, and the shared
-Publish Fragment workflow and its dry run, which read the file from this
+nothing else: composition here, and the shared Publish Fragment workflow and its dry run, which read the file from this
 repository at one resolved commit when they start. A workflow that cannot read
 it, or cannot install exactly that release, fails; none falls back to another.
 Composition records the integrity of the package it installed in the lock
