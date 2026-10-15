@@ -9,7 +9,8 @@
 #                                                            -> verify digest
 #
 # An application repository holds its project file and env files and nothing
-# else for this: no toolkit pin, no lockfile, no copy of this pipeline. Its
+# else for this: no toolkit pin, no lockfile, no copy of this pipeline. The
+# toolkit is the one the Estate repository's toolkit.yml pins. Its
 # release workflow calls this one with `uses:`, after its image build
 # (docs/adr/model/0047-one-publication-path.md).
 #
@@ -44,6 +45,8 @@
 #       env: platform/env
 #       images: knowledge-api knowledge-ingest-worker knowledge-migration
 #       version: ${{ needs.release-please.outputs.tag_name }}
+#     secrets:
+#       ESTATE_DISPATCH_APP_PRIVATE_KEY: ${{ secrets.ESTATE_DISPATCH_APP_PRIVATE_KEY }}
 name: Publish Intent Fragment
 
 on:
@@ -62,6 +65,9 @@ on:
       version:
         description: The release tag, vX.Y.Z.
         type: string
+        required: true
+    secrets:
+      ESTATE_DISPATCH_APP_PRIVATE_KEY:
         required: true
 
 permissions: {}
@@ -85,30 +91,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
+      - uses: actions/create-github-app-token@v2
+        id: estate
         with:
-          repository: JorisJonkers-dev/github-workflows
-          ref: <sha>  # the same commit the caller's `uses:` names
-          path: .github-workflows
+          app-id: ${{ vars.ESTATE_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.ESTATE_DISPATCH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: estate
 
-      - name: Install the toolkit at the version this workflow pins
-        working-directory: .github-workflows/tools/deploy-kit
+      - name: Install the toolkit the Estate repository pins
+        env:
+          GH_TOKEN: ${{ steps.estate.outputs.token }}
         run: |
-          # The version lives in ONE place: the lockfile beside this workflow,
-          # bumped by Renovate. No calling repository pins it
-          # (docs/adr/architecture/0089-the-package-ships-the-command-built-when-it-is-packed.md).
-          #
-          # It is NOT read from the project file's schemaVersion. That
-          # field is the DATA MODEL's own semver and no longer tracks the
-          # package version (docs/adr/model/0044-artifact-schema-versioning.md):
-          # reading it as a package version pins the toolkit to a release that
-          # may not exist, and hides the real pin from Renovate. Composition
-          # checks the fragment's schemaVersion against the composing toolkit's
-          # range -- same major, minor <= toolkit -- and that check belongs
-          # there, over the union, not here.
-          npm ci --ignore-scripts
-          echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
-          npm ls --depth=0 @jorisjonkers-dev/deploy-kit
+          # One resolved Estate commit, so the whole run reads one pin; no fallback.
+          ESTATE_SHA="$(gh api repos/JorisJonkers-dev/estate/commits/main --jq .sha)"
+          TOOLKIT="$(gh api "repos/JorisJonkers-dev/estate/contents/toolkit.yml?ref=${ESTATE_SHA}" \
+            -H 'Accept: application/vnd.github.raw' | yq -er '."deploy-kit"')"
+          mkdir -p "$RUNNER_TEMP/toolkit"
+          npm install --no-save --ignore-scripts --prefix "$RUNNER_TEMP/toolkit" \
+            "@jorisjonkers-dev/deploy-kit@${TOOLKIT}"
+          echo "$RUNNER_TEMP/toolkit/node_modules/.bin" >> "$GITHUB_PATH"
+          echo "deploy-kit ${TOOLKIT} from estate ${ESTATE_SHA}"
 
       - name: Validate intent locally
         if: ${{ !cancelled() }}

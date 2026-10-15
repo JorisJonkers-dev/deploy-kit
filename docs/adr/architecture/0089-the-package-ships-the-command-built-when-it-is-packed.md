@@ -18,13 +18,14 @@ suite, the gates and a clone run the TypeScript as it is written.
 
 Every assignment is a function of pinned inputs
 ([0006](../model/0006-pinned-inputs.md)), and the toolkit that composes is one
-of them: a workflow must run the command at the version a lockfile beside that
-workflow pins, which it can only do if the pinned package contains the command.
+of them: a workflow must run the command at the exact release the Estate
+repository's `toolkit.yml` names, which it can only do if that package contains
+the command.
 
-**False if:** a workflow can pin the toolkit some other way that its lockfile
-records and Renovate moves, without the package carrying the command.
-**Settled by:** the worked workflows running only the `deploy-kit` the
-lockfile installed.
+**False if:** a workflow can run a pinned toolkit without installing the
+package, so the package need not carry the command.
+**Settled by:** the worked workflows running only the `deploy-kit` they
+installed at the release `toolkit.yml` names.
 
 ## Why
 
@@ -60,7 +61,7 @@ the installed command.
 | option | cost if taken | why rejected |
 |---|---|---|
 | Bundle the command into one file with esbuild | a new development dependency to pin and update, and a bundle that inlines `zod` and `yaml` | the emitted files map one to one onto the source and the two runtime dependencies stay ordinary dependencies a lockfile records; a bundler buys nothing the tree needs |
-| Run the command from a pinned clone in each workflow | a checkout and an install of the whole repository per run, and a pin that lives in a workflow input | the pin leaves the lockfile, so Renovate and the ordering gate no longer see it |
+| Run the command from a pinned clone in each workflow | a checkout and an install of the whole repository per run, and a pin that lives in a workflow input | the pin becomes a commit of this repository rather than a published release, so nothing records which release composed |
 | Commit `dist/` | a generated tree in every diff | it can disagree with `src/`, and the hygiene of the repository would rest on remembering to rebuild |
 | Ship the TypeScript and a loader flag | nothing to build | Node refuses to strip types under `node_modules` whatever the flag; it would need a runtime dependency that compiles on start |
 | Publish a second package for the command | a second release train | one version already names the model, the specification and the command that implements them |
@@ -73,10 +74,12 @@ package for its command: each would need another way to run it.
 
 ## Consequences
 
-- Two workflows run the command, each from a lockfile beside it: the Estate
-  repository's composition, and the shared Publish Fragment workflow every
-  application repository calls. An application repository pins no toolkit of
-  its own ([0047](../model/0047-one-publication-path.md)).
+- Every workflow on the estate path installs the command at the release the
+  Estate repository's `toolkit.yml` names: composition there, and the shared Publish Fragment workflow every application
+  repository calls. No workflow keeps a lockfile for it, and an application
+  repository pins no toolkit of its own
+  ([0047](../model/0047-one-publication-path.md)). An upgrade is one pull
+  request in the Estate repository.
 - `package.json` gains a `bin`, `dist/` in `files`, and the `build` script.
 - The release, the release candidate and the package-contents job each build
   before they pack.
