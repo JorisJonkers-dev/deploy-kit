@@ -1,65 +1,54 @@
 \section{Tests and Evaluation}
 \label{sec:evaluation}
 
-\subsection{Testing Strategy}
-\label{sec:strategy}
+The transformations are tested by running them on eight examples and comparing
+their output with expected files. Most expected files come from the production
+implementation processing the same documents, and both implementations run
+generating the same oracles.
 
-The transformations are tested by running them on the eight resolved examples
-and comparing what they write with expected files. Most expected files were
-produced by the production implementation from the same documents and reviewed
-before they were committed; the production implementation is tested against the
-same files. Six kinds of test each answer a different question, and the build
-runs all of them on every change.
+Six test types answer different questions, and the build runs all of them on
+every change.
 
-\begin{enumerate}
-  \item \textbf{Lowered models.} For the four examples with shared
-    declarations, the lowered model is written as JSON and compared byte for
-    byte with \texttt{expected/effective.json}.
-  \item \textbf{Dependency edges.} For each example, the resolved edges are
-    exported as JSON and compared byte for byte with
-    \texttt{expected/dependencies.json}. The test reads only files the pipeline
-    wrote, so it tests the pipeline as a user runs it.
-  \item \textbf{Revisions.} Each \texttt{expected/resolved*.json} is the
-    production implementation's resolved document of one application, and
-    records its revision: a digest over the application's complete element.
-    Equal revisions mean that every value of that element matches
-    (Section~\ref{sec:revisionevidence}).
-  \item \textbf{Complete expected models.} Two examples have a complete
-    expected resolved model, compared with EMF's structural equality,
-    \texttt{EcoreUtil.equals}, which covers every attribute and reference:
-    \texttt{minimal}, written by hand from the specification in Task~1 before
-    the transformation existed, and \texttt{secrets}, whose run was reviewed
-    value by value against the specification and the pinned inputs and then
-    committed.
-  \item \textbf{Generated files.} The Acceleo templates of Task~3 decide
-    nothing, so a wrong value in a resolved model becomes a wrong byte in a
-    generated file. Tests generate the files from the transformations' output
-    and compare every file with the committed tree.
-  \item \textbf{Interface tests.} JUnit tests run each transformation on models
-    built in code:
-    \begin{itemize}
-      \item the resolution: the smallest project that resolves, a project the
-        input does not contain, and an Asset whose file is missing, which must
-        stop the run with the file's name;
-      \item the estate pass: one job planned over two projects, a job name that
-        moves when a document changes, no job without documents, and two
-        projects that disagree;
-      \item the lowering: eight cases of merging shared declarations.
-    \end{itemize}
-\end{enumerate}
+Lowered models: for the four examples with shared declarations, the lowered
+model is written as JSON and compared byte-for-byte with the expected
+Effective Intent.
 
+Dependency edges: for each example, the resolved edges are exported as JSON and
+compared byte-for-byte with the expected file. These tests only read files the
+pipeline wrote, verifying the pipeline as a user would run it.
 
-The Java around the transformations must reach full line and branch coverage
-and a 100\% mutation score. Those tools cannot measure QVTo, so the QVTo code is
-measured only by the comparisons above.
+Revisions: each expected resolved file records its revision, a digest over the
+Application's complete element. Equal revisions confirm every value matches
+(Section~\ref{sec:revisionevidence}).
+
+Complete expected models: minimal and secrets have full expected Resolved
+Deployment models, compared using EMF's structural equality (EcoreUtil.equals),
+which checks every attribute and reference.
+
+Generated files: since Task~3 templates decide nothing, a wrong value in a
+Resolved Deployment becomes a wrong byte in a generated file. Tests generate
+the files from the transformation output and compare each with the committed
+output.
+
+Interface tests: JUnit tests run each transformation on models built in code.
+The resolution is tested with the smallest project that resolves, a project
+not in the input, and an Asset whose file is missing which must stop with
+the file name. The estate pass is tested with one job planned over two
+projects, a job name that moves when a document changes, no job without
+documents, and two projects that disagree. The lowering is tested with eight
+cases of merging shared declarations.
+
+The Java code around the transformations must reach full line and branch
+coverage and a 100% mutation score. These tools cannot measure QVTo, so the
+QVTo code is verified only by the comparisons above.
 
 \subsection{Results}
 \label{sec:results}
 
-Table~\ref{tab:results} lists the eight examples. All eight resolve, and every
-comparison that has an expected file passes. The full build, 323 tests
-including 81 parity cases, passes, and \texttt{minimal} and \texttt{secrets}
-equal their complete expected models.
+Table~\ref{tab:results} lists the eight examples. All resolve successfully and
+every comparison with an expected file passes. The full build runs 323 tests
+including 81 parity checks and passes. Both minimal and secrets equal their
+complete expected models.
 
 \begin{table}[!htbp]
 \centering
@@ -87,138 +76,134 @@ Secrets, Volumes, Environment Variables and Planned Files, and the Comparisons
 \label{tab:results}
 \end{table}
 
-Together the examples use every row of Table~\ref{tab:rules}. \texttt{auth}
-carries the migration, the placeholders and an edge to a provider outside the
-cluster; \texttt{data} the backups of each durability class, a sidecar and an
-Asset; \texttt{knowledge-platform} is the largest; \texttt{delivery} has the
-rolling and stop-start switchovers and API access; and \texttt{edge},
-\texttt{observability} and \texttt{secrets} hold the platform services the
-others look up.
+Together the examples exercise every row of Table~\ref{tab:rules}. auth
+contains the migration, placeholders and an edge to a provider outside the
+cluster. data contains backups of each durability class, a Sidecar and an Asset.
+knowledge-platform is the largest. delivery has rolling and stop-start
+switchovers plus API access. edge, observability and secrets provide platform
+services the others reference.
 
 \subsubsection{What the Revisions Show}
 \label{sec:revisionevidence}
 
-An application's revision is the digest of its whole element as the production
-implementation writes it:
+An Application revision is the digest of its whole element as the production
+implementation writes it: its Processes with image, user, deadline, probes,
+placement, secrets, volumes, backups, environment and edges; its Exposures and
+routes; its ReleaseGate and migration.
 
-\begin{itemize}
-  \item its processes, with image, user, deadline, probes, placement, secrets,
-    volumes, backups, environment and edges;
-  \item its exposures and their routes;
-  \item its release gate and its migration.
-\end{itemize}
-
-The transformation builds that text from its own resolved model
+The transformation builds that text from its own Resolved Deployment
 (Section~\ref{sec:blackbox}), so one different value, one extra environment
-variable or one different order changes the digest. Ten applications in five
-examples have a revision in an expected file, and all ten are reproduced. For
-these applications the check does the job a hand-written model would, and the
-expected values come from another implementation. A further test checks that
-the revision moves for the right reasons: raising \texttt{minimal}'s memory from
-\texttt{256Mi} to \texttt{512Mi} changes it, while changing the snapshot's
-capture time, which decides nothing, does not.
+variable or one different order changes the digest. Ten Applications across five
+examples have a revision in an expected file, and all ten match.
+
+For these Applications, the revision check verifies nearly every value at once,
+a task a hand-written model could not achieve with the same effort. A further
+test confirms the revision moves for the right reasons: raising minimal memory
+from 256Mi to 512Mi changes it, but changing the snapshot capture time, which
+decides nothing, does not.
 
 \subsubsection{What the Generated Files Show}
 \label{sec:treeevidence}
 
 Values no revision covers, such as the path plan, network policies and Vault
-documents, reach the generated files: 167 committed files of five examples and
-the cluster-wide tree, the estate pass's job included, are reproduced byte for
-byte, and twice the same inputs give the same bytes.
+documents, still appear in generated files. 167 committed files across five
+examples and the cluster-wide tree, including the estate pass job, are
+reproduced byte-for-byte. The same inputs always produce the same bytes.
 
 \subsubsection{Where the Evidence Is Thin}
 \label{sec:thin}
 
-Two examples, \texttt{edge} and \texttt{observability}, have no revision, no
-committed tree and no expected model, and their edge files are empty. For them
-the evidence is that the run succeeds and that the other examples, which look
-up their proxies and collectors, reproduce their expected files. The
-\texttt{secrets} model is a reviewed output, not an independent oracle: it
-catches any later change, and the review itself found one gap, in the
-specification rather than the transformation, since the secret store's network
-policy admits nobody inbound even though every holder of a secret may send to
-it. Finally, the hand-written model of \texttt{minimal} was updated after
-Task~1 to follow the metamodel changes of Appendix~\ref{app:target}, and its
-revision was taken from the production implementation, so that one field no
-longer checks independently.
+Two examples, edge and observability, have no revision, no committed tree and
+no expected model. Their edge files are empty. For them, the evidence is that
+the run succeeds and that other examples, which look up their proxies and
+collectors, reproduce their expected files.
+
+The secrets model is a reviewed output rather than an independent oracle. It
+catches any later change, and the review itself found one gap in the
+specification: the Secret Store network policy admits nobody inbound even
+though every holder of a Secret may send to it.
+
+The hand-written model of minimal from Task~1 was updated after Task~1 to
+follow the metamodel changes of Appendix~\ref{app:target}. Its revision was
+taken from the production implementation, so one field no longer checks
+independently.
 
 \subsubsection{Defects Found by Testing}
 \label{sec:defects}
 
-The comparisons found defects one example alone would not show. The clearest:
-the path plan put the cluster-wide route files under \path{apps/edge/}, which is
-also the directory of the project named \texttt{edge}. The \texttt{edge}
-example's files would have been mixed with the routes of every other project.
-The fix moved every cluster-wide file under \path{estate/}, in both
-implementations, and the committed trees now hold each file at its new path.
+Comparisons found defects no single example would reveal. The clearest: the
+path plan placed cluster-wide route files under apps/edge/, which is also the
+directory of the project named edge. The edge example's files would have mixed
+with routes from every other Project. The fix moved all cluster-wide files under
+estate/, in both implementations, and the committed trees now hold each file
+at its correct path.
 
 \subsection{Limitations}
 \label{sec:limitations}
 
-\begin{itemize}
-  \item \textbf{The oracles are another implementation's output.} Agreement
-    shows that two implementations of the specification decide the same,
-    not that the specification is right. Only the hand-written model of
-    \texttt{minimal} was written from the specification alone.
-  \item \textbf{Eight examples are a sample.} They show that every rule runs
-    and agrees on these inputs, not that each rule is right in every case; the
-    QVTo code is not mutation-tested.
-  \item \textbf{Checks across documents are stops, not diagnostics.} A stop
-    reports one problem, without its place in the document. Most such checks
-    have moved into the constraints; the remaining stops are a safety net. The
-    cross-document constraints still scan with \texttt{allInstances()}; moving
-    them onto one root object is decided but not built.
-  \item \textbf{Queries are recomputed.} QVTo keeps mapping results in the
-    trace but caches no query, so \texttt{edgeOf} or a surface's address is
-    recomputed wherever it is used, and several queries scan every process of
-    the cluster: the work grows with the square of the number of processes.
-    Parsing, checking, lowering, resolving and writing all eight examples takes
-    about 17 seconds. For a much larger cluster the hot queries would become
-    mappings or precomputed properties, measured first, since mapping calls
-    have their own cost~\cite{amstel2011}.
-  \item \textbf{Capacity is checked per machine.} A process is eligible for a
-    machine that can hold it alone; the resolution does not add up what all
-    processes ask of one machine.
-  \item \textbf{Two small modelling choices.} When two processes provide the
-    same surface, the first in name order wins; and the order between reconcile
-    units is per project, not per application, because Flux orders whole units.
-  \item \textbf{Provenance digests differ by design.} Input digests are hashes
-    over each implementation's own form of the model. Every digest that reaches
-    a generated file, the revision, an Asset's name and the policy job's name,
-    is reproduced.
-  \item \textbf{The \texttt{knowledge} example is not resolved.} It models a
-    project being retired; its successor, \texttt{knowledge-platform}, is.
-  \item \textbf{The Eclipse run configuration is not tested.} The build runs the
-    transformations through the standalone executor; the run configuration and
-    the library registration in \texttt{plugin.xml} are only run by hand.
-\end{itemize}
+The oracles come from another implementation. Agreement shows two
+implementations of the specification decide the same, not that the
+specification itself is correct. Only the hand-written model of minimal was
+written directly from the specification.
+
+Eight examples form a sample. They demonstrate every rule runs and agrees on
+these inputs, not that each rule is correct in every case. The QVTo code is not
+mutation-tested.
+
+Checks across documents are stops, not diagnostics. A stop reports one problem
+without its document location. Most such checks moved into constraints; the
+remaining stops are a safety net. The cross-document constraints still use
+allInstances(); moving them onto one root object is decided but not implemented.
+
+Queries are recomputed. QVTo caches mapping results but not queries, so
+edgeOf or a Surface address is recomputed wherever used. Several queries scan
+every Process in the cluster, so work grows with the square of Process count.
+Parsing, checking, lowering, resolving and writing all eight examples takes
+about 17 seconds. For much larger clusters, hot queries would become mappings
+or precomputed properties, measured first.
+
+Capacity is checked per machine. A Process is eligible for a machine that can
+hold it alone. The resolution does not sum what all Processes request of one
+machine.
+
+Two small modelling choices remain. When two Processes provide the same
+Surface, the first in name order wins. The order between ReconcileUnits is per
+Project, not per Application, because Flux orders whole units.
+
+Provenance digests differ by design. Input digests are hashes over each
+implementation's own model form. Every digest reaching a generated file—the
+revision, an Asset name, the policy job name—is reproduced.
+
+The knowledge example is not resolved. It models a Project being retired.
+Its successor, knowledge-platform, is.
+
+The Eclipse run configuration is not tested. The build uses the standalone
+executor. The configuration and plugin.xml registration are only run manually.
 
 \subsection{Reflection}
 \label{sec:reflection}
 
-The largest single piece of the resolution is not a derivation but the
-revision: writing the production implementation's JSON form of an application
-in OCL, key by key, takes about a sixth of \texttt{resolution.qvto}, and every
-mistake in it shows only as a different hash. It was worth it: once the
-revisions matched, they checked nearly every value of ten applications at once,
-which a second hand-written model could not have done for the same effort.
+The largest single piece is not a derivation but the revision. Writing the
+production implementation's JSON form of an Application in OCL, key by key, takes
+about one sixth of resolution.qvto. Every mistake shows only as a different
+hash. It was worth the effort: once the revisions matched, they verified nearly
+every value of ten Applications simultaneously, which a second hand-written model
+could not achieve for the same work.
 
-QVTo itself fitted the work. Most rules are queries over the whole cluster, which
-OCL expresses well, and the explicit trace made every reference between created
-elements visible. Three language details cost time:
+QVTo fitted the work well. Most rules are queries over the whole cluster,
+which OCL expresses naturally. The explicit trace made every reference between
+created elements visible. Three language details cost time.
 
-\begin{itemize}
-  \item \texttt{resolve}, \texttt{from} and \texttt{access} are keywords, so the
-    black-box unit is not named after its Java package, and two metamodel
-    features are written \texttt{\_from} and \texttt{\_access};
-  \item a multi-statement \texttt{if} needs the brace form;
-  \item inside an object expression, \texttt{result} still means the enclosing
-    mapping's result, not the object being created.
-\end{itemize}
+resolve, from and access are keywords, so the black-box unit is not named after
+its Java package, and two metamodel features are written \texttt{\_from} and \texttt{\_access}.
+
+A multi-statement if needs braces.
+
+Inside an object expression, result still refers to the enclosing mapping result,
+not the object being created.
 
 With hindsight, the evidence would have been planned with the examples. The
-expected model of \texttt{secrets} and the parity checks of
-\texttt{knowledge-platform} were added only at the end, when a review asked
-which examples nothing compared; and the Task~1 model of \texttt{minimal}
-should have been kept unchanged beside the updated one, so the one independent
-oracle stays independent.
+expected model of secrets and the parity checks for knowledge-platform were only
+added at the end, when a review asked which examples had no comparison. The Task~1
+model of minimal should have been kept unchanged beside the updated one, so the
+one independent oracle would remain independent.
