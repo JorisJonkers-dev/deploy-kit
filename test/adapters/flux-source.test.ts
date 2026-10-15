@@ -10,6 +10,8 @@ import {
   renderPinSource,
   sourceOf,
   UNPUBLISHED,
+  VERSION_LABEL,
+  versionPatches,
 } from "../../src/adapters/flux/source.ts";
 import type { OciRepository } from "../../src/objects/custom.ts";
 
@@ -176,6 +178,65 @@ describe("a pin source", () => {
       metadata: { name: "any", annotations: { [FORCE_ANNOTATION]: "Enabled" } },
     });
     expect(FORCE_ANNOTATION).toBe("kustomize.toolkit.fluxcd.io/force");
+  });
+
+  it("labels every pod a unit applies with the release its Rollout names, and none without one", () => {
+    const unit = (annotations?: Record<string, string>) => ({
+      name: "apps-notes",
+      path: "apps/notes",
+      after: [],
+      ...(annotations === undefined ? {} : { annotations }),
+    });
+    const patchesOf = (
+      annotations: Record<string, string> | undefined,
+      recreate = false,
+    ) =>
+      (
+        renderPinSource(
+          "project-notes",
+          "notes",
+          [unit(annotations)],
+          FLUX,
+          {},
+          recreate,
+        )[1] as { spec: Record<string, unknown> }
+      ).spec["patches"];
+    const released = { "event.toolkit.fluxcd.io/version": "1.10" };
+
+    expect(patchesOf(released)).toStrictEqual(versionPatches("1.10"));
+    expect(patchesOf(released, true)).toStrictEqual([
+      RECREATE_DEPLOYMENTS,
+      ...versionPatches("1.10"),
+    ]);
+    expect(patchesOf({ "event.toolkit.fluxcd.io/sha": "abc" })).toBeUndefined();
+    expect(patchesOf(undefined)).toBeUndefined();
+
+    // Every kind with a pod template, the label quoted so 1.10 stays a string,
+    // and nothing that could reach a selector.
+    const [templated, cronJob] = versionPatches("1.10");
+    expect(templated.target).toStrictEqual({
+      kind: "Deployment|StatefulSet|DaemonSet|Job",
+    });
+    expect(parse(templated.patch)).toStrictEqual({
+      apiVersion: "apps/v1",
+      kind: "Deployment",
+      metadata: { name: "any" },
+      spec: { template: { metadata: { labels: { [VERSION_LABEL]: "1.10" } } } },
+    });
+    expect(cronJob.target).toStrictEqual({ kind: "CronJob" });
+    expect(parse(cronJob.patch)).toStrictEqual({
+      apiVersion: "batch/v1",
+      kind: "CronJob",
+      metadata: { name: "any" },
+      spec: {
+        jobTemplate: {
+          spec: {
+            template: { metadata: { labels: { [VERSION_LABEL]: "1.10" } } },
+          },
+        },
+      },
+    });
+    expect(VERSION_LABEL).toBe("app.kubernetes.io/version");
   });
 
   it("pulls a private repository with the Secret the Platform document names, and a public one with none", () => {

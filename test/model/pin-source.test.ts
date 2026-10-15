@@ -25,22 +25,27 @@ describe("readPinSource", () => {
     });
   });
 
-  it("reads a first delivery's from any unit that carries a patch", () => {
+  it("reads a first delivery's from any unit whose patch sets Flux's force policy", () => {
+    const force =
+      "  patches:\n    - patch: |\n        metadata:\n          annotations:\n            kustomize.toolkit.fluxcd.io/force: Enabled\n";
+    const label =
+      "  patches:\n    - patch: |\n        spec:\n          template:\n            metadata:\n              labels:\n                app.kubernetes.io/version: 1.0.0\n    - target: {}\n";
+    const recreates = (...specs: string[]) =>
+      readPinSource([repository, ...specs.map(unit)].join("---\n"))?.recreates;
+
+    expect(recreates("  path: ./a\n", `  path: ./b\n${force}`)).toBe(true);
+    // A release's label is not a first delivery's, nor is a patch that holds nothing.
+    expect(recreates(`  path: ./a\n${label}`)).toBe(false);
+    expect(recreates("  path: ./a\n  patches: []\n")).toBe(false);
+    expect(recreates("  path: ./a\n  patches: {}\n")).toBe(false);
     expect(
       readPinSource(
-        [
-          repository,
-          unit("  path: ./a\n"),
-          unit("  path: ./b\n  patches: []\n"),
-        ].join("---\n"),
+        [repository, unit("  path: ./b\n  patches: []\n")].join("---\n"),
       ),
     ).toStrictEqual({
       digest: DIGEST,
-      recreates: true,
-      units: [
-        { kind: "Kustomization", spec: { path: "./a" } },
-        { kind: "Kustomization", spec: { path: "./b", patches: [] } },
-      ],
+      recreates: false,
+      units: [{ kind: "Kustomization", spec: { path: "./b", patches: [] } }],
       rollout: {},
     });
   });

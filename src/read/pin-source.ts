@@ -12,6 +12,7 @@
 // is not one to write again.
 import { isDeepStrictEqual } from "node:util";
 import { parseAllDocuments } from "yaml";
+import { FORCE_ANNOTATION } from "../model/pin-annotations.ts";
 import { ROLLOUT_ANNOTATIONS } from "../model/rollout.ts";
 
 type Fields = Readonly<Record<string, unknown>>;
@@ -44,6 +45,25 @@ const documentsOf = (text: string): unknown[] =>
 export const samePinSource = (one: string, other: string): boolean =>
   isDeepStrictEqual(documentsOf(one), documentsOf(other));
 
+/**
+ * Whether a unit still recreates its Deployments: one of its patches sets
+ * Flux's force policy. A unit's other patches label its pods with a release.
+ */
+const recreating = (unit: Fields): boolean => {
+  const patches = fieldsOf(unit["spec"])["patches"];
+  return (
+    Array.isArray(patches) &&
+    patches.some((entry) => {
+      const patch = fieldsOf(entry)["patch"];
+      if (typeof patch !== "string") return false;
+      const annotations = fieldsOf(
+        fieldsOf(fieldsOf(documentsOf(patch)[0])["metadata"])["annotations"],
+      );
+      return annotations[FORCE_ANNOTATION] === "Enabled";
+    })
+  );
+};
+
 /** What `text` pins, or nothing where it names no artifact by digest. */
 export function readPinSource(text: string): CommittedPin | undefined {
   const objects = documentsOf(text).map(fieldsOf);
@@ -56,7 +76,7 @@ export function readPinSource(text: string): CommittedPin | undefined {
   const carried = fieldsOf(fieldsOf(units[0]?.["metadata"])["annotations"]);
   return {
     digest,
-    recreates: units.some(({ spec }) => "patches" in fieldsOf(spec)),
+    recreates: units.some(recreating),
     units,
     rollout: Object.fromEntries(
       Object.values(ROLLOUT_ANNOTATIONS).flatMap((key) => {

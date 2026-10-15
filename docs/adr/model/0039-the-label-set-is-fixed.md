@@ -37,9 +37,16 @@ naming the Application would make every Process of a multi-Process Application
 ambiguous the moment anything selected on `name` alone: `auth` has two, so this
 is not hypothetical.
 
-There is no `version`. It could only come from the images lock, so it would
-change on every bump, for a value no selector may use and that the image digest
-already states on the object.
+There is no `version` in the set, and the render writes none. A pod does need
+to say which release it ran, so that it and its logs can be tied to a release,
+and a Project's Reconcile Unit puts `app.kubernetes.io/version` on every pod
+template and `Job` it applies, from the release its Rollout names
+([0099](0099-a-rollout-is-a-github-deployment-driven-by-the-clusters-events.md)).
+It stays out of the render for the reason the Rollout does: the release is the
+fragment's claim about itself, and in the render it would make every release a
+new artifact, so one whose objects are otherwise the ones already pinned would
+move its pin and restart every pod for nothing. It is never a selector, since
+it moves with every release.
 
 An estate-scoped Deliverable carries `managed-by` only. It belongs to no
 Process and no Application, and `part-of` on the Gatus endpoints ConfigMap would
@@ -51,7 +58,8 @@ name an Application that does not own it.
 | Leave the set to the renderer | Nothing to specify; behaviour unchanged | Two of the labels are immutable selectors, so the convention is a one-way door being held open by nobody's decision |
 | Let a Process add labels | Authors can tag for their own tooling | A label is a selector surface; an authored label can collide with a derived one, and anything worth selecting on is a model concept that should be named |
 | `name` = Application, `instance` = Process | Reads the way the upstream convention intends | Makes every Process of a two-Process Application ambiguous under a `name`-only selector, and `auth` is exactly that case |
-| Include `version` from the images lock | Fills in the conventional set | Churns on every image bump for a value no selector may use and the digest already carries |
+| Include `version` from the images lock | Fills in the conventional set | Churns on every image bump, and names an image's version where a reader needs the release's |
+| Render `version` from the fragment's release | One place writes every label | The render stops being a function of what it derives: a release with nothing new would publish an artifact, move its pin and restart its pods |
 
 ## Reversibility
 Undo cost today: none of the five is live-critical *except* the two selectors,
@@ -73,3 +81,7 @@ first render rather than after.
 - `component` carries `runtime`, so a Process changing runtime rewrites a
   label; harmless, and it means the label tracks a declaration rather than a
   guess, paid by nobody.
+- `app.kubernetes.io/version` moves on every pin move, so a release that
+  changes only an object without pods, a policy or a route, still rolls its
+  pods. Paid on each such release, in restarts, for pods that always say
+  which release they ran.
