@@ -197,7 +197,7 @@ describe("renderIntentSet", () => {
       const generating = (document: string) =>
         document.replace(
           "          - path: secret/data/platform/postgres/exporter\n            keys: [datasource]",
-          "          - path: secret/data/data-system/exporter\n            keys: [{ name: token, generate: { encoding: base64url } }, { name: key, generate: {} }]\n            access: read\n            delivery: self\n            rotation: {tolerates: restart}\n          - path: secret/data/platform/postgres/exporter\n            keys: [datasource]",
+          "          - path: secret/data/data-system/exporter\n            keys: [{ name: token, generate: { encoding: base64url } }, { name: key, generate: {} }]\n            access: read\n            delivery: self\n            rotation: {tolerates: restart}\n          - path: secret/data/data-system/a\n            keys: [{ name: x, generate: {} }, { name: b, generate: {} }]\n            access: read\n            delivery: self\n            rotation: {tolerates: restart}\n          - path: secret/data/data-system/m\n            keys: [{ name: c, generate: {} }, { name: d, generate: {} }]\n            access: read\n            delivery: self\n            rotation: {tolerates: restart}\n          - path: secret/data/platform/postgres/exporter\n            keys: [datasource]",
         );
       const tree = asTree(
         artifact(
@@ -214,6 +214,18 @@ describe("renderIntentSet", () => {
       ).toStrictEqual({
         keys: [
           {
+            path: "secret/data/data-system/a",
+            key: "b",
+            bytes: 32,
+            encoding: "hex",
+          },
+          {
+            path: "secret/data/data-system/a",
+            key: "x",
+            bytes: 32,
+            encoding: "hex",
+          },
+          {
             path: "secret/data/data-system/exporter",
             key: "key",
             bytes: 32,
@@ -224,6 +236,18 @@ describe("renderIntentSet", () => {
             key: "token",
             bytes: 32,
             encoding: "base64url",
+          },
+          {
+            path: "secret/data/data-system/m",
+            key: "c",
+            bytes: 32,
+            encoding: "hex",
+          },
+          {
+            path: "secret/data/data-system/m",
+            key: "d",
+            bytes: 32,
+            encoding: "hex",
           },
         ],
       });

@@ -372,11 +372,6 @@ context GeneratedKey
 			and k.grant.path = grant.path and k.name = name and k.rank < rank
 			and not (owner.levelsAbove->includes(k.owner) or k.owner.levelsAbove->includes(owner)))
 
-context Generate
-	-- The schema bounds a generated key's length.
-	inv schema:
-		bytes = null or (bytes >= 16 and bytes <= 512)
-
 	-- A `self-roll` grant on the path, or a `custody` grant on it or above it,
 	-- writes it too.
 	inv E_GENERATED_KEY_WRITTEN_ELSEWHERE:
@@ -384,6 +379,11 @@ context Generate
 			(g.access = AccessTier::selfRoll and g.path = grant.path)
 			or (g.access = AccessTier::custody
 				and (g.path = grant.path or grant.path.startsWith(g.path + '/'))))
+
+context Generate
+	-- The schema bounds a generated key's length.
+	inv schema:
+		bytes = null or (bytes >= 16 and bytes <= 512)
 
 context DatabaseGrant
 	-- The owner role changes the schema, and is derived for the migration alone.

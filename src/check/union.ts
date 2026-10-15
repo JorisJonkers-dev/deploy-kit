@@ -317,14 +317,11 @@ const writerAccess = (grant: Grant, path: string): string | undefined =>
 const levelOf = ({ path }: { readonly path: string }): string =>
   path.slice(0, path.lastIndexOf("/secrets/"));
 
-/** Whether one key's grant sits below the other's, and so replaces it. */
+/** Whether a later key's grant sits below an earlier one's, and so replaces it. Only one document can generate a Project's key. */
 const replaces = (
-  a: { readonly document: string; readonly path: string },
-  b: { readonly document: string; readonly path: string },
-): boolean =>
-  a.document === b.document &&
-  (levelOf(b).startsWith(`${levelOf(a)}/`) ||
-    levelOf(a).startsWith(`${levelOf(b)}/`));
+  earlier: { readonly path: string },
+  later: { readonly path: string },
+): boolean => levelOf(later).startsWith(`${levelOf(earlier)}/`);
 
 /** The coordinates an edge hands its consumer (spec/v1/10-project-intent.md#placeholder-sources). */
 const COORDINATES: ReadonlySet<string> = new Set(["host", "port"]);

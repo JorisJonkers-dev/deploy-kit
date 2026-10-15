@@ -68,6 +68,8 @@ function generatedOf(project: ResolvedProject): GeneratedKey[] {
               encoding,
             });
   return [...keys.values()].sort((a, b) =>
+    // No two keys share a path and a name, so `<=` would order the same list.
+    // Stryker disable next-line EqualityOperator
     a.path === b.path ? (a.key < b.key ? -1 : 1) : a.path < b.path ? -1 : 1,
   );
 }

@@ -282,8 +282,48 @@ ${secrets}`;
     ]);
   });
 
+  it("may share its name with a key generated on another path", () => {
+    expect(
+      refusals(api(generates(PATH)) + worker(generates(`${PATH}/other`))),
+    ).toStrictEqual([]);
+  });
+
+  it.each([
+    ["self-roll", `${PATH}/other`],
+    ["custody", `${PATH}/other`],
+    ["custody", "secret/data/refusals-system/ap"],
+  ])("is not refused where a %s grant writes %s", (access, path) => {
+    const writes = `        secrets:\n          - { path: ${path}, keys: [any], access: ${access}, delivery: self, rotation: { tolerates: restart } }\n`;
+    expect(refusals(api(generates(PATH)) + worker(writes))).toStrictEqual([]);
+  });
+
+  /** A second Project's document, `other`, holding `secrets` on one Process. */
+  const other = (name: string, secrets: string) => ({
+    name: `${name}.project.yml`,
+    text: project(
+      worker(secrets).replaceAll("worker", `${name}-worker`),
+    ).replace("project: refusals", `project: ${name}`),
+  });
+
+  it("names the document of a writer elsewhere", () => {
+    const rolls = `        secrets:\n          - { path: ${PATH}, keys: [any], access: self-roll, delivery: self, rotation: { tolerates: restart } }\n`;
+    expect(
+      refusals(api(generates(PATH)), {
+        files: [other("other", rolls)],
+      }).filter(({ code }) => code === "E_GENERATED_KEY_WRITTEN_ELSEWHERE"),
+    ).toStrictEqual([
+      {
+        code: "E_GENERATED_KEY_WRITTEN_ELSEWHERE",
+        path: "/applications/0/processes/0/secrets/0/keys/0",
+        message: `session_key of ${PATH} is generated, and a self-roll grant in other.project.yml at /applications/0/processes/0/secrets/0 writes that path`,
+        hint: "Generate the key on a path nothing else writes, or drop `generate` and let the writer own it.",
+      },
+    ]);
+  });
+
   it.each([
     ["self-roll", PATH],
+    ["custody", PATH],
     ["custody", "secret/data/refusals-system"],
   ])("is refused where a %s grant writes its path", (access, path) => {
     const writes = `        secrets:\n          - { path: ${path}, keys: [any], access: ${access}, delivery: self, rotation: { tolerates: restart } }\n`;
