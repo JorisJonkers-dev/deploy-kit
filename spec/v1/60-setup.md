@@ -373,8 +373,9 @@ derived (`<project>-system`), so no step below names one.
    `recoverable` or `irreplaceable`; and `probes.readiness` / `probes.liveness`,
    each with its own `path` + `port` or `tcp`, or `probes: none` stated
    explicitly where there is nothing to probe.
-6. Add `.github/workflows/publish-fragment.yml`
-   ([example](examples/workflows/project-publish-fragment.yml)).
+6. Call the shared Publish Fragment workflow from the release workflow, after
+   the image build ([example](examples/workflows/project-publish-fragment.yml)).
+   The repository pins no toolkit: no `package.json` or lockfile for it.
 7. Register the repository in `participants.yml` with its staleness bound:
    `maxAge` defaults to **7 days**
    ([0043](../../docs/adr/model/0043-participants-list-staleness.md)).

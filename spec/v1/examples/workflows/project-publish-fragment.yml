@@ -1,22 +1,25 @@
-# applications/knowledge/.github/workflows/publish-fragment.yml
+# JorisJonkers-dev/github-workflows/.github/workflows/publish-fragment.yml,
+# called by applications/knowledge
 #
-# Publishes this repository's Intent Fragment once a release's images are built.
+# Publishes one repository's Intent Fragment once a release's images are built.
 #
 #   images built on a release tag -> validate -> resolve image digests -> build fragment
 #                                                            -> oras push
 #                                                            -> oras resolve
 #                                                            -> verify digest
 #
-# ONE PROJECT FILE IS ONE FRAGMENT (docs/adr/model/0009-intent-is-authored-one-file-per-project.md).
-# This repository holds one, platform/knowledge.project.yml, so it publishes one
-# fragment; a repository holding several project files runs these steps once per
-# file, and a project never spans repositories, so no fragment is ever a partial
-# project.
+# An application repository holds its project file and env files and nothing
+# else for this: no toolkit pin, no lockfile, no copy of this pipeline. Its
+# release workflow calls this one with `uses:`, after its image build
+# (docs/adr/model/0047-one-publication-path.md).
 #
-# Fires AFTER this repository's image build for a release tag, never beside it,
-# and never for a merge that is not released: release-please tags the release,
-# the tag builds the images, and only then does the fragment publish, carrying
-# the release's version
+# ONE PROJECT FILE IS ONE FRAGMENT (docs/adr/model/0009-intent-is-authored-one-file-per-project.md).
+# A repository holding several project files calls this once per file, and a
+# project never spans repositories, so no fragment is ever a partial project.
+#
+# Called on a release tag, never for a merge that is not released:
+# release-please tags the release, the tag builds the images, and only then
+# does the fragment publish, carrying the release's version
 # (docs/adr/model/0083-a-fragment-publishes-on-a-release-tag.md). A fragment
 # names only images that exist: every alias it names is resolved to a digest, a
 # UID and a GID in the fragment's own share of the images lock, so a
@@ -30,27 +33,46 @@
 # identical. Each check carries `if: ${{ !cancelled() }}` so a single failure
 # still surfaces the rest; the push runs only when every check succeeded, so a
 # failed validation or an image that does not resolve publishes nothing.
+#
+# The caller, in applications/knowledge/.github/workflows/release.yml:
+#
+#   fragment:
+#     needs: [release-please, images]
+#     uses: JorisJonkers-dev/github-workflows/.github/workflows/publish-fragment.yml@<sha> # vX.Y.Z
+#     with:
+#       project-file: platform/knowledge.project.yml
+#       env: platform/env
+#       images: knowledge-api knowledge-ingest-worker knowledge-migration
+#       version: ${{ needs.release-please.outputs.tag_name }}
 name: Publish Intent Fragment
 
 on:
-  workflow_run:
-    workflows: [Build images]
-    types: [completed]
-    # A tag-triggered run reports the tag as its head branch.
-    branches: ["v*"]
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      project-file:
+        type: string
+        required: true
+      env:
+        type: string
+        required: true
+      images:
+        description: The image aliases this release built, space separated.
+        type: string
+        required: true
+      version:
+        description: The release tag, vX.Y.Z.
+        type: string
+        required: true
 
 permissions: {}
 
 concurrency:
-  group: publish-fragment-${{ github.ref }}
+  group: publish-fragment-${{ github.repository }}-${{ inputs.project-file }}
   cancel-in-progress: false
 
 jobs:
   publish:
     name: Validate and publish
-    # Only a build that succeeded has images to name.
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -62,17 +84,19 @@ jobs:
       digest: ${{ steps.resolve.outputs.digest }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          # The commit the images were built from, not whatever main is now.
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      - name: Install the toolkit at this repository's pinned version
+      - uses: actions/checkout@v4
+        with:
+          repository: JorisJonkers-dev/github-workflows
+          ref: <sha>  # the same commit the caller's `uses:` names
+          path: .github-workflows
+
+      - name: Install the toolkit at the version this workflow pins
+        working-directory: .github-workflows/tools/deploy-kit
         run: |
-          # The version lives in ONE place: this repository's own lockfile,
-          # bumped by Renovate behind the ordering gate
-          # (docs/adr/model/0047-one-publication-path.md). Restating it here is how
-          # the previous render-local.sh copies went stale by four minor
-          # releases.
+          # The version lives in ONE place: the lockfile beside this workflow,
+          # bumped by Renovate. No calling repository pins it
+          # (docs/adr/architecture/0089-the-package-ships-the-command-built-when-it-is-packed.md).
           #
           # It is NOT read from the project file's schemaVersion. That
           # field is the DATA MODEL's own semver and no longer tracks the
@@ -82,7 +106,9 @@ jobs:
           # checks the fragment's schemaVersion against the composing toolkit's
           # range -- same major, minor <= toolkit -- and that check belongs
           # there, over the union, not here.
-          npm ci
+          npm ci --ignore-scripts
+          echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+          npm ls --depth=0 @jorisjonkers-dev/deploy-kit
 
       - name: Validate intent locally
         if: ${{ !cancelled() }}
@@ -94,9 +120,7 @@ jobs:
           # Estate-wide invariants cannot be checked here and are
           # composition's job. A directory is read as every file below it, so
           # the env files reach the project file they sit beside.
-          npx --no-install deploy-kit validate \
-            platform/knowledge.project.yml \
-            platform/env
+          deploy-kit validate "${{ inputs.project-file }}" "${{ inputs.env }}"
 
       - uses: oras-project/setup-oras@v1
         if: ${{ !cancelled() }}
@@ -111,16 +135,14 @@ jobs:
           # the image itself (docs/adr/model/0020-hardening-is-one-platform-posture.md).
           # Nothing here names a digest by hand, and nothing later reads a tag.
           echo "$GH_TOKEN" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
-          TAG="${{ github.event.workflow_run.head_branch || github.ref_name }}"
+          TAG="${{ inputs.version }}"
           {
             echo "apiVersion: lock.jorisjonkers.dev/v1"
             echo "kind: ImagesLock"
             echo "schemaVersion: 1.0.0"
-            echo "name: knowledge"
+            echo "name: $(yq '.project' "${{ inputs.project-file }}")"
             echo "images:"
-            # The two Processes' images, and the migration image built FROM the
-            # platform's runner with the Application's changelog in it.
-            for alias in knowledge-api knowledge-ingest-worker knowledge-migration; do
+            for alias in ${{ inputs.images }}; do
               repository="ghcr.io/${{ github.repository }}/${alias}"
               digest="$(oras resolve "${repository}:${TAG}")"
               # The user is the image's own, and numeric: a name is
@@ -152,10 +174,10 @@ jobs:
           # no other. An alias that lock does not hold is E_UNLOCKED_IMAGE
           # here, so a fragment never names an image nothing can pull
           # (docs/adr/model/0090-composition-unions-each-fragments-share-of-the-images-lock.md).
-          TAG="${{ github.event.workflow_run.head_branch || github.ref_name }}"
-          npx --no-install deploy-kit publish platform/knowledge.project.yml \
+          TAG="${{ inputs.version }}"
+          deploy-kit publish "${{ inputs.project-file }}" \
             --repository "${{ github.repository }}" \
-            --source-sha "${{ github.event.workflow_run.head_sha || github.sha }}" \
+            --source-sha "${{ github.sha }}" \
             --version "${TAG#v}" \
             --images-lock images.lock.yml \
             --out fragment/
@@ -168,13 +190,15 @@ jobs:
         id: resolve
         if: ${{ success() }}
         run: |
-          REF="ghcr.io/${{ github.repository_owner }}/intent-knowledge:latest"
+          PROJECT="$(yq '.project' "${{ inputs.project-file }}")"
+          REF="ghcr.io/${{ github.repository_owner }}/intent-${PROJECT}:latest"
+          echo "project=${PROJECT}" >> "$GITHUB_OUTPUT"
 
           # The release's version, without the tag's leading v.
-          TAG="${{ github.event.workflow_run.head_branch || github.ref_name }}"
+          TAG="${{ inputs.version }}"
           ( cd fragment && oras push "$REF" \
               --annotation "org.opencontainers.image.version=${TAG#v}" \
-              --annotation "org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha || github.sha }}" \
+              --annotation "org.opencontainers.image.revision=${{ github.sha }}" \
               --annotation "dev.jorisjonkers.inputs-sha=$(yq '.spec.inputsSha' fragment.yml)" \
               . )
 
@@ -190,7 +214,7 @@ jobs:
         run: |
           # A successful push is not evidence that a consumer can read what we
           # meant. Pull it back by digest and check the content.
-          oras pull "ghcr.io/${{ github.repository_owner }}/intent-knowledge@${{ steps.resolve.outputs.digest }}" \
+          oras pull "ghcr.io/${{ github.repository_owner }}/intent-${{ steps.resolve.outputs.project }}@${{ steps.resolve.outputs.digest }}" \
             --output verify/
           ( cd verify && sha256sum -c MANIFEST.sha256 )
           cmp verify/fragment.yml fragment/fragment.yml
