@@ -261,7 +261,7 @@ const inUnion = (union: readonly Fragment[], id: string): boolean =>
     document.applications.some((application) => application.id === id),
   );
 
-/** The coordinates an edge hands its consumer (spec/v1/10-project-intent.md#three-placeholder-sources). */
+/** The coordinates an edge hands its consumer (spec/v1/10-project-intent.md#placeholder-sources). */
 const COORDINATES: ReadonlySet<string> = new Set(["host", "port"]);
 
 /** The fields of an exposure a placeholder may read. */

@@ -760,6 +760,11 @@ the address of the endpoint that authenticates for it, beside the audiences it
 serves; a tier that serves no `authenticated` route carries no such field and
 needs none.
 
+The endpoint is the sign-in provider's Gate
+([chapter 17](17-sign-in.md#what-the-edge-derives)). A route reaches it only
+when its exposure is `authenticated` and its Application's Client is `gated`;
+a native or token Client's routes carry no forward-auth Middleware at all.
+
 It is not derived from the authenticating Application's own surface. `auth-api`'s
 estate-wide role *is* this middleware
 ([chapter 10](10-project-intent.md#application-identity)), and resolving it as if it

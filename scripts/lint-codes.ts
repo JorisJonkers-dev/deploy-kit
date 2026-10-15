@@ -49,6 +49,22 @@ export const RETIRED: Readonly<Record<string, string>> = {
 
 export const PENDING: readonly Pending[] = [
   {
+    ticket: "#429",
+    reason:
+      "specified ahead of the implementation: the client block, what the edge derives from a Client, and the Release Gate's anonymous check",
+    codes: [
+      "E_AUTHENTICATED_WITHOUT_CLIENT",
+      "E_CLIENT_AUDIENCE",
+      "E_CLIENT_EXPOSURE_UNRESOLVED",
+      "E_CLIENT_FIELD_FOR_MODE",
+      "E_CLIENT_OPEN",
+      "E_CLIENT_PLACEHOLDER_WITHOUT_SECRET",
+      "E_DUPLICATE_APP_ROLE",
+      "E_GATE_PATH_CLAIMED",
+      "E_NO_SIGN_IN_PROVIDER",
+    ],
+  },
+  {
     ticket: "#324",
     reason:
       "specified ahead of both implementations: the Stable Address, the derived Move, availability and Infrastructure Intent",
