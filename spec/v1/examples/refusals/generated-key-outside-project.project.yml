@@ -1,0 +1,33 @@
+# REFUSED: E_GENERATED_KEY_OUTSIDE_PROJECT
+#
+# A generated key lives under its own Project's prefix, secret/data/refusals-system/,
+# and the Vault policy job writes it nowhere else
+# (spec/v1/10-project-intent.md #generated-keys).
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: outside
+    processes:
+      - name: outside-api
+        lifecycle: application
+        image: outside-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: continuous
+        secrets:
+          - path: secret/data/platform/session
+            keys: [{ name: session_key, generate: {} }]
+            access: read
+            delivery: self
+            rotation: { tolerates: restart }

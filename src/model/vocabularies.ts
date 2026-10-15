@@ -47,6 +47,8 @@ export const API_VERBS = [
   "delete",
 ] as const;
 export const DELIVERIES = ["env", "file", "self"] as const;
+/** How a generated key's random bytes are written: `base64url` without padding. */
+export const KEY_ENCODINGS = ["hex", "base64", "base64url"] as const;
 export const TOLERANCES = ["restart", "reload"] as const;
 export const PLACEHOLDER_KINDS = [
   "secret",

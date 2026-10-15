@@ -1,0 +1,54 @@
+# REFUSED: E_GENERATED_KEY_WRITTEN_ELSEWHERE
+#
+# A generated key has one writer, the Vault policy job. A custody grant on its
+# Project's prefix writes the same path (spec/v1/10-project-intent.md #generated-keys).
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: reader
+    processes:
+      - name: reader-api
+        lifecycle: application
+        image: reader-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: continuous
+        secrets:
+          - path: secret/data/refusals-system/app
+            keys: [{ name: session_key, generate: {} }]
+            access: read
+            delivery: self
+            rotation: { tolerates: restart }
+  - id: keeper
+    processes:
+      - name: keeper-api
+        lifecycle: application
+        image: keeper-api
+        runtime: node
+        provides:
+          http: 8081
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8081 }
+          liveness: { path: /healthz/live, port: 8081 }
+        startupBudget: 20s
+        cutover: continuous
+        secrets:
+          - path: secret/data/refusals-system
+            keys: [any]
+            access: custody
+            delivery: self
+            rotation: { tolerates: restart }

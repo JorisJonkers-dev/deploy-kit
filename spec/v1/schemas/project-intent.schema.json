@@ -103,8 +103,15 @@
           "minItems": 1,
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "$ref": "#/$defs/GeneratedKey"
+              }
+            ]
           }
         },
         "access": {
@@ -133,6 +140,45 @@
         "rotation"
       ],
       "additionalProperties": false
+    },
+    "GeneratedKey": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generate": {
+          "$ref": "#/$defs/Generate"
+        }
+      },
+      "required": [
+        "name",
+        "generate"
+      ],
+      "additionalProperties": false
+    },
+    "Generate": {
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 512
+        },
+        "encoding": {
+          "$ref": "#/$defs/KeyEncoding"
+        }
+      },
+      "additionalProperties": false
+    },
+    "KeyEncoding": {
+      "type": "string",
+      "enum": [
+        "hex",
+        "base64",
+        "base64url"
+      ]
     },
     "AccessTier": {
       "type": "string",

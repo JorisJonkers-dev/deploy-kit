@@ -212,6 +212,7 @@ export interface CronJob {
     readonly concurrencyPolicy: "Forbid";
     readonly jobTemplate: {
       readonly spec: {
+        readonly activeDeadlineSeconds?: number;
         readonly template: {
           readonly metadata: { readonly labels: Labels };
           readonly spec: PodSpec;

@@ -249,6 +249,10 @@ whichever level shares it
 [0012](docs/adr/model/0012-shared-intent-descends-and-is-lowered.md),
 [0028](docs/adr/model/0028-grant-unit-is-the-path.md)).
 
+**Generated key**: a key of a `kv` Grant that declares `generate`, which the
+Vault policy job writes once, under its own Project's prefix, and never changes
+([chapter 10](spec/v1/10-project-intent.md#generated-keys)).
+
 **Secret Store**: the Application every Grant is read from, which the Platform
 document names in `secretStore` and a project file the platform owns declares.
 It answers on its `http` surface; a Process that holds a Grant egresses to it,

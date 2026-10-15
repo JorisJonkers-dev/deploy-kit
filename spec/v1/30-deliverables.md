@@ -178,6 +178,11 @@ two-Process Application produces two policies and a diff says which principal's
 privilege changed. Both are JSON, which Vault accepts and which lets the one
 serializer own key order.
 
+A Project whose grants generate keys ([chapter 10](10-project-intent.md#generated-keys))
+adds one more document beside them, `estate/vso-secrets/policies/<namespace>.generated.json`:
+`keys`, each a `path`, a `key`, its `bytes` and its `encoding`, the defaults
+filled in, once each, in path then key order.
+
 **Rendered here, applied in the cluster.** Writing a policy into Vault is an act
 against a live system by an identity with privilege, which is delivery
 ([0087](../../docs/adr/model/0087-in-cluster-consumers-read-the-render.md)). The
@@ -198,13 +203,14 @@ changed policy set is a new Job, and the one it replaces leaves the render with
 it. Both implementations compute the name from the documents alone, so it is
 the same name wherever the same grants are rendered.
 
-Four files sit beside `policies/`, in `estate/vso-secrets/`, and the directory's
-index applies the first three:
+Five files sit beside `policies/`, in `estate/vso-secrets/`, and the directory's
+index applies the first four:
 
 | file | adapter | holds |
 |---|---|---|
 | `configmap.yaml` | `vault-policy` | the immutable `ConfigMap`, each document under its file name as canonical JSON on one line, in name order |
 | `job.yaml` | `vault-policy` | the `Job`: the locked image, `VAULT_ADDR` the Secret Store's endpoint, `VAULT_ROLE` the platform's role, `POLICIES_DIR` where the ConfigMap is mounted read-only, `activeDeadlineSeconds` the platform's deadline, `restartPolicy: OnFailure`, the token mounted because the job logs in with it |
+| `cronjob.yaml` | `vault-policy` | the `CronJob` `vault-policy`: the same pod as the Job, `@hourly`, `concurrencyPolicy: Forbid`, so a Vault restored without what the render holds gets it back within the hour |
 | `serviceaccount.yaml` | `vault-policy` | the `ServiceAccount` `vault-policy`, the one identity the platform's role is bound to |
 | `networkpolicy.yaml` | `networking` | the job's own policy: egress to the Secret Store and the cluster's DNS, no ingress; listed by no index, like every policy |
 
@@ -220,6 +226,9 @@ the platform already owns for it.
   write policies.
 - It writes each policy and each auth role under its rendered name,
   `<namespace>-<identity>`, and leaves an unchanged one as it is.
+- It then writes each generated key Vault does not hold, under its own
+  namespace's prefix only, check-and-set against the version it read, and
+  never changes a key Vault holds.
 - It never deletes. A role and policy Vault holds that the render no longer
   names are reported, and a human removes them.
 - A job that fails stops the Reconcile Unit, so no Application that holds a

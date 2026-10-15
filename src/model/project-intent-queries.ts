@@ -9,6 +9,7 @@ import {
   type Asset,
   type DependencyEdge,
   type Grant,
+  type KvKey,
   type SharedIntent,
   type SharedIntentKey,
 } from "./project-intent.ts";
@@ -24,6 +25,13 @@ export function derivedReadPath(grant: Grant): string {
   if (grant.engine === "database") return `database/creds/${grant.role}`;
   return `transit/${grant.key}`;
 }
+
+/** A key's name, whether or not it is generated. */
+export const keyName = (key: KvKey): string =>
+  typeof key === "string" ? key : key.name;
+
+/** What a generated key is when its `generate` leaves a field unsaid. */
+export const GENERATED_DEFAULTS = { bytes: 32, encoding: "hex" } as const;
 
 /** `required` is excluded: the same edge declared twice is one declaration. */
 export const dependencyIdentity = (edge: DependencyEdge): string =>

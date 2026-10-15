@@ -8,6 +8,7 @@ import type { ResolvedPolicyJob } from "../../model/resolved-deployment.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";
 import type {
   ConfigMap,
+  CronJob,
   Job,
   ServiceAccount,
 } from "../../objects/kubernetes.ts";
@@ -76,59 +77,71 @@ export function renderPolicyJob(
       Object.entries(held).map(([file, json]) => [file, { json }]),
     ),
   };
+  const pod: Job["spec"]["template"] = {
+    metadata: { labels },
+    spec: {
+      serviceAccountName: job.identity,
+      // The job logs in to the Secret Store with its own token.
+      automountServiceAccountToken: true,
+      restartPolicy: "OnFailure",
+      securityContext: {
+        runAsNonRoot: true,
+        runAsUser: job.uid,
+        runAsGroup: job.gid,
+        seccompProfile: { type: "RuntimeDefault" },
+      },
+      containers: [
+        {
+          name: job.identity,
+          image: job.image,
+          env: [
+            { name: "VAULT_ADDR", value: job.address },
+            { name: "VAULT_ROLE", value: job.role },
+            { name: "POLICIES_DIR", value: POLICIES },
+          ],
+          resources: {
+            requests: { memory: job.memory, cpu: job.cpu },
+            limits: { memory: job.memory },
+          },
+          securityContext: {
+            readOnlyRootFilesystem: true,
+            capabilities: { drop: ["ALL"] },
+          },
+          volumeMounts: [{ name: VOLUME, mountPath: POLICIES, readOnly: true }],
+        },
+      ],
+      volumes: [
+        {
+          name: VOLUME,
+          configMap: {
+            name,
+            items: Object.keys(held).map((file) => ({
+              key: file,
+              path: file,
+            })),
+          },
+        },
+      ],
+    },
+  };
   const run: Job = {
     apiVersion: "batch/v1",
     kind: "Job",
     metadata: { name, namespace: job.namespace, labels },
+    spec: { activeDeadlineSeconds: wholeSeconds(job.deadline), template: pod },
+  };
+  // The same run every hour, so a Vault restored without a generated key gets it back.
+  const hourly: CronJob = {
+    apiVersion: "batch/v1",
+    kind: "CronJob",
+    metadata: { name: job.identity, namespace: job.namespace, labels },
     spec: {
-      activeDeadlineSeconds: wholeSeconds(job.deadline),
-      template: {
-        metadata: { labels },
+      schedule: "@hourly",
+      concurrencyPolicy: "Forbid",
+      jobTemplate: {
         spec: {
-          serviceAccountName: job.identity,
-          // The job logs in to the Secret Store with its own token.
-          automountServiceAccountToken: true,
-          restartPolicy: "OnFailure",
-          securityContext: {
-            runAsNonRoot: true,
-            runAsUser: job.uid,
-            runAsGroup: job.gid,
-            seccompProfile: { type: "RuntimeDefault" },
-          },
-          containers: [
-            {
-              name: job.identity,
-              image: job.image,
-              env: [
-                { name: "VAULT_ADDR", value: job.address },
-                { name: "VAULT_ROLE", value: job.role },
-                { name: "POLICIES_DIR", value: POLICIES },
-              ],
-              resources: {
-                requests: { memory: job.memory, cpu: job.cpu },
-                limits: { memory: job.memory },
-              },
-              securityContext: {
-                readOnlyRootFilesystem: true,
-                capabilities: { drop: ["ALL"] },
-              },
-              volumeMounts: [
-                { name: VOLUME, mountPath: POLICIES, readOnly: true },
-              ],
-            },
-          ],
-          volumes: [
-            {
-              name: VOLUME,
-              configMap: {
-                name,
-                items: Object.keys(held).map((file) => ({
-                  key: file,
-                  path: file,
-                })),
-              },
-            },
-          ],
+          activeDeadlineSeconds: wholeSeconds(job.deadline),
+          template: pod,
         },
       },
     },
@@ -140,6 +153,7 @@ export function renderPolicyJob(
       objects: [handed],
     },
     { path: `${DIRECTORY}/job.yaml`, adapter: ADAPTER, objects: [run] },
+    { path: `${DIRECTORY}/cronjob.yaml`, adapter: ADAPTER, objects: [hourly] },
     {
       path: `${DIRECTORY}/serviceaccount.yaml`,
       adapter: ADAPTER,

@@ -98,6 +98,7 @@ and linted by the same script with `emf` as its root.
 | [0029](model/0029-a-grant-is-a-union-on-engine.md) | A grant is a discriminated union on engine that derives a read path and a policy, and only a kv grant is projected | open |
 | [0030](model/0030-secret-delivery-is-env-file-or-self.md) | Secret delivery is env, file or self, an env placeholder byte-matches a kv grant's path, and env and file need secrets at rest | open |
 | [0031](model/0031-identity-per-process.md) | Each Process holds its own identity, and its ServiceAccount token is mounted only where the pod itself authenticates | settled |
+| [0101](model/0101-a-generated-key-is-written-by-the-vault-policy-job.md) | A generated key is declared on its grant and written by the Vault policy job, once, under its own Project's prefix | open |
 
 ## Layer 2: derivation and assignment
 

@@ -48,7 +48,46 @@ function pathsOf(grant: Grant): [string, { capabilities: string[] }][] {
   ];
 }
 
+/** Each generated key of the project, once, in path then key order. */
+function generatedOf(project: ResolvedProject) {
+  const keys = new Map<
+    string,
+    { path: string; key: string; bytes: number; encoding: string }
+  >();
+  for (const application of project.applications)
+    for (const process of application.processes)
+      // Stryker disable next-line ArrayDeclaration: no list and an empty one hold no grant alike.
+      for (const grant of process.secrets ?? [])
+        if ("generated" in grant)
+          for (const { key, bytes, encoding } of grant.generated)
+            keys.set(`${grant.path}#${key}`, {
+              path: grant.path,
+              key,
+              bytes,
+              encoding,
+            });
+  return [...keys.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([, value]) => value);
+}
+
 export function renderVaultPolicy(project: ResolvedProject): Deliverable[] {
+  const generated = generatedOf(project);
+  const namespace = project.applications[0]?.namespace;
+  const keys: Deliverable[] =
+    generated.length === 0 || namespace === undefined
+      ? []
+      : [
+          {
+            path: `${POLICIES}/${namespace}.generated.json`,
+            adapter: ADAPTER,
+            objects: [{ keys: generated }],
+          },
+        ];
+  return [...renderIdentities(project), ...keys];
+}
+
+function renderIdentities(project: ResolvedProject): Deliverable[] {
   return project.applications.flatMap((application) =>
     holdersOf(application).flatMap(({ identity, grants }): Deliverable[] => {
       const name = vaultNameOf(application.namespace, identity);

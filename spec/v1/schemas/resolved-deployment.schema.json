@@ -1460,6 +1460,38 @@
             "minLength": 1
           }
         },
+        "generated": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "encoding": {
+                "type": "string",
+                "enum": [
+                  "hex",
+                  "base64",
+                  "base64url"
+                ]
+              }
+            },
+            "required": [
+              "key",
+              "bytes",
+              "encoding"
+            ],
+            "additionalProperties": false
+          }
+        },
         "access": {
           "$ref": "#/$defs/AccessTier"
         },
