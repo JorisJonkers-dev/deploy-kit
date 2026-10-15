@@ -5,7 +5,7 @@
 \label{sec:goals}
 
 The project turns short deployment documents into the Kubernetes files that
-deploy a small cluster. Each \texttt{Application}'s repository holds one
+deploy applications to an existing small cluster. Each \texttt{Application}'s repository holds one
 \texttt{Project Intent} document that states what the \texttt{Application}
 needs: its \texttt{Process}es, their memory and CPU limits, the ports they
 expose, the \texttt{Application}s they depend on, and the routes that reach
@@ -154,15 +154,14 @@ the node contract and the \texttt{ClusterState} snapshot each name their
 cluster, and a \texttt{Project} environment files use a shared base plus a
 per-cluster overlay that the resolution selects via the
 \texttt{Platform Intent} cluster name (Section~\ref{sec:placeholders}).
-Supporting a second cluster would therefore require a second run with that
-cluster's own three documents.
-
-Two additions would enable multiple clusters. A \texttt{Project Intent} would
-need to declare which clusters it targets. An edge to a service in another
-cluster would resolve through the \texttt{Platform Intent} external provider
-list, as the current edge from \texttt{auth} to an external mail server
-already does (Section~\ref{sec:edgerule}), but its network policy would
-need to allow an address range rather than a specific pod address.
+Supporting a second cluster would therefore need a second run over that
+cluster's own three documents, and two additions beside it. A
+\texttt{Project Intent} would need to declare which clusters it targets. An
+edge to a service in another cluster would resolve through the
+\texttt{Platform Intent} external provider list, as the current edge from
+\texttt{auth} to an external mail server already does
+(Section~\ref{sec:edgerule}), but its network policy would need to allow an
+address range rather than a specific pod address.
 
 \subsection{Scope}
 \label{sec:scope}

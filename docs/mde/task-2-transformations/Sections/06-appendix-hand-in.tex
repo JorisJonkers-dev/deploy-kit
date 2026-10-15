@@ -42,13 +42,14 @@ package.
 \subsection{Running the Transformations}
 \label{app:running}
 
-In \path{implementation/emf}, run \path{./mvnw clean verify} with JDK~21. It
-builds the implementation, runs every test, and writes each example's models
-and edges under \path{bundles/cli/target/parity/<example>/}. It takes
-about four minutes.
-
-In Eclipse Modeling Tools with the QVT-Operational SDK, import
-\path{implementation/emf} as existing Maven projects.
-
-Run \path{resolution.launch} in \path{dev.jorisjonkers.deploykit.emf.resolve}.
-It resolves \texttt{minimal} from the extents Step~1 wrote.
+\begin{enumerate}
+  \item In \path{implementation/emf}, run \path{./mvnw clean verify} with
+  JDK~21. It builds the implementation, runs every test, and writes each
+  example's models and edges under
+  \path{bundles/cli/target/parity/<example>/}. It takes about four minutes.
+  \item In Eclipse Modeling Tools with the QVT-Operational SDK, import
+  \path{implementation/emf} as existing Maven projects.
+  \item Run \path{resolution.launch} in
+  \path{dev.jorisjonkers.deploykit.emf.resolve}. It resolves \texttt{minimal}
+  from the extents step~1 wrote.
+\end{enumerate}

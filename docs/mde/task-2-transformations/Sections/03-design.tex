@@ -131,15 +131,17 @@ Table~\ref{tab:mappings} lists the eight mappings and their purpose.
 \label{tab:mappings}
 \end{table}
 
-Queries are side-effect free. Many attach to model types, such as
+Queries never change the model they read: each builds a value, and the caller
+decides where the result goes. Many attach to model types, such as
 \texttt{Grant::resolvedFor}. They serve four purposes.
 
 A value query derives a single value, such as a deadline or an address. An object
 query builds a contained object, such as a probe or a backup plan. A spelling
 query turns a source enumeration literal into the string the target records, for
-example \texttt{AlertClass::businessHours} into \texttt{business-hours}. Stop
-queries such as \texttt{unlocked} raise a fatal assertion instead of returning a
-value (Section~\ref{sec:stops}).
+example \texttt{AlertClass::businessHours} into \texttt{business-hours}. A
+stop query such as \texttt{unlocked} is the exception: rather than build a
+value, it raises a fatal assertion to abort an invalid run
+(Section~\ref{sec:stops}).
 
 The estate pass contains the sole QVTo helper, an operation with side effects
 that adds files to a model it updates in place.
@@ -181,17 +183,19 @@ Four values depend on other run documents: the image needs the lock, eligible
 machines need the node contract, the proxy needs the edge project, and the
 collector address needs the observability project.
 
-Example~\ref{lst:workedio} shows part of the source model and the resolved
-model. The top part is the authored \texttt{Process} in YAML, and the bottom
-part is the resolved \texttt{Process} in XMI.
+Example~\ref{lst:workedyaml} shows the authored \texttt{Process} in YAML, and
+Example~\ref{lst:workedresolved} shows the \texttt{Process} the resolution
+assembled from it, in XMI.
 
-\begin{lstlisting}[style=report, caption={Part of \texttt{Process} notes-api, as Authored (Top, Condensed) and as Resolved, in XMI (Bottom, Abridged)}, label={lst:workedio}]
+\begin{lstlisting}[style=report, caption={The Authored \texttt{Process} notes-api, in YAML (Condensed)}, label={lst:workedyaml}]
 - name: notes-api
   image: notes-api
   placement: { memory: 256Mi, cpu: 50m }
   startupBudget: 20s
   cutover: continuous
---------------------------------------------------------------------------
+\end{lstlisting}
+
+\begin{lstlisting}[style=report, caption={The Resolved \texttt{Process} notes-api, in XMI (Abridged)}, label={lst:workedresolved}]
 <processes name="notes-api" deadline="60s" switchover="blue-green"
     image="ghcr.io/jorisjonkers-dev/notes/notes-api@sha256:9c1e5a4b..."
     uid="1000" gid="1000" memory="256Mi" cpu="50m">
@@ -199,6 +203,19 @@ part is the resolved \texttt{Process} in XMI.
   <placement> <eligibleNodes>enschede-t1000-1</eligibleNodes> ... </placement>
 </processes>
 \end{lstlisting}
+
+The declared \texttt{startupBudget: 20s} becomes the \texttt{deadline} field
+of the resolved \texttt{Process} through \texttt{deadlineOf}, 60s in
+Example~\ref{lst:workedresolved}, with the startup probe beside it. The
+declared \texttt{cutover: continuous} reaches further: through
+\texttt{switchoverOf} it sets the switchover field of the same
+\texttt{Process}, and the path plan then assigns the \texttt{Canary} of that
+blue/green \texttt{Process} its path, \path{apps/notes/notes/canary.yaml},
+one of the twelve \texttt{Deliverable} entries of Table~\ref{tab:worked}.
+The \texttt{gate} rule adds the \texttt{Release Gate} whose inputs the
+configuration map beside the \texttt{Canary} carries.
+Section~\ref{sec:results} checks this whole model against the complete
+expected model of \texttt{minimal}, attribute by attribute.
 
 \subsection{The Derivation Rules}
 \label{sec:rules}

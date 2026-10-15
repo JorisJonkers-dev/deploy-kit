@@ -20,13 +20,14 @@ remain OCL definitions in project-intent.ocl and were never Ecore features.
 \label{app:pinned}
 
 The \texttt{pinnedinputs} package holds the documents the resolution reads
-beside the source models. Task~1 decided only authored documents get a
-metamodel. These documents are not authored by a \texttt{Project} owner, and
-the resolution needs them as models, so they form a separate package instead of
-joining the source metamodel.
+beside the source models. Task~1 gave the authored documents a source
+metamodel and the derived output a target one, and left the pinned inputs
+unmodelled. These documents are not authored by a \texttt{Project} owner, so
+they do not belong in the source metamodel, but the resolution needs them as
+models, so they form a separate package instead.
 
 The node contract is generated from the platform team's machine descriptions.
-Another \texttt{Process} publishes the images lock and the snapshot. A
+Other programs publish the images lock and the snapshot. A
 \texttt{Project} build writes its migration proof.
 
 To ensure the source metamodel stays aligned with the production implementation,
@@ -75,9 +76,11 @@ apply.
 \subsection{Changes to the Target Metamodel}
 \label{app:target}
 
-The target metamodel has two halves: the decisions the platform records in the
-\texttt{Platform Intent}, and the generated-file entries of the path plan. Both
-grew.
+The target metamodel has two halves: the decisions the resolution derives for
+each \texttt{Application}, and the generated-file entries of the path plan.
+Both grew. The policies those decisions read arrive as inputs from the
+\texttt{Platform Intent}; what the metamodel records is the derived output,
+not those policies.
 
 The root class is unchanged, but what one instance holds changed. Task~1 planned
 one \texttt{Resolved Deployment} for the whole cluster. There is now one per

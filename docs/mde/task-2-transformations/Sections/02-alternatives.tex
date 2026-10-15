@@ -62,12 +62,16 @@ ATL, QVTo and Java were compared against the specific needs of this
 transformation. Most values in a \texttt{Resolved Deployment} do not derive
 from a single source element: a process's eligible machines depend on the
 node contract, a route's precedence on other routes, and a process's ingress
-peers on every process in the cluster that depends on it. ATL excels when
-one source element maps to one target element through matched rules whose
-order the engine chooses. Here most work would end up in helpers and called
-rules, turning ATL into imperative code without the pattern matching. Several
-values need the rest of the model to exist first, which ATL does not handle
-as naturally.
+peers on every process in the cluster that depends on it. ATL's matched rules
+fit one source element producing one target element, with the engine
+choosing the order. The lookups this resolution needs are of another kind:
+resolving a dependency edge searches every project for the first process
+that provides the named surface, and the \texttt{Revision} has no source
+element of its own at all, since it digests the assembled application
+element. In ATL this work moves into called rules and helpers, which turns
+the transformation into imperative code without the pattern matching, and
+the values that need the whole model to exist first still have to be
+computed afterwards.
 
 QVTo meets these needs. The caller explicitly decides the order of execution,
 and every reference from one created element to another goes through the
@@ -82,10 +86,11 @@ maintain for model management~\cite{burgueno2019}.
 
 QVTo was chosen. The one operation QVTo cannot express directly, computing a
 SHA-256 hash, uses QVT's black-box mechanism: a Java library called through a
-contextual operation (Section~\ref{sec:blackbox}). Speed was not decisive:
-QVTo ran more than five times slower than ATL in published experiments
-~\cite{amstel2011}, but this is acceptable for a cluster of about ten
-projects.
+contextual operation (Section~\ref{sec:blackbox}). Speed was not decisive.
+The cited experiment~\cite{amstel2011} measured QVTo more than five times
+slower than ATL, a result about the models of that experiment rather than a
+prediction for this cluster; what this cluster can bear is a question of
+capacity, which Section~\ref{sec:limitations} returns to.
 
 \subsection{The Structure of the Transformation}
 \label{sec:structure}
@@ -108,17 +113,19 @@ adds files that belong to no single \texttt{Project}, which no individual
 resolution can compute. The chain also matches QVT specification Section~8.1.13,
 which uses a preparation step before the main transformation.
 
-Processing one project per run while reading all projects matches the
-production implementation and its oracles.
-
 \subsubsection{One Project per Run, All Projects as Input}
 \label{sec:perproject}
 
-Processing one project per run while reading all projects keeps each
-model small while preserving the cluster-wide view that edges, routes and
-reverse dependencies need. The cost is that one value, the digest over all
-secret-store policies, needs every project's output. The estate pass computes
-this.
+The structural alternative was a cluster-wide output: one resolution over
+all projects at once, producing one \texttt{Resolved Deployment} for the
+whole estate. Instead, each run resolves one \texttt{Project} into its own
+model while reading every project's documents from the same input extent.
+That keeps each model small and gives each project one oracle to compare
+with, while the shared extent preserves the cluster-wide view that edges,
+routes and reverse dependencies need. The cost is that one value, the digest
+over all secret-store policies, needs every project's output, and no single
+project's run can compute it. The estate pass, which runs over all resolved
+models together, adds it (Section~\ref{sec:estatepass}).
 
 \subsubsection{Typed Extents Instead of a Global Scan}
 \label{sec:extentsalternative}

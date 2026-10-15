@@ -18,9 +18,12 @@ compared byte-for-byte with the expected file. These tests only read files the
 pipeline wrote, verifying the pipeline as a user would run it.
 
 Revisions: each expected resolved file records its \texttt{Revision}, a
-digest over the \texttt{Application} complete element. Matching
-\texttt{Revision}s confirm that the same values were derived
-(Section~\ref{sec:revisionevidence}).
+digest over the \texttt{Application} element as the production
+implementation writes it. Matching \texttt{Revision}s confirm that the same
+values were derived for that element (Section~\ref{sec:revisionevidence}).
+The digest covers the element's own decisions, not the whole resolved model:
+the path plan, the network policies and the Vault documents fall outside it,
+which is what the complete-model and generated-file comparisons below are for.
 
 Complete expected models: \texttt{minimal} and \texttt{secrets} have full
 expected \texttt{Resolved Deployment} models, compared using EMF's structural
@@ -47,44 +50,55 @@ QVTo code is verified only by the comparisons above.
 \label{sec:results}
 
 Table~\ref{tab:results} lists the eight examples. All resolve successfully
-and every comparison with an expected file passes. The full build runs 323
-tests including 81 parity checks and passes. Both \texttt{minimal} and
-\texttt{secrets} equal their complete expected models.
+and every comparison passes, including the complete-model comparison of
+\texttt{minimal} and \texttt{secrets}. The full build runs 323 tests
+including 81 parity checks and passes.
 
 \begin{table}[!htbp]
 \centering
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{lrrrrrrrccc}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lrrrrrrrcccc}
 \hline
-& \multicolumn{7}{c}{\textbf{Counted in the resolved model}} & \multicolumn{3}{c}{\textbf{Equal to expected files}} \\
+& \multicolumn{7}{c}{\textbf{Counted in the resolved model}} & \multicolumn{4}{c}{\textbf{Equal to the expected output}} \\
 \textbf{Example} & \textbf{Apps} & \textbf{Proc.} & \textbf{Edges} &
   \textbf{Secr.} & \textbf{Vol.} & \textbf{Env.} & \textbf{Files} &
-  \textbf{Edges} & \textbf{Revisions} & \textbf{Files} \\
+  \textbf{Edges} & \textbf{Revisions} & \textbf{Files} & \textbf{Model} \\
 \hline
-\texttt{minimal}            & 1 & 1 & 0 & 0 & 0 & 6  & 12 & yes & 1/1 & yes \\
-\texttt{auth}               & 1 & 2 & 4 & 3 & 0 & 21 & 19 & yes & 1/1 & yes \\
-\texttt{data}               & 3 & 3 & 0 & 1 & 3 & 3  & 37 & yes & 3/3 & yes \\
-\texttt{delivery}           & 4 & 4 & 1 & 0 & 0 & 0  & 27 & yes & 4/4 & yes \\
-\texttt{edge}               & 2 & 2 & 0 & 0 & 0 & 0  & 13 & yes & -- & -- \\
-\texttt{knowledge-platform} & 4 & 7 & 5 & 4 & 6 & 84 & 49 & yes & 1/1 & yes \\
-\texttt{observability}      & 2 & 2 & 0 & 0 & 0 & 0  & 15 & yes & -- & -- \\
-\texttt{secrets}            & 1 & 1 & 0 & 0 & 0 & 0  & 8  & yes & -- & -- \\
+\texttt{minimal}            & 1 & 1 & 0 & 0 & 0 & 6  & 12 & yes & 1/1 & yes & yes \\
+\texttt{auth}               & 1 & 2 & 4 & 3 & 0 & 21 & 19 & yes & 1/1 & yes & -- \\
+\texttt{data}               & 3 & 3 & 0 & 1 & 3 & 3  & 37 & yes & 3/3 & yes & -- \\
+\texttt{delivery}           & 4 & 4 & 1 & 0 & 0 & 0  & 27 & yes & 4/4 & yes & -- \\
+\texttt{edge}               & 2 & 2 & 0 & 0 & 0 & 0  & 13 & yes & -- & -- & -- \\
+\texttt{knowledge-platform} & 4 & 7 & 5 & 4 & 6 & 84 & 49 & yes & 1/1 & yes & -- \\
+\texttt{observability}      & 2 & 2 & 0 & 0 & 0 & 0  & 15 & yes & -- & -- & -- \\
+\texttt{secrets}            & 1 & 1 & 0 & 0 & 0 & 0  & 8  & yes & -- & -- & yes \\
 \hline
 \end{tabular}
 \caption{The Resolved Examples: \texttt{Application}s, \texttt{Process}es, \texttt{Dependency edge}s,
 Secrets, Volumes, Environment Variables and Planned Files, and the Comparisons
-(--: No Expected File)}
+(--: No Committed Oracle of That Kind)}
 \label{tab:results}
 \end{table}
 
-The examples together cover every row of Table~\ref{tab:rules}.
-The \texttt{auth} example contains the migration, placeholders and an edge to a
-provider outside the cluster. The \texttt{data} example contains backups of each
-durability class, a \texttt{Sidecar} and an \texttt{Asset}. The
-\texttt{knowledge-platform} example is the largest. The \texttt{delivery} example
-has rolling and stop-start switchovers plus API access. The \texttt{edge},
-\texttt{observability} and \texttt{secrets} examples provide
-platform services the others reference.
+The dashes say which comparisons a case lacks a committed oracle for. The
+\texttt{secrets} example, for one, holds no expected resolved file and no
+committed tree, but its complete expected model checks every attribute and
+reference of its whole resolution, where a \texttt{Revision} would check one
+element and a tree comparison the rendered files.
+
+Between them, the examples exercise every row of Table~\ref{tab:rules}.
+\texttt{minimal} alone carries the common \texttt{Process} and
+\texttt{Exposure} rules (Table~\ref{tab:worked}). The migration, placeholder
+and external-provider rules run in \texttt{auth}, which holds three secrets
+and reaches a mail server outside the cluster. The volume, backup and
+configuration-file rules run in \texttt{data}, which holds one volume of each
+durability class, a \texttt{Sidecar} and an \texttt{Asset}. The rolling and
+stop-start switchover rules run in \texttt{delivery}, which also has API
+access. The \texttt{secrets} example models the Secret Store itself, an
+interrupted \texttt{Process} under a stop-start switchover. The
+\texttt{knowledge-platform} example is the largest. The \texttt{edge} and
+\texttt{observability} examples provide the proxies and collectors the other
+examples look up.
 
 \subsubsection{What the Revisions Show}
 \label{sec:revisionevidence}
@@ -93,7 +107,10 @@ An \texttt{Application} \texttt{Revision} is the digest of its whole element
 as the production implementation writes it: its \texttt{Process}es with image,
 user, deadline, probes, placement, secrets, volumes, backups, environment and
 edges; its \texttt{Exposure}s and routes; its \texttt{Release Gate} and
-migration.
+migration. The element is one projection of the resolved model. The path plan,
+the network policies and the Vault documents are not written into it, so the
+\texttt{Revision} says nothing about them; the generated files carry those
+values, and Section~\ref{sec:treeevidence} checks them.
 
 The transformation builds that text from its own \texttt{Resolved Deployment}
 (Section~\ref{sec:blackbox}), so one different value, one extra environment
@@ -102,10 +119,11 @@ across five examples have a \texttt{Revision} in an expected file, and all
 ten match.
 
 For these \texttt{Application}s, the \texttt{Revision} check verifies nearly
-every value at once, a task a hand-written model could not achieve with the
-same effort. A further test confirms the \texttt{Revision} moves for the
-right reasons: raising \texttt{minimal} memory from 256Mi to 512Mi changes it,
-but changing the snapshot capture time, which decides nothing, does not.
+every value of each element at once, a task a hand-written model could not
+achieve with the same effort. A further test confirms the \texttt{Revision}
+moves for the right reasons: raising \texttt{minimal} memory from 256Mi to
+512Mi changes it, but changing the snapshot capture time, which decides
+nothing, does not.
 
 \subsubsection{What the Generated Files Show}
 \label{sec:treeevidence}
@@ -113,7 +131,8 @@ but changing the snapshot capture time, which decides nothing, does not.
 Values no \texttt{Revision} covers, such as the path plan, network policies
 and Vault documents, still appear in generated files. 167 committed files
 across five examples and the cluster-wide tree, including the estate pass job,
-are reproduced byte-for-byte. The same inputs always produce the same bytes.
+are reproduced byte-for-byte, so on these inputs the transformation output and
+the committed trees agree on every file and every byte.
 
 \subsubsection{Where the Evidence Is Thin}
 \label{sec:thin}
@@ -196,8 +215,8 @@ The most time-consuming part was the \texttt{Revision}. Writing the production
 implementation's JSON form of an \texttt{Application} in OCL, one field at a
  time, took about one sixth of \texttt{resolution.qvto}. Every mistake showed
 only as a different hash, but it was worth the effort. Once the \texttt{Revision}s
-matched, they verified nearly every value of ten \texttt{Application}s at once,
-which would have been impractical to check by hand.
+matched, they verified nearly every value of ten \texttt{Application} elements
+at once, which would have been impractical to check by hand.
 
 QVTo was a good fit for the work. Most rules are queries over the whole
 cluster, and OCL expresses these naturally. The explicit trace also made every
