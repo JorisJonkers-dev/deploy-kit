@@ -282,6 +282,15 @@ ${secrets}`;
     ]);
   });
 
+  it("is read into its Process's environment by name", () => {
+    const delivers = `        secrets:\n          - { path: ${PATH}, keys: [{ name: session_key, generate: {} }], access: read, delivery: env, rotation: { tolerates: restart } }\n`;
+    expect(
+      refusals(api(delivers), {
+        env: `SESSION=\${secret:${PATH}#session_key}\n`,
+      }),
+    ).toStrictEqual([]);
+  });
+
   it("may share its name with a key generated on another path", () => {
     expect(
       refusals(api(generates(PATH)) + worker(generates(`${PATH}/other`))),
