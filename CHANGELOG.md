@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.15.0...v0.16.0) (2026-10-15)
+
+
+### Features
+
+* generate a declared secret key in the Vault policy job ([#451](https://github.com/JorisJonkers-dev/deploy-kit/issues/451)) ([1914446](https://github.com/JorisJonkers-dev/deploy-kit/commit/19144464b7430c66089903c5943171ba54d46178))
+
 ## [0.15.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.14.0...v0.15.0) (2026-10-15)
 
 
