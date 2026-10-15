@@ -1,127 +1,300 @@
 \section{Changes to the Task 1 Metamodels}
 \label{app:metamodels}
 
-Writing the transformation changed the Task~1 metamodels in three ways. A
-third metamodel, the pinned inputs, was added
-(Section~\ref{app:pinned}). The target metamodel gained the values the
-transformation derives that Task~1 had not yet recorded, and its
-generated-file classes now cover applications with several processes
-(Section~\ref{app:target}). Four grammars were added for the pinned inputs
-(Section~\ref{app:grammars}). The source metamodel did not change.
+This appendix lists the changes between the metamodels handed in for Task~1
+and the metamodels the transformations of Task~2 read and write, found by
+comparing the two versions of each \texttt{.ecore} file class by class and
+feature by feature. There are four kinds:
+
+\begin{itemize}
+  \item a third metamodel, the pinned inputs (Appendix~\ref{app:pinned});
+  \item the target metamodel gained the values the transformation derives and
+    twelve kinds of generated file (Appendix~\ref{app:target});
+  \item the source metamodel gained the declarations the other examples need
+    (Appendix~\ref{app:source});
+  \item four grammars (Appendix~\ref{app:grammars}).
+\end{itemize}
+
+No class was removed. The Task~1 hand-in also showed several OCL helper
+definitions, such as \texttt{levelsAbove} and \texttt{derivesDatabase}, as
+derived attributes in the diagram; they are still OCL definitions in
+\texttt{project-intent.ocl} and were never Ecore features.
 
 \subsection{The Pinned Inputs Metamodel}
 \label{app:pinned}
 
-The package \texttt{pinnedinputs} contains the documents the resolution reads
-beside the source models. They are a separate package because they are not
-part of what an author writes. The source metamodel's structure is compared
-with the production implementation's schemas through a committed descriptor,
-and adding these classes to it would have added classes those schemas do not
-contain. No class of the target metamodel refers to them: the resolved model
-records the values the transformation reads from them, and their digests.
-Table~\ref{tab:pinned} lists the classes.
+The package \texttt{pinnedinputs} holds the documents the resolution reads
+beside the source models. Task~1 decided that only authored documents get a
+metamodel; these documents are not authored by a project's owner, and the
+resolution cannot read them without one, so they get a separate package
+instead of joining the source metamodel. The node contract is generated from
+the platform team's description of the machines, another process publishes the
+images lock and the snapshot, and a project's build writes its migration
+proof. The source
+metamodel's structure is also compared with the production implementation's
+schemas through a committed descriptor, and adding these classes to it would
+have listed documents those schemas do not hold. No class of the target
+metamodel refers to them: the resolved model records the values the resolution
+reads from them, and their digests. Figure~\ref{fig:pinned} shows the
+metamodel, and Table~\ref{tab:pinned} says what reads each class.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.9\linewidth, keepaspectratio]{Figures/pinned-inputs}
+\caption{The Pinned Inputs Metamodel. Every Class Is New in Task~2}
+\label{fig:pinned}
+\end{figure}
 
 \begin{table}[!htbp]
 \centering
-\small
-\begin{tabular}{>{\raggedright\arraybackslash}p{0.2\linewidth}>{\raggedright\arraybackslash}p{0.36\linewidth}>{\raggedright\arraybackslash}p{0.36\linewidth}}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.68\linewidth}}
 \hline
-\textbf{Class} & \textbf{Features} & \textbf{Read by} \\
+\textbf{Class} & \textbf{Read by} \\
 \hline
-\texttt{NodeContract} & cluster, label prefix, \texttt{nodes} & eligibility \\
-\texttt{Node} & name (ID), site, architecture, \texttt{allocatable}, capabilities, \texttt{gpus}, \texttt{disks} & eligibility \\
-\texttt{Allocatable} & cpu, memory, as quantities such as \texttt{53500m} & eligibility \\
-\texttt{Gpu} & vendor, model, class, memory in MiB & GPU requests \\
-\texttt{Disk} & medium, usable GiB & disk requests \\
-\texttt{ImagesLock} & name, \texttt{images} & every image \\
-\texttt{LockedImage} & alias (ID), repository, digest, user, group & images, sidecars, backups, migrations \\
-\texttt{ClusterState} & cluster, capture time, \texttt{bindings}, \texttt{placements} & bound machines \\
-\texttt{Binding} & claim, node & bound machines \\
-\texttt{CurrentPlacement} & process, node & not yet read \\
-\texttt{MigrationProof} & \texttt{applications} & migrations \\
-\texttt{ProvenApplication} & application id, tested schema version (optional), whether the release holds a change that cannot run in a transaction & migrations \\
-\texttt{AssetFile} & project, path, text & configuration files \\
+\texttt{NodeContract}, \texttt{Node}, \texttt{Allocatable}, \texttt{Gpu}, \texttt{Disk} &
+  \texttt{eligible}: memory and CPU as quantities such as \texttt{53500m}, and
+  the site, architecture, capabilities, GPUs and disks a process may require. \\
+\texttt{ImagesLock}, \texttt{LockedImage} &
+  \texttt{locked}: every image of a process, sidecar, backup method, migration
+  runner and the Vault policy job. \\
+\texttt{ClusterState}, \texttt{Binding} &
+  \texttt{boundOf}: the machine that already holds a volume. \\
+\texttt{CurrentPlacement}, \texttt{RollbackBackup} &
+  Not read by the resolution. The snapshot carries them for the delivery
+  process, which the code generation of Task~3 serves. \\
+\texttt{MigrationProof}, \texttt{ProvenApplication} &
+  \texttt{migrationOf} and \texttt{gate}: the schema version a release was
+  tested against, and whether it holds a change that cannot run in a
+  transaction. \\
+\texttt{AssetFile} &
+  \texttt{Asset::resolvedFor}: a configuration file's text. The pipeline
+  creates one per file a project names; it is not parsed. \\
 \hline
 \end{tabular}
-\caption{The Classes of the Pinned Inputs Metamodel}
+\caption{The Classes of the Pinned Inputs Metamodel and the Rules That Read Them}
 \label{tab:pinned}
 \end{table}
 
-The disk medium of a node is a string, not the source metamodel's
-\texttt{Media} enumeration. The node contract may list a medium that no process
-may request: three machines boot from SD cards, and \texttt{sdcard} is not a
-\texttt{Media} literal. \texttt{AssetFile} is not parsed from YAML. The pipeline
-creates one per configuration file that a project names, from the file beside
-the project document.
+Two attributes are plain strings, an exception to Task~1's rule of
+enumerations over free-form strings. A node's disk medium is not the source
+metamodel's \texttt{Media} enumeration, because the node contract lists media
+that no process may request, such as \texttt{sdcard}. The resolution compares
+the spelling instead, and does the same for a node's architecture. The values
+come from a generated document, not from an author, so the risk the rule guards
+against, an author's typo, does not arise.
 
 \subsection{Changes to the Target Metamodel}
 \label{app:target}
 
-Table~\ref{tab:targetvalues} lists the values added so that the transformation
-can record what it derives, and Table~\ref{tab:targetfiles} the changes to the
-generated-file classes, which let one file describe an application with several
-processes and cover every kind of file the specification's generated trees
-hold. The Task~1 model of \texttt{minimal} needed neither.
+The target metamodel has two halves: the decisions the platform takes, and the
+generated-file entries of the path plan. Both grew.
 
-\begin{table}[!htbp]
+The root class is unchanged, but what one instance holds changed: Task~1
+planned one \texttt{ResolvedDeployment} for the whole cluster, and there is now
+one per project (Section~\ref{sec:perproject}). A \texttt{ResolvedApplication}
+inside it is still the projection one repository publishes.
+
+\paragraph{Decisions.} Figure~\ref{fig:targetdecisions} shows every decision
+class that is new or changed, and Table~\ref{tab:targetvalues} gives the reason
+for each change. Task~1 named many of these decisions in prose but gave classes
+only to what its worked example needed. The other examples also need
+migrations, backups that connect to their database, secrets that reach the
+cluster, API access, sidecars, configuration files, and two cluster-wide values:
+the Vault policy job and the route of the delivery tool's events.
+
+\begin{landscape}
+\begin{figure}[p]
 \centering
-\small
-\begin{tabular}{>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.33\linewidth}>{\raggedright\arraybackslash}p{0.35\linewidth}}
+\includegraphics[width=\linewidth, height=0.85\textheight, keepaspectratio]{Figures/target-decisions}
+\caption{Decision Classes of the Target Metamodel That Changed. Orange: New
+Class. White: Task~1 Class, Showing Only Its New Features (Bold). Arrows Are
+Containment; a Class Contained in Several Places Is Drawn Under Its First
+Container Only}
+\label{fig:targetdecisions}
+\end{figure}
+\end{landscape}
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}p{0.31\linewidth}>{\raggedright\arraybackslash}p{0.39\linewidth}}
 \hline
 \textbf{Class} & \textbf{Change} & \textbf{Reason} \\
 \hline
-\texttt{StartupProbe} & added \texttt{timeout} & The specification gives the startup probe the platform's probe timeout. \\
-\texttt{ResolvedGrant} & \texttt{path} and \texttt{access} optional; added \texttt{engine} and \texttt{paths} & A transit or database secret has no single path. It is recorded as the Vault paths its policy covers. \\
-\texttt{PolicyPath} & new: \texttt{path}, \texttt{allows} & One path of a secret's policy and the operations allowed on it. \\
-\texttt{ResolvedVolume} & added \texttt{mountAt} & The workload template needs the path a volume is mounted at. \\
-\texttt{ResolvedProcess} & added \texttt{lifecycle} & Whether the process serves, runs once or prepares; the revision's element names it. \\
-\texttt{ResolvedScrape} & new: \texttt{process}, \texttt{surface}, \texttt{path}, \texttt{interval}, \texttt{timeout} & How the metrics stack scrapes the application, which the revision's element names. \\
-\texttt{ReleaseGate} & added \texttt{endpoint} & The address every Canary's webhooks call. \\
-\texttt{ResolvedExposure} & added \texttt{listener}, \texttt{certificates}, \texttt{proxyApplication}, \texttt{proxyNamespace} & The entry point and certificate source of the tier, and the proxy whose middleware the routes name. \\
-\texttt{PolicyPeer} & added \texttt{rule} & Which rule admitted the peer, so two rules admitting one peer stay two entries, as in the production implementation. \\
+\endfirsthead
 \hline
-\end{tabular}
-\caption{Values Added to the Target Metamodel}
+\textbf{Class} & \textbf{Change} & \textbf{Reason} \\
+\hline
+\endhead
+\hline
+\endfoot
+\hline
+\caption{Changes to the Decision Classes of the Target Metamodel}
 \label{tab:targetvalues}
-\end{table}
+\endlastfoot
+\texttt{ResolvedDeployment} & added \texttt{policyJob}, \texttt{events} &
+  The Vault policy job and the route of the delivery tool's events belong to
+  the whole cluster; every project's model carries the same one, and the
+  estate pass plans their files. \\
+\texttt{ResolvedPolicyJob}, \texttt{ResolvedEvents} & new &
+  The job's identity, image, Vault role, resources and egress; the events
+  receiver's namespace and address. \\
+\texttt{ResolvedApplication} & added \texttt{secretStore}, \texttt{scrape} &
+  The secret store's address where the operator syncs from it; how the metrics
+  stack scrapes the application, which the revision's element names. \\
+\texttt{ResolvedScrape} & new & The scraped process, surface, path, interval and timeout. \\
+\texttt{ReleaseGate} & added \texttt{endpoint}, \texttt{migration} &
+  The address every Canary's webhooks call, and the migration the gate starts
+  and may undo. \\
+\texttt{GateAnalysis} & added \texttt{errorRate}, \texttt{latency} &
+  The thresholds of the two analysis checks, from the platform. \\
+\texttt{GateMigration} & new & The migration's identity and what its proof records. \\
+\texttt{ResolvedMigration} & added identity, image user, deadline, memory,
+  CPU, scratch space, \texttt{database}, \texttt{credential}, \texttt{egress} &
+  Task~1 named the identity, owner role and deadline in prose, but the class
+  held only the runner and the proof. A migration Job also needs the address
+  of its database, an owner credential only it holds, and a network policy of
+  its own. \\
+\texttt{MigratedDatabase} & new & The database's host, port and name. \\
+\texttt{ResolvedProcess} & added \texttt{lifecycle}, \texttt{api},
+  \texttt{assets}, \texttt{sidecars} &
+  Whether the process serves, runs once or prepares, which the revision's
+  element names; its API access, configuration files and sidecars. \\
+\texttt{ResolvedApiAccess}, \texttt{ResolvedApiRule}, \texttt{AdmittedRange} & new &
+  The API rules a process holds, and an address range a policy admits: the API
+  server for API access, a backup's off-cluster destination. \\
+\texttt{ResolvedAsset}, \texttt{ResolvedSidecar} & new &
+  A configuration file with its content-derived name; a sidecar with its
+  locked image and resources. \\
+\texttt{ResolvedGrant} & \texttt{path} and \texttt{access} optional; added
+  \texttt{engine}, \texttt{paths}, \texttt{destination}, \texttt{mountAt},
+  \texttt{fileMode} &
+  A transit or database secret has no single path; it is recorded as the
+  Vault paths its policy covers. A synced secret needs the Kubernetes Secret it
+  is copied to, and a file secret its mount. \\
+\texttt{PolicyPath} & new & One path of a secret's policy and the operations allowed on it. \\
+\texttt{ResolvedVolume} & added \texttt{mountAt} & The workload template needs the mount path. \\
+\texttt{BackupPlan} & added user, group, identity, claim, \texttt{egress},
+  \texttt{peer}, \texttt{credential}, \texttt{destinations} &
+  A backup runs as its own identity with its own claim and network policy,
+  connects to the process it dumps, and copies off the cluster with a
+  credential. \\
+\texttt{BackupPeer} & new & Where a backup connects, and the credential it logs in with. \\
+\texttt{EnvEntry} & \texttt{value} optional; added \texttt{secret} &
+  A secret placeholder becomes a reference, so the value never appears in a
+  file. \\
+\texttt{SecretReference} & new & The secret path and key a variable reads. \\
+\texttt{StartupProbe} & added \texttt{timeout} & The specification gives the startup probe the platform's probe timeout. \\
+\texttt{ResolvedExposure} & added \texttt{listener}, \texttt{certificates},
+  \texttt{proxyApplication}, \texttt{proxyNamespace} &
+  The entry point's protocol and certificate source, and the proxy whose
+  middleware the routes name. \\
+\texttt{PolicyPeer} & added \texttt{rule}; \texttt{process} optional &
+  Which rule admitted the peer, so two rules that admit one peer stay two
+  entries, as in the production implementation; a peer such as the cluster's
+  DNS is a namespace without a process. \\
+\end{longtable}
 
-\begin{table}[!htbp]
+\paragraph{Generated Files.} Figure~\ref{fig:targetfiles} shows every
+subclass of \texttt{Deliverable}. Task~1 had nine; there are now 21. Three
+kinds of change were made.
+
+\begin{itemize}
+  \item \textbf{One file per application.} The workload, Canary and identity
+    files, which Task~1 tied to one process, now list \texttt{processes},
+    because the specification writes one file per application holding the
+    resources of all its processes; Task~1's worked example had one process,
+    so the difference did not show. For the same reason the network policy
+    file holds one \texttt{ProcessPolicy} per process, and the secret file
+    refers to its application and holds one \texttt{SecretHolder} per identity,
+    since a backup identity holds secrets too.
+  \item \textbf{Monitors.} \texttt{MonitorFile} gained \texttt{timeout} and a
+    \texttt{kind}: a blue/green process is scraped through its pods, any other
+    through its service.
+  \item \textbf{Twelve new kinds of file}: services, volume claims,
+    configuration maps, backups, disruption budgets, migrations, RBAC, the
+    secret operator's connection, Vault policies and roles, the policy job and
+    the events route.
+\end{itemize}
+
+\begin{landscape}
+\begin{figure}[p]
 \centering
-\small
-\begin{tabular}{>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.33\linewidth}>{\raggedright\arraybackslash}p{0.35\linewidth}}
+\includegraphics[width=\linewidth, height=0.85\textheight, keepaspectratio]{Figures/target-files}
+\caption{The Generated-File Classes of the Target Metamodel, Task~1 Against Task~2}
+\label{fig:targetfiles}
+\end{figure}
+\end{landscape}
+
+The hand-written model of \texttt{minimal} from Task~1 was updated with these
+changes: its files refer to the process through \texttt{processes}, it gained
+the configuration map that carries the release gate's inputs, and its revision
+was set to the production implementation's (Section~\ref{sec:thin}).
+
+\subsection{Changes to the Source Metamodel}
+\label{app:source}
+
+The source metamodel kept every class. Table~\ref{tab:sourcechanges} lists
+what was added or changed. Most additions are declarations in the platform
+document that a derivation needs and that Task~1 had left implicit; a rule
+that needs a value the platform does not declare would otherwise have to
+contain it as a constant.
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.30\linewidth}>{\raggedright\arraybackslash}p{0.38\linewidth}}
 \hline
 \textbf{Class} & \textbf{Change} & \textbf{Reason} \\
 \hline
-\texttt{WorkloadFile}, \texttt{SwitchoverFile}, \texttt{IdentityFile} & \texttt{process} replaced by \texttt{processes} (one or more) & One file per application holds the resources of all its processes, as in the generated tree of the specification. \\
-\texttt{NetworkPolicyFile} & \texttt{process}, \texttt{ingress} and \texttt{egress} replaced by \texttt{policies} & One policy file per application holds one policy per process. The project's default-deny file holds none. \\
-\texttt{ProcessPolicy} & new: \texttt{process}, \texttt{ingress}, \texttt{egress} & The peers that may reach one process, and those it may reach. \\
-\texttt{MonitorFile} & added \texttt{timeout} and \texttt{kind} & A blue/green process is scraped through its pods, any other through its service. \\
-\texttt{ServiceFile}, \texttt{ClaimFile}, \texttt{ConfigMapFile}, \texttt{BackupFile} & new, each with \texttt{processes} & The services, volume claims, configuration files and backups of an application's processes. \\
-\texttt{SecretFile} & \texttt{process} and \texttt{grants} replaced by \texttt{application} and \texttt{holders} & One file per application holds the secrets of every identity in it, including a backup identity. \\
-\texttt{SecretHolder} & new: \texttt{identity}, \texttt{component}, \texttt{grants} & One identity and the secrets synced for it. \\
-\texttt{ConnectionFile} & new: \texttt{namespace}, \texttt{address} & The secret operator's connection to the secret store. \\
-\texttt{VaultPolicyFile}, \texttt{VaultRoleFile} & new, with \texttt{namespace} and \texttt{identity} & The Vault policy and role of one identity, written as JSON. \\
+\endfirsthead
 \hline
-\end{tabular}
-\caption{Changes to the Generated-File Classes}
-\label{tab:targetfiles}
-\end{table}
-
-The hand-written model of \texttt{minimal} follows these changes. Its revision
-is now the production implementation's, and its generated files refer to the
-process through the new features.
+\textbf{Class} & \textbf{Change} & \textbf{Reason} \\
+\hline
+\endhead
+\hline
+\endfoot
+\hline
+\caption{Changes to the Source Metamodel}
+\label{tab:sourcechanges}
+\endlastfoot
+\texttt{Process} & added \texttt{api} (\texttt{ApiAccess}, \texttt{ApiRule}, \texttt{ApiVerb}) &
+  A process declares the Kubernetes API access it needs, with a reason; the
+  platform's delivery tools need it. \\
+\texttt{Platform} & added \texttt{apiAccess} (\texttt{ApiAccessPolicy}) &
+  Which applications may hold API access, and the API server's address range. \\
+\texttt{Platform} & added \texttt{secretStore}, \texttt{telemetry}
+  (\texttt{TelemetryPolicy}), \texttt{policyJob} (\texttt{VaultPolicyJob}) &
+  References to the secret store, the telemetry collector and the metrics
+  stack, whose addresses the resolution finds in their projects; and the Vault
+  policy job's image, role and resources. \\
+\texttt{DeliveryPolicy} & added \texttt{gate}, \texttt{reporter} &
+  References to the release gate and the events receiver applications. \\
+\texttt{AnalysisPolicy} & added \texttt{errorRate}, \texttt{latency} & The thresholds the gate checks. \\
+\texttt{Substrate} & added \texttt{clusterDns} & The namespace every egress policy admits for DNS. \\
+\texttt{EnginePolicy} & added \texttt{surface} & The port a database engine's backup connects to. \\
+\texttt{OffClusterCopy} & added \texttt{egress} (\texttt{DestinationRange}) & The address ranges a backup's copy goes to. \\
+\texttt{HandoverLedger} & added \texttt{serving} (\texttt{ServingLocation}) &
+  Where a project that has not moved yet still runs, so an edge to it resolves. \\
+\texttt{RenderedArtifacts} & added \texttt{pullSecret} & Used by delivery, not by the resolution. \\
+\texttt{Placeholder} & added \texttt{suffix} & Text after a placeholder, as in \texttt{\$\{exposure:auth.public\#url\}/login}. \\
+\texttt{Grant} & \texttt{rotation} required & Every grant states how it tolerates rotation, which decides its restart targets. \\
+\texttt{Volume} & \texttt{size} required & A claim cannot be generated without a size. \\
+\texttt{EffectiveProject} & removed \texttt{apiVersion}, \texttt{kind}, \texttt{schemaVersion} &
+  The lowered model is written by the lowering, not by an author, so it has no
+  document header. \\
+\end{longtable}
 
 \subsection{Grammars for the Pinned Inputs}
 \label{app:grammars}
 
-Four grammars were added beside the project and platform grammars:
+The pinned inputs are read with grammars rather than a Java YAML reader or hand-written XMI, so that both implementations read the same YAML files and their results can be compared. Four grammars were added beside the project and platform grammars:
 \texttt{NodeContract}, \texttt{ImagesLock}, \texttt{ClusterState} and
 \texttt{MigrationProof}. Each inherits the project grammar, so it reuses its
 terminals, its indentation tokens and its scalar rule, and adds only the rules
-for its own document and the keywords it introduces. Listing~\ref{lst:grammar}
-shows the smallest.
+for its own document. As with the platform document, the file name selects the
+grammar: \path{node-contract.yml}, \path{images.lock.yml},
+\path{cluster-state.yml} and \path{migration-proof.yml}.
+Example~\ref{lst:grammar} shows the smallest. One input file changed: the
+project grammar's scalar terminal cannot contain a colon, so the snapshot's
+capture time is now quoted, as digests and URLs already were. The production
+implementation reads the same value either way.
 
-\begin{lstlisting}[style=report, caption={The Grammar of the Cluster-State Snapshot}, label={lst:grammar}]
+\begin{lstlisting}[style=report, caption={The Grammar of the Cluster-State Snapshot, Abridged}, label={lst:grammar}]
 grammar dev.jorisjonkers.deploykit.emf.syntax.ClusterState
 	with dev.jorisjonkers.deploykit.emf.syntax.ProjectIntent
 import "https://jorisjonkers.dev/deploy-kit/pinned-inputs/1"
@@ -133,12 +306,10 @@ ClusterState returns ClusterState:
 	& ('cluster' ':' cluster=Text)
 	& ('capturedAt' ':' capturedAt=Text)
 	& ('bindings' ':' BEGIN (DASH BEGIN bindings+=Binding END)* END)
-	& ('placements' ':' BEGIN (DASH BEGIN placements+=CurrentPlacement END)* END));
-\end{lstlisting}
+	& ('placements' ':' BEGIN (DASH BEGIN placements+=CurrentPlacement END)* END)
+	& ('backups' ':' BEGIN (DASH BEGIN backups+=RollbackBackup END)* END)?);
 
-As with the platform document, the file name selects the grammar:
-\texttt{node-contract.yml}, \texttt{images.lock.yml},
-\texttt{cluster-state.yml} and \texttt{migration-proof.yml}. One input file
-changed. The scalar terminal of the project grammar cannot contain a colon, so
-the snapshot's capture time is now quoted, as digests and URLs already were.
-The production implementation reads the same value either way.
+Binding returns Binding:
+	(('claim' ':' claim=Text)
+	& ('node' ':' node=Text));
+\end{lstlisting}

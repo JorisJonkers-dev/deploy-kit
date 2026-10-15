@@ -23,7 +23,8 @@ XSI = 'http://www.w3.org/2001/XMLSchema-instance'
 
 # The cases the resolution reaches, and the project each resolves: the pipeline's own list.
 CASES = {'minimal': 'notes', 'auth': 'auth', 'data': 'data', 'delivery': 'delivery',
-         'edge': 'edge', 'observability': 'observability', 'secrets': 'secrets'}
+         'edge': 'edge', 'knowledge-platform': 'knowledge-platform',
+         'observability': 'observability', 'secrets': 'secrets'}
 
 
 def write(dst, text):
@@ -73,7 +74,7 @@ def located(depth, *ecores):
 # The three metamodels, and the two transformations.
 for ecore in NS:
     xml(f'{MM}/{ecore}', f'{OUT}/model/{ecore}')
-for qvto in ['lower.qvto', 'resolution.qvto']:
+for qvto in ['lower.qvto', 'resolution.qvto', 'estate.qvto']:
     copy(f'{QV}/{qvto}', f'{OUT}/transforms/{qvto}')
 
 # Each case: its authored files, the two extents the resolution read, the resolved model it wrote,
@@ -96,6 +97,9 @@ for doc in sorted(glob.glob(f'{EX}/platform/*.yml')):
     copy(doc, f'{OUT}/examples/platform/{os.path.basename(doc)}')
 # The hand-written target model the resolution of minimal is held equal to.
 xml(f'{R}/emf/models/minimal.resolveddeployment', f'{OUT}/examples/minimal/minimal.hand-written.resolveddeployment',
+    located(2, 'resolved-deployment.ecore'))
+# The complete expected model the resolution of secrets is held equal to.
+xml(f'{R}/emf/models/secrets.resolveddeployment', f'{OUT}/examples/secrets/secrets.expected.resolveddeployment',
     located(2, 'resolved-deployment.ecore'))
 
 write(f'{OUT}/.project', f"""<?xml version="1.0" encoding="UTF-8"?>

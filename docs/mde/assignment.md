@@ -194,7 +194,8 @@ In short: at most 15 pages of report (10 pt minimum), plus at most 10 pages of
 appendix describing any change to the Task 1 metamodels; the transformation and
 its source and target models ship as Eclipse/EMF projects in the same zip.
 
-Mirror: `task-2-transformations/` — not started. This project uses **QVT
+Mirror: [`task-2-transformations/`](task-2-transformations/), Overleaf project
+`6ad0ce4e3920baa59ec3d535`. This project uses **QVT
 Operational**, not ATL. The practical session that walks through the QVT
 Operational tooling is
 [session 5 in `practicals.md`](practicals.md#session-5--qvt-om-transformations).
