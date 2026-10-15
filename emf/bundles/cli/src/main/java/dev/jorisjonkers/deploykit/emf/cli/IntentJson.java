@@ -17,7 +17,9 @@ import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
  * Reads a parsed model as the JSON value the parity contract compares: every feature named as the
  * authored key it holds, a map entry as an object, an enumeration as its literal, and an optional
  * feature absent when the document left it out. A class the metamodel annotates as a scalar is
- * written as that scalar, which is how {@code probes: none} stays the word it was authored as. The
+ * written as that scalar, which is how {@code probes: none} stays the word it was authored as, and
+ * one it annotates with a value is written as that feature's value, which is how a plain key stays
+ * its name. The
  * metamodel is walked reflectively, so a feature added to the {@code .ecore} reaches the intent
  * without a line here.
  */
@@ -113,8 +115,16 @@ public final class IntentJson {
         return Map.Entry.class.getName().equals(feature.getEType().getInstanceClassName());
     }
 
+    /** The feature a class is written as the value of, or {@code null} when it is written as a block. */
+    private static EStructuralFeature written(EObject object) {
+        EAnnotation annotation = object.eClass().getEAnnotation(JSON);
+        String name = annotation == null ? null : annotation.getDetails().get("value");
+        return name == null ? null : object.eClass().getEStructuralFeature(name);
+    }
+
     private static Object single(Object value) {
         return switch (value) {
+            case EObject child when written(child) != null -> child.eGet(written(child));
             case EObject child -> scalar(child) == null ? of(child) : scalar(child);
             case Enumerator literal -> literal.getLiteral();
             default -> value;

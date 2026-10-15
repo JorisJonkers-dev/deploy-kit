@@ -309,12 +309,29 @@ mapping Grant::copyFor(in owner : Process) : Grant
 
 mapping KvGrant::copyFor(in owner : Process) : KvGrant {
 	path := self.path;
-	keys := self.keys;
+	keys := self.keys->map copyFor(owner);
 	_access := self._access;
 	delivery := self.delivery;
 	if self.mountAt <> null then mountAt := self.mountAt endif;
 	if self.fileMode <> null then fileMode := self.fileMode endif;
 	rotation := self.rotation.map copyFor(owner);
+}
+
+mapping KvKey::copyFor(in owner : Process) : KvKey
+	disjuncts PlainKey::copyFor, GeneratedKey::copyFor {}
+
+mapping PlainKey::copyFor(in owner : Process) : PlainKey {
+	name := self.name;
+}
+
+mapping GeneratedKey::copyFor(in owner : Process) : GeneratedKey {
+	name := self.name;
+	generate := self.generate.map copyFor(owner);
+}
+
+mapping Generate::copyFor(in owner : Process) : Generate {
+	if self.bytes <> null then bytes := self.bytes endif;
+	if self.encoding <> KeyEncoding::absent then encoding := self.encoding endif;
 }
 
 mapping DatabaseGrant::copyFor(in owner : Process) : DatabaseGrant {

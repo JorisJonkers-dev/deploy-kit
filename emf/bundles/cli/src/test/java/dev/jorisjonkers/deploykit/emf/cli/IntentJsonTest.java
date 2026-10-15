@@ -6,10 +6,15 @@ import static org.assertj.core.api.Assertions.entry;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.AnalysisPolicy;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Application;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.DeliveryPolicy;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Generate;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.GeneratedKey;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.HttpProbe;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.KeyEncoding;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.KvGrant;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Lifecycle;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Match;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Placement;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.PlainKey;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Probes;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Process;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentFactory;
@@ -118,5 +123,25 @@ class IntentJsonTest {
         assertThat(IntentJson.of(process())).doesNotContainKey("provides");
         assertThat(IntentJson.of(process())).doesNotContainKey("applications");
         assertThat(IntentJson.of(process)).contains(entry("provides", Map.of("http", 8080)));
+    }
+
+    @Test
+    void aPlainKeyIsWrittenAsItsNameAndAGeneratedKeyAsABlock() {
+        KvGrant grant = MODEL.createKvGrant();
+        grant.setPath("secret/data/notes-system/app");
+        grant.setRotation(MODEL.createRotation());
+        PlainKey plain = MODEL.createPlainKey();
+        plain.setName("password");
+        GeneratedKey generated = MODEL.createGeneratedKey();
+        generated.setName("session_key");
+        Generate generate = MODEL.createGenerate();
+        generate.setEncoding(KeyEncoding.BASE64);
+        generated.setGenerate(generate);
+        grant.getKeys().addAll(List.of(plain, generated));
+
+        assertThat(IntentJson.of(grant))
+                .contains(entry(
+                        "keys",
+                        List.of("password", Map.of("name", "session_key", "generate", Map.of("encoding", "base64")))));
     }
 }

@@ -23,8 +23,9 @@ import org.eclipse.emf.ecore.EStructuralFeature;
  *
  * <p>The shape is neither Ecore's nor the wire schema's. An abstract class is the union of what can
  * stand in its place, so it is not listed and a feature that points at one names its concrete
- * classes. A map entry is not a class either: the feature that holds the entries is a map. And a
- * class nobody authors is not listed: the lowered Project and Application are what a transformation
+ * classes. A map entry is not a class either: the feature that holds the entries is a map. A class
+ * the language writes as the value of one of its features is that feature's type, so a plain key
+ * is a {@code string}. And a class nobody authors is not listed: the lowered Project and Application are what a transformation
  * writes (docs/adr/model/0125).
  */
 public final class Descriptor {
@@ -63,7 +64,10 @@ public final class Descriptor {
 
     /** Whether a class is one the descriptor lists: an abstract class is a union, a map entry a map. */
     private static boolean isListed(EClass owner) {
-        return !owner.isAbstract() && !isMapEntry(owner) && !"no".equals(detail(owner, "authored"));
+        return !owner.isAbstract()
+                && !isMapEntry(owner)
+                && !"no".equals(detail(owner, "authored"))
+                && detail(owner, "value") == null;
     }
 
     /** The descriptor spells a class as its document spells it, and `env` is a directory beside one. */
@@ -142,14 +146,22 @@ public final class Descriptor {
         }
         EClass referenced = (EClass) type;
         if (!referenced.isAbstract()) {
-            return List.of(referenced.getName());
+            return List.of(nameOf(referenced));
         }
         return referenced.getEPackage().getEClassifiers().stream()
                 .filter(EClass.class::isInstance)
                 .map(EClass.class::cast)
                 .filter(candidate -> !candidate.isAbstract() && referenced.isSuperTypeOf(candidate))
-                .map(EClass::getName)
+                .map(Descriptor::nameOf)
                 .sorted()
                 .toList();
+    }
+
+    /** A class by its name, or by the type of the one feature the language writes it as. */
+    private static String nameOf(EClass candidate) {
+        String value = detail(candidate, "value");
+        return value == null
+                ? candidate.getName()
+                : types(candidate.getEStructuralFeature(value), false).getFirst();
     }
 }

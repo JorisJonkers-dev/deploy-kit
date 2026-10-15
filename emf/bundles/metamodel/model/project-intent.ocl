@@ -253,6 +253,15 @@ context Asset
 		oclContainer().oclAsType(SharedIntent).levelsAbove->forAll(above |
 			above.assets->forAll(other | not (mountAt = other.mountAt and from = other.from)))
 
+context KvKey
+	-- A key as a duplicate compares it: its name, and how it is generated if it is.
+	def: term : String =
+		if self.oclIsKindOf(GeneratedKey) then
+			let g : Generate = self.oclAsType(GeneratedKey).generate in
+			name + ' generate ' + (if g.bytes = null then '' else g.bytes.toString() endif)
+				+ ' ' + g.encoding.toString()
+		else name endif
+
 context Grant
 	-- A grant states its rotation or states none, and either way the restatement
 	-- has to match for the second declaration to be a duplicate.
@@ -268,7 +277,7 @@ context KvGrant
 	inv E_SHARED_DECLARATION_DUPLICATED:
 		oclContainer().oclAsType(SharedIntent).levelsAbove->forAll(above |
 			above.secrets->selectByKind(KvGrant)->forAll(other |
-				not (path = other.path and access = other.access and keys = other.keys
+				not (path = other.path and access = other.access and keys.term = other.keys.term
 					and delivery = other.delivery and mountAt = other.mountAt
 					and fileMode = other.fileMode and sameRotationAs(other))))
 
@@ -319,6 +328,61 @@ context SharedIntent
 			else oclContainer().oclContainer().oclAsType(Project).project
 			endif
 		endif
+
+context SharedIntent
+	-- The Project document a declaration belongs to, from any of the three levels.
+	def: projectDocument : Project =
+		if self.oclIsKindOf(Project) then self.oclAsType(Project)
+		else
+			if self.oclIsKindOf(Application) then oclContainer().oclAsType(Project)
+			else oclContainer().oclContainer().oclAsType(Project)
+			endif
+		endif
+
+context SharedIntent
+	-- Where a level's grants come in the document: the project's first, then each
+	-- Application's before its Processes'.
+	def: grantRank : Integer =
+		if self.oclIsKindOf(Project) then 0
+		else
+			if self.oclIsKindOf(Application) then projectDocument.applications->indexOf(self.oclAsType(Application)) * 1000
+			else projectDocument.applications->indexOf(oclContainer().oclAsType(Application)) * 1000
+				+ oclContainer().oclAsType(Application).processes->indexOf(self.oclAsType(Process))
+			endif
+		endif
+
+-- Generated keys (spec/v1/10-project-intent.md#generated-keys): the Vault policy
+-- job writes each, once, under its own Project's prefix, and nothing else
+-- writes its path.
+
+context GeneratedKey
+	def: grant : KvGrant = oclContainer().oclAsType(KvGrant)
+
+	def: owner : SharedIntent = grant.oclContainer().oclAsType(SharedIntent)
+
+	-- Where the key comes in its document, so the first of two is the one declared first.
+	def: rank : Integer =
+		(owner.grantRank * 1000 + owner.secrets->indexOf(grant)) * 1000 + grant.keys->indexOf(self)
+
+	-- A `.`, `..` or empty segment below the prefix could climb out of it.
+	inv E_GENERATED_KEY_OUTSIDE_PROJECT:
+		let prefix : String = 'secret/data/' + owner.projectName + '-system/' in
+		grant.path.startsWith(prefix) and grant.path.size() > prefix.size() and
+			let below : String = '/' + grant.path.substring(prefix.size() + 1, grant.path.size()) + '/' in
+			below.indexOf('//') = 0 and below.indexOf('/./') = 0 and below.indexOf('/../') = 0
+
+	-- The first grant to generate a key owns it; a later one lists it plainly.
+	inv E_GENERATED_KEY_TWICE:
+		not GeneratedKey.allInstances()->exists(k | k.owner.projectDocument = owner.projectDocument
+			and k.grant.path = grant.path and k.name = name and k.rank < rank)
+
+	-- A `self-roll` grant on the path, or a `custody` grant on it or above it,
+	-- writes it too.
+	inv E_GENERATED_KEY_WRITTEN_ELSEWHERE:
+		not KvGrant.allInstances()->exists(g |
+			(g.access = AccessTier::selfRoll and g.path = grant.path)
+			or (g.access = AccessTier::custody
+				and (g.path = grant.path or grant.path.startsWith(g.path + '/'))))
 
 context DatabaseGrant
 	-- The owner role changes the schema, and is derived for the migration alone.
@@ -429,7 +493,7 @@ context Process
 	-- A placeholder reads one key of a path an env grant of the Process lists.
 	inv E_UNAUTHORISED_SECRET_REFERENCE:
 		placeholdersOf(PlaceholderKind::secret)->forAll(p |
-			envGrants->exists(g | g.keys->exists(k | p.source = g.path + '#' + k)))
+			envGrants->exists(g | g.keys->exists(k | p.source = g.path + '#' + k.name)))
 
 	-- An env grant nothing reads is a dead grant; a Process no env file reaches
 	-- is undecided, its files perhaps not among those read.

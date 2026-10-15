@@ -259,7 +259,8 @@ class ResolvedDeploymentTest {
                         "BackupFile",
                         "ConnectionFile",
                         "VaultPolicyFile",
-                        "VaultRoleFile");
+                        "VaultRoleFile",
+                        "GeneratedKeysFile");
     }
 
     @Test

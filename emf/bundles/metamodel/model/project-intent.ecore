@@ -223,8 +223,35 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="KvGrant" eSuperTypes="#//Grant">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="keys" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="keys" lowerBound="1" upperBound="-1" eType="#//KvKey" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="access" lowerBound="1" eType="#//AccessTier"/>
+  </eClassifiers>
+  <!-- A key of a `kv` grant (spec/v1/10-project-intent.md#generated-keys): a
+       name somebody writes, or one the Vault policy job generates. A plain key
+       is written as its name alone. -->
+  <eClassifiers xsi:type="ecore:EClass" name="KvKey" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="PlainKey" eSuperTypes="#//KvKey">
+    <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+      <details key="value" value="name"/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="GeneratedKey" eSuperTypes="#//KvKey">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="generate" lowerBound="1" eType="#//Generate" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Generate">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="bytes" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="encoding" eType="#//KeyEncoding"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="KeyEncoding">
+    <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+      <details key="absent" value="absent"/>
+    </eAnnotations>
+    <eLiterals name="absent" literal=""/>
+    <eLiterals name="hex" value="1" literal="hex"/>
+    <eLiterals name="base64" value="2" literal="base64"/>
+    <eLiterals name="base64url" value="3" literal="base64url"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="DatabaseGrant" eSuperTypes="#//Grant">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="engine" lowerBound="1" eType="#//DatabaseEngine"/>

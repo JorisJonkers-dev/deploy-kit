@@ -339,6 +339,16 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="fileMode" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="restartTargets" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="generated" upperBound="-1" eType="#//ResolvedGeneratedKey" containment="true"/>
+  </eClassifiers>
+
+  <!-- A key the Vault policy job generates, its defaults filled in. A grant's
+       key names no path, since the grant does; the job's document names one. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedGeneratedKey">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="bytes" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="encoding" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <!-- A path a grant's policy covers, and what it may do there. -->
@@ -622,6 +632,12 @@
   <eClassifiers xsi:type="ecore:EClass" name="PolicyDocument">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="file" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="json" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- Every key the Vault policy job generates for one project, once, in path
+       then key order (spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied). -->
+  <eClassifiers xsi:type="ecore:EClass" name="GeneratedKeysFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="keys" lowerBound="1" upperBound="-1" eType="#//ResolvedGeneratedKey" containment="true"/>
   </eClassifiers>
 
   <!-- The Kubernetes auth role that binds one identity to its policy. -->

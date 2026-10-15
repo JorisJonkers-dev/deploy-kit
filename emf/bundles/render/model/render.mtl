@@ -22,6 +22,8 @@
     [d.oclAsType(resolveddeployment::VaultPolicyFile).json()/]
   [elseif (d.oclIsKindOf(resolveddeployment::VaultRoleFile))]
     [d.oclAsType(resolveddeployment::VaultRoleFile).json()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::GeneratedKeysFile))]
+    [d.oclAsType(resolveddeployment::GeneratedKeysFile).json()/]
   [else]
     # GENERATED. Never hand-edit.
     [d.yaml()/]
@@ -1079,6 +1081,20 @@
   }
 [/template]
 
+[template private json(d : resolveddeployment::GeneratedKeysFile)]
+  {
+    "keys": [ '[' /]
+  [for (k : resolveddeployment::ResolvedGeneratedKey | d.keys) separator(',\n')]
+        {
+          "path": "[k.path/]",
+          "key": "[k.key/]",
+          "bytes": [k.bytes/],
+          "encoding": "[k.encoding/]"
+        }[/for]
+    ]
+  }
+[/template]
+
 [comment The Vault policy job: the ServiceAccount it runs as, the ConfigMap that hands it every
   document of this render as canonical JSON on one line, the Job that writes them into the Secret
   Store, and the job's own policy. The ConfigMap and the Job share the name the documents' digest
@@ -1118,6 +1134,57 @@
   [/if]
 [/template]
 
+[comment The run the Job and the CronJob share, unindented. /]
+[template private pod(d : resolveddeployment::PolicyJobFile)]
+  metadata:
+    labels:
+      [d.job.identity.labelSet('none', d.job.identity)/]
+  spec:
+    serviceAccountName: [d.job.identity/]
+    automountServiceAccountToken: true
+    restartPolicy: OnFailure
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: [d.job.uid/]
+      runAsGroup: [d.job.gid/]
+      seccompProfile:
+        type: RuntimeDefault
+    containers:
+      - name: [d.job.identity/]
+        image: [d.job.image/]
+        env:
+          - name: VAULT_ADDR
+            value: [d.job.address/]
+          - name: VAULT_ROLE
+            value: [d.job.role/]
+          - name: POLICIES_DIR
+            value: /policies
+        resources:
+          requests:
+            memory: [d.job.memory/]
+            cpu: [d.job.cpu/]
+          limits:
+            memory: [d.job.memory/]
+        securityContext:
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        volumeMounts:
+          - name: policies
+            mountPath: /policies
+            readOnly: true
+    volumes:
+      - name: policies
+        configMap:
+          name: [d.name/]
+          items:
+  [for (document : resolveddeployment::PolicyDocument | d.documents)]
+              - key: [document.file/]
+                path: [document.file/]
+  [/for]
+[/template]
+
 [template private objects(d : resolveddeployment::PolicyJobFile)]
   [if (d.part = 'serviceaccount')]
     ---
@@ -1155,53 +1222,24 @@
     spec:
       activeDeadlineSeconds: [d.job.deadline.seconds()/]
       template:
-        metadata:
-          labels:
-            [d.job.identity.labelSet('none', d.job.identity)/]
+        [d.pod()/]
+  [elseif (d.part = 'cronjob')]
+    ---
+    apiVersion: batch/v1
+    kind: CronJob
+    metadata:
+      name: [d.job.identity/]
+      namespace: [d.job.namespace/]
+      labels:
+        [d.job.identity.labelSet('none', d.job.identity)/]
+    spec:
+      schedule: "@hourly"
+      concurrencyPolicy: Forbid
+      jobTemplate:
         spec:
-          serviceAccountName: [d.job.identity/]
-          automountServiceAccountToken: true
-          restartPolicy: OnFailure
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: [d.job.uid/]
-            runAsGroup: [d.job.gid/]
-            seccompProfile:
-              type: RuntimeDefault
-          containers:
-            - name: [d.job.identity/]
-              image: [d.job.image/]
-              env:
-                - name: VAULT_ADDR
-                  value: [d.job.address/]
-                - name: VAULT_ROLE
-                  value: [d.job.role/]
-                - name: POLICIES_DIR
-                  value: /policies
-              resources:
-                requests:
-                  memory: [d.job.memory/]
-                  cpu: [d.job.cpu/]
-                limits:
-                  memory: [d.job.memory/]
-              securityContext:
-                readOnlyRootFilesystem: true
-                capabilities:
-                  drop:
-                    - ALL
-              volumeMounts:
-                - name: policies
-                  mountPath: /policies
-                  readOnly: true
-          volumes:
-            - name: policies
-              configMap:
-                name: [d.name/]
-                items:
-    [for (document : resolveddeployment::PolicyDocument | d.documents)]
-                    - key: [document.file/]
-                      path: [document.file/]
-    [/for]
+          activeDeadlineSeconds: [d.job.deadline.seconds()/]
+          template:
+            [d.pod()/]
   [else]
     ---
     apiVersion: networking.k8s.io/v1

@@ -84,7 +84,8 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 	deliverables := self.projectFiles()
 		->union(self.applications->collect(a | a.applicationFiles(self))->flatten())
 		->union(self.edgeFiles())
-		->union(self.vaultFiles());
+		->union(self.vaultFiles())
+		->union(self.generatedKeysFiles());
 	end {
 		-- Only a complete element has a revision: it is the digest of all of it.
 		result.reconcileUnits->first().after := result.reconcileUnits->excluding(result.reconcileUnits->first());
@@ -521,7 +522,9 @@ query Grant::resolvedFor(p : PI::Process) : ResolvedGrant = object ResolvedGrant
 	delivery := self.delivery.spelling();
 	if (self.oclIsKindOf(KvGrant)) {
 		path := self.oclAsType(KvGrant).path;
-		keys := self.oclAsType(KvGrant).keys;
+		keys := self.oclAsType(KvGrant).keys.name;
+		generated := self.oclAsType(KvGrant).keys->select(k | k.oclIsKindOf(GeneratedKey))
+			->collect(k | k.oclAsType(GeneratedKey).resolved());
 		_access := self.oclAsType(KvGrant)._access.spelling();
 		if self.delivery <> Delivery::selfDelivery then
 			destination := destinationOf(p.name, self.oclAsType(KvGrant).path)
@@ -823,7 +826,7 @@ query Placeholder::entryFor(variable : String, prj : EffectiveProject) : EnvEntr
 		let secretPath : String = self.source.substring(1, cut - 1) in
 		let secretKey : String = self.source.substring(cut + 1, self.source.size()) in
 		if owner.secrets->exists(g | g.oclIsKindOf(KvGrant) and g.oclAsType(KvGrant).path = secretPath
-				and g.delivery = Delivery::env and g.oclAsType(KvGrant).keys->includes(secretKey)) then
+				and g.delivery = Delivery::env and g.oclAsType(KvGrant).keys.name->includes(secretKey)) then
 			object EnvEntry {
 				name := variable;
 				secret := object SecretReference { path := secretPath; key := secretKey; };
@@ -1328,6 +1331,35 @@ query EffectiveProject::vaultFiles() : Sequence(Deliverable) =
 			vaultFilesOf(app.namespace, app.migration.identity, Sequence{app.migration.credential}) endif))
 		->flatten();
 
+-- A generated key with its defaults filled in: 32 bytes, as hex.
+query GeneratedKey::resolved() : ResolvedGeneratedKey = object ResolvedGeneratedKey {
+	key := self.name;
+	bytes := if self.generate.bytes = null then 32 else self.generate.bytes endif;
+	encoding := if self.generate.encoding = KeyEncoding::base64 then 'base64'
+		else if self.generate.encoding = KeyEncoding::base64url then 'base64url' else 'hex' endif endif;
+};
+
+-- The keys the Vault policy job generates for the project, once each, in path
+-- then key order: a grant every Process inherits names its keys once.
+query EffectiveProject::generatedKeysFiles() : Sequence(Deliverable) =
+	let apps : Sequence(ResolvedApplication) =
+		self.applications->collect(a | a.resolveone(ResolvedApplication))->asSequence() in
+	let held : Sequence(Tuple(path : String, key : String, bytes : Integer, encoding : String)) =
+		apps.processes.secrets->select(g | g.path <> null)->collect(g | g.generated->collect(k |
+			Tuple{path = g.path, key = k.key, bytes = k.bytes, encoding = k.encoding}))
+		->asSet()->sortedBy(t | t.path + '#' + t.key)->asSequence() in
+	if held->isEmpty() then Sequence{} else Sequence{
+		object GeneratedKeysFile {
+			path := POLICIES + apps->first().namespace + '.generated.json';
+			adapter := AdapterName::vaultPolicy;
+			keys := held->collect(t | object ResolvedGeneratedKey {
+				path := t.path;
+				key := t.key;
+				bytes := t.bytes;
+				encoding := t.encoding;
+			});
+		}.oclAsType(Deliverable)} endif;
+
 query vaultFilesOf(ns : String, holder : String, held : Sequence(ResolvedGrant)) : Sequence(Deliverable) =
 	-- Each document is written under the name Vault holds it by, so two identities that derive
 	-- one name claim one path.
@@ -1681,7 +1713,12 @@ query ResolvedGrant::json() : String = obj(Sequence{
 	Tuple{k = 'mountAt', v = opt(self.mountAt)},
 	Tuple{k = 'fileMode', v = opt(self.fileMode)},
 	Tuple{k = 'restartTargets', v = if self.restartTargets->isEmpty() then null
-		else arr(self.restartTargets->collect(x | str(x))) endif}});
+		else arr(self.restartTargets->collect(x | str(x))) endif},
+	Tuple{k = 'generated', v = if self.generated->isEmpty() then null
+		else arr(self.generated->collect(x | obj(Sequence{
+			Tuple{k = 'key', v = str(x.key)},
+			Tuple{k = 'bytes', v = num(x.bytes)},
+			Tuple{k = 'encoding', v = str(x.encoding)}}))) endif}});
 
 -- ===================================================== canonical JSON text
 
