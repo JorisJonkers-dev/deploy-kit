@@ -31,12 +31,16 @@ class ResolutionTest {
         return resolved.deployment();
     }
 
-    private static ResolvedDeployment handWritten() {
+    /** The expected Resolved Deployment committed for {@code project} under {@code emf/models/}. */
+    private static ResolvedDeployment expected(String project) {
         ResolvedDeploymentPackage.eINSTANCE.getName();
         ResourceSetImpl resources = new ResourceSetImpl();
         resources.getResourceFactoryRegistry().getExtensionToFactoryMap().put("*", new XMIResourceFactoryImpl());
-        Path model =
-                Examples.of("").getParent().getParent().getParent().resolve("emf/models/minimal.resolveddeployment");
+        Path model = Examples.of("")
+                .getParent()
+                .getParent()
+                .getParent()
+                .resolve("emf/models/" + project + ".resolveddeployment");
         Resource resource = resources.getResource(URI.createFileURI(model.toString()), true);
         return (ResolvedDeployment) resource.getContents().get(0);
     }
@@ -136,7 +140,7 @@ class ResolutionTest {
     @Test
     void theRevisionIsTheOneEveryCommittedProjectionRecordsAndMovesOnlyWithADecision(@TempDir Path directory)
             throws IOException {
-        for (String example : List.of("minimal", "auth", "data", "delivery")) {
+        for (String example : List.of("minimal", "auth", "data", "delivery", "knowledge-platform")) {
             Outputs.Resolving resolving = Outputs.RESOLVED.get(example);
             ResolvedDeployment deployment = Pipeline.resolve(
                             resolving.documents().stream().map(Examples::of).toList(),
@@ -196,6 +200,23 @@ class ResolutionTest {
     void minimalResolvesToTheHandWrittenTargetModel() throws IOException {
         ResolvedDeployment resolved = minimal();
 
-        assertThat(EcoreUtil.equals(resolved, handWritten())).as(xmi(resolved)).isTrue();
+        assertThat(EcoreUtil.equals(resolved, expected("minimal")))
+                .as(xmi(resolved))
+                .isTrue();
+    }
+
+    @Test
+    void secretsResolvesToItsCompleteExpectedModel() throws IOException {
+        Resolved resolved = Pipeline.resolve(
+                Outputs.RESOLVED.get("secrets").documents().stream()
+                        .map(Examples::of)
+                        .toList(),
+                "secrets",
+                Outputs.INTEGRITY);
+        assertThat(resolved.diagnostics()).isEmpty();
+
+        assertThat(EcoreUtil.equals(resolved.deployment(), expected("secrets")))
+                .as(xmi(resolved.deployment()))
+                .isTrue();
     }
 }

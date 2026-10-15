@@ -116,11 +116,12 @@ class ParityTest {
         private const val DEPENDENCIES = "dependencies.json"
 
         /**
-         * The cases the QVT-Operational resolution reaches: every case the production implementation
-         * resolves. `knowledge` carries a dependencies oracle and joins when the production
-         * implementation resolves it (JorisJonkers-dev/deploy-kit#201).
+         * The cases the QVT-Operational resolution reaches: every case the pipeline resolves. `knowledge`
+         * carries a dependencies oracle but is resolved by neither implementation, and retires with the
+         * project it models (JorisJonkers-dev/deploy-kit#272).
          */
-        private val RESOLVED = listOf("auth", "data", "delivery", "edge", "minimal", "observability", "secrets")
+        private val RESOLVED =
+            listOf("auth", "data", "delivery", "edge", "knowledge-platform", "minimal", "observability", "secrets")
         private const val EXIT = "exit"
         private const val RENDERED = "rendered"
 
