@@ -5,8 +5,8 @@ The archive holds \path{report.pdf}, a \path{README.md} with the steps from
 Appendix~\ref{app:running}, and two folders.
 
 \path{task-2-transformations/} is an Eclipse project for reading the models
-(Table~\ref{tab:handin}), imported via File > Import > Existing Projects
-into Workspace. It contains no Java, so the transformations do not run from
+(Table~\ref{tab:handin}), imported via \texttt{File > Import > Existing
+Projects into Workspace}. It contains no Java, so the transformations do not run from
 it: the resolution and estate pass call the \texttt{Hashing} library, which
 the implementation plug-in registers.
 
@@ -48,7 +48,8 @@ package.
   example's models and edges under
   \path{bundles/cli/target/parity/<example>/}. It takes about four minutes.
   \item In Eclipse Modeling Tools with the QVT-Operational SDK, import
-  \path{implementation/emf} as existing Maven projects.
+  \path{implementation/emf} via \texttt{File > Import > Existing Maven
+  Projects}.
   \item Run \path{resolution.launch} in
   \path{dev.jorisjonkers.deploykit.emf.resolve}. It resolves \texttt{minimal}
   from the extents step~1 wrote.
