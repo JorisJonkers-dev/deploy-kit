@@ -103,6 +103,12 @@ describe("a generated key", () => {
     ["another Project's prefix", "secret/data/auth-system/app"],
     ["a shared platform path", "secret/data/platform/batch"],
     ["the prefix itself", "secret/data/refusals-system"],
+    [
+      "a path that climbs out",
+      "secret/data/refusals-system/../auth-system/app",
+    ],
+    ["a path that stays put", "secret/data/refusals-system/./app"],
+    ["an empty segment", "secret/data/refusals-system//app"],
   ])("is refused under %s", (_, path) => {
     expect(refusalsOf(withApplicationGrant(grant(path)))).toStrictEqual([
       {

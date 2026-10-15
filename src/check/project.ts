@@ -362,8 +362,15 @@ function generatedKeyRefusals(
   at: string,
 ): Refusal[] {
   const prefix = `secret/data/${project}-system/`;
+  // A `.`, `..` or empty segment could climb out of the prefix it starts with.
+  const inside = (path: string) =>
+    path.startsWith(prefix) &&
+    path
+      .slice(prefix.length)
+      .split("/")
+      .every((segment) => !["", ".", ".."].includes(segment));
   return (grants ?? []).flatMap((grant, g) =>
-    "path" in grant && !grant.path.startsWith(prefix)
+    "path" in grant && !inside(grant.path)
       ? grant.keys.flatMap((key, k) =>
           typeof key === "string"
             ? []
