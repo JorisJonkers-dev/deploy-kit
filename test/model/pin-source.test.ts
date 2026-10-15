@@ -38,6 +38,9 @@ describe("readPinSource", () => {
     expect(recreates(`  path: ./a\n${label}`)).toBe(false);
     expect(recreates("  path: ./a\n  patches: []\n")).toBe(false);
     expect(recreates("  path: ./a\n  patches: {}\n")).toBe(false);
+    expect(recreates("  path: ./a\n  patches:\n    - patch: 123\n")).toBe(
+      false,
+    );
     expect(
       readPinSource(
         [repository, unit("  path: ./b\n  patches: []\n")].join("---\n"),
