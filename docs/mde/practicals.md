@@ -1,11 +1,11 @@
 # The practical sessions
 
-What each of the course's six practical sessions asks for, as its Canvas
+What each of the course's seven practical sessions asks for, as its Canvas
 assignment page states it. They are exercises and are separate from the
 project: each is a one-point `.zip` upload. They matter here because each one
 walks through a tool the project uses. Session 5 is the QVT Operational tooling
-that Task 2 is built with, and sessions 1 and 3 are the Ecore and Xtext
-workflow behind [`emf/`](../../emf/).
+that Task 2 is built with, session 6 the Acceleo 4 tooling of Task 3, and
+sessions 1 and 3 are the Ecore and Xtext workflow behind [`emf/`](../../emf/).
 
 The project's own tasks are in [`assignment.md`](assignment.md). The lecture
 each session follows, and its slides, recording and reading, are indexed in
@@ -24,6 +24,7 @@ Ecore diagram editor's *Export diagram as image*.
 | [3](#session-3--textual-concrete-syntax-xtext) | Textual concrete syntax | lecture 3 | 21 September | Xtext |
 | [4](#session-4--atl-transformations) | ATL transformations: UML to Java | lecture 4 | 1 October | ATL |
 | [5](#session-5--qvt-om-transformations) | QVT Operational: stereotypes to patterns | lecture 5 | 5 October | QVT Operational |
+| [6](#session-6--model-to-text-transformations-with-acceleo) | Model-to-text: an action language to Java | lecture 6 | 19 October | Acceleo 4 |
 
 ## Session 0 — Acquaintance with EMF and Ecore
 
@@ -181,3 +182,32 @@ export.
 The page's figures (run configurations, the simplified UML metamodel and the
 two rules drawn graphically) are filed with its full text in the private
 submodule, under `course-material/practicals/`.
+
+## Session 6 — Model-to-text transformations with Acceleo
+
+The session that exercises the tooling this project's Task 3 is written in
+(see [`assignment.md`](assignment.md#task-3--code-generation)). Due 19 October.
+
+Install **Acceleo 4** (the package is called *Acceleo* on the Eclipse update
+site): the page warns that lecture 6's template does not run on an older
+version. Import lecture 6's two projects, the `Action` metamodel and the
+Acceleo generator, delete `Fibonacci.java` from `src-gen`, package
+`mde.lect6.fibonacci`, and regenerate it by running `generate.mtl` with an
+*Acceleo Application* run configuration; the regenerated file must run as a
+Java application.
+
+**The exercise.** Change lecture 6's template so the generated program keeps
+its variables in a hash table (`Map<K,V>`, implemented by `HashMap<K,V>`):
+
+- a declaration adds an entry, and throws if the variable already exists;
+- an assignment changes an entry, and throws if the variable does not exist;
+- a variable expression reads the entry, and throws if it is not defined;
+- each action type has its own polymorphic template.
+
+**Hand in** the Eclipse project, as an archive export (*File → Export… →
+Archive File*).
+
+The page's figures (the Acceleo 4 run configuration and the `Action`
+metamodel) are filed with its full text in the private submodule, under
+`course-material/practicals/`, and the Acceleo 4 user guide is copied to
+`course-material/external/acceleo-4-documentation.md`.
