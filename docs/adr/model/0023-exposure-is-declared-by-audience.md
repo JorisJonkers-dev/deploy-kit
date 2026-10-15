@@ -14,7 +14,9 @@ An Application declares exposure: a hostname, authored as the full FQDN, with an
 `internal`, `lan`), and routes to the Processes behind it. The host is written
 once and referenced by placeholder thereafter. Forward-auth, the
 security-headers baseline, entryPoint, TLS, the middleware chain and the health
-endpoint derive from the audience and the tier. Route precedence derives from
+endpoint derive from the audience and the tier; for an `authenticated`
+exposure, whether forward-auth applies also depends on the Application's Client
+([0100](0100-a-client-is-declared-on-the-application.md)). Route precedence derives from
 specificity (`exact` before `prefix`, longer prefix before shorter) and is
 rendered explicitly. Two routes on one host with the same `path` and `match` are
 refused. Each tier that serves `authenticated` names its forward-auth endpoint

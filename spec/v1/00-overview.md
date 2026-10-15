@@ -222,6 +222,7 @@ repository already uses between a chapter and an ADR.
 | [`14-platform-intent.md`](14-platform-intent.md) | the second authored document: substrate facts, the bootstrap set, the declared foundation, tiers as edge facts, durability policy, engines as images, providers, and no observability policy, which the observability application owns | drawn |
 | [`15-infrastructure-intent.md`](15-infrastructure-intent.md) | the third authored document: the cluster, its sites and nodes, what each node has, the label set generated from it, and the node contract placement reads | not yet |
 | [`16-dependencies.md`](16-dependencies.md) | dependency edges, the Stable Address, per-Process identity, derived network policy, the derivation map | drawn |
+| [`17-sign-in.md`](17-sign-in.md) | the `client` block, Sign-in Modes, what the edge derives from a Client, the `Client` object, client credentials and their placeholders | not yet |
 | [`20-resolved-deployment.md`](20-resolved-deployment.md) | the Resolved Deployment, the authority table in one place, the pinned input set including ClusterState, derived mechanics, the one capacity exception, the Reconcile Unit, publish-back | drawn |
 | [`30-deliverables.md`](30-deliverables.md) | adapters, the adapter port, attribution, ledgers, coverage re-derived from the registry | drawn |
 | [`40-composition.md`](40-composition.md) | Intent Fragments, participants and the staleness bound, schema versioning and rollout, unmanaged surfaces | drawn |

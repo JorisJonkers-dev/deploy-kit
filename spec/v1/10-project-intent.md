@@ -1527,6 +1527,9 @@ carries it: forward-auth, the security-headers baseline, the tier's listener and
 certificates, and the middleware chain that assembles them
 ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md),
 [0021](../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)).
+Forward-auth also depends on how the Application signs people in: an
+`authenticated` exposure takes it only for a `gated` Client, and is refused
+without a Client ([chapter 17](17-sign-in.md#what-the-edge-derives)).
 
 ### Why the host is authored rather than derived
 
@@ -2136,9 +2139,9 @@ The cost is thirteen extra characters per placeholder. What it buys is that one
 `grep -r` over env files finds every reader of a path, which is what makes the
 reader-set model auditable from the repository.
 
-### Three placeholder sources
+### Placeholder sources
 
-`${secret:…}` is one of three, and all three obey one grammar: a placeholder
+`${secret:…}` is one of four, and all four obey one grammar: a placeholder
 **names a source and resolves to one value**.
 
 | placeholder | resolves to | resolved from |
@@ -2146,6 +2149,7 @@ reader-set model auditable from the repository.
 | `${secret:<path>#<key>}` | one key of one granted Secret Store path | the grant, byte-matched ([0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)) |
 | `${dependency:<application>.<coordinate>}` | one coordinate of an Application this Process depends on: `host` or `port` of the Process's one edge to it | the edge set (chapter 16) |
 | `${exposure:<application>.<name>#<field>}` | one field of a declared exposure | the composed union's exposure set ([Exposure](#exposure)) |
+| `${client:<field>}` | the Issuer, or this Application's own Client id or secret | the Application's `client` block and the Platform document ([chapter 17](17-sign-in.md#credentials-and-placeholders)) |
 
 `${exposure:…}` addresses an exposure by the Application that declares it and the
 `name` it carries there (which is what that `name` is for) and `<field>` is one

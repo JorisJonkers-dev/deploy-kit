@@ -275,6 +275,26 @@ adapter. A route's audience is the **only** way it reaches a tier, so a `lan`
 exposure can reach the LAN proxy and no other, by construction, not by which
 adapter ran.
 
+## Sign-in
+
+The Platform document names who issues sign-ins for the estate
+([chapter 17](17-sign-in.md#the-platforms-part)):
+
+```yaml
+signIn:
+  issuer: https://auth.jorisjonkers.dev
+  provider: identity
+```
+
+| fact | meaning |
+|---|---|
+| `issuer` | the Issuer URL every Client trusts, and what `${client:issuer}` resolves to |
+| `provider` | the Application that is the Identity Provider; its Process is granted write on every derived client credential path |
+
+An Application declaring `client` while the Platform document has no `signIn`
+is `E_NO_SIGN_IN_PROVIDER`. A tier carrying a `gated` Client names the
+provider's Gate as its `forwardAuth` endpoint ([Tiers](#tiers)).
+
 ## Durability policy
 
 One policy per Durability Class

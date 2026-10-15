@@ -110,6 +110,15 @@ serve it.
 **Audience**: who may reach an Exposure. The declared word from which the edge
 mechanism is derived ([0023](docs/adr/model/0023-exposure-is-declared-by-audience.md)).
 
+**Client**: an Application's registration with the estate's Identity Provider,
+declared in its `client` block and derived into a `Client` object
+([chapter 17](spec/v1/17-sign-in.md)). Not a Process's identity, which is what
+it authenticates as to the cluster.
+
+**Sign-in Mode**: how a Client signs people in: `native` (the Application
+speaks OIDC), `gated` (the Identity Provider's Gate signs in for it) or `token`
+(bearer tokens only, no browser).
+
 **Cutover**: the owner's answer to whether the next revision keeps serving while
 it replaces the old one: `continuous` or `interrupted`. Required, answered alike
 by every Process of one Application, and the input the Switchover derives from
