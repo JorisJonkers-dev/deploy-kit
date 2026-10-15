@@ -39,7 +39,7 @@ main() {
 		var digest : String := ('{' + joined(held->collect(d | str(d.file) + ':' + d.json)) + '}').rawDigestOf();
 		var named : String := planned.identity + '-'
 			+ digest.substring(ALGORITHM.size() + 1, ALGORITHM.size() + NAME_DIGITS);
-		deployments->first().deliverables += Sequence{'configmap', 'job', 'serviceaccount', 'networkpolicy'}
+		deployments->first().deliverables += Sequence{'configmap', 'job', 'cronjob', 'serviceaccount', 'networkpolicy'}
 			->collect(piece | object PolicyJobFile {
 				path := DIRECTORY + piece + '.yaml';
 				adapter := if piece = 'networkpolicy' then AdapterName::networking else AdapterName::vaultPolicy endif;
@@ -52,7 +52,7 @@ main() {
 		deployments->first().deliverables += object IndexFile {
 			path := DIRECTORY + 'kustomization.yaml';
 			adapter := AdapterName::kubernetes;
-			resources := Sequence{'configmap.yaml', 'job.yaml', 'serviceaccount.yaml'};
+			resources := Sequence{'configmap.yaml', 'cronjob.yaml', 'job.yaml', 'serviceaccount.yaml'};
 		};
 	};
 	routeOf(deployments);
@@ -87,7 +87,9 @@ query Deliverable::documentOf() : Tuple(file : String, json : String) =
 		Tuple{file = fileOf(self.path), json = self.oclAsType(VaultPolicyFile).policyJson()}
 	else if self.oclIsKindOf(VaultRoleFile) then
 		Tuple{file = fileOf(self.path), json = self.oclAsType(VaultRoleFile).roleJson()}
-	else null endif endif;
+	else if self.oclIsKindOf(GeneratedKeysFile) then
+		Tuple{file = fileOf(self.path), json = self.oclAsType(GeneratedKeysFile).keysJson()}
+	else null endif endif endif;
 
 -- What each grant may do: the paths a transit or database grant's engine
 -- derives, or `read` on a kv grant's path and on the same document's metadata.
@@ -106,6 +108,14 @@ property KV_DATA : String = 'secret/data/';
 
 query capabilities(allows : Sequence(String)) : String =
 	obj(Sequence{Tuple{k = 'capabilities', v = arr(allows->collect(a | str(a)))}});
+
+-- Each key the job generates, where, and how.
+query GeneratedKeysFile::keysJson() : String =
+	obj(Sequence{Tuple{k = 'keys', v = arr(self.keys->collect(x | obj(Sequence{
+		Tuple{k = 'path', v = str(x.path)},
+		Tuple{k = 'key', v = str(x.key)},
+		Tuple{k = 'bytes', v = x.bytes.toString()},
+		Tuple{k = 'encoding', v = str(x.encoding)}})))}});
 
 -- The role that binds the identity's ServiceAccount, in its namespace, to the
 -- one policy of its name.

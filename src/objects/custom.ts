@@ -224,6 +224,18 @@ export interface VaultPolicy {
   >;
 }
 
+/** A Project's generated keys, which the Vault policy job writes where Vault lacks them. */
+export interface GeneratedKey {
+  readonly path: string;
+  readonly key: string;
+  readonly bytes: number;
+  readonly encoding: "hex" | "base64" | "base64url";
+}
+
+export interface GeneratedKeys {
+  readonly keys: readonly GeneratedKey[];
+}
+
 /** A Kubernetes auth role, bound to one ServiceAccount and the one policy it holds. */
 export interface VaultRole {
   readonly bound_service_account_names: readonly string[];

@@ -15,6 +15,7 @@ import {
   DELIVERIES,
   DURABILITY_CLASSES,
   ENGINES,
+  KEY_ENCODINGS,
   LIFECYCLES,
   MATCHES,
   MEDIA,
@@ -108,10 +109,24 @@ const grantDelivery = {
   rotation,
 };
 
+/** A generated key's length and encoding; 32 bytes, hex, when unsaid. */
+const generate = z
+  .strictObject({
+    bytes: z.int().min(16).max(512).exactOptional(),
+    encoding: z.enum(KEY_ENCODINGS).meta({ id: "KeyEncoding" }).exactOptional(),
+  })
+  .meta({ id: "Generate" });
+
+/** A key of a kv grant: its name, or its name and how the Vault policy job generates it. */
+const kvKey = z.union([
+  text,
+  z.strictObject({ name: text, generate }).meta({ id: "GeneratedKey" }),
+]);
+
 const kvGrant = z
   .strictObject({
     path: text,
-    keys: z.array(text).min(1),
+    keys: z.array(kvKey).min(1),
     access: accessTier,
     ...grantDelivery,
   })
@@ -313,6 +328,7 @@ export type ProjectIntentDocument = z.output<typeof projectIntent>;
 export type ApplicationDocument = ProjectIntentDocument["applications"][number];
 export type ProcessDocument = ApplicationDocument["processes"][number];
 export type Grant = NonNullable<ProcessDocument["secrets"]>[number];
+export type KvKey = Extract<Grant, { readonly path: string }>["keys"][number];
 export type DependencyEdge = NonNullable<ProcessDocument["dependsOn"]>[number];
 export type Asset = NonNullable<ProcessDocument["assets"]>[number];
 export type Placement = NonNullable<ProcessDocument["placement"]>;

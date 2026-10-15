@@ -169,6 +169,7 @@ describe("renderIntentSet", () => {
     it("is rendered beside the documents it writes, with its own policy and an index that applies it", () => {
       expect(jobFiles(estate(["notes", "data"]))).toStrictEqual([
         "estate/vso-secrets/configmap.yaml",
+        "estate/vso-secrets/cronjob.yaml",
         "estate/vso-secrets/job.yaml",
         "estate/vso-secrets/kustomization.yaml",
         "estate/vso-secrets/networkpolicy.yaml",
@@ -190,6 +191,81 @@ describe("renderIntentSet", () => {
       expect(paths.filter((path) => path.includes("/policies/"))).toHaveLength(
         6,
       );
+    });
+
+    it("is handed each Project's generated keys, once each, with their defaults filled in", () => {
+      const generating = (document: string) =>
+        document.replace(
+          "          - path: secret/data/platform/postgres/exporter\n            keys: [datasource]",
+          "          - path: secret/data/data-system/exporter\n            keys: [{ name: token, generate: { encoding: base64url } }, { name: key, generate: {} }]\n            access: read\n            delivery: self\n            rotation: {tolerates: restart}\n          - path: secret/data/data-system/a\n            keys: [{ name: x, generate: {} }, { name: b, generate: {} }]\n            access: read\n            delivery: self\n            rotation: {tolerates: restart}\n          - path: secret/data/data-system/m\n            keys: [{ name: c, generate: {} }, { name: d, generate: {} }]\n            access: read\n            delivery: self\n            rotation: {tolerates: restart}\n          - path: secret/data/platform/postgres/exporter\n            keys: [datasource]",
+        );
+      const tree = asTree(
+        artifact(
+          render({ "data/data.project.yml": generating }, ["data"]),
+          "_estate",
+        ),
+      );
+
+      expect(
+        JSON.parse(
+          tree["estate/vso-secrets/policies/data-system.generated.json"] ??
+            "null",
+        ),
+      ).toStrictEqual({
+        keys: [
+          {
+            path: "secret/data/data-system/a",
+            key: "b",
+            bytes: 32,
+            encoding: "hex",
+          },
+          {
+            path: "secret/data/data-system/a",
+            key: "x",
+            bytes: 32,
+            encoding: "hex",
+          },
+          {
+            path: "secret/data/data-system/exporter",
+            key: "key",
+            bytes: 32,
+            encoding: "hex",
+          },
+          {
+            path: "secret/data/data-system/exporter",
+            key: "token",
+            bytes: 32,
+            encoding: "base64url",
+          },
+          {
+            path: "secret/data/data-system/m",
+            key: "c",
+            bytes: 32,
+            encoding: "hex",
+          },
+          {
+            path: "secret/data/data-system/m",
+            key: "d",
+            bytes: 32,
+            encoding: "hex",
+          },
+        ],
+      });
+      expect(tree["estate/vso-secrets/configmap.yaml"]).toContain(
+        "data-system.generated.json",
+      );
+    });
+
+    it("runs again every hour, from the same documents", () => {
+      const tree = asTree(artifact(render(undefined, ["data"]), "_estate"));
+      const job = tree["estate/vso-secrets/job.yaml"] ?? "";
+      const cron = tree["estate/vso-secrets/cronjob.yaml"] ?? "";
+      const named = /name: (vault-policy-[0-9a-f]{12})\n/.exec(job)?.[1];
+
+      expect(cron).toContain("kind: CronJob\n");
+      expect(cron).toContain('schedule: "@hourly"\n');
+      expect(cron).toContain("concurrencyPolicy: Forbid\n");
+      expect(cron).toContain(`name: ${String(named)}\n`);
     });
 
     it("is named by the digest of the documents, each under its file name, and of nothing else", () => {

@@ -24,6 +24,7 @@ import {
   ownerRole,
   sameDeclaration,
 } from "../model/project-intent-queries.ts";
+import { namespaceOf } from "../model/runtime-profiles.ts";
 
 interface Refusal {
   readonly code: RefusalCode;
@@ -355,6 +356,35 @@ function ownerRoleRefusals(
   );
 }
 
+/** A generated key belongs to its own Project: the Vault policy job writes it nowhere else. */
+function generatedKeyRefusals(
+  grants: readonly Grant[] | undefined,
+  project: string,
+  at: string,
+): Refusal[] {
+  const prefix = `secret/data/${namespaceOf(project)}/`;
+  // A `.`, `..` or empty segment could climb out of the prefix it starts with.
+  const inside = (path: string) =>
+    path.startsWith(prefix) &&
+    path.split("/").every((segment) => !["", ".", ".."].includes(segment));
+  return (grants ?? []).flatMap((grant, g) =>
+    "path" in grant && !inside(grant.path)
+      ? grant.keys.flatMap((key, k) =>
+          typeof key === "string"
+            ? []
+            : [
+                {
+                  code: "E_GENERATED_KEY_OUTSIDE_PROJECT",
+                  path: `${at}/secrets/${g}/keys/${k}`,
+                  message: `${key.name} is generated under ${grant.path}, outside ${prefix}`,
+                  hint: `Move the grant below ${prefix}, or list the key without \`generate\` and write it yourself.`,
+                } satisfies Refusal,
+              ],
+        )
+      : [],
+  );
+}
+
 /** One Application of a project moves its database's schema, or none does. */
 function migrationOwnerRefusals(document: ProjectIntentDocument): Refusal[] {
   const moving = document.applications.flatMap((application, index) =>
@@ -379,15 +409,26 @@ export function ruleDiagnostics(
   return [
     ...quantityRefusals(document, ""),
     ...ownerRoleRefusals(document.secrets, project, ""),
+    ...generatedKeyRefusals(document.secrets, project, ""),
     ...document.applications.flatMap((application, a) => [
       ...ownerRoleRefusals(application.secrets, project, `/applications/${a}`),
-      ...application.processes.flatMap((process, p) =>
-        ownerRoleRefusals(
+      ...generatedKeyRefusals(
+        application.secrets,
+        project,
+        `/applications/${a}`,
+      ),
+      ...application.processes.flatMap((process, p) => [
+        ...ownerRoleRefusals(
           process.secrets,
           project,
           `/applications/${a}/processes/${p}`,
         ),
-      ),
+        ...generatedKeyRefusals(
+          process.secrets,
+          project,
+          `/applications/${a}/processes/${p}`,
+        ),
+      ]),
     ]),
     ...migrationOwnerRefusals(document),
     ...(document.secrets ?? []).flatMap((grant, index) =>

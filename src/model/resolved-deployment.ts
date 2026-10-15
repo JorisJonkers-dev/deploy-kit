@@ -28,6 +28,7 @@ import {
   DATABASE_ENGINES,
   DELIVERIES,
   DURABILITY_CLASSES,
+  KEY_ENCODINGS,
   LIFECYCLES,
   MATCHES,
   RUNTIMES,
@@ -190,6 +191,17 @@ const resolvedGrant = z
   .strictObject({
     path: text,
     keys: z.array(text).min(1).exactOptional(),
+    // The keys the Vault policy job writes when absent, with what each defaults to.
+    generated: z
+      .array(
+        z.strictObject({
+          key: text,
+          bytes: z.int(),
+          encoding: z.enum(KEY_ENCODINGS),
+        }),
+      )
+      .min(1)
+      .exactOptional(),
     access: accessTier,
     delivery,
     // The Secret the store's value is synced to, for a grant delivered `env`

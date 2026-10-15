@@ -87,6 +87,38 @@ const refusalsOf = (text: string): { code: string; path: string }[] => {
     : result.diagnostics.map(({ code, path }) => ({ code, path }));
 };
 
+describe("a generated key", () => {
+  const grant = (path: string): string =>
+    `      - path: ${path}\n        keys: [plain, { name: session_key, generate: {} }]\n        access: read\n        delivery: env\n        rotation: { tolerates: restart }\n`;
+
+  it("is accepted under its own Project's prefix", () => {
+    expect(
+      refusalsOf(
+        withApplicationGrant(grant("secret/data/refusals-system/app")),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it.each([
+    ["another Project's prefix", "secret/data/auth-system/app"],
+    ["a shared platform path", "secret/data/platform/batch"],
+    ["the prefix itself", "secret/data/refusals-system"],
+    [
+      "a path that climbs out",
+      "secret/data/refusals-system/../auth-system/app",
+    ],
+    ["a path that stays put", "secret/data/refusals-system/./app"],
+    ["an empty segment", "secret/data/refusals-system//app"],
+  ])("is refused under %s", (_, path) => {
+    expect(refusalsOf(withApplicationGrant(grant(path)))).toStrictEqual([
+      {
+        code: "E_GENERATED_KEY_OUTSIDE_PROJECT",
+        path: "/applications/0/secrets/0/keys/1",
+      },
+    ]);
+  });
+});
+
 describe("the access by delivery matrix", () => {
   it.each([
     ["self-renew", "env"],
@@ -143,6 +175,9 @@ describe("the refusal fixtures", () => {
       "engine-owns-databases",
       "engine-without-durability",
       "env-cannot-reload",
+      "generated-key-outside-project",
+      "generated-key-twice",
+      "generated-key-written-elsewhere",
       "handover-both-paths",
       "handover-serving",
       "handover-unlisted",
@@ -181,7 +216,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(47);
+    expect(refused).toHaveLength(50);
     expect(
       fixtures.length - refused.length,
       "the four accepted counterparts carry no oracle",

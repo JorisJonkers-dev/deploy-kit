@@ -1,0 +1,54 @@
+# REFUSED: E_GENERATED_KEY_TWICE
+#
+# One grant generates a key. A second Application reading it lists the key
+# plainly; here it generates it too (spec/v1/10-project-intent.md #generated-keys).
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: first
+    processes:
+      - name: first-api
+        lifecycle: application
+        image: first-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: continuous
+        secrets:
+          - path: secret/data/refusals-system/app
+            keys: [{ name: session_key, generate: {} }]
+            access: read
+            delivery: self
+            rotation: { tolerates: restart }
+  - id: second
+    processes:
+      - name: second-api
+        lifecycle: application
+        image: second-api
+        runtime: node
+        provides:
+          http: 8081
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8081 }
+          liveness: { path: /healthz/live, port: 8081 }
+        startupBudget: 20s
+        cutover: continuous
+        secrets:
+          - path: secret/data/refusals-system/app
+            keys: [{ name: session_key, generate: {} }]
+            access: read
+            delivery: self
+            rotation: { tolerates: restart }

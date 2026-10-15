@@ -11,6 +11,7 @@ import type {
   ServiceMonitor,
   VaultAuth,
   VaultConnection,
+  GeneratedKeys,
   VaultPolicy,
   VaultRole,
   VaultStaticSecret,
@@ -59,7 +60,8 @@ export type RenderedObject =
   | VaultAuth
   | VaultStaticSecret
   | VaultPolicy
-  | VaultRole;
+  | VaultRole
+  | GeneratedKeys;
 
 export interface Deliverable {
   /** Relative to the gitops root, assigned by the path plan. */

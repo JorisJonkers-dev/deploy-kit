@@ -180,12 +180,28 @@ Grant returns Grant:
 
 KvGrant returns KvGrant:
 	(('path' ':' path=Text)
-	& ('keys' ':' BEGIN (DASH BEGIN keys+=Text END | keys+=Text)+ END)
+	& ('keys' ':' BEGIN (DASH BEGIN keys+=KvKey END | keys+=PlainKey | BEGIN keys+=GeneratedKey END)+ END)
 	& ('access' ':' access=AccessTier)
 	& ('delivery' ':' delivery=Delivery)
 	& ('mountAt' ':' mountAt=Text)?
 	& ('fileMode' ':' fileMode=Text)?
 	& ('rotation' ':' BEGIN rotation=Rotation END));
+
+// A key is its name, or a block naming it and how the Vault policy job generates it.
+KvKey returns KvKey:
+	PlainKey | GeneratedKey;
+
+PlainKey returns PlainKey:
+	name=Text;
+
+GeneratedKey returns GeneratedKey:
+	(('name' ':' name=Text)
+	& ('generate' ':' BEGIN ^generate=Generate END));
+
+Generate returns Generate:
+	{Generate}
+	(('bytes' ':' bytes=Port)?
+	& ('encoding' ':' encoding=KeyEncoding)?);
 
 DatabaseGrant returns DatabaseGrant:
 	'engine' ':' engine=DatabaseEngine
@@ -221,10 +237,10 @@ Text returns ecore::EString:
 
 Keyword:
 	'access' | 'admin' | 'alertClass' | 'amd64' | 'anonymous' | 'api' | 'apiVersion' | 'application' | 'applications' |
-	'arch' | 'arm64' | 'assets' | 'audience' | 'authenticated' | 'business-hours' | 'capabilities' | 'changelog' | 'claim' |
+	'arch' | 'arm64' | 'assets' | 'audience' | 'authenticated' | 'base64' | 'base64url' | 'business-hours' | 'bytes' | 'capabilities' | 'changelog' | 'claim' |
 	'class' | 'contentPolicy' | 'continuous' | 'count' | 'cpu' | 'create' | 'credentials' | 'custody' | 'cutover' | 'database' | 'decrypt' |
-	'delete' | 'delivery' | 'dependsOn' | 'disk' | 'durability' | 'encrypt' | 'engine' | 'env' | 'exact' |
-	'exposure' | 'false' | 'file' | 'fileMode' | 'files' | 'from' | 'get' | 'gpu' | 'group' | 'hdd' |
+	'delete' | 'delivery' | 'dependsOn' | 'disk' | 'durability' | 'encoding' | 'encrypt' | 'engine' | 'env' | 'exact' |
+	'exposure' | 'false' | 'file' | 'fileMode' | 'files' | 'from' | 'generate' | 'get' | 'gpu' | 'group' | 'hdd' | 'hex' |
 	'host' | 'id' | 'image' | 'internal' | 'interrupted' | 'irreplaceable' | 'job' | 'jvm' | 'key' |
 	'keys' | 'kind' | 'kv' | 'lan' | 'lifecycle' | 'list' | 'liveness' | 'match' | 'maxAge' |
 	'media' | 'memory' | 'migration' | 'mountAt' | 'name' | 'node' | 'none' | 'nvme' | 'objects' | 'observability' |
@@ -287,6 +303,9 @@ enum TransitOp returns TransitOp:
 
 enum Delivery returns Delivery:
 	env='env' | file='file' | selfDelivery='self';
+
+enum KeyEncoding returns KeyEncoding:
+	hex='hex' | base64='base64' | base64url='base64url';
 
 enum Tolerance returns Tolerance:
 	restart='restart' | reload='reload';

@@ -5,11 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.AdapterName;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.Deliverable;
+import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.GeneratedKeysFile;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.IndexFile;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.PolicyDocument;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.PolicyJobFile;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeploymentFactory;
+import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedGeneratedKey;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedGrant;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedPolicyJob;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.VaultPolicyFile;
@@ -78,6 +80,8 @@ class EstateTest {
                                 "estate/vso-secrets/configmap.yaml", AdapterName.VAULT_POLICY),
                         org.assertj.core.groups.Tuple.tuple("estate/vso-secrets/job.yaml", AdapterName.VAULT_POLICY),
                         org.assertj.core.groups.Tuple.tuple(
+                                "estate/vso-secrets/cronjob.yaml", AdapterName.VAULT_POLICY),
+                        org.assertj.core.groups.Tuple.tuple(
                                 "estate/vso-secrets/serviceaccount.yaml", AdapterName.VAULT_POLICY),
                         org.assertj.core.groups.Tuple.tuple(
                                 "estate/vso-secrets/networkpolicy.yaml", AdapterName.NETWORKING));
@@ -117,8 +121,31 @@ class EstateTest {
                 .satisfies(index -> {
                     assertThat(index.getPath()).isEqualTo("estate/vso-secrets/kustomization.yaml");
                     assertThat(index.getResources())
-                            .containsExactly("configmap.yaml", "job.yaml", "serviceaccount.yaml");
+                            .containsExactly("configmap.yaml", "cronjob.yaml", "job.yaml", "serviceaccount.yaml");
                 });
+    }
+
+    @Test
+    void theJobIsHandedEachProjectsGeneratedKeys() {
+        ResolvedDeployment deployment = holding(null, job("vault-policy@sha256:1"));
+        ResolvedGeneratedKey key = MODEL.createResolvedGeneratedKey();
+        key.setPath("secret/data/tribelt-system/session");
+        key.setKey("session_key");
+        key.setBytes(32);
+        key.setEncoding("hex");
+        GeneratedKeysFile keys = MODEL.createGeneratedKeysFile();
+        keys.setPath("estate/vso-secrets/policies/tribelt-system.generated.json");
+        keys.getKeys().add(key);
+        deployment.getDeliverables().add(keys);
+
+        Estate.plan(List.of(deployment));
+
+        assertThat(planned(deployment).get(0).getDocuments())
+                .extracting(PolicyDocument::getFile, PolicyDocument::getJson)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(
+                        "tribelt-system.generated.json",
+                        "{\"keys\":[{\"bytes\":32,\"encoding\":\"hex\",\"key\":\"session_key\","
+                                + "\"path\":\"secret/data/tribelt-system/session\"}]}"));
     }
 
     @Test

@@ -16,6 +16,7 @@ import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.KvGrant;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Lifecycle;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ManagedMigration;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Placement;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.PlainKey;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Process;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentFactory;
@@ -67,7 +68,9 @@ class LoweringTest {
     private static KvGrant grant(String path) {
         KvGrant grant = MODEL.createKvGrant();
         grant.setPath(path);
-        grant.getKeys().add("token");
+        PlainKey key = MODEL.createPlainKey();
+        key.setName("token");
+        grant.getKeys().add(key);
         return grant;
     }
 

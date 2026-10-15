@@ -7,6 +7,10 @@ import type { Hasher } from "../model/hasher.ts";
 import type { ImagesLockDocument, LockedImage } from "../model/images-lock.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
 import { notSupported } from "../model/internal-failure.ts";
+import {
+  GENERATED_DEFAULTS,
+  keyName,
+} from "../model/project-intent-queries.ts";
 
 type ResolvedGrant = NonNullable<ResolvedProcess["secrets"]>[number];
 type ResolvedAsset = NonNullable<ResolvedProcess["assets"]>[number];
@@ -58,9 +62,15 @@ export function resolveGrants(process: EffectiveProcess): ResolvedGrant[] {
         paths: enginePaths(grant),
         ...restart,
       };
+    const generated = grant.keys.flatMap((key) =>
+      typeof key === "string"
+        ? []
+        : [{ key: key.name, ...GENERATED_DEFAULTS, ...key.generate }],
+    );
     return {
       path: grant.path,
-      keys: grant.keys,
+      keys: grant.keys.map(keyName),
+      ...(generated.length === 0 ? {} : { generated }),
       access: grant.access,
       delivery: grant.delivery,
       ...(grant.delivery === "self"
