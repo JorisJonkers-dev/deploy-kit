@@ -321,13 +321,7 @@ context Process
 
 context SharedIntent
 	-- The project a declaration belongs to, from any of the three levels.
-	def: projectName : String =
-		if self.oclIsKindOf(Project) then self.oclAsType(Project).project
-		else
-			if self.oclIsKindOf(Application) then oclContainer().oclAsType(Project).project
-			else oclContainer().oclContainer().oclAsType(Project).project
-			endif
-		endif
+	def: projectName : String = projectDocument.project
 
 context SharedIntent
 	-- The Project document a declaration belongs to, from any of the three levels.
@@ -371,10 +365,17 @@ context GeneratedKey
 			let below : String = '/' + grant.path.substring(prefix.size() + 1, grant.path.size()) + '/' in
 			below.indexOf('//') = 0 and below.indexOf('/./') = 0 and below.indexOf('/../') = 0
 
-	-- The first grant to generate a key owns it; a later one lists it plainly.
+	-- The first grant to generate a key owns it; a later one lists it plainly. A
+	-- grant below one it replaces restates `generate` to keep the key generated.
 	inv E_GENERATED_KEY_TWICE:
 		not GeneratedKey.allInstances()->exists(k | k.owner.projectDocument = owner.projectDocument
-			and k.grant.path = grant.path and k.name = name and k.rank < rank)
+			and k.grant.path = grant.path and k.name = name and k.rank < rank
+			and not (owner.levelsAbove->includes(k.owner) or k.owner.levelsAbove->includes(owner)))
+
+context Generate
+	-- The schema bounds a generated key's length.
+	inv schema:
+		bytes = null or (bytes >= 16 and bytes <= 512)
 
 	-- A `self-roll` grant on the path, or a `custody` grant on it or above it,
 	-- writes it too.

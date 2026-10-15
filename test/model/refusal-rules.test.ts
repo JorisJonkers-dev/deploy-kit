@@ -291,10 +291,33 @@ ${secrets}`;
       {
         code: "E_GENERATED_KEY_WRITTEN_ELSEWHERE",
         path: "/applications/0/processes/0/secrets/0/keys/0",
-        message: `session_key of ${PATH} is generated, and a ${access} grant at /applications/1/processes/0/secrets/0 writes that path`,
+        message: `session_key of ${PATH} is generated, and a ${access} grant in refusals.project.yml at /applications/1/processes/0/secrets/0 writes that path`,
         hint: "Generate the key on a path nothing else writes, or drop `generate` and let the writer own it.",
       },
     ]);
+  });
+
+  it("is refused where its own grant rolls the path", () => {
+    const rolls = `        secrets:\n          - { path: ${PATH}, keys: [{ name: session_key, generate: {} }], access: self-roll, delivery: self, rotation: { tolerates: restart } }\n`;
+    expect(refusals(api(rolls))).toStrictEqual([
+      {
+        code: "E_GENERATED_KEY_WRITTEN_ELSEWHERE",
+        path: "/applications/0/processes/0/secrets/0/keys/0",
+        message: `session_key of ${PATH} is generated, and its own self-roll grant writes that path too`,
+        hint: "Generate the key on a path nothing else writes, or drop `generate` and let the writer own it.",
+      },
+    ]);
+  });
+
+  it("may be generated again by a lower grant that replaces the one above it", () => {
+    const above = `secrets:\n  - { path: ${PATH}, keys: [{ name: session_key, generate: {} }], access: read, delivery: self, rotation: { tolerates: restart } }\n`;
+    const below = `        secrets:\n          - { path: ${PATH}, keys: [{ name: session_key, generate: {} }], access: read, delivery: env, rotation: { tolerates: restart } }\n`;
+    expect(
+      refusals(api(below), {
+        header: above,
+        env: `SESSION=\${secret:${PATH}#session_key}\n`,
+      }).map(({ code }) => code),
+    ).not.toContain("E_GENERATED_KEY_TWICE");
   });
 });
 

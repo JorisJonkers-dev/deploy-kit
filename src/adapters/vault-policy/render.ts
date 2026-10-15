@@ -4,9 +4,13 @@
 // them, and the in-cluster Vault policy job writes them into Vault
 // (docs/adr/model/0087-in-cluster-consumers-read-the-render.md).
 import type { ResolvedProject } from "../../model/resolution.ts";
-import type { VaultPolicy, VaultRole } from "../../objects/custom.ts";
+import type {
+  GeneratedKey,
+  VaultPolicy,
+  VaultRole,
+} from "../../objects/custom.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";
-import { vaultNameOf } from "../../model/runtime-profiles.ts";
+import { namespaceOf, vaultNameOf } from "../../model/runtime-profiles.ts";
 import { holdersOf, type Grant } from "../shared/holders.ts";
 import { notSupported } from "../../model/internal-failure.ts";
 import { SECRETS_DIRECTORY } from "../shared/paths.ts";
@@ -49,37 +53,33 @@ function pathsOf(grant: Grant): [string, { capabilities: string[] }][] {
 }
 
 /** Each generated key of the project, once, in path then key order. */
-function generatedOf(project: ResolvedProject) {
-  const keys = new Map<
-    string,
-    { path: string; key: string; bytes: number; encoding: string }
-  >();
+function generatedOf(project: ResolvedProject): GeneratedKey[] {
+  const keys = new Map<string, GeneratedKey>();
   for (const application of project.applications)
     for (const process of application.processes)
       // Stryker disable next-line ArrayDeclaration: no list and an empty one hold no grant alike.
       for (const grant of process.secrets ?? [])
         if ("generated" in grant)
           for (const { key, bytes, encoding } of grant.generated)
-            keys.set(`${grant.path}#${key}`, {
+            keys.set(JSON.stringify([grant.path, key]), {
               path: grant.path,
               key,
               bytes,
               encoding,
             });
-  return [...keys.entries()]
-    .sort(([a], [b]) => (a < b ? -1 : 1))
-    .map(([, value]) => value);
+  return [...keys.values()].sort((a, b) =>
+    a.path === b.path ? (a.key < b.key ? -1 : 1) : a.path < b.path ? -1 : 1,
+  );
 }
 
 export function renderVaultPolicy(project: ResolvedProject): Deliverable[] {
   const generated = generatedOf(project);
-  const namespace = project.applications[0]?.namespace;
   const keys: Deliverable[] =
-    generated.length === 0 || namespace === undefined
+    generated.length === 0
       ? []
       : [
           {
-            path: `${POLICIES}/${namespace}.generated.json`,
+            path: `${POLICIES}/${namespaceOf(project.project)}.generated.json`,
             adapter: ADAPTER,
             objects: [{ keys: generated }],
           },

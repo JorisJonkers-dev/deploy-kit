@@ -24,6 +24,7 @@ import {
   ownerRole,
   sameDeclaration,
 } from "../model/project-intent-queries.ts";
+import { namespaceOf } from "../model/runtime-profiles.ts";
 
 interface Refusal {
   readonly code: RefusalCode;
@@ -361,7 +362,7 @@ function generatedKeyRefusals(
   project: string,
   at: string,
 ): Refusal[] {
-  const prefix = `secret/data/${project}-system/`;
+  const prefix = `secret/data/${namespaceOf(project)}/`;
   // A `.`, `..` or empty segment could climb out of the prefix it starts with.
   const inside = (path: string) =>
     path.startsWith(prefix) &&

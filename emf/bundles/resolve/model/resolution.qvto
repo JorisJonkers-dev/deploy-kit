@@ -1347,12 +1347,15 @@ query EffectiveProject::generatedKeysFiles() : Sequence(Deliverable) =
 	let held : Sequence(Tuple(path : String, key : String, bytes : Integer, encoding : String)) =
 		apps.processes.secrets->select(g | g.path <> null)->collect(g | g.generated->collect(k |
 			Tuple{path = g.path, key = k.key, bytes = k.bytes, encoding = k.encoding}))
-		->asSet()->sortedBy(t | t.path + '#' + t.key)->asSequence() in
-	if held->isEmpty() then Sequence{} else Sequence{
+		->asSet()->asSequence() in
+	let sorted : Sequence(Tuple(path : String, key : String, bytes : Integer, encoding : String)) =
+		held.path->asSet()->sortedBy(p | p)->collect(p | held->select(t | t.path = p)->sortedBy(t | t.key))
+			->asSequence() in
+	if sorted->isEmpty() then Sequence{} else Sequence{
 		object GeneratedKeysFile {
 			path := POLICIES + apps->first().namespace + '.generated.json';
 			adapter := AdapterName::vaultPolicy;
-			keys := held->collect(t | object ResolvedGeneratedKey {
+			keys := sorted->collect(t | object ResolvedGeneratedKey {
 				path := t.path;
 				key := t.key;
 				bytes := t.bytes;

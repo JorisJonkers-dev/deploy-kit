@@ -211,6 +211,7 @@ export interface CronJob {
     readonly schedule: string;
     readonly concurrencyPolicy: "Forbid";
     readonly jobTemplate: {
+      readonly metadata?: { readonly labels: Labels };
       readonly spec: {
         readonly activeDeadlineSeconds?: number;
         readonly template: {

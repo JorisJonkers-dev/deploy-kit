@@ -1236,6 +1236,9 @@
       schedule: "@hourly"
       concurrencyPolicy: Forbid
       jobTemplate:
+        metadata:
+          labels:
+            [d.job.identity.labelSet('none', d.job.identity)/]
         spec:
           activeDeadlineSeconds: [d.job.deadline.seconds()/]
           template:

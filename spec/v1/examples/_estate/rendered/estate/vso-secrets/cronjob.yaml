@@ -15,6 +15,13 @@ spec:
   schedule: "@hourly"
   concurrencyPolicy: Forbid
   jobTemplate:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vault-policy
+        app.kubernetes.io/instance: vault-policy
+        app.kubernetes.io/part-of: vault-policy
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
     spec:
       activeDeadlineSeconds: 120
       template:

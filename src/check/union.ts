@@ -304,12 +304,27 @@ const generatedKeys = (union: readonly Fragment[]) =>
       : [],
   );
 
-/** Whether a grant writes `path`: a `self-roll` grant on it, or a `custody` grant on it or above it. */
-const writes = (grant: Grant, path: string): boolean =>
+/** The access a grant writes `path` with: `self-roll` on it, or `custody` on it or above it. */
+const writerAccess = (grant: Grant, path: string): string | undefined =>
   "path" in grant &&
   ((grant.access === "self-roll" && grant.path === path) ||
     (grant.access === "custody" &&
-      (grant.path === path || path.startsWith(`${grant.path}/`))));
+      (grant.path === path || path.startsWith(`${grant.path}/`))))
+    ? grant.access
+    : undefined;
+
+/** The level a placed key's grant is declared at, as a pointer. */
+const levelOf = ({ path }: { readonly path: string }): string =>
+  path.slice(0, path.lastIndexOf("/secrets/"));
+
+/** Whether one key's grant sits below the other's, and so replaces it. */
+const replaces = (
+  a: { readonly document: string; readonly path: string },
+  b: { readonly document: string; readonly path: string },
+): boolean =>
+  a.document === b.document &&
+  (levelOf(b).startsWith(`${levelOf(a)}/`) ||
+    levelOf(a).startsWith(`${levelOf(b)}/`));
 
 /** The coordinates an edge hands its consumer (spec/v1/10-project-intent.md#placeholder-sources). */
 const COORDINATES: ReadonlySet<string> = new Set(["host", "port"]);
@@ -379,13 +394,17 @@ export const INVARIANTS: readonly Invariant[] = [
     code: "E_GENERATED_KEY_TWICE",
     needsPlatform: false,
     answer: (union) => {
-      const seen = new Set<string>();
-      return generatedKeys(union).flatMap((placed) => {
-        const id = `${placed.value.path}#${placed.value.key}`;
-        if (!seen.has(id)) {
-          seen.add(id);
-          return [];
-        }
+      const keys = generatedKeys(union);
+      return keys.flatMap((placed, index) => {
+        const twice = keys
+          .slice(0, index)
+          .some(
+            (earlier) =>
+              earlier.value.path === placed.value.path &&
+              earlier.value.key === placed.value.key &&
+              !replaces(earlier, placed),
+          );
+        if (!twice) return [];
         return [
           refusal(
             "E_GENERATED_KEY_TWICE",
@@ -403,19 +422,26 @@ export const INVARIANTS: readonly Invariant[] = [
     answer: (union) => {
       const grants = union.flatMap(authoredGrants);
       return generatedKeys(union).flatMap((placed) => {
-        const writer = grants.find(({ value }) =>
-          writes(value, placed.value.path),
-        );
-        return writer === undefined
-          ? []
-          : [
-              refusal(
-                "E_GENERATED_KEY_WRITTEN_ELSEWHERE",
-                placed,
-                `${placed.value.key} of ${placed.value.path} is generated, and a ${"access" in writer.value ? writer.value.access : ""} grant at ${writer.path} writes that path`,
-                "Generate the key on a path nothing else writes, or drop `generate` and let the writer own it.",
-              ),
-            ];
+        const writer = grants
+          .map((grant) => ({
+            ...grant,
+            access: writerAccess(grant.value, placed.value.path),
+          }))
+          .find(({ access }) => access !== undefined);
+        if (writer === undefined) return [];
+        const own =
+          writer.document === placed.document &&
+          placed.path.startsWith(`${writer.path}/keys/`);
+        return [
+          refusal(
+            "E_GENERATED_KEY_WRITTEN_ELSEWHERE",
+            placed,
+            own
+              ? `${placed.value.key} of ${placed.value.path} is generated, and its own ${String(writer.access)} grant writes that path too`
+              : `${placed.value.key} of ${placed.value.path} is generated, and a ${String(writer.access)} grant in ${writer.document} at ${writer.path} writes that path`,
+            "Generate the key on a path nothing else writes, or drop `generate` and let the writer own it.",
+          ),
+        ];
       });
     },
   },

@@ -139,6 +139,7 @@ export function renderPolicyJob(
       schedule: "@hourly",
       concurrencyPolicy: "Forbid",
       jobTemplate: {
+        metadata: { labels },
         spec: {
           activeDeadlineSeconds: wholeSeconds(job.deadline),
           template: pod,
