@@ -20,7 +20,7 @@ Task~2 builds the model-to-model transformation from source to
 \texttt{Resolved Deployment}. Its inputs are the \texttt{Project Intent} and
 \texttt{Platform Intent} models of every project in the cluster and the
 documents other processes publish; it outputs one
-\texttt{Resolved Deployment} per project for Task~3 to consume. The
+\texttt{Resolved Deployment} per \texttt{Project} for Task~3 to consume. The
 transformation makes the specification's derivation rules executable: every
 value in a \texttt{Resolved Deployment} is produced by a rule, and no author
 writes any value by hand.
@@ -69,7 +69,7 @@ Its output is the flattened model, which still conforms to the
 source metamodel. Although it was implemented in Task~1, it was not reported
 there, so Section~\ref{sec:flattening} covers it here. The second
 transformation, the resolution, the main transformation, which derives every value of the \texttt{Resolved Deployment}, reads the flattened models and the
-\texttt{Pinned input set}, the read-only documents no project author writes, then writes one \texttt{Resolved Deployment} per
+\texttt{Pinned input set}, the read-only documents no \texttt{Project} author writes, then writes one \texttt{Resolved Deployment} per
 \texttt{Project}. It is the main subject of this report. The third, the final pass, which runs once over all resolved models and adds the files no single project owns (Section~\ref{sec:finalpass}).
 
 A small Java exporter writes the resolved dependency edges as JSON for
@@ -89,9 +89,9 @@ comparison against the oracle. The Acceleo templates of Task~3 then read the
 Task~0 treated the
 node contract, images lock and cluster-state snapshot as plain inputs, while Task~1 only
 modelled the two authored documents. The resolution needs these as models, so
-a third metamodel now describes the \texttt{Pinned input set}, the read-only documents no project author writes, with its own
+a third metamodel now describes the \texttt{Pinned input set}, the read-only documents no \texttt{Project} author writes, with its own
 Xtext grammar for each document (Appendix~\ref{app:pinned}). This metamodel
-lives in a separate package because no project author writes these documents.
+lives in a separate package because no \texttt{Project} author writes these documents.
 
 Task~1 described three stages: authored, resolved and generated text. The
 flattening adds a fourth stage between authored and resolved, so each rule in
@@ -102,10 +102,10 @@ Task~1 planned one resolved model for the entire cluster, because dependency edg
 routes and which \texttt{Process}es depend on each \texttt{Process} require a cluster-wide view. Every run
 still reads every \texttt{Project}. The output is now one
 \texttt{Resolved Deployment} per \texttt{Project}, because the production
-implementation and the oracles are per project
+implementation and the oracles are per \texttt{Project}
 (Section~\ref{sec:perproject}); the per-\texttt{Application} projection from
 Task~1 is still present as the \texttt{ResolvedApplication} inside that
-model. The final pass adds the one job that no single project's resolution
+model. The final pass adds the one job that no single \texttt{Project}'s resolution
 can compute (Section~\ref{sec:finalpass}).
 
 Task~1's target metamodel only had a worked example for \texttt{minimal}. The
