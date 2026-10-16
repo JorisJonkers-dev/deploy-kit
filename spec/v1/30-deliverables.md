@@ -217,6 +217,19 @@ index applies the first four:
 | `serviceaccount.yaml` | `vault-policy` | the `ServiceAccount` `vault-policy`, the one identity the platform's role is bound to |
 | `networkpolicy.yaml` | `networking` | the job's own policy: egress to the Secret Store and the cluster's DNS, no ingress; listed by no index, like every policy |
 
+Each datastore whose catalog the render applies
+([chapter 16](16-dependencies.md#applying-the-catalog)) adds its own files to the
+same directory, named for its identity, `<process>-catalog`, and its identity's
+policy and auth role to `policies/`, beside every other identity's:
+
+| file | adapter | holds |
+|---|---|---|
+| `<process>-catalog.yaml` | `kubernetes` | the `ServiceAccount` `<process>-catalog`; the immutable `ConfigMap` `<process>-catalog-<12 hex>`, the catalog as canonical JSON on one line under `catalog.json`; the `Job` of the same name, the locked method image, `CATALOG_FILE` where the ConfigMap is mounted read-only, `VAULT_ADDR` the Secret Store's endpoint, `VAULT_ROLE` `<namespace>-<process>-catalog`, the policy job's requests and deadline, `restartPolicy: OnFailure`, the token mounted because the method logs in with it; and the `CronJob` `<process>-catalog`, the same pod, `@hourly`, `concurrencyPolicy: Forbid`. The twelve hex digits are the first of the SHA-256 of the canonical JSON of the `catalog`, and the `image`, `uid`, `gid`, `memory` and `cpu` it runs with |
+| `<process>-catalog-networkpolicy.yaml` | `networking` | the method's own policy: egress to the datastore's surface, the Secret Store and the cluster's DNS, no ingress; listed by no index |
+
+All of them are in the datastore's namespace: the method runs beside the
+datastore it writes into, as the policy job runs beside the store.
+
 All four are in the **Secret Store's namespace**, the `<project>-system` of the
 project that declares it, or, while that project is `legacy`, the namespace the
 handover ledger states the old path runs the store in

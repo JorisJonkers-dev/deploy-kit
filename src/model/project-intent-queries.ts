@@ -106,3 +106,6 @@ export const ownsDatabases = (process: {
 
 /** The role that may change a project's schema, which only its migration holds. */
 export const ownerRole = (project: string): string => `${project}-owner`;
+
+/** The role that reads and writes a project's data. */
+export const dataRole = (project: string): string => `${project}-data`;

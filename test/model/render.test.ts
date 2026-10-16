@@ -853,3 +853,162 @@ describe("renderIntentSet", () => {
     );
   });
 });
+
+// REQ-061 (docs/requirements.md): the database catalog of the estate path's
+// projects is applied beside its datastore, by the engine's method, with a
+// login the render names and Vault rights it writes for the method alone.
+describe("the database catalog", () => {
+  const PLATFORM = "platform/platform.intent.yml";
+  const LOCK = "platform/images.lock.yml";
+  /** The estate-scoped files of a render of the knowledge platform. */
+  const estate = (
+    edits: Readonly<Record<string, (text: string) => string>> = {},
+  ): Record<string, string> => {
+    const result = renderIntentSet(
+      [
+        ...SET.filter((name) => !name.startsWith("minimal/")),
+        ...KNOWLEDGE_PLATFORM,
+      ].map((name) => ({
+        name,
+        text: (edits[name] ?? ((same: string) => same))(text(name)),
+      })),
+      { ...OPTIONS, projects: ["knowledge-platform"] },
+    );
+    if (!result.ok)
+      throw new Error(
+        JSON.stringify(result.diagnostics.map(({ code }) => code)),
+      );
+    return asTree(artifact(result.value, "_estate"));
+  };
+  const CATALOG = "estate/vso-secrets/postgres-catalog.yaml";
+  const catalogOf = (tree: Record<string, string>) =>
+    JSON.parse(
+      /catalog\.json: \|\n {4}(.*)\n/.exec(tree[CATALOG] ?? "")?.[1] ?? "null",
+    ) as { admin: unknown; databases: unknown[] } | null;
+
+  it("names each estate-path project that reads the datastore, and signs in with the old path's login", () => {
+    const catalog = catalogOf(estate());
+
+    expect(catalog?.databases).toStrictEqual([
+      {
+        name: "knowledge-platform_db",
+        owner: "knowledge-platform-owner",
+        data: "knowledge-platform-data",
+      },
+    ]);
+    expect(catalog?.admin).toStrictEqual({
+      path: "secret/data/platform/postgres",
+      user: "postgres.user",
+      password: "postgres.password",
+    });
+  });
+
+  it("leaves out a project still on the old path, and renders nothing for no reader", () => {
+    const legacy = estate({
+      [PLATFORM]: (document) =>
+        document
+          .replace(
+            "legacy: [auth, data, knowledge, notes]",
+            "legacy: [auth, data, knowledge, knowledge-platform, notes]",
+          )
+          .replace(
+            "estate: [delivery, edge, knowledge-platform, observability, secrets]",
+            "estate: [delivery, edge, observability, secrets]",
+          ),
+    });
+
+    expect(
+      Object.keys(legacy).filter((path) => path.includes("catalog")),
+    ).toStrictEqual([]);
+  });
+
+  it("renders nothing where the engine names no catalog method, or the old path names no login", () => {
+    const noMethod = estate({
+      [PLATFORM]: (document) =>
+        document.replace(", catalog: postgres-catalog }", " }"),
+    });
+    const noLogin = estate({
+      [PLATFORM]: (document) =>
+        document.replace(/\n {6}admin: \{[^}]*\}\n/, "\n"),
+    });
+
+    for (const tree of [noMethod, noLogin])
+      expect(
+        Object.keys(tree).filter((path) => path.includes("catalog")),
+      ).toStrictEqual([]);
+  });
+
+  it("signs in with the derived login once the datastore is on the estate path", () => {
+    const moved = estate({
+      [PLATFORM]: (document) =>
+        document
+          .replace(
+            "legacy: [auth, data, knowledge, notes]",
+            "legacy: [auth, knowledge, notes]",
+          )
+          .replace(
+            "estate: [delivery, edge, knowledge-platform, observability, secrets]",
+            "estate: [data, delivery, edge, knowledge-platform, observability, secrets]",
+          )
+          .replace(/\n {2}serving:\n( {4}.*\n| {6}.*\n)+/, "\n"),
+    });
+
+    expect(catalogOf(moved)?.admin).toStrictEqual({
+      path: "secret/data/data/postgres/catalog",
+      user: "user",
+      password: "password",
+    });
+  });
+
+  it("is handed to the Vault policy job, and is never listed by an index for its policy", () => {
+    const tree = estate();
+
+    expect(tree["estate/vso-secrets/configmap.yaml"]).toContain(
+      "data-system-postgres-catalog.policy.json",
+    );
+    expect(tree["estate/vso-secrets/kustomization.yaml"]).not.toContain(
+      "networkpolicy",
+    );
+  });
+
+  it("is a new Job when its method's image changes", () => {
+    const nameOf = (tree: Record<string, string>) =>
+      /name: (postgres-catalog-[0-9a-f]{12})\n/.exec(tree[CATALOG] ?? "")?.[1];
+    const bumped = estate({
+      [LOCK]: (document) =>
+        document.replace(
+          "sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c",
+          "sha256:0e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c",
+        ),
+    });
+
+    expect(nameOf(bumped)).toMatch(/^postgres-catalog-/);
+    expect(nameOf(bumped)).not.toBe(nameOf(estate()));
+  });
+
+  it("refuses a catalog method the images lock does not hold", () => {
+    const result = renderIntentSet(
+      [
+        ...SET.filter((name) => !name.startsWith("minimal/")),
+        ...KNOWLEDGE_PLATFORM,
+      ].map((name) => ({
+        name,
+        text:
+          name === PLATFORM
+            ? text(name).replace(
+                "catalog: postgres-catalog",
+                "catalog: unlocked",
+              )
+            : text(name),
+      })),
+      { ...OPTIONS, projects: ["knowledge-platform"] },
+    );
+
+    expect(result.ok ? [] : result.diagnostics).toStrictEqual([
+      expect.objectContaining({
+        code: "E_UNLOCKED_IMAGE",
+        path: "/engines/postgres/catalog",
+      }),
+    ]);
+  });
+});

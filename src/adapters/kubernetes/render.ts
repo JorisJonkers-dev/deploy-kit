@@ -888,7 +888,7 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
  * (spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied).
  */
 const unapplied = (file: string): boolean =>
-  file === "networkpolicy.yaml" || file.endsWith(".json");
+  file.endsWith("networkpolicy.yaml") || file.endsWith(".json");
 
 /**
  * One Kustomization per directory the render writes, listing what that

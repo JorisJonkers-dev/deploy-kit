@@ -1,0 +1,168 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgres-catalog
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres-catalog
+    app.kubernetes.io/instance: postgres-catalog
+    app.kubernetes.io/part-of: postgres-catalog
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-catalog-ed98f9e410c0
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres-catalog
+    app.kubernetes.io/instance: postgres-catalog
+    app.kubernetes.io/part-of: postgres-catalog
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+immutable: true
+data:
+  catalog.json: |
+    {"admin":{"password":"postgres.password","path":"secret/data/platform/postgres","user":"postgres.user"},"connection":"postgres","databases":[{"data":"knowledge-platform-data","name":"knowledge-platform_db","owner":"knowledge-platform-owner"}],"host":"postgres.data-system.svc.cluster.local","port":5432}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-catalog-ed98f9e410c0
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres-catalog
+    app.kubernetes.io/instance: postgres-catalog
+    app.kubernetes.io/part-of: postgres-catalog
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  activeDeadlineSeconds: 120
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-catalog
+        app.kubernetes.io/instance: postgres-catalog
+        app.kubernetes.io/part-of: postgres-catalog
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+    spec:
+      serviceAccountName: postgres-catalog
+      automountServiceAccountToken: true
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres-catalog
+          image: ghcr.io/jorisjonkers-dev/delivery/postgres-catalog@sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c
+          env:
+            - name: VAULT_ADDR
+              value: http://vault.secrets-system.svc.cluster.local:8200
+            - name: VAULT_ROLE
+              value: data-system-postgres-catalog
+            - name: CATALOG_FILE
+              value: /catalog/catalog.json
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 10m
+            limits:
+              memory: 64Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: catalog
+              mountPath: /catalog
+              readOnly: true
+      volumes:
+        - name: catalog
+          configMap:
+            name: postgres-catalog-ed98f9e410c0
+            items:
+              - key: catalog.json
+                path: catalog.json
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-catalog
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres-catalog
+    app.kubernetes.io/instance: postgres-catalog
+    app.kubernetes.io/part-of: postgres-catalog
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  schedule: "@hourly"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-catalog
+        app.kubernetes.io/instance: postgres-catalog
+        app.kubernetes.io/part-of: postgres-catalog
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+    spec:
+      activeDeadlineSeconds: 120
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: postgres-catalog
+            app.kubernetes.io/instance: postgres-catalog
+            app.kubernetes.io/part-of: postgres-catalog
+            app.kubernetes.io/managed-by: deploy-kit
+            app.kubernetes.io/component: none
+        spec:
+          serviceAccountName: postgres-catalog
+          automountServiceAccountToken: true
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: postgres-catalog
+              image: ghcr.io/jorisjonkers-dev/delivery/postgres-catalog@sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c
+              env:
+                - name: VAULT_ADDR
+                  value: http://vault.secrets-system.svc.cluster.local:8200
+                - name: VAULT_ROLE
+                  value: data-system-postgres-catalog
+                - name: CATALOG_FILE
+                  value: /catalog/catalog.json
+              resources:
+                requests:
+                  memory: 64Mi
+                  cpu: 10m
+                limits:
+                  memory: 64Mi
+              securityContext:
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: catalog
+                  mountPath: /catalog
+                  readOnly: true
+          volumes:
+            - name: catalog
+              configMap:
+                name: postgres-catalog-ed98f9e410c0
+                items:
+                  - key: catalog.json
+                    path: catalog.json

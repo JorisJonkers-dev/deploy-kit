@@ -194,6 +194,63 @@ mismatch R20 recorded (a grant path is not the path a credential is read from)
 and it is why the catalog could not render until the grant vocabulary became a
 union on engine.
 
+### Applying the catalog
+
+The catalog is applied in the cluster by its engine's method
+([chapter 14](14-platform-intent.md#catalog-methods),
+[0102](../../docs/adr/model/0102-the-database-catalog-is-applied-by-its-engines-method.md)),
+as the Vault policy job applies the Vault documents, and for the same reason:
+writing to a live datastore is an act by an identity with privilege, which is
+delivery.
+
+**What it names.** A datastore's applied catalog names every consuming project
+the handover ledger puts on `estate`, or every consuming project where the
+Platform document carries no ledger. A `legacy` project's database stays the old
+path's until the project moves, so the estate path never takes over a database
+an old-path Application still owns.
+
+**Where it runs.** For each Process whose engine names a `catalog` method, where
+the platform names the Vault policy job and the applied catalog names a
+database, the render derives one identity, `<process>-catalog`, in the
+datastore's namespace, or the namespace a `serving` location states while the
+datastore's Project is `legacy`. Its objects are in the estate-scoped artifact,
+in the `estate-vso-secrets` Reconcile Unit, so no Application that reads a
+database starts before its catalog is applied:
+
+| object | holds |
+|---|---|
+| the catalog | one JSON document: the datastore's `host` and `port`, the Secret Store's database `connection` its roles issue through, named after the engine, the `admin` login's `path`, `user` and `password` keys, and the `databases`, each a `name`, an `owner` and a `data` role, in name order |
+| the identity's Vault policy and auth role | `read` on the admin login's document and its metadata, and `create`, `read` and `update` on `database/roles/<role>` for each role the catalog names, written by the Vault policy job like every identity's |
+| a `ConfigMap`, a `Job` and an hourly `CronJob` | the method image, as the user the lock records, handed the catalog; the policy job's requests and deadline; named `<process>-catalog-<12 hex>`, the digest of the catalog with what the pod runs with, so a changed catalog or method is a new Job |
+
+The method runs as the platform's operator would, once per run and in this
+order, for each database the catalog names:
+
+1. It creates the owner and data roles, without login, where they are absent.
+2. It creates the database, owned by the owner role, where it is absent.
+3. It **adopts** a database that exists and is owned by another role: that
+   role's objects in it are reassigned to the owner role, once, and the role
+   becomes a member of the owner role, so whatever still signs in as it keeps
+   its access until its old path is retired. A run reassigns what an adopted
+   role has created since. A database owned by a superuser is never adopted,
+   and the run fails instead.
+4. It grants the data role read and write on every table and sequence the owner
+   role owns, and on those it creates later.
+5. It writes the two database roles the Secret Store issues credentials from:
+   each login it issues is a member of the owner or the data role, and acts as
+   it on sign-in.
+
+It never drops a role, a database or a privilege. A run applied twice changes
+nothing the second time.
+
+**The admin login.** While the datastore's Project is `legacy`, the method signs
+in with the login the old path keeps, which the datastore's `serving` location
+names as `admin` ([chapter 14](14-platform-intent.md#handover-ledger)); a legacy
+datastore with no `admin` applies no catalog. Once the Project moves, it signs
+in with the derived `secret/data/<project>/<process>/catalog`, keys `user` and
+`password`, which the platform's operator writes, as for a backup's and a
+move's login.
+
 ## Process identity
 
 Every Process authenticates as its own principal. The ServiceAccount, the

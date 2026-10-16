@@ -16,6 +16,11 @@ import {
   SECRETS_DIRECTORY,
 } from "../adapters/shared/paths.ts";
 import { documentsOf, renderPolicyJob } from "../adapters/vault-policy/job.ts";
+import { renderCatalogVault } from "../adapters/vault-policy/render.ts";
+import {
+  catalogDigestOf,
+  renderCatalogJob,
+} from "../adapters/kubernetes/catalog.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { Hasher } from "../model/hasher.ts";
 import type { Deliverable, RenderedObject } from "../objects/deliverable.ts";
@@ -140,6 +145,29 @@ function policyJobOf(
       ];
 }
 
+/**
+ * Each datastore's catalog method whose catalog names a project of this
+ * render (spec/v1/16-dependencies.md#applying-the-catalog): its objects, its
+ * policy, and the Vault documents the policy job writes for it.
+ */
+function catalogJobsOf(
+  resolved: ResolvedSet,
+  projects: readonly string[],
+  hash: Hasher,
+): Deliverable[] {
+  return (resolved.catalogJobs ?? [])
+    .filter(({ catalog }) =>
+      catalog.databases.some(({ name }) =>
+        projects.some((project) => name === `${project}_db`),
+      ),
+    )
+    .flatMap((job) => [
+      renderCatalogJob(job, hash(catalogDigestOf(job))),
+      renderPolicyJobPolicy(job, `${job.identity}-networkpolicy.yaml`),
+      ...renderCatalogVault(job),
+    ]);
+}
+
 /** A set already resolved, rendered: the half of {@link renderIntentSet} after resolution. */
 export function renderResolvedSet(
   resolved: ResolvedSet,
@@ -157,9 +185,11 @@ export function renderResolvedSet(
     const request = options.rollbackBackups?.get(project.project);
     return request === undefined ? [] : renderRollbackBackups(project, request);
   });
+  const catalogs = catalogJobsOf(resolved, options.projects, options.hash);
   const rendered = [
     ...projects,
-    ...policyJobOf(resolved, projects, options.hash),
+    ...catalogs,
+    ...policyJobOf(resolved, [...projects, ...catalogs], options.hash),
     // The route Flux's events take is the estate's, whichever Projects
     // render; a render of no Project puts no unit on the estate path to
     // report on.

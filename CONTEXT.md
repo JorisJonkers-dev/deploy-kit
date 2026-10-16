@@ -147,6 +147,12 @@ runner runs as) or, under `migration: self`, by the Application's Processes;
 the data role reads and writes the data, and every consuming Process's edge
 derives a credential for it ([chapter 16](spec/v1/16-dependencies.md#the-database-catalog)).
 
+**Catalog method**: the image an engine that owns databases names in the
+Platform document to apply its database catalog in the cluster. It creates each
+estate-path project's database and roles, **adopts** a database that already
+exists by moving its objects to the owner role, and writes the Secret Store's
+database roles ([chapter 16](spec/v1/16-dependencies.md#applying-the-catalog)).
+
 **Migration policy**: the Platform document's runner image alias, deadline and
 resources, which every managed migration builds on
 ([chapter 14](spec/v1/14-platform-intent.md#migration-policy)).

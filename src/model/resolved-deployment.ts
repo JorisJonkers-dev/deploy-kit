@@ -730,6 +730,45 @@ const resolvedPolicyJob = z
   })
   .meta({ id: "ResolvedPolicyJob" });
 
+// The method that applies one datastore's database catalog
+// (spec/v1/16-dependencies.md#applying-the-catalog): its identity beside the
+// datastore, the login it applies the catalog with, and the catalog itself.
+const resolvedCatalogJob = z
+  .strictObject({
+    identity: text,
+    namespace: text,
+    image: text,
+    uid: count,
+    gid: count,
+    // The Vault role the method logs in as: its own, which the render writes.
+    role: text,
+    // The Secret Store's endpoint, where the method reads its login and
+    // writes the database roles.
+    address: text,
+    memory: text,
+    cpu: text,
+    deadline: duration,
+    catalog: z
+      .strictObject({
+        host: text,
+        port,
+        connection: text,
+        admin: z
+          .strictObject({ path: text, user: text, password: text })
+          .meta({ id: "CatalogAdmin" }),
+        databases: z
+          .array(
+            z
+              .strictObject({ name: text, owner: text, data: text })
+              .meta({ id: "CatalogDatabase" }),
+          )
+          .min(1),
+      })
+      .meta({ id: "ResolvedCatalog" }),
+    egress: z.array(egressPeer),
+  })
+  .meta({ id: "ResolvedCatalogJob" });
+
 // Where Flux's events about every Project's unit go
 // (spec/v1/55-delivery.md#rollouts): the namespace Flux's own objects live
 // in, and the address of the Reporter's `http` surface that receives them.
@@ -746,6 +785,7 @@ export const resolvedDeployment = z
     reconcileUnits: z.array(reconcileUnit).min(1),
     applications: z.array(resolvedApplication).min(1),
     policyJob: resolvedPolicyJob.exactOptional(),
+    catalogJobs: z.array(resolvedCatalogJob).min(1).exactOptional(),
     // Present where the platform names a Reporter.
     events: resolvedEvents.exactOptional(),
   })
@@ -770,6 +810,7 @@ export const resolvedApplicationDocument = stated(
 
 export type ResolvedDeploymentDocument = z.output<typeof resolvedDeployment>;
 export type ResolvedPolicyJob = z.output<typeof resolvedPolicyJob>;
+export type ResolvedCatalogJob = z.output<typeof resolvedCatalogJob>;
 export type ResolvedEvents = z.output<typeof resolvedEvents>;
 export type ResolvedApplicationDocument = z.output<
   typeof resolvedApplicationDocument

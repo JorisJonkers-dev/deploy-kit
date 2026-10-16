@@ -29,6 +29,14 @@ export const backupIdentityOf = (process: string): string =>
 export const backupCredentialOf = (project: string, process: string): string =>
   `secret/data/${project}/${process}/backup`;
 
+/** The identity that applies a datastore's database catalog, beside it. */
+export const catalogIdentityOf = (process: string): string =>
+  `${process}-catalog`;
+
+/** Where a catalog method reads its login once its datastore is on the estate path. */
+export const catalogCredentialOf = (project: string, process: string): string =>
+  `secret/data/${project}/${process}/catalog`;
+
 /** The identity an Application's migration runs as, apart from every Process's. */
 export const migrationIdentityOf = (application: string): string =>
   `${application}-migration`;

@@ -4,6 +4,7 @@
 // them, and the in-cluster Vault policy job writes them into Vault
 // (docs/adr/model/0087-in-cluster-consumers-read-the-render.md).
 import type { ResolvedProject } from "../../model/resolution.ts";
+import type { ResolvedCatalogJob } from "../../model/resolved-deployment.ts";
 import type {
   GeneratedKey,
   VaultPolicy,
@@ -109,4 +110,35 @@ function renderIdentities(project: ResolvedProject): Deliverable[] {
       ];
     }),
   );
+}
+
+/**
+ * A catalog method's own policy and auth role
+ * (spec/v1/16-dependencies.md#applying-the-catalog): it reads the login it
+ * applies the catalog with, and writes the database roles the catalog names.
+ */
+export function renderCatalogVault(job: ResolvedCatalogJob): Deliverable[] {
+  const { admin, databases } = job.catalog;
+  const policy: VaultPolicy = {
+    path: Object.fromEntries([
+      [admin.path, { capabilities: ["read"] }],
+      [admin.path.replace(KV_DATA, KV_METADATA), { capabilities: ["read"] }],
+      ...databases.flatMap(({ owner, data }) =>
+        [owner, data].map((role) => [
+          `database/roles/${role}`,
+          { capabilities: ["create", "read", "update"] },
+        ]),
+      ),
+    ]),
+  };
+  const role: VaultRole = {
+    bound_service_account_names: [job.identity],
+    bound_service_account_namespaces: [job.namespace],
+    token_policies: [job.role],
+  };
+  const stem = `${POLICIES}/${job.role}`;
+  return [
+    { path: `${stem}.policy.json`, adapter: ADAPTER, objects: [policy] },
+    { path: `${stem}.role.json`, adapter: ADAPTER, objects: [role] },
+  ];
 }

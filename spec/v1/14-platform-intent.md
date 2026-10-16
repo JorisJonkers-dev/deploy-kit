@@ -377,6 +377,31 @@ its copy under a name of its own that the `BACKUP_RETAIN` count never counts,
 and every run of the method, scheduled or one-shot, deletes such a copy once it
 is 7 days old.
 
+### Catalog methods
+
+An engine whose Processes own databases names how its catalog is applied, in the
+same entry, the same way: as an image
+([0102](../../docs/adr/model/0102-the-database-catalog-is-applied-by-its-engines-method.md)).
+
+```yaml
+engines:
+  postgres: {backup: postgres-backup, surface: postgres, catalog: postgres-catalog}
+```
+
+`catalog` is an alias the images lock holds, `E_UNLOCKED_IMAGE` otherwise. The
+method creates each database and its two roles the catalog names, adopts a
+database that exists, and writes the Secret Store's database roles that issue
+their credentials ([chapter 16](16-dependencies.md#applying-the-catalog)). An
+entry with no `catalog` applies none: the catalog is still derived, and nothing
+renders a job for it.
+
+What the method image is handed is fixed: the catalog, as one JSON document at
+`CATALOG_FILE`, and the Secret Store's address and the role it logs in as, as
+`VAULT_ADDR` and `VAULT_ROLE`. It reads the login it applies the catalog with
+from the Secret Store itself, at the location the catalog names, and runs as the
+user the images lock records for it. A run that applies nothing new changes
+nothing, so it is safe to repeat.
+
 ### Move methods
 
 An engine whose data can be carried from one Instance to another names how, in
@@ -717,6 +742,9 @@ handover:
     - application: traefik-public
       namespace: ingress-system
       instance: traefik-ingress-system
+    - application: platform-postgres
+      namespace: data-system
+      admin: {path: secret/data/platform/postgres, user: postgres.user, password: postgres.password}
 ```
 
 Which delivery path each Project is on while the estate moves off `fleet-infra`:
@@ -741,6 +769,13 @@ declaration says; a location for an Application of an `estate` Project, or one
 `instance` for an Application of more than one Process, is `E_HANDOVER_SERVING`.
 A location naming an Application no project file read beside it declares is not
 refused, as the ledger's own names are not.
+
+**`admin` says where the old path keeps a datastore's administrative login**,
+for a datastore whose engine owns databases: the KV document's `path`, and the
+keys of its `user` and `password`. While the datastore's Project is `legacy`, its
+catalog is applied with that login
+([chapter 16](16-dependencies.md#applying-the-catalog)); once the Project moves,
+the location goes, and with it the `admin` the estate path no longer reads.
 
 ## Providers
 

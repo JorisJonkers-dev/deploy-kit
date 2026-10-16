@@ -19,10 +19,12 @@ import {
 import { readYaml } from "../read/yaml.ts";
 import type { ResolvedProject } from "../model/resolution.ts";
 import { resolveEvents } from "../resolve/events.ts";
+import { resolveCatalogJobs } from "../resolve/catalog-job.ts";
 import { resolvePolicyJob } from "../resolve/policy-job.ts";
 import { resolveUnion } from "../resolve/union.ts";
 import type {
   ResolvedEvents,
+  ResolvedCatalogJob,
   ResolvedPolicyJob,
 } from "../model/resolved-deployment.ts";
 import { composeIntentSet, type AuthoredFile } from "./check-intent-set.ts";
@@ -42,6 +44,8 @@ export interface ResolvedSet {
   readonly projects: readonly ResolvedProject[];
   /** The Vault policy job, where the platform names one and a Secret Store answers. */
   readonly policyJob?: ResolvedPolicyJob;
+  /** The methods that apply each datastore's database catalog. */
+  readonly catalogJobs?: readonly ResolvedCatalogJob[];
   /** Where Flux's events go, where the platform names a Reporter. */
   readonly events?: ResolvedEvents;
 }
@@ -255,12 +259,14 @@ export function resolveIntentSet(
   );
   if (refusals.length > 0) return { ok: false, diagnostics: refusals };
   const job = resolvePolicyJob(set);
+  const catalogs = resolveCatalogJobs(set, job);
   const events = resolveEvents(set);
   return {
     ok: true,
     value: {
       projects: resolveUnion(set, digests, schemaPackageIntegrity, hash),
       ...(job === undefined ? {} : { policyJob: job }),
+      ...(catalogs.length === 0 ? {} : { catalogJobs: catalogs }),
       ...(events === undefined ? {} : { events }),
     },
   };

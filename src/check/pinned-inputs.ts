@@ -71,19 +71,25 @@ function processRefusals(
   );
 }
 
-/** Every backup method the platform names is an image the lock holds. */
+/** Every backup and catalog method the platform names is an image the lock holds. */
 const methodRefusals = (set: PinnedSet, platform: string): Diagnostic[] =>
-  Object.entries(set.platform.engines)
-    .filter(
-      ([, method]) => !Object.hasOwn(set.imagesLock.images, method.backup),
-    )
-    .map(([engine, method]) => ({
-      code: "E_UNLOCKED_IMAGE",
-      document: platform,
-      path: `/engines/${engine}/backup`,
-      message: `the images lock holds no entry for ${method.backup}`,
-      hint: "Lock the alias, or name one the images lock holds.",
-    }));
+  Object.entries(set.platform.engines).flatMap(([engine, method]) =>
+    (["backup", "catalog"] as const).flatMap((kind): Diagnostic[] => {
+      const image = method[kind];
+      return image === undefined ||
+        Object.hasOwn(set.imagesLock.images, image)
+        ? []
+        : [
+            {
+              code: "E_UNLOCKED_IMAGE",
+              document: platform,
+              path: `/engines/${engine}/${kind}`,
+              message: `the images lock holds no entry for ${image}`,
+              hint: "Lock the alias, or name one the images lock holds.",
+            },
+          ];
+    }),
+  );
 
 /** The Vault policy job's image, where the platform names one, is an image the lock holds. */
 const policyJobRefusals = (set: PinnedSet, platform: string): Diagnostic[] => {
