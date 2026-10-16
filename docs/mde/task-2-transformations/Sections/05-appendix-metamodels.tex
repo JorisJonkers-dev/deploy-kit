@@ -5,7 +5,7 @@ This appendix lists the changes between the Task~1 metamodels and those the
 Task~2 transformations read and write. The comparison checked each class and
 feature in the \texttt{.ecore} files.
 
-A third metamodel for the \texttt{Pinned input set} was added
+A third metamodel for the \texttt{Pinned input set}, the read-only documents no \texttt{Project} author writes, was added
 (Appendix~\ref{app:pinned}). The target metamodel gained derived values and
 twelve kinds of generated file (Appendix~\ref{app:target}), and the source
 metamodel gained declarations the other examples need
@@ -20,12 +20,13 @@ never Ecore features.
 \subsection{The Pinned Inputs Metamodel}
 \label{app:pinned}
 
-The \texttt{pinnedinputs} package holds the documents the resolution reads
+The \texttt{pinnedinputs} package holds the documents the resolution, the main transformation, reads
 beside the source models (Section~\ref{sec:refinement}).
 
-The node contract is generated from the platform team's machine descriptions.
-Other programs publish the images lock and the snapshot. A
-\texttt{Project} build writes its migration proof.
+The node contract (the list of machines and their capacity) is generated from the platform team's machine descriptions.
+Other programs publish the images lock (each image pinned to a digest) and the cluster-state
+snapshot. A \texttt{Project} build writes its migration proof (the schema
+version its migration was tested against).
 
 The committed descriptor that compares the source metamodel's structure with
 the implementation schemas keeps the two aligned. With the pinned input
@@ -73,30 +74,30 @@ not apply.
 \subsection{Changes to the Target Metamodel}
 \label{app:target}
 
-Both halves of the target metamodel grew: the decisions the resolution
+Both halves of the target metamodel grew: the values the resolution
 derives for each \texttt{Application}, and the generated-file entries of the
-path plan. The policies those decisions read arrive as inputs from the
+path plan. The policies those derived values read arrive as inputs from the
 \texttt{Platform Intent}, and the metamodel records only the derived output.
 
 The root class is unchanged, but there is now one instance per \texttt{Project}
 instead of one for the whole cluster (Section~\ref{sec:refinement}).
 
-\paragraph{Decisions.} Figure~\ref{fig:targetdecisions} shows every decision
+\paragraph{Derived Values.} Figure~\ref{fig:targetdecisions} shows every derived-value
 class that is new or changed. Table~\ref{tab:targetvalues} gives the reason for
 each.
 
-Task~1 named many decisions in prose but gave classes only to what its worked
+Task~1 named many values in prose but gave classes only to what its worked
 example needed. The other examples also need migrations, backups that connect to
 their database, \texttt{Secret}s that reach the cluster, API access,
 \texttt{Sidecar}s, configuration files, and two cluster-wide values: the
-Vault policy job and
-the route of the delivery tool's events.
+Vault policy job, which writes every Vault policy, and
+the route of Flux's events.
 
 \begin{landscape}
 \begin{figure}[p]
 \centering
 \includegraphics[width=\linewidth, height=0.85\textheight, keepaspectratio]{Figures/target-decisions}
-\caption{Decision Classes of the Target Metamodel That Changed. A filled class is new in Task~2; a white one is a Task~1 class and shows only the features Task~2 added, in bold. A diamond marks containment; a class contained in several places is drawn under its first container only}
+\caption{Derived-Value Classes of the Target Metamodel That Changed. A filled class is new in Task~2; a white one is a Task~1 class and shows only the features Task~2 added, in bold. A diamond marks containment; a class contained in several places is drawn under its first container only}
 \label{fig:targetdecisions}
 \end{figure}
 \end{landscape}
@@ -113,17 +114,17 @@ the route of the delivery tool's events.
 \hline
 \endfoot
 \hline
-\caption{Changes to the Decision Classes of the Target Metamodel}
+\caption{Changes to the Derived-Value Classes of the Target Metamodel}
 \label{tab:targetvalues}
 \endlastfoot
-\texttt{ResolvedDeployment} & added \texttt{policyJob}, \texttt{events} & The Vault policy job and the route for delivery tool events belong to the whole cluster; every \texttt{Project} model carries the same job; the estate pass plans their files. \\
-\texttt{ResolvedPolicyJob}, \texttt{ResolvedEvents} & new & The job's identity, image, Vault role, resources and egress; the events receiver's namespace and address. \\
-\texttt{ResolvedApplication} & added \texttt{secretStore}, \texttt{scrape} & The secret store address where the operator syncs from, and how the metrics stack scrapes the \texttt{Application}, which the revision element names. \\
-\texttt{ResolvedScrape} & new & The scraped \texttt{Process}, \texttt{Surface}, path, interval and timeout. \\
-\texttt{ReleaseGate} & added \texttt{endpoint}, \texttt{migration} & An address that every \texttt{Canary} webhook calls; the migration the gate starts and may undo. \\
+\texttt{ResolvedDeployment} & added \texttt{policyJob}, \texttt{events} & The Vault policy job and the route for Flux's events belong to the whole cluster; every \texttt{Project} model carries the same job; the final pass plans their files. \\
+\texttt{ResolvedPolicyJob}, \texttt{ResolvedEvents} & new & The job's service account (\texttt{identity}), image, Vault role, resources and egress; the events receiver's namespace and address. \\
+\texttt{ResolvedApplication} & added \texttt{secretStore}, \texttt{scrape} & The Secret Store (Vault) address the operator syncs from, and how the metrics stack scrapes the \texttt{Application}, which the revision element names. \\
+\texttt{ResolvedScrape} & new & The scraped \texttt{Process}, \texttt{Surface} (named port), path, interval and timeout. \\
+\texttt{ReleaseGate} & added \texttt{endpoint}, \texttt{migration} & An address that every \texttt{Canary} (Flagger) webhook calls; the migration the gate starts and may undo. \\
 \texttt{GateAnalysis} & added \texttt{errorRate}, \texttt{latency} & The thresholds of the two analysis checks, from the \texttt{Platform Intent}. \\
-\texttt{GateMigration} & new & The migration's identity and what its proof records. \\
-\texttt{ResolvedMigration} & added \texttt{uid}, \texttt{gid}, \texttt{identity}, \texttt{deadline}, \texttt{memory}, \texttt{cpu}, \texttt{scratch}, \texttt{database}, \texttt{credential}, \texttt{egress} & Task~1 named the identity, owner role and deadline in prose. A migration job also needs the database address, the owner credential that only it holds, and a network policy. \\
+\texttt{GateMigration} & new & The migration's service account and what its proof records. \\
+\texttt{ResolvedMigration} & added \texttt{uid}, \texttt{gid}, \texttt{identity}, \texttt{deadline}, \texttt{memory}, \texttt{cpu}, \texttt{scratch}, \texttt{database}, \texttt{credential}, \texttt{egress} & Task~1 named the service account, owner role and deadline in prose. A migration job also needs the database address, the owner credential that only it holds, and a network policy. \\
 \texttt{MigratedDatabase} & new & The database host, port and name. \\
 \texttt{ResolvedProcess} & added \texttt{lifecycle}, \texttt{api}, \texttt{assets}, \texttt{sidecars} & Whether the \texttt{Process} serves, runs once or prepares (which the revision element names); its API access, configuration files and \texttt{Sidecar}s. \\
 \texttt{ResolvedApiAccess}, \texttt{ResolvedApiRule}, \texttt{AdmittedRange} & new & The API rules a \texttt{Process} holds; the address range a policy admits: the API server for API access, the backup off-cluster destination. \\
@@ -131,24 +132,24 @@ the route of the delivery tool's events.
 \texttt{ResolvedGrant} & \texttt{path} and \texttt{access} optional; added \texttt{engine}, \texttt{paths}, \texttt{destination}, \texttt{mountAt}, \texttt{fileMode} & A transit or database \texttt{Secret} has no single path; it is recorded as the Vault paths its policy covers. A synced \texttt{Secret} needs a Kubernetes \texttt{Secret} copied to its mount. \\
 \texttt{PolicyPath} & new & One path of a Secret policy and the operations allowed on it. \\
 \texttt{ResolvedVolume} & added \texttt{mountAt} & The workload template needs the mount path. \\
-\texttt{BackupPlan} & added \texttt{user}, \texttt{group}, \texttt{identity}, \texttt{claim}, \texttt{egress}, \texttt{peer}, \texttt{credential}, \texttt{destinations} & A backup runs as its own identity with its own claim and network policy; it connects to the \texttt{Process} it dumps and copies off-cluster with a credential. \\
+\texttt{BackupPlan} & added \texttt{user}, \texttt{group}, \texttt{identity}, \texttt{claim}, \texttt{egress}, \texttt{peer}, \texttt{credential}, \texttt{destinations} & A backup runs as its own service account with its own claim and network policy; it connects to the \texttt{Process} it dumps and copies off-cluster with a credential. \\
 \texttt{BackupPeer} & new & Where a backup connects, and the credential it logs in with. \\
 \texttt{EnvEntry} & \texttt{value} optional; added \texttt{secret} & A secret placeholder becomes a reference, so the value never appears in a file. \\
 \texttt{SecretReference} & new & The secret path and key a variable reads. \\
 \texttt{StartupProbe} & added \texttt{timeout} & The specification gives the startup probe the \texttt{Platform Intent} probe timeout. \\
 \texttt{ResolvedExposure} & added \texttt{listener}, \texttt{certificates}, \texttt{proxyApplication}, \texttt{proxyNamespace} & The entry point's protocol and certificate source; the proxy whose middleware the routes name. \\
-\texttt{PolicyPeer} & added \texttt{rule}; \texttt{process} optional & Which rule admitted the peer, so two rules admitting one peer stay two entries, as in production; a peer such as cluster DNS has a namespace but no \texttt{Process}. \\
+\texttt{PolicyPeer} & added \texttt{rule}; \texttt{process} optional & Which rule admitted the peer (whom a network policy lets each \texttt{Process} talk to), so two rules admitting one peer stay two entries, as in production; a peer such as cluster DNS has a namespace but no \texttt{Process}. \\
 \end{longtable}
 
 \paragraph{Generated Files.} Figure~\ref{fig:targetfiles} shows every
-subclass of \texttt{Deliverable}, up from Task~1's nine to 21.
+subclass of \texttt{Deliverable}, the generated-file entry, up from Task~1's nine to 21.
 
-Workload, Canary and identity files, which Task~1 tied to one
+Workload, Canary and service account files, which Task~1 tied to one
 \texttt{Process}, now list all of an \texttt{Application}'s \texttt{Process}es,
 because the specification puts one file per \texttt{Application} holding all
 its \texttt{Process} resources. For the same reason, the network
 policy file holds one \texttt{ProcessPolicy} per \texttt{Process}, and the Secret file refers
-to its \texttt{Application} and holds one \texttt{SecretHolder} per identity, since a Backup identity
+to its \texttt{Application} and holds one \texttt{SecretHolder} per service account, since a backup's service account
 holds Secrets too. Task~1's worked example had
 one \texttt{Process}, so this difference did not show.
 
@@ -157,7 +158,7 @@ through its Pods; any other through its \texttt{Service}.
 
 The twelve new file kinds are Services, volume claims, configuration maps,
 backups, disruption budgets, migrations, RBAC, the secret operator
-connection, Vault policies, Vault roles, the policy job and the events route.
+connection, Vault policies, Vault roles, the Vault policy job and the events route.
 
 \begin{landscape}
 \begin{figure}[p]
@@ -199,9 +200,9 @@ declare would otherwise contain it as a constant.
 \caption{Changes to the Source Metamodel}
 \label{tab:sourcechanges}
 \endlastfoot
-\texttt{Process} & added \texttt{api} (\texttt{ApiAccess}, \texttt{ApiRule}, \texttt{ApiVerb}) & The \texttt{Process} declares the Kubernetes API access it needs, with a reason; the platform's delivery tools need it. \\
+\texttt{Process} & added \texttt{api} (\texttt{ApiAccess}, \texttt{ApiRule}, \texttt{ApiVerb}) & The \texttt{Process} declares the Kubernetes API access it needs, with a reason; the platform's own delivery \texttt{Application}s need it. \\
 \texttt{Platform} & added \texttt{apiAccess} (\texttt{ApiAccessPolicy}) & Which \texttt{Application}s may hold API access, and the API server address range. \\
-\texttt{Platform} & added \texttt{secretStore}, \texttt{telemetry} (\texttt{TelemetryPolicy}), \texttt{policyJob} (\texttt{VaultPolicyJob}) & References to the secret store, the telemetry collector and the metrics stack, whose addresses the resolution finds in their \texttt{Project}s; Vault policy job image, role and resources. \\
+\texttt{Platform} & added \texttt{secretStore}, \texttt{telemetry} (\texttt{TelemetryPolicy}), \texttt{policyJob} (\texttt{VaultPolicyJob}) & References to the Secret Store, the telemetry collector and the metrics stack, whose addresses the resolution finds in their \texttt{Project}s; Vault policy job image, role and resources. \\
 \texttt{DeliveryPolicy} & added \texttt{gate}, \texttt{reporter} & References to the \texttt{Release Gate} and the events receiver \texttt{Application}s. \\
 \texttt{AnalysisPolicy} & added \texttt{errorRate}, \texttt{latency} & The thresholds the \texttt{Release Gate} checks. \\
 \texttt{Substrate} & added \texttt{clusterDns} & The namespace every egress policy admits for DNS. \\
@@ -212,7 +213,7 @@ declare would otherwise contain it as a constant.
 \texttt{Placeholder} & added \texttt{suffix} & Text after a placeholder, as in \texttt{\$\{exposure:auth.public\#url\}/login}. \\
 \texttt{Grant} & \texttt{rotation} required & Every \texttt{Grant} states how it tolerates rotation, which decides its restart targets. \\
 \texttt{Volume} & \texttt{size} required & A claim cannot be generated without a size. \\
-\texttt{EffectiveProject} & removed \texttt{apiVersion}, \texttt{kind}, \texttt{schemaVersion} & The lowered model is written by the lowering, not by an author, so it has no document header. \\
+\texttt{EffectiveProject} & removed \texttt{apiVersion}, \texttt{kind}, \texttt{schemaVersion} & The flattened model is written by the flattening, not by an author, so it has no document header. \\
 \end{longtable}
 
 \subsection{Grammars for the Pinned Inputs}

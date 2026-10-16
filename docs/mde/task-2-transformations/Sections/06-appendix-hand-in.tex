@@ -7,7 +7,7 @@ Appendix~\ref{app:running}, and two folders.
 \path{task-2-transformations/} is an Eclipse project for reading the models
 (Table~\ref{tab:handin}), imported via \texttt{File > Import > Existing
 Projects into Workspace}. It contains no Java, so the transformations do not run from
-it: the resolution and estate pass call the \texttt{Hashing} library, which
+it: the resolution and the final pass call the \texttt{Hashing} library, which
 the implementation plug-in registers.
 
 \path{implementation/} holds the EMF implementation and the examples the
@@ -23,7 +23,7 @@ tests read.
 \path{transforms/} & \path{lower.qvto}, \path{resolution.qvto} and \path{estate.qvto}. \\
 \path{examples/platform/} & The \texttt{Platform Intent} and the pinned inputs every example reads. \\
 \path{examples/<example>/authored/} & The \texttt{Project Intent} with its env and configuration files. \\
-\path{examples/<example>/resolution.intent.xmi} & The intent extent: authored and lowered \texttt{Project}s, plus \texttt{Platform Intent}. \\
+\path{examples/<example>/resolution.intent.xmi} & The intent extent: authored and flattened \texttt{Project}s, plus \texttt{Platform Intent}. \\
 \path{examples/<example>/resolution.pinned.xmi} & The pinned extent. \\
 \path{examples/<example>/<project>.resolveddeployment} & The \texttt{Resolved Deployment} the transformation wrote. \\
 \path{examples/<example>/dependencies.json} & The edges exported from it, beside \path{expected-dependencies.json}, a copy of the oracle \path{expected/dependencies.json}. \\

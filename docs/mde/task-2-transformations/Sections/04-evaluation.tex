@@ -9,9 +9,9 @@ both implementations derive the same values.
 The build runs six test types on every change.
 
 \begin{itemize}
-  \item \textbf{Lowered models.} For the four examples with shared
-    declarations, the lowered model is written as JSON and compared
-    byte-for-byte with the expected Effective Intent.
+  \item \textbf{Flattened models.} For the four examples with shared
+    declarations, the flattened model is written as JSON and compared
+    byte-for-byte with the expected flattened model.
   \item \textbf{Dependency edges.} For each example, the resolved edges are
     exported as JSON and compared byte-for-byte with the expected file. These
     tests read only files the pipeline wrote, so they check the pipeline as a
@@ -32,12 +32,13 @@ The build runs six test types on every change.
     wrong value they write from a \texttt{Resolved Deployment} becomes a wrong
     byte in a generated file. Tests generate the files from the transformation
     output and compare each with the committed output.
-  \item \textbf{Interface tests.} JUnit tests exercise the resolution with
-    the smallest project that resolves, a project not in the input, and an
-    \texttt{Asset} whose file is missing, which must stop the run with the
-    file name. The estate pass is tested with one job planned over two
-    projects, a job name that moves when a document changes, no job without
-    documents, and two projects that carry different policy jobs. The lowering
+  \item \textbf{Interface tests.} JUnit tests exercise the resolution, the main transformation, with
+    the smallest \texttt{Project} that resolves, a \texttt{Project} not in the input, and a
+    configuration file that is missing, which must abort the run with the
+    file name. The final pass is tested with one job planned over two
+    \texttt{Project}s, a job name that moves when a document changes, no job without
+    documents, and two \texttt{Project}s that carry different Vault policy jobs (the job
+    that writes every Vault policy). The flattening
     is tested with eight cases of merging shared declarations.
 \end{itemize}
 
@@ -50,8 +51,8 @@ QVTo code is verified only by the comparisons above.
 
 Table~\ref{tab:results} lists the eight examples. All resolve successfully
 and every comparison passes, including the complete-model comparison of
-\texttt{minimal} and \texttt{secrets}. The full build runs 323 tests
-including 81 parity checks and passes.
+\texttt{minimal} and \texttt{secrets}. The full build runs 323 tests,
+81 of them comparisons with the expected output, and passes.
 
 \begin{table}[!htbp]
 \centering
@@ -78,23 +79,25 @@ including 81 parity checks and passes.
 \end{table}
 
 The \texttt{secrets} example holds no expected resolved file and no
-committed tree, but its complete expected model checks every attribute and
+committed generated files, but its complete expected model checks every attribute and
 reference of its whole resolution, where a \texttt{Revision} would check one
-element and a tree comparison the rendered files.
+element and a comparison of generated files only the files.
 
 Between them, the examples exercise every row of Table~\ref{tab:rules}.
 \texttt{minimal} alone exercises the common \texttt{Process} and
-\texttt{Exposure} rules (Table~\ref{tab:worked}). The migration, placeholder
+\texttt{Exposure} (outside route) rules (Table~\ref{tab:worked}). The migration, placeholder
 and external-provider rules run in \texttt{auth}, which holds three secrets
 and reaches a mail server outside the cluster. The volume, backup and
 configuration-file rules run in \texttt{data}, which holds one volume of each
-durability class, a \texttt{Sidecar} and an \texttt{Asset}. The rolling and
+durability class (reconstructible, recoverable, irreplaceable), a \texttt{Sidecar} and a
+configuration file. The rolling and
 stop-start switchover rules run in \texttt{delivery}, which also has API
-access. The \texttt{secrets} example models the Secret Store itself, whose one
-\texttt{Process} is interrupted and runs under a stop-start switchover. The
+access. The \texttt{secrets} example models the Secret Store (Vault) itself, whose one
+\texttt{Process} may stop serving during an update and so runs under a
+stop-start switchover. The
 \texttt{knowledge-platform} example is the largest. The \texttt{edge} and
 \texttt{observability} examples provide the proxies and collectors the other
-examples look up. Provenance, the \texttt{Revision}, the generated files and
+examples look up. Provenance (the input digests), the \texttt{Revision}, the generated files and
 egress run in every resolution.
 
 \subsubsection{Revision Evidence}
@@ -103,8 +106,8 @@ egress run in every resolution.
 An \texttt{Application}'s \texttt{Revision} is the digest of its whole element
 as the production implementation writes it: its \texttt{Process}es with image,
 user, deadline, probes, placement, secrets, volumes, backups, environment and
-edges; its \texttt{Exposure}s and routes; its \texttt{Release Gate} and
-migration.
+edges; its \texttt{Exposure}s and routes; its \texttt{Release Gate}, the service that holds the switch until every
+\texttt{Process} is healthy; and its migration.
 
 The transformation builds that text from its own \texttt{Resolved Deployment}
 (Section~\ref{sec:blackbox}), so one different value, one extra environment
@@ -116,7 +119,7 @@ For these \texttt{Application}s, the \texttt{Revision} check verifies nearly
 every value of each element at once, where a hand-written model would have to
 check the fields one by one. A further test confirms the \texttt{Revision}
 moves when a decision changes: raising the memory in \texttt{minimal} from 256Mi to
-512Mi changes it, but changing the snapshot capture time, which decides
+512Mi changes it, but changing the capture time of the cluster-state snapshot, which decides
 nothing, does not.
 
 \subsubsection{Generated-File Evidence}
@@ -124,14 +127,14 @@ nothing, does not.
 
 The generated files carry the values no \texttt{Revision} covers. The
 transformation output reproduces 167 committed files byte-for-byte, across
-five examples and the cluster-wide tree, including the estate pass job.
+five examples and the cluster-wide files, including the final pass job.
 
 \subsubsection{Thin Evidence}
 \label{sec:thin}
 
 Two examples, \texttt{edge} and \texttt{observability}, have no
-\texttt{Revision}, no committed tree and no expected model. Their edge files
-contain no edges, so the evidence that they resolve correctly is that the run
+\texttt{Revision}, no committed generated files and no expected model. Their
+\texttt{dependencies.json} files list no dependency edges, so the evidence that they resolve correctly is that the run
 succeeds and that other examples, which look up their proxies and collectors,
 reproduce their expected files.
 
@@ -150,10 +153,10 @@ no longer checks independently.
 
 Comparisons found a defect no single example had shown: the path plan
 placed cluster-wide route files under \path{apps/edge/}, which is also the
-directory of the project named \texttt{edge}. The \texttt{edge} example's files would
+directory of the \texttt{Project} named \texttt{edge}. The \texttt{edge} \texttt{Project}'s files would
 have mixed with routes from every other \texttt{Project}. The fix moved all
 cluster-wide files under \path{estate/} in both implementations, and the
-committed trees now hold each file at its correct path.
+committed files now hold each file at its correct path.
 
 \subsection{Limitations}
 \label{sec:limitations}
@@ -167,14 +170,14 @@ Eight examples form a sample, on which every rule runs and agrees. The
 \texttt{knowledge} example, which models a \texttt{Project} being retired, is
 not one of them; its successor \texttt{knowledge-platform} is.
 
-Checks across documents that remain in the transformation are stops, and a
-stop reports one problem without its location in the documents. Most such
+Checks across documents that remain in the transformation are aborts, and a
+abort reports one problem without its location in the documents. Most such
 checks moved into constraints. The cross-document constraints still use
 \texttt{allInstances()}; moving them onto one root object is decided but
 not implemented.
 
 QVTo caches mapping results but not queries, so \texttt{edgeOf} or a
-\texttt{Surface} address is recomputed wherever used. Several queries scan
+\texttt{Surface} address, the address of a named port, is recomputed wherever used. Several queries scan
 every \texttt{Process} in the cluster, so work grows with the square of
 \texttt{Process} count; for much larger clusters, hot queries would become
 mappings or precomputed properties, and capacity needs to be measured first.
@@ -183,13 +186,14 @@ A \texttt{Process} is eligible for a machine that can hold it alone; the
 resolution does not sum what all \texttt{Process}es request of one machine.
 
 When two \texttt{Process}es provide the same \texttt{Surface}, the first in
-name order wins. The order between \texttt{ReconcileUnit}s is set per
+name order wins. The order between \texttt{ReconcileUnit}s, the file groups Flux applies
+together, is set per
 \texttt{Project}, not per \texttt{Application}, because Flux orders whole
 units.
 
 Each implementation hashes its own model form of the inputs, so their
 provenance digests differ. Every digest that reaches a generated file (the
-\texttt{Revision}, an \texttt{Asset} name and the policy job name) is
+\texttt{Revision}, a configuration file's name and the Vault policy job name) is
 reproduced.
 
 The Eclipse run configuration is not tested: the build uses the standalone
@@ -218,7 +222,7 @@ to be written \texttt{\_from} and \texttt{\_access}. A multi-statement
 to the enclosing mapping result, not the object being created.
 
 With hindsight, the evidence should have been planned with the examples
-from the start. The expected model of \texttt{secrets} and the parity checks
+from the start. The expected model of \texttt{secrets} and the comparisons
 for \texttt{knowledge-platform} were only added at the end, when the examples
 without a comparison were identified. The Task~1 model of \texttt{minimal}
 should have been kept unchanged beside the updated one, so the one

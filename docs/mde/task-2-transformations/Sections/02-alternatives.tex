@@ -18,11 +18,11 @@ Table~\ref{tab:tools} compares them.
 KubeDiagrams \cite{kubediagrams} &
   Draws diagrams from Kubernetes files or a live cluster, mapping kinds to icons. &
   It works from files to pictures, not from models to models, and derives nothing. &
-  It could visualize the generated files to show links produced by a project document. \\
+  It could visualize the generated files to show links produced by a \texttt{Project} document. \\
 KubeOrch \cite{kubeorch} &
   A drag-and-drop editor whose back end wires ports, fills templates, writes files and deploys. &
   It has no metamodel and no constraints; its rules are Go code, and it deploys directly, not via Flux. &
-  Its graph notation could inform a project document editor. \\
+  Its graph notation could inform a \texttt{Project} document editor. \\
 kubert \cite{kubert} &
   A command-line tool to switch cluster contexts and run commands on multiple clusters. &
   It is an operations tool and does not model or generate anything. &
@@ -35,10 +35,12 @@ kubert \cite{kubert} &
 
 None of the three derives values from authored declarations. KubeOrch
 comes closest: it resolves a link between two services to an address and
-port, similar to how the resolution resolves dependency edges. But it lacks
-a \texttt{Platform Intent}, node contract, images lock and snapshot, so it
-cannot derive placement, image digests, backups or network peers. Its output
-is not a model that OCL constraints or oracles can verify. Beside the
+port, similar to how the resolution, the main transformation, resolves
+dependency edges. But it lacks a \texttt{Platform Intent}, node contract,
+images lock and cluster-state snapshot, so it cannot derive placement, image
+digests, backups or network peers (whom a network policy lets each
+\texttt{Process} talk to). Its output is not a model that OCL constraints or
+oracles (expected outputs) can verify. Beside the
 transformation, the resolved dependency edges and network peers could feed
 a KubeDiagrams view of the Task~3 files for visual verification. A
 KubeOrch-style graphical editor
@@ -59,14 +61,14 @@ hundred classes or a hundred attributes~\cite{amstel2011}.
 
 ATL, QVTo and Java were compared against the specific needs of this
 transformation. Most values in a \texttt{Resolved Deployment} do not derive
-from a single source element: a process's eligible machines depend on the
-node contract, a route's precedence on other routes, and a process's ingress
-peers on every process in the cluster that depends on it. ATL's matched rules
+from a single source element: a \texttt{Process}'s eligible machines depend on the
+node contract, a route's precedence on other routes, and a \texttt{Process}'s ingress
+peers on every \texttt{Process} in the cluster that depends on it. ATL's matched rules
 fit one source element producing one target element, with the engine
 choosing the order. The lookups this resolution needs are of another kind:
-resolving a dependency edge searches every project for the first process
-that provides the named surface, and the \texttt{Revision} has no source
-element of its own at all, since it digests the assembled application
+resolving a dependency edge searches every \texttt{Project} for the first \texttt{Process}
+that provides the \texttt{Surface} (the named port it offers), and the \texttt{Revision} has no source
+element of its own at all, since it digests the assembled \texttt{Application}
 element. In ATL this work moves into called rules and helpers, which turns
 the transformation into imperative code without the pattern matching, and
 the values that need the whole model to exist first still have to be
@@ -101,13 +103,13 @@ Every derived value needs to be in a model that tests can compare, so
 derivation must happen in a model-to-model step before code generation, and
 the oracles can then verify values independently of the templates.
 
-\subsubsection{Lowering Before the Resolution}
+\subsubsection{Flattening Before the Resolution}
 \label{sec:twotransformations}
 
 A single transformation from authored model to \texttt{Resolved Deployment}
-would work, but a lowering precedes the resolution. The lowering copies
+would work, but a flattening precedes the resolution. The flattening copies
 shared declarations down to each \texttt{Process}, producing
-\texttt{Effective Intent}, so the resolution reads values from one level
+flattened model, so the resolution reads values from one level
 instead of three and each rule is simpler. The chain also matches QVT
 specification Section~8.1.13, which composes a preparation transformation
 before the main one~\cite{qvt13}.
@@ -115,15 +117,15 @@ before the main one~\cite{qvt13}.
 \subsubsection{One Project per Run, All Projects as Input}
 \label{sec:perproject}
 
-One resolution over all projects at once could produce one
+One resolution over all \texttt{Project}s at once could produce one
 \texttt{Resolved Deployment} for the whole estate. Instead, each run
 resolves one \texttt{Project} into its own model while reading every
-project's documents from the same input extent. Each model stays small and
+\texttt{Project}'s documents from the same input extent. Each model stays small and
 has one oracle to compare with, and the shared extent keeps the
-cluster-wide view that edges, routes and reverse dependencies need. One
+cluster-wide view that dependency edges, routes and which \texttt{Process}es depend on each \texttt{Process} need. One
 value, the digest over all Vault documents, needs the output of every
-project, so the estate pass, which runs over all resolved models together,
-adds it (Section~\ref{sec:estatepass}).
+\texttt{Project}, so the final pass, which runs over all resolved models together,
+adds it (Section~\ref{sec:finalpass}).
 
 \subsubsection{Typed Extents}
 \label{sec:extentsalternative}
@@ -135,10 +137,10 @@ transformation selects each input once by type from two extents that hold
 exactly the run's documents, and every rule navigates from one of these
 properties (Section~\ref{sec:interface}).
 
-\subsubsection{Stops, Not Defaults}
-\label{sec:stopsalternative}
+\subsubsection{Aborts, Not Defaults}
+\label{sec:abortsalternative}
 
 A default for a value the resolution cannot derive would give a file that
-looks valid and deploys the wrong configuration, so the run stops instead,
-through a fatal assertion in a stop query (Section~\ref{sec:stops}). The
+looks valid and deploys the wrong configuration, so the run aborts instead,
+through a fatal assertion in an abort query (Section~\ref{sec:aborts}). The
 caller then has to handle the failure.
