@@ -1351,15 +1351,20 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
       "{ changelog: db/changelog.yml }",
       "self",
     );
-    const codes = (applications: string) =>
-      codesOf(
-        resolve(applications, {
-          env: DATA,
-          platform: (document) => document.replace("secretStore: vault\n", ""),
-        }),
-      );
+    // The data project holds grants of its own; this asks only what notes is refused for.
+    const refusedNotes = (applications: string) => {
+      const result = resolve(applications, {
+        env: DATA,
+        platform: (document) => document.replace("secretStore: vault\n", ""),
+      });
+      return result.ok
+        ? []
+        : result.diagnostics
+            .filter(({ document }) => document === "minimal/notes.project.yml")
+            .map(({ code }) => code);
+    };
 
-    expect(codes(selfMigrating)).toContain("E_NO_SECRET_STORE");
+    expect(refusedNotes(selfMigrating)).toStrictEqual(["E_NO_SECRET_STORE"]);
   });
 
   it("finds its datastore through the first edge that names a surface of a Process whose engine owns databases", () => {
