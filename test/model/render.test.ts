@@ -1012,3 +1012,29 @@ describe("the database catalog", () => {
     ]);
   });
 });
+
+describe("one owner per ServiceAccount", () => {
+  it("refuses a Process named like another Process's derived identity", () => {
+    // valkey holds no grant, so no Vault document of its name collides: only
+    // the account would, and the account is what a Vault role binds.
+    const result = renderIntentSet(
+      files({
+        "data/data.project.yml": (document) =>
+          document.replace(
+            "      - name: valkey\n",
+            "      - name: postgres-backup\n",
+          ),
+      }),
+      { ...OPTIONS, projects: ["data"] },
+    );
+
+    expect(result.ok ? [] : result.diagnostics).toStrictEqual([
+      expect.objectContaining({
+        code: "E_PATH_COLLISION",
+        message: expect.stringContaining(
+          "the ServiceAccount data-system/postgres-backup is claimed by",
+        ) as unknown,
+      }),
+    ]);
+  });
+});

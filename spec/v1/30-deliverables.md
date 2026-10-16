@@ -106,7 +106,7 @@ Every adapter satisfies one typed port
 | attributed output | Every returned Deliverable carries `adapter`, set by the port, not by the adapter. | compile error |
 | deterministic | Same documents in, byte-identical Deliverables out, in a stable order. | `E_RENDER_NONDETERMINISTIC` |
 | no ambient reads | No environment variable, clock, network or filesystem read inside `render`. Reading manifests from disk is the caller's job; the parsed documents are passed in. | `E_AMBIENT_INPUT_FORBIDDEN`, `E_INPUT_OUTSIDE_WORKDIR` |
-| one owner per path | Two adapters may never claim the same output path. | `E_PATH_COLLISION` |
+| one owner per path | Two adapters may never claim the same output path, and no two objects one ServiceAccount: a Vault role is bound to the account's name and namespace alone, so a second owner of the name would hold the first one's role. | `E_PATH_COLLISION` |
 | safe paths | Every path is relative and normalised; `..` and absolute paths are rejected. | `E_UNSAFE_OUTPUT_PATH` |
 
 Each of these is stated because the seam does not have it today. The registry

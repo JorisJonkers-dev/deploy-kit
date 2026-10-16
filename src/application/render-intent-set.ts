@@ -24,6 +24,7 @@ import {
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { Hasher } from "../model/hasher.ts";
 import type { Deliverable, RenderedObject } from "../objects/deliverable.ts";
+import type { ServiceAccount } from "../objects/kubernetes.ts";
 import type { AuthoredFile } from "./check-intent-set.ts";
 import {
   resolveIntentSet,
@@ -71,15 +72,42 @@ export function collisions(deliverables: readonly Deliverable[]): Diagnostic[] {
   const owners = new Map<string, string[]>();
   for (const { path, adapter } of deliverables)
     owners.set(path, [...(owners.get(path) ?? []), adapter]);
-  return [...owners.entries()]
-    .filter(([, adapters]) => adapters.length > 1)
-    .map(([path, adapters]) => ({
-      code: "E_PATH_COLLISION",
-      path: "",
-      message: `${path} is claimed by ${adapters.join(" and ")}`,
-      hint: "Every path has one owner: the plan assigns each adapter's paths from its default path.",
-    }));
+  // A Vault role binds a ServiceAccount's name and namespace, so a second
+  // account of one name would hold the first one's role.
+  const accounts = new Map<string, string[]>();
+  for (const { path, objects } of deliverables)
+    for (const object of objects)
+      if (isAccount(object)) {
+        const name = `${object.metadata.namespace}/${object.metadata.name}`;
+        accounts.set(name, [...(accounts.get(name) ?? []), path]);
+      }
+  return [
+    ...[...owners.entries()]
+      .filter(([, adapters]) => adapters.length > 1)
+      .map(([path, adapters]) => ({
+        code: "E_PATH_COLLISION" as const,
+        path: "",
+        message: `${path} is claimed by ${adapters.join(" and ")}`,
+        hint: "Every path has one owner: the plan assigns each adapter's paths from its default path.",
+      })),
+    ...[...accounts.entries()]
+      .filter(([, paths]) => paths.length > 1)
+      .map(([name, paths]) => ({
+        code: "E_PATH_COLLISION" as const,
+        path: "",
+        message: `the ServiceAccount ${name} is claimed by ${paths.join(" and ")}`,
+        hint: "Rename the Process: a derived identity's name is its Process's with -backup, -migration or -catalog, so no Process may carry one.",
+      })),
+  ];
 }
+
+const isAccount = (
+  object: RenderedObject,
+): object is ServiceAccount & { metadata: { namespace: string } } =>
+  typeof object === "object" &&
+  object !== null &&
+  "kind" in object &&
+  object.kind === "ServiceAccount";
 
 // No two artifacts share a name and no two files a path, so `<=` would order
 // the same list.
