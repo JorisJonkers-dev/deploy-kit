@@ -119,6 +119,21 @@ describe("a generated key", () => {
   });
 });
 
+describe("a generated key declared for the whole project", () => {
+  it("is refused under another Project's prefix", () => {
+    expect(
+      refusalsOf(
+        DOCUMENT.replace("GRANTS", "").replace(
+          "applications:\n",
+          "secrets:\n  - path: secret/data/platform/batch\n    keys: [{ name: k, generate: {} }]\n    access: read\n    delivery: self\n    rotation: { tolerates: restart }\napplications:\n",
+        ),
+      ),
+    ).toStrictEqual([
+      { code: "E_GENERATED_KEY_OUTSIDE_PROJECT", path: "/secrets/0/keys/0" },
+    ]);
+  });
+});
+
 describe("a generated key that adopts a value", () => {
   const OLD = `      - path: secret/data/platform/batch\n        keys: [session_key]\n        access: read\n        delivery: env\n        rotation: { tolerates: restart }\n`;
   const grant = (adopt: string): string =>
@@ -183,13 +198,52 @@ describe("an edge's credential delivered to the environment", () => {
     expect(refusalsOf(edge("restart"))).toStrictEqual([]);
   });
 
+  it("says why, at the Application and the project as at the Process", () => {
+    const declared = (at: string) =>
+      `      - application: platform-postgres\n        surface: postgres\n        credentials: { delivery: env, rotation: { tolerates: reload } }\n`.replace(
+        /^ {4}/gm,
+        at,
+      );
+    const result = parseProjectIntent(
+      DOCUMENT.replace("GRANTS", "")
+        .replace(
+          "  - id: batch\n",
+          `  - id: batch\n    dependsOn:\n${declared("    ").replace("platform-postgres", "other-postgres")}`,
+        )
+        .replace(
+          "applications:\n",
+          `dependsOn:\n${declared("")}applications:\n`,
+        ),
+    );
+
+    expect(result.ok ? [] : result.diagnostics).toStrictEqual([
+      {
+        code: "E_ENV_CANNOT_RELOAD",
+        path: "/dependsOn/0/credentials/rotation",
+        message: "an environment variable cannot be reloaded without a restart",
+        hint: "Tolerate a restart, or let the application read its credential itself.",
+      },
+      {
+        code: "E_ENV_CANNOT_RELOAD",
+        path: "/applications/0/dependsOn/0/credentials/rotation",
+        message: "an environment variable cannot be reloaded without a restart",
+        hint: "Tolerate a restart, or let the application read its credential itself.",
+      },
+    ]);
+  });
+
   it("is never delivered to a file", () => {
-    expect(
-      refusalsOf(edge("restart").replace("delivery: env", "delivery: file")),
-    ).toStrictEqual([
+    const result = parseProjectIntent(
+      edge("restart").replace("delivery: env", "delivery: file"),
+    );
+
+    expect(result.ok ? [] : result.diagnostics).toStrictEqual([
       {
         code: "schema",
         path: "/applications/0/processes/0/dependsOn/0/credentials",
+        message:
+          "an edge delivers its credential to the Process itself or to its environment, never to a file",
+        hint: "Deliver it `self` or `env`.",
       },
     ]);
   });

@@ -1346,6 +1346,22 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
       ]);
   });
 
+  it("refuses an edge to a database under a platform that names no Secret Store, since its credential is the store's", () => {
+    const selfMigrating = managed.replace(
+      "{ changelog: db/changelog.yml }",
+      "self",
+    );
+    const codes = (applications: string) =>
+      codesOf(
+        resolve(applications, {
+          env: DATA,
+          platform: (document) => document.replace("secretStore: vault\n", ""),
+        }),
+      );
+
+    expect(codes(selfMigrating)).toContain("E_NO_SECRET_STORE");
+  });
+
   it("finds its datastore through the first edge that names a surface of a Process whose engine owns databases", () => {
     const reaching = (...edges: readonly [string, string][]) =>
       ({
