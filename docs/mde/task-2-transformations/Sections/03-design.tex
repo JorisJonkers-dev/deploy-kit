@@ -1,37 +1,37 @@
 \section{Solution Design}
 \label{sec:design}
 
-Task~2 uses three QVT-Operational transformations. The lowering
+Task~2 uses three QVT-Operational transformations. The flattening
 (\texttt{lower.qvto}) is about 340 lines with 37 mapping operations and 8
 queries. The main resolution (\texttt{resolution.qvto}) is about 1700 lines
-with 8 mapping operations and 140 queries. The estate pass
+with 8 mapping operations and 140 queries. The final pass
 (\texttt{estate.qvto}) is about 130 lines with no mappings but one helper.
 
 Figure~\ref{fig:pattern} shows the metamodels each transformation reads and
 writes. The three differ in kind, and all are one-way.
 
 \begin{itemize}
-  \item The lowering is endogenous and horizontal: it reads and writes the source
+  \item The flattening is endogenous and horizontal: it reads and writes the source
     metamodel at the same abstraction level, producing a new model. One project
     goes in, one comes out.
   \item The resolution is exogenous and vertical, a refinement: it reads source
     and pinned-input metamodels and writes the target metamodel, taking several
     input models and producing one output.
-  \item The estate pass is endogenous and in-place: it updates the resolved models
+  \item The final pass is endogenous and in-place: it updates the resolved models
     of a run through an \texttt{inout} extent.
 \end{itemize}
 
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.9\linewidth, keepaspectratio]{Figures/pattern}
-\caption{The Resolution and the Estate Pass in the Metamodel-Based Transformation Pattern}
+\caption{The Resolution and the Final Pass in the Metamodel-Based Transformation Pattern}
 \label{fig:pattern}
 \end{figure}
 
-\subsection{The Lowering}
-\label{sec:lowering}
+\subsection{The Flattening}
+\label{sec:flattening}
 
-The lowering, \texttt{lower.qvto}, turns each authored \texttt{Project} into an
+The flattening, \texttt{lower.qvto}, turns each authored \texttt{Project} into an
 \texttt{EffectiveProject}. Every \texttt{Process} carries all shared declarations that apply to
 it, while the \texttt{Project} and \texttt{Application} carry none. Task~2 extended the Task~1
 implementation with API access and engine grants.
@@ -50,7 +50,7 @@ the \texttt{Process} as a parameter (\texttt{copyFor(self)}), which keys the tra
 source-process pair. A migration is one of three subclasses, so its copy uses
 a disjuncts mapping that selects the subclass at runtime.
 
-The lowering has no stops. The OCL constraints run before it, so every input
+The flattening has no aborts. The OCL constraints run before it, so every input
 it sees is valid.
 
 \subsection{Interface, Mappings and Queries}
@@ -133,10 +133,10 @@ A value query derives a single value, such as a deadline or an address. An objec
 query builds a contained object, such as a probe or a backup plan. A spelling
 query turns a source enumeration literal into the string the target records, for
 example \texttt{AlertClass::businessHours} into \texttt{business-hours}. The
-exception is a stop query such as \texttt{unlocked}, which raises a fatal
-assertion that aborts an invalid run (Section~\ref{sec:stops}).
+exception is a abort query such as \texttt{unlocked}, which raises a fatal
+assertion that aborts an invalid run (Section~\ref{sec:aborts}).
 
-The estate pass contains the sole QVTo helper, an operation with side effects
+The final pass contains the sole QVTo helper, an operation with side effects
 that adds files to a model it updates in place.
 
 Mappings run in a fixed order. The deployment mapping creates \texttt{ReconcileUnit}s
@@ -159,7 +159,7 @@ Table~\ref{tab:worked} follows declarations through to derived values.
 \hline
 \texttt{image: notes-api} & \texttt{locked} & \path{ghcr.io/jorisjonkers-dev/notes/notes-api@sha256:9c1e...}, user/group 1000, from images lock \\
 \texttt{startupBudget: 20s} & \texttt{deadlineOf}, startup probe & deadline 60s (three budgets); the startup probe polls the liveness target every 5s and fails after 4 attempts \\
-\texttt{cutover: continuous} & \texttt{switchoverOf}, \texttt{gate} & blue-green; \texttt{Release Gate} with 1 member, deadline 60s, platform cadence, error/latency checks \\
+\texttt{cutover: continuous} & \texttt{switchoverOf}, \texttt{gate} & blue/green; \texttt{Release Gate} with 1 member, deadline 60s, platform cadence, error/latency checks \\
 \texttt{memory: 256Mi, cpu: 50m} & \texttt{eligible} & all 7 machines in the node contract, each tested for twice the request size for blue/green deployment \\
 \texttt{audience: anonymous} & \texttt{tierFor}, \texttt{exposure} & entry point public-frankfurt with TLS or ACME certificates, proxy traefik-public in the edge-system project \\
 route /, prefix & \texttt{precedenceOf}, \texttt{middlewareOf} & precedence 1; security headers with strict content policy \\
@@ -189,7 +189,7 @@ assembled from it, in XMI.
 \end{lstlisting}
 
 \begin{lstlisting}[style=report, caption={The Resolved \texttt{Process} notes-api, in XMI (Abridged)}, label={lst:workedresolved}]
-<processes name="notes-api" deadline="60s" switchover="blue-green"
+<processes name="notes-api" deadline="60s" switchover="blue/green"
     image="ghcr.io/jorisjonkers-dev/notes/notes-api@sha256:9c1e5a4b..."
     uid="1000" gid="1000" memory="256Mi" cpu="50m">
   <startup period="5s" timeout="5s" failures="4"> ... </startup>
@@ -238,7 +238,7 @@ migration & \texttt{migrationOf}, \texttt{datastoreOf} & Runner image (from lock
 release gate & \texttt{gate}, \texttt{switchesBlueGreen} & One member per blue/green \texttt{Process} with readiness; the slowest member deadline; platform cadence; checks where telemetry is exported. \\
 \multicolumn{3}{l}{\emph{Process}} \\
 image, user, group & \texttt{locked} & The lock entry for the image name. \\
-switchover & \texttt{switchoverOf} & stop-start for interrupted \texttt{Process}, rolling for platform delivery tools, blue-green otherwise. \\
+switchover & \texttt{switchoverOf} & stop-start for interrupted \texttt{Process}, rolling for platform delivery tools, blue/green otherwise. \\
 deadline & \texttt{deadlineOf} & Three startup budgets rounded down; budget rounded up for prepare \texttt{Process}; 600s without budget. \\
 probes & \texttt{Probe::cadenced} & Declared target with platform period, timeout and failures. The startup probe polls the liveness target every 5s until the budget runs out. \\
 eligible machines & \texttt{eligible} & Every machine that fits the memory and sidecars twice for continuous deployment, with required architecture, site, capability, GPU and disk. \\
@@ -298,7 +298,7 @@ records the \texttt{Process} address and the network peer the consumer may
 reach. If no \texttt{Process} provides the \texttt{Surface}, the
 \texttt{Platform Intent} external provider list is tried; this is how
 \texttt{auth} reaches a mail server outside the cluster. If neither has it,
-the run stops.
+the run aborts.
 
 While a \texttt{Project} still runs at its old location, as the handover ledger
 records, its address and peer use that location's namespace and name, so a
@@ -322,7 +322,7 @@ placeholder takes the \texttt{Process} name, namespace or Vault role. Text after
 \texttt{AUTH\_LOGIN\_URL=\$\{exposure:auth.public\#url\}/login}.
 
 The runtime profile then adds its own variables. An author who writes one of
-them in an env file stops the run, because one name would have two values.
+them in an env file aborts the run, because one name would have two values.
 
 \subsubsection{Network Peers}
 \label{sec:peers}
@@ -404,34 +404,34 @@ be named after the Java package, because \texttt{resolve} is a QVTo
 keyword; it registers as \path{dev.jorisjonkers.deploykit.emf.hashing},
 by the runner outside Eclipse and by \texttt{plugin.xml} inside.
 
-\subsection{The Estate Pass}
-\label{sec:estatepass}
+\subsection{The Final Pass}
+\label{sec:finalpass}
 
 One generated job writes every \texttt{Project}'s Vault documents into the
 Secret Store. Its name is a digest over all of them, so changing any document
 starts a new job.
 
-The estate pass, \texttt{estate(inout rendered : RD)}, runs once over all
+The final pass, \texttt{estate(inout rendered : RD)}, runs once over all
 \texttt{Resolved Deployment}s produced together. It collects every
 \texttt{VaultPolicyFile} and \texttt{VaultRoleFile}, writes each as
 canonical JSON in OCL, sorts them by file name, hashes the whole with
 \texttt{rawDigestOf}, and adds the job's four files and their index to the
 first model. It also adds the route for the delivery tool's events to the
 platform's reporter, which likewise belongs to no \texttt{Project}. The pass
-stops if two models carry different jobs, because one run has one
+aborts if two models carry different jobs, because one run has one
 \texttt{Platform Intent}.
 
-\subsection{Stops and Running the Transformations}
-\label{sec:stops}
+\subsection{Aborts and Running the Transformations}
+\label{sec:aborts}
 \label{sec:running}
 
-Fifteen fatal assertions in the resolution stop the run when a value cannot
-be derived. Thirteen are in stop queries that a rule calls instead of
+Fifteen fatal assertions in the resolution abort the run when a value cannot
+be derived. Thirteen are in abort queries that a rule calls instead of
 returning an invalid value. For example, \texttt{locked} returns the lock
 entry for an image or calls \texttt{unlocked}, whose assert fatal ends the
 run with \texttt{E\_UNLOCKED\_IMAGE}. Two check \texttt{Release Gate}
-preconditions at the start of the gate mapping. The estate pass has one
-more, which stops it when two \texttt{Project}s carry different policy jobs.
+preconditions at the start of the gate mapping. The final pass has one
+more, which aborts it when two \texttt{Project}s carry different policy jobs.
 
 An input can be missing: an image
 absent from the lock, an \texttt{Asset} whose file is missing or contains a
@@ -445,7 +445,7 @@ database engine, a blue/green \texttt{Application} without readiness,
 secret store.
 
 Where the specification defines an error code, the message contains it. An
-audience that no entry point carries has no stop because a constraint
+audience that no entry point carries has no abort because a constraint
 \texttt{E\_NO\_TIER\_FOR\_AUDIENCE} already refuses it before the run.
 
 Three Java classes (\texttt{Lowering}, \texttt{Resolution} and

@@ -116,7 +116,7 @@ the route of the delivery tool's events.
 \caption{Changes to the Decision Classes of the Target Metamodel}
 \label{tab:targetvalues}
 \endlastfoot
-\texttt{ResolvedDeployment} & added \texttt{policyJob}, \texttt{events} & The Vault policy job and the route for delivery tool events belong to the whole cluster; every \texttt{Project} model carries the same job; the estate pass plans their files. \\
+\texttt{ResolvedDeployment} & added \texttt{policyJob}, \texttt{events} & The Vault policy job and the route for delivery tool events belong to the whole cluster; every \texttt{Project} model carries the same job; the final pass plans their files. \\
 \texttt{ResolvedPolicyJob}, \texttt{ResolvedEvents} & new & The job's identity, image, Vault role, resources and egress; the events receiver's namespace and address. \\
 \texttt{ResolvedApplication} & added \texttt{secretStore}, \texttt{scrape} & The secret store address where the operator syncs from, and how the metrics stack scrapes the \texttt{Application}, which the revision element names. \\
 \texttt{ResolvedScrape} & new & The scraped \texttt{Process}, \texttt{Surface}, path, interval and timeout. \\
@@ -212,7 +212,7 @@ declare would otherwise contain it as a constant.
 \texttt{Placeholder} & added \texttt{suffix} & Text after a placeholder, as in \texttt{\$\{exposure:auth.public\#url\}/login}. \\
 \texttt{Grant} & \texttt{rotation} required & Every \texttt{Grant} states how it tolerates rotation, which decides its restart targets. \\
 \texttt{Volume} & \texttt{size} required & A claim cannot be generated without a size. \\
-\texttt{EffectiveProject} & removed \texttt{apiVersion}, \texttt{kind}, \texttt{schemaVersion} & The lowered model is written by the lowering, not by an author, so it has no document header. \\
+\texttt{EffectiveProject} & removed \texttt{apiVersion}, \texttt{kind}, \texttt{schemaVersion} & The flattened model is written by the flattening, not by an author, so it has no document header. \\
 \end{longtable}
 
 \subsection{Grammars for the Pinned Inputs}

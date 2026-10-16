@@ -13,7 +13,7 @@ them from outside. One \texttt{Platform Intent} document states what all
 \texttt{Application}s share: cluster entry points, health-check timings and
 backup policies. Task~1 defined the Ecore metamodels for both. The source
 metamodel covers the authored documents. The target metamodel covers the
-\texttt{Resolved Deployment}: every value the platform derives for an
+\texttt{Resolved Deployment}: every value derived for an
 \texttt{Application}, and the file path each value writes to.
 
 Task~2 builds the model-to-model transformation from source to
@@ -39,7 +39,7 @@ writes any value by hand.
 \texttt{Reconcile Unit} & A group of files that Flux applies together and in order. \\
 \texttt{Revision} & A SHA-256 digest of an \texttt{Application}'s complete element, naming one release. \\
 \texttt{Estate} & All \texttt{Project}s, the \texttt{Platform Intent} and the \texttt{Pinned input set} read by one run. \\
-\texttt{Effective Intent} & \texttt{Project Intent} with every shared declaration lowered onto the \texttt{Process}es that hold it. \\
+Flattened model & \texttt{Project Intent} with every shared declaration copied down onto the \texttt{Process}es that hold it (class \texttt{EffectiveProject}). \\
 \hline
 \end{tabular}
 \caption{Project Terms Used in This Report}
@@ -48,8 +48,8 @@ writes any value by hand.
 
 The transformation has three goals. First, it must derive the same
 values as the TypeScript production implementation, which deploys the actual
-cluster. Both implementations run against the same oracle files and must
-produce identical results. Second, it must stop with an error message when it
+cluster. Both implementations run against the same oracle files, expected outputs committed from the production implementation, and must
+produce identical results. Second, it must abort with an error message when it
 cannot derive a value, because a \texttt{Resolved Deployment} with a missing or
 fabricated value would look valid yet deploy the wrong configuration.
 Third, its output must be complete enough that the Task~3 templates only write
@@ -63,16 +63,14 @@ Figure~\ref{fig:pipeline} shows the pipeline. Xtext converts each document
 to a source model, and the Task~1 OCL constraints reject invalid ones. Three
 QVT-Operational transformations then run in sequence.
 
-The first transformation, the lowering, copies declarations made once for an
+The first transformation, the flattening, which copies shared declarations down onto each \texttt{Process}, copies declarations made once for an
 entire \texttt{Project} or \texttt{Application} down onto each \texttt{Process}.
-Its output is the \texttt{Effective Intent}, which still conforms to the
+Its output is the flattened model, which still conforms to the
 source metamodel. Although it was implemented in Task~1, it was not reported
-there, so Section~\ref{sec:lowering} covers it here. The second
-transformation, the resolution, reads the lowered models and the
-\texttt{Pinned input set}, then writes one \texttt{Resolved Deployment} per
-project. It is the main subject of this report. The third, the estate pass,
-runs once over all \texttt{Resolved Deployment}s produced together and adds
-the files that do not belong to any single project (Section~\ref{sec:estatepass}).
+there, so Section~\ref{sec:flattening} covers it here. The second
+transformation, the resolution, the main transformation, which derives every value of the \texttt{Resolved Deployment}, reads the flattened models and the
+\texttt{Pinned input set}, the read-only documents no project author writes, then writes one \texttt{Resolved Deployment} per
+\texttt{Project}. It is the main subject of this report. The third, the final pass, which runs once over all resolved models and adds the files no single project owns (Section~\ref{sec:finalpass}).
 
 A small Java exporter writes the resolved dependency edges as JSON for
 comparison against the oracle. The Acceleo templates of Task~3 then read the
@@ -81,7 +79,7 @@ comparison against the oracle. The Acceleo templates of Task~3 then read the
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.69\linewidth, keepaspectratio]{Figures/pipeline}
-\caption{The Pipeline, With the Two Transformations Task~2 Adds in Bold}
+\caption{The Pipeline, With Task~2's Additions in Bold}
 \label{fig:pipeline}
 \end{figure}
 
@@ -89,26 +87,26 @@ comparison against the oracle. The Acceleo templates of Task~3 then read the
 \label{sec:refinement}
 
 Task~0 treated the
-node contract, images lock and snapshot as plain inputs, while Task~1 only
+node contract, images lock and cluster-state snapshot as plain inputs, while Task~1 only
 modelled the two authored documents. The resolution needs these as models, so
-a third metamodel now describes the \texttt{Pinned input set}, with its own
+a third metamodel now describes the \texttt{Pinned input set}, the read-only documents no project author writes, with its own
 Xtext grammar for each document (Appendix~\ref{app:pinned}). This metamodel
 lives in a separate package because no project author writes these documents.
 
 Task~1 described three stages: authored, resolved and generated text. The
-lowering adds a fourth stage between authored and resolved, so each rule in
+flattening adds a fourth stage between authored and resolved, so each rule in
 the resolution reads values from a single level
 (Section~\ref{sec:twotransformations}).
 
-Task~1 planned one resolved model for the entire cluster, because edges,
-routes and reverse dependencies require a cluster-wide view. Every run
-still reads every project. The output is now one
-\texttt{Resolved Deployment} per project, because the production
+Task~1 planned one resolved model for the entire cluster, because dependency edges,
+routes and which \texttt{Process}es depend on each \texttt{Process} require a cluster-wide view. Every run
+still reads every \texttt{Project}. The output is now one
+\texttt{Resolved Deployment} per \texttt{Project}, because the production
 implementation and the oracles are per project
 (Section~\ref{sec:perproject}); the per-\texttt{Application} projection from
 Task~1 is still present as the \texttt{ResolvedApplication} inside that
-model. The estate pass adds the one job that no single project's resolution
-can compute (Section~\ref{sec:estatepass}).
+model. The final pass adds the one job that no single project's resolution
+can compute (Section~\ref{sec:finalpass}).
 
 Task~1's target metamodel only had a worked example for \texttt{minimal}. The
 other examples needed additional concepts: migrations, backup identities, API
@@ -122,12 +120,10 @@ lists every change.
 The transformation assumes four conditions.
 
 \begin{itemize}
-  \item \textbf{Valid input.} The Task~1 OCL constraints reject an invalid
-    source model before the lowering runs, checking the entire document set
-    of a run. A stop in the transformation is a safety net for facts the
-    constraints do not yet cover (Section~\ref{sec:stops}).
-  \item \textbf{One cluster per run.} A run reads one \texttt{Platform Intent}
-    and one node contract, both naming the same cluster. All concepts,
+  \item \textbf{Valid input.} The Task~1 OCL constraints reject invalid documents before any transformation runs. An abort in the transformation is a safety net for facts the
+    constraints do not yet cover (Section~\ref{sec:aborts}).
+  \item \textbf{One cluster per run.} A run, one execution of the pipeline over every document of a cluster, reads one \texttt{Platform Intent}
+    and one node contract (the list of machines and their capacity), both naming the same cluster. All concepts,
     examples and oracles derive from that single existing cluster.
   \item \textbf{The production implementation's choices.} Where the
     specification allows a choice, the transformation decides as the
@@ -135,22 +131,21 @@ The transformation assumes four conditions.
   \item \textbf{No live cluster access.} The transformation only reads the
     documents provided to it. Any fact known only to a running cluster, such
     as which node holds a particular volume, must arrive via the
-    \texttt{ClusterState} snapshot captured by another process.
+    cluster-state snapshot captured by another process.
 \end{itemize}
 
 \paragraph{More Than One Cluster.} The current implementation targets a
 single cluster, and every cluster-specific element is already a run input: the
-\texttt{Platform Intent}, the node contract and the \texttt{ClusterState}
-snapshot each name their cluster, and a \texttt{Project}'s environment files
+\texttt{Platform Intent}, the node contract and the cluster-state snapshot each name their cluster, and a \texttt{Project}'s environment files
 use a shared base plus a per-cluster overlay that the resolution selects via
 the \texttt{Platform Intent} cluster name (Section~\ref{sec:placeholders}).
 Supporting a second cluster would therefore need a second run over that
 cluster's own three documents, and two additions beside it: a
 \texttt{Project Intent} would need to declare which clusters it targets, and
-the network policy of an edge to another cluster would need to allow an
-address range rather than a specific pod address. Such an edge would resolve
+the network policy of a dependency edge to another cluster would need to allow an
+address range rather than a specific pod address. Such a dependency edge would resolve
 through the \texttt{Platform Intent} external provider list, as the current
-edge from \texttt{auth} to an external mail server already does
+\texttt{edge} from \texttt{auth} to an external mail server already does
 (Section~\ref{sec:edgerule}).
 
 Table~\ref{tab:scope} sets the scope of Task~2.
@@ -169,7 +164,7 @@ The resolution of eight examples: \texttt{minimal}, \texttt{auth},
 Every derivation these examples use, from dependency edges and placement to
   backups, migrations, network peers and the path of every generated file. &
   The text of the generated files, which is Task~3. \\
-The lowering's extensions, the estate pass, and the \texttt{Pinned input set} metamodel
+The flattening's extensions, the final pass, and the \texttt{Pinned input set} metamodel
   and grammars. &
   Applying the files to a cluster, and a second cluster. \\
 \hline

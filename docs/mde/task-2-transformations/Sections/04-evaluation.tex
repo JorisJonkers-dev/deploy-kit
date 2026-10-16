@@ -9,9 +9,9 @@ both implementations derive the same values.
 The build runs six test types on every change.
 
 \begin{itemize}
-  \item \textbf{Lowered models.} For the four examples with shared
-    declarations, the lowered model is written as JSON and compared
-    byte-for-byte with the expected Effective Intent.
+  \item \textbf{Flattened models.} For the four examples with shared
+    declarations, the flattened model is written as JSON and compared
+    byte-for-byte with the expected flattened model.
   \item \textbf{Dependency edges.} For each example, the resolved edges are
     exported as JSON and compared byte-for-byte with the expected file. These
     tests read only files the pipeline wrote, so they check the pipeline as a
@@ -34,10 +34,10 @@ The build runs six test types on every change.
     output and compare each with the committed output.
   \item \textbf{Interface tests.} JUnit tests exercise the resolution with
     the smallest project that resolves, a project not in the input, and an
-    \texttt{Asset} whose file is missing, which must stop the run with the
-    file name. The estate pass is tested with one job planned over two
+    \texttt{Asset} whose file is missing, which must abort the run with the
+    file name. The final pass is tested with one job planned over two
     projects, a job name that moves when a document changes, no job without
-    documents, and two projects that carry different policy jobs. The lowering
+    documents, and two projects that carry different policy jobs. The flattening
     is tested with eight cases of merging shared declarations.
 \end{itemize}
 
@@ -124,7 +124,7 @@ nothing, does not.
 
 The generated files carry the values no \texttt{Revision} covers. The
 transformation output reproduces 167 committed files byte-for-byte, across
-five examples and the cluster-wide tree, including the estate pass job.
+five examples and the cluster-wide tree, including the final pass job.
 
 \subsubsection{Thin Evidence}
 \label{sec:thin}
@@ -167,8 +167,8 @@ Eight examples form a sample, on which every rule runs and agrees. The
 \texttt{knowledge} example, which models a \texttt{Project} being retired, is
 not one of them; its successor \texttt{knowledge-platform} is.
 
-Checks across documents that remain in the transformation are stops, and a
-stop reports one problem without its location in the documents. Most such
+Checks across documents that remain in the transformation are aborts, and a
+abort reports one problem without its location in the documents. Most such
 checks moved into constraints. The cross-document constraints still use
 \texttt{allInstances()}; moving them onto one root object is decided but
 not implemented.
