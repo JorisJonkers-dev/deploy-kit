@@ -2,9 +2,9 @@
 \label{sec:evaluation}
 
 The transformations are tested by running them on eight examples and comparing
-their output with oracle files. The oracles come from the production
-implementation processing the same input documents, so matching them shows
-both implementations derive the same values.
+their output with oracle files: the expected outputs committed with the
+specification's worked examples. Matching them shows the transformation
+derives the values the specification expects.
 
 The build runs six test types on every change.
 
@@ -17,8 +17,8 @@ The build runs six test types on every change.
     tests read only files the pipeline wrote, so they check the pipeline as a
     user would run it.
   \item \textbf{Revisions.} Each expected resolved file records its
-    \texttt{Revision}, a digest over the \texttt{Application} element as the
-    production implementation writes it. Matching \texttt{Revision}s confirm
+    \texttt{Revision}, a digest over the \texttt{Application} element in
+    the specification's canonical JSON form. Matching \texttt{Revision}s confirm
     that the same values were derived for that element
     (Section~\ref{sec:revisionevidence}). The digest covers the element's own
     decisions, not the whole resolved model: the path plan, the network
@@ -104,7 +104,7 @@ egress run in every resolution.
 \label{sec:revisionevidence}
 
 An \texttt{Application}'s \texttt{Revision} is the digest of its whole element
-as the production implementation writes it: its \texttt{Process}es with image,
+in that form: its \texttt{Process}es with image,
 user, deadline, probes, placement, secrets, volumes, backups, environment and
 edges; its \texttt{Exposure}s and routes; its \texttt{Release Gate}, the service that holds the switch until every
 \texttt{Process} is healthy; and its migration.
@@ -145,7 +145,7 @@ inbound even though every holder of a Secret may send to it.
 
 The hand-written model of \texttt{minimal} from Task~1 was updated after
 hand-in to follow the metamodel changes of Appendix~\ref{app:target}. Its
-\texttt{Revision} was taken from the production implementation, so one field
+\texttt{Revision} was copied from the oracle, so one field
 no longer checks independently.
 
 \subsubsection{Defects Found}
@@ -155,15 +155,15 @@ Comparisons found a defect no single example had shown: the path plan
 placed cluster-wide route files under \path{apps/edge/}, which is also the
 directory of the \texttt{Project} named \texttt{edge}. The \texttt{edge} \texttt{Project}'s files would
 have mixed with routes from every other \texttt{Project}. The fix moved all
-cluster-wide files under \path{estate/} in both implementations, and the
+cluster-wide files under \path{estate/}, in the specification's path rules
+and in the path plan, and the
 committed files now hold each file at its correct path.
 
 \subsection{Limitations}
 \label{sec:limitations}
 
-The oracles come from another implementation, so agreement shows two
-implementations of the specification decide the same, not that the
-specification itself is correct. Only the hand-written model of
+Agreement shows that the transformation reproduces the oracles, not that
+the oracles, or the specification behind them, are correct. Only the hand-written model of
 \texttt{minimal} was written directly from the specification.
 
 Eight examples form a sample, on which every rule runs and agrees. The
@@ -191,8 +191,9 @@ together, is set per
 \texttt{Project}, not per \texttt{Application}, because Flux orders whole
 units.
 
-Each implementation hashes its own model form of the inputs, so their
-provenance digests differ. Every digest that reaches a generated file (the
+The transformation hashes the inputs in their EMF model form, which differs
+in shape from the form the specification names, so its provenance digests
+differ from the oracles'. Every digest that reaches a generated file (the
 \texttt{Revision}, a configuration file's name and the Vault policy job name) is
 reproduced.
 
@@ -203,8 +204,8 @@ run manually.
 \subsection{Reflection}
 \label{sec:reflection}
 
-The \texttt{Revision} took the most time. The OCL that writes the production
-implementation's JSON form of an \texttt{Application}, one field at a time,
+The \texttt{Revision} took the most time. The OCL that writes the specification's
+JSON form of an \texttt{Application}, one field at a time,
 fills about one sixth of \texttt{resolution.qvto}, and every mistake in it
 showed only as a different hash.
 

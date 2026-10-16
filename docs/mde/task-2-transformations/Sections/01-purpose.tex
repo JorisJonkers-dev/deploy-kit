@@ -46,10 +46,10 @@ Flattened model & \texttt{Project Intent} with every shared declaration copied d
 \label{tab:terms}
 \end{table}
 
-The transformation has three goals. First, it must derive the same
-values as the TypeScript production implementation, which deploys the actual
-cluster. Both implementations run against the same oracle files, expected outputs committed from the production implementation, and must
-produce identical results. Second, it must abort with an error message when it
+The transformation has three goals. First, it must derive exactly the values
+the specification expects. Each worked example of the specification carries
+oracle files, the expected resolved model, dependency edges and generated
+files for its input documents, and the transformation must reproduce them. Second, it must abort with an error message when it
 cannot derive a value, because a \texttt{Resolved Deployment} with a missing or
 fabricated value would look valid yet deploy the wrong configuration.
 Third, its output must be complete enough that the Task~3 templates only write
@@ -105,8 +105,8 @@ the resolution reads values from a single level
 Task~1 planned one resolved model for the entire cluster, because dependency edges,
 routes and which \texttt{Process}es depend on each \texttt{Process} require a cluster-wide view. Every run
 still reads every \texttt{Project}. The output is now one
-\texttt{Resolved Deployment} per \texttt{Project}, because the production
-implementation and the oracles are per \texttt{Project}
+\texttt{Resolved Deployment} per \texttt{Project}, because each model then
+stays small and has one oracle to compare with
 (Section~\ref{sec:perproject}); the per-\texttt{Application} projection from
 Task~1 is still present as the \texttt{ResolvedApplication} inside that
 model. The final pass adds the one job that no single \texttt{Project}'s resolution
@@ -129,9 +129,10 @@ The transformation assumes four conditions.
   \item \textbf{One cluster per run.} A run, one execution of the pipeline over every document of a cluster, reads one \texttt{Platform Intent}
     and one node contract, both naming the same cluster. All concepts,
     examples and oracles derive from that single existing cluster.
-  \item \textbf{The production implementation's choices.} Where the
-    specification allows a choice, the transformation decides as the
-    production TypeScript implementation does.
+  \item \textbf{One reading of the specification.} Where the specification
+    leaves a choice open, such as which of two \texttt{Process}es offering
+    the same port an edge reaches, the transformation takes the reading the
+    oracles record, so every example has one right result to compare with.
   \item \textbf{No live cluster access.} The transformation only reads the
     documents provided to it. Any fact known only to a running cluster, such
     as which node holds a particular volume, must arrive via the

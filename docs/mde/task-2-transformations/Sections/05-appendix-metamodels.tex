@@ -29,7 +29,7 @@ snapshot. A \texttt{Project} build writes its migration proof (the schema
 version its migration was tested against).
 
 The committed descriptor that compares the source metamodel's structure with
-the implementation schemas keeps the two aligned. With the pinned input
+the specification's schemas keeps the two aligned. With the pinned input
 classes in the source metamodel, that comparison would find documents the
 schemas do not hold. No target metamodel class refers to them:
 the \texttt{Resolved Deployment} records the values read from them, and their
@@ -138,7 +138,7 @@ the route of Flux's events.
 \texttt{SecretReference} & new & The secret path and key a variable reads. \\
 \texttt{StartupProbe} & added \texttt{timeout} & The specification gives the startup probe the \texttt{Platform Intent} probe timeout. \\
 \texttt{ResolvedExposure} & added \texttt{listener}, \texttt{certificates}, \texttt{proxyApplication}, \texttt{proxyNamespace} & The entry point's protocol and certificate source; the proxy whose middleware the routes name. \\
-\texttt{PolicyPeer} & added \texttt{rule}; \texttt{process} optional & Which rule admitted the peer (whom a network policy lets each \texttt{Process} talk to), so two rules admitting one peer stay two entries, as in production; a peer such as cluster DNS has a namespace but no \texttt{Process}. \\
+\texttt{PolicyPeer} & added \texttt{rule}; \texttt{process} optional & Which rule admitted the peer (whom a network policy lets each \texttt{Process} talk to), so two rules admitting one peer stay two entries, as the oracles record them; a peer such as cluster DNS has a namespace but no \texttt{Process}. \\
 \end{longtable}
 
 \paragraph{Generated Files.} Figure~\ref{fig:targetfiles} shows every
@@ -172,7 +172,7 @@ connection, Vault policies, Vault roles, the Vault policy job and the events rou
 The hand-written model of \texttt{minimal} from Task~1 was updated with these
 changes. Its files refer to the \texttt{Process} through \texttt{processes},
 it gained the configuration map that carries the \texttt{ReleaseGate} inputs,
-and its \texttt{Revision} was set to the production implementation's
+and its \texttt{Revision} was set to the oracle's
 (Section~\ref{sec:thin}).
 
 \subsection{Changes to the Source Metamodel}
@@ -220,8 +220,8 @@ declare would otherwise contain it as a constant.
 \label{app:grammars}
 
 The pinned inputs use grammars rather than a Java YAML reader or hand-written
-XMI, so both implementations read the same YAML files and their results can
-be compared.
+XMI, so the transformation reads the examples' YAML files unchanged and its
+results can be compared with their oracles.
 
 Four grammars were added beside the Project and Platform grammars:
 NodeContract, ImagesLock, ClusterState and MigrationProof. Each inherits the
@@ -232,7 +232,7 @@ the file name selects the grammar: \path{node-contract.yml},
 
 One input file changed: the Project grammar scalar terminal cannot contain a
 colon, so the snapshot's capture time is now quoted, as digests and URLs already
-were. The production implementation reads the same value either way.
+were. The value is the same either way.
 
 Example~\ref{lst:grammar} shows the smallest grammar.
 

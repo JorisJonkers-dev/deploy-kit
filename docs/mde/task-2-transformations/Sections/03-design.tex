@@ -94,7 +94,7 @@ its extent, and no rule calls \texttt{allInstances()}.
 A query over every \texttt{Process} in the cluster uses
 \texttt{projects.applications.processes}, whose extent is exactly the run's
 documents. \texttt{Project}s are sorted by name so that the first provider of a service
-is consistent across runs and implementations.
+is the same on every run.
 
 QVTo provides two ways to create target objects. A mapping operation records
 its source and result in the trace. Other rules find that result later using
@@ -389,16 +389,17 @@ units created by the same mapping.
 A digest is a SHA-256 hash over canonical text. OCL lacks a byte-hashing
 operation, so the Java class \texttt{Hashing} provides three contextual
 operations. \texttt{digestOf} walks any model element reflectively, writes
-canonical JSON and hashes it. \texttt{textDigestOf} hashes a file's text as the
-production implementation does. \texttt{rawDigestOf} hashes a string as-is.
+canonical JSON and hashes it. \texttt{textDigestOf} hashes a file's text, for the
+content-derived names of configuration files. \texttt{rawDigestOf} hashes a string as-is.
 
 The \texttt{Revision} uses the third. Generated files carry it, so it must
-equal the production implementation's \texttt{Revision}, which is the digest
-of the \texttt{Application} element in that implementation's JSON form, a
-shape the target metamodel does not have. The query \texttt{elementJson}
+equal the \texttt{Revision} the oracles record. The specification defines it
+as the digest of the \texttt{Application} element in canonical JSON
+(RFC~8785), in the shape of the specification's resolved document, a shape
+the target metamodel does not have. The query \texttt{elementJson}
 therefore writes that element as text in OCL, from source and target model
-together: keys sorted, absent values omitted, every value spelled as the
-production implementation spells it. The black box only hashes the result, so
+together: keys sorted, absent values omitted, every value spelled as that
+document spells it. The black box only hashes the result, so
 every decision about what the \texttt{Revision} covers stays inside the
 transformation.
 

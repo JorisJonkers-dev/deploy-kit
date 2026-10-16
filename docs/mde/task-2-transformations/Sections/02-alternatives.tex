@@ -90,11 +90,12 @@ it~\cite{burgueno2019}. The one operation QVTo cannot express directly,
 computing a SHA-256 hash, uses QVT's black-box mechanism: a Java library
 called through a contextual operation (Section~\ref{sec:blackbox}).
 
-Speed was not decisive. The cited experiment~\cite{amstel2011} measured
-QVTo more than five times slower than ATL, a result about the models of
-that experiment rather than a prediction for this cluster; what this
-cluster can bear is a question of capacity, which
-Section~\ref{sec:limitations} returns to.
+Speed was not a factor. The transformation is a proof of concept: it serves
+to work out the complete design and to check it against the specification's
+examples, not to run the cluster in the long term. The compiler is to be
+ported to a general-purpose language, such as TypeScript or, in the long term,
+Rust, so its speed will be that of the port. What this cluster can bear is a
+question of capacity, which Section~\ref{sec:limitations} returns to.
 
 \subsection{The Structure of the Transformation}
 \label{sec:structure}
