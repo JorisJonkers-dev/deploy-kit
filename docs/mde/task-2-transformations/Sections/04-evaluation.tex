@@ -97,7 +97,7 @@ access. The \texttt{secrets} example models the Secret Store itself, whose one
 examples look up. Provenance, the \texttt{Revision}, the generated files and
 egress run in every resolution.
 
-\subsubsection{What the Revisions Show}
+\subsubsection{Revision Evidence}
 \label{sec:revisionevidence}
 
 An \texttt{Application}'s \texttt{Revision} is the digest of its whole element
@@ -119,14 +119,14 @@ moves when a decision changes: raising the memory in \texttt{minimal} from 256Mi
 512Mi changes it, but changing the snapshot capture time, which decides
 nothing, does not.
 
-\subsubsection{What the Generated Files Show}
+\subsubsection{Generated-File Evidence}
 \label{sec:treeevidence}
 
 The generated files carry the values no \texttt{Revision} covers. The
 transformation output reproduces 167 committed files byte-for-byte, across
 five examples and the cluster-wide tree, including the estate pass job.
 
-\subsubsection{Where the Evidence Is Thin}
+\subsubsection{Thin Evidence}
 \label{sec:thin}
 
 Two examples, \texttt{edge} and \texttt{observability}, have no
@@ -145,7 +145,7 @@ hand-in to follow the metamodel changes of Appendix~\ref{app:target}. Its
 \texttt{Revision} was taken from the production implementation, so one field
 no longer checks independently.
 
-\subsubsection{Defects Found by Testing}
+\subsubsection{Defects Found}
 \label{sec:defects}
 
 Comparisons found a defect no single example had shown: the path plan

@@ -101,7 +101,7 @@ Every derived value needs to be in a model that tests can compare, so
 derivation must happen in a model-to-model step before code generation, and
 the oracles can then verify values independently of the templates.
 
-\subsubsection{A Lowering Before the Resolution}
+\subsubsection{Lowering Before the Resolution}
 \label{sec:twotransformations}
 
 A single transformation from authored model to \texttt{Resolved Deployment}
@@ -125,7 +125,7 @@ value, the digest over all Vault documents, needs the output of every
 project, so the estate pass, which runs over all resolved models together,
 adds it (Section~\ref{sec:estatepass}).
 
-\subsubsection{Typed Extents Instead of a Global Scan}
+\subsubsection{Typed Extents}
 \label{sec:extentsalternative}
 
 A rule also has to find the run's other documents. Using OCL's
@@ -135,7 +135,7 @@ transformation selects each input once by type from two extents that hold
 exactly the run's documents, and every rule navigates from one of these
 properties (Section~\ref{sec:interface}).
 
-\subsubsection{Stops Instead of Defaults}
+\subsubsection{Stops, Not Defaults}
 \label{sec:stopsalternative}
 
 A default for a value the resolution cannot derive would give a file that

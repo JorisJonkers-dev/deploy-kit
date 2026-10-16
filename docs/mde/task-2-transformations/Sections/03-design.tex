@@ -53,8 +53,9 @@ a disjuncts mapping that selects the subclass at runtime.
 The lowering has no stops. The OCL constraints run before it, so every input
 it sees is valid.
 
-\subsection{Interface}
+\subsection{Interface, Mappings and Queries}
 \label{sec:interface}
+\label{sec:shape}
 
 Example~\ref{lst:header} shows the resolution's signature. It reads two extents
 from two metamodels and writes one extent of a third.
@@ -90,9 +91,6 @@ A query over every \texttt{Process} in the cluster uses
 \texttt{projects.applications.processes}, whose extent is exactly the run's
 documents. Projects are sorted by name so that the first provider of a service
 is consistent across runs and implementations.
-
-\subsection{Mappings and Queries}
-\label{sec:shape}
 
 QVTo provides two ways to create target objects. A mapping operation records
 its source and result in the trace. Other rules find that result later using
@@ -146,7 +144,7 @@ first, then \texttt{Application}s, provenance and the path plan. Each \texttt{Ap
 its \texttt{Process}es before its \texttt{Exposure}s, \texttt{ReleaseGate} and migration, because those
 refer to \texttt{Process}es through the trace.
 
-\subsection{A Worked Example}
+\subsection{Worked Example}
 \label{sec:worked}
 
 The \texttt{minimal} example declares one \texttt{Application}, notes, with
@@ -262,7 +260,7 @@ revision & end of deployment & Digest of each \texttt{Application}'s complete el
 generated files & \texttt{projectFiles}, \texttt{applicationFiles}, \texttt{edgeFiles}, \texttt{vaultFiles} & Path of every file, with elements it is generated from (Section~\ref{sec:pathplan}). \\
 \end{longtable}
 
-\subsubsection{A Process}
+\subsubsection{The Process Mapping}
 \label{sec:processrule}
 
 Example~\ref{lst:process} shows the start of the \texttt{Process} mapping. The init
@@ -289,7 +287,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 }
 \end{lstlisting}
 
-\subsubsection{A Dependency Edge}
+\subsubsection{The Edge Rule}
 \label{sec:edgerule}
 
 A dependency edge names an \texttt{Application} and one of its
@@ -423,8 +421,9 @@ platform's reporter, which likewise belongs to no \texttt{Project}. The pass
 stops if two models carry different jobs, because one run has one
 \texttt{Platform Intent}.
 
-\subsection{Stops}
+\subsection{Stops and Running the Transformations}
 \label{sec:stops}
+\label{sec:running}
 
 Fifteen fatal assertions in the resolution stop the run when a value cannot
 be derived. Thirteen are in stop queries that a rule calls instead of
@@ -448,9 +447,6 @@ secret store.
 Where the specification defines an error code, the message contains it. An
 audience that no entry point carries has no stop because a constraint
 \texttt{E\_NO\_TIER\_FOR\_AUDIENCE} already refuses it before the run.
-
-\subsection{Running the Transformations}
-\label{sec:running}
 
 Three Java classes (\texttt{Lowering}, \texttt{Resolution} and
 \texttt{Estate}) run the transformations through QVTo's own
