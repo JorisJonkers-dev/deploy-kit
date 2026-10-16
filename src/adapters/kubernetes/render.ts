@@ -42,7 +42,7 @@ import {
 } from "./capacity.ts";
 import { migrationOf } from "./migration.ts";
 import { wholeSeconds } from "../shared/durations.ts";
-import { isSynced, type KvGrant } from "../shared/holders.ts";
+import { isSynced, type Grant, type KvGrant } from "../shared/holders.ts";
 import {
   applicationLabels,
   instanceOf,
@@ -204,13 +204,17 @@ function envOf(process: ResolvedProcess): EnvVar[] {
     if ("value" in entry) return { name: entry.name, value: entry.value };
     // A reference names an env grant the Process holds, or resolution stopped.
     const grant = process.secrets?.find(
-      (held) => isSynced(held) && held.path === entry.secret.path,
-    ) as KvGrant;
+      (held) =>
+        isSynced(held) &&
+        ("path" in held
+          ? held.path
+          : held.paths.map(({ path }) => path).join()) === entry.secret.path,
+    ) as Grant & { destination: string };
     return {
       name: entry.name,
       valueFrom: {
         secretKeyRef: {
-          name: grant.destination as string,
+          name: grant.destination,
           key: entry.secret.key,
         },
       },

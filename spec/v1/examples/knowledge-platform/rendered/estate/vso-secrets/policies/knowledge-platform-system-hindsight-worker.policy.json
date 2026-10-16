@@ -9,6 +9,11 @@
       "capabilities": [
         "read"
       ]
+    },
+    "database/creds/knowledge-platform-owner": {
+      "capabilities": [
+        "read"
+      ]
     }
   }
 }

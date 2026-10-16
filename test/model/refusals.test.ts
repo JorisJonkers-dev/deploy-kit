@@ -166,6 +166,24 @@ describe("a generated key that adopts a value", () => {
   });
 });
 
+describe("an edge's credential delivered to the environment", () => {
+  const edge = (tolerates: string) =>
+    DOCUMENT.replace(
+      "        cutover: interrupted\n",
+      `        cutover: interrupted\n        dependsOn:\n          - application: platform-postgres\n            surface: postgres\n            credentials: { delivery: env, rotation: { tolerates: ${tolerates} } }\n`,
+    ).replace("GRANTS", "");
+
+  it("is refused where it tolerates a reload, and accepted where it tolerates a restart", () => {
+    expect(refusalsOf(edge("reload"))).toStrictEqual([
+      {
+        code: "E_ENV_CANNOT_RELOAD",
+        path: "/applications/0/processes/0/dependsOn/0/credentials/rotation",
+      },
+    ]);
+    expect(refusalsOf(edge("restart"))).toStrictEqual([]);
+  });
+});
+
 describe("the access by delivery matrix", () => {
   it.each([
     ["self-renew", "env"],

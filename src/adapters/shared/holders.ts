@@ -12,13 +12,19 @@ import type { Labels } from "../../objects/kubernetes.ts";
 import { labelsOf } from "./labels.ts";
 
 export type Grant = NonNullable<ResolvedProcess["secrets"]>[number];
-/** A kv grant: the one engine whose value is ever synced to a Secret. */
+/** A kv grant. */
 export type KvGrant = Extract<Grant, { readonly path: string }>;
 
-/** Whether a grant is synced to a Secret: a kv grant delivered `env` or `file`. */
+/** A grant an engine issues: a transit operation, or a database credential. */
+export type EngineGrant = Exclude<Grant, KvGrant>;
+
+/**
+ * Whether a grant is synced to a Secret: a kv grant delivered `env` or `file`,
+ * or a database credential an edge delivers `env`.
+ */
 export const isSynced = (
   grant: Grant,
-): grant is KvGrant & { destination: string } =>
+): grant is Grant & { destination: string } =>
   // An absent destination is an absent key, so asking for the key is enough.
   "destination" in grant;
 

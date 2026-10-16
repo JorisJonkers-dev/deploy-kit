@@ -217,6 +217,27 @@ export interface VaultStaticSecret {
   };
 }
 
+/** A credential the Secret Store issues and renews, synced to a Secret. */
+export interface VaultDynamicSecret {
+  readonly apiVersion: "secrets.hashicorp.com/v1beta1";
+  readonly kind: "VaultDynamicSecret";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly vaultAuthRef: string;
+    readonly mount: string;
+    readonly path: string;
+    readonly destination: {
+      readonly name: string;
+      readonly create: true;
+      readonly annotations: Readonly<Record<string, string>>;
+    };
+    readonly rolloutRestartTargets?: readonly {
+      readonly kind: "Deployment";
+      readonly name: string;
+    }[];
+  };
+}
+
 /** A Vault policy in its JSON form: each path and what it may do there. */
 export interface VaultPolicy {
   readonly path: Readonly<

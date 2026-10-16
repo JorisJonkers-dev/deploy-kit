@@ -14,6 +14,7 @@ import type {
   GeneratedKeys,
   VaultPolicy,
   VaultRole,
+  VaultDynamicSecret,
   VaultStaticSecret,
 } from "./custom.ts";
 import type {
@@ -59,6 +60,7 @@ export type RenderedObject =
   | VaultConnection
   | VaultAuth
   | VaultStaticSecret
+  | VaultDynamicSecret
   | VaultPolicy
   | VaultRole
   | GeneratedKeys;

@@ -10,6 +10,7 @@ import type { Diagnostic, RefusalCode } from "../model/diagnostic.ts";
 import type { EnvScope, ScopedEnv } from "../model/env.ts";
 import type {
   ApplicationDocument as Application,
+  DependencyEdge,
   EnvVariable,
   Grant,
   ProcessDocument as Process,
@@ -437,6 +438,28 @@ function migrationOwnerRefusals(document: ProjectIntentDocument): Refusal[] {
   }));
 }
 
+/** An edge's credential delivered to the environment cannot be reloaded, as a grant's cannot. */
+function credentialRefusals(
+  edges: readonly DependencyEdge[] | undefined,
+  at: string,
+): Refusal[] {
+  // A missing list and an empty one hold no edge alike.
+  // Stryker disable next-line ArrayDeclaration
+  return (edges ?? []).flatMap((edge, e) =>
+    edge.credentials?.delivery === "env" &&
+    edge.credentials.rotation.tolerates === "reload"
+      ? [
+          {
+            code: "E_ENV_CANNOT_RELOAD",
+            path: `${at}/dependsOn/${e}/credentials/rotation`,
+            message: "an environment variable cannot be reloaded without a restart",
+            hint: "Tolerate a restart, or let the application read its credential itself.",
+          } satisfies Refusal,
+        ]
+      : [],
+  );
+}
+
 /** Every rule this document breaks, in the order the document reads. */
 export function ruleDiagnostics(
   document: ProjectIntentDocument,
@@ -468,6 +491,16 @@ export function ruleDiagnostics(
           `/applications/${a}/processes/${p}`,
         ),
       ]),
+    ]),
+    ...credentialRefusals(document.dependsOn, ""),
+    ...document.applications.flatMap((application, a) => [
+      ...credentialRefusals(application.dependsOn, `/applications/${a}`),
+      ...application.processes.flatMap((process, p) =>
+        credentialRefusals(
+          process.dependsOn,
+          `/applications/${a}/processes/${p}`,
+        ),
+      ),
     ]),
     ...migrationOwnerRefusals(document),
     ...(document.secrets ?? []).flatMap((grant, index) =>

@@ -191,7 +191,10 @@ const sidecar = z
 // platform's default (a reload) is more than the application can honour
 // (spec/v1/10-project-intent.md#migration).
 const credentials = z
-  .strictObject({ rotation: rotation })
+  .strictObject({
+    delivery: z.enum(["self", "env"]).exactOptional(),
+    rotation: rotation,
+  })
   .meta({ id: "Credentials" });
 
 const dependencyEdge = z

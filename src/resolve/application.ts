@@ -16,6 +16,7 @@ import type {
 } from "../model/resolved-deployment.ts";
 import type { MigrationProofDocument } from "../model/migration-proof.ts";
 import { applicationRevision } from "../model/revision.ts";
+import { reachesDatabase } from "../model/project-intent-queries.ts";
 import { SECRETS_UNIT, unitOf } from "../model/reconcile-units.ts";
 import { exports, namespaceOf } from "../model/runtime-profiles.ts";
 import { resolveExposure } from "./exposure.ts";
@@ -30,7 +31,10 @@ export type ResolvedElement = Omit<
   "apiVersion" | "kind" | "provenance"
 >;
 
-export interface ApplicationContext extends Omit<ProcessContext, "machinery"> {
+export interface ApplicationContext extends Omit<
+  ProcessContext,
+  "machinery" | "migratesItself"
+> {
   /** The project that declares each Application of the union, by its id. */
   readonly projectOf: ReadonlyMap<string, string>;
   readonly hash: Hasher;
@@ -87,7 +91,11 @@ function reconcileAfter(
   const grants = application.processes.some(
     // A missing list and an empty one hold no grant alike.
     // Stryker disable next-line ArrayDeclaration
-    ({ secrets }) => (secrets ?? []).length > 0,
+    ({ secrets, dependsOn }) =>
+      (secrets ?? []).length > 0 ||
+      // An edge to a database derives a credential, whose role is written first.
+      // Stryker disable next-line ArrayDeclaration
+      (dependsOn ?? []).some((edge) => reachesDatabase(edge, context.union)),
   );
   // A migration holds the owner credential, so its role is written first too.
   const held = grants || managed(application);
@@ -172,7 +180,11 @@ export function resolveApplication(
     return {
       process,
       resolved: {
-        ...resolveProcess(process, { ...context, machinery }),
+        ...resolveProcess(process, {
+          ...context,
+          machinery,
+          migratesItself: application.migration === "self",
+        }),
         ...(ingress.length === 0 ? {} : { ingress }),
         egress: egressOf(process, context),
       },

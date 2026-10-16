@@ -109,3 +109,28 @@ export const ownerRole = (project: string): string => `${project}-owner`;
 
 /** The role that reads and writes a project's data. */
 export const dataRole = (project: string): string => `${project}-data`;
+
+/** Whether an edge reaches a surface of a Process whose engine owns databases. */
+export const reachesDatabase = (
+  edge: DependencyEdge,
+  union: readonly {
+    readonly applications: readonly {
+      readonly id: string;
+      readonly processes: readonly {
+        readonly engine?: Engine | undefined;
+        readonly provides?: Readonly<Record<string, number>> | undefined;
+      }[];
+    }[];
+  }[],
+): boolean =>
+  union.some(({ applications }) =>
+    applications.some(
+      ({ id, processes }) =>
+        id === edge.application &&
+        processes.some(
+          (provider) =>
+            ownsDatabases(provider) &&
+            provider.provides?.[edge.surface] !== undefined,
+        ),
+    ),
+  );

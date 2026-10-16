@@ -9,12 +9,17 @@ import type {
   ResolvedApplicationDocument,
   ResolvedProcess,
 } from "../../model/resolved-deployment.ts";
-import type { VaultAuth, VaultStaticSecret } from "../../objects/custom.ts";
+import type {
+  VaultAuth,
+  VaultDynamicSecret,
+  VaultStaticSecret,
+} from "../../objects/custom.ts";
 import { vaultNameOf } from "../../model/runtime-profiles.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";
 import {
   holdersOf,
   isSynced,
+  type EngineGrant,
   type KvGrant,
   type Holder,
 } from "../shared/holders.ts";
@@ -72,14 +77,54 @@ function staticSecretOf(
       path: grant.path.slice(KV_DATA.length),
       refreshAfter: REFRESH,
       destination: { name: destination, create: true, annotations: UNTRACKED },
-      ...(grant.restartTargets === undefined
-        ? {}
-        : {
-            rolloutRestartTargets: grant.restartTargets.map((target) => ({
-              kind: "Deployment" as const,
-              name: servingOf(target, application),
-            })),
-          }),
+      ...restartsOf(grant.restartTargets, application),
+    },
+  };
+}
+
+/** Where a database credential is issued: the engine's mount, and the path below it. */
+const DATABASE_MOUNT = "database";
+
+/** What a rotation restarts, where it restarts anything. */
+const restartsOf = (
+  targets: readonly string[] | undefined,
+  application: ResolvedApplicationDocument,
+) =>
+  targets === undefined
+    ? {}
+    : {
+        rolloutRestartTargets: targets.map((target) => ({
+          kind: "Deployment" as const,
+          name: servingOf(target, application),
+        })),
+      };
+
+/** A database credential an edge delivers to the environment, issued and renewed by the store. */
+function dynamicSecretOf(
+  grant: EngineGrant & { destination: string },
+  holder: Holder,
+  application: ResolvedApplicationDocument,
+): VaultDynamicSecret {
+  // An edge derives one path, the role's credential.
+  const { path } = grant.paths[0] as { path: string };
+  return {
+    apiVersion: API,
+    kind: "VaultDynamicSecret",
+    metadata: {
+      name: grant.destination,
+      namespace: application.namespace,
+      labels: holder.labels,
+    },
+    spec: {
+      vaultAuthRef: holder.identity,
+      mount: DATABASE_MOUNT,
+      path: path.slice(DATABASE_MOUNT.length + 1),
+      destination: {
+        name: grant.destination,
+        create: true,
+        annotations: UNTRACKED,
+      },
+      ...restartsOf(grant.restartTargets, application),
     },
   };
 }
@@ -146,7 +191,9 @@ export function renderVso(project: ResolvedProject): Deliverable[] {
           : [
               authOf(holder, application),
               ...synced.map((grant) =>
-                staticSecretOf(grant, holder, application),
+                "paths" in grant
+                  ? dynamicSecretOf(grant, holder, application)
+                  : staticSecretOf(grant, holder, application),
               ),
             ];
       });

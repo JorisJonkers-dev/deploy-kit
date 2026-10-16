@@ -29,6 +29,11 @@
       "capabilities": [
         "update"
       ]
+    },
+    "database/creds/auth-data": {
+      "capabilities": [
+        "read"
+      ]
     }
   }
 }

@@ -347,6 +347,13 @@
     "Credentials": {
       "type": "object",
       "properties": {
+        "delivery": {
+          "type": "string",
+          "enum": [
+            "self",
+            "env"
+          ]
+        },
         "rotation": {
           "$ref": "#/$defs/Rotation"
         }

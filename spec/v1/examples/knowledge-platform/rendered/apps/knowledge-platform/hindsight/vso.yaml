@@ -46,6 +46,30 @@ spec:
       name: hindsight-api
 ---
 apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultDynamicSecret
+metadata:
+  name: hindsight-api-database-creds-knowledge-platform-owner
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: hindsight-api
+    app.kubernetes.io/instance: hindsight-api
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: python
+spec:
+  vaultAuthRef: hindsight-api
+  mount: database
+  path: creds/knowledge-platform-owner
+  destination:
+    name: hindsight-api-database-creds-knowledge-platform-owner
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: hindsight-api
+---
+apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultAuth
 metadata:
   name: hindsight-worker

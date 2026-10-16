@@ -88,7 +88,7 @@ function refusals(
 
 const AT = "/applications/0/processes/0";
 const PLACEHOLDER_HINT =
-  "A dependency placeholder names the Application of one edge the Process holds and `host` or `port`; an exposure placeholder names an exposure the Application declares and `url`, `host` or `scheme`.";
+  "A dependency placeholder names the Application of one edge the Process holds and `host` or `port`, or `username` or `password` where that edge delivers its credential `env`; an exposure placeholder names an exposure the Application declares and `url`, `host` or `scheme`.";
 
 describe("a dependency or exposure placeholder", () => {
   const edges = `        dependsOn:
@@ -114,6 +114,22 @@ describe("a dependency or exposure placeholder", () => {
       "edge-proxy.database",
       "an edge hands no coordinate database",
     ],
+    [
+      "a credential the edge does not deliver to the environment",
+      edges,
+      "edge-proxy.password",
+      "the edge to edge-proxy delivers its credential to no environment",
+    ],
+    [
+      "a credential delivered as itself",
+      `        dependsOn:
+          - application: edge-proxy
+            surface: http
+            credentials: { delivery: self, rotation: { tolerates: reload } }
+`,
+      "edge-proxy.username",
+      "the edge to edge-proxy delivers its credential to no environment",
+    ],
   ])("is refused, naming %s", (_, extra, source, why) => {
     expect(
       refusals(api(extra), {
@@ -127,6 +143,33 @@ describe("a dependency or exposure placeholder", () => {
         hint: PLACEHOLDER_HINT,
       },
     ]);
+  });
+
+  it("is refused where it reads a credential as part of a value", () => {
+    const delivered = `        dependsOn:
+          - application: edge-proxy
+            surface: http
+            credentials: { delivery: env, rotation: { tolerates: restart } }
+`;
+
+    expect(
+      refusals(api(delivered), {
+        env: "X=${dependency:edge-proxy.password}@host\n",
+      }).filter(({ code }) => code === "E_UNRESOLVED_PLACEHOLDER"),
+    ).toStrictEqual([
+      {
+        code: "E_UNRESOLVED_PLACEHOLDER",
+        path: AT,
+        message:
+          "X reads ${dependency:edge-proxy.password}, and a credential is a whole value, never part of one",
+        hint: PLACEHOLDER_HINT,
+      },
+    ]);
+    expect(
+      refusals(api(delivered), {
+        env: "X=${dependency:edge-proxy.password}\n",
+      }).filter(({ code }) => code === "E_UNRESOLVED_PLACEHOLDER"),
+    ).toStrictEqual([]);
   });
 
   const exposed = (extra: string) =>

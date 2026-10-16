@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: vault-policy-0e777038cba2
+  name: vault-policy-1f57b73123f4
   namespace: secrets-system
   labels:
     app.kubernetes.io/name: vault-policy
@@ -26,11 +26,11 @@ data:
   knowledge-platform-system-docling-serve-backup.role.json: |
     {"bound_service_account_names":["docling-serve-backup"],"bound_service_account_namespaces":["knowledge-platform-system"],"token_policies":["knowledge-platform-system-docling-serve-backup"]}
   knowledge-platform-system-hindsight-api.policy.json: |
-    {"path":{"secret/data/platform/hindsight":{"capabilities":["read"]},"secret/metadata/platform/hindsight":{"capabilities":["read"]}}}
+    {"path":{"database/creds/knowledge-platform-owner":{"capabilities":["read"]},"secret/data/platform/hindsight":{"capabilities":["read"]},"secret/metadata/platform/hindsight":{"capabilities":["read"]}}}
   knowledge-platform-system-hindsight-api.role.json: |
     {"bound_service_account_names":["hindsight-api"],"bound_service_account_namespaces":["knowledge-platform-system"],"token_policies":["knowledge-platform-system-hindsight-api"]}
   knowledge-platform-system-hindsight-worker.policy.json: |
-    {"path":{"secret/data/platform/hindsight":{"capabilities":["read"]},"secret/metadata/platform/hindsight":{"capabilities":["read"]}}}
+    {"path":{"database/creds/knowledge-platform-owner":{"capabilities":["read"]},"secret/data/platform/hindsight":{"capabilities":["read"]},"secret/metadata/platform/hindsight":{"capabilities":["read"]}}}
   knowledge-platform-system-hindsight-worker.role.json: |
     {"bound_service_account_names":["hindsight-worker"],"bound_service_account_namespaces":["knowledge-platform-system"],"token_policies":["knowledge-platform-system-hindsight-worker"]}
   knowledge-platform-system-karakeep.policy.json: |

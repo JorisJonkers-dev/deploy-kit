@@ -1317,24 +1317,33 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
     ]);
   });
 
-  it("names the Secret Store and follows the unit that provisions secrets, though no Process holds a grant", () => {
+  it("derives each Process's database credential from its edge, the data role's under a changelog and the owner's when the Application migrates itself", () => {
     const held = application(managed, { lock: LOCKED, env: DATA });
-    const unheld = application(
+    const self = application(
       managed.replace("{ changelog: db/changelog.yml }", "self"),
       { env: DATA },
     );
+    const credential = (role: string) => [
+      [
+        {
+          engine: "database",
+          delivery: "self",
+          paths: [{ path: `database/creds/${role}`, allows: ["read"] }],
+        },
+      ],
+    ];
 
-    expect(held.processes.map(({ secrets }) => secrets)).toStrictEqual([
-      undefined,
-    ]);
-    expect([held.secretStore, held.reconcileAfter]).toStrictEqual([
-      "http://vault.secrets-system.svc.cluster.local:8200",
-      ["apps-data", "estate-vso-secrets"],
-    ]);
-    expect([unheld.secretStore, unheld.reconcileAfter]).toStrictEqual([
-      undefined,
-      ["apps-data"],
-    ]);
+    expect(held.processes.map(({ secrets }) => secrets)).toStrictEqual(
+      credential("notes-data"),
+    );
+    expect(self.processes.map(({ secrets }) => secrets)).toStrictEqual(
+      credential("notes-owner"),
+    );
+    for (const resolved of [held, self])
+      expect([resolved.secretStore, resolved.reconcileAfter]).toStrictEqual([
+        "http://vault.secrets-system.svc.cluster.local:8200",
+        ["apps-data", "estate-vso-secrets"],
+      ]);
   });
 
   it("finds its datastore through the first edge that names a surface of a Process whose engine owns databases", () => {

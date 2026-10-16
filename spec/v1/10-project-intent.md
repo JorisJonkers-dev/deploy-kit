@@ -2213,7 +2213,7 @@ reader-set model auditable from the repository.
 | placeholder | resolves to | resolved from |
 |---|---|---|
 | `${secret:<path>#<key>}` | one key of one granted Secret Store path | the grant, byte-matched ([0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)) |
-| `${dependency:<application>.<coordinate>}` | one coordinate of an Application this Process depends on: `host` or `port` of the Process's one edge to it | the edge set (chapter 16) |
+| `${dependency:<application>.<coordinate>}` | one coordinate of an Application this Process depends on: `host` or `port` of the Process's one edge to it, or `username` or `password` of the credential that edge delivers `env` | the edge set (chapter 16) |
 | `${exposure:<application>.<name>#<field>}` | one field of a declared exposure | the composed union's exposure set ([Exposure](#exposure)) |
 | `${client:<field>}` | the Issuer, or this Application's own Client id or secret | the Application's `client` block and the Platform document ([chapter 17](17-sign-in.md#credentials-and-placeholders)) |
 
@@ -2460,16 +2460,30 @@ several. It must exist and parse when the Intent Fragment is published.
   published, because only the repository holds the file.
 
 **The credential an edge derives.** An edge to a provider whose engine owns
-databases derives the consuming Process's data-only credential: the project's
-data role, delivered `self`, tolerating a `reload`. An application whose client
-cannot re-read a rotated credential says so on the edge, and says nothing else:
+databases derives the consuming Process's credential: the project's data role,
+or its owner role where the Application migrates itself (`migration: self`),
+delivered `self`, tolerating a `reload`. The Secret Store issues it from the
+role the [catalog](16-dependencies.md#applying-the-catalog) wrote, and no
+author names the role. An application whose client reads its login from the
+environment, or cannot re-read a rotated one, says so on the edge, and says
+nothing else:
 
 ```yaml
 dependsOn:
   - application: platform-postgres
     surface: postgres
-    credentials: {rotation: {tolerates: restart}}
+    credentials: {delivery: env, rotation: {tolerates: restart}}
 ```
+
+`delivery` is `self` or `env`, and `self` when unsaid; `env` tolerates a
+`restart` only (`E_ENV_CANNOT_RELOAD`), since a variable is read once. An edge
+whose credential is delivered `env` hands its consumer two more coordinates,
+`username` and `password`, which an env file reads as
+`${dependency:<application>.username}` and `${dependency:<application>.password}`;
+an edge that delivers its credential no other way hands neither
+(`E_UNRESOLVED_PLACEHOLDER`). The operator syncs the login into a Secret and
+renews it; when the role's longest lease ends it issues a new one and
+restarts the Process.
 
 `credentials` on an edge to a provider that owns no database derives nothing,
 and is `E_CREDENTIALS_WITHOUT_DATABASE`.
