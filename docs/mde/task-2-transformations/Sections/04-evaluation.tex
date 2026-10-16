@@ -1,224 +1,251 @@
 \section{Tests and Evaluation}
 \label{sec:evaluation}
 
-\subsection{Testing Strategy}
-\label{sec:strategy}
+The transformations are tested by running them on eight examples and comparing
+their output with oracle files: the expected outputs committed with the
+specification's worked examples. Agreement supports conformance to those
+expected values; the strength of that evidence depends on how each expected
+result was obtained.
 
-The transformations are tested by running them on the eight resolved examples
-and comparing what they write with expected files. Most expected files were
-produced by the production implementation from the same documents and reviewed
-before they were committed; the production implementation is tested against the
-same files. Six kinds of test each answer a different question, and the build
-runs all of them on every change.
+The build runs six test types on every change.
 
-\begin{enumerate}
-  \item \textbf{Lowered models.} For the four examples with shared
-    declarations, the lowered model is written as JSON and compared byte for
-    byte with \texttt{expected/effective.json}.
+\begin{itemize}
+  \item \textbf{Flattened models.} \texttt{auth}, \texttt{data},
+    \texttt{knowledge-platform} and \texttt{minimal} are compared byte-for-byte
+    with \path{expected/effective.json} beside each specification example.
+    These committed fixtures are not regenerated during the tests.
   \item \textbf{Dependency edges.} For each example, the resolved edges are
-    exported as JSON and compared byte for byte with
-    \texttt{expected/dependencies.json}. The test reads only files the pipeline
-    wrote, so it tests the pipeline as a user runs it.
-  \item \textbf{Revisions.} Each \texttt{expected/resolved*.json} is the
-    production implementation's resolved document of one application, and
-    records its revision: a digest over the application's complete element.
-    Equal revisions mean that every value of that element matches
-    (Section~\ref{sec:revisionevidence}).
-  \item \textbf{Complete expected models.} Two examples have a complete
-    expected resolved model, compared with EMF's structural equality,
-    \texttt{EcoreUtil.equals}, which covers every attribute and reference:
-    \texttt{minimal}, written by hand from the specification in Task~1 before
-    the transformation existed, and \texttt{secrets}, whose run was reviewed
-    value by value against the specification and the pinned inputs and then
-    committed.
-  \item \textbf{Generated files.} The Acceleo templates of Task~3 decide
-    nothing, so a wrong value in a resolved model becomes a wrong byte in a
-    generated file. Tests generate the files from the transformations' output
-    and compare every file with the committed tree.
-  \item \textbf{Interface tests.} JUnit tests run each transformation on models
-    built in code:
-    \begin{itemize}
-      \item the resolution: the smallest project that resolves, a project the
-        input does not contain, and an Asset whose file is missing, which must
-        stop the run with the file's name;
-      \item the estate pass: one job planned over two projects, a job name that
-        moves when a document changes, no job without documents, and two
-        projects that disagree;
-      \item the lowering: eight cases of merging shared declarations.
-    \end{itemize}
-\end{enumerate}
+    exported as JSON and compared byte-for-byte with the expected file. These
+    tests read only files the pipeline wrote, so they check the pipeline as a
+    user would run it.
+  \item \textbf{Revisions.} Each expected resolved file records its
+    \texttt{Revision}, a digest of the \texttt{Application} element in
+    the specification's canonical JSON form. A matching \texttt{Revision}
+    checks the represented decisions, including each \texttt{Process}'s
+    ingress and egress peers (Section~\ref{sec:revisionevidence}).
+  \item \textbf{Complete expected models.} The adapted Task~1 model of
+    \texttt{minimal} and a reviewed regression snapshot of \texttt{secrets}
+    are compared using EMF's structural equality
+    (\texttt{EcoreUtil.equals}). No attributes or references are excluded.
+    Both expected models record the transformation's provenance digests;
+    matching those fields checks stability, not agreement with the
+    specification's differently represented inputs.
+  \item \textbf{Generated files.} Tests run the Task~3 templates on the
+    transformation output and compare every generated file with its committed
+    counterpart. This checks the resolved values used by the templates as
+    well as their serialization.
+  \item \textbf{Interface tests.} JUnit tests check that the resolution
+    accepts a minimal \texttt{Project}, rejects a \texttt{Project} absent
+    from the input, and reports the file name when a configuration file is
+    missing. Final-pass tests check that one Vault policy job covers two
+    \texttt{Project}s, its name changes when a document changes, no job is
+    generated without documents, and conflicting job definitions abort the
+    run. Eight flattening cases check the merging of shared declarations.
+\end{itemize}
 
-
-The Java around the transformations must reach full line and branch coverage
-and a 100\% mutation score. Those tools cannot measure QVTo, so the QVTo code is
-measured only by the comparisons above.
+Coverage and mutation tools require full line and branch coverage and a
+100\% mutation score for the Java integration code. They do not measure
+QVTo, so the comparisons establish no QVTo branch-coverage result.
 
 \subsection{Results}
 \label{sec:results}
 
-Table~\ref{tab:results} lists the eight examples. All eight resolve, and every
-comparison that has an expected file passes. The full build, 323 tests
-including 81 parity cases, passes, and \texttt{minimal} and \texttt{secrets}
-equal their complete expected models.
+Table~\ref{tab:results} lists the eight examples. All resolve successfully
+and every comparison passes, including the complete-model comparison of
+\texttt{minimal} and \texttt{secrets}. The full build passes 323 tests.
+Its oracle suite contains 81: 10 parsed-intent comparisons, four flattened
+models, 47 input refusals, eight composition refusals, eight dependency
+lists, one rendered tree, one metamodel descriptor and two checks on the
+test setup. This total includes Task~1 parsing and constraint tests.
 
 \begin{table}[!htbp]
 \centering
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{lrrrrrrrccc}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lrrrrrrrcccc}
 \hline
-& \multicolumn{7}{c}{\textbf{Counted in the resolved model}} & \multicolumn{3}{c}{\textbf{Equal to expected files}} \\
+& \multicolumn{7}{c}{\textbf{Counted in the resolved model}} & \multicolumn{4}{c}{\textbf{Equal to the expected output}} \\
 \textbf{Example} & \textbf{Apps} & \textbf{Proc.} & \textbf{Edges} &
   \textbf{Secr.} & \textbf{Vol.} & \textbf{Env.} & \textbf{Files} &
-  \textbf{Edges} & \textbf{Revisions} & \textbf{Files} \\
+  \textbf{Edges} & \textbf{Revisions} & \textbf{Files} & \textbf{Model} \\
 \hline
-\texttt{minimal}            & 1 & 1 & 0 & 0 & 0 & 6  & 12 & yes & 1/1 & yes \\
-\texttt{auth}               & 1 & 2 & 4 & 3 & 0 & 21 & 19 & yes & 1/1 & yes \\
-\texttt{data}               & 3 & 3 & 0 & 1 & 3 & 3  & 37 & yes & 3/3 & yes \\
-\texttt{delivery}           & 4 & 4 & 1 & 0 & 0 & 0  & 27 & yes & 4/4 & yes \\
-\texttt{edge}               & 2 & 2 & 0 & 0 & 0 & 0  & 13 & yes & -- & -- \\
-\texttt{knowledge-platform} & 4 & 7 & 5 & 4 & 6 & 84 & 49 & yes & 1/1 & yes \\
-\texttt{observability}      & 2 & 2 & 0 & 0 & 0 & 0  & 15 & yes & -- & -- \\
-\texttt{secrets}            & 1 & 1 & 0 & 0 & 0 & 0  & 8  & yes & -- & -- \\
+\texttt{minimal}            & 1 & 1 & 0 & 0 & 0 & 6  & 12 & empty & 1/1 & yes & yes \\
+\texttt{auth}               & 1 & 2 & 4 & 3 & 0 & 21 & 19 & yes & 1/1 & yes & -- \\
+\texttt{data}               & 3 & 3 & 0 & 1 & 3 & 3  & 37 & empty & 3/3 & yes & -- \\
+\texttt{delivery}           & 4 & 4 & 1 & 0 & 0 & 0  & 27 & yes & 4/4 & yes & -- \\
+\texttt{edge}               & 2 & 2 & 0 & 0 & 0 & 0  & 13 & empty & -- & -- & -- \\
+\texttt{knowledge-platform} & 4 & 7 & 5 & 4 & 6 & 84 & 49 & yes & 1/4 & yes & -- \\
+\texttt{observability}      & 2 & 2 & 0 & 0 & 0 & 0  & 15 & empty & -- & -- & -- \\
+\texttt{secrets}            & 1 & 1 & 0 & 0 & 0 & 0  & 8  & empty & -- & -- & yes \\
 \hline
 \end{tabular}
-\caption{The Resolved Examples: Applications, Processes, Dependency Edges,
-Secrets, Volumes, Environment Variables and Planned Files, and the Comparisons
-(--: No Expected File)}
+\caption{The Resolved Examples and Their Comparisons (--: no committed oracle of that kind)}
 \label{tab:results}
 \end{table}
 
-Together the examples use every row of Table~\ref{tab:rules}. \texttt{auth}
-carries the migration, the placeholders and an edge to a provider outside the
-cluster; \texttt{data} the backups of each durability class, a sidecar and an
-Asset; \texttt{knowledge-platform} is the largest; \texttt{delivery} has the
-rolling and stop-start switchovers and API access; and \texttt{edge},
-\texttt{observability} and \texttt{secrets} hold the platform services the
-others look up.
+``Empty'' means the expected dependency lists contain no edges; only
+\texttt{auth}, \texttt{delivery} and \texttt{knowledge-platform} compare
+non-empty edge sets. Revision fractions give matching digests over the
+total number of \texttt{Application}s, so three of
+\texttt{knowledge-platform}'s four have no oracle digest comparison.
 
-\subsubsection{What the Revisions Show}
+Between them, the examples exercise the derivations in Table~\ref{tab:rules}.
+\texttt{minimal} exercises the common \texttt{Process} and
+\texttt{Exposure} rules (Table~\ref{tab:worked}). The migration, placeholder
+and external-provider rules run in \texttt{auth}, which holds three secrets
+and reaches a mail server outside the cluster. The volume, backup and
+configuration-file rules run in \texttt{data}, which holds one volume of each
+durability class (reconstructible, recoverable, irreplaceable), a \texttt{Sidecar} and a
+configuration file. The rolling and stop-start switchover rules run in
+\texttt{delivery}, which also has API access. \texttt{secrets} models the
+Secret Store, \texttt{knowledge-platform} is the largest example, and
+\texttt{edge} and \texttt{observability} supply the proxies and collectors
+that other examples look up.
+
+\subsubsection{Revision Evidence}
 \label{sec:revisionevidence}
 
-An application's revision is the digest of its whole element as the production
-implementation writes it:
+An \texttt{Application}'s canonical JSON includes its \texttt{Process}es
+with images, identities, probes, placement, secrets, volumes, backups,
+environment, dependencies and network peers; its \texttt{Exposure}s and
+routes; its \texttt{ReleaseGate}; and its migration. Provenance, file paths,
+typed resource objects and the estate-wide policy job fall outside it.
 
-\begin{itemize}
-  \item its processes, with image, user, deadline, probes, placement, secrets,
-    volumes, backups, environment and edges;
-  \item its exposures and their routes;
-  \item its release gate and its migration.
-\end{itemize}
-
-The transformation builds that text from its own resolved model
+The transformation builds that text from its own \texttt{Resolved Deployment}
 (Section~\ref{sec:blackbox}), so one different value, one extra environment
-variable or one different order changes the digest. Ten applications in five
-examples have a revision in an expected file, and all ten are reproduced. For
-these applications the check does the job a hand-written model would, and the
-expected values come from another implementation. A further test checks that
-the revision moves for the right reasons: raising \texttt{minimal}'s memory from
-\texttt{256Mi} to \texttt{512Mi} changes it, while changing the snapshot's
-capture time, which decides nothing, does not.
+variable or one different order changes the digest. Ten \texttt{Application}s
+across five examples have a \texttt{Revision} in an expected file, and all
+ten match.
 
-\subsubsection{What the Generated Files Show}
+The comparison checks this representation as a whole, without locating a
+mismatch or checking omitted values. A further test checks sensitivity:
+increasing memory in \texttt{minimal} from 256Mi
+to 512Mi changes \texttt{Revision}, whereas changing only the capture
+time of the \texttt{ClusterState} snapshot leaves it unchanged.
+
+\subsubsection{Generated-File Evidence}
 \label{sec:treeevidence}
 
-Values no revision covers, such as the path plan, network policies and Vault
-documents, reach the generated files: 167 committed files of five examples and
-the cluster-wide tree, the estate pass's job included, are reproduced byte for
-byte, and twice the same inputs give the same bytes.
+Generated-file comparisons additionally check typed resource serialization,
+Vault documents and destination paths. Although \texttt{Revision} covers a
+\texttt{Process}'s network peers, it does not check their serialization as
+Kubernetes policies. Across five examples and the cluster-wide output, all
+167 committed files are reproduced byte-for-byte, including the final-pass
+job files.
 
-\subsubsection{Where the Evidence Is Thin}
+\subsubsection{Gaps in the Evidence}
 \label{sec:thin}
 
-Two examples, \texttt{edge} and \texttt{observability}, have no revision, no
-committed tree and no expected model, and their edge files are empty. For them
-the evidence is that the run succeeds and that the other examples, which look
-up their proxies and collectors, reproduce their expected files. The
-\texttt{secrets} model is a reviewed output, not an independent oracle: it
-catches any later change, and the review itself found one gap, in the
-specification rather than the transformation, since the secret store's network
-policy admits nobody inbound even though every holder of a secret may send to
-it. Finally, the hand-written model of \texttt{minimal} was updated after
-Task~1 to follow the metamodel changes of Appendix~\ref{app:target}, and its
-revision was taken from the production implementation, so that one field no
-longer checks independently.
+Two examples, \texttt{edge} and \texttt{observability}, have no
+\texttt{Revision} oracle, no committed generated files and no expected model.
+Their \texttt{dependencies.json} files list no edges. Evidence for them is
+therefore limited to successful execution and comparisons for examples that
+use their proxies and collectors. Those check the values consumed by other
+\texttt{Project}s, leaving the remaining configuration unchecked.
 
-\subsubsection{Defects Found by Testing}
+The \texttt{secrets} snapshot has no independent JSON counterpart or
+committed generated files. Reviewing the transformation's output to obtain
+that snapshot found a specification gap: the Secret Store
+network policy allows no inbound traffic, although holders of secrets are
+allowed to send traffic to it. If enforced, the receiving policy would
+still block those connections; permission on the sending side is insufficient.
+
+The Task~1 model of \texttt{minimal} was adapted to the metamodel changes in
+Appendix~\ref{app:target}. Its \texttt{Revision} was copied from the oracle,
+so that field and its recorded provenance provide regression checks rather
+than independent derivations.
+
+\subsubsection{Defects Found}
 \label{sec:defects}
 
-The comparisons found defects one example alone would not show. The clearest:
-the path plan put the cluster-wide route files under \path{apps/edge/}, which is
-also the directory of the project named \texttt{edge}. The \texttt{edge}
-example's files would have been mixed with the routes of every other project.
-The fix moved every cluster-wide file under \path{estate/}, in both
-implementations, and the committed trees now hold each file at its new path.
+One directory-layout defect required a correction: cluster-wide route files
+were planned under \path{apps/edge/}, inside the \texttt{edge}
+\texttt{Project}'s directory. This mixed ownership of a directory without
+requiring two files to claim an identical path, so duplicate-path checks
+could not detect it. Cluster-wide files moved to \path{estate/}; the
+specification's path rules, path plan and expected files changed together.
+Agreement after that correction guards against regression. It is not an
+independent test of the revised path rules, which required reviewing who
+consumes each directory.
 
 \subsection{Limitations}
 \label{sec:limitations}
 
-\begin{itemize}
-  \item \textbf{The oracles are another implementation's output.} Agreement
-    shows that two implementations of the specification decide the same,
-    not that the specification is right. Only the hand-written model of
-    \texttt{minimal} was written from the specification alone.
-  \item \textbf{Eight examples are a sample.} They show that every rule runs
-    and agrees on these inputs, not that each rule is right in every case; the
-    QVTo code is not mutation-tested.
-  \item \textbf{Checks across documents are stops, not diagnostics.} A stop
-    reports one problem, without its place in the document. Most such checks
-    have moved into the constraints; the remaining stops are a safety net. The
-    cross-document constraints still scan with \texttt{allInstances()}; moving
-    them onto one root object is decided but not built.
-  \item \textbf{Queries are recomputed.} QVTo keeps mapping results in the
-    trace but caches no query, so \texttt{edgeOf} or a surface's address is
-    recomputed wherever it is used, and several queries scan every process of
-    the cluster: the work grows with the square of the number of processes.
-    Parsing, checking, lowering, resolving and writing all eight examples takes
-    about 17 seconds. For a much larger cluster the hot queries would become
-    mappings or precomputed properties, measured first, since mapping calls
-    have their own cost~\cite{amstel2011}.
-  \item \textbf{Capacity is checked per machine.} A process is eligible for a
-    machine that can hold it alone; the resolution does not add up what all
-    processes ask of one machine.
-  \item \textbf{Two small modelling choices.} When two processes provide the
-    same surface, the first in name order wins; and the order between reconcile
-    units is per project, not per application, because Flux orders whole units.
-  \item \textbf{Provenance digests differ by design.} Input digests are hashes
-    over each implementation's own form of the model. Every digest that reaches
-    a generated file, the revision, an Asset's name and the policy job's name,
-    is reproduced.
-  \item \textbf{The \texttt{knowledge} example is not resolved.} It models a
-    project being retired; its successor, \texttt{knowledge-platform}, is.
-  \item \textbf{The Eclipse run configuration is not tested.} The build runs the
-    transformations through the standalone executor; the run configuration and
-    the library registration in \texttt{plugin.xml} are only run by hand.
-\end{itemize}
+Agreement with the oracles supports the transformation's conformance to
+their expected outputs. It does not establish that the oracles or the
+specification are correct. The hand-written Task~1 model of \texttt{minimal}
+supplies a partly independent check; its adapted fields have the
+qualifications above.
+
+The examples exercise the derivation families, but a matching result
+for one input does not prove that every branch works. The
+\texttt{knowledge} example was excluded because that \texttt{Project} is
+being retired and its successor \texttt{knowledge-platform} was selected
+instead. The suite does not attempt its resolution, so exclusion supplies
+no evidence that it succeeds or that retirement is unsupported.
+
+During Task~2, checks for secret references, placeholders and platform
+requirements were added to \path{project-intent.ocl}, before resolution;
+these errors had previously reached QVTo aborts. Remaining aborts stop at
+the first problem without a source location. Cross-document constraints
+still use \texttt{allInstances()}; navigation from a single root object
+remains planned.
+
+Placement produces eligible nodes for each \texttt{Process}; Kubernetes
+chooses the actual node. Each eligibility check considers that
+\texttt{Process} in isolation, so several may be eligible for a node even
+though their combined requests exceed its capacity.
+
+Ordering between \texttt{ReconcileUnit}s is defined at \texttt{Project}
+granularity because Flux orders these groups of files as whole units;
+individual \texttt{Application}s within a unit cannot be ordered separately.
+
+Provenance uses the EMF representation of inputs, so its digests differ
+from the specification's. Whole-model comparisons pass because the expected
+EMF models record those computed values, not because provenance is omitted.
+Digests used in generated files do match: \texttt{Revision}, configuration-file
+names and the Vault policy job name.
+
+Automated tests use the standalone executor. The Eclipse launch
+configuration and \texttt{plugin.xml} registration have only been checked
+manually.
 
 \subsection{Reflection}
 \label{sec:reflection}
 
-The largest single piece of the resolution is not a derivation but the
-revision: writing the production implementation's JSON form of an application
-in OCL, key by key, takes about a sixth of \texttt{resolution.qvto}, and every
-mistake in it shows only as a different hash. It was worth it: once the
-revisions matched, they checked nearly every value of ten applications at once,
-which a second hand-written model could not have done for the same effort.
+Flattening made resolution rules simpler: each reads one selected value
+from a \texttt{Process}, without repeating the precedence rules for shared
+declarations. It also introduced an intermediate model and copying rules
+that need their own tests. A failed merge comparison can be investigated
+without involving image or provider resolution. This separation makes the
+extra model worthwhile.
 
-QVTo itself fitted the work. Most rules are queries over the whole cluster, which
-OCL expresses well, and the explicit trace made every reference between created
-elements visible. Three language details cost time:
+Resolving one \texttt{Project} at a time kept its result inspectable, but
+did not remove the need to reason about the estate. Cross-project references
+still require the full input extent, and a digest over all Vault documents
+requires the final pass. The split therefore helped local comparison at the
+cost of another transformation and a rule for where shared output is stored.
 
-\begin{itemize}
-  \item \texttt{resolve}, \texttt{from} and \texttt{access} are keywords, so the
-    black-box unit is not named after its Java package, and two metamodel
-    features are written \texttt{\_from} and \texttt{\_access};
-  \item a multi-statement \texttt{if} needs the brace form;
-  \item inside an object expression, \texttt{result} still means the enclosing
-    mapping's result, not the object being created.
-\end{itemize}
+QVTo's explicit sequencing suited creation of \texttt{Process}es before
+their routes and computation of \texttt{Revision} last. Its trace avoided a
+manual source-to-target table. ATL also offers traces and explicitly invoked
+rules, so these results support the chosen organisation without establishing
+that ATL could not express it. No equivalent ATL implementation was built.
 
-With hindsight, the evidence would have been planned with the examples. The
-expected model of \texttt{secrets} and the parity checks of
-\texttt{knowledge-platform} were added only at the end, when a review asked
-which examples nothing compared; and the Task~1 model of \texttt{minimal}
-should have been kept unchanged beside the updated one, so the one independent
-oracle stays independent.
+The greatest effort went into reproducing \texttt{Revision}. The
+target model has a different structure from the specification's JSON, so
+the transformation had to reconstruct the specified field
+names, omissions and ordering before hashing. That reconstruction occupies
+about one sixth of \texttt{resolution.qvto}. A hash mismatch could mean
+either a wrong deployment decision or a wrong JSON representation, with no
+indication of where they differed. A better test design would compare that
+JSON directly before checking its digest, separating derivation errors from
+serialization errors. Using a Java hash function saved little of this
+work: most of the code was needed to construct the JSON in OCL.
+
+Evidence should have been planned alongside the examples.
+\texttt{secrets} and \texttt{knowledge-platform} ran before their output
+comparisons were added; those runs established execution, not correctness
+of the derived values. Constructing expected results before running the
+transformation, and
+retaining the original Task~1 model beside its adapted version, would make
+independent checks easier to distinguish from regression snapshots.

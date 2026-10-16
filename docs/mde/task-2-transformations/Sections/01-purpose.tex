@@ -4,26 +4,23 @@
 \subsection{Goals}
 \label{sec:goals}
 
-The project generates the Kubernetes files of a small cluster from short
-deployment documents. Each application's repository holds one \emph{project
-document}. It says what the application needs: its processes, their memory and
-CPU, the ports they offer, the services they depend on, and how outside traffic
-reaches it. One \emph{platform document} says what all applications share, such
-as the cluster's entry points, its health-check timings and its backup
-policies. Task~1 defined the metamodels for both in Ecore, the metamodelling
-language of the Eclipse Modeling Framework (EMF). The \emph{source metamodel}
-describes the two documents. The \emph{target metamodel} describes the
-\emph{resolved model}: every value the platform derives for an application, and
-the file each value will be written to.
+The project turns short deployment documents into Kubernetes files for an
+existing small cluster. Each project repository holds one
+\texttt{Project Intent} document describing its \texttt{Application}s:
+their \texttt{Process}es, memory and CPU limits, ports, dependencies and
+external routes. One \texttt{Platform Intent} document defines shared
+policies and resources, including cluster entry points, health-check timings
+and backup policies. Task~1 defined two Ecore metamodels: a source metamodel
+for the authored documents and a target metamodel for the
+\texttt{Resolved Deployment}. The target model records the values derived for
+each \texttt{Application} and the paths of the files to be generated.
 
-Task~2 builds the model-to-model transformation from source models to resolved
-models. It reads the source models of every project in the cluster, the platform
-document, and a few documents that other processes publish. Its output is the
-resolved model of one project, which the code generation of Task~3 reads. The
-transformation is where the derivation rules of the specification become
-executable: every value in a resolved model comes from a rule in the
-transformation, and no author writes those values by hand.
-Table~\ref{tab:terms} explains the project terms the rest of the report uses.
+Task~2 implements the transformation to \texttt{Resolved Deployment}.
+It combines all authored models with recorded cluster facts, image digests
+and other pinned inputs, producing one resolved model per \texttt{Project}.
+For example, an image name becomes a repository address pinned to a digest,
+and a dependency declaration becomes a host and port. Task~3 then
+generates files from these resolved values.
 
 \begin{table}[!htbp]
 \centering
@@ -31,145 +28,132 @@ Table~\ref{tab:terms} explains the project terms the rest of the report uses.
 \hline
 \textbf{Term} & \textbf{Meaning} \\
 \hline
-Process & One program of an application, which runs in its own pods. \\
-Dependency edge & A process's statement that it calls a named port (a \emph{surface}) of another application. \\
-Pinned inputs & Documents the run reads besides the authored ones: the node contract (the machines and what each can hold), the images lock (each image's exact digest), the cluster-state snapshot, migration proofs, and configuration files (\emph{Assets}). \\
-Switchover & How a new version replaces the old one: \emph{blue/green} (both run, then traffic moves once the new one is healthy), \emph{rolling} or \emph{stop-start}. \\
-Release gate & The service that holds a blue/green switch back until every process of the application is healthy. \\
-Reconcile unit & A group of files that Flux, the tool that applies them to the cluster, applies together and in order. \\
-Revision & A digest (a SHA-256 fingerprint) of an application's complete resolved element, which names one release of it. \\
-Estate & The whole set of projects, platform and pinned inputs one run reads. \\
+\texttt{Process} & One program of an \texttt{Application}, running in its own pods. \\
+\texttt{Dependency edge} & A declaration by one \texttt{Process} that it calls a named port of another \texttt{Application}. \\
+\texttt{Pinned input set} & The read-only inputs besides authored documents: node contract (machines and capacity), images lock (image digests), \texttt{ClusterState} snapshot, migration proofs and configuration-file contents. \\
+\texttt{Asset} & A configuration file mounted into a \texttt{Process}. \\
+\texttt{Exposure} & An external address and routes to an \texttt{Application}'s ports. \\
+\texttt{Switchover} & How a new version replaces the old: blue/green (both run; traffic switches once the new is healthy), rolling, or stop-start. \\
+\texttt{ReleaseGate} & The resolved configuration for the service that blocks a blue/green switch until the \texttt{Application}'s \texttt{Process}es are healthy. \\
+\texttt{ReconcileUnit} & A group of resources that Flux reconciles together, with dependencies on other such groups. \\
+\texttt{Entry point} & A platform listener that admits specified audiences and forwards routes through a proxy; class \texttt{Tier} in the source metamodel. \\
+\texttt{Revision} & A release identifier computed by hashing an \texttt{Application}'s resolved configuration. \\
+\texttt{Estate} & All \texttt{Project}s, the \texttt{Platform Intent} and the \texttt{Pinned input set} read by one run. \\
+\texttt{Flattened model} & \texttt{Project Intent} with every shared declaration copied down onto the \texttt{Process}es that hold it (class \texttt{EffectiveProject}). \\
 \hline
 \end{tabular}
 \caption{Project Terms Used in This Report}
 \label{tab:terms}
 \end{table}
 
-The transformation has three goals.
+\paragraph{Constraints.} Task~2 requires ATL or QVT-Operational. The
+transformation must give the same result for the same pinned inputs,
+without reading live cluster state. It must reproduce the oracle files supplied with the
+specification's examples: expected resolved values, dependency edges and
+generated files, including byte-exact JSON and release digests. If a value cannot be derived, the run must abort with an
+error message. A missing or fabricated value could otherwise produce a
+valid-looking file that deploys the wrong configuration.
 
-\begin{enumerate}
-  \item \textbf{Same decisions as production.} It derives the same values as
-    the production implementation of the same specification, which is written
-    in TypeScript and deploys the cluster. Both implementations are tested
-    against the same committed result files, called \emph{oracles}.
-  \item \textbf{No silent defaults.} It stops with a message when it cannot
-    derive a value. A resolved model with a missing or invented value would
-    generate files that look valid and deploy the wrong thing.
-  \item \textbf{Nothing left to the templates.} Its output is complete enough
-    that the templates of Task~3 only write values out. A template that had to
-    choose a path, a port or a name would hide a derivation from every check.
-\end{enumerate}
+The resolved model must also contain every value needed by the Task~3
+templates, including paths, ports and names. Otherwise, tests of that model
+could pass while a template made an unchecked deployment decision.
 
 \subsection{Role of the Transformations}
 \label{sec:role}
 
-Figure~\ref{fig:pipeline} shows the pipeline. Xtext turns each document into a
-source model, and the OCL constraints of Task~1 reject invalid models. Three
-QVT-Operational (QVTo) transformations then run in a chain.
+Figure~\ref{fig:pipeline} shows the pipeline. Xtext converts each document
+to a source model, and the Task~1 OCL constraints reject invalid ones. Three
+QVT-Operational transformations then run in sequence.
 
-\begin{enumerate}
-  \item The \emph{lowering} copies what an author declared once for a whole
-    project or application onto each process. Its output, the \emph{Effective
-    Intent}, uses the source metamodel too. It was part of the Task~1
-    implementation but not of the Task~1 report, so Section~\ref{sec:lowering}
-    describes it.
-  \item The \emph{resolution} reads the lowered models and the pinned inputs and
-    writes one resolved model. It is the main subject of this report.
-  \item The \emph{estate pass} runs once over the resolved models of all
-    projects generated together. It adds the files that belong to no single
-    project (Section~\ref{sec:estatepass}).
-\end{enumerate}
+The first transformation, the flattening, copies declarations made once for an
+entire \texttt{Project} or \texttt{Application} down onto each \texttt{Process}.
+Its output is the flattened model, which still conforms to the
+source metamodel. Although it was implemented in Task~1, it was not reported
+there, so Section~\ref{sec:flattening} covers it here. The second
+transformation, the resolution, reads the flattened models and the
+\texttt{Pinned input set}, the additional read-only inputs, and derives
+one complete \texttt{Resolved Deployment} per
+\texttt{Project}. It is the main transformation and the subject of this
+report. The third, the final pass, collects Vault policies from all resolved
+models to plan one job that installs them in Vault, the platform's secret
+management service. This requires every project's
+output, so it runs after the individual resolutions (Section~\ref{sec:finalpass}).
 
-A small Java exporter writes the resolved dependency edges as JSON, which is
-compared with the oracle. The Acceleo templates of Task~3 read the same
-resolved models and write the Kubernetes files.
+A small Java exporter writes the resolved dependency edges as JSON for
+comparison against the oracle. The Acceleo templates of Task~3 then read the
+\texttt{Resolved Deployment}s and generate the Kubernetes files.
 
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\linewidth, keepaspectratio]{Figures/pipeline}
-\caption{The Pipeline, With the Two Transformations Task~2 Adds in Bold Green}
+\caption{The Pipeline, With What Task~2 Added or Extended in Bold}
 \label{fig:pipeline}
 \end{figure}
 
 \subsection{Refinement of Tasks 0 and 1}
 \label{sec:refinement}
 
-Writing the transformation refined the earlier tasks in five ways.
+Task~0 treated the node contract (the list of machines and their capacity),
+the images lock (each image pinned to a digest) and the \texttt{ClusterState} snapshot
+as plain inputs, while Task~1 only
+modelled the two authored documents. The resolution needs these as models, so
+a third metamodel now describes the \texttt{Pinned input set}, with its own
+Xtext grammar for each document (Appendix~\ref{app:pinned}). A separate
+package keeps these supporting inputs distinct from the deployment language
+used by \texttt{Project} authors.
 
-\begin{itemize}
-  \item \textbf{The pinned inputs became models.} Task~0 listed the node
-    contract, the images lock and the snapshot as inputs the generator is
-    given, and Task~1 modelled only the two authored documents, stating that
-    only those have metamodels. The resolution needs the pinned inputs as
-    models, so a third metamodel now describes them, with an Xtext grammar per
-    document (Appendix~\ref{app:pinned}). It is a separate package because no
-    project author writes these documents.
-  \item \textbf{A lowered stage.} Task~1 named three stages: authored,
-    resolved and generated text. The lowering adds a fourth between the first
-    two, so that each rule of the resolution reads one level of values instead
-    of three (Section~\ref{sec:twotransformations}).
-  \item \textbf{One resolved model per project.} Task~0 ran each generator once
-    over all projects, and Task~1 planned one resolved model for the whole
-    cluster, because edges, routes and reverse dependencies need a cluster-wide
-    view. That view is kept: every run still reads every project. Only the
-    output is per project, because the production implementation writes one
-    resolved document per project and the oracles are per project
-    (Section~\ref{sec:perproject}). Task~1's per-application \emph{projection}
-    is still the \texttt{ResolvedApplication} inside that model.
-  \item \textbf{An estate pass.} One generated job, which writes every
-    project's secret-store policies, is named after a digest over all of them.
-    No single project's resolution can compute that name, so a small second
-    transformation over all resolved models plans the job.
-  \item \textbf{The target metamodel grew.} Task~1's target metamodel had a
-    worked instance only for \texttt{minimal}. The other examples need more:
-    migrations, backup identities, API access, sidecar containers, and twelve
-    more kinds of generated file. Appendix~\ref{app:metamodels} lists every
-    change.
-\end{itemize}
+Task~1 described three stages: authored, resolved and generated text. The
+flattening now resolves shared declarations before resolution: each
+\texttt{Process} receives the declarations that apply to it from its
+\texttt{Project} and \texttt{Application}. Resolution rules therefore need
+not repeat that merge logic (Section~\ref{sec:twotransformations}).
 
-\subsection{Assumptions and Conditions}
-\label{sec:assumptions}
+Task~1 planned one resolved model for the entire cluster, because resolving
+dependency edges, routes and network access requires a cluster-wide view.
+Every run still reads every \texttt{Project}. The output is now one
+\texttt{Resolved Deployment} per \texttt{Project}, because each model then
+stays small and has one oracle to compare with
+(Section~\ref{sec:perproject}). Each \texttt{Application} still has its own
+\texttt{ResolvedApplication} inside that
+model. The final pass adds the one job that no single \texttt{Project}'s resolution
+can compute (Section~\ref{sec:finalpass}).
 
-\begin{itemize}
-  \item \textbf{The input is valid.} The OCL constraints reject an invalid
-    source model before the lowering runs, over the whole set of documents of
-    the run. A stop in the transformation is a safety net: it fires only for a
-    fact the constraints do not check yet (Section~\ref{sec:stops}).
-  \item \textbf{One cluster per run.} Each run reads one platform document and
-    one node contract, and both name one cluster. The concepts, the examples
-    and the oracles all come from one existing cluster.
-  \item \textbf{The production implementation is the reference.} Where the
-    specification leaves a choice, the transformation makes the same choice as
-    the production implementation, so that both produce the same oracles.
-  \item \textbf{No live cluster access.} The transformation reads only the
-    documents it is given. Facts that only a running cluster knows, such as
-    which machine holds a volume, arrive through the snapshot, which another
-    process captures.
-  \item \textbf{Runs without Eclipse.} The build runs the transformations with
-    QVTo's standalone executor on every change. Eclipse run configurations also
-    run them (Appendix~\ref{app:handin}).
-\end{itemize}
+Task~1 demonstrated the target metamodel with only \texttt{minimal}. The
+other examples needed additional concepts: migrations, backup service accounts, API
+access, sidecar containers and twelve more file types. Appendix~\ref{app:metamodels}
+lists every change.
 
-\paragraph{More Than One Cluster.} The single cluster is a choice of scope,
-not a limit of the structure. Everything specific to a cluster is already an
-input of the run: the platform document, the node contract and the snapshot
-each name their cluster, and a project's environment files are a shared base
-plus an overlay per cluster, which the resolution selects by the platform's
-cluster name (Section~\ref{sec:placeholders}). A second cluster would therefore
-be a second run with that cluster's three documents. Two things would be new,
-and neither is built or tested:
-
-\begin{itemize}
-  \item a project document would have to say which clusters it runs in;
-  \item an edge to a service in another cluster would resolve through the
-    platform's list of external providers, as the edge from \texttt{auth} to a
-    mail server outside the cluster already does
-    (Section~\ref{sec:edgerule}), but its network policy would have to admit
-    an address range instead of a pod.
-\end{itemize}
-
-\subsection{Scope}
+\subsection{Assumptions and Scope}
 \label{sec:scope}
+
+The transformation assumes four conditions.
+
+\begin{itemize}
+  \item \textbf{Checked input.} The OCL constraints check the documents
+    before transformation. Aborts reject invalid inputs that these
+    constraints do not yet catch (Section~\ref{sec:aborts}).
+  \item \textbf{One cluster per run.} Each execution of the pipeline reads
+    all documents for one cluster, including one \texttt{Platform Intent}
+    and one node contract that name the same cluster. All concepts,
+    examples and oracles derive from that single existing cluster.
+  \item \textbf{One reading of the specification.} If several providers
+    satisfy a dependency, the transformation uses the deterministic name
+    order recorded in the oracles. The comparisons check this interpretation;
+    they do not establish that it is the only valid one.
+  \item \textbf{No live cluster access.} The transformation only reads the
+    documents provided to it. Any fact known only to a running cluster, such
+    as which node holds a particular volume, must arrive via the
+    \texttt{ClusterState} snapshot captured by another process.
+\end{itemize}
+
+\paragraph{More Than One Cluster.} A second cluster would need a separate
+run with its own \texttt{Platform Intent}, node contract and
+\texttt{ClusterState} snapshot. Environment overlays are already selected
+by cluster name (Section~\ref{sec:placeholders}). The model would also need
+to declare which clusters each \texttt{Project} targets and to represent
+cross-cluster network access with address ranges. Such dependencies could
+use the external-provider mechanism already used by \texttt{auth} for its
+mail server (Section~\ref{sec:edgerule}); this extension has not been implemented.
 
 Table~\ref{tab:scope} sets the scope of Task~2.
 
@@ -182,14 +166,14 @@ Table~\ref{tab:scope} sets the scope of Task~2.
 The resolution of eight examples: \texttt{minimal}, \texttt{auth},
   \texttt{data}, \texttt{delivery}, \texttt{edge},
   \texttt{knowledge-platform}, \texttt{observability} and \texttt{secrets}. &
-  The \texttt{knowledge} example, which models a project being retired
-  (Section~\ref{sec:limitations}). \\
+  The \texttt{knowledge} example, which is being retired with its
+  project and is excluded from this test set (Section~\ref{sec:limitations}). \\
 Every derivation these examples use, from dependency edges and placement to
   backups, migrations, network peers and the path of every generated file. &
   The text of the generated files, which is Task~3. \\
-The lowering's extensions, the estate pass, and the pinned-inputs metamodel
+The flattening's extensions, the final pass, and the \texttt{Pinned input set} metamodel
   and grammars. &
-  Applying the files to a cluster, and a second cluster. \\
+  Applying files to a running cluster or targeting multiple clusters. \\
 \hline
 \end{tabular}
 \caption{Scope of Task 2}

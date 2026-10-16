@@ -1,82 +1,77 @@
 \section{Solution Design}
 \label{sec:design}
 
-The resolution is one QVTo transformation, \texttt{resolution.qvto}, of about
-1700 lines: 8 mapping operations and 140 queries. The estate pass,
-\texttt{estate.qvto}, adds about 130 lines, and the lowering,
-\texttt{lower.qvto}, about 340. This section first classifies the three and
-describes the lowering (Section~\ref{sec:lowering}), then the resolution's
-interface (Section~\ref{sec:interface}), the division into mappings and queries
-(Section~\ref{sec:shape}), a worked example (Section~\ref{sec:worked}), the
-derivation rules (Section~\ref{sec:rules}), the trace and late assignment
-(Section~\ref{sec:trace}), the black-box library (Section~\ref{sec:blackbox}),
-the estate pass (Section~\ref{sec:estatepass}), the stops
-(Section~\ref{sec:stops}), and how the transformations are run
-(Section~\ref{sec:running}).
+Task~2 uses three QVT-Operational transformations. The flattening
+(\texttt{lower.qvto}) is about 340 lines with 37 mapping operations and 8
+queries. The resolution (\texttt{resolution.qvto}), the main transformation,
+is about 1700 lines
+with 8 mapping operations and 140 queries. The final pass
+(\texttt{estate.qvto}) is about 130 lines with no mappings but one helper.
 
-Figure~\ref{fig:pattern} shows which metamodels the resolution and the estate
-pass read and write; each transformation names them in \texttt{modeltype}
-declarations, by their namespace URI. The three transformations differ in kind,
-and each kind was chosen for its job. All three are one-way:
+Figure~\ref{fig:pattern} shows the metamodels each transformation reads and
+writes. The three differ in kind, and all are one-way.
 
 \begin{itemize}
-  \item the \emph{lowering} is endogenous and horizontal: it reads and writes
-    the source metamodel, at the same level of abstraction, into a new model
-    (out-place), one project in, one out;
-  \item the \emph{resolution} is exogenous and vertical, a refinement that adds
-    platform detail: it reads the source and pinned-inputs metamodels and
-    writes the target metamodel, many models in (N), one out (1);
-  \item the \emph{estate pass} is endogenous and in-place: it updates the
-    resolved models of a run through an \texttt{inout} extent (M to N).
+  \item The flattening is endogenous and horizontal: it reads and writes the source
+    metamodel at the same abstraction level, producing a new model. One \texttt{Project}
+    goes in, one comes out.
+  \item The resolution is exogenous and vertical, a refinement: it reads source
+    and pinned-input metamodels and writes the target metamodel, taking several
+    input models and producing one output.
+  \item The final pass is endogenous and in-place: it updates the resolved models
+    of a run through an \texttt{inout} extent.
 \end{itemize}
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.85\linewidth, keepaspectratio]{Figures/pattern}
-\caption{The Resolution and the Estate Pass in the Metamodel-Based Transformation Pattern}
+\includegraphics[width=\linewidth, keepaspectratio]{Figures/pattern}
+\caption{The Three Transformations and Their Metamodels}
 \label{fig:pattern}
 \end{figure}
 
-\subsection{The Lowering}
-\label{sec:lowering}
+\subsection{The Flattening}
+\label{sec:flattening}
 
-The lowering, \texttt{lower.qvto}, turns each authored \texttt{Project} into an
-\texttt{EffectiveProject}, in which every process carries all the shared
-declarations that apply to it and the project and applications carry none. It
-was part of the Task~1 implementation; Task~2 extended it with API access and
-engine grants. It has 37 small mappings, nearly all copies, and three merge
-rules:
+The flattening, \texttt{lower.qvto}, turns each authored \texttt{Project} into an
+\texttt{EffectiveProject}. Every \texttt{Process} carries all shared declarations that apply to
+it, while the \texttt{Project} and \texttt{Application} carry none. Task~2 extended the Task~1
+implementation with API access and engine \texttt{Grant}s (declared access to
+a secret of a database or transit engine).
 
-\begin{itemize}
-  \item a list (secrets, dependency edges, Assets, environment entries) is
-    the union of the three levels, keyed by each item's own identity, and the
-    lowest level that declares an item wins;
-  \item a single value (a startup budget, a cutover) comes from the lowest level
-    that declares it;
-  \item memory and CPU come only from the process itself.
-\end{itemize}
+Its 37 mappings are nearly all simple copies; its queries do the merging. A
+list such as \texttt{secrets}, dependency edges, configuration files or environment entries becomes
+the union of declarations from \texttt{Project}, \texttt{Application} and
+\texttt{Process} levels. If several levels declare the same item, the most
+specific declaration wins. A single value, such as the startup budget or
+cutover (whether the \texttt{Application} keeps serving during an update),
+also comes from the most specific level that declares it. Memory and CPU remain
+only on the \texttt{Process}.
 
-Two details are specific to QVTo. A mapping returns its cached result when it
-is called again on the same source, so a declaration shared by three processes
-would become one object that the last process takes into its containment. Every
-shared copy is therefore a mapping with the process as a parameter
-(\texttt{copyFor(self)}), which keys the trace on the pair. And a migration is
-one of three subclasses, so its copy is a \texttt{disjuncts} mapping that
-selects the subclass at run time. The lowering has no stops: the constraints run
-before it, so every input it sees is valid.
+A shared declaration needs a separate copy in each receiving
+\texttt{Process}. Reusing a cached mapping result would move that object
+to the last \texttt{Process}, because an EMF object can have only one
+container. Inside \texttt{Process::lower}, \texttt{self} is the receiving
+source \texttt{Process}; passing it to each declaration's
+\texttt{copyFor(self)} makes the cache distinguish the required copies.
+For migrations, one disjuncts mapping dispatches to the copy operation for
+the source subtype: managed, self-managed or no migration. The caller can
+copy any migration without repeating that subtype selection.
 
-\subsection{Interface}
-\label{sec:interface}
+The flattening has no aborts of its own: it only copies and merges declarations
+after input checks. Missing values needed for deployment, such as an
+unlocked image, are rejected later by the resolution.
 
-Example~\ref{lst:header} shows the signature. The resolution reads two
-\emph{extents}, the sets of models a transformation is given, of two
-metamodels, and writes one extent of a third.
+\subsection{Interface, Mappings and Queries}
+\label{sec:shape}
+
+Example~\ref{lst:header} shows how the inputs are grouped: \texttt{intent}
+contains the deployment declarations, \texttt{pinned} contains their
+supporting inputs, and \texttt{resolved} receives the target model.
 
 \begin{lstlisting}[language=qvto, style=report, caption={The Signature and Inputs of the Resolution, Abridged}, label={lst:header}]
 transformation resolution(in intent : PI, in pinned : IN, out resolved : RD)
 	access library Hashing;
 configuration property project : String;    -- the project this run resolves
-property estate : Platform = intent.rootObjects()[Platform]->any(true);
 property projects : Sequence(EffectiveProject) =
 	intent.rootObjects()[EffectiveProject]->sortedBy(p | p.project)->asSequence();
 property lock : ImagesLock = pinned.rootObjects()[ImagesLock]->any(true);
@@ -86,161 +81,115 @@ main() {
 }
 \end{lstlisting}
 
-The \texttt{intent} extent holds, for every project of the run, its authored
-model and its lowered model (\texttt{Effective\-Project}), and the platform
-document. The authored models stay in the extent only because the platform
-document refers into them: an entry point names the proxy application that
-serves it, as an Ecore reference. Every rule reads the lowered models. The
-\texttt{pinned} extent holds the node contract, the images lock, the snapshot,
-each project's migration proof, and one \texttt{AssetFile} per configuration
-file. Two configuration properties give what is not derived: the project to
-resolve, and the integrity digest of the schema package, which the resolved
-model records as provenance.
+The intent extent holds, for every \texttt{Project} in the run, its authored model and
+its \texttt{EffectiveProject}, plus the \texttt{Platform Intent}. Authored models remain only
+because \texttt{Platform Intent} references them via Ecore cross-references. Every rule
+reads the \texttt{EffectiveProject} models.
 
-The properties select each input once, by type, from the roots of its extent.
-This is the only way the transformation reaches other documents: every rule
-navigates from one of the seven properties, and no rule calls
-\texttt{allInstances()}.
-A query over ``every process in the cluster'' is
-\texttt{projects.applications.processes}, whose extent is exactly the run's
-documents. The projects are sorted by name, so that ``the first provider'' of a
-service is the same in every run and in both implementations.
+The pinned extent holds the node contract, images lock, cluster-state
+snapshot, each \texttt{Project}'s migration proof (the schema version its
+migration was tested against), and one \texttt{AssetFile} per configuration file. Two configuration
+properties supply the \texttt{Project} name to resolve and the schema
+package digest to include in the provenance record.
 
-\subsection{Mappings and Queries}
-\label{sec:shape}
+Properties such as \texttt{projects} and \texttt{lock} select these inputs
+once; another selects the \texttt{Platform Intent}. A dependency lookup navigates through
+\texttt{projects.applications.processes}, so it searches only the
+flattened models supplied to this run. Sorting \texttt{Project}s by name
+makes the result independent of input file loading order.
 
-QVTo offers two ways to create a target object. A \emph{mapping operation}
-records its source and result in the trace, the record of which target object
-was made from which source. Other rules find the result later with
-\texttt{resolveone}, and calling the mapping twice on the same source returns
-the same result. \emph{Object creation} (an \texttt{object} expression) inside
-a query makes an object that no other rule needs to find. The transformation
-uses a mapping exactly where another rule refers to the result, and object
-creation everywhere else. Each target type has exactly one mapping, so the
-type alone identifies the result: \texttt{p.resolveone(ResolvedProcess)} needs
-no \texttt{resolveIn}. No mapping has a \texttt{when} guard or inherits from
-another: the caller selects what to map with \texttt{->select}, which keeps the
-choice in one visible place. Table~\ref{tab:mappings} lists the eight mappings.
+Mappings are used for objects that other rules must reference. For example,
+the trace connects a source \texttt{Process} to its
+\texttt{ResolvedProcess}, allowing a route to reuse that result through
+\texttt{resolveone}. A probe belongs only to its parent and needs no such
+lookup, so a query creates it with an object expression instead. Each
+mapped target type has one mapping, making the source and result type
+sufficient to identify the trace entry. Callers filter elements with
+\texttt{->select} before invoking a mapping. No mapping uses a
+\texttt{when} guard or inherits from another.
+
+Table~\ref{tab:mappings} lists the eight mappings and their purpose.
 
 \begin{table}[!htbp]
 \centering
 \begin{tabular}{>{\raggedright\arraybackslash}p{0.33\linewidth}>{\raggedright\arraybackslash}p{0.59\linewidth}}
 \hline
-\textbf{Mapping} & \textbf{What it creates, and why it is a mapping} \\
+\textbf{Mapping} & \textbf{Creates, and why it is a mapping} \\
 \hline
-\texttt{EffectiveProject::\allowbreak deployment} &
-  The \texttt{ResolvedDeployment}. Its \texttt{end} section sets the values that
-  need the complete model. \\
-\texttt{EffectiveProject::\allowbreak unit} &
-  The project's reconcile unit, the group Flux applies together. Each
-  application refers to it. \\
-\texttt{EffectiveProject::\allowbreak provenance} &
-  The digest of every input and the hash over them; its \texttt{end} section
-  takes the hash. \\
-\texttt{EffectiveApplication::\allowbreak application} &
-  A \texttt{ResolvedApplication}. Generated files and the revision refer to it. \\
-\texttt{EffectiveApplication::\allowbreak gate} &
-  The release gate's inputs. The application and its configuration file refer
-  to them. \\
-\texttt{EffectiveApplication::\allowbreak migrationOf} &
-  The database migration of an application that manages its schema. Its
-  network policy refers to it. \\
-\texttt{Process::process} &
-  A \texttt{ResolvedProcess}. Gate members, routes, scrapes, policies and
-  generated files refer to it. \\
-\texttt{Exposure::exposure} &
-  A \texttt{ResolvedExposure}. The generated route file refers to it. \\
+\texttt{EffectiveProject::\allowbreak deployment} & The \texttt{ResolvedDeployment}. Its end section sets values that need the complete model. \\
+\texttt{EffectiveProject::\allowbreak unit} & The \texttt{Project}'s \texttt{ReconcileUnit}, the group Flux applies together. Each \texttt{Application} refers to it. \\
+\texttt{EffectiveProject::\allowbreak provenance} & The digest of every input and the hash over them. Its end section computes the hash. \\
+\texttt{EffectiveApplication::\allowbreak application} & A \texttt{ResolvedApplication}. Generated files and the \texttt{Revision} refer to it. \\
+\texttt{EffectiveApplication::\allowbreak gate} & The \texttt{ReleaseGate}'s inputs. The \texttt{Application} and its configuration refer to them. \\
+\texttt{EffectiveApplication::\allowbreak migrationOf} & The database migration. Its network policy refers to it. \\
+\texttt{Process::process} & A \texttt{ResolvedProcess}. Gate members, routes, scrapes, policies and generated files refer to it. \\
+\texttt{Exposure::exposure} & A \texttt{ResolvedExposure}. The generated route file refers to it. \\
 \hline
 \end{tabular}
-\caption{The Mapping Operations of the Resolution}
+\caption{Mapping Operations of the Resolution}
 \label{tab:mappings}
 \end{table}
 
-The queries are side-effect free, and many are attached to a model type, such
-as \texttt{Grant::resolvedFor}. They are of four kinds:
+Queries calculate values without modifying the input models. They return
+scalars such as deadlines, new contained objects such as backup plans, or
+the target spelling of an enumeration value, for example
+\texttt{businessHours} as \texttt{business-hours}. The calling mapping
+assigns the result. Abort queries terminate the run when a value cannot be
+derived (Section~\ref{sec:aborts}). The final pass uses a helper instead
+because it adds files to an existing output model.
 
-\begin{itemize}
-  \item \emph{value queries} derive one value, such as a deadline or an address;
-  \item \emph{object queries} build a contained object, such as a probe or a
-    backup plan;
-  \item \emph{spelling queries} turn an enumeration literal of the source
-    metamodel into the string the target records, for example
-    \texttt{AlertClass::businessHours} into \texttt{business-hours};
-  \item \emph{stop queries}, such as \texttt{unlocked}, raise a fatal assertion
-    instead of returning a value (Section~\ref{sec:stops}).
-\end{itemize}
+Mappings run in a fixed order. The deployment mapping creates the
+\texttt{Project}'s \texttt{ReconcileUnit} and local references to prerequisite
+units first, then \texttt{Application}s, provenance and the path plan, the step
+that gives every generated file its path. Each \texttt{Application} maps
+its \texttt{Process}es before its \texttt{Exposure}s, \texttt{ReleaseGate} and migration, because those
+refer to \texttt{Process}es through the trace.
 
-The one QVTo \emph{helper}, an operation with side effects, is in the estate
-pass, which adds files to a model it updates in place.
-
-The mappings run in a fixed order. The
-\texttt{deployment} mapping creates the reconcile units first, then the
-applications, the provenance and the path plan. Each application maps its
-processes before its exposures, gate and migration, because those refer to the
-processes through the trace.
-
-
-\subsection{A Worked Example}
+\subsection{Worked Example}
 \label{sec:worked}
 
-The \texttt{minimal} example declares one application, \texttt{notes}, with one
-process, \texttt{notes-api}, in about 35 lines of YAML without comments. Table~\ref{tab:worked}
-follows some of its declarations through the resolution to the values they
-derive, with the platform document and the pinned inputs that also take part.
+The \texttt{minimal} example declares one \texttt{Application}, \texttt{notes}, with
+one \texttt{Process}, \texttt{notes-api}, in about 35 lines of YAML.
+Table~\ref{tab:worked} follows declarations through to derived values.
 
-\begin{table}[!htbp]
+\begin{table}[H]
 \centering
 \begin{tabular}{>{\raggedright\arraybackslash}p{0.27\linewidth}>{\raggedright\arraybackslash}p{0.21\linewidth}>{\raggedright\arraybackslash}p{0.43\linewidth}}
 \hline
 \textbf{Declared} & \textbf{Rule} & \textbf{Derived in the resolved model} \\
 \hline
-\texttt{image: notes-api} & \texttt{locked} &
-  \texttt{ghcr.io/\allowbreak jorisjonkers-dev/\allowbreak notes/\allowbreak notes-api@\allowbreak sha256:9c1e\ldots},
-  user and group 1000, from the images lock \\
-\texttt{startupBudget: 20s} & \texttt{deadlineOf}, startup probe &
-  deadline \texttt{60s} (three budgets); a startup probe on the liveness target
-  every \texttt{5s}, \texttt{4} failures allowed \\
-\texttt{cutover: continuous} & \texttt{switchoverOf}, \texttt{gate} &
-  switchover \texttt{blue-green}; a release gate with one member, deadline
-  \texttt{60s}, the platform's analysis cadence, and error-rate and latency
-  checks because the \texttt{node} runtime exports telemetry \\
-\texttt{memory: 256Mi}, \texttt{cpu: 50m} & \texttt{eligible} &
-  all seven machines of the node contract, each tested for twice the request,
-  since old and new run side by side during a blue/green switch \\
-\texttt{audience: anonymous} & \texttt{tierFor}, \texttt{exposure} &
-  entry point \texttt{public-frankfurt} with TLS and ACME certificates,
-  proxy \texttt{traefik-public} in \texttt{edge-system} \\
-route \texttt{/}, \texttt{prefix} & \texttt{precedenceOf}, \texttt{middlewareOf} &
-  precedence 1; security headers with the \texttt{strict} content policy \\
-\texttt{runtime: node} & \texttt{profileOf} &
-  \texttt{OTEL\_SERVICE\_NAME}, \texttt{PORT=8080},
-  \texttt{DEPLOYMENT\_ENVIRONMENT}, and the collector's address, found in the
-  \texttt{observability} project \\
-\texttt{scrape} on \texttt{http} & \texttt{ingressOf}, \texttt{monitorOf} &
-  ingress from \texttt{traefik-public} and \texttt{prometheus} on port 8080;
-  a pod monitor, because a blue/green process is scraped through its pods \\
-(nothing) & path plan &
-  12 generated-file entries, among them \path{apps/notes/namespace.yaml} and
-  \path{estate/edge/public-frankfurt/notes-public.yaml} \\
+\texttt{image: notes-api} & \texttt{locked} & \path{ghcr.io/jorisjonkers-dev/notes/notes-api@sha256:9c1e...}, user/group 1000, from images lock \\
+\texttt{startupBudget: 20s} & \texttt{deadlineOf}, startup probe & deadline 60s (three times the budget); the startup probe polls the liveness target every 5s and fails after 4 attempts \\
+\texttt{cutover: continuous} & \texttt{switchoverOf}, \texttt{gate} & blue-green; \texttt{ReleaseGate} with 1 member, deadline 60s, cadence from the \texttt{Platform Intent}, error/latency checks \\
+\texttt{memory: 256Mi, cpu: 50m} & \texttt{eligible} & all 7 machines in the node contract, each tested for twice the request size for blue/green deployment \\
+\texttt{audience: anonymous} & \texttt{tierFor}, \texttt{exposure} & entry point public-frankfurt with TLS certificates issued through ACME, proxy traefik-public in the \texttt{edge-system} namespace \\
+route /, prefix & \texttt{precedenceOf}, \texttt{middlewareOf} & precedence 1; security headers with strict content policy \\
+\texttt{runtime: node} & \texttt{profileOf} & environment variables \texttt{OTEL\_SERVICE\_NAME}, \texttt{PORT=8080}, \texttt{DEPLOYMENT\_\allowbreak ENVIRONMENT}, collector address from observability \\
+scrape on http & \texttt{ingressOf}, \texttt{monitorOf} & ingress from traefik-public and prometheus on port 8080; pod monitor for blue/green \\
+(nothing) & path plan & 12 generated-file entries (\texttt{Deliverable}), including \path{apps/notes/namespace.yaml} and \path{estate/edge/public-frankfurt/notes-public.yaml} \\
 \hline
 \end{tabular}
 \caption{Declarations of \texttt{minimal}, Followed Through the Resolution}
 \label{tab:worked}
 \end{table}
 
-Four of these values need another document of the run: the image needs the
-lock, the eligible machines the node contract, the proxy the \texttt{edge}
-project, and the collector's address the \texttt{observability} project.
-Example~\ref{lst:workedio} shows part of the source model and the part of the
-resolved model the transformation writes for it.
+Four values depend on other run documents: the image needs the images lock, eligible
+machines need the node contract, the proxy needs the \texttt{edge} \texttt{Project}, and the
+collector address needs the observability \texttt{Project}.
 
-\begin{lstlisting}[style=report, caption={Part of the Process \texttt{notes-api}, as Authored (Top, Condensed) and as Resolved, in XMI (Bottom, Abridged)}, label={lst:workedio}]
+Example~\ref{lst:workedyaml} shows the authored \texttt{Process} in YAML, and
+Example~\ref{lst:workedresolved} shows the \texttt{Process} the resolution
+assembled from it, in XMI.
+
+\begin{lstlisting}[style=report, caption={The Authored \texttt{Process} \texttt{notes-api}, in YAML (Condensed)}, label={lst:workedyaml}]
 - name: notes-api
   image: notes-api
   placement: { memory: 256Mi, cpu: 50m }
   startupBudget: 20s
   cutover: continuous
---------------------------------------------------------------------------
+\end{lstlisting}
+
+\begin{lstlisting}[style=report, caption={The Resolved \texttt{Process} \texttt{notes-api}, in XMI (Abridged)}, label={lst:workedresolved}]
 <processes name="notes-api" deadline="60s" switchover="blue-green"
     image="ghcr.io/jorisjonkers-dev/notes/notes-api@sha256:9c1e5a4b..."
     uid="1000" gid="1000" memory="256Mi" cpu="50m">
@@ -249,12 +198,17 @@ resolved model the transformation writes for it.
 </processes>
 \end{lstlisting}
 
+The path plan assigns the \texttt{Canary} resource, used by the Flagger
+rollout controller to manage blue/green replacement, to
+\path{apps/notes/notes/canary.yaml}. Application files follow
+\path{apps/<project>/<application>/}; here both names are \texttt{notes}.
+Section~\ref{sec:results} explains the complete-model comparison.
+
 \subsection{The Derivation Rules}
 \label{sec:rules}
 
-Table~\ref{tab:rules} lists the rules by the target element they produce. Each
-implements a derivation of the specification; where the specification leaves
-a choice, it follows the production implementation.
+Table~\ref{tab:rules} lists the rules by target element. Each implements a
+derivation from the specification.
 
 \begin{longtable}{>{\raggedright\arraybackslash}p{0.19\linewidth}>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.49\linewidth}}
 \hline
@@ -271,84 +225,45 @@ a choice, it follows the production implementation.
 \caption{Derivation Rules, by Target Element}
 \label{tab:rules}
 \endlastfoot
+\multicolumn{3}{l}{\emph{Project}} \\
+reconcile unit and order & \texttt{unit}, \texttt{afterOf} & Create the \texttt{Project}'s unit. Its dependency list tells Flux to wait for provider projects' units and, where needed, the secrets-provisioning unit. \\
 \multicolumn{3}{l}{\emph{Application}} \\
-reconcile unit and order & \texttt{unit}, \texttt{afterOf} &
-  One unit per project; it follows the units of the projects its edges reach,
-  and the secrets unit if it holds a secret. \\
-secret store & \texttt{synced}, \texttt{storeEndpoint} &
-  The secret store's address, where a secret, backup or migration needs it. \\
-migration & \texttt{migrationOf}, \texttt{datastoreOf} &
-  Runner image (lock), tested schema version (proof), the database's address
-  (the application's edge to it), an owner credential, and egress. \\
-release gate & \texttt{gate}, \texttt{switchesBlueGreen} &
-  One member per blue/green process with readiness; the slowest member's
-  deadline; the platform's cadence; checks where telemetry is exported. \\
+Secret Store & \texttt{synced}, \texttt{storeEndpoint} & The Secret Store (Vault) address used when a secret, backup or migration needs it. \\
+migration & \texttt{migrationOf}, \texttt{datastoreOf} & Combine the locked runner image, schema version from the migration proof, and database address from dependencies; derive its credential and permitted connections. \\
+release gate & \texttt{gate}, \texttt{switchesBlueGreen} & Register each blue/green \texttt{Process} with readiness as a gate member. Use the largest member deadline and platform analysis settings; enable error-rate and latency checks for members exporting telemetry. \\
 \multicolumn{3}{l}{\emph{Process}} \\
 image, user, group & \texttt{locked} & The lock entry for the image name. \\
-switchover & \texttt{switchoverOf} &
-  \texttt{stop-start} for an interrupted process, \texttt{rolling} for the
-  platform's delivery tools, \texttt{blue-green} otherwise. \\
-deadline & \texttt{deadlineOf} &
-  Three startup budgets, rounded down; the budget, rounded up, for a process
-  that prepares a release; 600 seconds without a budget. \\
-probes & \texttt{Probe::cadenced} &
-  The declared target with the platform's period, timeout and failures. The
-  startup probe polls the liveness target every 5 seconds, for as many
-  attempts as the budget allows. \\
-eligible machines & \texttt{eligible} &
-  Every machine whose memory and CPU fit the process with its sidecars, twice
-  for a continuous process, and that has every declared architecture, site,
-  capability, GPU class and disk medium. \\
-environment & \texttt{environmentOf}, \texttt{entryFor} &
-  The base env file overlaid by the cluster's own, placeholders replaced, then
-  the runtime profile's variables; sorted by name. \\
-secrets & \texttt{Grant::resolvedFor} &
-  A key-value grant keeps its path and keys and gets the Kubernetes Secret it
-  is synced to. A transit or database grant becomes the Vault paths its policy
-  covers. \\
-volumes and backups & \texttt{backupFor}, \texttt{backupEgress} &
-  For a recoverable or irreplaceable volume: the platform's schedule and
-  retention, the backup image for the database engine, a backup identity and
-  claim, where the backup connects, its credential, and its off-cluster copy. \\
-configuration files & \texttt{Asset::resolvedFor} &
-  The file's text, under a name of the process, the file and the first ten hex
-  digits of the text's digest, so a changed file gets a new name. \\
-dependency edges & \texttt{edgeOf} &
-  The first process in the cluster whose application and port the edge names,
-  with its address and network peer; otherwise the register of external
-  providers. \\
+switchover & \texttt{switchoverOf} & Use stop-start when interruption is permitted, rolling for \texttt{Application}s listed as platform delivery machinery, and blue/green otherwise. \\
+deadline & \texttt{deadlineOf} & For a preparation job (lifecycle \texttt{prepare}), round the startup budget up to whole seconds without multiplying it. For other lifecycles multiply by three and round down; without a budget, use 600s. \\
+probes & \texttt{Probe::cadenced} & Declared target with the period, timeout and failures from the \texttt{Platform Intent}. The startup probe polls the liveness target every 5s until the budget runs out. \\
+eligible machines & \texttt{eligible} & Keep nodes meeting the declared placement requirements and CPU/memory requests, including sidecars. Continuous replacement requires capacity for both old and new copies. \\
+environment & \texttt{environmentOf}, \texttt{entryFor} & Cluster-specific entries replace base entries of the same name. Resolve placeholders, add runtime-profile variables, and sort by variable name. \\
+secrets & \texttt{Grant::resolvedFor} & A key-value \texttt{Grant} retains its path and keys and names the Kubernetes Secret to synchronise. A transit or database \texttt{Grant} records the Vault paths its policy permits. \\
+volumes and backups & \texttt{backupFor}, \texttt{backupEgress} & For volumes requiring backups, select the platform schedule, retention and engine-specific image. Derive a separate service account, claim, database connection, credential and off-cluster destinations. \\
+configuration files & \texttt{Asset::resolvedFor} & The file text, named after the \texttt{Process}, the file and a digest prefix, so a changed file gets a new name. \\
+dependency edges & \texttt{edgeOf} & Select a \texttt{Process} providing the named \texttt{Application} and port; if none exists, try the platform's external providers. Record its address and permitted network peer. \\
 \multicolumn{3}{l}{\emph{Exposure}} \\
-entry point & \texttt{tierFor} & The first entry point that carries the audience. \\
-route precedence & \texttt{rankOf}, \texttt{precedenceOf} &
-  Exact routes before prefix routes, longer prefixes before shorter. \\
-middleware & \texttt{middlewareOf} &
-  Authentication for an authenticated route, security headers, then a
-  redirect if declared. \\
-\multicolumn{3}{l}{\emph{Network policy, per process}} \\
-ingress & \texttt{ingressOf} &
-  The proxy of each route's entry point, the metrics collector if scraped,
-  every process with an edge to one of its ports, its own backup identity,
-  the migrations of the databases it holds, and the delivery events receiver.
-  Each peer once per rule that admits it. \\
-egress & \texttt{egressOf} & The cluster's DNS, and the secret store if the process holds a secret. \\
+entry point & \texttt{tierFor} & Select the first platform entry point whose allowed audiences include the \texttt{Exposure}'s declared audience. \\
+route precedence & \texttt{rankOf}, \texttt{precedenceOf} & Exact routes come before prefix routes, and longer prefixes before shorter ones. \\
+middleware & \texttt{middlewareOf} & Authentication for authenticated routes, security headers, and redirect if declared. \\
+\multicolumn{3}{l}{\emph{Network policy, per Process}} \\
+ingress & \texttt{ingressOf} & Admit route proxies, the metrics collector for a scraped \texttt{Process}, dependency consumers, its backup identity and database migrations. For the Reporter (receiver of rollout events), also admit Flux's notification controller. \\
+egress & \texttt{egressOf} and resolved connections & Add cluster DNS and, for secret holders, the Secret Store. Dependency edges supply provider peers; API rules supply server ranges. Migration and backup plans carry their own peers and off-cluster ranges. \\
 \multicolumn{3}{l}{\emph{Deployment}} \\
-provenance & \texttt{provenance} & One digest per input, and a hash over all of them. \\
-revision & \texttt{end} of \texttt{deployment} &
-  The digest of each application's complete element (Section~\ref{sec:blackbox}). \\
-generated files & \texttt{projectFiles}, \texttt{applicationFiles}, \texttt{edgeFiles}, \texttt{vaultFiles} &
-  The path of every file, with the elements it is generated from
-  (Section~\ref{sec:pathplan}). \\
+provenance & \texttt{provenance} & Record each input's digest, then hash that record to identify the complete input set. \\
+revision & end of deployment & Hash each \texttt{Application}'s complete resolved configuration in the specification's JSON representation (Section~\ref{sec:blackbox}). \\
+generated files & \texttt{projectFiles}, \texttt{applicationFiles}, \texttt{edgeFiles}, \texttt{vaultFiles} & Path of every file, with elements it is generated from (Section~\ref{sec:pathplan}). \\
 \end{longtable}
 
-\subsubsection{A Process}
+\subsubsection{The Process Mapping}
 \label{sec:processrule}
 
-Example~\ref{lst:process} shows the start of the process mapping. The
-\texttt{init} section looks up the lock entry once, so the assignments can use
-it. Each assignment calls a query of
-Table~\ref{tab:rules}. An optional feature is assigned only when its condition
-holds: assigning an unset value would mark the feature as set, and the model
-would then state a value that nothing derived.
+Example~\ref{lst:process} shows how the \texttt{Process} mapping combines
+these rules. The image lock entry supplies the repository and digest;
+\texttt{deadlineOf} supplies the deadline; \texttt{eligible} filters the
+nodes. Optional fields are assigned only where they apply. For example, a
+one-off job has no switchover: assigning the enumeration's default value
+would incorrectly record a blue/green deployment strategy for that job.
 
 \begin{lstlisting}[language=qvto, style=report, caption={The Process Mapping, Abridged}, label={lst:process}]
 mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectiveProject)
@@ -368,170 +283,185 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 }
 \end{lstlisting}
 
-\subsubsection{A Dependency Edge}
+\subsubsection{The Edge Rule}
 \label{sec:edgerule}
 
-A dependency edge names an application and one of its surfaces, for example
-\texttt{platform-postgres} and \texttt{postgres}. The query \texttt{edgeOf} finds the first process in the cluster that belongs to
-that application and provides that surface. The resolved edge records the
-process's in-cluster address and the network peer the consumer may reach. If
-no process provides the surface, the platform's list of external providers is
-tried; this is how \texttt{auth} reaches the mail server outside the cluster.
-If neither has it, the run stops.
+A dependency edge names an \texttt{Application} and a \texttt{Surface}
+(named port). For example, an edge to \texttt{platform-postgres} names its
+\texttt{postgres} port. The query
+\texttt{edgeOf} finds the first \texttt{Process} in the cluster belonging to
+that \texttt{Application} that provides that \texttt{Surface}. The resolved edge
+records the \texttt{Process} address and the network peer the consumer may
+reach. If no \texttt{Process} provides the \texttt{Surface}, the
+\texttt{Platform Intent} external provider list is tried; this is how
+\texttt{auth} reaches a mail server outside the cluster. If neither has it,
+the run aborts.
 
-While a project still runs at its
-old location, as the platform's handover ledger records, its address and peer
-use that location's namespace and name, so a consumer can depend on it before
-it moves.
-
+During migration to this deployment system, the \texttt{Platform Intent}'s
+\texttt{HandoverLedger} records where applications still served by the
+previous system run. Their resolved addresses and peers use the recorded
+namespace and workload name until they move.
 
 \subsubsection{Environment Variables and Placeholders}
 \label{sec:placeholders}
 
-A process's env files are a base file and, optionally, one overlay per cluster;
-the resolution keeps the base entries the overlay for the platform's cluster
-does not replace. An entry may contain a placeholder, such as
+A \texttt{Process}'s environment files consist of a base file and, optionally,
+one overlay per cluster. The resolution selects the overlay named by the
+\texttt{Platform Intent}'s cluster, then replaces base entries with overlay
+entries of the same name. Other base entries remain.
+
+An entry may contain a placeholder, such as
 \texttt{DB\_HOST=\$\{dependency:platform-postgres.host\}}. The query
-\texttt{Placeholder::entryFor} handles four kinds. A \emph{secret} placeholder
-becomes a reference to a key of a secret the process holds, so the value never
-appears in a file. A \emph{dependency} placeholder takes the host or the port
-of the process's own edge, from \texttt{edgeOf}. An \emph{exposure} placeholder
-takes the URL, host or scheme of an exposure anywhere in the cluster. An
-\emph{identity} placeholder takes the process's name, namespace or Vault role.
-Text after a placeholder is kept, as in
-\texttt{AUTH\_LOGIN\_URL=\$\{exposure:auth.public\#url\}/login}. The runtime
-profile then adds its own variables; an author who writes one of them in an env
-file stops the run, because one name would have two values.
+\texttt{Placeholder::entryFor} handles four kinds. A secret placeholder becomes a
+reference to a key of a secret the \texttt{Process} holds, so the value never
+appears in a file. A dependency placeholder takes the host or port of the
+\texttt{Process} dependency edge from \texttt{edgeOf}. An exposure placeholder takes
+the URL, host or scheme of an \texttt{Exposure} anywhere in the cluster. An identity
+placeholder takes the \texttt{Process} name, namespace or Vault role (the
+binding that grants its service account a secret-access policy). Text after a placeholder is kept, as in
+\texttt{AUTH\_LOGIN\_URL=\$\{exposure:auth.public\#url\}/login}.
+
+The runtime profile then adds the platform-defined variables for the
+selected language runtime, such as \texttt{PORT}. Declaring one of these
+names in an environment file aborts the run, because it would conflict with
+the platform-defined value.
 
 \subsubsection{Network Peers}
 \label{sec:peers}
 
-The ingress of a process is a union of six sources (Table~\ref{tab:rules}),
-and most of them look at other projects: the consumers whose edges name it, the
-migrations of the applications whose database it holds, and the proxies and
-metrics collector that the platform names. Each source yields tuples of rule,
-namespace, process and port; the union is made distinct with
-\texttt{asOrderedSet()} before the tuples become \texttt{PolicyPeer} objects.
-Building plain tuples first matters: two objects are never equal in OCL, so a
-union of objects would keep a peer that two routes admit twice.
+The ingress policy of a \texttt{Process} combines peers from six sources
+(Table~\ref{tab:rules}). Most require looking across \texttt{Project}s:
+consumers with a dependency edge to the \texttt{Process}, migrations that
+access its database, proxies and the metrics collector named by the
+\texttt{Platform Intent}. Each source yields tuples of rule, namespace,
+\texttt{Process} and port. Distinct \texttt{PolicyPeer} objects would not
+compare equal merely because their fields match. The union therefore uses
+tuples and \texttt{asOrderedSet()} to remove duplicates before creating
+\texttt{PolicyPeer} objects. The rule name remains part of each tuple, so
+two rules allowing the same connection retain both rule identifiers.
 
 \subsubsection{The Path Plan}
 \label{sec:pathplan}
 
-The \emph{path plan} assigns each generated file its path, as a
-\texttt{Deliverable} subclass that refers to the elements it is generated
-from. The project gets a namespace file, an index, a default-deny network
-policy, and the secret operator's connection where an application syncs
-secrets. Each application gets a directory with one file per kind of
-resource: workloads, Canaries for blue/green processes and Services for the
-others, service accounts, RBAC, volume claims, the configuration map (which
-also carries the release gate's inputs as JSON), backups, disruption budgets
-for processes with more than one replica, the migration, the monitor, synced
-secrets, and a network-policy file with one policy per process. A file that
-would be empty is not planned. Each index lists the files of its directory that
-Flux applies; the network policies are generated but not yet applied, so no
-index lists them. Each exposure gets a
-route file under its entry point, and each identity that holds a secret a
-Vault policy and role. Because the paths are in the model, two files that
-claim one path can be found before any text is written, and the templates of
-Task~3 decide no path.
+The path plan represents each generated file as an instance of a
+\texttt{Deliverable} subclass, recording its path and the model elements
+used to generate it. Each \texttt{Project} gets a namespace file, index and
+default-deny network policy. If an \texttt{Application} synchronises secrets,
+a \texttt{VaultConnection} file tells the secret operator which Vault
+address to read.
 
-\subsection{The Trace and Late Assignment}
+Each \texttt{Application} gets a directory with one file per resource kind:
+a workload file, a service account, RBAC, volume claims, a configuration map
+carrying \texttt{ReleaseGate} inputs as JSON, backups, a migration, a
+monitor, synced secrets, and a network-policy file with one policy per
+\texttt{Process}. Blue/green \texttt{Process}es add a \texttt{Canary} file,
+others a \texttt{Service} file; multi-replica \texttt{Process}es add a
+disruption budget. Empty files are
+not planned.
+
+Each index lists the files Flux should apply from its directory. Network
+policies are included in the generated output for review, but excluded from
+these indexes while the specification's policy stage is render-only. This
+allows their proposed connections to be inspected before enforcement. Each
+\texttt{Exposure} gets a route file under its entry point (Traefik listener). Each service account
+holding a secret gets a Vault policy and role.
+
+Paths can therefore be inspected and compared before rendering; the
+transformation has no separate path-collision abort. Templates receive
+these paths rather than choosing them.
+
+\subsection{The Trace and End Sections}
 \label{sec:trace}
 
-Every reference from one created element to another goes through the trace. A
-gate member, a route, a scrape and every per-process file refer to a
-\texttt{ResolvedProcess}, found with \texttt{p.resolveone(ResolvedProcess)} on
-the source process. This works because the application mapping maps its
-processes first. Four values can only be computed once the rest of the model
-exists, and they are set in \texttt{end} sections, which run once the mapping's body has
-finished:
+Gate members, routes, metrics scrapes and per-\texttt{Process} files refer
+to a \texttt{ResolvedProcess}. They find it by calling
+\texttt{p.resolveone(ResolvedProcess)} on the source \texttt{Process},
+which the \texttt{Application} mapping has already transformed
+(Section~\ref{sec:shape}).
 
-\begin{itemize}
-  \item each application's \emph{revision}, the digest of its complete
-    element, which names the release and which every generated Canary carries;
-  \item each migration file's tag, the first digits of that revision;
-  \item the provenance's render hash, which covers every input digest;
-  \item the order between reconcile units, which refers to units the same
-    mapping created.
-\end{itemize}
-
+The \texttt{end} sections set values whose prerequisites are created by the
+mapping body. The \texttt{Revision} must wait until the
+\texttt{Application} is complete; the migration job tag then takes a prefix
+of that digest so both identify the same release. Similarly, the render
+hash is computed after all input digests have been recorded, and
+\texttt{ReconcileUnit} dependencies are assigned after their local
+reference objects exist. Each output contains its own unit and name-only
+\texttt{ReconcileUnit} objects for prerequisite units in other projects;
+\texttt{after} points to those local objects, not into another output model.
 
 \subsection{The Black-Box Library}
 \label{sec:blackbox}
 
-A digest is a SHA-256 hash over a canonical text. OCL has no operation that
-hashes bytes, so the Java class \texttt{Hashing} provides three contextual
-operations: \texttt{digestOf} walks any model element reflectively, writes
-canonical JSON and hashes it; \texttt{textDigestOf} hashes a file's text as the
-production implementation does; and \texttt{rawDigestOf} hashes a string as it
-stands. The transformations call no other Java code.
+A digest is a SHA-256 hash over canonical text. OCL lacks a byte-hashing
+operation, so the Java class \texttt{Hashing} provides three contextual
+operations. \texttt{digestOf} walks any model element reflectively, writes
+canonical JSON and hashes it for input provenance. \texttt{textDigestOf} hashes a file's text, for the
+content-derived names of configuration files. \texttt{rawDigestOf} hashes a string as-is.
 
-The revision uses the third. Generated files carry it, so it must equal the
-production implementation's revision, which is the digest of the
-application's element in that implementation's JSON form, a shape the target
-metamodel does not have. The query \texttt{elementJson} therefore writes that
-element as text, in OCL, from the source and the target model together: keys
-sorted, absent values left out, every value spelled as the production
-implementation spells it. The black box only hashes the result. This keeps every
-decision about what the revision covers inside the transformation, and it makes
-the revision a strong test (Section~\ref{sec:results}).
+The \texttt{Revision} uses \texttt{rawDigestOf}. Generated files carry this
+digest, so it must match the oracle exactly. The specification hashes the
+\texttt{Application} configuration in canonical JSON (RFC~8785). That
+specified JSON has a different structure from the Ecore target model. The OCL query
+\texttt{elementJson} therefore constructs the required JSON from the source
+and target models, sorting keys, omitting absent values and using the
+specified representation of each value. The black box only hashes this
+text; the transformation determines which values it contains.
 
-Two details of the QVTo implementation shaped the library. An operation that
-takes a plain \texttt{EObject} is not found on a model element, because a
-model type does not conform to the Ecore type in the compiler, so each call
-casts first: \texttt{p.oclAsType(ECORE::EObject).digestOf()}. And the unit
-cannot be named after the Java package, because \texttt{resolve} is a QVTo
-keyword, so it is registered as \texttt{dev.jorisjonkers.deploykit.emf.hashing},
-by the runner outside Eclipse and by \texttt{plugin.xml} inside it.
+Calls explicitly cast model elements to \texttt{EObject} before invoking
+the library's contextual operations.
+The standalone runner and Eclipse plug-in both register the \texttt{Hashing}
+library; the QVTo modules access it by import.
 
-\subsection{The Estate Pass}
-\label{sec:estatepass}
+\subsection{The Final Pass}
+\label{sec:finalpass}
 
-One generated job writes every project's Vault documents into the secret
-store, and it is named after a digest over all of them, so that changing any
-document starts a new job. No single resolution can compute that name. The
-estate pass, \texttt{estate(inout rendered : RD)}, runs once over the resolved
-models of all projects generated together. It collects every
-\texttt{VaultPolicyFile} and \texttt{VaultRoleFile}, writes each as canonical
-JSON in OCL, sorts them by file name, hashes the whole with
-\texttt{rawDigestOf}, and adds the job's four files and their index to the
-first model. It also adds the route that carries the delivery tool's events to
-the platform's reporter, which likewise belongs to no project. It stops if two
-models carry different jobs, because one run has one platform. Its source and
-target are the same metamodel and it changes the models in place, which QVTo
-expresses with an \texttt{inout} extent.
+One job installs the Vault policies and roles from every \texttt{Project}
+into the Secret Store. Its name contains a digest of all these documents.
+Changing a document therefore gives the next deployment a new job name,
+causing the updated configuration to be installed.
 
-\subsection{Stops}
-\label{sec:stops}
+The final pass, \texttt{estate(inout rendered : RD)}, runs once over all
+\texttt{Resolved Deployment}s produced together. It collects every
+\texttt{VaultPolicyFile} and \texttt{VaultRoleFile}, writes each as
+canonical JSON in OCL, sorts them by file name, hashes the whole with
+\texttt{rawDigestOf}, and plans the job, configuration map, service account
+and network policy. These files and their index are stored in the first
+model in the caller's project list, so the job is generated once for the combined output. The pass also
+plans one cluster-wide route forwarding Flux events to the Reporter.
+All resolutions normally share one \texttt{Platform Intent}. A defensive
+assertion rejects different job namespaces or images if the pass is called
+directly with models from different runs; it does not compare every job setting.
 
-Fifteen fatal assertions in the resolution and one in the estate pass stop the
-run when a value cannot be derived. Thirteen live in stop queries, which a rule
-calls instead of returning an invalid value: \texttt{locked} returns the lock
-entry for an image, or calls \texttt{unlocked}, whose \texttt{assert fatal}
-ends the run with \texttt{E\_UNLOCKED\_IMAGE}; two check
-the release gate's preconditions at the start of the \texttt{gate} mapping, and
-the estate pass's one stops when two projects carry different policy jobs.
+\subsection{Aborts and Running the Transformations}
+\label{sec:aborts}
 
+Fifteen fatal assertions in the resolution abort the run when a value cannot
+be derived. Thirteen are in abort queries that a rule calls instead of
+returning an invalid value. For example, \texttt{locked} returns the lock
+entry for an image or calls \texttt{unlocked}, whose assert fatal ends the
+run with \texttt{E\_UNLOCKED\_IMAGE}. Two check \texttt{ReleaseGate}
+preconditions at the start of the gate mapping. The final pass has one
+more, for the inconsistent job namespaces or images described above.
 
-The stops cover an image missing from the lock; an edge that no process or
-provider serves; a placeholder that names nothing or a secret the process does
-not hold; a runtime-profile variable written by an author; an Asset whose file
-is missing or contains a placeholder; a backed-up volume without a schedule or
-a database engine; a migration that reaches no database; a blue/green
-application without readiness, release gate or delivery policy; a grant
-without a secret store; and a quantity in a unit the model does not read. Where
-the specification defines an error code, the message contains it. An audience
-that no entry point carries has no stop of its own, because a constraint
-(\texttt{E\_NO\_TIER\_FOR\_AUDIENCE}) already refuses it before the run.
+The checks reject missing inputs and providers, unsupported quantities,
+unresolved placeholders, invalid secret references and author-defined
+runtime-profile variables. They also reject backups without schedules or
+engines, migrations without a database, blue/green deployments without
+readiness or delivery services, and \texttt{Grant}s without a Secret Store.
 
-\subsection{Running the Transformations}
-\label{sec:running}
+Where the specification defines an error code, the message contains it. An
+audience unsupported by any entry point needs no abort here: the
+\texttt{E\_NO\_TIER\_FOR\_AUDIENCE} constraint already rejects it before
+the transformation runs.
 
-Three small Java classes, \texttt{Lowering}, \texttt{Resolution} and
-\texttt{Estate}, run the transformations through QVTo's standalone
-\texttt{TransformationExecutor}: they register the black box, set the
-configuration properties, pass the extents, and return the result or fail with
-the executor's diagnostic. The pipeline builds the extents from the parsed and
-checked documents and writes every example's models under
-\path{target/parity/<example>/}; Appendix~\ref{app:running} gives the steps.
+Three Java classes (\texttt{Lowering}, \texttt{Resolution} and
+\texttt{Estate}) run the transformations through QVTo's own
+\texttt{TransformationExecutor}. They register the black box, set
+configuration properties, pass the extents, and return the result or fail
+with the executor's diagnostic. \texttt{Lowering} is the implementation name
+of the flattening runner; this pass does not change the abstraction level.
+
+The build executes the transformations with QVTo's standalone executor on
+every code change. The archive's \path{README.md} gives terminal and Eclipse
+instructions for all three passes. It also maps each example to its output
+project and explains the generated model extents.

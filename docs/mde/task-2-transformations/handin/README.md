@@ -5,13 +5,16 @@ report (`report.pdf`), a `README.md` for the marker (`hand-in-README.md` here),
 and two folders:
 
 - `task-2-transformations/`, an Eclipse project holding the three metamodels,
-  the two QVT-Operational transformations, and per example the authored files,
+  the three QVT-Operational transformations, and per example the authored files,
   the two extents the resolution read, the resolved model it wrote, and the
   dependency edges exported from it beside the oracle they equal;
 - `implementation/`, the tracked `emf/` modules, `spec/v1/examples/` and
   `docs/requirements.md`, so `./mvnw verify` runs there as it does here.
 
-Appendix B of the report describes the layout.
+`hand-in-README.md`, copied into the archive as `README.md`, describes the
+layout and how to run all three transformations. These instructions are
+kept outside the report because only the metamodel-changes appendix is
+exempt from its 15-page limit.
 
 It is built from the repository, never assembled by hand:
 

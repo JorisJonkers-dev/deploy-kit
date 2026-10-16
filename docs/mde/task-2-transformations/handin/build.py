@@ -71,7 +71,7 @@ def located(depth, *ecores):
     return edit
 
 
-# The three metamodels, and the two transformations.
+# The three metamodels and the three transformations.
 for ecore in NS:
     xml(f'{MM}/{ecore}', f'{OUT}/model/{ecore}')
 for qvto in ['lower.qvto', 'resolution.qvto', 'estate.qvto']:

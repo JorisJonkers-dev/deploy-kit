@@ -48,12 +48,42 @@ The Task 1 report's three landscape class diagrams use `--report`:
     /Applications/draw.io.app/Contents/MacOS/draw.io -x -f pdf --crop -b 4 \
         -o $F/project-document.pdf p.drawio   # and so on for the other two
 
+The Task 2 report's three class diagrams use `--report` the same way, each
+from its own mermaid block, and `--changes` where the drawing compares the
+model with Task 1's:
+    F=docs/mde/task-2-transformations/Figures
+    python3 scripts/diagrams/class-diagram.py --report \
+        --source=$F/pinned-inputs.md task2-pinned-inputs i.drawio
+    for v in application process; do
+      python3 scripts/diagrams/class-diagram.py --report --changes --view=$v \
+          --source=$F/target-decisions.md task2-target-decisions d-$v.drawio
+    done
+    python3 scripts/diagrams/class-diagram.py --report --changes \
+        --source=$F/target-files.md task2-target-files f.drawio
+
+`--font-size=N` and `--heading-font-size=N` set report diagram text sizes
+(draw.io pixels), with defaults of 12 and 13. Choose them for the size at
+which the PDF is included, so printed labels meet the report's 10 pt minimum.
+`--layout=file.json` supplies report `columns`, `roots` and optional `beside`
+groups for a view of the same Mermaid source. `root_columns` can stack
+independent root classes in columns instead of rows. Only the classes named
+by that layout are drawn; their features and relationships still come from
+the source. `--view=NAME` does the same from the script's own
+`REPORT_LAYOUTS["<chapter>/NAME"]`, and a layout's `rows` wraps one parent's
+children onto several fans, one below the other.
+
+With `--changes`, a class marked `<<new>>` shows «new» above its name, and
+every class keeps its layer's colours as in Task 1; an attribute row ending in `[new]` is bold, and one
+ending in `[removed]` is struck through. A class marked `<<abstract>>` has its
+name in italics, and `Parent <|-- Child` draws generalisation, a hollow
+triangle at the parent, as a tree edge in place of a containment.
+
 CHILDREN below is the only hand-maintained part: it fixes the tree parent of
 each node and the sibling order. Sibling order is chosen so that cross-links
 land between neighbours. Adding a class or an enumeration to the mermaid
 without adding it here fails loudly.
 """
-import re, sys, xml.etree.ElementTree as ET
+import json, re, sys, xml.etree.ElementTree as ET
 
 # `chapter` may name one class after a colon, and then any number of classes to
 # leave out after a minus: `20-resolved-deployment:ResolvedProcess-ResolvedGrant`.
@@ -73,20 +103,29 @@ SUBTREE, *DROPPED = SUBTREE.split("-")
 OUT = ARGS[-1]
 MD = FLAGS.get("source") or f"spec/v1/{CHAPTER}.md"
 REPORT = "report" in FLAGS
+CHANGES = "changes" in FLAGS
 src = open(MD).read()
 body = re.search(r"```mermaid\nclassDiagram\n(.*?)\n```", src, re.S).group(1)
 
 nodes = {}
 for name, blk in re.findall(r"    class (\w+) \{(.*?)\n    \}", body, re.S):
     rows = [l.strip() for l in blk.strip("\n").split("\n") if l.strip()]
-    kind = "enum" if "<<enumeration>>" in rows else "class"
+    flags = {r[2:-2] for r in rows if r.startswith("<<")}
+    kind = "enum" if "enumeration" in flags else "class"
     rows = [r for r in rows if not r.startswith("<<")]
+    # a row ending in [new] or [removed] marks a change against Task 1
+    marks = [(re.search(r"\s\[(new|removed)\]$", r) or [None, None])[1] for r in rows]
+    rows = [re.sub(r"\s\[(new|removed)\]$", "", r) for r in rows]
     if kind == "class":
         rows = [re.sub(r"^\+\s*(\S+)\s+(\S+)$", r"+ \1  \2", r) for r in rows]
-    nodes[name] = {"kind": kind, "rows": rows, "notes": []}
+    nodes[name] = {"kind": kind, "rows": rows, "notes": [], "flags": flags, "marks": marks}
 
-comp, dep, assoc = [], [], []
+comp, dep, assoc, gen = [], [], [], set()
 for line in body.split("\n"):
+    m = re.match(r"\s*(\w+)\s+<\|--\s+(\w+)\s*$", line)
+    if m:
+        gen.add((m.group(1), m.group(2)))
+        continue
     m = re.match(r'\s*(\w+)\s+"([^"]+)"\s+\*--\s+"([^"]+)"\s+(\w+)\s*:\s*(.*)', line)
     if m:
         comp.append((m.group(1), m.group(4), m.group(3), m.group(5).strip()))
@@ -167,12 +206,18 @@ TREES = {"10-project-intent": {
 }}
 NAMES = {"10-project-intent": "Project Intent - the layer-1 model",
          "14-platform-intent": "Platform Intent - the model",
-         "20-resolved-deployment": "Resolved Deployment - the layer-2 model"}
+         "20-resolved-deployment": "Resolved Deployment - the layer-2 model",
+         "task2-pinned-inputs": "Pinned inputs - the Task 2 metamodel",
+         "task2-target-decisions": "Resolved Deployment - decisions changed in Task 2",
+         "task2-target-files": "Resolved Deployment - generated files in Task 2"}
 # the layer palette of spec/v1/diagrams/README.md
 FILL, WASH, STROKE = {"10-project-intent": ("#dbeafe", "#f4f8ff", "#1e40af"),
                       "14-platform-intent": ("#e0e7ff", "#f5f6ff", "#4338ca"),
-                      "20-resolved-deployment": ("#fef3c7", "#fffbf0", "#b45309")}[CHAPTER]
-CHILDREN = TREES[CHAPTER]
+                      "20-resolved-deployment": ("#fef3c7", "#fffbf0", "#b45309"),
+                      "task2-pinned-inputs": ("#e2e8f0", "#f8fafc", "#475569"),
+                      "task2-target-decisions": ("#fef3c7", "#fffbf0", "#b45309"),
+                      "task2-target-files": ("#fef3c7", "#fffbf0", "#b45309")}[CHAPTER]
+CHILDREN = TREES.get(CHAPTER, {})
 
 # --report: the whole model on one landscape page. The layered layout above
 # gives every leaf its own column, which for a whole model is several times
@@ -243,6 +288,79 @@ REPORT_LAYOUTS = {"10-project-intent": {
     },
     "beside": {"ResolvedApplication"},
     "gaps": {},
+}, "task2-pinned-inputs": {
+    "columns": {
+        "NodeContract": [["Node"]],
+        "Node": [["Allocatable"], ["Gpu"], ["Disk"]],
+        "ImagesLock": [["LockedImage"]],
+        "ClusterState": [["Binding"], ["CurrentPlacement"], ["RollbackBackup"]],
+        "MigrationProof": [["ProvenApplication"]],
+    },
+    "roots": [["NodeContract", "ImagesLock"], ["ClusterState", "MigrationProof", "AssetFile"]],
+    "beside": set(),
+    "gaps": {},
+}, "task2-target-decisions": {
+    "columns": {
+        "ResolvedDeployment": [["ResolvedPolicyJob", "ResolvedEvents"], ["ResolvedApplication"]],
+        "ResolvedPolicyJob": [["PolicyPeer"]],
+        "ResolvedApplication": [["ReleaseGate", "ResolvedScrape"], ["ResolvedMigration"],
+                                ["ResolvedProcess"], ["ResolvedExposure"]],
+        "ReleaseGate": [["GateAnalysis", "GateMigration"]],
+        "ResolvedMigration": [["MigratedDatabase"], ["ResolvedGrant"]],
+        "ResolvedGrant": [["PolicyPath"]],
+        "ResolvedProcess": [["StartupProbe", "ResolvedApiAccess", "EnvEntry"],
+                            ["ResolvedVolume", "ResolvedAsset", "ResolvedSidecar"]],
+        "ResolvedApiAccess": [["ResolvedApiRule", "AdmittedRange"]],
+        "ResolvedVolume": [["BackupPlan"]],
+        "BackupPlan": [["BackupPeer"]],
+        "EnvEntry": [["SecretReference"]],
+    },
+    "beside": {"ResolvedApplication"},
+    "gaps": {},
+}, "task2-target-decisions/application": {
+    # the Task 2 report's decision classes in two fans: the deployment and
+    # application level here, the process subtree in the next view
+    "columns": {
+        "ResolvedDeployment": [["ResolvedPolicyJob"], ["ResolvedEvents"], ["ResolvedApplication"]],
+        "ResolvedPolicyJob": [["PolicyPeer"]],
+        "ResolvedApplication": [["ReleaseGate"], ["ResolvedScrape"], ["ResolvedMigration"],
+                                ["ResolvedExposure"]],
+        "ReleaseGate": [["GateAnalysis"], ["GateMigration"]],
+        "ResolvedMigration": [["MigratedDatabase"], ["ResolvedGrant"]],
+        "ResolvedGrant": [["PolicyPath"]],
+    },
+    "beside": set(),
+    "gaps": {},
+}, "task2-target-decisions/process": {
+    "columns": {
+        "ResolvedProcess": [["StartupProbe"], ["ResolvedApiAccess"], ["EnvEntry"],
+                            ["ResolvedVolume"], ["ResolvedAsset"], ["ResolvedSidecar"]],
+        "ResolvedApiAccess": [["ResolvedApiRule"], ["AdmittedRange"]],
+        "ResolvedVolume": [["BackupPlan"]],
+        "BackupPlan": [["BackupPeer"]],
+        "EnvEntry": [["SecretReference"]],
+    },
+    "beside": set(),
+    "gaps": {},
+}, "task2-target-files": {
+    # one fan wrapped onto four rows: the Task 1 file kinds in the first two,
+    # the kinds Task 2 added in the last two
+    "columns": {
+        "NetworkPolicyFile": [["ProcessPolicy"]],
+        "SecretFile": [["SecretHolder"]],
+        "PolicyJobFile": [["PolicyDocument"]],
+    },
+    "rows": {
+        "Deliverable": [["NamespaceFile", "IndexFile", "WorkloadFile", "SwitchoverFile",
+                         "IdentityFile"],
+                        ["NetworkPolicyFile", "IngressRouteFile", "MonitorFile", "SecretFile"],
+                        ["MigrationFile", "BudgetFile", "RbacFile", "ServiceFile", "ClaimFile",
+                         "ConfigMapFile"],
+                        ["BackupFile", "ConnectionFile", "VaultPolicyFile", "PolicyJobFile",
+                         "EventsFile", "VaultRoleFile"]],
+    },
+    "beside": set(),
+    "gaps": {},
 }}
 
 # Helvetica advance widths, per 1000 units of the font size
@@ -259,29 +377,55 @@ HELV = dict(zip(
 
 
 def report():
-    lay = REPORT_LAYOUTS[CHAPTER]
-    cols_of, beside, gaps = lay["columns"], lay["beside"], lay["gaps"]
-    FS, HFS, ROW, HEAD = 12, 13, 18, 30
+    layout_file, view = FLAGS.get("layout"), FLAGS.get("view")
+    if layout_file:
+        with open(layout_file) as f:
+            lay = json.load(f)
+    else:
+        lay = REPORT_LAYOUTS[f"{CHAPTER}/{view}" if view else CHAPTER]
+    cols_of, beside, gaps = lay["columns"], set(lay.get("beside", [])), lay.get("gaps", {})
+    FS = int(FLAGS.get("font-size") or 12)
+    HFS = int(FLAGS.get("heading-font-size") or 13)
+    ROW, HEAD = 18, 30
     INDENT, LBL, SGAP, HG, VG1, BUS1, BUS2 = 26, 17, 14, 34, 42, 16, 42
 
     def textw(s, fs=FS, bold=False):
         return sum(HELV.get(ch, 600) for ch in s) / 1000.0 * fs * (1.1 if bold else 1.0)
 
     kids = {p: [c for col in cs for c in col] for p, cs in cols_of.items()}
-    root = next(p for p in kids if all(p not in ks for ks in kids.values()))
-    placed = {root} | {c for ks in kids.values() for c in ks}
-    assert placed == set(nodes), (f"missing {sorted(set(nodes) - placed)}, "
+    # `rows`: a parent whose children are too many for one fan wraps them onto
+    # several rows, each row a fan on its own bus; the trunk joining the buses
+    # runs down the left edge, clear of the rows above
+    rows_of = lay.get("rows", {})
+    for p, rs in rows_of.items():
+        kids[p] = [c for r in rs for c in r]
+    # a model with several root classes lists them in `roots`: rows top to
+    # bottom, each row's roots left to right
+    root_rows = lay.get("root_columns") or lay.get("roots") or [[next(p for p in kids
+                                           if all(p not in ks for ks in kids.values()))]]
+    roots = [r for row in root_rows for r in row]
+    placed = set(roots) | {c for ks in kids.values() for c in ks}
+    render_nodes = ({n: d for n, d in nodes.items() if n in placed}
+                    if layout_file or view else nodes)
+    assert placed == set(render_nodes), (f"missing {sorted(set(render_nodes) - placed)}, "
                                   f"unknown {sorted(placed - set(nodes))}")
     tree = {(p, c) for p, ks in kids.items() for c in ks}
     for p, c in tree:
-        assert any(e[0] == p and e[1] == c for e in comp), f"{p} does not contain {c}"
+        assert (p, c) in gen or any(e[0] == p and e[1] == c for e in comp), \
+            f"{p} neither contains nor generalises {c}"
+
+    # --changes: a class new in Task 2 carries «new» above its name, on a header
+    # one line taller; every class keeps its layer's colours, as in Task 1
+    def head(n):
+        return HEAD + 16 if CHANGES and "new" in render_nodes[n]["flags"] else HEAD
 
     size = {}
-    for n, d in nodes.items():
-        w = max([textw(n, HFS, True) + 24] + [textw(r) + 22 for r in d["rows"]] + [110])
-        size[n] = (int(w + 1) // 2 * 2, HEAD + ROW * len(d["rows"]))
+    for n, d in render_nodes.items():
+        w = max([textw(n, HFS, True) + 24]
+                + [textw(r, bold=m == "new") + 22 for r, m in zip(d["rows"], d["marks"])] + [110])
+        size[n] = (int(w + 1) // 2 * 2, head(n) + ROW * len(d["rows"]))
 
-    comp_label = {}
+    comp_label = {(a, b): [""] for a, b in gen}
     for a, b, mult, label in comp:
         comp_label.setdefault((a, b), []).append(f"{mult}  {label}")
 
@@ -314,9 +458,47 @@ def report():
 
     def band(p, c):
         """The height above a stacked child that holds its link names, one a line."""
-        return LBL * len(comp_label[(p, c)])
+        return LBL * len([l for l in comp_label[(p, c)] if l])
+
+    def wrapped(n):
+        wn, hn = size[n]
+        blk = {"w": wn, "h": hn, "boxes": {}, "edges": [], "labels": []}
+        rows = []
+        for r in rows_of[n]:
+            x, parts = 0.0, []
+            for c in r:
+                cb = layout(c)
+                cx, _ = cb["boxes"][c]
+                parts.append((x, cb, c, cx + size[c][0] / 2))
+                x += cb["w"] + HG
+            rows.append(parts)
+        first, last = rows[0][0][0] + rows[0][0][3], rows[0][-1][0] + rows[0][-1][3]
+        nx = INDENT + (first + last) / 2 - wn / 2
+        dx = max(0, -nx)
+        blk["boxes"][n] = (nx + dx, 0)
+        ncx, trunk = nx + dx + wn / 2, INDENT / 2 + dx
+        bus, h = hn + BUS1, hn
+        for k, parts in enumerate(rows):
+            top, bottom = bus + BUS2, bus + BUS2
+            for px, cb, c, anchor in parts:
+                shift(cb, INDENT + dx + px, top)
+                merge(blk, cb)
+                bottom = max(bottom, top + cb["h"])
+                drop = INDENT + dx + px + anchor
+                route = ([(ncx, bus), (drop, bus)] if k == 0 else
+                         [(ncx, hn + BUS1), (trunk, hn + BUS1), (trunk, bus), (drop, bus)])
+                for lab in comp_label[(n, c)]:
+                    blk["edges"].append({"kind": "comp", "a": n, "b": c, "label": lab,
+                                         "pts": route, "exit": (0.5, 1), "entry": (0.5, 0),
+                                         "at": 1, "lift": -16})
+                blk["w"] = max(blk["w"], INDENT + dx + px + cb["w"], nx + dx + wn)
+            h, bus = bottom, bottom + BUS1 + 8
+        blk["h"] = h
+        return blk
 
     def layout(n, min_bus=0):
+        if n in rows_of:
+            return wrapped(n)
         wn, hn = size[n]
         blk = {"w": wn, "h": hn, "boxes": {n: (0, 0)}, "edges": [], "labels": []}
         cols = [[c for c in col if c not in beside] for col in cols_of.get(n, [])]
@@ -428,7 +610,32 @@ def report():
             blk["w"], blk["h"] = max(nx + wn, blk["w"], cb["w"] + ox), max(blk["h"], cb["h"])
         return blk
 
-    top_blk = layout(root)
+    def beside_each_other(blocks, gap):
+        out = blocks[0]
+        for b in blocks[1:]:
+            dx = out["w"] + gap
+            merge(out, shift(b, dx, 0))
+            out["w"], out["h"] = dx + b["w"], max(out["h"], b["h"])
+        return out
+
+    def one_above_another(blocks):
+        out = blocks[0]
+        for b in blocks[1:]:
+            dy = out["h"] + VG1
+            merge(out, shift(b, 0, dy))
+            out["w"], out["h"] = max(out["w"], b["w"]), dy + b["h"]
+        return out
+
+    if lay.get("root_columns"):
+        top_blk = beside_each_other(
+            [one_above_another([layout(r) for r in col]) for col in root_rows], HG * 2)
+    else:
+        top_blk = one_above_another(
+            [beside_each_other([layout(r) for r in row], HG * 2) for row in root_rows])
+    for e in top_blk["edges"]:
+        if (e["a"], e["b"]) in gen:
+            e["kind"] = "gen"
+    top_blk["labels"] = [(x, y, t) for x, y, t in top_blk["labels"] if t]
     boxes = {n: (int(x) + 12, int(y) + 12) for n, (x, y) in top_blk["boxes"].items()}
     shift(top_blk, 12, 12)
 
@@ -452,6 +659,8 @@ def report():
     cross += [("dep", a, b, f"«{l}»") for a, b, l in dep]
     skipped = []
     for kind, a, b, label in cross:
+        if a not in boxes or b not in boxes:
+            continue
         xa, ya, wa, ha = rect(a)
         xb, yb, wb, hb = rect(b)
         edge = None
@@ -517,26 +726,35 @@ def report():
            f"fontFamily=Helvetica;fontSize={HFS};fontStyle=1;align=center;verticalAlign=middle;")
     attr = ("text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;"
             f"spacingLeft=8;spacingRight=4;overflow=hidden;fontFamily=Helvetica;fontSize={FS};")
+    marked = {None: attr, "new": attr + "fontStyle=1;",
+              "removed": attr + "fontStyle=8;fontColor=#64748b;"}
     ident = {}
-    for i, n in enumerate(sorted(nodes)):
+    for i, n in enumerate(sorted(render_nodes)):
         ident[n] = f"n{i}"
         x, y = boxes[n]
         w, h = size[n]
-        c = ET.SubElement(root_el, "mxCell", {"id": ident[n], "value": n, "style": box,
+        d = render_nodes[n]
+        st = box.replace(f"startSize={HEAD};", f"startSize={head(n)};")
+        if "abstract" in d["flags"]:
+            st = st.replace("fontStyle=1;", "fontStyle=3;")
+        label = f"\u00abnew\u00bb\n{n}" if head(n) > HEAD else n
+        c = ET.SubElement(root_el, "mxCell", {"id": ident[n], "value": label, "style": st,
                                               "parent": "1", "vertex": "1"})
         ET.SubElement(c, "mxGeometry", {"x": str(x), "y": str(y), "width": str(w),
                                         "height": str(h), "as": "geometry"})
-        for j, r in enumerate(nodes[n]["rows"]):
+        for j, (r, m) in enumerate(zip(d["rows"], d["marks"])):
             k = ET.SubElement(root_el, "mxCell", {"id": f"{ident[n]}a{j}", "value": r,
-                                                  "style": attr, "parent": ident[n],
+                                                  "style": marked[m], "parent": ident[n],
                                                   "vertex": "1"})
-            ET.SubElement(k, "mxGeometry", {"y": str(HEAD + ROW * j), "width": str(w),
+            ET.SubElement(k, "mxGeometry", {"y": str(head(n) + ROW * j), "width": str(w),
                                             "height": str(ROW), "as": "geometry"})
     base = ("edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;jettySize=auto;orthogonalLoop=1;"
             f"strokeWidth=1.5;fontSize={FS};fontFamily=Helvetica;labelBackgroundColor=#ffffff;")
     kinds = {
         "comp": base + "strokeColor=#475569;startArrow=diamondThin;startFill=1;startSize=12;"
                        "endArrow=none;",
+        "gen": base + "strokeColor=#475569;startArrow=block;startFill=0;startSize=12;"
+                      "endArrow=none;",
         "assoc": base + "strokeColor=#6d28d9;fontColor=#6d28d9;endArrow=open;endFill=0;"
                         "endSize=10;",
         "dep": base + "strokeColor=#6d28d9;fontColor=#6d28d9;dashed=1;dashPattern=8 4;"
@@ -571,11 +789,16 @@ def report():
         '<mxfile host="Electron" agent="scripts/diagrams/class-diagram.py" version="29.0.3">'
         f'<diagram name="{NAMES[CHAPTER]}" id="0">'
         f'{ET.tostring(model, encoding="unicode")}</diagram></mxfile>')
-    W_, H_ = int(top_blk["w"]) + 24, int(top_blk["h"]) + 24
+    # Nested stacks can extend beyond the layout block's cached dimensions.
+    # Estimate print size from the actual boxes and labels written to XML.
+    geometry = [c.find("mxGeometry") for c in root_el.findall("mxCell")
+                if c.get("vertex") == "1" and c.get("parent") == "1"]
+    W_ = int(max(float(g.get("x", 0)) + float(g.get("width", 0)) for g in geometry)) + 12
+    H_ = int(max(float(g.get("y", 0)) + float(g.get("height", 0)) for g in geometry)) + 12
     # the largest scale that fits a landscape A4 page of this report
     # (242 mm by 160 mm), and the attribute text height that gives
     s = min(242 / W_, 160 / H_)
-    print(f"nodes={len(nodes)} size={W_}x{H_} scale={s:.3f}mm/px "
+    print(f"nodes={len(render_nodes)} size={W_}x{H_} scale={s:.3f}mm/px "
           f"text={FS * s / 0.3528:.1f}pt not drawn: {skipped or 'none'}")
 
 

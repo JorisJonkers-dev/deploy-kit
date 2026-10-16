@@ -1,199 +1,132 @@
 \section{Alternatives and Justification}
 \label{sec:alternatives}
 
-This section answers three questions. Could existing Kubernetes tools replace
-the transformation (Section~\ref{sec:existingtools})? Which language should it
-be written in (Section~\ref{sec:language})? How should it be structured
-(Section~\ref{sec:structure})? It gives the answers in general terms;
-Section~\ref{sec:design} gives the detail.
-
 \subsection{Existing Kubernetes Modelling Tools}
 \label{sec:existingtools}
 
-Three open-source tools that model Kubernetes applications were reviewed, two of
-them graphical. For each, the questions were: can it produce the resolved model
-or the files from what an author declares? If not, can it take part in the
-pipeline? Table~\ref{tab:tools} gives the answers.
+Three open-source tools were reviewed to see whether they could produce the
+\texttt{Resolved Deployment} from \texttt{Project Intent} and
+\texttt{Platform Intent}, or at least take part in the pipeline.
+Table~\ref{tab:tools} compares them.
 
-\begin{table}[!htbp]
+\begin{table}[H]
 \centering
-\begin{tabular}{>{\raggedright\arraybackslash}p{0.12\linewidth}>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.26\linewidth}}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.15\linewidth}>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.24\linewidth}}
 \hline
 \textbf{Tool} & \textbf{What it does} & \textbf{Why it cannot replace the resolution} & \textbf{Where it could help} \\
 \hline
-Kube\-Diagrams \cite{kubediagrams} &
-  Draws a diagram from Kubernetes files or a live cluster, with a
-  configurable mapping from resource kinds to icons and edges. &
-  It goes the other way, from files to a picture, and derives nothing. &
-  A view of the generated files, showing the links a project document
-  produces. \\
+KubeDiagrams \cite{kubediagrams} &
+  Draws diagrams from Kubernetes files or a live cluster, mapping kinds to icons. &
+  It needs Kubernetes resources as input, so it cannot derive them from deployment intent. &
+  It could visualize the generated files to show links produced by a \texttt{Project} document. \\
 KubeOrch \cite{kubeorch} &
-  A drag-and-drop editor of services; its back end wires their ports, fills in
-  templates, writes Kubernetes files and deploys them. &
-  A stored graph without metamodel or constraints; rules in Go code; deploys
-  directly, not through Flux. &
-  A graphical notation: its graph maps onto a project document's
-  applications and dependency edges. \\
+  A drag-and-drop editor whose back end wires ports, fills templates, writes files and deploys. &
+  It has no metamodel and no constraints; its rules are Go code, and it deploys directly, not via Flux. &
+  Its graph notation could inform a \texttt{Project} document editor. \\
 kubert \cite{kubert} &
-  A command-line tool that switches cluster contexts and runs one command on
-  several clusters. &
-  An operations tool; it models and generates nothing. &
-  Applying files to several clusters, which is out of scope. \\
+  A command-line tool to switch cluster contexts and run commands on multiple clusters. &
+  It is an operations tool and does not model or generate anything. &
+  It could apply files to several clusters, which is out of scope. \\
 \hline
 \end{tabular}
-\caption{Existing Kubernetes Modelling Tools Against the Problem}
+\caption{Existing Kubernetes Modelling Tools}
 \label{tab:tools}
 \end{table}
 
-None of the three derives values from what an author declares. KubeOrch comes
-closest: its automatic wiring resolves a link between two services to an
-address and a port, as the resolution does for a dependency edge. But it has no
-platform document, node contract or images lock, so it cannot derive placement,
-image digests, backups or network peers, and its result is not a model that a
-constraint or an oracle can check. The tools can therefore sit beside the
-transformation, not replace it. Two integrations follow from the design:
-
-\begin{itemize}
-  \item the resolved dependency edges and network peers are exactly the links a
-    KubeDiagrams view of the Task~3 files would draw, so the drawing is a cheap
-    visual cross-check of \texttt{dependencies.json};
-  \item a graphical editor in KubeOrch's style could write project documents,
-    because its models and the Xtext grammar's would be instances of the same
-    Ecore metamodel.
-\end{itemize}
-
-Neither is built, because neither changes what the transformation must derive.
+KubeOrch comes closest: it turns service links into addresses and ports.
+However, it has no shared platform policy or pinned-input model from which
+to derive placement, locked images or backups, and no resolved intermediate
+model to test. KubeDiagrams could inspect the Task~3 output, while a
+KubeOrch-style editor could author \texttt{Project Intent} using the same
+Ecore metamodel as the transformation.
 
 \subsection{The Transformation Language}
 \label{sec:language}
 
-Four languages were candidates: ATL, QVT-Relations, QVT-Operational (QVTo),
-and Java, by hand or with a small rule library such as SiTra.
-QVT-Relations was dropped first. Its strengths, automatic traces and
-synchronisation in both directions, buy nothing for a one-way derivation, and in
-published experiments its engine ran out of heap space on larger
-models~\cite{amstel2011}. Table~\ref{tab:languages} compares the other three
-against what this transformation has to do.
+The assignment permits ATL or QVT-Operational (QVTo). QVTo was chosen
+so that the deployment and its \texttt{Revision}s could be derived in one
+transformation. A \texttt{Revision} must cover the completed
+\texttt{Application}, including the values derived for its
+\texttt{Process}es, routes and release gate. ATL's target models are
+write-only, so this calculation would need to reconstruct the resolved
+values from the source or run a further transformation over the output.
+QVTo lets the deployment mapping read the assembled target in its
+\texttt{end} section. This keeps the release identifier with the operation
+that constructs the deployment and gives it access to the values that
+operation has produced.
 
-\begin{table}[!htbp]
-\centering
-\begin{tabular}{>{\raggedright\arraybackslash}p{0.27\linewidth}>{\raggedright\arraybackslash}p{0.20\linewidth}>{\raggedright\arraybackslash}p{0.20\linewidth}>{\raggedright\arraybackslash}p{0.20\linewidth}}
-\hline
-\textbf{Requirement} & \textbf{ATL} & \textbf{QVTo} & \textbf{Java} \\
-\hline
-Derive a value from the whole cluster, not from one source element &
-  helpers outside the rules & queries, in OCL & methods \\
-Create elements in a fixed order &
-  order of matched rules and bindings unspecified & explicit, by call order & explicit \\
-Refer to a target element another rule created &
-  implicit, for matched and lazy rules & explicit \texttt{resolveone} through the trace & a trace kept by hand \\
-Set a value once the rest of the element exists &
-  imperative \texttt{do} section & \texttt{end} section & any order \\
-Change a model in place (the estate pass) &
-  refining mode & \texttt{inout} extent & any \\
-\hline
-\end{tabular}
-\caption{Transformation Languages Against the Requirements of the Resolution}
-\label{tab:languages}
-\end{table}
+The required construction order also favoured QVTo. Resolved
+\texttt{Process}es must exist before routes and \texttt{ReleaseGate}
+members can refer to them; the \texttt{Revision} must be computed after
+these objects have been populated. Explicit mapping calls make those
+prerequisites visible in the caller, with trace lookup supplying the
+references to previously created objects. ATL's called rules could also
+express an execution order. The reason for preferring QVTo was the
+combination of that control and access to the populated target, rather
+than sequencing on its own.
 
-The deciding property is the shape of the derivations. Most values in a
-resolved model do not come from one source element: the eligible machines of a
-process depend on the node contract, a route's precedence on the other routes,
-and the ingress peers of a process on every process in the cluster that depends
-on it. ATL is strongest when one source element maps to one target element,
-through matched rules whose order the engine chooses. Here most of the work
-would move into helpers and called rules, which is imperative ATL without the
-matching, and several values need the rest of the model to exist first. QVTo
-makes both visible: the caller decides the order, and every reference from one
-created element to another goes through the trace explicitly. Its expressions
-are OCL, which the constraints of Task~1 already use. A Java transformation
-would be the easiest to debug, but it keeps the trace by hand and hides the
-rules in general-purpose code, which practitioners themselves find hard to
-maintain for model management~\cite{burgueno2019}.
-
-QVTo was therefore chosen. It is also the second most used transformation
-language after ATL, and its users name its maturity and its standard as the
-reasons~\cite{burgueno2019}. Speed did not decide the choice: QVTo ran more than
-five times slower than ATL in published experiments~\cite{amstel2011}, which is
-acceptable for a cluster of about ten projects. The one operation QVTo cannot
-express, a SHA-256 hash, comes from a Java black-box library, the mechanism QVT
-defines for calling external code (Section~\ref{sec:blackbox}).
+This choice makes correct ordering the transformation author's
+responsibility. Adding a reference requires its target to be created
+first, and adding a value covered by the \texttt{Revision} requires it to
+be assigned before hashing. That responsibility was accepted because the
+dependencies are known from the deployment design and can be reviewed
+together in the calling mappings.
 
 \subsection{The Structure of the Transformation}
 \label{sec:structure}
 
-Table~\ref{tab:structure} lists the structural questions, the alternatives
-considered, and the choice made.
+Every derived value must be recorded in a model before code generation.
+This allows tests to compare the values with the oracles independently of
+the templates that write them to files.
 
-\begin{table}[!htbp]
-\centering
-\begin{tabular}{>{\raggedright\arraybackslash}p{0.20\linewidth}>{\raggedright\arraybackslash}p{0.32\linewidth}>{\raggedright\arraybackslash}p{0.40\linewidth}}
-\hline
-\textbf{Question} & \textbf{Alternatives} & \textbf{Choice and reason} \\
-\hline
-Where values are derived &
-  In the Acceleo templates of Task~3; or in a model-to-model step before them &
-  A model-to-model step. Every derived value is then in a model that a test can
-  compare, and the templates only write values out. \\
-One transformation or a chain &
-  One from the authored model; or a lowering, the resolution and an estate pass &
-  A chain of three. The resolution reads one level of values instead of three,
-  and the estate pass computes the one value that needs every project's
-  output. \\
-How much to resolve per run &
-  The whole cluster in one model; or one project per run, reading all &
-  One project per run, reading all. It matches the production implementation
-  and its oracles, and keeps each model small. \\
-How other documents are found &
-  \texttt{allInstances()} over everything loaded; or typed extents, read once
-  into properties &
-  Extents. Every query sees exactly the documents of the run. \\
-What to do with an underivable value &
-  Write a default; write a diagnostic model; stop with a message &
-  Stop. A default would produce files that deploy the wrong thing. \\
-\hline
-\end{tabular}
-\caption{Structural Alternatives and the Choices Made}
-\label{tab:structure}
-\end{table}
-
-\subsubsection{A Lowering Before the Resolution}
+\subsubsection{Flattening Before the Resolution}
 \label{sec:twotransformations}
 
-An author may declare a secret, a dependency or a startup budget once for a
-whole project, once for an application, or on a single process. The lowering
-merges these levels onto each process, so that each process carries everything
-that applies to it. If the resolution read the authored model instead, every
-rule that reads a process would have to merge three levels again, and could
-merge them differently in different rules. With a lowering, each rule reads one
-place. A preparation step before the main transformation is also the QVT
-specification's own example of composing transformations~\cite[Section~8.1.13]{qvt13};
-here the Java pipeline chains the three instead of QVTo's \texttt{access
-transformation}, so each can be run and tested on its own.
+A single transformation from authored model to \texttt{Resolved Deployment}
+would work, but a flattening precedes the resolution. The flattening copies
+shared declarations down to each \texttt{Process}. For example, a
+\texttt{Project} startup budget of 30s reaches every \texttt{Process}
+except one that declares a more specific value, such as 20s. Resolution can
+then read the selected budget directly from each \texttt{Process}, without
+searching its ancestors. QVT specification Section~8.1.13 likewise composes
+a preparation transformation before the main one~\cite{qvt13}, but the
+reason for this split is to isolate declaration
+precedence from deployment derivation. Its cost is an additional model and
+the \texttt{EffectiveProject} and \texttt{EffectiveApplication} classes,
+whose copying and override behaviour need their own tests.
 
-\subsubsection{One Project per Run, All Projects as Input}
+\subsubsection{Resolving One Project with All Projects as Input}
 \label{sec:perproject}
 
-The resolution runs once per project, with the other projects as inputs:
-\texttt{auth} reads \texttt{data} to find its database's address, and
-\texttt{data} reads \texttt{auth} to find who may reach it. One model for the
-whole cluster would also work, since QVTo can create several root objects in one
-run, but the production implementation and its oracles are per project, and a
-project's model is then what its repository publishes. The cost is the one
-value that needs every project's output, which the estate pass computes.
+One resolution over all \texttt{Project}s at once could produce one
+\texttt{Resolved Deployment} for the whole estate. Instead, each invocation
+resolves one \texttt{Project} into its own model while reading every
+\texttt{Project}'s documents from the same input extent. This preserves a
+separate output and oracle comparison for each \texttt{Project}, while the
+shared input supplies the cluster-wide view needed for dependencies, routes
+and network access. It does not make a \texttt{Project} independently
+resolvable: a change elsewhere can affect its output. Values that depend on
+all resolved outputs, including the digest over the Vault documents, require
+the final pass over those models (Section~\ref{sec:finalpass}). A single
+estate-wide output could compute these values in the same invocation but
+would combine the output and comparison units.
 
-\subsubsection{Typed Extents Instead of a Global Scan}
+\subsubsection{Typed Extents}
 \label{sec:extentsalternative}
 
-A rule could find another document with OCL's \texttt{allInstances()}, as some
-cross-document constraints of Task~1 do. That costs a scan of everything loaded
-on each evaluation, and gives a result that depends on which files happened to
-be loaded together. The transformation avoids both: each input is selected
-once, by type, from two extents that hold exactly the documents of the run, and
-every rule navigates from there (Section~\ref{sec:interface}). The constraints still use \texttt{allInstances()}, guarded so that they hold
-over a file read alone. The pipeline therefore checks each file alone and then
-the whole set of a run together, and the platform document is always in that
-set, so a guarded constraint never skips in a run. Moving those
-constraints onto one root object that holds the set, so that they too navigate
-instead of scan, is decided but not yet built (Section~\ref{sec:limitations}).
+A rule also has to find the run's other documents. An unqualified
+\texttt{allInstances()} lookup does not identify which input model is
+intended, particularly when authored and flattened \texttt{Process}es are
+both loaded. Instead, the transformation selects roots by type from the
+named \texttt{intent} and \texttt{pinned} extents and stores them in
+transformation properties such as \texttt{projects} and \texttt{lock}.
+Rules navigate from these properties, making their input scope explicit
+(Section~\ref{sec:shape}).
+
+\subsubsection{Rejecting Unresolvable Inputs}
+\label{sec:abortsalternative}
+
+A default for a value the resolution cannot derive would give a file that
+looks valid and deploys the wrong configuration, so the run aborts instead,
+through a fatal assertion in an abort query (Section~\ref{sec:aborts}). The
+caller then has to handle the failure.
