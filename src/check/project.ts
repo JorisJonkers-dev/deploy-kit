@@ -366,7 +366,11 @@ function heldPaths(document: ProjectIntentDocument): ReadonlySet<string> {
     ]),
   ];
   return new Set(
-    grants.flatMap((grant) => ("keys" in grant ? [grant.path] : [])),
+    grants.flatMap((grant) =>
+      // A database or transit grant names no kv path an `adopt` could match.
+      // Stryker disable next-line ArrayDeclaration
+      "keys" in grant ? [grant.path] : [],
+    ),
   );
 }
 
