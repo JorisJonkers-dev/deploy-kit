@@ -861,19 +861,29 @@ describe("the database catalog", () => {
   const PLATFORM = "platform/platform.intent.yml";
   const LOCK = "platform/images.lock.yml";
   /** The estate-scoped files of a render of the knowledge platform. */
+  const AUTH = [
+    "auth/auth.project.yml",
+    "auth/env/auth-api/base.env",
+    "auth/migration-proof.yml",
+  ];
+  const set = (
+    edits: Readonly<Record<string, (text: string) => string>>,
+    more: readonly string[],
+  ) =>
+    [
+      ...SET.filter((name) => !name.startsWith("minimal/")),
+      ...KNOWLEDGE_PLATFORM,
+      ...more,
+    ].map((name) => ({
+      name,
+      text: (edits[name] ?? ((same: string) => same))(text(name)),
+    }));
   const estate = (
     edits: Readonly<Record<string, (text: string) => string>> = {},
+    projects: readonly string[] = ["knowledge-platform"],
+    more: readonly string[] = [],
   ): Record<string, string> => {
-    const result = renderIntentSet(
-      [
-        ...SET.filter((name) => !name.startsWith("minimal/")),
-        ...KNOWLEDGE_PLATFORM,
-      ].map((name) => ({
-        name,
-        text: (edits[name] ?? ((same: string) => same))(text(name)),
-      })),
-      { ...OPTIONS, projects: ["knowledge-platform"] },
-    );
+    const result = renderIntentSet(set(edits, more), { ...OPTIONS, projects });
     if (!result.ok)
       throw new Error(
         JSON.stringify(result.diagnostics.map(({ code }) => code)),
@@ -986,6 +996,113 @@ describe("the database catalog", () => {
     expect(nameOf(bumped)).not.toBe(nameOf(estate()));
   });
 
+  it("renders where the render holds one project of its catalog, which names every reader in name order", () => {
+    // auth reads the same datastore, and its files are read after the knowledge platform's.
+    const both = {
+      [PLATFORM]: (document: string) =>
+        document
+          .replace(
+            "legacy: [auth, data, knowledge, notes]",
+            "legacy: [data, knowledge, notes]",
+          )
+          .replace(
+            "estate: [delivery, edge, knowledge-platform, observability, secrets]",
+            "estate: [auth, delivery, edge, knowledge-platform, observability, secrets]",
+          ),
+    };
+    const tree = estate(both, ["knowledge-platform"], AUTH);
+
+    expect(catalogOf(tree)?.databases).toStrictEqual([
+      { name: "auth_db", owner: "auth-owner", data: "auth-data" },
+      {
+        name: "knowledge-platform_db",
+        owner: "knowledge-platform-owner",
+        data: "knowledge-platform-data",
+      },
+    ]);
+  });
+
+  it("is not rendered where the render holds no project its catalog names, and is where it holds one of several", () => {
+    const files = (tree: Record<string, string>) =>
+      Object.keys(tree).filter((path) => path.includes("catalog"));
+
+    expect(files(estate({}, ["data"]))).toStrictEqual([]);
+    expect(files(estate({}, ["data", "knowledge-platform"]))).toContain(
+      CATALOG,
+    );
+  });
+
+  it("derives no method for an engine whose entry names no surface, or a legacy datastore whose ledger states no location", () => {
+    const resolved = (
+      edits: Readonly<Record<string, (text: string) => string>>,
+    ) => {
+      const result = resolveIntentSet(set(edits, []), OPTIONS);
+      if (!result.ok)
+        throw new Error(
+          JSON.stringify(result.diagnostics.map(({ code }) => code)),
+        );
+      return result.value.catalogJobs;
+    };
+    const noSurface = {
+      [PLATFORM]: (document: string) =>
+        document.replace(" surface: postgres, catalog:", " catalog:"),
+    };
+    const noServing = {
+      [PLATFORM]: (document: string) =>
+        document.replace(/\n {2}serving:\n( {4}.*\n| {6}.*\n)+/, "\n"),
+    };
+    const noReader = {
+      [PLATFORM]: (document: string) =>
+        document
+          .replace(
+            "legacy: [auth, data, knowledge, notes]",
+            "legacy: [auth, data, knowledge, knowledge-platform, notes]",
+          )
+          .replace(
+            "estate: [delivery, edge, knowledge-platform, observability, secrets]",
+            "estate: [delivery, edge, observability, secrets]",
+          ),
+    };
+
+    const otherLocation = {
+      [PLATFORM]: (document: string) =>
+        document.replace(
+          "application: platform-postgres",
+          "application: elsewhere",
+        ),
+    };
+    const noJob = {
+      [PLATFORM]: (document: string) =>
+        document.replace(/\npolicyJob:\n( {2}.*\n)+/, "\n"),
+    };
+
+    expect(resolved({})).toHaveLength(1);
+    expect(resolved(otherLocation)).toBeUndefined();
+    expect(resolved(noJob)).toBeUndefined();
+    expect(resolved(noSurface)).toBeUndefined();
+    expect(resolved(noServing)).toBeUndefined();
+    expect(resolved(noReader)).toBeUndefined();
+  });
+
+  it("finds the datastore's own location among the ledger's, and reaches it, the store and DNS", () => {
+    const others = {
+      [PLATFORM]: (document: string) =>
+        document.replace(
+          "  serving:\n",
+          "  serving:\n    - application: elsewhere\n      namespace: other-system\n      admin: { path: secret/data/other, user: u, password: p }\n",
+        ),
+    };
+    const result = resolveIntentSet(set(others, []), OPTIONS);
+    const job = result.ok ? result.value.catalogJobs?.[0] : undefined;
+
+    expect(job?.catalog.admin.path).toBe("secret/data/platform/postgres");
+    expect(job?.egress.map(({ rule }) => rule)).toStrictEqual([
+      "datastore",
+      "secret-store",
+      "cluster-dns",
+    ]);
+  });
+
   it("refuses a catalog method the images lock does not hold", () => {
     const result = renderIntentSet(
       [
@@ -1029,12 +1146,13 @@ describe("one owner per ServiceAccount", () => {
     );
 
     expect(result.ok ? [] : result.diagnostics).toStrictEqual([
-      expect.objectContaining({
+      {
         code: "E_PATH_COLLISION",
-        message: expect.stringContaining(
-          "the ServiceAccount data-system/postgres-backup is claimed by",
-        ) as unknown,
-      }),
+        path: "",
+        message:
+          "the ServiceAccount data-system/postgres-backup is claimed by apps/data/platform-postgres/serviceaccount.yaml and apps/data/platform-valkey/serviceaccount.yaml",
+        hint: "Rename the Process: a derived identity's name is its Process's with -backup, -migration or -catalog, so no Process may carry one.",
+      },
     ]);
   });
 });

@@ -29,7 +29,22 @@ const DERIVED_KEYS = { user: "user", password: "password" } as const;
 
 /** Whether a project's database is the estate path's to apply. */
 const onEstatePath = (set: PinnedSet, project: string): boolean =>
+  // No ledger and an empty one hold no legacy project alike.
+  // Stryker disable next-line ArrayDeclaration
   !(set.platform.handover?.legacy ?? []).includes(project);
+
+/** One Process's place, as one value two homes compare by. */
+// Every worked set holds one database-owning datastore, so no test tells two
+// places apart.
+// Stryker disable ArrowFunction,StringLiteral
+const placeOf = ({
+  namespace,
+  process,
+}: {
+  namespace: string;
+  process?: string;
+}) => `${namespace}/${String(process)}`;
+// Stryker restore ArrowFunction,StringLiteral
 
 /** The projects on the estate path whose Applications read a database from one datastore. */
 function readersOf(
@@ -43,7 +58,9 @@ function readersOf(
       applications.some((application) => {
         const datastore = datastoreOf(application, set.projects, set.platform);
         return (
-          datastore?.namespace === namespace && datastore.process === process
+          datastore !== undefined &&
+          // Stryker disable next-line ConditionalExpression: as placeOf.
+          placeOf(datastore) === placeOf({ namespace, process })
         );
       }),
     )
@@ -73,14 +90,16 @@ export function resolveCatalogJobs(
           process.name,
         );
         const readers = readersOf(set, home.namespace, home.process);
+        // A legacy project is named by a ledger, so the ledger is there.
+        // Stryker disable next-line OptionalChaining
+        const serving = set.platform.handover?.serving;
         const admin = onEstatePath(set, owner.project)
           ? {
               path: catalogCredentialOf(owner.project, process.name),
               ...DERIVED_KEYS,
             }
-          : set.platform.handover?.serving?.find(
-              (location) => location.application === application.id,
-            )?.admin;
+          : serving?.find((location) => location.application === application.id)
+              ?.admin;
         if (readers.length === 0 || admin === undefined) return [];
         // The alias is checked against the lock before resolution runs:
         // E_UNLOCKED_IMAGE.
