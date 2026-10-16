@@ -88,7 +88,8 @@ Between them, the examples exercise every row of Table~\ref{tab:rules}.
 and external-provider rules run in \texttt{auth}, which holds three secrets
 and reaches a mail server outside the cluster. The volume, backup and
 configuration-file rules run in \texttt{data}, which holds one volume of each
-durability class, a \texttt{Sidecar} and an \texttt{Asset}. The rolling and
+durability class (reconstructible, recoverable, irreplaceable), a \texttt{Sidecar} and a
+configuration file. The rolling and
 stop-start switchover rules run in \texttt{delivery}, which also has API
 access. The \texttt{secrets} example models the Secret Store itself, whose one
 \texttt{Process} is interrupted and runs under a stop-start switchover. The
@@ -130,8 +131,8 @@ five examples and the cluster-wide tree, including the final pass job.
 \label{sec:thin}
 
 Two examples, \texttt{edge} and \texttt{observability}, have no
-\texttt{Revision}, no committed generated files and no expected model. Their edge files
-contain no dependency edges, so the evidence that they resolve correctly is that the run
+\texttt{Revision}, no committed generated files and no expected model. Their
+\texttt{dependencies.json} files list no dependency edges, so the evidence that they resolve correctly is that the run
 succeeds and that other examples, which look up their proxies and collectors,
 reproduce their expected files.
 
@@ -150,7 +151,7 @@ no longer checks independently.
 
 Comparisons found a defect no single example had shown: the path plan
 placed cluster-wide route files under \path{apps/edge/}, which is also the
-directory of the project named \texttt{edge}. The \texttt{edge} example's files would
+directory of the \texttt{Project} named \texttt{edge}. The \texttt{edge} \texttt{Project}'s files would
 have mixed with routes from every other \texttt{Project}. The fix moved all
 cluster-wide files under \path{estate/} in both implementations, and the
 committed files now hold each file at its correct path.
