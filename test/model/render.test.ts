@@ -1156,3 +1156,36 @@ describe("one owner per ServiceAccount", () => {
     ]);
   });
 });
+
+// REQ-062 (docs/requirements.md): an edge to a database derives its Process's
+// credential, and one delivered to the environment is a dynamic secret its
+// variables read.
+describe("the credential an edge derives", () => {
+  const rendered = () => {
+    const result = renderIntentSet(
+      [
+        ...SET.filter((name) => !name.startsWith("minimal/")),
+        ...KNOWLEDGE_PLATFORM,
+      ].map((name) => ({ name, text: text(name) })),
+      { ...OPTIONS, projects: ["knowledge-platform"] },
+    );
+    return asTree(
+      result.ok ? artifact(result.value, "knowledge-platform") : undefined,
+    );
+  };
+
+  it("is a dynamic secret of the owner role where the Application migrates itself, read as variables", () => {
+    const tree = rendered();
+    const vso = tree["apps/knowledge-platform/hindsight/vso.yaml"] ?? "";
+    const workload =
+      tree["apps/knowledge-platform/hindsight/workload.yaml"] ?? "";
+
+    expect(vso).toContain("kind: VaultDynamicSecret\n");
+    expect(vso).toContain(
+      "  mount: database\n  path: creds/knowledge-platform-owner\n",
+    );
+    expect(workload).toContain(
+      "- name: PGUSER\n              valueFrom:\n                secretKeyRef:\n                  name: hindsight-api-database-creds-knowledge-platform-owner\n                  key: username\n",
+    );
+  });
+});

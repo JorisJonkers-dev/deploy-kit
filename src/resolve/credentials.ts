@@ -45,7 +45,8 @@ export function resolveCredentials(
   );
   if (edge === undefined) return [];
   const path = credentialPathOf(credentialRoleOf(context));
-  const delivery = edge.credentials?.delivery ?? "self";
+  // ruleDiagnostics refused a credential delivered to a file.
+  const delivery = edge.credentials?.delivery === "env" ? "env" : "self";
   return [
     {
       engine: "database",

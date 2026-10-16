@@ -445,19 +445,31 @@ function credentialRefusals(
 ): Refusal[] {
   // A missing list and an empty one hold no edge alike.
   // Stryker disable next-line ArrayDeclaration
-  return (edges ?? []).flatMap((edge, e) =>
-    edge.credentials?.delivery === "env" &&
-    edge.credentials.rotation.tolerates === "reload"
+  return (edges ?? []).flatMap((edge, e): Refusal[] => {
+    const at_ = `${at}/dependsOn/${e}/credentials`;
+    if (edge.credentials?.delivery === "file")
+      return [
+        {
+          code: "schema",
+          path: at_,
+          message:
+            "an edge delivers its credential to the Process itself or to its environment, never to a file",
+          hint: "Deliver it `self` or `env`.",
+        },
+      ];
+    return edge.credentials?.delivery === "env" &&
+      edge.credentials.rotation.tolerates === "reload"
       ? [
           {
             code: "E_ENV_CANNOT_RELOAD",
-            path: `${at}/dependsOn/${e}/credentials/rotation`,
-            message: "an environment variable cannot be reloaded without a restart",
+            path: `${at_}/rotation`,
+            message:
+              "an environment variable cannot be reloaded without a restart",
             hint: "Tolerate a restart, or let the application read its credential itself.",
-          } satisfies Refusal,
+          },
         ]
-      : [],
-  );
+      : [];
+  });
 }
 
 /** Every rule this document breaks, in the order the document reads. */

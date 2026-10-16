@@ -119,7 +119,8 @@ query afterOf(prj : EffectiveProject) : Sequence(String) =
 		->collect(e | projectOf(e.application))
 		->select(other | other <> null and other <> prj.project)
 		->collect(other | unitOf(other))
-	->union(if prj.applications.processes->exists(p | p.secrets->notEmpty())
+	->union(if prj.applications.processes->exists(p | p.secrets->notEmpty()
+				or p.dependsOn->exists(e | reachesDatabase(e)))
 			or prj.applications->exists(a | managed(a))
 		then Sequence{SECRETS_UNIT} else Sequence{} endif))
 	->asSet()->sortedBy(n | n)->asSequence();
@@ -479,10 +480,11 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	memory := self.placement.memory;
 	cpu := self.placement.cpu;
 	hardening := estate.hardening.spelling();
-	secrets := self.secrets->collect(g | g.resolvedFor(self));
+	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj));
 	-- The pod authenticates only where a grant is delivered `self`, or where it
 	-- holds Kubernetes API access.
-	identityToken := self.api <> null or self.secrets->exists(g | g.delivery = Delivery::selfDelivery);
+	identityToken := self.api <> null or self.secrets->exists(g | g.delivery = Delivery::selfDelivery)
+		or self.edgeCredentials(app, prj)->exists(g | g.delivery = 'self');
 	-- The platform admits the holder, or E_PROCESS_RBAC_GRANT refused it, so the
 	-- block that says where the API answers is there.
 	if self.api <> null then api := object ResolvedApiAccess {
@@ -582,6 +584,34 @@ query boundOf(p : PI::Process) : Binding =
 query destinationOf(holder : String, path : String) : String =
 	holder + '-' + (if path.startsWith('secret/data/') and path.size() > 12 then path.substring(13, path.size()) else path endif)
 		.replaceAll('/', '-');
+
+-- The credential the Process's first edge to a database derives
+-- (spec/v1/10-project-intent.md#migration): the project's data role, or its
+-- owner role where the Application migrates itself, delivered as the edge says.
+query PI::Process::edgeCredentials(app : EffectiveApplication, prj : EffectiveProject) : Sequence(ResolvedGrant) =
+	let edges : Sequence(DependencyEdge) = self.dependsOn->select(e | reachesDatabase(e))->asSequence() in
+	if edges->isEmpty() then Sequence{} else
+	let edge : DependencyEdge = edges->first() in
+	let credential : String = 'database/creds/' + credentialRole(app, prj) in
+	let delivered : Boolean = edge.credentials <> null and edge.credentials.delivery = Delivery::env in
+	Sequence{object ResolvedGrant {
+		engine := 'database';
+		delivery := if delivered then 'env' else 'self' endif;
+		paths := Sequence{object PolicyPath { path := credential; allows := Sequence{'read'}; }};
+		if delivered then destination := destinationOf(self.name, credential) endif;
+		if edge.credentials <> null and edge.credentials.rotation.tolerates = Tolerance::restart then
+			restartTargets := Sequence{self.name}
+		endif;
+	}} endif;
+
+-- The role a Process's edge to its project's database derives.
+query credentialRole(app : EffectiveApplication, prj : EffectiveProject) : String =
+	prj.project + (if app.migration <> null and app.migration.oclIsKindOf(SelfMigration) then '-owner' else '-data' endif);
+
+-- Whether an edge reaches a surface of a Process whose engine owns databases.
+query reachesDatabase(e : DependencyEdge) : Boolean =
+	projects.applications->exists(a | a.id = e.application
+		and a.processes->exists(q | ownsDatabases(q) and q.provides->exists(s | s.key = e.surface)));
 
 -- A `kv` grant keeps its path and keys; a `transit` or `database` grant becomes
 -- the paths its policy covers. A rotation that tolerates only a restart restarts
@@ -900,9 +930,21 @@ query Placeholder::entryFor(variable : String, prj : EffectiveProject) : EnvEntr
 				secret := object SecretReference { path := secretPath; key := secretKey; };
 			}
 		else unresolved(variable, 'a placeholder no env grant of the Process holds is E_UNAUTHORISED_SECRET_REFERENCE') endif
+	else if self.kind = PlaceholderKind::dependency and self.source.lastIndexOf('.') > 0
+			and Sequence{'username', 'password'}->includes(self.source.substring(self.source.lastIndexOf('.') + 1, self.source.size())) then
+		-- A login is read from the Secret the edge's credential is synced to, or
+		-- E_UNRESOLVED_PLACEHOLDER refused the placeholder.
+		object EnvEntry {
+			name := variable;
+			secret := object SecretReference {
+				path := 'database/creds/' + credentialRole(
+					owner.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveApplication), prj);
+				key := self.source.substring(self.source.lastIndexOf('.') + 1, self.source.size());
+			};
+		}
 	else
 		object EnvEntry { name := variable; value := self.textFor(owner, prj) + suffix; }
-	endif endif;
+	endif endif endif;
 
 query Placeholder::textFor(owner : PI::Process, prj : EffectiveProject) : String =
 	if self.kind = PlaceholderKind::dependency then dependencyValue(self.source, owner)
@@ -1610,7 +1652,8 @@ query appAfterOf(app : EffectiveApplication, prj : EffectiveProject) : Sequence(
 		->collect(e | projectOf(e.application))
 		->select(other | other <> null and other <> prj.project)
 		->collect(other | unitOf(other))
-	->union(if app.processes->exists(p | p.secrets->notEmpty()) or managed(app)
+	->union(if app.processes->exists(p | p.secrets->notEmpty() or p.dependsOn->exists(e | reachesDatabase(e)))
+			or managed(app)
 		then Sequence{SECRETS_UNIT} else Sequence{} endif))
 	->asSet()->sortedBy(n | n)->asSequence();
 

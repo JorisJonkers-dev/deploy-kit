@@ -114,7 +114,8 @@ DependencyEdge returns DependencyEdge:
 	& ('credentials' ':' BEGIN credentials=Credentials END)?);
 
 Credentials returns Credentials:
-	'rotation' ':' BEGIN rotation=Rotation END;
+	(('delivery' ':' delivery=Delivery)?
+	& ('rotation' ':' BEGIN rotation=Rotation END));
 
 // How an Application's schema moves: `self`, `none`, or a changelog block.
 Migration returns Migration:

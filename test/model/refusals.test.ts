@@ -182,6 +182,17 @@ describe("an edge's credential delivered to the environment", () => {
     ]);
     expect(refusalsOf(edge("restart"))).toStrictEqual([]);
   });
+
+  it("is never delivered to a file", () => {
+    expect(
+      refusalsOf(edge("restart").replace("delivery: env", "delivery: file")),
+    ).toStrictEqual([
+      {
+        code: "schema",
+        path: "/applications/0/processes/0/dependsOn/0/credentials",
+      },
+    ]);
+  });
 });
 
 describe("the access by delivery matrix", () => {

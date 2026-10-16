@@ -152,6 +152,7 @@
   </eClassifiers>
   <!-- Only on an edge to a database: how the credential it derives rotates. -->
   <eClassifiers xsi:type="ecore:EClass" name="Credentials">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="delivery" eType="#//Delivery" defaultValueLiteral="self"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="rotation" lowerBound="1" eType="#//Rotation" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="EnvFile">

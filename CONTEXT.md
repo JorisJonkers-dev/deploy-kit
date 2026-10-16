@@ -147,6 +147,12 @@ runner runs as) or, under `migration: self`, by the Application's Processes;
 the data role reads and writes the data, and every consuming Process's edge
 derives a credential for it ([chapter 16](spec/v1/16-dependencies.md#the-database-catalog)).
 
+**Edge credential**: the login an edge to a database derives for its consuming
+Process, which the Secret Store issues from the data or owner role and renews.
+The edge delivers it `self`, or `env`, where an env file reads it as
+`${dependency:<application>.username}` and `.password`
+([chapter 10](spec/v1/10-project-intent.md#migration)).
+
 **Catalog method**: the image an engine that owns databases names in the
 Platform document to apply its database catalog in the cluster. It creates each
 estate-path project's database and roles, **adopts** a database that already

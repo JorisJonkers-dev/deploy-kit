@@ -348,11 +348,7 @@
       "type": "object",
       "properties": {
         "delivery": {
-          "type": "string",
-          "enum": [
-            "self",
-            "env"
-          ]
+          "$ref": "#/$defs/Delivery"
         },
         "rotation": {
           "$ref": "#/$defs/Rotation"
