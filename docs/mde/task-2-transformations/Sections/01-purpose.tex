@@ -4,26 +4,23 @@
 \subsection{Goals}
 \label{sec:goals}
 
-The project turns short deployment documents into the Kubernetes files that
-deploy applications to an existing small cluster. Each \texttt{Application}'s repository holds one
-\texttt{Project Intent} document that states what the \texttt{Application}
-needs: its \texttt{Process}es, their memory and CPU limits, the ports they
-expose, the \texttt{Application}s they depend on, and the routes that reach
-them from outside. One \texttt{Platform Intent} document states what all
-\texttt{Application}s share: cluster entry points, health-check timings and
-backup policies. Task~1 defined the Ecore metamodels for both. The source
-metamodel covers the authored documents. The target metamodel covers the
-\texttt{Resolved Deployment}: every value derived for an
-\texttt{Application}, and the file path each value writes to.
+The project turns short deployment documents into Kubernetes files for an
+existing small cluster. Each project repository holds one
+\texttt{Project Intent} document describing its \texttt{Application}s:
+their \texttt{Process}es, memory and CPU limits, ports, dependencies and
+external routes. One \texttt{Platform Intent} document defines shared
+policies and resources, including cluster entry points, health-check timings
+and backup policies. Task~1 defined two Ecore metamodels: a source metamodel
+for the authored documents and a target metamodel for the
+\texttt{Resolved Deployment}. The latter records the values derived for
+each \texttt{Application} and the paths of the files to be generated.
 
-Task~2 builds the model-to-model transformation from source to
-\texttt{Resolved Deployment}. Its inputs are the \texttt{Project Intent} and
-\texttt{Platform Intent} models of every project in the cluster and the
-documents other processes publish; it outputs one
-\texttt{Resolved Deployment} per \texttt{Project} for Task~3 to consume. The
-transformation makes the specification's derivation rules executable: every
-value in a \texttt{Resolved Deployment} is produced by a rule, and no author
-writes any value by hand.
+Task~2 implements the transformation to \texttt{Resolved Deployment}.
+It combines all authored models with recorded cluster facts, image digests
+and other pinned inputs, producing one resolved model per \texttt{Project}.
+For example, an image name becomes a repository address pinned to a digest,
+and a dependency declaration becomes a concrete host and port. Task~3 then
+generates files from these resolved values.
 
 \begin{table}[!htbp]
 \centering
@@ -36,8 +33,8 @@ writes any value by hand.
 \texttt{Pinned input set} & The read-only inputs besides authored documents: node contract, images lock, \texttt{ClusterState} snapshot, migration proofs, \texttt{Asset}s. \\
 \texttt{Switchover} & How a new version replaces the old: blue/green (both run; traffic switches once the new is healthy), rolling, or stop-start. \\
 \texttt{Release Gate} & The service that blocks a blue/green switch until every \texttt{Process} of the \texttt{Application} is healthy. \\
-\texttt{Reconcile Unit} & A group of files that Flux applies together and in order. \\
-\texttt{Revision} & A SHA-256 digest of an \texttt{Application}'s complete element, naming one release. \\
+\texttt{Reconcile Unit} & A group of resources that Flux reconciles together, with dependencies on other such groups. \\
+\texttt{Revision} & A release identifier computed by hashing an \texttt{Application}'s resolved configuration. \\
 \texttt{Estate} & All \texttt{Project}s, the \texttt{Platform Intent} and the \texttt{Pinned input set} read by one run. \\
 Flattened model & \texttt{Project Intent} with every shared declaration copied down onto the \texttt{Process}es that hold it (class \texttt{EffectiveProject}). \\
 \hline
@@ -47,14 +44,14 @@ Flattened model & \texttt{Project Intent} with every shared declaration copied d
 \end{table}
 
 The transformation has three goals. First, it must derive exactly the values
-the specification expects. Each worked example of the specification carries
-oracle files, the expected resolved model, dependency edges and generated
-files for its input documents, and the transformation must reproduce them. Second, it must abort with an error message when it
+the specification expects. The specification's worked examples include
+oracle files containing expected resolved values, dependency edges or generated
+files. The transformation must reproduce these outputs. Second, it must abort with an error message when it
 cannot derive a value, because a \texttt{Resolved Deployment} with a missing or
 fabricated value would look valid yet deploy the wrong configuration.
-Third, its output must be complete enough that the Task~3 templates only write
-values into their fixed positions. Any path, port or name chosen inside a
-template would hide a derivation from review.
+Third, the resolved model must contain every value needed by the Task~3
+templates, including paths, ports and names. Otherwise, tests of that model
+could pass while a template made an unchecked deployment decision.
 
 \subsection{Role of the Transformations}
 \label{sec:role}
@@ -69,11 +66,12 @@ Its output is the flattened model, which still conforms to the
 source metamodel. Although it was implemented in Task~1, it was not reported
 there, so Section~\ref{sec:flattening} covers it here. The second
 transformation, the resolution, reads the flattened models and the
-\texttt{Pinned input set}, the read-only documents no \texttt{Project} author
-writes, and derives every value of one \texttt{Resolved Deployment} per
+\texttt{Pinned input set}, the additional read-only inputs, and derives
+one complete \texttt{Resolved Deployment} per
 \texttt{Project}. It is the main transformation and the subject of this
-report. The third, the final pass, runs once over all resolved models and adds
-the files no single \texttt{Project} owns (Section~\ref{sec:finalpass}).
+report. The third, the final pass, collects Vault policies from all resolved
+models to plan one job that installs them. This requires every project's
+output, so it runs after the individual resolutions (Section~\ref{sec:finalpass}).
 
 A small Java exporter writes the resolved dependency edges as JSON for
 comparison against the oracle. The Acceleo templates of Task~3 then read the
@@ -94,17 +92,19 @@ the images lock (each image pinned to a digest) and the cluster-state snapshot
 as plain inputs, while Task~1 only
 modelled the two authored documents. The resolution needs these as models, so
 a third metamodel now describes the \texttt{Pinned input set}, with its own
-Xtext grammar for each document (Appendix~\ref{app:pinned}). This metamodel
-lives in a separate package because no \texttt{Project} author writes these documents.
+Xtext grammar for each document (Appendix~\ref{app:pinned}). A separate
+package keeps these supporting inputs distinct from the deployment language
+used by \texttt{Project} authors.
 
 Task~1 described three stages: authored, resolved and generated text. The
-flattening adds a fourth stage between authored and resolved, so each rule in
-the resolution reads values from a single level
-(Section~\ref{sec:twotransformations}).
+flattening now makes inheritance explicit before resolution: each
+\texttt{Process} receives the declarations that apply to it from its
+\texttt{Project} and \texttt{Application}. Resolution rules therefore need
+not repeat the inheritance logic (Section~\ref{sec:twotransformations}).
 
-Task~1 planned one resolved model for the entire cluster, because dependency edges,
-routes and which \texttt{Process}es depend on each \texttt{Process} require a cluster-wide view. Every run
-still reads every \texttt{Project}. The output is now one
+Task~1 planned one resolved model for the entire cluster, because resolving
+dependency edges, routes and network access requires a cluster-wide view.
+Every run still reads every \texttt{Project}. The output is now one
 \texttt{Resolved Deployment} per \texttt{Project}, because each model then
 stays small and has one oracle to compare with
 (Section~\ref{sec:perproject}); the per-\texttt{Application} projection from
@@ -126,13 +126,14 @@ The transformation assumes four conditions.
 \begin{itemize}
   \item \textbf{Valid input.} The Task~1 OCL constraints reject invalid documents before any transformation runs. An abort in the transformation is a safety net for facts the
     constraints do not yet cover (Section~\ref{sec:aborts}).
-  \item \textbf{One cluster per run.} A run, one execution of the pipeline over every document of a cluster, reads one \texttt{Platform Intent}
-    and one node contract, both naming the same cluster. All concepts,
+  \item \textbf{One cluster per run.} Each execution of the pipeline reads
+    all documents for one cluster, including one \texttt{Platform Intent}
+    and one node contract that name the same cluster. All concepts,
     examples and oracles derive from that single existing cluster.
-  \item \textbf{One reading of the specification.} Where the specification
-    leaves a choice open, such as which of two \texttt{Process}es offering
-    the same port an edge reaches, the transformation takes the reading the
-    oracles record, so every example has one right result to compare with.
+  \item \textbf{One reading of the specification.} If several providers
+    satisfy a dependency, the transformation uses the deterministic name
+    order recorded in the oracles. The comparisons check this interpretation;
+    they do not establish that it is the only valid one.
   \item \textbf{No live cluster access.} The transformation only reads the
     documents provided to it. Any fact known only to a running cluster, such
     as which node holds a particular volume, must arrive via the
@@ -144,8 +145,8 @@ single cluster, and every cluster-specific element is already a run input: the
 \texttt{Platform Intent}, the node contract and the \texttt{ClusterState} snapshot each name their cluster, and a \texttt{Project}'s environment files
 use a shared base plus a per-cluster overlay that the resolution selects via
 the \texttt{Platform Intent} cluster name (Section~\ref{sec:placeholders}).
-Supporting a second cluster would therefore need a second run over that
-cluster's own three documents, and two additions beside it: a
+Supporting a second cluster would require a separate run with that
+cluster's inputs and two extensions to the model: a
 \texttt{Project Intent} would need to declare which clusters it targets, and
 the network policy of a dependency edge to another cluster would need to allow an
 address range rather than a specific pod address. Such a dependency edge would resolve

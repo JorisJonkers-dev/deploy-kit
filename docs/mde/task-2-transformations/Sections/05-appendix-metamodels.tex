@@ -20,20 +20,20 @@ never Ecore features.
 \subsection{The Pinned Inputs Metamodel}
 \label{app:pinned}
 
-The \texttt{pinnedinputs} package holds the documents the resolution, the main transformation, reads
-beside the source models (Section~\ref{sec:refinement}).
+The \texttt{pinnedinputs} package models the additional documents read by
+the resolution (Section~\ref{sec:refinement}).
 
 The node contract (the list of machines and their capacity) is generated from the platform team's machine descriptions.
 Other programs publish the images lock (each image pinned to a digest) and the cluster-state
 snapshot. A \texttt{Project} build writes its migration proof (the schema
 version its migration was tested against).
 
-The committed descriptor that compares the source metamodel's structure with
-the specification's schemas keeps the two aligned. With the pinned input
-classes in the source metamodel, that comparison would find documents the
-schemas do not hold. No target metamodel class refers to them:
-the \texttt{Resolved Deployment} records the values read from them, and their
-digests.
+A committed descriptor checks the source metamodel's structure against the
+specification's authored-document schemas. Pinned inputs are kept in a
+separate metamodel because they are not part of those schemas. The target
+metamodel has no references to pinned-input classes: the
+\texttt{Resolved Deployment} records the values derived from these inputs
+and their digests instead.
 
 Figure~\ref{fig:pinned} shows the metamodel. Table~\ref{tab:pinned} shows
 which rules read each class.
@@ -51,33 +51,32 @@ which rules read each class.
 \hline
 \textbf{Class} & \textbf{Read by} \\
 \hline
-\texttt{NodeContract}, \texttt{Node}, \texttt{Allocatable}, \texttt{Gpu}, \texttt{Disk} & \texttt{eligible}: memory and CPU as quantities such as 53500m, and site, architecture, capabilities, GPUs, disks. \\
+\texttt{NodeContract}, \texttt{Node}, \texttt{Allocatable}, \texttt{Gpu}, \texttt{Disk} & \texttt{eligible} compares resource requests with available capacity and checks hardware requirements. CPU quantities such as 53500m denote 53.5 cores. \\
 \texttt{ImagesLock}, \texttt{LockedImage} & \texttt{locked}: every image of a \texttt{Process}, \texttt{Sidecar}, backup method, migration runner and Vault policy job. \\
 \texttt{ClusterState}, \texttt{Binding} & \texttt{boundOf}: the machine that already holds a \texttt{Volume}. \\
-\texttt{CurrentPlacement}, \texttt{RollbackBackup} & Not read by the resolution. The snapshot carries them for the delivery process that Task~3 serves. \\
-\texttt{MigrationProof}, \texttt{ProvenApplication} & \texttt{migrationOf} and \texttt{gate}: the schema version tested against, and whether it holds a non-transactional change. \\
-\texttt{AssetFile} & \texttt{Asset::resolvedFor}: a configuration file's text. The pipeline creates one per file a \texttt{Project} names. It is not parsed. \\
+\texttt{CurrentPlacement}, \texttt{RollbackBackup} & Retained as snapshot data for delivery operations; these classes do not affect the resolution's output. \\
+\texttt{MigrationProof}, \texttt{ProvenApplication} & \texttt{migrationOf} records the tested schema version; \texttt{gate} also reads whether the release contains non-transactional changes. \\
+\texttt{AssetFile} & \texttt{Asset::resolvedFor} reads the configuration-file text. Each file is wrapped in an \texttt{AssetFile}, rather than parsed with an Xtext grammar. \\
 \hline
 \end{tabular}
 \caption{The Classes of the Pinned Inputs Metamodel and the Rules That Read Them}
 \label{tab:pinned}
 \end{table}
 
-Two attributes are plain strings, an exception to Task~1's rule of
-enumerations over free-form strings. A \texttt{Node}'s disk medium is not the source
-metamodel's \texttt{Media} enumeration because the node contract lists media no
-\texttt{Process} may request, such as sdcard. The resolution compares the
-spelling instead, and does the same for architecture. The values come from
-generated documents, not from an author, so the risk of an author's typo does
-not apply.
+Disk medium and architecture are strings in the node inventory, although
+the source metamodel restricts \texttt{Process} requests to enumerations.
+The inventory can describe hardware, such as an sdcard, that no
+\texttt{Process} may request. Reusing the source enumeration would prevent
+such nodes from being represented. Eligibility therefore compares each
+requested enumeration's spelling with the corresponding inventory string.
 
 \subsection{Changes to the Target Metamodel}
 \label{app:target}
 
 Both halves of the target metamodel grew: the values the resolution
 derives for each \texttt{Application}, and the generated-file entries of the
-path plan. The policies those derived values read arrive as inputs from the
-\texttt{Platform Intent}, and the metamodel records only the derived output.
+path plan. Derivation rules read policies from the \texttt{Platform Intent};
+the target metamodel records the resulting values.
 
 The root class is unchanged, but there is now one instance per \texttt{Project}
 instead of one for the whole cluster (Section~\ref{sec:refinement}).
@@ -86,9 +85,9 @@ instead of one for the whole cluster (Section~\ref{sec:refinement}).
 class that is new or changed. Table~\ref{tab:targetvalues} gives the reason for
 each.
 
-Task~1 named many values in prose but gave classes only to what its worked
-example needed. The other examples also need migrations, backups that connect to
-their database, \texttt{Secret}s that reach the cluster, API access,
+Task~1 described many values in prose but modelled only those needed by its
+worked example. The other examples also need migrations, backups with
+database connections, secrets synchronised into the cluster, API access,
 \texttt{Sidecar}s, configuration files, and two cluster-wide values: the
 Vault policy job, which writes every Vault policy, and
 the route of Flux's events.
@@ -181,9 +180,9 @@ and its \texttt{Revision} was set to the oracle's
 The source metamodel kept every class. Table~\ref{tab:sourcechanges} lists
 what was added or changed.
 
-Most additions are declarations in the \texttt{Platform Intent} that a derivation needs
-and Task~1 left implicit. A rule needing a value the \texttt{Platform Intent} does not
-declare would otherwise contain it as a constant.
+Most additions make platform policies explicit that Task~1 left implicit.
+Declaring these values in the \texttt{Platform Intent} keeps them out of
+the transformation rules, where they would otherwise be hard-coded.
 
 \begin{longtable}{>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.30\linewidth}>{\raggedright\arraybackslash}p{0.38\linewidth}}
 \hline

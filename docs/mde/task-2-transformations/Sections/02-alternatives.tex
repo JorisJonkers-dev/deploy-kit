@@ -17,7 +17,7 @@ Table~\ref{tab:tools} compares them.
 \hline
 KubeDiagrams \cite{kubediagrams} &
   Draws diagrams from Kubernetes files or a live cluster, mapping kinds to icons. &
-  It works from files to pictures, not from models to models, and derives nothing. &
+  It needs Kubernetes resources as input, so it cannot derive them from deployment intent. &
   It could visualize the generated files to show links produced by a \texttt{Project} document. \\
 KubeOrch \cite{kubeorch} &
   A drag-and-drop editor whose back end wires ports, fills templates, writes files and deploys. &
@@ -35,14 +35,14 @@ kubert \cite{kubert} &
 
 None of the three derives values from authored declarations. KubeOrch
 comes closest: it resolves a link between two services to an address and
-port, similar to how the resolution, the main transformation, resolves
-dependency edges. But it lacks a \texttt{Platform Intent}, node contract,
+port, similarly to the dependency-edge lookup in this project.
+But it lacks a \texttt{Platform Intent}, node contract,
 images lock and cluster-state snapshot, so it cannot derive placement, image
-digests, backups or network peers (whom a network policy lets each
-\texttt{Process} talk to). Its output is not a model that OCL constraints or
-oracles (expected outputs) can verify. Beside the
-transformation, the resolved dependency edges and network peers could feed
-a KubeDiagrams view of the Task~3 files for visual verification. A
+digests, backups or the connections permitted by network policies. It also
+provides no resolved intermediate model to check before generating files.
+KubeDiagrams could complement the
+transformation by visualizing the Task~3 files, allowing the resolved
+dependencies and network connections to be inspected. A
 KubeOrch-style graphical editor
 could write \texttt{Project Intent} documents, since the editor and the
 transformation would work from the same Ecore metamodel.
@@ -65,14 +65,11 @@ from a single source element: a \texttt{Process}'s eligible machines depend on t
 node contract, a route's precedence on other routes, and a \texttt{Process}'s ingress
 peers on every \texttt{Process} in the cluster that depends on it. ATL's matched rules
 fit one source element producing one target element, with the engine
-choosing the order. The lookups this resolution needs are of another kind:
-resolving a dependency edge searches every \texttt{Project} for the first \texttt{Process}
-that provides the \texttt{Surface} (the named port it offers), and the \texttt{Revision} has no source
-element of its own at all, since it digests the assembled \texttt{Application}
-element. In ATL this work moves into called rules and helpers, which turns
-the transformation into imperative code without the pattern matching, and
-the values that need the whole model to exist first still have to be
-computed afterwards.
+choosing the order. Here, dependency lookup must search across
+\texttt{Project}s, and a \texttt{Revision} can be computed only after its
+\texttt{Application} has been assembled. ATL would still need helpers and
+explicit calls for these operations. Matched rules alone would therefore
+not remove the need to coordinate the transformation's execution.
 
 A Java transformation would be the easiest to debug and offers full
 control, but it requires maintaining the trace by hand and hides the
@@ -80,10 +77,12 @@ transformation rules inside general-purpose code; some attendees of the
 cited discussion called model management in such code hard to
 maintain~\cite{burgueno2019}.
 
-QVTo was chosen, in which the caller decides the order of execution
-explicitly and every reference from one created element to another goes
-through the trace. Its expressions use OCL, the same language Task~1's
-constraints already use. Among the cited survey's respondents it was the
+QVTo was chosen because these dependencies can be expressed directly:
+map the \texttt{Process}es before building routes that refer to them, then
+compute the \texttt{Revision} in an \texttt{end} section after the model is
+complete. Its trace lets a route find the resolved \texttt{Process} created
+from its source reference. OCL also allows the existing constraint vocabulary
+to be reused for lookups across the input models. Among the cited survey's respondents it was the
 second most-used transformation language after ATL, and its users named its
 maturity and its support by a standard as reasons to use
 it~\cite{burgueno2019}. The one operation QVTo cannot express directly,
@@ -94,36 +93,38 @@ Speed was not a factor. The transformation is a proof of concept: it serves
 to work out the complete design and to check it against the specification's
 examples, not to run the cluster in the long term. The compiler is to be
 ported to a general-purpose language, such as TypeScript or, in the long term,
-Rust, so its speed will be that of the port. What this cluster can bear is a
-question of capacity, which Section~\ref{sec:limitations} returns to.
+Rust. Whether the cluster has enough capacity to host the applications is a
+separate limitation, discussed in Section~\ref{sec:limitations}.
 
 \subsection{The Structure of the Transformation}
 \label{sec:structure}
 
-Every derived value needs to be in a model that tests can compare, so
-derivation must happen in a model-to-model step before code generation, and
-the oracles can then verify values independently of the templates.
+Every derived value must be recorded in a model before code generation.
+This allows tests to compare the values with the oracles independently of
+the templates that write them to files.
 
 \subsubsection{Flattening Before the Resolution}
 \label{sec:twotransformations}
 
 A single transformation from authored model to \texttt{Resolved Deployment}
 would work, but a flattening precedes the resolution. The flattening copies
-shared declarations down to each \texttt{Process}, producing
-flattened model, so the resolution reads values from one level
-instead of three and each rule is simpler. The chain also matches QVT
+shared declarations down to each \texttt{Process}. For example, a
+\texttt{Project} startup budget of 30s reaches every \texttt{Process}
+except one that declares a more specific value, such as 20s. Resolution can
+then read the selected budget directly from each \texttt{Process}, without
+searching its ancestors. The chain also matches QVT
 specification Section~8.1.13, which composes a preparation transformation
 before the main one~\cite{qvt13}.
 
-\subsubsection{One Project per Run, All Projects as Input}
+\subsubsection{Resolving One Project with All Projects as Input}
 \label{sec:perproject}
 
 One resolution over all \texttt{Project}s at once could produce one
-\texttt{Resolved Deployment} for the whole estate. Instead, each run
+\texttt{Resolved Deployment} for the whole estate. Instead, each invocation
 resolves one \texttt{Project} into its own model while reading every
 \texttt{Project}'s documents from the same input extent. Each model stays small and
-has one oracle to compare with, and the shared extent keeps the
-cluster-wide view that dependency edges, routes and which \texttt{Process}es depend on each \texttt{Process} need. One
+can be compared with its own oracle, while the shared extent provides the
+cluster-wide view needed to resolve dependencies, routes and network access. One
 value, the digest over all Vault documents, needs the output of every
 \texttt{Project}, so the final pass, which runs over all resolved models together,
 adds it (Section~\ref{sec:finalpass}).
@@ -132,8 +133,8 @@ adds it (Section~\ref{sec:finalpass}).
 \label{sec:extentsalternative}
 
 A rule also has to find the run's other documents. Using OCL's
-\texttt{allInstances()} scans everything loaded on each evaluation and
-gives results that depend on which files were loaded. Instead, the
+\texttt{allInstances()} would search the loaded models on each evaluation,
+making the search scope depend on which files had been loaded. Instead, the
 transformation selects each input once by type from two extents that hold
 exactly the run's documents, and every rule navigates from one of these
 properties (Section~\ref{sec:interface}).
