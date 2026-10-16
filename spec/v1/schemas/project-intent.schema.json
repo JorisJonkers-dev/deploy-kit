@@ -347,6 +347,9 @@
     "Credentials": {
       "type": "object",
       "properties": {
+        "delivery": {
+          "$ref": "#/$defs/Delivery"
+        },
         "rotation": {
           "$ref": "#/$defs/Rotation"
         }

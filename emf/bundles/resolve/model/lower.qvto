@@ -253,6 +253,7 @@ mapping DependencyEdge::copyFor(in owner : Process) : DependencyEdge {
 }
 
 mapping Credentials::copyFor(in owner : Process) : Credentials {
+	if self.oclAsType(ECORE::EObject).states('delivery') then delivery := self.delivery endif;
 	rotation := self.rotation.map copyFor(owner);
 }
 

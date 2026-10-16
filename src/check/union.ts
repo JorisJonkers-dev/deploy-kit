@@ -19,7 +19,7 @@ import type {
   Grant,
   ProjectIntentDocument,
 } from "../model/project-intent.ts";
-import { keyName } from "../model/project-intent-queries.ts";
+import { keyName, reachesDatabase } from "../model/project-intent-queries.ts";
 import { collectorEndpoint, exports } from "../model/runtime-profiles.ts";
 import { dumpedSurfaceOf } from "../model/backup.ts";
 
@@ -232,13 +232,17 @@ type Placeholder = Exclude<EnvVariable["value"], { readonly text: string }>;
 const placeholders = (
   process: EffectiveProcess,
   kind: Placeholder["kind"],
-): { readonly name: string; readonly source: string }[] =>
+): {
+  readonly name: string;
+  readonly source: string;
+  readonly suffix: string | undefined;
+}[] =>
   // Stryker disable next-line ArrayDeclaration: a Process with no env file
   // and one with an empty list hold no placeholder alike.
   (envOf(process) ?? []).flatMap(({ entries }) =>
     entries.flatMap(({ name, value }) =>
       "kind" in value && value.kind === kind
-        ? [{ name, source: value.source }]
+        ? [{ name, source: value.source, suffix: value.suffix }]
         : [],
     ),
   );
@@ -326,6 +330,9 @@ const replaces = (
 /** The coordinates an edge hands its consumer (spec/v1/10-project-intent.md#placeholder-sources). */
 const COORDINATES: ReadonlySet<string> = new Set(["host", "port"]);
 
+/** The coordinates an edge whose database credential is delivered to the environment adds. */
+const CREDENTIAL: ReadonlySet<string> = new Set(["username", "password"]);
+
 /** The fields of an exposure a placeholder may read. */
 const FIELDS: ReadonlySet<string> = new Set(["url", "host", "scheme"]);
 
@@ -333,6 +340,7 @@ const FIELDS: ReadonlySet<string> = new Set(["url", "host", "scheme"]);
 function unresolved(
   kind: "dependency" | "exposure",
   source: string,
+  suffix: string | undefined,
   process: EffectiveProcess,
   union: readonly Fragment[],
 ): string | undefined {
@@ -346,9 +354,15 @@ function unresolved(
     );
     if (edges.length !== 1)
       return `the Process holds ${edges.length === 0 ? "no" : "more than one"} edge to ${application}`;
-    return COORDINATES.has(source.slice(cut + 1))
+    const coordinate = source.slice(cut + 1);
+    if (COORDINATES.has(coordinate)) return undefined;
+    if (!CREDENTIAL.has(coordinate))
+      return `an edge hands no coordinate ${coordinate}`;
+    if ((edges[0] as DependencyEdge).credentials?.delivery !== "env")
+      return `the edge to ${application} delivers its credential to no environment`;
+    return suffix === undefined
       ? undefined
-      : `an edge hands no coordinate ${source.slice(cut + 1)}`;
+      : `a credential is a whole value, never part of one`;
   }
   const hash = source.lastIndexOf("#");
   const dot = source.lastIndexOf(".", hash);
@@ -661,20 +675,22 @@ export const INVARIANTS: readonly Invariant[] = [
     answer: (union) =>
       union.flatMap(heldIn).flatMap((held) =>
         (["dependency", "exposure"] as const).flatMap((kind) =>
-          placeholders(held.process, kind).flatMap(({ name, source }) => {
-            const why = unresolved(kind, source, held.process, union);
-            return why === undefined
-              ? []
-              : [
-                  {
-                    code: "E_UNRESOLVED_PLACEHOLDER",
-                    document: held.document,
-                    path: held.path,
-                    message: `${name} reads \${${kind}:${source}}, and ${why}`,
-                    hint: "A dependency placeholder names the Application of one edge the Process holds and `host` or `port`; an exposure placeholder names an exposure the Application declares and `url`, `host` or `scheme`.",
-                  },
-                ];
-          }),
+          placeholders(held.process, kind).flatMap(
+            ({ name, source, suffix }) => {
+              const why = unresolved(kind, source, suffix, held.process, union);
+              return why === undefined
+                ? []
+                : [
+                    {
+                      code: "E_UNRESOLVED_PLACEHOLDER",
+                      document: held.document,
+                      path: held.path,
+                      message: `${name} reads \${${kind}:${source}}, and ${why}`,
+                      hint: "A dependency placeholder names the Application of one edge the Process holds and `host` or `port`, or `username` or `password` where that edge delivers its credential `env`; an exposure placeholder names an exposure the Application declares and `url`, `host` or `scheme`.",
+                    },
+                  ];
+            },
+          ),
         ),
       ),
   },
@@ -738,8 +754,16 @@ export const INVARIANTS: readonly Invariant[] = [
             effective.applications.flatMap((application, a) =>
               typeof application.migration === "object" ||
               application.processes.some(
-                ({ secrets, volumes }) =>
+                ({ secrets, volumes, dependsOn }) =>
                   (secrets?.length ?? 0) > 0 ||
+                  // An edge to a database derives a credential the store issues.
+                  // Stryker disable next-line ArrayDeclaration
+                  (dependsOn ?? []).some((edge) =>
+                    reachesDatabase(
+                      edge,
+                      union.map(({ effective: project }) => project),
+                    ),
+                  ) ||
                   volumes?.some(
                     ({ durability }) =>
                       platform.durability[durability]?.offCluster !== undefined,

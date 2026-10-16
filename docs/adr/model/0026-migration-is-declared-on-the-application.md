@@ -19,8 +19,10 @@ holds the owner role.
 The database catalog is derived data: the inbound edges to a provider that owns
 databases name each consuming project's database, owner role and data role, and
 the catalog renders as data while the platform owns the method. An edge derives
-the consuming Process's data-only credential, delivered `self`; the edge may say
-only its rotation tolerance. The owner role is derived, never granted.
+the consuming Process's credential, its data role's, or its owner role's where
+the Application migrates itself, delivered `self`; the edge may say only how it
+is delivered (`self` or `env`) and its rotation tolerance. The owner role is
+derived, never granted.
 
 A changelog publishes only with a compatibility proof from the application's
 own CI: the serving revision's suite passes against the migrated schema, every

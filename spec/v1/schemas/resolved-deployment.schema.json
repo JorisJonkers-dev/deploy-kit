@@ -589,7 +589,10 @@
         },
         "delivery": {
           "type": "string",
-          "const": "self"
+          "enum": [
+            "self",
+            "env"
+          ]
         },
         "paths": {
           "minItems": 1,
@@ -597,6 +600,10 @@
           "items": {
             "$ref": "#/$defs/PolicyPath"
           }
+        },
+        "destination": {
+          "type": "string",
+          "minLength": 1
         },
         "restartTargets": {
           "type": "array",

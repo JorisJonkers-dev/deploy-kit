@@ -1016,34 +1016,71 @@
         role: [d.application.namespace/]-[h.identity/]
         serviceAccount: [h.identity/]
     [for (g : resolveddeployment::ResolvedGrant | h.grants)]
-      ---
-      apiVersion: secrets.hashicorp.com/v1beta1
-      kind: VaultStaticSecret
-      metadata:
-        name: [g.destination/]
-        namespace: [d.application.namespace/]
-        labels:
-          [h.identity.labelSet(h.component, d.application.id)/]
-      spec:
-        vaultAuthRef: [h.identity/]
-        mount: secret
-        type: kv-v2
-        path: [g.path.substring(13)/]
-        refreshAfter: 1h
-        destination:
-          name: [g.destination/]
-          create: true
-          annotations:
-            flagger.app/config-tracking: disabled
-      [if (g.restartTargets->notEmpty())]
-          rolloutRestartTargets:
-        [for (t : String | g.restartTargets)]
-              - kind: Deployment
-                name: [d.application.serving(t)/]
-        [/for]
+      [if (g.engine = 'database')]
+        [g.dynamicSecret(h, d)/]
+      [else]
+        [g.staticSecret(h, d)/]
       [/if]
     [/for]
   [/for]
+[/template]
+
+[comment A kv grant's value, read every hour from the kv mount. /]
+[template private staticSecret(g : resolveddeployment::ResolvedGrant, h : resolveddeployment::SecretHolder, d : resolveddeployment::SecretFile)]
+  ---
+  apiVersion: secrets.hashicorp.com/v1beta1
+  kind: VaultStaticSecret
+  metadata:
+    name: [g.destination/]
+    namespace: [d.application.namespace/]
+    labels:
+      [h.identity.labelSet(h.component, d.application.id)/]
+  spec:
+    vaultAuthRef: [h.identity/]
+    mount: secret
+    type: kv-v2
+    path: [g.path.substring(13)/]
+    refreshAfter: 1h
+    destination:
+      name: [g.destination/]
+      create: true
+      annotations:
+        flagger.app/config-tracking: disabled
+  [g.restarts(d)/]
+[/template]
+
+[comment A database credential an edge delivers to the environment, issued and renewed by the store
+  (spec/v1/10-project-intent.md#migration). /]
+[template private dynamicSecret(g : resolveddeployment::ResolvedGrant, h : resolveddeployment::SecretHolder, d : resolveddeployment::SecretFile)]
+  ---
+  apiVersion: secrets.hashicorp.com/v1beta1
+  kind: VaultDynamicSecret
+  metadata:
+    name: [g.destination/]
+    namespace: [d.application.namespace/]
+    labels:
+      [h.identity.labelSet(h.component, d.application.id)/]
+  spec:
+    vaultAuthRef: [h.identity/]
+    mount: database
+    path: [g.paths->first().path.substring(10)/]
+    destination:
+      name: [g.destination/]
+      create: true
+      annotations:
+        flagger.app/config-tracking: disabled
+  [g.restarts(d)/]
+[/template]
+
+[comment What a rotation restarts: what is serving, where the grant restarts anything. /]
+[template private restarts(g : resolveddeployment::ResolvedGrant, d : resolveddeployment::SecretFile)]
+  [if (g.restartTargets->notEmpty())]
+      rolloutRestartTargets:
+    [for (t : String | g.restartTargets)]
+          - kind: Deployment
+            name: [d.application.serving(t)/]
+    [/for]
+  [/if]
 [/template]
 
 [template private holderMetadata(h : resolveddeployment::SecretHolder, a : resolveddeployment::ResolvedApplication)]
@@ -1557,7 +1594,8 @@
   else mode.substring(1, mode.size() - 1).octal() * 8 + mode.substring(mode.size(), mode.size()).toInteger() endif /]
 
 [query private destinationOf(p : resolveddeployment::ResolvedProcess, path : String) : String =
-  p.secrets->select(g | g.destination <> null and g.path = path)->first().destination /]
+  p.secrets->select(g | g.destination <> null
+    and (g.path = path or g.paths->exists(x | x.path = path)))->first().destination /]
 
 [comment The Deployment a rotation restarts: a blue-green Process serves from its primary. /]
 [query private serving(a : resolveddeployment::ResolvedApplication, name : String) : String =

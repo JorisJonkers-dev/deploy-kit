@@ -228,8 +228,10 @@ const policyPath = z
 const resolvedEngineGrant = z
   .strictObject({
     engine: z.enum([...TRANSIT_ENGINES, ...DATABASE_ENGINES]),
-    delivery: z.literal("self"),
+    // A credential an edge derives may be synced to the environment.
+    delivery: z.enum(["self", "env"]),
     paths: z.array(policyPath).min(1),
+    destination: text.exactOptional(),
     restartTargets: z.array(text).exactOptional(),
   })
   .meta({ id: "ResolvedEngineGrant" });

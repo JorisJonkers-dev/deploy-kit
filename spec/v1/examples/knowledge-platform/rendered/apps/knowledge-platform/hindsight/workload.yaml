@@ -81,6 +81,16 @@ spec:
               value: http://otel-collector.observability-system.svc.cluster.local:4317
             - name: OTEL_SERVICE_NAME
               value: hindsight-api
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hindsight-api-database-creds-knowledge-platform-owner
+                  key: password
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: hindsight-api-database-creds-knowledge-platform-owner
+                  key: username
             - name: PORT
               value: "8888"
           resources:
@@ -148,7 +158,7 @@ spec:
         app.kubernetes.io/component: python
     spec:
       serviceAccountName: hindsight-worker
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

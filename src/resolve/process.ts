@@ -33,6 +33,11 @@ import {
   vaultNameOf,
 } from "../model/runtime-profiles.ts";
 import type { Hasher } from "../model/hasher.ts";
+import {
+  credentialPathOf,
+  credentialRoleOf,
+  resolveCredentials,
+} from "./credentials.ts";
 import { resolveEdge } from "./dependencies.ts";
 import { resolveAssets, resolveGrants, resolveSidecars } from "./secrets.ts";
 import { resolveVolumes } from "./volumes.ts";
@@ -53,6 +58,8 @@ export interface ProcessContext {
   /** The project's Asset files, by the `from` path it names them by. */
   readonly assets: ReadonlyMap<string, string>;
   readonly hash: Hasher;
+  /** Whether the Process's Application migrates its own schema. */
+  readonly migratesItself: boolean;
 }
 
 /** A startup probe polls this often; its threshold covers the budget. */
@@ -190,11 +197,23 @@ function entryOf(
   if ("text" in value) return { name, value: value.text };
   if (value.kind === "secret") return secretOf(variable, value.source);
   const suffix = value.suffix ?? "";
-  if (value.kind === "dependency")
+  if (value.kind === "dependency") {
+    const coordinate = value.source.slice(value.source.lastIndexOf(".") + 1);
+    // A credential coordinate is a whole value read from the edge's synced
+    // credential, or E_UNRESOLVED_PLACEHOLDER refused it.
+    if (coordinate === "username" || coordinate === "password")
+      return {
+        name,
+        secret: {
+          path: credentialPathOf(credentialRoleOf(context)),
+          key: coordinate,
+        },
+      };
     return {
       name,
       value: dependencyOf(value.source, process, context) + suffix,
     };
+  }
   if (value.kind === "exposure")
     return {
       name,
@@ -295,7 +314,10 @@ export function resolveProcess(
     context.lock,
     context.project,
   );
-  const secrets = resolveGrants(process);
+  const secrets = [
+    ...resolveGrants(process),
+    ...resolveCredentials(process, context),
+  ];
   const assets = resolveAssets(process, context.assets, context.hash);
   const sidecars = resolveSidecars(process, context.lock);
   const surfaces = Object.entries(process.provides ?? {}).map(

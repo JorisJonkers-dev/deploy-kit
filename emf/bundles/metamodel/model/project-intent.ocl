@@ -57,7 +57,10 @@ context Volume
 context Rotation
 	-- An environment variable is read once, when the process starts.
 	inv E_ENV_CANNOT_RELOAD:
-		tolerates = Tolerance::reload implies oclContainer().oclAsType(Grant).delivery <> Delivery::env
+		tolerates = Tolerance::reload implies
+			(if oclContainer().oclIsKindOf(Credentials)
+			then oclContainer().oclAsType(Credentials).delivery <> Delivery::env
+			else oclContainer().oclAsType(Grant).delivery <> Delivery::env endif)
 
 context KvGrant
 	-- Custody creates and deletes paths at runtime, and a renewal tier holds no
@@ -455,6 +458,10 @@ context Migration
 					or p.delivery.machinery->excludes(application)))
 
 context Credentials
+	-- An edge delivers its credential to the Process itself or to its environment.
+	inv schema:
+		delivery <> Delivery::file
+
 	-- Only an edge to a database derives a credential to rotate.
 	inv E_CREDENTIALS_WITHOUT_DATABASE:
 		let edge : DependencyEdge = oclContainer().oclAsType(DependencyEdge) in
@@ -502,6 +509,12 @@ context Process
 	def: heldEdges : Sequence(DependencyEdge) =
 		dependsOn->asSequence()->union(levelsAbove->asSequence()->collect(l | l.dependsOn)->asSequence())
 
+	-- An edge to a surface of a Process whose engine owns databases derives a credential.
+	def: reachesDatabase : Boolean =
+		heldEdges->exists(e | Application.allInstances()->exists(a | a.id = e.application
+			and a.processes->exists(q | q.engine = Engine::postgres
+				and q.provides->exists(s | s.key = e.surface))))
+
 	-- A placeholder reads one key of a path an env grant of the Process lists.
 	inv E_UNAUTHORISED_SECRET_REFERENCE:
 		placeholdersOf(PlaceholderKind::secret)->forAll(p |
@@ -521,7 +534,12 @@ context Process
 		placeholdersOf(PlaceholderKind::dependency)->forAll(p |
 			Sequence{'host', 'port'}->exists(c |
 				heldEdges->select(e | e.application + '.' + c = p.source)->size() = 1
-				and heldEdges->select(e | p.source.startsWith(e.application + '.'))->size() = 1))
+				and heldEdges->select(e | p.source.startsWith(e.application + '.'))->size() = 1)
+			-- The login an edge delivers to the environment, as a whole value.
+			or (p.suffix = null and Sequence{'username', 'password'}->exists(c |
+				heldEdges->select(e | e.application + '.' + c = p.source
+					and e.credentials <> null and e.credentials.delivery = Delivery::env)->size() = 1
+				and heldEdges->select(e | p.source.startsWith(e.application + '.'))->size() = 1)))
 		and placeholdersOf(PlaceholderKind::exposure)->forAll(p |
 			Application.allInstances()->forAll(a | not p.source.startsWith(a.id + '.')
 				or a.exposure->exists(x | Sequence{'url', 'host', 'scheme'}->exists(f |
@@ -559,6 +577,7 @@ context Application
 			or not ((migration <> null and migration.oclIsKindOf(ManagedMigration))
 				or processes->exists(pr | pr.envGrants->notEmpty()
 					or pr.secrets->notEmpty()
+					or pr.reachesDatabase
 					or pr.levelsAbove->exists(l | l.secrets->notEmpty())
 					or pr.volumes->exists(v |
 						(v.durability = DurabilityClass::recoverable and p.durability.recoverable <> null
