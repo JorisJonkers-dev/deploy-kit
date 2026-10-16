@@ -23,7 +23,7 @@ against the report of the last green run on `main`: a mutant is tested again
 when its module changed or a test file that covered it changed, and every other
 result comes from that report. The score is still over every mutant. The run is
 parallel shards, each handed a disjoint share of every module's top-level
-statements, and one job merges their reports into the report a single run would
+statements balanced by the time each took in that report, and one job merges their reports into the report a single run would
 have written: that report decides the score and is the next run's baseline. A
 pull request that changes no module, no test, nothing the gate runs under and
 no dependency runs no shard, and `main`'s result stands. A full run tests every
@@ -87,7 +87,14 @@ top-level statement, not by file, because one large module would leave its
 shard running alone: Stryker mutates only a node a range holds whole, and every
 node but the file itself sits inside one top-level statement, so every mutant
 lands in exactly one shard. A statement is the finest such cut; a range inside
-one drops the mutant of every node that spans it.
+one drops the mutant of every node that spans it. The shares are balanced by
+the tests each statement's mutants ran in `main`'s report, not by how many
+mutants it holds: a mutant made when a module loads runs every suite, and one
+made inside a function stops at its first killing test, so equal counts left
+the shard holding the load-time mutants running long after the rest. Every
+shard of a run reads the one report a single job chose, since shards that
+planned from different reports would overlap, and the merge refuses ranges
+that overlap or leave a statement out.
 
 **A change that reaches no mutant pays nothing.** Incremental mode would take
 every result from `main`'s report anyway, so a release or a docs change runs no
@@ -120,6 +127,7 @@ subprocess); mutating them now would score the sandbox, not the tests.
 | Every mutant on every pull request | no result is ever taken from an earlier run | four fifths of CI minutes, for no catch outside the changed files |
 | One incremental job over every module | no merge step | the slowest gate, holding every merge, release pull requests included |
 | Shards by whole file | each file in one report | one large module leaves its shard running alone |
+| Shares balanced by mutant count | needs no report to plan | a load-time mutant costs many plain ones: one shard ran half again as long |
 | Shards by a range inside a statement | a finer balance | drops the mutant of every node that spans the cut |
 | Mutate only the files a pull request's diff names | no report to carry between runs | a pull request that only weakens a test mutates nothing |
 | The full run alone, weekly, with no pull request job | the cheapest pipeline | a survivor lands on `main` and is found a week late |

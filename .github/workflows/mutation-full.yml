@@ -3,7 +3,8 @@
 # A pull request re-tests only the mutants its own change reaches (the
 # `mutation` gate in ci.yml), so this run is the check on that shortcut. It
 # runs once a week, as parallel shards, each mutating a disjoint share of the
-# top-level statements of the files stryker.config.json names
+# top-level statements of the files stryker.config.json names, balanced by
+# the time each took in the last green report on main
 # (scripts/mutation-shard.ts, the same split the pull request's shards use).
 # When a mutant is left undetected it opens an issue naming every one of
 # them, or comments on the open one.
@@ -27,13 +28,40 @@
   'contents': 'read'
 
 'jobs':
+  # Chosen once for every shard: each plans its share from this run's report,
+  # and shards that read different reports would overlap.
+  'baseline':
+    'name': 'Choose the last green run on main'
+    'runs-on': 'ubuntu-latest'
+    'timeout-minutes': 5
+    'permissions':
+      'contents': 'read'
+      # Reads the list of runs on main.
+      'actions': 'read'
+    'outputs':
+      'run': '${{ steps.baseline.outputs.run }}'
+    'steps':
+      - 'id': 'baseline'
+        'shell': 'bash'
+        'env':
+          'GH_TOKEN': '${{ github.token }}'
+          'REPO': '${{ github.repository }}'
+        'run': |
+          set -euo pipefail
+          run="$(gh run list --repo "${REPO}" --workflow ci.yml --branch main --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+          echo "run=${run}" >> "$GITHUB_OUTPUT"
+
   'shard':
     'name': 'Mutation (${{ matrix.shard }}/6)'
     'runs-on': 'ubuntu-latest'
     # One shard holds a sixth of the mutants; the limit only stops a hung run.
     'timeout-minutes': 60
+    'needs':
+      - 'baseline'
     'permissions':
       'contents': 'read'
+      # Reads one run's artifact.
+      'actions': 'read'
     'strategy':
       # Every shard reports, not only the first to find a survivor.
       'fail-fast': false
@@ -42,13 +70,28 @@
     'steps':
       - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
       - 'uses': './.github/actions/setup'
+      # No report is not a failure: the shares are then balanced by syntax.
+      # It is only read for timing, so it goes where Stryker does not look.
+      - 'name': 'Fetch the report of the last green run on main'
+        'shell': 'bash'
+        'env':
+          'GH_TOKEN': '${{ github.token }}'
+          'REPO': '${{ github.repository }}'
+          'BASELINE': '${{ needs.baseline.outputs.run }}'
+        'run': |
+          set -euo pipefail
+          if [ -z "${BASELINE}" ]; then
+            echo "::warning::No green run on main: the shares are balanced by syntax."
+          elif ! gh run download "${BASELINE}" --repo "${REPO}" --name mutation-incremental --dir reports/baseline; then
+            echo "::warning::Run ${BASELINE} holds no mutation-incremental report: the shares are balanced by syntax."
+          fi
       - 'name': 'Mutation'
         'env':
           'SHARD': '${{ matrix.shard }}'
         # The ranges are taken first, so a shard script that fails stops the
         # step, rather than handing Stryker an empty list.
         'run': |
-          ranges="$(node scripts/mutation-shard.ts "$SHARD" 6)"
+          ranges="$(node scripts/mutation-shard.ts "$SHARD" 6 reports/baseline/stryker-incremental.json)"
           npm run test:mutation -- --mutate "$ranges"
       # A shard with a survivor fails, and its report is what names it.
       - 'name': 'Upload mutation report'

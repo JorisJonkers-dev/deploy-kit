@@ -35,6 +35,8 @@ const jobOf = (text: string, key: string): string =>
   text.split(`  '${key}':\n`)[1]?.split("\n\n")[0] ?? "";
 const gateJob = jobOf(ci, "mutation");
 const pullRequestShardJob = jobOf(ci, "mutation-shard");
+const scopeJob = jobOf(ci, "mutation-scope");
+const fullBaselineJob = jobOf(full, "baseline");
 const shardJob = jobOf(full, "shard");
 
 /** The shard count a job's matrix lists, once it is 1 to N in order. */
@@ -109,11 +111,11 @@ describe("the mutation gate", () => {
     expect(pullRequestShardJob).toContain(
       'npm run test:mutation -- --incremental --mutate "$ranges"',
     );
-    expect(pullRequestShardJob).toContain(
+    expect(scopeJob).toContain(
       'gh run list --repo "${REPO}" --workflow ci.yml --branch main --event push --status success --limit 1',
     );
     expect(pullRequestShardJob).toContain(
-      'gh run download "${run}" --repo "${REPO}" --name mutation-incremental --dir reports',
+      'gh run download "${BASELINE}" --repo "${REPO}" --name mutation-incremental --dir reports',
     );
     expect(ci).toMatch(/'pipeline-complete':[\s\S]*?- 'mutation'\n/);
   });
@@ -124,7 +126,11 @@ describe("the mutation gate", () => {
     const count = String(matrixCount(pullRequestShardJob));
 
     expect(pullRequestShardJob).toContain(
-      `ranges="$(node scripts/mutation-shard.ts "$SHARD" ${count})"`,
+      `ranges="$(node scripts/mutation-shard.ts "$SHARD" ${count} reports/stryker-incremental.json)"`,
+    );
+    // The merge reads what each shard ran, beside its report.
+    expect(pullRequestShardJob).toContain(
+      `printf '%s\\n' "$ranges" > reports/mutation/ranges.txt`,
     );
     expect(pullRequestShardJob).toContain(
       `'name': 'Mutation (\${{ matrix.shard }}/${count})'`,
@@ -160,10 +166,33 @@ describe("the mutation gate", () => {
     const count = String(matrixCount(shardJob));
 
     expect(shardJob).toContain(
-      `ranges="$(node scripts/mutation-shard.ts "$SHARD" ${count})"`,
+      `ranges="$(node scripts/mutation-shard.ts "$SHARD" ${count} reports/baseline/stryker-incremental.json)"`,
     );
     expect(shardJob).toContain('npm run test:mutation -- --mutate "$ranges"');
     expect(shardJob).not.toContain("--incremental");
+  });
+
+  // Shards that planned from different reports would overlap or leave a
+  // statement out, so one job chooses the report for all of them.
+  it("hands every shard of a run the one report its time weights come from", () => {
+    const chosen = "'BASELINE': '${{ needs.mutation-scope.outputs.baseline }}'";
+    expect(scopeJob).toContain(
+      "'baseline': '${{ steps.baseline.outputs.run }}'",
+    );
+    expect(pullRequestShardJob).toContain(chosen);
+    expect(pullRequestShardJob).not.toContain("gh run list");
+
+    expect(fullBaselineJob).toContain(
+      'gh run list --repo "${REPO}" --workflow ci.yml --branch main --event push --status success --limit 1',
+    );
+    expect(shardJob).toContain("'needs':\n      - 'baseline'");
+    expect(shardJob).toContain(
+      "'BASELINE': '${{ needs.baseline.outputs.run }}'",
+    );
+    expect(shardJob).toContain(
+      'gh run download "${BASELINE}" --repo "${REPO}" --name mutation-incremental --dir reports/baseline',
+    );
+    expect(shardJob).not.toContain("gh run list");
   });
 
   it("runs the full run on a weekly schedule and on request, and on no push or pull request", () => {

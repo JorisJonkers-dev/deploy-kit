@@ -7,10 +7,14 @@ import {
   mutatedFiles,
   owner,
   plan,
+  formatted,
+  parsed,
   run,
   statements,
+  timed,
   type Statement,
 } from "../scripts/mutation-shard.ts";
+import type { Report } from "../scripts/lib/mutation-report.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..");
 
@@ -130,7 +134,7 @@ describe("a mutation shard", () => {
     ]);
   });
 
-  it("balances the shards across files, the heaviest file first and the lowest-numbered shard on a tie", () => {
+  it("balances the whole tree, heaviest statement first and the lowest-numbered shard on a tie", () => {
     expect(
       plan(
         [
@@ -147,6 +151,78 @@ describe("a mutation shard", () => {
         { path: "src/b.ts", start: 1, end: 5 },
       ],
     ]);
+  });
+
+  it("balances the total, not each file: three light statements of one file go where one heavy statement is not", () => {
+    expect(
+      plan(
+        [
+          { path: "src/a.ts", statements: weighed([30]) },
+          { path: "src/b.ts", statements: weighed([10, 10, 10]) },
+        ],
+        2,
+      ),
+    ).toStrictEqual([
+      [{ path: "src/a.ts", start: 1, end: 5 }],
+      [{ path: "src/b.ts", start: 1, end: 25 }],
+    ]);
+  });
+
+  it("weighs a statement by the tests its mutants ran in the report, where the report holds the file unchanged", () => {
+    const source = "export const a = [1];\n\nexport const b = [2];\n";
+    const held = statements(source);
+    const mutant = (line: number, testsCompleted?: number) => ({
+      id: String(line),
+      status: "Killed",
+      mutatorName: "ArrayDeclaration",
+      location: { start: { line, column: 18 }, end: { line, column: 21 } },
+      ...(testsCompleted === undefined ? {} : { testsCompleted }),
+    });
+    const report: Report = {
+      files: {
+        "src/a.ts": { source, mutants: [mutant(1, 99), mutant(3)] },
+        "src/changed.ts": { source: "export const old = 1;\n", mutants: [] },
+      },
+    };
+    const changed = statements("export const now = [1, 2];\n");
+
+    const weighed = timed(
+      [
+        { path: "src/a.ts", source, statements: held },
+        {
+          path: "src/changed.ts",
+          source: "export const now = [1, 2];\n",
+          statements: changed,
+        },
+      ],
+      report,
+    );
+
+    // 1 + 99 tests, and 1 for a mutant that records none.
+    expect(weighed[0]?.statements.map(({ weight }) => weight)).toStrictEqual([
+      100, 1,
+    ]);
+    // A changed file weighs by nodes, at what a node cost where it was measured.
+    const scale = 101 / held.reduce((sum, { weight }) => sum + weight, 0);
+    expect(weighed[1]?.statements[0]?.weight).toBeCloseTo(
+      (changed[0]?.weight ?? 0) * scale,
+    );
+    // With no report, every file weighs by nodes as it is.
+    expect(
+      timed([{ path: "src/a.ts", source, statements: held }], undefined),
+    ).toStrictEqual([{ path: "src/a.ts", statements: held }]);
+  });
+
+  it("writes ranges as --mutate takes them and reads back only what it wrote", () => {
+    const ranges = [
+      { path: "src/a.ts", start: 1, end: 15 },
+      { path: "src/b/c.ts", start: 3, end: 3 },
+    ];
+
+    expect(formatted(ranges)).toBe("src/a.ts:1-15,src/b/c.ts:3-3");
+    expect(parsed(`${formatted(ranges)}\n`)).toStrictEqual(ranges);
+    for (const text of ["", "src/a.ts", "src/a.ts:1", "src/a.ts:x-2"])
+      expect(parsed(text), text).toBeUndefined();
   });
 
   it("finds the one shard whose range holds a span, and none for a span across two", () => {
@@ -187,6 +263,39 @@ describe("a mutation shard", () => {
     });
     // The lighter shard takes the next file whole.
     expect(run(["2", "2"], root).stdout).toBe("src/a.ts:3-3,src/b/c.ts:1-1\n");
+    // A report that times src/b/c.ts as the heaviest moves it, and one that
+    // does not exist leaves the split as it was.
+    const report = join(root, "baseline.json");
+    writeFileSync(
+      report,
+      JSON.stringify({
+        files: {
+          "src/a.ts": {
+            source: "export const a = [1, 2, 3];\n\nexport const b = 1;\n",
+            mutants: [],
+          },
+          "src/b/c.ts": {
+            source: "export const c = 1;\n",
+            mutants: [
+              {
+                id: "0",
+                status: "Killed",
+                mutatorName: "StringLiteral",
+                location: {
+                  start: { line: 1, column: 1 },
+                  end: { line: 1, column: 2 },
+                },
+                testsCompleted: 1000,
+              },
+            ],
+          },
+        },
+      }),
+    );
+    expect(run(["1", "2", report], root).stdout).toBe("src/b/c.ts:1-1\n");
+    expect(run(["1", "2", join(root, "absent.json")], root).stdout).toBe(
+      "src/a.ts:1-1\n",
+    );
   });
 
   it("refuses a shard with nothing to mutate, and a call that names no shard", () => {
@@ -199,7 +308,13 @@ describe("a mutation shard", () => {
       stdout: "",
       stderr: "shard 2 of 2 holds nothing to mutate: use fewer shards\n",
     });
-    for (const argv of [[], ["1"], ["0", "2"], ["x", "2"], ["1", "2", "3"]])
+    for (const argv of [
+      [],
+      ["1"],
+      ["0", "2"],
+      ["x", "2"],
+      ["1", "2", "3", "4"],
+    ])
       expect(run(argv, root).code, argv.join(" ")).toBe(2);
     expect(run(["3", "2"], root)).toStrictEqual({
       code: 2,
