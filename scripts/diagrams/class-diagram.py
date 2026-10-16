@@ -48,6 +48,23 @@ The Task 1 report's three landscape class diagrams use `--report`:
     /Applications/draw.io.app/Contents/MacOS/draw.io -x -f pdf --crop -b 4 \
         -o $F/project-document.pdf p.drawio   # and so on for the other two
 
+The Task 2 report's three class diagrams use `--report` the same way, each
+from its own mermaid block, and `--changes` where the drawing compares the
+model with Task 1's:
+    F=docs/mde/task-2-transformations/Figures
+    python3 scripts/diagrams/class-diagram.py --report \
+        --source=$F/pinned-inputs.md task2-pinned-inputs i.drawio
+    python3 scripts/diagrams/class-diagram.py --report --changes \
+        --source=$F/target-decisions.md task2-target-decisions d.drawio
+    python3 scripts/diagrams/class-diagram.py --report --changes \
+        --source=$F/target-files.md task2-target-files f.drawio
+
+With `--changes`, a class marked `<<new>>` takes its layer's fill and every
+other class a white one; an attribute row ending in `[new]` is bold, and one
+ending in `[removed]` is struck through. A class marked `<<abstract>>` has its
+name in italics, and `Parent <|-- Child` draws generalisation, a hollow
+triangle at the parent, as a tree edge in place of a containment.
+
 CHILDREN below is the only hand-maintained part: it fixes the tree parent of
 each node and the sibling order. Sibling order is chosen so that cross-links
 land between neighbours. Adding a class or an enumeration to the mermaid
@@ -73,20 +90,29 @@ SUBTREE, *DROPPED = SUBTREE.split("-")
 OUT = ARGS[-1]
 MD = FLAGS.get("source") or f"spec/v1/{CHAPTER}.md"
 REPORT = "report" in FLAGS
+CHANGES = "changes" in FLAGS
 src = open(MD).read()
 body = re.search(r"```mermaid\nclassDiagram\n(.*?)\n```", src, re.S).group(1)
 
 nodes = {}
 for name, blk in re.findall(r"    class (\w+) \{(.*?)\n    \}", body, re.S):
     rows = [l.strip() for l in blk.strip("\n").split("\n") if l.strip()]
-    kind = "enum" if "<<enumeration>>" in rows else "class"
+    flags = {r[2:-2] for r in rows if r.startswith("<<")}
+    kind = "enum" if "enumeration" in flags else "class"
     rows = [r for r in rows if not r.startswith("<<")]
+    # a row ending in [new] or [removed] marks a change against Task 1
+    marks = [(re.search(r"\s\[(new|removed)\]$", r) or [None, None])[1] for r in rows]
+    rows = [re.sub(r"\s\[(new|removed)\]$", "", r) for r in rows]
     if kind == "class":
         rows = [re.sub(r"^\+\s*(\S+)\s+(\S+)$", r"+ \1  \2", r) for r in rows]
-    nodes[name] = {"kind": kind, "rows": rows, "notes": []}
+    nodes[name] = {"kind": kind, "rows": rows, "notes": [], "flags": flags, "marks": marks}
 
-comp, dep, assoc = [], [], []
+comp, dep, assoc, gen = [], [], [], set()
 for line in body.split("\n"):
+    m = re.match(r"\s*(\w+)\s+<\|--\s+(\w+)\s*$", line)
+    if m:
+        gen.add((m.group(1), m.group(2)))
+        continue
     m = re.match(r'\s*(\w+)\s+"([^"]+)"\s+\*--\s+"([^"]+)"\s+(\w+)\s*:\s*(.*)', line)
     if m:
         comp.append((m.group(1), m.group(4), m.group(3), m.group(5).strip()))
@@ -167,12 +193,18 @@ TREES = {"10-project-intent": {
 }}
 NAMES = {"10-project-intent": "Project Intent - the layer-1 model",
          "14-platform-intent": "Platform Intent - the model",
-         "20-resolved-deployment": "Resolved Deployment - the layer-2 model"}
+         "20-resolved-deployment": "Resolved Deployment - the layer-2 model",
+         "task2-pinned-inputs": "Pinned inputs - the Task 2 metamodel",
+         "task2-target-decisions": "Resolved Deployment - decisions changed in Task 2",
+         "task2-target-files": "Resolved Deployment - generated files in Task 2"}
 # the layer palette of spec/v1/diagrams/README.md
 FILL, WASH, STROKE = {"10-project-intent": ("#dbeafe", "#f4f8ff", "#1e40af"),
                       "14-platform-intent": ("#e0e7ff", "#f5f6ff", "#4338ca"),
-                      "20-resolved-deployment": ("#fef3c7", "#fffbf0", "#b45309")}[CHAPTER]
-CHILDREN = TREES[CHAPTER]
+                      "20-resolved-deployment": ("#fef3c7", "#fffbf0", "#b45309"),
+                      "task2-pinned-inputs": ("#e2e8f0", "#f8fafc", "#475569"),
+                      "task2-target-decisions": ("#fef3c7", "#fffbf0", "#b45309"),
+                      "task2-target-files": ("#d1fae5", "#f2fdf8", "#047857")}[CHAPTER]
+CHILDREN = TREES.get(CHAPTER, {})
 
 # --report: the whole model on one landscape page. The layered layout above
 # gives every leaf its own column, which for a whole model is several times
@@ -243,6 +275,51 @@ REPORT_LAYOUTS = {"10-project-intent": {
     },
     "beside": {"ResolvedApplication"},
     "gaps": {},
+}, "task2-pinned-inputs": {
+    "columns": {
+        "NodeContract": [["Node"]],
+        "Node": [["Allocatable"], ["Gpu"], ["Disk"]],
+        "ImagesLock": [["LockedImage"]],
+        "ClusterState": [["Binding"], ["CurrentPlacement"], ["RollbackBackup"]],
+        "MigrationProof": [["ProvenApplication"]],
+    },
+    "roots": [["NodeContract", "ImagesLock"], ["ClusterState", "MigrationProof", "AssetFile"]],
+    "beside": set(),
+    "gaps": {},
+}, "task2-target-decisions": {
+    "columns": {
+        "ResolvedDeployment": [["ResolvedPolicyJob", "ResolvedEvents"], ["ResolvedApplication"]],
+        "ResolvedPolicyJob": [["PolicyPeer"]],
+        "ResolvedApplication": [["ReleaseGate", "ResolvedScrape"], ["ResolvedMigration"],
+                                ["ResolvedProcess"], ["ResolvedExposure"]],
+        "ReleaseGate": [["GateMigration"]],
+        "ResolvedMigration": [["MigratedDatabase"], ["ResolvedGrant"]],
+        "ResolvedGrant": [["PolicyPath"]],
+        "ResolvedProcess": [["StartupProbe", "ResolvedApiAccess", "EnvEntry"],
+                            ["ResolvedVolume", "ResolvedAsset", "ResolvedSidecar"]],
+        "ResolvedApiAccess": [["ResolvedApiRule", "AdmittedRange"]],
+        "ResolvedVolume": [["BackupPlan"]],
+        "BackupPlan": [["BackupPeer"]],
+        "EnvEntry": [["SecretReference"]],
+    },
+    "beside": {"ResolvedApplication"},
+    "gaps": {},
+}, "task2-target-files": {
+    # the Task 1 classes in the first two columns, the new ones after them
+    "columns": {
+        "Deliverable": [["NamespaceFile", "IndexFile", "WorkloadFile", "SwitchoverFile",
+                         "IdentityFile"],
+                        ["NetworkPolicyFile", "IngressRouteFile", "MonitorFile", "SecretFile"],
+                        ["MigrationFile", "BudgetFile", "RbacFile", "ServiceFile", "ClaimFile",
+                         "ConfigMapFile"],
+                        ["BackupFile", "ConnectionFile", "VaultPolicyFile", "PolicyJobFile",
+                         "EventsFile", "VaultRoleFile"]],
+        "NetworkPolicyFile": [["ProcessPolicy"]],
+        "SecretFile": [["SecretHolder"]],
+        "PolicyJobFile": [["PolicyDocument"]],
+    },
+    "beside": set(),
+    "gaps": {},
 }}
 
 # Helvetica advance widths, per 1000 units of the font size
@@ -268,20 +345,26 @@ def report():
         return sum(HELV.get(ch, 600) for ch in s) / 1000.0 * fs * (1.1 if bold else 1.0)
 
     kids = {p: [c for col in cs for c in col] for p, cs in cols_of.items()}
-    root = next(p for p in kids if all(p not in ks for ks in kids.values()))
-    placed = {root} | {c for ks in kids.values() for c in ks}
+    # a model with several root classes lists them in `roots`: rows top to
+    # bottom, each row's roots left to right
+    root_rows = lay.get("roots") or [[next(p for p in kids
+                                           if all(p not in ks for ks in kids.values()))]]
+    roots = [r for row in root_rows for r in row]
+    placed = set(roots) | {c for ks in kids.values() for c in ks}
     assert placed == set(nodes), (f"missing {sorted(set(nodes) - placed)}, "
                                   f"unknown {sorted(placed - set(nodes))}")
     tree = {(p, c) for p, ks in kids.items() for c in ks}
     for p, c in tree:
-        assert any(e[0] == p and e[1] == c for e in comp), f"{p} does not contain {c}"
+        assert (p, c) in gen or any(e[0] == p and e[1] == c for e in comp), \
+            f"{p} neither contains nor generalises {c}"
 
     size = {}
     for n, d in nodes.items():
-        w = max([textw(n, HFS, True) + 24] + [textw(r) + 22 for r in d["rows"]] + [110])
+        w = max([textw(n, HFS, True) + 24]
+                + [textw(r, bold=m == "new") + 22 for r, m in zip(d["rows"], d["marks"])] + [110])
         size[n] = (int(w + 1) // 2 * 2, HEAD + ROW * len(d["rows"]))
 
-    comp_label = {}
+    comp_label = {(a, b): [""] for a, b in gen}
     for a, b, mult, label in comp:
         comp_label.setdefault((a, b), []).append(f"{mult}  {label}")
 
@@ -314,7 +397,7 @@ def report():
 
     def band(p, c):
         """The height above a stacked child that holds its link names, one a line."""
-        return LBL * len(comp_label[(p, c)])
+        return LBL * len([l for l in comp_label[(p, c)] if l])
 
     def layout(n, min_bus=0):
         wn, hn = size[n]
@@ -428,7 +511,24 @@ def report():
             blk["w"], blk["h"] = max(nx + wn, blk["w"], cb["w"] + ox), max(blk["h"], cb["h"])
         return blk
 
-    top_blk = layout(root)
+    def beside_each_other(blocks, gap):
+        out = blocks[0]
+        for b in blocks[1:]:
+            dx = out["w"] + gap
+            merge(out, shift(b, dx, 0))
+            out["w"], out["h"] = dx + b["w"], max(out["h"], b["h"])
+        return out
+
+    rows_ = [beside_each_other([layout(r) for r in row], HG * 2) for row in root_rows]
+    top_blk = rows_[0]
+    for b in rows_[1:]:
+        dy = top_blk["h"] + VG1
+        merge(top_blk, shift(b, 0, dy))
+        top_blk["w"], top_blk["h"] = max(top_blk["w"], b["w"]), dy + b["h"]
+    for e in top_blk["edges"]:
+        if (e["a"], e["b"]) in gen:
+            e["kind"] = "gen"
+    top_blk["labels"] = [(x, y, t) for x, y, t in top_blk["labels"] if t]
     boxes = {n: (int(x) + 12, int(y) + 12) for n, (x, y) in top_blk["boxes"].items()}
     shift(top_blk, 12, 12)
 
@@ -517,18 +617,27 @@ def report():
            f"fontFamily=Helvetica;fontSize={HFS};fontStyle=1;align=center;verticalAlign=middle;")
     attr = ("text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;"
             f"spacingLeft=8;spacingRight=4;overflow=hidden;fontFamily=Helvetica;fontSize={FS};")
+    # --changes: a class Task 1 already had keeps its layer's stroke on white
+    old_box = box.replace(f"fillColor={FILL};swimlaneFillColor={WASH};",
+                          "fillColor=#ffffff;swimlaneFillColor=#ffffff;")
+    marked = {None: attr, "new": attr + "fontStyle=1;",
+              "removed": attr + "fontStyle=8;fontColor=#64748b;"}
     ident = {}
     for i, n in enumerate(sorted(nodes)):
         ident[n] = f"n{i}"
         x, y = boxes[n]
         w, h = size[n]
-        c = ET.SubElement(root_el, "mxCell", {"id": ident[n], "value": n, "style": box,
+        d = nodes[n]
+        st = old_box if CHANGES and "new" not in d["flags"] else box
+        if "abstract" in d["flags"]:
+            st = st.replace("fontStyle=1;", "fontStyle=3;")
+        c = ET.SubElement(root_el, "mxCell", {"id": ident[n], "value": n, "style": st,
                                               "parent": "1", "vertex": "1"})
         ET.SubElement(c, "mxGeometry", {"x": str(x), "y": str(y), "width": str(w),
                                         "height": str(h), "as": "geometry"})
-        for j, r in enumerate(nodes[n]["rows"]):
+        for j, (r, m) in enumerate(zip(d["rows"], d["marks"])):
             k = ET.SubElement(root_el, "mxCell", {"id": f"{ident[n]}a{j}", "value": r,
-                                                  "style": attr, "parent": ident[n],
+                                                  "style": marked[m], "parent": ident[n],
                                                   "vertex": "1"})
             ET.SubElement(k, "mxGeometry", {"y": str(HEAD + ROW * j), "width": str(w),
                                             "height": str(ROW), "as": "geometry"})
@@ -537,6 +646,8 @@ def report():
     kinds = {
         "comp": base + "strokeColor=#475569;startArrow=diamondThin;startFill=1;startSize=12;"
                        "endArrow=none;",
+        "gen": base + "strokeColor=#475569;startArrow=block;startFill=0;startSize=12;"
+                      "endArrow=none;",
         "assoc": base + "strokeColor=#6d28d9;fontColor=#6d28d9;endArrow=open;endFill=0;"
                         "endSize=10;",
         "dep": base + "strokeColor=#6d28d9;fontColor=#6d28d9;dashed=1;dashPattern=8 4;"
