@@ -16,6 +16,9 @@ transformation estate(inout rendered : RD)
 -- The estate-wide directory the job's objects land in, beside the documents.
 property DIRECTORY : String = 'estate/vso-secrets/';
 
+-- Where every identity's Vault documents land, a catalog method's among them.
+property POLICIES : String = 'estate/vso-secrets/policies/';
+
 -- The estate-wide directory the route Flux's events take lands in.
 property EVENTS_DIRECTORY : String = 'estate/rollout-events/';
 
@@ -26,6 +29,44 @@ property NAME_DIGITS : Integer = 12;
 
 main() {
 	var deployments : Sequence(ResolvedDeployment) := rendered.rootObjects()[ResolvedDeployment]->asSequence();
+	-- Each catalog method whose catalog names a project of the render, before the policy job's
+	-- documents are gathered: its own policy and role are among them.
+	var catalogs : Sequence(String) := Sequence{};
+	if (deployments->notEmpty()) {
+		var projectsRendered : Set(String) := deployments.applications.project->asSet();
+		deployments->first().catalogJobs
+			->select(c | c.catalog.databases->exists(db | projectsRendered->exists(p | db.name = p + '_db')))
+			->forEach(c) {
+				var catalog : String := c.catalog.catalogJson();
+				var digest : String := obj(Sequence{
+					Tuple{k = 'catalog', v = catalog},
+					Tuple{k = 'image', v = str(c.image)},
+					Tuple{k = 'uid', v = c.uid.toString()},
+					Tuple{k = 'gid', v = c.gid.toString()},
+					Tuple{k = 'memory', v = str(c.memory)},
+					Tuple{k = 'cpu', v = str(c.cpu)}}).rawDigestOf();
+				var named : String := c.identity + '-'
+					+ digest.substring(ALGORITHM.size() + 1, ALGORITHM.size() + NAME_DIGITS);
+				deployments->first().deliverables += object CatalogJobFile {
+					path := DIRECTORY + c.identity + '.yaml';
+					adapter := AdapterName::kubernetes;
+					part := 'objects'; name := named; catalogJson := catalog; job := c; };
+				deployments->first().deliverables += object CatalogJobFile {
+					path := DIRECTORY + c.identity + '-networkpolicy.yaml';
+					adapter := AdapterName::networking;
+					part := 'networkpolicy'; job := c; };
+				deployments->first().deliverables += object CatalogJobFile {
+					path := POLICIES + c.role + '.policy.json';
+					adapter := AdapterName::vaultPolicy;
+					part := 'policy'; job := c; };
+				deployments->first().deliverables += object VaultRoleFile {
+					path := POLICIES + c.role + '.role.json';
+					adapter := AdapterName::vaultPolicy;
+					namespace := c.namespace;
+					identity := c.identity; };
+				catalogs := catalogs->append(c.identity + '.yaml');
+			};
+	};
 	var jobs : Sequence(ResolvedPolicyJob) := deployments.policyJob->select(j | j <> null)->asSequence();
 	var held : Sequence(Tuple(file : String, json : String)) := deployments.deliverables
 		->collect(d | d.documentOf())->select(d | d <> null)->asSequence()->sortedBy(d | d.file);
@@ -60,7 +101,8 @@ main() {
 		deployments->first().deliverables += object IndexFile {
 			path := DIRECTORY + 'kustomization.yaml';
 			adapter := AdapterName::kubernetes;
-			resources := Sequence{'configmap.yaml', 'cronjob.yaml', 'job.yaml', 'serviceaccount.yaml'};
+			resources := Sequence{'configmap.yaml', 'cronjob.yaml', 'job.yaml', 'serviceaccount.yaml'}
+				->union(catalogs)->sortedBy(r | r);
 		};
 	};
 	routeOf(deployments);
@@ -97,7 +139,33 @@ query Deliverable::documentOf() : Tuple(file : String, json : String) =
 		Tuple{file = fileOf(self.path), json = self.oclAsType(VaultRoleFile).roleJson()}
 	else if self.oclIsKindOf(GeneratedKeysFile) then
 		Tuple{file = fileOf(self.path), json = self.oclAsType(GeneratedKeysFile).keysJson()}
-	else null endif endif endif;
+	else if self.oclIsKindOf(CatalogJobFile) and self.oclAsType(CatalogJobFile).part = 'policy' then
+		Tuple{file = fileOf(self.path), json = self.oclAsType(CatalogJobFile).job.catalogPolicyJson()}
+	else null endif endif endif endif;
+
+-- A catalog as its method is handed it.
+query ResolvedCatalog::catalogJson() : String =
+	obj(Sequence{
+		Tuple{k = 'admin', v = obj(Sequence{
+			Tuple{k = 'path', v = str(self.admin.path)},
+			Tuple{k = 'user', v = str(self.admin.user)},
+			Tuple{k = 'password', v = str(self.admin.password)}})},
+		Tuple{k = 'connection', v = str(self.connection)},
+		Tuple{k = 'databases', v = arr(self.databases->collect(d | obj(Sequence{
+			Tuple{k = 'name', v = str(d.name)},
+			Tuple{k = 'owner', v = str(d.owner)},
+			Tuple{k = 'data', v = str(d.data)}}))->asSequence())},
+		Tuple{k = 'host', v = str(self.host)},
+		Tuple{k = 'port', v = self.port.toString()}});
+
+-- A catalog method's own policy: it reads its login, and writes each database role it names.
+query ResolvedCatalogJob::catalogPolicyJson() : String =
+	obj(Sequence{Tuple{k = 'path', v = obj(Sequence{
+		Tuple{k = self.catalog.admin.path, v = capabilities(Sequence{'read'})},
+		Tuple{k = 'secret/metadata/' + self.catalog.admin.path.substring(KV_DATA.size() + 1, self.catalog.admin.path.size()), v = capabilities(Sequence{'read'})}}
+		->union(self.catalog.databases->collect(d | Sequence{d.owner, d.data})->flatten()
+			->collect(r | Tuple{k = 'database/roles/' + r, v = capabilities(Sequence{'create', 'read', 'update'})})
+			->asSequence()))}});
 
 -- What each grant may do: the paths a transit or database grant's engine
 -- derives, or `read` on a kv grant's path and on the same document's metadata.

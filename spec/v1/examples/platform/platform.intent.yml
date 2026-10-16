@@ -97,7 +97,9 @@ engines:
   # `surface` is the surface of the Process the method connects to: postgres
   # is dumped over its own protocol, rabbitmq through its management API. A
   # method that reads the volume alone names none.
-  postgres: { backup: postgres-backup, surface: postgres }
+  # `catalog` applies the database catalog its consumers' edges derive
+  # (spec/v1/14-platform-intent.md#catalog-methods).
+  postgres: { backup: postgres-backup, surface: postgres, catalog: postgres-catalog }
   rabbitmq: { backup: rabbitmq-backup, surface: management }
   files: { backup: file-backup }
 
@@ -195,8 +197,14 @@ policyJob:
 # both, and after retireBy the old path is removed.
 handover:
   retireBy: 2027-03-31
-  legacy: [auth, data, knowledge, knowledge-platform, notes]
-  estate: [delivery, edge, observability, secrets]
+  legacy: [auth, data, knowledge, notes]
+  estate: [delivery, edge, knowledge-platform, observability, secrets]
+  # Where the old path keeps the legacy Postgres's administrative login, which
+  # applies the catalog of the estate path's databases until data moves.
+  serving:
+    - application: platform-postgres
+      namespace: data-system
+      admin: { path: secret/data/platform/postgres, user: postgres.user, password: postgres.password }
 
 # Things the estate runs and does not deploy, that an Application depends on. A fact
 # with an address, resolvable by an edge -- not a hole, so no review date

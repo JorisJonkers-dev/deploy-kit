@@ -5,6 +5,7 @@
 import type { ResolvedProject } from "../../model/resolution.ts";
 import type {
   ResolvedApplicationDocument,
+  ResolvedCatalogJob,
   ResolvedPolicyJob,
   ResolvedProcess,
 } from "../../model/resolved-deployment.ts";
@@ -179,9 +180,13 @@ function backupPoliciesOf(
 
 /**
  * The Vault policy job's own policy, beside its objects: egress to the Secret
- * Store and to the cluster's DNS, and nothing reaches it.
+ * Store and to the cluster's DNS, and nothing reaches it. A catalog method's
+ * is the same shape, with its datastore among its peers.
  */
-export function renderPolicyJobPolicy(job: ResolvedPolicyJob): Deliverable {
+export function renderPolicyJobPolicy(
+  job: ResolvedPolicyJob | ResolvedCatalogJob,
+  file = "networkpolicy.yaml",
+): Deliverable {
   const policy: NetworkPolicy = {
     apiVersion: "networking.k8s.io/v1",
     kind: "NetworkPolicy",
@@ -203,7 +208,7 @@ export function renderPolicyJobPolicy(job: ResolvedPolicyJob): Deliverable {
     },
   };
   return {
-    path: `${SECRETS_DIRECTORY}/networkpolicy.yaml`,
+    path: `${SECRETS_DIRECTORY}/${file}`,
     adapter: ADAPTER,
     objects: [policy],
   };

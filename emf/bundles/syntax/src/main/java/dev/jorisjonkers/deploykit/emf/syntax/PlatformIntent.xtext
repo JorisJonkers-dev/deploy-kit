@@ -61,7 +61,14 @@ HandoverLedger returns HandoverLedger:
 ServingLocation returns ServingLocation:
 	(('application' ':' application=Text)
 	& ('namespace' ':' namespace=Text)
-	& ('instance' ':' instance=Text)?);
+	& ('instance' ':' instance=Text)?
+	& ('admin' ':' BEGIN admin=AdminLogin END)?);
+
+// Where the old path keeps a datastore's administrative login.
+AdminLogin returns AdminLogin:
+	(('path' ':' path=Text)
+	& ('user' ':' user=Text)
+	& ('password' ':' password=Text));
 
 FluxSource returns FluxSource:
 	(('sourceRef' ':' sourceRef=Text)
@@ -118,10 +125,12 @@ EnginePolicies returns EnginePolicies:
 	& ('valkey' ':' BEGIN valkey=EnginePolicy END)?
 	& ('files' ':' BEGIN files=EnginePolicy END)?);
 
-// The method image, and the surface of the Process it dumps where it dumps over the network.
+// The method image, and the surface of the Process it dumps where it dumps over the network; and
+// for an engine that owns databases, the method that applies their catalog.
 EnginePolicy returns EnginePolicy:
 	(('backup' ':' backup=Text)
-	& ('surface' ':' surface=Text)?);
+	& ('surface' ':' surface=Text)?
+	& ('catalog' ':' catalog=Text)?);
 
 MonitorCadence returns MonitorCadence:
 	(('interval' ':' interval=Text)
@@ -192,12 +201,12 @@ Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword | PlatformKeyword;
 
 PlatformKeyword:
-	'acme' | 'address' | 'analysis' | 'apiAccess' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'certificates' | 'cidr' | 'cluster' | 'clusterDns' | 'cni' | 'collector' |
+	'acme' | 'address' | 'analysis' | 'apiAccess' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'catalog' | 'certificates' | 'cidr' | 'cluster' | 'clusterDns' | 'cni' | 'collector' |
 	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'egress' | 'embedded' | 'engines' | 'ephemeral' | 'errorRate' | 'estate' | 'etcd' |
 	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'handover' | 'hardening' | 'holders' | 'instance' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'latency' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
-	'metrics' | 'monitors' | 'namespace' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'period' | 'plain' | 'policyJob' | 'providers' | 'pullSecret' | 'restricted' | 'retireBy' |
+	'metrics' | 'monitors' | 'namespace' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'password' | 'period' | 'plain' | 'policyJob' | 'providers' | 'pullSecret' | 'restricted' | 'retireBy' |
 	'reporter' | 'repository' | 'retain' | 'runner' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'server' | 'serverCount' | 'serving' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
-	'surfaces' | 'telemetry' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'vault';
+	'surfaces' | 'telemetry' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'user' | 'vault';
 
 enum Datastore returns Datastore:
 	sqlite='sqlite' | etcd='etcd';

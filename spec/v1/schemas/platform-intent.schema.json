@@ -444,6 +444,10 @@
         "surface": {
           "type": "string",
           "minLength": 1
+        },
+        "catalog": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
@@ -737,11 +741,37 @@
         "instance": {
           "type": "string",
           "minLength": 1
+        },
+        "admin": {
+          "$ref": "#/$defs/AdminLogin"
         }
       },
       "required": [
         "application",
         "namespace"
+      ],
+      "additionalProperties": false
+    },
+    "AdminLogin": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "user": {
+          "type": "string",
+          "minLength": 1
+        },
+        "password": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "path",
+        "user",
+        "password"
       ],
       "additionalProperties": false
     },

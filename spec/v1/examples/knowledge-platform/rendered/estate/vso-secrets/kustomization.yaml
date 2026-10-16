@@ -6,4 +6,5 @@ resources:
   - configmap.yaml
   - cronjob.yaml
   - job.yaml
+  - postgres-catalog.yaml
   - serviceaccount.yaml

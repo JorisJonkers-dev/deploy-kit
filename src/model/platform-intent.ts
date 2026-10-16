@@ -128,9 +128,14 @@ const durabilityPolicies = z
 
 // The method image, and the surface of the Process it connects to where it
 // dumps over the network. An engine whose method reads the volume alone names
-// none.
+// none. An engine that owns databases may name the method that applies their
+// catalog (spec/v1/14-platform-intent.md#catalog-methods).
 const enginePolicy = z
-  .strictObject({ backup: text, surface: text.exactOptional() })
+  .strictObject({
+    backup: text,
+    surface: text.exactOptional(),
+    catalog: text.exactOptional(),
+  })
   .meta({ id: "EnginePolicy" });
 
 const enginePolicies = z
@@ -221,6 +226,12 @@ const apiAccessPolicy = z
 // path runs a legacy Application the estate path reaches: the namespace its
 // pods run in, and the instance label they and their Service carry where it is
 // not the Process's own name.
+// The KV document where the old path keeps a datastore's administrative
+// login, and the keys of its user and password.
+const adminLogin = z
+  .strictObject({ path: text, user: text, password: text })
+  .meta({ id: "AdminLogin" });
+
 const servingLocation = z
   .strictObject({
     // A name, not a reference: an Application no file read declares is not
@@ -228,6 +239,7 @@ const servingLocation = z
     application: text,
     namespace: text,
     instance: text.exactOptional(),
+    admin: adminLogin.exactOptional(),
   })
   .meta({ id: "ServingLocation" });
 

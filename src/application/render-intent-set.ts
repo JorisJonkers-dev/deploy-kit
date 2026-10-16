@@ -16,9 +16,15 @@ import {
   SECRETS_DIRECTORY,
 } from "../adapters/shared/paths.ts";
 import { documentsOf, renderPolicyJob } from "../adapters/vault-policy/job.ts";
+import { renderCatalogVault } from "../adapters/vault-policy/render.ts";
+import {
+  catalogDigestOf,
+  renderCatalogJob,
+} from "../adapters/kubernetes/catalog.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { Hasher } from "../model/hasher.ts";
 import type { Deliverable, RenderedObject } from "../objects/deliverable.ts";
+import type { ServiceAccount } from "../objects/kubernetes.ts";
 import type { AuthoredFile } from "./check-intent-set.ts";
 import {
   resolveIntentSet,
@@ -66,15 +72,37 @@ export function collisions(deliverables: readonly Deliverable[]): Diagnostic[] {
   const owners = new Map<string, string[]>();
   for (const { path, adapter } of deliverables)
     owners.set(path, [...(owners.get(path) ?? []), adapter]);
-  return [...owners.entries()]
-    .filter(([, adapters]) => adapters.length > 1)
-    .map(([path, adapters]) => ({
-      code: "E_PATH_COLLISION",
-      path: "",
-      message: `${path} is claimed by ${adapters.join(" and ")}`,
-      hint: "Every path has one owner: the plan assigns each adapter's paths from its default path.",
-    }));
+  // A Vault role binds a ServiceAccount's name and namespace, so a second
+  // account of one name would hold the first one's role.
+  const accounts = new Map<string, string[]>();
+  for (const { path, objects } of deliverables)
+    for (const object of objects)
+      if (isAccount(object)) {
+        const name = `${String(object.metadata.namespace)}/${object.metadata.name}`;
+        accounts.set(name, [...(accounts.get(name) ?? []), path]);
+      }
+  return [
+    ...[...owners.entries()]
+      .filter(([, adapters]) => adapters.length > 1)
+      .map(([path, adapters]) => ({
+        code: "E_PATH_COLLISION" as const,
+        path: "",
+        message: `${path} is claimed by ${adapters.join(" and ")}`,
+        hint: "Every path has one owner: the plan assigns each adapter's paths from its default path.",
+      })),
+    ...[...accounts.entries()]
+      .filter(([, paths]) => paths.length > 1)
+      .map(([name, paths]) => ({
+        code: "E_PATH_COLLISION" as const,
+        path: "",
+        message: `the ServiceAccount ${name} is claimed by ${paths.join(" and ")}`,
+        hint: "Rename the Process: a derived identity's name is its Process's with -backup, -migration or -catalog, so no Process may carry one.",
+      })),
+  ];
 }
+
+const isAccount = (object: RenderedObject): object is ServiceAccount =>
+  "kind" in object && object.kind === "ServiceAccount";
 
 // No two artifacts share a name and no two files a path, so `<=` would order
 // the same list.
@@ -140,6 +168,29 @@ function policyJobOf(
       ];
 }
 
+/**
+ * Each datastore's catalog method whose catalog names a project of this
+ * render (spec/v1/16-dependencies.md#applying-the-catalog): its objects, its
+ * policy, and the Vault documents the policy job writes for it.
+ */
+function catalogJobsOf(
+  resolved: ResolvedSet,
+  projects: readonly string[],
+  hash: Hasher,
+): Deliverable[] {
+  return (resolved.catalogJobs ?? [])
+    .filter(({ catalog }) =>
+      catalog.databases.some(({ name }) =>
+        projects.some((project) => name === `${project}_db`),
+      ),
+    )
+    .flatMap((job) => [
+      renderCatalogJob(job, hash(catalogDigestOf(job))),
+      renderPolicyJobPolicy(job, `${job.identity}-networkpolicy.yaml`),
+      ...renderCatalogVault(job),
+    ]);
+}
+
 /** A set already resolved, rendered: the half of {@link renderIntentSet} after resolution. */
 export function renderResolvedSet(
   resolved: ResolvedSet,
@@ -157,9 +208,11 @@ export function renderResolvedSet(
     const request = options.rollbackBackups?.get(project.project);
     return request === undefined ? [] : renderRollbackBackups(project, request);
   });
+  const catalogs = catalogJobsOf(resolved, options.projects, options.hash);
   const rendered = [
     ...projects,
-    ...policyJobOf(resolved, projects, options.hash),
+    ...catalogs,
+    ...policyJobOf(resolved, [...projects, ...catalogs], options.hash),
     // The route Flux's events take is the estate's, whichever Projects
     // render; a render of no Project puts no unit on the estate path to
     // report on.

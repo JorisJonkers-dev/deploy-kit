@@ -24,6 +24,8 @@
     [d.oclAsType(resolveddeployment::VaultRoleFile).json()/]
   [elseif (d.oclIsKindOf(resolveddeployment::GeneratedKeysFile))]
     [d.oclAsType(resolveddeployment::GeneratedKeysFile).json()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::CatalogJobFile) and d.oclAsType(resolveddeployment::CatalogJobFile).part = 'policy')]
+    [d.oclAsType(resolveddeployment::CatalogJobFile).json()/]
   [else]
     # GENERATED. Never hand-edit.
     [d.yaml()/]
@@ -57,6 +59,8 @@
     [d.oclAsType(resolveddeployment::RbacFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::PolicyJobFile))]
     [d.oclAsType(resolveddeployment::PolicyJobFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::CatalogJobFile))]
+    [d.oclAsType(resolveddeployment::CatalogJobFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::EventsFile))]
     [d.oclAsType(resolveddeployment::EventsFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::ClaimFile))]
@@ -1268,6 +1272,157 @@
   [/if]
 [/template]
 
+[comment A datastore's catalog method (spec/v1/16-dependencies.md#applying-the-catalog): its
+  ServiceAccount, the ConfigMap that hands it the catalog, the Job and the hourly CronJob in one
+  file, or its own policy. /]
+[template private catalogPod(d : resolveddeployment::CatalogJobFile)]
+  metadata:
+    labels:
+      [d.job.identity.labelSet('none', d.job.identity)/]
+  spec:
+    serviceAccountName: [d.job.identity/]
+    automountServiceAccountToken: true
+    restartPolicy: OnFailure
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: [d.job.uid/]
+      runAsGroup: [d.job.gid/]
+      seccompProfile:
+        type: RuntimeDefault
+    containers:
+      - name: [d.job.identity/]
+        image: [d.job.image/]
+        env:
+          - name: VAULT_ADDR
+            value: [d.job.address/]
+          - name: VAULT_ROLE
+            value: [d.job.role/]
+          - name: CATALOG_FILE
+            value: /catalog/catalog.json
+        resources:
+          requests:
+            memory: [d.job.memory/]
+            cpu: [d.job.cpu/]
+          limits:
+            memory: [d.job.memory/]
+        securityContext:
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        volumeMounts:
+          - name: catalog
+            mountPath: /catalog
+            readOnly: true
+    volumes:
+      - name: catalog
+        configMap:
+          name: [d.name/]
+          items:
+            - key: catalog.json
+              path: catalog.json
+[/template]
+
+[template private objects(d : resolveddeployment::CatalogJobFile)]
+  [if (d.part = 'objects')]
+    ---
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: [d.job.identity/]
+      namespace: [d.job.namespace/]
+      labels:
+        [d.job.identity.labelSet('none', d.job.identity)/]
+    ---
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: [d.name/]
+      namespace: [d.job.namespace/]
+      labels:
+        [d.job.identity.labelSet('none', d.job.identity)/]
+    immutable: true
+    data:
+      catalog.json: |
+        [d.catalogJson/]
+    ---
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: [d.name/]
+      namespace: [d.job.namespace/]
+      labels:
+        [d.job.identity.labelSet('none', d.job.identity)/]
+    spec:
+      activeDeadlineSeconds: [d.job.deadline.seconds()/]
+      template:
+        [d.catalogPod()/]
+    ---
+    apiVersion: batch/v1
+    kind: CronJob
+    metadata:
+      name: [d.job.identity/]
+      namespace: [d.job.namespace/]
+      labels:
+        [d.job.identity.labelSet('none', d.job.identity)/]
+    spec:
+      schedule: "@hourly"
+      concurrencyPolicy: Forbid
+      jobTemplate:
+        metadata:
+          labels:
+            [d.job.identity.labelSet('none', d.job.identity)/]
+        spec:
+          activeDeadlineSeconds: [d.job.deadline.seconds()/]
+          template:
+            [d.catalogPod()/]
+  [else]
+    ---
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: [d.job.identity/]
+      namespace: [d.job.namespace/]
+      labels:
+        [d.job.identity.labelSet('none', d.job.identity)/]
+    spec:
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: [d.job.identity/]
+      policyTypes:
+        - Ingress
+        - Egress
+      egress:
+    [for (peer : resolveddeployment::PolicyPeer | d.job.egress)]
+          - to:
+              [peer.peer()/]
+            ports:
+      [if (peer.rule = 'cluster-dns')]
+                - protocol: UDP
+                  port: [peer.port/]
+      [/if]
+              - protocol: TCP
+                port: [peer.port/]
+    [/for]
+  [/if]
+[/template]
+
+[comment A catalog method's own policy: it reads its login and its metadata, and writes each
+  database role the catalog names, in the catalog's order. /]
+[template private json(d : resolveddeployment::CatalogJobFile)]
+  {
+    "path": {
+  [for (k : String | d.catalogPaths()) separator(',\n')]
+        "[k/]": {
+          "capabilities": ['['/]
+    [for (c : String | d.catalogAllows(k)) separator(',\n')]
+              "[c/]"[/for]
+          ]
+        }[/for]
+    }
+  }
+[/template]
+
 [comment ============================================================ the edge /]
 
 [comment A route set belongs to an Application and to none of its Processes. /]
@@ -1338,6 +1493,13 @@
     + (if k.adoptPath = null then ''
       else ',\n  "adopt": {\n    "path": "' + k.adoptPath + '",\n    "key": "' + k.adoptKey + '"\n  }' endif)
     + '\n}' /]
+
+[query private catalogPaths(d : resolveddeployment::CatalogJobFile) : Sequence(String) =
+  Sequence{d.job.catalog.admin.path, d.job.catalog.admin.path.replace('^secret/data/', 'secret/metadata/')}
+    ->concat(d.job.catalog.databases->collect(x | Sequence{'database/roles/' + x.owner, 'database/roles/' + x.data})) /]
+
+[query private catalogAllows(d : resolveddeployment::CatalogJobFile, k : String) : Sequence(String) =
+  if k.startsWith('database/roles/') then Sequence{'create', 'read', 'update'} else Sequence{'read'} endif /]
 
 [query private readinessPath(p : resolveddeployment::ResolvedProcess) : String =
   p.application().releaseGate.members

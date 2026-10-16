@@ -1173,6 +1173,27 @@ the documents of every project a render holds. The name its objects carry is
 not here either. It is the digest of those documents, which exist only once
 the render does.
 
+### The catalog methods
+
+`catalogJobs` holds, beside it, one method per datastore whose catalog the
+estate path applies ([chapter 16](16-dependencies.md#applying-the-catalog)),
+derived only where `policyJob` is, since the policy job writes each method's
+own Vault role:
+
+| field | authority | derived from |
+|---|---|---|
+| `identity` | derived | `<process>-catalog`, for the datastore's Process |
+| `namespace` | derived | the datastore's, or its `serving` location's while its Project is `legacy` |
+| `image`, `uid`, `gid` | pinned | the images lock's entry for the engine's `catalog` alias |
+| `role` | derived | `<namespace>-<identity>`, the auth role the render writes for it |
+| `address` | derived | the Secret Store's endpoint, as `policyJob`'s |
+| `memory`, `cpu`, `deadline` | platform-assigned | `policyJob`'s |
+| `catalog.host`, `catalog.port` | derived | the datastore's Service, on its engine's `surface` |
+| `catalog.connection` | derived | the engine's name, the Secret Store's database connection |
+| `catalog.admin` | platform-assigned | the `serving` location's `admin` while the datastore's Project is `legacy`; else `secret/data/<project>/<process>/catalog`, keys `user` and `password` |
+| `catalog.databases` | derived | for each project on the estate path an edge of which reaches the datastore, in name order: `<project>_db`, `<project>-owner`, `<project>-data` |
+| `egress` | derived | the datastore on its surface, the Secret Store on its `http` surface, and the cluster's DNS |
+
 ## Publish back
 
 Because contended values are platform-arbitrated, an Application owner cannot read
@@ -1621,6 +1642,34 @@ classDiagram
         +Duration deadline
         +EgressPeer[] egress
     }
+    class ResolvedCatalogJob {
+        +string identity
+        +Namespace namespace
+        +ImageRef image
+        +int uid
+        +int gid
+        +string role
+        +string address
+        +Quantity memory
+        +Quantity cpu
+        +Duration deadline
+        +EgressPeer[] egress
+    }
+    class ResolvedCatalog {
+        +string host
+        +int port
+        +string connection
+    }
+    class CatalogAdmin {
+        +string path
+        +string user
+        +string password
+    }
+    class CatalogDatabase {
+        +string name
+        +string owner
+        +string data
+    }
     class ResolvedEvents {
         +Namespace namespace
         +string address
@@ -1854,6 +1903,10 @@ classDiagram
     ResolvedDeployment "1" *-- "1..*" PathAssignment : pathPlan
     ResolvedDeployment "1" *-- "1..*" ReconcileUnit : reconcileUnits
     ResolvedDeployment "1" *-- "0..1" ResolvedPolicyJob : policyJob
+    ResolvedDeployment "1" *-- "0..*" ResolvedCatalogJob : catalogJobs
+    ResolvedCatalogJob "1" *-- "1" ResolvedCatalog : catalog
+    ResolvedCatalog "1" *-- "1" CatalogAdmin : admin
+    ResolvedCatalog "1" *-- "1..*" CatalogDatabase : databases
     ResolvedDeployment "1" *-- "0..1" ResolvedEvents : events
     ResolvedDeployment "1" *-- "1..*" ResolvedApplication : applications
     Provenance "1" *-- "1..*" InputDigest : inputDigests
