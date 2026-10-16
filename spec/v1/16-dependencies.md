@@ -232,8 +232,10 @@ order, for each database the catalog names:
    role's objects in it are reassigned to the owner role, once, and the role
    becomes a member of the owner role, so whatever still signs in as it keeps
    its access until its old path is retired. A run reassigns what an adopted
-   role has created since. A database owned by a superuser is never adopted,
-   and the run fails instead.
+   role has created since. Adopting hands on whatever the role holds, so a
+   database is adopted only from a role with no attribute beyond owning that
+   owns no other database; any other, a superuser's among them, fails the run
+   instead.
 4. It grants the data role read and write on every table and sequence the owner
    role owns, and on those it creates later.
 5. It writes the two database roles the Secret Store issues credentials from:
