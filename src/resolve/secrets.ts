@@ -62,11 +62,20 @@ export function resolveGrants(process: EffectiveProcess): ResolvedGrant[] {
         paths: enginePaths(grant),
         ...restart,
       };
-    const generated = grant.keys.flatMap((key) =>
-      typeof key === "string"
-        ? []
-        : [{ key: key.name, ...GENERATED_DEFAULTS, ...key.generate }],
-    );
+    const generated = grant.keys.flatMap((key) => {
+      if (typeof key === "string") return [];
+      const { adopt, ...made } = key.generate;
+      // The schema refused a location that is not one path and one key.
+      const [path, adopted] = (adopt?.split("#") ?? []) as [string, string];
+      return [
+        {
+          key: key.name,
+          ...GENERATED_DEFAULTS,
+          ...made,
+          ...(adopt === undefined ? {} : { adopt: { path, key: adopted } }),
+        },
+      ];
+    });
     return {
       path: grant.path,
       keys: grant.keys.map(keyName),

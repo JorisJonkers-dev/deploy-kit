@@ -57,6 +57,8 @@ Workflow {
 			grammarUri = "classpath:/dev/jorisjonkers/deploykit/emf/syntax/PlatformIntent.xtext"
 			fileExtensions = "yml"
 			referencedResource = "platform:/resource/dev.jorisjonkers.deploykit.emf.metamodel/model/project-intent.genmodel"
+			// Both languages' keywords make a lexer whose state table outgrows one Java method.
+			parserGenerator = { options = { classSplitting = true } }
 			serializer = { generateStub = false }
 			validator = { generateStub = false }
 			scopeProvider = { generateStub = false }

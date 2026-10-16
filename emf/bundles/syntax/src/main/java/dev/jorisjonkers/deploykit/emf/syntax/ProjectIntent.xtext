@@ -201,7 +201,8 @@ GeneratedKey returns GeneratedKey:
 Generate returns Generate:
 	{Generate}
 	(('bytes' ':' bytes=Port)?
-	& ('encoding' ':' encoding=KeyEncoding)?);
+	& ('encoding' ':' encoding=KeyEncoding)?
+	& ('adopt' ':' adopt=Text)?);
 
 DatabaseGrant returns DatabaseGrant:
 	'engine' ':' engine=DatabaseEngine
@@ -236,7 +237,7 @@ Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword;
 
 Keyword:
-	'access' | 'admin' | 'alertClass' | 'amd64' | 'anonymous' | 'api' | 'apiVersion' | 'application' | 'applications' |
+	'access' | 'admin' | 'adopt' | 'alertClass' | 'amd64' | 'anonymous' | 'api' | 'apiVersion' | 'application' | 'applications' |
 	'arch' | 'arm64' | 'assets' | 'audience' | 'authenticated' | 'base64' | 'base64url' | 'business-hours' | 'bytes' | 'capabilities' | 'changelog' | 'claim' |
 	'class' | 'contentPolicy' | 'continuous' | 'count' | 'cpu' | 'create' | 'credentials' | 'custody' | 'cutover' | 'database' | 'decrypt' |
 	'delete' | 'delivery' | 'dependsOn' | 'disk' | 'durability' | 'encoding' | 'encrypt' | 'engine' | 'env' | 'exact' |

@@ -243,6 +243,7 @@
   <eClassifiers xsi:type="ecore:EClass" name="Generate">
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="bytes" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="encoding" eType="#//KeyEncoding"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="adopt" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="KeyEncoding">
     <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">

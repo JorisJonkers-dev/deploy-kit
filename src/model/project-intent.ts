@@ -109,11 +109,21 @@ const grantDelivery = {
   rotation,
 };
 
-/** A generated key's length and encoding; 32 bytes, hex, when unsaid. */
+// A key in a kv document, `secret/data/<path>#<key>`: no segment empty or
+// opening with a dot, so the location cannot climb out of the mount.
+const kvLocation = z
+  .string()
+  .regex(/^secret\/data(\/[A-Za-z0-9_-][A-Za-z0-9._-]*)+#[A-Za-z0-9._-]+$/);
+
+/**
+ * A generated key's length and encoding, 32 bytes, hex, when unsaid, and the
+ * old location whose value it starts from, if any.
+ */
 const generate = z
   .strictObject({
     bytes: z.int().min(16).max(512).exactOptional(),
     encoding: z.enum(KEY_ENCODINGS).meta({ id: "KeyEncoding" }).exactOptional(),
+    adopt: kvLocation.exactOptional(),
   })
   .meta({ id: "Generate" });
 

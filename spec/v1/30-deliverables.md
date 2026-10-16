@@ -181,7 +181,8 @@ serializer own key order.
 A Project whose grants generate keys ([chapter 10](10-project-intent.md#generated-keys))
 adds one more document beside them, `estate/vso-secrets/policies/<namespace>.generated.json`:
 `keys`, each a `path`, a `key`, its `bytes` and its `encoding`, the defaults
-filled in, once each, in path then key order.
+filled in, and, for a key that adopts a value, `adopt`, the `path` and the
+`key` of the location, once each, in path then key order.
 
 **Rendered here, applied in the cluster.** Writing a policy into Vault is an act
 against a live system by an identity with privilege, which is delivery
@@ -228,7 +229,9 @@ the platform already owns for it.
   `<namespace>-<identity>`, and leaves an unchanged one as it is.
 - It then writes each generated key Vault does not hold, under its own
   namespace's prefix only, check-and-set against the version it read, and
-  never changes a key Vault holds.
+  never changes a key Vault holds. A key that adopts a value is written with
+  the value its location holds, and generated only where the location holds
+  none.
 - It never deletes. A role and policy Vault holds that the render no longer
   names are reported, and a human removes them.
 - A job that fails stops the Reconcile Unit, so no Application that holds a

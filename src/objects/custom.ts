@@ -230,6 +230,7 @@ export interface GeneratedKey {
   readonly key: string;
   readonly bytes: number;
   readonly encoding: "hex" | "base64" | "base64url";
+  readonly adopt?: { readonly path: string; readonly key: string };
 }
 
 export interface GeneratedKeys {

@@ -107,4 +107,15 @@ class ConstraintsTest {
                 .extracting(Diagnostic::code)
                 .containsExactly("E_ENGINE_WITHOUT_DURABILITY");
     }
+
+    @Test
+    void aGeneratedKeyAdoptsOnlyAValueItsProjectAlreadyReads() {
+        assertThat(Pipeline.intent(Examples.of("refusals/generated-key-adopts-granted.project.yml"))
+                        .diagnostics())
+                .isEmpty();
+        assertThat(Pipeline.intent(Examples.of("refusals/generated-key-adopts-ungranted.project.yml"))
+                        .diagnostics())
+                .extracting(Diagnostic::code)
+                .containsExactly("E_GENERATED_KEY_ADOPTS_UNGRANTED");
+    }
 }

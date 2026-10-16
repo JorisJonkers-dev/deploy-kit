@@ -60,12 +60,13 @@ function generatedOf(project: ResolvedProject): GeneratedKey[] {
       // Stryker disable next-line ArrayDeclaration: no list and an empty one hold no grant alike.
       for (const grant of process.secrets ?? [])
         if ("generated" in grant)
-          for (const { key, bytes, encoding } of grant.generated)
+          for (const { key, bytes, encoding, adopt } of grant.generated)
             keys.set(JSON.stringify([grant.path, key]), {
               path: grant.path,
               key,
               bytes,
               encoding,
+              ...(adopt === undefined ? {} : { adopt }),
             });
   return [...keys.values()].sort((a, b) =>
     // No two keys share a path and a name, so `<=` would order the same list.

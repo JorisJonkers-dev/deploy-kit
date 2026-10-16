@@ -1,0 +1,33 @@
+# REFUSED: E_GENERATED_KEY_ADOPTS_UNGRANTED
+#
+# A generated key adopts only a value its own Project already reads: no grant
+# here reads secret/data/platform/session, so the job may not copy from it
+# (spec/v1/10-project-intent.md #generated-keys).
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: outside
+    processes:
+      - name: outside-api
+        lifecycle: application
+        image: outside-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: continuous
+        secrets:
+          - path: secret/data/refusals-system/session
+            keys: [{ name: session_key, generate: { adopt: "secret/data/platform/session#session_key" } }]
+            access: read
+            delivery: self
+            rotation: { tolerates: restart }
