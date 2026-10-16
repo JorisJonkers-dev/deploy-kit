@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.17.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.16.0...v0.17.0) (2026-10-16)
+
+
+### Features
+
+* apply the database catalog in the cluster by its engine's method ([#459](https://github.com/JorisJonkers-dev/deploy-kit/issues/459)) ([f8570f6](https://github.com/JorisJonkers-dev/deploy-kit/commit/f8570f6d3f2fd4e24c0e9445dd703bce99740dfc))
+* let a generated key adopt the value an old location holds ([#456](https://github.com/JorisJonkers-dev/deploy-kit/issues/456)) ([2edb472](https://github.com/JorisJonkers-dev/deploy-kit/commit/2edb472ca013aaa047d936249dfadc7d81e4974d))
+
+
+### Bug Fixes
+
+* name the Vault policy job for what its pod runs with, not its documents alone ([#457](https://github.com/JorisJonkers-dev/deploy-kit/issues/457)) ([526d5c9](https://github.com/JorisJonkers-dev/deploy-kit/commit/526d5c9b9394366b906c15c80d69ca52f0dc15db))
+
 ## [0.16.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.15.0...v0.16.0) (2026-10-15)
 
 
