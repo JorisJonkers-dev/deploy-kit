@@ -33,8 +33,20 @@ const full = workflow("mutation-full.yml");
 /** One job's text: from its key to the blank line that ends it. */
 const jobOf = (text: string, key: string): string =>
   text.split(`  '${key}':\n`)[1]?.split("\n\n")[0] ?? "";
-const pullRequestJob = jobOf(ci, "mutation");
+const gateJob = jobOf(ci, "mutation");
+const pullRequestShardJob = jobOf(ci, "mutation-shard");
 const shardJob = jobOf(full, "shard");
+
+/** The shard count a job's matrix lists, once it is 1 to N in order. */
+function matrixCount(job: string): number {
+  const shards = /'shard': \[([\d, ]+)\]/.exec(job)?.[1] ?? "";
+  const count = shards.split(",").length;
+  expect(shards.split(",").map(Number)).toStrictEqual(
+    Array.from({ length: count }, (_, index) => index + 1),
+  );
+  expect(count).toBeGreaterThan(1);
+  return count;
+}
 
 function testFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -78,59 +90,79 @@ describe("the mutation gate", () => {
   });
 
   it("uploads the html report as a CI artifact, even when the mutation step fails", () => {
-    for (const job of [pullRequestJob, shardJob]) {
+    for (const job of [pullRequestShardJob, shardJob]) {
       expect(job).toContain("actions/upload-artifact@");
       expect(job).toContain("'if': 'always()'");
       expect(job).toContain("'path': 'reports/mutation'");
     }
+    // The merged report too, whenever the gate tested anything.
+    expect(gateJob).toContain(
+      `'if': "always() && needs.mutation-scope.outputs.needed == 'true'"`,
+    );
+    expect(gateJob).toContain("'path': 'reports/mutation'");
   });
 
   // RULE-064. Stryker tests a mutant again when its module changed or a test
   // file that covered it changed, and takes every other result from the
   // report it is handed, so the score is still over every mutant.
   it("re-tests on a pull request what the change reaches, against the last green run on main, npm run test:mutation -- --incremental", () => {
-    expect(pullRequestJob).toContain(
-      "'run': 'npm run test:mutation -- --incremental'",
+    expect(pullRequestShardJob).toContain(
+      'npm run test:mutation -- --incremental --mutate "$ranges"',
     );
-    expect(pullRequestJob).toContain(
+    expect(pullRequestShardJob).toContain(
       'gh run list --repo "${REPO}" --workflow ci.yml --branch main --event push --status success --limit 1',
     );
-    expect(pullRequestJob).toContain(
+    expect(pullRequestShardJob).toContain(
       'gh run download "${run}" --repo "${REPO}" --name mutation-incremental --dir reports',
     );
-    // One job over every module: a matrix would hand each shard a report
-    // that holds the other shards' mutants too.
-    expect(pullRequestJob).not.toContain("'matrix':");
-    expect(pullRequestJob).not.toContain("--mutate");
     expect(ci).toMatch(/'pipeline-complete':[\s\S]*?- 'mutation'\n/);
   });
 
-  it("uploads the report the next run reads from a push to main, and from nothing else", () => {
-    const upload = pullRequestJob.split("'name': 'Upload the report")[1] ?? "";
+  // test/mutation-shard.test.ts holds the split, and
+  // test/mutation-merge.test.ts the merge.
+  it("shards the pull request's run as the matrix lists, and merges exactly those shards", () => {
+    const count = String(matrixCount(pullRequestShardJob));
+
+    expect(pullRequestShardJob).toContain(
+      `ranges="$(node scripts/mutation-shard.ts "$SHARD" ${count})"`,
+    );
+    expect(pullRequestShardJob).toContain(
+      `'name': 'Mutation (\${{ matrix.shard }}/${count})'`,
+    );
+    expect(pullRequestShardJob).toContain(
+      "'name': 'mutation-report-${{ matrix.shard }}'",
+    );
+    expect(gateJob).toContain(
+      "--pattern 'mutation-report-*' --dir reports/shards",
+    );
+    expect(gateJob).toContain(
+      `node scripts/mutation-merge.ts reports/shards ${count}`,
+    );
+  });
+
+  it("uploads the merged report the next run reads from a green push to main, and from nothing else", () => {
+    const upload = gateJob.split("'name': 'Upload the report")[1] ?? "";
 
     expect(upload).toContain(
-      `'if': "github.event_name == 'push' && github.ref == 'refs/heads/main'"`,
+      `'if': "github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.mutation-shard.result == 'success'"`,
     );
     expect(upload).toContain("'name': 'mutation-incremental'");
-    // Where Stryker writes it when no other path is named.
+    // Where Stryker reads it when no other path is named, and where the
+    // merge writes it.
     expect(upload).toContain("'path': 'reports/stryker-incremental.json'");
     expect(JSON.stringify(config)).not.toContain("incrementalFile");
+    expect(pullRequestShardJob).not.toContain("mutation-incremental'");
   });
 
   // The full run is shards, each mutating a disjoint share of the files the
   // config names; test/mutation-shard.test.ts holds the split itself.
   it("runs the full run as one shard per matrix entry, each handed the shard count the matrix lists", () => {
-    const shards = /'shard': \[([\d, ]+)\]/.exec(shardJob)?.[1] ?? "";
-    const count = shards.split(",").length;
+    const count = String(matrixCount(shardJob));
 
-    expect(shards.split(",").map(Number)).toStrictEqual(
-      Array.from({ length: count }, (_, index) => index + 1),
-    );
-    expect(count).toBeGreaterThan(1);
     expect(shardJob).toContain(
-      `files="$(node scripts/mutation-shard.ts "$SHARD" ${String(count)})"`,
+      `ranges="$(node scripts/mutation-shard.ts "$SHARD" ${count})"`,
     );
-    expect(shardJob).toContain('npm run test:mutation -- --mutate "$files"');
+    expect(shardJob).toContain('npm run test:mutation -- --mutate "$ranges"');
     expect(shardJob).not.toContain("--incremental");
   });
 

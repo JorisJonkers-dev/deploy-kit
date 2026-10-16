@@ -1,11 +1,12 @@
 # The full mutation run: every module under src/, every mutant.
 #
 # A pull request re-tests only the mutants its own change reaches (the
-# `mutation` job in ci.yml), so this run is the check on that shortcut. It
+# `mutation` gate in ci.yml), so this run is the check on that shortcut. It
 # runs once a week, as parallel shards, each mutating a disjoint share of the
-# files stryker.config.json names (scripts/mutation-shard.ts). When a mutant
-# is left undetected it opens an issue naming every one of them, or comments
-# on the open one.
+# top-level statements of the files stryker.config.json names
+# (scripts/mutation-shard.ts, the same split the pull request's shards use).
+# When a mutant is left undetected it opens an issue naming every one of
+# them, or comments on the open one.
 #
 # It gates nothing. No pull request waits for it and ci.yml does not call it,
 # so it never joins `Pipeline Complete`: see
@@ -44,11 +45,11 @@
       - 'name': 'Mutation'
         'env':
           'SHARD': '${{ matrix.shard }}'
-        # The list is taken first, so a shard script that fails stops the
+        # The ranges are taken first, so a shard script that fails stops the
         # step, rather than handing Stryker an empty list.
         'run': |
-          files="$(node scripts/mutation-shard.ts "$SHARD" 6)"
-          npm run test:mutation -- --mutate "$files"
+          ranges="$(node scripts/mutation-shard.ts "$SHARD" 6)"
+          npm run test:mutation -- --mutate "$ranges"
       # A shard with a survivor fails, and its report is what names it.
       - 'name': 'Upload mutation report'
         'if': 'always()'

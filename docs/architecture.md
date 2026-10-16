@@ -470,7 +470,7 @@ proves the two never drift apart.
 | agents | `npm run lint:agents` | a script `package.json` gains that AGENTS.md does not name verbatim |
 | meaning | `npm run lint:meaning` | a retired term used outside a quotation, a stated count that no longer matches what it counts |
 | tests | `npm run test:coverage` | behaviour, plus the coverage ratchet |
-| mutation | `npm run test:mutation`, incrementally | a change that keeps every line running but breaks what the line was for, which coverage alone rewards |
+| mutation | `npm run test:mutation`, incrementally, in shards | a change that keeps every line running but breaks what the line was for, which coverage alone rewards |
 | package contents | `node scripts/check-package-contents.ts` | `npm pack` shipping a file outside `docs/adr/`, `spec/` and the JavaScript under `dist/`, the boundary the package's `files` field states but does not enforce on its own |
 | actionlint | a pinned `actionlint` binary | invalid workflow syntax, an undefined `${{ }}` expression, a shellcheck finding inside a `run:` step |
 | secret scan | `npm run lint:secrets` | a committed secret matching the default ruleset, or this repository's own allowlist entries |
@@ -505,14 +505,20 @@ and only rises like the coverage ratchet does. It holds `src/**/*.ts` today;
 `scripts/**/*.ts` joins once its own gates can be exercised inside Stryker's
 sandbox, which two defect classes keep several of them from yet.
 
-The mutation job does not test every mutant. It runs Stryker incrementally
+The mutation gate does not test every mutant. It runs Stryker incrementally
 against the report of the last green run on `main`: a mutant is tested again
 when its module changed, or when a test file that covered it changed, and
-every other result is taken from that report. A push to `main` uploads the
-report the next run reads. A run that finds no report tests every mutant. The
-full run, every mutant in six shards, is a separate workflow on a weekly
-schedule. It gates nothing: when a mutant is left undetected it opens an issue
-that names each one.
+every other result is taken from that report. The run is six shards, each
+mutating a disjoint share of every module's top-level statements
+(`scripts/mutation-shard.ts`), and the `mutation` job merges their reports into
+the one report a single run would have written (`scripts/mutation-merge.ts`):
+that report decides the score, names every survivor, and is what a push to
+`main` uploads for the next run to read. A run that finds no report tests every
+mutant. A pull request that changes nothing the gate reads, such as a release or
+a docs change, runs no shard (`scripts/mutation-scope.ts`), and the `mutation`
+job passes on `main`'s result. The full run, every mutant in the same six
+shards, is a separate workflow on a weekly schedule. It gates nothing: when a
+mutant is left undetected it opens an issue that names each one.
 
 The reachability half of the boundary gate is the one worth naming. Coverage
 alone rewards a module for having tests: chapter 30 records 1,967 lines of dead
