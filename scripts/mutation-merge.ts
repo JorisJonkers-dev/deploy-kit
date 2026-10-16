@@ -85,7 +85,8 @@ export function merge(
       const merged = (files[file] ??= { ...rest, mutants: [] });
       for (const mutant of mutants) {
         const { start, end } = mutant.location;
-        if (owner(shards, file, start.line, end.line) !== index + 1) continue;
+        const span = { path: file, start: start.line, end: end.line };
+        if (owner(shards, span) !== index + 1) continue;
         merged.mutants.push({
           ...mutant,
           ...(mutant.coveredBy && { coveredBy: remap(mutant.coveredBy) }),

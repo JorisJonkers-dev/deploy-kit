@@ -157,8 +157,8 @@ describe("code scanning gates the merge", () => {
   });
 });
 
-// REQ-064 (docs/requirements.md): the mutation gate is a scope job, parallel
-// shards and one merging job, and only the merging job is a gate.
+// RULE-075 (docs/architecture-rules.md): the mutation gate is a scope job,
+// parallel shards and one merging job, and only the merging job is a gate.
 describe("the mutation gate's jobs", () => {
   const ci = readFileSync(
     join(REPOSITORY, ".github", "workflows", "ci.yml"),

@@ -50,8 +50,11 @@ export function mutatedFiles(
     .sort();
 }
 
-/** Lines `start` to `end` of a file, counted from 1, and how many mutants they stand for. */
-export interface Unit {
+/**
+ * Lines `start` to `end` of a file, counted from 1, holding one top-level
+ * statement or several that share a line, and how many mutants they stand for.
+ */
+export interface Statement {
   readonly start: number;
   readonly end: number;
   readonly weight: number;
@@ -76,27 +79,31 @@ function weight(node: ts.Node): number {
 /**
  * The top-level statements of `source`, each weighed by its runtime syntax
  * nodes, which track its mutant count closely. Statements that share a line
- * are one unit, since a range is whole lines.
+ * are one, since a range is whole lines.
  */
-export function units(source: string): Unit[] {
-  const file = ts.createSourceFile("unit.ts", source, ts.ScriptTarget.Latest);
+export function statements(source: string): Statement[] {
+  const file = ts.createSourceFile(
+    "statements.ts",
+    source,
+    ts.ScriptTarget.Latest,
+  );
   const line = (position: number): number =>
     file.getLineAndCharacterOfPosition(position).line + 1;
-  const found: Unit[] = [];
+  const found: Statement[] = [];
   for (const statement of file.statements) {
-    const unit = {
+    const next = {
       start: line(statement.getStart(file)),
       end: line(statement.getEnd()),
       weight: weight(statement),
     };
     const last = found.at(-1);
-    if (last !== undefined && last.end >= unit.start)
+    if (last !== undefined && last.end >= next.start)
       found[found.length - 1] = {
         start: last.start,
-        end: unit.end,
-        weight: last.weight + unit.weight,
+        end: next.end,
+        weight: last.weight + next.weight,
       };
-    else found.push(unit);
+    else found.push(next);
   }
   return found;
 }
@@ -108,40 +115,46 @@ export interface Range {
   readonly end: number;
 }
 
-const lighter = (a: number, b: number): number => a - b;
+const ascending = (a: number, b: number): number => a - b;
 
 /**
  * Every shard's ranges, shard 1 first. The heaviest file is split first, its
- * heaviest unit first, each unit going to the shard holding least of that file
+ * heaviest statement first, each going to the shard holding least of that file
  * so far, then least of every file, then the lowest-numbered. So each file is
  * spread evenly over the shards, the shards come out about equal, and the same
- * tree always splits the same way. Neighbouring units one shard holds are one
+ * tree always splits the same way. Neighbouring statements one shard holds are one
  * range.
  */
 export function plan(
-  files: readonly { readonly path: string; readonly units: readonly Unit[] }[],
+  files: readonly {
+    readonly path: string;
+    readonly statements: readonly Statement[];
+  }[],
   count: number,
 ): Range[][] {
   const loads = Array.from({ length: count }, () => 0);
   const shards: Range[][] = Array.from({ length: count }, () => []);
-  const total = (held: readonly Unit[]): number =>
-    held.reduce((sum, unit) => sum + unit.weight, 0);
+  const total = (held: readonly Statement[]): number =>
+    held.reduce((sum, statement) => sum + statement.weight, 0);
   const heaviestFirst = [...files].sort(
     (a, b) =>
-      lighter(total(b.units), total(a.units)) || (a.path < b.path ? -1 : 1),
+      ascending(total(b.statements), total(a.statements)) ||
+      (a.path < b.path ? -1 : 1),
   );
-  for (const { path, units: held } of heaviestFirst) {
-    const here = Array.from({ length: count }, () => 0);
+  for (const { path, statements: held } of heaviestFirst) {
+    const ofFile = Array.from({ length: count }, () => 0);
     const owners: number[] = [];
     const order = held
-      .map((unit, index) => ({ unit, index }))
+      .map((statement, index) => ({ statement, index }))
       .sort(
-        (a, b) => lighter(b.unit.weight, a.unit.weight) || a.index - b.index,
+        (a, b) =>
+          ascending(b.statement.weight, a.statement.weight) ||
+          a.index - b.index,
       );
-    for (const { unit, index } of order) {
+    for (const { statement, index } of order) {
       let best = 0;
       for (let shard = 1; shard < count; shard += 1) {
-        const byFile = lighter(here[shard] ?? 0, here[best] ?? 0);
+        const byFile = ascending(ofFile[shard] ?? 0, ofFile[best] ?? 0);
         if (
           byFile < 0 ||
           (byFile === 0 && (loads[shard] ?? 0) < (loads[best] ?? 0))
@@ -149,16 +162,20 @@ export function plan(
           best = shard;
       }
       owners[index] = best;
-      here[best] = (here[best] ?? 0) + unit.weight;
-      loads[best] = (loads[best] ?? 0) + unit.weight;
+      ofFile[best] = (ofFile[best] ?? 0) + statement.weight;
+      loads[best] = (loads[best] ?? 0) + statement.weight;
     }
-    held.forEach((unit, index) => {
+    held.forEach((statement, index) => {
       const shard = owners[index] ?? 0;
       const ranges = shards[shard] ?? [];
       const last = ranges.at(-1);
       if (last?.path === path && owners[index - 1] === shard)
-        ranges[ranges.length - 1] = { path, start: last.start, end: unit.end };
-      else ranges.push({ path, start: unit.start, end: unit.end });
+        ranges[ranges.length - 1] = {
+          path,
+          start: last.start,
+          end: statement.end,
+        };
+      else ranges.push({ path, start: statement.start, end: statement.end });
     });
   }
   return shards.map((ranges) =>
@@ -171,9 +188,7 @@ export function plan(
 /** The shard, numbered from 1, whose one range holds lines `start` to `end` of `path`. */
 export function owner(
   shards: readonly (readonly Range[])[],
-  path: string,
-  start: number,
-  end: number,
+  { path, start, end }: Range,
 ): number | undefined {
   const index = shards.findIndex((ranges) =>
     ranges.some(
@@ -192,7 +207,7 @@ export function planned(root: string, count: number): Range[][] {
   return plan(
     mutatedFiles(root, mutate).map((path) => ({
       path,
-      units: units(readFileSync(join(root, path), "utf8")),
+      statements: statements(readFileSync(join(root, path), "utf8")),
     })),
     count,
   );

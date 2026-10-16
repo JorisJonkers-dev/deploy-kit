@@ -56,7 +56,7 @@ fails the gate, so the taxonomy cannot grow entries nothing stands behind.
 
 ## Rules
 
-This ledger holds **74** rules, **2** of them pending.
+This ledger holds **75** rules, **2** of them pending.
 
 A row is enforced or pending, never both. An enforced row names its enforcer as
 `kind:value`: `depcruise:` a rule in
@@ -138,7 +138,7 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-061 | gates | A workflow step that runs the Maven wrapper runs it in a directory holding a POM and the wrapper, and the model-driven reactor names only modules on disk | `file:test/emf-wiring.test.ts` | [test/emf-wiring.test.ts](../test/emf-wiring.test.ts) `which names a POM that does not exist` |
 | RULE-062 | gates | CodeQL analyses the model-driven implementation's Java without a build, ignoring build output and generated sources | `file:.github/codeql/codeql-config.yml` | [test/emf-wiring.test.ts](../test/emf-wiring.test.ts) `'language': 'java-kotlin'` |
 | RULE-063 | gates | A CodeQL finding of any severity fails `Pipeline Complete`, unless the finding is filtered in the CodeQL configuration | `file:.github/workflows/codeql.yml` | [test/pipeline-wiring.test.ts](../test/pipeline-wiring.test.ts) `'name': 'Fail on any finding'` |
-| RULE-064 | gates | A pull request re-tests each mutant under `src/` whose module or covering test file changed since the last green `main` run, in parallel shards whose merged report holds every mutant once, and a mutation score below the measured break threshold fails the build | `file:.github/workflows/ci.yml` | [test/mutation-contract.test.ts](../test/mutation-contract.test.ts) `npm run test:mutation -- --incremental` |
+| RULE-064 | gates | A pull request re-tests each mutant under `src/` whose module or covering test file changed since the last green `main` run, in parallel shards, and a mutation score below the measured break threshold fails the build | `file:.github/workflows/ci.yml` | [test/mutation-contract.test.ts](../test/mutation-contract.test.ts) `npm run test:mutation -- --incremental` |
 | RULE-065 | gates | Every file a pull request changes falls into a named shape bucket; a path no rule claims fails the fallback test rather than joining one silently | `file:scripts/lib/change-buckets.ts` | [test/change-buckets.test.ts](../test/change-buckets.test.ts) `keeps every file this repository tracks inside a named bucket` |
 | RULE-066 | gates | A pull request's shape-and-coverage comment is found by its marker and updated in place, never posted twice for the same pull request | `file:scripts/pr-report.ts` | [test/pr-report.test.ts](../test/pr-report.test.ts) `updates the existing comment on a second run` |
 | RULE-067 | gates | A release candidate publishes nothing for a pull request from a fork, Dependabot or Renovate | `file:scripts/lib/rc-version.ts` | [test/rc-version.test.ts](../test/rc-version.test.ts) `is ineligible for a fork, since its token cannot publish for real` |
@@ -149,6 +149,7 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-072 | dependencies | No install runs a dependency's lifecycle script: every workflow and action installs with `--ignore-scripts`, and `.npmrc` sets `ignore-scripts` for a local install | `file:test/supply-chain.test.ts` | [test/supply-chain.test.ts](../test/supply-chain.test.ts) `add --ignore-scripts` |
 | RULE-073 | toolchain | A schema in `src/` states only what its generated JSON Schema states too: no `refine`, `superRefine`, `check`, `overwrite`, `transform`, `preprocess`, `pipe` or `custom`, outside the one module that pairs a zod check with the JSON Schema keywords stating the same rule | `eslint:deploy-kit/no-unstated-rule` | [test/code-rules.test.ts](../test/code-rules.test.ts) `RULE-073 refuses a rule the published JSON Schema drops` |
 | RULE-074 | diagnostics | Shipped code throws only an `InternalFailure` of a named kind (unsupported, unchecked or a broken invariant), never a bare `Error` or `TypeError`, so every way the compiler fails is one enumerable list | `eslint:deploy-kit/no-bare-throw` | [test/code-rules.test.ts](../test/code-rules.test.ts) `RULE-074 refuses a bare error thrown in src/` |
+| RULE-075 | gates | `Pipeline Complete` needs the merging `mutation` job, which never skips and fails when the scope job or any mutation shard did not succeed; the shards run only where the scope job says the change reaches a mutant | `file:.github/workflows/ci.yml` | [test/pipeline-wiring.test.ts](../test/pipeline-wiring.test.ts) `'name': 'Fail: the scope or a shard did not succeed'` |
 
 ## Considered and rejected
 

@@ -81,9 +81,8 @@ a pull request that only weakens a test still re-tests what that test killed.
 
 **One job is the slowest gate, and it holds every merge.** Measured for
 [the sharding decision](https://github.com/JorisJonkers-dev/deploy-kit/issues/464),
-one incremental job ran for most of an hour on a change that re-tested nearly a third
-of the mutants, and release pull requests that touch no module waited half an
-hour for it. Shards finish in the time of the largest one. A shard is cut by
+one incremental job was the slowest gate by far, and release pull requests that
+touch no module waited on it like any other. Shards finish in the time of the largest one. A shard is cut by
 top-level statement, not by file, because one large module would leave its
 shard running alone: Stryker mutates only a node a range holds whole, and every
 node but the file itself sits inside one top-level statement, so every mutant
@@ -137,7 +136,7 @@ Undo cost today: numbers in two config files. Becomes irreversible once: never.
   counted, and one process-level test per gate proves it still runs.
 - Mutation runs are not part of `npm run verify`; they run as their own CI job.
 - A pull request's mutation result rests on a report from `main`. A run that
-  finds none tests every mutant, a sixth in each shard.
+  finds none tests every mutant, split across the shards.
 - One top-level statement is the smallest share a shard takes, so a change that
   re-tests every mutant of one large statement waits on that statement.
 - A pull request that changes only documents, the release files or `emf/`
