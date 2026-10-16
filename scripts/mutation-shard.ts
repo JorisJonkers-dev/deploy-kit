@@ -12,17 +12,22 @@
 // takes, never what it accepts.
 //
 // A shard is cut below the file because one large module holds hundreds of
-// mutants: a whole-file split leaves the shard holding it running alone.
-// Every file is spread over every shard instead, so a change that re-tests one
-// module re-tests it in parallel.
+// mutants: a whole-file split leaves the shard holding it running alone. The
+// shares are balanced by time, not by count: a statement weighs the tests its
+// mutants ran in the report of the last green run on main, since a static
+// mutant runs every suite and a plain one stops at its first killer. A file
+// that changed since that report, or a run with no report, weighs by syntax
+// nodes instead, scaled to the same unit. Every shard of one run must read the
+// same report, or their shares would overlap.
 //
 // A library first: tests call plan() and run() in-process. The command is
-// `node scripts/mutation-shard.ts <shard> <count>`, which prints the shard's
-// ranges as the comma-separated list `stryker run --mutate` takes.
-import { globSync, readFileSync } from "node:fs";
+// `node scripts/mutation-shard.ts <shard> <count> [<report>]`, which prints the
+// shard's ranges as the comma-separated list `stryker run --mutate` takes.
+import { existsSync, globSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
 import { isEntrypoint } from "./lib/entrypoint.ts";
+import type { Report } from "./lib/mutation-report.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..");
 
@@ -118,12 +123,11 @@ export interface Range {
 const ascending = (a: number, b: number): number => a - b;
 
 /**
- * Every shard's ranges, shard 1 first. The heaviest file is split first, its
- * heaviest statement first, each going to the shard holding least of that file
- * so far, then least of every file, then the lowest-numbered. So each file is
- * spread evenly over the shards, the shards come out about equal, and the same
- * tree always splits the same way. Neighbouring statements one shard holds are one
- * range.
+ * Every shard's ranges, shard 1 first. The heaviest statement of the whole
+ * tree goes first, each to the shard holding least so far, the lowest-numbered
+ * on a tie, so the shards come out about equal, one file's statements scatter
+ * over them, and the same weights always split the same way. Neighbouring
+ * statements one shard holds are one range.
  */
 export function plan(
   files: readonly {
@@ -133,43 +137,30 @@ export function plan(
   count: number,
 ): Range[][] {
   const loads = Array.from({ length: count }, () => 0);
+  const byPath = [...files].sort((a, b) => (a.path < b.path ? -1 : 1));
+  const owners = byPath.map(({ statements: held }) => held.map(() => 0));
+  const heaviestFirst = byPath
+    .flatMap(({ statements: held }, file) =>
+      held.map((statement, index) => ({ statement, file, index })),
+    )
+    .sort(
+      (a, b) =>
+        ascending(b.statement.weight, a.statement.weight) ||
+        a.file - b.file ||
+        a.index - b.index,
+    );
+  for (const { statement, file, index } of heaviestFirst) {
+    const lightest = loads.indexOf(Math.min(...loads));
+    (owners[file] ?? [])[index] = lightest;
+    loads[lightest] = (loads[lightest] ?? 0) + statement.weight;
+  }
   const shards: Range[][] = Array.from({ length: count }, () => []);
-  const total = (held: readonly Statement[]): number =>
-    held.reduce((sum, statement) => sum + statement.weight, 0);
-  const heaviestFirst = [...files].sort(
-    (a, b) =>
-      ascending(total(b.statements), total(a.statements)) ||
-      (a.path < b.path ? -1 : 1),
-  );
-  for (const { path, statements: held } of heaviestFirst) {
-    const ofFile = Array.from({ length: count }, () => 0);
-    const owners: number[] = [];
-    const order = held
-      .map((statement, index) => ({ statement, index }))
-      .sort(
-        (a, b) =>
-          ascending(b.statement.weight, a.statement.weight) ||
-          a.index - b.index,
-      );
-    for (const { statement, index } of order) {
-      let best = 0;
-      for (let shard = 1; shard < count; shard += 1) {
-        const byFile = ascending(ofFile[shard] ?? 0, ofFile[best] ?? 0);
-        if (
-          byFile < 0 ||
-          (byFile === 0 && (loads[shard] ?? 0) < (loads[best] ?? 0))
-        )
-          best = shard;
-      }
-      owners[index] = best;
-      ofFile[best] = (ofFile[best] ?? 0) + statement.weight;
-      loads[best] = (loads[best] ?? 0) + statement.weight;
-    }
+  byPath.forEach(({ path, statements: held }, file) => {
+    const owned = owners[file] ?? [];
     held.forEach((statement, index) => {
-      const shard = owners[index] ?? 0;
-      const ranges = shards[shard] ?? [];
+      const ranges = shards[owned[index] ?? 0] ?? [];
       const last = ranges.at(-1);
-      if (last?.path === path && owners[index - 1] === shard)
+      if (last?.path === path && owned[index - 1] === owned[index])
         ranges[ranges.length - 1] = {
           path,
           start: last.start,
@@ -177,12 +168,8 @@ export function plan(
         };
       else ranges.push({ path, start: statement.start, end: statement.end });
     });
-  }
-  return shards.map((ranges) =>
-    [...ranges].sort((a, b) =>
-      a.path < b.path ? -1 : a.path > b.path ? 1 : a.start - b.start,
-    ),
-  );
+  });
+  return shards;
 }
 
 /** The shard, numbered from 1, whose one range holds lines `start` to `end` of `path`. */
@@ -199,18 +186,81 @@ export function owner(
   return index === -1 ? undefined : index + 1;
 }
 
-/** Every shard's ranges for the tree at `root`, as stryker.config.json names it. */
-export function planned(root: string, count: number): Range[][] {
+/** Every file the config mutates, with its top-level statements weighed by syntax nodes. */
+export function tree(
+  root: string,
+): { path: string; source: string; statements: Statement[] }[] {
   const { mutate } = JSON.parse(
     readFileSync(join(root, "stryker.config.json"), "utf8"),
   ) as { readonly mutate: readonly string[] };
-  return plan(
-    mutatedFiles(root, mutate).map((path) => ({
-      path,
-      statements: statements(readFileSync(join(root, path), "utf8")),
-    })),
-    count,
-  );
+  return mutatedFiles(root, mutate).map((path) => {
+    const source = readFileSync(join(root, path), "utf8");
+    return { path, source, statements: statements(source) };
+  });
+}
+
+/**
+ * `files` weighed by time: each statement by the tests its mutants ran in
+ * `report`, one more per mutant for its own start, where the report holds the
+ * file's source unchanged. Every other file weighs by syntax nodes, scaled by
+ * what a node cost across the files the report does hold.
+ */
+export function timed(
+  files: readonly {
+    readonly path: string;
+    readonly source: string;
+    readonly statements: readonly Statement[];
+  }[],
+  report: Report | undefined,
+): { path: string; statements: Statement[] }[] {
+  const measured = new Map<string, Statement[]>();
+  let cost = 0;
+  let nodes = 0;
+  for (const { path, source, statements: held } of files) {
+    const file = report?.files[path];
+    if (file?.source !== source) continue;
+    const weighed = held.map((statement) => ({
+      ...statement,
+      weight: file.mutants
+        .filter(
+          ({ location }) =>
+            statement.start <= location.start.line &&
+            location.end.line <= statement.end,
+        )
+        .reduce((sum, mutant) => sum + 1 + (mutant.testsCompleted ?? 0), 0),
+    }));
+    measured.set(path, weighed);
+    cost += weighed.reduce((sum, { weight }) => sum + weight, 0);
+    nodes += held.reduce((sum, { weight }) => sum + weight, 0);
+  }
+  const scale = nodes === 0 ? 1 : cost / nodes;
+  return files.map(({ path, statements: held }) => ({
+    path,
+    statements:
+      measured.get(path) ??
+      held.map((statement) => ({
+        ...statement,
+        weight: statement.weight * scale,
+      })),
+  }));
+}
+
+/** `ranges` as the comma-separated list `stryker run --mutate` takes. */
+export const formatted = (ranges: readonly Range[]): string =>
+  ranges
+    .map(({ path, start, end }) => `${path}:${String(start)}-${String(end)}`)
+    .join(",");
+
+/** The ranges of a list `formatted` wrote, or undefined for anything else. */
+export function parsed(text: string): Range[] | undefined {
+  const ranges: Range[] = [];
+  for (const entry of text.trim().split(",")) {
+    const match = /^(.+):(\d+)-(\d+)$/.exec(entry);
+    if (match === null) return undefined;
+    const [, path = "", start = "", end = ""] = match;
+    ranges.push({ path, start: Number(start), end: Number(end) });
+  }
+  return ranges;
 }
 
 /** What the command prints, and the code it exits with. */
@@ -223,12 +273,17 @@ export interface Outcome {
 const whole = /^[1-9]\d*$/;
 
 export function run(argv: readonly string[], root: string): Outcome {
-  const [shard = "", count = ""] = argv;
-  if (argv.length !== 2 || !whole.test(shard) || !whole.test(count))
+  const [shard = "", count = "", report] = argv;
+  if (
+    (argv.length !== 2 && argv.length !== 3) ||
+    !whole.test(shard) ||
+    !whole.test(count)
+  )
     return {
       code: 2,
       stdout: "",
-      stderr: "usage: node scripts/mutation-shard.ts <shard> <count>\n",
+      stderr:
+        "usage: node scripts/mutation-shard.ts <shard> <count> [<report>]\n",
     };
   const index = Number(shard);
   const shards = Number(count);
@@ -238,7 +293,12 @@ export function run(argv: readonly string[], root: string): Outcome {
       stdout: "",
       stderr: `shard ${shard} of ${count} does not exist\n`,
     };
-  const ranges = planned(root, shards)[index - 1] ?? [];
+  // No report is not a failure: the shares are then balanced by syntax alone.
+  const baseline =
+    report !== undefined && existsSync(report)
+      ? (JSON.parse(readFileSync(report, "utf8")) as Report)
+      : undefined;
+  const ranges = plan(timed(tree(root), baseline), shards)[index - 1] ?? [];
   // A shard with nothing to mutate scores nothing, which is no proof at all.
   if (ranges.length === 0)
     return {
@@ -246,13 +306,7 @@ export function run(argv: readonly string[], root: string): Outcome {
       stdout: "",
       stderr: `shard ${shard} of ${count} holds nothing to mutate: use fewer shards\n`,
     };
-  return {
-    code: 0,
-    stdout: `${ranges
-      .map(({ path, start, end }) => `${path}:${String(start)}-${String(end)}`)
-      .join(",")}\n`,
-    stderr: "",
-  };
+  return { code: 0, stdout: `${formatted(ranges)}\n`, stderr: "" };
 }
 
 if (isEntrypoint(import.meta.url, process.argv[1])) {

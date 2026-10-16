@@ -185,7 +185,8 @@
   # green run on main, and tests a mutant again when its module changed or a
   # test file that covered it changed; every other result is taken from that
   # report. The work is six parallel shards, each mutating a disjoint share of
-  # every module's top-level statements (scripts/mutation-shard.ts), and
+  # every module's top-level statements, balanced by the time each took in
+  # that report (scripts/mutation-shard.ts), and
   # `mutation` merges their reports into the one a single run would have
   # written (scripts/mutation-merge.ts). The score is still over every mutant,
   # and a score below the break threshold in stryker.config.json fails the
@@ -200,8 +201,11 @@
     'timeout-minutes': 10
     'permissions':
       'contents': 'read'
+      # Reads the list of runs on main.
+      'actions': 'read'
     'outputs':
       'needed': '${{ steps.scope.outputs.needed }}'
+      'baseline': '${{ steps.baseline.outputs.run }}'
     'steps':
       # A pull request checks out its merge commit, whose first parent is the
       # base branch: two commits are the whole diff.
@@ -223,6 +227,19 @@
             needed='true'
           fi
           echo "needed=${needed}" >> "$GITHUB_OUTPUT"
+      # Chosen once for every shard: each plans its share from this run's
+      # report, and shards that read different reports would overlap.
+      - 'name': 'Choose the last green run on main'
+        'id': 'baseline'
+        'if': "steps.scope.outputs.needed == 'true'"
+        'shell': 'bash'
+        'env':
+          'GH_TOKEN': '${{ github.token }}'
+          'REPO': '${{ github.repository }}'
+        'run': |
+          set -euo pipefail
+          run="$(gh run list --repo "${REPO}" --workflow ci.yml --branch main --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+          echo "run=${run}" >> "$GITHUB_OUTPUT"
 
   'mutation-shard':
     'name': 'Mutation (${{ matrix.shard }}/6)'
@@ -234,7 +251,7 @@
     'timeout-minutes': 60
     'permissions':
       'contents': 'read'
-      # Reads the list of runs on main, and one run's artifact.
+      # Reads one run's artifact.
       'actions': 'read'
     'strategy':
       # Every shard reports, not only the first to find a survivor.
@@ -251,21 +268,24 @@
         'env':
           'GH_TOKEN': '${{ github.token }}'
           'REPO': '${{ github.repository }}'
+          'BASELINE': '${{ needs.mutation-scope.outputs.baseline }}'
         'run': |
           set -euo pipefail
-          run="$(gh run list --repo "${REPO}" --workflow ci.yml --branch main --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
-          if [ -z "${run}" ]; then
+          if [ -z "${BASELINE}" ]; then
             echo "::warning::No green run on main: every mutant is tested."
-          elif ! gh run download "${run}" --repo "${REPO}" --name mutation-incremental --dir reports; then
-            echo "::warning::Run ${run} holds no mutation-incremental report: every mutant is tested."
+          elif ! gh run download "${BASELINE}" --repo "${REPO}" --name mutation-incremental --dir reports; then
+            echo "::warning::Run ${BASELINE} holds no mutation-incremental report: every mutant is tested."
           fi
       # The ranges are taken first, so a shard script that fails stops the
-      # step, rather than handing Stryker an empty list.
+      # step, rather than handing Stryker an empty list. They go beside the
+      # report, for the merge to read what this shard really ran.
       - 'name': 'Mutation'
         'env':
           'SHARD': '${{ matrix.shard }}'
         'run': |
-          ranges="$(node scripts/mutation-shard.ts "$SHARD" 6)"
+          ranges="$(node scripts/mutation-shard.ts "$SHARD" 6 reports/stryker-incremental.json)"
+          mkdir -p reports/mutation
+          printf '%s\n' "$ranges" > reports/mutation/ranges.txt
           npm run test:mutation -- --incremental --mutate "$ranges"
       # A shard with a survivor fails, and its report is what names it.
       - 'name': 'Upload mutation report'

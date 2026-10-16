@@ -12,12 +12,11 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { Report } from "../scripts/lib/mutation-report.ts";
 import { merge, run } from "../scripts/mutation-merge.ts";
-import { planned } from "../scripts/mutation-shard.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..");
 
 // Four statements, two shards: shard 1 holds lines 1 and 5, shard 2 lines 3
-// and 7 (the planner's own split of four equal statements).
+// and 7.
 const SOURCE = [
   "export const a = [1];",
   "",
@@ -61,8 +60,26 @@ function report(rows: readonly Row[], tests: readonly string[]): Report {
   };
 }
 
-/** A repository holding SOURCE, and one downloaded report directory per shard. */
-function fixture(shards: readonly (Report | undefined)[]): {
+const RANGES = ["src/a.ts:1-1,src/a.ts:5-5", "src/a.ts:3-3,src/a.ts:7-7"];
+const SHARDS = [
+  [
+    { path: "src/a.ts", start: 1, end: 1 },
+    { path: "src/a.ts", start: 5, end: 5 },
+  ],
+  [
+    { path: "src/a.ts", start: 3, end: 3 },
+    { path: "src/a.ts", start: 7, end: 7 },
+  ],
+];
+
+/**
+ * A repository holding SOURCE, and one downloaded report directory per shard,
+ * each with the ranges it ran: RANGES unless `ranges` says otherwise.
+ */
+function fixture(
+  shards: readonly (Report | undefined)[],
+  ranges: readonly (string | undefined)[] = RANGES,
+): {
   root: string;
   directory: string;
 } {
@@ -79,6 +96,8 @@ function fixture(shards: readonly (Report | undefined)[]): {
     const dir = join(directory, `mutation-report-${String(index + 1)}`);
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "mutation.json"), JSON.stringify(shard));
+    const own = ranges[index];
+    if (own !== undefined) writeFileSync(join(dir, "ranges.txt"), `${own}\n`);
   });
   return { root, directory };
 }
@@ -88,7 +107,6 @@ const written = (root: string, path: string): Report =>
 
 describe("merging the mutation shards", () => {
   it("takes each mutant from the shard whose range holds it, and drops what a shard only carried over", () => {
-    const { root } = fixture([]);
     // Each shard reports the other's lines too: Stryker carries every result
     // it did not test over from the report it was handed.
     const merged = merge(
@@ -110,7 +128,7 @@ describe("merging the mutation shards", () => {
           ["second"],
         ),
       ],
-      planned(root, 2),
+      SHARDS,
     );
 
     const mutants = merged.files["src/a.ts"]?.mutants ?? [];
@@ -139,7 +157,6 @@ describe("merging the mutation shards", () => {
   });
 
   it("reads a test with no location and the same test at 1:1 as one test", () => {
-    const { root } = fixture([]);
     const located = report([["Killed", 3, "0"]], ["first"]);
     const merged = merge(
       [
@@ -159,7 +176,7 @@ describe("merging the mutation shards", () => {
           },
         },
       ],
-      planned(root, 2),
+      SHARDS,
     );
 
     expect(merged.testFiles?.["test/a.test.ts"]?.tests).toHaveLength(1);
@@ -252,12 +269,44 @@ describe("merging the mutation shards", () => {
         "the shards hold no mutant: a score over nothing proves nothing\n",
     });
 
+    const unranged = fixture(
+      [report([["Killed", 1, "0"]], ["first"]), report([], [])],
+      [RANGES[0], undefined],
+    );
+    expect(run([unranged.directory, "2"], unranged.root).stderr).toBe(
+      "shard 2 of 2 left no report: a shard that reported nothing proves nothing\n",
+    );
+
     for (const argv of [[], [missing.directory], [missing.directory, "0"]])
       expect(run(argv, missing.root)).toStrictEqual({
         code: 2,
         stdout: "",
         stderr: "usage: node scripts/mutation-merge.ts <directory> <count>\n",
       });
+  });
+
+  it("refuses ranges that leave a statement out, hold it twice, or do not parse", () => {
+    const shards = [
+      report([["Killed", 1, "0"]], ["first"]),
+      report([["Killed", 3, "0"]], ["first"]),
+    ];
+    const gap = fixture(shards, ["src/a.ts:1-1", RANGES[1]]);
+    expect(run([gap.directory, "2"], gap.root)).toStrictEqual({
+      code: 1,
+      stdout: "",
+      stderr:
+        "src/a.ts:5-5 is in 0 shards' ranges, not one: did every shard read the same baseline?\n",
+    });
+
+    const twice = fixture(shards, [RANGES[0], "src/a.ts:1-7"]);
+    expect(run([twice.directory, "2"], twice.root).stderr).toBe(
+      "src/a.ts:1-1 is in 2 shards' ranges, not one: did every shard read the same baseline?\n",
+    );
+
+    const garbled = fixture(shards, [RANGES[0], "src/a.ts"]);
+    expect(run([garbled.directory, "2"], garbled.root).stderr).toBe(
+      "shard 2 of 2 wrote ranges that do not parse\n",
+    );
   });
 
   it("runs when Node starts this module", async () => {

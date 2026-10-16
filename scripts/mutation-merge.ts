@@ -9,6 +9,11 @@
 // break threshold in stryker.config.json, names every mutant no test detected,
 // and is what a push to main uploads for the next run to read.
 //
+// It reads the ranges each shard ran from that shard's own ranges.txt, not
+// from a plan of its own, and refuses ranges that overlap or leave a
+// statement out: shards that read different baselines would plan different
+// shares.
+//
 // A library first: tests call merge() and run() in-process. The command is
 // `node scripts/mutation-merge.ts <directory> <count>`, the directory holding
 // one downloaded `mutation-report-<shard>` directory per shard. It writes
@@ -25,7 +30,7 @@ import {
   type Report,
   type Test,
 } from "./lib/mutation-report.ts";
-import { owner, planned, type Range } from "./mutation-shard.ts";
+import { owner, parsed, tree, type Range } from "./mutation-shard.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..");
 
@@ -123,21 +128,43 @@ export function run(argv: readonly string[], root: string): Outcome {
     };
   const shards = Number(count);
   const reports: Report[] = [];
+  const ranges: Range[][] = [];
   for (let shard = 1; shard <= shards; shard += 1) {
-    const path = join(
-      directory,
-      `mutation-report-${String(shard)}`,
-      "mutation.json",
-    );
-    if (!existsSync(path))
+    const dir = join(directory, `mutation-report-${String(shard)}`);
+    const report = join(dir, "mutation.json");
+    const held = join(dir, "ranges.txt");
+    if (!existsSync(report) || !existsSync(held))
       return {
         code: 1,
         stdout: "",
         stderr: `shard ${String(shard)} of ${count} left no report: a shard that reported nothing proves nothing\n`,
       };
-    reports.push(JSON.parse(readFileSync(path, "utf8")) as Report);
+    const own = parsed(readFileSync(held, "utf8"));
+    if (own === undefined)
+      return {
+        code: 1,
+        stdout: "",
+        stderr: `shard ${String(shard)} of ${count} wrote ranges that do not parse\n`,
+      };
+    reports.push(JSON.parse(readFileSync(report, "utf8")) as Report);
+    ranges.push(own);
   }
-  const merged = merge(reports, planned(root, shards));
+  for (const { path, statements } of tree(root))
+    for (const { start, end } of statements) {
+      const holders = ranges.filter((own) =>
+        own.some(
+          (range) =>
+            range.path === path && range.start <= start && end <= range.end,
+        ),
+      ).length;
+      if (holders !== 1)
+        return {
+          code: 1,
+          stdout: "",
+          stderr: `${path}:${String(start)}-${String(end)} is in ${String(holders)} shards' ranges, not one: did every shard read the same baseline?\n`,
+        };
+    }
+  const merged = merge(reports, ranges);
   const mutants = Object.values(merged.files).flatMap((file) => file.mutants);
   const detected = mutants.filter(({ status }) => DETECTED.has(status)).length;
   const missed = mutants.filter(({ status }) => status in UNDETECTED).length;

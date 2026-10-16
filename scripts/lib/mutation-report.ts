@@ -15,6 +15,7 @@ export interface Mutant {
   readonly location: { readonly start: Position; readonly end: Position };
   readonly coveredBy?: readonly string[];
   readonly killedBy?: readonly string[];
+  readonly testsCompleted?: number;
 }
 
 export interface Test {
