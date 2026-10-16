@@ -3,9 +3,9 @@
 
 This appendix lists the changes between the Task~1 metamodels and those the
 Task~2 transformations read and write. The comparison checked each class and
-feature in the .ecore files.
+feature in the \texttt{.ecore} files.
 
-A third metamodel for the \texttt{pinned input set} was added
+A third metamodel for the \texttt{Pinned input set} was added
 (Appendix~\ref{app:pinned}). The target metamodel gained derived values and
 twelve kinds of generated file (Appendix~\ref{app:target}), and the source
 metamodel gained declarations the other examples need
@@ -21,18 +21,15 @@ never Ecore features.
 \label{app:pinned}
 
 The \texttt{pinnedinputs} package holds the documents the resolution reads
-beside the source models. Task~1 gave the authored documents a source
-metamodel and the derived output a target one, and left the pinned inputs
-unmodelled; the resolution needs them as models, and no \texttt{Project}
-author writes them, so they form a separate package.
+beside the source models (Section~\ref{sec:refinement}).
 
 The node contract is generated from the platform team's machine descriptions.
 Other programs publish the images lock and the snapshot. A
 \texttt{Project} build writes its migration proof.
 
 The committed descriptor that compares the source metamodel's structure with
-the implementation schemas keeps the two aligned. Adding the pinned input
-classes to the source metamodel would give that comparison documents the
+the implementation schemas keeps the two aligned. With the pinned input
+classes in the source metamodel, that comparison would find documents the
 schemas do not hold. No target metamodel class refers to them:
 the \texttt{Resolved Deployment} records the values read from them, and their
 digests.
@@ -66,25 +63,23 @@ which rules read each class.
 \end{table}
 
 Two attributes are plain strings, an exception to Task~1's rule of
-enumerations over free-form strings. A Node's disk medium is not the source
-metamodel's Media enumeration because the node contract lists media no
+enumerations over free-form strings. A \texttt{Node}'s disk medium is not the source
+metamodel's \texttt{Media} enumeration because the node contract lists media no
 \texttt{Process} may request, such as sdcard. The resolution compares the
 spelling instead, and does the same for architecture. The values come from
-generated documents, not from an author, so the risk of author typo does not
-apply.
+generated documents, not from an author, so the risk of an author's typo does
+not apply.
 
 \subsection{Changes to the Target Metamodel}
 \label{app:target}
 
-The target metamodel has two halves: the decisions the resolution derives for
-each \texttt{Application}, and the generated-file entries of the path plan.
-Both halves grew. The policies those decisions read arrive as inputs from the
+Both halves of the target metamodel grew: the decisions the resolution
+derives for each \texttt{Application}, and the generated-file entries of the
+path plan. The policies those decisions read arrive as inputs from the
 \texttt{Platform Intent}, and the metamodel records only the derived output.
 
-The root class is unchanged, but what one instance holds changed. Task~1 planned
-one \texttt{Resolved Deployment} for the whole cluster. There is now one per
-\texttt{Project} (Section~\ref{sec:perproject}). A \texttt{ResolvedApplication}
-inside is still the projection one repository publishes.
+The root class is unchanged, but there is now one instance per \texttt{Project}
+instead of one for the whole cluster (Section~\ref{sec:refinement}).
 
 \paragraph{Decisions.} Figure~\ref{fig:targetdecisions} shows every decision
 class that is new or changed. Table~\ref{tab:targetvalues} gives the reason for
@@ -128,7 +123,7 @@ the route of the delivery tool's events.
 \texttt{ReleaseGate} & added \texttt{endpoint}, \texttt{migration} & An address that every \texttt{Canary} webhook calls; the migration the gate starts and may undo. \\
 \texttt{GateAnalysis} & added \texttt{errorRate}, \texttt{latency} & The thresholds of the two analysis checks, from the \texttt{Platform Intent}. \\
 \texttt{GateMigration} & new & The migration's identity and what its proof records. \\
-\texttt{ResolvedMigration} & added \texttt{identity}, \texttt{image} user, \texttt{deadline}, \texttt{memory}, \texttt{CPU}, scratch space, \texttt{database}, \texttt{credential}, \texttt{egress} & Task~1 named the identity, owner role and deadline in prose. A migration job also needs the database address, the owner credential that only it holds, and a network policy. \\
+\texttt{ResolvedMigration} & added \texttt{uid}, \texttt{gid}, \texttt{identity}, \texttt{deadline}, \texttt{memory}, \texttt{cpu}, \texttt{scratch}, \texttt{database}, \texttt{credential}, \texttt{egress} & Task~1 named the identity, owner role and deadline in prose. A migration job also needs the database address, the owner credential that only it holds, and a network policy. \\
 \texttt{MigratedDatabase} & new & The database host, port and name. \\
 \texttt{ResolvedProcess} & added \texttt{lifecycle}, \texttt{api}, \texttt{assets}, \texttt{sidecars} & Whether the \texttt{Process} serves, runs once or prepares (which the revision element names); its API access, configuration files and \texttt{Sidecar}s. \\
 \texttt{ResolvedApiAccess}, \texttt{ResolvedApiRule}, \texttt{AdmittedRange} & new & The API rules a \texttt{Process} holds; the address range a policy admits: the API server for API access, the backup off-cluster destination. \\
@@ -149,13 +144,13 @@ the route of the delivery tool's events.
 subclass of \texttt{Deliverable}, up from Task~1's nine to 21.
 
 Workload, Canary and identity files, which Task~1 tied to one
-\texttt{Process}, now list all of an \texttt{Application}'s processes, because
-the specification puts one file per \texttt{Application} holding all its
-\texttt{Process} resources. Task~1's worked example had
-one \texttt{Process}, so this difference did not show. For the same reason, the network
+\texttt{Process}, now list all of an \texttt{Application}'s \texttt{Process}es,
+because the specification puts one file per \texttt{Application} holding all
+its \texttt{Process} resources. For the same reason, the network
 policy file holds one \texttt{ProcessPolicy} per \texttt{Process}, and the Secret file refers
 to its \texttt{Application} and holds one \texttt{SecretHolder} per identity, since a Backup identity
-holds Secrets too.
+holds Secrets too. Task~1's worked example had
+one \texttt{Process}, so this difference did not show.
 
 \texttt{MonitorFile} gained timeout and kind: a blue/green \texttt{Process} is scraped
 through its Pods; any other through its \texttt{Service}.
@@ -174,9 +169,9 @@ connection, Vault policies, Vault roles, the policy job and the events route.
 \end{landscape}
 
 The hand-written model of \texttt{minimal} from Task~1 was updated with these
-changes. Its files refer to the \texttt{Process} through \texttt{processes};
-it gained the configuration map that carries the \texttt{ReleaseGate} inputs;
-and its revision was set to the production implementation's
+changes. Its files refer to the \texttt{Process} through \texttt{processes},
+it gained the configuration map that carries the \texttt{ReleaseGate} inputs,
+and its \texttt{Revision} was set to the production implementation's
 (Section~\ref{sec:thin}).
 
 \subsection{Changes to the Source Metamodel}
@@ -185,8 +180,8 @@ and its revision was set to the production implementation's
 The source metamodel kept every class. Table~\ref{tab:sourcechanges} lists
 what was added or changed.
 
-Most additions are declarations in the Platform Intent that a derivation needs
-and Task~1 left implicit. A rule needing a value the Platform Intent does not
+Most additions are declarations in the \texttt{Platform Intent} that a derivation needs
+and Task~1 left implicit. A rule needing a value the \texttt{Platform Intent} does not
 declare would otherwise contain it as a constant.
 
 \begin{longtable}{>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.30\linewidth}>{\raggedright\arraybackslash}p{0.38\linewidth}}
@@ -204,7 +199,7 @@ declare would otherwise contain it as a constant.
 \caption{Changes to the Source Metamodel}
 \label{tab:sourcechanges}
 \endlastfoot
-\texttt{Process} & added \texttt{api} (\texttt{ApiAccess}, \texttt{ApiRule}, \texttt{ApiVerb}) & The \texttt{Process} declares the Kubernetes API access it needs, with a reason; platform intent delivery tools need it. \\
+\texttt{Process} & added \texttt{api} (\texttt{ApiAccess}, \texttt{ApiRule}, \texttt{ApiVerb}) & The \texttt{Process} declares the Kubernetes API access it needs, with a reason; the platform's delivery tools need it. \\
 \texttt{Platform} & added \texttt{apiAccess} (\texttt{ApiAccessPolicy}) & Which \texttt{Application}s may hold API access, and the API server address range. \\
 \texttt{Platform} & added \texttt{secretStore}, \texttt{telemetry} (\texttt{TelemetryPolicy}), \texttt{policyJob} (\texttt{VaultPolicyJob}) & References to the secret store, the telemetry collector and the metrics stack, whose addresses the resolution finds in their \texttt{Project}s; Vault policy job image, role and resources. \\
 \texttt{DeliveryPolicy} & added \texttt{gate}, \texttt{reporter} & References to the \texttt{Release Gate} and the events receiver \texttt{Application}s. \\
@@ -214,8 +209,8 @@ declare would otherwise contain it as a constant.
 \texttt{OffClusterCopy} & added \texttt{egress} (\texttt{DestinationRange}) & The address ranges a backup copy goes to. \\
 \texttt{HandoverLedger} & added \texttt{serving} (\texttt{ServingLocation}) & Where a \texttt{Project} not yet moved still runs, so an edge to it resolves. \\
 \texttt{RenderedArtifacts} & added \texttt{pullSecret} & Used by delivery, not by the resolution. \\
-\texttt{Placeholder} & added \texttt{suffix} & Text after a placeholder, as in \$\{exposure:auth.public\#url\}/login. \\
-\texttt{Grant} & \texttt{rotation} required & Every Grant states how it tolerates rotation, which decides its restart targets. \\
+\texttt{Placeholder} & added \texttt{suffix} & Text after a placeholder, as in \texttt{\$\{exposure:auth.public\#url\}/login}. \\
+\texttt{Grant} & \texttt{rotation} required & Every \texttt{Grant} states how it tolerates rotation, which decides its restart targets. \\
 \texttt{Volume} & \texttt{size} required & A claim cannot be generated without a size. \\
 \texttt{EffectiveProject} & removed \texttt{apiVersion}, \texttt{kind}, \texttt{schemaVersion} & The lowered model is written by the lowering, not by an author, so it has no document header. \\
 \end{longtable}

@@ -88,7 +88,7 @@ comparison against the oracle. The Acceleo templates of Task~3 then read the
 \subsection{Refinement of Tasks 0 and 1}
 \label{sec:refinement}
 
-Implementing the transformation refined the earlier work. Task~0 treated the
+Task~0 treated the
 node contract, images lock and snapshot as plain inputs, while Task~1 only
 modelled the two authored documents. The resolution needs these as models, so
 a third metamodel now describes the \texttt{Pinned input set}, with its own
@@ -101,8 +101,8 @@ the resolution reads values from a single level
 (Section~\ref{sec:twotransformations}).
 
 Task~1 planned one resolved model for the entire cluster, because edges,
-routes and reverse dependencies require a cluster-wide view. That view
-remains: every run still reads every project. The output is now one
+routes and reverse dependencies require a cluster-wide view. Every run
+still reads every project. The output is now one
 \texttt{Resolved Deployment} per project, because the production
 implementation and the oracles are per project
 (Section~\ref{sec:perproject}); the per-\texttt{Application} projection from
@@ -123,8 +123,8 @@ The transformation assumes four conditions.
 \begin{itemize}
   \item \textbf{Valid input.} The Task~1 OCL constraints reject an invalid
     source model before the lowering runs, checking the entire document set
-    of a run. A stop in the transformation acts as a safety net, catching any
-    fact the constraints have not yet covered (Section~\ref{sec:stops}).
+    of a run. A stop in the transformation is a safety net for facts the
+    constraints do not yet cover (Section~\ref{sec:stops}).
   \item \textbf{One cluster per run.} A run reads one \texttt{Platform Intent}
     and one node contract, both naming the same cluster. All concepts,
     examples and oracles derive from that single existing cluster.
@@ -136,10 +136,6 @@ The transformation assumes four conditions.
     as which node holds a particular volume, must arrive via the
     \texttt{ClusterState} snapshot captured by another process.
 \end{itemize}
-
-The build executes the transformations with QVTo's standalone executor on
-every code change; Eclipse launch configurations can also run them
-(Appendix~\ref{app:handin}).
 
 \paragraph{More Than One Cluster.} The current implementation targets a
 single cluster, and every cluster-specific element is already a run input: the

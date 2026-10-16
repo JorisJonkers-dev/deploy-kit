@@ -14,8 +14,8 @@ The build runs six test types on every change.
     byte-for-byte with the expected Effective Intent.
   \item \textbf{Dependency edges.} For each example, the resolved edges are
     exported as JSON and compared byte-for-byte with the expected file. These
-    tests only read files the pipeline wrote, verifying the pipeline as a user
-    would run it.
+    tests read only files the pipeline wrote, so they check the pipeline as a
+    user would run it.
   \item \textbf{Revisions.} Each expected resolved file records its
     \texttt{Revision}, a digest over the \texttt{Application} element as the
     production implementation writes it. Matching \texttt{Revision}s confirm
@@ -28,9 +28,9 @@ The build runs six test types on every change.
     \texttt{secrets} have full expected \texttt{Resolved Deployment} models,
     compared using EMF's structural equality (\texttt{EcoreUtil.equals}),
     which checks every attribute and reference.
-  \item \textbf{Generated files.} Since Task~3 templates decide nothing, a
-    wrong value in a \texttt{Resolved Deployment} becomes a wrong byte in the
-    file that carries it. Tests generate the files from the transformation
+  \item \textbf{Generated files.} Since Task~3 templates decide nothing, every
+    wrong value they write from a \texttt{Resolved Deployment} becomes a wrong
+    byte in a generated file. Tests generate the files from the transformation
     output and compare each with the committed output.
   \item \textbf{Interface tests.} JUnit tests exercise the resolution with
     the smallest project that resolves, a project not in the input, and an
@@ -77,14 +77,13 @@ including 81 parity checks and passes.
 \label{tab:results}
 \end{table}
 
-A dash means no committed oracle of that kind exists for the example. The
-\texttt{secrets} example holds no expected resolved file and no
+The \texttt{secrets} example holds no expected resolved file and no
 committed tree, but its complete expected model checks every attribute and
 reference of its whole resolution, where a \texttt{Revision} would check one
 element and a tree comparison the rendered files.
 
 Between them, the examples exercise every row of Table~\ref{tab:rules}.
-\texttt{minimal} alone carries the common \texttt{Process} and
+\texttt{minimal} alone exercises the common \texttt{Process} and
 \texttt{Exposure} rules (Table~\ref{tab:worked}). The migration, placeholder
 and external-provider rules run in \texttt{auth}, which holds three secrets
 and reaches a mail server outside the cluster. The volume, backup and
@@ -101,14 +100,11 @@ egress run in every resolution.
 \subsubsection{What the Revisions Show}
 \label{sec:revisionevidence}
 
-An \texttt{Application} \texttt{Revision} is the digest of its whole element
+An \texttt{Application}'s \texttt{Revision} is the digest of its whole element
 as the production implementation writes it: its \texttt{Process}es with image,
 user, deadline, probes, placement, secrets, volumes, backups, environment and
 edges; its \texttt{Exposure}s and routes; its \texttt{Release Gate} and
-migration. The element is one projection of the resolved model. The path plan,
-the network policies and the Vault documents are not written into it, so the
-\texttt{Revision} says nothing about them; the generated files carry those
-values, and Section~\ref{sec:treeevidence} checks them.
+migration.
 
 The transformation builds that text from its own \texttt{Resolved Deployment}
 (Section~\ref{sec:blackbox}), so one different value, one extra environment
@@ -119,18 +115,16 @@ ten match.
 For these \texttt{Application}s, the \texttt{Revision} check verifies nearly
 every value of each element at once, where a hand-written model would have to
 check the fields one by one. A further test confirms the \texttt{Revision}
-moves when a decision changes: raising \texttt{minimal} memory from 256Mi to
+moves when a decision changes: raising the memory in \texttt{minimal} from 256Mi to
 512Mi changes it, but changing the snapshot capture time, which decides
 nothing, does not.
 
 \subsubsection{What the Generated Files Show}
 \label{sec:treeevidence}
 
-Values no \texttt{Revision} covers, such as the path plan, network policies
-and Vault documents, still appear in generated files. 167 committed files
-across five examples and the cluster-wide tree, including the estate pass job,
-are reproduced byte-for-byte: on these inputs, the transformation output and
-the committed trees agree file by file.
+The generated files carry the values no \texttt{Revision} covers. The
+transformation output reproduces 167 committed files byte-for-byte, across
+five examples and the cluster-wide tree, including the estate pass job.
 
 \subsubsection{Where the Evidence Is Thin}
 \label{sec:thin}
@@ -142,10 +136,9 @@ succeeds and that other examples, which look up their proxies and collectors,
 reproduce their expected files.
 
 The \texttt{secrets} model is a reviewed output rather than an independent
-oracle. It catches any later change to the resolution, and the review itself
-found one gap in
-the specification: the Secret Store network policy admits nobody inbound
-even though every holder of a Secret may send to it.
+oracle. It flags any later change in that output, and the review of it found
+one gap in the specification: the Secret Store network policy admits nobody
+inbound even though every holder of a Secret may send to it.
 
 The hand-written model of \texttt{minimal} from Task~1 was updated after
 hand-in to follow the metamodel changes of Appendix~\ref{app:target}. Its
@@ -170,35 +163,33 @@ implementations of the specification decide the same, not that the
 specification itself is correct. Only the hand-written model of
 \texttt{minimal} was written directly from the specification.
 
-Eight examples form a sample: they demonstrate that every rule runs and
-agrees on these inputs, not that each rule is correct in every case, and the
-QVTo code is not mutation-tested. The \texttt{knowledge} example is not among
-them; it models a \texttt{Project} being retired, and its successor
-\texttt{knowledge-platform} is.
+Eight examples form a sample, on which every rule runs and agrees. The
+\texttt{knowledge} example, which models a \texttt{Project} being retired, is
+not one of them; its successor \texttt{knowledge-platform} is.
 
-The checks across documents are stops rather than diagnostics, which costs
-debuggability: a stop reports one problem without its document location.
-Most such checks moved into constraints; the remaining stops are a safety
-net. The cross-document constraints still use \texttt{allInstances()};
-moving them onto one root object is decided but not implemented.
+Checks across documents that remain in the transformation are stops, and a
+stop reports one problem without its location in the documents. Most such
+checks moved into constraints. The cross-document constraints still use
+\texttt{allInstances()}; moving them onto one root object is decided but
+not implemented.
 
 QVTo caches mapping results but not queries, so \texttt{edgeOf} or a
 \texttt{Surface} address is recomputed wherever used. Several queries scan
 every \texttt{Process} in the cluster, so work grows with the square of
 \texttt{Process} count; for much larger clusters, hot queries would become
 mappings or precomputed properties, and capacity needs to be measured first.
-Capacity is also checked per machine: a \texttt{Process} is eligible for a
-machine that can hold it alone, and the resolution does not sum what all
-\texttt{Process}es request of one machine.
 
-Two modelling choices concern order: when two \texttt{Process}es
-provide the same \texttt{Surface}, the first in name order wins, and the order
-between \texttt{ReconcileUnit}s is per \texttt{Project}, not per
-\texttt{Application}, because Flux orders whole units.
+A \texttt{Process} is eligible for a machine that can hold it alone; the
+resolution does not sum what all \texttt{Process}es request of one machine.
 
-Provenance digests differ by design: input digests are hashes over each
-implementation's own model form. Every digest that reaches a generated file,
-the \texttt{Revision}, an \texttt{Asset} name and the policy job name, is
+When two \texttt{Process}es provide the same \texttt{Surface}, the first in
+name order wins. The order between \texttt{ReconcileUnit}s is set per
+\texttt{Project}, not per \texttt{Application}, because Flux orders whole
+units.
+
+Each implementation hashes its own model form of the inputs, so their
+provenance digests differ. Every digest that reaches a generated file (the
+\texttt{Revision}, an \texttt{Asset} name and the policy job name) is
 reproduced.
 
 The Eclipse run configuration is not tested: the build uses the standalone
@@ -208,29 +199,27 @@ run manually.
 \subsection{Reflection}
 \label{sec:reflection}
 
-The most time-consuming part was the \texttt{Revision}. Writing the production
-implementation's JSON form of an \texttt{Application} in OCL, one field at a
-time, took about one sixth of \texttt{resolution.qvto}, and every mistake showed
-only as a different hash. Once the \texttt{Revision}s matched, they verified
-nearly every value of ten \texttt{Application} elements at once
-(Section~\ref{sec:revisionevidence}), which would have been impractical to
-check by hand.
+The \texttt{Revision} took the most time. The OCL that writes the production
+implementation's JSON form of an \texttt{Application}, one field at a time,
+fills about one sixth of \texttt{resolution.qvto}, and every mistake in it
+showed only as a different hash.
 
-QVTo was a good fit for the work: most rules are queries over the whole
-cluster, which OCL expresses naturally, and the explicit trace made every
-reference between created elements visible. The cost is that those queries
-are recomputed wherever used, as the limitations above describe.
+Most rules are queries over the whole cluster, which OCL states directly, and
+the explicit trace made every reference between created elements visible, so
+QVTo suited the work. In return, QVTo recomputes those queries wherever they
+are used (Section~\ref{sec:limitations}).
 
-The keywords \texttt{resolve}, \texttt{from} and \texttt{access} each cost
-time. \texttt{resolve} prevented naming the black-box unit after its Java
-package, and \texttt{from} and \texttt{access} forced two metamodel features
+The keywords \texttt{resolve}, \texttt{from} and \texttt{access} each
+cost time, as did two rules of the language. \texttt{resolve} prevented naming
+the black-box unit after its Java package, and \texttt{from} and
+\texttt{access} forced two metamodel features
 to be written \texttt{\_from} and \texttt{\_access}. A multi-statement
 \texttt{if} needs braces. Inside an object expression, \texttt{result} refers
 to the enclosing mapping result, not the object being created.
 
-With hindsight, I would have planned the evidence with the examples from the
-start. The expected model of \texttt{secrets} and the parity checks for
-\texttt{knowledge-platform} were only added at the end, when I checked which
-examples had no comparison. The Task~1 model of \texttt{minimal} should have been
-kept unchanged beside the updated one, so the one independent oracle would
-remain independent.
+With hindsight, the evidence should have been planned with the examples
+from the start. The expected model of \texttt{secrets} and the parity checks
+for \texttt{knowledge-platform} were only added at the end, when the examples
+without a comparison were identified. The Task~1 model of \texttt{minimal}
+should have been kept unchanged beside the updated one, so the one
+independent oracle would remain independent.

@@ -4,7 +4,7 @@
 \subsection{Existing Kubernetes Modelling Tools}
 \label{sec:existingtools}
 
-Three open-source tools were reviewed to see if they could produce the
+Three open-source tools were reviewed to see whether they could produce the
 \texttt{Resolved Deployment} from \texttt{Project Intent} and
 \texttt{Platform Intent}, or at least take part in the pipeline.
 Table~\ref{tab:tools} compares them.
@@ -38,10 +38,10 @@ comes closest: it resolves a link between two services to an address and
 port, similar to how the resolution resolves dependency edges. But it lacks
 a \texttt{Platform Intent}, node contract, images lock and snapshot, so it
 cannot derive placement, image digests, backups or network peers. Its output
-is not a model that OCL constraints or oracles can verify. The tools can
-therefore complement the transformation, not replace it. The resolved
-dependency edges and network peers could feed a KubeDiagrams view of the
-Task~3 files for visual verification. A KubeOrch-style graphical editor
+is not a model that OCL constraints or oracles can verify. Beside the
+transformation, the resolved dependency edges and network peers could feed
+a KubeDiagrams view of the Task~3 files for visual verification. A
+KubeOrch-style graphical editor
 could write \texttt{Project Intent} documents, since the editor and the
 transformation would work from the same Ecore metamodel.
 
@@ -52,10 +52,10 @@ Four languages were considered: ATL, QVT-Relations, QVT-Operational (QVTo) and
 Java with a rule library such as SiTra.
 
 QVT-Relations was ruled out first. Its automatic traces and two-way
-synchronisation offer no benefit for a one-way derivation. The cited
-experiments also report that one of its engines, medini QVT, encountered
-heap-space problems and became unresponsive on input models with more than a
-hundred classes or a hundred attributes in their general cases~\cite{amstel2011}.
+synchronisation offer no benefit for a one-way derivation. In the cited
+experiments, one of its engines, medini QVT, ran into heap-space problems
+and became unresponsive on general-case input models with more than a
+hundred classes or a hundred attributes~\cite{amstel2011}.
 
 ATL, QVTo and Java were compared against the specific needs of this
 transformation. Most values in a \texttt{Resolved Deployment} do not derive
@@ -72,25 +72,27 @@ the transformation into imperative code without the pattern matching, and
 the values that need the whole model to exist first still have to be
 computed afterwards.
 
-QVTo meets these needs. The caller explicitly decides the order of execution,
-and every reference from one created element to another goes through the
-trace. Its expressions use OCL, the same language Task~1's constraints already
-use. Among the cited survey's respondents it was the second most-used
-transformation language after ATL, and its users named its maturity and its
-support by a standard as reasons~\cite{burgueno2019}.
+A Java transformation would be the easiest to debug and offers full
+control, but it requires maintaining the trace by hand and hides the
+transformation rules inside general-purpose code; some attendees of the
+cited discussion called model management in such code hard to
+maintain~\cite{burgueno2019}.
 
-A Java transformation would be the easiest to debug and offers full control,
-but it requires maintaining the trace by hand and hides the transformation
-rules inside general-purpose code; some attendees of the cited discussion
-called model management in such code hard to maintain~\cite{burgueno2019}.
+QVTo was chosen, in which the caller decides the order of execution
+explicitly and every reference from one created element to another goes
+through the trace. Its expressions use OCL, the same language Task~1's
+constraints already use. Among the cited survey's respondents it was the
+second most-used transformation language after ATL, and its users named its
+maturity and its support by a standard as reasons to use
+it~\cite{burgueno2019}. The one operation QVTo cannot express directly,
+computing a SHA-256 hash, uses QVT's black-box mechanism: a Java library
+called through a contextual operation (Section~\ref{sec:blackbox}).
 
-QVTo was chosen. The one operation QVTo cannot express directly, computing a
-SHA-256 hash, uses QVT's black-box mechanism: a Java library called through a
-contextual operation (Section~\ref{sec:blackbox}). Speed was not decisive.
-The cited experiment~\cite{amstel2011} measured QVTo more than five times
-slower than ATL, a result about the models of that experiment rather than a
-prediction for this cluster; what this cluster can bear is a question of
-capacity, which Section~\ref{sec:limitations} returns to.
+Speed was not decisive. The cited experiment~\cite{amstel2011} measured
+QVTo more than five times slower than ATL, a result about the models of
+that experiment rather than a prediction for this cluster; what this
+cluster can bear is a question of capacity, which
+Section~\ref{sec:limitations} returns to.
 
 \subsection{The Structure of the Transformation}
 \label{sec:structure}
@@ -99,46 +101,44 @@ Every derived value needs to be in a model that tests can compare, so
 derivation must happen in a model-to-model step before code generation, and
 the oracles can then verify values independently of the templates.
 
-A single transformation from authored model to \texttt{Resolved Deployment}
-would work; the rest of this section argues for splitting it into a chain.
-
 \subsubsection{A Lowering Before the Resolution}
 \label{sec:twotransformations}
 
-The lowering first copies shared declarations down to each \texttt{Process},
-producing \texttt{Effective Intent}, so the resolution then reads values from
-one level instead of three and each rule is simpler. The estate pass adds
-files that belong to no single \texttt{Project}, which no individual
-resolution can compute. The chain also matches QVT specification
-Section~8.1.13, which composes a preparation transformation before the main
-one~\cite{qvt13}.
+A single transformation from authored model to \texttt{Resolved Deployment}
+would work, but a lowering precedes the resolution. The lowering copies
+shared declarations down to each \texttt{Process}, producing
+\texttt{Effective Intent}, so the resolution reads values from one level
+instead of three and each rule is simpler. The chain also matches QVT
+specification Section~8.1.13, which composes a preparation transformation
+before the main one~\cite{qvt13}.
 
 \subsubsection{One Project per Run, All Projects as Input}
 \label{sec:perproject}
 
-The structural alternative was a cluster-wide output: one resolution over
-all projects at once, producing one \texttt{Resolved Deployment} for the
-whole estate. Instead, each run resolves one \texttt{Project} into its own
-model while reading every project's documents from the same input extent.
-That keeps each model small and gives each project one oracle to compare
-with, while the shared extent preserves the cluster-wide view that edges,
-routes and reverse dependencies need. The cost is that one value, the digest
-over all secret-store policies, needs every project's output, and no single
-project's run can compute it. The estate pass, which runs over all resolved
-models together, adds it (Section~\ref{sec:estatepass}).
+One resolution over all projects at once could produce one
+\texttt{Resolved Deployment} for the whole estate. Instead, each run
+resolves one \texttt{Project} into its own model while reading every
+project's documents from the same input extent. Each model stays small and
+has one oracle to compare with, and the shared extent keeps the
+cluster-wide view that edges, routes and reverse dependencies need. One
+value, the digest over all Vault documents, needs the output of every
+project, so the estate pass, which runs over all resolved models together,
+adds it (Section~\ref{sec:estatepass}).
 
 \subsubsection{Typed Extents Instead of a Global Scan}
 \label{sec:extentsalternative}
 
-A rule also has to find the other run's documents. Using OCL's
+A rule also has to find the run's other documents. Using OCL's
 \texttt{allInstances()} scans everything loaded on each evaluation and
 gives results that depend on which files were loaded. Instead, the
 transformation selects each input once by type from two extents that hold
 exactly the run's documents, and every rule navigates from one of these
 properties (Section~\ref{sec:interface}).
 
-Writing defaults would produce files that appear valid yet deploy incorrect
-configurations, so a value the resolution cannot derive must stop the run.
-Stopping requires the caller to handle the failure. The transformation uses
-fatal assertions in stop queries to halt when a value cannot be derived
-(Section~\ref{sec:stops}).
+\subsubsection{Stops Instead of Defaults}
+\label{sec:stopsalternative}
+
+A default for a value the resolution cannot derive would give a file that
+looks valid and deploys the wrong configuration, so the run stops instead,
+through a fatal assertion in a stop query (Section~\ref{sec:stops}). The
+caller then has to handle the failure.
