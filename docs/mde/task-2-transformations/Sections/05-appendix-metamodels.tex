@@ -5,7 +5,7 @@ This appendix lists the changes between the Task~1 metamodels and those the
 Task~2 transformations read and write. The comparison checked each class and
 feature in the \texttt{.ecore} files.
 
-A third metamodel for the \texttt{Pinned input set}, the read-only documents no project author writes, was added
+A third metamodel for the \texttt{Pinned input set}, the read-only documents no \texttt{Project} author writes, was added
 (Appendix~\ref{app:pinned}). The target metamodel gained derived values and
 twelve kinds of generated file (Appendix~\ref{app:target}), and the source
 metamodel gained declarations the other examples need
@@ -117,7 +117,7 @@ the route of Flux's events.
 \label{tab:targetvalues}
 \endlastfoot
 \texttt{ResolvedDeployment} & added \texttt{policyJob}, \texttt{events} & The Vault policy job and the route for Flux's events belong to the whole cluster; every \texttt{Project} model carries the same job; the final pass plans their files. \\
-\texttt{ResolvedPolicyJob}, \texttt{ResolvedEvents} & new & The job's identity, image, Vault role, resources and egress; the events receiver's namespace and address. \\
+\texttt{ResolvedPolicyJob}, \texttt{ResolvedEvents} & new & The job's service account (\texttt{identity}), image, Vault role, resources and egress; the events receiver's namespace and address. \\
 \texttt{ResolvedApplication} & added \texttt{secretStore}, \texttt{scrape} & The Secret Store (Vault) address the operator syncs from, and how the metrics stack scrapes the \texttt{Application}, which the revision element names. \\
 \texttt{ResolvedScrape} & new & The scraped \texttt{Process}, \texttt{Surface}, path, interval and timeout. \\
 \texttt{ReleaseGate} & added \texttt{endpoint}, \texttt{migration} & An address that every \texttt{Canary} webhook calls; the migration the gate starts and may undo. \\
@@ -131,13 +131,13 @@ the route of Flux's events.
 \texttt{ResolvedGrant} & \texttt{path} and \texttt{access} optional; added \texttt{engine}, \texttt{paths}, \texttt{destination}, \texttt{mountAt}, \texttt{fileMode} & A transit or database \texttt{Secret} has no single path; it is recorded as the Vault paths its policy covers. A synced \texttt{Secret} needs a Kubernetes \texttt{Secret} copied to its mount. \\
 \texttt{PolicyPath} & new & One path of a Secret policy and the operations allowed on it. \\
 \texttt{ResolvedVolume} & added \texttt{mountAt} & The workload template needs the mount path. \\
-\texttt{BackupPlan} & added \texttt{user}, \texttt{group}, \texttt{identity}, \texttt{claim}, \texttt{egress}, \texttt{peer}, \texttt{credential}, \texttt{destinations} & A backup runs as its own identity with its own claim and network policy; it connects to the \texttt{Process} it dumps and copies off-cluster with a credential. \\
+\texttt{BackupPlan} & added \texttt{user}, \texttt{group}, \texttt{identity}, \texttt{claim}, \texttt{egress}, \texttt{peer}, \texttt{credential}, \texttt{destinations} & A backup runs as its own service account with its own claim and network policy; it connects to the \texttt{Process} it dumps and copies off-cluster with a credential. \\
 \texttt{BackupPeer} & new & Where a backup connects, and the credential it logs in with. \\
 \texttt{EnvEntry} & \texttt{value} optional; added \texttt{secret} & A secret placeholder becomes a reference, so the value never appears in a file. \\
 \texttt{SecretReference} & new & The secret path and key a variable reads. \\
 \texttt{StartupProbe} & added \texttt{timeout} & The specification gives the startup probe the \texttt{Platform Intent} probe timeout. \\
 \texttt{ResolvedExposure} & added \texttt{listener}, \texttt{certificates}, \texttt{proxyApplication}, \texttt{proxyNamespace} & The entry point's protocol and certificate source; the proxy whose middleware the routes name. \\
-\texttt{PolicyPeer} & added \texttt{rule}; \texttt{process} optional & Which rule admitted the peer, so two rules admitting one peer stay two entries, as in production; a peer such as cluster DNS has a namespace but no \texttt{Process}. \\
+\texttt{PolicyPeer} & added \texttt{rule}; \texttt{process} optional & Which rule admitted the peer (whom a network policy lets each \texttt{Process} talk to), so two rules admitting one peer stay two entries, as in production; a peer such as cluster DNS has a namespace but no \texttt{Process}. \\
 \end{longtable}
 
 \paragraph{Generated Files.} Figure~\ref{fig:targetfiles} shows every
