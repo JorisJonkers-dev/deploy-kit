@@ -88,6 +88,20 @@ describe("the weekly full run's report", () => {
     });
   });
 
+  it("names the survivors of every shard that holds part of one file", () => {
+    const root = reports([
+      { "src/a.ts": [["Survived", "StringLiteral", 1, 1]] },
+      { "src/a.ts": [["Survived", "BooleanLiteral", 9, 2]] },
+    ]);
+
+    expect(run([root]).stdout).toContain(
+      [
+        "- `src/a.ts:1:1` StringLiteral: survived",
+        "- `src/a.ts:9:2` BooleanLiteral: survived",
+      ].join("\n"),
+    );
+  });
+
   it("counts one mutant as one", () => {
     const root = reports([
       { "src/a.ts": [["Survived", "StringLiteral", 1, 1]] },

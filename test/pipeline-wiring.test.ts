@@ -156,3 +156,60 @@ describe("code scanning gates the merge", () => {
     expect(codeql).toContain("exit 1");
   });
 });
+
+// REQ-064 (docs/requirements.md): the mutation gate is a scope job, parallel
+// shards and one merging job, and only the merging job is a gate.
+describe("the mutation gate's jobs", () => {
+  const ci = readFileSync(
+    join(REPOSITORY, ".github", "workflows", "ci.yml"),
+    "utf8",
+  );
+  const job = (key: string): string =>
+    ci.split(`  '${key}':\n`)[1]?.split("\n\n")[0] ?? "";
+  const needs =
+    /'pipeline-complete':[\s\S]*?'needs':\n((?:\s+- '[\w-]+'\n)+)/.exec(
+      ci,
+    )?.[1] ?? "";
+  const scope = job("mutation-scope");
+  const shard = job("mutation-shard");
+  const gate = job("mutation");
+
+  it("Pipeline Complete needs the merging job, which never skips, and no shard, which may", () => {
+    expect(needs).toContain("- 'mutation'\n");
+    expect(needs).not.toContain("- 'mutation-shard'");
+    expect(needs).not.toContain("- 'mutation-scope'");
+    expect(gate).toContain(
+      "'needs':\n      - 'mutation-scope'\n      - 'mutation-shard'\n    'if': 'always()'",
+    );
+  });
+
+  it("runs the shards only where the scope job says the change reaches a mutant", () => {
+    expect(scope).toContain("'needed': '${{ steps.scope.outputs.needed }}'");
+    expect(shard).toContain("'needs':\n      - 'mutation-scope'");
+    expect(shard).toContain(
+      `'if': "needs.mutation-scope.outputs.needed == 'true'"`,
+    );
+    expect(shard).toContain("'fail-fast': false");
+  });
+
+  it("asks only for a pull request, against its merge commit's first parent, and always runs a push to main", () => {
+    expect(scope).toContain("'fetch-depth': '2'");
+    expect(scope).toContain(`if [ "\${EVENT}" = 'pull_request' ]; then`);
+    expect(scope).toContain(
+      'needed="$(node scripts/mutation-scope.ts HEAD^1)"',
+    );
+    expect(scope).toContain("needed='true'");
+  });
+
+  it("passes where nothing it reads changed, and fails where the scope job or any shard did not succeed", () => {
+    expect(gate).toContain(
+      `'if': "needs.mutation-scope.result == 'success' && needs.mutation-scope.outputs.needed == 'false'"`,
+    );
+    const fail =
+      gate.split("'name': 'Fail: the scope or a shard did not succeed'")[1] ??
+      "";
+    expect(fail).toContain("needs.mutation-scope.result != 'success'");
+    expect(fail).toContain("needs.mutation-shard.result != 'success'");
+    expect(fail).toContain("'run': 'exit 1'");
+  });
+});

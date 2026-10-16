@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **62** rows. The compiler's behaviours join it as they land.
+This ledger holds **64** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -85,3 +85,5 @@ This ledger holds **62** rows. The compiler's behaviours join it as they land.
 | REQ-060 | A Project paused with `rollback-backup` is composed at the release it is pinned to, and its pin does not move; the estate-scoped artifact holds one never-retried one-shot `Job` per backed-up volume, running the scheduled backup's pod and identity with the request handed as `BACKUP_ROLLBACK` and set as a label, applied by a unit of its own that follows nothing; a Project only paused, one that never composed, and one still on the old path get none | [test/application/compose.test.ts](../test/application/compose.test.ts) |
 | REQ-061 | Where an engine names a catalog method and the platform names the Vault policy job, each datastore of that engine that an estate-path project reads a database from derives a method beside it, in the secrets unit, handed a catalog of those projects' databases and roles and the login it signs in with, the old path's while the datastore is legacy and the derived one after; it holds a Vault policy of its own the policy job writes, and is a new Job when its catalog or what its pod runs with changes; no method, no reader or no login derives none | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-062 | Every edge to a Process whose engine owns databases derives the consuming Process's credential, the project's data role's, or its owner role's where the Application migrates itself, read from `database/creds/<role>` and delivered `self`; delivered `env`, it is a `VaultDynamicSecret` the Process reads `username` and `password` from as `${dependency:<application>.username}` and `.password`, restarted where it tolerates only a restart; a credential the edge delivers to no environment, or read as part of a value, is `E_UNRESOLVED_PLACEHOLDER`, and an `env` credential that tolerates a reload is `E_ENV_CANNOT_RELOAD` | [test/model/render.test.ts](../test/model/render.test.ts) |
+| REQ-063 | The pull request's mutation shards merge into one report holding every mutant once, which decides the score, names every survivor whichever shard found it, and is the baseline a push to `main` uploads | [test/mutation-merge.test.ts](../test/mutation-merge.test.ts) |
+| REQ-064 | A pull request that changes no module, no test, nothing the mutation gate runs under and no dependency runs no mutation shard, and the gate passes on `main`'s result; a push to `main` always runs it | [test/mutation-scope.test.ts](../test/mutation-scope.test.ts) |

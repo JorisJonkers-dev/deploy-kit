@@ -21,9 +21,14 @@ the rule; the measured numbers live in the CI report, never here.
 A pull request does not test every mutant. It runs Stryker incrementally
 against the report of the last green run on `main`: a mutant is tested again
 when its module changed or a test file that covered it changed, and every other
-result comes from that report. The score is still over every mutant. A full run
-tests every mutant once a week, gates nothing, and opens an issue naming each
-mutant left undetected.
+result comes from that report. The score is still over every mutant. The run is
+parallel shards, each handed a disjoint share of every module's top-level
+statements, and one job merges their reports into the report a single run would
+have written: that report decides the score and is the next run's baseline. A
+pull request that changes no module, no test, nothing the gate runs under and
+no dependency runs no shard, and `main`'s result stands. A full run tests every
+mutant once a week, in the same shards, gates nothing, and opens an issue naming
+each mutant left undetected.
 
 ## Rests on
 
@@ -45,6 +50,11 @@ different mutant outcomes. **Settled by:** two consecutive
 `npm run test:coverage` runs and two consecutive `npm run test:mutation` runs on
 one commit reporting identical totals and outcomes, which is how both numbers
 were first set.
+
+**False if:** a mutant falls in no shard's share, or in two. **Settled by:**
+the report of the last green `main` run of 16 October 2026 placing every one of
+its mutants in exactly one shard, and `test/mutation-shard.test.ts` holding
+every top-level statement of the tree to exactly one.
 
 **False if:** the weekly full run finds an undetected mutant in a module no
 pull request changed since the run before it. **Settled by:** one incremental
@@ -68,6 +78,22 @@ bought no catch outside the changed files, and its only yield there was red
 jobs that a second run turned green. Stryker's incremental mode keeps the
 result of a mutant whose module and whose killing test are both unchanged, so
 a pull request that only weakens a test still re-tests what that test killed.
+
+**One job is the slowest gate, and it holds every merge.** Measured for
+[the sharding decision](https://github.com/JorisJonkers-dev/deploy-kit/issues/464),
+one incremental job ran for most of an hour on a change that re-tested nearly a third
+of the mutants, and release pull requests that touch no module waited half an
+hour for it. Shards finish in the time of the largest one. A shard is cut by
+top-level statement, not by file, because one large module would leave its
+shard running alone: Stryker mutates only a node a range holds whole, and every
+node but the file itself sits inside one top-level statement, so every mutant
+lands in exactly one shard. A statement is the finest such cut; a range inside
+one drops the mutant of every node that spans it.
+
+**A change that reaches no mutant pays nothing.** Incremental mode would take
+every result from `main`'s report anyway, so a release or a docs change runs no
+shard. A dependency or a configuration the gate runs under still runs it: the
+results are kept, but the run proves the toolchain still works.
 
 **The full run stays, as the check on the shortcut.** Incremental mode compares
 modules and test files, and nothing else: a changed fixture, test helper or
@@ -93,6 +119,9 @@ subprocess); mutating them now would score the sandbox, not the tests.
 | A break score of 100 minus headroom | tolerates timeout noise | noise no run produced |
 | Record the mutant counts beside the rule | the number sits in the record | stale on the next commit |
 | Every mutant on every pull request | no result is ever taken from an earlier run | four fifths of CI minutes, for no catch outside the changed files |
+| One incremental job over every module | no merge step | the slowest gate, holding every merge, release pull requests included |
+| Shards by whole file | each file in one report | one large module leaves its shard running alone |
+| Shards by a range inside a statement | a finer balance | drops the mutant of every node that spans the cut |
 | Mutate only the files a pull request's diff names | no report to carry between runs | a pull request that only weakens a test mutates nothing |
 | The full run alone, weekly, with no pull request job | the cheapest pipeline | a survivor lands on `main` and is found a week late |
 
@@ -108,6 +137,10 @@ Undo cost today: numbers in two config files. Becomes irreversible once: never.
   counted, and one process-level test per gate proves it still runs.
 - Mutation runs are not part of `npm run verify`; they run as their own CI job.
 - A pull request's mutation result rests on a report from `main`. A run that
-  finds none tests every mutant, in one job, and takes over an hour.
+  finds none tests every mutant, a sixth in each shard.
+- One top-level statement is the smallest share a shard takes, so a change that
+  re-tests every mutant of one large statement waits on that statement.
+- A pull request that changes only documents, the release files or `emf/`
+  passes the gate without a shard running; its result is `main`'s.
 - A mutant can sit undetected on `main` for up to a week when only a fixture,
   a test helper or a dependency changed. The weekly issue is where it surfaces.
