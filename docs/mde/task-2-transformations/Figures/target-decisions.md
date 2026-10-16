@@ -1,24 +1,21 @@
 # The decision classes of the target metamodel that changed in Task 2
 
 The source of the decision-class diagram in the Task 2 report
-(`target-decisions-application.pdf` and `target-decisions-process.pdf`), cut from
+(`target-decisions.pdf`), cut from
 `emf/bundles/metamodel/model/resolved-deployment.ecore`. A class marked
 `<<new>>` is new in Task 2; every other class is a Task 1 class and lists only
 the features Task 2 added, each marked `[new]`. A class contained in several
-places is drawn under its first container only. Contextual classes are repeated between views.
+places is drawn under its first container only.
 
-Regenerate from the repository root with the shared renderer:
+Render it the way the Task 1 report's class diagrams are rendered, from the
+repository root:
 
 ```bash
 F=docs/mde/task-2-transformations/Figures
-for view in application process; do
-  python3 scripts/diagrams/class-diagram.py --report --changes \
-    --font-size=16 --heading-font-size=17 \
-    --source="$F/target-decisions.md" --layout="$F/target-decisions-$view-layout.json" \
-    task2-target-decisions "$F/target-decisions-$view.drawio"
-  /Applications/draw.io.app/Contents/MacOS/draw.io -x -f pdf --crop -b 4 \
-    -o "$F/target-decisions-$view.pdf" "$F/target-decisions-$view.drawio"
-done
+python3 scripts/diagrams/class-diagram.py --report --changes \
+  --source=$F/target-decisions.md task2-target-decisions target-decisions.drawio
+/Applications/draw.io.app/Contents/MacOS/draw.io -x -f pdf --crop -b 4 \
+  -o $F/target-decisions.pdf target-decisions.drawio
 ```
 
 ```mermaid

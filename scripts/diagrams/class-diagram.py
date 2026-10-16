@@ -48,10 +48,9 @@ The Task 1 report's three landscape class diagrams use `--report`:
     /Applications/draw.io.app/Contents/MacOS/draw.io -x -f pdf --crop -b 4 \
         -o $F/project-document.pdf p.drawio   # and so on for the other two
 
-The Task 2 report's class views use `--report` the same way, each from a
-Mermaid block, and `--changes` where the drawing compares the model with
-Task 1's. The Figures/*.md sources record their layout files and print font
-sizes. Without a layout file, these commands draw the complete model:
+The Task 2 report's three class diagrams use `--report` the same way, each
+from its own mermaid block, and `--changes` where the drawing compares the
+model with Task 1's:
     F=docs/mde/task-2-transformations/Figures
     python3 scripts/diagrams/class-diagram.py --report \
         --source=$F/pinned-inputs.md task2-pinned-inputs i.drawio
@@ -69,8 +68,8 @@ independent root classes in columns instead of rows. Only the classes named
 by that layout are drawn; their features and relationships still come from
 the source.
 
-With `--changes`, a class marked `<<new>>` takes its layer's fill and every
-other class a white one; an attribute row ending in `[new]` is bold, and one
+With `--changes`, a class marked `<<new>>` shows «new» above its name, and
+every class keeps its layer's colours as in Task 1; an attribute row ending in `[new]` is bold, and one
 ending in `[removed]` is struck through. A class marked `<<abstract>>` has its
 name in italics, and `Parent <|-- Child` draws generalisation, a hollow
 triangle at the parent, as a tree edge in place of a containment.
@@ -302,7 +301,7 @@ REPORT_LAYOUTS = {"10-project-intent": {
         "ResolvedPolicyJob": [["PolicyPeer"]],
         "ResolvedApplication": [["ReleaseGate", "ResolvedScrape"], ["ResolvedMigration"],
                                 ["ResolvedProcess"], ["ResolvedExposure"]],
-        "ReleaseGate": [["GateMigration"]],
+        "ReleaseGate": [["GateAnalysis", "GateMigration"]],
         "ResolvedMigration": [["MigratedDatabase"], ["ResolvedGrant"]],
         "ResolvedGrant": [["PolicyPath"]],
         "ResolvedProcess": [["StartupProbe", "ResolvedApiAccess", "EnvEntry"],
@@ -376,11 +375,16 @@ def report():
         assert (p, c) in gen or any(e[0] == p and e[1] == c for e in comp), \
             f"{p} neither contains nor generalises {c}"
 
+    # --changes: a class new in Task 2 carries «new» above its name, on a header
+    # one line taller; every class keeps its layer's colours, as in Task 1
+    def head(n):
+        return HEAD + 16 if CHANGES and "new" in render_nodes[n]["flags"] else HEAD
+
     size = {}
     for n, d in render_nodes.items():
         w = max([textw(n, HFS, True) + 24]
                 + [textw(r, bold=m == "new") + 22 for r, m in zip(d["rows"], d["marks"])] + [110])
-        size[n] = (int(w + 1) // 2 * 2, HEAD + ROW * len(d["rows"]))
+        size[n] = (int(w + 1) // 2 * 2, head(n) + ROW * len(d["rows"]))
 
     comp_label = {(a, b): [""] for a, b in gen}
     for a, b, mult, label in comp:
@@ -645,9 +649,6 @@ def report():
            f"fontFamily=Helvetica;fontSize={HFS};fontStyle=1;align=center;verticalAlign=middle;")
     attr = ("text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;"
             f"spacingLeft=8;spacingRight=4;overflow=hidden;fontFamily=Helvetica;fontSize={FS};")
-    # --changes: a class Task 1 already had keeps its layer's stroke on white
-    old_box = box.replace(f"fillColor={FILL};swimlaneFillColor={WASH};",
-                          "fillColor=#ffffff;swimlaneFillColor=#ffffff;")
     marked = {None: attr, "new": attr + "fontStyle=1;",
               "removed": attr + "fontStyle=8;fontColor=#64748b;"}
     ident = {}
@@ -656,10 +657,11 @@ def report():
         x, y = boxes[n]
         w, h = size[n]
         d = render_nodes[n]
-        st = old_box if CHANGES and "new" not in d["flags"] else box
+        st = box.replace(f"startSize={HEAD};", f"startSize={head(n)};")
         if "abstract" in d["flags"]:
             st = st.replace("fontStyle=1;", "fontStyle=3;")
-        c = ET.SubElement(root_el, "mxCell", {"id": ident[n], "value": n, "style": st,
+        label = f"\u00abnew\u00bb\n{n}" if head(n) > HEAD else n
+        c = ET.SubElement(root_el, "mxCell", {"id": ident[n], "value": label, "style": st,
                                               "parent": "1", "vertex": "1"})
         ET.SubElement(c, "mxGeometry", {"x": str(x), "y": str(y), "width": str(w),
                                         "height": str(h), "as": "geometry"})
@@ -667,7 +669,7 @@ def report():
             k = ET.SubElement(root_el, "mxCell", {"id": f"{ident[n]}a{j}", "value": r,
                                                   "style": marked[m], "parent": ident[n],
                                                   "vertex": "1"})
-            ET.SubElement(k, "mxGeometry", {"y": str(HEAD + ROW * j), "width": str(w),
+            ET.SubElement(k, "mxGeometry", {"y": str(head(n) + ROW * j), "width": str(w),
                                             "height": str(ROW), "as": "geometry"})
     base = ("edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;jettySize=auto;orthogonalLoop=1;"
             f"strokeWidth=1.5;fontSize={FS};fontFamily=Helvetica;labelBackgroundColor=#ffffff;")

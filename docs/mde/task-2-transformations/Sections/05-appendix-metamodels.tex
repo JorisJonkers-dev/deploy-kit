@@ -79,8 +79,8 @@ the target metamodel records the resulting values.
 The root class is unchanged, but there is now one instance per \texttt{Project}
 instead of one for the whole cluster (Section~\ref{sec:refinement}).
 
-\paragraph{Derived Values.} Figures~\ref{fig:targetdecisions} and~\ref{fig:targetprocesses} show the
-new or changed derived-value classes at application and process level. Table~\ref{tab:targetvalues}
+\paragraph{Derived Values.} Figure~\ref{fig:targetdecisions} shows the
+new or changed derived-value classes. Table~\ref{tab:targetvalues}
 lists their feature changes and reasons.
 
 Task~1 described many values in prose but modelled only those needed by its
@@ -131,7 +131,7 @@ the route of Flux's events.
 \texttt{PolicyPeer} & added \texttt{rule}; \texttt{process} optional & A peer identifies a permitted network connection. Recording its rule preserves distinct reasons for allowing the same connection. Cluster DNS needs a namespace but no \texttt{Process}. \\
 \end{longtable}
 
-\paragraph{Generated Files.} Figures~\ref{fig:targetfiles} and~\ref{fig:targetfilesadded} show every
+\paragraph{Generated Files.} Figure~\ref{fig:targetfiles} shows every
 subclass of \texttt{Deliverable}, the generated-file entry, up from Task~1's nine to 21.
 
 Workload, Canary and service account files, which Task~1 tied to one
@@ -241,36 +241,22 @@ Binding returns Binding:
 \begin{landscape}
 \begin{figure}[p]
 \centering
-\includegraphics[width=\linewidth, height=0.90\textheight, keepaspectratio]{Figures/pinned-inputs}
-\caption{The Pinned Inputs Metamodel. All classes are new; diamonds mark containment}
+\includegraphics[width=\linewidth, height=0.9\textheight, keepaspectratio]{Figures/pinned-inputs}
+\caption{The Pinned Inputs Metamodel. All classes are new in Task~2; diamonds mark containment}
 \label{fig:pinned}
 \end{figure}
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=\linewidth, height=0.90\textheight, keepaspectratio]{Figures/target-decisions-application}
-\caption{Changed Deployment and Application Classes. Filled classes are new; white Task~1 classes show added features in bold. Diamonds mark containment}
+\includegraphics[width=\linewidth, height=0.9\textheight, keepaspectratio]{Figures/target-decisions}
+\caption{Decision Classes of the Target Metamodel That Changed. A class marked «new» is new in Task~2; a Task~1 class shows only the features Task~2 added, in bold. Diamonds mark containment; a class contained in several places is drawn under its first container only}
 \label{fig:targetdecisions}
 \end{figure}
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=\linewidth, height=0.90\textheight, keepaspectratio]{Figures/target-decisions-process}
-\caption{Changed Process and Release Analysis Classes. Parent classes are repeated for context; colours and feature markings follow Figure~\ref{fig:targetdecisions}}
-\label{fig:targetprocesses}
-\end{figure}
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\linewidth, height=0.90\textheight, keepaspectratio]{Figures/target-files-existing}
-\caption{Task~1 Generated-File Classes and Their Changes. Bold marks added features; strikethrough marks removed features. Filled helper classes are new}
+\includegraphics[width=\linewidth, height=0.9\textheight, keepaspectratio]{Figures/target-files}
+\caption{The Generated-File Classes of the Target Metamodel. A class marked «new» is new in Task~2; in a Task~1 class, bold marks an added feature and strikethrough a removed one}
 \label{fig:targetfiles}
-\end{figure}
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=\linewidth, height=0.90\textheight, keepaspectratio]{Figures/target-files-added}
-\caption{The Twelve Added Generated-File Classes. The Abstract Deliverable Parent is Repeated for Context; All Classes Belong to the Target Metamodel}
-\label{fig:targetfilesadded}
 \end{figure}
 \end{landscape}
