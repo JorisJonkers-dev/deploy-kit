@@ -18,11 +18,11 @@ Table~\ref{tab:tools} compares them.
 KubeDiagrams \cite{kubediagrams} &
   Draws diagrams from Kubernetes files or a live cluster, mapping kinds to icons. &
   It works from files to pictures, not from models to models, and derives nothing. &
-  It could visualize the generated files to show links produced by a project document. \\
+  It could visualize the generated files to show links produced by a \texttt{Project} document. \\
 KubeOrch \cite{kubeorch} &
   A drag-and-drop editor whose back end wires ports, fills templates, writes files and deploys. &
   It has no metamodel and no constraints; its rules are Go code, and it deploys directly, not via Flux. &
-  Its graph notation could inform a project document editor. \\
+  Its graph notation could inform a \texttt{Project} document editor. \\
 kubert \cite{kubert} &
   A command-line tool to switch cluster contexts and run commands on multiple clusters. &
   It is an operations tool and does not model or generate anything. &
@@ -65,7 +65,7 @@ peers on every \texttt{Process} in the cluster that depends on it. ATL's matched
 fit one source element producing one target element, with the engine
 choosing the order. The lookups this resolution needs are of another kind:
 resolving a dependency edge searches every \texttt{Project} for the first \texttt{Process}
-that provides the named \texttt{Surface}, and the \texttt{Revision} has no source
+that provides the \texttt{Surface} (the named port it offers), and the \texttt{Revision} has no source
 element of its own at all, since it digests the assembled \texttt{Application}
 element. In ATL this work moves into called rules and helpers, which turns
 the transformation into imperative code without the pattern matching, and
@@ -122,7 +122,7 @@ resolves one \texttt{Project} into its own model while reading every
 has one oracle to compare with, and the shared extent keeps the
 cluster-wide view that dependency edges, routes and which \texttt{Process}es depend on each \texttt{Process} need. One
 value, the digest over all Vault documents, needs the output of every
-project, so the final pass, which runs over all resolved models together,
+\texttt{Project}, so the final pass, which runs over all resolved models together,
 adds it (Section~\ref{sec:finalpass}).
 
 \subsubsection{Typed Extents}
