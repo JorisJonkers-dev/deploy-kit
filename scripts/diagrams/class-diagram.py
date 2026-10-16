@@ -54,8 +54,10 @@ model with Task 1's:
     F=docs/mde/task-2-transformations/Figures
     python3 scripts/diagrams/class-diagram.py --report \
         --source=$F/pinned-inputs.md task2-pinned-inputs i.drawio
-    python3 scripts/diagrams/class-diagram.py --report --changes \
-        --source=$F/target-decisions.md task2-target-decisions d.drawio
+    for v in application process; do
+      python3 scripts/diagrams/class-diagram.py --report --changes --view=$v \
+          --source=$F/target-decisions.md task2-target-decisions d-$v.drawio
+    done
     python3 scripts/diagrams/class-diagram.py --report --changes \
         --source=$F/target-files.md task2-target-files f.drawio
 
@@ -66,7 +68,9 @@ which the PDF is included, so printed labels meet the report's 10 pt minimum.
 groups for a view of the same Mermaid source. `root_columns` can stack
 independent root classes in columns instead of rows. Only the classes named
 by that layout are drawn; their features and relationships still come from
-the source.
+the source. `--view=NAME` does the same from the script's own
+`REPORT_LAYOUTS["<chapter>/NAME"]`, and a layout's `rows` wraps one parent's
+children onto several fans, one below the other.
 
 With `--changes`, a class marked `<<new>>` shows «new» above its name, and
 every class keeps its layer's colours as in Task 1; an attribute row ending in `[new]` is bold, and one
@@ -313,9 +317,40 @@ REPORT_LAYOUTS = {"10-project-intent": {
     },
     "beside": {"ResolvedApplication"},
     "gaps": {},
-}, "task2-target-files": {
-    # the Task 1 classes in the first two columns, the new ones after them
+}, "task2-target-decisions/application": {
+    # the Task 2 report's decision classes in two fans: the deployment and
+    # application level here, the process subtree in the next view
     "columns": {
+        "ResolvedDeployment": [["ResolvedPolicyJob"], ["ResolvedEvents"], ["ResolvedApplication"]],
+        "ResolvedPolicyJob": [["PolicyPeer"]],
+        "ResolvedApplication": [["ReleaseGate"], ["ResolvedScrape"], ["ResolvedMigration"],
+                                ["ResolvedExposure"]],
+        "ReleaseGate": [["GateAnalysis"], ["GateMigration"]],
+        "ResolvedMigration": [["MigratedDatabase"], ["ResolvedGrant"]],
+        "ResolvedGrant": [["PolicyPath"]],
+    },
+    "beside": set(),
+    "gaps": {},
+}, "task2-target-decisions/process": {
+    "columns": {
+        "ResolvedProcess": [["StartupProbe"], ["ResolvedApiAccess"], ["EnvEntry"],
+                            ["ResolvedVolume"], ["ResolvedAsset"], ["ResolvedSidecar"]],
+        "ResolvedApiAccess": [["ResolvedApiRule"], ["AdmittedRange"]],
+        "ResolvedVolume": [["BackupPlan"]],
+        "BackupPlan": [["BackupPeer"]],
+        "EnvEntry": [["SecretReference"]],
+    },
+    "beside": set(),
+    "gaps": {},
+}, "task2-target-files": {
+    # one fan wrapped onto four rows: the Task 1 file kinds in the first two,
+    # the kinds Task 2 added in the last two
+    "columns": {
+        "NetworkPolicyFile": [["ProcessPolicy"]],
+        "SecretFile": [["SecretHolder"]],
+        "PolicyJobFile": [["PolicyDocument"]],
+    },
+    "rows": {
         "Deliverable": [["NamespaceFile", "IndexFile", "WorkloadFile", "SwitchoverFile",
                          "IdentityFile"],
                         ["NetworkPolicyFile", "IngressRouteFile", "MonitorFile", "SecretFile"],
@@ -323,9 +358,6 @@ REPORT_LAYOUTS = {"10-project-intent": {
                          "ConfigMapFile"],
                         ["BackupFile", "ConnectionFile", "VaultPolicyFile", "PolicyJobFile",
                          "EventsFile", "VaultRoleFile"]],
-        "NetworkPolicyFile": [["ProcessPolicy"]],
-        "SecretFile": [["SecretHolder"]],
-        "PolicyJobFile": [["PolicyDocument"]],
     },
     "beside": set(),
     "gaps": {},
@@ -345,12 +377,12 @@ HELV = dict(zip(
 
 
 def report():
-    layout_file = FLAGS.get("layout")
+    layout_file, view = FLAGS.get("layout"), FLAGS.get("view")
     if layout_file:
         with open(layout_file) as f:
             lay = json.load(f)
     else:
-        lay = REPORT_LAYOUTS[CHAPTER]
+        lay = REPORT_LAYOUTS[f"{CHAPTER}/{view}" if view else CHAPTER]
     cols_of, beside, gaps = lay["columns"], set(lay.get("beside", [])), lay.get("gaps", {})
     FS = int(FLAGS.get("font-size") or 12)
     HFS = int(FLAGS.get("heading-font-size") or 13)
@@ -361,13 +393,20 @@ def report():
         return sum(HELV.get(ch, 600) for ch in s) / 1000.0 * fs * (1.1 if bold else 1.0)
 
     kids = {p: [c for col in cs for c in col] for p, cs in cols_of.items()}
+    # `rows`: a parent whose children are too many for one fan wraps them onto
+    # several rows, each row a fan on its own bus; the trunk joining the buses
+    # runs down the left edge, clear of the rows above
+    rows_of = lay.get("rows", {})
+    for p, rs in rows_of.items():
+        kids[p] = [c for r in rs for c in r]
     # a model with several root classes lists them in `roots`: rows top to
     # bottom, each row's roots left to right
     root_rows = lay.get("root_columns") or lay.get("roots") or [[next(p for p in kids
                                            if all(p not in ks for ks in kids.values()))]]
     roots = [r for row in root_rows for r in row]
     placed = set(roots) | {c for ks in kids.values() for c in ks}
-    render_nodes = {n: d for n, d in nodes.items() if n in placed} if layout_file else nodes
+    render_nodes = ({n: d for n, d in nodes.items() if n in placed}
+                    if layout_file or view else nodes)
     assert placed == set(render_nodes), (f"missing {sorted(set(render_nodes) - placed)}, "
                                   f"unknown {sorted(placed - set(nodes))}")
     tree = {(p, c) for p, ks in kids.items() for c in ks}
@@ -421,7 +460,45 @@ def report():
         """The height above a stacked child that holds its link names, one a line."""
         return LBL * len([l for l in comp_label[(p, c)] if l])
 
+    def wrapped(n):
+        wn, hn = size[n]
+        blk = {"w": wn, "h": hn, "boxes": {}, "edges": [], "labels": []}
+        rows = []
+        for r in rows_of[n]:
+            x, parts = 0.0, []
+            for c in r:
+                cb = layout(c)
+                cx, _ = cb["boxes"][c]
+                parts.append((x, cb, c, cx + size[c][0] / 2))
+                x += cb["w"] + HG
+            rows.append(parts)
+        first, last = rows[0][0][0] + rows[0][0][3], rows[0][-1][0] + rows[0][-1][3]
+        nx = INDENT + (first + last) / 2 - wn / 2
+        dx = max(0, -nx)
+        blk["boxes"][n] = (nx + dx, 0)
+        ncx, trunk = nx + dx + wn / 2, INDENT / 2 + dx
+        bus, h = hn + BUS1, hn
+        for k, parts in enumerate(rows):
+            top, bottom = bus + BUS2, bus + BUS2
+            for px, cb, c, anchor in parts:
+                shift(cb, INDENT + dx + px, top)
+                merge(blk, cb)
+                bottom = max(bottom, top + cb["h"])
+                drop = INDENT + dx + px + anchor
+                route = ([(ncx, bus), (drop, bus)] if k == 0 else
+                         [(ncx, hn + BUS1), (trunk, hn + BUS1), (trunk, bus), (drop, bus)])
+                for lab in comp_label[(n, c)]:
+                    blk["edges"].append({"kind": "comp", "a": n, "b": c, "label": lab,
+                                         "pts": route, "exit": (0.5, 1), "entry": (0.5, 0),
+                                         "at": 1, "lift": -16})
+                blk["w"] = max(blk["w"], INDENT + dx + px + cb["w"], nx + dx + wn)
+            h, bus = bottom, bottom + BUS1 + 8
+        blk["h"] = h
+        return blk
+
     def layout(n, min_bus=0):
+        if n in rows_of:
+            return wrapped(n)
         wn, hn = size[n]
         blk = {"w": wn, "h": hn, "boxes": {n: (0, 0)}, "edges": [], "labels": []}
         cols = [[c for c in col if c not in beside] for col in cols_of.get(n, [])]

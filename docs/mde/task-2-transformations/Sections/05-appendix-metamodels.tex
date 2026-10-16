@@ -79,8 +79,9 @@ the target metamodel records the resulting values.
 The root class is unchanged, but there is now one instance per \texttt{Project}
 instead of one for the whole cluster (Section~\ref{sec:refinement}).
 
-\paragraph{Derived Values.} Figure~\ref{fig:targetdecisions} shows the
-new or changed derived-value classes. Table~\ref{tab:targetvalues}
+\paragraph{Derived Values.} Figures~\ref{fig:targetdecisions} and~\ref{fig:targetprocesses} show the
+new or changed derived-value classes, at deployment and application level and
+at process level. Table~\ref{tab:targetvalues}
 lists their feature changes and reasons.
 
 Task~1 described many values in prose but modelled only those needed by its
@@ -248,15 +249,22 @@ Binding returns Binding:
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=\linewidth, height=0.9\textheight, keepaspectratio]{Figures/target-decisions}
-\caption{Decision Classes of the Target Metamodel That Changed. A class marked «new» is new in Task~2; a Task~1 class shows only the features Task~2 added, in bold. Diamonds mark containment; a class contained in several places is drawn under its first container only}
+\includegraphics[width=\linewidth, height=0.9\textheight, keepaspectratio]{Figures/target-decisions-application}
+\caption{Changed Deployment and Application Classes of the Target Metamodel. A class marked «new» is new in Task~2; a Task~1 class shows only the features Task~2 added, in bold. Diamonds mark containment}
 \label{fig:targetdecisions}
 \end{figure}
 
 \begin{figure}[p]
 \centering
+\includegraphics[width=0.77\linewidth, keepaspectratio]{Figures/target-decisions-process}
+\caption{Changed Process Classes of the Target Metamodel, Marked as in Figure~\ref{fig:targetdecisions}}
+\label{fig:targetprocesses}
+\end{figure}
+
+\begin{figure}[p]
+\centering
 \includegraphics[width=\linewidth, height=0.9\textheight, keepaspectratio]{Figures/target-files}
-\caption{The Generated-File Classes of the Target Metamodel. A class marked «new» is new in Task~2; in a Task~1 class, bold marks an added feature and strikethrough a removed one}
+\caption{The Generated-File Classes of the Target Metamodel: Task~1's Kinds in the First Two Rows, Task~2's in the Last Two. In a Task~1 class, bold marks an added feature and strikethrough a removed one}
 \label{fig:targetfiles}
 \end{figure}
 \end{landscape}

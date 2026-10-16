@@ -1,21 +1,24 @@
 # The decision classes of the target metamodel that changed in Task 2
 
 The source of the decision-class diagram in the Task 2 report
-(`target-decisions.pdf`), cut from
+(`target-decisions-application.pdf` and
+`target-decisions-process.pdf`), cut from
 `emf/bundles/metamodel/model/resolved-deployment.ecore`. A class marked
 `<<new>>` is new in Task 2; every other class is a Task 1 class and lists only
 the features Task 2 added, each marked `[new]`. A class contained in several
 places is drawn under its first container only.
 
 Render it the way the Task 1 report's class diagrams are rendered, from the
-repository root:
+repository root; each view is a layout in the script:
 
 ```bash
 F=docs/mde/task-2-transformations/Figures
-python3 scripts/diagrams/class-diagram.py --report --changes \
-  --source=$F/target-decisions.md task2-target-decisions target-decisions.drawio
-/Applications/draw.io.app/Contents/MacOS/draw.io -x -f pdf --crop -b 4 \
-  -o $F/target-decisions.pdf target-decisions.drawio
+for v in application process; do
+  python3 scripts/diagrams/class-diagram.py --report --changes --view=$v \
+    --source=$F/target-decisions.md task2-target-decisions d-$v.drawio
+  /Applications/draw.io.app/Contents/MacOS/draw.io -x -f pdf --crop -b 4 \
+    -o $F/target-decisions-$v.pdf d-$v.drawio
+done
 ```
 
 ```mermaid
