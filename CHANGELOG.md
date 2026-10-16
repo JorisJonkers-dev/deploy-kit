@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.17.0...v0.18.0) (2026-10-16)
+
+
+### Features
+
+* deliver the database credential an edge derives, as itself or to the environment ([#462](https://github.com/JorisJonkers-dev/deploy-kit/issues/462)) ([ae4fbfc](https://github.com/JorisJonkers-dev/deploy-kit/commit/ae4fbfc8291f5c4e37d421d869d24281692bfd37))
+
 ## [0.17.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.16.0...v0.17.0) (2026-10-16)
 
 
