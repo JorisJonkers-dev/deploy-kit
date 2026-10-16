@@ -76,8 +76,7 @@ const methodRefusals = (set: PinnedSet, platform: string): Diagnostic[] =>
   Object.entries(set.platform.engines).flatMap(([engine, method]) =>
     (["backup", "catalog"] as const).flatMap((kind): Diagnostic[] => {
       const image = method[kind];
-      return image === undefined ||
-        Object.hasOwn(set.imagesLock.images, image)
+      return image === undefined || Object.hasOwn(set.imagesLock.images, image)
         ? []
         : [
             {
