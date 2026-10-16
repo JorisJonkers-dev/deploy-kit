@@ -9,7 +9,7 @@ Three open-source tools were reviewed to see whether they could produce the
 \texttt{Platform Intent}, or at least take part in the pipeline.
 Table~\ref{tab:tools} compares them.
 
-\begin{table}[!htbp]
+\begin{table}[H]
 \centering
 \begin{tabular}{>{\raggedright\arraybackslash}p{0.15\linewidth}>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.24\linewidth}}
 \hline
@@ -43,47 +43,34 @@ Ecore metamodel as the transformation.
 \subsection{The Transformation Language}
 \label{sec:language}
 
-Task~2 permits ATL or QVT-Operational (QVTo). Both can combine several input
-models and maintain source-to-target traces; neither capability alone
-distinguishes them. QVT-Relations and Java with a rule library such as SiTra
-were also considered as alternative approaches.
+The assignment permits ATL or QVT-Operational (QVTo). QVTo was chosen
+so that the deployment and its \texttt{Revision}s could be derived in one
+transformation. A \texttt{Revision} must cover the completed
+\texttt{Application}, including the values derived for its
+\texttt{Process}es, routes and release gate. ATL's target models are
+write-only, so this calculation would need to reconstruct the resolved
+values from the source or run a further transformation over the output.
+QVTo lets the deployment mapping read the assembled target in its
+\texttt{end} section. This keeps the release identifier with the operation
+that constructs the deployment and gives it access to the values that
+operation has produced.
 
-QVTo was selected for the dependencies between construction steps. A
-\texttt{Process}'s placement combines its declarations with the node
-contract; a route refers to an already resolved \texttt{Process}; and an
-\texttt{Application}'s \texttt{Revision} hashes its complete resolved
-representation. Ordered mapping calls construct the \texttt{Process}es before
-their routes, trace lookup reuses those target objects, and an \texttt{end}
-section reads the assembled model to compute the \texttt{Revision}. Typed
-input extents define the documents searched by OCL queries. This keeps
-construction, cross-reference lookup and final derivation in one resolution.
+The required construction order also favoured QVTo. Resolved
+\texttt{Process}es must exist before routes and \texttt{ReleaseGate}
+members can refer to them; the \texttt{Revision} must be computed after
+these objects have been populated. Explicit mapping calls make those
+prerequisites visible in the caller, with trace lookup supplying the
+references to previously created objects. ATL's called rules could also
+express an execution order. The reason for preferring QVTo was the
+combination of that control and access to the populated target, rather
+than sequencing on its own.
 
-ATL remains a viable alternative. Its matched rules can match several
-source elements and resolve references through automatic traces, while
-lazy, unique lazy and called rules support explicit invocation. The
-distinction is therefore how the final derivation is expressed. In ATL's
-usual execution model, target models are write-only: hashing a completed
-\texttt{Application} would require deriving its canonical representation
-from source helpers or adding a pass that reads the generated model.
-QVTo allows the completed target objects to be inspected within the same
-transformation. The cost is that mapping order becomes an explicit
-responsibility, rather than being delegated to ATL's matched-rule engine.
-
-QVT-Relations can also express a one-way transformation. Its consistency
-checking and multidirectional execution are unnecessary here, since the
-resolved model is regenerated from intent. QVTo was preferred because the
-construction order and the point at which hashing becomes valid can be
-stated directly. Java offers the same control and standard debugging tools.
-Plain Java would need a trace data structure, whereas SiTra supplies one;
-neither lacks the required expressive power. QVTo retains OCL navigation
-over the existing metamodels for both constraints and derivations, avoiding
-a separate Java rule implementation for this proof of concept. SHA-256
-is delegated to a Java black box (Section~\ref{sec:blackbox}).
-
-Speed was not a selection criterion. The compiler, which derives a resolved
-model and subsequently generates deployment files, is a proof of concept
-for checking the design against the specification's examples. Its design
-will later be ported to a general-purpose language such as TypeScript or Rust.
+This choice makes correct ordering the transformation author's
+responsibility. Adding a reference requires its target to be created
+first, and adding a value covered by the \texttt{Revision} requires it to
+be assigned before hashing. That responsibility was accepted because the
+dependencies are known from the deployment design and can be reviewed
+together in the calling mappings.
 
 \subsection{The Structure of the Transformation}
 \label{sec:structure}
