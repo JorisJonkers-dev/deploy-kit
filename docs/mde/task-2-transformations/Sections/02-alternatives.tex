@@ -40,9 +40,8 @@ But it lacks a \texttt{Platform Intent}, node contract,
 images lock and cluster-state snapshot, so it cannot derive placement, image
 digests, backups or the connections permitted by network policies. It also
 provides no resolved intermediate model to check before generating files.
-KubeDiagrams could complement the
-transformation by visualizing the Task~3 files, allowing the resolved
-dependencies and network connections to be inspected. A
+KubeDiagrams could visualize the Task~3 files so that dependencies and
+network connections could be inspected. A
 KubeOrch-style graphical editor
 could write \texttt{Project Intent} documents, since the editor and the
 transformation would work from the same Ecore metamodel.
@@ -71,11 +70,11 @@ choosing the order. Here, dependency lookup must search across
 explicit calls for these operations. Matched rules alone would therefore
 not remove the need to coordinate the transformation's execution.
 
-A Java transformation would be the easiest to debug and offers full
-control, but it requires maintaining the trace by hand and hides the
-transformation rules inside general-purpose code; some attendees of the
-cited discussion called model management in such code hard to
-maintain~\cite{burgueno2019}.
+A Java transformation could use standard Java debugging tools, but would
+require maintaining source-to-target references by hand. The derivations
+would be written as general-purpose code; participants in the cited
+discussion reported maintenance difficulties with model management in such
+code~\cite{burgueno2019}.
 
 QVTo was chosen because these dependencies can be expressed directly:
 map the \texttt{Process}es before building routes that refer to them, then
@@ -139,7 +138,7 @@ transformation selects each input once by type from two extents that hold
 exactly the run's documents, and every rule navigates from one of these
 properties (Section~\ref{sec:interface}).
 
-\subsubsection{Aborts, Not Defaults}
+\subsubsection{Rejecting Unresolvable Inputs}
 \label{sec:abortsalternative}
 
 A default for a value the resolution cannot derive would give a file that

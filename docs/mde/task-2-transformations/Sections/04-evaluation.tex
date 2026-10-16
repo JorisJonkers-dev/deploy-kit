@@ -212,17 +212,17 @@ Automated tests use the standalone executor. The Eclipse launch
 configuration and \texttt{plugin.xml} registration have only been checked
 manually.
 
+\newpage
 \subsection{Reflection}
 \label{sec:reflection}
 
-The implementation supported the choice of QVTo for this design. A
-dependency lookup needs to search all projects, whereas a route must refer
-to a particular resolved \texttt{Process}. OCL expressed the first task,
-and the mapping trace supplied the second without maintaining a separate
-lookup table. Execution order remained explicit: processes were created
-before their routes, and revisions were computed last. Repeated query
-evaluation was an acceptable cost for a proof of concept intended to
-validate these rules.
+QVTo handled the two main kinds of reference used by the transformation.
+OCL queries searched all projects to find dependency providers; the mapping
+trace linked routes to the resolved \texttt{Process}es already created for
+them. This avoided maintaining a separate lookup table. The caller could
+also control when each operation ran, creating processes before their routes
+and computing revisions last. Repeated lookups were left unoptimised
+because performance was outside the scope of this proof of concept.
 
 The greatest effort went into reproducing the \texttt{Revision}. The
 target model has a different structure from the specification's JSON, so
@@ -232,16 +232,15 @@ about one sixth of \texttt{resolution.qvto}. A hash mismatch could mean
 either a wrong deployment decision or a wrong JSON representation, with no
 indication of where they differed. A better test design would compare that
 JSON directly before checking its digest, separating derivation errors from
-serialization errors. Delegating only the hashing to Java kept these
-representation rules visible in the transformation, but did not remove
-their implementation cost.
+serialization errors. Using a Java hash function saved little of this
+work: most of the code was needed to construct the JSON in OCL.
 
 Test evidence should also have been planned alongside the examples.
 \texttt{secrets} and \texttt{knowledge-platform} could run successfully
 before their output comparisons were added; execution alone did not reveal
-which derived values were wrong. Each example should therefore have an
-expected result before it is used as evidence. Independence matters too:
-copying the oracle's \texttt{Revision} into the adapted Task~1 model meant
+which derived values were wrong. Each example should have an expected
+result before it is used as evidence. Copying the oracle's
+\texttt{Revision} into the adapted Task~1 model meant
 that field could no longer expose a mistake in the oracle. Retaining the
 original model and documenting the adapted fields would make that loss of
 independent evidence explicit.

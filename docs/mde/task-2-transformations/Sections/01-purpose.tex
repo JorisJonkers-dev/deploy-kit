@@ -12,14 +12,14 @@ external routes. One \texttt{Platform Intent} document defines shared
 policies and resources, including cluster entry points, health-check timings
 and backup policies. Task~1 defined two Ecore metamodels: a source metamodel
 for the authored documents and a target metamodel for the
-\texttt{Resolved Deployment}. The latter records the values derived for
+\texttt{Resolved Deployment}. The target model records the values derived for
 each \texttt{Application} and the paths of the files to be generated.
 
 Task~2 implements the transformation to \texttt{Resolved Deployment}.
 It combines all authored models with recorded cluster facts, image digests
 and other pinned inputs, producing one resolved model per \texttt{Project}.
 For example, an image name becomes a repository address pinned to a digest,
-and a dependency declaration becomes a concrete host and port. Task~3 then
+and a dependency declaration becomes a host and port. Task~3 then
 generates files from these resolved values.
 
 \begin{table}[!htbp]
@@ -43,13 +43,13 @@ Flattened model & \texttt{Project Intent} with every shared declaration copied d
 \label{tab:terms}
 \end{table}
 
-The transformation has three goals. First, it must derive exactly the values
-the specification expects. The specification's worked examples include
-oracle files containing expected resolved values, dependency edges or generated
-files. The transformation must reproduce these outputs. Second, it must abort with an error message when it
-cannot derive a value, because a \texttt{Resolved Deployment} with a missing or
-fabricated value would look valid yet deploy the wrong configuration.
-Third, the resolved model must contain every value needed by the Task~3
+The transformation must reproduce the oracle files supplied with the
+specification's examples: expected resolved values, dependency edges and
+generated files. If a value cannot be derived, the run must abort with an
+error message. A missing or fabricated value could otherwise produce a
+valid-looking file that deploys the wrong configuration.
+
+The resolved model must also contain every value needed by the Task~3
 templates, including paths, ports and names. Otherwise, tests of that model
 could pass while a template made an unchecked deployment decision.
 
@@ -124,8 +124,9 @@ lists every change.
 The transformation assumes four conditions.
 
 \begin{itemize}
-  \item \textbf{Valid input.} The Task~1 OCL constraints reject invalid documents before any transformation runs. An abort in the transformation is a safety net for facts the
-    constraints do not yet cover (Section~\ref{sec:aborts}).
+  \item \textbf{Valid input.} The Task~1 OCL constraints check the documents
+    before transformation. Aborts reject invalid inputs that these
+    constraints do not yet catch (Section~\ref{sec:aborts}).
   \item \textbf{One cluster per run.} Each execution of the pipeline reads
     all documents for one cluster, including one \texttt{Platform Intent}
     and one node contract that name the same cluster. All concepts,

@@ -103,9 +103,9 @@ the trace connects a source \texttt{Process} to its
 \texttt{resolveone}. A probe belongs only to its parent and needs no such
 lookup, so a query creates it with an object expression instead. Each
 mapped target type has one mapping, making the source and result type
-sufficient to identify the trace entry. Callers select which elements to
-map rather than hiding that selection in \texttt{when} guards or mapping
-inheritance.
+sufficient to identify the trace entry. Callers filter elements with
+\texttt{->select} before invoking a mapping. No mapping uses a
+\texttt{when} guard or inherits from another.
 
 Table~\ref{tab:mappings} lists the eight mappings and their purpose.
 
@@ -339,7 +339,7 @@ access its database, proxies and the metrics collector named by the
 compare equal merely because their fields match. The union therefore uses
 tuples and \texttt{asOrderedSet()} to remove duplicates before creating
 \texttt{PolicyPeer} objects. The rule name remains part of each tuple, so
-two rules allowing the same connection retain separate explanations for it.
+two rules allowing the same connection retain both rule identifiers.
 
 \subsubsection{The Path Plan}
 \label{sec:pathplan}
