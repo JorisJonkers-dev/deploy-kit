@@ -251,6 +251,7 @@ class ResolvedDeploymentTest {
                         "ServiceFile",
                         "RbacFile",
                         "PolicyJobFile",
+                        "CatalogJobFile",
                         "EventsFile",
                         "BudgetFile",
                         "MigrationFile",

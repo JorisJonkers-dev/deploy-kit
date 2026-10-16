@@ -119,16 +119,15 @@ function renderIdentities(project: ResolvedProject): Deliverable[] {
  */
 export function renderCatalogVault(job: ResolvedCatalogJob): Deliverable[] {
   const { admin, databases } = job.catalog;
+  const roles = databases.flatMap(({ owner, data }) => [owner, data]);
   const policy: VaultPolicy = {
-    path: Object.fromEntries([
+    path: Object.fromEntries<{ capabilities: string[] }>([
       [admin.path, { capabilities: ["read"] }],
       [admin.path.replace(KV_DATA, KV_METADATA), { capabilities: ["read"] }],
-      ...databases.flatMap(({ owner, data }) =>
-        [owner, data].map((role) => [
-          `database/roles/${role}`,
-          { capabilities: ["create", "read", "update"] },
-        ]),
-      ),
+      ...roles.map((role): [string, { capabilities: string[] }] => [
+        `database/roles/${role}`,
+        { capabilities: ["create", "read", "update"] },
+      ]),
     ]),
   };
   const role: VaultRole = {

@@ -80,6 +80,7 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 	applications := self.applications->map application(self);
 	provenance := self.map provenance();
 	policyJob := policyJobOf();
+	catalogJobs := catalogJobsOf();
 	events := eventsRouteOf();
 	deliverables := self.projectFiles()
 		->union(self.applications->collect(a | a.applicationFiles(self))->flatten())
@@ -303,6 +304,73 @@ query policyJobOf() : ResolvedPolicyJob =
 		deadline := inSeconds(seconds(estate.policyJob.deadline).floor());
 		egress := storePeers()->union(Sequence{object PolicyPeer {
 			rule := 'cluster-dns'; namespace := estate.substrate.clusterDns; port := DNS_PORT; }});
+	} endif;
+
+-- The methods that apply each datastore's database catalog
+-- (spec/v1/20-resolved-deployment.md#the-catalog-methods): where the engine names one and the
+-- platform names the Vault policy job, which writes each method's own role. Every project's
+-- document carries the same ones, as it carries the policy job.
+query catalogJobsOf() : Sequence(ResolvedCatalogJob) =
+	if policyJobOf() = null or estate.engines.postgres = null
+		or estate.engines.postgres.catalog = null or estate.engines.postgres.surface = null
+	then Sequence{}
+	else projects->collect(prj | prj.applications->collect(app | app.processes
+		->select(p | ownsDatabases(p))->collect(p | catalogJobOf(prj.project, app.id, p))))
+		->flatten()->select(j | j <> null)->asSequence() endif;
+
+-- Whether a project's database is still the old path's.
+query legacy(prj : String) : Boolean =
+	estate.handover <> null and estate.handover.legacy->includes(prj);
+
+-- One datastore's method, where an estate-path project reads a database from it and it has a
+-- login to sign in with: the old path's while its project is legacy, the derived one after.
+query catalogJobOf(prj : String, application : String, p : PI::Process) : ResolvedCatalogJob =
+	let ns : String = homeNamespace(prj, application) in
+	let proc : String = homeProcess(application, p.name) in
+	let readers : Sequence(String) = projects->select(r | not legacy(r.project)
+		and r.applications->exists(a | let d : Sequence(PolicyPeer) = datastoreOf(a) in
+			d->notEmpty() and d->first().namespace = ns and d->first().process = proc))
+		->collect(r | r.project)->sortedBy(n | n)->asSequence() in
+	let logins : Sequence(AdminLogin) = stated(application)->select(l | l.admin <> null)
+		->collect(l | l.admin)->asSequence() in
+	if readers->isEmpty() or (legacy(prj) and logins->isEmpty()) then null else
+	let own : LockedImage = locked(estate.engines.postgres.catalog) in
+	let surfacePort : Integer = p.provides->select(s | s.key = estate.engines.postgres.surface)->any(true).value in
+	let named : String = p.name + '-catalog' in
+	object ResolvedCatalogJob {
+		identity := named;
+		namespace := ns;
+		image := own.repository + '@' + own.digest;
+		uid := own.uid;
+		gid := own.gid;
+		role := ns + '-' + named;
+		address := storeEndpoint();
+		memory := estate.policyJob.memory;
+		cpu := estate.policyJob.cpu;
+		deadline := inSeconds(seconds(estate.policyJob.deadline).floor());
+		catalog := object ResolvedCatalog {
+			host := proc + '.' + ns + '.svc.cluster.local';
+			port := surfacePort;
+			connection := 'postgres';
+			admin := if legacy(prj) then object CatalogAdmin {
+					path := logins->first().path;
+					user := logins->first().user;
+					password := logins->first().password;
+				} else object CatalogAdmin {
+					path := 'secret/data/' + prj + '/' + p.name + '/catalog';
+					user := 'user';
+					password := 'password';
+				} endif;
+			databases := readers->collect(r | object CatalogDatabase {
+				name := r + '_db';
+				owner := r + '-owner';
+				data := r + '-data';
+			});
+		};
+		egress := Sequence{object PolicyPeer {
+				rule := 'datastore'; namespace := ns; process := proc; port := surfacePort; }}
+			->union(storePeers())->append(object PolicyPeer {
+				rule := 'cluster-dns'; namespace := estate.substrate.clusterDns; port := DNS_PORT; });
 	} endif;
 
 -- The Release Gate's endpoint: its `http` surface, which the platform names.

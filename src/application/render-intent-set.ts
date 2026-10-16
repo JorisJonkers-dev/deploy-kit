@@ -78,7 +78,7 @@ export function collisions(deliverables: readonly Deliverable[]): Diagnostic[] {
   for (const { path, objects } of deliverables)
     for (const object of objects)
       if (isAccount(object)) {
-        const name = `${object.metadata.namespace}/${object.metadata.name}`;
+        const name = `${String(object.metadata.namespace)}/${object.metadata.name}`;
         accounts.set(name, [...(accounts.get(name) ?? []), path]);
       }
   return [
@@ -101,13 +101,8 @@ export function collisions(deliverables: readonly Deliverable[]): Diagnostic[] {
   ];
 }
 
-const isAccount = (
-  object: RenderedObject,
-): object is ServiceAccount & { metadata: { namespace: string } } =>
-  typeof object === "object" &&
-  object !== null &&
-  "kind" in object &&
-  object.kind === "ServiceAccount";
+const isAccount = (object: RenderedObject): object is ServiceAccount =>
+  "kind" in object && object.kind === "ServiceAccount";
 
 // No two artifacts share a name and no two files a path, so `<=` would order
 // the same list.
