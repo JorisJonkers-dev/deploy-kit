@@ -33,67 +33,57 @@ kubert \cite{kubert} &
 \label{tab:tools}
 \end{table}
 
-None of the three derives values from authored declarations. KubeOrch
-comes closest: it resolves a link between two services to an address and
-port, similarly to the dependency-edge lookup in this project.
-But it lacks a \texttt{Platform Intent}, node contract,
-images lock and cluster-state snapshot, so it cannot derive placement, image
-digests, backups or the connections permitted by network policies. It also
-provides no resolved intermediate model to check before generating files.
-KubeDiagrams could visualize the Task~3 files so that dependencies and
-network connections could be inspected. A
-KubeOrch-style graphical editor
-could write \texttt{Project Intent} documents, since the editor and the
-transformation would work from the same Ecore metamodel.
+KubeOrch comes closest: it turns service links into addresses and ports.
+However, it has no shared platform policy or pinned-input model from which
+to derive placement, locked images or backups, and no resolved intermediate
+model to test. KubeDiagrams could inspect the Task~3 output, while a
+KubeOrch-style editor could author \texttt{Project Intent} using the same
+Ecore metamodel as the transformation.
 
 \subsection{The Transformation Language}
 \label{sec:language}
 
-Four languages were considered: ATL, QVT-Relations, QVT-Operational (QVTo) and
-Java with a rule library such as SiTra.
+Task~2 permits ATL or QVT-Operational (QVTo). Both can combine several input
+models and maintain source-to-target traces; neither capability alone
+distinguishes them. QVT-Relations and Java with a rule library such as SiTra
+were also considered as alternative approaches.
 
-QVT-Relations was ruled out first. Its automatic traces and two-way
-synchronisation offer no benefit for a one-way derivation. In the cited
-experiments, one of its engines, medini QVT, ran into heap-space problems
-and became unresponsive on general-case input models with more than a
-hundred classes or a hundred attributes~\cite{amstel2011}.
+QVTo was selected for the dependencies between construction steps. A
+\texttt{Process}'s placement combines its declarations with the node
+contract; a route refers to an already resolved \texttt{Process}; and an
+\texttt{Application}'s \texttt{Revision} hashes its complete resolved
+representation. Ordered mapping calls construct the \texttt{Process}es before
+their routes, trace lookup reuses those target objects, and an \texttt{end}
+section reads the assembled model to compute the \texttt{Revision}. Typed
+input extents define the documents searched by OCL queries. This keeps
+construction, cross-reference lookup and final derivation in one resolution.
 
-ATL, QVTo and Java were compared against the specific needs of this
-transformation. Most values in a \texttt{Resolved Deployment} do not derive
-from a single source element: a \texttt{Process}'s eligible machines depend on the
-node contract, a route's precedence on other routes, and a \texttt{Process}'s ingress
-peers on every \texttt{Process} in the cluster that depends on it. ATL's matched rules
-fit one source element producing one target element, with the engine
-choosing the order. Here, dependency lookup must search across
-\texttt{Project}s, and a \texttt{Revision} can be computed only after its
-\texttt{Application} has been assembled. ATL would still need helpers and
-explicit calls for these operations. Matched rules alone would therefore
-not remove the need to coordinate the transformation's execution.
+ATL remains a viable alternative. Its matched rules can match several
+source elements and resolve references through automatic traces, while
+lazy, unique lazy and called rules support explicit invocation. The
+distinction is therefore how the final derivation is expressed. In ATL's
+usual execution model, target models are write-only: hashing a completed
+\texttt{Application} would require deriving its canonical representation
+from source helpers or adding a pass that reads the generated model.
+QVTo allows the completed target objects to be inspected within the same
+transformation. The cost is that mapping order becomes an explicit
+responsibility, rather than being delegated to ATL's matched-rule engine.
 
-A Java transformation could use standard Java debugging tools, but would
-require maintaining source-to-target references by hand. The derivations
-would be written as general-purpose code; participants in the cited
-discussion reported maintenance difficulties with model management in such
-code~\cite{burgueno2019}.
+QVT-Relations can also express a one-way transformation. Its consistency
+checking and multidirectional execution are unnecessary here, since the
+resolved model is regenerated from intent. QVTo was preferred because the
+construction order and the point at which hashing becomes valid can be
+stated directly. Java offers the same control and standard debugging tools.
+Plain Java would need a trace data structure, whereas SiTra supplies one;
+neither lacks the required expressive power. QVTo retains OCL navigation
+over the existing metamodels for both constraints and derivations, avoiding
+a separate Java rule implementation for this proof of concept. SHA-256
+is delegated to a Java black box (Section~\ref{sec:blackbox}).
 
-QVTo was chosen because these dependencies can be expressed directly:
-map the \texttt{Process}es before building routes that refer to them, then
-compute the \texttt{Revision} in an \texttt{end} section after the model is
-complete. Its trace lets a route find the resolved \texttt{Process} created
-from its source reference. OCL also allows the existing constraint vocabulary
-to be reused for lookups across the input models. Among the cited survey's respondents it was the
-second most-used transformation language after ATL, and its users named its
-maturity and its support by a standard as reasons to use
-it~\cite{burgueno2019}. The one operation QVTo cannot express directly,
-computing a SHA-256 hash, uses QVT's black-box mechanism: a Java library
-called through a contextual operation (Section~\ref{sec:blackbox}).
-
-Speed was not a factor. The transformation is a proof of concept: it serves
-to work out the complete design and to check it against the specification's
-examples, not to run the cluster in the long term. The compiler is to be
-ported to a general-purpose language, such as TypeScript or, in the long term,
-Rust. Whether the cluster has enough capacity to host the applications is a
-separate limitation, discussed in Section~\ref{sec:limitations}.
+Speed was not a selection criterion. The compiler, which derives a resolved
+model and subsequently generates deployment files, is a proof of concept
+for checking the design against the specification's examples. Its design
+will later be ported to a general-purpose language such as TypeScript or Rust.
 
 \subsection{The Structure of the Transformation}
 \label{sec:structure}
@@ -111,9 +101,12 @@ shared declarations down to each \texttt{Process}. For example, a
 \texttt{Project} startup budget of 30s reaches every \texttt{Process}
 except one that declares a more specific value, such as 20s. Resolution can
 then read the selected budget directly from each \texttt{Process}, without
-searching its ancestors. The chain also matches QVT
-specification Section~8.1.13, which composes a preparation transformation
-before the main one~\cite{qvt13}.
+searching its ancestors. QVT specification Section~8.1.13 likewise composes
+a preparation transformation before the main one~\cite{qvt13}, but the
+reason for this split is to isolate declaration
+precedence from deployment derivation. Its cost is an additional model and
+the \texttt{EffectiveProject} and \texttt{EffectiveApplication} classes,
+whose copying and override behaviour need their own tests.
 
 \subsubsection{Resolving One Project with All Projects as Input}
 \label{sec:perproject}
@@ -121,22 +114,27 @@ before the main one~\cite{qvt13}.
 One resolution over all \texttt{Project}s at once could produce one
 \texttt{Resolved Deployment} for the whole estate. Instead, each invocation
 resolves one \texttt{Project} into its own model while reading every
-\texttt{Project}'s documents from the same input extent. Each model stays small and
-can be compared with its own oracle, while the shared extent provides the
-cluster-wide view needed to resolve dependencies, routes and network access. One
-value, the digest over all Vault documents, needs the output of every
-\texttt{Project}, so the final pass, which runs over all resolved models together,
-adds it (Section~\ref{sec:finalpass}).
+\texttt{Project}'s documents from the same input extent. This preserves a
+separate output and oracle comparison for each \texttt{Project}, while the
+shared input supplies the cluster-wide view needed for dependencies, routes
+and network access. It does not make a \texttt{Project} independently
+resolvable: a change elsewhere can affect its output. Values that depend on
+all resolved outputs, including the digest over the Vault documents, require
+the final pass over those models (Section~\ref{sec:finalpass}). A single
+estate-wide output could compute these values in the same invocation but
+would combine the output and comparison units.
 
 \subsubsection{Typed Extents}
 \label{sec:extentsalternative}
 
-A rule also has to find the run's other documents. Using OCL's
-\texttt{allInstances()} would search the loaded models on each evaluation,
-making the search scope depend on which files had been loaded. Instead, the
-transformation selects each input once by type from two extents that hold
-exactly the run's documents, and every rule navigates from one of these
-properties (Section~\ref{sec:interface}).
+A rule also has to find the run's other documents. An unqualified
+\texttt{allInstances()} lookup does not identify which input model is
+intended, particularly when authored and flattened \texttt{Process}es are
+both loaded. Instead, the transformation selects roots by type from the
+named \texttt{intent} and \texttt{pinned} extents and stores them in
+transformation properties such as \texttt{projects} and \texttt{lock}.
+Rules navigate from these properties, making their input scope explicit
+(Section~\ref{sec:shape}).
 
 \subsubsection{Rejecting Unresolvable Inputs}
 \label{sec:abortsalternative}

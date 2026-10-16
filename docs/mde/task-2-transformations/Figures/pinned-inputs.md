@@ -5,8 +5,17 @@ The source of the pinned-input class diagram in the Task 2 report
 Every class is new in Task 2, so the drawing uses one fill throughout. The
 closed vocabulary `BackupOutcome` is not drawn; the attribute's type names it.
 
-Render with `scripts/diagrams/class-diagram.py --report`; the commands are in
-that script's docstring.
+Regenerate from the repository root with the shared renderer:
+
+```bash
+F=docs/mde/task-2-transformations/Figures
+python3 scripts/diagrams/class-diagram.py --report \
+  --font-size=16 --heading-font-size=17 \
+  --source="$F/pinned-inputs.md" --layout="$F/pinned-inputs-layout.json" \
+  task2-pinned-inputs "$F/pinned-inputs.drawio"
+/Applications/draw.io.app/Contents/MacOS/draw.io -x -f pdf --crop -b 4 \
+  -o "$F/pinned-inputs.pdf" "$F/pinned-inputs.drawio"
+```
 
 ```mermaid
 classDiagram

@@ -4,7 +4,6 @@
 % Always compile twice, to get the table of contents and references right.
 \documentclass[10pt, a4paper, oneside]{article}
 \usepackage[left=2cm, right=2cm, top=2.5cm, bottom=3cm]{geometry}
-\usepackage{color}          % So you can use colors
 \usepackage{amsmath}        % For all kinds of math symbols
 \usepackage{graphicx}       % Package to include photos and graphs
 \usepackage{float}          % Helps in positioning floats
@@ -16,6 +15,7 @@
 \usepackage{longtable}
 \usepackage{booktabs}
 \usepackage[T1]{fontenc}
+\usepackage{lmodern}
 \usepackage{textcomp}
 \usepackage{listings}
 \usepackage{nameref}
@@ -61,7 +61,7 @@
   keywordstyle=\color{codekey}\bfseries, sensitive=true,
   comment=[l]{--}, morestring=[b]'}
 \setlength{\parindent}{0pt} % When you do not want indentation for your paragraphs.
-\setlength{\parskip}{5pt}   % For space between paragraphs.
+\setlength{\parskip}{4pt}   % For space between paragraphs.
 \setlength{\emergencystretch}{2em} % let a line with a long code word stretch rather than overrun
 
 \hypersetup{
@@ -90,8 +90,11 @@
 
 \begin{document}
 %==== FRONT PART====
+\hypersetup{pageanchor=false}
 \include{Title/titlepage}
 \pagenumbering{roman}
+\hypersetup{pageanchor=true}
+\setcounter{tocdepth}{2}
 \tableofcontents
 
 %==== MAIN PART ====
@@ -104,12 +107,6 @@
 
 
 
-%==== APPENDIX ====
-\clearpage
-\appendix
-\input{Sections/05-appendix-metamodels}
-\input{Sections/06-appendix-hand-in}
-
 \begin{thebibliography}{9}
 \bibitem{kubediagrams} P.~Merle and F.~Petrillo. Visualizing Cloud-native
   Applications with KubeDiagrams. In \emph{Proc.\ VISSOFT 2025}, pp.~106--116,
@@ -119,15 +116,14 @@
   \texttt{ui}), visited 15 October 2026.
 \bibitem{kubert} kubert, a kubectx and kubens alternative.
   \url{https://github.com/idebeijer/kubert}, visited 15 October 2026.
-\bibitem{burgueno2019} L.~Burgue\~no, J.~Cabot and S.~G\'erard. The Future of
-  Model Transformation Languages: An Open Community Discussion. \emph{Journal of
-  Object Technology} 18(3), 7:1--11, 2019.
-\bibitem{amstel2011} M.~van Amstel, S.~Bosems, I.~Kurtev and L.~Ferreira Pires.
-  Performance in Model Transformations: Experiments with ATL and QVT. In
-  \emph{Proc.\ ICMT 2011}, LNCS 6707, pp.~198--212, 2011.
 \bibitem{qvt13} Object Management Group. \emph{Meta Object Facility
   Query/View/Transformation Specification}, version 1.3, 2016.
 \end{thebibliography}
+
+%==== APPENDIX ====
+\clearpage
+\appendix
+\input{Sections/05-appendix-metamodels}
 
 %==== END OF ALL ===
 \end{document}

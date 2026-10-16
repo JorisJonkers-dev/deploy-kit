@@ -1,0 +1,30 @@
+{
+  "columns": {
+    "Deliverable": [
+      [
+        "MigrationFile",
+        "BudgetFile",
+        "RbacFile",
+        "ServiceFile",
+        "ClaimFile"
+      ],
+      [
+        "ConfigMapFile",
+        "BackupFile",
+        "ConnectionFile",
+        "VaultPolicyFile"
+      ],
+      [
+        "PolicyJobFile",
+        "EventsFile",
+        "VaultRoleFile"
+      ]
+    ],
+    "PolicyJobFile": [
+      [
+        "PolicyDocument"
+      ]
+    ]
+  },
+  "beside": []
+}

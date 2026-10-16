@@ -1,14 +1,25 @@
 # The generated-file classes of the target metamodel, Task 1 against Task 2
 
 The source of the generated-file class diagram in the Task 2 report
-(`target-files.pdf`), cut from
+(`target-files-existing.pdf` and `target-files-added.pdf`), cut from
 `emf/bundles/metamodel/model/resolved-deployment.ecore`. Every class but the
 three helpers is a subclass of `Deliverable`. A class marked `<<new>>` is new
 in Task 2; in a Task 1 class, a feature Task 2 added is marked `[new]` and one
-it removed `[removed]`, with its Task 1 type.
+it removed `[removed]`, with its Task 1 type. These are target-model classes that plan files, so both views use the target model's amber palette.
 
-Render with `scripts/diagrams/class-diagram.py --report --changes`; the
-commands are in that script's docstring.
+Regenerate from the repository root with the shared renderer:
+
+```bash
+F=docs/mde/task-2-transformations/Figures
+for view in existing added; do
+  python3 scripts/diagrams/class-diagram.py --report --changes \
+    --font-size=14 --heading-font-size=15 \
+    --source="$F/target-files.md" --layout="$F/target-files-$view-layout.json" \
+    task2-target-files "$F/target-files-$view.drawio"
+  /Applications/draw.io.app/Contents/MacOS/draw.io -x -f pdf --crop -b 4 \
+    -o "$F/target-files-$view.pdf" "$F/target-files-$view.drawio"
+done
+```
 
 ```mermaid
 classDiagram

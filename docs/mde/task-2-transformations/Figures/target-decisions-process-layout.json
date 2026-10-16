@@ -1,0 +1,54 @@
+{
+  "columns": {
+    "ResolvedApplication": [
+      [
+        "ResolvedProcess"
+      ],
+      [
+        "ReleaseGate"
+      ]
+    ],
+    "ResolvedProcess": [
+      [
+        "StartupProbe",
+        "ResolvedApiAccess"
+      ],
+      [
+        "ResolvedVolume"
+      ],
+      [
+        "EnvEntry",
+        "ResolvedAsset",
+        "ResolvedSidecar"
+      ]
+    ],
+    "ResolvedApiAccess": [
+      [
+        "ResolvedApiRule",
+        "AdmittedRange"
+      ]
+    ],
+    "ResolvedVolume": [
+      [
+        "BackupPlan"
+      ]
+    ],
+    "BackupPlan": [
+      [
+        "BackupPeer"
+      ]
+    ],
+    "EnvEntry": [
+      [
+        "SecretReference"
+      ]
+    ],
+    "ReleaseGate": [
+      [
+        "GateAnalysis"
+      ]
+    ]
+  },
+  "beside": [],
+  "gaps": {}
+}

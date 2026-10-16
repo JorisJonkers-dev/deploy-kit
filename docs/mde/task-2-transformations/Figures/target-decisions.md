@@ -1,14 +1,25 @@
 # The decision classes of the target metamodel that changed in Task 2
 
 The source of the decision-class diagram in the Task 2 report
-(`target-decisions.pdf`), cut from
+(`target-decisions-application.pdf` and `target-decisions-process.pdf`), cut from
 `emf/bundles/metamodel/model/resolved-deployment.ecore`. A class marked
 `<<new>>` is new in Task 2; every other class is a Task 1 class and lists only
 the features Task 2 added, each marked `[new]`. A class contained in several
-places is drawn under its first container only.
+places is drawn under its first container only. Contextual classes are repeated between views.
 
-Render with `scripts/diagrams/class-diagram.py --report --changes`; the
-commands are in that script's docstring.
+Regenerate from the repository root with the shared renderer:
+
+```bash
+F=docs/mde/task-2-transformations/Figures
+for view in application process; do
+  python3 scripts/diagrams/class-diagram.py --report --changes \
+    --font-size=16 --heading-font-size=17 \
+    --source="$F/target-decisions.md" --layout="$F/target-decisions-$view-layout.json" \
+    task2-target-decisions "$F/target-decisions-$view.drawio"
+  /Applications/draw.io.app/Contents/MacOS/draw.io -x -f pdf --crop -b 4 \
+    -o "$F/target-decisions-$view.pdf" "$F/target-decisions-$view.drawio"
+done
+```
 
 ```mermaid
 classDiagram
@@ -24,6 +35,10 @@ classDiagram
     }
     class ReleaseGate {
         +string endpoint [new]
+    }
+    class GateAnalysis {
+        +string errorRate [new]
+        +string latency [new]
     }
     class ResolvedMigration {
         +int uid [new]
@@ -161,6 +176,7 @@ classDiagram
     ResolvedProcess "1" *-- "0..*" ResolvedSidecar : sidecars
     ResolvedProcess "1" *-- "0..*" EnvEntry : environment
     ReleaseGate "1" *-- "0..1" GateMigration : migration
+    ReleaseGate "1" *-- "1" GateAnalysis : analysis
     ResolvedMigration "1" *-- "1" MigratedDatabase : database
     ResolvedMigration "1" *-- "1" ResolvedGrant : credential
     ResolvedGrant "1" *-- "0..*" PolicyPath : paths

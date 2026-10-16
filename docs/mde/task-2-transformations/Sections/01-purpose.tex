@@ -30,22 +30,27 @@ generates files from these resolved values.
 \hline
 \texttt{Process} & One program of an \texttt{Application}, running in its own pods. \\
 \texttt{Dependency edge} & A declaration by one \texttt{Process} that it calls a named port of another \texttt{Application}. \\
-\texttt{Pinned input set} & The read-only inputs besides authored documents: node contract, images lock, \texttt{ClusterState} snapshot, migration proofs, \texttt{Asset}s. \\
+\texttt{Pinned input set} & The read-only inputs besides authored documents: node contract (machines and capacity), images lock (image digests), \texttt{ClusterState} snapshot, migration proofs and configuration-file contents. \\
+\texttt{Asset} & A configuration file mounted into a \texttt{Process}. \\
+\texttt{Exposure} & An external address and routes to an \texttt{Application}'s ports. \\
 \texttt{Switchover} & How a new version replaces the old: blue/green (both run; traffic switches once the new is healthy), rolling, or stop-start. \\
-\texttt{Release Gate} & The service that blocks a blue/green switch until every \texttt{Process} of the \texttt{Application} is healthy. \\
-\texttt{Reconcile Unit} & A group of resources that Flux reconciles together, with dependencies on other such groups. \\
+\texttt{ReleaseGate} & The resolved configuration for the service that blocks a blue/green switch until the \texttt{Application}'s \texttt{Process}es are healthy. \\
+\texttt{ReconcileUnit} & A group of resources that Flux reconciles together, with dependencies on other such groups. \\
+\texttt{Entry point} & A platform listener that admits specified audiences and forwards routes through a proxy; class \texttt{Tier} in the source metamodel. \\
 \texttt{Revision} & A release identifier computed by hashing an \texttt{Application}'s resolved configuration. \\
 \texttt{Estate} & All \texttt{Project}s, the \texttt{Platform Intent} and the \texttt{Pinned input set} read by one run. \\
-Flattened model & \texttt{Project Intent} with every shared declaration copied down onto the \texttt{Process}es that hold it (class \texttt{EffectiveProject}). \\
+\texttt{Flattened model} & \texttt{Project Intent} with every shared declaration copied down onto the \texttt{Process}es that hold it (class \texttt{EffectiveProject}). \\
 \hline
 \end{tabular}
 \caption{Project Terms Used in This Report}
 \label{tab:terms}
 \end{table}
 
-The transformation must reproduce the oracle files supplied with the
+\paragraph{Constraints.} Task~2 requires ATL or QVT-Operational. The
+transformation must give the same result for the same pinned inputs,
+without reading live cluster state. It must reproduce the oracle files supplied with the
 specification's examples: expected resolved values, dependency edges and
-generated files. If a value cannot be derived, the run must abort with an
+generated files, including byte-exact JSON and release digests. If a value cannot be derived, the run must abort with an
 error message. A missing or fabricated value could otherwise produce a
 valid-looking file that deploys the wrong configuration.
 
@@ -70,7 +75,8 @@ transformation, the resolution, reads the flattened models and the
 one complete \texttt{Resolved Deployment} per
 \texttt{Project}. It is the main transformation and the subject of this
 report. The third, the final pass, collects Vault policies from all resolved
-models to plan one job that installs them. This requires every project's
+models to plan one job that installs them in Vault, the platform's secret
+management service. This requires every project's
 output, so it runs after the individual resolutions (Section~\ref{sec:finalpass}).
 
 A small Java exporter writes the resolved dependency edges as JSON for
@@ -79,8 +85,8 @@ comparison against the oracle. The Acceleo templates of Task~3 then read the
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.69\linewidth, keepaspectratio]{Figures/pipeline}
-\caption{The Pipeline, With Task~2's Additions in Bold}
+\includegraphics[width=\linewidth, keepaspectratio]{Figures/pipeline}
+\caption{The Pipeline, Including the Flattening Extended and the Pinned-Input Parsers Added in Task~2}
 \label{fig:pipeline}
 \end{figure}
 
@@ -88,7 +94,7 @@ comparison against the oracle. The Acceleo templates of Task~3 then read the
 \label{sec:refinement}
 
 Task~0 treated the node contract (the list of machines and their capacity),
-the images lock (each image pinned to a digest) and the cluster-state snapshot
+the images lock (each image pinned to a digest) and the \texttt{ClusterState} snapshot
 as plain inputs, while Task~1 only
 modelled the two authored documents. The resolution needs these as models, so
 a third metamodel now describes the \texttt{Pinned input set}, with its own
@@ -97,34 +103,33 @@ package keeps these supporting inputs distinct from the deployment language
 used by \texttt{Project} authors.
 
 Task~1 described three stages: authored, resolved and generated text. The
-flattening now makes inheritance explicit before resolution: each
+flattening now resolves shared declarations before resolution: each
 \texttt{Process} receives the declarations that apply to it from its
 \texttt{Project} and \texttt{Application}. Resolution rules therefore need
-not repeat the inheritance logic (Section~\ref{sec:twotransformations}).
+not repeat that merge logic (Section~\ref{sec:twotransformations}).
 
 Task~1 planned one resolved model for the entire cluster, because resolving
 dependency edges, routes and network access requires a cluster-wide view.
 Every run still reads every \texttt{Project}. The output is now one
 \texttt{Resolved Deployment} per \texttt{Project}, because each model then
 stays small and has one oracle to compare with
-(Section~\ref{sec:perproject}); the per-\texttt{Application} projection from
-Task~1 is still present as the \texttt{ResolvedApplication} inside that
+(Section~\ref{sec:perproject}). Each \texttt{Application} still has its own
+\texttt{ResolvedApplication} inside that
 model. The final pass adds the one job that no single \texttt{Project}'s resolution
 can compute (Section~\ref{sec:finalpass}).
 
-Task~1's target metamodel only had a worked example for \texttt{minimal}. The
+Task~1 demonstrated the target metamodel with only \texttt{minimal}. The
 other examples needed additional concepts: migrations, backup service accounts, API
 access, sidecar containers and twelve more file types. Appendix~\ref{app:metamodels}
 lists every change.
 
 \subsection{Assumptions and Scope}
-\label{sec:assumptions}
 \label{sec:scope}
 
 The transformation assumes four conditions.
 
 \begin{itemize}
-  \item \textbf{Valid input.} The Task~1 OCL constraints check the documents
+  \item \textbf{Checked input.} The OCL constraints check the documents
     before transformation. Aborts reject invalid inputs that these
     constraints do not yet catch (Section~\ref{sec:aborts}).
   \item \textbf{One cluster per run.} Each execution of the pipeline reads
@@ -141,19 +146,14 @@ The transformation assumes four conditions.
     \texttt{ClusterState} snapshot captured by another process.
 \end{itemize}
 
-\paragraph{More Than One Cluster.} The current implementation targets a
-single cluster, and every cluster-specific element is already a run input: the
-\texttt{Platform Intent}, the node contract and the \texttt{ClusterState} snapshot each name their cluster, and a \texttt{Project}'s environment files
-use a shared base plus a per-cluster overlay that the resolution selects via
-the \texttt{Platform Intent} cluster name (Section~\ref{sec:placeholders}).
-Supporting a second cluster would require a separate run with that
-cluster's inputs and two extensions to the model: a
-\texttt{Project Intent} would need to declare which clusters it targets, and
-the network policy of a dependency edge to another cluster would need to allow an
-address range rather than a specific pod address. Such a dependency edge would resolve
-through the \texttt{Platform Intent} external provider list, as the current
-edge from \texttt{auth} to an external mail server already does
-(Section~\ref{sec:edgerule}).
+\paragraph{More Than One Cluster.} A second cluster would need a separate
+run with its own \texttt{Platform Intent}, node contract and
+\texttt{ClusterState} snapshot. Environment overlays are already selected
+by cluster name (Section~\ref{sec:placeholders}). The model would also need
+to declare which clusters each \texttt{Project} targets and to represent
+cross-cluster network access with address ranges. Such dependencies could
+use the external-provider mechanism already used by \texttt{auth} for its
+mail server (Section~\ref{sec:edgerule}); this extension has not been implemented.
 
 Table~\ref{tab:scope} sets the scope of Task~2.
 
@@ -166,14 +166,14 @@ Table~\ref{tab:scope} sets the scope of Task~2.
 The resolution of eight examples: \texttt{minimal}, \texttt{auth},
   \texttt{data}, \texttt{delivery}, \texttt{edge},
   \texttt{knowledge-platform}, \texttt{observability} and \texttt{secrets}. &
-  The \texttt{knowledge} example, which models a project being retired
-  (Section~\ref{sec:limitations}). \\
+  The \texttt{knowledge} example, which is being retired with its
+  project and is excluded from this test set (Section~\ref{sec:limitations}). \\
 Every derivation these examples use, from dependency edges and placement to
   backups, migrations, network peers and the path of every generated file. &
   The text of the generated files, which is Task~3. \\
 The flattening's extensions, the final pass, and the \texttt{Pinned input set} metamodel
   and grammars. &
-  Applying the files to a cluster, and a second cluster. \\
+  Applying files to a running cluster or targeting multiple clusters. \\
 \hline
 \end{tabular}
 \caption{Scope of Task 2}

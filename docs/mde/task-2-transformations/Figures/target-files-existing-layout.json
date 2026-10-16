@@ -1,0 +1,32 @@
+{
+  "columns": {
+    "Deliverable": [
+      [
+        "NamespaceFile",
+        "IndexFile",
+        "WorkloadFile",
+        "SwitchoverFile",
+        "IdentityFile"
+      ],
+      [
+        "NetworkPolicyFile",
+        "IngressRouteFile"
+      ],
+      [
+        "MonitorFile",
+        "SecretFile"
+      ]
+    ],
+    "NetworkPolicyFile": [
+      [
+        "ProcessPolicy"
+      ]
+    ],
+    "SecretFile": [
+      [
+        "SecretHolder"
+      ]
+    ]
+  },
+  "beside": []
+}

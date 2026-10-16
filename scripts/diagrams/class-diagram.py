@@ -48,9 +48,10 @@ The Task 1 report's three landscape class diagrams use `--report`:
     /Applications/draw.io.app/Contents/MacOS/draw.io -x -f pdf --crop -b 4 \
         -o $F/project-document.pdf p.drawio   # and so on for the other two
 
-The Task 2 report's three class diagrams use `--report` the same way, each
-from its own mermaid block, and `--changes` where the drawing compares the
-model with Task 1's:
+The Task 2 report's class views use `--report` the same way, each from a
+Mermaid block, and `--changes` where the drawing compares the model with
+Task 1's. The Figures/*.md sources record their layout files and print font
+sizes. Without a layout file, these commands draw the complete model:
     F=docs/mde/task-2-transformations/Figures
     python3 scripts/diagrams/class-diagram.py --report \
         --source=$F/pinned-inputs.md task2-pinned-inputs i.drawio
@@ -58,6 +59,15 @@ model with Task 1's:
         --source=$F/target-decisions.md task2-target-decisions d.drawio
     python3 scripts/diagrams/class-diagram.py --report --changes \
         --source=$F/target-files.md task2-target-files f.drawio
+
+`--font-size=N` and `--heading-font-size=N` set report diagram text sizes
+(draw.io pixels), with defaults of 12 and 13. Choose them for the size at
+which the PDF is included, so printed labels meet the report's 10 pt minimum.
+`--layout=file.json` supplies report `columns`, `roots` and optional `beside`
+groups for a view of the same Mermaid source. `root_columns` can stack
+independent root classes in columns instead of rows. Only the classes named
+by that layout are drawn; their features and relationships still come from
+the source.
 
 With `--changes`, a class marked `<<new>>` takes its layer's fill and every
 other class a white one; an attribute row ending in `[new]` is bold, and one
@@ -70,7 +80,7 @@ each node and the sibling order. Sibling order is chosen so that cross-links
 land between neighbours. Adding a class or an enumeration to the mermaid
 without adding it here fails loudly.
 """
-import re, sys, xml.etree.ElementTree as ET
+import json, re, sys, xml.etree.ElementTree as ET
 
 # `chapter` may name one class after a colon, and then any number of classes to
 # leave out after a minus: `20-resolved-deployment:ResolvedProcess-ResolvedGrant`.
@@ -203,7 +213,7 @@ FILL, WASH, STROKE = {"10-project-intent": ("#dbeafe", "#f4f8ff", "#1e40af"),
                       "20-resolved-deployment": ("#fef3c7", "#fffbf0", "#b45309"),
                       "task2-pinned-inputs": ("#e2e8f0", "#f8fafc", "#475569"),
                       "task2-target-decisions": ("#fef3c7", "#fffbf0", "#b45309"),
-                      "task2-target-files": ("#d1fae5", "#f2fdf8", "#047857")}[CHAPTER]
+                      "task2-target-files": ("#fef3c7", "#fffbf0", "#b45309")}[CHAPTER]
 CHILDREN = TREES.get(CHAPTER, {})
 
 # --report: the whole model on one landscape page. The layered layout above
@@ -336,9 +346,16 @@ HELV = dict(zip(
 
 
 def report():
-    lay = REPORT_LAYOUTS[CHAPTER]
-    cols_of, beside, gaps = lay["columns"], lay["beside"], lay["gaps"]
-    FS, HFS, ROW, HEAD = 12, 13, 18, 30
+    layout_file = FLAGS.get("layout")
+    if layout_file:
+        with open(layout_file) as f:
+            lay = json.load(f)
+    else:
+        lay = REPORT_LAYOUTS[CHAPTER]
+    cols_of, beside, gaps = lay["columns"], set(lay.get("beside", [])), lay.get("gaps", {})
+    FS = int(FLAGS.get("font-size") or 12)
+    HFS = int(FLAGS.get("heading-font-size") or 13)
+    ROW, HEAD = 18, 30
     INDENT, LBL, SGAP, HG, VG1, BUS1, BUS2 = 26, 17, 14, 34, 42, 16, 42
 
     def textw(s, fs=FS, bold=False):
@@ -347,11 +364,12 @@ def report():
     kids = {p: [c for col in cs for c in col] for p, cs in cols_of.items()}
     # a model with several root classes lists them in `roots`: rows top to
     # bottom, each row's roots left to right
-    root_rows = lay.get("roots") or [[next(p for p in kids
+    root_rows = lay.get("root_columns") or lay.get("roots") or [[next(p for p in kids
                                            if all(p not in ks for ks in kids.values()))]]
     roots = [r for row in root_rows for r in row]
     placed = set(roots) | {c for ks in kids.values() for c in ks}
-    assert placed == set(nodes), (f"missing {sorted(set(nodes) - placed)}, "
+    render_nodes = {n: d for n, d in nodes.items() if n in placed} if layout_file else nodes
+    assert placed == set(render_nodes), (f"missing {sorted(set(render_nodes) - placed)}, "
                                   f"unknown {sorted(placed - set(nodes))}")
     tree = {(p, c) for p, ks in kids.items() for c in ks}
     for p, c in tree:
@@ -359,7 +377,7 @@ def report():
             f"{p} neither contains nor generalises {c}"
 
     size = {}
-    for n, d in nodes.items():
+    for n, d in render_nodes.items():
         w = max([textw(n, HFS, True) + 24]
                 + [textw(r, bold=m == "new") + 22 for r, m in zip(d["rows"], d["marks"])] + [110])
         size[n] = (int(w + 1) // 2 * 2, HEAD + ROW * len(d["rows"]))
@@ -519,12 +537,20 @@ def report():
             out["w"], out["h"] = dx + b["w"], max(out["h"], b["h"])
         return out
 
-    rows_ = [beside_each_other([layout(r) for r in row], HG * 2) for row in root_rows]
-    top_blk = rows_[0]
-    for b in rows_[1:]:
-        dy = top_blk["h"] + VG1
-        merge(top_blk, shift(b, 0, dy))
-        top_blk["w"], top_blk["h"] = max(top_blk["w"], b["w"]), dy + b["h"]
+    def one_above_another(blocks):
+        out = blocks[0]
+        for b in blocks[1:]:
+            dy = out["h"] + VG1
+            merge(out, shift(b, 0, dy))
+            out["w"], out["h"] = max(out["w"], b["w"]), dy + b["h"]
+        return out
+
+    if lay.get("root_columns"):
+        top_blk = beside_each_other(
+            [one_above_another([layout(r) for r in col]) for col in root_rows], HG * 2)
+    else:
+        top_blk = one_above_another(
+            [beside_each_other([layout(r) for r in row], HG * 2) for row in root_rows])
     for e in top_blk["edges"]:
         if (e["a"], e["b"]) in gen:
             e["kind"] = "gen"
@@ -552,6 +578,8 @@ def report():
     cross += [("dep", a, b, f"«{l}»") for a, b, l in dep]
     skipped = []
     for kind, a, b, label in cross:
+        if a not in boxes or b not in boxes:
+            continue
         xa, ya, wa, ha = rect(a)
         xb, yb, wb, hb = rect(b)
         edge = None
@@ -623,11 +651,11 @@ def report():
     marked = {None: attr, "new": attr + "fontStyle=1;",
               "removed": attr + "fontStyle=8;fontColor=#64748b;"}
     ident = {}
-    for i, n in enumerate(sorted(nodes)):
+    for i, n in enumerate(sorted(render_nodes)):
         ident[n] = f"n{i}"
         x, y = boxes[n]
         w, h = size[n]
-        d = nodes[n]
+        d = render_nodes[n]
         st = old_box if CHANGES and "new" not in d["flags"] else box
         if "abstract" in d["flags"]:
             st = st.replace("fontStyle=1;", "fontStyle=3;")
@@ -682,11 +710,16 @@ def report():
         '<mxfile host="Electron" agent="scripts/diagrams/class-diagram.py" version="29.0.3">'
         f'<diagram name="{NAMES[CHAPTER]}" id="0">'
         f'{ET.tostring(model, encoding="unicode")}</diagram></mxfile>')
-    W_, H_ = int(top_blk["w"]) + 24, int(top_blk["h"]) + 24
+    # Nested stacks can extend beyond the layout block's cached dimensions.
+    # Estimate print size from the actual boxes and labels written to XML.
+    geometry = [c.find("mxGeometry") for c in root_el.findall("mxCell")
+                if c.get("vertex") == "1" and c.get("parent") == "1"]
+    W_ = int(max(float(g.get("x", 0)) + float(g.get("width", 0)) for g in geometry)) + 12
+    H_ = int(max(float(g.get("y", 0)) + float(g.get("height", 0)) for g in geometry)) + 12
     # the largest scale that fits a landscape A4 page of this report
     # (242 mm by 160 mm), and the attribute text height that gives
     s = min(242 / W_, 160 / H_)
-    print(f"nodes={len(nodes)} size={W_}x{H_} scale={s:.3f}mm/px "
+    print(f"nodes={len(render_nodes)} size={W_}x{H_} scale={s:.3f}mm/px "
           f"text={FS * s / 0.3528:.1f}pt not drawn: {skipped or 'none'}")
 
 
