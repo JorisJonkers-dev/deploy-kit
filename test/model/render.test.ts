@@ -302,7 +302,7 @@ describe("renderIntentSet", () => {
       expect(cron).toContain(`name: ${String(named)}\n`);
     });
 
-    it("is named by the digest of the documents, each under its file name, and of nothing else", () => {
+    it("is named by the digest of the documents, each under its file name, and of what the pod runs with", () => {
       const digested: unknown[] = [];
       const result = renderIntentSet(files(), {
         ...OPTIONS,
@@ -317,9 +317,19 @@ describe("renderIntentSet", () => {
         "estate/vso-secrets/job.yaml"
       ];
       // The last value hashed is the one the job is named for.
-      const documents = digested.at(-1) as Record<string, unknown>;
+      const named = digested.at(-1) as {
+        documents: Record<string, unknown>;
+      } & Record<string, unknown>;
 
-      expect(Object.keys(documents)).toStrictEqual([
+      expect(Object.keys(named).sort()).toStrictEqual([
+        "cpu",
+        "documents",
+        "gid",
+        "image",
+        "memory",
+        "uid",
+      ]);
+      expect(Object.keys(named.documents)).toStrictEqual([
         "data-system-postgres-backup.policy.json",
         "data-system-postgres-backup.role.json",
         "data-system-postgres.policy.json",
@@ -327,14 +337,37 @@ describe("renderIntentSet", () => {
         "data-system-rabbitmq-backup.policy.json",
         "data-system-rabbitmq-backup.role.json",
       ]);
-      expect(documents["data-system-postgres.role.json"]).toStrictEqual({
+      expect(named.documents["data-system-postgres.role.json"]).toStrictEqual({
         bound_service_account_names: ["postgres"],
         bound_service_account_namespaces: ["data-system"],
         token_policies: ["data-system-postgres"],
       });
       expect(job).toContain(
-        `name: vault-policy-${sha256Hasher(documents).slice("sha256:".length, "sha256:".length + 12)}\n`,
+        `name: vault-policy-${sha256Hasher(named).slice("sha256:".length, "sha256:".length + 12)}\n`,
       );
+    });
+
+    it("is a new Job when its image changes and its documents do not", () => {
+      const nameOf = (lock: (text: string) => string) =>
+        /name: (vault-policy-[0-9a-f]{12})\n/.exec(
+          asTree(
+            artifact(
+              render({ "platform/images.lock.yml": lock }, ["data"]),
+              "_estate",
+            ),
+          )["estate/vso-secrets/job.yaml"] ?? "",
+        )?.[1];
+      const bumped = (text: string) =>
+        text.replace(
+          /(\n {2}vault-policy:[^\n]*\n(?: {4}[^\n]*\n)*? {4}digest: "?sha256:)[0-9a-f]/,
+          (_, head: string, digit: string) =>
+            `${head}${digit === "0" ? "1" : "0"}`,
+        );
+
+      expect(bumped(text("platform/images.lock.yml"))).not.toBe(
+        text("platform/images.lock.yml"),
+      );
+      expect(nameOf(bumped)).not.toBe(nameOf((same) => same));
     });
   });
 

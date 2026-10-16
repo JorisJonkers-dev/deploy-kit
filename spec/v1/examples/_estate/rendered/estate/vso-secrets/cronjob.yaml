@@ -70,7 +70,7 @@ spec:
           volumes:
             - name: policies
               configMap:
-                name: vault-policy-e1007db4f56e
+                name: vault-policy-86ea65b1fe1d
                 items:
                   - key: data-system-postgres-backup.policy.json
                     path: data-system-postgres-backup.policy.json

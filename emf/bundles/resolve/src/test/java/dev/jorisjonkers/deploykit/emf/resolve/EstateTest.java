@@ -33,6 +33,8 @@ class EstateTest {
         job.setIdentity("vault-policy");
         job.setNamespace("secrets-system");
         job.setImage(image);
+        job.setMemory("64Mi");
+        job.setCpu("10m");
         return job;
     }
 
@@ -170,6 +172,18 @@ class EstateTest {
                 .containsExactly("{\"keys\":[{\"adopt\":{\"key\":\"session_key\","
                         + "\"path\":\"secret/data/platform/tribelt\"},\"bytes\":32,\"encoding\":\"hex\","
                         + "\"key\":\"session_key\",\"path\":\"secret/data/tribelt-system/keys\"}]}");
+    }
+
+    @Test
+    void aNewImageIsANewName() {
+        ResolvedDeployment one = holding("postgres", job("vault-policy@sha256:1"));
+        ResolvedDeployment other = holding("postgres", job("vault-policy@sha256:2"));
+
+        Estate.plan(List.of(one));
+        Estate.plan(List.of(other));
+
+        assertThat(planned(one).get(0).getName())
+                .isNotEqualTo(planned(other).get(0).getName());
     }
 
     @Test

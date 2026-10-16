@@ -92,6 +92,23 @@ export function renderIntentSet(
   return resolved.ok ? renderResolvedSet(resolved.value, options) : resolved;
 }
 
+/**
+ * What names the Vault policy job: the documents it is handed, and everything
+ * its pod template runs with, since a Job's template never changes once
+ * created.
+ */
+const policyJobDigestOf = (
+  job: NonNullable<ResolvedSet["policyJob"]>,
+  documents: readonly Deliverable[],
+): unknown => ({
+  documents: documentsOf(documents),
+  image: job.image,
+  uid: job.uid,
+  gid: job.gid,
+  memory: job.memory,
+  cpu: job.cpu,
+});
+
 /** Where every Vault document lands: what the Vault policy job is handed. */
 const VAULT_DOCUMENTS = `${SECRETS_DIRECTORY}/policies/`;
 
@@ -117,7 +134,7 @@ function policyJobOf(
         ...renderPolicyJob(
           resolved.policyJob,
           documents,
-          hash(documentsOf(documents)),
+          hash(policyJobDigestOf(resolved.policyJob, documents)),
         ),
         renderPolicyJobPolicy(resolved.policyJob),
       ];

@@ -198,11 +198,13 @@ names no job, or the render holds no document, none is rendered.
 The render hands the documents to the job in a `ConfigMap`, so the job writes
 exactly the documents of the render that applied it, and nothing else. The
 ConfigMap and the Job share one name, `vault-policy-<12 hex>`, the first twelve
-hex digits of the SHA-256 of the canonical JSON (RFC 8785) of one object: each
-document under its file name. A Job's template cannot change once created, so a
-changed policy set is a new Job, and the one it replaces leaves the render with
-it. Both implementations compute the name from the documents alone, so it is
-the same name wherever the same grants are rendered.
+hex digits of the SHA-256 of the canonical JSON (RFC 8785) of one object:
+`documents`, each document under its file name, and what the pod runs with,
+the job's `image`, `uid`, `gid`, `memory` and `cpu`. A Job's template cannot
+change once created, so a changed policy set or a new image is a new Job, and
+the one it replaces leaves the render with it. Both implementations compute the
+name from those alone, so it is the same name wherever the same grants are
+rendered under the same job.
 
 Five files sit beside `policies/`, in `estate/vso-secrets/`, and the directory's
 index applies the first four:
