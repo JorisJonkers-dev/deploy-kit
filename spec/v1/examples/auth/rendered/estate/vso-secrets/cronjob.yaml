@@ -70,7 +70,7 @@ spec:
           volumes:
             - name: policies
               configMap:
-                name: vault-policy-c0ff01c6f875
+                name: vault-policy-31088a2f5121
                 items:
                   - key: auth-system-auth-api.policy.json
                     path: auth-system-auth-api.policy.json

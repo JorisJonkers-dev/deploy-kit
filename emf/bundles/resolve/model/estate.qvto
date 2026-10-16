@@ -36,7 +36,15 @@ main() {
 	-- No job where the platform names none, or the render holds no document.
 	if (jobs->notEmpty() and held->notEmpty()) {
 		var planned : ResolvedPolicyJob := jobs->first();
-		var digest : String := ('{' + joined(held->collect(d | str(d.file) + ':' + d.json)) + '}').rawDigestOf();
+		-- The documents and everything the pod template runs with: a Job's template never
+		-- changes once created, so any change to it is a new name.
+		var digest : String := obj(Sequence{
+			Tuple{k = 'documents', v = '{' + joined(held->collect(d | str(d.file) + ':' + d.json)) + '}'},
+			Tuple{k = 'image', v = str(planned.image)},
+			Tuple{k = 'uid', v = planned.uid.toString()},
+			Tuple{k = 'gid', v = planned.gid.toString()},
+			Tuple{k = 'memory', v = str(planned.memory)},
+			Tuple{k = 'cpu', v = str(planned.cpu)}}).rawDigestOf();
 		var named : String := planned.identity + '-'
 			+ digest.substring(ALGORITHM.size() + 1, ALGORITHM.size() + NAME_DIGITS);
 		deployments->first().deliverables += Sequence{'configmap', 'job', 'cronjob', 'serviceaccount', 'networkpolicy'}
