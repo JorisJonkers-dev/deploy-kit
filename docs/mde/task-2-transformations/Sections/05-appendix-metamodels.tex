@@ -5,7 +5,7 @@ This appendix lists the changes between the Task~1 metamodels and those the
 Task~2 transformations read and write. The comparison checked each class and
 feature in the \texttt{.ecore} files.
 
-A third metamodel for the \texttt{Pinned input set} was added
+A third metamodel for the \texttt{Pinned input set}, the read-only documents no project author writes, was added
 (Appendix~\ref{app:pinned}). The target metamodel gained derived values and
 twelve kinds of generated file (Appendix~\ref{app:target}), and the source
 metamodel gained declarations the other examples need
@@ -20,11 +20,11 @@ never Ecore features.
 \subsection{The Pinned Inputs Metamodel}
 \label{app:pinned}
 
-The \texttt{pinnedinputs} package holds the documents the resolution reads
+The \texttt{pinnedinputs} package holds the documents the resolution, the main transformation, which derives every value of the \texttt{Resolved Deployment}, reads
 beside the source models (Section~\ref{sec:refinement}).
 
-The node contract is generated from the platform team's machine descriptions.
-Other programs publish the images lock and the snapshot. A
+The node contract (the list of machines and their capacity) is generated from the platform team's machine descriptions.
+Other programs publish the images lock and the cluster-state snapshot. A
 \texttt{Project} build writes its migration proof.
 
 The committed descriptor that compares the source metamodel's structure with

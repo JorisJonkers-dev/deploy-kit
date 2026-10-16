@@ -38,7 +38,7 @@ comes closest: it resolves a link between two services to an address and
 port, similar to how the resolution, the main transformation, which derives every value of the \texttt{Resolved Deployment}, resolves dependency edges. But it lacks
 a \texttt{Platform Intent}, node contract (the list of machines and their capacity), images lock (each image pinned to a digest) and cluster-state snapshot, so it
 cannot derive placement, image digests, backups or network peers (whom a network policy lets each \texttt{Process} talk to). Its output
-is not a model that OCL constraints or oracles can verify. Beside the
+is not a model that OCL constraints or oracles (expected outputs) can verify. Beside the
 transformation, the resolved dependency edges and network peers could feed
 a KubeDiagrams view of the Task~3 files for visual verification. A
 KubeOrch-style graphical editor

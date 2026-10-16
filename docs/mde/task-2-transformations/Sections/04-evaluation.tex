@@ -32,9 +32,9 @@ The build runs six test types on every change.
     wrong value they write from a \texttt{Resolved Deployment} becomes a wrong
     byte in a generated file. Tests generate the files from the transformation
     output and compare each with the committed output.
-  \item \textbf{Interface tests.} JUnit tests exercise the resolution with
-    the smallest project that resolves, a project not in the input, and an
-    \texttt{Asset} whose file is missing, which must abort the run with the
+  \item \textbf{Interface tests.} JUnit tests exercise the resolution, the main transformation, which derives every value of the \texttt{Resolved Deployment}, with
+    the smallest \texttt{Project} that resolves, a \texttt{Project} not in the input, and a
+    configuration file that is missing, which must abort the run with the
     file name. The final pass is tested with one job planned over two
     projects, a job name that moves when a document changes, no job without
     documents, and two projects that carry different Vault policy jobs. The flattening

@@ -3,7 +3,7 @@
 
 Task~2 uses three QVT-Operational transformations. The flattening
 (\texttt{lower.qvto}) is about 340 lines with 37 mapping operations and 8
-queries. The main resolution (\texttt{resolution.qvto}) is about 1700 lines
+queries. The resolution, the main transformation, which derives every value of the \texttt{Resolved Deployment} (\texttt{resolution.qvto}) is about 1700 lines
 with 8 mapping operations and 140 queries. The final pass
 (\texttt{estate.qvto}) is about 130 lines with no mappings but one helper.
 
@@ -79,7 +79,7 @@ its \texttt{EffectiveProject}, plus the \texttt{Platform Intent}. Authored model
 because \texttt{Platform Intent} references them via Ecore cross-references. Every rule
 reads the \texttt{EffectiveProject} models.
 
-The pinned extent holds the node contract, images lock, snapshot, each project's
+The pinned extent holds the node contract (the list of machines and their capacity), images lock (each image pinned to a digest), cluster-state snapshot, each project's
 migration proof, and one \texttt{AssetFile} per configuration file. Two configuration
 properties provide non-derived inputs: the project name to resolve, and the
 schema package digest for provenance recording.
