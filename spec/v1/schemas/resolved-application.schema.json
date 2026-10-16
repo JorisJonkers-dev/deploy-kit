@@ -1384,6 +1384,24 @@
                   "base64",
                   "base64url"
                 ]
+              },
+              "adopt": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "key": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "path",
+                  "key"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [

@@ -193,6 +193,40 @@ describe("renderIntentSet", () => {
       );
     });
 
+    it("is handed the location a generated key adopts its value from", () => {
+      const adopting = (document: string) =>
+        document.replace(
+          "          - path: secret/data/platform/postgres/exporter\n            keys: [datasource]",
+          '          - path: secret/data/data-system/exporter\n            keys: [{ name: datasource, generate: { adopt: "secret/data/platform/postgres/exporter#datasource" } }]\n            access: read\n            delivery: self\n            rotation: {tolerates: restart}\n          - path: secret/data/platform/postgres/exporter\n            keys: [datasource]',
+        );
+      const tree = asTree(
+        artifact(
+          render({ "data/data.project.yml": adopting }, ["data"]),
+          "_estate",
+        ),
+      );
+
+      expect(
+        JSON.parse(
+          tree["estate/vso-secrets/policies/data-system.generated.json"] ??
+            "null",
+        ),
+      ).toStrictEqual({
+        keys: [
+          {
+            path: "secret/data/data-system/exporter",
+            key: "datasource",
+            bytes: 32,
+            encoding: "hex",
+            adopt: {
+              path: "secret/data/platform/postgres/exporter",
+              key: "datasource",
+            },
+          },
+        ],
+      });
+    });
+
     it("is handed each Project's generated keys, once each, with their defaults filled in", () => {
       const generating = (document: string) =>
         document.replace(

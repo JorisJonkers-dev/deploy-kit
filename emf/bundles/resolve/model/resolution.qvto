@@ -1337,6 +1337,11 @@ query GeneratedKey::resolved() : ResolvedGeneratedKey = object ResolvedGenerated
 	bytes := if self.generate.bytes = null then 32 else self.generate.bytes endif;
 	encoding := if self.generate.encoding = KeyEncoding::base64 then 'base64'
 		else if self.generate.encoding = KeyEncoding::base64url then 'base64url' else 'hex' endif endif;
+	-- The schema held the location to one path and one key, split at its `#`.
+	adoptPath := if self.generate.adopt = null then null
+		else self.generate.adopt.substring(1, self.generate.adopt.indexOf('#') - 1) endif;
+	adoptKey := if self.generate.adopt = null then null
+		else self.generate.adopt.substring(self.generate.adopt.indexOf('#') + 1, self.generate.adopt.size()) endif;
 };
 
 -- The keys the Vault policy job generates for the project, once each, in path
@@ -1344,11 +1349,12 @@ query GeneratedKey::resolved() : ResolvedGeneratedKey = object ResolvedGenerated
 query EffectiveProject::generatedKeysFiles() : Sequence(Deliverable) =
 	let apps : Sequence(ResolvedApplication) =
 		self.applications->collect(a | a.resolveone(ResolvedApplication))->asSequence() in
-	let held : Sequence(Tuple(path : String, key : String, bytes : Integer, encoding : String)) =
+	let held : Sequence(Tuple(path : String, key : String, bytes : Integer, encoding : String, adoptPath : String, adoptKey : String)) =
 		apps.processes.secrets->select(g | g.path <> null)->collect(g | g.generated->collect(k |
-			Tuple{path = g.path, key = k.key, bytes = k.bytes, encoding = k.encoding}))
+			Tuple{path = g.path, key = k.key, bytes = k.bytes, encoding = k.encoding,
+				adoptPath = k.adoptPath, adoptKey = k.adoptKey}))
 		->asSet()->asSequence() in
-	let sorted : Sequence(Tuple(path : String, key : String, bytes : Integer, encoding : String)) =
+	let sorted : Sequence(Tuple(path : String, key : String, bytes : Integer, encoding : String, adoptPath : String, adoptKey : String)) =
 		held.path->asSet()->sortedBy(p | p)->collect(p | held->select(t | t.path = p)->sortedBy(t | t.key))
 			->asSequence() in
 	if sorted->isEmpty() then Sequence{} else Sequence{
@@ -1360,6 +1366,8 @@ query EffectiveProject::generatedKeysFiles() : Sequence(Deliverable) =
 				key := t.key;
 				bytes := t.bytes;
 				encoding := t.encoding;
+				adoptPath := t.adoptPath;
+				adoptKey := t.adoptKey;
 			});
 		}.oclAsType(Deliverable)} endif;
 
@@ -1721,7 +1729,10 @@ query ResolvedGrant::json() : String = obj(Sequence{
 		else arr(self.generated->collect(x | obj(Sequence{
 			Tuple{k = 'key', v = str(x.key)},
 			Tuple{k = 'bytes', v = num(x.bytes)},
-			Tuple{k = 'encoding', v = str(x.encoding)}}))) endif}});
+			Tuple{k = 'encoding', v = str(x.encoding)},
+			Tuple{k = 'adopt', v = if x.adoptPath = null then null else obj(Sequence{
+				Tuple{k = 'path', v = str(x.adoptPath)},
+				Tuple{k = 'key', v = str(x.adoptKey)}}) endif}}))) endif}});
 
 -- ===================================================== canonical JSON text
 

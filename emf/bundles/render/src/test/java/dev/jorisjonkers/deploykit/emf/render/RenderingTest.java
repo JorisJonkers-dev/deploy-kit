@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.AdapterName;
+import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.GeneratedKeysFile;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.NamespaceFile;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeploymentFactory;
+import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedGeneratedKey;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,6 +46,52 @@ class RenderingTest {
                           name: notes-system
                           labels:
                             app.kubernetes.io/managed-by: deploy-kit
+                        """);
+    }
+
+    @Test
+    void aGeneratedKeyCarriesTheLocationItAdoptsItsValueFrom(@TempDir Path out) throws IOException {
+        ResolvedDeploymentFactory model = ResolvedDeploymentFactory.eINSTANCE;
+        GeneratedKeysFile keys = model.createGeneratedKeysFile();
+        keys.setPath("estate/vso-secrets/policies/tribelt-system.generated.json");
+        keys.setAdapter(AdapterName.VAULT_POLICY);
+        for (String name : List.of("session_key", "visitor_hmac_key")) {
+            ResolvedGeneratedKey key = model.createResolvedGeneratedKey();
+            key.setPath("secret/data/tribelt-system/keys");
+            key.setKey(name);
+            key.setBytes(32);
+            key.setEncoding("hex");
+            keys.getKeys().add(key);
+        }
+        keys.getKeys().get(0).setAdoptPath("secret/data/platform/tribelt");
+        keys.getKeys().get(0).setAdoptKey("session_key");
+        ResolvedDeployment deployment = model.createResolvedDeployment();
+        deployment.getDeliverables().add(keys);
+
+        Rendering.render(List.of(deployment), out);
+
+        assertThat(Files.readString(out.resolve("estate/vso-secrets/policies/tribelt-system.generated.json")))
+                .isEqualTo("""
+                        {
+                          "keys": [
+                            {
+                              "path": "secret/data/tribelt-system/keys",
+                              "key": "session_key",
+                              "bytes": 32,
+                              "encoding": "hex",
+                              "adopt": {
+                                "path": "secret/data/platform/tribelt",
+                                "key": "session_key"
+                              }
+                            },
+                            {
+                              "path": "secret/data/tribelt-system/keys",
+                              "key": "visitor_hmac_key",
+                              "bytes": 32,
+                              "encoding": "hex"
+                            }
+                          ]
+                        }
                         """);
     }
 

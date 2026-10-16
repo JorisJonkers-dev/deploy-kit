@@ -1084,13 +1084,7 @@
 [template private json(d : resolveddeployment::GeneratedKeysFile)]
   {
     "keys": [ '[' /]
-  [for (k : resolveddeployment::ResolvedGeneratedKey | d.keys) separator(',\n')]
-        {
-          "path": "[k.path/]",
-          "key": "[k.key/]",
-          "bytes": [k.bytes/],
-          "encoding": "[k.encoding/]"
-        }[/for]
+      [d.keys->collect(k | k.entry())->sep(',\n')/]
     ]
   }
 [/template]
@@ -1334,6 +1328,16 @@
   p.application().exposure
     ->select(e | e.routes->exists(r | r.process = p and (r.audience = 'anonymous' or r.audience = 'authenticated')))
     ->collect(e | e.host)->asOrderedSet()->sortedBy(v | v)->asSequence() /]
+
+[comment One generated key as its JSON object, the location it adopts its value from last where it
+  adopts one. One expression rather than a block in a line, which would break the line's
+  indentation; each line after the first takes the indentation of the line it starts on. /]
+[query private entry(k : resolveddeployment::ResolvedGeneratedKey) : String =
+  '{\n  "path": "' + k.path + '",\n  "key": "' + k.key + '",\n  "bytes": ' + k.bytes.toString()
+    + ',\n  "encoding": "' + k.encoding + '"'
+    + (if k.adoptPath = null then ''
+      else ',\n  "adopt": {\n    "path": "' + k.adoptPath + '",\n    "key": "' + k.adoptKey + '"\n  }' endif)
+    + '\n}' /]
 
 [query private readinessPath(p : resolveddeployment::ResolvedProcess) : String =
   p.application().releaseGate.members

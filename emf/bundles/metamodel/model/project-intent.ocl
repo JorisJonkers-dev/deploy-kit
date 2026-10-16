@@ -381,9 +381,20 @@ context GeneratedKey
 				and (g.path = grant.path or grant.path.startsWith(g.path + '/'))))
 
 context Generate
-	-- The schema bounds a generated key's length.
+	-- The schema bounds a generated key's length, and spells an adopted location
+	-- as one kv path, no segment empty or opening with a dot, and one key.
 	inv schema:
-		bytes = null or (bytes >= 16 and bytes <= 512)
+		(bytes = null or (bytes >= 16 and bytes <= 512))
+		and (adopt = null or adopt.matches('secret/data(/[A-Za-z0-9_-][A-Za-z0-9._-]*)+#[A-Za-z0-9._-]+'))
+
+	-- A key adopts only a value a grant of its own project file already reads.
+	inv E_GENERATED_KEY_ADOPTS_UNGRANTED:
+		adopt = null or
+		let key : GeneratedKey = oclContainer().oclAsType(GeneratedKey) in
+		let path : String = adopt.substring(1, adopt.indexOf('#') - 1) in
+		KvGrant.allInstances()->exists(g |
+			g.oclContainer().oclAsType(SharedIntent).projectDocument = key.owner.projectDocument
+			and g.path = path)
 
 context DatabaseGrant
 	-- The owner role changes the schema, and is derived for the migration alone.

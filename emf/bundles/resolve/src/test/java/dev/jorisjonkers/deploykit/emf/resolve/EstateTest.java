@@ -149,6 +149,30 @@ class EstateTest {
     }
 
     @Test
+    void aKeyThatAdoptsAValueIsHandedItsLocation() {
+        ResolvedDeployment deployment = holding(null, job("vault-policy@sha256:1"));
+        ResolvedGeneratedKey key = MODEL.createResolvedGeneratedKey();
+        key.setPath("secret/data/tribelt-system/keys");
+        key.setKey("session_key");
+        key.setBytes(32);
+        key.setEncoding("hex");
+        key.setAdoptPath("secret/data/platform/tribelt");
+        key.setAdoptKey("session_key");
+        GeneratedKeysFile keys = MODEL.createGeneratedKeysFile();
+        keys.setPath("estate/vso-secrets/policies/tribelt-system.generated.json");
+        keys.getKeys().add(key);
+        deployment.getDeliverables().add(keys);
+
+        Estate.plan(List.of(deployment));
+
+        assertThat(planned(deployment).get(0).getDocuments())
+                .extracting(PolicyDocument::getJson)
+                .containsExactly("{\"keys\":[{\"adopt\":{\"key\":\"session_key\","
+                        + "\"path\":\"secret/data/platform/tribelt\"},\"bytes\":32,\"encoding\":\"hex\","
+                        + "\"key\":\"session_key\",\"path\":\"secret/data/tribelt-system/keys\"}]}");
+    }
+
+    @Test
     void aChangedDocumentIsANewName() {
         ResolvedDeployment one = holding("postgres", job("vault-policy@sha256:1"));
         ResolvedDeployment other = holding("valkey", job("vault-policy@sha256:1"));

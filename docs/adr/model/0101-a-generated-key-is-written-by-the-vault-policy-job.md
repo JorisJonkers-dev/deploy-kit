@@ -52,6 +52,13 @@ re-render and a restored Vault never change a value a Process holds.
 one grant generates it, and nothing else writes its path, so no two writers
 race and a reader knows where it comes from.
 
+**A value that must survive a move is adopted, not copied by hand.** A Project
+moving its secrets under its own prefix often holds a value that cannot change:
+a key that sealed stored data, a push key pair its clients hold. The key names
+the old location, and the job copies it there once, while the key is absent. The
+job can read every KV document, so `adopt` is held to a path the Project already
+reads through one of its own grants: it reads nothing the Project could not.
+
 ## Alternatives
 
 | option | cost if taken | why rejected |
@@ -60,6 +67,8 @@ race and a reader knows where it comes from.
 | `cluster.sh` keeps generating keys | nothing to build | a person runs a script for every Project moved and after every restore |
 | A `generated:` block apart from grants | keys declared in one list | two places to keep in step: what is generated and what is read |
 | Generate on every render | no state | a new value every render logs everyone out |
+| A person copies a value that must survive a move | nothing to build | a Vault write by hand for every Project moved |
+| `adopt` from any location | no grant to keep | the job reads every KV document, so a project file could copy another Project's secret into its own key |
 
 ## Reversibility
 
@@ -75,4 +84,8 @@ writing their keys by hand again.
 - A key generated this way never rotates; rotating one is deleting it, after
   which the next run writes a new value.
 - `E_GENERATED_KEY_OUTSIDE_PROJECT`, `E_GENERATED_KEY_TWICE` and
-  `E_GENERATED_KEY_WRITTEN_ELSEWHERE` refuse a second owner.
+  `E_GENERATED_KEY_WRITTEN_ELSEWHERE` refuse a second owner, and
+  `E_GENERATED_KEY_ADOPTS_UNGRANTED` an adopted value the Project does not
+  read.
+- A Project keeps its grant on an adopted location for as long as it declares
+  `adopt`; both go once the move is done.

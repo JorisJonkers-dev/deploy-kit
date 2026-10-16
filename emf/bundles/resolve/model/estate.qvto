@@ -115,7 +115,11 @@ query GeneratedKeysFile::keysJson() : String =
 		Tuple{k = 'path', v = str(x.path)},
 		Tuple{k = 'key', v = str(x.key)},
 		Tuple{k = 'bytes', v = x.bytes.toString()},
-		Tuple{k = 'encoding', v = str(x.encoding)}})))}});
+		Tuple{k = 'encoding', v = str(x.encoding)}}
+		->union(if x.adoptPath = null then Sequence{} else Sequence{
+			Tuple{k = 'adopt', v = obj(Sequence{
+				Tuple{k = 'path', v = str(x.adoptPath)},
+				Tuple{k = 'key', v = str(x.adoptKey)}})}} endif))))}});
 
 -- The role that binds the identity's ServiceAccount, in its namespace, to the
 -- one policy of its name.

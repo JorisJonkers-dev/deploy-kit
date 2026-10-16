@@ -119,6 +119,53 @@ describe("a generated key", () => {
   });
 });
 
+describe("a generated key that adopts a value", () => {
+  const OLD = `      - path: secret/data/platform/batch\n        keys: [session_key]\n        access: read\n        delivery: env\n        rotation: { tolerates: restart }\n`;
+  const grant = (adopt: string): string =>
+    `      - path: secret/data/refusals-system/app\n        keys: [{ name: session_key, generate: { adopt: "${adopt}" } }]\n        access: read\n        delivery: env\n        rotation: { tolerates: restart }\n`;
+
+  it("is accepted from a path a grant of its Project reads", () => {
+    expect(
+      refusalsOf(
+        withApplicationGrant(
+          OLD + grant("secret/data/platform/batch#session_key"),
+        ),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("is refused from a path no grant of its Project reads", () => {
+    expect(
+      refusalsOf(
+        withApplicationGrant(grant("secret/data/platform/batch#session_key")),
+      ),
+    ).toStrictEqual([
+      {
+        code: "E_GENERATED_KEY_ADOPTS_UNGRANTED",
+        path: "/applications/0/secrets/0/keys/0/generate",
+      },
+    ]);
+  });
+
+  it.each([
+    ["no key", "secret/data/platform/batch"],
+    ["an empty key", "secret/data/platform/batch#"],
+    ["no kv mount", "sys/policies/acl/root#policy"],
+    [
+      "a path that climbs out",
+      "secret/data/../../sys/policies/acl/root#policy",
+    ],
+    ["a segment that stays put", "secret/data/./platform#key"],
+    ["an empty segment", "secret/data/platform//batch#key"],
+  ])("is malformed with %s", (_, adopt) => {
+    expect(
+      refusalsOf(withApplicationGrant(OLD + grant(adopt))).map(
+        ({ code }) => code,
+      ),
+    ).toStrictEqual(["schema"]);
+  });
+});
+
 describe("the access by delivery matrix", () => {
   it.each([
     ["self-renew", "env"],
@@ -175,6 +222,8 @@ describe("the refusal fixtures", () => {
       "engine-owns-databases",
       "engine-without-durability",
       "env-cannot-reload",
+      "generated-key-adopts-granted",
+      "generated-key-adopts-ungranted",
       "generated-key-outside-project",
       "generated-key-twice",
       "generated-key-written-elsewhere",
@@ -216,11 +265,17 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(50);
+    expect(refused).toHaveLength(51);
     expect(
       fixtures.length - refused.length,
-      "the four accepted counterparts carry no oracle",
-    ).toBe(4);
+      "the five accepted counterparts carry no oracle",
+    ).toBe(5);
+  });
+
+  it("accepts a generated key adopting a value its Project already reads", () => {
+    expect(checkIntentSet(filesOf("generated-key-adopts-granted")).ok).toBe(
+      true,
+    );
   });
 
   it("accepts a Postgres on a volume whose durability derives no backup, because its catalog derives", () => {

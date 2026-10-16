@@ -198,6 +198,8 @@ const resolvedGrant = z
           key: text,
           bytes: z.int(),
           encoding: z.enum(KEY_ENCODINGS),
+          // Where the value starts from, copied once while the key is absent.
+          adopt: z.strictObject({ path: text, key: text }).exactOptional(),
         }),
       )
       .min(1)

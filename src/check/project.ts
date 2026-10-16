@@ -356,10 +356,32 @@ function ownerRoleRefusals(
   );
 }
 
-/** A generated key belongs to its own Project: the Vault policy job writes it nowhere else. */
+/** Every kv path a grant of the document reads, at any level. */
+function heldPaths(document: ProjectIntentDocument): ReadonlySet<string> {
+  const grants = [
+    ...(document.secrets ?? []),
+    ...document.applications.flatMap((application) => [
+      ...(application.secrets ?? []),
+      ...application.processes.flatMap(({ secrets }) => secrets ?? []),
+    ]),
+  ];
+  return new Set(
+    grants.flatMap((grant) =>
+      // A database or transit grant names no kv path an `adopt` could match.
+      // Stryker disable next-line ArrayDeclaration
+      "keys" in grant ? [grant.path] : [],
+    ),
+  );
+}
+
+/**
+ * A generated key belongs to its own Project: the Vault policy job writes it
+ * nowhere else, and starts it only from a value the Project already reads.
+ */
 function generatedKeyRefusals(
   grants: readonly Grant[] | undefined,
   project: string,
+  held: ReadonlySet<string>,
   at: string,
 ): Refusal[] {
   const prefix = `secret/data/${namespaceOf(project)}/`;
@@ -368,19 +390,33 @@ function generatedKeyRefusals(
     path.startsWith(prefix) &&
     path.split("/").every((segment) => !["", ".", ".."].includes(segment));
   return (grants ?? []).flatMap((grant, g) =>
-    "path" in grant && !inside(grant.path)
-      ? grant.keys.flatMap((key, k) =>
-          typeof key === "string"
-            ? []
-            : [
-                {
-                  code: "E_GENERATED_KEY_OUTSIDE_PROJECT",
-                  path: `${at}/secrets/${g}/keys/${k}`,
-                  message: `${key.name} is generated under ${grant.path}, outside ${prefix}`,
-                  hint: `Move the grant below ${prefix}, or list the key without \`generate\` and write it yourself.`,
-                } satisfies Refusal,
-              ],
-        )
+    "keys" in grant
+      ? grant.keys.flatMap((key, k): Refusal[] => {
+          if (typeof key === "string") return [];
+          const adopted = key.generate.adopt?.split("#")[0];
+          return [
+            ...(inside(grant.path)
+              ? []
+              : [
+                  {
+                    code: "E_GENERATED_KEY_OUTSIDE_PROJECT",
+                    path: `${at}/secrets/${g}/keys/${k}`,
+                    message: `${key.name} is generated under ${grant.path}, outside ${prefix}`,
+                    hint: `Move the grant below ${prefix}, or list the key without \`generate\` and write it yourself.`,
+                  } satisfies Refusal,
+                ]),
+            ...(adopted === undefined || held.has(adopted)
+              ? []
+              : [
+                  {
+                    code: "E_GENERATED_KEY_ADOPTS_UNGRANTED",
+                    path: `${at}/secrets/${g}/keys/${k}/generate`,
+                    message: `${key.name} adopts a value from ${adopted}, which no grant of ${project} reads`,
+                    hint: `Grant ${project} read on ${adopted}, or leave \`adopt\` out and let the key be generated.`,
+                  } satisfies Refusal,
+                ]),
+          ];
+        })
       : [],
   );
 }
@@ -406,15 +442,17 @@ export function ruleDiagnostics(
   document: ProjectIntentDocument,
 ): readonly Diagnostic[] {
   const project = document.project;
+  const held = heldPaths(document);
   return [
     ...quantityRefusals(document, ""),
     ...ownerRoleRefusals(document.secrets, project, ""),
-    ...generatedKeyRefusals(document.secrets, project, ""),
+    ...generatedKeyRefusals(document.secrets, project, held, ""),
     ...document.applications.flatMap((application, a) => [
       ...ownerRoleRefusals(application.secrets, project, `/applications/${a}`),
       ...generatedKeyRefusals(
         application.secrets,
         project,
+        held,
         `/applications/${a}`,
       ),
       ...application.processes.flatMap((process, p) => [
@@ -426,6 +464,7 @@ export function ruleDiagnostics(
         ...generatedKeyRefusals(
           process.secrets,
           project,
+          held,
           `/applications/${a}/processes/${p}`,
         ),
       ]),

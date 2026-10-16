@@ -1,0 +1,38 @@
+# ACCEPTED: the counterpart of generated-key-adopts-ungranted.project.yml
+#
+# A generated key adopts the value of a location its own Project already
+# reads: the second grant reads secret/data/platform/session
+# (spec/v1/10-project-intent.md #generated-keys).
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: outside
+    processes:
+      - name: outside-api
+        lifecycle: application
+        image: outside-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: continuous
+        secrets:
+          - path: secret/data/refusals-system/session
+            keys: [{ name: session_key, generate: { adopt: "secret/data/platform/session#session_key" } }]
+            access: read
+            delivery: self
+            rotation: { tolerates: restart }
+          - path: secret/data/platform/session
+            keys: [session_key]
+            access: read
+            delivery: self
+            rotation: { tolerates: restart }
