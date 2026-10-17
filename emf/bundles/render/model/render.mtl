@@ -63,6 +63,8 @@
     [d.oclAsType(resolveddeployment::CatalogJobFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::EventsFile))]
     [d.oclAsType(resolveddeployment::EventsFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::LibraryFile))]
+    [d.oclAsType(resolveddeployment::LibraryFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::ClaimFile))]
     [d.oclAsType(resolveddeployment::ClaimFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::ConfigMapFile))]
@@ -571,9 +573,16 @@
           runAsNonRoot: true
           runAsUser: [p.uid/]
           runAsGroup: [p.gid/]
-  [comment A volume is written as the image's group, and only a volume is. /]
-  [if (p.volumes->notEmpty())]
+  [comment A volume is written as the image's group, and only a volume is. A library's group is
+    its own, and an fsGroup would re-own the whole library. /]
+  [if (p.volumes->notEmpty() and p.libraries->isEmpty())]
             fsGroup: [p.gid/]
+  [/if]
+  [if (p.libraries->notEmpty())]
+            supplementalGroups:
+    [for (g : Integer | p.libraries.gid->asOrderedSet()->sortedBy(x | x))]
+                - [g/]
+    [/for]
   [/if]
           seccompProfile:
             type: RuntimeDefault
@@ -598,12 +607,18 @@
   [for (c : resolveddeployment::ResolvedSidecar | p.sidecars)]
             [c.sidecar(p)/]
   [/for]
-  [if (p.volumes->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty())]
+  [if (p.volumes->notEmpty() or p.libraries->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty())]
           volumes:
     [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
               - name: [v.claim/]
                 persistentVolumeClaim:
                   claimName: [v.claim/]
+    [/for]
+    [comment Two mounts of one library below two directories share its one claim. /]
+    [for (c : String | p.libraries.claim->asOrderedSet())]
+              - name: [c/]
+                persistentVolumeClaim:
+                  claimName: [c/]
     [/for]
     [for (a : resolveddeployment::ResolvedAsset | p.assets)]
               - name: [a.name/]
@@ -701,11 +716,21 @@
       capabilities:
         drop:
           - ALL
-  [if (p.volumes->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty())]
+  [if (p.volumes->notEmpty() or p.libraries->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty())]
       volumeMounts:
     [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
           - name: [v.claim/]
             mountPath: [v.mountAt/]
+    [/for]
+    [for (m : resolveddeployment::ResolvedLibraryMount | p.libraries)]
+          - name: [m.claim/]
+            mountPath: [m.mountAt/]
+      [if (m.subPath <> null)]
+              subPath: [m.subPath/]
+      [/if]
+      [if (m.access = 'read')]
+              readOnly: true
+      [/if]
     [/for]
     [for (a : resolveddeployment::ResolvedAsset | p.assets)]
           - name: [a.name/]
@@ -825,6 +850,61 @@
 
 [comment A claim for each volume, and for each backed-up one the claim its copies land on, at the same
   size. A claim whose class derives a backup is never pruned, and neither is its copies'. /]
+[comment Per library the project mounts, the local volume onto its directory, held to its node,
+  and the claim bound to it; neither is ever pruned. /]
+[template private objects(d : resolveddeployment::LibraryFile)]
+  [for (m : resolveddeployment::ResolvedLibraryMount | d.libraries)]
+    ---
+    apiVersion: v1
+    kind: PersistentVolume
+    metadata:
+      name: [m.volume/]
+      labels:
+        app.kubernetes.io/managed-by: deploy-kit
+      annotations:
+        kustomize.toolkit.fluxcd.io/prune: disabled
+    spec:
+      capacity:
+        storage: [d.size/]
+      volumeMode: Filesystem
+      accessModes:
+        - ReadWriteOnce
+      persistentVolumeReclaimPolicy: Retain
+      storageClassName: ""
+      claimRef:
+        namespace: [d.namespace/]
+        name: [m.claim/]
+      local:
+        path: [m.path/]
+      nodeAffinity:
+        required:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values:
+                    - [m.node/]
+    ---
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: [m.claim/]
+      namespace: [d.namespace/]
+      labels:
+        app.kubernetes.io/managed-by: deploy-kit
+      annotations:
+        kustomize.toolkit.fluxcd.io/prune: disabled
+    spec:
+      storageClassName: ""
+      volumeName: [m.volume/]
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: [d.size/]
+  [/for]
+[/template]
+
 [template private objects(d : resolveddeployment::ClaimFile)]
   [for (p : resolveddeployment::ResolvedProcess | d.processes)]
     [for (v : resolveddeployment::ResolvedVolume | p.volumes)]

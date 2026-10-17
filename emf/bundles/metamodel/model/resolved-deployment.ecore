@@ -250,6 +250,7 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="surfaces" upperBound="-1" eType="#//ResolvedSurface" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="placement" lowerBound="1" eType="#//ResolvedPlacement" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="volumes" upperBound="-1" eType="#//ResolvedVolume" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="libraries" upperBound="-1" eType="#//ResolvedLibraryMount" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="secrets" upperBound="-1" eType="#//ResolvedGrant" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="assets" upperBound="-1" eType="#//ResolvedAsset" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="sidecars" upperBound="-1" eType="#//ResolvedSidecar" containment="true"/>
@@ -310,6 +311,20 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="durability" lowerBound="1" eType="#//DurabilityClass"/>
     <!-- `reconstructible` earns none, which is the absence rather than a class. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="backup" eType="#//BackupPlan" containment="true"/>
+  </eClassifiers>
+
+  <!-- A library the Process mounts: the directory on its node, the group the
+       Process runs with, and the volume and claim its project derives onto it. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedLibraryMount">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="library" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="claim" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="volume" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="node" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="gid" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="subPath" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="access" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="BackupPlan">
@@ -599,6 +614,15 @@
 
   <eClassifiers xsi:type="ecore:EClass" name="ServiceFile" eSuperTypes="#//Deliverable">
     <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess"/>
+  </eClassifiers>
+
+  <!-- Per library a project mounts, the local volume onto its directory and the
+       claim bound to it, in library name order; each mount names both. -->
+  <eClassifiers xsi:type="ecore:EClass" name="LibraryFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The nominal size the volume and its claim both state; it binds nothing. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="size" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="libraries" lowerBound="1" upperBound="-1" eType="#//ResolvedLibraryMount"/>
   </eClassifiers>
 
   <!-- The claims of every volume the Processes hold, and of each backed-up

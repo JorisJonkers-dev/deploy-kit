@@ -84,6 +84,17 @@
           "items": {
             "$ref": "#/$defs/Provider"
           }
+        },
+        "libraries": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/LibraryDeclaration"
+          },
+          "entry": "Library"
         }
       },
       "required": [
@@ -806,6 +817,59 @@
         "surfaces"
       ],
       "additionalProperties": false
+    },
+    "LibraryDeclaration": {
+      "type": "object",
+      "properties": {
+        "node": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^(\\/(?!\\.\\.?(?:\\/|$))[^/]+)+$"
+        },
+        "gid": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "grants": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/LibraryAccess"
+          },
+          "entry": "LibraryGrant"
+        }
+      },
+      "required": [
+        "node",
+        "path",
+        "gid",
+        "grants"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "grants": {
+              "type": "object",
+              "minProperties": 1
+            }
+          }
+        }
+      ]
+    },
+    "LibraryAccess": {
+      "type": "string",
+      "enum": [
+        "read",
+        "write"
+      ]
     }
   }
 }

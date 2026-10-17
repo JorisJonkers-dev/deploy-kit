@@ -30,13 +30,13 @@
     through its one black box, and not the production implementation's digests,
     which are over a different shape (spec/v1/20-resolved-deployment.md#pinned-inputs).
   -->
-  <provenance renderHash="sha256:53ff57df3ce7c8d86aa8011a991d47a91790d37f3ec55454fc2062080d3ba8b7" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+  <provenance renderHash="sha256:2ab6daa654c5f2180ba5de4ec86bc53963c0c6be3a2ab95527e09ba26705ff1f" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
     <inputDigests input="intent-fragment" name="delivery" digest="sha256:cd13dacfc2862f45b6976ff7ae33e3a8f492124704ac5241d93fa166b95a9ac3"/>
     <inputDigests input="intent-fragment" name="edge" digest="sha256:273c64ecd8c35ab69918664735661764e44e8e3ad04a58a11ab92dcb52ec1f4a"/>
-    <inputDigests input="intent-fragment" name="notes" digest="sha256:252e68be274ac566d591709794fbfed79b35e24cabaa38e39d90242e3e3893df"/>
+    <inputDigests input="intent-fragment" name="notes" digest="sha256:42ad799a9523b833d9982aee61ba22ff8a3df1bf93627d3821c4ee7da0949ecc"/>
     <inputDigests input="intent-fragment" name="observability" digest="sha256:aac790f0f921ce56ea5fb7af1f5a85c48c2122fbcbd99923124aafe063f6594c"/>
     <inputDigests input="intent-fragment" name="secrets" digest="sha256:3b6b608aa89a7beebed377772c9905705861c2609f1c262a5ddcb757b70bcecc"/>
-    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:00bed09fec28c62bdd613fd2ae6ef487e3f03aacec196afc609af9699777fad8"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:31f1a83c1ea194d98e3f1b45cbd60ae66ee50bd4f4896e108cf57a8e2c7e090a"/>
     <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
     <inputDigests input="images-lock" name="estate" digest="sha256:1841422e0b23b259d861eca22e5f90e53e21e4a82ea5035ec1bbd0c2d3367199"/>
     <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
@@ -57,7 +57,7 @@
   </policyJob>
   <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
 
-  <applications id="notes" revision="sha256:03410c20d919ef65b7ff527eda5dd719584662bf21d1acb036894023f21a014c" project="notes" namespace="notes-system"
+  <applications id="notes" revision="sha256:56f768dcbb534cd6be07f78b90b0675e083dbbbce0dc9da943212fd08935692f" project="notes" namespace="notes-system"
       alertClass="business-hours" reconcileUnit="//@reconcileUnits.0">
     <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="60s">
       <!-- The Platform document's cadence, carried for the Release Gate. -->
@@ -104,11 +104,13 @@
       </startup>
       <surfaces name="http" port="8080"/>
       <!--
-        Nothing narrows the set: this Process declares no arch, no capability,
-        no disk medium and holds no volume, so every node the contract
-        publishes is eligible.
+        The library the Process mounts narrows the set to its node; nothing
+        else does: no arch, no capability, no disk medium and no volume.
       -->
-      <placement eligibleNodes="enschede-t1000-1 enschede-rx7900xtx-1 enschede-gtx-960m-1 enschede-pi-1 enschede-pi-2 enschede-pi-3 frankfurt-contabo-1"/>
+      <placement eligibleNodes="enschede-t1000-1"/>
+      <!-- The Platform document's media library, below its Notes directory. -->
+      <libraries library="media" claim="library-media" volume="notes-system-media" node="enschede-t1000-1"
+          path="/srv/media" gid="3001" mountAt="/attachments" subPath="Notes" access="write"/>
       <environment name="DEPLOYMENT_ENVIRONMENT" value="production"/>
       <environment name="NODE_ENV" value="production"/>
       <environment name="NOTES_PAGE_SIZE" value="50"/>
@@ -126,10 +128,14 @@
   <deliverables xsi:type="resolveddeployment:NamespaceFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/namespace.yaml" adapter="kubernetes" namespace="notes-system"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="apps/notes/kustomization.yaml" adapter="kubernetes" resources="namespace.yaml notes"/>
+      path="apps/notes/kustomization.yaml" adapter="kubernetes" resources="libraries.yaml namespace.yaml notes"/>
   <!-- The project's default-deny: it selects every pod, and belongs to no Process. -->
   <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/networkpolicy.yaml" adapter="networking"/>
+  <!-- The volume onto the media library and the claim bound to it, the project's own. -->
+  <deliverables xsi:type="resolveddeployment:LibraryFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      path="apps/notes/libraries.yaml" adapter="kubernetes" namespace="notes-system" size="1Gi"
+      libraries="//@applications.0/@processes.0/@libraries.0"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/notes/kustomization.yaml" adapter="kubernetes"
       resources="canary.yaml configmap.yaml podmonitor.yaml serviceaccount.yaml workload.yaml"/>

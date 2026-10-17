@@ -1,14 +1,16 @@
 # The minimal example
 
 The smallest complete thing the model renders: **one project, one Application, one
-Process**, and no field that is not required. Read this before the three larger
+Process**, and no field that is not required but one: a mount of the
+Platform document's `media` library, the one worked mount of a
+[Library](../../10-project-intent.md#libraries). Read this before the three larger
 worked projects (`auth`, `knowledge` and `data`), each of which exists to
 exercise a hard case.
 
 | | |
 |---|---|
-| authored | [`notes.project.yml`](notes.project.yml): 26 lines of declaration, and [`env/notes-api/base.env`](env/notes-api/base.env): 2 keys |
-| rendered | [`rendered/`](rendered/): 9 files, 10 objects, 5 of the 6 adapters |
+| authored | [`notes.project.yml`](notes.project.yml): 31 lines of declaration, and [`env/notes-api/base.env`](env/notes-api/base.env): 2 keys |
+| rendered | [`rendered/`](rendered/): 11 files, 12 objects, 5 of the 6 adapters |
 | gaps | none. Every value in the tree derives from a declaration, a pinned fact, or a policy in [Platform Intent](../platform/platform.intent.yml) |
 
 It is also the **only** worked example that renders on today's pinned inputs.
@@ -20,7 +22,7 @@ nothing to refuse.
 
 ## What the declaration buys
 
-Twenty-six authored lines reach ten objects. Nothing in the middle column was
+Thirty-one authored lines reach twelve objects. Nothing in the middle column was
 written by anyone:
 
 | authored | derived | rendered |
@@ -36,6 +38,7 @@ written by anyone:
 | `provides: http: 8080` | the port name, the Application, the ingress rules | the `Canary`'s service port, from which Flagger generates the Services; the `NetworkPolicy` |
 | `exposure` + `audience: anonymous` | the tier, its middleware chain, and the route priority ([0023](../../../../docs/adr/model/0023-exposure-is-declared-by-audience.md)) | `IngressRoute` |
 | `observability` | a `PodMonitor` naming the `http` surface, selecting pods by `instance` so the canary is scraped too, and the Platform document's cadence ([chapter 10](../../10-project-intent.md#observability)) | a `PrometheusRule`: rules, severity and receivers are the monitoring stack's, which reads `alertClass` from the projection |
+| `libraries: [{library: media, subPath: Notes, access: write}]` | the library's node as the only eligible one, its `gid` as a supplemental group, and the project's volume onto its directory with the claim bound to it ([0104](../../../../docs/adr/model/0104-a-library-is-a-host-directory-the-platform-grants.md)) | the node affinity, `supplementalGroups`, the volume mount below `Notes`, and `libraries.yaml`'s `PersistentVolume` and `PersistentVolumeClaim`, neither ever pruned |
 | the env file's two literals | the Runtime Profile keys and `PORT`, which are a build error to author | the container's `env` |
 
 ## What is absent, and why
@@ -45,7 +48,7 @@ Every absence below is a decision, not an omission:
 | absent | because |
 |---|---|
 | `PodDisruptionBudget` | `replicas` derives as 1, and a budget over a single replica blocks a drain forever ([0022](../../../../docs/adr/model/0022-a-derived-value-has-one-declaring-site.md)) |
-| `PersistentVolumeClaim`, backup `CronJob` | no `volumes`, so no Durability Class and nothing to back up ([0018](../../../../docs/adr/model/0018-durability-class-derives-a-backup.md)) |
+| a claim of the Process's own, backup `CronJob`, `fsGroup` | no `volumes`, so no Durability Class and nothing to back up ([0018](../../../../docs/adr/model/0018-durability-class-derives-a-backup.md)); the library is the platform's, backed up outside the render, and a library takes `fsGroup` away ([chapter 10](../../10-project-intent.md#the-uid-is-a-pinned-input-and-the-volume-needs-a-group)) |
 | `engine` | required only where a volume derives a backup, and refused otherwise |
 | Vault policy, auth role, `VaultStaticSecret` | no grant, so no identity holds privilege ([0040](../../../../docs/adr/model/0040-vault-policy-is-a-deliverable.md)) |
 | `Role`, `RoleBinding` | never rendered for a Process; the absence is checked instead ([0041](../../../../docs/adr/model/0041-no-process-rbac-in-v1.md)) |

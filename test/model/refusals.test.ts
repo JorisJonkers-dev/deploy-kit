@@ -288,6 +288,90 @@ describe("the access by delivery matrix", () => {
   });
 });
 
+describe("a library mount", () => {
+  const granted = (edit: (text: string) => string) =>
+    checkIntentSet(
+      filesOf("library-not-granted").map((file) =>
+        file.name === "platform.intent.yml"
+          ? { ...file, text: edit(file.text) }
+          : file,
+      ),
+    );
+  const codesOf = (result: ReturnType<typeof checkIntentSet>) =>
+    result.ok
+      ? []
+      : result.diagnostics.map(({ code, path }) => ({ code, path }));
+  const AT = "/applications/0/processes/0/libraries/0";
+
+  it("is accepted where the library grants the project write", () => {
+    expect(
+      granted((text) => text.replace("refusals: read", "refusals: write")).ok,
+    ).toBe(true);
+  });
+
+  it("is accepted where it mounts read and the library grants read", () => {
+    expect(
+      checkIntentSet(
+        filesOf("library-not-granted").map((file) =>
+          file.name === "refusals.project.yml"
+            ? {
+                ...file,
+                text: file.text.replace("access: write", "access: read"),
+              }
+            : file,
+        ),
+      ).ok,
+    ).toBe(true);
+  });
+
+  it("says whether the project is granted nothing or only read", () => {
+    const messagesOf = (result: ReturnType<typeof checkIntentSet>) =>
+      result.ok ? [] : result.diagnostics.map(({ message }) => message);
+
+    expect(messagesOf(granted((text) => text))).toStrictEqual([
+      "the library media grants the project refusals read, and the Process mounts it write",
+    ]);
+    expect(
+      messagesOf(
+        granted((text) => text.replace("refusals: read", "jellyfin: write")),
+      ),
+    ).toStrictEqual(["the library media grants the project refusals nothing"]);
+  });
+
+  it("is refused where the library grants the project nothing, though it grants another", () => {
+    expect(
+      codesOf(
+        granted((text) => text.replace("refusals: read", "jellyfin: write")),
+      ),
+    ).toStrictEqual([{ code: "E_LIBRARY_NOT_GRANTED", path: AT }]);
+  });
+
+  it("is refused where the project or the library is named for something every object holds", () => {
+    expect(
+      codesOf(
+        granted((text) => text.replace("refusals: read", "toString: write")),
+      ),
+    ).toStrictEqual([{ code: "E_LIBRARY_NOT_GRANTED", path: AT }]);
+    expect(
+      codesOf(
+        checkIntentSet(
+          filesOf("unknown-library").map((file) =>
+            file.name === "refusals.project.yml"
+              ? {
+                  ...file,
+                  text: file.text.replace(
+                    "library: media",
+                    "library: toString",
+                  ),
+                }
+              : file,
+          ),
+        ),
+      ),
+    ).toStrictEqual([{ code: "E_UNKNOWN_LIBRARY", path: AT }]);
+  });
+});
+
 describe("the refusal fixtures", () => {
   it("are the ones this chapter carries, refused but for the accepted counterpart", () => {
     expect(fixtures).toStrictEqual([
@@ -314,6 +398,7 @@ describe("the refusal fixtures", () => {
       "handover-serving",
       "handover-unlisted",
       "illegal-delivery-for-access",
+      "library-not-granted",
       "migration-owner-duplicated",
       "migration-undeclared",
       "migration-ungated",
@@ -342,13 +427,14 @@ describe("the refusal fixtures", () => {
       "unauthorised-secret-reference",
       "unbound-secret-grant",
       "unknown-api-holder",
+      "unknown-library",
       "unknown-machinery",
       "unknown-surface",
       "unknown-telemetry-collector",
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(51);
+    expect(refused).toHaveLength(53);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",

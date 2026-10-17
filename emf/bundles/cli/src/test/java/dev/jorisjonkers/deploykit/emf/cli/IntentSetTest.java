@@ -261,4 +261,50 @@ class IntentSetTest {
                         tuple("E_UNKNOWN_TELEMETRY_COLLECTOR", "/telemetry"),
                         tuple("E_UNKNOWN_METRICS_STACK", "/telemetry"));
     }
+
+    /** The library-not-granted fixture, its Platform document's grant written as {@code grant}. */
+    private static List<Path> granting(Path directory, String grant, String mount) {
+        String fixture = "refusals/library-not-granted/";
+        return List.of(
+                Examples.write(
+                        directory,
+                        "platform.intent.yml",
+                        Examples.read(fixture + "platform.intent.yml").replace("refusals: read", grant)),
+                Examples.write(
+                        directory,
+                        "refusals.project.yml",
+                        Examples.read(fixture + "refusals.project.yml").replace("access: write", mount)));
+    }
+
+    @Test
+    void aLibraryIsMountedOnlyForWhatItGrantsTheProject(@TempDir Path directory) {
+        String at = "/applications/0/processes/0/libraries/0";
+
+        assertThat(Pipeline.check(granting(directory, "refusals: write", "access: write")))
+                .isEmpty();
+        assertThat(Pipeline.check(granting(directory, "refusals: read", "access: read")))
+                .isEmpty();
+        assertThat(Pipeline.check(granting(directory, "jellyfin: write", "access: read")))
+                .extracting(Diagnostic::code, Diagnostic::document, Diagnostic::path)
+                .containsExactly(tuple("E_LIBRARY_NOT_GRANTED", "refusals.project.yml", at));
+    }
+
+    @Test
+    void aLibraryOutsideAnAbsoluteDirectoryOrAMountClimbingOutOfOneIsASchemaRefusal(@TempDir Path directory) {
+        String platform = Examples.read("refusals/library-not-granted/platform.intent.yml");
+        String project = Examples.read("refusals/library-not-granted/refusals.project.yml");
+
+        assertThat(Pipeline.check(List.of(Examples.write(
+                        directory, "platform.intent.yml", platform.replace("path: /srv/media", "path: /srv/../etc")))))
+                .extracting(Diagnostic::code, Diagnostic::path)
+                .containsExactly(tuple("schema", "/libraries/media"));
+        assertThat(Pipeline.check(List.of(
+                        Examples.write(directory, "platform.intent.yml", platform.replace("gid: 3001", "gid: 0")))))
+                .extracting(Diagnostic::code, Diagnostic::path)
+                .containsExactly(tuple("schema", "/libraries/media"));
+        assertThat(Pipeline.check(List.of(Examples.write(
+                        directory, "refusals.project.yml", project.replace("subPath: Photos", "subPath: ../Photos")))))
+                .extracting(Diagnostic::code, Diagnostic::path)
+                .containsExactly(tuple("schema", "/applications/0/processes/0/libraries/0"));
+    }
 }

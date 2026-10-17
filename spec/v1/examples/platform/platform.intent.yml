@@ -215,3 +215,15 @@ providers:
     surfaces:
       smtp: 25
       http: 8080
+
+# Directories on one node that several projects share, each granted by project,
+# read or write (spec/v1/14-platform-intent.md#libraries). A Process mounting one
+# is placed on its node and runs with its group; no render re-owns it.
+libraries:
+  media:
+    node: enschede-t1000-1
+    path: /srv/media
+    gid: 3001
+    grants:
+      notes: write
+      jellyfin: read

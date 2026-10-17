@@ -784,6 +784,13 @@
             "$ref": "#/$defs/Volume"
           }
         },
+        "libraries": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LibraryMount"
+          }
+        },
         "replicas": {
           "$ref": "#/$defs/Capacity"
         },
@@ -999,6 +1006,39 @@
         "reconstructible",
         "recoverable",
         "irreplaceable"
+      ]
+    },
+    "LibraryMount": {
+      "type": "object",
+      "properties": {
+        "library": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mountAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subPath": {
+          "type": "string",
+          "pattern": "^(?!\\.\\.?(?:\\/|$))[^/]+(\\/(?!\\.\\.?(?:\\/|$))[^/]+)*$"
+        },
+        "access": {
+          "$ref": "#/$defs/LibraryAccess"
+        }
+      },
+      "required": [
+        "library",
+        "mountAt",
+        "access"
+      ],
+      "additionalProperties": false
+    },
+    "LibraryAccess": {
+      "type": "string",
+      "enum": [
+        "read",
+        "write"
       ]
     },
     "Capacity": {

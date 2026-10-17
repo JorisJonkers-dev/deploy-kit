@@ -5,6 +5,9 @@
 # (chapter 10). It is the file to read first, and the file to copy when
 # onboarding an Application that has no storage and no secrets.
 #
+# The one field beyond those is `libraries`: the worked mount of a library the
+# Platform document declares and grants this project.
+#
 # It is also the only worked example that renders on today's pinned inputs:
 # it holds no grant, so the secrets-at-rest gate
 # (docs/adr/model/0030-secret-delivery-is-env-file-or-self.md) has nothing to refuse.
@@ -61,6 +64,16 @@ applications:
 
         # REQUIRED, no default. No volumes, so a continuous cutover is honourable.
         cutover: continuous
+
+        # A directory the Platform document declares and grants this project,
+        # mounted below one of its folders. It places the Process on the
+        # library's node and runs it with the library's group, and is not a
+        # volume of its own (spec/v1/10-project-intent.md#libraries).
+        libraries:
+          - library: media
+            mountAt: /attachments
+            subPath: Notes
+            access: write
 
         # No `replicas` block: the derived count is one, and one is what this
         # Process runs. The block is for a count above one, with a reason.

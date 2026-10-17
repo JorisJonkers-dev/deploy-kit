@@ -1,0 +1,68 @@
+# REFUSED: E_LIBRARY_NOT_GRANTED
+#
+# The library Process mounts the library media to write, and this platform
+# grants the refusals project media to read only. A grant is the platform's to
+# give, and a mount asks for no more than it gives
+# (spec/v1/14-platform-intent.md #libraries).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Platform
+schemaVersion: 1.0.0
+owner: joris
+metadata:
+  cluster: refusals
+  project: refusals.jorisjonkers.dev
+  nodeContract: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+substrate:
+  kubernetesVersion: v1.31.4+k3s1
+  datastore: sqlite
+  serverCount: 1
+  secretsEncryption: true
+  cni: flannel
+  networkPolicyController: embedded
+  clusterDns: kube-system
+bootstrap:
+  flux:
+    sourceRef: flux-system/platform
+    artifacts:
+      repository: ghcr.io/jorisjonkers-dev/render
+      signer:
+        issuer: "https://token.actions.githubusercontent.com"
+        subject: "https://github.com/JorisJonkers-dev/estate/.github/workflows/compose.yml@refs/heads/main"
+  vault:
+    unsealed: true
+  crds:
+    - traefik.io/v1alpha1
+tiers:
+  - name: lan
+    audiences: [lan]
+    listener: plain
+    certificates: none
+    traefik: edge-proxy
+delivery:
+  machinery: [edge-proxy]
+  gate: edge-proxy
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    errorRate: 1%
+    latency: 500ms
+durability:
+  reconstructible: {}
+  recoverable: { schedule: "15 3 * * *", retain: 14 }
+engines:
+  postgres: { backup: postgres-backup }
+monitors:
+  interval: 30s
+  timeout: 10s
+hardening: restricted
+probes: { period: 10s, timeout: 5s, failures: 3 }
+ephemeral: { size: 64Mi }
+libraries:
+  media:
+    node: enschede-t1000-1
+    path: /srv/media
+    gid: 3001
+    grants:
+      refusals: read

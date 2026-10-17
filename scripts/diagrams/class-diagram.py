@@ -152,7 +152,7 @@ TREES = {"10-project-intent": {
     # table and each family's own section.
     # Surface stays last, and Route stays Exposure's first, so the one
     # cross-link lands between neighbours.
-    "Process": ["Capacity", "ApiAccess", "Sidecar", "Probe", "Volume", "Surface"],
+    "Process": ["Capacity", "ApiAccess", "Sidecar", "Probe", "Volume", "LibraryMount", "Surface"],
     "ApiAccess": ["ApiRule"],
     "Exposure": ["Route"],
 }, "14-platform-intent": {
@@ -160,7 +160,7 @@ TREES = {"10-project-intent": {
         "PlatformMetadata", "Substrate", "Bootstrap", "Tier", "DurabilityPolicies",
         "EnginePolicies", "MonitorCadence", "TelemetryPolicy", "ProbeCadence",
         "EphemeralPolicy", "MigrationPolicy", "DeliveryPolicy", "ApiAccessPolicy",
-        "VaultPolicyJob", "HandoverLedger", "Provider",
+        "VaultPolicyJob", "HandoverLedger", "Provider", "Library",
     ],
     "Bootstrap": ["FluxSource", "VaultState"],
     "FluxSource": ["RenderedArtifacts"],
@@ -177,10 +177,12 @@ TREES = {"10-project-intent": {
     # database sits a layer down, comes before the gate and not between them.
     "ResolvedDeployment": [
         "Provenance", "PathAssignment", "ReconcileUnit", "ResolvedPolicyJob",
-        "ResolvedEvents",
+        "ResolvedCatalogJob", "ResolvedEvents",
         "ResolvedApplication",
     ],
     "Provenance": ["InputDigest"],
+    "ResolvedCatalogJob": ["ResolvedCatalog"],
+    "ResolvedCatalog": ["CatalogAdmin", "CatalogDatabase"],
     "ResolvedApplication": [
         "ResolvedMigration", "ReleaseGate", "ResolvedScrape", "ResolvedProcess",
         "ResolvedExposure",
@@ -189,7 +191,7 @@ TREES = {"10-project-intent": {
     "ResolvedMigration": ["MigratedDatabase"],
     "ResolvedProcess": [
         "ResolvedProbe", "StartupProbe", "ResolvedPlacement", "ResolvedApiAccess",
-        "ResolvedVolume",
+        "ResolvedVolume", "ResolvedLibraryMount",
         "ResolvedGrant", "ResolvedEngineGrant", "ResolvedAsset",
         "ResolvedSidecar", "ResolvedEdge",
         "WritablePath", "EnvEntry", "ResolvedSurface", "IngressPeer",

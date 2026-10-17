@@ -115,6 +115,8 @@ const artifact = (artifacts: readonly RenderedArtifact[], name: string) =>
   artifacts.find((candidate) => candidate.name === name);
 
 describe("renderIntentSet", () => {
+  // REQ-065 (docs/requirements.md): minimal's Process mounts the worked
+  // library, so its tree carries the placement, the group and the volume.
   it("renders minimal's share of the tree to its committed tree, byte for byte", () => {
     expect(asTree(artifact(render(), "notes"))).toStrictEqual(
       committed("minimal/rendered"),
@@ -634,6 +636,7 @@ describe("renderIntentSet", () => {
       ),
     ).toStrictEqual({
       "apps/notes/kustomization.yaml": "kubernetes",
+      "apps/notes/libraries.yaml": "kubernetes",
       "apps/notes/namespace.yaml": "kubernetes",
       "apps/notes/networkpolicy.yaml": "networking",
       "apps/notes/notes/canary.yaml": "kubernetes",
@@ -741,6 +744,7 @@ describe("renderIntentSet", () => {
     ]);
     expect(paths("notes")).toStrictEqual([
       "apps/notes/kustomization.yaml",
+      "apps/notes/libraries.yaml",
       "apps/notes/namespace.yaml",
       "apps/notes/networkpolicy.yaml",
       "apps/notes/notes/canary.yaml",

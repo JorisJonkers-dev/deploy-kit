@@ -227,8 +227,9 @@ class ResolvedDeploymentTest {
         // what the rendered trees hold beyond it: Services, claims, Asset
         // ConfigMaps, backups, the Secret Store connection, Vault's own
         // documents, the RBAC of a Process that holds API access, the budget
-        // of a count above one, a migration's identity and Jobs, and the route
-        // Flux's events take to the Reporter.
+        // of a count above one, a migration's identity and Jobs, the route
+        // Flux's events take to the Reporter, and the volume and claim of a
+        // library a project mounts.
         assertThat(ResolvedDeploymentPackage.eINSTANCE.getEClassifiers().stream()
                         .filter(EClass.class::isInstance)
                         .map(EClass.class::cast)
@@ -256,6 +257,7 @@ class ResolvedDeploymentTest {
                         "BudgetFile",
                         "MigrationFile",
                         "ClaimFile",
+                        "LibraryFile",
                         "ConfigMapFile",
                         "BackupFile",
                         "ConnectionFile",
@@ -276,6 +278,7 @@ class ResolvedDeploymentTest {
                         "apps/notes/namespace.yaml",
                         "apps/notes/kustomization.yaml",
                         "apps/notes/networkpolicy.yaml",
+                        "apps/notes/libraries.yaml",
                         "apps/notes/notes/kustomization.yaml",
                         "apps/notes/notes/workload.yaml",
                         "apps/notes/notes/canary.yaml",

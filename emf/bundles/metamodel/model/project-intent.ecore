@@ -99,6 +99,20 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="volumes" upperBound="-1" eType="#//Volume" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="replicas" eType="#//Capacity" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="api" eType="#//ApiAccess" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="libraries" upperBound="-1" eType="#//LibraryMount" containment="true"/>
+  </eClassifiers>
+  <!-- A library the Platform document grants, mounted by name
+       (spec/v1/10-project-intent.md#libraries). The name stays a name, as an
+       edge's application does: it is checked when the documents are read together. -->
+  <eClassifiers xsi:type="ecore:EClass" name="LibraryMount">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="library" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="subPath" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="access" lowerBound="1" eType="#//LibraryAccess"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="LibraryAccess">
+    <eLiterals name="read" literal="read"/>
+    <eLiterals name="write" value="1" literal="write"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="EffectiveProject">
     <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
@@ -401,6 +415,23 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="policyJob" eType="#//VaultPolicyJob" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="handover" eType="#//HandoverLedger" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="providers" upperBound="-1" eType="#//Provider" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="libraries" upperBound="-1" eType="#//Library" containment="true"/>
+  </eClassifiers>
+  <!-- A directory on one node the platform grants to projects, keyed by its name
+       (spec/v1/14-platform-intent.md#libraries). -->
+  <eClassifiers xsi:type="ecore:EClass" name="Library" instanceClassName="java.util.Map$Entry">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="value" lowerBound="1" eType="#//LibraryDeclaration" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="LibraryDeclaration">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="node" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="gid" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="grants" lowerBound="1" upperBound="-1" eType="#//LibraryGrant" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="LibraryGrant" instanceClassName="java.util.Map$Entry">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" lowerBound="1" eType="#//LibraryAccess"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="PlatformMetadata">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cluster" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

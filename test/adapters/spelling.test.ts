@@ -85,7 +85,11 @@ function edited(
     applications: [
       {
         ...without(only, application(only)),
-        processes: [without(first, process(first))],
+        // minimal's library mount stays out unless an edit puts it back, so
+        // each variant holds one thing to spell.
+        processes: [
+          without(first, { libraries: undefined, ...process(first) }),
+        ],
       },
     ],
   };
@@ -376,6 +380,207 @@ describe("the kubernetes adapter", () => {
         },
       },
     ]);
+  });
+
+  describe("a library mount", () => {
+    const LIBRARY = {
+      library: "media",
+      claim: "library-media",
+      volume: "notes-system-media",
+      node: "enschede-t1000-1",
+      path: "/srv/media",
+      gid: 3001,
+      mountAt: "/attachments",
+      access: "read" as const,
+    };
+    const podOf = (project: ResolvedProject) =>
+      (
+        objectsAt(renderKubernetes(project), "workload.yaml") as {
+          spec: {
+            template: {
+              spec: {
+                securityContext: Record<string, unknown>;
+                containers: { volumeMounts?: unknown[] }[];
+                volumes?: unknown[];
+              };
+            };
+          };
+        }[]
+      )[0]?.spec.template.spec;
+    const CACHE = {
+      claim: "cache",
+      mountAt: "/cache",
+      size: "2Gi",
+      durability: "reconstructible",
+    };
+
+    it("mounts the library's claim below its subPath, read-only for a read mount, one volume for both", () => {
+      const pod = podOf(
+        edited(undefined, () => ({
+          libraries: [
+            { ...LIBRARY, subPath: "Photos" },
+            {
+              ...LIBRARY,
+              mountAt: "/inbox",
+              subPath: "Inbox",
+              access: "write",
+            },
+          ],
+        })),
+      );
+
+      expect(pod?.containers[0]?.volumeMounts).toStrictEqual([
+        {
+          name: "library-media",
+          mountPath: "/attachments",
+          subPath: "Photos",
+          readOnly: true,
+        },
+        { name: "library-media", mountPath: "/inbox", subPath: "Inbox" },
+      ]);
+      expect(pod?.volumes).toStrictEqual([
+        {
+          name: "library-media",
+          persistentVolumeClaim: { claimName: "library-media" },
+        },
+      ]);
+    });
+
+    it("mounts the whole library where the mount names no subPath", () => {
+      const pod = podOf(edited(undefined, () => ({ libraries: [LIBRARY] })));
+
+      expect(pod?.containers[0]?.volumeMounts).toStrictEqual([
+        { name: "library-media", mountPath: "/attachments", readOnly: true },
+      ]);
+    });
+
+    it("runs the pod with each library's group once, in order, and no fsGroup though it holds a claim", () => {
+      const library = (name: string, gid: number) => ({
+        ...LIBRARY,
+        library: name,
+        claim: `library-${name}`,
+        volume: `notes-system-${name}`,
+        gid,
+      });
+      const pod = podOf(
+        edited(undefined, () => ({
+          volumes: [CACHE],
+          libraries: [
+            library("media", 3001),
+            library("books", 2001),
+            library("photos", 3001),
+          ],
+        })),
+      );
+
+      expect(pod?.securityContext["supplementalGroups"]).toStrictEqual([
+        2001, 3001,
+      ]);
+      expect(pod?.securityContext).not.toHaveProperty("fsGroup");
+      expect(
+        podOf(edited(undefined, () => ({ volumes: [CACHE] })))?.securityContext,
+      ).not.toHaveProperty("supplementalGroups");
+    });
+
+    it("writes, once per library the project mounts, the local volume held to its node and the claim bound to it, neither ever pruned", () => {
+      const project = edited(undefined, () => ({
+        libraries: [LIBRARY, { ...LIBRARY, mountAt: "/again" }],
+      }));
+      const metadata = {
+        labels: { "app.kubernetes.io/managed-by": "deploy-kit" },
+        annotations: { "kustomize.toolkit.fluxcd.io/prune": "disabled" },
+      };
+
+      expect(renderKubernetes(project).map(({ path }) => path)).toContain(
+        "apps/notes/libraries.yaml",
+      );
+      expect(
+        objectsAt(renderKubernetes(project), "libraries.yaml"),
+      ).toStrictEqual([
+        {
+          apiVersion: "v1",
+          kind: "PersistentVolume",
+          metadata: { name: "notes-system-media", ...metadata },
+          spec: {
+            capacity: { storage: "1Gi" },
+            volumeMode: "Filesystem",
+            accessModes: ["ReadWriteOnce"],
+            persistentVolumeReclaimPolicy: "Retain",
+            storageClassName: "",
+            claimRef: { namespace: "notes-system", name: "library-media" },
+            local: { path: "/srv/media" },
+            nodeAffinity: {
+              required: {
+                nodeSelectorTerms: [
+                  {
+                    matchExpressions: [
+                      {
+                        key: "kubernetes.io/hostname",
+                        operator: "In",
+                        values: ["enschede-t1000-1"],
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+        },
+        {
+          apiVersion: "v1",
+          kind: "PersistentVolumeClaim",
+          metadata: {
+            name: "library-media",
+            namespace: "notes-system",
+            ...metadata,
+          },
+          spec: {
+            storageClassName: "",
+            volumeName: "notes-system-media",
+            accessModes: ["ReadWriteOnce"],
+            resources: { requests: { storage: "1Gi" } },
+          },
+        },
+      ]);
+    });
+
+    it("writes the libraries of every Application of the project, in name order", () => {
+      const project = edited(undefined, () => ({
+        libraries: [
+          {
+            ...LIBRARY,
+            library: "photos",
+            claim: "library-photos",
+            volume: "notes-system-photos",
+          },
+        ],
+      }));
+      const [only] = project.applications;
+      const second = {
+        ...(only as Application),
+        id: "second",
+        processes: (only as Application).processes.map((process) => ({
+          ...process,
+          libraries: [LIBRARY],
+        })),
+      };
+      const names = objectsAt(
+        renderKubernetes({
+          ...project,
+          applications: [only as Application, second],
+        }),
+        "libraries.yaml",
+      ).map(
+        (object) => (object as { metadata: { name: string } }).metadata.name,
+      );
+
+      expect(names).toStrictEqual([
+        "notes-system-media",
+        "library-media",
+        "notes-system-photos",
+        "library-photos",
+      ]);
+    });
   });
 
   it("writes no Service for a stop-start Process that serves nothing, and no file with nothing in it", () => {

@@ -157,6 +157,31 @@
           ]
         }
       ]
+    },
+    {
+      "name": "a library mount with nowhere to mount it",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/minimal/notes.project.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/applications/0/processes/0/libraries/0/mountAt"
+        }
+      ]
+    },
+    {
+      "name": "a library mounted for something other than reading or writing",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/minimal/notes.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/0/processes/0/libraries/0/access",
+          "value": "own"
+        }
+      ]
     }
   ]
 }

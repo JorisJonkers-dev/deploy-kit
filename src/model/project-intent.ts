@@ -16,6 +16,7 @@ import {
   DURABILITY_CLASSES,
   ENGINES,
   KEY_ENCODINGS,
+  LIBRARY_ACCESS,
   LIFECYCLES,
   MATCHES,
   MEDIA,
@@ -230,6 +231,23 @@ const volume = z
   })
   .meta({ id: "Volume" });
 
+// A library the Platform document grants, mounted by name
+// (spec/v1/10-project-intent.md#libraries): `subPath` is a directory inside it,
+// relative and with no `.` or `..` segment.
+export const LIBRARY_SUB_PATH =
+  /^(?!\.\.?(?:\/|$))[^/]+(\/(?!\.\.?(?:\/|$))[^/]+)*$/;
+
+const libraryMount = z
+  .strictObject({
+    // A name, as an edge's application is: it reaches the Platform document,
+    // and is checked when the two are read together.
+    library: text,
+    mountAt: text,
+    subPath: z.string().regex(LIBRARY_SUB_PATH).exactOptional(),
+    access: z.enum(LIBRARY_ACCESS).meta({ id: "LibraryAccess" }),
+  })
+  .meta({ id: "LibraryMount" });
+
 const capacity = z
   .strictObject({ count: z.int().min(2), reason: text })
   .meta({ id: "Capacity" });
@@ -274,6 +292,7 @@ const process = z
     sidecars: z.array(sidecar).min(1).exactOptional(),
     probes: z.union([noProbes, probes]).exactOptional(),
     volumes: z.array(volume).min(1).exactOptional(),
+    libraries: z.array(libraryMount).min(1).exactOptional(),
     replicas: capacity.exactOptional(),
     api: apiAccess.exactOptional(),
     ...sharedIntent,
@@ -346,6 +365,7 @@ export type KvKey = Extract<Grant, { readonly path: string }>["keys"][number];
 export type DependencyEdge = NonNullable<ProcessDocument["dependsOn"]>[number];
 export type Asset = NonNullable<ProcessDocument["assets"]>[number];
 export type Placement = NonNullable<ProcessDocument["placement"]>;
+export type LibraryMount = NonNullable<ProcessDocument["libraries"]>[number];
 export type Exposure = NonNullable<ApplicationDocument["exposure"]>[number];
 
 /** The eight families of spec/v1/10-project-intent.md#shared-intent that the

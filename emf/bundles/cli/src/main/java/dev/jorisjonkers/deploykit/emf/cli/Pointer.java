@@ -1,13 +1,15 @@
 package dev.jorisjonkers.deploykit.emf.cli;
 
 import java.util.List;
+import java.util.Map;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EStructuralFeature;
 
 /**
  * The RFC 6901 JSON Pointer of an object inside its document, read off its containment chain: the
- * name of the feature that holds it, and its index where the feature holds many
- * (docs/architecture.md#the-parity-contract). The root is the empty pointer.
+ * name of the feature that holds it, and its index where the feature holds many, or its key where
+ * the feature is a map (docs/architecture.md#the-parity-contract). A map entry's value sits at its
+ * entry's pointer. The root is the empty pointer.
  */
 public final class Pointer {
 
@@ -19,9 +21,14 @@ public final class Pointer {
         if (owner == null) {
             return "";
         }
+        if (owner instanceof Map.Entry<?, ?>) {
+            return of(owner);
+        }
         EStructuralFeature feature = object.eContainingFeature();
         String step = escape(feature.getName());
-        if (feature.isMany()) {
+        if (object instanceof Map.Entry<?, ?> entry) {
+            step = step + "/" + escape(String.valueOf(entry.getKey()));
+        } else if (feature.isMany()) {
             step = step + "/" + ((List<?>) owner.eGet(feature)).indexOf(object);
         }
         return of(owner) + "/" + step;

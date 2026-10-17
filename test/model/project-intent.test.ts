@@ -333,6 +333,33 @@ describe("parseProjectIntent", () => {
   // REQ-057 (docs/requirements.md): what the edge serves, the kubelet asks and
   // the Release Gate requests is never free text, so a list of them holds
   // exactly what was authored and a request goes where the model says.
+  it("refuses a library mount below an absolute path or one that climbs out of the library", () => {
+    const codesAt = (subPath: string) => {
+      const parsed = parseProjectIntent(
+        MINIMAL.replace(
+          "subPath: Notes",
+          `subPath: ${JSON.stringify(subPath)}`,
+        ),
+      );
+      return parsed.ok
+        ? []
+        : parsed.diagnostics.map(({ code, path }) => [code, path]);
+    };
+
+    expect(codesAt("Notes/Attachments")).toStrictEqual([]);
+    for (const subPath of [
+      "/Notes",
+      "../Notes",
+      "Notes/..",
+      "./Notes",
+      "Notes/",
+      "",
+    ])
+      expect(codesAt(subPath), subPath).toStrictEqual([
+        ["schema", "/applications/0/processes/0/libraries/0/subPath"],
+      ]);
+  });
+
   it("refuses a Route path or a probe path that is no request path, and a host that is no DNS name", () => {
     const codesAt = (document: string) => {
       const parsed = parseProjectIntent(document);
