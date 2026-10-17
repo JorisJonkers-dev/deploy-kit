@@ -18,7 +18,7 @@ import {
   type ResolvedProject,
 } from "../../src/index.ts";
 import { seconds } from "../../src/model/durations.ts";
-import { eligibleNodes } from "../../src/model/eligibility.ts";
+import { eligibleNodes, estateJobNodes } from "../../src/model/eligibility.ts";
 import {
   readClusterState,
   readImagesLock,
@@ -1783,6 +1783,33 @@ describe("eligibility at its edges", () => {
     expect(
       eligibleNodes(process({ disk: { media: ["ssd"] } }), contract),
     ).toStrictEqual([]);
+  });
+
+  it("keeps a derived estate Job off a node that holds an sdcard medium, beside any other", () => {
+    const node = (name: string, media: readonly ("ssd" | "sdcard")[]) => ({
+      name,
+      site: "s",
+      arch: "amd64" as const,
+      allocatable: { cpu: "100m", memory: "128Mi" },
+      ...(media.length === 0
+        ? {}
+        : {
+            disks: media.map((medium) => ({ media: medium, usable_gib: 64 })),
+          }),
+    });
+    expect(
+      estateJobNodes(
+        { memory: "128Mi", cpu: "100m" },
+        {
+          ...contract,
+          nodes: [
+            node("bare", []),
+            node("ssd", ["ssd"]),
+            node("ssd-and-card", ["ssd", "sdcard"]),
+          ],
+        },
+      ),
+    ).toStrictEqual(["bare", "ssd"]);
   });
 });
 

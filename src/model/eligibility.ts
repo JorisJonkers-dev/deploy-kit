@@ -75,8 +75,6 @@ export const estateJobNodes = (
       (node) =>
         mebibytes(node.allocatable.memory) >= mebibytes(request.memory) &&
         millicores(node.allocatable.cpu) >= millicores(request.cpu) &&
-        // Every node the worked contract holds lists its disks.
-        // Stryker disable next-line OptionalChaining
         node.disks?.some(({ media }) => media === "sdcard") !== true,
     )
     .map(({ name }) => name);

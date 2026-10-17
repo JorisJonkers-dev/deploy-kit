@@ -672,6 +672,24 @@ describe("what a refusal before resolution says", () => {
     ]);
   });
 
+  it("names the Vault policy job no node without an sdcard medium can hold", () => {
+    expect(
+      full({
+        "platform/platform.intent.yml": (document) =>
+          document.replace(
+            /(\npolicyJob:\n(?: {2}.*\n)*? {2}memory: )64Mi/,
+            (_, head: string) => `${head}64Gi`,
+          ),
+      }).map(({ message, hint }) => ({ message, hint })),
+    ).toStrictEqual([
+      {
+        message:
+          "no node in the node contract without an sdcard medium can hold the Vault policy job",
+        hint: "Lower what the job asks for, or give the contract a node that boots from no SD card.",
+      },
+    ]);
+  });
+
   it("says a missing input is the set's to supply, with nowhere in any document to point", () => {
     const [missing] = (() => {
       const result = resolveIntentSet(
