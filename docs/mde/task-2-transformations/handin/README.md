@@ -2,14 +2,17 @@
 
 `task-2-transformations.zip` is the archive handed in for Task 2. It holds the
 report (`report.pdf`), a `README.md` for the marker (`hand-in-README.md` here),
-and two folders:
+the `build.sh` and `build.cmd` from `scripts/`, which build and test the
+implementation and collect each example's models, and two folders:
 
 - `task-2-transformations/`, an Eclipse project holding the three metamodels,
   the three QVT-Operational transformations, and per example the authored files,
   the two extents the resolution read, the resolved model it wrote, and the
   dependency edges exported from it beside the oracle they equal;
-- `implementation/`, the tracked `emf/` modules, `spec/v1/examples/` and
-  `docs/requirements.md`, so `./mvnw verify` runs there as it does here.
+- `implementation/`, the tracked `emf/` modules and `spec/v1/examples/`, so
+  `./mvnw verify` runs there as it does here. It leaves out what only governs
+  this repository: `emf/docs/`, `emf/scripts/`, `emf/README.md` and the
+  ledger test that reads them.
 
 `hand-in-README.md`, copied into the archive as `README.md`, describes the
 layout and how to run all three transformations. These instructions are

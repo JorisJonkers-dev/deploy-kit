@@ -16,13 +16,13 @@ Table~\ref{tab:tools} compares them.
 \textbf{Tool} & \textbf{What it does} & \textbf{Why it cannot replace the resolution} & \textbf{Where it could help} \\
 \hline
 KubeDiagrams \cite{kubediagrams} &
-  Draws diagrams from Kubernetes files or a live cluster, mapping kinds to icons. &
+  Draws diagrams from Kubernetes files or a live cluster, mapping resource kinds to icons. &
   It needs Kubernetes resources as input, so it cannot derive them from deployment intent. &
-  It could visualize the generated files to show links produced by a \texttt{Project} document. \\
+  It could visualise the generated files to show links produced by a \texttt{Project} document. \\
 KubeOrch \cite{kubeorch} &
-  A drag-and-drop editor whose back end wires ports, fills templates, writes files and deploys. &
-  It has no metamodel and no constraints; its rules are Go code, and it deploys directly, not via Flux. &
-  Its graph notation could inform a \texttt{Project} document editor. \\
+  A drag-and-drop editor whose back end wires ports, fills templates, writes files, and deploys. &
+  It has no metamodel and no constraints. Its rules are Go code, and it deploys directly, not via Flux. &
+  Its visual graph notation for service connections could inform a \texttt{Project} document editor. \\
 kubert \cite{kubert} &
   A command-line tool to switch cluster contexts and run commands on multiple clusters. &
   It is an operations tool and does not model or generate anything. &
@@ -33,9 +33,9 @@ kubert \cite{kubert} &
 \label{tab:tools}
 \end{table}
 
-KubeOrch comes closest: it turns service links into addresses and ports.
+KubeOrch comes closest: it maps service links to addresses and ports.
 However, it has no shared platform policy or pinned-input model from which
-to derive placement, locked images or backups, and no resolved intermediate
+to derive placement, locked images, or backups, and no resolved intermediate
 model to test. KubeDiagrams could inspect the Task~3 output, while a
 KubeOrch-style editor could author \texttt{Project Intent} using the same
 Ecore metamodel as the transformation.
@@ -43,21 +43,15 @@ Ecore metamodel as the transformation.
 \subsection{The Transformation Language}
 \label{sec:language}
 
-The assignment permits ATL or QVT-Operational (QVTo). QVTo was chosen
-so that the deployment and its \texttt{Revision}s could be derived in one
-transformation. A \texttt{Revision} must cover the completed
-\texttt{Application}, including the values derived for its
-\texttt{Process}es, routes and release gate. ATL's target models are
-write-only, so this calculation would need to reconstruct the resolved
-values from the source or run a further transformation over the output.
-QVTo lets the deployment mapping read the assembled target in its
+The assignment permits ATL or QVT-Operational (QVTo). QVTo was chosen over ATL because it allows a transformation to read its own output within the same operation. That reading is essential for computing a release identifier: a \texttt{Revision} must cover the completed \texttt{Application}, including the values derived for its \texttt{Process}es, routes, and \texttt{ReleaseGate}. ATL's target models are write-only, so this calculation would need to reconstruct the resolved values from the source or run a further transformation over the output.
+QVTo lets the deployment mapping read the completed target model in its
 \texttt{end} section. This keeps the release identifier with the operation
 that constructs the deployment and gives it access to the values that
 operation has produced.
 
 The required construction order also favoured QVTo. Resolved
 \texttt{Process}es must exist before routes and \texttt{ReleaseGate}
-members can refer to them; the \texttt{Revision} must be computed after
+members can refer to them. The \texttt{Revision} must be computed after
 these objects have been populated. Explicit mapping calls make those
 prerequisites visible in the caller, with trace lookup supplying the
 references to previously created objects. ATL's called rules could also
@@ -84,16 +78,15 @@ the templates that write them to files.
 
 A single transformation from authored model to \texttt{Resolved Deployment}
 would work, but a flattening precedes the resolution. The flattening copies
-shared declarations down to each \texttt{Process}. For example, a
+shared declarations down to each \texttt{Process}, including API access and engine \texttt{Grant}s (declared access to a secret of a database or transit engine). For example, a
 \texttt{Project} startup budget of 30s reaches every \texttt{Process}
 except one that declares a more specific value, such as 20s. Resolution can
 then read the selected budget directly from each \texttt{Process}, without
 searching its ancestors. QVT specification Section~8.1.13 likewise composes
-a preparation transformation before the main one~\cite{qvt13}, but the
-reason for this split is to isolate declaration
-precedence from deployment derivation. Its cost is an additional model and
+a preparation transformation before the main one~\cite{qvt13}. However, the
+reason for this split is to isolate declaration precedence from deployment derivation. Its cost is an additional model and
 the \texttt{EffectiveProject} and \texttt{EffectiveApplication} classes,
-whose copying and override behaviour need their own tests.
+whose copying and override behaviour needs its own tests.
 
 \subsubsection{Resolving One Project with All Projects as Input}
 \label{sec:perproject}
@@ -103,7 +96,7 @@ One resolution over all \texttt{Project}s at once could produce one
 resolves one \texttt{Project} into its own model while reading every
 \texttt{Project}'s documents from the same input extent. This preserves a
 separate output and oracle comparison for each \texttt{Project}, while the
-shared input supplies the cluster-wide view needed for dependencies, routes
+shared input supplies the cluster-wide view needed for dependencies, routes,
 and network access. It does not make a \texttt{Project} independently
 resolvable: a change elsewhere can affect its output. Values that depend on
 all resolved outputs, including the digest over the Vault documents, require
@@ -115,9 +108,7 @@ would combine the output and comparison units.
 \label{sec:extentsalternative}
 
 A rule also has to find the run's other documents. An unqualified
-\texttt{allInstances()} lookup does not identify which input model is
-intended, particularly when authored and flattened \texttt{Process}es are
-both loaded. Instead, the transformation selects roots by type from the
+\texttt{allInstances()} lookup searches all loaded models, which is problematic when both authored (original) and flattened (copied) \texttt{Process}es are present simultaneously. Instead, the transformation selects roots by type from the
 named \texttt{intent} and \texttt{pinned} extents and stores them in
 transformation properties such as \texttt{projects} and \texttt{lock}.
 Rules navigate from these properties, making their input scope explicit
