@@ -62,6 +62,9 @@ property POLICY_JOB : String = 'vault-policy';
 -- How many hex digits of a revision its tag carries: what the migration Jobs are named by.
 property TAG_DIGITS : Integer = 12;
 
+-- What a library's volume and claim both state: a local volume holds a directory, never a size.
+property LIBRARY_SIZE : String = '1Gi';
+
 -- The estate-wide directory every identity's Vault documents land in, by namespace.
 property POLICIES : String = 'estate/vso-secrets/policies/';
 
@@ -532,6 +535,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 		} endif;
 	};
 	volumes := self.volumes->collect(v | v.resolvedFor(self));
+	libraries := self.libraries->collect(m | m.resolvedFor(prj));
 	assets := self.assets->collect(a | a.resolvedFor(self, prj));
 	sidecars := self.sidecars->collect(c | object ResolvedSidecar {
 		name := c.name;
@@ -668,6 +672,25 @@ query Volume::resolvedFor(p : PI::Process) : ResolvedVolume = object ResolvedVol
 	durability := self.durability.resolvedDurability();
 	if self.durability <> PI::DurabilityClass::reconstructible then backup := self.backupFor(p) endif;
 };
+
+-- A library the Process mounts, resolved against the Platform document that
+-- declares it (spec/v1/10-project-intent.md#libraries): every mounted library
+-- is declared, or E_UNKNOWN_LIBRARY refused it.
+query LibraryMount::resolvedFor(prj : EffectiveProject) : ResolvedLibraryMount = object ResolvedLibraryMount {
+	_library := self._library;
+	claim := 'library-' + self._library;
+	volume := namespaceOf(prj.project) + '-' + self._library;
+	node := libraryOf(self._library).node;
+	path := libraryOf(self._library).path;
+	gid := libraryOf(self._library).gid;
+	mountAt := self.mountAt;
+	if self.subPath <> null then subPath := self.subPath endif;
+	_access := if self._access = LibraryAccess::write then 'write' else 'read' endif;
+};
+
+-- The library the Platform document declares under `name`, or null.
+query libraryOf(name : String) : LibraryDeclaration =
+	estate.libraries->select(l | l.key = name)->collect(l | l.value)->any(true);
 
 query Volume::backupFor(p : PI::Process) : BackupPlan =
 	let policy : DurabilityPolicy = if self.durability = PI::DurabilityClass::recoverable
@@ -886,7 +909,9 @@ query eligible(p : PI::Process, n : Node) : Boolean =
 	and (p.placement.gpu = null or n.gpus->exists(g |
 		g._class = p.placement.gpu._class and g.memoryMib >= mebibytes(p.placement.gpu.memory)))
 	and (p.placement.disk = null or n.disks->exists(d |
-		p.placement.disk.media->exists(m | m.spelling() = d.media)));
+		p.placement.disk.media->exists(m | m.spelling() = d.media)))
+	-- A library the Process mounts holds it to the library's node.
+	and p.libraries->forAll(m | libraryOf(m._library) <> null and libraryOf(m._library).node = n.name);
 
 -- =============================================================== environment
 
@@ -1118,6 +1143,12 @@ query EffectiveProject::projectFiles() : Sequence(Deliverable) =
 	let root : String = 'apps/' + self.project + '/' in
 	let stores : Sequence(ResolvedApplication) = self.applications
 		->collect(a | a.resolveone(ResolvedApplication))->select(a | a.secretStore <> null) in
+	-- Every library a Process of the project mounts, once, by name.
+	let mounts : Sequence(ResolvedLibraryMount) = self.applications
+		->collect(a | a.processes)->flatten()->collect(p | p.resolveone(ResolvedProcess))
+		->collect(p | p.libraries)->flatten()->asSequence() in
+	let held : Sequence(ResolvedLibraryMount) = mounts->collect(m | m._library)->asOrderedSet()
+		->sortedBy(n | n)->collect(n | mounts->select(m | m._library = n)->first()) in
 	Sequence{
 		object NamespaceFile {
 			path := root + 'namespace.yaml';
@@ -1129,6 +1160,7 @@ query EffectiveProject::projectFiles() : Sequence(Deliverable) =
 			adapter := AdapterName::kubernetes;
 			resources := Sequence{'namespace.yaml'}->union(self.applications->collect(a | a.id))
 				->union(if stores->isEmpty() then Sequence{} else Sequence{'vaultconnection.yaml'} endif)
+				->union(if held->isEmpty() then Sequence{} else Sequence{'libraries.yaml'} endif)
 				->sortedBy(r | r);
 		}.oclAsType(Deliverable),
 		object NetworkPolicyFile {
@@ -1136,6 +1168,13 @@ query EffectiveProject::projectFiles() : Sequence(Deliverable) =
 			adapter := AdapterName::networking;
 		}.oclAsType(Deliverable)
 	}
+	->union(if held->isEmpty() then Sequence{} else Sequence{object LibraryFile {
+			path := root + 'libraries.yaml';
+			adapter := AdapterName::kubernetes;
+			namespace := namespaceOf(self.project);
+			size := LIBRARY_SIZE;
+			libraries := held;
+		}.oclAsType(Deliverable)} endif)
 	->union(if stores->isEmpty() then Sequence{} else Sequence{object ConnectionFile {
 			path := root + 'vaultconnection.yaml';
 			adapter := AdapterName::vso;
@@ -1752,6 +1791,16 @@ query ResolvedProcess::json() : String =
 			Tuple{k = 'boundTo', v = opt(self.placement.boundTo)},
 			Tuple{k = 'from', v = if self.placement.boundTo = null then null else str(self.placement._from.spelling()) endif}})},
 		Tuple{k = 'volumes', v = if self.volumes->isEmpty() then null else arr(self.volumes->collect(x | x.json())) endif},
+		Tuple{k = 'libraries', v = if self.libraries->isEmpty() then null else arr(self.libraries->collect(x | obj(Sequence{
+			Tuple{k = 'library', v = str(x._library)},
+			Tuple{k = 'claim', v = str(x.claim)},
+			Tuple{k = 'volume', v = str(x.volume)},
+			Tuple{k = 'node', v = str(x.node)},
+			Tuple{k = 'path', v = str(x.path)},
+			Tuple{k = 'gid', v = num(x.gid)},
+			Tuple{k = 'mountAt', v = str(x.mountAt)},
+			Tuple{k = 'subPath', v = opt(x.subPath)},
+			Tuple{k = 'access', v = str(x._access)}}))) endif},
 		Tuple{k = 'secrets', v = if self.secrets->isEmpty() then null else arr(self.secrets->collect(x | x.json())) endif},
 		Tuple{k = 'assets', v = if self.assets->isEmpty() then null else arr(self.assets->collect(x | obj(Sequence{
 			Tuple{k = 'name', v = str(x.name)},

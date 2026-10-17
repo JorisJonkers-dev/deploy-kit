@@ -239,7 +239,9 @@ export const LIBRARY_SUB_PATH =
 
 const libraryMount = z
   .strictObject({
-    library: text.meta({ reference: "Library" }),
+    // A name, as an edge's application is: it reaches the Platform document,
+    // and is checked when the two are read together.
+    library: text,
     mountAt: text,
     subPath: z.string().regex(LIBRARY_SUB_PATH).exactOptional(),
     access: z.enum(LIBRARY_ACCESS).meta({ id: "LibraryAccess" }),

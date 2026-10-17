@@ -154,7 +154,9 @@ compares the two implementations through dependency edges and generated files
 rather than through `resolved.json`.
 
 Cross-document references, including those from a Project into the Platform
-document, are Ecore references, not strings.
+document, are Ecore references, not strings, with the two exceptions
+[Concrete syntax](#concrete-syntax) names: a dependency edge's names and a
+library mount's library.
 
 Typed Java for each metamodel is generated from its `.genmodel` during the
 Maven build into `target/`, and never committed: an MWE2 workflow runs EMF's
@@ -268,7 +270,11 @@ an Application any project file of the set declares, and one that links to
 nothing is `E_UNKNOWN_TIER_PROXY` at the tier. A Platform document read alone
 leaves it unlinked, and its intent writes the name as authored. A dependency
 edge's names reach other documents and stay names until the composed union
-links them.
+links them. A library mount's `library` names a library of the Platform
+document and stays a name as well: the lowering writes a project file read
+alone, where a link into the Platform document has no target and so no name to
+write back. The invariants `E_UNKNOWN_LIBRARY` and `E_LIBRARY_NOT_GRANTED`
+check it once the documents are read together.
 
 Indentation is not the grammar's concern: a token source turns the block
 structure into the synthetic `BEGIN` and `END` tokens the rules read, and folds

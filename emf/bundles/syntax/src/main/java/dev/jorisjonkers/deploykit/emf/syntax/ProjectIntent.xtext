@@ -76,6 +76,7 @@ Process returns Process:
 	& ('assets' ':' BEGIN (DASH BEGIN assets+=Asset END)+ END)?
 	& ('probes' ':' probes=ProbePolicy)?
 	& ('volumes' ':' BEGIN (DASH BEGIN volumes+=Volume END)+ END)?
+	& ('libraries' ':' BEGIN (DASH BEGIN libraries+=LibraryMount END)+ END)?
 	& ('replicas' ':' BEGIN replicas=Capacity END)?
 	& ('api' ':' BEGIN api=ApiAccess END)?
 	& ('secrets' ':' BEGIN (DASH BEGIN secrets+=Grant END)+ END)?
@@ -162,6 +163,13 @@ Volume returns Volume:
 	& ('size' ':' size=Text)
 	& ('durability' ':' durability=DurabilityClass));
 
+// A library the Platform document grants, mounted by its name.
+LibraryMount returns LibraryMount:
+	(('library' ':' library=Text)
+	& ('mountAt' ':' mountAt=Text)
+	& ('subPath' ':' subPath=Text)?
+	& ('access' ':' access=LibraryAccess));
+
 Capacity returns Capacity:
 	(('count' ':' count=Port)
 	& ('reason' ':' reason=Text));
@@ -244,16 +252,16 @@ Keyword:
 	'delete' | 'delivery' | 'dependsOn' | 'disk' | 'durability' | 'encoding' | 'encrypt' | 'engine' | 'env' | 'exact' |
 	'exposure' | 'false' | 'file' | 'fileMode' | 'files' | 'from' | 'generate' | 'get' | 'gpu' | 'group' | 'hdd' | 'hex' |
 	'host' | 'id' | 'image' | 'internal' | 'interrupted' | 'irreplaceable' | 'job' | 'jvm' | 'key' |
-	'keys' | 'kind' | 'kv' | 'lan' | 'lifecycle' | 'list' | 'liveness' | 'match' | 'maxAge' |
+	'keys' | 'kind' | 'kv' | 'lan' | 'libraries' | 'library' | 'lifecycle' | 'list' | 'liveness' | 'match' | 'maxAge' |
 	'media' | 'memory' | 'migration' | 'mountAt' | 'name' | 'node' | 'none' | 'nvme' | 'objects' | 'observability' |
 	'operations' | 'owner' | 'page' | 'patch' | 'path' | 'placement' | 'port' | 'postgres' | 'prefix' | 'prepare' |
 	'probes' | 'process' | 'processes' | 'project' | 'provides' | 'python' | 'rabbitmq' | 'read' |
 	'readiness' | 'reason' | 'reconstructible' | 'recoverable' | 'redirectTo' | 'reload' | 'replicas' |
 	'required' | 'restart' | 'role' | 'rotate' | 'rotation' | 'routes' | 'rules' | 'runtime' |
 	'schemaVersion' | 'scrape' | 'secrets' | 'self' | 'self-renew' | 'self-roll' | 'sidecars' | 'sign' |
-	'site' | 'size' | 'ssd' | 'startupBudget' | 'static' | 'strict' | 'surface' | 'tcp' |
+	'site' | 'size' | 'ssd' | 'startupBudget' | 'static' | 'strict' | 'subPath' | 'surface' | 'tcp' |
 	'tolerates' | 'transit' | 'true' | 'update' | 'urgent' | 'valkey' | 'verbs' | 'verify' | 'volumes' | 'watch' | 'workflow' |
-	'writablePaths';
+	'writablePaths' | 'write';
 
 enum Lifecycle returns Lifecycle:
 	application='application' | job='job' | prepare='prepare';
@@ -299,6 +307,9 @@ enum AccessTier returns AccessTier:
 
 enum ApiVerb returns ApiVerb:
 	get='get' | list='list' | watch='watch' | create='create' | update='update' | patch='patch' | delete='delete';
+
+enum LibraryAccess returns LibraryAccess:
+	read='read' | write='write';
 
 enum TransitOp returns TransitOp:
 	sign='sign' | verify='verify' | encrypt='encrypt' | decrypt='decrypt' | rotate='rotate';

@@ -79,6 +79,7 @@ mapping Process::lower(in app : Application, in prj : Project) : Process {
 	volumes := self.volumes->map copy();
 	replicas := self.replicas.map copy();
 	api := self.api.map copy();
+	libraries := self.libraries->map copy();
 
 	-- Every copy is keyed on its Process: a mapping's result is cached per source
 	-- object, and a containment feature would move one shared copy to the last
@@ -267,6 +268,13 @@ mapping Volume::copy() : Volume {
 	mountAt := self.mountAt;
 	if self.size <> null then size := self.size endif;
 	durability := self.durability;
+}
+
+mapping LibraryMount::copy() : LibraryMount {
+	_library := self._library;
+	mountAt := self.mountAt;
+	if self.subPath <> null then subPath := self.subPath endif;
+	_access := self._access;
 }
 
 mapping ApiAccess::copy() : ApiAccess {

@@ -160,6 +160,31 @@ context Volume
 			and (durability = DurabilityClass::recoverable implies policies.recoverable <> null)
 			and (durability = DurabilityClass::irreplaceable implies policies.irreplaceable <> null))
 
+context LibraryMount
+	-- A library is the platform's to declare: a mount names one the Platform
+	-- document declares. Read with no Platform document, nothing is declared and
+	-- nothing is refused.
+	inv E_UNKNOWN_LIBRARY:
+		Platform.allInstances()->forAll(platform | platform.libraries->includes(library))
+
+	-- And the platform's to grant: to the Process's project, for what it mounts it for.
+	inv E_LIBRARY_NOT_GRANTED:
+		let project : String = oclContainer().oclAsType(Process).projectName in
+		Platform.allInstances()->forAll(platform |
+			platform.libraries->includes(library) implies
+				let grants : Map(String, LibraryAccess) = platform.libraries->at(library).grants in
+				grants->includes(project)
+					and (access = LibraryAccess::write implies grants->at(project) = LibraryAccess::write))
+
+	-- A directory inside the library: relative, with no `.` or `..` segment.
+	inv schema:
+		subPath = null or subPath.matches('(?![.][.]?(/|$))[^/]+(/(?![.][.]?(/|$))[^/]+)*')
+
+context LibraryDeclaration
+	-- An absolute directory with no `.` or `..` segment, never `/`, owned by a group above 0.
+	inv schema:
+		gid > 0 and path.matches('(/(?![.][.]?(/|$))[^/]+)+')
+
 context Grant
 	-- A secret written into the cluster is readable on disk unless the platform
 	-- encrypts secrets at rest.

@@ -1013,8 +1013,7 @@
       "properties": {
         "library": {
           "type": "string",
-          "minLength": 1,
-          "reference": "Library"
+          "minLength": 1
         },
         "mountAt": {
           "type": "string",
