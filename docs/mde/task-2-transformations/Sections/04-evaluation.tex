@@ -9,7 +9,7 @@ The build runs six types of tests on every change:
 
 \begin{itemize}
   \item \textbf{Flattened models.} \texttt{auth}, \texttt{data},
-    \texttt{knowledge-platform} and \texttt{minimal} are compared byte-for-byte
+    \texttt{knowledge-platform}, and \texttt{minimal} are compared byte-for-byte
     with \path{expected/effective.json} beside each specification example.
     These committed fixtures are not regenerated during the tests.
   \item \textbf{Dependency edges.} For each example, the resolved edges are
@@ -80,8 +80,8 @@ test setup. This total includes Task~1 parsing and constraint tests.
 \label{tab:results}
 \end{table}
 
-``Empty'' means the expected dependency lists contain no edges. Only
-\texttt{auth}, \texttt{delivery}, and \texttt{knowledge-platform} compare
+``Empty'' means the expected dependency lists contain no edges. Only the
+\texttt{auth}, \texttt{delivery}, and \texttt{knowledge-\allowbreak platform} examples compare
 non-empty edge sets. Revision fractions are matching digests over the total number of \texttt{Application}s. For \texttt{knowledge-platform}, three of its four \texttt{Application}s lack committed oracle digests, so only one is compared.
 
 Taken together, the examples exercise the derivations in Table~\ref{tab:rules}.
@@ -101,11 +101,11 @@ that other examples look up.
 \label{sec:revisionevidence}
 
 An \texttt{Application}'s canonical JSON includes its \texttt{Process}es (with images, identities, probes, placement, secrets, volumes, backups, environment, dependencies, and network peers), its \texttt{Exposure}s and routes, its \texttt{ReleaseGate}, and its migration. Provenance, file paths,
-typed resource objects and the estate-wide policy job fall outside it.
+typed resource objects, and the estate-wide policy job fall outside it.
 
 The transformation builds that text from its own \texttt{Resolved Deployment}
 (Section~\ref{sec:blackbox}), so one different value, one extra environment
-variable or one different order changes the digest. Ten \texttt{Application}s
+variable, or one different order changes the digest. Ten \texttt{Application}s
 across five examples have a \texttt{Revision} in an expected file, and all
 ten match.
 
@@ -119,7 +119,7 @@ time of the \texttt{ClusterState} snapshot leaves it unchanged.
 \label{sec:treeevidence}
 
 Generated-file comparisons additionally check typed resource serialisation,
-Vault documents and destination paths. Although \texttt{Revision} covers a
+Vault documents, and destination paths. Although \texttt{Revision} covers a
 \texttt{Process}'s network peers, it does not check their serialisation as
 Kubernetes policies. Across five examples and the cluster-wide output, all
 167 committed files are reproduced byte-for-byte, including the final-pass
@@ -176,7 +176,7 @@ instead. The suite does not attempt its resolution, so exclusion supplies
 no evidence that it succeeds or that retirement is unsupported.
 
 During Task~2, checks for secret references, placeholders, and platform
-requirements were added to \path{project-intent.ocl}, before resolution.
+requirements were added to the constraints in \path{project-intent.ocl}, before resolution.
 These errors had previously reached QVTo aborts. Remaining aborts stop at
 the first problem without a source location. Cross-document constraints
 still use \texttt{allInstances()}. Navigation from a single root object
@@ -195,7 +195,7 @@ Provenance uses the EMF representation of inputs, so its digests differ
 from the specification's. Whole-model comparisons pass because the expected
 EMF models record those computed values, not because provenance is omitted.
 Digests used in generated files do match: \texttt{Revision}, configuration-file
-names and the Vault policy job name.
+names, and the Vault policy job name.
 
 Automated tests use the standalone executor. The Eclipse launch
 configuration and \texttt{plugin.xml} registration have only been checked

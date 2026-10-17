@@ -26,7 +26,7 @@ never Ecore features.
 The \texttt{pinnedinputs} package models the additional documents read by
 the resolution (Section~\ref{sec:refinement}).
 
-The node contract (the list of machines and their capacity) is generated from the platform team's machine descriptions. Other programs publish the images lock (each image pinned to a digest) and the cluster-state snapshot. A \texttt{Project} build writes its migration proof (the schema
+The node contract (the list of machines and their capacity) is generated from the platform team's machine descriptions. Other programs publish the images lock (each image pinned to a digest) and the \texttt{ClusterState} snapshot. A \texttt{Project} build writes its migration proof (the schema
 version its migration was tested against).
 
 A stored JSON description of the source metamodel's classes and features is
@@ -48,7 +48,7 @@ which rules read each class.
 \textbf{Class} & \textbf{Read by} \\
 \hline
 \texttt{NodeContract}, \texttt{Node}, \texttt{Allocatable}, \texttt{Gpu}, \texttt{Disk} & \texttt{eligible} compares resource requests with available capacity and checks hardware requirements. CPU quantities such as 53500m denote 53.5 cores. \\
-\texttt{ImagesLock}, \texttt{LockedImage} & \texttt{locked}: every image of a \texttt{Process}, \texttt{Sidecar}, backup method, migration runner and Vault policy job. \\
+\texttt{ImagesLock}, \texttt{LockedImage} & \texttt{locked}: every image of a \texttt{Process}, \texttt{Sidecar}, backup method, migration runner, and Vault policy job. \\
 \texttt{ClusterState}, \texttt{Binding} & \texttt{boundOf}: the machine that already holds a \texttt{Volume}. \\
 \texttt{CurrentPlacement}, \texttt{RollbackBackup} & Retained as snapshot data for delivery operations. These classes do not affect the resolution's output. \\
 \texttt{MigrationProof}, \texttt{ProvenApplication} & \texttt{migrationOf} records the tested schema version. \texttt{gate} also reads whether the release contains non-transactional changes. \\
@@ -71,8 +71,8 @@ requested enumeration's spelling with the corresponding contract string.
 
 Both halves of the target metamodel grew: the values the resolution
 derives for each \texttt{Application}, and the generated-file entries of the
-path plan. Derivation rules read policies from the \texttt{Platform Intent};
-the target metamodel records the resulting values.
+path plan. Derivation rules read policies from the \texttt{Platform Intent}.
+The target metamodel records the resulting values.
 
 The root class is unchanged, but there is now one instance per \texttt{Project}
 instead of one for the whole cluster (Section~\ref{sec:refinement}).
@@ -131,7 +131,7 @@ the route of Flux's events.
 \end{longtable}
 
 \paragraph{Generated Files.} Figure~\ref{fig:targetfiles} shows every
-subclass of \texttt{Deliverable}, the generated-file entry, up from Task~1's nine to 21.
+subclass of \texttt{Deliverable}, the generated-file entry, up from Task~1's 9 to 21.
 
 Workload, Canary, and service account files, which Task~1 tied to one
 \texttt{Process}, now list all of an \texttt{Application}'s \texttt{Process}es,
@@ -147,7 +147,7 @@ is scraped through its \texttt{Service}. Other strategies use a Pod monitor.
 
 The twelve new file kinds are Services, volume claims, configuration maps,
 backups, disruption budgets, migrations, RBAC, the \texttt{VaultConnection}
-used by the secret operator, Vault policies, Vault roles, the Vault policy job and the events route.
+used by the secret operator, Vault policies, Vault roles, the Vault policy job, and the events route.
 
 
 
@@ -201,23 +201,23 @@ the transformation rules, where they would otherwise be hard-coded.
 \label{app:grammars}
 
 The pinned inputs use grammars rather than a Java YAML reader or hand-written
-XMI, so the transformation can read the examples' YAML directly. One quoting
-adjustment was needed, as described below. No input value changed.
+XMI, so the transformation can read the examples' YAML directly. No input
+value changed; one quoting adjustment was needed, as described below.
 
-Four grammars were added beside the Project and Platform grammars:
-NodeContract, ImagesLock, ClusterState, and MigrationProof. Each inherits the
-Project grammar, reusing its terminals, indentation tokens, and scalar rule,
+Four grammars were added beside the \texttt{Project} and \texttt{Platform} grammars:
+\texttt{NodeContract}, \texttt{ImagesLock}, \texttt{ClusterState}, and \texttt{MigrationProof}. Each inherits the
+\texttt{Project} grammar, reusing its terminals, indentation tokens, and scalar rule,
 and adds only the rules for its own document. As with the \texttt{Platform Intent},
 the file name selects the grammar: \path{node-contract.yml},
 \path{images.lock.yml}, \path{cluster-state.yml}, and \path{migration-proof.yml}.
 
-One input file changed: the Project grammar scalar terminal cannot contain a
+In \path{cluster-state.yml}, the \texttt{Project} grammar scalar terminal cannot contain a
 colon, so the snapshot's capture time is now quoted, as digests and URLs already
-were. The value is the same either way.
+were. The parsed string value is identical.
 
 Example~\ref{lst:grammar} shows the smallest grammar.
 
-\begin{lstlisting}[style=report, caption={The Grammar of the Cluster-State Snapshot, Abridged}, label={lst:grammar}]
+\begin{lstlisting}[style=report, caption={The Grammar of the \texttt{ClusterState} Snapshot, Abridged}, label={lst:grammar}]
 grammar dev.jorisjonkers.deploykit.emf.syntax.ClusterState
 	with dev.jorisjonkers.deploykit.emf.syntax.ProjectIntent
 import "https://jorisjonkers.dev/deploy-kit/pinned-inputs/1"

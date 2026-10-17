@@ -7,14 +7,14 @@
 The project converts short deployment documents into Kubernetes files for an
 existing small cluster. Each project repository holds one
 \texttt{Project Intent} document. This document describes its \texttt{Application}s, including their \texttt{Process}es, memory and CPU limits, ports, dependencies, and external routes. One \texttt{Platform Intent} document defines shared
-policies and resources, including cluster entry points, health-check timings
+policies and resources, including cluster entry points, health-check timings,
 and backup policies. Task~1 defined two Ecore metamodels: a source metamodel
 for the authored documents and a target metamodel for the
 \texttt{Resolved Deployment}. The target model records the values derived for
 each \texttt{Application} and the paths of the files to be generated.
 
 Task~2 implements the transformation to \texttt{Resolved Deployment}.
-It combines all authored models with recorded cluster facts, image digests
+It combines all authored models with recorded cluster facts, image digests,
 and other pinned inputs, producing one resolved model per \texttt{Project}.
 For example, an image name becomes a repository address pinned to a digest,
 and a dependency declaration becomes a host-and-port combination. Task~3 then
@@ -31,7 +31,7 @@ generates files from these resolved values.
 \texttt{Pinned input set} & The read-only inputs besides authored documents: node contract (machines and capacity), images lock (image digests), \texttt{ClusterState} snapshot, migration proofs, and configuration-file contents. \\
 \texttt{Asset} & A configuration file mounted into a \texttt{Process}. \\
 \texttt{Exposure} & An external address and routes to an \texttt{Application}'s ports. \\
-\texttt{Switchover} & How a new version replaces the old: blue/green (both versions run simultaneously; traffic switches to the new once it is healthy), rolling (gradual replacement), or stop-start (old stops before new starts). \\
+\texttt{Switchover} & How a new version replaces the old: blue/green (both versions run simultaneously, and traffic switches to the new once it is healthy), rolling (gradual replacement), or stop-start (old stops before new starts). \\
 \texttt{ReleaseGate} & The resolved configuration for the service that blocks a blue/green switch until the \texttt{Application}'s \texttt{Process}es are healthy, preventing traffic from reaching an unhealthy version. \\
 \texttt{ReconcileUnit} & A group of resources that Flux (the GitOps operator) reconciles together as a unit, with dependencies on other such groups. \\
 \texttt{Entry point} & A platform listener (class \texttt{Tier} in the source metamodel) that admits specified audiences and forwards routes through a proxy. \\
@@ -44,16 +44,16 @@ generates files from these resolved values.
 \label{tab:terms}
 \end{table}
 
-\paragraph{Constraints.} Task~2 requires ATL or QVT-Operational. The
-transformation must give the same result for the same pinned inputs,
-without reading live cluster state. It must reproduce the oracle files supplied with the
-specification's examples, including expected resolved values, dependency edges, generated files, byte-exact JSON, and release digests. If a value cannot be derived, the run must abort with an
-error message. A missing or fabricated value could otherwise produce a
-valid-looking file that deploys the wrong configuration.
-
-The resolved model must also contain every value needed by the Task~3
-templates, including paths, ports, and names. Otherwise, tests of that model
-could pass while a template made an unchecked deployment decision.
+\paragraph{Design Approach.} The transformation is deterministic: the same
+pinned inputs always produce the same resolved model, with no reads of live
+cluster state. Every value the Task~3 templates need is recorded in the
+resolved model itself, so template tests cannot pass while a template makes an
+unchecked deployment decision. Where a value cannot be derived, the run aborts
+with an error message rather than fabricating a default: a missing or
+fabricated value could otherwise produce a valid-looking file that deploys
+the wrong configuration. Conformance to the specification's oracle files is
+verified by byte-exact comparison of resolved values, dependency edges,
+generated files, JSON, and release digests (Section~\ref{sec:evaluation}).
 
 \subsection{Role of the Transformations}
 \label{sec:role}
@@ -91,7 +91,7 @@ comparison against the oracle. The Acceleo templates of Task~3 then read the
 \label{sec:refinement}
 
 Task~0 treated the node contract (the list of machines and their capacity),
-the images lock (each image pinned to a digest) and the \texttt{ClusterState} snapshot
+the images lock (each image pinned to a digest), and the \texttt{ClusterState} snapshot
 as plain inputs, while Task~1 only
 modelled the two authored documents. The resolution needs these as models, so
 a third metamodel now describes the \texttt{Pinned input set}, with its own
@@ -131,7 +131,7 @@ The transformation assumes four conditions.
   \item \textbf{One cluster per run.} Each execution of the pipeline reads
     all documents for one cluster, including one \texttt{Platform Intent}
     and one node contract that name the same cluster. All concepts,
-    examples and oracles derive from that single existing cluster.
+    examples, and oracles derive from that single existing cluster.
   \item \textbf{One reading of the specification.} If several providers
     satisfy a dependency, the transformation uses the deterministic name
     order recorded in the oracles. The comparisons check this interpretation, but
