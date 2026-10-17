@@ -135,6 +135,8 @@ const policyJobDigestOf = (
   gid: job.gid,
   memory: job.memory,
   cpu: job.cpu,
+  deadline: job.deadline,
+  eligibleNodes: job.eligibleNodes,
 });
 
 /** Where every Vault document lands: what the Vault policy job is handed. */

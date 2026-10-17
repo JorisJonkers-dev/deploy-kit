@@ -561,6 +561,24 @@ describe("the pinned inputs a render cannot trust", () => {
     ]);
   });
 
+  it("refuses a Vault policy job no node can hold", () => {
+    expect(
+      refusals({
+        "platform/platform.intent.yml": (document) =>
+          document.replace(
+            /(\npolicyJob:\n(?: {2}.*\n)*? {2}memory: )64Mi/,
+            (_, head: string) => `${head}64Gi`,
+          ),
+      }),
+    ).toStrictEqual([
+      {
+        code: "E_PLACEMENT_UNSATISFIABLE",
+        document: "platform/platform.intent.yml",
+        path: "/policyJob",
+      },
+    ]);
+  });
+
   it("names every pinned input the set is missing, and a Platform document before them", () => {
     const withoutPinned = files().filter(
       ({ name }) =>
@@ -650,6 +668,24 @@ describe("what a refusal before resolution says", () => {
       {
         message: "no node in the node contract can hold notes-api",
         hint: "Relax a placement dimension, or lower what the Process asks for.",
+      },
+    ]);
+  });
+
+  it("names the Vault policy job no node without an sdcard medium can hold", () => {
+    expect(
+      full({
+        "platform/platform.intent.yml": (document) =>
+          document.replace(
+            /(\npolicyJob:\n(?: {2}.*\n)*? {2}memory: )64Mi/,
+            (_, head: string) => `${head}64Gi`,
+          ),
+      }).map(({ message, hint }) => ({ message, hint })),
+    ).toStrictEqual([
+      {
+        message:
+          "no node in the node contract without an sdcard medium can hold the Vault policy job",
+        hint: "Lower what the job asks for, or give the contract a node that boots from no SD card.",
       },
     ]);
   });

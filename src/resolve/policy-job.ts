@@ -6,6 +6,7 @@ import type { PinnedSet } from "../model/resolution.ts";
 import type { LockedImage } from "../model/images-lock.ts";
 import type { ResolvedPolicyJob } from "../model/resolved-deployment.ts";
 import { inSeconds, seconds } from "../model/durations.ts";
+import { estateJobNodes } from "../model/eligibility.ts";
 import { secretStoreEndpoint } from "../model/runtime-profiles.ts";
 import { DNS_PORT, storeOf } from "./policy.ts";
 
@@ -33,6 +34,8 @@ export function resolvePolicyJob(
     memory: declared.memory,
     cpu: declared.cpu,
     deadline: inSeconds(seconds(declared.deadline)),
+    // E_PLACEMENT_UNSATISFIABLE refused a contract with no such node.
+    eligibleNodes: estateJobNodes(declared, set.nodeContract),
     egress: [
       store,
       {

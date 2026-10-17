@@ -3,7 +3,7 @@
 // the one the Platform document pins, every image alias is locked, and every
 // Process has somewhere to land. After these, resolution is total.
 import type { Diagnostic } from "../model/diagnostic.ts";
-import { eligibleNodes } from "../model/eligibility.ts";
+import { eligibleNodes, estateJobNodes } from "../model/eligibility.ts";
 import type { EffectiveProject } from "../model/effective-intent.ts";
 import { migrationImage } from "../model/migration-proof.ts";
 import type { PinnedSet } from "../model/resolution.ts";
@@ -90,20 +90,38 @@ const methodRefusals = (set: PinnedSet, platform: string): Diagnostic[] =>
     }),
   );
 
-/** The Vault policy job's image, where the platform names one, is an image the lock holds. */
+/**
+ * The Vault policy job, where the platform names one, runs an image the lock
+ * holds, on some node the contract offers it.
+ */
 const policyJobRefusals = (set: PinnedSet, platform: string): Diagnostic[] => {
-  const image = set.platform.policyJob?.image;
-  return image === undefined || Object.hasOwn(set.imagesLock.images, image)
-    ? []
-    : [
-        {
-          code: "E_UNLOCKED_IMAGE",
-          document: platform,
-          path: "/policyJob/image",
-          message: `the images lock holds no entry for ${image}`,
-          hint: "Lock the alias, or name one the images lock holds.",
-        },
-      ];
+  const job = set.platform.policyJob;
+  if (job === undefined) return [];
+  return [
+    ...(Object.hasOwn(set.imagesLock.images, job.image)
+      ? []
+      : [
+          {
+            code: "E_UNLOCKED_IMAGE" as const,
+            document: platform,
+            path: "/policyJob/image",
+            message: `the images lock holds no entry for ${job.image}`,
+            hint: "Lock the alias, or name one the images lock holds.",
+          },
+        ]),
+    ...(estateJobNodes(job, set.nodeContract).length === 0
+      ? [
+          {
+            code: "E_PLACEMENT_UNSATISFIABLE" as const,
+            document: platform,
+            path: "/policyJob",
+            message:
+              "no node in the node contract without an sdcard medium can hold the Vault policy job",
+            hint: "Lower what the job asks for, or give the contract a node that boots from no SD card.",
+          },
+        ]
+      : []),
+  ];
 };
 
 /** Every Application that moves its schema with a changelog has its migration image locked. */

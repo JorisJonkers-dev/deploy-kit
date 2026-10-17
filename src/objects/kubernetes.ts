@@ -124,6 +124,8 @@ export interface PodSpec {
   readonly serviceAccountName: string;
   readonly automountServiceAccountToken: boolean;
   readonly restartPolicy?: "OnFailure" | "Never";
+  /** How long one attempt may run, where a Job retries rather than fails. */
+  readonly activeDeadlineSeconds?: number;
   readonly securityContext: {
     readonly runAsNonRoot: true;
     readonly runAsUser: number;
@@ -213,7 +215,7 @@ export interface CronJob {
     readonly jobTemplate: {
       readonly metadata?: { readonly labels: Labels };
       readonly spec: {
-        readonly activeDeadlineSeconds?: number;
+        readonly backoffLimit?: number;
         readonly template: {
           readonly metadata: { readonly labels: Labels };
           readonly spec: PodSpec;
@@ -231,9 +233,13 @@ export interface Job {
   readonly spec: {
     /** Set on a Job the Release Gate starts, which alone writes it afterwards. */
     readonly suspend?: true;
-    /** Zero on a Job that is never retried: its failure is an answer. */
-    readonly backoffLimit?: 0;
-    readonly activeDeadlineSeconds: number;
+    /**
+     * Zero on a Job that is never retried, whose failure is an answer; the
+     * most the API holds on one that retries until it succeeds.
+     */
+    readonly backoffLimit?: number;
+    /** The whole run's deadline, on a Job whose pod carries none. */
+    readonly activeDeadlineSeconds?: number;
     readonly template: {
       readonly metadata: { readonly labels: Labels };
       readonly spec: PodSpec;

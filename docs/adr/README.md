@@ -100,6 +100,7 @@ and linted by the same script with `emf` as its root.
 | [0031](model/0031-identity-per-process.md) | Each Process holds its own identity, and its ServiceAccount token is mounted only where the pod itself authenticates | settled |
 | [0101](model/0101-a-generated-key-is-written-by-the-vault-policy-job.md) | A generated key is declared on its grant and written by the Vault policy job, once, under its own Project's prefix | open |
 | [0102](model/0102-the-database-catalog-is-applied-by-its-engines-method.md) | The database catalog is applied in the cluster by its engine's method, which adopts a database that exists and writes the Secret Store's database roles | open |
+| [0103](model/0103-a-derived-estate-job-retries-and-avoids-the-sd-cards.md) | A derived estate Job bounds each attempt, retries until one succeeds, and runs on no node that boots from an SD card | open |
 
 ## Layer 2: derivation and assignment
 

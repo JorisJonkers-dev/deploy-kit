@@ -1882,6 +1882,14 @@
           "type": "string",
           "pattern": "^\\d+(ms|s|m|h)$"
         },
+        "eligibleNodes": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
         "egress": {
           "type": "array",
           "items": {
@@ -1900,6 +1908,7 @@
         "memory",
         "cpu",
         "deadline",
+        "eligibleNodes",
         "egress"
       ],
       "additionalProperties": false
@@ -1949,6 +1958,14 @@
           "type": "string",
           "pattern": "^\\d+(ms|s|m|h)$"
         },
+        "eligibleNodes": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
         "catalog": {
           "$ref": "#/$defs/ResolvedCatalog"
         },
@@ -1970,6 +1987,7 @@
         "memory",
         "cpu",
         "deadline",
+        "eligibleNodes",
         "catalog",
         "egress"
       ],

@@ -727,7 +727,10 @@ const resolvedPolicyJob = z
     address: text,
     memory: text,
     cpu: text,
+    // How long one attempt may run; the Job retries until one succeeds.
     deadline: duration,
+    // Every node it may land on, by name: none that holds an `sdcard` medium.
+    eligibleNodes: z.array(text).min(1),
     egress: z.array(egressPeer),
   })
   .meta({ id: "ResolvedPolicyJob" });
@@ -750,6 +753,8 @@ const resolvedCatalogJob = z
     memory: text,
     cpu: text,
     deadline: duration,
+    // The policy job's own: the method runs where it may.
+    eligibleNodes: z.array(text).min(1),
     catalog: z
       .strictObject({
         host: text,

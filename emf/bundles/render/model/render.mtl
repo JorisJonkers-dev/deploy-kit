@@ -1178,12 +1178,26 @@
     serviceAccountName: [d.job.identity/]
     automountServiceAccountToken: true
     restartPolicy: OnFailure
+  [comment One attempt's deadline: a start too slow or a run that hangs fails the pod, and the
+    Job starts another. /]
+    activeDeadlineSeconds: [d.job.deadline.seconds()/]
     securityContext:
       runAsNonRoot: true
       runAsUser: [d.job.uid/]
       runAsGroup: [d.job.gid/]
       seccompProfile:
         type: RuntimeDefault
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values:
+  [for (n : String | d.job.eligibleNodes)]
+                      - [n/]
+  [/for]
     containers:
       - name: [d.job.identity/]
         image: [d.job.image/]
@@ -1255,7 +1269,7 @@
       labels:
         [d.job.identity.labelSet('none', d.job.identity)/]
     spec:
-      activeDeadlineSeconds: [d.job.deadline.seconds()/]
+      backoffLimit: 2147483647
       template:
         [d.pod()/]
   [elseif (d.part = 'cronjob')]
@@ -1275,7 +1289,7 @@
           labels:
             [d.job.identity.labelSet('none', d.job.identity)/]
         spec:
-          activeDeadlineSeconds: [d.job.deadline.seconds()/]
+          backoffLimit: 2147483647
           template:
             [d.pod()/]
   [else]
@@ -1320,12 +1334,26 @@
     serviceAccountName: [d.job.identity/]
     automountServiceAccountToken: true
     restartPolicy: OnFailure
+  [comment One attempt's deadline: a start too slow or a run that hangs fails the pod, and the
+    Job starts another. /]
+    activeDeadlineSeconds: [d.job.deadline.seconds()/]
     securityContext:
       runAsNonRoot: true
       runAsUser: [d.job.uid/]
       runAsGroup: [d.job.gid/]
       seccompProfile:
         type: RuntimeDefault
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values:
+  [for (n : String | d.job.eligibleNodes)]
+                      - [n/]
+  [/for]
     containers:
       - name: [d.job.identity/]
         image: [d.job.image/]
@@ -1391,7 +1419,7 @@
       labels:
         [d.job.identity.labelSet('none', d.job.identity)/]
     spec:
-      activeDeadlineSeconds: [d.job.deadline.seconds()/]
+      backoffLimit: 2147483647
       template:
         [d.catalogPod()/]
     ---
@@ -1410,7 +1438,7 @@
           labels:
             [d.job.identity.labelSet('none', d.job.identity)/]
         spec:
-          activeDeadlineSeconds: [d.job.deadline.seconds()/]
+          backoffLimit: 2147483647
           template:
             [d.catalogPod()/]
   [else]

@@ -15,6 +15,7 @@ import type {
 import { wholeSeconds } from "../shared/durations.ts";
 import { labelsOf } from "../shared/labels.ts";
 import { SECRETS_DIRECTORY } from "../shared/paths.ts";
+import { nodeAffinityOf, UNTIL_SUCCEEDED } from "../shared/placement.ts";
 import { ADAPTER } from "./render.ts";
 
 /** The estate-wide directory the job's own objects land in, beside the documents. */
@@ -84,12 +85,16 @@ export function renderPolicyJob(
       // The job logs in to the Secret Store with its own token.
       automountServiceAccountToken: true,
       restartPolicy: "OnFailure",
+      // One attempt's deadline: a start too slow or a run that hangs fails the
+      // pod, and the Job starts another.
+      activeDeadlineSeconds: wholeSeconds(job.deadline),
       securityContext: {
         runAsNonRoot: true,
         runAsUser: job.uid,
         runAsGroup: job.gid,
         seccompProfile: { type: "RuntimeDefault" },
       },
+      affinity: nodeAffinityOf(job.eligibleNodes),
       containers: [
         {
           name: job.identity,
@@ -128,7 +133,9 @@ export function renderPolicyJob(
     apiVersion: "batch/v1",
     kind: "Job",
     metadata: { name, namespace: job.namespace, labels },
-    spec: { activeDeadlineSeconds: wholeSeconds(job.deadline), template: pod },
+    // Every Reconcile Unit that holds a grant waits on this run, so it retries
+    // until it succeeds rather than failing for good on one slow start.
+    spec: { backoffLimit: UNTIL_SUCCEEDED, template: pod },
   };
   // The same run every hour, so a Vault restored without a generated key gets it back.
   const hourly: CronJob = {
@@ -140,10 +147,7 @@ export function renderPolicyJob(
       concurrencyPolicy: "Forbid",
       jobTemplate: {
         metadata: { labels },
-        spec: {
-          activeDeadlineSeconds: wholeSeconds(job.deadline),
-          template: pod,
-        },
+        spec: { backoffLimit: UNTIL_SUCCEEDED, template: pod },
       },
     },
   };

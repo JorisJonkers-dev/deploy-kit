@@ -58,3 +58,23 @@ export const eligibleNodes = (
   contract.nodes
     .filter((node) => eligible(process, node))
     .map(({ name }) => name);
+
+/**
+ * The nodes a derived estate Job may land on
+ * (spec/v1/14-platform-intent.md#the-vault-policy-job): every node that fits
+ * what its one container asks for and holds no `sdcard` medium. Every Reconcile
+ * Unit that holds a grant waits on the Job, so it never waits on the slowest
+ * disk the estate has.
+ */
+export const estateJobNodes = (
+  request: { readonly memory: string; readonly cpu: string },
+  contract: NodeContractDocument,
+): string[] =>
+  contract.nodes
+    .filter(
+      (node) =>
+        mebibytes(node.allocatable.memory) >= mebibytes(request.memory) &&
+        millicores(node.allocatable.cpu) >= millicores(request.cpu) &&
+        node.disks?.some(({ media }) => media === "sdcard") !== true,
+    )
+    .map(({ name }) => name);

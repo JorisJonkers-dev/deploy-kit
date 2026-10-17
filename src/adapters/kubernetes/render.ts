@@ -50,6 +50,7 @@ import {
   managedOnly,
 } from "../shared/labels.ts";
 import { applicationDirectory, projectDirectory } from "../shared/paths.ts";
+import { nodeAffinityOf } from "../shared/placement.ts";
 import { notSupported } from "../../model/internal-failure.ts";
 import { clusterNameOf } from "../../model/runtime-profiles.ts";
 
@@ -353,26 +354,12 @@ function containerOf(process: ResolvedProcess): Container {
  * eligible for it, each by name. Layer 2 resolved the set from the pinned node
  * contract, so the render names it whole, even where it is every node.
  */
-const affinityOf = ({ placement }: ResolvedProcess): NodeAffinity => ({
-  nodeAffinity: {
-    requiredDuringSchedulingIgnoredDuringExecution: {
-      nodeSelectorTerms: [
-        {
-          matchExpressions: [
-            {
-              key: "kubernetes.io/hostname",
-              operator: "In",
-              values:
-                placement.boundTo === undefined
-                  ? placement.eligibleNodes
-                  : [placement.boundTo],
-            },
-          ],
-        },
-      ],
-    },
-  },
-});
+const affinityOf = ({ placement }: ResolvedProcess): NodeAffinity =>
+  nodeAffinityOf(
+    placement.boundTo === undefined
+      ? placement.eligibleNodes
+      : [placement.boundTo],
+  );
 
 function deploymentOf(
   process: ResolvedProcess,

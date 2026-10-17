@@ -323,7 +323,9 @@ describe("renderIntentSet", () => {
 
       expect(Object.keys(named).sort()).toStrictEqual([
         "cpu",
+        "deadline",
         "documents",
+        "eligibleNodes",
         "gid",
         "image",
         "memory",

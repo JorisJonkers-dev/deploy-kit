@@ -35,6 +35,8 @@ class EstateTest {
         job.setImage(image);
         job.setMemory("64Mi");
         job.setCpu("10m");
+        job.setDeadline("120s");
+        job.getEligibleNodes().add("frankfurt-contabo-1");
         return job;
     }
 
