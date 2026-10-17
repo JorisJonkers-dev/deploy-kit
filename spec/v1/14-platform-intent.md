@@ -49,7 +49,8 @@ the platform does not offer is a field it does not write. Eight fields refer
 into another document: a tier's `traefik`, each name in `delivery.machinery`,
 `delivery.gate`, each name in `apiAccess.holders`, `telemetry.collector`,
 `telemetry.metrics` and `secretStore` name an Application declared in a project
-file the platform owns, and the `handover` ledger names projects.
+file the platform owns, and the `handover` ledger and each library's `grants`
+name projects.
 
 A Platform document is checked on its own and together with the project files
 read beside it. On its own, a tier that carries `authenticated` needs its
@@ -65,6 +66,8 @@ other resolves and every policy one asks for the other offers:
 | a Process's `engine` has no entry in `engines` | `E_NO_ENGINE_POLICY` |
 | a Process's `engine` names a `surface` in `engines` that the Process does not provide | `E_BACKUP_SURFACE_NOT_PROVIDED` |
 | a volume's Durability Class has no entry in `durability` | `E_NO_DURABILITY_POLICY` |
+| a Process mounts a library `libraries` does not declare | `E_UNKNOWN_LIBRARY` |
+| a Process mounts a library that grants its project nothing, or mounts it `write` where the grant is `read` | `E_LIBRARY_NOT_GRANTED` |
 | a grant delivered as `env` or `file` where `secretsEncryption` is false | `E_SECRETS_AT_REST_REQUIRED` |
 | a name in `delivery.machinery` names an Application no project file read beside it declares | `E_UNKNOWN_MACHINERY` |
 | a name in `apiAccess.holders` names an Application no project file read beside it declares | `E_UNKNOWN_API_HOLDER` |
@@ -326,6 +329,38 @@ destination written only as a name is one no backup pod could be let through to
 It is stated here, beside the destination it locates, because the platform chose
 that destination and nobody else knows where it is. At least one range is
 required: an off-cluster copy with nowhere to go is not one.
+
+## Libraries
+
+A **Library** is a directory on one node that several projects share: the media
+library the downloader writes, the importers file and the player reads
+([0104](../../docs/adr/model/0104-a-library-is-a-host-directory-the-platform-grants.md)).
+Which node holds it, where, which group owns it and who may use it are the
+platform's, so the Platform document declares each one, keyed by its name:
+
+```yaml
+libraries:
+  media:
+    node: enschede-t1000-1
+    path: /srv/media
+    gid: 3001
+    grants:
+      immich: write
+      jellyfin: read
+```
+
+| field | required | notes |
+|---|---|---|
+| `node` | yes | The node that holds the directory, by its name in the pinned node contract. |
+| `path` | yes | The directory on that node: absolute, with no `.` or `..` segment, and never `/`. |
+| `gid` | yes | The group that owns the directory, a number above 0. Every Process that mounts the library runs with it as a supplemental group. |
+| `grants` | yes | The projects that may mount it, each `read` or `write`. At least one. |
+
+A Process mounts a library by name
+([chapter 10](10-project-intent.md#libraries)). Placing it on the library's node,
+the volume objects and the group are derived from this declaration and the
+mount. A library has no Durability Class: what it holds is no render's, and
+backing it up is the platform's, outside the render.
 
 ## Engines
 

@@ -1121,6 +1121,55 @@ three demands on the separately-defined delivery work. `irreplaceable` adds a
 precondition on standing up the cluster at all: the restore rehearsal in
 chapter 60.
 
+### Libraries
+
+```yaml
+libraries:
+  - library: media
+    mountAt: /photos
+    subPath: Photos
+    access: write
+```
+
+A Process mounts a **Library**, a directory the Platform document declares on one
+node and grants to projects
+([chapter 14](14-platform-intent.md#libraries),
+[0104](../../docs/adr/model/0104-a-library-is-a-host-directory-the-platform-grants.md)),
+by naming it. `libraries` is a Process field, not Shared Intent, for the reason
+`volumes` is one: a mount is a fact about the program that reads it.
+
+| field | required | notes |
+|---|---|---|
+| `library` | yes | The library's name in the Platform document. |
+| `mountAt` | yes | Where the Process sees it. |
+| `subPath` | no | A directory inside the library to mount instead of all of it: relative, with no `.` or `..` segment. |
+| `access` | yes | `read` or `write`. |
+
+A library is not a volume. It has no `size`, no Durability Class and no claim
+the Process names, because the directory and what it holds are the platform's.
+Three things derive from the mount:
+
+- **Placement.** The Process is eligible only on the library's node, beside every
+  other term it declares ([Placement](#placement)). A Process that mounts two
+  libraries on two nodes, or a library on a node its other terms exclude, is
+  `E_PLACEMENT_UNSATISFIABLE`. A claim already bound to another node is
+  `E_DISK_BINDING_CONFLICT`.
+- **The volume.** Each project that mounts a library gets one local volume onto
+  its directory and the claim bound to it, shared by every Process of that
+  project that mounts it ([chapter 30](30-deliverables.md#how-each-adapter-spells-the-projection)).
+  A `read` mount is read-only in the container.
+- **The group.** The Process runs with the library's `gid` as a supplemental
+  group, and with no `fsGroup` at all, its claims included
+  ([The UID is a pinned input, and the volume needs a group](#the-uid-is-a-pinned-input-and-the-volume-needs-a-group)).
+
+A library the Platform document does not declare is `E_UNKNOWN_LIBRARY`. One that
+grants the Process's project nothing, or grants `read` where the Process mounts
+`write`, is `E_LIBRARY_NOT_GRANTED`. Both are refused at the mount, and checked
+when the project file is read together with the Platform document.
+
+A library constrains no `cutover`: every pod mounting it runs on one node, where
+the volume is shared, so a `continuous` Process may mount one.
+
 ## Pod hardening
 
 One required-by-default field per Process, added before the first production
@@ -1263,6 +1312,13 @@ derives `fsGroup` from the resolved `gid`, with
 volume on every start. No authored field, and no root-capable init container,
 which every stateful Process would then need, to solve a problem `fsGroup`
 solves.
+
+**A library takes the group away.** The kubelet applies a pod's `fsGroup` to every
+volume the pod mounts, a library's local volume included, and re-owns the whole
+tree when its root's group differs. So a Process that mounts a
+[library](#libraries) derives no `fsGroup`, for its claims either, and gets the
+library's `gid` in `supplementalGroups` instead. A claim that needs its own
+ownership belongs to a Process that mounts no library.
 
 Enforcement from the platform side was rejected rather than overlooked. Pod
 Security Admission can reject but never fill in, so a non-conforming pod fails at

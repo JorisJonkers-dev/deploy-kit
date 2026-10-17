@@ -201,6 +201,11 @@ content-hashed and a change restarts the Process, unconditionally
 backup objects that make the class mean something
 ([0018](docs/adr/model/0018-durability-class-derives-a-backup.md)).
 
+**Library**: a directory on one node that the Platform document declares and
+grants to projects, `read` or `write`, and that a Process mounts by name. It is
+not a volume: it has no size, no Durability Class and no claim of the Process's
+own ([0104](docs/adr/model/0104-a-library-is-a-host-directory-the-platform-grants.md)).
+
 **Migration Proof**: what an Application's own CI proved about the changelog
 it ships, written beside the project file and covered by the fragment's digest:
 the serving revision the compatibility suite ran against, absent on a first
