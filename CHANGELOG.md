@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.19.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.18.0...v0.19.0) (2026-10-17)
+
+
+### Features
+
+* a library is a directory on one node that the Platform grants to projects ([#475](https://github.com/JorisJonkers-dev/deploy-kit/issues/475)) ([4bb6c72](https://github.com/JorisJonkers-dev/deploy-kit/commit/4bb6c728c294ce92db047f34920fe8e7e5c2b784))
+
+
+### Bug Fixes
+
+* retry a derived estate Job until it succeeds, and keep it off the SD-card nodes ([#473](https://github.com/JorisJonkers-dev/deploy-kit/issues/473)) ([96067e3](https://github.com/JorisJonkers-dev/deploy-kit/commit/96067e3ea395886c1c335ba5acdd889cfc8fe87f))
+
 ## [0.18.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.17.0...v0.18.0) (2026-10-16)
 
 
