@@ -106,6 +106,44 @@
           "value": "delivery-system"
         }
       ]
+    },
+    {
+      "name": "a library with no group",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/libraries/media/gid"
+        }
+      ]
+    },
+    {
+      "name": "a library granted for something other than reading or writing",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/libraries/media/grants/notes",
+          "value": "own"
+        }
+      ]
+    },
+    {
+      "name": "a library that grants no project",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/libraries/media/grants",
+          "value": {}
+        }
+      ]
     }
   ]
 }

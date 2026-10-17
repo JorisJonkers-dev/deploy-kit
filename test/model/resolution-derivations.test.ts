@@ -1754,7 +1754,7 @@ describe("eligibility at its edges", () => {
     }) as unknown as Parameters<typeof eligibleNodes>[0];
 
   it("admits a Process that fits allocatable exactly, and not twice over when it runs two copies", () => {
-    expect(eligibleNodes(process({}), contract)).toStrictEqual([
+    expect(eligibleNodes(process({}), contract, {})).toStrictEqual([
       "bare",
       "two-cards",
     ]);
@@ -1762,26 +1762,32 @@ describe("eligibility at its edges", () => {
       eligibleNodes(
         process({ memory: "64Mi", cpu: "100m" }, "continuous"),
         contract,
+        {},
       ),
     ).toStrictEqual([]);
     expect(
       eligibleNodes(
         process({ memory: "64Mi", cpu: "50m" }, "continuous"),
         contract,
+        {},
       ),
     ).toStrictEqual(["bare", "two-cards"]);
   });
 
   it("refuses a node that publishes no capability, card or disk to a Process that asks for one", () => {
     expect(
-      eligibleNodes(process({ capabilities: ["x"] }), contract),
+      eligibleNodes(process({ capabilities: ["x"] }), contract, {}),
     ).toStrictEqual([]);
     expect(
-      eligibleNodes(process({ gpu: { class: "x", memory: "1Gi" } }), contract),
+      eligibleNodes(
+        process({ gpu: { class: "x", memory: "1Gi" } }),
+        contract,
+        {},
+      ),
       // Only one of two-cards' cards is large enough, and one is.
     ).toStrictEqual(["two-cards"]);
     expect(
-      eligibleNodes(process({ disk: { media: ["ssd"] } }), contract),
+      eligibleNodes(process({ disk: { media: ["ssd"] } }), contract, {}),
     ).toStrictEqual([]);
   });
 
@@ -1810,6 +1816,42 @@ describe("eligibility at its edges", () => {
         },
       ),
     ).toStrictEqual(["bare", "ssd"]);
+  });
+
+  it("holds a Process that mounts a library to the library's node, beside its other terms", () => {
+    const mounting = (libraries: readonly string[], placement = {}) =>
+      ({
+        ...process(placement),
+        libraries: libraries.map((library) => ({
+          library,
+          mountAt: `/${library}`,
+          access: "read",
+        })),
+      }) as Parameters<typeof eligibleNodes>[0];
+    const platform = {
+      libraries: {
+        media: { node: "two-cards", path: "/srv/media", gid: 3001, grants: {} },
+        books: { node: "bare", path: "/srv/books", gid: 3002, grants: {} },
+      },
+    };
+
+    expect(
+      eligibleNodes(mounting(["media"]), contract, platform),
+    ).toStrictEqual(["two-cards"]);
+    expect(
+      eligibleNodes(mounting(["media", "books"]), contract, platform),
+    ).toStrictEqual([]);
+    expect(
+      eligibleNodes(
+        mounting(["media"], { disk: { media: ["ssd"] } }),
+        contract,
+        platform,
+      ),
+    ).toStrictEqual([]);
+    expect(
+      eligibleNodes(mounting(["toString"]), contract, platform),
+    ).toStrictEqual([]);
+    expect(eligibleNodes(mounting(["media"]), contract, {})).toStrictEqual([]);
   });
 });
 

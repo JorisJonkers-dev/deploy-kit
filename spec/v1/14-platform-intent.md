@@ -1028,6 +1028,12 @@ classDiagram
         +string address
         +map surfaces
     }
+    class Library {
+        +NodeName node
+        +Path path
+        +int gid
+        +map grants
+    }
 
     Platform "1" *-- "1" PlatformMetadata : metadata
     Platform "1" *-- "1" Substrate : substrate
@@ -1047,6 +1053,7 @@ classDiagram
     Platform "1" *-- "0..1" HandoverLedger : handover
     HandoverLedger "1" *-- "0..*" ServingLocation : serving
     Platform "1" *-- "0..*" Provider : providers
+    Platform "1" *-- "0..*" Library : libraries
     Bootstrap "1" *-- "1" FluxSource : flux
     FluxSource "1" *-- "1" RenderedArtifacts : artifacts
     RenderedArtifacts "1" *-- "1" ArtifactSigner : signer

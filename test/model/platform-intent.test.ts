@@ -81,6 +81,22 @@ describe("parsePlatformIntent", () => {
     expect(ungated.ok && "delivery" in ungated.value.document).toBe(false);
   });
 
+  it("refuses a library at the root, outside an absolute path, or climbing out of one, and one that grants no project", () => {
+    for (const path of ["/", "srv/media", "/srv/../etc", "/srv/./media"])
+      expect(
+        refusalsOf(WORKED.replace("path: /srv/media", `path: "${path}"`)),
+        path,
+      ).toStrictEqual([{ code: "schema", path: "/libraries/media/path" }]);
+    expect(
+      refusalsOf(
+        WORKED.replace(/\n {4}grants:\n( {6}.*\n)+/, "\n    grants: {}\n"),
+      ),
+    ).toStrictEqual([{ code: "schema", path: "/libraries/media/grants" }]);
+    expect(refusalsOf(WORKED.replace("gid: 3001", "gid: 0"))).toStrictEqual([
+      { code: "schema", path: "/libraries/media/gid" },
+    ]);
+  });
+
   it("refuses a value outside a closed vocabulary at its JSON Pointer", () => {
     expect(
       refusalsOf(WORKED.replace("listener: plain", "listener: quic")),

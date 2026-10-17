@@ -579,6 +579,24 @@ describe("the pinned inputs a render cannot trust", () => {
     ]);
   });
 
+  it("refuses a Process whose other terms exclude the node its library is on", () => {
+    expect(
+      refusals({
+        "minimal/notes.project.yml": (document) =>
+          document.replace(
+            "memory: 256Mi",
+            "memory: 256Mi\n          site: frankfurt",
+          ),
+      }),
+    ).toStrictEqual([
+      {
+        code: "E_PLACEMENT_UNSATISFIABLE",
+        document: "minimal/notes.project.yml",
+        path: "/applications/0/processes/0/placement",
+      },
+    ]);
+  });
+
   it("names every pinned input the set is missing, and a Platform document before them", () => {
     const withoutPinned = files().filter(
       ({ name }) =>

@@ -15,7 +15,11 @@ import {
   reporterEndpoint,
   secretStoreAddress,
 } from "../model/runtime-profiles.ts";
-import type { ProjectIntentDocument } from "../model/project-intent.ts";
+import { libraryOf } from "../model/libraries.ts";
+import type {
+  LibraryMount,
+  ProjectIntentDocument,
+} from "../model/project-intent.ts";
 import {
   effectiveCutover,
   ownsDatabases,
@@ -46,6 +50,50 @@ function grantRefusals(
             hint: "Deliver the secret through the application itself, or enable `secretsEncryption` on the platform.",
           },
         ],
+  );
+}
+
+/**
+ * A library is the platform's to declare and to grant
+ * (spec/v1/14-platform-intent.md#libraries): a mount names one the Platform
+ * document declares, granted to the Process's project for what it mounts it for.
+ */
+function libraryRefusals(
+  mounts: readonly LibraryMount[],
+  at: string,
+  project: ProjectIntentDocument,
+  platform: PlatformIntentDocument,
+): Omit<Diagnostic, "document">[] {
+  return mounts.flatMap(
+    ({ library, access }, index): Omit<Diagnostic, "document">[] => {
+      const path = `${at}/libraries/${String(index)}`;
+      const declared = libraryOf(platform, library);
+      if (declared === undefined)
+        return [
+          {
+            code: "E_UNKNOWN_LIBRARY" as const,
+            path,
+            message: `the platform declares no library ${library}`,
+            hint: "Declare the library in the Platform document's `libraries`, or mount one it declares.",
+          },
+        ];
+      const granted = Object.hasOwn(declared.grants, project.project)
+        ? declared.grants[project.project]
+        : undefined;
+      return granted === undefined || (access === "write" && granted === "read")
+        ? [
+            {
+              code: "E_LIBRARY_NOT_GRANTED" as const,
+              path,
+              message:
+                granted === undefined
+                  ? `the library ${library} grants the project ${project.project} nothing`
+                  : `the library ${library} grants the project ${project.project} read, and the Process mounts it write`,
+              hint: "Grant the project the library in the Platform document, or mount it for what it is granted.",
+            },
+          ]
+        : [];
+    },
   );
 }
 
@@ -338,6 +386,12 @@ function projectRefusals(
             hint: "Add the Durability Class to the Platform document's `durability`.",
           });
       refusals.push(
+        ...libraryRefusals(
+          process.libraries ?? [],
+          processAt,
+          project,
+          platform,
+        ),
         ...grantRefusals(process.secrets ?? [], processAt, platform),
       );
     }

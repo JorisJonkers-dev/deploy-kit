@@ -28,6 +28,7 @@ import type {
   Kustomization,
   Namespace,
   NetworkPolicy,
+  PersistentVolume,
   PersistentVolumeClaim,
   PodDisruptionBudget,
   Service,
@@ -42,6 +43,7 @@ export type RenderedObject =
   | NetworkPolicy
   | Service
   | PersistentVolumeClaim
+  | PersistentVolume
   | Canary
   | PodMonitor
   | ServiceMonitor

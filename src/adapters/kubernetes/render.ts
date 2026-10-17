@@ -1,6 +1,6 @@
 // The `kubernetes` adapter (spec/v1/30-deliverables.md#adapters): per project
-// its Namespace, per Process its controller, ServiceAccount, claims and Asset
-// ConfigMaps, the backup each backed-up volume derives, the Canary of each
+// its Namespace and the volume and claim of each library it mounts, per Process
+// its controller, ServiceAccount, claims and Asset ConfigMaps, the backup each backed-up volume derives, the Canary of each
 // blue-green Process (#flagger-ready-objects), the ClusterRole and binding of
 // each Process that holds Kubernetes API access, and the kustomize
 // Kustomization of every directory the render writes. It spells what layer 2
@@ -131,6 +131,8 @@ function fileMountsOf(process: ResolvedProcess): VolumeMount[] {
   }));
 }
 
+type Library = NonNullable<ResolvedProcess["libraries"]>[number];
+
 export type Backed = NonNullable<ResolvedProcess["volumes"]>[number] & {
   readonly backup: NonNullable<
     NonNullable<ResolvedProcess["volumes"]>[number]["backup"]
@@ -143,6 +145,18 @@ const backedUp = (process: ResolvedProcess): Backed[] =>
   // Stryker disable next-line ArrayDeclaration
   (process.volumes ?? []).filter(
     (volume): volume is Backed => volume.backup !== undefined,
+  );
+
+/** The libraries a Process mounts. */
+const librariesOf = (process: ResolvedProcess): Library[] =>
+  // A missing list and an empty one mount no library alike.
+  // Stryker disable next-line ArrayDeclaration
+  process.libraries ?? [];
+
+/** Every library's group, once each, in numeric order. */
+const groupsOf = (process: ResolvedProcess): number[] =>
+  [...new Set(librariesOf(process).map(({ gid }) => gid))].sort(
+    (a, b) => a - b,
   );
 
 /** The file an Asset arrives as: the last segment of the path it is read from. */
@@ -237,7 +251,7 @@ const RESTRICTED: Container["securityContext"] = {
   capabilities: { drop: ["ALL"] },
 };
 
-/** Where the Process's claims, Assets and writable paths arrive in its container. */
+/** Where the Process's claims, libraries, Assets and writable paths arrive in its container. */
 function mountsOf(process: ResolvedProcess): VolumeMount[] {
   return [
     // A missing list and an empty one mount nothing alike.
@@ -245,6 +259,13 @@ function mountsOf(process: ResolvedProcess): VolumeMount[] {
     ...(process.volumes ?? []).map(({ claim, mountAt }) => ({
       name: claim,
       mountPath: mountAt,
+    })),
+    // Stryker disable next-line ArrayDeclaration
+    ...(process.libraries ?? []).map(({ claim, mountAt, subPath, access }) => ({
+      name: claim,
+      mountPath: mountAt,
+      ...(subPath === undefined ? {} : { subPath }),
+      ...(access === "read" ? { readOnly: true as const } : {}),
     })),
     // Stryker disable next-line ArrayDeclaration
     ...(process.assets ?? []).map(({ name, from, mountAt }) => ({
@@ -262,7 +283,7 @@ function mountsOf(process: ResolvedProcess): VolumeMount[] {
   ];
 }
 
-/** The pod's volumes: each claim, each Asset's ConfigMap, each writable path. */
+/** The pod's volumes: each claim, each library's, each Asset's ConfigMap, each writable path. */
 function volumesOf(process: ResolvedProcess): Volume[] {
   return [
     // Stryker disable next-line ArrayDeclaration
@@ -270,6 +291,10 @@ function volumesOf(process: ResolvedProcess): Volume[] {
       name: claim,
       persistentVolumeClaim: { claimName: claim },
     })),
+    // Two mounts of one library below two directories share its one claim.
+    ...[...new Set(librariesOf(process).map(({ claim }) => claim))].map(
+      (claim) => ({ name: claim, persistentVolumeClaim: { claimName: claim } }),
+    ),
     // Stryker disable next-line ArrayDeclaration
     ...(process.assets ?? []).map(({ name, from }) => ({
       name,
@@ -390,7 +415,14 @@ function deploymentOf(
             runAsUser: process.uid,
             runAsGroup: process.gid,
             // A volume is written as the image's group, and only a volume is.
-            ...(process.volumes === undefined ? {} : { fsGroup: process.gid }),
+            // A library's group is its own, and an `fsGroup` would re-own the
+            // whole library (spec/v1/10-project-intent.md#libraries).
+            ...(process.volumes === undefined || process.libraries !== undefined
+              ? {}
+              : { fsGroup: process.gid }),
+            ...(process.libraries === undefined
+              ? {}
+              : { supplementalGroups: groupsOf(process) }),
             seccompProfile: { type: "RuntimeDefault" },
           },
           affinity: affinityOf(process),
@@ -803,10 +835,77 @@ function canaryOf(
   };
 }
 
+/** A library's volume and claim must be the same size; the size binds nothing. */
+const LIBRARY_SIZE = "1Gi";
+
+/**
+ * Per library the project mounts, the local volume onto its directory, held to
+ * its node, and the claim bound to it, which every Process of the project that
+ * mounts the library shares. Neither is ever pruned: the directory holds data
+ * no render owns (spec/v1/30-deliverables.md#how-each-adapter-spells-the-projection).
+ */
+function libraryObjectsOf(
+  project: ResolvedProject,
+  namespace: string,
+): RenderedObject[] {
+  const mounted = new Map<string, Library>();
+  for (const application of project.applications)
+    for (const process of application.processes)
+      for (const mount of librariesOf(process))
+        mounted.set(mount.library, mount);
+  return [...mounted.keys()].sort(byText).flatMap((name) => {
+    const { volume, claim, node, path } = mounted.get(name) as Library;
+    const metadata = { labels: managedOnly(), annotations: NEVER_PRUNED };
+    return [
+      {
+        apiVersion: "v1",
+        kind: "PersistentVolume",
+        metadata: { name: volume, ...metadata },
+        spec: {
+          capacity: { storage: LIBRARY_SIZE },
+          volumeMode: "Filesystem",
+          accessModes: ["ReadWriteOnce"],
+          persistentVolumeReclaimPolicy: "Retain",
+          storageClassName: "",
+          claimRef: { namespace, name: claim },
+          local: { path },
+          nodeAffinity: {
+            required: {
+              nodeSelectorTerms: [
+                {
+                  matchExpressions: [
+                    {
+                      key: "kubernetes.io/hostname",
+                      operator: "In",
+                      values: [node],
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      },
+      {
+        apiVersion: "v1",
+        kind: "PersistentVolumeClaim",
+        metadata: { name: claim, namespace, ...metadata },
+        spec: {
+          storageClassName: "",
+          volumeName: volume,
+          accessModes: ["ReadWriteOnce"],
+          resources: { requests: { storage: LIBRARY_SIZE } },
+        },
+      },
+    ];
+  });
+}
+
 /** Every Deliverable of one project this adapter owns, kustomizations aside. */
 export function renderKubernetes(project: ResolvedProject): Deliverable[] {
   const [first] = project.applications;
   const namespace = (first as ResolvedApplicationDocument).namespace;
+  const libraries = libraryObjectsOf(project, namespace);
   return [
     {
       path: `${projectDirectory(project.project)}/namespace.yaml`,
@@ -819,6 +918,15 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
         },
       ],
     },
+    ...(libraries.length === 0
+      ? []
+      : [
+          {
+            path: `${projectDirectory(project.project)}/libraries.yaml`,
+            adapter: ADAPTER,
+            objects: libraries,
+          },
+        ]),
     ...project.applications.flatMap((application) => {
       const directory = applicationDirectory(project.project, application.id);
       application.processes.forEach(notYet);

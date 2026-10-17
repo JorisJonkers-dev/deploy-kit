@@ -131,6 +131,7 @@ export interface PodSpec {
     readonly runAsUser: number;
     readonly runAsGroup: number;
     readonly fsGroup?: number;
+    readonly supplementalGroups?: readonly number[];
     readonly seccompProfile: { readonly type: "RuntimeDefault" };
   };
   readonly affinity?: NodeAffinity;
@@ -342,7 +343,29 @@ export interface PersistentVolumeClaim {
   readonly kind: "PersistentVolumeClaim";
   readonly metadata: ObjectMeta;
   readonly spec: {
+    /** Empty for a claim bound to the one volume `volumeName` names. */
+    readonly storageClassName?: "";
+    readonly volumeName?: string;
     readonly accessModes: readonly ["ReadWriteOnce"];
     readonly resources: { readonly requests: { readonly storage: string } };
+  };
+}
+
+/** A local volume onto a directory of one node, bound to the one claim it names. */
+export interface PersistentVolume {
+  readonly apiVersion: "v1";
+  readonly kind: "PersistentVolume";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly capacity: { readonly storage: string };
+    readonly volumeMode: "Filesystem";
+    readonly accessModes: readonly ["ReadWriteOnce"];
+    readonly persistentVolumeReclaimPolicy: "Retain";
+    readonly storageClassName: "";
+    readonly claimRef: { readonly namespace: string; readonly name: string };
+    readonly local: { readonly path: string };
+    readonly nodeAffinity: {
+      readonly required: NodeAffinity["nodeAffinity"]["requiredDuringSchedulingIgnoredDuringExecution"];
+    };
   };
 }

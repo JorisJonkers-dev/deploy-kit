@@ -39,6 +39,7 @@ import {
   resolveCredentials,
 } from "./credentials.ts";
 import { resolveEdge } from "./dependencies.ts";
+import { resolveLibraries } from "./libraries.ts";
 import { resolveAssets, resolveGrants, resolveSidecars } from "./secrets.ts";
 import { resolveVolumes } from "./volumes.ts";
 
@@ -289,7 +290,7 @@ function placementOf(
     claims.has(claim),
   );
   return {
-    eligibleNodes: eligibleNodes(process, context.contract),
+    eligibleNodes: eligibleNodes(process, context.contract, context.platform),
     ...(binding === undefined
       ? {}
       : { boundTo: binding.node, from: "cluster-state" as const }),
@@ -318,6 +319,11 @@ export function resolveProcess(
     ...resolveGrants(process),
     ...resolveCredentials(process, context),
   ];
+  const libraries = resolveLibraries(
+    process,
+    context.platform,
+    context.project,
+  );
   const assets = resolveAssets(process, context.assets, context.hash);
   const sidecars = resolveSidecars(process, context.lock);
   const surfaces = Object.entries(process.provides ?? {}).map(
@@ -360,6 +366,7 @@ export function resolveProcess(
     ...probesOf(process, context.platform),
     placement: placementOf(process, context),
     ...(volumes.length === 0 ? {} : { volumes }),
+    ...(libraries.length === 0 ? {} : { libraries }),
     ...(secrets.length === 0 ? {} : { secrets }),
     ...(assets.length === 0 ? {} : { assets }),
     ...(sidecars.length === 0 ? {} : { sidecars }),

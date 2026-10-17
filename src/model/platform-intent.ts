@@ -4,7 +4,8 @@
 // Project Intent class: a policy keyed by a closed vocabulary is a class with
 // one optional feature per literal, so a missing policy is an absent feature.
 import { z } from "zod";
-import { AUDIENCES } from "./vocabularies.ts";
+import { stated, type ShapeRule } from "./shape-rule.ts";
+import { AUDIENCES, LIBRARY_ACCESS } from "./vocabularies.ts";
 
 // The closed vocabularies of spec/v1/14-platform-intent.md, each declared once.
 
@@ -284,6 +285,42 @@ const telemetryPolicy = z
   })
   .meta({ id: "TelemetryPolicy" });
 
+// A directory on one node the platform grants to projects
+// (spec/v1/14-platform-intent.md#libraries): absolute, with no `.` or `..`
+// segment, never `/`, and owned by a group a mount runs with.
+export const LIBRARY_PATH = /^(\/(?!\.\.?(?:\/|$))[^/]+)+$/;
+
+const libraryAccess = z.enum(LIBRARY_ACCESS).meta({ id: "LibraryAccess" });
+
+/** A library grants at least one project, or nobody may mount it. */
+const grantsSomeone: ShapeRule<{
+  readonly grants: Readonly<Record<string, unknown>>;
+}> = {
+  statement: {
+    allOf: [{ properties: { grants: { type: "object", minProperties: 1 } } }],
+  },
+  breaches: ({ grants }) =>
+    Object.keys(grants).length > 0
+      ? []
+      : [
+          {
+            path: ["grants"],
+            message: "a library grants at least one project",
+          },
+        ],
+};
+
+const libraryDeclaration = stated(
+  z.strictObject({
+    node: text,
+    path: z.string().regex(LIBRARY_PATH),
+    gid: count,
+    grants: z.record(text, libraryAccess).meta({ entry: "LibraryGrant" }),
+  }),
+  "LibraryDeclaration",
+  grantsSomeone,
+);
+
 const provider = z
   .strictObject({
     name: text,
@@ -319,6 +356,10 @@ export const platformIntent = z
     policyJob: vaultPolicyJob.exactOptional(),
     handover: handoverLedger.exactOptional(),
     providers: z.array(provider).min(1).exactOptional(),
+    libraries: z
+      .record(text, libraryDeclaration)
+      .meta({ entry: "Library" })
+      .exactOptional(),
   })
   .meta({ id: "Platform" });
 

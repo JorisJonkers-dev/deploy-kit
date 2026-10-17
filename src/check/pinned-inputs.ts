@@ -55,7 +55,7 @@ function processRefusals(
             message: `the images lock holds no entry for ${image}`,
             hint: "Lock the alias, or name one the images lock holds.",
           })),
-        ...(eligibleNodes(process, set.nodeContract).length === 0
+        ...(eligibleNodes(process, set.nodeContract, set.platform).length === 0
           ? [
               {
                 code: "E_PLACEMENT_UNSATISFIABLE" as const,

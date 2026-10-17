@@ -50,6 +50,8 @@ export const DELIVERIES = ["env", "file", "self"] as const;
 /** How a generated key's random bytes are written: `base64url` without padding. */
 export const KEY_ENCODINGS = ["hex", "base64", "base64url"] as const;
 export const TOLERANCES = ["restart", "reload"] as const;
+/** What a library grants a project, and what a Process mounts it for. */
+export const LIBRARY_ACCESS = ["read", "write"] as const;
 export const PLACEHOLDER_KINDS = [
   "secret",
   "dependency",
@@ -76,3 +78,4 @@ export type TransitOperation = (typeof TRANSIT_OPERATIONS)[number];
 export type ApiVerb = (typeof API_VERBS)[number];
 export type Delivery = (typeof DELIVERIES)[number];
 export type Tolerance = (typeof TOLERANCES)[number];
+export type LibraryAccess = (typeof LIBRARY_ACCESS)[number];

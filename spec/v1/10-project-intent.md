@@ -2648,6 +2648,7 @@ already told them, and the lines reaching them made the model harder to read.
 | `Engine` | `Process.engine` | `postgres`, `rabbitmq`, `valkey`, `files` |
 | `Cutover` | `Process.cutover` | `continuous`, `interrupted` |
 | `DurabilityClass` | `Volume.durability` | `reconstructible`, `recoverable`, `irreplaceable` |
+| `LibraryAccess` | `LibraryMount.access`, `LibraryDeclaration.grants` | `read`, `write` |
 | `Arch` | `Placement.arch` | `amd64`, `arm64` |
 | `Media` | `DiskRequest.media` | `nvme`, `ssd`, `hdd` |
 | `AlertClass` | `Observability.alertClass` | `business-hours`, `urgent`, `page` |
@@ -2890,6 +2891,12 @@ classDiagram
         +Quantity size
         +DurabilityClass durability
     }
+    class LibraryMount {
+        +LibraryName library
+        +Path mountAt
+        +Path subPath
+        +LibraryAccess access
+    }
     class Scrape {
         +string process
         +string surface
@@ -2904,6 +2911,7 @@ classDiagram
     Process "1" *-- "0..1" Probe : readiness
     Process "1" *-- "0..1" Probe : liveness
     Process "1" *-- "0..*" Volume : volumes
+    Process "1" *-- "0..*" LibraryMount : libraries
     Application "1" *-- "0..1" Migration : migration
     Application "1" *-- "0..1" Observability : observability
     Observability "1" *-- "1" Scrape : scrape

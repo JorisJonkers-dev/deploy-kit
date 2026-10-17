@@ -215,6 +215,8 @@ field's placement link to this anchor rather than copying rows.
 | `placement.arch`, `.site`, `.capabilities` | Application | no contention | filters over facts the node contract publishes; a list is a set of equally acceptable values, never a ranking |
 | `writablePaths` | Application | no contention | which paths the process must write; the size of each is platform-assigned ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)) |
 | `volumes[].durability` | Application | no contention | what losing the data costs; only the owner knows ([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)) |
+| a library's `node`, `path`, `gid` and `grants` | platform | pool | one directory several projects share, declared once in the Platform document with who may mount it ([0103](../../docs/adr/model/0103-a-library-is-a-host-directory-the-platform-grants.md)) |
+| `libraries` mounts: `library`, `mountAt`, `subPath`, `access` | Application | no contention, within the grant | a library the Platform document does not declare is `E_UNKNOWN_LIBRARY`, and one it does not grant the project for that access is `E_LIBRARY_NOT_GRANTED` ([chapter 10](10-project-intent.md#libraries)) |
 | `engine` | Application | no contention | what the process is, which the platform keys its backup method off ([0019](../../docs/adr/model/0019-engine-is-process-vocabulary.md)) |
 | `replicas` | Application | no contention | the sole local capacity exception: `count` above one with a required `reason` ([No overrides](#no-overrides)) |
 | route tier | platform | pool | the shared edge is finite; `E_NO_TIER_FOR_AUDIENCE` where no tier carries the audience |
@@ -240,7 +242,7 @@ field's placement link to this anchor rather than copying rows.
 | `automountServiceAccountToken` | derived | - | `true` only where a grant carries `delivery: self` or the Process holds Kubernetes API access; the pod presents its token in those cases and in no other ([0031](../../docs/adr/model/0031-identity-per-process.md)) |
 | `api` | authored, admitted by the platform | - | the Process's declared rules and reason, unchanged, with the Platform Intent's `apiAccess.server` beside them: what its ClusterRole holds and what its policy admits ([chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted)) |
 | the ephemeral mount per writable path, and its size | derived | - | one mount per declared path, sized from the Platform Intent's ephemeral `size` ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)) |
-| `runAsUser`, `runAsGroup`, `fsGroup` | derived | - | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Process holds a volume ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)) |
+| `runAsUser`, `runAsGroup`, `fsGroup`, `supplementalGroups` | derived | - | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Process holds a volume and mounts no library ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)), and each library's `gid` once in `supplementalGroups` ([0103](../../docs/adr/model/0103-a-library-is-a-host-directory-the-platform-grants.md)) |
 | container probe timings | derived | - | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Platform Intent's probe policy ([0016](../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md)) |
 | `progressDeadlineSeconds` | derived | - | from `startupBudget`; a `prepare` Process's run deadline is its `startupBudget` itself |
 | switchover | derived | - | from `cutover` and the delivery machinery: `continuous` derives `blue-green`, or `rolling` on the machinery, and `interrupted` derives `stop-start` ([chapter 55](55-delivery.md#switchover)), which the adapters spell; `cutover: continuous` over an RWO volume is `E_CUTOVER_UNHONOURABLE`, not a silent downgrade |
@@ -254,6 +256,7 @@ field's placement link to this anchor rather than copying rows.
 | Runtime Profile values | derived | - | from `runtime` |
 | ServiceMonitor, PodMonitor | derived | - | target and port name from `observability.scrape` and the named surface in `provides`; cadence from the Platform document |
 | PrometheusRule, severity, receiver route | the monitoring stack | - | not rendered by this model. PromQL is a mechanism and a receiver is a shared channel ([chapter 10](10-project-intent.md#observability)) |
+| a library's volume and claim | derived | - | one per project and library it mounts: the volume `<namespace>-<library>` onto the library's `path`, held to its `node`, and the claim `library-<library>` bound to it, shared by every Process of the project that mounts the library ([chapter 30](30-deliverables.md#how-each-adapter-spells-the-projection)) |
 | backup job, its identity and its claim | derived | - | from `volumes[].durability`: the job runs as `<process>-backup` and writes to `<claim>-backup`, of the volume's `size`, keeping `retain` copies; `reconstructible` renders none |
 | NetworkPolicy set | derived | - | from the edge set, exposure, grants, plus the baseline ([chapter 16](16-dependencies.md#network-policy)) |
 
@@ -1794,6 +1797,17 @@ classDiagram
         +Quantity size
         +DurabilityClass durability
     }
+    class ResolvedLibraryMount {
+        +string library
+        +string claim
+        +string volume
+        +NodeName node
+        +Path path
+        +int gid
+        +Path mountAt
+        +Path subPath
+        +LibraryAccess access
+    }
     class ResolvedApiAccess {
         +string reason
         +DestinationRange[] server
@@ -1930,6 +1944,7 @@ classDiagram
     ResolvedProcess "1" *-- "0..1" StartupProbe : startup
     ResolvedProcess "1" *-- "1" ResolvedPlacement : placement
     ResolvedProcess "1" *-- "0..*" ResolvedVolume : volumes
+    ResolvedProcess "1" *-- "0..*" ResolvedLibraryMount : libraries
     ResolvedProcess "1" *-- "0..*" ResolvedGrant : secrets
     ResolvedProcess "1" *-- "0..*" ResolvedEngineGrant : secrets
     ResolvedProcess "1" *-- "0..*" ResolvedAsset : assets

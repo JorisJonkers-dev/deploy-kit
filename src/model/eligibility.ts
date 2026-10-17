@@ -2,9 +2,12 @@
 // every dimension a Process declared, matched against the facts the node
 // contract publishes. Eligibility, not bin-packing: each Process is compared
 // against allocatable alone. Shared by the check that refuses an empty set and
-// the resolution that records the set.
+// the resolution that records the set. A library the Process mounts holds it to
+// the library's node (spec/v1/10-project-intent.md#libraries).
 import type { EffectiveProcess } from "./effective-intent.ts";
+import { libraryOf } from "./libraries.ts";
 import type { NodeContractDocument } from "./node-contract.ts";
+import type { PlatformIntentDocument } from "./platform-intent.ts";
 import { mebibytes, millicores } from "./quantities.ts";
 
 type Node = NodeContractDocument["nodes"][number];
@@ -25,11 +28,20 @@ function request(process: EffectiveProcess): {
   };
 }
 
-function eligible(process: EffectiveProcess, node: Node): boolean {
+function eligible(
+  process: EffectiveProcess,
+  node: Node,
+  platform: Pick<PlatformIntentDocument, "libraries">,
+): boolean {
   const { arch, site, capabilities, gpu, disk } = process.placement;
   const { memory, cpu } = request(process);
   const room = copies(process);
   return (
+    // A missing list and an empty one hold the Process to no node alike.
+    // Stryker disable next-line ArrayDeclaration
+    (process.libraries ?? []).every(
+      ({ library }) => libraryOf(platform, library)?.node === node.name,
+    ) &&
     mebibytes(node.allocatable.memory) >= memory * room &&
     millicores(node.allocatable.cpu) >= cpu * room &&
     (arch === undefined || arch.includes(node.arch)) &&
@@ -54,9 +66,10 @@ function eligible(process: EffectiveProcess, node: Node): boolean {
 export const eligibleNodes = (
   process: EffectiveProcess,
   contract: NodeContractDocument,
+  platform: Pick<PlatformIntentDocument, "libraries">,
 ): string[] =>
   contract.nodes
-    .filter((node) => eligible(process, node))
+    .filter((node) => eligible(process, node, platform))
     .map(({ name }) => name);
 
 /**

@@ -29,6 +29,7 @@ import {
   DELIVERIES,
   DURABILITY_CLASSES,
   KEY_ENCODINGS,
+  LIBRARY_ACCESS,
   LIFECYCLES,
   MATCHES,
   RUNTIMES,
@@ -327,6 +328,24 @@ const resolvedVolume = z
   })
   .meta({ id: "ResolvedVolume" });
 
+// A library the Process mounts (spec/v1/10-project-intent.md#libraries): the
+// directory on its node, the group the Process runs with, and the volume and
+// claim its project derives onto the directory, mounted at `mountAt` below
+// `subPath`.
+const resolvedLibraryMount = z
+  .strictObject({
+    library: text,
+    claim: text,
+    volume: text,
+    node: text,
+    path: text,
+    gid: count,
+    mountAt: text,
+    subPath: text.exactOptional(),
+    access: z.enum(LIBRARY_ACCESS).meta({ id: "LibraryAccess" }),
+  })
+  .meta({ id: "ResolvedLibraryMount" });
+
 // A file-shaped settings file, by the content-hashed name an edit changes, so
 // an edit restarts the Process (spec/v1/10-project-intent.md#assets).
 const resolvedAsset = z
@@ -458,6 +477,7 @@ const resolvedProcess = stated(
     startup: startupProbe.exactOptional(),
     placement: resolvedPlacement,
     volumes: z.array(resolvedVolume).exactOptional(),
+    libraries: z.array(resolvedLibraryMount).exactOptional(),
     secrets: z
       .array(z.union([resolvedGrant, resolvedEngineGrant]))
       .exactOptional(),
