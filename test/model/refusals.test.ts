@@ -309,6 +309,35 @@ describe("a library mount", () => {
     ).toBe(true);
   });
 
+  it("is accepted where it mounts read and the library grants read", () => {
+    expect(
+      checkIntentSet(
+        filesOf("library-not-granted").map((file) =>
+          file.name === "refusals.project.yml"
+            ? {
+                ...file,
+                text: file.text.replace("access: write", "access: read"),
+              }
+            : file,
+        ),
+      ).ok,
+    ).toBe(true);
+  });
+
+  it("says whether the project is granted nothing or only read", () => {
+    const messagesOf = (result: ReturnType<typeof checkIntentSet>) =>
+      result.ok ? [] : result.diagnostics.map(({ message }) => message);
+
+    expect(messagesOf(granted((text) => text))).toStrictEqual([
+      "the library media grants the project refusals read, and the Process mounts it write",
+    ]);
+    expect(
+      messagesOf(
+        granted((text) => text.replace("refusals: read", "jellyfin: write")),
+      ),
+    ).toStrictEqual(["the library media grants the project refusals nothing"]);
+  });
+
   it("is refused where the library grants the project nothing, though it grants another", () => {
     expect(
       codesOf(

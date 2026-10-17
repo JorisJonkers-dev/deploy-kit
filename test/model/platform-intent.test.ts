@@ -92,6 +92,12 @@ describe("parsePlatformIntent", () => {
         WORKED.replace(/\n {4}grants:\n( {6}.*\n)+/, "\n    grants: {}\n"),
       ),
     ).toStrictEqual([{ code: "schema", path: "/libraries/media/grants" }]);
+    const empty = parsePlatformIntent(
+      WORKED.replace(/\n {4}grants:\n( {6}.*\n)+/, "\n    grants: {}\n"),
+    );
+    expect(
+      empty.ok ? [] : empty.diagnostics.map(({ message }) => message),
+    ).toStrictEqual(["a library grants at least one project"]);
     expect(refusalsOf(WORKED.replace("gid: 3001", "gid: 0"))).toStrictEqual([
       { code: "schema", path: "/libraries/media/gid" },
     ]);
