@@ -44,16 +44,16 @@ generates files from these resolved values.
 \label{tab:terms}
 \end{table}
 
-\paragraph{Constraints.} Task~2 requires ATL or QVT-Operational. The
-transformation must give the same result for the same pinned inputs,
-without reading live cluster state. It must reproduce the oracle files supplied with the
-specification's examples, including expected resolved values, dependency edges, generated files, byte-exact JSON, and release digests. If a value cannot be derived, the run must abort with an
-error message. A missing or fabricated value could otherwise produce a
-valid-looking file that deploys the wrong configuration.
-
-The resolved model must also contain every value needed by the Task~3
-templates, including paths, ports, and names. Otherwise, tests of that model
-could pass while a template made an unchecked deployment decision.
+\paragraph{Design Approach.} The transformation is deterministic: the same
+pinned inputs always produce the same resolved model, with no reads of live
+cluster state. Every value the Task~3 templates need is recorded in the
+resolved model itself, so template tests cannot pass while a template makes an
+unchecked deployment decision. Where a value cannot be derived, the run aborts
+with an error message rather than fabricating a default: a missing or
+fabricated value could otherwise produce a valid-looking file that deploys
+the wrong configuration. Conformance to the specification's oracle files is
+verified by byte-exact comparison of resolved values, dependency edges,
+generated files, JSON, and release digests (Section~\ref{sec:evaluation}).
 
 \subsection{Role of the Transformations}
 \label{sec:role}
