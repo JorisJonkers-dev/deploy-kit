@@ -157,10 +157,10 @@ Table~\ref{tab:worked} follows declarations through to derived values.
 \texttt{startupBudget: 20s} & \texttt{deadlineOf}, startup probe & deadline 60s (three times the budget, per platform policy). The startup probe polls the liveness target every 5s and fails after 4 attempts \\
 \texttt{cutover: continuous} & \texttt{switchoverOf}, \texttt{gate} & blue/green \texttt{ReleaseGate} with 1 member, deadline 60s, cadence from the \texttt{Platform Intent}, error/latency checks \\
 \texttt{memory: 256Mi, cpu: 50m} & \texttt{eligible} & all 7 machines in the node contract, each tested for twice the request size for blue/green deployment \\
-\texttt{audience: anonymous} & \texttt{tierFor}, \texttt{exposure} & entry point public-frankfurt with TLS certificates issued through ACME, proxy traefik-public in the \texttt{edge-system} namespace \\
-route /, prefix & \texttt{precedenceOf}, \texttt{middlewareOf} & precedence 1, security headers with strict content policy \\
-\texttt{runtime: node} & \texttt{profileOf} & environment variables \texttt{OTEL\_SERVICE\_NAME}, \texttt{PORT=8080}, \texttt{DEPLOYMENT\_\allowbreak ENVIRONMENT}, collector address from observability \\
-scrape on http & \texttt{ingressOf}, \texttt{monitorOf} & ingress from traefik-public and prometheus on port 8080, pod monitor for blue/green \\
+\texttt{audience: anonymous} & \texttt{tierFor}, \texttt{exposure} & entry point \texttt{public-frankfurt} with TLS certificates issued through ACME, proxy \texttt{traefik-public} in the \texttt{edge-system} namespace \\
+route \texttt{/}, prefix & \texttt{precedenceOf}, \texttt{middlewareOf} & precedence 1, security headers with strict content policy \\
+\texttt{runtime: node} & \texttt{profileOf} & environment variables \texttt{OTEL\_SERVICE\_NAME}, \texttt{PORT=8080}, \texttt{DEPLOYMENT\_\allowbreak ENVIRONMENT}, collector address from \texttt{observability} \\
+scrape on \texttt{http} & \texttt{ingressOf}, \texttt{monitorOf} & ingress from \texttt{traefik-public} and \texttt{prometheus} on port 8080, pod monitor for blue/green \\
 (nothing) & path plan & 12 generated-file entries (\texttt{Deliverable}), including \path{apps/notes/namespace.yaml} and \path{estate/edge/public-frankfurt/notes-public.yaml} \\
 \hline
 \end{tabular}
@@ -170,7 +170,7 @@ scrape on http & \texttt{ingressOf}, \texttt{monitorOf} & ingress from traefik-p
 
 Four values depend on other run documents: the image comes from the images lock, eligible
 machines come from the node contract, the proxy comes from the \texttt{edge} \texttt{Project}, and the
-collector address comes from the observability \texttt{Project}.
+collector address comes from the \texttt{observability} \texttt{Project}.
 
 Example~\ref{lst:workedyaml} shows the authored \texttt{Process} in YAML, and
 Example~\ref{lst:workedresolved} shows the \texttt{Process} the resolution
@@ -195,7 +195,7 @@ assembled from it, in XMI.
 
 The path plan assigns the \texttt{Canary} resource, used by the Flagger
 rollout controller to manage blue/green replacement, to
-\path{apps/notes/notes/canary.yaml}. Application files follow
+\path{apps/notes/notes/canary.yaml}. Per-\texttt{Application} files follow
 \path{apps/<project>/<application>/}. Here both names are \texttt{notes}.
 Section~\ref{sec:results} explains the complete-model comparison.
 
@@ -291,8 +291,8 @@ reach. If no \texttt{Process} provides the \texttt{Surface}, the
 \texttt{Platform Intent} external provider list is tried as a fallback. This mechanism allows the \texttt{auth} \texttt{Project} to reach a mail server outside the cluster. If neither has it,
 the run aborts.
 
-During migration to this deployment system, the \texttt{Platform Intent}'s
-\texttt{HandoverLedger} records where applications still served by the
+During migration to this deployment system, the \texttt{HandoverLedger} in the
+\texttt{Platform Intent} records where \texttt{Application}s still served by the
 previous system run. Their resolved addresses and peers use the recorded
 namespace and workload name until they move.
 
@@ -340,7 +340,7 @@ The path plan represents each generated file as an instance of a
 \texttt{Deliverable} subclass, recording its path and the model elements
 used to generate it. Each \texttt{Project} gets a namespace file, index, and
 default-deny network policy. If an \texttt{Application} synchronises secrets,
-a \texttt{VaultConnection} file tells the secret operator (the component that syncs secrets into the cluster) which Vault
+a \texttt{ConnectionFile} (for the \texttt{VaultConnection} resource) tells the secret operator (the component that syncs secrets into the cluster) which Vault
 address to read.
 
 Each \texttt{Application} gets a directory with one file per resource kind:
@@ -354,8 +354,9 @@ Each \texttt{Application} gets a directory with one file per resource kind:
   \item a migration;
   \item a monitor;
   \item synced secrets;
-  \item a network-policy file with one policy per \texttt{Process};
-\end{itemize} Blue/green \texttt{Process}es add a \texttt{Canary} file.
+  \item a network-policy file with one policy per \texttt{Process}.
+\end{itemize}
+Blue/green \texttt{Process}es add a \texttt{Canary} file.
 Others add a \texttt{Service} file. Multi-replica \texttt{Process}es add a
 disruption budget. Empty files are not planned, as they would generate unnecessary Kubernetes resources.
 
@@ -422,7 +423,7 @@ The final pass, \texttt{estate(inout rendered : RD)}, runs once over all
 \texttt{Resolved Deployment}s produced together. It collects every
 \texttt{VaultPolicyFile} and \texttt{VaultRoleFile}, writes each as
 canonical JSON in OCL, sorts them by file name, hashes the whole with
-\texttt{rawDigestOf}, and plans the job, configuration map, service account,
+\texttt{rawDigestOf}, and plans the job, cronjob, configuration map, service account,
 and network policy. These files and their index are stored in the first
 model in the caller's project list, so the job is generated once for the combined output.
 
