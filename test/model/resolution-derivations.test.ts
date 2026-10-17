@@ -25,6 +25,7 @@ import {
   readNodeContract,
 } from "../../src/read/pinned-inputs.ts";
 import { resolveApplication } from "../../src/resolve/application.ts";
+import { resolveLibraries } from "../../src/resolve/libraries.ts";
 import { mebibytes, millicores } from "../../src/model/quantities.ts";
 
 const EXAMPLES = join(
@@ -1852,6 +1853,38 @@ describe("eligibility at its edges", () => {
       eligibleNodes(mounting(["toString"]), contract, platform),
     ).toStrictEqual([]);
     expect(eligibleNodes(mounting(["media"]), contract, {})).toStrictEqual([]);
+  });
+});
+
+describe("what a library mount derives", () => {
+  it("resolves a mount that names no subPath to the whole library, with no subPath", () => {
+    const mounting = {
+      name: "notes-api",
+      libraries: [{ library: "media", mountAt: "/media", access: "read" }],
+    } as unknown as Parameters<typeof resolveLibraries>[0];
+    const platform = {
+      libraries: {
+        media: {
+          node: "enschede-t1000-1",
+          path: "/srv/media",
+          gid: 3001,
+          grants: { notes: "read" },
+        },
+      },
+    } as unknown as PlatformIntentDocument;
+
+    expect(resolveLibraries(mounting, platform, "notes")).toStrictEqual([
+      {
+        library: "media",
+        claim: "library-media",
+        volume: "notes-system-media",
+        node: "enschede-t1000-1",
+        path: "/srv/media",
+        gid: 3001,
+        mountAt: "/media",
+        access: "read",
+      },
+    ]);
   });
 });
 

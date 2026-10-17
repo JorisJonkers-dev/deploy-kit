@@ -446,6 +446,14 @@ describe("the kubernetes adapter", () => {
       ]);
     });
 
+    it("mounts the whole library where the mount names no subPath", () => {
+      const pod = podOf(edited(undefined, () => ({ libraries: [LIBRARY] })));
+
+      expect(pod?.containers[0]?.volumeMounts).toStrictEqual([
+        { name: "library-media", mountPath: "/attachments", readOnly: true },
+      ]);
+    });
+
     it("runs the pod with each library's group once, in order, and no fsGroup though it holds a claim", () => {
       const library = (name: string, gid: number) => ({
         ...LIBRARY,
