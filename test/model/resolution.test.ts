@@ -561,6 +561,24 @@ describe("the pinned inputs a render cannot trust", () => {
     ]);
   });
 
+  it("refuses a Vault policy job no node can hold", () => {
+    expect(
+      refusals({
+        "platform/platform.intent.yml": (document) =>
+          document.replace(
+            /(\npolicyJob:\n(?: {2}.*\n)*? {2}memory: )64Mi/,
+            (_, head: string) => `${head}64Gi`,
+          ),
+      }),
+    ).toStrictEqual([
+      {
+        code: "E_PLACEMENT_UNSATISFIABLE",
+        document: "platform/platform.intent.yml",
+        path: "/policyJob",
+      },
+    ]);
+  });
+
   it("names every pinned input the set is missing, and a Platform document before them", () => {
     const withoutPinned = files().filter(
       ({ name }) =>

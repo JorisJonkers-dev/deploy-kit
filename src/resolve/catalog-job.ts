@@ -119,6 +119,7 @@ export function resolveCatalogJobs(
             memory: job.memory,
             cpu: job.cpu,
             deadline: job.deadline,
+            eligibleNodes: job.eligibleNodes,
             catalog: {
               host: `${home.process}.${home.namespace}.svc.cluster.local`,
               port,

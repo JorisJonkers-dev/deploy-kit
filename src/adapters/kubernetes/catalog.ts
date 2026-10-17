@@ -14,6 +14,7 @@ import type {
 import { wholeSeconds } from "../shared/durations.ts";
 import { labelsOf } from "../shared/labels.ts";
 import { SECRETS_DIRECTORY } from "../shared/paths.ts";
+import { nodeAffinityOf, UNTIL_SUCCEEDED } from "../shared/placement.ts";
 import { ADAPTER } from "./render.ts";
 
 /** How many hex digits of the digest the method's name carries. */
@@ -30,6 +31,8 @@ export const catalogDigestOf = (job: ResolvedCatalogJob): unknown => ({
   gid: job.gid,
   memory: job.memory,
   cpu: job.cpu,
+  deadline: job.deadline,
+  eligibleNodes: job.eligibleNodes,
 });
 
 export function renderCatalogJob(
@@ -60,12 +63,16 @@ export function renderCatalogJob(
       // The method logs in to the Secret Store with its own token.
       automountServiceAccountToken: true,
       restartPolicy: "OnFailure",
+      // One attempt's deadline: a start too slow or a run that hangs fails the
+      // pod, and the Job starts another.
+      activeDeadlineSeconds: wholeSeconds(job.deadline),
       securityContext: {
         runAsNonRoot: true,
         runAsUser: job.uid,
         runAsGroup: job.gid,
         seccompProfile: { type: "RuntimeDefault" },
       },
+      affinity: nodeAffinityOf(job.eligibleNodes),
       containers: [
         {
           name: job.identity,
@@ -98,7 +105,9 @@ export function renderCatalogJob(
     apiVersion: "batch/v1",
     kind: "Job",
     metadata: { name, namespace: job.namespace, labels },
-    spec: { activeDeadlineSeconds: wholeSeconds(job.deadline), template: pod },
+    // Every Reconcile Unit that holds a grant waits on this run, so it retries
+    // until it succeeds rather than failing for good on one slow start.
+    spec: { backoffLimit: UNTIL_SUCCEEDED, template: pod },
   };
   // The same run every hour, so what an adopted role created since is reassigned.
   const hourly: CronJob = {
@@ -110,10 +119,7 @@ export function renderCatalogJob(
       concurrencyPolicy: "Forbid",
       jobTemplate: {
         metadata: { labels },
-        spec: {
-          activeDeadlineSeconds: wholeSeconds(job.deadline),
-          template: pod,
-        },
+        spec: { backoffLimit: UNTIL_SUCCEEDED, template: pod },
       },
     },
   };

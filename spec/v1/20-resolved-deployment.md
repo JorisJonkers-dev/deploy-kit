@@ -434,7 +434,7 @@ project ([chapter 40](40-composition.md#fragments)).
 |---|---|
 | the node contract's digest is not the Platform document's `metadata.nodeContract` | `E_NODE_CONTRACT_MISMATCH` |
 | a Process's or a sidecar's `image` names an alias the images lock does not hold | `E_UNLOCKED_IMAGE` |
-| no node in the node contract is eligible for a Process ([Layer 2 does not assign a node](#layer-2-does-not-assign-a-node)) | `E_PLACEMENT_UNSATISFIABLE` |
+| no node in the node contract is eligible for a Process ([Layer 2 does not assign a node](#layer-2-does-not-assign-a-node)), or for the Vault policy job ([The Vault policy job](#the-vault-policy-job)) | `E_PLACEMENT_UNSATISFIABLE` |
 
 Two fields the previous generation carried are gone.
 `contextRef`, an OCI digest of a published context bundle, named a second
@@ -1164,7 +1164,8 @@ answers, and nowhere else:
 | `namespace` | derived | the Secret Store's, the `<project>-system` of the project that declares it |
 | `image`, `uid`, `gid` | pinned | the images lock's entry for the alias the platform names |
 | `role`, `memory`, `cpu` | platform-assigned | the Platform document's `policyJob`, unchanged |
-| `deadline` | platform-assigned | the same, in whole seconds |
+| `deadline` | platform-assigned | the same, in whole seconds: what one attempt may take |
+| `eligibleNodes` | pool | every node in the node contract whose allocatable fits `memory` and `cpu` and that holds no `sdcard` medium, in the contract's order; none is `E_PLACEMENT_UNSATISFIABLE` |
 | `address` | derived | the Secret Store's endpoint, the one every grant is read from |
 | `egress` | derived | the Secret Store on its `http` surface, and the cluster's DNS ([chapter 16](16-dependencies.md#the-baseline)) |
 
@@ -1188,6 +1189,7 @@ own Vault role:
 | `role` | derived | `<namespace>-<identity>`, the auth role the render writes for it |
 | `address` | derived | the Secret Store's endpoint, as `policyJob`'s |
 | `memory`, `cpu`, `deadline` | platform-assigned | `policyJob`'s |
+| `eligibleNodes` | pool | `policyJob`'s |
 | `catalog.host`, `catalog.port` | derived | the datastore's Service, on its engine's `surface` |
 | `catalog.connection` | derived | the engine's name, the Secret Store's database connection |
 | `catalog.admin` | platform-assigned | the `serving` location's `admin` while the datastore's Project is `legacy`; else `secret/data/<project>/<process>/catalog`, keys `user` and `password` |
@@ -1640,6 +1642,7 @@ classDiagram
         +Quantity memory
         +Quantity cpu
         +Duration deadline
+        +string[] eligibleNodes
         +EgressPeer[] egress
     }
     class ResolvedCatalogJob {
@@ -1653,6 +1656,7 @@ classDiagram
         +Quantity memory
         +Quantity cpu
         +Duration deadline
+        +string[] eligibleNodes
         +EgressPeer[] egress
     }
     class ResolvedCatalog {

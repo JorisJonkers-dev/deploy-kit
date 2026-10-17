@@ -44,7 +44,9 @@ main() {
 					Tuple{k = 'uid', v = c.uid.toString()},
 					Tuple{k = 'gid', v = c.gid.toString()},
 					Tuple{k = 'memory', v = str(c.memory)},
-					Tuple{k = 'cpu', v = str(c.cpu)}}).rawDigestOf();
+					Tuple{k = 'cpu', v = str(c.cpu)},
+					Tuple{k = 'deadline', v = str(c.deadline)},
+					Tuple{k = 'eligibleNodes', v = arr(c.eligibleNodes->collect(n | str(n)))}}).rawDigestOf();
 				var named : String := c.identity + '-'
 					+ digest.substring(ALGORITHM.size() + 1, ALGORITHM.size() + NAME_DIGITS);
 				deployments->first().deliverables += object CatalogJobFile {
@@ -85,7 +87,9 @@ main() {
 			Tuple{k = 'uid', v = planned.uid.toString()},
 			Tuple{k = 'gid', v = planned.gid.toString()},
 			Tuple{k = 'memory', v = str(planned.memory)},
-			Tuple{k = 'cpu', v = str(planned.cpu)}}).rawDigestOf();
+			Tuple{k = 'cpu', v = str(planned.cpu)},
+			Tuple{k = 'deadline', v = str(planned.deadline)},
+			Tuple{k = 'eligibleNodes', v = arr(planned.eligibleNodes->collect(n | str(n)))}}).rawDigestOf();
 		var named : String := planned.identity + '-'
 			+ digest.substring(ALGORITHM.size() + 1, ALGORITHM.size() + NAME_DIGITS);
 		deployments->first().deliverables += Sequence{'configmap', 'job', 'cronjob', 'serviceaccount', 'networkpolicy'}

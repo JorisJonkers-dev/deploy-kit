@@ -2523,6 +2523,12 @@ describe("the Vault policy job", () => {
       memory: "64Mi",
       cpu: "10m",
       deadline: "120s",
+      eligibleNodes: [
+        "enschede-t1000-1",
+        "enschede-rx7900xtx-1",
+        "enschede-gtx-960m-1",
+        "frankfurt-contabo-1",
+      ],
       egress: [
         {
           rule: "secret-store",
@@ -2547,6 +2553,30 @@ describe("the Vault policy job", () => {
       // What the set does derive is where Flux's events go: the worked
       // platform names a Reporter.
     ).toStrictEqual(["projects", "events"]);
+  });
+
+  it("lands on no node that holds an sdcard medium, and on none too small for what it asks for", () => {
+    expect(
+      job((platform) => platform.replace("memory: 64Mi", "memory: 20Gi"))
+        ?.eligibleNodes,
+    ).toStrictEqual([
+      "enschede-t1000-1",
+      "enschede-rx7900xtx-1",
+      "frankfurt-contabo-1",
+    ]);
+    expect(
+      job((platform) => platform.replace("cpu: 10m", "cpu: 30000m"))
+        ?.eligibleNodes,
+    ).toStrictEqual(["enschede-t1000-1", "enschede-rx7900xtx-1"]);
+    // A node whose allocatable equals the request holds it.
+    expect(
+      job((platform) => platform.replace("memory: 64Mi", "memory: 15872Mi"))
+        ?.eligibleNodes,
+    ).toContain("enschede-gtx-960m-1");
+    expect(
+      job((platform) => platform.replace("cpu: 10m", "cpu: 15500m"))
+        ?.eligibleNodes,
+    ).toContain("frankfurt-contabo-1");
   });
 
   it("states its deadline in seconds, whatever unit the platform wrote", () => {

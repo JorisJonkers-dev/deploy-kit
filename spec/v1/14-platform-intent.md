@@ -702,7 +702,20 @@ project can:
   ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)):
   the job cannot grant itself the privilege to write policies.
 - **`memory`** and **`cpu`** are what its one container requests, and
-  **`deadline`** how long a run may take before it is failed.
+  **`deadline`** how long **one attempt** may take, its start included, before
+  that attempt is failed and another begins. The job never fails as a whole: it
+  retries until an attempt succeeds, because every Reconcile Unit that holds a
+  grant waits on it and writing the documents again is harmless
+  ([0103](../../docs/adr/model/0103-a-derived-estate-job-retries-and-avoids-the-sd-cards.md)).
+
+The job runs on no node that holds an `sdcard` medium. Every unit that holds a
+grant waits on it, so it must not wait on the slowest disks the estate has: its
+eligible nodes are those whose allocatable fits `memory` and `cpu` and that hold
+no such medium, and a node contract with none is `E_PLACEMENT_UNSATISFIABLE`.
+No Process may ask for `sdcard`
+([chapter 15](15-infrastructure-intent.md#the-model)); this is the one place the
+model asks for its absence, and it asks for the derived job, not for anything a
+project declares.
 
 The block is optional, and it derives a job only beside a `secretStore`: with no
 Secret Store there is nothing to write into, and with no block the render

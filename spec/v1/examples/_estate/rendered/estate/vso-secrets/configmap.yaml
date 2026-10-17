@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: vault-policy-86ea65b1fe1d
+  name: vault-policy-374c15991395
   namespace: secrets-system
   labels:
     app.kubernetes.io/name: vault-policy

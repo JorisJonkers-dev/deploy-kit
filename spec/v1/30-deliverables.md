@@ -200,7 +200,8 @@ exactly the documents of the render that applied it, and nothing else. The
 ConfigMap and the Job share one name, `vault-policy-<12 hex>`, the first twelve
 hex digits of the SHA-256 of the canonical JSON (RFC 8785) of one object:
 `documents`, each document under its file name, and what the pod runs with,
-the job's `image`, `uid`, `gid`, `memory` and `cpu`. A Job's template cannot
+the job's `image`, `uid`, `gid`, `memory`, `cpu`, `deadline` and
+`eligibleNodes`. A Job's template cannot
 change once created, so a changed policy set or a new image is a new Job, and
 the one it replaces leaves the render with it. Both implementations compute the
 name from those alone, so it is the same name wherever the same grants are
@@ -212,8 +213,8 @@ index applies the first four:
 | file | adapter | holds |
 |---|---|---|
 | `configmap.yaml` | `vault-policy` | the immutable `ConfigMap`, each document under its file name as canonical JSON on one line, in name order |
-| `job.yaml` | `vault-policy` | the `Job`: the locked image, `VAULT_ADDR` the Secret Store's endpoint, `VAULT_ROLE` the platform's role, `POLICIES_DIR` where the ConfigMap is mounted read-only, `activeDeadlineSeconds` the platform's deadline, `restartPolicy: OnFailure`, the token mounted because the job logs in with it |
-| `cronjob.yaml` | `vault-policy` | the `CronJob` `vault-policy`: the same pod as the Job, `@hourly`, `concurrencyPolicy: Forbid`, so a Vault restored without what the render holds gets it back within the hour |
+| `job.yaml` | `vault-policy` | the `Job`: the locked image, `VAULT_ADDR` the Secret Store's endpoint, `VAULT_ROLE` the platform's role, `POLICIES_DIR` where the ConfigMap is mounted read-only, `restartPolicy: OnFailure`, the token mounted because the job logs in with it; the pod's `activeDeadlineSeconds` the platform's deadline, so it bounds one attempt, and a required node affinity on `kubernetes.io/hostname` `In` the job's `eligibleNodes`; the Job's `backoffLimit` `2147483647`, the most the API holds, and no deadline of its own, so it retries until an attempt succeeds |
+| `cronjob.yaml` | `vault-policy` | the `CronJob` `vault-policy`: the same pod and the same `backoffLimit` as the Job, `@hourly`, `concurrencyPolicy: Forbid`, so a Vault restored without what the render holds gets it back within the hour |
 | `serviceaccount.yaml` | `vault-policy` | the `ServiceAccount` `vault-policy`, the one identity the platform's role is bound to |
 | `networkpolicy.yaml` | `networking` | the job's own policy: egress to the Secret Store and the cluster's DNS, no ingress; listed by no index, like every policy |
 

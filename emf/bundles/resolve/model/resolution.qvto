@@ -303,9 +303,19 @@ query policyJobOf() : ResolvedPolicyJob =
 		memory := estate.policyJob.memory;
 		cpu := estate.policyJob.cpu;
 		deadline := inSeconds(seconds(estate.policyJob.deadline).floor());
+		eligibleNodes := estateJobNodes();
 		egress := storePeers()->union(Sequence{object PolicyPeer {
 			rule := 'cluster-dns'; namespace := estate.substrate.clusterDns; port := DNS_PORT; }});
 	} endif;
+
+-- The nodes a derived estate Job may land on
+-- (spec/v1/14-platform-intent.md#the-vault-policy-job): every node that fits what its one
+-- container asks for and holds no sdcard medium, since every unit that holds a grant waits
+-- on it.
+query estateJobNodes() : Sequence(String) =
+	contract.nodes->select(n | mebibytes(n.allocatable.memory) >= mebibytes(estate.policyJob.memory)
+		and millicores(n.allocatable.cpu) >= millicores(estate.policyJob.cpu)
+		and not n.disks->exists(d | d.media = 'sdcard'))->collect(n | n.name)->asSequence();
 
 -- The methods that apply each datastore's database catalog
 -- (spec/v1/20-resolved-deployment.md#the-catalog-methods): where the engine names one and the
@@ -349,6 +359,7 @@ query catalogJobOf(prj : String, application : String, p : PI::Process) : Resolv
 		memory := estate.policyJob.memory;
 		cpu := estate.policyJob.cpu;
 		deadline := inSeconds(seconds(estate.policyJob.deadline).floor());
+		eligibleNodes := estateJobNodes();
 		catalog := object ResolvedCatalog {
 			host := proc + '.' + ns + '.svc.cluster.local';
 			port := surfacePort;

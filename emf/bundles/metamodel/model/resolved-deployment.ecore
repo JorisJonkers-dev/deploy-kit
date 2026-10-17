@@ -58,6 +58,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="deadline" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Every node the job may land on, by name: none that holds an sdcard medium. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="eligibleNodes" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="egress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
   </eClassifiers>
 
@@ -74,6 +76,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="deadline" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Every node the job may land on, by name: none that holds an sdcard medium. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="eligibleNodes" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="catalog" lowerBound="1" eType="#//ResolvedCatalog" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="egress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
   </eClassifiers>

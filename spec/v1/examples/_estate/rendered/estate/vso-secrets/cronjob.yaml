@@ -23,7 +23,7 @@ spec:
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: none
     spec:
-      activeDeadlineSeconds: 120
+      backoffLimit: 2147483647
       template:
         metadata:
           labels:
@@ -36,12 +36,25 @@ spec:
           serviceAccountName: vault-policy
           automountServiceAccountToken: true
           restartPolicy: OnFailure
+          activeDeadlineSeconds: 120
           securityContext:
             runAsNonRoot: true
             runAsUser: 65532
             runAsGroup: 65532
             seccompProfile:
               type: RuntimeDefault
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: kubernetes.io/hostname
+                        operator: In
+                        values:
+                          - enschede-t1000-1
+                          - enschede-rx7900xtx-1
+                          - enschede-gtx-960m-1
+                          - frankfurt-contabo-1
           containers:
             - name: vault-policy
               image: ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7
@@ -70,7 +83,7 @@ spec:
           volumes:
             - name: policies
               configMap:
-                name: vault-policy-86ea65b1fe1d
+                name: vault-policy-374c15991395
                 items:
                   - key: data-system-postgres-backup.policy.json
                     path: data-system-postgres-backup.policy.json

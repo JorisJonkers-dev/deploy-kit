@@ -15,7 +15,7 @@ metadata:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: postgres-catalog-ed98f9e410c0
+  name: postgres-catalog-d83cbeba5875
   namespace: data-system
   labels:
     app.kubernetes.io/name: postgres-catalog
@@ -31,7 +31,7 @@ data:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: postgres-catalog-ed98f9e410c0
+  name: postgres-catalog-d83cbeba5875
   namespace: data-system
   labels:
     app.kubernetes.io/name: postgres-catalog
@@ -40,7 +40,7 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: none
 spec:
-  activeDeadlineSeconds: 120
+  backoffLimit: 2147483647
   template:
     metadata:
       labels:
@@ -53,12 +53,25 @@ spec:
       serviceAccountName: postgres-catalog
       automountServiceAccountToken: true
       restartPolicy: OnFailure
+      activeDeadlineSeconds: 120
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
         runAsGroup: 65532
         seccompProfile:
           type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - enschede-t1000-1
+                      - enschede-rx7900xtx-1
+                      - enschede-gtx-960m-1
+                      - frankfurt-contabo-1
       containers:
         - name: postgres-catalog
           image: ghcr.io/jorisjonkers-dev/delivery/postgres-catalog@sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c
@@ -87,7 +100,7 @@ spec:
       volumes:
         - name: catalog
           configMap:
-            name: postgres-catalog-ed98f9e410c0
+            name: postgres-catalog-d83cbeba5875
             items:
               - key: catalog.json
                 path: catalog.json
@@ -115,7 +128,7 @@ spec:
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: none
     spec:
-      activeDeadlineSeconds: 120
+      backoffLimit: 2147483647
       template:
         metadata:
           labels:
@@ -128,12 +141,25 @@ spec:
           serviceAccountName: postgres-catalog
           automountServiceAccountToken: true
           restartPolicy: OnFailure
+          activeDeadlineSeconds: 120
           securityContext:
             runAsNonRoot: true
             runAsUser: 65532
             runAsGroup: 65532
             seccompProfile:
               type: RuntimeDefault
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: kubernetes.io/hostname
+                        operator: In
+                        values:
+                          - enschede-t1000-1
+                          - enschede-rx7900xtx-1
+                          - enschede-gtx-960m-1
+                          - frankfurt-contabo-1
           containers:
             - name: postgres-catalog
               image: ghcr.io/jorisjonkers-dev/delivery/postgres-catalog@sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c
@@ -162,7 +188,7 @@ spec:
           volumes:
             - name: catalog
               configMap:
-                name: postgres-catalog-ed98f9e410c0
+                name: postgres-catalog-d83cbeba5875
                 items:
                   - key: catalog.json
                     path: catalog.json
