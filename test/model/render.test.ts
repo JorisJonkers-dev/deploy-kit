@@ -1090,6 +1090,30 @@ describe("the database catalog", () => {
     expect(resolved(noReader)).toBeUndefined();
   });
 
+  it("names the Secret Store connection after the datastore's Process, so two datastores of one engine never share it", () => {
+    const renamed = set({}, []).map((file) =>
+      file.name === "data/data.project.yml"
+        ? {
+            ...file,
+            text: file.text
+              .replace("      - name: postgres\n", "      - name: pg\n")
+              .replace("        process: postgres", "        process: pg"),
+          }
+        : file.name === "data/env/postgres/base.env"
+          ? { ...file, name: "data/env/pg/base.env" }
+          : file,
+    );
+    const result = resolveIntentSet(renamed, OPTIONS);
+    if (!result.ok)
+      throw new Error(
+        JSON.stringify(
+          result.diagnostics.map(({ code, path }) => ({ code, path })),
+        ),
+      );
+
+    expect(result.value.catalogJobs?.[0]?.catalog.connection).toBe("pg");
+  });
+
   it("finds the datastore's own location among the ledger's, and reaches it, the store and DNS", () => {
     const others = {
       [PLATFORM]: (document: string) =>
