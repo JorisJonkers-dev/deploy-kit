@@ -123,7 +123,7 @@ export function resolveCatalogJobs(
             catalog: {
               host: `${home.process}.${home.namespace}.svc.cluster.local`,
               port,
-              connection: engine,
+              connection: process.name,
               admin,
               databases: readers.map((project) => ({
                 name: `${project}_db`,
