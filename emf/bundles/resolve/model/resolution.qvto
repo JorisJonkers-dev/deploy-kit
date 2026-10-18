@@ -554,9 +554,14 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 -- `progressDeadlineSeconds`: three budgets, floored to a whole second, or for a
 -- prepare Process the budget itself, rounded up so it is never cut short.
 query deadlineOf(p : PI::Process) : Integer =
-	if p.startupBudget = null then UNBUDGETED_DEADLINE
+	(if p.startupBudget = null then UNBUDGETED_DEADLINE
 	else if p.lifecycle = Lifecycle::prepare then ceiling(seconds(p.startupBudget))
-	else (seconds(p.startupBudget) * 3).floor() endif endif;
+	else (seconds(p.startupBudget) * 3).floor() endif endif) + imagePull();
+
+-- The substrate's image pull, rounded up to a whole second, which every derived deadline
+-- allows since it runs from before the image is on the node; nothing where none is stated.
+query imagePull() : Integer =
+	if estate.substrate.imagePull = null then 0 else ceiling(seconds(estate.substrate.imagePull)) endif;
 
 -- How the new version replaces the old (spec/v1/55-delivery.md#switchover).
 query switchoverOf(app : EffectiveApplication, p : PI::Process) : Switchover =

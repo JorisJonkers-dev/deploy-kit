@@ -160,6 +160,7 @@ substrate:
   cni: flannel
   networkPolicyController: embedded  # none | embedded | cni
   clusterDns: kube-system            # the namespace the cluster's DNS runs in
+  imagePull: 5m                      # the slowest pull a pod may wait on
 ```
 
 | fact | read by |
@@ -168,6 +169,7 @@ substrate:
 | `datastore`, `serverCount` | the restore rehearsal; every decision resting on [0002](../../docs/adr/model/0002-kubernetes-is-the-substrate-for-one-applier.md) |
 | `secretsEncryption` | `E_SECRETS_AT_REST_REQUIRED` ([0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)) |
 | `cni`, `networkPolicyController` | whether a non-enforcing policy stage exists ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)) |
+| `imagePull` | every derived deadline ([chapter 20](20-resolved-deployment.md#derived-mechanics)): a Process's progress deadline, a `prepare` Process's run deadline and so the Release Gate's, each with this on top, rounded up to a whole second, because each runs from before the image is on the node. It is the longest an image pull takes on the slowest node a pod may land on, measured, not a margin; optional, and a substrate that states none allows nothing for a pull ([0105](../../docs/adr/model/0105-every-derived-deadline-allows-the-substrates-image-pull.md)) |
 | `clusterDns` | the DNS baseline every egress policy carries ([chapter 16](16-dependencies.md#the-baseline)): the substrate runs the cluster's DNS, so where it runs is a fact about the substrate rather than a declared Application |
 
 ## The bootstrap set

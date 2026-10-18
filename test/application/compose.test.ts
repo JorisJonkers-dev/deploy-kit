@@ -248,7 +248,7 @@ describe("composeEstate", () => {
     ]);
     expect(FIRST.lock.spec.fragments.notes?.revisions).toEqual({
       notes:
-        "sha256:56f768dcbb534cd6be07f78b90b0675e083dbbbce0dc9da943212fd08935692f",
+        "sha256:dc29b0a2d4a301abf424d782bb2c13620b4f756f7b22b929b542e033a3d4ca9b",
     });
     expect(FIRST.lock.spec.fragments["jorisjonkers.dev"]?.revisions).toEqual(
       {},

@@ -166,6 +166,10 @@
         "clusterDns": {
           "type": "string",
           "minLength": 1
+        },
+        "imagePull": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [

@@ -244,7 +244,7 @@ field's placement link to this anchor rather than copying rows.
 | the ephemeral mount per writable path, and its size | derived | - | one mount per declared path, sized from the Platform Intent's ephemeral `size` ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)) |
 | `runAsUser`, `runAsGroup`, `fsGroup`, `supplementalGroups` | derived | - | the `uid` and `gid` the images lock resolved; `fsGroup` only where the Process holds a volume and mounts no library ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)), and each library's `gid` once in `supplementalGroups` ([0104](../../docs/adr/model/0104-a-library-is-a-host-directory-the-platform-grants.md)) |
 | container probe timings | derived | - | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Platform Intent's probe policy ([0016](../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md)) |
-| `progressDeadlineSeconds` | derived | - | from `startupBudget`; a `prepare` Process's run deadline is its `startupBudget` itself |
+| `progressDeadlineSeconds` | derived | - | from `startupBudget`; a `prepare` Process's run deadline is its `startupBudget` itself; either way with the substrate's `imagePull` on top ([chapter 14](14-platform-intent.md#substrate-facts)) |
 | switchover | derived | - | from `cutover` and the delivery machinery: `continuous` derives `blue-green`, or `rolling` on the machinery, and `interrupted` derives `stop-start` ([chapter 55](55-delivery.md#switchover)), which the adapters spell; `cutover: continuous` over an RWO volume is `E_CUTOVER_UNHONOURABLE`, not a silent downgrade |
 | object kind | derived | - | from `lifecycle` and `volumes` |
 | the Application's release-gate deadline | derived | - | `max` over the Application's Processes of `progressDeadlineSeconds` ([The release gate](#the-release-gate)) |
@@ -662,7 +662,9 @@ Five rules carry most of the weight:
   that fits two copies of it, sidecars included, or it is
   `E_PLACEMENT_UNSATISFIABLE` ([Layer 2 does not assign a node](#layer-2-does-not-assign-a-node)).
 - **The progress deadline must exceed the startup budget, strictly.** It derives
-  as budget × 3, floored. The current renderer emits `600` against a 600-second
+  as budget × 3, floored, with the substrate's `imagePull` on top, since the
+  deadline runs from before the image is on the node
+  ([0105](../../docs/adr/model/0105-every-derived-deadline-allows-the-substrates-image-pull.md)). The current renderer emits `600` against a 600-second
   budget, so a JVM still inside its legitimate startup window is marked
   `ProgressDeadlineExceeded`.
 - **There is no health timeout class.** The generation being replaced carried a
@@ -804,7 +806,7 @@ Layer 2 therefore carries, per Application a Process of which switches
 | each member's readiness reference | that Process's `probes.readiness`: its `path` + `port`, or its `tcp` port |
 | each member's analysis checks | its Runtime Profile: `error-rate` and `latency` where the profile exposes HTTP server metrics (`jvm`, `node`, `python`), none where it does not (`static`, `none`) |
 | the analysis cadence, and the two thresholds a check must stay under | the Platform document's `delivery.analysis` ([chapter 14](14-platform-intent.md#delivery-policy)) |
-| the gate deadline | `max` over the members of `progressDeadlineSeconds`, itself `startupBudget × 3` |
+| the gate deadline | `max` over the members of `progressDeadlineSeconds`, itself `startupBudget × 3` and the substrate's `imagePull` |
 | the migration | where the Application moves its schema with a changelog: the migration identity, `testedAgainst` where the proof records one, and `nonTransactional`, each copied from the migration plan ([The migration](#the-migration)) |
 
 `max` is the reading "held, not partial" requires: the unit waits for its
@@ -1354,7 +1356,7 @@ processes:
     gid: 1000
     cutover: continuous              # granted: this Process holds no volume
     switchover: blue-green           # derived from the cutover
-    deadline: 1800s                  # startupBudget × 3
+    deadline: 1800s                  # startupBudget × 3, on a substrate that states no imagePull
     replicas: 1
     memory: 768Mi                    # request and limit alike; the shape is derived
     cpu: 250m                        # request only
