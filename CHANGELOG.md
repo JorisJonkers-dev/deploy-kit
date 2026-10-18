@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.2](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.19.1...v0.19.2) (2026-10-18)
+
+
+### Bug Fixes
+
+* **model:** allow the substrate's image pull on every derived deadline ([#479](https://github.com/JorisJonkers-dev/deploy-kit/issues/479)) ([ca9a100](https://github.com/JorisJonkers-dev/deploy-kit/commit/ca9a100a0ecb23ff10af5f6e36a58b11b64da336)), closes [#422](https://github.com/JorisJonkers-dev/deploy-kit/issues/422)
+
 ## [0.19.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.19.0...v0.19.1) (2026-10-18)
 
 
