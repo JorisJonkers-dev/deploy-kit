@@ -84,14 +84,25 @@ function switchoverOf(
 
 /**
  * `progressDeadlineSeconds`: three budgets, floored to a whole second, or for
- * a prepare Process the budget itself, rounded up so it is never cut short.
+ * a prepare Process the budget itself, rounded up so it is never cut short;
+ * either way with the substrate's image pull on top, since the deadline runs
+ * from before the image is on the node.
  */
-function deadlineOf(process: EffectiveProcess): number {
-  if (process.startupBudget === undefined) return UNBUDGETED_DEADLINE;
+function deadlineOf(
+  process: EffectiveProcess,
+  platform: PlatformIntentDocument,
+): number {
+  const pull =
+    platform.substrate.imagePull === undefined
+      ? 0
+      : Math.ceil(seconds(platform.substrate.imagePull));
+  if (process.startupBudget === undefined) return UNBUDGETED_DEADLINE + pull;
   const budget = seconds(process.startupBudget);
-  return process.lifecycle === "prepare"
-    ? Math.ceil(budget)
-    : Math.floor(budget * 3);
+  return (
+    (process.lifecycle === "prepare"
+      ? Math.ceil(budget)
+      : Math.floor(budget * 3)) + pull
+  );
 }
 
 function probesOf(
@@ -339,7 +350,7 @@ export function resolveProcess(
     gid: image.gid,
     ...(process.cutover === undefined ? {} : { cutover: process.cutover }),
     ...(switchover === undefined ? {} : { switchover }),
-    deadline: inSeconds(deadlineOf(process)),
+    deadline: inSeconds(deadlineOf(process, context.platform)),
     replicas: process.replicas?.count ?? 1,
     memory: process.placement.memory,
     cpu: process.placement.cpu,

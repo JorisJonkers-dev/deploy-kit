@@ -297,12 +297,13 @@ ${serving("notes-api").replace("startupBudget: 20s", "startupBudget: 10m")}${ser
         startupBudget: 700ms
 `);
 
+    // Each with the worked substrate's two-minute image pull on top.
     expect(resolved.processes.map(({ deadline }) => deadline)).toStrictEqual([
-      "1800s",
-      "10800s",
-      "1s",
+      "1920s",
+      "10920s",
+      "121s",
     ]);
-    expect(resolved.releaseGate?.deadline).toBe("10800s");
+    expect(resolved.releaseGate?.deadline).toBe("10920s");
     expect(resolved.processes[2]?.cutover).toBeUndefined();
   });
 
@@ -311,8 +312,23 @@ ${serving("notes-api").replace("startupBudget: 20s", "startupBudget: 10m")}${ser
       one(serving("notes-api").replace("        startupBudget: 20s\n", "")),
     );
 
-    expect(resolved.deadline).toBe("600s");
+    expect(resolved.deadline).toBe("720s");
     expect(resolved.startup).toBeUndefined();
+  });
+
+  it("allows the substrate's image pull on every deadline, rounded up, and nothing where it states none", () => {
+    const deadline = (pull: (text: string) => string) =>
+      processOf(one(serving("notes-api")), { platform: pull }).deadline;
+
+    expect(deadline((same) => same)).toBe("180s");
+    expect(
+      deadline((text) => text.replace("imagePull: 2m", "imagePull: 1500ms")),
+    ).toBe("62s");
+    expect(
+      deadline((text) =>
+        text.replace(/\n {2}imagePull: 2m[^\n]*\n(?: {2}#[^\n]*\n)?/, "\n"),
+      ),
+    ).toBe("60s");
   });
 
   it("carries the replica count a Process declares, with its reason", () => {
@@ -1971,7 +1987,8 @@ ${serving("notes-api")}      - name: notes-worker
     expect(
       resolved.releaseGate?.members.map(({ process }) => process),
     ).toStrictEqual(["notes-api"]);
-    expect(resolved.releaseGate?.deadline).toBe("60s");
+    // notes-api's 20s budget, three times, and the image pull.
+    expect(resolved.releaseGate?.deadline).toBe("180s");
   });
 });
 

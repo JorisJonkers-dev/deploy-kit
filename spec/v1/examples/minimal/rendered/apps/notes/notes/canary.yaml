@@ -17,7 +17,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: notes-api
-  progressDeadlineSeconds: 60
+  progressDeadlineSeconds: 180
   service:
     port: 8080
     targetPort: http
@@ -33,7 +33,7 @@ spec:
         metadata:
           application: notes
           process: notes-api
-          revision: sha256:56f768dcbb534cd6be07f78b90b0675e083dbbbce0dc9da943212fd08935692f
+          revision: sha256:dc29b0a2d4a301abf424d782bb2c13620b4f756f7b22b929b542e033a3d4ca9b
           paths: /
           readiness: /healthz/ready
           hostnames: notes.jorisjonkers.dev
@@ -45,7 +45,7 @@ spec:
         metadata:
           application: notes
           process: notes-api
-          revision: sha256:56f768dcbb534cd6be07f78b90b0675e083dbbbce0dc9da943212fd08935692f
+          revision: sha256:dc29b0a2d4a301abf424d782bb2c13620b4f756f7b22b929b542e033a3d4ca9b
           paths: /
           readiness: /healthz/ready
           hostnames: notes.jorisjonkers.dev
@@ -57,7 +57,7 @@ spec:
         metadata:
           application: notes
           process: notes-api
-          revision: sha256:56f768dcbb534cd6be07f78b90b0675e083dbbbce0dc9da943212fd08935692f
+          revision: sha256:dc29b0a2d4a301abf424d782bb2c13620b4f756f7b22b929b542e033a3d4ca9b
           paths: /
           readiness: /healthz/ready
           hostnames: notes.jorisjonkers.dev

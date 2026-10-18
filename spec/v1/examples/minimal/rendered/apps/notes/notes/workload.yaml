@@ -17,7 +17,7 @@ spec:
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 0
-  progressDeadlineSeconds: 60
+  progressDeadlineSeconds: 180
   selector:
     matchLabels:
       app.kubernetes.io/name: notes-api

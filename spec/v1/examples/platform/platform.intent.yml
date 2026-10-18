@@ -31,6 +31,8 @@ substrate:
   networkPolicyController: embedded # no non-enforcing stage: default-deny stays
   # render-only (docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)
   clusterDns: kube-system # where the cluster's DNS runs: every egress policy admits it
+  imagePull: 2m # the slowest pull a pod may wait on: the Pis boot from SD cards, so
+  # every derived deadline allows for it (spec/v1/14-platform-intent.md#substrate-facts)
 
 # What must exist before the first rendered object can apply. Recorded and
 # enumerated, never declared; growing this table is a decision

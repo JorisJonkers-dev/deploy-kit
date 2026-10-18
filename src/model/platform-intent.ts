@@ -55,6 +55,10 @@ const substrate = z
     // The namespace the cluster's DNS runs in, which every egress policy
     // admits on port 53 (spec/v1/16-dependencies.md#the-baseline).
     clusterDns: text,
+    // The longest an image pull takes on the slowest node a pod may land on,
+    // which every derived deadline allows on top of the Process's own start
+    // (spec/v1/14-platform-intent.md#substrate-facts).
+    imagePull: text.exactOptional(),
   })
   .meta({ id: "Substrate" });
 

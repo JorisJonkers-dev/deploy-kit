@@ -30,13 +30,13 @@
     through its one black box, and not the production implementation's digests,
     which are over a different shape (spec/v1/20-resolved-deployment.md#pinned-inputs).
   -->
-  <provenance renderHash="sha256:2ab6daa654c5f2180ba5de4ec86bc53963c0c6be3a2ab95527e09ba26705ff1f" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+  <provenance renderHash="sha256:ad92d844b374dbc269badb44988134f9311bb1ed256ae24c456e7b1fb23a9807" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
     <inputDigests input="intent-fragment" name="delivery" digest="sha256:cd13dacfc2862f45b6976ff7ae33e3a8f492124704ac5241d93fa166b95a9ac3"/>
     <inputDigests input="intent-fragment" name="edge" digest="sha256:273c64ecd8c35ab69918664735661764e44e8e3ad04a58a11ab92dcb52ec1f4a"/>
     <inputDigests input="intent-fragment" name="notes" digest="sha256:42ad799a9523b833d9982aee61ba22ff8a3df1bf93627d3821c4ee7da0949ecc"/>
     <inputDigests input="intent-fragment" name="observability" digest="sha256:aac790f0f921ce56ea5fb7af1f5a85c48c2122fbcbd99923124aafe063f6594c"/>
     <inputDigests input="intent-fragment" name="secrets" digest="sha256:3b6b608aa89a7beebed377772c9905705861c2609f1c262a5ddcb757b70bcecc"/>
-    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:31f1a83c1ea194d98e3f1b45cbd60ae66ee50bd4f4896e108cf57a8e2c7e090a"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:57ffe801eaf3150f92004f96229f0aa05a5a964db37eb808214f4cb06bc40d09"/>
     <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
     <inputDigests input="images-lock" name="estate" digest="sha256:1841422e0b23b259d861eca22e5f90e53e21e4a82ea5035ec1bbd0c2d3367199"/>
     <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
@@ -57,9 +57,9 @@
   </policyJob>
   <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
 
-  <applications id="notes" revision="sha256:56f768dcbb534cd6be07f78b90b0675e083dbbbce0dc9da943212fd08935692f" project="notes" namespace="notes-system"
+  <applications id="notes" revision="sha256:dc29b0a2d4a301abf424d782bb2c13620b4f756f7b22b929b542e033a3d4ca9b" project="notes" namespace="notes-system"
       alertClass="business-hours" reconcileUnit="//@reconcileUnits.0">
-    <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="60s">
+    <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="180s">
       <!-- The Platform document's cadence, carried for the Release Gate. -->
       <analysis interval="30s" iterations="4" threshold="3" errorRate="1%" latency="500ms"/>
       <members process="//@applications.0/@processes.0">
@@ -86,7 +86,7 @@
 
     <processes name="notes-api" identity="notes-api" lifecycle="application"
         image="ghcr.io/jorisjonkers-dev/notes/notes-api@sha256:9c1e5a4b7d2f8e3a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a"
-        uid="1000" gid="1000" cutover="continuous" switchover="blue-green" deadline="60s" replicas="1"
+        uid="1000" gid="1000" cutover="continuous" switchover="blue-green" deadline="180s" replicas="1"
         memory="256Mi" cpu="50m" hardening="restricted" identityToken="false"
         component="node">
       <readiness period="10s" timeout="5s" failures="3">
@@ -149,7 +149,7 @@
   <!-- What the Release Gate reads of the Application: its release-gate inputs, as canonical JSON. -->
   <deliverables xsi:type="resolveddeployment:ConfigMapFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/notes/configmap.yaml" adapter="kubernetes" application="//@applications.0"
-      releaseGate="{&quot;analysis&quot;:{&quot;errorRate&quot;:&quot;1%&quot;,&quot;interval&quot;:&quot;30s&quot;,&quot;iterations&quot;:4,&quot;latency&quot;:&quot;500ms&quot;,&quot;threshold&quot;:3},&quot;deadline&quot;:&quot;60s&quot;,&quot;endpoint&quot;:&quot;http://release-gate.delivery-system.svc.cluster.local:8080&quot;,&quot;members&quot;:[{&quot;checks&quot;:[&quot;error-rate&quot;,&quot;latency&quot;],&quot;process&quot;:&quot;notes-api&quot;,&quot;readiness&quot;:{&quot;path&quot;:&quot;/healthz/ready&quot;,&quot;port&quot;:8080}}]}"/>
+      releaseGate="{&quot;analysis&quot;:{&quot;errorRate&quot;:&quot;1%&quot;,&quot;interval&quot;:&quot;30s&quot;,&quot;iterations&quot;:4,&quot;latency&quot;:&quot;500ms&quot;,&quot;threshold&quot;:3},&quot;deadline&quot;:&quot;180s&quot;,&quot;endpoint&quot;:&quot;http://release-gate.delivery-system.svc.cluster.local:8080&quot;,&quot;members&quot;:[{&quot;checks&quot;:[&quot;error-rate&quot;,&quot;latency&quot;],&quot;process&quot;:&quot;notes-api&quot;,&quot;readiness&quot;:{&quot;path&quot;:&quot;/healthz/ready&quot;,&quot;port&quot;:8080}}]}"/>
   <deliverables xsi:type="resolveddeployment:MonitorFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/notes/podmonitor.yaml" adapter="prometheus" process="//@applications.0/@processes.0"
       surface="http" scrapePath="/metrics" interval="30s" timeout="10s" kind="PodMonitor"/>

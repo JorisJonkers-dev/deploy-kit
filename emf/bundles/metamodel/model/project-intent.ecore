@@ -446,6 +446,9 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cni" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="networkPolicyController" lowerBound="1" eType="#//PolicyController"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="clusterDns" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The longest an image pull takes on the slowest node a pod may land on, which every
+         derived deadline allows (spec/v1/14-platform-intent.md#substrate-facts). -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="imagePull" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Bootstrap">
     <eStructuralFeatures xsi:type="ecore:EReference" name="flux" lowerBound="1" eType="#//FluxSource" containment="true"/>
