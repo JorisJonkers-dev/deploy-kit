@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.19.0...v0.19.1) (2026-10-18)
+
+
+### Bug Fixes
+
+* name a datastore's Secret Store connection after its Process, not its engine ([#477](https://github.com/JorisJonkers-dev/deploy-kit/issues/477)) ([b504ab0](https://github.com/JorisJonkers-dev/deploy-kit/commit/b504ab06c7e3ee0a105ea93b84a9d93daa9b0195))
+
 ## [0.19.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.18.0...v0.19.0) (2026-10-17)
 
 
