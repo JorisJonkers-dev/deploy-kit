@@ -366,7 +366,7 @@ query catalogJobOf(prj : String, application : String, p : PI::Process) : Resolv
 		catalog := object ResolvedCatalog {
 			host := proc + '.' + ns + '.svc.cluster.local';
 			port := surfacePort;
-			connection := 'postgres';
+			connection := p.name;
 			admin := if legacy(prj) then object CatalogAdmin {
 					path := logins->first().path;
 					user := logins->first().user;
