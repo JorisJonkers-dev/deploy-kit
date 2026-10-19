@@ -174,7 +174,12 @@ function dependencyOf(
   const edge = (process.dependsOn as readonly DependencyEdge[]).find(
     (candidate) => candidate.application === application,
   ) as DependencyEdge;
-  const { address } = resolveEdge(edge, context.union, context.platform);
+  const { address } = resolveEdge(
+    edge,
+    context.union,
+    context.platform,
+    context.project,
+  );
   const port = address.lastIndexOf(":");
   return source.slice(cut + 1) === "host"
     ? address.slice(0, port)
@@ -396,7 +401,7 @@ export function resolveProcess(
   const switchover = switchoverOf(process, context.machinery);
   const environment = environmentOf(process, context);
   const dependencies = (process.dependsOn ?? []).map((edge) =>
-    resolveEdge(edge, context.union, context.platform),
+    resolveEdge(edge, context.union, context.platform, context.project),
   );
   const volumes = resolveVolumes(
     process,

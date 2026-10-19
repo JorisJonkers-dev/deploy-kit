@@ -378,6 +378,17 @@ export interface Service {
   };
 }
 
+/** A name in one namespace for a host elsewhere: DNS alone, no selector and no port. */
+export interface AliasService {
+  readonly apiVersion: "v1";
+  readonly kind: "Service";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly type: "ExternalName";
+    readonly externalName: string;
+  };
+}
+
 export interface PersistentVolumeClaim {
   readonly apiVersion: "v1";
   readonly kind: "PersistentVolumeClaim";

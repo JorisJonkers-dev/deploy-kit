@@ -1729,6 +1729,10 @@
           "type": "string",
           "minLength": 1
         },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
         "peers": {
           "type": "array",
           "items": {

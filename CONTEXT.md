@@ -357,6 +357,11 @@ alias, not a proxy: it flips new connections and names no port of its own
 ([chapter 16](spec/v1/16-dependencies.md#the-stable-address),
 [0093](docs/adr/model/0093-a-provider-is-reached-through-its-stable-address.md)).
 
+**Alias**: the name a consumer dials its provider by, the provider's
+Application Id, held in the consumer's own namespace and pointing at the Stable
+Address ([chapter 16](spec/v1/16-dependencies.md#the-alias),
+[0109](docs/adr/model/0109-a-consumer-reaches-its-provider-by-its-application-id.md)).
+
 **Tier**: where the edge terminates: four facts, `audiences`, `listener`,
 `certificates`, `forwardAuth`, plus the Traefik Application that is its proxy. A
 route's audience is the only way it reaches a tier

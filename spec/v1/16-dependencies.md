@@ -109,12 +109,13 @@ serves it
 | target | the active Instance's address for that surface: the Process's Service in its Project's namespace, or for a provider the Platform document records, its `address` ([chapter 14](14-platform-intent.md#providers)) |
 | port | the surface's port, unchanged: the name is an alias, not a proxy, so it cannot remap a port |
 
-`${dependency:<application>.host}` resolves to the Stable Address,
-`<application>-<surface>.estate-system.svc.cluster.local`, and
-`${dependency:<application>.port}` to the surface's port. A consumer's rendered
-configuration therefore depends on the provider's Id and surface alone, never on
-its namespace, its Project or its version, and a provider that moves changes
-one object, its Stable Address, rather than every consumer's render.
+A consumer reaches the Stable Address,
+`<application>-<surface>.estate-system.svc.cluster.local`, through its own
+[alias](#the-alias), and `${dependency:<application>.port}` resolves to the
+surface's port. A consumer's rendered configuration therefore depends on the
+provider's Id and surface alone, never on its namespace, its Project or its
+version, and a provider that moves changes one object, its Stable Address,
+rather than every consumer's render.
 
 The `kubernetes` adapter renders a Stable Address as a Service of type
 `ExternalName` whose `externalName` is the target's DNS name. That choice has
@@ -150,6 +151,39 @@ forward-auth endpoint is its Stable Address, and no other surface does: a
 Stable Address nobody resolves would be a declaration with out-degree zero,
 which [property 3](#3-no-dead-declarations-no-declaration-has-out-degree-zero)
 forbids.
+
+### The alias
+
+A consumer writes its provider's name as the provider's Application Id, the way a
+person would: `http://prowlarr:9696`, never a cluster domain or a namespace
+([0109](../../docs/adr/model/0109-a-consumer-reaches-its-provider-by-its-application-id.md)).
+Every edge derives the name its consumer dials, and where the provider serves
+outside the consumer's namespace, an **alias** that holds that name in it.
+
+| the provider serves | the consumer dials | the alias |
+|---|---|---|
+| in the consumer's own namespace | the provider's own Service name | none: the name already resolves |
+| at an address that is an IP | the IP | none: no name can stand for an IP |
+| anywhere else | the alias's name | a Service of type `ExternalName` in the consumer's namespace, its `externalName` the Stable Address |
+
+The alias is named after the provider's Application Id where the edges of the
+consumer's Project name one surface of that Application, and
+`<application>-<surface>` for each surface where they name several: a name
+carries no port, and two surfaces may be two Services. One alias serves every
+Process of the Project that holds an edge to it.
+`${dependency:<application>.host}` resolves to the name the consumer dials.
+
+An alias is a name in a namespace the Project already fills with Services of its
+own. An alias that would take the name of a Service the Project renders (a
+Process that provides a surface, and the `-primary` and `-canary` copies Flagger
+names after a blue-green one) is refused, and so is a name two Applications'
+aliases would both take: `E_ALIAS_COLLISION`.
+
+Until the Stable Address renders, an alias's `externalName` is the provider's
+own address: its Service in its Project's namespace, or a provider's address the
+Platform document records. A consumer's render then still moves when its
+provider moves, but only its alias does: what the consumer dials stays the
+provider's name.
 
 ### The database catalog
 

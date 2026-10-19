@@ -22,6 +22,7 @@ import type {
 import { keyName, reachesDatabase } from "../model/project-intent-queries.ts";
 import { collectorEndpoint, exports } from "../model/runtime-profiles.ts";
 import { dumpedSurfaceOf } from "../model/backup.ts";
+import { reachOf, servedOf } from "../model/aliases.ts";
 
 export interface Fragment {
   readonly name: string;
@@ -607,6 +608,61 @@ export const INVARIANTS: readonly Invariant[] = [
               ),
             ];
       }),
+  },
+  {
+    code: "E_ALIAS_COLLISION",
+    needsPlatform: true,
+    answer: (union, platform) => {
+      const documents = union.map(({ document }) => document);
+      return union.flatMap((fragment) => {
+        const { project, applications } = fragment.document;
+        const placed = edgesOf(fragment);
+        const named = placed.map(({ value }) => value.edge);
+        // A Process with a surface is reached by a Service of its own name,
+        // and Flagger names a blue-green one's copies after it.
+        const services = new Set(
+          applications
+            .flatMap(({ processes }) => processes)
+            .filter(({ provides }) => provides !== undefined)
+            .flatMap(({ name }) => [name, `${name}-primary`, `${name}-canary`]),
+        );
+        const aliased = placed.flatMap((edge) => {
+          const served = servedOf(edge.value.edge, documents, platform);
+          const reach =
+            served === undefined
+              ? undefined
+              : reachOf(edge.value.edge, served, project, named);
+          return reach?.target === undefined
+            ? []
+            : [
+                {
+                  edge,
+                  name: reach.address.slice(0, reach.address.lastIndexOf(":")),
+                },
+              ];
+        });
+        return aliased.flatMap(({ edge, name }) => {
+          const { application } = edge.value.edge;
+          const shared = aliased.some(
+            (other) =>
+              other.name === name &&
+              other.edge.value.edge.application !== application,
+          );
+          return services.has(name) || shared
+            ? [
+                refusal(
+                  "E_ALIAS_COLLISION",
+                  edge,
+                  services.has(name)
+                    ? `this edge's alias ${name} is a Service ${project} already renders`
+                    : `this edge's alias ${name} is also another Application's alias in ${project}`,
+                  "Rename the Process or the Application whose name the alias takes.",
+                ),
+              ]
+            : [];
+        });
+      });
+    },
   },
   {
     code: "E_DEPENDENCY_CYCLE",

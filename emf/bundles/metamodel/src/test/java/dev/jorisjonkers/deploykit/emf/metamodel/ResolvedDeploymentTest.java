@@ -257,6 +257,7 @@ class ResolvedDeploymentTest {
                         "BudgetFile",
                         "MigrationFile",
                         "ClaimFile",
+                        "AliasFile",
                         "LibraryFile",
                         "ConfigMapFile",
                         "BackupFile",
@@ -334,7 +335,8 @@ class ResolvedDeploymentTest {
         ResolvedEdge withPeer = make.createResolvedEdge();
         withPeer.setApplication("platform-postgres");
         withPeer.setSurface("postgres");
-        withPeer.setAddress("platform-postgres.data-system.svc.cluster.local:5432");
+        withPeer.setAddress("platform-postgres:5432");
+        withPeer.setTarget("platform-postgres.data-system.svc.cluster.local");
         PolicyPeer peer = make.createPolicyPeer();
         peer.setNamespace("data-system");
         peer.setProcess("platform-postgres");
@@ -353,10 +355,11 @@ class ResolvedDeploymentTest {
 
         assertThat(exported)
                 .isEqualTo("{\"applications\":[{\"edges\":["
-                        + "{\"address\":\"platform-postgres.data-system.svc.cluster.local:5432\","
+                        + "{\"address\":\"platform-postgres:5432\","
                         + "\"application\":\"platform-postgres\",\"consumer\":\"knowledge-api\","
                         + "\"peers\":[{\"namespace\":\"data-system\",\"port\":5432,"
-                        + "\"process\":\"platform-postgres\"}],\"surface\":\"postgres\"},"
+                        + "\"process\":\"platform-postgres\"}],\"surface\":\"postgres\","
+                        + "\"target\":\"platform-postgres.data-system.svc.cluster.local\"},"
                         + "{\"address\":\"10.0.0.12:25\",\"application\":\"stalwart\","
                         + "\"consumer\":\"knowledge-api\",\"surface\":\"smtp\"}],"
                         + "\"id\":\"knowledge\"}]}");

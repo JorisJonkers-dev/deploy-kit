@@ -350,6 +350,7 @@ Paths are assigned by the Resolved Deployment's path plan
 <gitopsRoot>/apps/<project>/<application>/<object>.yaml
 <gitopsRoot>/apps/<project>/namespace.yaml
 <gitopsRoot>/apps/<project>/libraries.yaml
+<gitopsRoot>/apps/<project>/aliases.yaml
 <gitopsRoot>/apps/<project>/networkpolicy.yaml
 <gitopsRoot>/apps/<project>/vaultconnection.yaml
 <gitopsRoot>/estate/vso-secrets/policies/<namespace>-<identity>.{policy,role}.json
@@ -360,7 +361,10 @@ The project's `libraries.yaml` holds, per library it mounts, the cluster-scoped
 `PersistentVolume` and the claim bound to it (`kubernetes`), in library name
 order, each volume before its claim, and is written only where a Process of the
 project mounts one: a claim several Applications share belongs to none of their
-directories. The project's `networkpolicy.yaml` is its one namespace-wide default-deny
+directories. The project's `aliases.yaml` holds its [aliases](16-dependencies.md#the-alias)
+(`kubernetes`), in name order, and is written only where an edge derives one:
+every Process holding an edge to the same provider shares one alias. The project's
+`networkpolicy.yaml` is its one namespace-wide default-deny
 ([chapter 16](16-dependencies.md#network-policy)), a per-project object with an
 owner, the `networking` adapter. Under an Application's directory the objects
 are `workload.yaml`, `serviceaccount.yaml`, `canary.yaml`, `pdb.yaml` and

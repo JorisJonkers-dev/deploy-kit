@@ -62,7 +62,7 @@ spec:
             - name: CONFIRMATION_URL
               value: https://auth.jorisjonkers.dev/confirm
             - name: DB_HOST
-              value: postgres.data-system.svc.cluster.local
+              value: platform-postgres
             - name: DB_PORT
               value: "5432"
             - name: DEPLOYMENT_ENVIRONMENT
@@ -84,11 +84,11 @@ spec:
             - name: SPRING_PROFILES_ACTIVE
               value: prod
             - name: SPRING_RABBITMQ_HOST
-              value: rabbitmq.data-system.svc.cluster.local
+              value: platform-rabbitmq
             - name: SPRING_RABBITMQ_PORT
               value: "5672"
             - name: VALKEY_HOST
-              value: valkey.data-system.svc.cluster.local
+              value: platform-valkey
             - name: VALKEY_PORT
               value: "6379"
             - name: VAULT_AUTHENTICATION
