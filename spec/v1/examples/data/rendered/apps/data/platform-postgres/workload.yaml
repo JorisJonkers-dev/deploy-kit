@@ -133,6 +133,11 @@ spec:
             capabilities:
               drop:
                 - ALL
+          volumeMounts:
+            - name: writable-var-run-postgresql
+              mountPath: /var/run/postgresql
+            - name: writable-tmp
+              mountPath: /tmp
       volumes:
         - name: postgres-data
           persistentVolumeClaim:

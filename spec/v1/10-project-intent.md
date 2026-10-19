@@ -735,7 +735,11 @@ are per container, and a sidecar declares its own.
 
 Nothing is inherited, and nothing needs to be: every container in the pod meets
 `restricted` or the Process is refused, so there is no per-container relaxation
-to push onto a sidecar in the first place.
+to push onto a sidecar in the first place. What a sidecar does share is what the
+pod holds: it mounts the Process's `writablePaths`, each one `emptyDir` every
+container of the pod writes, as it mounts the Process's file grants, because
+every container of the pod is the Process. A browser beside its Process writes
+its `/tmp` there.
 
 **Eligibility sums.** A node must fit the pod's containers together, so the
 placement check adds every sidecar's `memory` and `cpu` to the Process's before

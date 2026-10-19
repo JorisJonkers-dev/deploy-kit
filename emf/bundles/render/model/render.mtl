@@ -678,8 +678,8 @@
   [/if]
 [/template]
 
-[comment A container beside the Process, under the same posture, the same variables and the same
-  file grants: a grant is the Process's, and every container of its pod is the Process. /]
+[comment A container beside the Process, under the same posture, the same variables, the same
+  writable paths and the same file grants: every container of its pod is the Process. /]
 [template private sidecar(c : resolveddeployment::ResolvedSidecar, p : resolveddeployment::ResolvedProcess)]
   - name: [c.name/]
     image: [c.image/]
@@ -698,8 +698,12 @@
       capabilities:
         drop:
           - ALL
-  [if (p.files()->notEmpty())]
+  [if (p.writablePaths->notEmpty() or p.files()->notEmpty())]
       volumeMounts:
+    [for (w : resolveddeployment::WritablePath | p.writablePaths)]
+          - name: [w.path.writableOf()/]
+            mountPath: [w.path/]
+    [/for]
     [for (g : resolveddeployment::ResolvedGrant | p.files())]
           - name: secret-[g.destination/]
             mountPath: [g.directoryOf()/]

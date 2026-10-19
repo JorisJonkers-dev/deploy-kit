@@ -314,6 +314,15 @@ const vpnContainerOf = (
   volumeMounts: [{ name: VPN_VOLUME, mountPath: VPN_DIRECTORY }],
 });
 
+/** The Process's writable paths, which every container of its pod mounts. */
+const writableMountsOf = (process: ResolvedProcess): VolumeMount[] =>
+  // A missing list and an empty one mount nothing alike.
+  // Stryker disable next-line ArrayDeclaration
+  (process.writablePaths ?? []).map(({ path }) => ({
+    name: writableOf(path),
+    mountPath: path,
+  }));
+
 /** Where the Process's claims, libraries, Assets and writable paths arrive in its container. */
 function mountsOf(process: ResolvedProcess): VolumeMount[] {
   return [
@@ -337,11 +346,7 @@ function mountsOf(process: ResolvedProcess): VolumeMount[] {
       subPath: fileOf(from),
       readOnly: true as const,
     })),
-    // Stryker disable next-line ArrayDeclaration
-    ...(process.writablePaths ?? []).map(({ path }) => ({
-      name: writableOf(path),
-      mountPath: path,
-    })),
+    ...writableMountsOf(process),
     ...fileMountsOf(process),
     // The forwarded port, for a Process that receives one, written by the VPN.
     ...(process.vpn?.forwardedPort === true
@@ -514,7 +519,10 @@ function deploymentOf(
             containerOf(process),
             // Stryker disable next-line ArrayDeclaration
             ...(process.sidecars ?? []).map((sidecar) =>
-              sidecarOf(sidecar, envOf(process), fileMountsOf(process)),
+              sidecarOf(sidecar, envOf(process), [
+                ...writableMountsOf(process),
+                ...fileMountsOf(process),
+              ]),
             ),
           ],
           ...(volumes.length === 0 ? {} : { volumes }),
