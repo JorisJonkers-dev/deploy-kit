@@ -54,6 +54,7 @@ describe("the schema refusal fixtures", () => {
   it("cover every kind of refusal the reading chapter names", () => {
     expect(cases).toStrictEqual([
       "alert-class-unknown",
+      "credentials-file-without-mount",
       "every-offending-value",
       "missing-field",
       "no-shape-matches",

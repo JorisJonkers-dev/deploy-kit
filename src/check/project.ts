@@ -447,14 +447,18 @@ function credentialRefusals(
   // Stryker disable next-line ArrayDeclaration
   return (edges ?? []).flatMap((edge, e): Refusal[] => {
     const at_ = `${at}/dependsOn/${e}/credentials`;
-    if (edge.credentials?.delivery === "file")
+    if (
+      edge.credentials?.delivery === "file" &&
+      (edge.credentials.mountAt === undefined ||
+        edge.credentials.fileMode === undefined)
+    )
       return [
         {
           code: "schema",
           path: at_,
           message:
-            "an edge delivers its credential to the Process itself or to its environment, never to a file",
-          hint: "Deliver it `self` or `env`.",
+            "an edge delivers its credential to a file only with `mountAt` and `fileMode`",
+          hint: "Name the directory its `username` and `password` files land in, and their mode.",
         },
       ];
     return edge.credentials?.delivery === "env" &&

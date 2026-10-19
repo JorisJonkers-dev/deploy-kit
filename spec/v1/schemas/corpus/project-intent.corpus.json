@@ -182,6 +182,24 @@
           "value": "own"
         }
       ]
+    },
+    {
+      "name": "an edge's credential delivered to files under a directory",
+      "verdict": "accept",
+      "file": "examples/knowledge-platform/knowledge-platform.project.yml"
+    },
+    {
+      "name": "an edge's credential with a directory written as a number",
+      "verdict": "refuse",
+      "breaks": "wrong-type",
+      "file": "examples/knowledge-platform/knowledge-platform.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/1/processes/1/dependsOn/0/credentials/mountAt",
+          "value": 7
+        }
+      ]
     }
   ]
 }

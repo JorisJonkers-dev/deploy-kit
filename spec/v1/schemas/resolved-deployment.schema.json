@@ -591,7 +591,8 @@
           "type": "string",
           "enum": [
             "self",
-            "env"
+            "env",
+            "file"
           ]
         },
         "paths": {
@@ -602,6 +603,14 @@
           }
         },
         "destination": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mountAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fileMode": {
           "type": "string",
           "minLength": 1
         },

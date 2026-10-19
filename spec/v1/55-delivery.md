@@ -788,8 +788,11 @@ delivers:
   written on every Vault-delivered Secret, not only those a `blue-green` Process
   reads, so a Process that changes switchover does not change how its secrets
   behave.
-- **A restart names what is serving.** Where a grant tolerates only `restart`,
-  the Process's serving workload is restarted in place. For a `blue-green`
+- **A restart names what is serving.** Where a synced static secret changes,
+  whatever its grant tolerates, or where any other grant tolerates only
+  `restart`, the Process's serving workload is restarted in place. The
+  operator reads a static secret's path every ten minutes
+  ([chapter 10](10-project-intent.md#delivery)). For a `blue-green`
   Process that is `<name>-primary`, the Deployment Flagger promotes into; the
   Deployment named `<name>` is Flagger's source of new versions and serves
   nothing between releases. For every other Process it is `<name>`.

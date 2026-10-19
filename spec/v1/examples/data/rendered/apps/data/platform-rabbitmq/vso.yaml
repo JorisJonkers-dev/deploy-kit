@@ -35,7 +35,8 @@ spec:
   mount: secret
   type: kv-v2
   path: data/rabbitmq/backup
-  refreshAfter: 1h
+  refreshAfter: 10m
+  hmacSecretData: true
   destination:
     name: rabbitmq-backup-data-rabbitmq-backup
     create: true

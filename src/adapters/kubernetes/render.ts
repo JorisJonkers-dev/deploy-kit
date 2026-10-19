@@ -84,20 +84,29 @@ function notYet(process: ResolvedProcess): void {
   // decided, and neither is a file with no mode, or no absolute directory to
   // mount: `/` itself would be covered entirely.
   if (
-    filesOf(process).some(
-      ({ keys, fileMode, mountAt }) =>
-        keys?.length !== 1 ||
-        fileMode === undefined ||
-        mountAt === undefined ||
-        !directoryOf(mountAt).startsWith("/"),
-    )
+    filesOf(process)
+      .filter(isKv)
+      .some(
+        ({ keys, fileMode, mountAt }) =>
+          keys?.length !== 1 ||
+          fileMode === undefined ||
+          mountAt === undefined ||
+          !directoryOf(mountAt).startsWith("/"),
+      )
   )
     throw notSupported(
       `${process.name}: a file grant other than one key at a mode, below a directory, is not rendered yet`,
     );
 }
 
-type FileGrant = KvGrant & { readonly destination: string };
+type FileGrant = Grant & { readonly destination: string };
+
+/** A kv grant's file is one key; a credential's files are its username and password. */
+const isKv = (grant: FileGrant): grant is KvGrant & FileGrant =>
+  "path" in grant;
+
+/** The keys a credential an edge derives is issued with, each one file. */
+const CREDENTIAL_FILES = ["username", "password"] as const;
 
 /** The Process's grants delivered as files. */
 const filesOf = (process: ResolvedProcess): FileGrant[] =>
@@ -107,7 +116,7 @@ const filesOf = (process: ResolvedProcess): FileGrant[] =>
     (grant): grant is FileGrant => isSynced(grant) && grant.delivery === "file",
   );
 
-/** Where a file grant's file lands; notYet refused one without it. */
+/** Where a file grant's files land; notYet and ruleDiagnostics refused one without it. */
 const placeOf = (grant: FileGrant): string => grant.mountAt as string;
 
 /** The directory a file lands in, empty for a file directly in `/`. */
@@ -126,7 +135,8 @@ const secretVolumeOf = (grant: FileGrant): string =>
 function fileMountsOf(process: ResolvedProcess): VolumeMount[] {
   return filesOf(process).map((grant) => ({
     name: secretVolumeOf(grant),
-    mountPath: directoryOf(placeOf(grant)),
+    // A credential's directory is its own; a kv grant's file lands below its directory.
+    mountPath: isKv(grant) ? directoryOf(placeOf(grant)) : placeOf(grant),
     readOnly: true as const,
   }));
 }
@@ -309,13 +319,15 @@ function volumesOf(process: ResolvedProcess): Volume[] {
       name: secretVolumeOf(grant),
       secret: {
         secretName: grant.destination,
-        items: [
-          {
-            // notYet refused a file grant of other than one key, or no mode.
-            key: (grant.keys as readonly string[])[0] as string,
-            path: placeOf(grant).slice(placeOf(grant).lastIndexOf("/") + 1),
-          },
-        ],
+        items: isKv(grant)
+          ? [
+              {
+                // notYet refused a file grant of other than one key, or no mode.
+                key: (grant.keys as readonly string[])[0] as string,
+                path: placeOf(grant).slice(placeOf(grant).lastIndexOf("/") + 1),
+              },
+            ]
+          : CREDENTIAL_FILES.map((key) => ({ key, path: key })),
         defaultMode: Number.parseInt(grant.fileMode as string, 8),
       },
     })),

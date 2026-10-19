@@ -110,7 +110,14 @@ applications:
           memory: 1Gi
           cpu: 500m
         dependsOn:
-          - { application: platform-postgres, surface: postgres }
+          # The edge delivers the database login it derives as two files.
+          - application: platform-postgres
+            surface: postgres
+            credentials:
+              delivery: file
+              mountAt: /run/secrets/database
+              fileMode: "0400"
+              rotation: { tolerates: restart }
           - { application: hindsight, surface: embeddings }
         secrets:
           - path: secret/data/platform/hindsight
@@ -187,14 +194,16 @@ applications:
             cpu: 50m
         secrets:
           # The deploy key git-sync pushes with, as a file SSH accepts. A file
-          # grant is mounted into every container of the pod.
+          # grant is mounted into every container of the pod. SSH reads the
+          # file on each push, so a reload would do; a static secret still
+          # restarts its consumer once the operator syncs a new value.
           - path: secret/data/knowledge-system/vault-deploy-key
             keys: [private_key]
             access: read
             delivery: file
             mountAt: /run/secrets/knowledge-vault/id_ed25519
             fileMode: "0400"
-            rotation: { tolerates: restart }
+            rotation: { tolerates: reload }
         probes:
           readiness: { tcp: 8000 }
           liveness: { tcp: 8000 }

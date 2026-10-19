@@ -350,6 +350,14 @@
         "delivery": {
           "$ref": "#/$defs/Delivery"
         },
+        "mountAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fileMode": {
+          "type": "string",
+          "minLength": 1
+        },
         "rotation": {
           "$ref": "#/$defs/Rotation"
         }

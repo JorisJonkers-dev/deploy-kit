@@ -35,7 +35,8 @@ spec:
   mount: secret
   type: kv-v2
   path: platform/hindsight
-  refreshAfter: 1h
+  refreshAfter: 10m
+  hmacSecretData: true
   destination:
     name: hindsight-api-platform-hindsight
     create: true
@@ -104,9 +105,34 @@ spec:
   mount: secret
   type: kv-v2
   path: platform/hindsight
-  refreshAfter: 1h
+  refreshAfter: 10m
+  hmacSecretData: true
   destination:
     name: hindsight-worker-platform-hindsight
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: hindsight-worker
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultDynamicSecret
+metadata:
+  name: hindsight-worker-database-creds-knowledge-platform-owner
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: hindsight-worker
+    app.kubernetes.io/instance: hindsight-worker
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: python
+spec:
+  vaultAuthRef: hindsight-worker
+  mount: database
+  path: creds/knowledge-platform-owner
+  destination:
+    name: hindsight-worker-database-creds-knowledge-platform-owner
     create: true
     annotations:
       flagger.app/config-tracking: disabled

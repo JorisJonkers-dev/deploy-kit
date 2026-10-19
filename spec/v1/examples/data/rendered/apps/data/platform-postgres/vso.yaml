@@ -35,7 +35,8 @@ spec:
   mount: secret
   type: kv-v2
   path: platform/postgres/exporter
-  refreshAfter: 1h
+  refreshAfter: 10m
+  hmacSecretData: true
   destination:
     name: postgres-platform-postgres-exporter
     create: true
@@ -80,7 +81,8 @@ spec:
   mount: secret
   type: kv-v2
   path: platform/backup/off-cluster
-  refreshAfter: 1h
+  refreshAfter: 10m
+  hmacSecretData: true
   destination:
     name: postgres-backup-platform-backup-off-cluster
     create: true
@@ -103,7 +105,8 @@ spec:
   mount: secret
   type: kv-v2
   path: data/postgres/backup
-  refreshAfter: 1h
+  refreshAfter: 10m
+  hmacSecretData: true
   destination:
     name: postgres-backup-data-postgres-backup
     create: true

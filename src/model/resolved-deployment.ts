@@ -223,16 +223,18 @@ const policyPath = z
   .strictObject({ path: text, allows: z.array(text).min(1) })
   .meta({ id: "PolicyPath" });
 
-// A `transit` or `database` grant: read by the Process itself and synced
-// nowhere, so what the projection holds is the paths its policy covers,
-// derived from the engine (spec/v1/10-project-intent.md#secrets).
+// A `transit` or `database` grant: the paths its policy covers, derived from
+// the engine (spec/v1/10-project-intent.md#secrets). Read by the Process itself,
+// except a credential an edge derives, which may be synced to the environment
+// or to files under a directory.
 const resolvedEngineGrant = z
   .strictObject({
     engine: z.enum([...TRANSIT_ENGINES, ...DATABASE_ENGINES]),
-    // A credential an edge derives may be synced to the environment.
-    delivery: z.enum(["self", "env"]),
+    delivery: z.enum(["self", "env", "file"]),
     paths: z.array(policyPath).min(1),
     destination: text.exactOptional(),
+    mountAt: text.exactOptional(),
+    fileMode: text.exactOptional(),
     restartTargets: z.array(text).exactOptional(),
   })
   .meta({ id: "ResolvedEngineGrant" });

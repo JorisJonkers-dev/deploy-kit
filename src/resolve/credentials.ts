@@ -45,15 +45,21 @@ export function resolveCredentials(
   );
   if (edge === undefined) return [];
   const path = credentialPathOf(credentialRoleOf(context));
-  // ruleDiagnostics refused a credential delivered to a file.
-  const delivery = edge.credentials?.delivery === "env" ? "env" : "self";
+  const delivery = edge.credentials?.delivery ?? "self";
   return [
     {
       engine: "database",
       delivery,
       paths: [{ path, allows: ["read"] }],
-      ...(delivery === "env"
-        ? { destination: destinationOf(process.name, path) }
+      ...(delivery === "self"
+        ? {}
+        : { destination: destinationOf(process.name, path) }),
+      // ruleDiagnostics refused a file credential without both.
+      ...(delivery === "file"
+        ? {
+            mountAt: edge.credentials?.mountAt as string,
+            fileMode: edge.credentials?.fileMode as string,
+          }
         : {}),
       ...(edge.credentials?.rotation.tolerates === "restart"
         ? { restartTargets: [process.name] }

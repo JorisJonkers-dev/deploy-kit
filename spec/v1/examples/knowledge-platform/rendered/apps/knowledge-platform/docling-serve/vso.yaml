@@ -35,7 +35,8 @@ spec:
   mount: secret
   type: kv-v2
   path: platform/backup/off-cluster
-  refreshAfter: 1h
+  refreshAfter: 10m
+  hmacSecretData: true
   destination:
     name: docling-serve-backup-platform-backup-off-cluster
     create: true
