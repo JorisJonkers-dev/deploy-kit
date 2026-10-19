@@ -1,0 +1,28 @@
+# REFUSED: schema, internet egress with no reason
+#
+# Internet egress names `to: internet` and a reason, and no destination
+# (spec/v1/16-dependencies.md#internet-egress). Without a reason the declaration says nothing a reviewer can weigh.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: crawler
+    processes:
+      - name: crawler-api
+        lifecycle: application
+        image: crawler-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: continuous
+        egress: { to: internet }

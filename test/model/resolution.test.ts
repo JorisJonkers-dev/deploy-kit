@@ -370,6 +370,16 @@ describe("resolveIntentSet", () => {
       ).toBe(text("knowledge-platform/expected/resolved.hindsight.json"));
     });
 
+    it("carries a Process's internet egress with the reason its owner gave", () => {
+      expect(
+        knowledgePlatform()
+          .applications.find(({ id }) => id === "karakeep")
+          ?.processes.find(({ name }) => name === "karakeep")?.internetEgress,
+      ).toStrictEqual({
+        reason: "The browser fetches the pages it bookmarks.",
+      });
+    });
+
     it("resolves the knowledge platform's dependency edges, its in-project ones among them, to its committed oracle, byte for byte", () => {
       expect(canonicalJson(knowledgePlatform().dependencies)).toBe(
         text("knowledge-platform/expected/dependencies.json"),

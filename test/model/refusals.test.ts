@@ -276,6 +276,47 @@ describe("an edge's credential delivered to the environment", () => {
   });
 });
 
+describe("internet egress", () => {
+  const egress = (value: string): string =>
+    DOCUMENT.replace("GRANTS", "").replace(
+      "        cutover: interrupted\n",
+      `        cutover: interrupted\n        egress: ${value}\n`,
+    );
+
+  it("is accepted with a reason", () => {
+    expect(
+      refusalsOf(
+        egress("{ to: internet, reason: workflows call public APIs }"),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it.each([
+    [
+      "no reason",
+      "{ to: internet }",
+      "/applications/0/processes/0/egress/reason",
+    ],
+    [
+      "an empty reason",
+      '{ to: internet, reason: "" }',
+      "/applications/0/processes/0/egress/reason",
+    ],
+    [
+      "a destination outside the vocabulary",
+      "{ to: lan, reason: x }",
+      "/applications/0/processes/0/egress/to",
+    ],
+    [
+      "an authored range",
+      "{ to: internet, reason: x, cidr: 192.0.2.0/24 }",
+      "/applications/0/processes/0/egress/cidr",
+    ],
+  ])("is refused with %s", (_, value, path) => {
+    expect(refusalsOf(egress(value))).toStrictEqual([{ code: "schema", path }]);
+  });
+});
+
 describe("the access by delivery matrix", () => {
   it.each([
     ["self-renew", "env"],

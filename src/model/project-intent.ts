@@ -7,6 +7,7 @@ import {
   ACCESS_TIERS,
   ALERT_CLASSES,
   API_VERBS,
+  EGRESS_TARGETS,
   ARCHITECTURES,
   AUDIENCES,
   CONTENT_POLICIES,
@@ -272,6 +273,15 @@ const apiAccess = z
   .strictObject({ reason: text, rules: z.array(apiRule).min(1) })
   .meta({ id: "ApiAccess" });
 
+// Where a Process reaches beyond its edges (spec/v1/16-dependencies.md#internet-egress):
+// a closed vocabulary with a reason, and no destination an author writes.
+const egress = z
+  .strictObject({
+    to: z.enum(EGRESS_TARGETS).meta({ id: "EgressTarget" }),
+    reason: text,
+  })
+  .meta({ id: "Egress" });
+
 // Spread into each of the three levels rather than nested under a key: the level
 // a family is written at is not itself a field an author writes.
 const sharedIntent = {
@@ -298,6 +308,7 @@ const process = z
     libraries: z.array(libraryMount).min(1).exactOptional(),
     replicas: capacity.exactOptional(),
     api: apiAccess.exactOptional(),
+    egress: egress.exactOptional(),
     ...sharedIntent,
   })
   .meta({ id: "Process" });

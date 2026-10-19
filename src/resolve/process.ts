@@ -374,6 +374,9 @@ export function resolveProcess(
             ).server,
           },
         }),
+    ...(process.egress === undefined
+      ? {}
+      : { internetEgress: { reason: process.egress.reason } }),
     ...probesOf(process, context.platform),
     placement: placementOf(process, context),
     ...(volumes.length === 0 ? {} : { volumes }),

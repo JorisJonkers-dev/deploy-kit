@@ -251,6 +251,11 @@ applications:
             image: karakeep-chrome
             memory: 512Mi
             cpu: 500m
+        # The headless browser fetches every page bookmarked, from anywhere.
+        egress:
+          to: internet
+          reason: >-
+            The browser fetches the pages it bookmarks.
         secrets:
           - path: secret/data/platform/karakeep
             keys: [nextauth-secret, meili-master-key, openrouter-api-key]

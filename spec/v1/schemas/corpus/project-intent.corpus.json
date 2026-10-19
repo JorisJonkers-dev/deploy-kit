@@ -200,6 +200,37 @@
           "value": 7
         }
       ]
+    },
+    {
+      "name": "internet egress with a reason",
+      "verdict": "accept",
+      "file": "examples/knowledge-platform/knowledge-platform.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/0/processes/0/egress",
+          "value": {
+            "to": "internet",
+            "reason": "fetches documents"
+          }
+        }
+      ]
+    },
+    {
+      "name": "egress to a target outside the vocabulary",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/knowledge-platform/knowledge-platform.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/0/processes/0/egress",
+          "value": {
+            "to": "lan",
+            "reason": "x"
+          }
+        }
+      ]
     }
   ]
 }

@@ -536,6 +536,11 @@ group, its objects and verbs, declared on the Process with a reason
 the project, held only where the platform admits it
 ([chapter 16](spec/v1/16-dependencies.md#kubernetes-api-access-is-declared-and-admitted)).
 
+**Internet egress**: a Process's declaration, `egress: {to: internet}` with a
+reason, that it reaches public IPv4 addresses no edge names. It derives one
+policy rule to every IPv4 address except a fixed non-public set; no author or
+Platform fact names a range ([chapter 16](spec/v1/16-dependencies.md#internet-egress)).
+
 **API Holder**: an Application the Platform document admits to hold API
 access. Flagger, the Release Gate and the Collector
 ([chapter 14](spec/v1/14-platform-intent.md#kubernetes-api-access)).

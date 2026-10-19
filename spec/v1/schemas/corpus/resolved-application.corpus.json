@@ -229,6 +229,33 @@
           "value": "sidecar"
         }
       ]
+    },
+    {
+      "name": "a Process that reaches the internet, with its reason",
+      "verdict": "accept",
+      "file": "examples/minimal/expected/resolved.json",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/processes/0/internetEgress",
+          "value": {
+            "reason": "calls a public API"
+          }
+        }
+      ]
+    },
+    {
+      "name": "internet egress with no reason",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/minimal/expected/resolved.json",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/processes/0/internetEgress",
+          "value": {}
+        }
+      ]
     }
   ]
 }

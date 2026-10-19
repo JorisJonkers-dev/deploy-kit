@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **68** rows. The compiler's behaviours join it as they land.
+This ledger holds **69** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -91,3 +91,4 @@ This ledger holds **68** rows. The compiler's behaviours join it as they land.
 | REQ-066 | An edge's credential delivered `file` is a `VaultDynamicSecret` the Process reads as two files, `username` and `password`, in the directory `mountAt` at `fileMode`, mounted read-only into every container of its pod, and the Process mounts no Vault token for it; delivered to a file without both, it is refused | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-067 | Every static secret the operator syncs polls its path every ten minutes, keeps the HMAC of its data, and names its consuming workload as its restart target, whatever its rotation tolerates; none of the three is authored | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-068 | No committed rendered tree asks the Vault Agent injector for anything: the Vault Secrets Operator is the one delivery path | [test/model/render.test.ts](../test/model/render.test.ts) |
+| REQ-069 | A Process that declares `egress: {to: internet}` with a reason reaches every public IPv4 address on every port, through one policy rule to `0.0.0.0/0` that excepts the private ranges, the tailnet, link-local and loopback; one that declares none reaches none; a missing reason, a `to` outside the vocabulary and an authored range are refused | [test/model/render.test.ts](../test/model/render.test.ts) |

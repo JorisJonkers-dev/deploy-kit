@@ -55,6 +55,9 @@ describe("the schema refusal fixtures", () => {
     expect(cases).toStrictEqual([
       "alert-class-unknown",
       "credentials-file-without-mount",
+      "egress-outside-vocabulary",
+      "egress-with-range",
+      "egress-without-reason",
       "every-offending-value",
       "missing-field",
       "no-shape-matches",

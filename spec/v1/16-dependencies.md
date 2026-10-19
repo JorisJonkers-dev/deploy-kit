@@ -629,6 +629,49 @@ declares that one verb.
 The worked [`delivery`](examples/delivery/delivery.project.yml) project holds the
 estate's three holders: Flagger, the Release Gate and the Collector.
 
+### Internet egress
+
+A Process that reaches public addresses no edge names (a crawler, a workflow
+engine calling APIs it was configured with, a browser fetching what it is
+given) says so on the Process, with a reason, and names no destination:
+
+```yaml
+processes:
+  - name: karakeep
+    egress:
+      to: internet
+      reason: The browser fetches the pages it bookmarks.
+```
+
+`to` is a closed vocabulary whose one member is `internet`, and `reason` is
+required. Nothing is admitted: like a capacity exception, the declaration is a
+choice its owner writes down, visible in the repository whose code needs it.
+It derives one egress rule in the Process's own policy, after its peers: an
+`ipBlock` of `0.0.0.0/0` on every port, **except** a fixed set no author and
+no Platform fact can change:
+
+| excepted | is |
+|---|---|
+| `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16` | the private ranges, the cluster's pod and Service ranges and every LAN among them |
+| `100.64.0.0/10` | the tailnet |
+| `169.254.0.0/16` | link-local, cloud metadata among it |
+| `127.0.0.0/8` | loopback |
+
+The set is fixed rather than read from the Platform document, so a new LAN or a
+changed pod range cannot open a hole the rule did not intend. Inside the
+estate a Process reaches what its edges derive, and nothing else.
+
+Two limits follow from the substrate, not the model:
+
+- **IPv6 is not admitted.** The rule names an IPv4 block only, so a Process
+  that declares internet egress reaches no public IPv6 address.
+- **A pod's own node is always reachable.** Kubernetes admits traffic from a
+  pod to the node it runs on whatever a policy says, so the excepted ranges do
+  not cover the node's own address.
+
+A `to` outside the vocabulary, a missing or empty `reason`, and any authored
+range are refused by the schema (`schema`), at the field.
+
 ### Audit before enforce
 
 Default-deny does not ship on `networking.k8s.io/v1` alone. That API has no

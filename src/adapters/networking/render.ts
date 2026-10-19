@@ -31,6 +31,22 @@ export const ADAPTER = "networking";
 
 const tcp = (port: number): PolicyPort => ({ protocol: "TCP", port });
 
+/** Every IPv4 address; internet egress admits it less the ranges below. */
+const ANY_IPV4 = "0.0.0.0/0";
+
+/**
+ * What internet egress never reaches: the private ranges, the tailnet,
+ * link-local and loopback. Fixed, so no authored or Platform range opens a hole.
+ */
+const NOT_PUBLIC = [
+  "10.0.0.0/8",
+  "172.16.0.0/12",
+  "192.168.0.0/16",
+  "100.64.0.0/10",
+  "169.254.0.0/16",
+  "127.0.0.0/8",
+] as const;
+
 const peerOf = (
   namespace: string,
   process: string | undefined,
@@ -84,6 +100,11 @@ function policyOf(
     to: [{ ipBlock: { cidr } }],
     ports: [tcp(port)],
   }));
+  // Public IPv4 on every port, for a Process that declares internet egress.
+  const internet =
+    process.internetEgress === undefined
+      ? []
+      : [{ to: [{ ipBlock: { cidr: ANY_IPV4, except: [...NOT_PUBLIC] } }] }];
   return {
     apiVersion: "networking.k8s.io/v1",
     kind: "NetworkPolicy",
@@ -96,7 +117,7 @@ function policyOf(
       podSelector: { matchLabels: instanceOf(process.name) },
       policyTypes: ["Ingress", "Egress"],
       ...(ingress.length === 0 ? {} : { ingress }),
-      egress: [...edges, ...baseline, ...api],
+      egress: [...edges, ...baseline, ...api, ...internet],
     },
   };
 }

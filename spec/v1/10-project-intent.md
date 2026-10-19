@@ -656,6 +656,13 @@ in any other Application is `E_PROCESS_RBAC_GRANT`. What an admitted
 declaration derives, its ClusterRole, its mounted token and its policy's egress,
 is [chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted)'s.
 
+### Internet egress
+
+A Process that reaches public addresses no edge names declares
+`egress: {to: internet, reason: …}`; the reason is required and no destination
+is written. What it derives, and the fixed ranges it never reaches, are
+[chapter 16](16-dependencies.md#internet-egress)'s.
+
 ### Sidecars
 
 A Process is one pod, and a pod holds more than one container three times in
