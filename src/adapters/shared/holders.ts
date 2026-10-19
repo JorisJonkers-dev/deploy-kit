@@ -82,19 +82,35 @@ const migrationHolder = ({
         },
       ];
 
+/**
+ * A Process holds its own grants, and the VPN's credential where it attaches:
+ * the VPN container runs as the Process's identity, and only it reads that
+ * credential.
+ */
+function processHolder(
+  process: ResolvedProcess,
+  application: string,
+): Holder[] {
+  const grants = [
+    ...(process.secrets ?? []),
+    ...(process.vpn === undefined ? [] : [process.vpn.credential]),
+  ];
+  return grants.length === 0
+    ? []
+    : [
+        {
+          identity: process.identity,
+          labels: labelsOf(process, application),
+          grants,
+        },
+      ];
+}
+
 export const holdersOf = (
   application: ResolvedApplicationDocument,
 ): Holder[] => [
   ...application.processes.flatMap((process) => [
-    ...(process.secrets === undefined
-      ? []
-      : [
-          {
-            identity: process.identity,
-            labels: labelsOf(process, application.id),
-            grants: process.secrets,
-          },
-        ]),
+    ...processHolder(process, application.id),
     ...backupHolder(process, application.id),
   ]),
   ...migrationHolder(application),

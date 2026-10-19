@@ -43,7 +43,7 @@ export const serializeYaml = (objects: readonly RenderedObject[]): string =>
   objects
     .map(
       (object) =>
-        `---\n${stringify(written(object), { aliasDuplicateObjects: false, lineWidth: 0 })}`,
+        `---\n${stringify(written(object), { aliasDuplicateObjects: false, lineWidth: 0, version: "1.1" })}`,
     )
     .join("");
 

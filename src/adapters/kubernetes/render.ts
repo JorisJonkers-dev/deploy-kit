@@ -32,6 +32,7 @@ import type {
   ServiceAccount,
   Volume,
   VolumeMount,
+  VpnContainer,
 } from "../../objects/kubernetes.ts";
 import {
   autoscaled,
@@ -53,6 +54,7 @@ import { applicationDirectory, projectDirectory } from "../shared/paths.ts";
 import { nodeAffinityOf } from "../shared/placement.ts";
 import { notSupported } from "../../model/internal-failure.ts";
 import { clusterNameOf } from "../../model/runtime-profiles.ts";
+import { VPN_DIRECTORY } from "../../model/vpn.ts";
 
 export const ADAPTER = "kubernetes";
 
@@ -273,6 +275,45 @@ const RESTRICTED: Container["securityContext"] = {
   capabilities: { drop: ["ALL"] },
 };
 
+/** The volume the VPN writes the forwarded port to, and how much it may hold. */
+const VPN_VOLUME = "vpn";
+const VPN_VOLUME_SIZE = "1Mi";
+
+/** How long the VPN may take to come up: the tunnel is up before the Process starts. */
+const VPN_STARTUP = {
+  periodSeconds: 5,
+  timeoutSeconds: 5,
+  failureThreshold: 60,
+};
+
+/**
+ * The VPN beside an attached Process (spec/v1/30-deliverables.md#how-each-adapter-spells-the-projection):
+ * a native sidecar that runs before the Process and for as long as it does, as
+ * root with the two network capabilities and nothing else added, reading its
+ * credential from the Secret only it is given.
+ */
+const vpnContainerOf = (
+  vpn: NonNullable<ResolvedProcess["vpn"]>,
+): VpnContainer => ({
+  name: "vpn",
+  image: vpn.image,
+  restartPolicy: "Always",
+  env: vpn.environment,
+  envFrom: [{ secretRef: { name: vpn.credential.destination as string } }],
+  resources: resourcesOf(vpn.memory, vpn.cpu),
+  securityContext: {
+    runAsNonRoot: false,
+    runAsUser: 0,
+    runAsGroup: 0,
+    capabilities: { add: ["NET_ADMIN", "NET_RAW"] },
+  },
+  startupProbe: {
+    exec: { command: ["/gluetun-entrypoint", "healthcheck"] },
+    ...VPN_STARTUP,
+  },
+  volumeMounts: [{ name: VPN_VOLUME, mountPath: VPN_DIRECTORY }],
+});
+
 /** Where the Process's claims, libraries, Assets and writable paths arrive in its container. */
 function mountsOf(process: ResolvedProcess): VolumeMount[] {
   return [
@@ -302,6 +343,16 @@ function mountsOf(process: ResolvedProcess): VolumeMount[] {
       mountPath: path,
     })),
     ...fileMountsOf(process),
+    // The forwarded port, for a Process that receives one, written by the VPN.
+    ...(process.vpn?.forwardedPort === true
+      ? [
+          {
+            name: VPN_VOLUME,
+            mountPath: VPN_DIRECTORY,
+            readOnly: true as const,
+          },
+        ]
+      : []),
   ];
 }
 
@@ -343,6 +394,9 @@ function volumesOf(process: ResolvedProcess): Volume[] {
         defaultMode: Number.parseInt(grant.fileMode as string, 8),
       },
     })),
+    ...(process.vpn === undefined
+      ? []
+      : [{ name: VPN_VOLUME, emptyDir: { sizeLimit: VPN_VOLUME_SIZE } }]),
   ];
 }
 
@@ -453,6 +507,9 @@ function deploymentOf(
             seccompProfile: { type: "RuntimeDefault" },
           },
           affinity: affinityOf(process),
+          ...(process.vpn === undefined
+            ? {}
+            : { initContainers: [vpnContainerOf(process.vpn)] }),
           containers: [
             containerOf(process),
             // Stryker disable next-line ArrayDeclaration

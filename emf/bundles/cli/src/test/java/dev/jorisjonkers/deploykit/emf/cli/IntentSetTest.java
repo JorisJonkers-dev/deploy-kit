@@ -262,6 +262,37 @@ class IntentSetTest {
                         tuple("E_UNKNOWN_METRICS_STACK", "/telemetry"));
     }
 
+    @Test
+    void anAttachmentToAVpnThePlatformDoesNotRunIsRefusedAndOneItRunsIsNot(@TempDir Path directory) {
+        String fixture = "refusals/no-vpn-policy/";
+        String platform = Examples.read(fixture + "platform.intent.yml");
+        Path project = Examples.of(fixture + "refusals.project.yml");
+
+        assertThat(Pipeline.check(List.of(Examples.of(fixture + "platform.intent.yml"), project)))
+                .extracting(Diagnostic::code, Diagnostic::document, Diagnostic::path)
+                .containsExactly(tuple("E_NO_VPN_POLICY", "refusals.project.yml", "/applications/0/processes/0/vpn"));
+        assertThat(Pipeline.check(List.of(
+                        Examples.write(
+                                directory,
+                                "platform.intent.yml",
+                                platform
+                                        + "vpn:\n  image: gluetun\n  credential: secret/data/platform/vpn\n"
+                                        + "  memory: 128Mi\n  cpu: 50m\n"),
+                        project)))
+                .isEmpty();
+    }
+
+    @Test
+    void aVpnSettingTheRenderDerivesIsASchemaRefusal(@TempDir Path directory) {
+        String platform = Examples.read("refusals/no-vpn-policy/platform.intent.yml")
+                + "vpn:\n  image: gluetun\n  credential: secret/data/platform/vpn\n"
+                + "  memory: 128Mi\n  cpu: 50m\n  settings:\n    VPN_PORT_FORWARDING: \"on\"\n";
+
+        assertThat(Pipeline.check(List.of(Examples.write(directory, "platform.intent.yml", platform))))
+                .extracting(Diagnostic::code, Diagnostic::path)
+                .containsExactly(tuple("schema", "/vpn"));
+    }
+
     /** The library-not-granted fixture, its Platform document's grant written as {@code grant}. */
     private static List<Path> granting(Path directory, String grant, String mount) {
         String fixture = "refusals/library-not-granted/";

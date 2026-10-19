@@ -137,6 +137,8 @@ export interface PodSpec {
     readonly seccompProfile: { readonly type: "RuntimeDefault" };
   };
   readonly affinity?: NodeAffinity;
+  /** The VPN beside an attached Process, started before it and kept running. */
+  readonly initContainers?: readonly VpnContainer[];
   readonly containers: readonly Container[];
   readonly volumes?: readonly Volume[];
 }
@@ -186,6 +188,34 @@ export interface Container {
   readonly readinessProbe?: Probe;
   readonly livenessProbe?: Probe;
   readonly startupProbe?: Probe;
+}
+
+/**
+ * The platform's VPN beside an attached Process: a native sidecar, and the one
+ * container that holds network privileges, as root, with its own credential.
+ */
+export interface VpnContainer {
+  readonly name: "vpn";
+  readonly image: string;
+  readonly restartPolicy: "Always";
+  readonly env: readonly { readonly name: string; readonly value: string }[];
+  readonly envFrom: readonly {
+    readonly secretRef: { readonly name: string };
+  }[];
+  readonly resources: NonNullable<Container["resources"]>;
+  readonly securityContext: {
+    readonly runAsNonRoot: false;
+    readonly runAsUser: 0;
+    readonly runAsGroup: 0;
+    readonly capabilities: { readonly add: readonly ["NET_ADMIN", "NET_RAW"] };
+  };
+  readonly startupProbe: {
+    readonly exec: { readonly command: readonly string[] };
+    readonly periodSeconds: number;
+    readonly timeoutSeconds: number;
+    readonly failureThreshold: number;
+  };
+  readonly volumeMounts: readonly VolumeMount[];
 }
 
 export interface Deployment {

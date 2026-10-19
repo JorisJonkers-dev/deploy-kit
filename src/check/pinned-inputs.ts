@@ -134,6 +134,22 @@ const methodRefusals = (set: PinnedSet, platform: string): Diagnostic[] =>
     }),
   );
 
+/** The VPN, where the platform runs one, is an image the lock holds. */
+const vpnRefusals = (set: PinnedSet, platform: string): Diagnostic[] => {
+  const image = set.platform.vpn?.image;
+  return image === undefined || Object.hasOwn(set.imagesLock.images, image)
+    ? []
+    : [
+        {
+          code: "E_UNLOCKED_IMAGE",
+          document: platform,
+          path: "/vpn/image",
+          message: `the images lock holds no entry for ${image}`,
+          hint: "Lock the alias, or name one the images lock holds.",
+        },
+      ];
+};
+
 /**
  * The Vault policy job, where the platform names one, runs an image the lock
  * holds, on some node the contract offers it.
@@ -195,6 +211,7 @@ export const pinnedDiagnostics = (
 ): Diagnostic[] => [
   ...contractRefusals(set, contractDigest, platform),
   ...methodRefusals(set, platform),
+  ...vpnRefusals(set, platform),
   ...policyJobRefusals(set, platform),
   ...located.flatMap((project) => processRefusals(set, project)),
   ...located.flatMap((project) => migrationRefusals(set, project)),

@@ -68,6 +68,7 @@ other resolves and every policy one asks for the other offers:
 | a volume's Durability Class has no entry in `durability` | `E_NO_DURABILITY_POLICY` |
 | a Process mounts a library `libraries` does not declare | `E_UNKNOWN_LIBRARY` |
 | a Process mounts a library that grants its project nothing, or mounts it `write` where the grant is `read` | `E_LIBRARY_NOT_GRANTED` |
+| a Process attaches to a VPN and `vpn` is absent | `E_NO_VPN_POLICY` |
 | a grant delivered as `env` or `file` where `secretsEncryption` is false | `E_SECRETS_AT_REST_REQUIRED` |
 | a name in `delivery.machinery` names an Application no project file read beside it declares | `E_UNKNOWN_MACHINERY` |
 | a name in `apiAccess.holders` names an Application no project file read beside it declares | `E_UNKNOWN_API_HOLDER` |
@@ -392,6 +393,41 @@ eligible cards are that vendor's is `E_NO_GPU_POLICY`
 carrying the vendor's cards has the driver, the container toolkit and the
 device plugin installed; the render installs none of them.
 
+## VPN
+
+A Process that attaches to the VPN
+([chapter 10](10-project-intent.md#vpn-attachment)) is handed one container
+beside it that holds the tunnel. Which provider, which servers, the credential
+and how the tunnel behaves are the platform's, so the Platform document declares
+the VPN once
+([0107](../../docs/adr/model/0107-a-vpn-attachment-is-a-derived-sidecar.md)):
+
+```yaml
+vpn:
+  image: gluetun
+  credential: secret/data/platform/vpn
+  memory: 128Mi
+  cpu: 50m
+  settings:
+    VPN_SERVICE_PROVIDER: protonvpn
+    VPN_TYPE: wireguard
+    SERVER_COUNTRIES: Netherlands
+    PORT_FORWARD_ONLY: "on"
+```
+
+| field | required | notes |
+|---|---|---|
+| `image` | yes | An images-lock alias. The image is gluetun's, and its variables are the contract: the render sets them, and runs the image's `/gluetun-entrypoint healthcheck` until the tunnel is up. An alias the lock does not hold is `E_UNLOCKED_IMAGE`. |
+| `credential` | yes | A Secret Store path whose keys are the container's own variables, such as `WIREGUARD_PRIVATE_KEY`. It is synced to a Secret only the VPN container reads, under the attached Process's identity. |
+| `memory`, `cpu` | yes | What the container asks for. A node is eligible for an attached Process only where it fits the Process, its sidecars and this container together. |
+| `settings` | no | Literal, non-secret variables. Each name is a variable name. `FIREWALL_INPUT_PORTS`, `VPN_PORT_FORWARDING` and `VPN_PORT_FORWARDING_UP_COMMAND` are refused here, because the render derives them from the attached Process. |
+
+The VPN container is the one container the posture lets hold `NET_ADMIN` and
+`NET_RAW`, and the one that runs as root
+([Hardening policy](#hardening-policy)). Nothing in a Project authors it, so the
+posture still has no exception a Project can write. It runs as a native sidecar,
+started before the Process and kept running beside it.
+
 ## Engines
 
 The method for an `engine` **is an image**: one purpose-built image per engine,
@@ -559,8 +595,10 @@ reads `alertClass` from the published projection
 
 ## Hardening policy
 
-One posture for every container the estate renders
-([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)):
+One posture for every container a Project runs
+([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)). The
+VPN container the render derives beside an attached Process is the one
+container outside it ([VPN](#vpn)):
 
 ```yaml
 hardening: restricted
@@ -1068,6 +1106,13 @@ classDiagram
         +string resource
         +string runtimeClass
     }
+    class VpnPolicy {
+        +ImageAlias image
+        +VaultPath credential
+        +Quantity memory
+        +Quantity cpu
+        +map settings
+    }
 
     Platform "1" *-- "1" PlatformMetadata : metadata
     Platform "1" *-- "1" Substrate : substrate
@@ -1089,6 +1134,7 @@ classDiagram
     Platform "1" *-- "0..*" Provider : providers
     Platform "1" *-- "0..*" Library : libraries
     Platform "1" *-- "0..*" GpuVendor : gpus
+    Platform "1" *-- "0..1" VpnPolicy : vpn
     Bootstrap "1" *-- "1" FluxSource : flux
     FluxSource "1" *-- "1" RenderedArtifacts : artifacts
     RenderedArtifacts "1" *-- "1" ArtifactSigner : signer

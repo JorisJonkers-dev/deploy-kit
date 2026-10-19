@@ -10,6 +10,7 @@ import type {
 } from "../model/effective-intent.ts";
 import { inSeconds, seconds } from "../model/durations.ts";
 import { eligibleNodes, gpuVendors } from "../model/eligibility.ts";
+import { FORWARDED_PORT_FILE } from "../model/vpn.ts";
 import type { ImagesLockDocument, LockedImage } from "../model/images-lock.ts";
 import type { NodeContractDocument } from "../model/node-contract.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
@@ -40,7 +41,12 @@ import {
 } from "./credentials.ts";
 import { resolveEdge } from "./dependencies.ts";
 import { resolveLibraries } from "./libraries.ts";
-import { resolveAssets, resolveGrants, resolveSidecars } from "./secrets.ts";
+import {
+  destinationOf,
+  resolveAssets,
+  resolveGrants,
+  resolveSidecars,
+} from "./secrets.ts";
 import { resolveVolumes } from "./volumes.ts";
 
 /** What resolving one Process reads beyond the Process itself. */
@@ -325,6 +331,58 @@ function gpuOf(
   return { gpu: { ...policy } };
 }
 
+/** Why an attached Process reaches public addresses it declared no egress to. */
+const TUNNEL_REASON = "the VPN's tunnel reaches its provider's servers";
+
+/**
+ * The VPN container beside an attached Process, from the Platform's `vpn`
+ * (E_NO_VPN_POLICY refused an attachment without one, and E_UNLOCKED_IMAGE an
+ * image the lock does not hold). Its firewall admits the Process's surfaces,
+ * and only a Process that receives the forwarded port asks for one.
+ */
+function vpnOf(
+  process: EffectiveProcess,
+  context: ProcessContext,
+): { readonly vpn?: NonNullable<ResolvedProcess["vpn"]> } {
+  if (process.vpn === undefined) return {};
+  const vpn = context.platform.vpn as NonNullable<
+    PlatformIntentDocument["vpn"]
+  >;
+  const image = context.lock.images[vpn.image] as LockedImage;
+  const ports = [...new Set(Object.values(process.provides ?? {}))].sort(
+    (a, b) => a - b,
+  );
+  const { forwardedPort } = process.vpn;
+  const derived: Record<string, string> = {
+    ...(ports.length === 0 ? {} : { FIREWALL_INPUT_PORTS: ports.join(",") }),
+    VPN_PORT_FORWARDING: forwardedPort ? "on" : "off",
+    ...(forwardedPort
+      ? {
+          VPN_PORT_FORWARDING_UP_COMMAND: `/bin/sh -c 'echo {{PORT}} > ${FORWARDED_PORT_FILE}'`,
+        }
+      : {}),
+  };
+  const environment: Record<string, string> = { ...vpn.settings, ...derived };
+  return {
+    vpn: {
+      image: `${image.repository}@${image.digest}`,
+      memory: vpn.memory,
+      cpu: vpn.cpu,
+      forwardedPort,
+      // Sorted by name, in code-point order.
+      environment: Object.keys(environment)
+        .sort()
+        .map((name) => ({ name, value: environment[name] as string })),
+      credential: {
+        path: vpn.credential,
+        access: "read",
+        delivery: "env",
+        destination: destinationOf(`${process.name}-vpn`, vpn.credential),
+      },
+    },
+  };
+}
+
 export function resolveProcess(
   process: EffectiveProcess,
   context: ProcessContext,
@@ -372,6 +430,7 @@ export function resolveProcess(
     memory: process.placement.memory,
     cpu: process.placement.cpu,
     ...gpuOf(process, context),
+    ...vpnOf(process, context),
     hardening: context.platform.hardening,
     // The pod authenticates only where a grant is delivered `self`, or where
     // it holds Kubernetes API access.
@@ -393,7 +452,9 @@ export function resolveProcess(
           },
         }),
     ...(process.egress === undefined
-      ? {}
+      ? process.vpn === undefined
+        ? {}
+        : { internetEgress: { reason: TUNNEL_REASON } }
       : { internetEgress: { reason: process.egress.reason } }),
     ...probesOf(process, context.platform),
     placement: placementOf(process, context),

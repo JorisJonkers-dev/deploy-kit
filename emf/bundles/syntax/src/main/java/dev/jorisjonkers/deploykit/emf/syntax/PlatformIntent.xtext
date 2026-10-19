@@ -33,7 +33,8 @@ Platform returns Platform:
 	& ('handover' ':' BEGIN handover=HandoverLedger END)?
 	& ('providers' ':' BEGIN (DASH BEGIN providers+=Provider END)+ END)?
 	& ('libraries' ':' BEGIN libraries+=Library+ END)?
-	& ('gpus' ':' BEGIN gpus+=GpuVendor+ END)?);
+	& ('gpus' ':' BEGIN gpus+=GpuVendor+ END)?
+	& ('vpn' ':' BEGIN vpn=VpnPolicy END)?);
 
 PlatformMetadata returns PlatformMetadata:
 	(('cluster' ':' cluster=Text)
@@ -219,6 +220,17 @@ GpuVendorPolicy returns GpuVendorPolicy:
 	(('resource' ':' resource=Text)
 	& ('runtimeClass' ':' runtimeClass=Text));
 
+// The VPN beside every attached Process: its image, credential, quantities and literal settings.
+VpnPolicy returns VpnPolicy:
+	(('image' ':' image=Text)
+	& ('credential' ':' credential=Text)
+	& ('memory' ':' memory=Text)
+	& ('cpu' ':' cpu=Text)
+	& ('settings' ':' BEGIN settings+=VpnSetting+ END)?);
+
+VpnSetting returns VpnSetting:
+	key=Text ':' value=Text;
+
 // Every keyword this document adds is also a scalar, as the project language's are.
 @Override
 Text returns ecore::EString:
@@ -229,7 +241,7 @@ PlatformKeyword:
 	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'egress' | 'embedded' | 'engines' | 'ephemeral' | 'errorRate' | 'estate' | 'etcd' |
 	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'gid' | 'gpus' | 'grants' | 'handover' | 'hardening' | 'holders' | 'imagePull' | 'instance' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'latency' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
 	'metrics' | 'monitors' | 'namespace' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'password' | 'period' | 'plain' | 'policyJob' | 'providers' | 'pullSecret' | 'restricted' | 'retireBy' |
-	'reporter' | 'repository' | 'resource' | 'retain' | 'runner' | 'runtimeClass' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'server' | 'serverCount' | 'serving' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
+	'reporter' | 'repository' | 'resource' | 'retain' | 'runner' | 'runtimeClass' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'server' | 'serverCount' | 'serving' | 'settings' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
 	'surfaces' | 'telemetry' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'user' | 'vault';
 
 enum Datastore returns Datastore:

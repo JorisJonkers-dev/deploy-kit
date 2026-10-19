@@ -478,6 +478,7 @@ describe("the refusal fixtures", () => {
       "no-migration-policy",
       "no-secret-store",
       "no-tier-for-audience",
+      "no-vpn-policy",
       "non-kv-delivery",
       "owner-role-granted",
       "placement-incomplete",
@@ -502,7 +503,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(53);
+    expect(refused).toHaveLength(54);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",

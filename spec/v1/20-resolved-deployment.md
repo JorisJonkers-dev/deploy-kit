@@ -769,6 +769,28 @@ so it is recorded with the same provenance as the set. Cards of two vendors are
 at build time ([chapter 40](40-composition.md#placement)); a Process with no
 `gpu` carries none.
 
+### The VPN attachment
+
+A Process that attaches to the VPN is resolved with a `vpn` of its own: the
+Platform document's image, by digest, its `memory` and `cpu`, whether it
+forwards a port, its whole `environment`, and its `credential`. The environment
+is the Platform's `settings` with three derived values beside them, sorted by
+name:
+
+| variable | derived from |
+|---|---|
+| `FIREWALL_INPUT_PORTS` | the Process's surfaces' ports, once each and in order; absent where it provides none |
+| `VPN_PORT_FORWARDING` | `on` where `forwardedPort` is true, `off` otherwise |
+| `VPN_PORT_FORWARDING_UP_COMMAND` | where `forwardedPort` is true: writing the forwarded port to `/run/vpn/forwarded-port` |
+
+The `credential` is a derived grant on the Platform's path, delivered `env`
+to the Secret `<process>-vpn-<path>`. The Process's own identity holds it, so
+its Vault policy reads the path, but only the VPN container is given the
+Secret. Holding it puts the Application after the secrets-provisioning unit and
+connects it to the Secret Store, as any grant does. The Process also carries
+`internetEgress`, with the tunnel as its reason where it declared none
+([chapter 16](16-dependencies.md#internet-egress)).
+
 ### The forward-auth endpoint
 
 The middleware chain is derived, and one of its members needs an address: a
@@ -1774,6 +1796,14 @@ classDiagram
         +string resource
         +string runtimeClass
     }
+    class ResolvedVpn {
+        +ImageRef image
+        +Quantity memory
+        +Quantity cpu
+        +bool forwardedPort
+        +EnvEntry[] environment
+        +ResolvedGrant credential
+    }
     class ResolvedProbe {
         +Path path
         +int port
@@ -1969,6 +1999,7 @@ classDiagram
     ResolvedProcess "1" *-- "0..*" ResolvedVolume : volumes
     ResolvedProcess "1" *-- "0..*" ResolvedLibraryMount : libraries
     ResolvedProcess "1" *-- "0..1" ResolvedGpu : gpu
+    ResolvedProcess "1" *-- "0..1" ResolvedVpn : vpn
     ResolvedProcess "1" *-- "0..*" ResolvedGrant : secrets
     ResolvedProcess "1" *-- "0..*" ResolvedEngineGrant : secrets
     ResolvedProcess "1" *-- "0..*" ResolvedAsset : assets

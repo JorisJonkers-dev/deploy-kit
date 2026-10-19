@@ -289,6 +289,13 @@ const egress = z
   })
   .meta({ id: "Egress" });
 
+// A Process whose traffic leaves through the platform's VPN
+// (spec/v1/10-project-intent.md#vpn-attachment), and whether it receives the
+// port the provider forwards to it.
+const vpnAttachment = z
+  .strictObject({ forwardedPort: z.boolean() })
+  .meta({ id: "VpnAttachment" });
+
 // Spread into each of the three levels rather than nested under a key: the level
 // a family is written at is not itself a field an author writes.
 const sharedIntent = {
@@ -316,6 +323,7 @@ const process = z
     replicas: capacity.exactOptional(),
     api: apiAccess.exactOptional(),
     egress: egress.exactOptional(),
+    vpn: vpnAttachment.exactOptional(),
     ...sharedIntent,
   })
   .meta({ id: "Process" });

@@ -256,6 +256,11 @@ applications:
           to: internet
           reason: >-
             The browser fetches the pages it bookmarks.
+        # And it fetches them through the platform's VPN, so the sites it
+        # archives see the tunnel's exit rather than the estate's address
+        # (docs/adr/model/0107-a-vpn-attachment-is-a-derived-sidecar.md). It
+        # serves no peer, so it takes no forwarded port.
+        vpn: { forwardedPort: false }
         secrets:
           - path: secret/data/platform/karakeep
             keys: [nextauth-secret, meili-master-key, openrouter-api-key]

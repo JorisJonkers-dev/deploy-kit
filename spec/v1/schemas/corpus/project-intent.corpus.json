@@ -260,6 +260,19 @@
           }
         }
       ]
+    },
+    {
+      "name": "a VPN attachment that leaves forwardedPort unsaid",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/knowledge-platform/knowledge-platform.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/3/processes/0/vpn",
+          "value": {}
+        }
+      ]
     }
   ]
 }

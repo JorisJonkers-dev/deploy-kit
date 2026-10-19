@@ -80,6 +80,7 @@ mapping Process::lower(in app : Application, in prj : Project) : Process {
 	replicas := self.replicas.map copy();
 	api := self.api.map copy();
 	egress := self.egress.map copy();
+	vpn := self.vpn.map copy();
 	libraries := self.libraries->map copy();
 
 	-- Every copy is keyed on its Process: a mapping's result is cached per source
@@ -285,6 +286,10 @@ mapping LibraryMount::copy() : LibraryMount {
 mapping Egress::copy() : Egress {
 	to := self.to;
 	reason := self.reason;
+}
+
+mapping VpnAttachment::copy() : VpnAttachment {
+	forwardedPort := self.forwardedPort;
 }
 
 mapping ApiAccess::copy() : ApiAccess {

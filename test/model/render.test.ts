@@ -839,6 +839,20 @@ describe("renderIntentSet", () => {
     );
   });
 
+  it("quotes a string a YAML 1.1 reader takes for a boolean, as the Kubernetes API reads YAML", () => {
+    const written = serializeYaml([
+      {
+        apiVersion: "v1",
+        kind: "ConfigMap",
+        metadata: { name: "a", namespace: "n", labels: {} },
+        data: { a: "on", b: "off", c: "yes", d: "no", e: "plain" },
+      },
+    ]);
+    expect(written).toContain(
+      '  a: "on"\n  b: "off"\n  c: "yes"\n  d: "no"\n  e: plain\n',
+    );
+  });
+
   it("writes a JSON document a ConfigMap carries in its canonical form, and leaves a string as it is", () => {
     const configMap = (json: unknown) =>
       serializeYaml([
@@ -851,7 +865,7 @@ describe("renderIntentSet", () => {
       ]);
 
     expect(configMap({ b: [2, "it's"], a: { d: true, c: "30s" } })).toBe(
-      '# GENERATED. Never hand-edit.\n---\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: a\n  namespace: n\n  labels: {}\ndata:\n  a.json: |\n    {"a":{"c":"30s","d":true},"b":[2,"it\'s"]}\n  b.conf: |\n    port = 1\n',
+      '# GENERATED. Never hand-edit.\n---\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: a\n  namespace: "n"\n  labels: {}\ndata:\n  a.json: |\n    {"a":{"c":"30s","d":true},"b":[2,"it\'s"]}\n  b.conf: |\n    port = 1\n',
     );
     // The order a value's keys were built in decides nothing.
     expect(configMap({ a: { c: "30s", d: true }, b: [2, "it's"] })).toBe(

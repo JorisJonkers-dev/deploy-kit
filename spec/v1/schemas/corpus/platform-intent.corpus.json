@@ -156,6 +156,31 @@
           "path": "/gpus/nvidia/runtimeClass"
         }
       ]
+    },
+    {
+      "name": "a VPN with no credential",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/vpn/credential"
+        }
+      ]
+    },
+    {
+      "name": "a VPN that authors a setting the render derives",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/vpn/settings/VPN_PORT_FORWARDING",
+          "value": "on"
+        }
+      ]
     }
   ]
 }

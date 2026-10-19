@@ -249,6 +249,12 @@ share of its card, under the runtime class the Platform document names for the
 card's vendor. It reserves no memory and isolates no fault from the card's other
 holders ([0106](docs/adr/model/0106-a-gpu-request-is-derived-from-placement.md)).
 
+**VPN attachment**: a Process's declaration that its traffic leaves through the
+platform's VPN, and whether the provider forwards it a port. The VPN container
+beside it is derived, the one container outside the Hardening Class, and the
+forwarded port reaches the Process as a file
+([0107](docs/adr/model/0107-a-vpn-attachment-is-a-derived-sidecar.md)).
+
 **Hardening Class**: the pod security posture every Process takes, declared
 once by the platform and authored by none of them. It has no exception surface:
 a Process states the paths it must write, and an image that cannot meet the

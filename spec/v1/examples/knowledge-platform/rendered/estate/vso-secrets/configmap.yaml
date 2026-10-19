@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: vault-policy-aa1d69630007
+  name: vault-policy-523fd9963cc8
   namespace: secrets-system
   labels:
     app.kubernetes.io/name: vault-policy
@@ -34,6 +34,6 @@ data:
   knowledge-platform-system-hindsight-worker.role.json: |
     {"bound_service_account_names":["hindsight-worker"],"bound_service_account_namespaces":["knowledge-platform-system"],"token_policies":["knowledge-platform-system-hindsight-worker"]}
   knowledge-platform-system-karakeep.policy.json: |
-    {"path":{"secret/data/platform/karakeep":{"capabilities":["read"]},"secret/metadata/platform/karakeep":{"capabilities":["read"]}}}
+    {"path":{"secret/data/platform/karakeep":{"capabilities":["read"]},"secret/data/platform/vpn":{"capabilities":["read"]},"secret/metadata/platform/karakeep":{"capabilities":["read"]},"secret/metadata/platform/vpn":{"capabilities":["read"]}}}
   knowledge-platform-system-karakeep.role.json: |
     {"bound_service_account_names":["karakeep"],"bound_service_account_namespaces":["knowledge-platform-system"],"token_policies":["knowledge-platform-system-karakeep"]}

@@ -3,7 +3,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: vault-policy-aa1d69630007
+  name: vault-policy-523fd9963cc8
   namespace: secrets-system
   labels:
     app.kubernetes.io/name: vault-policy
@@ -72,7 +72,7 @@ spec:
       volumes:
         - name: policies
           configMap:
-            name: vault-policy-aa1d69630007
+            name: vault-policy-523fd9963cc8
             items:
               - key: data-system-postgres-catalog.policy.json
                 path: data-system-postgres-catalog.policy.json

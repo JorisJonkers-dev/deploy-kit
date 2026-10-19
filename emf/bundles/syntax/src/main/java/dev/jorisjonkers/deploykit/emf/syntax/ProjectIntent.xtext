@@ -80,6 +80,7 @@ Process returns Process:
 	& ('replicas' ':' BEGIN replicas=Capacity END)?
 	& ('api' ':' BEGIN api=ApiAccess END)?
 	& ('egress' ':' BEGIN egress=Egress END)?
+	& ('vpn' ':' BEGIN vpn=VpnAttachment END)?
 	& ('secrets' ':' BEGIN (DASH BEGIN secrets+=Grant END)+ END)?
 	& ('startupBudget' ':' startupBudget=Text)?
 	& ('cutover' ':' cutover=Cutover)?);
@@ -182,6 +183,10 @@ Capacity returns Capacity:
 	& ('reason' ':' reason=Text));
 
 // The Kubernetes API access a Process needs: what it may ask of which objects, and why.
+// Whether the provider forwards the attached Process a port.
+VpnAttachment returns VpnAttachment:
+	'forwardedPort' ':' forwardedPort=Bool;
+
 Egress returns Egress:
 	(('to' ':' to=EgressTarget)
 	& ('reason' ':' reason=Text));
@@ -261,7 +266,7 @@ Keyword:
 	'arch' | 'arm64' | 'assets' | 'audience' | 'authenticated' | 'base64' | 'base64url' | 'business-hours' | 'bytes' | 'capabilities' | 'changelog' | 'claim' |
 	'class' | 'contentPolicy' | 'continuous' | 'count' | 'cpu' | 'create' | 'credentials' | 'custody' | 'cutover' | 'database' | 'decrypt' |
 	'delete' | 'delivery' | 'dependsOn' | 'disk' | 'durability' | 'egress' | 'encoding' | 'encrypt' | 'engine' | 'env' | 'exact' |
-	'exposure' | 'false' | 'file' | 'fileMode' | 'files' | 'from' | 'generate' | 'get' | 'gpu' | 'group' | 'hdd' | 'hex' |
+	'exposure' | 'false' | 'file' | 'fileMode' | 'files' | 'forwardedPort' | 'from' | 'generate' | 'get' | 'gpu' | 'group' | 'hdd' | 'hex' |
 	'host' | 'id' | 'image' | 'internal' | 'internet' | 'interrupted' | 'irreplaceable' | 'job' | 'jvm' | 'key' |
 	'keys' | 'kind' | 'kv' | 'lan' | 'libraries' | 'library' | 'lifecycle' | 'list' | 'liveness' | 'match' | 'maxAge' |
 	'media' | 'memory' | 'migration' | 'model' | 'mountAt' | 'name' | 'node' | 'none' | 'nvme' | 'objects' | 'observability' |
@@ -271,7 +276,7 @@ Keyword:
 	'required' | 'restart' | 'role' | 'rotate' | 'rotation' | 'routes' | 'rules' | 'runtime' |
 	'schemaVersion' | 'scrape' | 'secrets' | 'self' | 'self-renew' | 'self-roll' | 'sidecars' | 'sign' |
 	'site' | 'size' | 'ssd' | 'startupBudget' | 'static' | 'strict' | 'subPath' | 'surface' | 'tcp' |
-	'to' | 'tolerates' | 'transit' | 'true' | 'update' | 'urgent' | 'valkey' | 'vendor' | 'verbs' | 'verify' | 'volumes' | 'watch' | 'workflow' |
+	'to' | 'tolerates' | 'transit' | 'true' | 'update' | 'urgent' | 'valkey' | 'vendor' | 'verbs' | 'verify' | 'volumes' | 'vpn' | 'watch' | 'workflow' |
 	'writablePaths' | 'write';
 
 enum Lifecycle returns Lifecycle:

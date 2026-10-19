@@ -916,6 +916,9 @@
         "gpu": {
           "$ref": "#/$defs/ResolvedGpu"
         },
+        "vpn": {
+          "$ref": "#/$defs/ResolvedVpn"
+        },
         "hardening": {
           "$ref": "#/$defs/HardeningClass"
         },
@@ -1132,6 +1135,174 @@
         "runtimeClass"
       ],
       "additionalProperties": false
+    },
+    "ResolvedVpn": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu": {
+          "type": "string",
+          "minLength": 1
+        },
+        "forwardedPort": {
+          "type": "boolean"
+        },
+        "environment": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "credential": {
+          "$ref": "#/$defs/ResolvedGrant"
+        }
+      },
+      "required": [
+        "image",
+        "memory",
+        "cpu",
+        "forwardedPort",
+        "environment",
+        "credential"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedGrant": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "keys": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "generated": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "encoding": {
+                "type": "string",
+                "enum": [
+                  "hex",
+                  "base64",
+                  "base64url"
+                ]
+              },
+              "adopt": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "key": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "path",
+                  "key"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "key",
+              "bytes",
+              "encoding"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "access": {
+          "$ref": "#/$defs/AccessTier"
+        },
+        "delivery": {
+          "$ref": "#/$defs/Delivery"
+        },
+        "destination": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mountAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fileMode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "restartTargets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "path",
+        "access",
+        "delivery"
+      ],
+      "additionalProperties": false
+    },
+    "AccessTier": {
+      "type": "string",
+      "enum": [
+        "read",
+        "self-renew",
+        "self-roll",
+        "custody"
+      ]
+    },
+    "Delivery": {
+      "type": "string",
+      "enum": [
+        "env",
+        "file",
+        "self"
+      ]
     },
     "HardeningClass": {
       "type": "string",
@@ -1510,121 +1681,6 @@
         "egress"
       ],
       "additionalProperties": false
-    },
-    "ResolvedGrant": {
-      "type": "object",
-      "properties": {
-        "path": {
-          "type": "string",
-          "minLength": 1
-        },
-        "keys": {
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "generated": {
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "key": {
-                "type": "string",
-                "minLength": 1
-              },
-              "bytes": {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              "encoding": {
-                "type": "string",
-                "enum": [
-                  "hex",
-                  "base64",
-                  "base64url"
-                ]
-              },
-              "adopt": {
-                "type": "object",
-                "properties": {
-                  "path": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "key": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                },
-                "required": [
-                  "path",
-                  "key"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "required": [
-              "key",
-              "bytes",
-              "encoding"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "access": {
-          "$ref": "#/$defs/AccessTier"
-        },
-        "delivery": {
-          "$ref": "#/$defs/Delivery"
-        },
-        "destination": {
-          "type": "string",
-          "minLength": 1
-        },
-        "mountAt": {
-          "type": "string",
-          "minLength": 1
-        },
-        "fileMode": {
-          "type": "string",
-          "minLength": 1
-        },
-        "restartTargets": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      },
-      "required": [
-        "path",
-        "access",
-        "delivery"
-      ],
-      "additionalProperties": false
-    },
-    "AccessTier": {
-      "type": "string",
-      "enum": [
-        "read",
-        "self-renew",
-        "self-roll",
-        "custody"
-      ]
-    },
-    "Delivery": {
-      "type": "string",
-      "enum": [
-        "env",
-        "file",
-        "self"
-      ]
     },
     "BackupPeer": {
       "type": "object",

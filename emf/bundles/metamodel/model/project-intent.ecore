@@ -101,6 +101,12 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="api" eType="#//ApiAccess" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="libraries" upperBound="-1" eType="#//LibraryMount" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="egress" eType="#//Egress" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="vpn" eType="#//VpnAttachment" containment="true"/>
+  </eClassifiers>
+  <!-- A Process whose traffic leaves through the platform's VPN, and whether it
+       receives the forwarded port (spec/v1/10-project-intent.md#vpn-attachment). -->
+  <eClassifiers xsi:type="ecore:EClass" name="VpnAttachment">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="forwardedPort" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
   </eClassifiers>
   <!-- A destination outside the cluster a Process reaches, and why
        (spec/v1/16-dependencies.md#internet-egress). -->
@@ -434,6 +440,19 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="providers" upperBound="-1" eType="#//Provider" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="libraries" upperBound="-1" eType="#//Library" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="gpus" upperBound="-1" eType="#//GpuVendor" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="vpn" eType="#//VpnPolicy" containment="true"/>
+  </eClassifiers>
+  <!-- The VPN beside every attached Process (spec/v1/14-platform-intent.md#vpn). -->
+  <eClassifiers xsi:type="ecore:EClass" name="VpnPolicy">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="credential" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="settings" upperBound="-1" eType="#//VpnSetting" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="VpnSetting" instanceClassName="java.util.Map$Entry">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <!-- What a Process that requires a GPU of one vendor is handed, keyed by the
        vendor (spec/v1/14-platform-intent.md#gpus). -->
