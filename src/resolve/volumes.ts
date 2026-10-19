@@ -75,13 +75,16 @@ function backupOf(
   const { offCluster } = policy;
   const surface = dumpedSurfaceOf(process, platform);
   const dumps = backupCredentialOf(project, process.name);
+  // A method that reads the volume alone runs as the Process that wrote it.
+  const runAs =
+    surface === undefined ? (lock.images[process.image] as LockedImage) : image;
   return {
     schedule: policy.schedule as string,
     retain: policy.retain as number,
     ...(offCluster === undefined ? {} : { offCluster: offCluster.destination }),
     method: `${image.repository}@${image.digest}`,
-    uid: image.uid,
-    gid: image.gid,
+    uid: runAs.uid,
+    gid: runAs.gid,
     identity,
     claim: `${claim}-backup`,
     // The platform chose the destination, so the grant on it is derived, and

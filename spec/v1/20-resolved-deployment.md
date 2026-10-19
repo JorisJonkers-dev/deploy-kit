@@ -1424,7 +1424,7 @@ processes:
           retain: 90                 # copies kept: the method prunes the rest
           offCluster: 's3://backup-storage/jorisjonkers-dev'
           method: ghcr.io/jorisjonkers-dev/platform/file-backup@sha256:…
-          uid: 1000                  # the method image's own user, from the lock
+          uid: 1000                  # the Process's own: `files` reads the volume alone
           gid: 1000
           identity: knowledge-ingest-worker-backup   # who runs it, never the Process
           claim: knowledge-vault-clone-backup        # where its copies land
