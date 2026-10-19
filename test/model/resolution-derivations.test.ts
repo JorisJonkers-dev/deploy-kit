@@ -831,6 +831,17 @@ describe("a Process that attaches to the VPN", () => {
       name: "FIREWALL_INPUT_PORTS",
       value: "8080,9090",
     });
+
+    // A Process that serves nothing admits nothing.
+    const serving = attached("{ forwardedPort: false }")
+      .replace("        provides: { http: 8080 }\n", "")
+      .replace(
+        "        probes:\n          readiness: { path: /ready, port: 8080 }\n          liveness: { path: /live, port: 8080 }\n",
+        "        probes: none\n",
+      );
+    expect(
+      processOf(serving).vpn?.environment.map(({ name }) => name),
+    ).not.toContain("FIREWALL_INPUT_PORTS");
   });
 
   it("connects its Application to the Secret Store, after the unit that writes its role", () => {
@@ -900,6 +911,7 @@ describe("a Process that attaches to the VPN", () => {
       {
         path: "/vpn/image",
         message: "the images lock holds no entry for gluetun",
+        hint: "Lock the alias, or name one the images lock holds.",
       },
     ]);
   });

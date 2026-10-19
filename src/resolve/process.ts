@@ -362,15 +362,17 @@ function vpnOf(
         }
       : {}),
   };
+  const environment: Record<string, string> = { ...vpn.settings, ...derived };
   return {
     vpn: {
       image: `${image.repository}@${image.digest}`,
       memory: vpn.memory,
       cpu: vpn.cpu,
       forwardedPort,
-      environment: Object.entries({ ...vpn.settings, ...derived })
-        .sort(([a], [b]) => (a < b ? -1 : 1))
-        .map(([name, value]) => ({ name, value })),
+      // Sorted by name, in code-point order.
+      environment: Object.keys(environment)
+        .sort()
+        .map((name) => ({ name, value: environment[name] as string })),
       credential: {
         path: vpn.credential,
         access: "read",

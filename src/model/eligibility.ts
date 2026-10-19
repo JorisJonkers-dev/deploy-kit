@@ -30,9 +30,10 @@ function request(
   const containers = [
     process.placement,
     ...(process.sidecars ?? []),
-    ...(process.vpn === undefined || platform.vpn === undefined
+    // E_NO_VPN_POLICY refused an attachment the platform runs no VPN for.
+    ...(process.vpn === undefined
       ? []
-      : [platform.vpn]),
+      : [platform.vpn as NonNullable<PlatformIntentDocument["vpn"]>]),
   ];
   return {
     memory: containers.reduce((sum, { memory }) => sum + mebibytes(memory), 0),
