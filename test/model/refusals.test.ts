@@ -248,6 +248,22 @@ describe("an edge's credential delivered to the environment", () => {
     ]);
   });
 
+  it.each([
+    ["a directory but no mode", "mountAt: /run/secrets/database"],
+    ["a mode but no directory", 'fileMode: "0400"'],
+  ])("is refused to a file with %s", (_, field) => {
+    expect(
+      refusalsOf(
+        edge("restart").replace("delivery: env", `delivery: file, ${field}`),
+      ),
+    ).toStrictEqual([
+      {
+        code: "schema",
+        path: "/applications/0/processes/0/dependsOn/0/credentials",
+      },
+    ]);
+  });
+
   it("is accepted to a file with a directory and a mode", () => {
     expect(
       refusalsOf(
