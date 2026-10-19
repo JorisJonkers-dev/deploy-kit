@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.21.0...v0.22.0) (2026-10-19)
+
+
+### Features
+
+* attach a Process to the platform's VPN ([#497](https://github.com/JorisJonkers-dev/deploy-kit/issues/497)) ([81c271b](https://github.com/JorisJonkers-dev/deploy-kit/commit/81c271b2b3a5b67e154f82f3c19e954f00533b1f))
+
 ## [0.21.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.20.0...v0.21.0) (2026-10-19)
 
 
