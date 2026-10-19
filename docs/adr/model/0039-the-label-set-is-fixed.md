@@ -39,14 +39,23 @@ is not hypothetical.
 
 There is no `version` in the set, and the render writes none. A pod does need
 to say which release it ran, so that it and its logs can be tied to a release,
-and a Project's Reconcile Unit puts `app.kubernetes.io/version` on every pod
-template and `Job` it applies, from the release its Rollout names
+so composition puts `app.kubernetes.io/version` on every pod template and
+`Job` a Project's unit applies, from the release the pin moves to
 ([0099](0099-a-rollout-is-a-github-deployment-driven-by-the-clusters-events.md)).
 It stays out of the render for the reason the Rollout does: the release is the
 fragment's claim about itself, and in the render it would make every release a
 new artifact, so one whose objects are otherwise the ones already pinned would
-move its pin and restart every pod for nothing. It is never a selector, since
-it moves with every release.
+move its pin and restart every pod for nothing. So the label is added to the
+unit's index in the artifact composition publishes, after the content hash that
+decides a move is taken, and only when the pin moves anyway. It does not ride
+on the pin source's Kustomization: Flux reconciles that object and the source
+it names independently, so a Kustomization holding the new release could be
+applied to the artifact it replaces before that one was fetched. Every release
+rolled every pod twice that way on 2026-10-18, once with the old image and the
+new label, then with the new image
+([#487](https://github.com/JorisJonkers-dev/deploy-kit/issues/487)). In the
+artifact, the label lands in the one fetch that brings the new image. It is
+never a selector, since it moves with every release.
 
 An estate-scoped Deliverable carries `managed-by` only. It belongs to no
 Process and no Application, and `part-of` on the Gatus endpoints ConfigMap would
@@ -60,6 +69,7 @@ name an Application that does not own it.
 | `name` = Application, `instance` = Process | Reads the way the upstream convention intends | Makes every Process of a two-Process Application ambiguous under a `name`-only selector, and `auth` is exactly that case |
 | Include `version` from the images lock | Fills in the conventional set | Churns on every image bump, and names an image's version where a reader needs the release's |
 | Render `version` from the fragment's release | One place writes every label | The render stops being a function of what it derives: a release with nothing new would publish an artifact, move its pin and restart its pods |
+| Patch `version` onto the pin source's Kustomization | The artifact stays the render share alone | Flux reconciles the Kustomization and its source apart, so the new label can be applied to the old artifact first and every pod rolls twice ([#487](https://github.com/JorisJonkers-dev/deploy-kit/issues/487)) |
 
 ## Reversibility
 Undo cost today: none of the five is live-critical *except* the two selectors,

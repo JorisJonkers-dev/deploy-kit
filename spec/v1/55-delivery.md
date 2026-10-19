@@ -97,7 +97,21 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   the lock, so an artifact names the inputs that reproduce it, and the content
   hash of the files it holds.
 - **An unchanged render publishes nothing.** The files an artifact holds are its
-  Project's share of the rendered tree and nothing else. A composition that
+  Project's share of the rendered tree and one change to it: in a Project's
+  artifact, the unit's index, `apps/<project>/kustomization.yaml`, also
+  carries the two `patches` that label its pods with the release the pin moves
+  to ([chapter 10](10-project-intent.md#the-label-set)). One targets kinds
+  `Deployment`, `StatefulSet`, `DaemonSet` and `Job` and sets
+  `app.kubernetes.io/version` under `spec.template.metadata.labels`; the other
+  targets `CronJob` and sets it under
+  `spec.jobTemplate.spec.template.metadata.labels`. Each sets it to the
+  release's `version`, quoted so it stays a string, as a strategic merge that
+  touches no selector. The label travels in the artifact, never in the pin
+  source, so the one fetch that brings a new image brings its label: a label
+  written on the source's Kustomization could be applied to the artifact it
+  replaces, before that one is fetched, and roll every pod twice
+  ([0039](../../docs/adr/model/0039-the-label-set-is-fixed.md)). The content
+  hash covers the share alone, so the label never decides a move. A composition that
   renders a Project whose content hash equals the pinned artifact's publishes
   no artifact and moves no pin, so another Project's fragment never redeploys
   this one; the pinned artifact keeps naming the composition that first
@@ -170,7 +184,7 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 | | `sourceRef`, `path` | the `OCIRepository` above, and the unit's directory in the artifact |
 | | `dependsOn` | every unit this one follows that is on the estate path, by name, in name order; absent where it follows none. A unit of a Project still on the old path ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)) is left out: it has no Kustomization here, so Flux would wait on it for ever, and the Project is already running where the old path put it. The first composition after that Project hands over rewrites the source, whether or not the dependent's own pin moves, and the edge returns then |
 | | `interval`, `prune`, `wait` | `10m`, `true`, `true`: a unit is Ready when what it applied is, so a Job that fails holds every unit that follows it |
-| | `patches` | on a Project's first delivery alone, the one that hands it over ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)), first one patch, targeting kind `Deployment`, that annotates each `kustomize.toolkit.fluxcd.io/force: Enabled`, so Flux recreates a Deployment whose selector the old path set differently rather than refuse it. A rewrite that leaves the pin where it is keeps it, since the first delivery may not have been applied yet; the first rewrite that moves the pin drops it, and it is absent from the estate-scoped artifact's source. No other kind is marked: a claim recreated is a claim emptied. Then, on every unit that carries a Rollout, two that label its pods with the release ([chapter 10](10-project-intent.md#the-label-set)): one targeting kinds `Deployment`, `StatefulSet`, `DaemonSet` and `Job`, setting `app.kubernetes.io/version` under `spec.template.metadata.labels`, and one targeting `CronJob`, setting it under `spec.jobTemplate.spec.template.metadata.labels`, each to the Rollout's `version`, quoted so it stays a string. Each is a strategic merge, so a template with no labels gains them and no selector is touched. They follow the Rollout's annotations: written when the pin moves, kept while it stays, and absent where the unit carries no Rollout |
+| | `patches` | on a Project's first delivery alone, the one that hands it over ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)), first one patch, targeting kind `Deployment`, that annotates each `kustomize.toolkit.fluxcd.io/force: Enabled`, so Flux recreates a Deployment whose selector the old path set differently rather than refuse it. A rewrite that leaves the pin where it is keeps it, since the first delivery may not have been applied yet; the first rewrite that moves the pin drops it, and it is absent from the estate-scoped artifact's source. No other kind is marked: a claim recreated is a claim emptied. No patch labels a pod with its release: that label travels in the artifact ([Rendered artifacts and pins](#rendered-artifacts-and-pins)) |
 
 A Project's artifact holds its one unit. The estate-scoped artifact holds
 `estate-vso-secrets` where it carries the Vault policy job,

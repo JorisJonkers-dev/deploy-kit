@@ -12,10 +12,14 @@
 // (spec/v1/55-delivery.md#pause-and-rollback). What comes out is one artifact
 // per Project and the estate, which pins move, the lock, and what the workflow
 // reports (spec/v1/55-delivery.md#notifications). Nothing here performs IO.
-import { artifactRepositoryOf } from "../adapters/flux/source.ts";
+import {
+  artifactRepositoryOf,
+  versionPatches,
+} from "../adapters/flux/source.ts";
 import type { Adapter } from "../adapters/registry.ts";
 import {
   EVENTS_DIRECTORY,
+  projectDirectory,
   ROLLBACK_BACKUPS_DIRECTORY,
   SECRETS_DIRECTORY,
 } from "../adapters/shared/paths.ts";
@@ -55,6 +59,8 @@ import {
   type Serializer,
 } from "./render-intent-set.ts";
 import { resolveIntentSet, type ResolvedSet } from "./resolve-intent-set.ts";
+import type { RenderedObject } from "../objects/deliverable.ts";
+import { readYaml } from "../read/yaml.ts";
 
 /** One published fragment: its digest-named reference, its manifest and its files. */
 export interface Fragment {
@@ -584,6 +590,40 @@ function handingOver(artifact: RenderedArtifact): RenderedArtifact[] {
   return files.length === 0 ? [] : [{ name: ESTATE, files }];
 }
 
+/**
+ * A moving Project's artifact as it is published: its share of the rendered
+ * tree, with its unit's index patched to label every pod it applies with the
+ * release the pin moves to (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
+ * The label travels inside the artifact, so the one fetch that brings the new
+ * image brings the label with it; written on the pin source instead, Flux could
+ * apply the old artifact under the new label first. The content hash still
+ * covers the share alone, so a release that renders nothing new moves no pin.
+ */
+function releasedFiles(
+  files: readonly RenderedFile[],
+  project: string,
+  version: string,
+  serialize: Serializer,
+): RenderedFile[] {
+  const index = `${projectDirectory(project)}/kustomization.yaml`;
+  return files.map((file) => {
+    if (file.path !== index) return file;
+    const read = readYaml(file.text);
+    // The serializer wrote the index a moment ago, so it always reads back.
+    // Stryker disable ConditionalExpression,StringLiteral
+    if (!read.ok)
+      throw brokenInvariant(
+        `${index}: the render wrote an index it cannot read`,
+      );
+    // Stryker restore ConditionalExpression,StringLiteral
+    const patched = {
+      ...(read.value as Record<string, unknown>),
+      patches: versionPatches(version),
+    } as unknown as RenderedObject;
+    return { ...file, text: serialize([patched], file.path) };
+  });
+}
+
 function composition(
   input: Composing,
   options: ComposeOptions,
@@ -608,9 +648,13 @@ function composition(
     const released = candidates.get(name)?.manifest;
     const resolved = projects.find(({ project }) => project === name);
     const url = resolved === undefined ? undefined : rolloutUrlOf(resolved);
+    // The estate-scoped artifact is no fragment's, so it carries no release.
+    const labelled = moves && released !== undefined;
     return {
       name,
-      files,
+      files: labelled
+        ? releasedFiles(files, name, released.spec.version, options.serialize)
+        : files,
       contentHash,
       repository: artifactRepositoryOf(published.repository, name),
       moves,

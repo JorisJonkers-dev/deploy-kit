@@ -500,9 +500,10 @@ That is why every selector the render writes names `instance`, except a
 fixed: the rewrite is Flagger's, on an object the render never writes.
 
 `app.kubernetes.io/version` is not in the set, and the render never writes it.
-A Project's Reconcile Unit puts it on every pod template and every `Job` it
-applies, set to the release its Rollout names
-([chapter 55](55-delivery.md#what-a-pin-source-holds)), so a pod, and every
+Composition puts it on every pod template and every `Job` a Project's unit
+applies, set to the release its pin moves to, in the index the published
+artifact carries
+([chapter 55](55-delivery.md#rendered-artifacts-and-pins)), so a pod, and every
 line it logs, says which release it ran. It is never a selector: it moves with
 every release, and a selector cannot move. It stays out of the render because
 the release is the fragment's claim about itself, not something the render
