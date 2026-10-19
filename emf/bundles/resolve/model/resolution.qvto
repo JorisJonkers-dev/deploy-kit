@@ -493,6 +493,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	replicas := if self.replicas = null then 1 else self.replicas.count endif;
 	memory := self.placement.memory;
 	cpu := self.placement.cpu;
+	if self.placement.gpu <> null then gpu := gpuOf(self) endif;
 	hardening := estate.hardening.spelling();
 	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj));
 	-- The pod authenticates only where a grant is delivered `self`, or where it
@@ -923,12 +924,30 @@ query eligible(p : PI::Process, n : Node) : Boolean =
 	and (p.placement.arch->isEmpty() or p.placement.arch->exists(a | a.spelling() = n.arch))
 	and (p.placement.site = null or p.placement.site = n.site)
 	and p.placement.capabilities->forAll(c | n.capabilities->includes(c))
-	and (p.placement.gpu = null or n.gpus->exists(g |
-		g._class = p.placement.gpu._class and g.memoryMib >= mebibytes(p.placement.gpu.memory)))
+	and (p.placement.gpu = null or matchingCards(p, n)->notEmpty())
 	and (p.placement.disk = null or n.disks->exists(d |
 		p.placement.disk.media->exists(m | m.spelling() = d.media)))
 	-- A library the Process mounts holds it to the library's node.
 	and p.libraries->forAll(m | libraryOf(m._library) <> null and libraryOf(m._library).node = n.name);
+
+-- The node's cards that match every term the Process's `gpu` declares.
+query matchingCards(p : PI::Process, n : Node) : OrderedSet(Gpu) =
+	n.gpus->select(g |
+		(p.placement.gpu._class = null or g._class = p.placement.gpu._class)
+		and (p.placement.gpu.memory = null or g.memoryMib >= mebibytes(p.placement.gpu.memory))
+		and (p.placement.gpu.vendor->isEmpty() or p.placement.gpu.vendor->includes(g.vendor))
+		and (p.placement.gpu.model->isEmpty() or p.placement.gpu.model->includes(g.model)));
+
+-- The Platform's entry for the vendor of the cards the Process may land on:
+-- E_GPU_VENDOR_AMBIGUOUS and E_NO_GPU_POLICY refused anything but one.
+query gpuOf(p : PI::Process) : ResolvedGpu =
+	let vendor : String = contract.nodes->select(n | eligible(p, n))
+		->collect(n | matchingCards(p, n))->flatten()->any(true).vendor in
+	let policy : GpuVendorPolicy = estate.gpus->select(g | g.key = vendor)->collect(g | g.value)->any(true) in
+	object ResolvedGpu {
+		resource := policy.resource;
+		runtimeClass := policy.runtimeClass;
+	};
 
 -- =============================================================== environment
 
@@ -1789,6 +1808,9 @@ query ResolvedProcess::json() : String =
 		Tuple{k = 'replicas', v = num(self.replicas)},
 		Tuple{k = 'memory', v = str(self.memory)},
 		Tuple{k = 'cpu', v = str(self.cpu)},
+		Tuple{k = 'gpu', v = if self.gpu = null then null else obj(Sequence{
+			Tuple{k = 'resource', v = str(self.gpu.resource)},
+			Tuple{k = 'runtimeClass', v = str(self.gpu.runtimeClass)}}) endif},
 		Tuple{k = 'hardening', v = str(self.hardening)},
 		Tuple{k = 'identityToken', v = bool(self.identityToken)},
 		Tuple{k = 'internetEgress', v = if self.internetEgress = null then null else obj(Sequence{

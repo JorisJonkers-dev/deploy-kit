@@ -158,9 +158,13 @@
   <eClassifiers xsi:type="ecore:EClass" name="DiskRequest">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="media" lowerBound="1" upperBound="-1" eType="#//Media"/>
   </eClassifiers>
+  <!-- One card on the node matches every term the request declares; `vendor` and
+       `model` are sets of acceptable values (spec/v1/10-project-intent.md#placement). -->
   <eClassifiers xsi:type="ecore:EClass" name="GpuRequest">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="class" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="class" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="vendor" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="model" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Sidecar">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -429,6 +433,17 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="handover" eType="#//HandoverLedger" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="providers" upperBound="-1" eType="#//Provider" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="libraries" upperBound="-1" eType="#//Library" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="gpus" upperBound="-1" eType="#//GpuVendor" containment="true"/>
+  </eClassifiers>
+  <!-- What a Process that requires a GPU of one vendor is handed, keyed by the
+       vendor (spec/v1/14-platform-intent.md#gpus). -->
+  <eClassifiers xsi:type="ecore:EClass" name="GpuVendor" instanceClassName="java.util.Map$Entry">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="value" lowerBound="1" eType="#//GpuVendorPolicy" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="GpuVendorPolicy">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="resource" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="runtimeClass" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <!-- A directory on one node the platform grants to projects, keyed by its name
        (spec/v1/14-platform-intent.md#libraries). -->

@@ -32,7 +32,8 @@ Platform returns Platform:
 	& ('policyJob' ':' BEGIN policyJob=VaultPolicyJob END)?
 	& ('handover' ':' BEGIN handover=HandoverLedger END)?
 	& ('providers' ':' BEGIN (DASH BEGIN providers+=Provider END)+ END)?
-	& ('libraries' ':' BEGIN libraries+=Library+ END)?);
+	& ('libraries' ':' BEGIN libraries+=Library+ END)?
+	& ('gpus' ':' BEGIN gpus+=GpuVendor+ END)?);
 
 PlatformMetadata returns PlatformMetadata:
 	(('cluster' ':' cluster=Text)
@@ -210,6 +211,14 @@ LibraryDeclaration returns LibraryDeclaration:
 LibraryGrant returns LibraryGrant:
 	key=Text ':' value=LibraryAccess;
 
+// What a Process that requires a GPU of one vendor is handed, keyed by the vendor.
+GpuVendor returns GpuVendor:
+	key=Text ':' BEGIN value=GpuVendorPolicy END;
+
+GpuVendorPolicy returns GpuVendorPolicy:
+	(('resource' ':' resource=Text)
+	& ('runtimeClass' ':' runtimeClass=Text));
+
 // Every keyword this document adds is also a scalar, as the project language's are.
 @Override
 Text returns ecore::EString:
@@ -218,9 +227,9 @@ Text returns ecore::EString:
 PlatformKeyword:
 	'acme' | 'address' | 'analysis' | 'apiAccess' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'catalog' | 'certificates' | 'cidr' | 'cluster' | 'clusterDns' | 'cni' | 'collector' |
 	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'egress' | 'embedded' | 'engines' | 'ephemeral' | 'errorRate' | 'estate' | 'etcd' |
-	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'gid' | 'grants' | 'handover' | 'hardening' | 'holders' | 'imagePull' | 'instance' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'latency' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
+	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'gid' | 'gpus' | 'grants' | 'handover' | 'hardening' | 'holders' | 'imagePull' | 'instance' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'latency' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
 	'metrics' | 'monitors' | 'namespace' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'password' | 'period' | 'plain' | 'policyJob' | 'providers' | 'pullSecret' | 'restricted' | 'retireBy' |
-	'reporter' | 'repository' | 'retain' | 'runner' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'server' | 'serverCount' | 'serving' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
+	'reporter' | 'repository' | 'resource' | 'retain' | 'runner' | 'runtimeClass' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'server' | 'serverCount' | 'serving' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
 	'surfaces' | 'telemetry' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'user' | 'vault';
 
 enum Datastore returns Datastore:

@@ -583,6 +583,9 @@
       spec:
         serviceAccountName: [p.identity/]
         automountServiceAccountToken: [p.identityToken/]
+  [if (p.gpu <> null)]
+          runtimeClassName: [p.gpu.runtimeClass/]
+  [/if]
         securityContext:
           runAsNonRoot: true
           runAsUser: [p.uid/]
@@ -732,6 +735,10 @@
         cpu: [p.cpu/]
       limits:
         memory: [p.memory/]
+  [comment One share of the card's resource, which the scheduler also takes as the request. /]
+  [if (p.gpu <> null)]
+          [p.gpu.resource/]: "1"
+  [/if]
     securityContext:
       readOnlyRootFilesystem: true
       capabilities:

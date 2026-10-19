@@ -99,9 +99,13 @@ Placement returns Placement:
 DiskRequest returns DiskRequest:
 	'media' ':' BEGIN (DASH BEGIN media+=Media END | media+=Media)+ END;
 
+// Every term is optional, so `gpu: {}` is any card.
 GpuRequest returns GpuRequest:
-	(('class' ':' class=Text)
-	& ('memory' ':' memory=Text));
+	{GpuRequest}
+	(('class' ':' class=Text)?
+	& ('memory' ':' memory=Text)?
+	& ('vendor' ':' BEGIN (DASH BEGIN vendor+=Text END | vendor+=Text)+ END)?
+	& ('model' ':' BEGIN (DASH BEGIN model+=Text END | model+=Text)+ END)?);
 
 Sidecar returns Sidecar:
 	(('name' ':' name=Text)
@@ -260,14 +264,14 @@ Keyword:
 	'exposure' | 'false' | 'file' | 'fileMode' | 'files' | 'from' | 'generate' | 'get' | 'gpu' | 'group' | 'hdd' | 'hex' |
 	'host' | 'id' | 'image' | 'internal' | 'internet' | 'interrupted' | 'irreplaceable' | 'job' | 'jvm' | 'key' |
 	'keys' | 'kind' | 'kv' | 'lan' | 'libraries' | 'library' | 'lifecycle' | 'list' | 'liveness' | 'match' | 'maxAge' |
-	'media' | 'memory' | 'migration' | 'mountAt' | 'name' | 'node' | 'none' | 'nvme' | 'objects' | 'observability' |
+	'media' | 'memory' | 'migration' | 'model' | 'mountAt' | 'name' | 'node' | 'none' | 'nvme' | 'objects' | 'observability' |
 	'operations' | 'owner' | 'page' | 'patch' | 'path' | 'placement' | 'port' | 'postgres' | 'prefix' | 'prepare' |
 	'probes' | 'process' | 'processes' | 'project' | 'provides' | 'python' | 'rabbitmq' | 'read' |
 	'readiness' | 'reason' | 'reconstructible' | 'recoverable' | 'redirectTo' | 'reload' | 'replicas' |
 	'required' | 'restart' | 'role' | 'rotate' | 'rotation' | 'routes' | 'rules' | 'runtime' |
 	'schemaVersion' | 'scrape' | 'secrets' | 'self' | 'self-renew' | 'self-roll' | 'sidecars' | 'sign' |
 	'site' | 'size' | 'ssd' | 'startupBudget' | 'static' | 'strict' | 'subPath' | 'surface' | 'tcp' |
-	'to' | 'tolerates' | 'transit' | 'true' | 'update' | 'urgent' | 'valkey' | 'verbs' | 'verify' | 'volumes' | 'watch' | 'workflow' |
+	'to' | 'tolerates' | 'transit' | 'true' | 'update' | 'urgent' | 'valkey' | 'vendor' | 'verbs' | 'verify' | 'volumes' | 'watch' | 'workflow' |
 	'writablePaths' | 'write';
 
 enum Lifecycle returns Lifecycle:

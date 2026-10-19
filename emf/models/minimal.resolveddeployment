@@ -30,13 +30,13 @@
     through its one black box, and not the production implementation's digests,
     which are over a different shape (spec/v1/20-resolved-deployment.md#pinned-inputs).
   -->
-  <provenance renderHash="sha256:ad92d844b374dbc269badb44988134f9311bb1ed256ae24c456e7b1fb23a9807" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+  <provenance renderHash="sha256:bfc3bbdf47af9a90dd5c34bc44da6f6a069ab308fb8587ae6dbd70f1bd12973e" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
     <inputDigests input="intent-fragment" name="delivery" digest="sha256:cd13dacfc2862f45b6976ff7ae33e3a8f492124704ac5241d93fa166b95a9ac3"/>
     <inputDigests input="intent-fragment" name="edge" digest="sha256:273c64ecd8c35ab69918664735661764e44e8e3ad04a58a11ab92dcb52ec1f4a"/>
-    <inputDigests input="intent-fragment" name="notes" digest="sha256:42ad799a9523b833d9982aee61ba22ff8a3df1bf93627d3821c4ee7da0949ecc"/>
+    <inputDigests input="intent-fragment" name="notes" digest="sha256:18df1eade889398c265322d14889728749b999ab340d2d183efa04c8a3c0b29a"/>
     <inputDigests input="intent-fragment" name="observability" digest="sha256:aac790f0f921ce56ea5fb7af1f5a85c48c2122fbcbd99923124aafe063f6594c"/>
     <inputDigests input="intent-fragment" name="secrets" digest="sha256:3b6b608aa89a7beebed377772c9905705861c2609f1c262a5ddcb757b70bcecc"/>
-    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:57ffe801eaf3150f92004f96229f0aa05a5a964db37eb808214f4cb06bc40d09"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:ebd5fc90ca2844f4b42c86185470558f84428beb977a250addf9d364e5bedadb"/>
     <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
     <inputDigests input="images-lock" name="estate" digest="sha256:1841422e0b23b259d861eca22e5f90e53e21e4a82ea5035ec1bbd0c2d3367199"/>
     <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
@@ -57,7 +57,7 @@
   </policyJob>
   <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
 
-  <applications id="notes" revision="sha256:dc29b0a2d4a301abf424d782bb2c13620b4f756f7b22b929b542e033a3d4ca9b" project="notes" namespace="notes-system"
+  <applications id="notes" revision="sha256:08cba86a5a74fdd40eb2e8baf0fc2c7120f1e0bd2f5949bb854b9d6270302d62" project="notes" namespace="notes-system"
       alertClass="business-hours" reconcileUnit="//@reconcileUnits.0">
     <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="180s">
       <!-- The Platform document's cadence, carried for the Release Gate. -->
@@ -89,6 +89,8 @@
         uid="1000" gid="1000" cutover="continuous" switchover="blue-green" deadline="180s" replicas="1"
         memory="256Mi" cpu="50m" hardening="restricted" identityToken="false"
         component="node">
+      <!-- The T1000 is the one card `{class: transcode, model: [t1000]}` matches, so nvidia's entry. -->
+      <gpu resource="nvidia.com/gpu" runtimeClass="nvidia-cdi"/>
       <readiness period="10s" timeout="5s" failures="3">
         <target xsi:type="resolveddeployment:HttpTarget" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             path="/healthz/ready" port="8080"/>
