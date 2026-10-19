@@ -672,6 +672,12 @@ Two limits follow from the substrate, not the model:
 A `to` outside the vocabulary, a missing or empty `reason`, and any authored
 range are refused by the schema (`schema`), at the field.
 
+A Process attached to the VPN derives the same rule without declaring it,
+because the tunnel's endpoint is a public address
+([chapter 10](10-project-intent.md#vpn-attachment)); its reason says so. The
+Process's own traffic is the VPN container's to route, and a policy cannot see
+inside the tunnel: what leaves the pod is the tunnel, to the provider.
+
 ### Audit before enforce
 
 Default-deny does not ship on `networking.k8s.io/v1` alone. That API has no

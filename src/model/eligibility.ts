@@ -16,12 +16,24 @@ type Node = NodeContractDocument["nodes"][number];
 const copies = (process: EffectiveProcess): number =>
   process.cutover === "continuous" ? 2 : 1;
 
-/** What one copy of the Process asks for, its sidecars included. */
-function request(process: EffectiveProcess): {
+/**
+ * What one copy of the Process asks for, its sidecars included, and the VPN
+ * container beside it where it attaches to one.
+ */
+function request(
+  process: EffectiveProcess,
+  platform: Pick<PlatformIntentDocument, "vpn">,
+): {
   readonly memory: number;
   readonly cpu: number;
 } {
-  const containers = [process.placement, ...(process.sidecars ?? [])];
+  const containers = [
+    process.placement,
+    ...(process.sidecars ?? []),
+    ...(process.vpn === undefined || platform.vpn === undefined
+      ? []
+      : [platform.vpn]),
+  ];
   return {
     memory: containers.reduce((sum, { memory }) => sum + mebibytes(memory), 0),
     cpu: containers.reduce((sum, { cpu }) => sum + millicores(cpu), 0),
@@ -45,10 +57,10 @@ const matchingCards = (gpu: GpuRequest, node: Node): Card[] =>
 function eligible(
   process: EffectiveProcess,
   node: Node,
-  platform: Pick<PlatformIntentDocument, "libraries">,
+  platform: Pick<PlatformIntentDocument, "libraries" | "vpn">,
 ): boolean {
   const { arch, site, capabilities, gpu, disk } = process.placement;
-  const { memory, cpu } = request(process);
+  const { memory, cpu } = request(process, platform);
   const room = copies(process);
   return (
     // A missing list and an empty one hold the Process to no node alike.
@@ -76,7 +88,7 @@ function eligible(
 export const eligibleNodes = (
   process: EffectiveProcess,
   contract: NodeContractDocument,
-  platform: Pick<PlatformIntentDocument, "libraries">,
+  platform: Pick<PlatformIntentDocument, "libraries" | "vpn">,
 ): string[] =>
   contract.nodes
     .filter((node) => eligible(process, node, platform))
@@ -90,7 +102,7 @@ export const eligibleNodes = (
 export const gpuVendors = (
   process: EffectiveProcess,
   contract: NodeContractDocument,
-  platform: Pick<PlatformIntentDocument, "libraries">,
+  platform: Pick<PlatformIntentDocument, "libraries" | "vpn">,
 ): string[] => [
   ...new Set(
     contract.nodes

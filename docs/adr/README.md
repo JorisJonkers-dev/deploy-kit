@@ -102,6 +102,7 @@ and linted by the same script with `emf` as its root.
 | [0102](model/0102-the-database-catalog-is-applied-by-its-engines-method.md) | The database catalog is applied in the cluster by its engine's method, which adopts a database that exists and writes the Secret Store's database roles | open |
 | [0103](model/0103-a-derived-estate-job-retries-and-avoids-the-sd-cards.md) | A derived estate Job bounds each attempt, retries until one succeeds, and runs on no node that boots from an SD card | open |
 | [0104](model/0104-a-library-is-a-host-directory-the-platform-grants.md) | A library is a directory on one node that the Platform document declares and grants to projects, and a Process mounts it by name | open |
+| [0107](model/0107-a-vpn-attachment-is-a-derived-sidecar.md) | A VPN attachment is a derived sidecar the platform owns, the one container that holds network privileges, and the forwarded port reaches the Process as a file | open |
 
 ## Layer 2: derivation and assignment
 

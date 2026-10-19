@@ -31,6 +31,24 @@ const EXAMPLES = join(
   "examples",
 );
 
+/** A VPN as the resolution writes it beside an attached Process. */
+const VPN = {
+  image: "docker.io/qmcgaw/gluetun@sha256:" + "7".repeat(64),
+  memory: "128Mi",
+  cpu: "50m",
+  forwardedPort: true,
+  environment: [
+    { name: "FIREWALL_INPUT_PORTS", value: "8080" },
+    { name: "VPN_PORT_FORWARDING", value: "on" },
+  ],
+  credential: {
+    path: "secret/data/platform/vpn",
+    access: "read" as const,
+    delivery: "env" as const,
+    destination: "notes-api-vpn-platform-vpn",
+  },
+};
+
 function minimal(): ResolvedProject {
   const result = resolveIntentSet(
     [
@@ -85,10 +103,16 @@ function edited(
     applications: [
       {
         ...without(only, application(only)),
-        // minimal's library mount stays out unless an edit puts it back, so
-        // each variant holds one thing to spell.
+        // minimal's library mount and VPN attachment, with the internet
+        // egress the attachment derives, stay out unless an edit puts them
+        // back, so each variant holds one thing to spell.
         processes: [
-          without(first, { libraries: undefined, ...process(first) }),
+          without(first, {
+            libraries: undefined,
+            vpn: undefined,
+            internetEgress: undefined,
+            ...process(first),
+          }),
         ],
       },
     ],
@@ -580,6 +604,89 @@ describe("the kubernetes adapter", () => {
         "notes-system-photos",
         "library-photos",
       ]);
+    });
+  });
+
+  describe("a VPN attachment", () => {
+    const podOf = (forwardedPort: boolean) =>
+      (
+        objectsAt(
+          renderKubernetes(
+            edited(undefined, () => ({
+              vpn: { ...VPN, forwardedPort },
+            })),
+          ),
+          "workload.yaml",
+        ) as {
+          spec: {
+            template: {
+              spec: {
+                initContainers?: Record<string, unknown>[];
+                containers: { volumeMounts?: unknown[] }[];
+                volumes?: unknown[];
+              };
+            };
+          };
+        }[]
+      )[0]?.spec.template.spec;
+
+    it("runs the VPN as a native sidecar before the Process, as root with the two network capabilities, reading its own Secret", () => {
+      const [vpn] = podOf(true)?.initContainers ?? [];
+
+      expect(vpn).toMatchObject({
+        name: "vpn",
+        restartPolicy: "Always",
+        envFrom: [{ secretRef: { name: "notes-api-vpn-platform-vpn" } }],
+        resources: {
+          requests: { memory: "128Mi", cpu: "50m" },
+          limits: { memory: "128Mi" },
+        },
+        securityContext: {
+          runAsNonRoot: false,
+          runAsUser: 0,
+          runAsGroup: 0,
+          capabilities: { add: ["NET_ADMIN", "NET_RAW"] },
+        },
+        startupProbe: {
+          exec: { command: ["/gluetun-entrypoint", "healthcheck"] },
+          periodSeconds: 5,
+          timeoutSeconds: 5,
+          failureThreshold: 60,
+        },
+        volumeMounts: [{ name: "vpn", mountPath: "/run/vpn" }],
+      });
+      expect(vpn?.env).toStrictEqual(VPN.environment);
+    });
+
+    it("shares the forwarded port read-only with a Process that receives one, and with no other", () => {
+      const forwarded = podOf(true);
+      const egressOnly = podOf(false);
+
+      expect(forwarded?.containers[0]?.volumeMounts).toContainEqual({
+        name: "vpn",
+        mountPath: "/run/vpn",
+        readOnly: true,
+      });
+      expect(egressOnly?.containers[0]?.volumeMounts ?? []).not.toContainEqual(
+        expect.objectContaining({ name: "vpn" }),
+      );
+      expect(egressOnly?.volumes).toContainEqual({
+        name: "vpn",
+        emptyDir: { sizeLimit: "1Mi" },
+      });
+    });
+
+    it("adds no sidecar and no volume to a Process that does not attach", () => {
+      const pod = (
+        objectsAt(renderKubernetes(edited()), "workload.yaml") as {
+          spec: { template: { spec: Record<string, unknown> } };
+        }[]
+      )[0]?.spec.template.spec;
+
+      expect(pod).not.toHaveProperty("initContainers");
+      expect(pod?.["volumes"] ?? []).not.toContainEqual(
+        expect.objectContaining({ name: "vpn" }),
+      );
     });
   });
 
@@ -1370,6 +1477,32 @@ describe("the vso adapter", () => {
     });
   });
 
+  it("syncs the VPN's credential to the Secret only the VPN container reads", () => {
+    const vpn = VPN;
+    const [, secret] = objectsAt(
+      renderVso(
+        edited(
+          () => ({ secretStore: STORE }),
+          () => ({ vpn }),
+        ),
+      ),
+      "vso.yaml",
+    ) as {
+      metadata: { name: string };
+      spec: { path: string; destination: { name: string } };
+    }[];
+
+    expect([
+      secret?.metadata.name,
+      secret?.spec.path,
+      secret?.spec.destination.name,
+    ]).toStrictEqual([
+      "notes-api-vpn-platform-vpn",
+      "platform/vpn",
+      "notes-api-vpn-platform-vpn",
+    ]);
+  });
+
   it("stops at a grant outside the kv mount", () => {
     expect(() => vso([{ ...GRANT, path: "kv/secret/data/x" }])).toThrow(
       "kv/secret/data/x: a grant outside the secret mount is not rendered yet",
@@ -1398,6 +1531,21 @@ describe("the vault-policy adapter", () => {
       path: {
         "transit/sign/notes-jwt": { capabilities: ["update"] },
         "transit/keys/notes-jwt/rotate": { capabilities: ["update"] },
+      },
+    });
+  });
+
+  it("lets an attached Process's identity read the VPN's credential, for the VPN container beside it", () => {
+    const vpn = VPN;
+    const [document] = objectsAt(
+      renderVaultPolicy(edited(undefined, () => ({ vpn }))),
+      "policy.json",
+    );
+
+    expect(document).toStrictEqual({
+      path: {
+        "secret/data/platform/vpn": { capabilities: ["read"] },
+        "secret/metadata/platform/vpn": { capabilities: ["read"] },
       },
     });
   });

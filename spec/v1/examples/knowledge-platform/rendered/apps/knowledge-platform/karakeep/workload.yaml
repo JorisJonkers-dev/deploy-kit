@@ -47,6 +47,55 @@ spec:
                     operator: In
                     values:
                       - frankfurt-contabo-1
+      initContainers:
+        - name: vpn
+          image: docker.io/qmcgaw/gluetun@sha256:7e1f3c5a9b2d4f6e8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f
+          restartPolicy: Always
+          env:
+            - name: DNS_KEEP_NAMESERVER
+              value: "on"
+            - name: DOT
+              value: "off"
+            - name: FIREWALL_INPUT_PORTS
+              value: "3000"
+            - name: PORT_FORWARD_ONLY
+              value: "on"
+            - name: SERVER_COUNTRIES
+              value: Netherlands
+            - name: VPN_PORT_FORWARDING
+              value: "off"
+            - name: VPN_SERVICE_PROVIDER
+              value: protonvpn
+            - name: VPN_TYPE
+              value: wireguard
+          envFrom:
+            - secretRef:
+                name: karakeep-vpn-platform-vpn
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 50m
+            limits:
+              memory: 128Mi
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            runAsGroup: 0
+            capabilities:
+              add:
+                - NET_ADMIN
+                - NET_RAW
+          startupProbe:
+            exec:
+              command:
+                - /gluetun-entrypoint
+                - healthcheck
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 60
+          volumeMounts:
+            - name: vpn
+              mountPath: /run/vpn
       containers:
         - name: karakeep
           image: ghcr.io/karakeep-app/karakeep@sha256:3d57623bf031f32a0597a3ebe0cd869bff6ba181c02ebc90fac492458bcfd4a4
@@ -257,3 +306,6 @@ spec:
         - name: meilisearch-data
           persistentVolumeClaim:
             claimName: meilisearch-data
+        - name: vpn
+          emptyDir:
+            sizeLimit: 1Mi

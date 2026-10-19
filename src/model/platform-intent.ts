@@ -332,6 +332,60 @@ const gpuVendor = z
   .strictObject({ resource: text, runtimeClass: text })
   .meta({ id: "GpuVendorPolicy" });
 
+// The variables the render sets on the VPN container itself
+// (spec/v1/14-platform-intent.md#vpn): what is forwarded, and which ports the
+// container's firewall admits, follow from the attached Process.
+export const DERIVED_VPN_SETTINGS = [
+  "FIREWALL_INPUT_PORTS",
+  "VPN_PORT_FORWARDING",
+  "VPN_PORT_FORWARDING_UP_COMMAND",
+] as const;
+
+/** A setting the render derives is never authored. */
+const settingsUnderived: ShapeRule<{
+  readonly settings?: Readonly<Record<string, string>> | undefined;
+}> = {
+  statement: {
+    allOf: [
+      {
+        properties: {
+          settings: {
+            type: "object",
+            propertyNames: { not: { enum: [...DERIVED_VPN_SETTINGS] } },
+          },
+        },
+      },
+    ],
+  },
+  breaches: ({ settings }) =>
+    Object.keys(settings ?? {})
+      .filter((name) =>
+        (DERIVED_VPN_SETTINGS as readonly string[]).includes(name),
+      )
+      .map((name) => ({
+        path: ["settings", name],
+        message: `${name} is derived from the attached Process`,
+      })),
+};
+
+// The VPN the platform runs beside every Process that attaches to it
+// (spec/v1/14-platform-intent.md#vpn): its image, its settings, the credential
+// only it reads, and what its container asks for.
+const vpnPolicy = stated(
+  z.strictObject({
+    image: text,
+    credential: text,
+    memory: text,
+    cpu: text,
+    settings: z
+      .record(z.string().regex(/^[A-Z_][A-Z0-9_]*$/), z.string())
+      .meta({ entry: "VpnSetting" })
+      .exactOptional(),
+  }),
+  "VpnPolicy",
+  settingsUnderived,
+);
+
 const provider = z
   .strictObject({
     name: text,
@@ -375,6 +429,7 @@ export const platformIntent = z
       .record(text, gpuVendor)
       .meta({ entry: "GpuVendor" })
       .exactOptional(),
+    vpn: vpnPolicy.exactOptional(),
   })
   .meta({ id: "Platform" });
 

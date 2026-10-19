@@ -347,6 +347,13 @@ function projectRefusals(
           message: `the platform names no backup image for engine ${process.engine}`,
           hint: "Add the engine to the Platform document's `engines`.",
         });
+      if (process.vpn !== undefined && platform.vpn === undefined)
+        refusals.push({
+          code: "E_NO_VPN_POLICY",
+          path: `${processAt}/vpn`,
+          message: `${process.name} attaches to a VPN, and the platform runs none`,
+          hint: "Declare the VPN in the Platform document's `vpn`, or drop the attachment.",
+        });
       // Where the engine's method dumps over the network, the Process is what
       // it connects to: a surface the Process does not provide is a backup
       // that reaches nothing, behind a policy that admits nothing.

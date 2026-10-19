@@ -820,6 +820,9 @@
         "egress": {
           "$ref": "#/$defs/Egress"
         },
+        "vpn": {
+          "$ref": "#/$defs/VpnAttachment"
+        },
         "secrets": {
           "minItems": 1,
           "type": "array",
@@ -1168,6 +1171,18 @@
       "enum": [
         "internet"
       ]
+    },
+    "VpnAttachment": {
+      "type": "object",
+      "properties": {
+        "forwardedPort": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "forwardedPort"
+      ],
+      "additionalProperties": false
     }
   }
 }

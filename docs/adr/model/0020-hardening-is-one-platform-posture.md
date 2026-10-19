@@ -10,9 +10,11 @@ rests-on: ["0002", "0004", "0006"]
 
 # Hardening is one platform posture with no exception surface: writable paths are declared, the user comes from the images lock, and a privileged port is refused
 
-One posture, `restricted`, applies to every container the estate renders,
-sidecars included. It is declared once, in the Platform document, and no
-Process or sidecar authors a control. Three facts make that hold without
+One posture, `restricted`, applies to every container a Project runs, sidecars
+included. It is declared once, in the Platform document, and no Process or
+sidecar authors a control. The one container outside it is the platform's VPN
+container, which the render derives beside an attached Process and no Project
+authors ([0107](0107-a-vpn-attachment-is-a-derived-sidecar.md)). Three facts make that hold without
 exceptions:
 
 - A Process declares the paths it writes. Each becomes an `emptyDir` of the

@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **70** rows. The compiler's behaviours join it as they land.
+This ledger holds **71** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -93,3 +93,4 @@ This ledger holds **70** rows. The compiler's behaviours join it as they land.
 | REQ-068 | No committed rendered tree asks the Vault Agent injector for anything: the Vault Secrets Operator is the one delivery path | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-069 | A Process that declares `egress: {to: internet}` with a reason reaches every public IPv4 address on every port, through one policy rule to `0.0.0.0/0` that excepts the private ranges, the tailnet, link-local and loopback; one that declares none reaches none; a missing reason, a `to` outside the vocabulary and an authored range are refused | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-070 | A Process that declares `gpu` runs only on nodes with one card matching every term it declares, `vendor` and `model` as sets; its container is limited to one of the resource the Platform document names for that card's vendor, and its pod runs under that vendor's runtime class. Cards of two vendors are `E_GPU_VENDOR_AMBIGUOUS`, and a vendor the Platform names nothing for is `E_NO_GPU_POLICY` | [test/model/resolution-derivations.test.ts](../test/model/resolution-derivations.test.ts) |
+| REQ-071 | A Process that attaches to the VPN runs the Platform document's VPN container beside it as a native sidecar, the one container holding `NET_ADMIN` and `NET_RAW`, its firewall admitting the Process's surfaces, its credential synced to a Secret only it reads; a Process that receives the forwarded port reads it at `/run/vpn/forwarded-port`; an attachment the platform runs no VPN for is `E_NO_VPN_POLICY`, and a setting the render derives is refused | [test/model/resolution-derivations.test.ts](../test/model/resolution-derivations.test.ts) |

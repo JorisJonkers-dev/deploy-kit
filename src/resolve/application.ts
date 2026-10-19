@@ -60,8 +60,9 @@ function storeFor({ store }: ApplicationContext): string {
 
 const synced = (processes: readonly ResolvedProcess[]): boolean =>
   processes.some(
-    ({ secrets, volumes }) =>
+    ({ secrets, vpn, volumes }) =>
       secrets !== undefined ||
+      vpn !== undefined ||
       volumes?.some(
         ({ backup }) =>
           backup?.credential !== undefined || backup?.peer !== undefined,
@@ -91,8 +92,10 @@ function reconcileAfter(
   const grants = application.processes.some(
     // A missing list and an empty one hold no grant alike.
     // Stryker disable next-line ArrayDeclaration
-    ({ secrets, dependsOn }) =>
+    ({ secrets, vpn, dependsOn }) =>
       (secrets ?? []).length > 0 ||
+      // The VPN's credential is held by the Process's own role.
+      vpn !== undefined ||
       // An edge to a database derives a credential, whose role is written first.
       // Stryker disable next-line ArrayDeclaration
       (dependsOn ?? []).some((edge) => reachesDatabase(edge, context.union)),

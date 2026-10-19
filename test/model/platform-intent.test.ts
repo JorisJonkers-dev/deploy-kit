@@ -103,6 +103,34 @@ describe("parsePlatformIntent", () => {
     ]);
   });
 
+  it("refuses a VPN setting the render derives from the attached Process, and a setting that is no variable name", () => {
+    for (const name of [
+      "FIREWALL_INPUT_PORTS",
+      "VPN_PORT_FORWARDING",
+      "VPN_PORT_FORWARDING_UP_COMMAND",
+    ]) {
+      const derived = parsePlatformIntent(
+        WORKED.replace('    DOT: "off"\n', `    DOT: "off"\n    ${name}: x\n`),
+      );
+      expect(
+        derived.ok
+          ? []
+          : derived.diagnostics.map(({ path, message }) => [path, message]),
+        name,
+      ).toStrictEqual([
+        [
+          `/vpn/settings/${name}`,
+          `${name} is derived from the attached Process`,
+        ],
+      ]);
+    }
+    expect(
+      refusalsOf(
+        WORKED.replace('    DOT: "off"\n', '    DOT: "off"\n    vpn_type: x\n'),
+      ),
+    ).toStrictEqual([{ code: "schema", path: "/vpn/settings/vpn_type" }]);
+  });
+
   it("refuses a value outside a closed vocabulary at its JSON Pointer", () => {
     expect(
       refusalsOf(WORKED.replace("listener: plain", "listener: quic")),

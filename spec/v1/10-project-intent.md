@@ -664,6 +664,41 @@ A Process that reaches public addresses no edge names declares
 is written. What it derives, and the fixed ranges it never reaches, are
 [chapter 16](16-dependencies.md#internet-egress)'s.
 
+### VPN attachment
+
+A Process whose traffic must leave through the platform's VPN declares it
+([0107](../../docs/adr/model/0107-a-vpn-attachment-is-a-derived-sidecar.md)):
+
+```yaml
+vpn: { forwardedPort: true }
+```
+
+`forwardedPort` is required. `true` asks the provider for an inbound port, for a
+Process that peers dial, such as a torrent client. `false` is egress only.
+
+Nothing else is authored. The render adds the platform's VPN container to the
+Process's pod ([chapter 14](14-platform-intent.md#vpn)). It starts before the
+Process, and every packet the Process sends leaves through the tunnel. When the
+tunnel is down, the VPN container's firewall drops the Process's traffic
+rather than letting it out directly. The container's firewall admits the
+Process's own surfaces from inside the cluster, so the Process stays reachable
+on its Service.
+
+A Process that receives the forwarded port reads it from the file
+`/run/vpn/forwarded-port`, which the VPN container rewrites whenever the
+provider moves the port. Applying it is the Process's own image's work: a
+torrent client sets its listen port from the file. No command is authored, and
+the model names no client.
+
+An attached Process also reaches public addresses, because the tunnel's
+endpoint is one ([chapter 16](16-dependencies.md#internet-egress)). A Process
+that declares `egress` keeps the reason it gave. A pod holds one tunnel, so two
+Processes that must share an exit address share a pod: one is the other's
+sidecar.
+
+An attachment the Platform document runs no VPN for is `E_NO_VPN_POLICY`. `vpn`
+is a Process field and is never shared, for the same reason `api` is not.
+
 ### Sidecars
 
 A Process is one pod, and a pod holds more than one container three times in

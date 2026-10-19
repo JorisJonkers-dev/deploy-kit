@@ -1959,13 +1959,14 @@ describe("composeEstate, for an artifact whose pin stays", () => {
     ).toStrictEqual([]);
   });
 
-  it("writes no source for a Pause whose time is committed quoted, as the tool that pauses writes it", () => {
+  it("writes no source for a Pause whose time is committed bare, as a render before YAML 1.1 quoting wrote it", () => {
     const pins = pinned(first, { notes: PAUSE });
     const [paused] = withPlatform((same) => same, { ...settled, pins }).sources;
     const at = PAUSE[PIN_ANNOTATIONS.pausedAt];
-    // Composition writes the time bare; `yq` quotes a string that reads as one.
-    expect(paused?.text).toContain(`: ${at}\n`);
-    const committed = (paused?.text ?? "").replace(`: ${at}\n`, `: "${at}"\n`);
+    // Composition quotes the time, which YAML 1.1 reads as a timestamp, as `yq`
+    // does; an earlier render left it bare.
+    expect(paused?.text).toContain(`: "${at}"\n`);
+    const committed = (paused?.text ?? "").replace(`: "${at}"\n`, `: ${at}\n`);
     expect(committed).not.toBe(paused?.text);
 
     expect(

@@ -106,6 +106,9 @@
             "$ref": "#/$defs/GpuVendorPolicy"
           },
           "entry": "GpuVendor"
+        },
+        "vpn": {
+          "$ref": "#/$defs/VpnPolicy"
         }
       },
       "required": [
@@ -903,6 +906,63 @@
         "runtimeClass"
       ],
       "additionalProperties": false
+    },
+    "VpnPolicy": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "credential": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu": {
+          "type": "string",
+          "minLength": 1
+        },
+        "settings": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Z_][A-Z0-9_]*$"
+          },
+          "additionalProperties": {
+            "type": "string"
+          },
+          "entry": "VpnSetting"
+        }
+      },
+      "required": [
+        "image",
+        "credential",
+        "memory",
+        "cpu"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "settings": {
+              "type": "object",
+              "propertyNames": {
+                "not": {
+                  "enum": [
+                    "FIREWALL_INPUT_PORTS",
+                    "VPN_PORT_FORWARDING",
+                    "VPN_PORT_FORWARDING_UP_COMMAND"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

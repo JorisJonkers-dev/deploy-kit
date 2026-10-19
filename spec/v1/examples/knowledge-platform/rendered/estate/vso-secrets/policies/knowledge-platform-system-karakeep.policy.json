@@ -9,6 +9,16 @@
       "capabilities": [
         "read"
       ]
+    },
+    "secret/data/platform/vpn": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/platform/vpn": {
+      "capabilities": [
+        "read"
+      ]
     }
   }
 }

@@ -361,6 +361,23 @@ const resolvedGpu = z
   .strictObject({ resource: text, runtimeClass: text })
   .meta({ id: "ResolvedGpu" });
 
+// The VPN container the render adds beside an attached Process
+// (spec/v1/20-resolved-deployment.md#the-vpn-attachment): the platform's image,
+// what it asks for, its whole environment, settings and derived values alike,
+// and the credential only it reads.
+const resolvedVpn = z
+  .strictObject({
+    image: text,
+    memory: text,
+    cpu: text,
+    forwardedPort: z.boolean(),
+    environment: z
+      .array(z.strictObject({ name: text, value: z.string() }))
+      .min(1),
+    credential: resolvedGrant,
+  })
+  .meta({ id: "ResolvedVpn" });
+
 // A file-shaped settings file, by the content-hashed name an edit changes, so
 // an edit restarts the Process (spec/v1/10-project-intent.md#assets).
 const resolvedAsset = z
@@ -485,6 +502,7 @@ const resolvedProcess = stated(
     memory: text,
     cpu: text,
     gpu: resolvedGpu.exactOptional(),
+    vpn: resolvedVpn.exactOptional(),
     hardening: hardeningClass,
     identityToken: z.boolean(),
     api: resolvedApiAccess.exactOptional(),

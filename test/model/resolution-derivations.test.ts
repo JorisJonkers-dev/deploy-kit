@@ -757,6 +757,154 @@ describe("where a Process may land", () => {
   });
 });
 
+// REQ-071 (docs/requirements.md): the VPN container beside an attached
+// Process, its derived settings, its credential and the refusals around it.
+describe("a Process that attaches to the VPN", () => {
+  const attached = (vpn: string, extra = "") =>
+    one(
+      serving("notes-api", `        vpn: ${vpn}\n${extra}`).replace(
+        "cutover: continuous",
+        "cutover: interrupted",
+      ),
+    );
+  const SETTINGS = [
+    { name: "DNS_KEEP_NAMESERVER", value: "on" },
+    { name: "DOT", value: "off" },
+  ];
+
+  it("runs the platform's VPN beside it, its firewall admitting the Process's surfaces, and forwards a port only where asked", () => {
+    const process = processOf(attached("{ forwardedPort: true }"));
+
+    expect(process.vpn).toStrictEqual({
+      image:
+        "docker.io/qmcgaw/gluetun@sha256:7e1f3c5a9b2d4f6e8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f",
+      memory: "128Mi",
+      cpu: "50m",
+      forwardedPort: true,
+      // The platform's settings and the derived values, one list, by name.
+      environment: [
+        ...SETTINGS,
+        { name: "FIREWALL_INPUT_PORTS", value: "8080" },
+        { name: "PORT_FORWARD_ONLY", value: "on" },
+        { name: "SERVER_COUNTRIES", value: "Netherlands" },
+        { name: "VPN_PORT_FORWARDING", value: "on" },
+        {
+          name: "VPN_PORT_FORWARDING_UP_COMMAND",
+          value: "/bin/sh -c 'echo {{PORT}} > /run/vpn/forwarded-port'",
+        },
+        { name: "VPN_SERVICE_PROVIDER", value: "protonvpn" },
+        { name: "VPN_TYPE", value: "wireguard" },
+      ],
+      // Only the VPN reads it, from a Secret of its own.
+      credential: {
+        path: "secret/data/platform/vpn",
+        access: "read",
+        delivery: "env",
+        destination: "notes-api-vpn-platform-vpn",
+      },
+    });
+    // The tunnel's endpoint is a public address.
+    expect(process.internetEgress).toStrictEqual({
+      reason: "the VPN's tunnel reaches its provider's servers",
+    });
+
+    const egressOnly = processOf(attached("{ forwardedPort: false }")).vpn;
+    expect(egressOnly?.forwardedPort).toBe(false);
+    expect(
+      egressOnly?.environment.filter(({ name }) => name.startsWith("VPN_PORT")),
+    ).toStrictEqual([{ name: "VPN_PORT_FORWARDING", value: "off" }]);
+    expect(processOf(one(serving("notes-api")))).not.toHaveProperty("vpn");
+  });
+
+  it("admits every surface, once each and in order, and none where the Process provides none", () => {
+    const ports = (provides: string) =>
+      processOf(
+        attached("{ forwardedPort: false }").replace(
+          "provides: { http: 8080 }",
+          provides,
+        ),
+      ).vpn?.environment.find(({ name }) => name === "FIREWALL_INPUT_PORTS");
+
+    expect(
+      ports("provides: { metrics: 9090, http: 8080, admin: 8080 }"),
+    ).toStrictEqual({
+      name: "FIREWALL_INPUT_PORTS",
+      value: "8080,9090",
+    });
+  });
+
+  it("connects its Application to the Secret Store, after the unit that writes its role", () => {
+    const attachedApp = application(attached("{ forwardedPort: false }"));
+    const bare = application(
+      one(
+        serving("notes-api").replace(
+          "cutover: continuous",
+          "cutover: interrupted",
+        ),
+      ),
+    );
+
+    expect(attachedApp.secretStore).toBe(
+      "http://vault.secrets-system.svc.cluster.local:8200",
+    );
+    expect(attachedApp.reconcileAfter).toContain("estate-vso-secrets");
+    expect(bare).not.toHaveProperty("secretStore");
+    expect(bare.reconcileAfter ?? []).not.toContain("estate-vso-secrets");
+  });
+
+  it("keeps the reason an author gave for internet egress", () => {
+    expect(
+      processOf(
+        attached(
+          "{ forwardedPort: false }",
+          "        egress: { to: internet, reason: fetches feeds }\n",
+        ),
+      ).internetEgress,
+    ).toStrictEqual({ reason: "fetches feeds" });
+  });
+
+  it("asks a node to fit the VPN container beside it", () => {
+    const placed = (memory: string) =>
+      processOf(attached("{ forwardedPort: false }"), {
+        platform: (platform) =>
+          platform.replace(
+            "  memory: 128Mi\n  cpu: 50m\n  settings:",
+            `  memory: ${memory}\n  cpu: 50m\n  settings:`,
+          ),
+      }).placement.eligibleNodes;
+
+    expect(placed("128Mi")).toContain("enschede-pi-2");
+    // 4000Mi beside the Process's 64Mi no longer fits a 4096Mi Pi.
+    expect(placed("4000Mi")).not.toContain("enschede-pi-2");
+  });
+
+  it("refuses an attachment the platform runs no VPN for, and a VPN image the lock does not hold", () => {
+    const unrun = resolve(attached("{ forwardedPort: true }"), {
+      platform: (platform) =>
+        platform.slice(0, platform.indexOf("\n# The VPN")) + "\n",
+    });
+    expect(codesOf(unrun)).toStrictEqual(["E_NO_VPN_POLICY"]);
+    expect(unrun.ok ? [] : unrun.diagnostics).toMatchObject([
+      {
+        path: "/applications/0/processes/0/vpn",
+        message: "notes-api attaches to a VPN, and the platform runs none",
+        hint: "Declare the VPN in the Platform document's `vpn`, or drop the attachment.",
+      },
+    ]);
+
+    const unlocked = resolve(attached("{ forwardedPort: true }"), {
+      lock: (lock) => lock.replace("  gluetun:\n", "  gluetun-retired:\n"),
+    });
+    expect(codesOf(unlocked)).toStrictEqual(["E_UNLOCKED_IMAGE"]);
+    expect(unlocked.ok ? [] : unlocked.diagnostics).toMatchObject([
+      {
+        path: "/vpn/image",
+        message: "the images lock holds no entry for gluetun",
+      },
+    ]);
+  });
+});
+
 // REQ-070 (docs/requirements.md): the card a Process locks, the share it
 // requests, and the vendor it must resolve to one Platform entry.
 describe("a Process that requires a GPU", () => {
@@ -842,7 +990,10 @@ describe("a Process that requires a GPU", () => {
     expect(
       processOf(holding("{ vendor: [amd] }"), {
         platform: (platform) =>
-          `${platform}  amd:\n    resource: amd.com/gpu\n    runtimeClass: rocm\n`,
+          platform.replace(
+            "    runtimeClass: nvidia-cdi\n",
+            "    runtimeClass: nvidia-cdi\n  amd:\n    resource: amd.com/gpu\n    runtimeClass: rocm\n",
+          ),
       }).gpu,
     ).toStrictEqual({ resource: "amd.com/gpu", runtimeClass: "rocm" });
   });

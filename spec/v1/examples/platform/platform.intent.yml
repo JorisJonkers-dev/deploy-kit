@@ -237,3 +237,20 @@ gpus:
   nvidia:
     resource: nvidia.com/gpu
     runtimeClass: nvidia-cdi
+
+# The VPN an attached Process's traffic leaves through
+# (spec/v1/14-platform-intent.md#vpn): one privileged container the render adds
+# beside each attached Process, running this image with these settings. Its
+# credential's keys are the container's own variables, and it alone reads them.
+vpn:
+  image: gluetun
+  credential: secret/data/platform/vpn
+  memory: 128Mi
+  cpu: 50m
+  settings:
+    VPN_SERVICE_PROVIDER: protonvpn
+    VPN_TYPE: wireguard
+    SERVER_COUNTRIES: Netherlands
+    PORT_FORWARD_ONLY: "on"
+    DOT: "off"
+    DNS_KEEP_NAMESERVER: "on"
