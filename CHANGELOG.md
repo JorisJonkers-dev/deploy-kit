@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.20.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.19.3...v0.20.0) (2026-10-19)
+
+
+### Features
+
+* declare internet egress ([#494](https://github.com/JorisJonkers-dev/deploy-kit/issues/494)) ([52d20b3](https://github.com/JorisJonkers-dev/deploy-kit/commit/52d20b36b62114fffffb7c4b426080d625287ee4))
+* deliver an edge's credential to files, and sync every static secret at one derived interval ([#492](https://github.com/JorisJonkers-dev/deploy-kit/issues/492)) ([fd45e24](https://github.com/JorisJonkers-dev/deploy-kit/commit/fd45e24d838a4c7d5a8a46b6643dbd8de9fa6ae3))
+
+
+### Bug Fixes
+
+* **deps:** update minor and patch dependencies ([#490](https://github.com/JorisJonkers-dev/deploy-kit/issues/490)) ([7cfd1d4](https://github.com/JorisJonkers-dev/deploy-kit/commit/7cfd1d4b05097a1f4e4f862fd5b04568d25a7f72))
+* **model:** carry the release label in the artifact, not the pin source ([#491](https://github.com/JorisJonkers-dev/deploy-kit/issues/491)) ([3d48724](https://github.com/JorisJonkers-dev/deploy-kit/commit/3d487246c904282220c4595b0144e7a53214902a)), closes [#487](https://github.com/JorisJonkers-dev/deploy-kit/issues/487)
+
 ## [0.19.3](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.19.2...v0.19.3) (2026-10-19)
 
 
