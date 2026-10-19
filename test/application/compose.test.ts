@@ -16,7 +16,10 @@ import {
   type Pin,
 } from "../../src/application/compose-estate.ts";
 import { pinSources } from "../../src/application/pin-sources.ts";
-import { RECREATE_DEPLOYMENTS } from "../../src/adapters/flux/source.ts";
+import {
+  RECREATE_DEPLOYMENTS,
+  versionPatches,
+} from "../../src/adapters/flux/source.ts";
 import { PIN_ANNOTATIONS } from "../../src/model/pin-annotations.ts";
 import {
   rolloutAnnotations,
@@ -276,16 +279,67 @@ describe("composeEstate", () => {
     expect(notes?.files.map(({ path }) => path)).toContain(
       "apps/notes/notes/workload.yaml",
     );
-    expect(notes?.contentHash).toBe(
-      sha256Hasher(
-        notes?.files.map(({ path, text: body }) => ({ path, text: body })),
-      ),
-    );
+    // The content hash covers the share as rendered: the index the artifact
+    // carries is the rendered one with the release's label patches added.
+    const index = "apps/notes/kustomization.yaml";
+    const rendered = notes?.files.map(({ path, text: body }) => ({
+      path,
+      text:
+        path === index
+          ? serialize(
+              [
+                (({ patches: _, ...rest }) => rest)(
+                  parse(body) as Record<string, unknown>,
+                ) as never,
+              ],
+              index,
+            )
+          : body,
+    }));
+    expect(notes?.contentHash).toBe(sha256Hasher(rendered));
     expect(FIRST.lock.spec.composedDigest).toBe(
       sha256Hasher(
         FIRST.artifacts.map(({ name, contentHash }) => ({ name, contentHash })),
       ),
     );
+  });
+
+  it("labels every pod of a moving Project with its release, in the index the artifact carries", () => {
+    const notes = FIRST.artifacts.find(({ name }) => name === "notes");
+    const index = notes?.files.find(
+      ({ path }) => path === "apps/notes/kustomization.yaml",
+    );
+    expect(notes?.rollout?.version).toBe("1.0.0");
+    expect(
+      (parse(index?.text ?? "") as { patches?: unknown }).patches,
+    ).toStrictEqual(versionPatches("1.0.0"));
+    // Only the unit's own index: every other file is the share as rendered.
+    expect(
+      notes?.files
+        .filter(({ text: body }) => body.includes("app.kubernetes.io/version"))
+        .map(({ path }) => path),
+    ).toStrictEqual(["apps/notes/kustomization.yaml"]);
+  });
+
+  it("labels nothing in an artifact whose pin stays, which publishes nothing", () => {
+    const again = after({});
+    expect(again.artifacts.every(({ moves }) => !moves)).toBe(true);
+    expect(
+      again.artifacts.some(({ files }) =>
+        files.some(({ text: body }) =>
+          body.includes("app.kubernetes.io/version"),
+        ),
+      ),
+    ).toBe(false);
+  });
+
+  it("labels nothing in the estate-scoped artifact, which is no Project's release", () => {
+    const estate = FIRST.artifacts.find(({ name }) => name === "_estate");
+    expect(
+      (estate?.files ?? []).some(({ text: body }) =>
+        body.includes("app.kubernetes.io/version"),
+      ),
+    ).toBe(false);
   });
 
   it("composes the same estate whatever order the fragments were pulled in", () => {

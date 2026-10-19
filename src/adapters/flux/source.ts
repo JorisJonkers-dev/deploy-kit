@@ -6,7 +6,6 @@
 // file whenever the artifact's pin moves, the first delivery among them, and
 // a Project's first delivery recreates a Deployment it cannot update in place.
 import { FORCE_ANNOTATION } from "../../model/pin-annotations.ts";
-import { ROLLOUT_ANNOTATIONS } from "../../model/rollout.ts";
 import type { FluxKustomization, OciRepository } from "../../objects/custom.ts";
 import type { RenderedObject } from "../../objects/deliverable.ts";
 import { managedOnly } from "../shared/labels.ts";
@@ -75,7 +74,11 @@ export const RECREATE_DEPLOYMENTS = {
 
 export const VERSION_LABEL = "app.kubernetes.io/version";
 
-/** Label every pod template a unit applies with its release; a selector is never touched. */
+/**
+ * Label every pod template a unit applies with its release; a selector is
+ * never touched. Composition writes these into a moving Project's index, in
+ * the artifact itself (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
+ */
 export const versionPatches = (version: string) => {
   const labelled = (depth: number): string[] =>
     [
@@ -180,11 +183,9 @@ export function renderPinSource(
     repository,
     ...units.map(
       ({ name, path, after, annotations: carried }): FluxKustomization => {
-        const version = carried?.[ROLLOUT_ANNOTATIONS.version];
-        const patches = [
-          ...(recreate ? [RECREATE_DEPLOYMENTS] : []),
-          ...(version === undefined ? [] : versionPatches(version)),
-        ];
+        // The release's label travels in the artifact, never here: a patch on
+        // this Kustomization could be applied to the artifact it replaces.
+        const patches = recreate ? [RECREATE_DEPLOYMENTS] : [];
         return {
           apiVersion: "kustomize.toolkit.fluxcd.io/v1",
           kind: "Kustomization",

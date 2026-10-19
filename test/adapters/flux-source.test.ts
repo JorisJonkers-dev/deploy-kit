@@ -180,7 +180,7 @@ describe("a pin source", () => {
     expect(FORCE_ANNOTATION).toBe("kustomize.toolkit.fluxcd.io/force");
   });
 
-  it("labels every pod a unit applies with the release its Rollout names, and none without one", () => {
+  it("carries no release label: the version patches label every pod template, and travel in the artifact", () => {
     const unit = (annotations?: Record<string, string>) => ({
       name: "apps-notes",
       path: "apps/notes",
@@ -203,12 +203,9 @@ describe("a pin source", () => {
       ).spec["patches"];
     const released = { "event.toolkit.fluxcd.io/version": "1.10" };
 
-    expect(patchesOf(released)).toStrictEqual(versionPatches("1.10"));
-    expect(patchesOf(released, true)).toStrictEqual([
-      RECREATE_DEPLOYMENTS,
-      ...versionPatches("1.10"),
-    ]);
-    expect(patchesOf({ "event.toolkit.fluxcd.io/sha": "abc" })).toBeUndefined();
+    // The release's label travels in the artifact, so the source never carries it.
+    expect(patchesOf(released)).toBeUndefined();
+    expect(patchesOf(released, true)).toStrictEqual([RECREATE_DEPLOYMENTS]);
     expect(patchesOf(undefined)).toBeUndefined();
 
     // Every kind with a pod template, the label quoted so 1.10 stays a string,
