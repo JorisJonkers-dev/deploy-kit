@@ -51,10 +51,13 @@ applications:
 
         # Two dimensions are required. Both are matched against what the node
         # contract publishes, never against free capacity
-        # (docs/adr/model/0017-placement-is-hard-dimensions.md).
+        # (docs/adr/model/0017-placement-is-hard-dimensions.md). `gpu` locks
+        # the card, and the request and runtime class are derived from it
+        # (docs/adr/model/0106-a-gpu-request-is-derived-from-placement.md).
         placement:
           memory: 256Mi
           cpu: 50m
+          gpu: { class: transcode, model: [t1000] }
 
         probes:
           readiness: { path: /healthz/ready, port: 8080 }

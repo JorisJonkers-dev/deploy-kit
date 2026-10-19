@@ -364,6 +364,34 @@ the volume objects and the group are derived from this declaration and the
 mount. A library has no Durability Class: what it holds is no render's, and
 backing it up is the platform's, outside the render.
 
+## GPUs
+
+A Process that requires a GPU requests one share of its card's device resource
+and runs under the runtime class that exposes the card
+([chapter 10](10-project-intent.md#a-gpu-is-requested-not-only-selected)).
+Which resource a vendor's cards advertise and which runtime class reaches them
+are facts of the substrate the platform installs, so the Platform document
+names both, keyed by the vendor as the node contract spells it
+([0106](../../docs/adr/model/0106-a-gpu-request-is-derived-from-placement.md)):
+
+```yaml
+gpus:
+  nvidia:
+    resource: nvidia.com/gpu
+    runtimeClass: nvidia-cdi
+```
+
+| field | required | notes |
+|---|---|---|
+| `resource` | yes | The extended resource the vendor's device plugin advertises. A Process requests one of it. |
+| `runtimeClass` | yes | The `RuntimeClass` the container runs under, which exposes the card. |
+
+A vendor the platform names nothing for cannot be requested: a Process whose
+eligible cards are that vendor's is `E_NO_GPU_POLICY`
+([chapter 40](40-composition.md#placement)). An entry asserts that every node
+carrying the vendor's cards has the driver, the container toolkit and the
+device plugin installed; the render installs none of them.
+
 ## Engines
 
 The method for an `engine` **is an image**: one purpose-built image per engine,
@@ -1036,6 +1064,10 @@ classDiagram
         +int gid
         +map grants
     }
+    class GpuVendor {
+        +string resource
+        +string runtimeClass
+    }
 
     Platform "1" *-- "1" PlatformMetadata : metadata
     Platform "1" *-- "1" Substrate : substrate
@@ -1056,6 +1088,7 @@ classDiagram
     HandoverLedger "1" *-- "0..*" ServingLocation : serving
     Platform "1" *-- "0..*" Provider : providers
     Platform "1" *-- "0..*" Library : libraries
+    Platform "1" *-- "0..*" GpuVendor : gpus
     Bootstrap "1" *-- "1" FluxSource : flux
     FluxSource "1" *-- "1" RenderedArtifacts : artifacts
     RenderedArtifacts "1" *-- "1" ArtifactSigner : signer

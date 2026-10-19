@@ -9,7 +9,7 @@ import type {
   EffectiveProject,
 } from "../model/effective-intent.ts";
 import { inSeconds, seconds } from "../model/durations.ts";
-import { eligibleNodes } from "../model/eligibility.ts";
+import { eligibleNodes, gpuVendors } from "../model/eligibility.ts";
 import type { ImagesLockDocument, LockedImage } from "../model/images-lock.ts";
 import type { NodeContractDocument } from "../model/node-contract.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
@@ -308,6 +308,23 @@ function placementOf(
   };
 }
 
+/**
+ * The GPU share a Process that requires a GPU requests, named by the Platform
+ * for the one vendor its cards share: E_GPU_VENDOR_AMBIGUOUS and
+ * E_NO_GPU_POLICY refused anything else.
+ */
+function gpuOf(
+  process: EffectiveProcess,
+  context: ProcessContext,
+): { readonly gpu?: { resource: string; runtimeClass: string } } {
+  if (process.placement.gpu === undefined) return {};
+  const [vendor] = gpuVendors(process, context.contract, context.platform);
+  const policy = context.platform.gpus?.[vendor as string] as NonNullable<
+    PlatformIntentDocument["gpus"]
+  >[string];
+  return { gpu: { ...policy } };
+}
+
 export function resolveProcess(
   process: EffectiveProcess,
   context: ProcessContext,
@@ -354,6 +371,7 @@ export function resolveProcess(
     replicas: process.replicas?.count ?? 1,
     memory: process.placement.memory,
     cpu: process.placement.cpu,
+    ...gpuOf(process, context),
     hardening: context.platform.hardening,
     // The pod authenticates only where a grant is delivered `self`, or where
     // it holds Kubernetes API access.

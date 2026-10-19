@@ -325,6 +325,13 @@ const libraryDeclaration = stated(
   grantsSomeone,
 );
 
+// What a Process that requires a GPU of one vendor is handed
+// (spec/v1/14-platform-intent.md#gpus): the device resource it requests one
+// share of, and the runtime class that exposes the card to its container.
+const gpuVendor = z
+  .strictObject({ resource: text, runtimeClass: text })
+  .meta({ id: "GpuVendorPolicy" });
+
 const provider = z
   .strictObject({
     name: text,
@@ -363,6 +370,10 @@ export const platformIntent = z
     libraries: z
       .record(text, libraryDeclaration)
       .meta({ entry: "Library" })
+      .exactOptional(),
+    gpus: z
+      .record(text, gpuVendor)
+      .meta({ entry: "GpuVendor" })
       .exactOptional(),
   })
   .meta({ id: "Platform" });

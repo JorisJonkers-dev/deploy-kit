@@ -123,6 +123,8 @@ export type Volume =
 export interface PodSpec {
   readonly serviceAccountName: string;
   readonly automountServiceAccountToken: boolean;
+  /** The runtime class that exposes a GPU to the container that requests one. */
+  readonly runtimeClassName?: string;
   readonly restartPolicy?: "OnFailure" | "Never";
   /** How long one attempt may run, where a Job retries rather than fails. */
   readonly activeDeadlineSeconds?: number;
@@ -170,7 +172,11 @@ export interface Container {
   // for none.
   readonly resources?: {
     readonly requests: { readonly memory: string; readonly cpu: string };
-    readonly limits: { readonly memory: string };
+    // A device resource, a GPU's, is a limit the scheduler also requests.
+    readonly limits: {
+      readonly memory: string;
+      readonly [device: string]: string;
+    };
   };
   readonly securityContext: {
     readonly readOnlyRootFilesystem: true;

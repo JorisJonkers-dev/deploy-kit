@@ -33,6 +33,7 @@ spec:
     spec:
       serviceAccountName: notes-api
       automountServiceAccountToken: false
+      runtimeClassName: nvidia-cdi
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -75,6 +76,7 @@ spec:
               cpu: 50m
             limits:
               memory: 256Mi
+              nvidia.com/gpu: "1"
           securityContext:
             readOnlyRootFilesystem: true
             capabilities:

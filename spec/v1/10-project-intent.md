@@ -1349,7 +1349,7 @@ placement:
   arch: [amd64]                              # optional; a set, no ordering
   site: enschede                             # optional
   disk: {media: [nvme, ssd]}                 # optional; size is derived
-  gpu: {class: transcode, memory: 4Gi}       # optional
+  gpu: {class: transcode, model: [t1000]}    # optional; one card matches every term
   capabilities: [public-ingress]             # optional; flat strings
 ```
 
@@ -1378,7 +1378,7 @@ of two things, and `site: enschede` in both places is
 | `arch` | no | a set of values | the node's architecture |
 | `site` | no | one value | the node's site |
 | `disk` | no | `{media: [...]}` | the media of the node's disks; the capacity term is derived from the Process's volume sizes ([Storage and durability](#storage-and-durability)) |
-| `gpu` | no | `{class: <name>, memory: <quantity>}` | `gpus[].class` and `gpus[].memory_mib` |
+| `gpu` | no | `{class: <name>, memory: <quantity>, vendor: [...], model: [...]}`, each term optional | one card of the node's `gpus[]` matching every term: its `class`, `memory_mib`, `vendor` and `model` |
 | `capabilities` | no | a set of flat strings | the capabilities the node advertises |
 
 **Every declared dimension must match.** There is no soft half: no weight, no
@@ -1472,6 +1472,33 @@ a second node gains samba.
 `gpus[].class` and `gpus[].memory_mib`, so a transcode job needing 4Gi of VRAM is
 ineligible on a 2048MiB card by arithmetic rather than by luck. `gpu-nvidia` is
 not vocabulary, and neither is any other flat string standing in for a device.
+
+A hard term must also be able to lock tightly, so `gpu` carries `vendor` and
+`model` too, each a set of acceptable values matched against the card's own
+`vendor` and `model`. jellyfin writes `{class: transcode, model: [t1000]}`;
+immich-machine-learning writes `vendor: [nvidia]`, because its image is CUDA.
+Every term is optional and every declared term holds on **one** card, so
+`{class: render-compute, vendor: [nvidia]}` matches no node in the estate and is
+`E_PLACEMENT_UNSATISFIABLE`.
+
+### A GPU is requested, not only selected
+
+Selecting the node is half of it: the container must also ask for the device,
+and the pod must run under the runtime class that exposes it. Both are derived
+and nothing more is authored. A Process that declares `gpu` requests **one
+share** of its card's resource, under the runtime class the Platform names for
+that card's vendor ([chapter 14](14-platform-intent.md#gpus)). The request
+needs one vendor, so a `gpu` whose eligible cards span two vendors is
+`E_GPU_VENDOR_AMBIGUOUS`, and a vendor the Platform names nothing for is
+`E_NO_GPU_POLICY`.
+
+A share is what the node's device plugin hands out, time-sliced: four per card,
+fixed by the plugin and not by this model. It grants the card for a slice of its
+time, with **no memory and no fault isolation** from the other holders, of which
+the GPU metrics exporter is always one. `gpu.memory` selects a card big enough
+for the Process; it reserves nothing on it. There is no capacity refusal either:
+eligibility is not a capacity plan ([Eligibility, not bin-packing](#eligibility-not-bin-packing)),
+so a fifth holder of one card stays `Pending` at apply.
 
 ### Labels are not the Application's to name
 

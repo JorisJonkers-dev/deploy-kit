@@ -144,6 +144,18 @@
           "value": {}
         }
       ]
+    },
+    {
+      "name": "a GPU vendor with no runtime class",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/gpus/nvidia/runtimeClass"
+        }
+      ]
     }
   ]
 }

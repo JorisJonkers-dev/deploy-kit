@@ -160,7 +160,7 @@ TREES = {"10-project-intent": {
         "PlatformMetadata", "Substrate", "Bootstrap", "Tier", "DurabilityPolicies",
         "EnginePolicies", "MonitorCadence", "TelemetryPolicy", "ProbeCadence",
         "EphemeralPolicy", "MigrationPolicy", "DeliveryPolicy", "ApiAccessPolicy",
-        "VaultPolicyJob", "HandoverLedger", "Provider", "Library",
+        "VaultPolicyJob", "HandoverLedger", "Provider", "Library", "GpuVendor",
     ],
     "Bootstrap": ["FluxSource", "VaultState"],
     "FluxSource": ["RenderedArtifacts"],
@@ -191,7 +191,7 @@ TREES = {"10-project-intent": {
     "ResolvedMigration": ["MigratedDatabase"],
     "ResolvedProcess": [
         "ResolvedProbe", "StartupProbe", "ResolvedPlacement", "ResolvedApiAccess",
-        "ResolvedVolume", "ResolvedLibraryMount",
+        "ResolvedVolume", "ResolvedLibraryMount", "ResolvedGpu",
         "ResolvedGrant", "ResolvedEngineGrant", "ResolvedAsset",
         "ResolvedSidecar", "ResolvedEdge",
         "WritablePath", "EnvEntry", "ResolvedSurface", "IngressPeer",

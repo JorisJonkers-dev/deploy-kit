@@ -400,6 +400,8 @@ and checking it needs no estate-wide view.
 |---|---|
 | every Process's `placement` has at least one eligible node in the pinned node contract | `E_PLACEMENT_UNSATISFIABLE` |
 | no `disk` dimension conflicts with that Process's existing PV binding | `E_DISK_BINDING_CONFLICT` |
+| the cards a Process's `gpu` may land on are one vendor's | `E_GPU_VENDOR_AMBIGUOUS` |
+| the Platform document's `gpus` names that vendor | `E_NO_GPU_POLICY` |
 
 Every declared dimension is **hard**: all of them must match, a list is a set of
 equally acceptable values with no ordering and no weight, and matching is against
