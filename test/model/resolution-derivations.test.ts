@@ -890,6 +890,16 @@ describe("a Process that attaches to the VPN", () => {
     expect(placed("4000Mi")).not.toContain("enschede-pi-2");
   });
 
+  it("asks nothing of a platform that runs no VPN, where no Process attaches", () => {
+    const noVpn = resolve(one(serving("notes-api")), {
+      platform: (platform) =>
+        platform.slice(0, platform.indexOf("\n# The VPN")) + "\n",
+      lock: (lock) => lock.replace("  gluetun:\n", "  gluetun-retired:\n"),
+    });
+
+    expect(codesOf(noVpn)).toStrictEqual([]);
+  });
+
   it("refuses an attachment the platform runs no VPN for, and a VPN image the lock does not hold", () => {
     const unrun = resolve(attached("{ forwardedPort: true }"), {
       platform: (platform) =>
