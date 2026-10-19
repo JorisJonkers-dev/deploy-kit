@@ -619,12 +619,16 @@
                             - [n/]
     [/for]
   [/if]
+  [if (p.vpn <> null)]
+          initContainers:
+            [p.vpn.vpnContainer()/]
+  [/if]
         containers:
           [p.container()/]
   [for (c : resolveddeployment::ResolvedSidecar | p.sidecars)]
             [c.sidecar(p)/]
   [/for]
-  [if (p.volumes->notEmpty() or p.libraries->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty())]
+  [if (p.volumes->notEmpty() or p.libraries->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty() or p.vpn <> null)]
           volumes:
     [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
               - name: [v.claim/]
@@ -666,6 +670,11 @@
       [/if]
                   defaultMode: [g.fileMode.octal()/]
     [/for]
+    [if (p.vpn <> null)]
+              - name: vpn
+                emptyDir:
+                  sizeLimit: 1Mi
+    [/if]
   [/if]
 [/template]
 
@@ -715,6 +724,47 @@
   [/for]
 [/template]
 
+[comment The platform's VPN beside an attached Process: a native sidecar started before it, the one
+  container that runs as root with the two network capabilities, reading its own Secret. /]
+[template private vpnContainer(v : resolveddeployment::ResolvedVpn)]
+  - name: vpn
+    image: [v.image/]
+    restartPolicy: Always
+    env:
+  [for (e : resolveddeployment::EnvEntry | v.environment)]
+        - name: [e.name/]
+          value: [e.value.scalar()/]
+  [/for]
+    envFrom:
+      - secretRef:
+          name: [v.credential.destination/]
+    resources:
+      requests:
+        memory: [v.memory/]
+        cpu: [v.cpu/]
+      limits:
+        memory: [v.memory/]
+    securityContext:
+      runAsNonRoot: false
+      runAsUser: 0
+      runAsGroup: 0
+      capabilities:
+        add:
+          - NET_ADMIN
+          - NET_RAW
+    startupProbe:
+      exec:
+        command:
+          - /gluetun-entrypoint
+          - healthcheck
+      periodSeconds: 5
+      timeoutSeconds: 5
+      failureThreshold: 60
+    volumeMounts:
+      - name: vpn
+        mountPath: /run/vpn
+[/template]
+
 [template private container(p : resolveddeployment::ResolvedProcess)]
   - name: [p.name/]
     image: [p.image/]
@@ -744,7 +794,7 @@
       capabilities:
         drop:
           - ALL
-  [if (p.volumes->notEmpty() or p.libraries->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty())]
+  [if (p.volumes->notEmpty() or p.libraries->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty() or (p.vpn <> null and p.vpn.forwardedPort))]
       volumeMounts:
     [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
           - name: [v.claim/]
@@ -775,6 +825,11 @@
             mountPath: [g.directoryOf()/]
             readOnly: true
     [/for]
+    [if (p.vpn <> null and p.vpn.forwardedPort)]
+          - name: vpn
+            mountPath: /run/vpn
+            readOnly: true
+    [/if]
   [/if]
   [if (p.readiness <> null)]
       readinessProbe:
@@ -1765,8 +1820,8 @@
   if m.kind.toString() = 'forward-auth' then 'forward-auth'
   else if m.contentPolicy = null then 'security-headers' else 'security-headers-' + m.contentPolicy endif endif /]
 
-[comment A string scalar, double-quoted where the YAML 1.2 core schema would read it as null, a
-  boolean, an integer or a float, and written plain otherwise. /]
+[comment A string scalar, double-quoted where a YAML 1.1 reader, which the Kubernetes API is,
+  would read it as null, a boolean, an integer, a float or a timestamp, and written plain otherwise. /]
 [query private scalar(value : String) : String =
-  if value.matches('|~|null|Null|NULL|true|True|TRUE|false|False|FALSE|[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+|[-+]?([.][0-9]+|[0-9]+([.][0-9]*)?)([eE][-+]?[0-9]+)?|[-+]?[.](inf|Inf|INF)|[.](nan|NaN|NAN)')
+  if value.matches('|~|null|Null|NULL|y|Y|yes|Yes|YES|n|N|no|No|NO|true|True|TRUE|false|False|FALSE|on|On|ON|off|Off|OFF|[-+]?0b[0-1_]+|[-+]?0[0-7_]+|[-+]?[0-9][0-9_]*|[-+]?0x[0-9a-fA-F_]+|[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+|[-+]?([0-9][0-9_]*)?[.][0-9_]*([eE][-+]?[0-9]+)?|[-+]?[0-9][0-9_]*[eE][-+]?[0-9]+|[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+[.][0-9_]*|[-+]?[.](inf|Inf|INF)|[.](nan|NaN|NAN)|[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}(([Tt]| +)[0-9]{1,2}:[0-9]{2}:[0-9]{2}([.][0-9]*)?( *(Z|[-+][0-9]{1,2}(:[0-9]{2})?))?)?')
   then '"' + value + '"' else value endif /]

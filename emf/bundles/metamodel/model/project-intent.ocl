@@ -180,6 +180,18 @@ context LibraryMount
 	inv schema:
 		subPath = null or subPath.matches('(?![.][.]?(/|$))[^/]+(/(?![.][.]?(/|$))[^/]+)*')
 
+context VpnAttachment
+	-- An attachment names the VPN the platform runs. Read with no Platform
+	-- document, no VPN is declared and nothing is refused.
+	inv E_NO_VPN_POLICY:
+		Platform.allInstances()->forAll(platform | platform.vpn <> null)
+
+context VpnPolicy
+	-- Each setting is a variable name, and none is one the render derives from the attached Process.
+	inv schema:
+		settings->keys()->forAll(k | k.matches('[A-Z_][A-Z0-9_]*')
+			and not Set{'FIREWALL_INPUT_PORTS', 'VPN_PORT_FORWARDING', 'VPN_PORT_FORWARDING_UP_COMMAND'}->includes(k))
+
 context LibraryDeclaration
 	-- An absolute directory with no `.` or `..` segment, never `/`, owned by a group above 0.
 	inv schema:

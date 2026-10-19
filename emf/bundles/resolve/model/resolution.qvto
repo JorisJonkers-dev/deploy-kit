@@ -39,6 +39,10 @@ property assetFiles : Sequence(AssetFile) = pinned.rootObjects()[AssetFile]->asS
 
 -- The unit that materialises every grant's credentials before a Process may hold one.
 property SECRETS_UNIT : String = 'estate-vso-secrets';
+-- Where an attached Process reads the port its provider forwards to it.
+property FORWARDED_PORT_FILE : String = '/run/vpn/forwarded-port';
+-- Why an attached Process reaches public addresses it declared no egress to.
+property TUNNEL_REASON : String = 'the VPN\'s tunnel reaches its provider\'s servers';
 -- The surface a Release Gate and a Secret Store answer on.
 property HTTP_SURFACE : String = 'http';
 -- The path of the Reporter's `http` surface that receives Flux's events.
@@ -122,7 +126,7 @@ query afterOf(prj : EffectiveProject) : Sequence(String) =
 		->collect(e | projectOf(e.application))
 		->select(other | other <> null and other <> prj.project)
 		->collect(other | unitOf(other))
-	->union(if prj.applications.processes->exists(p | p.secrets->notEmpty()
+	->union(if prj.applications.processes->exists(p | p.secrets->notEmpty() or p.vpn <> null
 				or p.dependsOn->exists(e | reachesDatabase(e)))
 			or prj.applications->exists(a | managed(a))
 		then Sequence{SECRETS_UNIT} else Sequence{} endif))
@@ -206,7 +210,7 @@ query managed(app : EffectiveApplication) : Boolean =
 query tagOf(revision : String) : String = revision.substring(8, 7 + TAG_DIGITS);
 
 query synced(app : ResolvedApplication) : Boolean =
-	app.processes->exists(p | p.secrets->notEmpty()
+	app.processes->exists(p | p.secrets->notEmpty() or p.vpn <> null
 		or p.volumes->exists(v | v.backup <> null
 			and (v.backup.credential <> null or v.backup.peer <> null)));
 
@@ -494,6 +498,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	memory := self.placement.memory;
 	cpu := self.placement.cpu;
 	if self.placement.gpu <> null then gpu := gpuOf(self) endif;
+	if self.vpn <> null then vpn := vpnOf(self) endif;
 	hardening := estate.hardening.spelling();
 	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj));
 	-- The pod authenticates only where a grant is delivered `self`, or where it
@@ -515,6 +520,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 		});
 	} endif;
 	if self.egress <> null then internetEgress := object InternetEgress { reason := self.egress.reason; } endif;
+	if self.egress = null and self.vpn <> null then internetEgress := object InternetEgress { reason := TUNNEL_REASON; } endif;
 	component := self.runtime.spelling();
 	if declared <> null and declared.readiness <> null then readiness := declared.readiness.cadenced() endif;
 	if declared <> null and declared.liveness <> null then liveness := declared.liveness.cadenced() endif;
@@ -913,10 +919,12 @@ query copiesOf(p : PI::Process) : Integer =
 -- dimension it declared (spec/v1/20-resolved-deployment.md#layer-2-does-not-assign-a-node).
 -- What one copy asks for is the Process and its sidecars together.
 query requestedMemory(p : PI::Process) : Real =
-	p.sidecars->collect(c | mebibytes(c.memory))->sum() + mebibytes(p.placement.memory);
+	p.sidecars->collect(c | mebibytes(c.memory))->sum() + mebibytes(p.placement.memory)
+		+ (if p.vpn = null or estate.vpn = null then 0 else mebibytes(estate.vpn.memory) endif);
 
 query requestedCpu(p : PI::Process) : Integer =
-	p.sidecars->collect(c | millicores(c.cpu))->sum() + millicores(p.placement.cpu);
+	p.sidecars->collect(c | millicores(c.cpu))->sum() + millicores(p.placement.cpu)
+		+ (if p.vpn = null or estate.vpn = null then 0 else millicores(estate.vpn.cpu) endif);
 
 query eligible(p : PI::Process, n : Node) : Boolean =
 	mebibytes(n.allocatable.memory) >= requestedMemory(p) * copiesOf(p)
@@ -929,6 +937,39 @@ query eligible(p : PI::Process, n : Node) : Boolean =
 		p.placement.disk.media->exists(m | m.spelling() = d.media)))
 	-- A library the Process mounts holds it to the library's node.
 	and p.libraries->forAll(m | libraryOf(m._library) <> null and libraryOf(m._library).node = n.name);
+
+-- The VPN container beside an attached Process (spec/v1/20-resolved-deployment.md#the-vpn-attachment):
+-- the platform's image and quantities, its settings with the three values derived from the
+-- Process sorted in among them, and the credential only it reads. E_NO_VPN_POLICY refused an
+-- attachment with no Platform `vpn`.
+query vpnOf(p : PI::Process) : ResolvedVpn =
+	let policy : VpnPolicy = estate.vpn in
+	let locks : LockedImage = locked(policy.image) in
+	let ports : Sequence(Integer) = p.provides->collect(s | s.value)->asSet()->sortedBy(n | n)->asSequence() in
+	let fromProcess : Sequence(Tuple(name : String, value : String)) =
+		(if ports->isEmpty() then Sequence{} else Sequence{Tuple{name = 'FIREWALL_INPUT_PORTS',
+			value = ports->iterate(n; acc : String = '' | if acc = '' then n.toString() else acc + ',' + n.toString() endif)}} endif)
+		->union(Sequence{Tuple{name = 'VPN_PORT_FORWARDING', value = if p.vpn.forwardedPort then 'on' else 'off' endif}})
+		->union(if p.vpn.forwardedPort then Sequence{Tuple{name = 'VPN_PORT_FORWARDING_UP_COMMAND',
+			value = '/bin/sh -c \'echo {{PORT}} > ' + FORWARDED_PORT_FILE + '\''}} else Sequence{} endif) in
+	let settings : Sequence(Tuple(name : String, value : String)) =
+		policy.settings->collect(e | Tuple{name = e.key, value = e.value})->asSequence() in
+	object ResolvedVpn {
+		image := locks.repository + '@' + locks.digest;
+		memory := policy.memory;
+		cpu := policy.cpu;
+		forwardedPort := p.vpn.forwardedPort;
+		environment := settings->union(fromProcess)->sortedBy(t | t.name)->collect(t | object EnvEntry {
+			name := t.name;
+			value := t.value;
+		});
+		credential := object ResolvedGrant {
+			path := policy.credential;
+			_access := 'read';
+			delivery := 'env';
+			destination := destinationOf(p.name + '-vpn', policy.credential);
+		};
+	};
 
 -- The node's cards that match every term the Process's `gpu` declares.
 query matchingCards(p : PI::Process, n : Node) : OrderedSet(Gpu) =
@@ -1350,17 +1391,22 @@ query monitorOf(app : EffectiveApplication, root : String) : Sequence(Deliverabl
 -- off-cluster credential its backups share and the one its method dumps the
 -- Process with. A Process that syncs nothing holds nothing here.
 query holdersOf(p : ResolvedProcess) : Sequence(SecretHolder) =
-	(if p.secrets->forAll(g | g.destination = null) then Sequence{} else
+	(if processGrants(p)->forAll(g | g.destination = null) then Sequence{} else
 	Sequence{object SecretHolder {
 		identity := p.identity;
 		component := p.component;
-		grants := p.secrets->select(g | g.destination <> null);
+		grants := processGrants(p)->select(g | g.destination <> null);
 	}} endif)
 	->union(if backupGrants(p)->isEmpty() then Sequence{} else Sequence{object SecretHolder {
 		identity := p.volumes->select(v | v.backup <> null)->first().backup.identity;
 		component := NO_RUNTIME;
 		grants := backupGrants(p);
 	}} endif);
+
+-- What a Process's own identity holds: its grants, and the VPN's credential
+-- where it attaches, which the VPN container beside it reads.
+query processGrants(p : ResolvedProcess) : Sequence(ResolvedGrant) =
+	p.secrets->asSequence()->union(if p.vpn = null then Sequence{} else Sequence{p.vpn.credential} endif);
 
 -- What a Process's backup identity holds: the off-cluster credential, where a
 -- backup copies off-cluster, then the peer's, where its method dumps over the
@@ -1517,8 +1563,8 @@ query EffectiveProject::edgeFiles() : Sequence(Deliverable) =
 query EffectiveProject::vaultFiles() : Sequence(Deliverable) =
 	self.applications->collect(a | a.resolveone(ResolvedApplication))->collect(app |
 		app.processes->collect(p |
-			(if p.secrets->isEmpty() then Sequence{} else
-				vaultFilesOf(app.namespace, p.identity, p.secrets->asSequence()) endif)
+			(if processGrants(p)->isEmpty() then Sequence{} else
+				vaultFilesOf(app.namespace, p.identity, processGrants(p)) endif)
 			->union(if backupGrants(p)->isEmpty() then Sequence{} else
 				vaultFilesOf(app.namespace,
 					p.volumes->select(v | v.backup <> null)->first().backup.identity,
@@ -1738,7 +1784,8 @@ query appAfterOf(app : EffectiveApplication, prj : EffectiveProject) : Sequence(
 		->collect(e | projectOf(e.application))
 		->select(other | other <> null and other <> prj.project)
 		->collect(other | unitOf(other))
-	->union(if app.processes->exists(p | p.secrets->notEmpty() or p.dependsOn->exists(e | reachesDatabase(e)))
+	->union(if app.processes->exists(p | p.secrets->notEmpty() or p.vpn <> null
+			or p.dependsOn->exists(e | reachesDatabase(e)))
 			or managed(app)
 		then Sequence{SECRETS_UNIT} else Sequence{} endif))
 	->asSet()->sortedBy(n | n)->asSequence();
@@ -1811,6 +1858,15 @@ query ResolvedProcess::json() : String =
 		Tuple{k = 'gpu', v = if self.gpu = null then null else obj(Sequence{
 			Tuple{k = 'resource', v = str(self.gpu.resource)},
 			Tuple{k = 'runtimeClass', v = str(self.gpu.runtimeClass)}}) endif},
+		Tuple{k = 'vpn', v = if self.vpn = null then null else obj(Sequence{
+			Tuple{k = 'image', v = str(self.vpn.image)},
+			Tuple{k = 'memory', v = str(self.vpn.memory)},
+			Tuple{k = 'cpu', v = str(self.vpn.cpu)},
+			Tuple{k = 'forwardedPort', v = bool(self.vpn.forwardedPort)},
+			Tuple{k = 'environment', v = arr(self.vpn.environment->collect(x | obj(Sequence{
+				Tuple{k = 'name', v = str(x.name)},
+				Tuple{k = 'value', v = str(x.value)}})))},
+			Tuple{k = 'credential', v = self.vpn.credential.json()}}) endif},
 		Tuple{k = 'hardening', v = str(self.hardening)},
 		Tuple{k = 'identityToken', v = bool(self.identityToken)},
 		Tuple{k = 'internetEgress', v = if self.internetEgress = null then null else obj(Sequence{

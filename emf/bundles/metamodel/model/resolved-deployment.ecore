@@ -241,6 +241,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <!-- Set where the Process declares `gpu`: its vendor's resource and runtime class. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="gpu" eType="#//ResolvedGpu" containment="true"/>
+    <!-- Set where the Process attaches to the VPN: the container beside it. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="vpn" eType="#//ResolvedVpn" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="hardening" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <!-- True only where a grant carries `delivery: self` (docs/adr/model/0087). -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="identityToken" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
@@ -318,6 +320,15 @@
 
   <!-- A library the Process mounts: the directory on its node, the group the
        Process runs with, and the volume and claim its project derives onto it. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedVpn">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="forwardedPort" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="environment" lowerBound="1" upperBound="-1" eType="#//EnvEntry" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="credential" lowerBound="1" eType="#//ResolvedGrant" containment="true"/>
+  </eClassifiers>
+
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedGpu">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="resource" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="runtimeClass" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
