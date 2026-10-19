@@ -240,8 +240,9 @@ gpus:
 
 # The VPN an attached Process's traffic leaves through
 # (spec/v1/14-platform-intent.md#vpn): one privileged container the render adds
-# beside each attached Process, running this image with these settings. Its
-# credential's keys are the container's own variables, and it alone reads them.
+# beside each attached Process, running this image with these settings. Each
+# attached Process reads its own key below the credential prefix, one device per
+# Process; the keys are the container's own variables, and it alone reads them.
 vpn:
   image: gluetun
   credential: secret/data/platform/vpn

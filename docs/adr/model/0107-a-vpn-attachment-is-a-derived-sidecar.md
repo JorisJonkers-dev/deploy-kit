@@ -49,6 +49,11 @@ control. The privileged container is derived and named by the Platform
 document, which is the one authority that may run it. Its credential is synced
 to a Secret only that container reads.
 
+**One key per Process.** A provider takes a WireGuard key for one device, and two
+tunnels on one key knock each other off: the second handshake takes the first
+one's session, and a forwarded port moves with it. So the Platform names a
+prefix, and each attached Process reads its own key below it.
+
 **The model names no client.** Applying a forwarded port is client-specific: a
 torrent client's API call, a config reload, a restart. The VPN container writes
 the port to a file. The Process's own image applies it, so nothing executable

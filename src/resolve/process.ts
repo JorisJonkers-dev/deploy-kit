@@ -363,6 +363,9 @@ function vpnOf(
       : {}),
   };
   const environment: Record<string, string> = { ...vpn.settings, ...derived };
+  // One key per Process: a provider takes a key for one device, so two tunnels
+  // on one key knock each other off.
+  const credential = `${vpn.credential}/${context.project}-${process.name}`;
   return {
     vpn: {
       image: `${image.repository}@${image.digest}`,
@@ -374,10 +377,10 @@ function vpnOf(
         .sort()
         .map((name) => ({ name, value: environment[name] as string })),
       credential: {
-        path: vpn.credential,
+        path: credential,
         access: "read",
         delivery: "env",
-        destination: destinationOf(`${process.name}-vpn`, vpn.credential),
+        destination: destinationOf(`${process.name}-vpn`, credential),
       },
     },
   };

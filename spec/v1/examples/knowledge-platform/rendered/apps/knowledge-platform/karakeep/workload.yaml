@@ -70,7 +70,7 @@ spec:
               value: wireguard
           envFrom:
             - secretRef:
-                name: karakeep-vpn-platform-vpn
+                name: karakeep-vpn-platform-vpn-knowledge-platform-karakeep
           resources:
             requests:
               memory: 128Mi

@@ -10,12 +10,12 @@
         "read"
       ]
     },
-    "secret/data/platform/vpn": {
+    "secret/data/platform/vpn/knowledge-platform-karakeep": {
       "capabilities": [
         "read"
       ]
     },
-    "secret/metadata/platform/vpn": {
+    "secret/metadata/platform/vpn/knowledge-platform-karakeep": {
       "capabilities": [
         "read"
       ]

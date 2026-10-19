@@ -797,10 +797,11 @@ describe("a Process that attaches to the VPN", () => {
       ],
       // Only the VPN reads it, from a Secret of its own.
       credential: {
-        path: "secret/data/platform/vpn",
+        // Its own key below the platform's prefix: one device per Process.
+        path: "secret/data/platform/vpn/notes-notes-api",
         access: "read",
         delivery: "env",
-        destination: "notes-api-vpn-platform-vpn",
+        destination: "notes-api-vpn-platform-vpn-notes-notes-api",
       },
     });
     // The tunnel's endpoint is a public address.

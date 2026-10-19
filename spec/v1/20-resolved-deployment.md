@@ -783,8 +783,10 @@ name:
 | `VPN_PORT_FORWARDING` | `on` where `forwardedPort` is true, `off` otherwise |
 | `VPN_PORT_FORWARDING_UP_COMMAND` | where `forwardedPort` is true: writing the forwarded port to `/run/vpn/forwarded-port` |
 
-The `credential` is a derived grant on the Platform's path, delivered `env`
-to the Secret `<process>-vpn-<path>`. The Process's own identity holds it, so
+The `credential` is a derived grant on the Process's own path below the
+Platform's prefix, `<credential>/<project>-<process>`, delivered `env` to the
+Secret `<process>-vpn-<path>`: one key per Process, as a provider takes a key
+for one device. The Process's own identity holds it, so
 its Vault policy reads the path, but only the VPN container is given the
 Secret. Holding it puts the Application after the secrets-provisioning unit and
 connects it to the Secret Store, as any grant does. The Process also carries
