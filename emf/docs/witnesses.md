@@ -53,6 +53,7 @@ This list holds **28** witnesses, and **1** pending.
 | REQ-069 | `RenderedTreeTest#theKnowledgePlatformsShareAndTheEstateShareItDerivesAreItsCommittedTreeByteForByte` |
 | REQ-070 | `RenderedTreeTest#aProjectsShareIsItsCommittedTreeByteForByte` |
 | REQ-071 | `RenderedTreeTest#theKnowledgePlatformsShareAndTheEstateShareItDerivesAreItsCommittedTreeByteForByte` |
+| REQ-072 | `RenderedTreeTest#authsShareAndTheEstateShareItDerivesAreItsCommittedTreeByteForByte` |
 
 ## Pending
 

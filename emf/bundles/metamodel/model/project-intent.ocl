@@ -714,11 +714,18 @@ context DependencyEdge
 			let p : Process = providing->any(true) in
 			let stated : Bag(ServingLocation) = Platform.allInstances()->select(f | f.handover <> null)
 				.handover.serving->select(l | l.application = application) in
-			(if stated->isEmpty() or stated->any(true).instance = null then p.name else stated->any(true).instance endif)
-			+ '.' + (if stated->isEmpty() then p.oclContainer().oclContainer().oclAsType(Project).project + '-system'
-				else stated->any(true).namespace endif) + '.svc.cluster.local'
-		else Platform.allInstances().providers->select(v | v.name = application and v.surfaces->includes(surface))
-			->collect(v | v.address)->any(true) endif
+			if stated->isEmpty() then
+				p.name + '.' + p.oclContainer().oclContainer().oclAsType(Project).project + '-system.svc.cluster.local'
+			else
+				let location : ServingLocation = stated->asSequence()->first() in
+				(if location.instance = null then p.name else location.instance endif)
+				+ '.' + location.namespace + '.svc.cluster.local'
+			endif
+		else
+			let addresses : Bag(String) = Platform.allInstances().providers
+				->select(v | v.name = application and v.surfaces->includes(surface))->collect(v | v.address) in
+			if addresses->isEmpty() then null else addresses->asSequence()->first() endif
+		endif
 
 	-- An edge derives an alias where its provider serves outside the project's
 	-- namespace at a name, not an IP (spec/v1/16-dependencies.md#the-alias).

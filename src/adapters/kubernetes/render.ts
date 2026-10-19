@@ -1006,6 +1006,7 @@ function aliasesOf(
   const targets = new Map<string, string>();
   for (const application of project.applications)
     for (const process of application.processes)
+      // Stryker disable next-line ArrayDeclaration: no edge and an edge with no alias render alike.
       for (const { address, target } of process.dependencies ?? [])
         if (target !== undefined)
           targets.set(address.slice(0, address.lastIndexOf(":")), target);
