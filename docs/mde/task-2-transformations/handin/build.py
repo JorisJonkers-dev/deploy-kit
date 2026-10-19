@@ -119,14 +119,22 @@ write(f'{OUT}/.settings/org.eclipse.core.resources.prefs',
 
 # Beside the models project: the report, and the implementation the models come from, as the
 # repository tracks it (the EMF modules and the examples their build reads), with a README.
+# Left out: the repository's own records (decisions, ledgers, CI script) and the one test that
+# holds the ledgers to the repository, which reads them.
+OMIT = ('emf/docs/', 'emf/scripts/', 'emf/README.md', 'emf/.gitignore',
+        'emf/tests/parity/src/main/kotlin/dev/jorisjonkers/deploykit/emf/parity/Ledgers.kt',
+        'emf/tests/parity/src/test/kotlin/dev/jorisjonkers/deploykit/emf/parity/LedgersTest.kt')
 ROOT = os.path.dirname(OUT)
 copy(f'{R}/docs/mde/{PROJECT}/main.pdf', f'{ROOT}/report.pdf')
-tracked = subprocess.run(['git', '-C', R, 'ls-files', 'emf', 'spec/v1/examples', 'docs/requirements.md'],
+tracked = subprocess.run(['git', '-C', R, 'ls-files', 'emf', 'spec/v1/examples'],
                          capture_output=True, text=True, check=True).stdout.split()
-for f in tracked:
+for f in (f for f in tracked if not f.startswith(OMIT)):
     copy(f'{R}/{f}', f'{ROOT}/implementation/{f}')
 os.chmod(f'{ROOT}/implementation/emf/mvnw', 0o755)
 copy(f'{HERE}/hand-in-README.md', f'{ROOT}/README.md')
+for script in ['build.sh', 'build.cmd']:
+    copy(f'{HERE}/scripts/{script}', f'{ROOT}/{script}')
+os.chmod(f'{ROOT}/build.sh', 0o755)
 
 if '--dir' in sys.argv:
     i = sys.argv.index('--dir')
