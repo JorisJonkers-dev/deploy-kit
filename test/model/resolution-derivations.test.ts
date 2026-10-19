@@ -918,7 +918,9 @@ describe("what a grant derives", () => {
     ).toHaveProperty("destination", "notes-api-team-secret-data-token");
   });
 
-  it("carries a file grant's mount and mode", () => {
+  // A synced value restarts its consumer once the operator syncs it, whatever
+  // the rotation tolerates (spec/v1/10-project-intent.md#delivery).
+  it("carries a file grant's mount and mode, and restarts its consumer even where it tolerates a reload", () => {
     expect(
       processOf(
         granted(
@@ -934,6 +936,7 @@ describe("what a grant derives", () => {
         destination: "notes-api-notes-key",
         mountAt: "/run/key",
         fileMode: "0400",
+        restartTargets: ["notes-api"],
       },
     ]);
   });

@@ -17,6 +17,7 @@ the chapter's table says the refusal lands at.
 | [`every-offending-value.project.yml`](every-offending-value.project.yml) | three unrelated defects in one file | every one of them |
 | [`outside-yaml-subset.project.yml`](outside-yaml-subset.project.yml) | an anchor, an alias and an explicit tag | the root, once |
 | [`two-documents.project.yml`](two-documents.project.yml) | two YAML documents in one file | the root, once |
+| [`credentials-file-without-mount.project.yml`](credentials-file-without-mount.project.yml) | an edge's credential delivered `file` with no `mountAt` or `fileMode` | the edge's `credentials` |
 | [`platform-unknown-field/`](platform-unknown-field/) | a Platform document with a field the model does not have | the field |
 
 These oracles bind the production implementation only

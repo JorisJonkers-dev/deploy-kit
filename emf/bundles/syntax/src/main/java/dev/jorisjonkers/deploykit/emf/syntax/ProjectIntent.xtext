@@ -116,6 +116,8 @@ DependencyEdge returns DependencyEdge:
 
 Credentials returns Credentials:
 	(('delivery' ':' delivery=Delivery)?
+	& ('mountAt' ':' mountAt=Text)?
+	& ('fileMode' ':' fileMode=Text)?
 	& ('rotation' ':' BEGIN rotation=Rotation END));
 
 // How an Application's schema moves: `self`, `none`, or a changelog block.

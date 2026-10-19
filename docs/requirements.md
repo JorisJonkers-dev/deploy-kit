@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **65** rows. The compiler's behaviours join it as they land.
+This ledger holds **68** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -88,3 +88,6 @@ This ledger holds **65** rows. The compiler's behaviours join it as they land.
 | REQ-063 | The pull request's mutation shards merge into one report holding every mutant once, which decides the score, names every survivor whichever shard found it, and is the baseline a push to `main` uploads | [test/mutation-merge.test.ts](../test/mutation-merge.test.ts) |
 | REQ-064 | A pull request that changes no module, no test, nothing the mutation gate runs under and no dependency runs no mutation shard, and the gate passes on `main`'s result; a push to `main` always runs it | [test/mutation-scope.test.ts](../test/mutation-scope.test.ts) |
 | REQ-065 | A Process that mounts a library the Platform document grants its project runs only on the library's node, with the library's `gid` as a supplemental group and no `fsGroup`, its claim mounted at `mountAt` below `subPath`, read-only for `read`; its project holds one retained, never-pruned `PersistentVolume` onto the library's directory, held to that node, and the claim bound to it, in `libraries.yaml` | [test/model/render.test.ts](../test/model/render.test.ts) |
+| REQ-066 | An edge's credential delivered `file` is a `VaultDynamicSecret` the Process reads as two files, `username` and `password`, in the directory `mountAt` at `fileMode`, mounted read-only into every container of its pod, and the Process mounts no Vault token for it; delivered to a file without both, it is refused | [test/model/render.test.ts](../test/model/render.test.ts) |
+| REQ-067 | Every static secret the operator syncs polls its path every ten minutes, keeps the HMAC of its data, and names its consuming workload as its restart target, whatever its rotation tolerates; none of the three is authored | [test/model/render.test.ts](../test/model/render.test.ts) |
+| REQ-068 | No committed rendered tree asks the Vault Agent injector for anything: the Vault Secrets Operator is the one delivery path | [test/model/render.test.ts](../test/model/render.test.ts) |

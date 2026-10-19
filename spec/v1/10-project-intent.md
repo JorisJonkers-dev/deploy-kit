@@ -145,6 +145,7 @@ the value breaks:
 | a required field that is absent | where the field would be: `/applications/0/id` |
 | its type, a closed vocabulary or a constant, a pattern, a length or a bound | the value itself |
 | a choice of shapes (`probes` is `none` or a block; a grant is one of three) that it matches none of | the value itself, once; nothing inside it is reported, because which shape it was meant to have is not known |
+| a field one value of another requires (an edge's credential delivered `file` needs `mountAt` and `fileMode`) | the object that holds both: `/applications/0/processes/0/dependsOn/0/credentials` |
 
 A value inside one that is already refused is not examined: a Process written
 as a string is one refusal at the Process, not one per field it lacks. The
@@ -2136,11 +2137,25 @@ secret ([0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)
 | delivery | renders | persists a Kubernetes Secret |
 |---|---|---|
 | `env` | a Vault Secrets Operator sync and a `Secret`; the env file's `${secret:…}` placeholders resolve to `envFrom` secretRef entries, never to literal values | yes |
-| `file` | a projected file at `mountAt` with `fileMode`, and nothing in the environment | yes |
+| `file` | a Vault Secrets Operator sync and a `Secret` mounted as files: a `kv` grant's one key at `mountAt` with `fileMode`, an edge's credential as `username` and `password` in the directory `mountAt`; nothing in the environment | yes |
 | `self` | a Vault policy and a Kubernetes auth role ([0040](../../docs/adr/model/0040-vault-policy-is-a-deliverable.md)). No Secret, no env var, nothing injected: the application's own client wiring stays in its env file ([0013](../../docs/adr/model/0013-configuration-is-dotenv-at-three-scopes.md)) | no |
 
 In all three the derived policy is granted per **path**: delivery decides how a
 value reaches a process, never what its token may read.
+
+**The Vault Secrets Operator is the only delivery path.** Nothing renders a
+Vault Agent injector annotation, and **no Vault token is delivered**: an
+Application that talks to the Secret Store itself takes `self` and logs in with
+its ServiceAccount, and one that does not mounts no token at all. `self` stays
+accepted for any grant for now.
+
+**A static secret polls every ten minutes, and restarts its consumer.** Every
+`kv` grant delivered `env` or `file` is re-read from its path at one interval,
+ten minutes, derived and never authored. An edit to it reaches the Process
+within that time, and the operator then restarts the Process's serving
+workload, whatever the grant's `rotation.tolerates` says. A credential the
+Secret Store issues and renews is restarted when the issued login changes, as
+its `rotation.tolerates` says.
 
 `self` is not an edge case. `auth-api` runs it today ( `SPRING_CONFIG_IMPORT:
 vault://`, `VAULT_AUTHENTICATION: KUBERNETES`,
@@ -2159,8 +2174,9 @@ alongside `jorisjonkers-dev-tls`, `garage-node-secrets` and
 `vault-prometheus-token`.
 
 `rotation.tolerates` is what the consumer can survive when the value changes (
-`restart` or `reload`) and `rolloutRestartTargets` derives from it rather than
-being hand-declared.
+`restart` or `reload`). For `self` and for an issued credential,
+`rolloutRestartTargets` derives from it rather than being hand-declared; a
+synced static secret always names its consumer.
 
 ### Zero-downtime rotation
 
@@ -2170,7 +2186,7 @@ being hand-declared.
 | delivery | `tolerates` | replacing the value costs |
 |---|---|---|
 | `self` | `reload` | **nothing**: the client re-reads; no pod restarts |
-| `file` | `reload` | nothing, for a consumer that watches its projected file |
+| `file` | `reload` | a restart in place once the operator syncs a static value; nothing, for an issued credential the consumer re-reads from its file |
 | `self` or `file` | `restart` | a restart in place, never a release ([Rotation is not a release](#rotation-is-not-a-release)) |
 | `env` | `restart` | a restart in place; `env` cannot do better |
 | `env` | `reload` | refused: `E_ENV_CANNOT_RELOAD` |
@@ -2211,7 +2227,7 @@ other way:
 
 | `tolerates` | how a rotated value reaches the Process |
 |---|---|
-| `reload` | the Process re-reads it (`self`), or watches its projected file (`file`); no pod restarts |
+| `reload` | the Process re-reads it (`self`), or watches the projected file of an issued credential (`file`); no pod restarts. A synced static value restarts it anyway |
 | `restart` | the Process's serving workload is restarted in place; for a `blue-green` Process that is its primary, never a second copy |
 
 Two things in the render keep it that way
@@ -2536,15 +2552,28 @@ dependsOn:
     credentials: {delivery: env, rotation: {tolerates: restart}}
 ```
 
-`delivery` is `self` or `env`, and `self` when unsaid; `env` tolerates a
-`restart` only (`E_ENV_CANNOT_RELOAD`), since a variable is read once. An edge
-whose credential is delivered `env` hands its consumer two more coordinates,
-`username` and `password`, which an env file reads as
+`delivery` is `self`, `env` or `file`, and `self` when unsaid; `env` tolerates
+a `restart` only (`E_ENV_CANNOT_RELOAD`), since a variable is read once. An
+edge whose credential is delivered `env` hands its consumer two more
+coordinates, `username` and `password`, which an env file reads as
 `${dependency:<application>.username}` and `${dependency:<application>.password}`;
 an edge that delivers its credential no other way hands neither
-(`E_UNRESOLVED_PLACEHOLDER`). The operator syncs the login into a Secret and
-renews it; when the role's longest lease ends it issues a new one and
-restarts the Process.
+(`E_UNRESOLVED_PLACEHOLDER`). Delivered `file`, the login lands as two files,
+`username` and `password`, in the directory `mountAt` at `fileMode`, and an
+edge that says `file` without both is refused:
+
+```yaml
+credentials:
+  delivery: file
+  mountAt: /run/secrets/database
+  fileMode: "0400"
+  rotation: {tolerates: restart}
+```
+
+Delivered `env` or `file`, the credential is a dynamic secret: the operator
+syncs the login into a Secret and renews it, and when the role's longest lease
+ends it issues a new one and restarts the Process. Neither needs the Process to
+log in to the Secret Store, so it mounts no token for it.
 
 `credentials` on an edge to a provider that owns no database derives nothing,
 and is `E_CREDENTIALS_WITHOUT_DATABASE`.

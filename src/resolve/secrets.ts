@@ -87,8 +87,12 @@ export function resolveGrants(process: EffectiveProcess): ResolvedGrant[] {
         : { destination: destinationOf(process.name, grant.path) }),
       ...(grant.mountAt === undefined ? {} : { mountAt: grant.mountAt }),
       ...(grant.fileMode === undefined ? {} : { fileMode: grant.fileMode }),
-      // A rotation restarts the Process in place, and a reload restarts nothing.
-      ...restart,
+      // A synced value restarts the Process in place once the operator syncs
+      // it, whatever the rotation tolerates; read by the Process itself, a
+      // rotation restarts it, and a reload restarts nothing.
+      ...(grant.delivery === "self"
+        ? restart
+        : { restartTargets: [process.name] }),
     };
   });
 }

@@ -35,8 +35,11 @@ const CONNECTION = "secret-store";
 /** The KV-v2 mount every kv grant is read through, and its data segment. */
 const KV_MOUNT = "secret";
 const KV_DATA = `${KV_MOUNT}/data/`;
-/** How often the operator re-reads a path, so a rotated value arrives. */
-const REFRESH = "1h";
+/**
+ * How often the operator re-reads a path, so an edited value arrives: one
+ * derived interval for every static secret, never authored.
+ */
+const REFRESH = "10m";
 /** Flagger never counts a Vault-delivered Secret as a new revision. */
 const UNTRACKED = { "flagger.app/config-tracking": "disabled" };
 
@@ -76,6 +79,8 @@ function staticSecretOf(
       type: "kv-v2",
       path: grant.path.slice(KV_DATA.length),
       refreshAfter: REFRESH,
+      // The restart the operator triggers compares the data's HMAC.
+      hmacSecretData: true,
       destination: { name: destination, create: true, annotations: UNTRACKED },
       ...restartsOf(grant.restartTargets, application),
     },

@@ -232,7 +232,7 @@ describe("an edge's credential delivered to the environment", () => {
     ]);
   });
 
-  it("is never delivered to a file", () => {
+  it("is delivered to a file only with the directory and the mode its files land at", () => {
     const result = parseProjectIntent(
       edge("restart").replace("delivery: env", "delivery: file"),
     );
@@ -242,10 +242,37 @@ describe("an edge's credential delivered to the environment", () => {
         code: "schema",
         path: "/applications/0/processes/0/dependsOn/0/credentials",
         message:
-          "an edge delivers its credential to the Process itself or to its environment, never to a file",
-        hint: "Deliver it `self` or `env`.",
+          "an edge delivers its credential to a file only with `mountAt` and `fileMode`",
+        hint: "Name the directory its `username` and `password` files land in, and their mode.",
       },
     ]);
+  });
+
+  it.each([
+    ["a directory but no mode", "mountAt: /run/secrets/database"],
+    ["a mode but no directory", 'fileMode: "0400"'],
+  ])("is refused to a file with %s", (_, field) => {
+    expect(
+      refusalsOf(
+        edge("restart").replace("delivery: env", `delivery: file, ${field}`),
+      ),
+    ).toStrictEqual([
+      {
+        code: "schema",
+        path: "/applications/0/processes/0/dependsOn/0/credentials",
+      },
+    ]);
+  });
+
+  it("is accepted to a file with a directory and a mode", () => {
+    expect(
+      refusalsOf(
+        edge("restart").replace(
+          "delivery: env",
+          'delivery: file, mountAt: /run/secrets/database, fileMode: "0400"',
+        ),
+      ),
+    ).toStrictEqual([]);
   });
 });
 

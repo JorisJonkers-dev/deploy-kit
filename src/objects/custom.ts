@@ -205,6 +205,7 @@ export interface VaultStaticSecret {
     readonly type: "kv-v2";
     readonly path: string;
     readonly refreshAfter: string;
+    readonly hmacSecretData: true;
     readonly destination: {
       readonly name: string;
       readonly create: true;

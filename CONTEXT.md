@@ -149,8 +149,9 @@ derives a credential for it ([chapter 16](spec/v1/16-dependencies.md#the-databas
 
 **Edge credential**: the login an edge to a database derives for its consuming
 Process, which the Secret Store issues from the data or owner role and renews.
-The edge delivers it `self`, or `env`, where an env file reads it as
-`${dependency:<application>.username}` and `.password`
+The edge delivers it `self`; `env`, where an env file reads it as
+`${dependency:<application>.username}` and `.password`; or `file`, as two
+files, `username` and `password`, in the directory `mountAt`
 ([chapter 10](spec/v1/10-project-intent.md#migration)).
 
 **Catalog method**: the image an engine that owns databases names in the
@@ -269,6 +270,12 @@ whichever level shares it
 **Generated key**: a key of a `kv` Grant that declares `generate`, which the
 Vault policy job writes once, under its own Project's prefix, and never changes
 ([chapter 10](spec/v1/10-project-intent.md#generated-keys)).
+
+**Static secret**: a `kv` Grant delivered `env` or `file`, which the Vault
+Secrets Operator syncs into a Secret, re-reads every ten minutes, and restarts
+its consumer for once the value changes, whatever its rotation tolerates. Its
+counterpart is the Edge credential, which the Secret Store issues and renews
+([chapter 10](spec/v1/10-project-intent.md#delivery)).
 
 **Secret Store**: the Application every Grant is read from, which the Platform
 document names in `secretStore` and a project file the platform owns declares.

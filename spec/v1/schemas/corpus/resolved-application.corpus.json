@@ -211,6 +211,24 @@
           "path": "/processes/0/api/server"
         }
       ]
+    },
+    {
+      "name": "an edge's credential synced to files under a directory",
+      "verdict": "accept",
+      "file": "examples/knowledge-platform/expected/resolved.hindsight.json"
+    },
+    {
+      "name": "an engine grant delivered outside the vocabulary",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/knowledge-platform/expected/resolved.hindsight.json",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/processes/1/secrets/1/delivery",
+          "value": "sidecar"
+        }
+      ]
     }
   ]
 }

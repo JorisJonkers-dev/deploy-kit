@@ -182,7 +182,9 @@ edge set.
 
 **No password is rendered.** The catalog names a Vault role; Vault's database
 secrets engine issues the credential, and `vso` projects it with the
-`VaultDynamicSecret` it already emits. The engine mount and its connection
+`VaultDynamicSecret` it already emits, into the consuming Process's environment
+or into files under a directory, as the edge says
+([chapter 10](10-project-intent.md#migration)). The engine mount and its connection
 configuration are platform fixtures like the auth method
 ([chapter 60](60-setup.md#secrets-at-rest)); what the render owns is the per-
 consumer role name and the catalog entry.

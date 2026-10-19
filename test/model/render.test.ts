@@ -1218,4 +1218,79 @@ describe("the credential an edge derives", () => {
       "- name: PGUSER\n              valueFrom:\n                secretKeyRef:\n                  name: hindsight-api-database-creds-knowledge-platform-owner\n                  key: username\n",
     );
   });
+
+  // REQ-066 (docs/requirements.md): an edge's credential delivered to a file is
+  // a dynamic secret the Process reads as two files under its directory.
+  it("is a dynamic secret mounted as its username and password files where the edge delivers it to a file", () => {
+    const tree = rendered();
+    const vso = tree["apps/knowledge-platform/hindsight/vso.yaml"] ?? "";
+    const workload =
+      tree["apps/knowledge-platform/hindsight/workload.yaml"] ?? "";
+
+    expect(vso).toContain(
+      "  name: hindsight-worker-database-creds-knowledge-platform-owner\n",
+    );
+    expect(workload).toContain(
+      "- name: secret-hindsight-worker-database-creds-knowledge-platform-owner\n              mountPath: /run/secrets/database\n              readOnly: true\n",
+    );
+    expect(workload).toContain(
+      "- name: secret-hindsight-worker-database-creds-knowledge-platform-owner\n          secret:\n            secretName: hindsight-worker-database-creds-knowledge-platform-owner\n            items:\n              - key: username\n                path: username\n              - key: password\n                path: password\n            defaultMode: 256\n",
+    );
+  });
+});
+
+// REQ-067 (docs/requirements.md): every static secret polls at one derived
+// interval, keeps the data a restart needs, and restarts what consumes it.
+describe("a static secret the operator syncs", () => {
+  const vso = (application = "hindsight"): string => {
+    const result = renderIntentSet(
+      [
+        ...SET.filter((name) => !name.startsWith("minimal/")),
+        ...KNOWLEDGE_PLATFORM,
+      ].map((name) => ({ name, text: text(name) })),
+      { ...OPTIONS, projects: ["knowledge-platform"] },
+    );
+    return (
+      asTree(
+        result.ok ? artifact(result.value, "knowledge-platform") : undefined,
+      )[`apps/knowledge-platform/${application}/vso.yaml`] ?? ""
+    );
+  };
+
+  it("polls every ten minutes", () => {
+    expect(vso()).toContain("  refreshAfter: 10m\n");
+    expect(vso()).not.toContain("refreshAfter: 1h");
+  });
+
+  it("keeps the HMAC of its data, which a restart needs", () => {
+    expect(vso()).toContain("  hmacSecretData: true\n");
+  });
+
+  // basic-memory's deploy key is a file whose rotation tolerates a reload.
+  it("names the workload that consumes it as its restart target, whatever the rotation says", () => {
+    expect(vso("basic-memory")).toContain(
+      "  rolloutRestartTargets:\n    - kind: Deployment\n      name: basic-memory\n",
+    );
+  });
+});
+
+// REQ-068 (docs/requirements.md): VSO is the one delivery path, so no rendered
+// tree asks the Vault Agent injector for anything.
+describe("the Vault Agent injector", () => {
+  it("is asked for nothing in any committed rendered tree", () => {
+    const trees = readdirSync(EXAMPLES).filter((example) => {
+      try {
+        return statSync(join(EXAMPLES, example, "rendered")).isDirectory();
+      } catch {
+        return false;
+      }
+    });
+    const annotated = trees.flatMap((example) =>
+      Object.entries(committed(`${example}/rendered`))
+        .filter(([, body]) => body.includes("vault.hashicorp.com/agent-inject"))
+        .map(([path]) => `${example}/rendered/${path}`),
+    );
+    expect(trees.length).toBeGreaterThan(0);
+    expect(annotated).toStrictEqual([]);
+  });
 });

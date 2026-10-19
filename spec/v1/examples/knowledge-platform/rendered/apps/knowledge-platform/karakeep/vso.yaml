@@ -35,7 +35,8 @@ spec:
   mount: secret
   type: kv-v2
   path: platform/karakeep
-  refreshAfter: 1h
+  refreshAfter: 10m
+  hmacSecretData: true
   destination:
     name: karakeep-platform-karakeep
     create: true

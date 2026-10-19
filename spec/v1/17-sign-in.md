@@ -178,6 +178,12 @@ three of [chapter 10](10-project-intent.md#placeholder-sources):
 is `E_CLIENT_PLACEHOLDER_WITHOUT_SECRET`. `${client:issuer}` and `${client:id}`
 resolve for every mode.
 
+**No Vault token is delivered.** A client secret, like every secret, reaches a
+Process through the Vault Secrets Operator or through the Process's own client
+([chapter 10](10-project-intent.md#delivery)). An Application that talks to
+Vault itself takes the `self` path and logs in with its ServiceAccount; no
+delivery hands a Process a token to log in with.
+
 ## The platform's part
 
 The Platform document names who issues sign-ins

@@ -193,8 +193,11 @@ const sidecar = z
 // (spec/v1/10-project-intent.md#migration).
 const credentials = z
   .strictObject({
-    // `self` or `env`: an edge delivers no file, which ruleDiagnostics refuses.
     delivery: delivery.exactOptional(),
+    // Delivered to a file: the directory its `username` and `password` land
+    // in, and their mode, both required then (ruleDiagnostics).
+    mountAt: text.exactOptional(),
+    fileMode: text.exactOptional(),
     rotation: rotation,
   })
   .meta({ id: "Credentials" });

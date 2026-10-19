@@ -96,7 +96,7 @@ and linted by the same script with `emf` as its root.
 |---|---|---|
 | [0028](model/0028-grant-unit-is-the-path.md) | The grant unit is the path; the subtree splits per reader set | open |
 | [0029](model/0029-a-grant-is-a-union-on-engine.md) | A grant is a discriminated union on engine that derives a read path and a policy, and only a kv grant is projected | open |
-| [0030](model/0030-secret-delivery-is-env-file-or-self.md) | Secret delivery is env, file or self, an env placeholder byte-matches a kv grant's path, and env and file need secrets at rest | open |
+| [0030](model/0030-secret-delivery-is-env-file-or-self.md) | Secret delivery is env, file or self, the Vault Secrets Operator syncs env and file, an env placeholder byte-matches a kv grant's path, and env and file need secrets at rest | open |
 | [0031](model/0031-identity-per-process.md) | Each Process holds its own identity, and its ServiceAccount token is mounted only where the pod itself authenticates | settled |
 | [0101](model/0101-a-generated-key-is-written-by-the-vault-policy-job.md) | A generated key is declared on its grant and written by the Vault policy job, once, under its own Project's prefix | open |
 | [0102](model/0102-the-database-catalog-is-applied-by-its-engines-method.md) | The database catalog is applied in the cluster by its engine's method, which adopts a database that exists and writes the Secret Store's database roles | open |
