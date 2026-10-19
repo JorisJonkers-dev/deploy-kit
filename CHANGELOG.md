@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.20.0...v0.21.0) (2026-10-19)
+
+
+### Features
+
+* derive a GPU request from the placement that selects the card ([#495](https://github.com/JorisJonkers-dev/deploy-kit/issues/495)) ([a3e238c](https://github.com/JorisJonkers-dev/deploy-kit/commit/a3e238c0e09cff7c2345a554f1bbdee7f0e5c2db))
+
 ## [0.20.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.19.3...v0.20.0) (2026-10-19)
 
 
