@@ -398,6 +398,9 @@ const resolvedEdge = z
     application: text,
     surface: text,
     address: text,
+    // The name the consumer's alias points at, where one renders
+    // (spec/v1/16-dependencies.md#the-alias).
+    target: text.exactOptional(),
     peers: z.array(policyPeer).exactOptional(),
   })
   .meta({ id: "ResolvedEdge" });

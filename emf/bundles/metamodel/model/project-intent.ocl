@@ -701,6 +701,47 @@ context DependencyEdge
 				or Platform.allInstances()->exists(p | p.providers->exists(v |
 					v.name = application and v.surfaces->includes(surface))))
 
+	-- The project whose namespace the edge's alias lives in.
+	def: home : Project =
+		if oclContainer().oclIsKindOf(Process) then oclContainer().oclContainer().oclContainer().oclAsType(Project)
+		else if oclContainer().oclIsKindOf(Application) then oclContainer().oclContainer().oclAsType(Project)
+		else oclContainer().oclAsType(Project) endif endif
+
+	-- Where the provider serves: its Process's Service, where the handover
+	-- ledger states the old path runs it, or the address a provider records.
+	def: served : String =
+		if providing->notEmpty() then
+			let p : Process = providing->any(true) in
+			let stated : Bag(ServingLocation) = Platform.allInstances()->select(f | f.handover <> null)
+				.handover.serving->select(l | l.application = application) in
+			(if stated->isEmpty() or stated->any(true).instance = null then p.name else stated->any(true).instance endif)
+			+ '.' + (if stated->isEmpty() then p.oclContainer().oclContainer().oclAsType(Project).project + '-system'
+				else stated->any(true).namespace endif) + '.svc.cluster.local'
+		else Platform.allInstances().providers->select(v | v.name = application and v.surfaces->includes(surface))
+			->collect(v | v.address)->any(true) endif
+
+	-- An edge derives an alias where its provider serves outside the project's
+	-- namespace at a name, not an IP (spec/v1/16-dependencies.md#the-alias).
+	def: aliased : Boolean =
+		served <> null and not served.endsWith('.' + home.project + '-system.svc.cluster.local')
+			and not served.matches('[0-9.]+|.*:.*')
+
+	-- The alias's name: the Application Id, or the Id and the surface where the
+	-- project's edges name several surfaces of it.
+	def: aliasName : String =
+		if DependencyEdge.allInstances()->select(d | d.home = home and d.application = application)
+			->collect(d | d.surface)->asSet()->size() > 1
+		then application + '-' + surface else application endif
+
+	-- An alias takes no name a Service of its project holds, nor one another
+	-- Application's alias takes there.
+	inv E_ALIAS_COLLISION:
+		(Platform.allInstances()->notEmpty() and aliased) implies
+			(not home.applications.processes->select(p | p.provides->notEmpty())
+				->exists(p | aliasName = p.name or aliasName = p.name + '-primary' or aliasName = p.name + '-canary')
+			and not DependencyEdge.allInstances()->exists(d | d.home = home and d.aliased
+				and d.aliasName = aliasName and d.application <> application))
+
 	-- A required edge closes a cycle where a Process it reaches reaches back to
 	-- a Process that holds it; an optional one starts without its peer.
 	inv E_DEPENDENCY_CYCLE:

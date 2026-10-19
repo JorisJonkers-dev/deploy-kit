@@ -5,44 +5,52 @@ import type { EffectiveProject } from "../model/effective-intent.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import type { DependencyEdge } from "../model/project-intent.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
-import { addressOf, homeOf } from "../model/runtime-profiles.ts";
+import { homeOf } from "../model/runtime-profiles.ts";
+import { reachOf, servedOf, type Named } from "../model/aliases.ts";
 import { brokenInvariant } from "../model/internal-failure.ts";
 
 export type ResolvedEdge = NonNullable<ResolvedProcess["dependencies"]>[number];
 
-/** Resolves an edge, or says which provider or surface the union does not hold. */
+/** Every edge a project's Processes hold, which an alias's name is read against. */
+export const edgesOfProject = (
+  union: readonly EffectiveProject[],
+  project: string,
+): Named[] =>
+  union
+    .filter((candidate) => candidate.project === project)
+    .flatMap(({ applications }) => applications)
+    .flatMap(({ processes }) => processes)
+    .flatMap(({ dependsOn }) => dependsOn ?? []);
+
+/** Resolves `project`'s edge, or says which provider or surface the union does not hold. */
 export function resolveEdge(
   edge: DependencyEdge,
   union: readonly EffectiveProject[],
   platform: PlatformIntentDocument,
+  project: string,
 ): ResolvedEdge {
   const { application, surface } = edge;
-  for (const { project, applications } of union)
-    for (const declared of applications)
-      if (declared.id === application)
-        for (const process of declared.processes) {
-          const port = process.provides?.[surface];
-          if (port !== undefined) {
-            const home = homeOf(platform, project, application, process.name);
-            return {
-              application,
-              surface,
-              address: addressOf(home, port),
-              peers: [{ ...home, port }],
-            };
-          }
-        }
-  const provider = platform.providers?.find(
-    ({ name, surfaces }) =>
-      name === application && Object.hasOwn(surfaces, surface),
-  );
-  if (provider === undefined)
+  const served = servedOf(edge, union, platform);
+  if (served === undefined)
     throw brokenInvariant(
       `${application}.${surface}: no provider in the union`,
     );
-  return {
-    application,
-    surface,
-    address: `${provider.address}:${String(provider.surfaces[surface])}`,
-  };
+  const reach = reachOf(edge, served, project, edgesOfProject(union, project));
+  for (const { project: home, applications } of union)
+    for (const declared of applications)
+      if (declared.id === application)
+        for (const process of declared.processes)
+          if (process.provides?.[surface] !== undefined)
+            return {
+              application,
+              surface,
+              ...reach,
+              peers: [
+                {
+                  ...homeOf(platform, home, application, process.name),
+                  port: served.port,
+                },
+              ],
+            };
+  return { application, surface, ...reach };
 }

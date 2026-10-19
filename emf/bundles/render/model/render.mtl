@@ -63,6 +63,8 @@
     [d.oclAsType(resolveddeployment::CatalogJobFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::EventsFile))]
     [d.oclAsType(resolveddeployment::EventsFile).objects()/]
+  [elseif (d.oclIsKindOf(resolveddeployment::AliasFile))]
+    [d.oclAsType(resolveddeployment::AliasFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::LibraryFile))]
     [d.oclAsType(resolveddeployment::LibraryFile).objects()/]
   [elseif (d.oclIsKindOf(resolveddeployment::ClaimFile))]
@@ -932,6 +934,24 @@
             port: [s.port/]
             targetPort: [s.name/]
     [/for]
+  [/for]
+[/template]
+
+[comment Per name the project's edges dial a provider outside its namespace by, the alias that
+  holds it there: a Service of type ExternalName, with no selector and no port. /]
+[template private objects(d : resolveddeployment::AliasFile)]
+  [for (a : resolveddeployment::Alias | d.aliases)]
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: [a.name/]
+      namespace: [d.namespace/]
+      labels:
+        app.kubernetes.io/managed-by: deploy-kit
+    spec:
+      type: ExternalName
+      externalName: [a.target/]
   [/for]
 [/template]
 

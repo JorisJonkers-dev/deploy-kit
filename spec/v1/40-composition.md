@@ -352,6 +352,7 @@ because the vocabulary they were written in had no path to declare: the
 | every route's `surface` is provided by the Process that route names | `E_UNKNOWN_SURFACE` |
 | no two routes on one host share a `path` and `match` ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)) | `E_DUPLICATE_ROUTE` |
 | the graph of **required** edges is acyclic | `E_DEPENDENCY_CYCLE` |
+| no edge's alias takes the name of a Service its Project renders, or a name another Application's alias takes in that Project ([chapter 16](16-dependencies.md#the-alias)) | `E_ALIAS_COLLISION` |
 | every exposure's audience is carryable by some tier | `E_NO_TIER_FOR_AUDIENCE` |
 
 An edge still targets `{application, surface}`, and surface names are still unique

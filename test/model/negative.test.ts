@@ -178,7 +178,12 @@ describe("the invariants, with no Platform document read", () => {
     );
   });
 
-  it.each(["unresolved-application", "unknown-surface", "dependency-cycle"])(
+  it.each([
+    "unresolved-application",
+    "unknown-surface",
+    "dependency-cycle",
+    "alias-collision",
+  ])(
     "leave %s unanswered, a reference answered beside the platform's providers",
     (fixture) => {
       expect(refusalsOf(fragmentsOf(fixture))).toStrictEqual([]);
@@ -188,6 +193,11 @@ describe("the invariants, with no Platform document read", () => {
 
 /** What each fixture's first refusal tells its author. */
 const TOLD: Readonly<Record<string, { message: string; hint: string }>> = {
+  "alias-collision": {
+    message:
+      "this edge's alias release-gate is a Service notes already renders",
+    hint: "Rename the Process or the Application whose name the alias takes.",
+  },
   "dependency-cycle": {
     message:
       "this required edge to notes-search closes a cycle of required edges, so no Process on it can start first",
@@ -352,5 +362,66 @@ ${to.length === 0 ? "" : `        dependsOn:\n${to.map((peer) => `          - { 
         },
       ]),
     ).toStrictEqual([]);
+  });
+});
+
+describe("an alias two Applications would take", () => {
+  const fragment = (project: string, body: string): AuthoredFile => ({
+    name: `${project}.yml`,
+    text: `apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: ${project}
+owner: joris
+cutover: interrupted
+applications:
+${body}`,
+  });
+  const process = (name: string, provides: string, dependsOn = "") =>
+    `      - name: ${name}
+        lifecycle: application
+        image: notes-api
+        runtime: node
+        provides: ${provides}
+        placement: { memory: 64Mi, cpu: 10m }
+${dependsOn}`;
+  const PROVIDERS = fragment(
+    "sync",
+    `  - id: sync
+    processes:
+${process("sync-in", "{ in: 8080 }")}${process("sync-out", "{ out: 8081 }")}  - id: sync-in
+    processes:
+${process("relay", "{ http: 8082 }")}`,
+  );
+
+  it("refuses both edges, since one name in one namespace names one host", () => {
+    const consumer = fragment(
+      "notes",
+      `  - id: notes
+    processes:
+${process(
+  "notes-api",
+  "{ http: 8080 }",
+  `        dependsOn:
+          - { application: sync, surface: in }
+          - { application: sync, surface: out }
+          - { application: sync-in, surface: http }
+`,
+)}`,
+    );
+    const refused = checkIntentSet([...FOUNDATION, PROVIDERS, consumer]);
+
+    expect(
+      (refused.ok ? [] : refused.diagnostics)
+        .filter(({ code }) => code === "E_ALIAS_COLLISION")
+        .map(({ code, path, message }) => ({ code, path, message })),
+    ).toStrictEqual(
+      [0, 2].map((edge) => ({
+        code: "E_ALIAS_COLLISION",
+        path: `/applications/0/processes/0/dependsOn/${String(edge)}`,
+        message:
+          "this edge's alias sync-in is also another Application's alias in notes",
+      })),
+    );
   });
 });

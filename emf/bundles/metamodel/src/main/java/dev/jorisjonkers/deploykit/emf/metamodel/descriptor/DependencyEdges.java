@@ -66,6 +66,9 @@ public final class DependencyEdges {
         written.put("application", edge.getApplication());
         written.put("surface", edge.getSurface());
         written.put("address", edge.getAddress());
+        if (edge.getTarget() != null) {
+            written.put("target", edge.getTarget());
+        }
         List<Object> peers = new ArrayList<>();
         edge.getPeers()
                 .forEach(peer -> peers.add(Map.of(

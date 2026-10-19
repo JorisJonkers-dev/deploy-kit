@@ -1,0 +1,12 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform-postgres
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  type: ExternalName
+  externalName: postgres.data-system.svc.cluster.local

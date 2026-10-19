@@ -464,6 +464,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="application" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="surface" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="address" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Where the consumer's alias points, on an edge that derives one. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="target" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="peers" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
   </eClassifiers>
 
@@ -647,6 +649,18 @@
     <!-- The nominal size the volume and its claim both state; it binds nothing. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="size" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="libraries" lowerBound="1" upperBound="-1" eType="#//ResolvedLibraryMount"/>
+  </eClassifiers>
+
+  <!-- Per name a project's edges dial a provider outside its namespace by, the
+       alias that holds it there, in name order (spec/v1/16-dependencies.md#the-alias). -->
+  <eClassifiers xsi:type="ecore:EClass" name="AliasFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="aliases" lowerBound="1" upperBound="-1" eType="#//Alias" containment="true"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="Alias">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="target" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <!-- The claims of every volume the Processes hold, and of each backed-up

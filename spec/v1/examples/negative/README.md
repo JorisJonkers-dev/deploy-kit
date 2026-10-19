@@ -16,6 +16,7 @@ path its oracle beside it names: `<fixture>.diagnostics.json`.
 | [`unresolved-application/`](unresolved-application/) | `E_UNRESOLVED_APPLICATION` | one |
 | [`unknown-surface/`](unknown-surface/) | `E_UNKNOWN_SURFACE` | one |
 | [`dependency-cycle/`](dependency-cycle/) | `E_DEPENDENCY_CYCLE` | one |
+| [`alias-collision/`](alias-collision/) | `E_ALIAS_COLLISION` | one |
 
 **How a fixture is read.** A fragment here does not carry `.project.yml`
 ([chapter 10](../../10-project-intent.md#two-artefacts)); it says

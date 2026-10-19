@@ -18,6 +18,7 @@ import type {
   VaultStaticSecret,
 } from "./custom.ts";
 import type {
+  AliasService,
   ClusterRole,
   ClusterRoleBinding,
   ConfigMap,
@@ -42,6 +43,7 @@ export type RenderedObject =
   | Deployment
   | NetworkPolicy
   | Service
+  | AliasService
   | PersistentVolumeClaim
   | PersistentVolume
   | Canary

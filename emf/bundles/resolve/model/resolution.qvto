@@ -551,7 +551,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 		memory := c.memory;
 		cpu := c.cpu;
 	});
-	dependencies := self.dependsOn->collect(e | edgeOf(e));
+	dependencies := self.dependsOn->collect(e | edgeOf(e, owner(self)));
 	writablePaths := self.writablePaths->collect(w | object WritablePath {
 		path := w;
 		size := estate.ephemeral.size;
@@ -872,8 +872,9 @@ query spelled(path : String) : String =
 
 -- A dependency edge resolved against the union, then the platform's register
 -- of providers (spec/v1/16-dependencies.md#dependency-edges): the pair names one
--- Process, one port and one address, and the peer a policy admits.
-query edgeOf(e : DependencyEdge) : ResolvedEdge =
+-- Process, one port and one address, and the peer a policy admits. `consumer`
+-- is the project holding the edge, whose namespace the alias lives in.
+query edgeOf(e : DependencyEdge, consumer : String) : ResolvedEdge =
 	let providers : Sequence(Tuple(project : String, process : PI::Process)) =
 		projects->collect(prj | prj.applications->select(a | a.id = e.application).processes
 			->select(p | p.provides->exists(s | s.key = e.surface))
@@ -881,11 +882,13 @@ query edgeOf(e : DependencyEdge) : ResolvedEdge =
 	if providers->notEmpty() then
 		let first : Tuple(project : String, process : PI::Process) = providers->first() in
 		let at : Integer = first.process.provides->select(s | s.key = e.surface)->any(true).value in
+		let host : String = homeProcess(e.application, first.process.name) + '.'
+			+ homeNamespace(first.project, e.application) + '.svc.cluster.local' in
 		object ResolvedEdge {
 			application := e.application;
 			surface := e.surface;
-			address := homeProcess(e.application, first.process.name) + '.'
-				+ homeNamespace(first.project, e.application) + '.svc.cluster.local:' + at.toString();
+			address := dialled(e, host, consumer) + ':' + at.toString();
+			target := aliasTarget(host, consumer);
 			peers := Sequence{object PolicyPeer {
 				namespace := homeNamespace(first.project, e.application);
 				process := homeProcess(e.application, first.process.name);
@@ -896,13 +899,45 @@ query edgeOf(e : DependencyEdge) : ResolvedEdge =
 		let registered : Sequence(Provider) = estate.providers
 			->select(r | r.name = e.application and r.surfaces->exists(s | s.key = e.surface))->asSequence() in
 		if registered->isEmpty() then unprovided(e) else
+		let host : String = registered->first().address in
 		object ResolvedEdge {
 			application := e.application;
 			surface := e.surface;
-			address := registered->first().address + ':'
+			address := dialled(e, host, consumer) + ':'
 				+ registered->first().surfaces->select(s | s.key = e.surface)->any(true).value.toString();
+			target := aliasTarget(host, consumer);
 		} endif
 	endif;
+
+-- The name an edge's alias holds: what its consumer dials, up to the port.
+query aliasName(e : ResolvedEdge) : String = e.address.substring(1, e.address.lastIndexOf(':') - 1);
+
+-- The suffix a Service in `consumer`'s own namespace carries.
+query localSuffix(consumer : String) : String = '.' + namespaceOf(consumer) + '.svc.cluster.local';
+
+query isLocal(host : String, consumer : String) : Boolean = host.endsWith(localSuffix(consumer));
+
+-- An IP, which no name can stand for.
+query isLiteral(host : String) : Boolean = host.replaceAll('[0-9.]', '') = '' or host.indexOf(':') > 0;
+
+-- What the consumer dials (spec/v1/16-dependencies.md#the-alias): a provider in
+-- its own namespace by its own Service name, an IP as it stands, anything else by
+-- its alias.
+query dialled(e : DependencyEdge, host : String, consumer : String) : String =
+	if isLocal(host, consumer) then host.substring(1, host.size() - localSuffix(consumer).size())
+	else if isLiteral(host) then host
+	else aliasNameOf(e, consumer) endif endif;
+
+-- Where an alias points, on an edge that derives one.
+query aliasTarget(host : String, consumer : String) : String =
+	if isLocal(host, consumer) or isLiteral(host) then null else host endif;
+
+-- The alias's name: the Application Id, or the Id and the surface where the
+-- project's edges name several surfaces of it, since a name carries no port.
+query aliasNameOf(e : DependencyEdge, consumer : String) : String =
+	let surfaces : Set(String) = projects->select(prj | prj.project = consumer).applications.processes.dependsOn
+		->select(d | d.application = e.application)->collect(d | d.surface)->asSet() in
+	if surfaces->size() > 1 then e.application + '-' + e.surface else e.application endif;
 
 query unprovided(e : DependencyEdge) : ResolvedEdge {
 	assert fatal (false) with log(e.application + '.' + e.surface + ': no provider in the union');
@@ -1084,7 +1119,7 @@ query dependencyValue(source : String, owner : PI::Process) : String =
 	if edges->size() <> 1 or (coordinate <> 'host' and coordinate <> 'port')
 		then unresolvedText(source, 'a dependency placeholder names no one edge of the Process and no coordinate of it')
 	else
-		let address : String = edgeOf(edges->first()).address in
+		let address : String = edgeOf(edges->first(), owner(owner)).address in
 		let colon : Integer = address.lastIndexOf(':') in
 		if coordinate = 'host' then address.substring(1, colon - 1)
 		else address.substring(colon + 1, address.size()) endif
@@ -1231,6 +1266,11 @@ query EffectiveProject::projectFiles() : Sequence(Deliverable) =
 		->collect(p | p.libraries)->flatten()->asSequence() in
 	let held : Sequence(ResolvedLibraryMount) = mounts->collect(m | m._library)->asOrderedSet()
 		->sortedBy(n | n)->collect(n | mounts->select(m | m._library = n)->first()) in
+	-- Every edge of the project that derives an alias, once per name it dials.
+	let aliased : Sequence(ResolvedEdge) = self.applications
+		->collect(a | a.processes)->flatten()->collect(p | p.resolveone(ResolvedProcess))
+		->collect(p | p.dependencies)->flatten()->select(e | e.target <> null)->asSequence() in
+	let names : Sequence(String) = aliased->collect(e | aliasName(e))->asOrderedSet()->sortedBy(n | n)->asSequence() in
 	Sequence{
 		object NamespaceFile {
 			path := root + 'namespace.yaml';
@@ -1243,6 +1283,7 @@ query EffectiveProject::projectFiles() : Sequence(Deliverable) =
 			resources := Sequence{'namespace.yaml'}->union(self.applications->collect(a | a.id))
 				->union(if stores->isEmpty() then Sequence{} else Sequence{'vaultconnection.yaml'} endif)
 				->union(if held->isEmpty() then Sequence{} else Sequence{'libraries.yaml'} endif)
+				->union(if names->isEmpty() then Sequence{} else Sequence{'aliases.yaml'} endif)
 				->sortedBy(r | r);
 		}.oclAsType(Deliverable),
 		object NetworkPolicyFile {
@@ -1256,6 +1297,15 @@ query EffectiveProject::projectFiles() : Sequence(Deliverable) =
 			namespace := namespaceOf(self.project);
 			size := LIBRARY_SIZE;
 			libraries := held;
+		}.oclAsType(Deliverable)} endif)
+	->union(if names->isEmpty() then Sequence{} else Sequence{object AliasFile {
+			path := root + 'aliases.yaml';
+			adapter := AdapterName::kubernetes;
+			namespace := namespaceOf(self.project);
+			aliases := names->collect(n | object Alias {
+				name := n;
+				target := aliased->select(e | aliasName(e) = n)->first().target;
+			});
 		}.oclAsType(Deliverable)} endif)
 	->union(if stores->isEmpty() then Sequence{} else Sequence{object ConnectionFile {
 			path := root + 'vaultconnection.yaml';
@@ -1918,6 +1968,7 @@ query ResolvedProcess::json() : String =
 			Tuple{k = 'application', v = str(x.application)},
 			Tuple{k = 'surface', v = str(x.surface)},
 			Tuple{k = 'address', v = str(x.address)},
+			Tuple{k = 'target', v = opt(x.target)},
 			Tuple{k = 'peers', v = if x.peers->isEmpty() then null else arr(x.peers->collect(q | q.json())) endif}}))) endif},
 		Tuple{k = 'writablePaths', v = if self.writablePaths->isEmpty() then null else arr(self.writablePaths->collect(x | obj(Sequence{
 			Tuple{k = 'path', v = str(x.path)},

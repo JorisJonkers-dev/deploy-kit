@@ -1928,6 +1928,7 @@ classDiagram
         +ApplicationId application
         +string surface
         +Address address
+        +Hostname target [0..1]
     }
     class PolicyPeer {
         +Namespace namespace

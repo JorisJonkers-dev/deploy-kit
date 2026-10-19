@@ -15,6 +15,7 @@ import type {
 import type { Canary, Webhook } from "../../objects/custom.ts";
 import type { Deliverable, RenderedObject } from "../../objects/deliverable.ts";
 import type {
+  AliasService,
   ClusterRole,
   ClusterRoleBinding,
   ConfigMap,
@@ -993,11 +994,38 @@ function libraryObjectsOf(
   });
 }
 
+/**
+ * One alias per name the project's edges dial a provider outside its
+ * namespace by (spec/v1/16-dependencies.md#the-alias): an `ExternalName`
+ * Service, shared by every Process that holds an edge to it.
+ */
+function aliasesOf(
+  project: ResolvedProject,
+  namespace: string,
+): AliasService[] {
+  const targets = new Map<string, string>();
+  for (const application of project.applications)
+    for (const process of application.processes)
+      for (const { address, target } of process.dependencies ?? [])
+        if (target !== undefined)
+          targets.set(address.slice(0, address.lastIndexOf(":")), target);
+  return [...targets.keys()].sort(byText).map((name) => ({
+    apiVersion: "v1",
+    kind: "Service",
+    metadata: { name, namespace, labels: managedOnly() },
+    spec: {
+      type: "ExternalName",
+      externalName: targets.get(name) as string,
+    },
+  }));
+}
+
 /** Every Deliverable of one project this adapter owns, kustomizations aside. */
 export function renderKubernetes(project: ResolvedProject): Deliverable[] {
   const [first] = project.applications;
   const namespace = (first as ResolvedApplicationDocument).namespace;
   const libraries = libraryObjectsOf(project, namespace);
+  const aliases = aliasesOf(project, namespace);
   return [
     {
       path: `${projectDirectory(project.project)}/namespace.yaml`,
@@ -1017,6 +1045,15 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
             path: `${projectDirectory(project.project)}/libraries.yaml`,
             adapter: ADAPTER,
             objects: libraries,
+          },
+        ]),
+    ...(aliases.length === 0
+      ? []
+      : [
+          {
+            path: `${projectDirectory(project.project)}/aliases.yaml`,
+            adapter: ADAPTER,
+            objects: aliases,
           },
         ]),
     ...project.applications.flatMap((application) => {

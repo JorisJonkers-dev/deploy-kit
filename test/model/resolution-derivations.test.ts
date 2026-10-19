@@ -494,11 +494,11 @@ describe("the environment a Process runs with", () => {
     expect(
       resolved.environment?.filter(({ name }) => name.startsWith("DB_")),
     ).toStrictEqual([
-      { name: "DB_HOST", value: "postgres.data-system.svc.cluster.local" },
+      { name: "DB_HOST", value: "platform-postgres" },
       { name: "DB_PORT", value: "5432" },
       {
         name: "DB_URL",
-        value: "postgres.data-system.svc.cluster.local/notes",
+        value: "platform-postgres/notes",
       },
     ]);
   });
@@ -1037,7 +1037,7 @@ ${serving("notes-api", `        dependsOn:\n${edges}`)}  - id: notes-worker
         cutover: interrupted
 ${serving("notes-worker").replace("provides: { http: 8080 }", "provides: { jobs: 7000 }")}`;
 
-  it("resolves an edge into another project, one into the same project, and one to a platform provider", () => {
+  it("resolves an edge into another project to its alias, one into the same project to its Service, and one to an IP as it stands", () => {
     const all = projects(
       consumer(`          - { application: otel-collector, surface: otlp }
           - { application: notes-worker, surface: jobs }
@@ -1050,7 +1050,8 @@ ${serving("notes-worker").replace("provides: { http: 8080 }", "provides: { jobs:
       {
         application: "otel-collector",
         surface: "otlp",
-        address: "otel-collector.observability-system.svc.cluster.local:4317",
+        address: "otel-collector:4317",
+        target: "otel-collector.observability-system.svc.cluster.local",
         peers: [
           {
             namespace: "observability-system",
@@ -1062,7 +1063,7 @@ ${serving("notes-worker").replace("provides: { http: 8080 }", "provides: { jobs:
       {
         application: "notes-worker",
         surface: "jobs",
-        address: "notes-worker.notes-system.svc.cluster.local:7000",
+        address: "notes-worker:7000",
         peers: [
           { namespace: "notes-system", process: "notes-worker", port: 7000 },
         ],
@@ -3011,11 +3012,37 @@ describe("an edge resolved against the union and the register", () => {
 
   it("takes the provider named, on the surface named, wherever it sits in the register", () => {
     expect(
-      resolveEdge({ application: "stalwart", surface: "smtp" }, [], PLATFORM),
+      resolveEdge(
+        { application: "stalwart", surface: "smtp" },
+        [],
+        PLATFORM,
+        "auth",
+      ),
     ).toStrictEqual({
       application: "stalwart",
       surface: "smtp",
-      address: "mail.example:587",
+      address: "stalwart:587",
+      target: "mail.example",
+    });
+  });
+
+  it("dials a provider whose address is an IP at that IP, with no alias", () => {
+    const platform = {
+      providers: [
+        { name: "relay", address: "10.0.0.12", surfaces: { smtp: 25 } },
+      ],
+    } as unknown as PlatformIntentDocument;
+    expect(
+      resolveEdge(
+        { application: "relay", surface: "smtp" },
+        [],
+        platform,
+        "auth",
+      ),
+    ).toStrictEqual({
+      application: "relay",
+      surface: "smtp",
+      address: "10.0.0.12:25",
     });
   });
 
@@ -3038,7 +3065,7 @@ describe("an edge resolved against the union and the register", () => {
   ])(
     "is an internal failure for %s, which the union's references refuse first",
     (_, edge, platform) => {
-      expect(() => resolveEdge(edge, [], platform)).toThrow(
+      expect(() => resolveEdge(edge, [], platform, "auth")).toThrow(
         `${edge.application}.${edge.surface}: no provider in the union`,
       );
     },

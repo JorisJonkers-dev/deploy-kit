@@ -1,0 +1,34 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform-postgres
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  type: ExternalName
+  externalName: postgres.data-system.svc.cluster.local
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform-rabbitmq
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  type: ExternalName
+  externalName: rabbitmq.data-system.svc.cluster.local
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform-valkey
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  type: ExternalName
+  externalName: valkey.data-system.svc.cluster.local
