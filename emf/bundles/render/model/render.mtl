@@ -262,6 +262,20 @@
                 port: [range.port/]
     [/for]
   [/if]
+  [comment The public internet, for a Process that declares it: every IPv4 address but the ranges
+    no public host answers on, so the cluster, the LAN and the node stay out of reach. /]
+  [if (p.process.internetEgress <> null)]
+        - to:
+            - ipBlock:
+                cidr: 0.0.0.0/0
+                except:
+                  - 10.0.0.0/8
+                  - 172.16.0.0/12
+                  - 192.168.0.0/16
+                  - 100.64.0.0/10
+                  - 169.254.0.0/16
+                  - 127.0.0.0/8
+  [/if]
 [/template]
 
 [template private peer(peer : resolveddeployment::PolicyPeer)]

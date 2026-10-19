@@ -513,6 +513,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 			port := range.port;
 		});
 	} endif;
+	if self.egress <> null then internetEgress := object InternetEgress { reason := self.egress.reason; } endif;
 	component := self.runtime.spelling();
 	if declared <> null and declared.readiness <> null then readiness := declared.readiness.cadenced() endif;
 	if declared <> null and declared.liveness <> null then liveness := declared.liveness.cadenced() endif;
@@ -1790,6 +1791,8 @@ query ResolvedProcess::json() : String =
 		Tuple{k = 'cpu', v = str(self.cpu)},
 		Tuple{k = 'hardening', v = str(self.hardening)},
 		Tuple{k = 'identityToken', v = bool(self.identityToken)},
+		Tuple{k = 'internetEgress', v = if self.internetEgress = null then null else obj(Sequence{
+			Tuple{k = 'reason', v = str(self.internetEgress.reason)}}) endif},
 		Tuple{k = 'api', v = if self.api = null then null else obj(Sequence{
 			Tuple{k = 'reason', v = str(self.api.reason)},
 			Tuple{k = 'rules', v = arr(self.api.rules->collect(r | obj(Sequence{

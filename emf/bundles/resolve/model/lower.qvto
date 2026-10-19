@@ -79,6 +79,7 @@ mapping Process::lower(in app : Application, in prj : Project) : Process {
 	volumes := self.volumes->map copy();
 	replicas := self.replicas.map copy();
 	api := self.api.map copy();
+	egress := self.egress.map copy();
 	libraries := self.libraries->map copy();
 
 	-- Every copy is keyed on its Process: a mapping's result is cached per source
@@ -277,6 +278,11 @@ mapping LibraryMount::copy() : LibraryMount {
 	mountAt := self.mountAt;
 	if self.subPath <> null then subPath := self.subPath endif;
 	_access := self._access;
+}
+
+mapping Egress::copy() : Egress {
+	to := self.to;
+	reason := self.reason;
 }
 
 mapping ApiAccess::copy() : ApiAccess {
