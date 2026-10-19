@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.24.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.23.1...v0.24.0) (2026-10-19)
+
+
+### Features
+
+* a consumer reaches its provider by the provider's Application Id ([#508](https://github.com/JorisJonkers-dev/deploy-kit/issues/508)) ([7a32874](https://github.com/JorisJonkers-dev/deploy-kit/commit/7a32874a0f5dcc9d26dec92327df2bf0fff8e7b4))
+* a release's SQL is linted and its locks are bounded ([#504](https://github.com/JorisJonkers-dev/deploy-kit/issues/504)) ([93e1a37](https://github.com/JorisJonkers-dev/deploy-kit/commit/93e1a37209a084594a7087dec1b0fa7829253fcb))
+
 ## [0.23.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.23.0...v0.23.1) (2026-10-19)
 
 
