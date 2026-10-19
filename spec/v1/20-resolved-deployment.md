@@ -93,7 +93,9 @@ a policy name it by; and the peers its policy admits beyond its own edges: its
 `metrics-stack`, `consumer`, `backup`, `migration` or `flux-events`), and its `egress`, the `cluster-dns` baseline and,
 for a Process that holds a grant, the `secret-store`: the Process of the Secret
 Store's Application that answers on its `http` surface
-([chapter 16](16-dependencies.md#the-derived-allow-set)). An Application records
+([chapter 16](16-dependencies.md#the-derived-allow-set)), and, for a Process that
+declares it, its `internetEgress`, the reason it reaches the public internet
+([chapter 16](16-dependencies.md#internet-egress)). An Application records
 its `scrape`, the monitored surface at the Platform document's cadence; an
 exposure its tier's `listener`, `certificates` and `proxy`, the Application that
 serves the tier and the namespace it runs in; and the release gate the `endpoint`
@@ -1788,6 +1790,9 @@ classDiagram
         +string process
         +int port
     }
+    class InternetEgress {
+        +string reason
+    }
     class ResolvedPlacement {
         +NodeName[] eligibleNodes
         +NodeName boundTo
@@ -1957,6 +1962,7 @@ classDiagram
     ResolvedProcess "1" *-- "0..*" ResolvedSurface : surfaces
     ResolvedProcess "1" *-- "0..*" IngressPeer : ingress
     ResolvedProcess "1" *-- "0..*" EgressPeer : egress
+    ResolvedProcess "1" *-- "0..1" InternetEgress : internetEgress
     ResolvedVolume "1" *-- "0..1" BackupPlan : backup
     ResolvedProcess "1" *-- "0..1" ResolvedApiAccess : api
     ResolvedApiAccess "1" *-- "1..*" ResolvedApiRule : rules

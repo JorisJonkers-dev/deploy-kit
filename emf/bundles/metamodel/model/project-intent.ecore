@@ -100,6 +100,16 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="replicas" eType="#//Capacity" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="api" eType="#//ApiAccess" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="libraries" upperBound="-1" eType="#//LibraryMount" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="egress" eType="#//Egress" containment="true"/>
+  </eClassifiers>
+  <!-- A destination outside the cluster a Process reaches, and why
+       (spec/v1/16-dependencies.md#internet-egress). -->
+  <eClassifiers xsi:type="ecore:EClass" name="Egress">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="to" lowerBound="1" eType="#//EgressTarget"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="reason" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="EgressTarget">
+    <eLiterals name="internet" literal="internet"/>
   </eClassifiers>
   <!-- A library the Platform document grants, mounted by name
        (spec/v1/10-project-intent.md#libraries). The name stays a name, as an

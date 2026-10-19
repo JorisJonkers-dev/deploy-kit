@@ -79,6 +79,7 @@ Process returns Process:
 	& ('libraries' ':' BEGIN (DASH BEGIN libraries+=LibraryMount END)+ END)?
 	& ('replicas' ':' BEGIN replicas=Capacity END)?
 	& ('api' ':' BEGIN api=ApiAccess END)?
+	& ('egress' ':' BEGIN egress=Egress END)?
 	& ('secrets' ':' BEGIN (DASH BEGIN secrets+=Grant END)+ END)?
 	& ('startupBudget' ':' startupBudget=Text)?
 	& ('cutover' ':' cutover=Cutover)?);
@@ -177,6 +178,10 @@ Capacity returns Capacity:
 	& ('reason' ':' reason=Text));
 
 // The Kubernetes API access a Process needs: what it may ask of which objects, and why.
+Egress returns Egress:
+	(('to' ':' to=EgressTarget)
+	& ('reason' ':' reason=Text));
+
 ApiAccess returns ApiAccess:
 	(('reason' ':' reason=Text)
 	& ('rules' ':' BEGIN (DASH BEGIN rules+=ApiRule END)+ END));
@@ -251,9 +256,9 @@ Keyword:
 	'access' | 'admin' | 'adopt' | 'alertClass' | 'amd64' | 'anonymous' | 'api' | 'apiVersion' | 'application' | 'applications' |
 	'arch' | 'arm64' | 'assets' | 'audience' | 'authenticated' | 'base64' | 'base64url' | 'business-hours' | 'bytes' | 'capabilities' | 'changelog' | 'claim' |
 	'class' | 'contentPolicy' | 'continuous' | 'count' | 'cpu' | 'create' | 'credentials' | 'custody' | 'cutover' | 'database' | 'decrypt' |
-	'delete' | 'delivery' | 'dependsOn' | 'disk' | 'durability' | 'encoding' | 'encrypt' | 'engine' | 'env' | 'exact' |
+	'delete' | 'delivery' | 'dependsOn' | 'disk' | 'durability' | 'egress' | 'encoding' | 'encrypt' | 'engine' | 'env' | 'exact' |
 	'exposure' | 'false' | 'file' | 'fileMode' | 'files' | 'from' | 'generate' | 'get' | 'gpu' | 'group' | 'hdd' | 'hex' |
-	'host' | 'id' | 'image' | 'internal' | 'interrupted' | 'irreplaceable' | 'job' | 'jvm' | 'key' |
+	'host' | 'id' | 'image' | 'internal' | 'internet' | 'interrupted' | 'irreplaceable' | 'job' | 'jvm' | 'key' |
 	'keys' | 'kind' | 'kv' | 'lan' | 'libraries' | 'library' | 'lifecycle' | 'list' | 'liveness' | 'match' | 'maxAge' |
 	'media' | 'memory' | 'migration' | 'mountAt' | 'name' | 'node' | 'none' | 'nvme' | 'objects' | 'observability' |
 	'operations' | 'owner' | 'page' | 'patch' | 'path' | 'placement' | 'port' | 'postgres' | 'prefix' | 'prepare' |
@@ -262,7 +267,7 @@ Keyword:
 	'required' | 'restart' | 'role' | 'rotate' | 'rotation' | 'routes' | 'rules' | 'runtime' |
 	'schemaVersion' | 'scrape' | 'secrets' | 'self' | 'self-renew' | 'self-roll' | 'sidecars' | 'sign' |
 	'site' | 'size' | 'ssd' | 'startupBudget' | 'static' | 'strict' | 'subPath' | 'surface' | 'tcp' |
-	'tolerates' | 'transit' | 'true' | 'update' | 'urgent' | 'valkey' | 'verbs' | 'verify' | 'volumes' | 'watch' | 'workflow' |
+	'to' | 'tolerates' | 'transit' | 'true' | 'update' | 'urgent' | 'valkey' | 'verbs' | 'verify' | 'volumes' | 'watch' | 'workflow' |
 	'writablePaths' | 'write';
 
 enum Lifecycle returns Lifecycle:
@@ -309,6 +314,9 @@ enum AccessTier returns AccessTier:
 
 enum ApiVerb returns ApiVerb:
 	get='get' | list='list' | watch='watch' | create='create' | update='update' | patch='patch' | delete='delete';
+
+enum EgressTarget returns EgressTarget:
+	internet='internet';
 
 enum LibraryAccess returns LibraryAccess:
 	read='read' | write='write';

@@ -1294,3 +1294,61 @@ describe("the Vault Agent injector", () => {
     expect(annotated).toStrictEqual([]);
   });
 });
+
+// REQ-069 (docs/requirements.md): a Process that declares internet egress
+// reaches every public IPv4 address and nothing private, the tailnet,
+// link-local or loopback, on every port; one that declares none reaches none.
+describe("internet egress", () => {
+  const policy = (
+    application: string,
+    process = application,
+  ): Record<string, unknown> => {
+    const result = renderIntentSet(
+      [
+        ...SET.filter((name) => !name.startsWith("minimal/")),
+        ...KNOWLEDGE_PLATFORM,
+      ].map((name) => ({ name, text: text(name) })),
+      { ...OPTIONS, projects: ["knowledge-platform"] },
+    );
+    const tree = asTree(
+      result.ok ? artifact(result.value, "knowledge-platform") : undefined,
+    );
+    return parseAllDocuments(
+      tree[`apps/knowledge-platform/${application}/networkpolicy.yaml`] ?? "",
+    )
+      .map((doc) => doc.toJS() as Record<string, unknown>)
+      .find(
+        (doc) => (doc["metadata"] as { name: string }).name === process,
+      ) as Record<string, unknown>;
+  };
+  const internet = (doc: Record<string, unknown>) =>
+    (doc["spec"] as { egress: Record<string, unknown>[] }).egress.filter(
+      (rule) => JSON.stringify(rule).includes("0.0.0.0/0"),
+    );
+
+  it("admits public IPv4 on every port, except the private, tailnet, link-local and loopback ranges", () => {
+    expect(internet(policy("karakeep"))).toStrictEqual([
+      {
+        to: [
+          {
+            ipBlock: {
+              cidr: "0.0.0.0/0",
+              except: [
+                "10.0.0.0/8",
+                "172.16.0.0/12",
+                "192.168.0.0/16",
+                "100.64.0.0/10",
+                "169.254.0.0/16",
+                "127.0.0.0/8",
+              ],
+            },
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("admits nothing beyond the cluster for a Process that declares none", () => {
+    expect(internet(policy("hindsight", "hindsight-api"))).toStrictEqual([]);
+  });
+});

@@ -298,7 +298,10 @@ export interface PolicyPeer {
 
 /** An address range outside the cluster: where no namespace or pod is the peer. */
 export interface PolicyRange {
-  readonly ipBlock: { readonly cidr: string };
+  readonly ipBlock: {
+    readonly cidr: string;
+    readonly except?: readonly string[];
+  };
 }
 
 export interface PolicyPort {
@@ -319,7 +322,8 @@ export interface NetworkPolicy {
     }[];
     readonly egress?: readonly {
       readonly to: readonly (PolicyPeer | PolicyRange)[];
-      readonly ports: readonly PolicyPort[];
+      // Absent, the rule admits every port.
+      readonly ports?: readonly PolicyPort[];
     }[];
   };
 }

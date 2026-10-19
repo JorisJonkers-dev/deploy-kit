@@ -311,6 +311,12 @@ const resolvedApiRule = z
   })
   .meta({ id: "ResolvedApiRule" });
 
+// Public IPv4 a Process reaches, and the reason its owner gave
+// (spec/v1/16-dependencies.md#internet-egress).
+const internetEgress = z
+  .strictObject({ reason: text })
+  .meta({ id: "InternetEgress" });
+
 const resolvedApiAccess = z
   .strictObject({
     reason: text,
@@ -474,6 +480,7 @@ const resolvedProcess = stated(
     hardening: hardeningClass,
     identityToken: z.boolean(),
     api: resolvedApiAccess.exactOptional(),
+    internetEgress: internetEgress.exactOptional(),
     readiness: resolvedProbe.exactOptional(),
     liveness: resolvedProbe.exactOptional(),
     startup: startupProbe.exactOptional(),

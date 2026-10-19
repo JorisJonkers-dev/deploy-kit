@@ -805,6 +805,9 @@
         "api": {
           "$ref": "#/$defs/ApiAccess"
         },
+        "egress": {
+          "$ref": "#/$defs/Egress"
+        },
         "secrets": {
           "minItems": 1,
           "type": "array",
@@ -1129,6 +1132,29 @@
         "update",
         "patch",
         "delete"
+      ]
+    },
+    "Egress": {
+      "type": "object",
+      "properties": {
+        "to": {
+          "$ref": "#/$defs/EgressTarget"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "to",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "EgressTarget": {
+      "type": "string",
+      "enum": [
+        "internet"
       ]
     }
   }

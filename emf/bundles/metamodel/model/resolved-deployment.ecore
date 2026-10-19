@@ -243,6 +243,7 @@
     <!-- True only where a grant carries `delivery: self` (docs/adr/model/0087). -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="identityToken" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="api" eType="#//ResolvedApiAccess" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="internetEgress" eType="#//InternetEgress" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="component" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="readiness" eType="#//ResolvedProbe" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="liveness" eType="#//ResolvedProbe" containment="true"/>
@@ -364,6 +365,11 @@
   <!-- The Kubernetes API access a Process holds
        (spec/v1/16-dependencies.md#kubernetes-api-access-is-declared-and-admitted): its rules
        as declared, the reason its owner gave, and where the platform says the API answers. -->
+  <!-- The public internet a Process reaches, and the reason its owner gave
+       (spec/v1/16-dependencies.md#internet-egress). -->
+  <eClassifiers xsi:type="ecore:EClass" name="InternetEgress">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="reason" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedApiAccess">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="reason" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="rules" lowerBound="1" upperBound="-1" eType="#//ResolvedApiRule" containment="true"/>

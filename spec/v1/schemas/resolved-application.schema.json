@@ -817,6 +817,9 @@
         "api": {
           "$ref": "#/$defs/ResolvedApiAccess"
         },
+        "internetEgress": {
+          "$ref": "#/$defs/InternetEgress"
+        },
         "readiness": {
           "$ref": "#/$defs/ResolvedProbe"
         },
@@ -1097,6 +1100,19 @@
       "required": [
         "cidr",
         "port"
+      ],
+      "additionalProperties": false
+    },
+    "InternetEgress": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "reason"
       ],
       "additionalProperties": false
     },
