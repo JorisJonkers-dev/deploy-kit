@@ -757,6 +757,97 @@ describe("where a Process may land", () => {
   });
 });
 
+// REQ-070 (docs/requirements.md): the card a Process locks, the share it
+// requests, and the vendor it must resolve to one Platform entry.
+describe("a Process that requires a GPU", () => {
+  const holding = (gpu: string) =>
+    one(
+      serving("notes-api")
+        .replace(
+          "placement: { memory: 64Mi, cpu: 10m }",
+          `placement: { memory: 64Mi, cpu: 10m, gpu: ${gpu} }`,
+        )
+        .replace("cutover: continuous", "cutover: interrupted"),
+    );
+  const NVIDIA = { resource: "nvidia.com/gpu", runtimeClass: "nvidia-cdi" };
+
+  it("matches one card on every term it declares, and takes a vendor or a model as a set", () => {
+    const placedOn = (gpu: string) =>
+      processOf(holding(gpu)).placement.eligibleNodes;
+
+    expect(placedOn("{ class: transcode, model: [t1000] }")).toStrictEqual([
+      "enschede-t1000-1",
+    ]);
+    expect(placedOn("{ vendor: [nvidia] }")).toStrictEqual([
+      "enschede-t1000-1",
+      "enschede-gtx-960m-1",
+    ]);
+    expect(placedOn("{ model: [gtx960m, t1000] }")).toStrictEqual([
+      "enschede-t1000-1",
+      "enschede-gtx-960m-1",
+    ]);
+    // Every term holds on one card: no nvidia card is a render-compute one.
+    expect(
+      codesOf(resolve(holding("{ class: render-compute, vendor: [nvidia] }"))),
+    ).toStrictEqual(["E_PLACEMENT_UNSATISFIABLE"]);
+    expect(codesOf(resolve(holding("{ model: [a100] }")))).toStrictEqual([
+      "E_PLACEMENT_UNSATISFIABLE",
+    ]);
+  });
+
+  it("derives one share of its vendor's resource and the runtime class the Platform names for it", () => {
+    expect(processOf(holding("{ model: [t1000] }")).gpu).toStrictEqual(NVIDIA);
+    expect(processOf(holding("{ vendor: [nvidia] }")).gpu).toStrictEqual(
+      NVIDIA,
+    );
+    // Only the cards of eligible nodes count: the AMD card's node carries no `nvidia`.
+    expect(
+      processOf(
+        one(
+          serving("notes-api")
+            .replace(
+              "placement: { memory: 64Mi, cpu: 10m }",
+              "placement: { memory: 64Mi, cpu: 10m, capabilities: [nvidia], gpu: {} }",
+            )
+            .replace("cutover: continuous", "cutover: interrupted"),
+        ),
+      ).gpu,
+    ).toStrictEqual(NVIDIA);
+    expect(processOf(one(serving("notes-api")))).not.toHaveProperty("gpu");
+  });
+
+  it("refuses cards of two vendors, and a vendor the Platform names nothing for", () => {
+    const refused = resolve(holding("{}"));
+    expect(codesOf(refused)).toStrictEqual(["E_GPU_VENDOR_AMBIGUOUS"]);
+    expect(refused.ok ? [] : refused.diagnostics).toMatchObject([
+      {
+        path: "/applications/0/processes/0/placement/gpu",
+        message:
+          "notes-api may land on cards of nvidia, amd, and one request names one vendor's resource",
+        hint: "Lock the `gpu` to one `vendor`, or to models of one vendor.",
+      },
+    ]);
+
+    const unnamed = resolve(holding("{ vendor: [amd] }"));
+    expect(codesOf(unnamed)).toStrictEqual(["E_NO_GPU_POLICY"]);
+    expect(unnamed.ok ? [] : unnamed.diagnostics).toMatchObject([
+      {
+        path: "/applications/0/processes/0/placement/gpu",
+        message:
+          "the platform names no resource or runtime class for amd cards",
+        hint: "Add the vendor to the Platform document's `gpus`.",
+      },
+    ]);
+    // The Platform names it, so the same Process resolves.
+    expect(
+      processOf(holding("{ vendor: [amd] }"), {
+        platform: (platform) =>
+          `${platform}  amd:\n    resource: amd.com/gpu\n    runtimeClass: rocm\n`,
+      }).gpu,
+    ).toStrictEqual({ resource: "amd.com/gpu", runtimeClass: "rocm" });
+  });
+});
+
 describe("dependency edges and the order they impose", () => {
   const consumer = (edges: string) =>
     `  - id: notes

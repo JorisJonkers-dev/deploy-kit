@@ -808,6 +808,9 @@
           "type": "string",
           "minLength": 1
         },
+        "gpu": {
+          "$ref": "#/$defs/ResolvedGpu"
+        },
         "hardening": {
           "$ref": "#/$defs/HardeningClass"
         },
@@ -1006,6 +1009,24 @@
         "rolling",
         "stop-start"
       ]
+    },
+    "ResolvedGpu": {
+      "type": "object",
+      "properties": {
+        "resource": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runtimeClass": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "resource",
+        "runtimeClass"
+      ],
+      "additionalProperties": false
     },
     "HardeningClass": {
       "type": "string",

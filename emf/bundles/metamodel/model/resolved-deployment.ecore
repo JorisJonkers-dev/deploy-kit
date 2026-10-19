@@ -239,6 +239,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="replicas" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Set where the Process declares `gpu`: its vendor's resource and runtime class. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="gpu" eType="#//ResolvedGpu" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="hardening" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <!-- True only where a grant carries `delivery: self` (docs/adr/model/0087). -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="identityToken" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
@@ -316,6 +318,11 @@
 
   <!-- A library the Process mounts: the directory on its node, the group the
        Process runs with, and the volume and claim its project derives onto it. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedGpu">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="resource" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="runtimeClass" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedLibraryMount">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="library" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="claim" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

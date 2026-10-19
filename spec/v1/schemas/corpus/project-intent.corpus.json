@@ -231,6 +231,35 @@
           }
         }
       ]
+    },
+    {
+      "name": "a GPU asking for a count of cards",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/minimal/notes.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/0/processes/0/placement/gpu/count",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "name": "a GPU locked by vendor alone",
+      "verdict": "accept",
+      "file": "examples/minimal/notes.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/0/processes/0/placement/gpu",
+          "value": {
+            "vendor": [
+              "nvidia"
+            ]
+          }
+        }
+      ]
     }
   ]
 }

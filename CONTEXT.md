@@ -244,6 +244,11 @@ bin-packing ([0017](docs/adr/model/0017-placement-is-hard-dimensions.md)).
 
 **Capability**: a named node property a Process may require.
 
+**GPU share**: what a Process that declares `gpu` requests: one time-sliced
+share of its card, under the runtime class the Platform document names for the
+card's vendor. It reserves no memory and isolates no fault from the card's other
+holders ([0106](docs/adr/model/0106-a-gpu-request-is-derived-from-placement.md)).
+
 **Hardening Class**: the pod security posture every Process takes, declared
 once by the platform and authored by none of them. It has no exception surface:
 a Process states the paths it must write, and an image that cannot meet the

@@ -256,6 +256,18 @@ const resourcesOf = (
   limits: { memory },
 });
 
+/** A Process that requires a GPU asks for one share of its vendor's resource. */
+const gpuShareOf = (
+  process: ResolvedProcess,
+  resources: NonNullable<Container["resources"]>,
+): NonNullable<Container["resources"]> =>
+  process.gpu === undefined
+    ? resources
+    : {
+        ...resources,
+        limits: { ...resources.limits, [process.gpu.resource]: "1" },
+      };
+
 const RESTRICTED: Container["securityContext"] = {
   readOnlyRootFilesystem: true,
   capabilities: { drop: ["ALL"] },
@@ -369,7 +381,7 @@ function containerOf(process: ResolvedProcess): Container {
           })),
         }),
     ...(env.length === 0 ? {} : { env }),
-    resources: resourcesOf(process.memory, process.cpu),
+    resources: gpuShareOf(process, resourcesOf(process.memory, process.cpu)),
     securityContext: RESTRICTED,
     ...(mounts.length === 0 ? {} : { volumeMounts: mounts }),
     ...(process.readiness === undefined
@@ -422,6 +434,9 @@ function deploymentOf(
         spec: {
           serviceAccountName: process.identity,
           automountServiceAccountToken: process.identityToken,
+          ...(process.gpu === undefined
+            ? {}
+            : { runtimeClassName: process.gpu.runtimeClass }),
           securityContext: {
             runAsNonRoot: true,
             runAsUser: process.uid,

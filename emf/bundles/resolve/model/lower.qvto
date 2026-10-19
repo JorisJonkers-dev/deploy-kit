@@ -245,6 +245,8 @@ mapping DiskRequest::copyFor(in owner : Process) : DiskRequest {
 mapping GpuRequest::copyFor(in owner : Process) : GpuRequest {
 	_class := self._class;
 	memory := self.memory;
+	vendor := self.vendor;
+	model := self.model;
 }
 
 mapping DependencyEdge::copyFor(in owner : Process) : DependencyEdge {

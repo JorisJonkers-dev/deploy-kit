@@ -95,6 +95,17 @@
             "$ref": "#/$defs/LibraryDeclaration"
           },
           "entry": "Library"
+        },
+        "gpus": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/GpuVendorPolicy"
+          },
+          "entry": "GpuVendor"
         }
       },
       "required": [
@@ -874,6 +885,24 @@
         "read",
         "write"
       ]
+    },
+    "GpuVendorPolicy": {
+      "type": "object",
+      "properties": {
+        "resource": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runtimeClass": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "resource",
+        "runtimeClass"
+      ],
+      "additionalProperties": false
     }
   }
 }

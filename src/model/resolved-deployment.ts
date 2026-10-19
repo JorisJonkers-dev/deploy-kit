@@ -354,6 +354,13 @@ const resolvedLibraryMount = z
   })
   .meta({ id: "ResolvedLibraryMount" });
 
+// The one GPU share a Process that requires a GPU requests, and the runtime
+// class that exposes the card, both the Platform's for the card's vendor
+// (spec/v1/20-resolved-deployment.md#the-gpu-request).
+const resolvedGpu = z
+  .strictObject({ resource: text, runtimeClass: text })
+  .meta({ id: "ResolvedGpu" });
+
 // A file-shaped settings file, by the content-hashed name an edit changes, so
 // an edit restarts the Process (spec/v1/10-project-intent.md#assets).
 const resolvedAsset = z
@@ -477,6 +484,7 @@ const resolvedProcess = stated(
     replicas: z.int().min(1),
     memory: text,
     cpu: text,
+    gpu: resolvedGpu.exactOptional(),
     hardening: hardeningClass,
     identityToken: z.boolean(),
     api: resolvedApiAccess.exactOptional(),

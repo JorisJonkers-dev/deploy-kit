@@ -229,3 +229,11 @@ libraries:
     grants:
       notes: write
       jellyfin: read
+
+# What a Process that requires a GPU is handed, by the vendor of the card it
+# lands on (spec/v1/14-platform-intent.md#gpus): one share of the device
+# resource, and the runtime class that exposes the card to its container.
+gpus:
+  nvidia:
+    resource: nvidia.com/gpu
+    runtimeClass: nvidia-cdi

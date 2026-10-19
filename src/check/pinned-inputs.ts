@@ -3,8 +3,15 @@
 // the one the Platform document pins, every image alias is locked, and every
 // Process has somewhere to land. After these, resolution is total.
 import type { Diagnostic } from "../model/diagnostic.ts";
-import { eligibleNodes, estateJobNodes } from "../model/eligibility.ts";
-import type { EffectiveProject } from "../model/effective-intent.ts";
+import {
+  eligibleNodes,
+  estateJobNodes,
+  gpuVendors,
+} from "../model/eligibility.ts";
+import type {
+  EffectiveProcess,
+  EffectiveProject,
+} from "../model/effective-intent.ts";
 import { migrationImage } from "../model/migration-proof.ts";
 import type { PinnedSet } from "../model/resolution.ts";
 
@@ -27,6 +34,43 @@ function contractRefusals(
           path: "/metadata/nodeContract",
           message: `the node contract read is ${contractDigest}, not the one this document pins`,
           hint: "Pin the digest of the node contract the render reads, or read the one pinned.",
+        },
+      ];
+}
+
+/**
+ * A Process that requires a GPU requests one vendor's resource
+ * (spec/v1/14-platform-intent.md#gpus): its cards share one vendor, and the
+ * Platform names that vendor's resource and runtime class.
+ */
+function gpuRefusals(
+  set: PinnedSet,
+  process: EffectiveProcess,
+  path: string,
+  document: string,
+): Diagnostic[] {
+  if (process.placement.gpu === undefined) return [];
+  const vendors = gpuVendors(process, set.nodeContract, set.platform);
+  if (vendors.length > 1)
+    return [
+      {
+        code: "E_GPU_VENDOR_AMBIGUOUS",
+        document,
+        path,
+        message: `${process.name} may land on cards of ${vendors.join(", ")}, and one request names one vendor's resource`,
+        hint: "Lock the `gpu` to one `vendor`, or to models of one vendor.",
+      },
+    ];
+  const [vendor] = vendors as [string];
+  return Object.hasOwn(set.platform.gpus ?? {}, vendor)
+    ? []
+    : [
+        {
+          code: "E_NO_GPU_POLICY",
+          document,
+          path,
+          message: `the platform names no resource or runtime class for ${vendor} cards`,
+          hint: "Add the vendor to the Platform document's `gpus`.",
         },
       ];
 }
@@ -65,7 +109,7 @@ function processRefusals(
                 hint: "Relax a placement dimension, or lower what the Process asks for.",
               },
             ]
-          : []),
+          : gpuRefusals(set, process, `${at}/placement/gpu`, document)),
       ];
     }),
   );

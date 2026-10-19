@@ -1,15 +1,16 @@
 # The minimal example
 
 The smallest complete thing the model renders: **one project, one Application, one
-Process**, and no field that is not required but one: a mount of the
+Process**, and no field that is not required but two: a mount of the
 Platform document's `media` library, the one worked mount of a
-[Library](../../10-project-intent.md#libraries). Read this before the three larger
+[Library](../../10-project-intent.md#libraries), and a `gpu` term, the one
+worked [GPU share](../../10-project-intent.md#a-gpu-is-requested-not-only-selected). Read this before the three larger
 worked projects (`auth`, `knowledge` and `data`), each of which exists to
 exercise a hard case.
 
 | | |
 |---|---|
-| authored | [`notes.project.yml`](notes.project.yml): 31 lines of declaration, and [`env/notes-api/base.env`](env/notes-api/base.env): 2 keys |
+| authored | [`notes.project.yml`](notes.project.yml): 32 lines of declaration, and [`env/notes-api/base.env`](env/notes-api/base.env): 2 keys |
 | rendered | [`rendered/`](rendered/): 11 files, 12 objects, 5 of the 6 adapters |
 | gaps | none. Every value in the tree derives from a declaration, a pinned fact, or a policy in [Platform Intent](../platform/platform.intent.yml) |
 
@@ -39,6 +40,7 @@ written by anyone:
 | `exposure` + `audience: anonymous` | the tier, its middleware chain, and the route priority ([0023](../../../../docs/adr/model/0023-exposure-is-declared-by-audience.md)) | `IngressRoute` |
 | `observability` | a `PodMonitor` naming the `http` surface, selecting pods by `instance` so the canary is scraped too, and the Platform document's cadence ([chapter 10](../../10-project-intent.md#observability)) | a `PrometheusRule`: rules, severity and receivers are the monitoring stack's, which reads `alertClass` from the projection |
 | `libraries: [{library: media, subPath: Notes, access: write}]` | the library's node as the only eligible one, its `gid` as a supplemental group, and the project's volume onto its directory with the claim bound to it ([0104](../../../../docs/adr/model/0104-a-library-is-a-host-directory-the-platform-grants.md)) | the node affinity, `supplementalGroups`, the volume mount below `Notes`, and `libraries.yaml`'s `PersistentVolume` and `PersistentVolumeClaim`, neither ever pruned |
+| `gpu: {class: transcode, model: [t1000]}` | the T1000 as the one matching card, so `nvidia`'s `resource` and `runtimeClass` from the Platform document ([0106](../../../../docs/adr/model/0106-a-gpu-request-is-derived-from-placement.md)) | the container's `nvidia.com/gpu` limit and the pod's `runtimeClassName` |
 | the env file's two literals | the Runtime Profile keys and `PORT`, which are a build error to author | the container's `env` |
 
 ## What is absent, and why

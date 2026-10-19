@@ -245,7 +245,9 @@ context SharedIntent
 				and (placement.gpu <> null implies
 					above.placement.gpu = null
 						or placement.gpu.memory <> above.placement.gpu.memory
-						or placement.gpu._'class' <> above.placement.gpu._'class')))
+						or placement.gpu._'class' <> above.placement.gpu._'class'
+						or placement.gpu.vendor <> above.placement.gpu.vendor
+						or placement.gpu.model <> above.placement.gpu.model)))
 
 context EnvVariable
 	-- A variable is one declaration within one Cluster Target, and the value is

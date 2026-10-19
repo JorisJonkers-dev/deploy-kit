@@ -210,7 +210,8 @@ field's placement link to this anchor rather than copying rows.
 | `probes`, `startupBudget`, `cutover` | Application | no contention | what only the Application knows about its own start, health and cutover; `cutover` is required on every Process but a prepare one and has no default |
 | `hardening` | platform | no contention | one estate-wide posture, `restricted`. A Process authors no hardening at all: it declares the paths it must write, and an image that cannot meet the class is `E_HARDENING_UNMET` ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)) |
 | `placement.memory`, `placement.cpu` | Application | pool, stated | required on every Process; the Application states the requirement, the platform arbitrates it against node allocatable |
-| `placement.gpu` | Application | pool, stated | `class` and `memory`, matched against the node contract's `gpus[].class` and `gpus[].memory_mib`; a card is held by one Process at a time |
+| `placement.gpu` | Application | pool, stated | `class`, `memory`, `vendor` and `model`, each optional, all matched against one card of the node contract's `gpus[]`; the request is one time-sliced share of that card, with no isolation from its other holders |
+| a vendor's GPU `resource` and `runtimeClass` | platform | pool | what the substrate's device plugin advertises and which runtime reaches the card, named once per vendor in the Platform document; the Process's request is derived from it ([The GPU request](#the-gpu-request)) |
 | `placement.disk` | Application | pool, stated | a `media` set; it filters the first placement and the PV binding wins thereafter: `E_DISK_BINDING_CONFLICT` |
 | `volumes[].size` | Application | pool, stated | how much data the volume holds, matched against the node contract's `disks[].usable_gib`; no eligible node is `E_STORAGE_UNSATISFIABLE` ([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)) |
 | PVC capacity and the disk capacity filter | derived | - | the volume's `size`, and their sum per Process for placement |
@@ -756,6 +757,17 @@ choice: moving the data is a [Move](#the-move), derived and run as one, never
 a re-render, and a declared `disk` dimension that contradicts the binding of a
 Process that cannot move is `E_DISK_BINDING_CONFLICT` rather than a quiet
 move.
+
+### The GPU request
+
+A Process that declares `gpu` is resolved with a `gpu` of its own: the
+`resource` it requests one of and the `runtimeClass` it runs under, both the
+Platform document's entry for the vendor of the cards its eligible nodes carry
+([chapter 14](14-platform-intent.md#gpus)). The eligible set decides the vendor,
+so it is recorded with the same provenance as the set. Cards of two vendors are
+`E_GPU_VENDOR_AMBIGUOUS` and a vendor with no entry is `E_NO_GPU_POLICY`, both
+at build time ([chapter 40](40-composition.md#placement)); a Process with no
+`gpu` carries none.
 
 ### The forward-auth endpoint
 
@@ -1758,6 +1770,10 @@ classDiagram
         +HardeningClass hardening
         +bool identityToken
     }
+    class ResolvedGpu {
+        +string resource
+        +string runtimeClass
+    }
     class ResolvedProbe {
         +Path path
         +int port
@@ -1952,6 +1968,7 @@ classDiagram
     ResolvedProcess "1" *-- "1" ResolvedPlacement : placement
     ResolvedProcess "1" *-- "0..*" ResolvedVolume : volumes
     ResolvedProcess "1" *-- "0..*" ResolvedLibraryMount : libraries
+    ResolvedProcess "1" *-- "0..1" ResolvedGpu : gpu
     ResolvedProcess "1" *-- "0..*" ResolvedGrant : secrets
     ResolvedProcess "1" *-- "0..*" ResolvedEngineGrant : secrets
     ResolvedProcess "1" *-- "0..*" ResolvedAsset : assets

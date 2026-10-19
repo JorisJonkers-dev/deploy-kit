@@ -465,12 +465,24 @@
         "memory": {
           "type": "string",
           "minLength": 1
+        },
+        "vendor": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "model": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       },
-      "required": [
-        "class",
-        "memory"
-      ],
       "additionalProperties": false
     },
     "Cutover": {

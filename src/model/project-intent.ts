@@ -167,8 +167,15 @@ const diskRequest = z
   .strictObject({ media: z.array(media).min(1) })
   .meta({ id: "DiskRequest" });
 
+// One card on the node matches every term the request declares; `vendor` and
+// `model` are sets of acceptable values (spec/v1/10-project-intent.md#placement).
 const gpuRequest = z
-  .strictObject({ class: text, memory: text })
+  .strictObject({
+    class: text.exactOptional(),
+    memory: text.exactOptional(),
+    vendor: z.array(text).min(1).exactOptional(),
+    model: z.array(text).min(1).exactOptional(),
+  })
   .meta({ id: "GpuRequest" });
 
 // `memory` and `cpu` are optional in the shape: a block above a Process carries
