@@ -459,13 +459,21 @@ schema it leaves behind. The model cannot read a changelog to decide that, so it
 is proven where the changelog and both versions exist, the application's own
 CI, and the proof travels with the Intent Fragment
 ([0026](../../docs/adr/model/0026-migration-is-declared-on-the-application.md)).
-Three obligations, each a gate on publishing the fragment:
+Four obligations, each a gate on publishing the fragment:
 
 | obligation | what it runs | what it catches |
 |---|---|---|
 | **serving-version compatibility** | the serving revision's own test suite, against a database the new changelog has just migrated | a change the old version cannot survive: a dropped or renamed column it still reads, a new `NOT NULL` column it never writes |
 | **reversibility** | Liquibase `update-testing-rollback`: every changeset applied, rolled back and applied again | a changeset with no working rollback, which a down could not undo |
 | **a non-transactional changeset stands alone** | a check that a changeset marked `runInTransaction: false` is the only changeset in its release | a partial failure no rollback can repair, bundled with changes that could have been undone |
+| **lock-safe SQL** | `runner ci lint`: each changeset of the release rendered to SQL by Liquibase `update-sql` against the serving schema, and linted by `squawk` ([0108](../../docs/adr/model/0108-the-runner-lints-a-release-and-bounds-its-locks.md)) | a statement that holds a long lock or destroys data: an index built without `CONCURRENTLY`, a `NOT NULL` column or a type change that rewrites a table, a dropped column or table |
+
+**A changeset that breaks a lint rule on purpose says which, and why.** Its
+`comment` holds a line `lint-allow <rule>[,<rule>…]: <reason>`, naming each
+`squawk` rule it breaks; the lint then skips those rules for that changeset
+alone. A contract step that drops a column carries, for one,
+`lint-allow ban-drop-column: 3.4 stopped reading legacy_name`. A `lint-allow`
+line with no reason, or naming a rule `squawk` does not have, fails the lint.
 
 The first obligation is what makes **expand, then contract** mechanical rather
 than a convention. A column, table or row shape leaves the schema in two
@@ -576,7 +584,14 @@ function of the project and the Platform document, never authored:
 
 Both commands run as the migration identity, which reads its owner credential
 from Vault itself, as a `delivery: self` Process does
-([chapter 10](10-project-intent.md#delivery)). The runner is its own
+([chapter 10](10-project-intent.md#delivery)).
+
+**Every command gives up instead of stalling.** The runner connects with a
+`lock_timeout` of 5 seconds and a `statement_timeout` of 15 minutes, set on its
+own connection, so a changelog cannot forget them. A changeset that meets a
+held lock fails, and the release is held like any other failed migration; one
+that needs longer than 15 minutes sets its own `statement_timeout` first
+([0108](../../docs/adr/model/0108-the-runner-lints-a-release-and-bounds-its-locks.md)). The runner is its own
 repository, `JorisJonkers-dev/liquibase-runner`, and an application's migration
 image is built `FROM` it.
 
