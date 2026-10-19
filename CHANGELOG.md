@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.3](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.19.2...v0.19.3) (2026-10-19)
+
+
+### Bug Fixes
+
+* **model:** run a files backup as the Process that owns the volume ([#488](https://github.com/JorisJonkers-dev/deploy-kit/issues/488)) ([4fdd49d](https://github.com/JorisJonkers-dev/deploy-kit/commit/4fdd49d291e888c72aa84c08c75f925c7f020b00))
+
 ## [0.19.2](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.19.1...v0.19.2) (2026-10-18)
 
 
