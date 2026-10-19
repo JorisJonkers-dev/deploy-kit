@@ -115,7 +115,13 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   renders a Project whose content hash equals the pinned artifact's publishes
   no artifact and moves no pin, so another Project's fragment never redeploys
   this one; the pinned artifact keeps naming the composition that first
-  produced its content.
+  produced its content. The one exception is a pinned artifact whose index
+  labels no release, one published before the label travelled in the
+  artifact: composition is told so by the pin it reads (`labelled: null`), and
+  moves that Project's pin, unless it is paused, to an artifact that carries
+  the label. So every pod a pin applies says which release it runs, whatever
+  toolkit published its artifact, at the cost of one restart, once. The
+  estate-scoped artifact is no release, so it never moves for this.
 - **The pin.** The estate repository holds one committed Flux source per
   Project, `projects/<project>/source.yaml`: an `OCIRepository` naming
   `<repository>/<project>` by `ref.digest` and verifying keyless against the
