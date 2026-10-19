@@ -30,18 +30,17 @@ function request(process: EffectiveProcess): {
 
 type Card = NonNullable<Node["gpus"]>[number];
 
-/** The node's cards that match every term the Process's `gpu` declares. */
-export function matchingCards(process: EffectiveProcess, node: Node): Card[] {
-  const { gpu } = process.placement;
-  if (gpu === undefined) return [];
-  return (node.gpus ?? []).filter(
+type GpuRequest = NonNullable<EffectiveProcess["placement"]["gpu"]>;
+
+/** The node's cards that match every term a `gpu` declares. */
+const matchingCards = (gpu: GpuRequest, node: Node): Card[] =>
+  (node.gpus ?? []).filter(
     (card) =>
       (gpu.class === undefined || card.class === gpu.class) &&
       (gpu.memory === undefined || card.memory_mib >= mebibytes(gpu.memory)) &&
       (gpu.vendor === undefined || gpu.vendor.includes(card.vendor)) &&
       (gpu.model === undefined || gpu.model.includes(card.model)),
   );
-}
 
 function eligible(
   process: EffectiveProcess,
@@ -65,7 +64,7 @@ function eligible(
       capabilities.every(
         (wanted) => node.capabilities?.includes(wanted) === true,
       )) &&
-    (gpu === undefined || matchingCards(process, node).length > 0) &&
+    (gpu === undefined || matchingCards(gpu, node).length > 0) &&
     (disk === undefined ||
       node.disks?.some(({ media }) =>
         (disk.media as readonly string[]).includes(media),
@@ -97,7 +96,9 @@ export const gpuVendors = (
     contract.nodes
       .filter((node) => eligible(process, node, platform))
       .flatMap((node) =>
-        matchingCards(process, node).map(({ vendor }) => vendor),
+        matchingCards(process.placement.gpu as GpuRequest, node).map(
+          ({ vendor }) => vendor,
+        ),
       ),
   ),
 ];

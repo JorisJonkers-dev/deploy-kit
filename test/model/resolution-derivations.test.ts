@@ -800,11 +800,24 @@ describe("a Process that requires a GPU", () => {
     expect(processOf(holding("{ vendor: [nvidia] }")).gpu).toStrictEqual(
       NVIDIA,
     );
+    // Only the cards of eligible nodes count: the AMD card's node carries no `nvidia`.
+    expect(
+      processOf(
+        one(
+          serving("notes-api")
+            .replace(
+              "placement: { memory: 64Mi, cpu: 10m }",
+              "placement: { memory: 64Mi, cpu: 10m, capabilities: [nvidia], gpu: {} }",
+            )
+            .replace("cutover: continuous", "cutover: interrupted"),
+        ),
+      ).gpu,
+    ).toStrictEqual(NVIDIA);
     expect(processOf(one(serving("notes-api")))).not.toHaveProperty("gpu");
   });
 
   it("refuses cards of two vendors, and a vendor the Platform names nothing for", () => {
-    const refused = resolve(holding("{ memory: 2Gi }"));
+    const refused = resolve(holding("{}"));
     expect(codesOf(refused)).toStrictEqual(["E_GPU_VENDOR_AMBIGUOUS"]);
     expect(refused.ok ? [] : refused.diagnostics).toMatchObject([
       {
