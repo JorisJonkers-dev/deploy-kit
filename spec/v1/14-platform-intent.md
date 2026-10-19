@@ -418,7 +418,7 @@ vpn:
 | field | required | notes |
 |---|---|---|
 | `image` | yes | An images-lock alias. The image is gluetun's, and its variables are the contract: the render sets them, and runs the image's `/gluetun-entrypoint healthcheck` until the tunnel is up. An alias the lock does not hold is `E_UNLOCKED_IMAGE`. |
-| `credential` | yes | A Secret Store path whose keys are the container's own variables, such as `WIREGUARD_PRIVATE_KEY`. It is synced to a Secret only the VPN container reads, under the attached Process's identity. |
+| `credential` | yes | A Secret Store path prefix. Each attached Process reads its own path below it, `<credential>/<project>-<process>`, whose keys are the container's own variables, such as `WIREGUARD_PRIVATE_KEY`: a provider takes a key for one device, so two tunnels on one key knock each other off. It is synced to a Secret only that Process's VPN container reads, under the Process's identity. |
 | `memory`, `cpu` | yes | What the container asks for. A node is eligible for an attached Process only where it fits the Process, its sidecars and this container together. |
 | `settings` | no | Literal, non-secret variables. Each name is a variable name. `FIREWALL_INPUT_PORTS`, `VPN_PORT_FORWARDING` and `VPN_PORT_FORWARDING_UP_COMMAND` are refused here, because the render derives them from the attached Process. |
 

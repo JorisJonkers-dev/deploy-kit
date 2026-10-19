@@ -942,6 +942,11 @@ query eligible(p : PI::Process, n : Node) : Boolean =
 -- the platform's image and quantities, its settings with the three values derived from the
 -- Process sorted in among them, and the credential only it reads. E_NO_VPN_POLICY refused an
 -- attachment with no Platform `vpn`.
+-- One key per Process: a provider takes a key for one device, so two tunnels on one key knock
+-- each other off.
+query credentialOf(p : PI::Process) : String =
+	estate.vpn.credential + '/' + owner(p) + '-' + p.name;
+
 query vpnOf(p : PI::Process) : ResolvedVpn =
 	let policy : VpnPolicy = estate.vpn in
 	let locks : LockedImage = locked(policy.image) in
@@ -964,10 +969,10 @@ query vpnOf(p : PI::Process) : ResolvedVpn =
 			value := t.value;
 		});
 		credential := object ResolvedGrant {
-			path := policy.credential;
+			path := credentialOf(p);
 			_access := 'read';
 			delivery := 'env';
-			destination := destinationOf(p.name + '-vpn', policy.credential);
+			destination := destinationOf(p.name + '-vpn', credentialOf(p));
 		};
 	};
 

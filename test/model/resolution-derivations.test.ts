@@ -797,10 +797,11 @@ describe("a Process that attaches to the VPN", () => {
       ],
       // Only the VPN reads it, from a Secret of its own.
       credential: {
-        path: "secret/data/platform/vpn",
+        // Its own key below the platform's prefix: one device per Process.
+        path: "secret/data/platform/vpn/notes-notes-api",
         access: "read",
         delivery: "env",
-        destination: "notes-api-vpn-platform-vpn",
+        destination: "notes-api-vpn-platform-vpn-notes-notes-api",
       },
     });
     // The tunnel's endpoint is a public address.
@@ -887,6 +888,16 @@ describe("a Process that attaches to the VPN", () => {
     expect(placed("128Mi")).toContain("enschede-pi-2");
     // 4000Mi beside the Process's 64Mi no longer fits a 4096Mi Pi.
     expect(placed("4000Mi")).not.toContain("enschede-pi-2");
+  });
+
+  it("asks nothing of a platform that runs no VPN, where no Process attaches", () => {
+    const noVpn = resolve(one(serving("notes-api")), {
+      platform: (platform) =>
+        platform.slice(0, platform.indexOf("\n# The VPN")) + "\n",
+      lock: (lock) => lock.replace("  gluetun:\n", "  gluetun-retired:\n"),
+    });
+
+    expect(codesOf(noVpn)).toStrictEqual([]);
   });
 
   it("refuses an attachment the platform runs no VPN for, and a VPN image the lock does not hold", () => {

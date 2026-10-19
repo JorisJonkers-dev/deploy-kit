@@ -83,7 +83,7 @@ spec:
           volumes:
             - name: policies
               configMap:
-                name: vault-policy-523fd9963cc8
+                name: vault-policy-e0c004d55b0d
                 items:
                   - key: data-system-postgres-catalog.policy.json
                     path: data-system-postgres-catalog.policy.json
