@@ -613,12 +613,17 @@ query PI::Process::edgeCredentials(app : EffectiveApplication, prj : EffectivePr
 	if edges->isEmpty() then Sequence{} else
 	let edge : DependencyEdge = edges->first() in
 	let credential : String = 'database/creds/' + credentialRole(app, prj) in
-	let delivered : Boolean = edge.credentials <> null and edge.credentials.delivery = Delivery::env in
+	let deliveredAs : String = if edge.credentials = null then 'self'
+		else if edge.credentials.delivery = Delivery::env then 'env'
+		else if edge.credentials.delivery = Delivery::file then 'file' else 'self' endif endif endif in
 	Sequence{object ResolvedGrant {
 		engine := 'database';
-		delivery := if delivered then 'env' else 'self' endif;
+		delivery := deliveredAs;
 		paths := Sequence{object PolicyPath { path := credential; allows := Sequence{'read'}; }};
-		if delivered then destination := destinationOf(self.name, credential) endif;
+		if deliveredAs <> 'self' then destination := destinationOf(self.name, credential) endif;
+		-- The schema refused a file credential without both.
+		if deliveredAs = 'file' then mountAt := edge.credentials.mountAt endif;
+		if deliveredAs = 'file' then fileMode := edge.credentials.fileMode endif;
 		if edge.credentials <> null and edge.credentials.rotation.tolerates = Tolerance::restart then
 			restartTargets := Sequence{self.name}
 		endif;
@@ -663,7 +668,11 @@ query Grant::resolvedFor(p : PI::Process) : ResolvedGrant = object ResolvedGrant
 	} endif;
 	if self.mountAt <> null then mountAt := self.mountAt endif;
 	if self.fileMode <> null then fileMode := self.fileMode endif;
-	if self.rotation.tolerates = Tolerance::restart then restartTargets := Sequence{p.name} endif;
+	-- A synced value restarts its consumer once the operator syncs it, whatever the rotation
+	-- tolerates; read by the Process itself, a rotation restarts it, and a reload restarts nothing.
+	if self.delivery <> Delivery::selfDelivery or self.rotation.tolerates = Tolerance::restart then
+		restartTargets := Sequence{p.name}
+	endif;
 };
 
 -- =================================================================== volumes

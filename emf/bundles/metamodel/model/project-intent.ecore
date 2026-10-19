@@ -164,9 +164,12 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="required" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="credentials" eType="#//Credentials" containment="true"/>
   </eClassifiers>
-  <!-- Only on an edge to a database: how the credential it derives rotates. -->
+  <!-- Only on an edge to a database: how the credential it derives is delivered and rotates;
+       delivered to a file, the directory its username and password land in, and their mode. -->
   <eClassifiers xsi:type="ecore:EClass" name="Credentials">
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="delivery" eType="#//Delivery" defaultValueLiteral="self"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="mountAt" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="fileMode" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="rotation" lowerBound="1" eType="#//Rotation" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="EnvFile">

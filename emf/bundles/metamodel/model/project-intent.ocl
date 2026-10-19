@@ -483,9 +483,10 @@ context Migration
 					or p.delivery.machinery->excludes(application)))
 
 context Credentials
-	-- An edge delivers its credential to the Process itself or to its environment.
+	-- An edge delivers its credential to a file only with the directory and the mode its
+	-- username and password files land at.
 	inv schema:
-		delivery <> Delivery::file
+		delivery = Delivery::file implies (mountAt <> null and fileMode <> null)
 
 	-- Only an edge to a database derives a credential to rotate.
 	inv E_CREDENTIALS_WITHOUT_DATABASE:

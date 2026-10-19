@@ -638,8 +638,15 @@
                 secret:
                   secretName: [g.destination/]
                   items:
-                    - key: [g.keys->first()/]
-                      path: [g.mountAt.fileOf()/]
+      [if (g.engine = 'database')]
+                      - key: username
+                        path: username
+                      - key: password
+                        path: password
+      [else]
+                      - key: [g.keys->first()/]
+                        path: [g.mountAt.fileOf()/]
+      [/if]
                   defaultMode: [g.fileMode.octal()/]
     [/for]
   [/if]
@@ -1120,7 +1127,8 @@
     mount: secret
     type: kv-v2
     path: [g.path.substring(13)/]
-    refreshAfter: 1h
+    refreshAfter: 10m
+    hmacSecretData: true
     destination:
       name: [g.destination/]
       create: true
@@ -1692,9 +1700,11 @@
   p.secrets->select(g | g.delivery = 'file' and g.destination <> null) /]
 
 [comment Where a file grant's file lands is mounted whole, the directory of its mountAt, so a rotated
-  value reaches the file, which a mount of the one file would never see again. /]
+  value reaches the file, which a mount of the one file would never see again. A credential's
+  mountAt is its directory already. /]
 [query private directoryOf(g : resolveddeployment::ResolvedGrant) : String =
-  g.mountAt.substring(1, g.mountAt.size() - g.mountAt.fileOf().size() - 1) /]
+  if g.engine = 'database' then g.mountAt
+  else g.mountAt.substring(1, g.mountAt.size() - g.mountAt.fileOf().size() - 1) endif /]
 
 [comment An octal file mode, such as 0400, as the number a volume's defaultMode holds. /]
 [query private octal(mode : String) : Integer =
