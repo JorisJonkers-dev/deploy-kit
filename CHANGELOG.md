@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.23.0...v0.23.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* give each attached Process its own VPN credential ([#503](https://github.com/JorisJonkers-dev/deploy-kit/issues/503)) ([a296af7](https://github.com/JorisJonkers-dev/deploy-kit/commit/a296af73539eaee6ee11f2a92c563fad6e4dbb4d))
+
 ## [0.23.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.22.0...v0.23.0) (2026-10-19)
 
 
