@@ -2387,6 +2387,29 @@ describe("a volume and what its class derives", () => {
     expect(volume?.backup).not.toHaveProperty("peer");
   });
 
+  it("runs a backup that reads the volume alone as the Process that owns it, not as the method's user", () => {
+    // The method's own user differs, so only the Process's can read files it
+    // wrote with mode 0600.
+    const process = processOf(
+      holding(
+        "          - { claim: keep, mountAt: /k, size: 1Gi, durability: recoverable }\n",
+        "        engine: files\n",
+      ),
+      {
+        lock: (lock) =>
+          lock.replace(
+            /( {2}file-backup:\n(?: {4}.*\n){2} {4})uid: 1000\n {4}gid: 1000/,
+            "$1uid: 65532\n    gid: 65532",
+          ),
+      },
+    );
+
+    expect(
+      process.volumes?.map(({ backup }) => [backup?.uid, backup?.gid]),
+    ).toStrictEqual([[1000, 1000]]);
+    expect([process.uid, process.gid]).toStrictEqual([1000, 1000]);
+  });
+
   it("admits a Process's backup identity on the surface it dumps, and no backup that dumps none", () => {
     const admitted = (engine: string) =>
       processOf(

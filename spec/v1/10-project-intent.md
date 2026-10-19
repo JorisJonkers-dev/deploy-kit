@@ -1071,7 +1071,12 @@ derives a backup, because that kind is already its
 class's `retain` newest copies and prunes the rest in the same run, so there is
 no separate sweep. Each backup runs as the Process's **backup identity**,
 `<process>-backup`, and writes its copies to a derived **backup claim**,
-`<claim>-backup`, of the volume's `size`. The credential for an off-cluster
+`<claim>-backup`, of the volume's `size`. Its Unix user depends on what the
+method reads. A method that reads the volume alone (`files`) runs as the
+serving Process's `uid` and `gid`, because the files are that user's, often
+with mode `0600`, and no shared group reads those. A method that dumps the
+Process over the network keeps its own image's user, from the images lock. The
+credential for an off-cluster
 destination is a **derived** grant against the platform's own Secret Store path,
 held by the backup identity and never by the serving Process, and recorded in the
 projection its owner reads back

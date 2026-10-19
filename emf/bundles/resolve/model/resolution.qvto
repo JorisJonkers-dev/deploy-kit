@@ -701,6 +701,8 @@ query Volume::backupFor(p : PI::Process) : BackupPlan =
 	let policy : DurabilityPolicy = if self.durability = PI::DurabilityClass::recoverable
 		then estate.durability.recoverable else estate.durability.irreplaceable endif in
 	let methodImage : LockedImage = locked(engineMethod(p)) in
+	-- A method that reads the volume alone runs as the Process that wrote it.
+	let runAs : LockedImage = if dumpedSurface(p) = null then locked(p.image) else methodImage endif in
 	let holder : String = p.name + '-backup' in
 	if policy = null or policy.schedule = null or policy.retain = null
 		then unplanned(self.claim) else
@@ -708,8 +710,8 @@ query Volume::backupFor(p : PI::Process) : BackupPlan =
 		schedule := policy.schedule;
 		retain := policy.retain;
 		method := methodImage.repository + '@' + methodImage.digest;
-		uid := methodImage.uid;
-		gid := methodImage.gid;
+		uid := runAs.uid;
+		gid := runAs.gid;
 		identity := holder;
 		claim := self.claim + '-backup';
 		egress := backupEgress(p);
