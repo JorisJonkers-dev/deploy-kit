@@ -39,7 +39,7 @@ unaffected.
 
 **The closure promised a field and a record for a real case.** The proxy
 vocabulary stayed at two fields because the estate ran no rate limit anywhere
-([chapter 10](../../../spec/v1/10-project-intent.md#the-authored-proxy-vocabulary-is-two-fields)).
+([chapter 10](../../../spec/v1/10-project-intent.md#the-authored-proxy-vocabulary-is-three-fields)).
 identity now serves an endpoint that anyone may call without signing in, and
 every call stores a row: the registration endpoint (RFC 7591) that MCP clients
 use. Consent keeps a registration harmless, but nothing bounds how fast
