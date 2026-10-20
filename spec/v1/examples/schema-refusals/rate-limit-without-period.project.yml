@@ -1,0 +1,35 @@
+# REFUSED: schema, a rate limit with no period
+#
+# A rate limit counts requests over a period
+# (spec/v1/10-project-intent.md#exposure). Without one, ten requests says nothing
+# about how often.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: signup
+    exposure:
+      - name: public
+        host: signup.jorisjonkers.dev
+        audience: anonymous
+        routes:
+          - {path: /register, match: exact, process: signup-api, surface: http, rateLimit: {requests: 10}}
+          - {path: /, match: prefix, process: signup-api, surface: http}
+    processes:
+      - name: signup-api
+        lifecycle: application
+        image: signup-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: continuous

@@ -67,6 +67,7 @@ tiers:
     listener: tls
     certificates: acme
     forwardAuth: "http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward"
+    proxiedBy: cloudflare # every public host is proxied, so a client is the address Cloudflare forwards
     traefik: traefik-public # the declared Application in the platform edge project,
     # placed on the public-ingress node
   - name: lan

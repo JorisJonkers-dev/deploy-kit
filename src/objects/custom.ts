@@ -83,6 +83,21 @@ export interface IngressRoute {
   };
 }
 
+/** Traefik's Middleware, as a `rateLimit` (the one kind the render writes). */
+export interface Middleware {
+  readonly apiVersion: "traefik.io/v1alpha1";
+  readonly kind: "Middleware";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly rateLimit: {
+      readonly average: number;
+      readonly period: string;
+      readonly burst: number;
+      readonly sourceCriterion?: { readonly requestHeaderName: string };
+    };
+  };
+}
+
 export interface ServiceMonitor {
   readonly apiVersion: "monitoring.coreos.com/v1";
   readonly kind: "ServiceMonitor";

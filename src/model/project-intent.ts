@@ -328,6 +328,15 @@ const process = z
   })
   .meta({ id: "Process" });
 
+/** A rate limit's period: whole seconds, minutes or hours. */
+const ratePeriod = z.string().regex(/^[1-9]\d*(s|m|h)$/);
+
+// How many requests one client may send a route over a period; the burst and
+// who counts as a client derive (docs/adr/model/0110-a-route-may-bound-its-request-rate.md).
+const rateLimit = z
+  .strictObject({ requests: z.int().min(1), per: ratePeriod })
+  .meta({ id: "RateLimit" });
+
 const route = z
   .strictObject({
     path: requestPath,
@@ -336,6 +345,7 @@ const route = z
     surface: surfaceReference,
     audience: audience.exactOptional(),
     redirectTo: text.exactOptional(),
+    rateLimit: rateLimit.exactOptional(),
   })
   .meta({ id: "Route" });
 

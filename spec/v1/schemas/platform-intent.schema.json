@@ -329,6 +329,9 @@
           "type": "string",
           "minLength": 1
         },
+        "proxiedBy": {
+          "$ref": "#/$defs/ProxiedBy"
+        },
         "traefik": {
           "type": "string",
           "minLength": 1,
@@ -365,6 +368,12 @@
       "enum": [
         "acme",
         "none"
+      ]
+    },
+    "ProxiedBy": {
+      "type": "string",
+      "enum": [
+        "cloudflare"
       ]
     },
     "DurabilityPolicies": {

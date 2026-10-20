@@ -731,6 +731,23 @@
         "redirectTo": {
           "type": "string",
           "minLength": 1
+        },
+        "allowance": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "per": {
+          "type": "string",
+          "pattern": "^\\d+(ms|s|m|h)$"
+        },
+        "burst": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "clientAddress": {
+          "$ref": "#/$defs/ClientAddress"
         }
       },
       "required": [
@@ -743,7 +760,8 @@
       "enum": [
         "forward-auth",
         "security-headers",
-        "redirect"
+        "redirect",
+        "rate-limit"
       ]
     },
     "ContentPolicy": {
@@ -752,6 +770,13 @@
         "strict",
         "admin",
         "workflow"
+      ]
+    },
+    "ClientAddress": {
+      "type": "string",
+      "enum": [
+        "connection",
+        "cloudflare"
       ]
     },
     "ResolvedProcess": {

@@ -1179,6 +1179,64 @@ describe("the traefik adapter", () => {
     ).toThrow("a redirect Middleware is not rendered yet");
   });
 
+  // REQ-073 (docs/requirements.md): a route's rate limit is a Middleware of
+  // its own, counting a client by the address its tier says.
+  const limited = (clientAddress: "connection" | "cloudflare") =>
+    exposed(({ routes }) => ({
+      routes: routes.map((route) => ({
+        ...route,
+        middleware: [
+          { kind: "security-headers" as const },
+          {
+            kind: "rate-limit" as const,
+            allowance: 10,
+            per: "1h",
+            burst: 10,
+            clientAddress,
+          },
+        ],
+      })),
+    }));
+
+  it("spells a rate limit as a Middleware of the route's own, beside its IngressRoute in the Application's namespace", () => {
+    const [deliverable] = limited("connection");
+    const [route] = routeOf([deliverable] as ReturnType<
+      typeof renderTraefik
+    >)?.["routes"] as Record<string, unknown>[];
+
+    expect(route?.["middlewares"]).toStrictEqual([
+      { name: "security-headers", namespace: "edge-system" },
+      { name: "notes-public-1-rate-limit", namespace: "notes-system" },
+    ]);
+    expect(deliverable?.objects[1]).toStrictEqual({
+      apiVersion: "traefik.io/v1alpha1",
+      kind: "Middleware",
+      metadata: {
+        name: "notes-public-1-rate-limit",
+        namespace: "notes-system",
+        labels: {
+          "app.kubernetes.io/part-of": "notes",
+          "app.kubernetes.io/managed-by": "deploy-kit",
+        },
+      },
+      spec: { rateLimit: { average: 10, period: "1h", burst: 10 } },
+    });
+  });
+
+  it("counts a client behind Cloudflare by the address Cloudflare forwards", () => {
+    const [deliverable] = limited("cloudflare");
+
+    expect(
+      (deliverable?.objects[1] as { spec: { rateLimit: unknown } }).spec
+        .rateLimit,
+    ).toStrictEqual({
+      average: 10,
+      period: "1h",
+      burst: 10,
+      sourceCriterion: { requestHeaderName: "CF-Connecting-IP" },
+    });
+  });
+
   it("renders no route for an Application that exposes nothing", () => {
     expect(
       renderTraefik(edited(() => ({ exposure: undefined }))),

@@ -14,12 +14,15 @@ export const POLICY_CONTROLLERS = ["none", "embedded", "cni"] as const;
 export const LISTENERS = ["tls", "plain"] as const;
 export const CERTIFICATE_SOURCES = ["acme", "none"] as const;
 export const HARDENING_CLASSES = ["restricted"] as const;
+/** Who forwards clients' requests to a tier's edge, where anyone does. */
+export const FORWARDERS = ["cloudflare"] as const;
 
 export type Datastore = (typeof DATASTORES)[number];
 export type PolicyController = (typeof POLICY_CONTROLLERS)[number];
 export type Listener = (typeof LISTENERS)[number];
 export type CertificateSource = (typeof CERTIFICATE_SOURCES)[number];
 export type HardeningClass = (typeof HARDENING_CLASSES)[number];
+export type Forwarder = (typeof FORWARDERS)[number];
 
 const text = z.string().min(1);
 const count = z.int().min(1);
@@ -39,6 +42,7 @@ const certificateSource = z
   .enum(CERTIFICATE_SOURCES)
   .meta({ id: "CertificateSource" });
 const hardeningClass = z.enum(HARDENING_CLASSES).meta({ id: "HardeningClass" });
+const forwarder = z.enum(FORWARDERS).meta({ id: "ProxiedBy" });
 
 const metadata = z
   .strictObject({ cluster: text, project: text, nodeContract: text })
@@ -94,6 +98,8 @@ const tier = z
     listener,
     certificates: certificateSource,
     forwardAuth: text.exactOptional(),
+    // Absent where clients connect to the edge themselves.
+    proxiedBy: forwarder.exactOptional(),
     // The platform Application whose proxy this tier is, declared in a project
     // file the platform owns: a reference into another document.
     traefik: text.meta({ reference: "Application" }),

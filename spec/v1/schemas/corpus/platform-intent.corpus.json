@@ -181,6 +181,30 @@
           "value": "on"
         }
       ]
+    },
+    {
+      "name": "a tier no forwarder proxies",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/tiers/0/proxiedBy"
+        }
+      ]
+    },
+    {
+      "name": "a tier proxied by a forwarder outside the vocabulary",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/tiers/0/proxiedBy",
+          "value": "fastly"
+        }
+      ]
     }
   ]
 }
