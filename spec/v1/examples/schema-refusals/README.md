@@ -20,6 +20,9 @@ the chapter's table says the refusal lands at.
 | [`egress-without-reason.project.yml`](egress-without-reason.project.yml) | internet egress with no `reason` | where the field would be |
 | [`egress-outside-vocabulary.project.yml`](egress-outside-vocabulary.project.yml) | `egress.to` outside its closed vocabulary | the value |
 | [`egress-with-range.project.yml`](egress-with-range.project.yml) | internet egress with an authored range | the field |
+| [`rate-limit-without-period.project.yml`](rate-limit-without-period.project.yml) | a route's `rateLimit` with no `per` | where the field would be |
+| [`rate-limit-of-no-requests.project.yml`](rate-limit-of-no-requests.project.yml) | a route's `rateLimit` allowing `0` requests | the value |
+| [`rate-limit-period-in-milliseconds.project.yml`](rate-limit-period-in-milliseconds.project.yml) | a route's `rateLimit` over `500ms` | the value |
 | [`credentials-file-without-mount.project.yml`](credentials-file-without-mount.project.yml) | an edge's credential delivered `file` with no `mountAt` or `fileMode` | the edge's `credentials` |
 | [`platform-unknown-field/`](platform-unknown-field/) | a Platform document with a field the model does not have | the field |
 

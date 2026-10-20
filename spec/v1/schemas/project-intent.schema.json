@@ -709,6 +709,9 @@
         "redirectTo": {
           "type": "string",
           "minLength": 1
+        },
+        "rateLimit": {
+          "$ref": "#/$defs/RateLimit"
         }
       },
       "required": [
@@ -725,6 +728,25 @@
         "prefix",
         "exact"
       ]
+    },
+    "RateLimit": {
+      "type": "object",
+      "properties": {
+        "requests": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "per": {
+          "type": "string",
+          "pattern": "^[1-9]\\d*(s|m|h)$"
+        }
+      },
+      "required": [
+        "requests",
+        "per"
+      ],
+      "additionalProperties": false
     },
     "SelfMigration": {
       "type": "string",

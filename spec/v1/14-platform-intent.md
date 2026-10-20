@@ -249,7 +249,7 @@ rendered as that Application's own Assets, exactly as the database catalog is fo
 
 ## Tiers
 
-A tier is where the edge terminates. It declares **four edge facts**, in the
+A tier is where the edge terminates. It declares **five edge facts**, in the
 model's words, and the `traefik` adapter maps them to Traefik's
 ([0011](../../docs/adr/model/0011-authored-values-name-model-concepts.md)):
 
@@ -260,6 +260,7 @@ tiers:
     listener: tls                      # tls | plain
     certificates: acme                 # acme | none
     forwardAuth: http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward
+    proxiedBy: cloudflare              # optional: who forwards clients' requests to this edge
     traefik: traefik-public            # the declared Application that is this tier's proxy
   - name: lan
     audiences: [lan]
@@ -274,6 +275,7 @@ tiers:
 | `listener` | whether the edge terminates TLS |
 | `certificates` | how certificates are issued for what it terminates |
 | `forwardAuth` | the endpoint that authenticates for it; required where `authenticated` is carried, `E_NO_FORWARD_AUTH_ENDPOINT` otherwise ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)) |
+| `proxiedBy` | `cloudflare`, or absent. Who forwards clients' requests to this edge, which decides the address a route's `rateLimit` counts a client by: absent, the connection's own address; `cloudflare`, the address Cloudflare forwards in `CF-Connecting-IP`, since every connection then comes from a Cloudflare edge. State it only when every request reaches the tier through Cloudflare, since a client that reaches the edge directly writes that header itself ([0110](../../docs/adr/model/0110-a-route-may-bound-its-request-rate.md)) |
 | `traefik` | the platform Application whose proxy this tier is; an Application no project file declares is `E_UNKNOWN_TIER_PROXY` |
 
 `entryPoint`, `certResolver` and every other Traefik spelling appear only in the
@@ -1008,6 +1010,7 @@ classDiagram
         +Listener listener
         +CertificateSource certificates
         +Url forwardAuth
+        +ProxiedBy proxiedBy
         +ApplicationId traefik
     }
     class DurabilityPolicies {

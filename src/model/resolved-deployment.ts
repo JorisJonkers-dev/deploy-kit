@@ -81,7 +81,11 @@ export const MIDDLEWARE_KINDS = [
   "forward-auth",
   "security-headers",
   "redirect",
+  "rate-limit",
 ] as const;
+
+/** Which address a rate limit counts a client by: the connection's, or the one Cloudflare forwards. */
+export const CLIENT_ADDRESSES = ["connection", "cloudflare"] as const;
 
 /** Whose directory a path assignment belongs to. */
 export const PATH_SCOPES = ["estate", "project", "application"] as const;
@@ -100,6 +104,7 @@ export type PinnedInput = (typeof PINNED_INPUTS)[number];
 export type Switchover = (typeof SWITCHOVERS)[number];
 export type AnalysisCheck = (typeof ANALYSIS_CHECKS)[number];
 export type MiddlewareKind = (typeof MIDDLEWARE_KINDS)[number];
+export type ClientAddress = (typeof CLIENT_ADDRESSES)[number];
 export type PathScope = (typeof PATH_SCOPES)[number];
 export type AdapterName = (typeof ADAPTERS)[number];
 
@@ -125,6 +130,7 @@ const match = z.enum(MATCHES).meta({ id: "Match" });
 
 const adapterName = z.enum(ADAPTERS).meta({ id: "AdapterName" });
 const middlewareKind = z.enum(MIDDLEWARE_KINDS).meta({ id: "MiddlewareKind" });
+const clientAddress = z.enum(CLIENT_ADDRESSES).meta({ id: "ClientAddress" });
 const pathScope = z.enum(PATH_SCOPES).meta({ id: "PathScope" });
 const pinnedInput = z.enum(PINNED_INPUTS).meta({ id: "PinnedInput" });
 const switchover = z.enum(SWITCHOVERS).meta({ id: "Switchover" });
@@ -542,6 +548,12 @@ const middlewareStep = z
     contentPolicy: contentPolicy.exactOptional(),
     endpoint: text.exactOptional(),
     redirectTo: text.exactOptional(),
+    // A `rate-limit` step: the route's limit, its derived burst, and the
+    // address its tier counts a client by.
+    allowance: z.int().min(1).exactOptional(),
+    per: duration.exactOptional(),
+    burst: z.int().min(1).exactOptional(),
+    clientAddress: clientAddress.exactOptional(),
   })
   .meta({ id: "MiddlewareStep" });
 

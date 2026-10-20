@@ -107,6 +107,11 @@ policy. Holds one or more Routes.
 **Route**: a path within an Exposure, naming the Process and Surface that
 serve it.
 
+**Rate limit**: how many requests one client may send a Route over a period,
+declared on the Route as `rateLimit: {requests, per}`. The burst equals the
+allowance, and the Tier decides which address counts as one client
+([0110](docs/adr/model/0110-a-route-may-bound-its-request-rate.md)).
+
 **Audience**: who may reach an Exposure. The declared word from which the edge
 mechanism is derived ([0023](docs/adr/model/0023-exposure-is-declared-by-audience.md)).
 
@@ -362,8 +367,8 @@ Application Id, held in the consumer's own namespace and pointing at the Stable
 Address ([chapter 16](spec/v1/16-dependencies.md#the-alias),
 [0109](docs/adr/model/0109-a-consumer-reaches-its-provider-by-its-application-id.md)).
 
-**Tier**: where the edge terminates: four facts, `audiences`, `listener`,
-`certificates`, `forwardAuth`, plus the Traefik Application that is its proxy. A
+**Tier**: where the edge terminates: five facts, `audiences`, `listener`,
+`certificates`, `forwardAuth`, `proxiedBy`, plus the Traefik Application that is its proxy. A
 route's audience is the only way it reaches a tier
 ([chapter 14](spec/v1/14-platform-intent.md#tiers)).
 

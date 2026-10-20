@@ -217,6 +217,43 @@ ${serving("notes-api")}`;
     ]);
   });
 
+  it("bounds a route's rate last in its chain, with a burst of its whole allowance, counting a client behind Cloudflare by the address Cloudflare forwards", () => {
+    const [exposure] =
+      application(
+        exposed(
+          "          - { path: /register, match: exact, process: notes-api, surface: http, audience: anonymous, rateLimit: { requests: 10, per: 1h } }",
+        ),
+      ).exposure ?? [];
+
+    expect(exposure?.routes[0]?.middleware).toStrictEqual([
+      { kind: "security-headers" },
+      {
+        kind: "rate-limit",
+        allowance: 10,
+        per: "1h",
+        burst: 10,
+        clientAddress: "cloudflare",
+      },
+    ]);
+  });
+
+  it("counts a client by its connection's address on a tier clients reach directly", () => {
+    const [exposure] =
+      application(
+        exposed(
+          "          - { path: /register, match: exact, process: notes-api, surface: http, audience: lan, rateLimit: { requests: 5, per: 30s } }",
+        ),
+      ).exposure ?? [];
+
+    expect(exposure?.routes[0]?.middleware?.at(-1)).toStrictEqual({
+      kind: "rate-limit",
+      allowance: 5,
+      per: "30s",
+      burst: 5,
+      clientAddress: "connection",
+    });
+  });
+
   it("carries the content profile the exposure names onto every route's baseline", () => {
     const [exposure] =
       application(

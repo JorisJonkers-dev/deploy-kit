@@ -72,6 +72,14 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="surface" lowerBound="1" eType="#//Surface"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="audience" eType="#//Audience"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="redirectTo" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="rateLimit" eType="#//RateLimit" containment="true"/>
+  </eClassifiers>
+  <!-- How many requests one client may send a route over a period
+       (spec/v1/10-project-intent.md#exposure); the burst and who counts as a
+       client derive. -->
+  <eClassifiers xsi:type="ecore:EClass" name="RateLimit">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="requests" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="per" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="SharedIntent" abstract="true">
     <eStructuralFeatures xsi:type="ecore:EReference" name="secrets" upperBound="-1" eType="#//Grant" containment="true"/>
@@ -548,6 +556,9 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="listener" lowerBound="1" eType="#//Listener"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="certificates" lowerBound="1" eType="#//CertificateSource"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="forwardAuth" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Who forwards clients' requests to the edge, where anyone does
+         (spec/v1/14-platform-intent.md#tiers). -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="proxiedBy" eType="#//ProxiedBy"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="traefik" lowerBound="1" eType="#//Application"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="DurabilityPolicies">
@@ -658,6 +669,9 @@
     <eLiterals name="none" literal="none"/>
     <eLiterals name="embedded" value="1" literal="embedded"/>
     <eLiterals name="cni" value="2" literal="cni"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="ProxiedBy">
+    <eLiterals name="cloudflare" literal="cloudflare"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Listener">
     <eLiterals name="tls" literal="tls"/>

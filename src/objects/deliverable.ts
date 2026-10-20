@@ -6,6 +6,7 @@ import type {
   FluxKustomization,
   FluxProvider,
   IngressRoute,
+  Middleware,
   OciRepository,
   PodMonitor,
   ServiceMonitor,
@@ -50,6 +51,7 @@ export type RenderedObject =
   | PodMonitor
   | ServiceMonitor
   | IngressRoute
+  | Middleware
   | ConfigMap
   | ClusterRole
   | ClusterRoleBinding

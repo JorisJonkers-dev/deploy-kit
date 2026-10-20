@@ -224,7 +224,7 @@ field's placement link to this anchor rather than copying rows.
 | `replicas` | Application | no contention | the sole local capacity exception: `count` above one with a required `reason` ([No overrides](#no-overrides)) |
 | route tier | platform | pool | the shared edge is finite; `E_NO_TIER_FOR_AUDIENCE` where no tier carries the audience |
 | route precedence | derived | - | `exact` before `prefix`, longer prefix before shorter; carried explicitly on the rendered route rather than left to the proxy's sort ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)) |
-| middleware chain | platform | pool | tier + audience + `contentPolicy`; `forward-auth` for `authenticated` on a public tier, the security-headers baseline with the named content profile, and the redirect rule a route's `redirectTo` asks for |
+| middleware chain | platform | pool | tier + audience + `contentPolicy`; `forward-auth` for `authenticated` on a public tier, the security-headers baseline with the named content profile, the redirect rule a route's `redirectTo` asks for, and the rate limit a route's `rateLimit` asks for, with its burst and the address its tier counts a client by |
 | backup window, retention count, off-cluster destination | platform | pool | one policy per Durability Class; the window is one node's IO and the destination is one remote target ([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)) |
 | the backup method | platform | pool | the image the Platform document names per `engine`, resolved through the images lock; nothing executable is authored ([chapter 14](14-platform-intent.md#engines)) |
 | alert rules, their severity and their receiver | the monitoring stack | pool | derived nowhere in this model. `alertClass` is published as a resolved fact and the stack that reads it decides what a class means ([chapter 10](10-project-intent.md#observability)) |
@@ -294,8 +294,17 @@ authors, which is the same restatement `placement` forced
 What stays on the platform side of this path is everything mechanical about the
 edge: the tier that carries the audience, and the middleware chain that follows
 from the tier, the audience and `contentPolicy`. The authored proxy vocabulary is
-exactly two fields (`contentPolicy` on an exposure and `redirectTo` on a route)
-and no Application names a middleware, a listener or a certificate issuer.
+exactly three fields (`contentPolicy` on an exposure, and `redirectTo` and
+`rateLimit` on a route) and no Application names a middleware, a listener or a
+certificate issuer.
+
+A `rate-limit` step carries what the route authored and what the tier derives:
+`allowance` and `per` as the route's `requests` and `per` wrote them, `burst`
+equal to the allowance, and
+`clientAddress`, which is `cloudflare` on a tier that states
+`proxiedBy: cloudflare` and `connection` otherwise
+([0110](../../docs/adr/model/0110-a-route-may-bound-its-request-rate.md)). It
+comes last in the chain, after the security headers.
 
 ### The namespace row was wrong, and this is the correction
 
@@ -1963,6 +1972,10 @@ classDiagram
         +ContentPolicy contentPolicy
         +Url endpoint
         +Path redirectTo
+        +int allowance
+        +Duration per
+        +int burst
+        +ClientAddress clientAddress
     }
     class ResolvedRoute {
         +Path path

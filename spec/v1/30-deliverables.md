@@ -432,6 +432,7 @@ spells only what the projection holds:
 | a tier's `certificates` | `traefik` | `acme` is the certificate resolver of that name; `none` writes no TLS block |
 | a route's `precedence` | `traefik` | `priority` is 1000 less the precedence, since Traefik tries the higher priority first |
 | a route's `middleware` | `traefik` | a reference into the proxy's namespace: `forward-auth`, and `security-headers` suffixed with the content profile where one is named; the edge project renders the Middleware objects themselves |
+| a route's `rate-limit` step | `traefik` | a `RateLimit` Middleware of the route's own, `<application>-<exposure>-<n>-rate-limit` for the route's place in its exposure, in the Application's namespace and in the IngressRoute's file: `average` is the allowance, `period` the period, `burst` the burst, and a `cloudflare` client address is `sourceCriterion.requestHeaderName: CF-Connecting-IP`, while `connection` writes no criterion, which Traefik reads as the connection's address ([0110](../../docs/adr/model/0110-a-route-may-bound-its-request-rate.md)) |
 
 Two adapters (`kubernetes` and `networking`) declare the same `apps` prefix
 and are kept apart by the object segment. That is why `E_PATH_COLLISION` is

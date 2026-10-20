@@ -1700,6 +1700,35 @@
       tls:
         certResolver: [d.certificateResolver/]
   [/if]
+  [for (r : resolveddeployment::ResolvedRoute | d.exposure.routes)]
+    [for (m : resolveddeployment::MiddlewareStep | r.middleware->select(s | s.kind.toString() = 'rate-limit'))]
+      [m.rateLimit(r, d.exposure)/]
+    [/for]
+  [/for]
+[/template]
+
+[comment A route's rate limit, its own Middleware beside its IngressRoute, since its values are that
+  route's alone. Behind Cloudflare every connection is Cloudflare's, so a client is the address it
+  forwards. /]
+[template private rateLimit(m : resolveddeployment::MiddlewareStep, r : resolveddeployment::ResolvedRoute, e : resolveddeployment::ResolvedExposure)]
+  ---
+  apiVersion: traefik.io/v1alpha1
+  kind: Middleware
+  metadata:
+    name: [r.rateLimitName(e)/]
+    namespace: [e.application().namespace/]
+    labels:
+      app.kubernetes.io/part-of: [e.application().id/]
+      app.kubernetes.io/managed-by: deploy-kit
+  spec:
+    rateLimit:
+      average: [m.allowance/]
+      period: [m.per/]
+      burst: [m.burst/]
+  [if (m.clientAddress = 'cloudflare')]
+        sourceCriterion:
+          requestHeaderName: CF-Connecting-IP
+  [/if]
 [/template]
 
 [comment Traefik tries the higher priority first, and precedence 1 is matched first. /]
@@ -1709,8 +1738,13 @@
     priority: [1000 - r.precedence/]
     middlewares:
   [for (m : resolveddeployment::MiddlewareStep | r.middleware)]
-        - name: [m.middlewareName()/]
-          namespace: [e.proxyNamespace/]
+    [if (m.kind.toString() = 'rate-limit')]
+          - name: [r.rateLimitName(e)/]
+            namespace: [e.application().namespace/]
+    [else]
+          - name: [m.middlewareName()/]
+            namespace: [e.proxyNamespace/]
+    [/if]
   [/for]
     services:
       - name: [r.process.name/]
@@ -1839,6 +1873,9 @@
 [query private blockOf(content : String, indent : String) : String =
   (if content.endsWith('\n') then content.substring(1, content.size() - 1) else content endif)
     .replaceAll('(?m)^(?=.)', indent) /]
+
+[query private rateLimitName(r : resolveddeployment::ResolvedRoute, e : resolveddeployment::ResolvedExposure) : String =
+  e.application().id + '-' + e.name + '-' + e.routes->indexOf(r).toString() + '-rate-limit' /]
 
 [query private middlewareName(m : resolveddeployment::MiddlewareStep) : String =
   if m.kind.toString() = 'forward-auth' then 'forward-auth'

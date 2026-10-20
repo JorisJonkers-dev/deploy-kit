@@ -579,6 +579,7 @@ describe("the metamodel names every class the chapter draws", () => {
       "ApiVerb",
       "Audience",
       "CertificateSource",
+      "ClientAddress",
       "ContentPolicy",
       "Cutover",
       "Delivery",

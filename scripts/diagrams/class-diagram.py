@@ -155,6 +155,7 @@ TREES = {"10-project-intent": {
     "Process": ["Capacity", "ApiAccess", "Sidecar", "Probe", "Volume", "LibraryMount", "Surface"],
     "ApiAccess": ["ApiRule"],
     "Exposure": ["Route"],
+    "Route": ["RateLimit"],
 }, "14-platform-intent": {
     "Platform": [
         "PlatformMetadata", "Substrate", "Bootstrap", "Tier", "DurabilityPolicies",
@@ -245,6 +246,7 @@ REPORT_LAYOUTS = {"10-project-intent": {
         "DependencyEdge": [["Credentials"]],
         "EnvFile": [["Placeholder"]],
         "Exposure": [["Route"]],
+        "Route": [["RateLimit"]],
     },
     "beside": {"Application"},
     "gaps": {("Process", 3): 150, ("Application", 2): 70},

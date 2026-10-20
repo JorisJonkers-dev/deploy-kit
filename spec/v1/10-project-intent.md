@@ -1621,8 +1621,9 @@ applications:
 | `surface` | route | yes | A surface that Process declares in `provides`: a name, never a port integer. |
 | `audience` | route | no | Overrides the exposure's audience, for this path alone. |
 | `redirectTo` | route | no | A path this route redirects to. A path, never a regex. |
+| `rateLimit` | route | no | `{requests, per}`: how many requests one client may send this route over `per`, a duration in whole seconds, minutes or hours (`30s`, `10m`, `1h`). `requests` is a whole number of at least 1. Who counts as one client is the tier's fact ([chapter 14](14-platform-intent.md#tiers)). |
 
-A route carries two optional fields and no others. It may state its own
+A route carries three optional fields and no others. It may state its own
 `audience`, which is the anonymous endpoint inside an otherwise authenticated
 host:
 
@@ -1638,6 +1639,20 @@ and a path may redirect:
 routes:
   - {path: /, match: exact, process: stalwart, surface: http, redirectTo: /admin/}
 ```
+
+and a path anyone may call may bound how often one client calls it
+([0110](../../docs/adr/model/0110-a-route-may-bound-its-request-rate.md)):
+
+```yaml
+routes:
+  - {path: /oidc/register, match: exact, process: identity, surface: http, rateLimit: {requests: 10, per: 1h}}
+  - {path: /,              match: prefix, process: identity, surface: http}
+```
+
+A client that has sent nothing may send its whole allowance at once: the burst
+equals `requests`, derived rather than authored. Past it, the edge answers
+`429 Too Many Requests` and the request never reaches the Process. Each replica
+of the tier's proxy counts on its own.
 
 **Precedence is derived, not inherited from the proxy**
 ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)). `auth`
@@ -1757,17 +1772,17 @@ was implemented, had an error code, and was vacuous exactly where it mattered; i
 is deleted rather than repaired. `E_NO_TIER_FOR_AUDIENCE` (chapter 40) replaces it
 and cannot be vacuous, because the audience is always present.
 
-### The authored proxy vocabulary is two fields
+### The authored proxy vocabulary is three fields
 
-`contentPolicy` on an exposure and `redirectTo` on a route. There is no third, and
-the closure is a decision rather than an oversight: no provider-shaped
+`contentPolicy` on an exposure, and `redirectTo` and `rateLimit` on a route. There
+is no fourth, and the closure is a decision rather than an oversight: no provider-shaped
 passthrough, no raw middleware reference, no headers block, no annotations map, no
 escape hatch shaped like any of them. Layer 1 carries no mechanism, and a Traefik
 middleware name written into Project Intent is a mechanism
 ([0021](../../docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md)).
 
-The vocabulary is two fields because the estate's own edge is four middlewares,
-counted:
+The vocabulary started at two fields because the estate's own edge was four
+middlewares, counted:
 
 | middleware | live instances | disposition |
 |---|---|---|
@@ -1783,14 +1798,21 @@ appears) except for the CSP profile, which is a per-product judgement no
 derivation can make, and of which there are exactly three. That judgement is
 `contentPolicy`, a value from a closed list rather than a header block.
 
-Nothing else exists. There are **zero** live instances of timeouts, rate limits,
-IP allowlists, basic auth, compression, retries and circuit breakers (not one of
-any of them, anywhere in the estate) and none of them becomes vocabulary here.
+Nothing else existed. There were **zero** live instances of timeouts, rate
+limits, IP allowlists, basic auth, compression, retries and circuit breakers (not
+one of any of them, anywhere in the estate) and none of them became vocabulary.
 Writing fields for an estate that does not exist is the failure this model was
 built to stop: a field costs a schema, a derivation, a test and a reader's
 attention, and one nobody populates costs all four and returns nothing. A
 genuinely new case gets a field and a decision record, not a passthrough that
 would readmit every provider fragment at once and take the mechanism rule with it.
+
+`rateLimit` is that case. identity's registration endpoint takes a request from
+anyone and stores a row for each one, so its rate is a real judgement with a
+real consumer, and it got a field and a decision record
+([0110](../../docs/adr/model/0110-a-route-may-bound-its-request-rate.md)). The
+field is two numbers an author can judge. The burst and the source of the
+client's address are derived, so no limiter mechanism enters layer 1.
 
 **`redirectTo` is a path, never a regex.** Both live redirects are the same
 shape (an exact root sent to a subpath) and the author writes the destination
@@ -2826,7 +2848,7 @@ declaring site is fixed:
 | a secret value, anywhere | a grant plus `${secret:…}` |
 | a secret grant with no reference | remove it: it is a dead grant |
 | `keys: ['*']` | enumerate the keys |
-| a route tier, an `authMode`, a middleware name, a headers block, a `redirectRegex` | derived from `audience` and the tier; the authored proxy vocabulary is `contentPolicy` and `redirectTo`, and nothing else |
+| a route tier, an `authMode`, a middleware name, a headers block, a `redirectRegex`, a rate limit's burst or source | derived from `audience` and the tier; the authored proxy vocabulary is `contentPolicy`, `redirectTo` and `rateLimit`, and nothing else |
 | a `volumeClaimTemplate` | declare the claim cluster-side |
 | an executable Asset | an image |
 | a deploy workflow, applier or gate | delivery's, derived: see below |
@@ -2988,6 +3010,10 @@ classDiagram
         +Audience audience
         +Path redirectTo
     }
+    class RateLimit {
+        +int requests
+        +Duration per
+    }
     class Probe {
         +Path path
         +int port
@@ -3029,6 +3055,7 @@ classDiagram
 
     Application "1" *-- "0..*" Exposure : exposure
     Exposure "1" *-- "1..*" Route : routes
+    Route "1" *-- "0..1" RateLimit : rateLimit
     Route --> Surface : surface
 
 ```

@@ -122,20 +122,26 @@ applications:
                                   # authentication, so it cannot sit behind it;
                                   # the applications enforce their own
                                   # authorization and this describes the edge
-        contentPolicy: strict     # one of the TWO authored proxy fields, the
-                                  # other being `redirectTo` on a route. It
-                                  # picks the CSP profile only: the
+        contentPolicy: strict     # one of the THREE authored proxy fields, the
+                                  # others being `redirectTo` and `rateLimit` on
+                                  # a route. It picks the CSP profile only: the
                                   # security-headers baseline, forward-auth,
                                   # the listener, certificates and the chain derive
                                   # from audience and tier, and no middleware
-                                  # name, header block, timeout or rate limit is
-                                  # authorable anywhere in layer 1
+                                  # name, header block or timeout is authorable
+                                  # anywhere in layer 1
         routes:
           # A route names {path, match, process, surface}, `match` being
           # `prefix` or `exact`. The surface must be one the named Process
           # declares in `provides` (E_UNKNOWN_SURFACE otherwise), and two routes
           # on one exposure may not share a path + match pair
           # (E_DUPLICATE_ROUTE_MATCH).
+          #
+          # Registering takes a request from anyone and stores a user for each,
+          # so one client may register ten times an hour. The burst and who
+          # counts as one client derive: the tier is proxied by Cloudflare, so a
+          # client is the address Cloudflare forwards.
+          - {path: /api/v1/users/register, match: exact, process: auth-api, surface: http, rateLimit: {requests: 10, per: 1h}}
           - {path: /api, match: prefix, process: auth-api, surface: http}
           - {path: /,    match: prefix, process: auth-ui,  surface: http}
 

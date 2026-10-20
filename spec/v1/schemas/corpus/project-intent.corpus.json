@@ -273,6 +273,44 @@
           "value": {}
         }
       ]
+    },
+    {
+      "name": "a rate limit with no period",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/auth/auth.project.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/applications/0/exposure/0/routes/0/rateLimit/per"
+        }
+      ]
+    },
+    {
+      "name": "a rate limit counting its requests as a string",
+      "verdict": "refuse",
+      "breaks": "wrong-type",
+      "file": "examples/auth/auth.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/0/exposure/0/routes/0/rateLimit/requests",
+          "value": "10"
+        }
+      ]
+    },
+    {
+      "name": "a rate limit with a field it does not have",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/auth/auth.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/0/exposure/0/routes/0/rateLimit/burst",
+          "value": 20
+        }
+      ]
     }
   ]
 }

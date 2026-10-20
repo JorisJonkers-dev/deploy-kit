@@ -98,6 +98,7 @@ Tier returns Tier:
 	& ('listener' ':' listener=Listener)
 	& ('certificates' ':' certificates=CertificateSource)
 	& ('forwardAuth' ':' forwardAuth=Text)?
+	& ('proxiedBy' ':' proxiedBy=ProxiedBy)?
 	& ('traefik' ':' traefik=[Application|Text]));
 
 DurabilityPolicies returns DurabilityPolicies:
@@ -237,10 +238,10 @@ Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword | PlatformKeyword;
 
 PlatformKeyword:
-	'acme' | 'address' | 'analysis' | 'apiAccess' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'catalog' | 'certificates' | 'cidr' | 'cluster' | 'clusterDns' | 'cni' | 'collector' |
+	'acme' | 'address' | 'analysis' | 'apiAccess' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'catalog' | 'certificates' | 'cidr' | 'cloudflare' | 'cluster' | 'clusterDns' | 'cni' | 'collector' |
 	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'egress' | 'embedded' | 'engines' | 'ephemeral' | 'errorRate' | 'estate' | 'etcd' |
 	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'gid' | 'gpus' | 'grants' | 'handover' | 'hardening' | 'holders' | 'imagePull' | 'instance' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'latency' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
-	'metrics' | 'monitors' | 'namespace' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'password' | 'period' | 'plain' | 'policyJob' | 'providers' | 'pullSecret' | 'restricted' | 'retireBy' |
+	'metrics' | 'monitors' | 'namespace' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'password' | 'period' | 'plain' | 'policyJob' | 'providers' | 'proxiedBy' | 'pullSecret' | 'restricted' | 'retireBy' |
 	'reporter' | 'repository' | 'resource' | 'retain' | 'runner' | 'runtimeClass' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'server' | 'serverCount' | 'serving' | 'settings' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
 	'surfaces' | 'telemetry' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'user' | 'vault';
 
@@ -249,6 +250,9 @@ enum Datastore returns Datastore:
 
 enum PolicyController returns PolicyController:
 	none='none' | embedded='embedded' | cni='cni';
+
+enum ProxiedBy returns ProxiedBy:
+	cloudflare='cloudflare';
 
 enum Listener returns Listener:
 	tls='tls' | plain='plain';

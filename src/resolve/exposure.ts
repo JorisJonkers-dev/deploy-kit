@@ -58,6 +58,18 @@ function middlewareOf(
     ...(route.redirectTo === undefined
       ? []
       : [{ kind: "redirect" as const, redirectTo: route.redirectTo }]),
+    ...(route.rateLimit === undefined
+      ? []
+      : [
+          {
+            kind: "rate-limit" as const,
+            allowance: route.rateLimit.requests,
+            per: route.rateLimit.per,
+            // A client that has sent nothing may send its whole allowance at once.
+            burst: route.rateLimit.requests,
+            clientAddress: tier.proxiedBy ?? ("connection" as const),
+          },
+        ]),
   ];
 }
 
