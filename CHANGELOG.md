@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.24.0...v0.24.1) (2026-10-20)
+
+
+### Bug Fixes
+
+* **model:** move the pin of a Project whose pinned artifact labels no release ([#509](https://github.com/JorisJonkers-dev/deploy-kit/issues/509)) ([d42d41c](https://github.com/JorisJonkers-dev/deploy-kit/commit/d42d41cbfc7a702e92bfc0c1a9667988f29871db))
+
 ## [0.24.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.23.1...v0.24.0) (2026-10-19)
 
 
