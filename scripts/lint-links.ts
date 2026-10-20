@@ -1,4 +1,4 @@
-// Relative links and heading anchors across every tracked Markdown file.
+// Relative links and heading anchors across every Markdown file git does not ignore.
 //
 // The ADR lint checks links inside the decision set and the register. Nothing
 // checked the rest, and the ADR domain move rewrote about a hundred references
@@ -24,15 +24,21 @@ export interface LinkLintResult {
 
 const REPOSITORY = join(import.meta.dirname, "..");
 
-/** Check every link in the tracked Markdown of the repository at `root`. */
+/** Check every link in the Markdown git does not ignore in the repository at `root`. */
 export function lintLinks(root: string): LinkLintResult {
   const errors: string[] = [];
 
-  // Tracked Markdown, so a scratch file in the tree cannot fail the build.
-  const tracked = execFileSync("git", ["ls-files", "-z", "*.md"], {
-    cwd: root,
-    encoding: "utf8",
-  })
+  // Tracked Markdown and every new file git does not ignore: CI checks out
+  // the new document as tracked, so a local run that skipped it would pass
+  // what CI then fails. An ignored scratch file still cannot fail the build.
+  const markdown = execFileSync(
+    "git",
+    ["ls-files", "-z", "--cached", "--others", "--exclude-standard", "*.md"],
+    {
+      cwd: root,
+      encoding: "utf8",
+    },
+  )
     .split("\0")
     .filter((file) => file !== "");
 
@@ -51,7 +57,7 @@ export function lintLinks(root: string): LinkLintResult {
     return anchors;
   };
 
-  for (const file of tracked) {
+  for (const file of markdown) {
     // Fenced blocks are stripped: a link inside an example is illustration.
     const prose = readFileSync(join(root, file), "utf8").replace(
       /^```[\s\S]*?^```/gm,
@@ -87,7 +93,7 @@ export function lintLinks(root: string): LinkLintResult {
     }
   }
 
-  return { files: tracked.length, errors };
+  return { files: markdown.length, errors };
 }
 
 /** Lint the repository named by argv[0], or this one, and say what was found. */
