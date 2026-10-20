@@ -50,6 +50,7 @@ import {
   instanceOf,
   labelsOf,
   managedOnly,
+  podMetadataOf,
 } from "../shared/labels.ts";
 import { applicationDirectory, projectDirectory } from "../shared/paths.ts";
 import { nodeAffinityOf } from "../shared/placement.ts";
@@ -293,10 +294,13 @@ const VPN_STARTUP = {
  * root with the two network capabilities and nothing else added, reading its
  * credential from the Secret only it is given.
  */
+const VPN_CONTAINER = "vpn";
+const BACKUP_CONTAINER = "backup";
+
 const vpnContainerOf = (
   vpn: NonNullable<ResolvedProcess["vpn"]>,
 ): VpnContainer => ({
-  name: "vpn",
+  name: VPN_CONTAINER,
   image: vpn.image,
   restartPolicy: "Always",
   env: vpn.environment,
@@ -490,7 +494,16 @@ function deploymentOf(
         },
       },
       template: {
-        metadata: { labels },
+        metadata: podMetadataOf(labels, [
+          [process.name, process.imageVersion],
+          // Stryker disable next-line ArrayDeclaration
+          ...(process.sidecars ?? []).map(
+            ({ name, imageVersion }) => [name, imageVersion] as const,
+          ),
+          ...(process.vpn === undefined
+            ? []
+            : [[VPN_CONTAINER, process.vpn.imageVersion] as const]),
+        ]),
         spec: {
           serviceAccountName: process.identity,
           automountServiceAccountToken: process.identityToken,
@@ -685,7 +698,7 @@ export function backupPodOf(
     },
     containers: [
       {
-        name: "backup",
+        name: BACKUP_CONTAINER,
         image: backup.method,
         env,
         ...(credentials.length === 0 ? {} : { envFrom: credentials }),
@@ -705,6 +718,10 @@ export function backupPodOf(
     ],
   };
 }
+
+/** A backup pod's metadata: its labels, and its method's version. */
+export const backupMetadataOf = (labels: Labels, { backup }: Backed) =>
+  podMetadataOf(labels, [[BACKUP_CONTAINER, backup.methodVersion]]);
 
 /**
  * A backup CronJob per backed-up volume, at its class's schedule, pruned to
@@ -729,7 +746,10 @@ function backupsOf(
         concurrencyPolicy: "Forbid",
         jobTemplate: {
           spec: {
-            template: { metadata: { labels }, spec: backupPodOf(volume) },
+            template: {
+              metadata: backupMetadataOf(labels, volume),
+              spec: backupPodOf(volume),
+            },
           },
         },
       },

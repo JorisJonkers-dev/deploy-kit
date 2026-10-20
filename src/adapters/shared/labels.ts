@@ -35,3 +35,29 @@ export const instanceOf = (process: string): Labels => ({
 export const namespaceSelector = (namespace: string): Labels => ({
   "kubernetes.io/metadata.name": namespace,
 });
+
+/** The annotation that names one container's software version, by container name. */
+export const IMAGE_VERSION_ANNOTATION = "image.jorisjonkers.dev/";
+
+/**
+ * A pod template's metadata: its labels and, for each container whose image
+ * the lock records a version for, that version, sorted by container. Never a
+ * label: nothing selects on it, and a label cannot hold every version string.
+ */
+export const podMetadataOf = (
+  labels: Labels,
+  versions: readonly (readonly [string, string | undefined])[],
+): { readonly labels: Labels; readonly annotations?: Labels } => {
+  const known = versions
+    .filter(
+      (entry): entry is readonly [string, string] => entry[1] !== undefined,
+    )
+    .map(
+      ([container, version]) =>
+        [`${IMAGE_VERSION_ANNOTATION}${container}`, version] as const,
+    )
+    .sort(([a], [b]) => (a < b ? -1 : 1));
+  return known.length === 0
+    ? { labels }
+    : { labels, annotations: Object.fromEntries(known) };
+};

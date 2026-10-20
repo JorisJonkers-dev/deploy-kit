@@ -3,7 +3,11 @@
 // backup plan its Durability Class derives from the platform's policy for that
 // class and the method the platform names for the Process's engine.
 import type { EffectiveProcess } from "../model/effective-intent.ts";
-import type { ImagesLockDocument, LockedImage } from "../model/images-lock.ts";
+import {
+  type ImagesLockDocument,
+  type LockedImage,
+  versionOf,
+} from "../model/images-lock.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
 import {
@@ -83,6 +87,7 @@ function backupOf(
     retain: policy.retain as number,
     ...(offCluster === undefined ? {} : { offCluster: offCluster.destination }),
     method: `${image.repository}@${image.digest}`,
+    ...versionOf("methodVersion", image),
     uid: runAs.uid,
     gid: runAs.gid,
     identity,

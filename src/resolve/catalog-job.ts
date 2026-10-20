@@ -4,7 +4,7 @@
 // the method's own role, and some project on the estate path reads a database
 // from the datastore.
 import type { EffectiveProject } from "../model/effective-intent.ts";
-import type { LockedImage } from "../model/images-lock.ts";
+import { type LockedImage, versionOf } from "../model/images-lock.ts";
 import {
   dataRole,
   ownerRole,
@@ -112,6 +112,7 @@ export function resolveCatalogJobs(
             identity,
             namespace: home.namespace,
             image: `${image.repository}@${image.digest}`,
+            ...versionOf("imageVersion", image),
             uid: image.uid,
             gid: image.gid,
             role: vaultNameOf(home.namespace, identity),

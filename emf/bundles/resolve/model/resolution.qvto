@@ -228,6 +228,7 @@ mapping EffectiveApplication::migrationOf(in prj : EffectiveProject) : ResolvedM
 		var owned : String := prj.project;
 	}
 	runner := runnerImage.repository + '@' + runnerImage.digest;
+	runnerVersion := runnerImage.version;
 	uid := runnerImage.uid;
 	gid := runnerImage.gid;
 	if proven <> null and proven.testedAgainst <> null then testedAgainst := proven.testedAgainst endif;
@@ -303,6 +304,7 @@ query policyJobOf() : ResolvedPolicyJob =
 		identity := POLICY_JOB;
 		namespace := storePeers()->first().namespace;
 		image := own.repository + '@' + own.digest;
+		imageVersion := own.version;
 		uid := own.uid;
 		gid := own.gid;
 		role := estate.policyJob.role;
@@ -359,6 +361,7 @@ query catalogJobOf(prj : String, application : String, p : PI::Process) : Resolv
 		identity := named;
 		namespace := ns;
 		image := own.repository + '@' + own.digest;
+		imageVersion := own.version;
 		uid := own.uid;
 		gid := own.gid;
 		role := ns + '-' + named;
@@ -512,6 +515,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	identity := self.name;
 	lifecycle := self.lifecycle.spelling();
 	image := own.repository + '@' + own.digest;
+	imageVersion := own.version;
 	uid := own.uid;
 	gid := own.gid;
 	if self.cutover <> PI::Cutover::absent then cutover := self.cutover.resolvedCutover() endif;
@@ -571,6 +575,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	sidecars := self.sidecars->collect(c | object ResolvedSidecar {
 		name := c.name;
 		image := locked(c.image).repository + '@' + locked(c.image).digest;
+		imageVersion := locked(c.image).version;
 		memory := c.memory;
 		cpu := c.cpu;
 	});
@@ -750,6 +755,7 @@ query Volume::backupFor(p : PI::Process) : BackupPlan =
 		schedule := policy.schedule;
 		retain := policy.retain;
 		method := methodImage.repository + '@' + methodImage.digest;
+		methodVersion := methodImage.version;
 		uid := runAs.uid;
 		gid := runAs.gid;
 		identity := holder;
@@ -1019,6 +1025,7 @@ query vpnOf(p : PI::Process) : ResolvedVpn =
 		policy.settings->collect(e | Tuple{name = e.key, value = e.value})->asSequence() in
 	object ResolvedVpn {
 		image := locks.repository + '@' + locks.digest;
+		imageVersion := locks.version;
 		memory := policy.memory;
 		cpu := policy.cpu;
 		forwardedPort := p.vpn.forwardedPort;
@@ -1844,6 +1851,7 @@ query ResolvedApplication::elementJson(src : EffectiveApplication, prj : Effecti
 		Tuple{k = 'releaseGate', v = if self.releaseGate = null then null else self.releaseGate.json() endif},
 		Tuple{k = 'migration', v = if self.migration = null then null else obj(Sequence{
 			Tuple{k = 'runner', v = str(self.migration.runner)},
+			Tuple{k = 'runnerVersion', v = opt(self.migration.runnerVersion)},
 			Tuple{k = 'uid', v = num(self.migration.uid)},
 			Tuple{k = 'gid', v = num(self.migration.gid)},
 			Tuple{k = 'testedAgainst', v = opt(self.migration.testedAgainst)},
@@ -1942,6 +1950,7 @@ query ResolvedProcess::json() : String =
 		Tuple{k = 'runtime', v = str(self.component)},
 		Tuple{k = 'identity', v = str(self.identity)},
 		Tuple{k = 'image', v = str(self.image)},
+		Tuple{k = 'imageVersion', v = opt(self.imageVersion)},
 		Tuple{k = 'uid', v = num(self.uid)},
 		Tuple{k = 'gid', v = num(self.gid)},
 		Tuple{k = 'cutover', v = if self.oclAsType(ECORE::EObject).states('cutover')
@@ -1957,6 +1966,7 @@ query ResolvedProcess::json() : String =
 			Tuple{k = 'runtimeClass', v = str(self.gpu.runtimeClass)}}) endif},
 		Tuple{k = 'vpn', v = if self.vpn = null then null else obj(Sequence{
 			Tuple{k = 'image', v = str(self.vpn.image)},
+			Tuple{k = 'imageVersion', v = opt(self.vpn.imageVersion)},
 			Tuple{k = 'memory', v = str(self.vpn.memory)},
 			Tuple{k = 'cpu', v = str(self.vpn.cpu)},
 			Tuple{k = 'forwardedPort', v = bool(self.vpn.forwardedPort)},
@@ -2004,6 +2014,7 @@ query ResolvedProcess::json() : String =
 		Tuple{k = 'sidecars', v = if self.sidecars->isEmpty() then null else arr(self.sidecars->collect(x | obj(Sequence{
 			Tuple{k = 'name', v = str(x.name)},
 			Tuple{k = 'image', v = str(x.image)},
+			Tuple{k = 'imageVersion', v = opt(x.imageVersion)},
 			Tuple{k = 'memory', v = str(x.memory)},
 			Tuple{k = 'cpu', v = str(x.cpu)}}))) endif},
 		Tuple{k = 'dependencies', v = if self.dependencies->isEmpty() then null else arr(self.dependencies->collect(x | obj(Sequence{
@@ -2062,6 +2073,7 @@ query ResolvedVolume::json() : String = obj(Sequence{
 		Tuple{k = 'retain', v = num(self.backup.retain)},
 		Tuple{k = 'offCluster', v = opt(self.backup.offCluster)},
 		Tuple{k = 'method', v = str(self.backup.method)},
+		Tuple{k = 'methodVersion', v = opt(self.backup.methodVersion)},
 		Tuple{k = 'uid', v = num(self.backup.uid)},
 		Tuple{k = 'gid', v = num(self.backup.gid)},
 		Tuple{k = 'identity', v = str(self.backup.identity)},

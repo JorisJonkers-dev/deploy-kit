@@ -24,6 +24,8 @@ spec:
             app.kubernetes.io/part-of: docling-serve
             app.kubernetes.io/managed-by: deploy-kit
             app.kubernetes.io/component: none
+          annotations:
+            image.jorisjonkers.dev/backup: 1.2.0
         spec:
           serviceAccountName: docling-serve-backup
           automountServiceAccountToken: false

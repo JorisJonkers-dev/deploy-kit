@@ -19,7 +19,8 @@ LockedImage returns LockedImage:
 	(('repository' ':' repository=Text)
 	& ('digest' ':' digest=Text)
 	& ('uid' ':' uid=Port)
-	& ('gid' ':' gid=Port))
+	& ('gid' ':' gid=Port)
+	& ('version' ':' version=Text)?)
 	END;
 
 // Every keyword this document adds is also a scalar, as the project language's are.
@@ -28,4 +29,4 @@ Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword | ImagesLockKeyword;
 
 ImagesLockKeyword:
-	'digest' | 'gid' | 'images' | 'repository' | 'uid';
+	'digest' | 'gid' | 'images' | 'repository' | 'uid' | 'version';

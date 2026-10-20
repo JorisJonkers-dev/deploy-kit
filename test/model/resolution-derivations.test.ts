@@ -816,6 +816,7 @@ describe("a Process that attaches to the VPN", () => {
     expect(process.vpn).toStrictEqual({
       image:
         "docker.io/qmcgaw/gluetun@sha256:7e1f3c5a9b2d4f6e8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f",
+      imageVersion: "v3.40.0",
       memory: "128Mi",
       cpu: "50m",
       forwardedPort: true,

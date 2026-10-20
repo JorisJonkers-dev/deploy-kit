@@ -30,7 +30,7 @@
     through its one black box, and not the production implementation's digests,
     which are over a different shape (spec/v1/20-resolved-deployment.md#pinned-inputs).
   -->
-  <provenance renderHash="sha256:ecda0337a4ebf0a2dd61dbeeda89fcd5148bc32109b5a4a7f963aa4070685162" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+  <provenance renderHash="sha256:b5344a01b040e11b40499060b44b8a76b47a37d5ab3fd18c0396b260136cb024" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
     <inputDigests input="intent-fragment" name="delivery" digest="sha256:cd13dacfc2862f45b6976ff7ae33e3a8f492124704ac5241d93fa166b95a9ac3"/>
     <inputDigests input="intent-fragment" name="edge" digest="sha256:273c64ecd8c35ab69918664735661764e44e8e3ad04a58a11ab92dcb52ec1f4a"/>
     <inputDigests input="intent-fragment" name="notes" digest="sha256:18df1eade889398c265322d14889728749b999ab340d2d183efa04c8a3c0b29a"/>
@@ -38,7 +38,7 @@
     <inputDigests input="intent-fragment" name="secrets" digest="sha256:3b6b608aa89a7beebed377772c9905705861c2609f1c262a5ddcb757b70bcecc"/>
     <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:466a836dcafb0bb696dfda0bcc4ceacfed02dbb0acfe347b54d505483c0e136e"/>
     <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
-    <inputDigests input="images-lock" name="estate" digest="sha256:6bdb86ce8c3350f4067ce017805f25a9d1dd49702ee9ecbe993b83b4fa68b843"/>
+    <inputDigests input="images-lock" name="estate" digest="sha256:8badace7a70f3c9b57c613e6ca9bf1ce4b4a6382d4b331b1f09c44a0892d0667"/>
     <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
   </provenance>
 
@@ -57,7 +57,7 @@
   </policyJob>
   <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
 
-  <applications id="notes" revision="sha256:08cba86a5a74fdd40eb2e8baf0fc2c7120f1e0bd2f5949bb854b9d6270302d62" project="notes" namespace="notes-system"
+  <applications id="notes" revision="sha256:d8cb7f5ca6716414c4310c6708413739f79e7242ea97d2e98679624065536466" project="notes" namespace="notes-system"
       alertClass="business-hours" reconcileUnit="//@reconcileUnits.0">
     <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="180s">
       <!-- The Platform document's cadence, carried for the Release Gate. -->
@@ -86,6 +86,7 @@
 
     <processes name="notes-api" identity="notes-api" lifecycle="application"
         image="ghcr.io/jorisjonkers-dev/notes/notes-api@sha256:9c1e5a4b7d2f8e3a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a"
+        imageVersion="1.4.0"
         uid="1000" gid="1000" cutover="continuous" switchover="blue-green" deadline="180s" replicas="1"
         memory="256Mi" cpu="50m" hardening="restricted" identityToken="false"
         component="node">

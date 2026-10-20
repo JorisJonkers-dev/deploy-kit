@@ -12,7 +12,12 @@ import type { ResolvedProject } from "../../model/resolution.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";
 import type { Job } from "../../objects/kubernetes.ts";
 import { ROLLBACK_BACKUPS_DIRECTORY } from "../shared/paths.ts";
-import { ADAPTER, backupPodOf, backupsToRun } from "./render.ts";
+import {
+  ADAPTER,
+  backupMetadataOf,
+  backupPodOf,
+  backupsToRun,
+} from "./render.ts";
 
 /** The label that names the request a one-shot backup Job runs for. */
 export const BACKUP_REQUEST_LABEL = "estate.jorisjonkers.dev/rollback-backup";
@@ -41,7 +46,7 @@ export function renderRollbackBackups(
             backoffLimit: 0,
             activeDeadlineSeconds: BACKUP_DEADLINE_SECONDS,
             template: {
-              metadata: { labels: marked },
+              metadata: backupMetadataOf(marked, volume),
               spec: {
                 ...backupPodOf(volume, [
                   { name: "BACKUP_ROLLBACK", value: request },

@@ -1366,3 +1366,214 @@ describe("internet egress", () => {
     expect(internet(policy("hindsight", "hindsight-api"))).toStrictEqual([]);
   });
 });
+
+// Spec chapter 10, the label set: each container's software version, from the
+// images lock, on the pod template that runs it.
+describe("each container's software version", () => {
+  const LOCK = "platform/images.lock.yml";
+  const versioned = (alias: string, version: string) => (document: string) =>
+    document.replace(
+      new RegExp(`(\\n  ${alias}:\\n(?: {4}.*\\n)*? {4}gid: \\d+\\n)`),
+      `$1    version: "${version}"\n`,
+    );
+  const knowledgePlatform = (
+    edits: Readonly<Record<string, (text: string) => string>> = {},
+  ) => {
+    const result = renderIntentSet(
+      [
+        ...SET.filter((name) => !name.startsWith("minimal/")),
+        ...KNOWLEDGE_PLATFORM,
+      ].map((name) => ({
+        name,
+        text: (edits[name] ?? ((same: string) => same))(text(name)),
+      })),
+      { ...OPTIONS, projects: ["knowledge-platform"] },
+    );
+    if (!result.ok)
+      throw new Error(
+        JSON.stringify(result.diagnostics.map(({ code }) => code)),
+      );
+    return result.value;
+  };
+  const documents = (tree: Record<string, string>, path: string) =>
+    parseAllDocuments(tree[path] ?? "").map(
+      (doc) => doc.toJS() as Record<string, unknown>,
+    );
+  type Template = { metadata: { annotations?: Record<string, string> } };
+  const deploymentTemplate = (tree: Record<string, string>, path: string) =>
+    (
+      documents(tree, path).find(({ kind }) => kind === "Deployment") as {
+        spec: { template: Template };
+      }
+    ).spec.template;
+  const cronJobTemplate = (tree: Record<string, string>, path: string) =>
+    (
+      documents(tree, path).find(({ kind }) => kind === "CronJob") as {
+        spec: { jobTemplate: { spec: { template: Template } } };
+      }
+    ).spec.jobTemplate.spec.template;
+  const jobTemplates = (tree: Record<string, string>, path: string) =>
+    documents(tree, path)
+      .filter(({ kind }) => kind === "Job")
+      .map(({ spec }) => (spec as { template: Template }).template);
+
+  it("annotates the Process's container, its VPN and its sidecars with the version the lock records", () => {
+    const tree = asTree(artifact(knowledgePlatform(), "knowledge-platform"));
+
+    expect(
+      deploymentTemplate(tree, "apps/knowledge-platform/karakeep/workload.yaml")
+        .metadata.annotations,
+    ).toStrictEqual({
+      "image.jorisjonkers.dev/karakeep": "0.33.2",
+      "image.jorisjonkers.dev/meilisearch": "v1.41.0",
+      "image.jorisjonkers.dev/vpn": "v3.40.0",
+    });
+  });
+
+  it("annotates no container whose image the lock records no version for", () => {
+    const tree = asTree(artifact(knowledgePlatform(), "knowledge-platform"));
+
+    expect(
+      Object.keys(
+        deploymentTemplate(
+          tree,
+          "apps/knowledge-platform/karakeep/workload.yaml",
+        ).metadata.annotations ?? {},
+      ),
+    ).not.toContain("image.jorisjonkers.dev/chrome");
+    expect(
+      deploymentTemplate(
+        tree,
+        "apps/knowledge-platform/hindsight/workload.yaml",
+      ).metadata.annotations,
+    ).toBeUndefined();
+  });
+
+  it("annotates a backup's pod with its method's version", () => {
+    const tree = asTree(artifact(knowledgePlatform(), "knowledge-platform"));
+
+    expect(
+      cronJobTemplate(tree, "apps/knowledge-platform/karakeep/backup.yaml")
+        .metadata.annotations,
+    ).toStrictEqual({ "image.jorisjonkers.dev/backup": "1.2.0" });
+  });
+
+  it("annotates a migration's pods with its runner's version", () => {
+    const result = renderIntentSet(
+      [
+        ...SET.filter((name) => !name.startsWith("minimal/")),
+        "auth/auth.project.yml",
+        "auth/env/auth-api/base.env",
+        "auth/migration-proof.yml",
+      ].map((name) => ({
+        name,
+        text:
+          name === LOCK
+            ? versioned("auth-migration", "0.2.0")(text(name))
+            : text(name),
+      })),
+      { ...OPTIONS, projects: ["auth"] },
+    );
+    const tree = asTree(artifact(result.ok ? result.value : [], "auth"));
+    const templates = jobTemplates(tree, "apps/auth/auth/migration.yaml");
+
+    expect(templates.length).toBeGreaterThan(0);
+    expect(
+      templates.map(({ metadata }) =>
+        Object.values(metadata.annotations ?? {}),
+      ),
+    ).toStrictEqual(templates.map(() => ["0.2.0"]));
+  });
+
+  it("annotates the Vault policy job's pods with its image's version", () => {
+    const tree = asTree(
+      artifact(
+        render({ [LOCK]: versioned("vault-policy", "0.9.0") }, [
+          "notes",
+          "data",
+        ]),
+        "_estate",
+      ),
+    );
+
+    expect(
+      [
+        ...jobTemplates(tree, "estate/vso-secrets/job.yaml"),
+        cronJobTemplate(tree, "estate/vso-secrets/cronjob.yaml"),
+      ].map(({ metadata }) => metadata.annotations),
+    ).toStrictEqual([
+      { "image.jorisjonkers.dev/vault-policy": "0.9.0" },
+      { "image.jorisjonkers.dev/vault-policy": "0.9.0" },
+    ]);
+  });
+
+  it("annotates a database catalog's pod with its method's version", () => {
+    const tree = asTree(
+      artifact(
+        knowledgePlatform({ [LOCK]: versioned("postgres-catalog", "1.0.1") }),
+        "_estate",
+      ),
+    );
+
+    expect(
+      jobTemplates(tree, "estate/vso-secrets/postgres-catalog.yaml").map(
+        ({ metadata }) => metadata.annotations,
+      ),
+    ).toStrictEqual([{ "image.jorisjonkers.dev/postgres-catalog": "1.0.1" }]);
+  });
+
+  it("adds nothing to a digest's move but the annotation on the pod template that runs it, whose release moves anyway", () => {
+    const moved = (version: boolean) =>
+      asTree(
+        artifact(
+          render({
+            [LOCK]: (document) => {
+              const digest = document.replace(
+                "sha256:9c1e5a4b7d2f8e3a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a",
+                "sha256:0c1e5a4b7d2f8e3a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a",
+              );
+              return version
+                ? digest.replace('version: "1.4.0"', 'version: "1.5.0"')
+                : digest;
+            },
+          }),
+          "notes",
+        ),
+      );
+    const before = asTree(artifact(render(), "notes"));
+    const digestOnly = moved(false);
+    const both = moved(true);
+    const changed = (tree: Record<string, string>) =>
+      Object.keys(tree).filter((path) => tree[path] !== before[path]);
+    const lines = (tree: Record<string, string>) =>
+      (tree["apps/notes/notes/workload.yaml"] ?? "").split("\n");
+
+    expect(changed(both)).toStrictEqual(changed(digestOnly));
+    expect(
+      lines(both).filter((line) => !lines(digestOnly).includes(line)),
+    ).toStrictEqual(["        image.jorisjonkers.dev/notes-api: 1.5.0"]);
+  });
+
+  it("refuses an engine's image whose version is not major.minor.patch", () => {
+    const result = renderIntentSet(
+      files({ [LOCK]: versioned("postgres", "pg17") }),
+      { ...OPTIONS, projects: ["data"] },
+    );
+
+    expect(result.ok ? [] : result.diagnostics).toStrictEqual([
+      expect.objectContaining({
+        code: "E_ENGINE_VERSION_MISSING",
+        document: "data/data.project.yml",
+      }),
+    ]);
+  });
+
+  it("accepts an engine's image whose version is major.minor.patch", () => {
+    const result = renderIntentSet(
+      files({ [LOCK]: versioned("postgres", "17.2.0") }),
+      { ...OPTIONS, projects: ["data"] },
+    );
+
+    expect(result.ok).toBe(true);
+  });
+});

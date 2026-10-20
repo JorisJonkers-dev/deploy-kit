@@ -419,6 +419,7 @@ images:
     digest: "sha256:9c1e…"
     uid: 1000
     gid: 1000
+    version: "1.4.0"
   postgres:
     repository: docker.io/library/postgres
     digest: "sha256:4f2a…"
@@ -431,12 +432,22 @@ One entry per image alias a document names, keyed by the alias. It resolves the
 alias to one image, written `<repository>@<digest>` wherever it is rendered, and
 records the user the image runs as, which the hardening posture needs and no
 Process authors ([chapter 10](10-project-intent.md#the-uid-is-a-pinned-input-and-the-volume-needs-a-group)).
-An image a Process with an `engine` runs also records its `version`, the
-release the digest was resolved from, as `major.minor.patch`: it is the one
-fact a [Move](#the-move) is derived from that a digest cannot carry, and an
-engine Process whose image the lock holds without one is
-`E_ENGINE_VERSION_MISSING`. A version is recorded, never authored: bumping it
-is moving the digest, which is the one edit a provider's owner makes.
+Any entry may also record its `version`: the version of the software inside
+the image, as that software's own release names it (`6.3.0.10514-ls314`,
+`v3.7.12`). For an image built on an upstream base it is the base's version,
+never the wrapping repository's release; the image build stamps it as the
+image's `org.opencontainers.image.version` label, and publish reads it back
+into the lock. The render writes it on every pod that runs the image
+([chapter 10](10-project-intent.md#the-label-set)). An entry without one is not
+refused yet, and renders no annotation.
+
+An image a Process with an `engine` runs records its `version` as
+`major.minor.patch`, the release the digest was resolved from: it is the one
+fact a [Move](#the-move) is derived from that a digest cannot carry. An engine
+Process whose image the lock records with a version of any other shape is
+`E_ENGINE_VERSION_MISSING`, at the Process's `image`. A version is recorded,
+never authored: bumping it is moving the digest, which is the one edit a
+provider's owner makes, so a version only ever changes with its digest.
 An alias a Process or a sidecar names that the lock holds no entry for is
 `E_UNLOCKED_IMAGE`, at that `image`: a tag cannot stand in for it, because a tag
 is the mutable reference this lock exists to remove.

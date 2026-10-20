@@ -236,6 +236,37 @@ describe("the union of every share", () => {
     expect(union).toMatchObject({ ok: true, value: { images: shared } });
   });
 
+  it("keeps the version one share records of an image another share locks without one", () => {
+    const versioned = { ...image("d"), version: "0.33.2" };
+    for (const shares of [
+      [
+        share("notes", true, { karakeep: image("d") }),
+        share("auth", true, { karakeep: versioned }),
+      ],
+      [
+        share("notes", true, { karakeep: versioned }),
+        share("auth", true, { karakeep: image("d") }),
+      ],
+    ])
+      expect(unionOf(shares, "estate", "1.0.0")).toMatchObject({
+        ok: true,
+        value: { images: { karakeep: versioned } },
+      });
+  });
+
+  it("refuses an alias two shares lock to one digest at different versions", () => {
+    expect(
+      refusedAt([
+        share("_platform", false, {
+          karakeep: { ...image("d"), version: "0.33.2" },
+        }),
+        share("notes", true, {
+          karakeep: { ...image("d"), version: "0.34.0" },
+        }),
+      ]),
+    ).toEqual(["notes/images.lock.yml#/images/karakeep"]);
+  });
+
   it("refuses an alias locked differently in any of the four things a lock records", () => {
     const base = image("a");
     for (const other of [
@@ -307,7 +338,7 @@ describe("the union of every share", () => {
           document: "notes/images.lock.yml",
           path: "/images/notes-api",
           message: `notes-api is locked to ghcr.io/jorisjonkers-dev/notes/notes-api@${digest("b")} as 1001:1002 here, and to ghcr.io/jorisjonkers-dev/notes/notes-api@${digest("a")} as 1000:1000 in _platform/images.lock.yml`,
-          hint: "One alias resolves to one image estate-wide: lock the same digest, uid and gid, or name another alias.",
+          hint: "One alias resolves to one image estate-wide: lock the same digest, uid, gid and version, or name another alias.",
         },
       ],
     });

@@ -288,6 +288,8 @@ const backupPlan = z
     retain: count,
     offCluster: text.exactOptional(),
     method: text,
+    // The software version the images lock records for the method's image.
+    methodVersion: text.exactOptional(),
     uid: count,
     gid: count,
     identity: text,
@@ -374,6 +376,7 @@ const resolvedGpu = z
 const resolvedVpn = z
   .strictObject({
     image: text,
+    imageVersion: text.exactOptional(),
     memory: text,
     cpu: text,
     forwardedPort: z.boolean(),
@@ -392,7 +395,13 @@ const resolvedAsset = z
 
 // A container beside the Process in its pod, its image pinned by digest.
 const resolvedSidecar = z
-  .strictObject({ name: text, image: text, memory: text, cpu: text })
+  .strictObject({
+    name: text,
+    image: text,
+    imageVersion: text.exactOptional(),
+    memory: text,
+    cpu: text,
+  })
   .meta({ id: "ResolvedSidecar" });
 
 const policyPeer = z
@@ -499,6 +508,9 @@ const resolvedProcess = stated(
     runtime,
     identity: text,
     image: text,
+    // The software version the images lock records for the image, where it
+    // records one: what the render writes on the pod, never what it selects on.
+    imageVersion: text.exactOptional(),
     uid: count,
     gid: count,
     // Absent on a `lifecycle: prepare` Process: it runs once and cuts over
@@ -678,6 +690,7 @@ const migratedDatabase = z
 const resolvedMigration = z
   .strictObject({
     runner: text,
+    runnerVersion: text.exactOptional(),
     uid: count,
     gid: count,
     testedAgainst: digest.exactOptional(),
@@ -798,6 +811,7 @@ const resolvedPolicyJob = z
     identity: text,
     namespace: text,
     image: text,
+    imageVersion: text.exactOptional(),
     uid: count,
     gid: count,
     // The Vault role the job logs in as, a platform fixture.
@@ -822,6 +836,7 @@ const resolvedCatalogJob = z
     identity: text,
     namespace: text,
     image: text,
+    imageVersion: text.exactOptional(),
     uid: count,
     gid: count,
     // The Vault role the method logs in as: its own, which the render writes.

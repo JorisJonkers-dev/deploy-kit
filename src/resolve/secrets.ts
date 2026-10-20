@@ -4,7 +4,11 @@
 // content-hashed name an edit changes, and each sidecar's image by digest.
 import type { EffectiveProcess } from "../model/effective-intent.ts";
 import type { Hasher } from "../model/hasher.ts";
-import type { ImagesLockDocument, LockedImage } from "../model/images-lock.ts";
+import {
+  type ImagesLockDocument,
+  type LockedImage,
+  versionOf,
+} from "../model/images-lock.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
 import { notSupported } from "../model/internal-failure.ts";
 import {
@@ -139,6 +143,7 @@ export const resolveSidecars = (
     return {
       name,
       image: `${locked.repository}@${locked.digest}`,
+      ...versionOf("imageVersion", locked),
       memory,
       cpu,
     };

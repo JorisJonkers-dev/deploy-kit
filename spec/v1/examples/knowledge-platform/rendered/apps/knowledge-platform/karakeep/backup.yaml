@@ -24,6 +24,8 @@ spec:
             app.kubernetes.io/part-of: karakeep
             app.kubernetes.io/managed-by: deploy-kit
             app.kubernetes.io/component: none
+          annotations:
+            image.jorisjonkers.dev/backup: 1.2.0
         spec:
           serviceAccountName: karakeep-backup
           automountServiceAccountToken: false

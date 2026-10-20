@@ -1,6 +1,7 @@
 // The images lock (spec/v1/20-resolved-deployment.md#the-images-lock): every
-// image alias a document names, resolved to one digest and the user the image
-// runs as. A pinned input, carried by digest; nothing authored names a tag.
+// image alias a document names, resolved to one digest, the user the image
+// runs as and, where recorded, the version of the software in it. A pinned
+// input, carried by digest; nothing authored names a tag.
 import { z } from "zod";
 import type { EffectiveProject } from "./effective-intent.ts";
 import { migrationImage } from "./migration-proof.ts";
@@ -13,6 +14,7 @@ const lockedImage = z.strictObject({
   digest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
   uid: id,
   gid: id,
+  version: text.exactOptional(),
 });
 
 export const imagesLock = z.strictObject({
@@ -47,9 +49,27 @@ export const aliasesOf = (project: EffectiveProject): string[] =>
     ),
   ].sort();
 
-/** Whether two locks of one alias resolve it to the same image, run as the same user. */
+/**
+ * Whether two locks of one alias resolve it to the same image, run as the same
+ * user. A version one of them does not record is no disagreement.
+ */
 export const sameImage = (a: LockedImage, b: LockedImage): boolean =>
   a.repository === b.repository &&
   a.digest === b.digest &&
   a.uid === b.uid &&
-  a.gid === b.gid;
+  a.gid === b.gid &&
+  (a.version === undefined ||
+    b.version === undefined ||
+    a.version === b.version);
+
+/** The version an engine's Move is derived from: `major.minor.patch`. */
+export const ENGINE_VERSION = /^\d+\.\d+\.\d+$/;
+
+/** The locked version beside a resolved image, under `key`, where the lock records one. */
+export const versionOf = <K extends string>(
+  key: K,
+  { version }: LockedImage,
+): Partial<Record<K, string>> =>
+  version === undefined
+    ? {}
+    : ({ [key]: version } as Partial<Record<K, string>>);

@@ -467,6 +467,10 @@
       metadata:
         labels:
           [d.application.migration.identity.labelSet('none', d.application.id)/]
+  [if (d.application.migration.runnerVersion <> null)]
+          annotations:
+            image.jorisjonkers.dev/migration: [d.application.migration.runnerVersion.scalar()/]
+  [/if]
       spec:
         serviceAccountName: [d.application.migration.identity/]
         automountServiceAccountToken: true
@@ -582,6 +586,12 @@
       metadata:
         labels:
           [p.labels()/]
+  [if (p.versioned()->notEmpty())]
+          annotations:
+    [for (n : String | p.versioned())]
+              image.jorisjonkers.dev/[n/]: [p.versionOf(n).scalar()/]
+    [/for]
+  [/if]
       spec:
         serviceAccountName: [p.identity/]
         automountServiceAccountToken: [p.identityToken/]
@@ -1109,6 +1119,10 @@
           metadata:
             labels:
               [b.identity.labelSet('none', p.application().id)/]
+  [if (b.methodVersion <> null)]
+              annotations:
+                image.jorisjonkers.dev/backup: [b.methodVersion.scalar()/]
+  [/if]
           spec:
             serviceAccountName: [b.identity/]
             automountServiceAccountToken: false
@@ -1362,6 +1376,10 @@
   metadata:
     labels:
       [d.job.identity.labelSet('none', d.job.identity)/]
+  [if (d.job.imageVersion <> null)]
+      annotations:
+        image.jorisjonkers.dev/[d.job.identity/]: [d.job.imageVersion.scalar()/]
+  [/if]
   spec:
     serviceAccountName: [d.job.identity/]
     automountServiceAccountToken: true
@@ -1518,6 +1536,10 @@
   metadata:
     labels:
       [d.job.identity.labelSet('none', d.job.identity)/]
+  [if (d.job.imageVersion <> null)]
+      annotations:
+        image.jorisjonkers.dev/[d.job.identity/]: [d.job.imageVersion.scalar()/]
+  [/if]
   spec:
     serviceAccountName: [d.job.identity/]
     automountServiceAccountToken: true
@@ -1753,6 +1775,18 @@
 [/template]
 
 [comment ============================================================= queries /]
+
+[comment The containers of a Process's pod whose image the lock records a version for, by name. /]
+[query private versioned(p : resolveddeployment::ResolvedProcess) : Sequence(String) =
+  (if p.imageVersion = null then Sequence{} else Sequence{p.name} endif)
+    ->concat(p.sidecars->select(c | c.imageVersion <> null)->collect(c | c.name))
+    ->concat(if p.vpn = null or p.vpn.imageVersion = null then Sequence{} else Sequence{'vpn'} endif)
+    ->sortedBy(n | n) /]
+
+[query private versionOf(p : resolveddeployment::ResolvedProcess, n : String) : String =
+  if n = p.name then p.imageVersion
+  else if p.sidecars->exists(c | c.name = n) then p.sidecars->select(c | c.name = n)->first().imageVersion
+  else p.vpn.imageVersion endif endif /]
 
 [query private application(p : resolveddeployment::ResolvedProcess) : resolveddeployment::ResolvedApplication =
   p.eContainer().oclAsType(resolveddeployment::ResolvedApplication) /]
