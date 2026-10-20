@@ -91,6 +91,7 @@ and linted by the same script with `emf` as its root.
 | [0108](model/0108-the-runner-lints-a-release-and-bounds-its-locks.md) | The runner lints a release's SQL and bounds every lock it waits for, so a migration fails in CI or gives up instead of stalling | open |
 | [0109](model/0109-a-consumer-reaches-its-provider-by-its-application-id.md) | A consumer reaches its provider by the provider's Application Id, through an alias in its own namespace | open |
 | [0110](model/0110-a-route-may-bound-its-request-rate.md) | A route may bound how many requests one client sends it, and the tier decides who the client is | open |
+| [0112](model/0112-east-west-traffic-is-mutually-authenticated-by-an-ambient-mesh.md) | East-west traffic is mutually authenticated by an ambient mesh, Istio's ztunnel on every node, and Kiali shows who reaches whom | open |
 | [0027](model/0027-prepare-processes-are-forward-only-setup.md) | A prepare Process is forward-only setup that runs after the migration and before the new version, and serves nothing | open |
 
 ## Secrets

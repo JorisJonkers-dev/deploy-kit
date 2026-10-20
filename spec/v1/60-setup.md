@@ -310,6 +310,34 @@ bundled controller disabled, interrupting east-west traffic on the machine that
 also runs the datastore, which is why it is a recorded platform fact and a
 scheduled operation, not a step in a bootstrap script.
 
+## Service mesh
+
+East-west traffic between Processes is plaintext and unauthenticated today:
+bytes between nodes ride the nodes' WireGuard tunnels, but no connection
+carries an identity, and bytes on one node carry nothing at all. The direction
+is an **ambient mesh**, Istio in ambient mode, with Kiali as its traffic view
+([0112](../../docs/adr/model/0112-east-west-traffic-is-mutually-authenticated-by-an-ambient-mesh.md)).
+
+| part | platform fact |
+|---|---|
+| data plane | one `ztunnel` and one `istio-cni` agent per node, no sidecar in any Process; a namespace is the unit of enrolment |
+| control plane | `istiod`, placed on the amd64 nodes only |
+| certificate authority | istiod's built-in CA; workload certificates are issued per ServiceAccount |
+| traffic view | Kiali, view-only, so nothing but Flux changes a mesh object; sign-in by OpenID, reusing the API server's existing OIDC client until the estate's identity Application replaces it |
+| not enrolled | `kube-system`, `istio-system`, `flux-system`; every admission-webhook Process the API server calls; qBittorrent, whose VPN sidecar routes replies around the node's ztunnel |
+| crypto cost | every enrolled byte is AES-GCM; the Raspberry Pi 4 nodes have no AES instructions and pay about one core per 560 Mbit/s, accepted for the frontends and controllers they run |
+
+| | state |
+|---|---|
+| **Status** | open decision, direction fixed, fit unproven ([0112](../../docs/adr/model/0112-east-west-traffic-is-mutually-authenticated-by-an-ambient-mesh.md)) |
+| **Owner** | joris |
+| **Settled by** | the five drills in [`docs/research/service-mesh.md`](../../docs/research/service-mesh.md#drills): install on one amd64 node and one Pi; ztunnel's memory on a Pi over 24 h; a consumer reaching an enrolled provider through its [alias](16-dependencies.md#the-alias) with the hop shown as mutual TLS; the ingress hop from Traefik; then every eligible namespace permissive until **zero plaintext inbound connections over 14 days**, and strict for 14 more |
+| **Blocks** | enrolling any namespace. No namespace is enrolled while a NetworkPolicy that selects its Processes admits ingress on application ports alone, since an enrolled peer arrives on the mesh's tunnel port instead |
+| **Does not block** | v1 rendering. Nothing mesh-specific enters a rendered artefact until the claim settles |
+
+The per-node pair is a placement fact like the CNI agent's: its sampled memory
+comes out of the same reserve the [node contract](#node-facts) publishes.
+
 ## Blueprint packs
 
 There are none. The foundation the packs delivered (41 objects copied from
