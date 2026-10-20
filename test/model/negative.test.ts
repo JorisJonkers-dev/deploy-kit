@@ -424,4 +424,57 @@ ${process(
       })),
     );
   });
+
+  /** The alias refusals a consumer Project draws against the given providers. */
+  const collisions = (providers: string, consumer: string) => {
+    const refused = checkIntentSet([
+      ...FOUNDATION,
+      fragment("elsewhere", providers),
+      fragment("notes", consumer),
+    ]);
+    return (refused.ok ? [] : refused.diagnostics)
+      .filter(({ code }) => code === "E_ALIAS_COLLISION")
+      .map(({ path, message }) => ({ path, message }));
+  };
+  const CONSUMER = (dependsOn: string, extra = "") => `  - id: notes
+    processes:
+${process("notes-api", "{ http: 8080 }", `        dependsOn:\n          - { application: ${dependsOn}, surface: http }\n`)}${extra}`;
+
+  it.each(["notes-api-primary", "notes-api-canary"])(
+    "refuses an alias that takes the name of a copy Flagger makes, %s",
+    (alias) => {
+      expect(
+        collisions(
+          `  - id: ${alias}
+    processes:
+${process("relay", "{ http: 8082 }")}`,
+          CONSUMER(alias),
+        ),
+      ).toStrictEqual([
+        {
+          path: "/applications/0/processes/0/dependsOn/0",
+          message: `this edge's alias ${alias} is a Service notes already renders`,
+        },
+      ]);
+    },
+  );
+
+  it("does not refuse an alias that takes the name of a Process with no surface, which no Service reaches", () => {
+    expect(
+      collisions(
+        `  - id: worker
+    processes:
+${process("relay", "{ http: 8082 }")}`,
+        CONSUMER(
+          "worker",
+          `      - name: worker
+        lifecycle: application
+        image: notes-api
+        runtime: node
+        placement: { memory: 64Mi, cpu: 10m }
+`,
+        ),
+      ),
+    ).toStrictEqual([]);
+  });
 });
