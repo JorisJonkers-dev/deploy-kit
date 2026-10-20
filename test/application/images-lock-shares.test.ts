@@ -265,6 +265,21 @@ describe("the union of every share", () => {
         }),
       ]),
     ).toEqual(["notes/images.lock.yml#/images/karakeep"]);
+    const union = unionOf(
+      [
+        share("_platform", false, {
+          karakeep: { ...image("d"), version: "0.33.2" },
+        }),
+        share("notes", true, {
+          karakeep: { ...image("d"), version: "0.34.0" },
+        }),
+      ],
+      "estate",
+      "1.0.0",
+    );
+    expect(union.ok ? "" : union.diagnostics[0]?.message).toMatch(
+      /at 0\.34\.0 here, and to .* at 0\.33\.2 in _platform/,
+    );
   });
 
   it("refuses an alias locked differently in any of the four things a lock records", () => {

@@ -1478,11 +1478,9 @@ describe("each container's software version", () => {
     const templates = jobTemplates(tree, "apps/auth/auth/migration.yaml");
 
     expect(templates.length).toBeGreaterThan(0);
-    expect(
-      templates.map(({ metadata }) =>
-        Object.values(metadata.annotations ?? {}),
-      ),
-    ).toStrictEqual(templates.map(() => ["0.2.0"]));
+    expect(templates.map(({ metadata }) => metadata.annotations)).toStrictEqual(
+      templates.map(() => ({ "image.jorisjonkers.dev/migration": "0.2.0" })),
+    );
   });
 
   it("annotates the Vault policy job's pods with its image's version", () => {
@@ -1564,6 +1562,9 @@ describe("each container's software version", () => {
       expect.objectContaining({
         code: "E_ENGINE_VERSION_MISSING",
         document: "data/data.project.yml",
+        message:
+          "the images lock records postgres's version as pg17, not major.minor.patch",
+        hint: "Record the release the digest was resolved from as major.minor.patch.",
       }),
     ]);
   });
