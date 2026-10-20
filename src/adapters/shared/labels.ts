@@ -39,6 +39,11 @@ export const namespaceSelector = (namespace: string): Labels => ({
 /** The annotation that names one container's software version, by container name. */
 export const IMAGE_VERSION_ANNOTATION = "image.jorisjonkers.dev/";
 
+type Annotation = readonly [string, string];
+// No two containers in a pod share a name, so `<=` would order the same list.
+// Stryker disable next-line EqualityOperator
+const byKey = ([a]: Annotation, [b]: Annotation): number => (a < b ? -1 : 1);
+
 /**
  * A pod template's metadata: its labels and, for each container whose image
  * the lock records a version for, that version, sorted by container. Never a
@@ -56,7 +61,7 @@ export const podMetadataOf = (
       ([container, version]) =>
         [`${IMAGE_VERSION_ANNOTATION}${container}`, version] as const,
     )
-    .sort(([a], [b]) => (a < b ? -1 : 1));
+    .sort(byKey);
   return known.length === 0
     ? { labels }
     : { labels, annotations: Object.fromEntries(known) };

@@ -1562,6 +1562,7 @@ describe("each container's software version", () => {
       expect.objectContaining({
         code: "E_ENGINE_VERSION_MISSING",
         document: "data/data.project.yml",
+        path: "/applications/0/processes/0/image",
         message:
           "the images lock records postgres's version as pg17, not major.minor.patch",
         hint: "Record the release the digest was resolved from as major.minor.patch.",
@@ -1573,6 +1574,18 @@ describe("each container's software version", () => {
     const result = renderIntentSet(
       files({ [LOCK]: versioned("postgres", "17.2.0") }),
       { ...OPTIONS, projects: ["data"] },
+    );
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("accepts any version on an image no engine runs", () => {
+    const result = renderIntentSet(
+      files({
+        [LOCK]: (document) =>
+          document.replace('version: "1.4.0"', 'version: "2024.10"'),
+      }),
+      OPTIONS,
     );
 
     expect(result.ok).toBe(true);
