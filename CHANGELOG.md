@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.25.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.24.1...v0.25.0) (2026-10-20)
+
+
+### Features
+
+* a route may bound how many requests one client sends it ([#512](https://github.com/JorisJonkers-dev/deploy-kit/issues/512)) ([5dec854](https://github.com/JorisJonkers-dev/deploy-kit/commit/5dec85478759d16afb24054b54b07cd0419a66da))
+
+
+### Bug Fixes
+
+* **deps:** update minor and patch dependencies ([#510](https://github.com/JorisJonkers-dev/deploy-kit/issues/510)) ([d959f2f](https://github.com/JorisJonkers-dev/deploy-kit/commit/d959f2fa7cd1dbee9c8fc7d85f804e591b61e215))
+* **model:** start a gated member only after the stop-start Processes it requires in its own Project ([#519](https://github.com/JorisJonkers-dev/deploy-kit/issues/519)) ([be7b1a9](https://github.com/JorisJonkers-dev/deploy-kit/commit/be7b1a9ff8d560a0cefc9cb3acf85a93723c010b))
+
 ## [0.24.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.24.0...v0.24.1) (2026-10-20)
 
 
