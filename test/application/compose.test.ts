@@ -342,6 +342,75 @@ describe("composeEstate", () => {
     ).toBe(false);
   });
 
+  it("moves the pin of a Project whose pinned artifact labels no release, though its render did not change", () => {
+    const pins = pinned(FIRST);
+    const again = after({
+      pins: { ...pins, notes: { ...(pins["notes"] as Pin), labelled: null } },
+    });
+    const notes = again.artifacts.find(({ name }) => name === "notes");
+
+    expect(notes?.moves).toBe(true);
+    expect(
+      (
+        parse(
+          notes?.files.find(
+            ({ path }) => path === "apps/notes/kustomization.yaml",
+          )?.text ?? "",
+        ) as { patches?: unknown }
+      ).patches,
+    ).toStrictEqual(versionPatches("1.0.0"));
+    expect(notes?.rollout?.version).toBe("1.0.0");
+  });
+
+  it("moves no pin of a Project whose pinned artifact labels its release, and whose render did not change", () => {
+    const pins = pinned(FIRST);
+    const again = after({
+      pins: {
+        ...pins,
+        notes: { ...(pins["notes"] as Pin), labelled: "1.0.0" },
+      },
+    });
+
+    expect(again.artifacts.find(({ name }) => name === "notes")?.moves).toBe(
+      false,
+    );
+  });
+
+  it("holds the pin of a paused Project whose pinned artifact labels no release", () => {
+    const pins = pinned(FIRST, { notes: PAUSE });
+    const again = after({
+      pins: { ...pins, notes: { ...(pins["notes"] as Pin), labelled: null } },
+    });
+
+    expect(again.artifacts.find(({ name }) => name === "notes")?.moves).toBe(
+      false,
+    );
+  });
+
+  it("moves no pin of the estate-scoped artifact, which labels no release", () => {
+    // With no Project left on the old path, the estate-scoped artifact exists.
+    const platform = {
+      ...PLATFORM,
+      files: PLATFORM.files.map((file) =>
+        file.name === "platform.intent.yml"
+          ? { ...file, text: withLedger(file.text, "") }
+          : file,
+      ),
+    };
+    const pins = pinned(compose({ platform }));
+    const again = compose({
+      platform,
+      pins: {
+        ...pins,
+        _estate: { ...(pins["_estate"] as Pin), labelled: null },
+      },
+    });
+
+    expect(again.artifacts.find(({ name }) => name === "_estate")?.moves).toBe(
+      false,
+    );
+  });
+
   it("composes the same estate whatever order the fragments were pulled in", () => {
     expect(compose({ fragments: [...RELEASES].reverse() })).toEqual(FIRST);
   });

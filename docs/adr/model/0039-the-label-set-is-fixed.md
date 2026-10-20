@@ -55,7 +55,11 @@ rolled every pod twice that way on 2026-10-18, once with the old image and the
 new label, then with the new image
 ([#487](https://github.com/JorisJonkers-dev/deploy-kit/issues/487)). In the
 artifact, the label lands in the one fetch that brings the new image. It is
-never a selector, since it moves with every release.
+never a selector, since it moves with every release. A pin whose artifact
+labels no release, because an older toolkit published it, moves once to one
+that does, though its render is unchanged: otherwise a Project that released
+nothing new since kept pods that said no release at all, which arr and
+home-portal did on 2026-10-19.
 
 An estate-scoped Deliverable carries `managed-by` only. It belongs to no
 Process and no Application, and `part-of` on the Gatus endpoints ConfigMap would

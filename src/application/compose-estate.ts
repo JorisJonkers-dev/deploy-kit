@@ -74,6 +74,13 @@ export interface Fragment {
 export interface Pin {
   readonly contentHash: string;
   readonly annotations: PinAnnotationsDocument;
+  /**
+   * The release the pinned artifact labels its pods with, read from its unit's
+   * index: `null` where it labels none, absent where the caller did not read it.
+   * A Project's pin whose artifact labels none moves, so every pod a pin
+   * applies says which release it runs.
+   */
+  readonly labelled?: string | null;
 }
 
 export interface ComposeInput {
@@ -637,15 +644,18 @@ function composition(
   const published = platformOf(input.platform).bootstrap.flux.artifacts;
   const artifacts = rendered.map(({ name, files }): ComposedArtifact => {
     const contentHash = hash(files.map(({ path, text }) => ({ path, text })));
-    // An unchanged render publishes nothing, and a paused Project moves no
-    // pin, save to the release a Rollback composed it at.
-    const moves =
-      (!held(name, PIN_ANNOTATIONS.pausedBy) ||
-        held(name, PIN_ANNOTATIONS.rollbackFragment)) &&
-      input.pins[name]?.contentHash !== contentHash;
     // A Project's artifact is rendered from the fragment it composed at,
     // which is the release its pin moves to.
     const released = candidates.get(name)?.manifest;
+    // An unchanged render publishes nothing, save where the pinned artifact
+    // labels no release, and a paused Project moves no pin, save to the
+    // release a Rollback composed it at.
+    const pin = input.pins[name];
+    const unlabelled = released !== undefined && pin?.labelled === null;
+    const moves =
+      (!held(name, PIN_ANNOTATIONS.pausedBy) ||
+        held(name, PIN_ANNOTATIONS.rollbackFragment)) &&
+      (pin?.contentHash !== contentHash || unlabelled);
     const resolved = projects.find(({ project }) => project === name);
     const url = resolved === undefined ? undefined : rolloutUrlOf(resolved);
     // The estate-scoped artifact is no fragment's, so it carries no release.
