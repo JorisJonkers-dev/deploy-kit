@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.26.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.25.0...v0.26.0) (2026-10-20)
+
+
+### Features
+
+* **model:** every images-lock entry may carry its version, and the render writes it on each pod ([#518](https://github.com/JorisJonkers-dev/deploy-kit/issues/518)) ([130d034](https://github.com/JorisJonkers-dev/deploy-kit/commit/130d034d2cf86e5af3cbf9d5c8f4d8cf3a9f463d))
+
+
+### Bug Fixes
+
+* **model:** the restricted posture forbids privilege escalation ([#524](https://github.com/JorisJonkers-dev/deploy-kit/issues/524)) ([110fb66](https://github.com/JorisJonkers-dev/deploy-kit/commit/110fb66bf484e22559dc844da06838a37a547e08))
+* **tooling:** local link lint and pr-report test agree with CI ([#522](https://github.com/JorisJonkers-dev/deploy-kit/issues/522)) ([49be0b1](https://github.com/JorisJonkers-dev/deploy-kit/commit/49be0b11512b382258ec4496c8ae53942847e1d9)), closes [#515](https://github.com/JorisJonkers-dev/deploy-kit/issues/515)
+
 ## [0.25.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.24.1...v0.25.0) (2026-10-20)
 
 
