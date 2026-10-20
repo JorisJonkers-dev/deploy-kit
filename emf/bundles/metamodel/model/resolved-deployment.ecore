@@ -530,6 +530,12 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="contentPolicy" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="endpoint" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="redirectTo" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- A rate-limit step: the route's allowance and period, the derived burst,
+         and the address its tier counts a client by. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="allowance" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="per" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="burst" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="clientAddress" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <!-- ============================================ the generated resources -->
@@ -798,6 +804,7 @@
     <eLiterals name="forwardAuth" literal="forward-auth"/>
     <eLiterals name="securityHeaders" value="1" literal="security-headers"/>
     <eLiterals name="redirect" value="2" literal="redirect"/>
+    <eLiterals name="rateLimit" value="3" literal="rate-limit"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EEnum" name="AdapterName">

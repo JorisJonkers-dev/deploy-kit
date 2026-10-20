@@ -1249,6 +1249,17 @@ query middlewareOf(r : Route, exposure : Exposure) : Sequence(MiddlewareStep) =
 		else Sequence{object MiddlewareStep {
 			kind := MiddlewareKind::redirect;
 			redirectTo := r.redirectTo;
+		}} endif)
+	-- A client that has sent nothing may send its whole allowance at once, and the
+	-- tier decides which address a client is counted by.
+	->union(if r.rateLimit = null then Sequence{}
+		else Sequence{object MiddlewareStep {
+			kind := MiddlewareKind::rateLimit;
+			allowance := r.rateLimit.requests;
+			per := r.rateLimit.per;
+			burst := r.rateLimit.requests;
+			clientAddress := if tierFor(r.audienceOf(exposure)).oclAsType(ECORE::EObject).states('proxiedBy')
+				then 'cloudflare' else 'connection' endif;
 		}} endif);
 
 -- ============================================================ the path plan
@@ -1885,7 +1896,11 @@ query ResolvedExposure::json() : String = obj(Sequence{
 			Tuple{k = 'kind', v = str(m.kind.spelling())},
 			Tuple{k = 'contentPolicy', v = opt(m.contentPolicy)},
 			Tuple{k = 'endpoint', v = opt(m.endpoint)},
-			Tuple{k = 'redirectTo', v = opt(m.redirectTo)}})))}})))}
+			Tuple{k = 'redirectTo', v = opt(m.redirectTo)},
+			Tuple{k = 'allowance', v = if m.allowance = null then null else num(m.allowance) endif},
+			Tuple{k = 'per', v = opt(m.per)},
+			Tuple{k = 'burst', v = if m.burst = null then null else num(m.burst) endif},
+			Tuple{k = 'clientAddress', v = opt(m.clientAddress)}})))}})))}
 });
 
 query ResolvedProcess::json() : String =
@@ -2092,7 +2107,8 @@ query RD::Match::spelling() : String = if self = RD::Match::exact then 'exact' e
 
 query MiddlewareKind::spelling() : String =
 	if self = MiddlewareKind::forwardAuth then 'forward-auth'
-	else if self = MiddlewareKind::securityHeaders then 'security-headers' else 'redirect' endif endif;
+	else if self = MiddlewareKind::securityHeaders then 'security-headers'
+	else if self = MiddlewareKind::redirect then 'redirect' else 'rate-limit' endif endif endif;
 
 query RD::DurabilityClass::spelling() : String =
 	if self = RD::DurabilityClass::reconstructible then 'reconstructible'

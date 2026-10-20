@@ -225,6 +225,12 @@ mapping Route::copy() : Route {
 	surface := self.surface.resolveone(Surface);
 	if self.oclAsType(ECORE::EObject).states('audience') then audience := self.audience endif;
 	if self.redirectTo <> null then redirectTo := self.redirectTo endif;
+	rateLimit := self.rateLimit.map copy();
+}
+
+mapping RateLimit::copy() : RateLimit {
+	requests := self.requests;
+	per := self.per;
 }
 
 mapping Surface::copy() : Surface {

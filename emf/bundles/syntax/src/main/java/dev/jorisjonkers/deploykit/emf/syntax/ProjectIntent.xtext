@@ -60,7 +60,13 @@ Route returns Route:
 	& ('process' ':' process=[Process|Text])
 	& ('surface' ':' surface=[Surface|Text])
 	& ('audience' ':' audience=Audience)?
-	& ('redirectTo' ':' redirectTo=Text)?);
+	& ('redirectTo' ':' redirectTo=Text)?
+	& ('rateLimit' ':' BEGIN rateLimit=RateLimit END)?);
+
+// How many requests one client may send a route over a period.
+RateLimit returns RateLimit:
+	(('requests' ':' requests=Port)
+	& ('per' ':' per=Text));
 
 Process returns Process:
 	(('name' ':' name=Text)
@@ -270,9 +276,9 @@ Keyword:
 	'host' | 'id' | 'image' | 'internal' | 'internet' | 'interrupted' | 'irreplaceable' | 'job' | 'jvm' | 'key' |
 	'keys' | 'kind' | 'kv' | 'lan' | 'libraries' | 'library' | 'lifecycle' | 'list' | 'liveness' | 'match' | 'maxAge' |
 	'media' | 'memory' | 'migration' | 'model' | 'mountAt' | 'name' | 'node' | 'none' | 'nvme' | 'objects' | 'observability' |
-	'operations' | 'owner' | 'page' | 'patch' | 'path' | 'placement' | 'port' | 'postgres' | 'prefix' | 'prepare' |
-	'probes' | 'process' | 'processes' | 'project' | 'provides' | 'python' | 'rabbitmq' | 'read' |
-	'readiness' | 'reason' | 'reconstructible' | 'recoverable' | 'redirectTo' | 'reload' | 'replicas' |
+	'operations' | 'owner' | 'page' | 'patch' | 'path' | 'per' | 'placement' | 'port' | 'postgres' | 'prefix' | 'prepare' |
+	'probes' | 'process' | 'processes' | 'project' | 'provides' | 'python' | 'rabbitmq' | 'rateLimit' | 'read' |
+	'readiness' | 'reason' | 'reconstructible' | 'recoverable' | 'redirectTo' | 'reload' | 'replicas' | 'requests' |
 	'required' | 'restart' | 'role' | 'rotate' | 'rotation' | 'routes' | 'rules' | 'runtime' |
 	'schemaVersion' | 'scrape' | 'secrets' | 'self' | 'self-renew' | 'self-roll' | 'sidecars' | 'sign' |
 	'site' | 'size' | 'ssd' | 'startupBudget' | 'static' | 'strict' | 'subPath' | 'surface' | 'tcp' |
