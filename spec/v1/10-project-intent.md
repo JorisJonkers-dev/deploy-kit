@@ -1257,7 +1257,7 @@ The posture itself is **not authored per Process**. It is one estate-wide value,
 it thirty times would be restating the only value there is, and a field with one
 legal value carries no information ([0022](../../docs/adr/model/0022-a-derived-value-has-one-declaring-site.md)
 deleted `minAvailable` for the same reason). What a Process authors is the
-paths it must write, and nothing else. `restricted` is four controls, applied
+paths it must write, and nothing else. `restricted` is five controls, applied
 together:
 
 | control | rendered as |
@@ -1265,6 +1265,7 @@ together:
 | non-root | `runAsNonRoot: true`, with the numeric UID the images lock resolved ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)) |
 | immutable root filesystem | `readOnlyRootFilesystem: true` |
 | no capabilities | `capabilities.drop: [ALL]` |
+| no privilege escalation | `allowPrivilegeEscalation: false`, so a setuid binary in the image cannot regain what the other controls take away |
 | default syscall filter | `seccompProfile.type: RuntimeDefault` |
 
 ### Writable paths are declared, not exempted

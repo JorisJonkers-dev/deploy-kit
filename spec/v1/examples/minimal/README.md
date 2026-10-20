@@ -32,7 +32,7 @@ written by anyone:
 | `id`, process `name`, `runtime` | the fixed label set ([0039](../../../../docs/adr/model/0039-the-label-set-is-fixed.md)) | every object's labels, and the `Deployment` selector |
 | `image: notes-api` | the digest, `runAsUser`, `runAsGroup` from the images lock ([0020](../../../../docs/adr/model/0020-hardening-is-one-platform-posture.md)) | the container image and `securityContext` |
 | `placement` | requests and limits: memory request equals limit, cpu request with no limit | `resources` |
-| no `hardening` block | the `restricted` class: non-root, read-only root, all capabilities dropped, seccomp `RuntimeDefault` | `securityContext`, pod and container |
+| no `hardening` block | the `restricted` class: non-root, read-only root, all capabilities dropped, no privilege escalation, seccomp `RuntimeDefault` | `securityContext`, pod and container |
 | no grant | `automountServiceAccountToken: false` ([0031](../../../../docs/adr/model/0031-identity-per-process.md)) | the pod spec |
 | `probes` + `startupBudget: 20s` | the probe cadence from Platform Intent, a startup probe on the **liveness** endpoint, `progressDeadlineSeconds: 60` ([0016](../../../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md)) | all three probes |
 | `cutover: continuous` | a `blue-green` switchover in the Resolved Deployment ([chapter 55](../../55-delivery.md#switchover)), rendered as a `Canary` whose webhooks ask the Release Gate; the Deployment carries no `replicas` and no Service is rendered for it, because Flagger generates both ([chapter 30](../../30-deliverables.md#flagger-ready-objects)) | the strategy, the Services |

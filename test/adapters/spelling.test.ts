@@ -1468,6 +1468,7 @@ describe("the kubernetes adapter, for what data holds", () => {
         limits: { memory: "32Mi" },
       },
       securityContext: {
+        allowPrivilegeEscalation: false,
         readOnlyRootFilesystem: true,
         capabilities: { drop: ["ALL"] },
       },
@@ -1761,6 +1762,7 @@ describe("what a migration plan and a count above one render", () => {
                 limits: { memory: "256Mi" },
               },
               securityContext: {
+                allowPrivilegeEscalation: false,
                 readOnlyRootFilesystem: true,
                 capabilities: { drop: ["ALL"] },
               },

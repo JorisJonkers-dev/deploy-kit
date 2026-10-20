@@ -53,6 +53,7 @@ spec:
                 - secretRef:
                     name: postgres-backup-data-postgres-backup
               securityContext:
+                allowPrivilegeEscalation: false
                 readOnlyRootFilesystem: true
                 capabilities:
                   drop:

@@ -70,6 +70,7 @@ spec:
             limits:
               memory: 6Gi
           securityContext:
+            allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
               drop:

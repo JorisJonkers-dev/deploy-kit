@@ -87,6 +87,7 @@ export function renderCatalogJob(
             limits: { memory: job.memory },
           },
           securityContext: {
+            allowPrivilegeEscalation: false,
             readOnlyRootFilesystem: true,
             capabilities: { drop: ["ALL"] },
           },

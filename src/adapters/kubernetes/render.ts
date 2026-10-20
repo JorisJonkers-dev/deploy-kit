@@ -272,6 +272,7 @@ const gpuShareOf = (
       };
 
 const RESTRICTED: Container["securityContext"] = {
+  allowPrivilegeEscalation: false,
   readOnlyRootFilesystem: true,
   capabilities: { drop: ["ALL"] },
 };

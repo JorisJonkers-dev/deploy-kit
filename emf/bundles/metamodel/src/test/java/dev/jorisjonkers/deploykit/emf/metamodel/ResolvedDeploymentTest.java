@@ -153,6 +153,7 @@ class ResolvedDeploymentTest {
             "runAsNonRoot",
             "runAsUser",
             "runAsGroup",
+            "allowPrivilegeEscalation",
             "readOnlyRootFilesystem",
             "seccompProfile",
             "fsGroup",

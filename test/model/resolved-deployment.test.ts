@@ -198,6 +198,7 @@ describe("the metamodel's own keys", () => {
       "runAsNonRoot",
       "runAsUser",
       "runAsGroup",
+      "allowPrivilegeEscalation",
       "readOnlyRootFilesystem",
       "seccompProfile",
       "fsGroup",

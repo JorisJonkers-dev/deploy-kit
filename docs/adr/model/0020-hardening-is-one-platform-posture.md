@@ -31,10 +31,11 @@ listed in [chapter 10](../../../spec/v1/10-project-intent.md#hardening).
 
 ## Rests on
 
-Kubernetes applies the four controls (non-root, an immutable root filesystem, no
-capabilities, the default syscall filter) per pod and per container
+Kubernetes applies the five controls (non-root, an immutable root filesystem, no
+capabilities, no privilege escalation, the default syscall filter) per pod and
+per container
 ([0002](0002-kubernetes-is-the-substrate-for-one-applier.md)), so the render can
-state all four on every container with no author involved. Ephemeral disk is
+state all five on every container with no author involved. Ephemeral disk is
 contended, so its size is platform-assigned
 ([0004](0004-contention-decides-authority.md)). The lock is a pinned input
 ([0006](0006-pinned-inputs.md)), so a user read from it is a derivation, not a

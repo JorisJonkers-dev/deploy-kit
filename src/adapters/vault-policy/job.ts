@@ -109,6 +109,7 @@ export function renderPolicyJob(
             limits: { memory: job.memory },
           },
           securityContext: {
+            allowPrivilegeEscalation: false,
             readOnlyRootFilesystem: true,
             capabilities: { drop: ["ALL"] },
           },

@@ -708,7 +708,8 @@ Five rules carry most of the weight:
   with different volumes, which is the property that makes a restore rehearsal
   meaningful ([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)).
 - **Hardening is one platform posture, and nothing else.** `restricted` (
-  `runAsNonRoot`, `readOnlyRootFilesystem`, all capabilities dropped, seccomp
+  `runAsNonRoot`, `readOnlyRootFilesystem`, all capabilities dropped, no
+  privilege escalation, seccomp
   `RuntimeDefault`) is declared once in the Platform document and authored by no
   Process. There is no per-control relaxation and no exception vocabulary: a
   Process declares the paths it must write, and an image that cannot meet the
