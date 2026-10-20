@@ -2,7 +2,8 @@
 // chapter 20 derives, read off a notes project written for it and resolved
 // through the use-case with the worked foundation and pinned inputs.
 import { datastoreOf } from "../../src/resolve/database.ts";
-import { resolveEdge } from "../../src/resolve/dependencies.ts";
+import { edgesOfProject, resolveEdge } from "../../src/resolve/dependencies.ts";
+import type { EffectiveProject } from "../../src/model/effective-intent.ts";
 import type { PlatformIntentDocument } from "../../src/model/platform-intent.ts";
 import { backedUp, dumpedSurfaceOf } from "../../src/model/backup.ts";
 import { readFileSync } from "node:fs";
@@ -3047,6 +3048,38 @@ describe("an edge resolved against the union and the register", () => {
     ],
   } as unknown as PlatformIntentDocument;
 
+  it("names an alias by the edges of the consumer's own project, and every edge it holds, only", () => {
+    const union = [
+      {
+        project: "auth",
+        applications: [
+          {
+            id: "auth",
+            processes: [
+              { dependsOn: [{ application: "stalwart", surface: "smtp" }] },
+              {},
+            ],
+          },
+        ],
+      },
+      {
+        project: "mail",
+        applications: [
+          {
+            id: "mail",
+            processes: [
+              { dependsOn: [{ application: "stalwart", surface: "imap" }] },
+            ],
+          },
+        ],
+      },
+    ] as unknown as EffectiveProject[];
+
+    expect(edgesOfProject(union, "auth")).toStrictEqual([
+      { application: "stalwart", surface: "smtp" },
+    ]);
+  });
+
   it("takes the provider named, on the surface named, wherever it sits in the register", () => {
     expect(
       resolveEdge(
@@ -3220,6 +3253,26 @@ describe("what a member waits for in its own Project", () => {
         providers: [{ application: "notes-cache", process: "notes-cache" }],
       },
     ]);
+  });
+
+  it("does not wait for a job that provides the surface, since it serves nothing it starts", () => {
+    expect(
+      waitsFor(
+        consumer(
+          serving(
+            "notes-api",
+            edges("{ application: notes-cache, surface: http }"),
+          ),
+        ) +
+          sibling(
+            "notes-cache",
+            stopping("notes-cache").replace(
+              "lifecycle: application",
+              "lifecycle: job",
+            ),
+          ),
+      ),
+    ).toStrictEqual([{ process: "notes-api", providers: undefined }]);
   });
 
   it("waits for a provider once however many of its surfaces it reaches, and names providers in order", () => {
