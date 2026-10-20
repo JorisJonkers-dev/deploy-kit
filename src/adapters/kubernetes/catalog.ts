@@ -12,7 +12,7 @@ import type {
   ServiceAccount,
 } from "../../objects/kubernetes.ts";
 import { wholeSeconds } from "../shared/durations.ts";
-import { labelsOf } from "../shared/labels.ts";
+import { labelsOf, podMetadataOf } from "../shared/labels.ts";
 import { SECRETS_DIRECTORY } from "../shared/paths.ts";
 import { nodeAffinityOf, UNTIL_SUCCEEDED } from "../shared/placement.ts";
 import { ADAPTER } from "./render.ts";
@@ -57,7 +57,7 @@ export function renderCatalogJob(
     data: { [FILE]: { json: job.catalog } },
   };
   const pod: Job["spec"]["template"] = {
-    metadata: { labels },
+    metadata: podMetadataOf(labels, [[job.identity, job.imageVersion]]),
     spec: {
       serviceAccountName: job.identity,
       // The method logs in to the Secret Store with its own token.

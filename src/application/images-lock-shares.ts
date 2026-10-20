@@ -86,8 +86,14 @@ export interface Share {
   readonly lock: ImagesLockDocument;
 }
 
-const spelled = ({ repository, digest, uid, gid }: LockedImage): string =>
-  `${repository}@${digest} as ${String(uid)}:${String(gid)}`;
+const spelled = ({
+  repository,
+  digest,
+  uid,
+  gid,
+  version,
+}: LockedImage): string =>
+  `${repository}@${digest} as ${String(uid)}:${String(gid)}${version === undefined ? "" : ` at ${version}`}`;
 
 type Held = readonly [string, readonly Share[]];
 // Aliases are distinct keys, so `<=` would order the same list.
@@ -115,7 +121,10 @@ export function unionOf(
     const image = (share: Share): LockedImage =>
       share.lock.images[alias] as LockedImage;
     const [first] = held as [Share, ...Share[]];
-    images[alias] = image(first);
+    // A share that records the version says more of the same image.
+    images[alias] =
+      held.map(image).find(({ version }) => version !== undefined) ??
+      image(first);
     if (held.every((share) => sameImage(image(share), image(first)))) continue;
 
     // What the unchanged shares hold stands, when they hold one thing.
@@ -135,7 +144,7 @@ export function unionOf(
         document: `${share.directory}/${IMAGES_LOCK}`,
         path: `/images/${alias}`,
         message: `${alias} is locked to ${spelled(image(share))} here, and to ${spelled(image(other))} in ${other.directory}/${IMAGES_LOCK}`,
-        hint: "One alias resolves to one image estate-wide: lock the same digest, uid and gid, or name another alias.",
+        hint: "One alias resolves to one image estate-wide: lock the same digest, uid, gid and version, or name another alias.",
       });
     }
   }

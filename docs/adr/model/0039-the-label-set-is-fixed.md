@@ -61,6 +61,17 @@ that does, though its render is unchanged: otherwise a Project that released
 nothing new since kept pods that said no release at all, which arr and
 home-portal did on 2026-10-19.
 
+The software a container runs is a different fact from the release, and it
+moves on its own schedule: a wrapper of n8n releases when its configuration
+changes, n8n when upstream ships. So it is not `app.kubernetes.io/version`,
+which keeps naming the release. The render writes it as one annotation per
+container, `image.jorisjonkers.dev/<container>`, from the `version` the images
+lock records beside the digest. It is an annotation because nothing selects on
+it and a label value cannot hold every version string upstream projects use. It
+can live in the render, unlike the release, because it is derived from a pinned
+input and changes only with the digest beside it, so it never moves a pin or
+restarts a pod that the image change would not.
+
 An estate-scoped Deliverable carries `managed-by` only. It belongs to no
 Process and no Application, and `part-of` on the Gatus endpoints ConfigMap would
 name an Application that does not own it.
@@ -71,7 +82,7 @@ name an Application that does not own it.
 | Leave the set to the renderer | Nothing to specify; behaviour unchanged | Two of the labels are immutable selectors, so the convention is a one-way door being held open by nobody's decision |
 | Let a Process add labels | Authors can tag for their own tooling | A label is a selector surface; an authored label can collide with a derived one, and anything worth selecting on is a model concept that should be named |
 | `name` = Application, `instance` = Process | Reads the way the upstream convention intends | Makes every Process of a two-Process Application ambiguous under a `name`-only selector, and `auth` is exactly that case |
-| Include `version` from the images lock | Fills in the conventional set | Churns on every image bump, and names an image's version where a reader needs the release's |
+| Include `version` from the images lock | Fills in the conventional set | Churns on every image bump, and names an image's version where a reader needs the release's; the image's version is written as a per-container annotation instead |
 | Render `version` from the fragment's release | One place writes every label | The render stops being a function of what it derives: a release with nothing new would publish an artifact, move its pin and restart its pods |
 | Patch `version` onto the pin source's Kustomization | The artifact stays the render share alone | Flux reconciles the Kustomization and its source apart, so the new label can be applied to the old artifact first and every pod rolls twice ([#487](https://github.com/JorisJonkers-dev/deploy-kit/issues/487)) |
 

@@ -251,7 +251,7 @@ describe("composeEstate", () => {
     ]);
     expect(FIRST.lock.spec.fragments.notes?.revisions).toEqual({
       notes:
-        "sha256:08cba86a5a74fdd40eb2e8baf0fc2c7120f1e0bd2f5949bb854b9d6270302d62",
+        "sha256:d8cb7f5ca6716414c4310c6708413739f79e7242ea97d2e98679624065536466",
     });
     expect(FIRST.lock.spec.fragments["jorisjonkers.dev"]?.revisions).toEqual(
       {},
@@ -2682,6 +2682,39 @@ describe("composeEstate, for a Rollback's backup", () => {
         value: REQUEST,
       });
     }
+  });
+
+  it("annotates each Job's pod with its method's version where the lock records one", () => {
+    const versioned: Fragment = {
+      ...PLATFORM_HANDED_OVER,
+      files: PLATFORM_HANDED_OVER.files.map((file) =>
+        file.name === "images.lock.yml"
+          ? {
+              ...file,
+              text: file.text.replace(
+                /(\n {2}postgres-backup:\n(?: {4}.*\n)*? {4}gid: \d+\n)/,
+                '$1    version: "2.1.0"\n',
+              ),
+            }
+          : file,
+      ),
+    };
+    const first = compose({ platform: versioned });
+    const composition = compose({
+      platform: versioned,
+      fragments: NEWER,
+      held: RELEASES,
+      pins: pinned(first, { data: ASKED }),
+      previous: { lock: first.lock, commit: hex("estate-commit", 40) },
+    });
+
+    expect(
+      jobsOf(composition).map(
+        ({ spec }) =>
+          (spec.template.metadata as { annotations?: Record<string, string> })
+            .annotations,
+      ),
+    ).toStrictEqual([{ "image.jorisjonkers.dev/backup": "2.1.0" }, undefined]);
   });
 
   it("runs each Job as the identity, with the method and claims, the scheduled backup uses", () => {

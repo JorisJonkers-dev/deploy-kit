@@ -28,6 +28,10 @@ spec:
         app.kubernetes.io/part-of: karakeep
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: node
+      annotations:
+        image.jorisjonkers.dev/karakeep: 0.33.2
+        image.jorisjonkers.dev/meilisearch: v1.41.0
+        image.jorisjonkers.dev/vpn: v3.40.0
     spec:
       serviceAccountName: karakeep
       automountServiceAccountToken: false

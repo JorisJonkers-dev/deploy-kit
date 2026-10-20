@@ -30,6 +30,8 @@ spec:
         app.kubernetes.io/part-of: notes
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: node
+      annotations:
+        image.jorisjonkers.dev/notes-api: 1.4.0
     spec:
       serviceAccountName: notes-api
       automountServiceAccountToken: false

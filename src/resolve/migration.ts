@@ -6,7 +6,11 @@ import type {
   EffectiveApplication,
   EffectiveProject,
 } from "../model/effective-intent.ts";
-import type { ImagesLockDocument, LockedImage } from "../model/images-lock.ts";
+import {
+  type ImagesLockDocument,
+  type LockedImage,
+  versionOf,
+} from "../model/images-lock.ts";
 import {
   migrationImage,
   type MigrationProofDocument,
@@ -54,6 +58,7 @@ export function resolveMigration(
   ) as NonNullable<ReturnType<typeof datastoreOf>>;
   return {
     runner: `${image.repository}@${image.digest}`,
+    ...versionOf("runnerVersion", image),
     uid: image.uid,
     gid: image.gid,
     ...(proven?.testedAgainst === undefined

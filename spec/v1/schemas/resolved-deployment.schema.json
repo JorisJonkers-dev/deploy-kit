@@ -512,6 +512,10 @@
           "type": "string",
           "minLength": 1
         },
+        "runnerVersion": {
+          "type": "string",
+          "minLength": 1
+        },
         "uid": {
           "type": "integer",
           "minimum": 0,
@@ -930,6 +934,10 @@
           "type": "string",
           "minLength": 1
         },
+        "imageVersion": {
+          "type": "string",
+          "minLength": 1
+        },
         "uid": {
           "type": "integer",
           "minimum": 0,
@@ -1190,6 +1198,10 @@
       "type": "object",
       "properties": {
         "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "imageVersion": {
           "type": "string",
           "minLength": 1
         },
@@ -1683,6 +1695,10 @@
           "type": "string",
           "minLength": 1
         },
+        "methodVersion": {
+          "type": "string",
+          "minLength": 1
+        },
         "uid": {
           "type": "integer",
           "minimum": 0,
@@ -1849,6 +1865,10 @@
           "minLength": 1
         },
         "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "imageVersion": {
           "type": "string",
           "minLength": 1
         },
@@ -2073,6 +2093,10 @@
           "type": "string",
           "minLength": 1
         },
+        "imageVersion": {
+          "type": "string",
+          "minLength": 1
+        },
         "uid": {
           "type": "integer",
           "minimum": 0,
@@ -2146,6 +2170,10 @@
           "minLength": 1
         },
         "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "imageVersion": {
           "type": "string",
           "minLength": 1
         },

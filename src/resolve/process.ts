@@ -11,7 +11,11 @@ import type {
 import { inSeconds, seconds } from "../model/durations.ts";
 import { eligibleNodes, gpuVendors } from "../model/eligibility.ts";
 import { FORWARDED_PORT_FILE } from "../model/vpn.ts";
-import type { ImagesLockDocument, LockedImage } from "../model/images-lock.ts";
+import {
+  type ImagesLockDocument,
+  type LockedImage,
+  versionOf,
+} from "../model/images-lock.ts";
 import type { NodeContractDocument } from "../model/node-contract.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import type {
@@ -374,6 +378,7 @@ function vpnOf(
   return {
     vpn: {
       image: `${image.repository}@${image.digest}`,
+      ...versionOf("imageVersion", image),
       memory: vpn.memory,
       cpu: vpn.cpu,
       forwardedPort,
@@ -429,6 +434,7 @@ export function resolveProcess(
     runtime: process.runtime,
     identity: process.name,
     image: `${image.repository}@${image.digest}`,
+    ...versionOf("imageVersion", image),
     uid: image.uid,
     gid: image.gid,
     ...(process.cutover === undefined ? {} : { cutover: process.cutover }),

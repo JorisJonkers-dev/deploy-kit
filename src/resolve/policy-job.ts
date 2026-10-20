@@ -3,7 +3,7 @@
 // one identity in the Secret Store's own namespace. Nothing declares it as a
 // Process: its input is the render itself.
 import type { PinnedSet } from "../model/resolution.ts";
-import type { LockedImage } from "../model/images-lock.ts";
+import { type LockedImage, versionOf } from "../model/images-lock.ts";
 import type { ResolvedPolicyJob } from "../model/resolved-deployment.ts";
 import { inSeconds, seconds } from "../model/durations.ts";
 import { estateJobNodes } from "../model/eligibility.ts";
@@ -27,6 +27,7 @@ export function resolvePolicyJob(
     identity: POLICY_JOB,
     namespace: store.namespace,
     image: `${image.repository}@${image.digest}`,
+    ...versionOf("imageVersion", image),
     uid: image.uid,
     gid: image.gid,
     role: declared.role,
