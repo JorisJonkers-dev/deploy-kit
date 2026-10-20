@@ -915,6 +915,81 @@ production estate.
    `STRICT`, and watch failed connections and probe failures for another 14
    days.
 
+### Stage 1 results, 2026-10-20
+
+Drills 1, 3 and 4 ran first in a throwaway k3d cluster: k3d v5.8.3 with
+k3s `v1.36.5+k3s1` (the production version), one server and two agents,
+flannel with kube-router network policy, Istio 1.31.2 ambient from the release
+tarball's charts, the v1.5.1 standard Gateway API CRDs, Kiali v2.33.0 with
+anonymous view-only access, and Istio's sample Prometheus. The nodes are not
+NixOS, so drill 1 is settled only in part.
+
+**Install.**
+
+- The Helm repository's index (generated 2026-10-16) stops at `1.31.0-rc.0`
+  and has no 1.31 GA charts, and `oci://gcr.io/istio-release/charts/base:1.31.2`
+  does not exist. The release tarball's charts and the `docker.io/istio` 1.31.2
+  images do. A Flux install needs another chart source.
+- `global.platform=k3d` sets `cniBinDir: /bin`, which k3s 1.36 (inside k3d too)
+  does not read. `global.platform=k3s` sets bin
+  `/var/lib/rancher/k3s/data/cni` and conf
+  `/var/lib/rancher/k3s/agent/etc/cni/net.d`. The bin directory differs from
+  the `data/current/bin` the [node reads](#node-reads-2026-10-20) listed, so
+  confirm where flannel's binary sits on the first production node before
+  istio-cni installs there.
+- With `istio-cni` chained into the conflist but its binary missing from the
+  kubelet's bin directory, every new pod on that node fails sandbox creation
+  (`failed to find plugin "istio-cni" in path`), in every namespace, enrolled
+  or not. Deletion fails the same way, so pods stick in `Terminating`. In 1.31
+  ambient `istio-cni-node` is not host-network, so it needs the broken chain
+  itself and cannot repair it: the lab recovered by copying the binary onto
+  each node by hand. A production install has to pin istio-cni to one
+  cordoned node first, with a rollback that removes the conflist entry over
+  SSH.
+- ztunnel logs `CryptoProvider:"tls-aws-lc"`, and `istioctl analyze -A` raises
+  no `IST0176` on Gateway API v1.5.1.
+
+**Drill 3, the Stable Address path.**
+
+- The chain consumer alias, `estate-system` CNAME, provider A record keeps its
+  5 s TTL at each step under the mesh.
+- Enrolling a namespace (a label, no restart) under a port-scoped
+  NetworkPolicy that admits 80 and 5432 breaks HTTP and Postgres at once.
+  Adding 15008 to the same rule restores both, so the derived allow set must
+  carry 15008 wherever a rule is port-scoped.
+- kube-router's `namespaceSelector` plus `podSelector` still matches the meshed
+  client, because ztunnel keeps the source IP; an enrolled pod the rule does not
+  select stays denied.
+- The ztunnel access log names both SPIFFE identities, destination port 15008,
+  and the real Service as `dst.service`.
+- A waypoint on the HTTP provider returns 503 until a policy admits the
+  waypoint pod to the provider on 15008, because the provider's peer becomes
+  the waypoint. Then the request succeeds, and the provider sees the alias as
+  `Host`.
+- An init container in an enrolled pod reaches its provider through ztunnel,
+  the shape `vault-agent-init` needs.
+
+**Drill 4, the Traefik hop and server-first ports.**
+
+- Traefik's pooled backend connections opened before enrolment stay
+  plaintext until Traefik restarts. Enrolling Traefik means restarting it.
+- By default (pod IPs) the hop is mTLS from `edge/sa/traefik` to the backend
+  and skips a waypoint; with `nativeLB` it goes through the waypoint.
+- Server-first SMTP greets both meshed and outside clients. The lab used
+  Mailpit v1.31.6, because Stalwart v0.16.20 in bootstrap mode listens on 8080
+  only; Stalwart's own greeting stays with stage 2.
+- Mesh-wide `STRICT` breaks outside clients to Traefik; a port-level
+  `PERMISSIVE` on Traefik's entry port and the SMTP port restores them.
+
+**Kiali.** Every meshed edge (client to Postgres, client to waypoint, waypoint
+to provider, Traefik to provider) reads `isMTLS=100`, the outside-to-Traefik
+edge reads no mTLS, and aliases resolve to the real workloads in the graph.
+
+**Not settled in stage 1:** the NixOS nodes and the in-pod rules through
+`nft_compat` (drill 1), the Pi footprint, cipher cost and istiod outage
+behaviour (drill 2), the series the production ztunnel PodMonitor adds, and
+drill 5.
+
 ## Open questions after source review
 
 A source pass on 2026-10-20 (ztunnel and istio at `1.31.2`, kiali at
@@ -938,15 +1013,17 @@ pass handed on:
 | iptables flavour and legacy state | `iptables --version`, `/proc/net/ip_tables_names`, `iptables-legacy-save`, all six nodes | `nf_tables` everywhere, no legacy table loaded, zero legacy rules |
 | the k3s CNI directories | `ls` on a Pi and an amd64 node | bin `/var/lib/rancher/k3s/data/current/bin`; conf `/var/lib/rancher/k3s/agent/etc/cni/net.d/10-flannel.conflist`, identical on both architectures |
 
-What still needs the lab install of drill 1:
+The lab install of drill 1 settled the CRDs at v1.5.1 and the crypto provider
+([stage 1 results](#stage-1-results-2026-10-20)). What still needs a NixOS
+node:
 
 | open item | command | where |
 |---|---|---|
-| that the CRDs pass at v1.5.1, and which crypto provider the image runs | `istioctl analyze -A` (no `IST0176`), `kubectl -n istio-system logs ds/ztunnel \| grep -m1 CryptoProvider` | kubectl |
 | that the in-pod rules load through `nft_compat` without the legacy table modules | `kubectl -n istio-system logs ds/istio-cni-node` for an enrolled pod, and `nsenter -t <pid> -n nft list ruleset` on its node | a Pi and an amd64 node |
 
-The rest needs the mesh running and stays with its drill: ztunnel's memory and
-CPU over a day and per Mbit/s (drill 2), the outage behaviour read above
-(drill 2), the DNS proxy's TTL and a waypoint routing an alias `Host` (drill
-3), the kube-router reading on one live pair (drill 3), `ingress-use-waypoint`
-on a meshed Traefik and Stalwart's greeting (drill 4).
+Stage 1 also settled the DNS proxy's TTL, a waypoint routing an alias `Host`
+and the kube-router reading (drill 3), and the Traefik hop with and without
+`nativeLB` (drill 4). The rest needs the mesh on the estate's own nodes and
+stays with its drill: ztunnel's memory and CPU over a day and per Mbit/s
+(drill 2), the outage behaviour read above (drill 2), and Stalwart's own
+greeting (drill 4).
