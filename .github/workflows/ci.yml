@@ -105,7 +105,7 @@
       - 'name': 'ADR contract (emf)'
         'run': 'node scripts/lint-adrs.ts emf'
 
-      # Relative links and heading anchors across every tracked Markdown file.
+      # Relative links and heading anchors across every Markdown file git does not ignore.
       # The ADR domain move rewrote about a hundred references outside the
       # decision set, and nothing checked them.
       - 'name': 'Link contract'

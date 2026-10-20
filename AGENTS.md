@@ -75,7 +75,7 @@ table does not name, so a new gate cannot go undocumented.
 | `lint` | ESLint over the tree |
 | `lint:fix` | ESLint, applying every fix it can |
 | `lint:adrs` | the decision-record contract: frontmatter, register, citations, normative anchors |
-| `lint:links` | every relative link and heading anchor in tracked Markdown |
+| `lint:links` | every relative link and heading anchor in Markdown git does not ignore |
 | `lint:manifests` | every rendered example object against pinned Kubernetes and CRD schemas |
 | `lint:boundaries` | the compiler's layer boundaries and module reachability on the dependency graph |
 | `lint:requirements` | the behaviour ledger, [`docs/requirements.md`](docs/requirements.md) |

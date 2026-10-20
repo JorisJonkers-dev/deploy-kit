@@ -9,6 +9,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import {
   chmodSync,
+  copyFileSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -428,8 +429,35 @@ describe("main", () => {
     );
     expect(code).toBe(0);
     // Nothing was placed at the default coverage path, so building the
-    // comment fails cleanly rather than finding a coverage-summary.json.
+    // comment fails cleanly rather than finding a coverage-summary.json,
+    // whatever an earlier coverage run left in this repository's own tree.
     expect(output.text()).toMatch(/could not build the comment/);
+  });
+
+  it("reads the default coverage paths under PR_REPORT_ROOT, not this repository", () => {
+    const { root, base, head } = fixtureRepo();
+    const coverage = coverageFixtures(root);
+    mkdirSync(join(root, "coverage"));
+    copyFileSync(
+      coverage.summary,
+      join(root, "coverage", "coverage-summary.json"),
+    );
+    copyFileSync(coverage.lcov, join(root, "coverage", "lcov.info"));
+    const { bin } = fakeGh({ listBody: "[]" });
+    const output = collect();
+    const code = main(
+      {
+        PR_REPORT_ROOT: root,
+        PR_BASE_SHA: base,
+        PR_HEAD_SHA: head,
+        GITHUB_REPOSITORY: "org/repo",
+        PR_NUMBER: "5",
+        GH_BIN: bin,
+      },
+      output,
+    );
+    expect(code).toBe(0);
+    expect(output.text()).toMatch(/posted the comment on #5/);
   });
 
   it("takes gh from PATH and this repository's own root by default", () => {

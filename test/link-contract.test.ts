@@ -5,7 +5,7 @@
 // with every other gate green. These fixtures prove the check would fail.
 //
 // REQ-002 (docs/requirements.md): every relative link and heading anchor in
-// tracked Markdown resolves to a real target.
+// Markdown git does not ignore resolves to a real target.
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -28,7 +28,7 @@ function write(root: string, files: Files): void {
 
 /**
  * A git repository under this test's directory. The lint reads `git ls-files`,
- * so an untracked scratch file cannot fail a build, and the fixture has to be
+ * so an ignored scratch file cannot fail a build, and the fixture has to be
  * a repository for the same reason. `untracked` is written after the add.
  */
 function repository(tracked: Files, untracked: Files = {}): string {
@@ -111,10 +111,21 @@ describe("the link lint", () => {
     expect(lintLinks(root).errors).toStrictEqual([]);
   });
 
-  it("ignores an untracked file", () => {
+  it("fails a broken anchor in a new file git has not been told about yet", () => {
     const root = repository(
       { "tracked.md": "# Fine\n" },
-      { "scratch.md": "[broken](nowhere.md)\n" },
+      { "new.md": "[gone](tracked.md#the-old-name)\n" },
+    );
+    expect(lintLinks(root)).toStrictEqual({
+      files: 2,
+      errors: ["new.md: anchor #the-old-name not found in tracked.md"],
+    });
+  });
+
+  it("ignores a file git ignores", () => {
+    const root = repository(
+      { "tracked.md": "# Fine\n", ".gitignore": "scratch/\n" },
+      { "scratch/notes.md": "[broken](nowhere.md)\n" },
     );
     expect(lintLinks(root)).toStrictEqual({ files: 1, errors: [] });
   });

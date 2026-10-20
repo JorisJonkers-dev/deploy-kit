@@ -256,20 +256,22 @@ export function main(
   output: GateOutput = processOutput,
 ): number {
   try {
+    // Every default path resolves under the same root the diff is read from,
+    // so a run against another checkout never picks up this one's coverage.
+    const root = env.PR_REPORT_ROOT ?? REPOSITORY;
     const config: Config = {
-      root: env.PR_REPORT_ROOT ?? REPOSITORY,
+      root,
       baseSha: requiredEnv(env, "PR_BASE_SHA"),
       headSha: requiredEnv(env, "PR_HEAD_SHA"),
       repository: requiredEnv(env, "GITHUB_REPOSITORY"),
       prNumber: Number(requiredEnv(env, "PR_NUMBER")),
       coverageSummaryPath:
         env.COVERAGE_SUMMARY_PATH ??
-        join(REPOSITORY, "coverage", "coverage-summary.json"),
-      lcovPath:
-        env.COVERAGE_LCOV_PATH ?? join(REPOSITORY, "coverage", "lcov.info"),
+        join(root, "coverage", "coverage-summary.json"),
+      lcovPath: env.COVERAGE_LCOV_PATH ?? join(root, "coverage", "lcov.info"),
       baselinePath:
         env.COVERAGE_BASELINE_PATH ??
-        join(REPOSITORY, ".coverage-baseline", "coverage-summary.json"),
+        join(root, ".coverage-baseline", "coverage-summary.json"),
       ghBin: env.GH_BIN ?? "gh",
     };
     return report(config, output);

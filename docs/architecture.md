@@ -461,7 +461,7 @@ proves the two never drift apart.
 | types | `npm run typecheck` | `strict` violations; `@ts-nocheck` is an ESLint error and `@ts-expect-error` needs a description |
 | boundaries | `npm run lint:boundaries` | a layer reaching outward, an adapter reading another adapter, a cycle, a module reachable from no entry point |
 | decisions | `npm run lint:adrs` | frontmatter, register integrity, citations, normative anchors per domain |
-| links | `npm run lint:links` | relative links and heading anchors across every tracked Markdown file |
+| links | `npm run lint:links` | relative links and heading anchors across every Markdown file git does not ignore |
 | manifests | `npm run lint:manifests` | every rendered example object against pinned Kubernetes and CRD schemas |
 | requirements | `npm run lint:requirements` | a behaviour ledger row that no longer parses, names a missing or empty test, drifts from its stated count, or is cited by an id no row carries |
 | rules | `npm run lint:rules` | a [rule ledger](architecture-rules.md) row whose enforcer no longer exists, whose fixture no longer asserts on its witness, or that is pending with no ticket and no reason, and a rule the ruleset or the lint configuration enforces that no row claims |
