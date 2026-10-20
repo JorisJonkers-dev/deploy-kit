@@ -88,6 +88,7 @@ function jobOf(
                 limits: { memory: plan.memory },
               },
               securityContext: {
+                allowPrivilegeEscalation: false,
                 readOnlyRootFilesystem: true,
                 capabilities: { drop: ["ALL"] },
               },

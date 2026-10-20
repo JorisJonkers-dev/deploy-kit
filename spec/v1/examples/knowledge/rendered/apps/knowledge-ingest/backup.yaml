@@ -41,6 +41,7 @@ spec:
             - -c
             - tar -cf - .
             securityContext:
+              allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
               capabilities:
                 drop:
@@ -106,6 +107,7 @@ spec:
             - -c
             - find /backup -type f -mtime +90 -delete
             securityContext:
+              allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
               capabilities:
                 drop:

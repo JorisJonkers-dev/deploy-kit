@@ -47,6 +47,7 @@ spec:
                 - secretRef:
                     name: docling-serve-backup-platform-backup-off-cluster
               securityContext:
+                allowPrivilegeEscalation: false
                 readOnlyRootFilesystem: true
                 capabilities:
                   drop:

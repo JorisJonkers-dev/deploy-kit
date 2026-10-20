@@ -503,6 +503,7 @@
               limits:
                 memory: [d.application.migration.memory/]
             securityContext:
+              allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
               capabilities:
                 drop:
@@ -696,6 +697,7 @@
       limits:
         memory: [c.memory/]
     securityContext:
+      allowPrivilegeEscalation: false
       readOnlyRootFilesystem: true
       capabilities:
         drop:
@@ -796,6 +798,7 @@
           [p.gpu.resource/]: "1"
   [/if]
     securityContext:
+      allowPrivilegeEscalation: false
       readOnlyRootFilesystem: true
       capabilities:
         drop:
@@ -1148,6 +1151,7 @@
                         name: [b.peer.credential.destination/]
   [/if]
                 securityContext:
+                  allowPrivilegeEscalation: false
                   readOnlyRootFilesystem: true
                   capabilities:
                     drop:
@@ -1403,6 +1407,7 @@
           limits:
             memory: [d.job.memory/]
         securityContext:
+          allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           capabilities:
             drop:
@@ -1559,6 +1564,7 @@
           limits:
             memory: [d.job.memory/]
         securityContext:
+          allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           capabilities:
             drop:

@@ -49,6 +49,7 @@ spec:
                 - secretRef:
                     name: rabbitmq-backup-data-rabbitmq-backup
               securityContext:
+                allowPrivilegeEscalation: false
                 readOnlyRootFilesystem: true
                 capabilities:
                   drop:

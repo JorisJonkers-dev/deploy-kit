@@ -181,6 +181,7 @@ export interface Container {
     };
   };
   readonly securityContext: {
+    readonly allowPrivilegeEscalation: false;
     readonly readOnlyRootFilesystem: true;
     readonly capabilities: { readonly drop: readonly ["ALL"] };
   };

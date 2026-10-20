@@ -75,6 +75,7 @@ spec:
             limits:
               memory: 2Gi
           securityContext:
+            allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
               drop:
@@ -129,6 +130,7 @@ spec:
             limits:
               memory: 64Mi
           securityContext:
+            allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
               drop:

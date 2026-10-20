@@ -288,10 +288,11 @@ destination, and none of the three has a declaring site in any layer.
 chapter 20's projection, so `pdb.yaml` cannot be produced. Guessing `minAvailable: 1`
 over a one-replica Deployment blocks every node drain permanently.
 
-**G-33** The `restricted` class is defined as exactly four controls and does not
-include `allowPrivilegeEscalation: false`, which the Pod Security Standards
-profile of the same name requires. A pod rendered from this class does not
-satisfy PSA `restricted`, so the class name promises more than it delivers.
+**G-33** ~~The `restricted` class is defined as exactly four controls and does
+not include `allowPrivilegeEscalation: false`.~~ **Closed**: the class is five
+controls, and the fifth is `allowPrivilegeEscalation: false`
+([chapter 10](../../../10-project-intent.md#hardening)), which the Pod Security
+Standards profile of the same name requires.
 
 **G-34** Probe timings are stated only for the startup probe (`periodSeconds: 5`,
 threshold = budget ÷ 5) and `timeoutSeconds: 5`. `periodSeconds`,

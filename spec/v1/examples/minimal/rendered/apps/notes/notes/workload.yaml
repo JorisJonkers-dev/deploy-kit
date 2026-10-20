@@ -78,6 +78,7 @@ spec:
               memory: 256Mi
               nvidia.com/gpu: "1"
           securityContext:
+            allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
               drop:
