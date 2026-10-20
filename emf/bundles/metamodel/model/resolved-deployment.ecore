@@ -222,6 +222,17 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="readiness" lowerBound="1" eType="#//ProbeTarget" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="checks" upperBound="-1" eType="#//AnalysisCheck"/>
+    <!-- What the member waits for before its new version starts
+         (spec/v1/55-delivery.md#release-order), in name order. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="waitsFor" upperBound="-1" eType="#//GateProvider" containment="true"/>
+  </eClassifiers>
+
+  <!-- A Process of another Application of the same Project that a member requires and that
+       switches stop-start. Named, never by revision, so a release of the provider does not
+       release the member. -->
+  <eClassifiers xsi:type="ecore:EClass" name="GateProvider">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="application" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="process" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedProcess">

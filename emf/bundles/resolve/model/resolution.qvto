@@ -461,6 +461,10 @@ mapping EffectiveApplication::gate() : ReleaseGate {
 		readiness := readinessOf(p).target();
 		checks := if exportsTelemetry(p) then Sequence{AnalysisCheck::errorRate, AnalysisCheck::latency}
 			else Sequence{} endif;
+		waitsFor := waitsForOf(self, p)->collect(t | object GateProvider {
+			application := t.application;
+			process := t.process;
+		});
 	});
 	-- What the gate starts and may undo, where the Application has a migration.
 	if managed(self) then migration := object GateMigration {
@@ -469,6 +473,25 @@ mapping EffectiveApplication::gate() : ReleaseGate {
 		nonTransactional := proven <> null and proven.nonTransactional;
 	} endif;
 }
+
+-- What a member waits for before its new version starts
+-- (spec/v1/55-delivery.md#release-order): every Process of another Application of its own
+-- Project that one of its required edges reaches and that switches stop-start, by
+-- Application and then Process. A provider in another Project is its Reconcile Unit's to
+-- order, and a blue-green one keeps its old version serving.
+query waitsForOf(app : EffectiveApplication, p : PI::Process)
+		: Sequence(Tuple(application : String, process : String)) =
+	let home : String = projectOf(app.id) in
+	-- The member's own Application is among them, and holds no stop-start Process: an
+	-- Application switches as one, or E_RELEASE_UNIT_MIXED_CUTOVER refused it.
+	projects->select(prj | prj.project = home).applications
+		->collect(a | a.processes
+			->select(q | q.lifecycle = Lifecycle::application and q.cutover = PI::Cutover::interrupted
+				and p.dependsOn->exists(e | not (e.required = false) and e.application = a.id
+					and q.provides->exists(s | s.key = e.surface)))
+			->collect(q | Tuple{application = a.id, process = q.name}))->flatten()
+		-- A space sorts before any character a name may hold.
+		->sortedBy(t | t.application + ' ' + t.process)->asSequence();
 
 -- What the proof beside the project records of an Application's release, or nothing.
 query proofOf(app : EffectiveApplication) : ProvenApplication =
@@ -1869,7 +1892,11 @@ query ReleaseGate::json() : String = obj(Sequence{
 		Tuple{k = 'process', v = str(m.process.name)},
 		Tuple{k = 'readiness', v = m.readiness.json()},
 		Tuple{k = 'checks', v = if m.checks->isEmpty() then null
-			else arr(m.checks->collect(c | str(c.spelling()))) endif}})))},
+			else arr(m.checks->collect(c | str(c.spelling()))) endif},
+		Tuple{k = 'waitsFor', v = if m.waitsFor->isEmpty() then null
+			else arr(m.waitsFor->collect(w | obj(Sequence{
+				Tuple{k = 'application', v = str(w.application)},
+				Tuple{k = 'process', v = str(w.process)}}))) endif}})))},
 	Tuple{k = 'migration', v = if self.migration = null then null else obj(Sequence{
 		Tuple{k = 'identity', v = str(self.migration.identity)},
 		Tuple{k = 'testedAgainst', v = opt(self.migration.testedAgainst)},

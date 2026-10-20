@@ -343,7 +343,7 @@ two questions, from the Resolved Deployment and nothing else
 
 | question | asked | the gate answers yes when |
 |---|---|---|
-| may this member's new version start? | once per member per revision, before its new version scales up | the Application's migration and every prepare Process for this revision have completed ([Release order](#release-order)); the migration itself was started only once its compatibility proof held ([Migration safety](#migration-safety)) |
+| may this member's new version start? | once per member per revision, before its new version scales up | the Application's migration and every prepare Process for this revision have completed, and every `stop-start` Process the member requires in its own Project has started the version it holds ([Release order](#release-order)); the migration itself was started only once its compatibility proof held ([Migration safety](#migration-safety)) |
 | may this member be promoted? | after the member's own analysis passes | every member of the Application has passed its analysis for this revision, or did not change in it ([What the render leaves to Flagger](#what-the-render-leaves-to-flagger)): the barrier |
 
 It reads the Application's release-gate inputs (its members, their readiness,
@@ -550,11 +550,40 @@ all while the old version still serves:
    within its `startupBudget`, once per Application revision, and is never retried
    within one; there is no order among them.
 3. **The new version starts**, by the Application's switchover
-   ([Switchover](#switchover)).
+   ([Switchover](#switchover)), once the providers it waits for in its own
+   Project have started (below).
 
 A step that fails holds the release: the next step never starts and the old
 version keeps serving. What is undone afterwards, and only the migration ever
 is, is [Failure and undo](#failure-and-undo)'s.
+
+**Between the Applications of one Project, a release orders one thing.** The
+Applications of a Project share its Reconcile Unit, so Flux applies them
+together, and the unit's ordering
+([chapter 16](16-dependencies.md#what-an-edge-derives-read-outbound)) orders
+nothing among them. What it does not order, the Release Gate does: a
+`blue-green` member's new version may start only once every Process it reaches
+through a `required` edge in its own Project, and that switches `stop-start`,
+has started the version its Deployment now holds. That holds when the
+Deployment has observed its current spec, and every replica runs that spec and
+is available. The member's release-gate inputs name those Processes
+([chapter 20](20-resolved-deployment.md#the-release-gate)), and the gate reads
+their Deployments when the member asks to start. A provider replaced in the same
+release is therefore waited for, not started against.
+
+Nothing else between them is ordered, and each exception is deliberate:
+
+- **A `blue-green` provider is not waited for.** Its old version keeps serving
+  while its new one is analysed, so a consumer never starts without one.
+  Waiting for it could also deadlock: its own promotion waits on its barrier,
+  which can wait on the consumer.
+- **A `stop-start` consumer is not held.** It asks no gate, so it starts when
+  Flux applies it; its owner accepted the gap by declaring `cutover:
+  interrupted`.
+- **A provider that stops after the member started is not waited for.** The
+  wait is for the start; a Process still tolerates a dependency restarting
+  later, as it does across Projects.
+- **A `required: false` edge orders nothing**, inside a Project or across one.
 
 ## Failure and undo
 

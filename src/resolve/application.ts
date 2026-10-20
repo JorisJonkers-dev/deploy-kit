@@ -118,17 +118,70 @@ interface Resolved {
   readonly resolved: ResolvedProcess;
 }
 
+type Provider = NonNullable<ReleaseGate["members"][number]["waitsFor"]>[number];
+
+/** Whether a Process switches stop-start: it serves, and its owner accepted the gap. */
+const stopsToStart = ({ lifecycle, cutover }: EffectiveProcess): boolean =>
+  lifecycle === "application" && cutover === "interrupted";
+
+/**
+ * What a member waits for before its new version starts
+ * (spec/v1/55-delivery.md#release-order): every Process of another Application
+ * of its own Project that one of its required edges reaches and that switches
+ * stop-start. A provider in another Project is its Reconcile Unit's to order,
+ * and a blue-green one keeps its old version serving.
+ */
+function waitsForOf(
+  process: EffectiveProcess,
+  { union, project }: ApplicationContext,
+): Provider[] {
+  // The member's own Application is among them, and holds no stop-start
+  // Process: an Application switches as one, or E_RELEASE_UNIT_MIXED_CUTOVER
+  // refused it.
+  const siblings = union
+    .filter((candidate) => candidate.project === project)
+    .flatMap(({ applications }) => applications);
+  // A missing list and any fallback reach no provider alike.
+  // Stryker disable next-line ArrayDeclaration
+  const providers = (process.dependsOn ?? [])
+    .filter(({ required }) => required !== false)
+    .flatMap((edge) =>
+      siblings
+        .filter(({ id }) => id === edge.application)
+        .flatMap(({ id, processes }) =>
+          processes
+            .filter(
+              (provider) =>
+                provider.provides?.[edge.surface] !== undefined &&
+                stopsToStart(provider),
+            )
+            .map((provider) => ({ application: id, process: provider.name })),
+        ),
+    );
+  // Two edges to one provider, on two of its surfaces, wait for it once. The
+  // key sorts by Application, then Process: a space sorts before any character
+  // a name may hold.
+  const unique = new Map(
+    providers.map((provider) => [
+      `${provider.application} ${provider.process}`,
+      provider,
+    ]),
+  );
+  return [...unique.keys()].sort().map((key) => unique.get(key) as Provider);
+}
+
 /**
  * The release-gate inputs a blue/green switch reads
  * (spec/v1/20-resolved-deployment.md#the-release-gate): one member per
- * blue/green Process that publishes readiness, the platform's analysis
- * cadence, and the slowest member's deadline.
+ * blue/green Process that publishes readiness, with what it waits for, the
+ * platform's analysis cadence, and the slowest member's deadline.
  */
 function releaseGateOf(
   pairs: readonly Resolved[],
-  { platform, gate }: ApplicationContext,
+  context: ApplicationContext,
   plan: ResolvedMigration | undefined,
 ): ReleaseGate | undefined {
+  const { platform, gate } = context;
   const gated = pairs.filter(
     ({ resolved }) => resolved.switchover === "blue-green",
   );
@@ -150,13 +203,17 @@ function releaseGateOf(
     // A blue/green Process under a platform with no delivery policy is
     // E_NO_DELIVERY_POLICY.
     analysis: platform.delivery?.analysis as ReleaseGate["analysis"],
-    members: members.map(({ process }) => ({
-      process: process.name,
-      readiness: readinessOf(process) as Probe,
-      ...(exports(process.runtime)
-        ? { checks: ["error-rate" as const, "latency" as const] }
-        : {}),
-    })),
+    members: members.map(({ process }) => {
+      const waitsFor = waitsForOf(process, context);
+      return {
+        process: process.name,
+        readiness: readinessOf(process) as Probe,
+        ...(exports(process.runtime)
+          ? { checks: ["error-rate" as const, "latency" as const] }
+          : {}),
+        ...(waitsFor.length === 0 ? {} : { waitsFor }),
+      };
+    }),
     // What the gate starts and undoes, where the Application has a migration.
     ...(plan === undefined
       ? {}

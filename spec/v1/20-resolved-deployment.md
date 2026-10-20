@@ -852,6 +852,7 @@ Layer 2 therefore carries, per Application a Process of which switches
 | the member list | the Application's `blue-green` Processes; membership is structural, and a job or a prepare Process switches nothing, so neither is a member |
 | each member's readiness reference | that Process's `probes.readiness`: its `path` + `port`, or its `tcp` port |
 | each member's analysis checks | its Runtime Profile: `error-rate` and `latency` where the profile exposes HTTP server metrics (`jvm`, `node`, `python`), none where it does not (`static`, `none`) |
+| what each member waits for | every Process the member reaches through a `required` edge that belongs to another Application of the same Project and switches `stop-start`, by Application and Process, in name order; absent where there is none ([chapter 55](55-delivery.md#release-order)) |
 | the analysis cadence, and the two thresholds a check must stay under | the Platform document's `delivery.analysis` ([chapter 14](14-platform-intent.md#delivery-policy)) |
 | the gate deadline | `max` over the members of `progressDeadlineSeconds`, itself `startupBudget × 3` and the substrate's `imagePull` |
 | the migration | where the Application moves its schema with a changelog: the migration identity, `testedAgainst` where the proof records one, and `nonTransactional`, each copied from the migration plan ([The migration](#the-migration)) |
@@ -872,6 +873,15 @@ Canary that asks it: `<identity>-<tag>` and `<identity>-down-<tag>` are its to
 spell. An Application that declares a changelog always carries a gate
 (`E_MIGRATION_UNGATED`, [chapter 10](10-project-intent.md#migration)), so no
 migration is rendered that nothing starts.
+
+What a member waits for names Processes and never their revisions. A provider's
+revision in this element would make it part of the consumer's revision, so every
+release of the provider would release the consumer too. The gate learns whether
+a provider has started its current version from the provider's Deployment
+instead, when the member asks. A provider in another Project is never named
+here: its Reconcile Unit orders it, and a provider that switches `blue-green`
+keeps its old version serving while its new one starts
+([chapter 55](55-delivery.md#release-order)).
 
 **The inputs are all the gate reads.** They live in the Resolved Deployment and in
 each Application's projection, which is where decisions live
@@ -1779,6 +1789,10 @@ classDiagram
         +string process
         +AnalysisCheck[] checks
     }
+    class GateProvider {
+        +string application
+        +string process
+    }
     class GateAnalysis {
         +Duration interval
         +int iterations
@@ -2006,6 +2020,7 @@ classDiagram
     ResolvedApplication "1" *-- "0..1" ResolvedScrape : scrape
     ReleaseGate "1" *-- "1" GateAnalysis : analysis
     ReleaseGate "1" *-- "1..*" GateMember : members
+    GateMember "1" *-- "0..*" GateProvider : waitsFor
     ReleaseGate "1" *-- "0..1" GateMigration : migration
 
     ResolvedProcess "1" *-- "0..1" ResolvedProbe : readiness
