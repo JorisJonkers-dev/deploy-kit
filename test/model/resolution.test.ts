@@ -362,12 +362,43 @@ describe("resolveIntentSet", () => {
       return project([...result.value.projects], "knowledge-platform");
     };
 
-    it("resolves hindsight, four Processes released together, to its committed projection, byte for byte", () => {
+    it("resolves hindsight, three Processes released together, to its committed projection, byte for byte", () => {
       expect(
         canonicalJson(
           knowledgePlatform().applications.find(({ id }) => id === "hindsight"),
         ),
       ).toBe(text("knowledge-platform/expected/resolved.hindsight.json"));
+    });
+
+    it("holds hindsight's API and worker until the embedding model, a stop-start Application of the same Project, has started", () => {
+      const members = knowledgePlatform().applications.find(
+        ({ id }) => id === "hindsight",
+      )?.releaseGate?.members;
+
+      expect(
+        members?.map(({ process, waitsFor }) => [process, waitsFor]),
+      ).toStrictEqual([
+        [
+          "hindsight-api",
+          [
+            {
+              application: "hindsight-embedding",
+              process: "hindsight-tei-embedding",
+            },
+          ],
+        ],
+        [
+          "hindsight-worker",
+          [
+            {
+              application: "hindsight-embedding",
+              process: "hindsight-tei-embedding",
+            },
+          ],
+        ],
+        // Its edge reaches the API, in its own Application.
+        ["hindsight-control-plane", undefined],
+      ]);
     });
 
     it("carries a Process's internet egress with the reason its owner gave", () => {

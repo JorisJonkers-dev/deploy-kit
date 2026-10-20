@@ -44,7 +44,7 @@ spec:
       flagger.app/config-tracking: disabled
   rolloutRestartTargets:
     - kind: Deployment
-      name: hindsight-api
+      name: hindsight-api-primary
 ---
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultDynamicSecret
@@ -68,7 +68,7 @@ spec:
       flagger.app/config-tracking: disabled
   rolloutRestartTargets:
     - kind: Deployment
-      name: hindsight-api
+      name: hindsight-api-primary
 ---
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultAuth
@@ -114,7 +114,7 @@ spec:
       flagger.app/config-tracking: disabled
   rolloutRestartTargets:
     - kind: Deployment
-      name: hindsight-worker
+      name: hindsight-worker-primary
 ---
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultDynamicSecret
@@ -138,4 +138,4 @@ spec:
       flagger.app/config-tracking: disabled
   rolloutRestartTargets:
     - kind: Deployment
-      name: hindsight-worker
+      name: hindsight-worker-primary

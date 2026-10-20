@@ -601,11 +601,20 @@ const resolvedExposure = z
 // Profile's HTTP server metrics allow (spec/v1/55-delivery.md#the-release-gate).
 const analysisCheck = z.enum(ANALYSIS_CHECKS).meta({ id: "AnalysisCheck" });
 
+// A Process of another Application of the same Project that a member requires
+// and that switches stop-start: the member's new version starts only once it
+// has started its own (spec/v1/55-delivery.md#release-order). Named, never by
+// revision, so a release of the provider does not release the member.
+const gateProvider = z
+  .strictObject({ application: text, process: text })
+  .meta({ id: "GateProvider" });
+
 const gateMember = z
   .strictObject({
     process: text,
     readiness: probeTarget,
     checks: z.array(analysisCheck).exactOptional(),
+    waitsFor: z.array(gateProvider).min(1).exactOptional(),
   })
   .meta({ id: "GateMember" });
 

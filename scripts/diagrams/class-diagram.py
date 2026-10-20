@@ -189,6 +189,7 @@ TREES = {"10-project-intent": {
         "ResolvedExposure",
     ],
     "ReleaseGate": ["GateMigration", "GateAnalysis", "GateMember"],
+    "GateMember": ["GateProvider"],
     "ResolvedMigration": ["MigratedDatabase"],
     "ResolvedProcess": [
         "ResolvedProbe", "StartupProbe", "ResolvedPlacement", "ResolvedApiAccess",

@@ -306,6 +306,13 @@
           "items": {
             "$ref": "#/$defs/AnalysisCheck"
           }
+        },
+        "waitsFor": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GateProvider"
+          }
         }
       },
       "required": [
@@ -353,6 +360,24 @@
         "error-rate",
         "latency"
       ]
+    },
+    "GateProvider": {
+      "type": "object",
+      "properties": {
+        "application": {
+          "type": "string",
+          "minLength": 1
+        },
+        "process": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "application",
+        "process"
+      ],
+      "additionalProperties": false
     },
     "GateMigration": {
       "type": "object",

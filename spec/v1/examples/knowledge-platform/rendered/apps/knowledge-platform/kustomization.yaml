@@ -7,6 +7,7 @@ resources:
   - basic-memory
   - docling-serve
   - hindsight
+  - hindsight-embedding
   - karakeep
   - namespace.yaml
   - vaultconnection.yaml

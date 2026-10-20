@@ -51,11 +51,18 @@ applications:
             durability: irreplaceable
 
   # ================================================================= hindsight
-  # The memory service: an API, its control plane, a worker that runs the jobs
-  # the API queues, and the embedding model both read. One Application, because
-  # the four release together: a new API against an old worker is a broken queue.
+  # The memory service: an API, its control plane, and a worker that runs the
+  # jobs the API queues. One Application, because the three release together: a
+  # new API against an old worker is a broken queue. The embedding model they
+  # read is an Application of its own below, since it holds a volume and stops
+  # to start again, while these three switch with no gap.
   - id: hindsight
     migration: self # the API migrates its own schema at startup
+    # Overrides the header: none of the three holds a volume, so each new version
+    # starts beside the old one, and the Release Gate holds it until every
+    # stop-start Process it requires in this Project, the embedding model, has
+    # started its own (spec/v1/55-delivery.md#release-order).
+    cutover: continuous
     # Shared Intent at the Application: the four run on one site, beside the
     # model cache and the database they read.
     placement:
@@ -88,7 +95,7 @@ applications:
           - application: platform-postgres
             surface: postgres
             credentials: { delivery: env, rotation: { tolerates: restart } }
-          - { application: hindsight, surface: embeddings }
+          - { application: hindsight-embedding, surface: embeddings }
         secrets:
           - path: secret/data/platform/hindsight
             keys: [llm-api-key]
@@ -118,7 +125,7 @@ applications:
               mountAt: /run/secrets/database
               fileMode: "0400"
               rotation: { tolerates: restart }
-          - { application: hindsight, surface: embeddings }
+          - { application: hindsight-embedding, surface: embeddings }
         secrets:
           - path: secret/data/platform/hindsight
             keys: [llm-api-key]
@@ -145,25 +152,6 @@ applications:
           readiness: { tcp: 3000 }
           liveness: { tcp: 3000 }
         startupBudget: 60s
-
-      - name: hindsight-tei-embedding
-        lifecycle: application
-        image: text-embeddings-inference
-        runtime: none
-        provides:
-          embeddings: 8091
-        placement:
-          memory: 6Gi
-          cpu: 500m
-        probes:
-          readiness: { path: /health, port: 8091 }
-          liveness: { path: /health, port: 8091 }
-        startupBudget: 300s # the first start downloads the model into the cache
-        volumes:
-          - claim: hindsight-tei-model-cache
-            mountAt: /data
-            size: 8Gi
-            durability: reconstructible # the model downloads again
 
   # ============================================================== basic-memory
   # A notes server whose notes are a git clone of knowledge-vault, kept in sync
@@ -280,3 +268,31 @@ applications:
             mountAt: /meili_data
             size: 20Gi
             durability: reconstructible # the index rebuilds from the archive
+
+  # ======================================================= hindsight-embedding
+  # The embedding model the API and the worker read. It keeps its model cache on
+  # a volume, so it stops before it starts again, and a release of this Project
+  # recreates it; the gate keeps hindsight's new versions from starting until it
+  # serves again.
+  - id: hindsight-embedding
+    placement:
+      site: enschede
+    processes:
+      - name: hindsight-tei-embedding
+        lifecycle: application
+        image: text-embeddings-inference
+        runtime: none
+        provides:
+          embeddings: 8091
+        placement:
+          memory: 6Gi
+          cpu: 500m
+        probes:
+          readiness: { path: /health, port: 8091 }
+          liveness: { path: /health, port: 8091 }
+        startupBudget: 300s # the first start downloads the model into the cache
+        volumes:
+          - claim: hindsight-tei-model-cache
+            mountAt: /data
+            size: 8Gi
+            durability: reconstructible # the model downloads again

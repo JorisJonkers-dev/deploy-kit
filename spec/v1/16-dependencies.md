@@ -56,11 +56,15 @@ puts the port in exactly one place.
 
 <sub>[Diagram source](#what-a-dependency-edge-derives) · edit by opening the SVG in draw.io</sub>
 
-`required: false` yields an allow rule but no reconcile ordering and no startup
-gate, so an optional dependency cannot deadlock a rollout; the consumer's own
-startup code must tolerate the provider being absent. `required: true` (the
-default) buys both. The graph of required edges must be acyclic
-(`E_DEPENDENCY_CYCLE`, [chapter 40](40-composition.md)).
+`required: false` yields an allow rule and orders nothing, so an optional
+dependency cannot deadlock a rollout; the consumer's own startup code must
+tolerate the provider being absent. `required: true` (the default) also orders.
+A provider in another Project is ordered by Reconcile Unit ordering. A provider
+in the consumer's own Project that switches `stop-start` is ordered by the
+Release Gate: it holds a `blue-green` consumer's new version until the provider
+has started its own ([chapter 55](55-delivery.md#release-order)). The graph of
+required edges must be acyclic (`E_DEPENDENCY_CYCLE`,
+[chapter 40](40-composition.md)).
 
 An edge orders; it does not group. Things that must switch versions together are
 Processes of **one Application**: an Application is the unit of atomic release, its
@@ -946,7 +950,7 @@ flowchart LR
     E --> O2["dependency coordinates<br/>${dependency:platform-postgres.host}"]
     E --> O3["NetworkPolicy egress<br/>allow postgres:5432"]
 
-    E -.->|"required: false"| N1["allow rule only,<br/>no ordering, no startup gate"]
+    E -.->|"required: false"| N1["allow rule only,<br/>orders nothing"]
 
     O3 --> B["+ baseline<br/>UDP/53 to cluster DNS"]
     B -.->|"only when the edge set is complete"| D["default-deny posture"]
