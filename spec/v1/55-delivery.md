@@ -90,6 +90,26 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   Reporter, and `estate-rollback-backups` while a Rollback's backup is asked
   for; the edge units join them once no Project is on the old path
   ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)).
+- **The `_estate` artifact holds only what no Project can own.** A Project
+  owns every object it delivers
+  ([0116](../../docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)),
+  so the target `_estate` artifact holds the Stable Addresses alone
+  ([chapter 16](16-dependencies.md#the-stable-address)), which must outlive a
+  provider's move between Projects. Each unit it holds today moves out in its
+  own change, as [chapter 20](20-resolved-deployment.md#the-reconcile-unit)'s
+  table names: the policy job into each Project's artifact
+  ([#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548)) with its
+  generated keys ([#556](https://github.com/JorisJonkers-dev/deploy-kit/issues/556)),
+  each catalog into the artifact of the Project that runs its datastore
+  ([#482](https://github.com/JorisJonkers-dev/deploy-kit/issues/482)), the
+  routes into each routed Project's artifact
+  ([#546](https://github.com/JorisJonkers-dev/deploy-kit/issues/546)), the
+  rollout events into an `Alert` per Project
+  ([#545](https://github.com/JorisJonkers-dev/deploy-kit/issues/545)), and the
+  rollback backups away entirely
+  ([#557](https://github.com/JorisJonkers-dev/deploy-kit/issues/557)). A Project's
+  artifact then never depends on another Project's fragment, so one Project's
+  publish neither re-pins nor holds another.
 - **Signed keyless, and annotated.** The artifact is signed by the composition
   workflow's own OIDC identity, the Platform document's
   `bootstrap.flux.artifacts.signer`, so no signing key exists to leak or rotate.

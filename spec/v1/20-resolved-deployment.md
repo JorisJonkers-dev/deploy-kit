@@ -1164,21 +1164,34 @@ edge to the secrets-provisioning unit wherever an Application holds any grant.
 A `required: false` edge orders nothing ([chapter 55](55-delivery.md#release-order)),
 so two projects that name each other optionally do not wait on each other.
 
-Two kinds of unit belong to no Project, because what they apply is
-estate-scoped ([The path plan](#the-path-plan)):
+**A Project owns every object it delivers**
+([0116](../../docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)).
+Every object that exists because of one Project is planned under that
+Project's own path and applied by its own unit, so a change in one Project
+re-renders, re-pins and holds only that Project. A **Platform Project**, one
+holding an Application the Platform document names for a platform role
+([chapter 14](14-platform-intent.md#privileged-roles)), owns what several
+Projects share, and a Project's unit follows a Platform Project's unit where
+it needs that role. Only the Stable Addresses stay estate-scoped
+([chapter 16](16-dependencies.md#the-stable-address)), because each must
+outlive its provider's move between Projects.
 
-| unit | applies | follows |
-|---|---|---|
-| `estate-vso-secrets` | `estate/vso-secrets/`: the Vault policy job and the documents it is handed ([The Vault policy job](#the-vault-policy-job)) | the unit of the project that declares the Secret Store, which the job writes into |
-| `estate-edge-<tier>`, one per tier a route reaches | `estate/edge/<tier>/`: the routes that tier's proxy serves | the unit of the project that declares the tier's proxy, and of every project with an exposure on the tier, so no route is applied before its proxy or its own namespace exists |
-| `estate-rollout-events`, where the platform names a Reporter | `estate/rollout-events/`: the `Provider` and the `Alert` that send Flux's events about every unit to the Reporter ([chapter 55](55-delivery.md#rollouts)) | nothing: both apply whether or not the Reporter is up, and an event sent before it is ready is one it reads again |
-| `estate-rollback-backups`, while a Rollback's backup is asked for | `estate/rollback-backups/<project>.yaml`: one one-shot backup `Job` per backed-up volume of each Project whose pin asks for one ([chapter 55](55-delivery.md#pause-and-rollback)) | nothing: each Job runs in a Project already on the estate path, as the backup identity that Project's unit brought up |
+Four kinds of unit still belong to no Project, because what they apply is
+estate-scoped ([The path plan](#the-path-plan)). Each moves where its last
+column says, in the change that column names, and its row goes with it:
+
+| unit | applies | follows | moves to |
+|---|---|---|---|
+| `estate-vso-secrets` | `estate/vso-secrets/`: the Vault policy job, the documents it is handed ([The Vault policy job](#the-vault-policy-job)), and the catalog Jobs ([The catalog methods](#the-catalog-methods)) | the unit of the project that declares the Secret Store, which the job writes into | each Project's own unit: its policy job ([#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548)) and generated keys ([#556](https://github.com/JorisJonkers-dev/deploy-kit/issues/556)), and a datastore's catalog in the unit of the Project that runs it ([#482](https://github.com/JorisJonkers-dev/deploy-kit/issues/482)); the edge a grant adds then follows the unit of the Platform Project that declares the Secret Store |
+| `estate-edge-<tier>`, one per tier a route reaches | `estate/edge/<tier>/`: the routes that tier's proxy serves | the unit of the project that declares the tier's proxy, and of every project with an exposure on the tier, so no route is applied before its proxy or its own namespace exists | each routed Project's own unit, following the unit of the Project that declares the tier's proxy ([#546](https://github.com/JorisJonkers-dev/deploy-kit/issues/546)) |
+| `estate-rollout-events`, where the platform names a Reporter | `estate/rollout-events/`: the `Provider` and the `Alert` that send Flux's events about every unit to the Reporter ([chapter 55](55-delivery.md#rollouts)) | nothing: both apply whether or not the Reporter is up, and an event sent before it is ready is one it reads again | an `Alert` in each Project's own unit, naming that Project's units, and the `Provider` with it or in the Reporter's Platform Project, as [#545](https://github.com/JorisJonkers-dev/deploy-kit/issues/545) decides |
+| `estate-rollback-backups`, while a Rollback's backup is asked for | `estate/rollback-backups/<project>.yaml`: one one-shot backup `Job` per backed-up volume of each Project whose pin asks for one ([chapter 55](55-delivery.md#pause-and-rollback)) | nothing: each Job runs in a Project already on the estate path, as the backup identity that Project's unit brought up | nowhere: a Rollback relies on the scheduled backups of each volume's Durability Class, and takes none of its own ([#557](https://github.com/JorisJonkers-dev/deploy-kit/issues/557)) |
 
 A tier has a unit of its own so that one tier's refused route holds only that
 tier. These are the units the estate-scoped artifact's pin applies
 ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)).
 
-Neither kind is named `apps-`, and neither directory is under `apps/`. That
+No such unit is named `apps-`, and no such directory is under `apps/`. That
 prefix and that directory are a Project's own: `apps-<project>` and
 `apps/<project>/` hold for every Project whatever it is called, so a Project
 named `edge` or `vso-secrets` renders, is published and is pinned like any
