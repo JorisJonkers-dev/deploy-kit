@@ -30,7 +30,7 @@
     through its one black box, and not the production implementation's digests,
     which are over a different shape (spec/v1/20-resolved-deployment.md#pinned-inputs).
   -->
-  <provenance renderHash="sha256:f3d273768271afd8c03d96b0da929b01a38636973c89bf1a8bf3d2ae9e61960c" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+  <provenance renderHash="sha256:d76f8ffe8d4678779ddc41633d3a0b2b4683a6c330a8846475b18b8df54a48f4" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
     <inputDigests input="intent-fragment" name="delivery" digest="sha256:a14e199b014c8f0dfe285f05d43f5d04929faecc22d2b02c5c938eb9e9a93e07"/>
     <inputDigests input="intent-fragment" name="edge" digest="sha256:273c64ecd8c35ab69918664735661764e44e8e3ad04a58a11ab92dcb52ec1f4a"/>
     <inputDigests input="intent-fragment" name="notes" digest="sha256:18df1eade889398c265322d14889728749b999ab340d2d183efa04c8a3c0b29a"/>
@@ -38,7 +38,7 @@
     <inputDigests input="intent-fragment" name="secrets" digest="sha256:3b6b608aa89a7beebed377772c9905705861c2609f1c262a5ddcb757b70bcecc"/>
     <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:466a836dcafb0bb696dfda0bcc4ceacfed02dbb0acfe347b54d505483c0e136e"/>
     <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
-    <inputDigests input="images-lock" name="estate" digest="sha256:8badace7a70f3c9b57c613e6ca9bf1ce4b4a6382d4b331b1f09c44a0892d0667"/>
+    <inputDigests input="images-lock" name="estate" digest="sha256:2d345ca79ba1ac222e75e72cda38ee6babdc7b4a2cd4c58d55018112278d4042"/>
     <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
   </provenance>
 
@@ -51,7 +51,7 @@
     document carries the same one; minimal holds no grant, so its render holds
     no document for the job to write and plans no file for it.
   -->
-  <policyJob identity="vault-policy" namespace="secrets-system" image="ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7" uid="65532" gid="65532" role="policy-admin" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s" eligibleNodes="enschede-t1000-1 enschede-rx7900xtx-1 enschede-gtx-960m-1 frankfurt-contabo-1">
+  <policyJob identity="vault-policy" namespace="secrets-system" image="ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7" imageVersion="1.0.0" uid="65532" gid="65532" role="policy-admin" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s" eligibleNodes="enschede-t1000-1 enschede-rx7900xtx-1 enschede-gtx-960m-1 frankfurt-contabo-1">
     <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
     <egress rule="cluster-dns" namespace="kube-system" port="53"/>
   </policyJob>
