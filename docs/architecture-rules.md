@@ -56,7 +56,7 @@ fails the gate, so the taxonomy cannot grow entries nothing stands behind.
 
 ## Rules
 
-This ledger holds **75** rules, **2** of them pending.
+This ledger holds **76** rules, **2** of them pending.
 
 A row is enforced or pending, never both. An enforced row names its enforcer as
 `kind:value`: `depcruise:` a rule in
@@ -150,6 +150,7 @@ moving a live rule to pending fails the gate rather than quietly retiring it.
 | RULE-073 | toolchain | A schema in `src/` states only what its generated JSON Schema states too: no `refine`, `superRefine`, `check`, `overwrite`, `transform`, `preprocess`, `pipe` or `custom`, outside the one module that pairs a zod check with the JSON Schema keywords stating the same rule | `eslint:deploy-kit/no-unstated-rule` | [test/code-rules.test.ts](../test/code-rules.test.ts) `RULE-073 refuses a rule the published JSON Schema drops` |
 | RULE-074 | diagnostics | Shipped code throws only an `InternalFailure` of a named kind (unsupported, unchecked or a broken invariant), never a bare `Error` or `TypeError`, so every way the compiler fails is one enumerable list | `eslint:deploy-kit/no-bare-throw` | [test/code-rules.test.ts](../test/code-rules.test.ts) `RULE-074 refuses a bare error thrown in src/` |
 | RULE-075 | gates | `Pipeline Complete` needs the merging `mutation` job, which never skips and fails when the scope job or any mutation shard did not succeed; the shards run only where the scope job says the change reaches a mutant | `file:.github/workflows/ci.yml` | [test/pipeline-wiring.test.ts](../test/pipeline-wiring.test.ts) `'name': 'Fail: the scope or a shard did not succeed'` |
+| RULE-076 | gates | Every rendered pod template meets Pod Security's `restricted` profile and the posture's read-only root filesystem, save the platform's VPN native sidecar, which is outside the posture and may add only `NET_ADMIN` and `NET_RAW`; a rendered file that does not parse fails rather than passing unread; the check runs in-process, so a machine without kubeconform still runs it | `npm:lint:manifests` | [test/manifest-contract.test.ts](../test/manifest-contract.test.ts) `refuses a pod that breaks the restricted profile` |
 
 ## Considered and rejected
 

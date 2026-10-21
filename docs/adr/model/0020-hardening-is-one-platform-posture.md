@@ -45,10 +45,12 @@ registry read at render time.
 exception to render, a Process's writable set cannot be enumerated ahead of
 time, or an image the estate depends on has no numeric user and cannot be
 replaced. **Settled by:** the committed trees under
-`spec/v1/examples/{auth,data,knowledge,minimal}/rendered/` carrying the four
-controls on every container, the `postgres-exporter` sidecar included, with no
-project file carrying a hardening field (a test asserting both is to be
-written, owned by joris); and `platform-postgres` running `initdb` on a freshly
+`spec/v1/examples/{auth,data,knowledge,minimal}/rendered/` carrying the five
+controls on every container, the `postgres-exporter` sidecar included, which
+`npm run lint:manifests` asserts by holding every rendered pod template to Pod
+Security's `restricted` profile ([RULE-076](../../architecture-rules.md));
+with no project file carrying a hardening field (a test asserting that is to
+be written, owned by joris); and `platform-postgres` running `initdb` on a freshly
 provisioned `local-path` volume.
 
 ## Why
