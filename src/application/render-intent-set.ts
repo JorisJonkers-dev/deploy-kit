@@ -212,7 +212,12 @@ export function renderResolvedSet(
   const backups = rendering.flatMap((project) => {
     const request = options.rollbackBackups?.get(project.project);
     if (request === undefined) return [];
-    const dump = rollbackDumpOf(project, request, resolved.projects);
+    const dump = rollbackDumpOf(
+      project,
+      request,
+      resolved.projects,
+      resolved.catalogJobs ?? [],
+    );
     return [
       ...renderRollbackBackups(project, request, dump),
       ...(dump === undefined

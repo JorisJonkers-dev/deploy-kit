@@ -1,11 +1,14 @@
 // A Rollback's dump of the Project's own database
 // (spec/v1/30-deliverables.md#a-rollbacks-backup): run in the Project's
-// namespace with the database credential its Application already holds, so it
-// reaches that one database and needs no new Secret Store path, by the method
-// the datastore's own backup runs, into a claim of the Project's own. Each
-// adapter renders its share of it from what this derives.
+// namespace with the owner credential the Project already holds, so it reaches
+// that one database and needs no new Secret Store path, by the method the
+// datastore's own backup runs, into a claim of the Project's own. Each adapter
+// renders its share of it from what this derives.
 import type { ResolvedProject } from "../../model/resolution.ts";
-import type { ResolvedProcess } from "../../model/resolved-deployment.ts";
+import type {
+  ResolvedCatalogJob,
+  ResolvedProcess,
+} from "../../model/resolved-deployment.ts";
 
 /** Everything the dump's Job, credential and policies are rendered from. */
 export interface RollbackDump {
@@ -20,7 +23,7 @@ export interface RollbackDump {
   readonly claim: string;
   readonly size: string;
   readonly database: string;
-  /** The identity that holds the credential, and the role below the `database` mount. */
+  /** The identity that holds the owner credential, and its role below the `database` mount. */
   readonly identity: string;
   readonly role: string;
   readonly method: string;
@@ -33,123 +36,97 @@ export interface RollbackDump {
   readonly datastore: { readonly namespace: string; readonly process: string };
 }
 
-/** The mount the Secret Store issues database credentials from. */
-const MOUNT = "database";
-const CREDENTIALS = `${MOUNT}/creds/`;
+type Egress = NonNullable<ResolvedProcess["egress"]>[number];
+type EngineGrant = Extract<
+  NonNullable<ResolvedProcess["secrets"]>[number],
+  { readonly paths: unknown }
+>;
 
-interface Holder {
-  readonly application: string;
-  readonly identity: string;
-  readonly role: string;
-}
-
-/** Every identity of the Project that holds a credential to its database, owners first. */
-function holdersOf(project: ResolvedProject): Holder[] {
-  const roles = ["owner", "data"].map(
-    (kind) => `${CREDENTIALS}${project.project}-${kind}`,
-  );
-  const held = project.applications.flatMap((application) =>
-    [
-      ...(application.migration === undefined
-        ? []
-        : [
-            {
-              identity: application.migration.identity,
-              paths: application.migration.credential.paths,
-            },
-          ]),
-      ...application.processes.flatMap(({ identity, secrets }) =>
-        (secrets ?? []).flatMap((grant) =>
-          "paths" in grant ? [{ identity, paths: grant.paths }] : [],
-        ),
-      ),
-    ].flatMap(({ identity, paths }) =>
-      paths
-        .filter(({ path }) => roles.includes(path))
-        .map(({ path }) => ({
-          application: application.id,
-          identity,
-          role: path.slice(MOUNT.length + 1),
-          rank: roles.indexOf(path),
-        })),
-    ),
-  );
-  return held
-    .toSorted((a, b) => a.rank - b.rank)
-    .map(({ application, identity, role }) => ({
-      application,
-      identity,
-      role,
-    }));
-}
-
-/** The Process of the union that serves the datastore the Project's edges reach. */
-function datastoreOf(
+/**
+ * The first identity of the Project that holds its database's owner
+ * credential: the migration identity of an Application whose changelog the
+ * runner applies, or a Process of one that migrates itself.
+ */
+function ownerOf(
   project: ResolvedProject,
-  union: readonly ResolvedProject[],
-):
-  | { readonly namespace: string; readonly process: ResolvedProcess }
-  | undefined {
-  const reached = project.applications
-    .flatMap(({ processes, migration }) => [
-      ...(migration?.egress ?? []),
-      ...processes.flatMap(({ egress }) => egress ?? []),
-    ])
-    .find(({ rule }) => rule === "datastore");
-  if (reached === undefined) return undefined;
-  const process = union
-    .flatMap(({ applications }) => applications)
-    .filter(({ namespace }) => namespace === reached.namespace)
-    .flatMap(({ processes }) => processes)
-    .find(({ name }) => name === reached.process);
-  return process === undefined
-    ? undefined
-    : { namespace: reached.namespace, process };
+  role: string,
+): { readonly application: string; readonly identity: string } | undefined {
+  return project.applications
+    .flatMap((application) =>
+      [
+        ...application.processes.flatMap(({ identity, secrets }) =>
+          (secrets ?? [])
+            .filter((grant): grant is EngineGrant => "paths" in grant)
+            .flatMap(({ paths }) =>
+              paths.map(({ path }) => ({ identity, path })),
+            ),
+        ),
+        ...(application.migration?.credential.paths ?? []).map(({ path }) => ({
+          identity: (application.migration as { identity: string }).identity,
+          path,
+        })),
+      ]
+        .filter(({ path }) => path === role)
+        .map(({ identity }) => ({ application: application.id, identity })),
+    )
+    .at(0);
 }
 
 /**
- * The dump a Rollback of `project` runs for `request`, or nothing where the
- * Project holds no credential to a database, or its datastore's backup dumps
- * nothing over the network.
+ * The dump a Rollback of `project` runs for `request`, or nothing where no
+ * catalog creates the Project a database, or where its datastore keeps no
+ * backup that dumps over the network to run.
  */
 export function rollbackDumpOf(
   project: ResolvedProject,
   request: string,
   union: readonly ResolvedProject[],
+  catalogs: readonly ResolvedCatalogJob[],
 ): RollbackDump | undefined {
-  const [holder] = holdersOf(project);
-  const datastore = datastoreOf(project, union);
-  const volume = datastore?.process.volumes?.find(
+  const database = `${project.project}_db`;
+  const role = `database/creds/${project.project}-owner`;
+  // The catalog that creates the database names the datastore that holds it.
+  const catalog = catalogs.find(({ catalog: { databases } }) =>
+    databases.some(({ name }) => name === database),
+  );
+  if (catalog === undefined) return undefined;
+  // A database the catalog creates is owned, and the identity that migrates
+  // its schema holds the owner's credential.
+  const owner = ownerOf(project, role) as NonNullable<
+    ReturnType<typeof ownerOf>
+  >;
+  // A catalog method connects to its datastore, and resolution placed it.
+  const reached = catalog.egress.find(
+    ({ rule }) => rule === "datastore",
+  ) as Egress;
+  const datastore = union
+    .flatMap(({ applications }) => applications)
+    .filter(({ namespace }) => namespace === reached.namespace)
+    .flatMap(({ processes }) => processes)
+    .find(({ name }) => name === reached.process) as ResolvedProcess;
+  // A datastore keeps its data on a volume, so its list is never missing.
+  // Stryker disable next-line ArrayDeclaration
+  const volume = (datastore.volumes ?? []).find(
     ({ backup }) => backup?.peer !== undefined,
   );
-  const backup = volume?.backup;
-  if (
-    holder === undefined ||
-    datastore === undefined ||
-    volume === undefined ||
-    backup?.peer === undefined
-  )
-    return undefined;
-  const namespace = project.applications[0]?.namespace as string;
+  if (volume === undefined) return undefined;
+  const backup = volume.backup as NonNullable<typeof volume.backup>;
   return {
-    namespace,
-    application: holder.application,
+    namespace: (project.applications[0] as { namespace: string }).namespace,
+    application: owner.application,
     name: `${project.project}-database-${request}`,
     instance: `${project.project}-database-dump`,
     claim: `${project.project}-rollback`,
     size: volume.size,
-    database: `${project.project}_db`,
-    identity: holder.identity,
-    role: holder.role,
+    database,
+    identity: owner.identity,
+    role: role.slice("database/".length),
     method: backup.method,
     methodVersion: backup.methodVersion,
     uid: backup.uid,
     gid: backup.gid,
-    host: backup.peer.host,
-    port: backup.peer.port,
-    datastore: {
-      namespace: datastore.namespace,
-      process: datastore.process.name,
-    },
+    host: catalog.catalog.host,
+    port: catalog.catalog.port,
+    datastore: { namespace: reached.namespace, process: datastore.name },
   };
 }
