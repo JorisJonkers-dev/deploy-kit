@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.29.0...v0.30.0) (2026-10-21)
+
+
+### Features
+
+* a Rollback's backup dumps the Project's own database with its own credential ([#543](https://github.com/JorisJonkers-dev/deploy-kit/issues/543)) ([9fd70de](https://github.com/JorisJonkers-dev/deploy-kit/commit/9fd70debde6fc7462bf17922a75af00a776125a9))
+
 ## [0.29.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.28.0...v0.29.0) (2026-10-21)
 
 
