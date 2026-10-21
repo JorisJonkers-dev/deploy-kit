@@ -34,7 +34,7 @@ tiers:
     audiences: [lan]
     listener: plain
     certificates: none
-    traefik: edge-proxy
+    traefik: refusals/edge-proxy
 durability:
   reconstructible: {}
   recoverable: { schedule: "15 3 * * *", retain: 14 }
@@ -51,6 +51,6 @@ ephemeral: { size: 64Mi }
 # The refusal: `release-gate` is named as delivery machinery, and no project
 # file declares it (spec/v1/14-platform-intent.md#delivery-policy).
 delivery:
-  machinery: [edge-proxy, release-gate]
-  gate: edge-proxy
+  machinery: [refusals/edge-proxy, delivery/release-gate]
+  gate: refusals/edge-proxy
   analysis: { interval: 30s, iterations: 4, threshold: 3, errorRate: 1%, latency: 500ms }

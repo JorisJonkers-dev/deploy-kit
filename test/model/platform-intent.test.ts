@@ -67,9 +67,14 @@ describe("parsePlatformIntent", () => {
       WORKED.replace(/\ndelivery:\n( {2}.*\n)+/, "\n"),
     );
     expect(offered.ok && offered.value.document.delivery).toStrictEqual({
-      machinery: ["traefik-public", "traefik-lan", "flagger", "release-gate"],
-      gate: "release-gate",
-      reporter: "reporter",
+      machinery: [
+        "edge/traefik-public",
+        "edge/traefik-lan",
+        "delivery/flagger",
+        "delivery/release-gate",
+      ],
+      gate: "delivery/release-gate",
+      reporter: "delivery/reporter",
       analysis: {
         interval: "30s",
         iterations: 4,

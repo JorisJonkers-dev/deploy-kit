@@ -34,17 +34,17 @@ tiers:
     audiences: [lan]
     listener: plain
     certificates: none
-    traefik: edge-proxy
+    traefik: refusals/edge-proxy
 delivery:
-  machinery: [edge-proxy]
-  gate: edge-proxy
+  machinery: [refusals/edge-proxy]
+  gate: refusals/edge-proxy
   analysis:
     interval: 30s
     iterations: 4
     threshold: 3
     errorRate: 1%
     latency: 500ms
-secretStore: edge-proxy
+secretStore: refusals/edge-proxy
 durability:
   reconstructible: {}
   recoverable: { schedule: "15 3 * * *", retain: 14 }

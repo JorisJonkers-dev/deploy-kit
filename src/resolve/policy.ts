@@ -12,6 +12,7 @@ import {
   FLUX_NOTIFIER,
   fluxNamespaceOf,
   REPORTER_SURFACE,
+  holds,
   type PlatformIntentDocument,
 } from "../model/platform-intent.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
@@ -45,7 +46,7 @@ export const peersOf = (
 ): { readonly namespace: string; readonly process: string }[] =>
   union.flatMap(({ project, applications }) =>
     applications
-      .filter(({ id }) => id === application)
+      .filter(({ id }) => holds(application, project, id))
       .flatMap(({ id, processes }) =>
         processes.map(({ name }) => homeOf(platform, project, id, name)),
       ),
@@ -178,12 +179,15 @@ export function ingressOf(
   // The Application the platform names is the one declared beside the
   // Release Gate, or E_UNKNOWN_REPORTER refused the set, and no other carries
   // its id, or E_DUPLICATE_APPLICATION_ID did.
-  const receiver =
-    context.platform.delivery?.reporter === application.id
-      ? application.processes.find(
-          ({ provides }) => provides?.[REPORTER_SURFACE] !== undefined,
-        )
-      : undefined;
+  const receiver = holds(
+    context.platform.delivery?.reporter,
+    context.project,
+    application.id,
+  )
+    ? application.processes.find(
+        ({ provides }) => provides?.[REPORTER_SURFACE] !== undefined,
+      )
+    : undefined;
   const events: Ingress[] =
     receiver?.name === process.name
       ? [
@@ -215,7 +219,7 @@ export function storeOf(
   const store = context.union
     .flatMap(({ project, applications }) =>
       applications
-        .filter(({ id }) => id === context.platform.secretStore)
+        .filter(({ id }) => holds(context.platform.secretStore, project, id))
         .flatMap(({ id, processes }) =>
           processes.flatMap(({ name, provides }) =>
             provides?.[STORE_SURFACE] === undefined

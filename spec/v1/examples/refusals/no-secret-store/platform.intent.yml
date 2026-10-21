@@ -38,10 +38,10 @@ tiers:
     audiences: [lan]
     listener: plain
     certificates: none
-    traefik: edge-proxy
+    traefik: refusals/edge-proxy
 delivery:
-  machinery: [edge-proxy]
-  gate: edge-proxy
+  machinery: [refusals/edge-proxy]
+  gate: refusals/edge-proxy
   analysis:
     interval: 30s
     iterations: 4

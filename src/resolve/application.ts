@@ -237,7 +237,9 @@ export function resolveApplication(
   context: ApplicationContext,
 ): ResolvedElement {
   const machinery =
-    context.platform.delivery?.machinery.includes(application.id) === true;
+    context.platform.delivery?.machinery.includes(
+      `${context.projectOf.get(application.id) as string}/${application.id}`,
+    ) === true;
   const pairs = application.processes.map((process) => {
     const ingress = ingressOf(process, application, context);
     return {

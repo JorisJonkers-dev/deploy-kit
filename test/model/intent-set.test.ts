@@ -41,7 +41,7 @@ const API_ACCESS = /\napiAccess:\n( {2}.*\n)+/;
 
 /** The worked Platform document's delivery machinery. */
 const MACHINERY =
-  "machinery: [traefik-public, traefik-lan, flagger, release-gate]";
+  "machinery: [edge/traefik-public, edge/traefik-lan, delivery/flagger, delivery/release-gate]";
 
 const refusalsOf = (files: readonly AuthoredFile[]) => {
   const result = checkIntentSet(files);
@@ -128,12 +128,12 @@ describe("checkIntentSet", () => {
       name: encrypted.name,
       text: encrypted.text
         .replace("secretsEncryption: false", "secretsEncryption: true")
-        .replace("traefik: traefik-public", "traefik: notes")
-        .replace("traefik: traefik-lan", "traefik: notes")
-        .replace(MACHINERY, "machinery: [notes]")
-        .replace("gate: release-gate", "gate: notes")
-        .replace("reporter: reporter", "reporter: notes")
-        .replace("secretStore: vault", "secretStore: notes")
+        .replace("traefik: edge/traefik-public", "traefik: notes/notes")
+        .replace("traefik: edge/traefik-lan", "traefik: notes/notes")
+        .replace(MACHINERY, "machinery: [notes/notes]")
+        .replace("gate: delivery/release-gate", "gate: notes/notes")
+        .replace("reporter: delivery/reporter", "reporter: notes/notes")
+        .replace("secretStore: secrets/vault", "secretStore: notes/notes")
         .replace(TELEMETRY, "\n")
         .replace(API_ACCESS, "\n"),
     };
@@ -142,7 +142,9 @@ describe("checkIntentSet", () => {
       read("minimal/notes.project.yml"),
     ]);
 
-    expect(result.ok && result.value.platform?.tiers[0]?.traefik).toBe("notes");
+    expect(result.ok && result.value.platform?.tiers[0]?.traefik).toBe(
+      "notes/notes",
+    );
     expect(
       result.ok && result.value.projects.map(({ project }) => project),
     ).toStrictEqual(["notes"]);
@@ -153,12 +155,12 @@ describe("checkIntentSet", () => {
       ...read("platform/platform.intent.yml"),
       text: read("platform/platform.intent.yml")
         .text.replace("secretsEncryption: false", "secretsEncryption: true")
-        .replace("traefik: traefik-public", "traefik: notes")
-        .replace("traefik: traefik-lan", "traefik: notes")
-        .replace(MACHINERY, "machinery: [notes]")
-        .replace("gate: release-gate", "gate: notes")
-        .replace("reporter: reporter", "reporter: notes")
-        .replace("secretStore: vault", "secretStore: notes")
+        .replace("traefik: edge/traefik-public", "traefik: notes/notes")
+        .replace("traefik: edge/traefik-lan", "traefik: notes/notes")
+        .replace(MACHINERY, "machinery: [notes/notes]")
+        .replace("gate: delivery/release-gate", "gate: notes/notes")
+        .replace("reporter: delivery/reporter", "reporter: notes/notes")
+        .replace("secretStore: secrets/vault", "secretStore: notes/notes")
         .replace(TELEMETRY, "\n")
         .replace(API_ACCESS, "\n"),
     };
@@ -220,11 +222,14 @@ describe("checkIntentSet", () => {
         .replace("audiences: [anonymous, authenticated]", "audiences: [lan]")
         .replace(/\n\s+forwardAuth: [^\n]*/, "")
         .replace("secretsEncryption: false", "secretsEncryption: true")
-        .replace("traefik: traefik-public", "traefik: knowledge")
-        .replace("traefik: traefik-lan", "traefik: knowledge")
-        .replace(MACHINERY, "machinery: [knowledge]")
-        .replace("gate: release-gate", "gate: knowledge")
-        .replace("secretStore: vault", "secretStore: knowledge")
+        .replace("traefik: edge/traefik-public", "traefik: knowledge/knowledge")
+        .replace("traefik: edge/traefik-lan", "traefik: knowledge/knowledge")
+        .replace(MACHINERY, "machinery: [knowledge/knowledge]")
+        .replace("gate: delivery/release-gate", "gate: knowledge/knowledge")
+        .replace(
+          "secretStore: secrets/vault",
+          "secretStore: knowledge/knowledge",
+        )
         .replace(TELEMETRY, "\n")
         .replace(API_ACCESS, "\n"),
     };
@@ -259,19 +264,19 @@ describe("checkIntentSet", () => {
     const diagnostics = result.ok ? [] : result.diagnostics;
 
     expect(diagnostics.map(({ message }) => message)).toStrictEqual([
-      "no project file declares the Application traefik-public this tier's proxy names",
-      "no project file declares the Application traefik-lan this tier's proxy names",
-      "no project file declares the Application traefik-public the delivery machinery names",
-      "no project file declares the Application traefik-lan the delivery machinery names",
-      "no project file declares an Application otel-collector whose Process provides an `otlp` surface",
-      "no project file declares the Application prometheus the metrics stack names",
+      "no project file declares the Application edge/traefik-public this tier's proxy names",
+      "no project file declares the Application edge/traefik-lan this tier's proxy names",
+      "no project file declares the Application edge/traefik-public the delivery machinery names",
+      "no project file declares the Application edge/traefik-lan the delivery machinery names",
+      "no project file declares an Application observability/otel-collector whose Process provides an `otlp` surface",
+      "no project file declares the Application observability/prometheus the metrics stack names",
     ]);
     expect(diagnostics.map(({ hint }) => hint).slice(1)).toStrictEqual([
-      "Declare the proxy Application in a project file the platform owns.",
-      "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
-      "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
-      "Declare the collector in a project file the platform owns, with an `otlp` surface on one of its Processes.",
-      "Declare the metrics stack in a project file the platform owns.",
+      "Name the proxy as `<project>/<application>`, an Application its Project declares.",
+      "Name it as `<project>/<application>`, an Application its Project declares, or drop it from `delivery.machinery`.",
+      "Name it as `<project>/<application>`, an Application its Project declares, or drop it from `delivery.machinery`.",
+      "Name the collector as `<project>/<application>`, an Application its Project declares with an `otlp` surface on one of its Processes.",
+      "Name the metrics stack as `<project>/<application>`, an Application its Project declares.",
     ]);
   });
 
@@ -283,31 +288,34 @@ describe("checkIntentSet", () => {
       refusalsOf([
         {
           name: platform.name,
-          text: platform.text.replace("reporter: reporter", reporter),
+          text: platform.text.replace("reporter: delivery/reporter", reporter),
         },
         ...WORKED.slice(1),
       ]);
     const gone = checkIntentSet([
       {
         name: platform.name,
-        text: platform.text.replace("reporter: reporter", "reporter: gone"),
+        text: platform.text.replace(
+          "reporter: delivery/reporter",
+          "reporter: delivery/gone",
+        ),
       },
       ...WORKED.slice(1),
     ]);
     const [unknown, ...others] = gone.ok ? [] : gone.diagnostics;
 
-    expect(naming("reporter: reporter")).toStrictEqual([]);
+    expect(naming("reporter: delivery/reporter")).toStrictEqual([]);
     expect(others).toStrictEqual([]);
     expect(unknown).toStrictEqual({
       code: "E_UNKNOWN_REPORTER",
       document: "platform/platform.intent.yml",
       path: "/delivery",
       message:
-        "the project file that declares the Release Gate declares no Application gone whose Process provides an `http` surface",
-      hint: "Declare the Reporter beside the Release Gate, in the same project file, with an `http` surface on one of its Processes, or drop `delivery.reporter`.",
+        "the project file that declares the Release Gate declares no Application delivery/gone whose Process provides an `http` surface",
+      hint: "Name the Reporter as `<project>/<application>` in the Release Gate's Project, an Application with an `http` surface on one of its Processes, or drop `delivery.reporter`.",
     });
     // An Application that answers on another surface alone is no Reporter.
-    expect(naming("reporter: otel-collector")).toStrictEqual([
+    expect(naming("reporter: observability/otel-collector")).toStrictEqual([
       {
         code: "E_UNKNOWN_REPORTER",
         document: "platform/platform.intent.yml",
@@ -317,7 +325,7 @@ describe("checkIntentSet", () => {
     // Nor is one that answers on `http` in another Project than the gate's:
     // the name alone binds nothing, so declaring an Application called what
     // the platform calls its Reporter gains a project file nothing.
-    expect(naming("reporter: vault")).toStrictEqual([
+    expect(naming("reporter: secrets/vault")).toStrictEqual([
       {
         code: "E_UNKNOWN_REPORTER",
         document: "platform/platform.intent.yml",
@@ -328,14 +336,90 @@ describe("checkIntentSet", () => {
     expect(naming("# no reporter")).toStrictEqual([]);
   });
 
+  // A privileged role names the Project that may hold it
+  // (spec/v1/14-platform-intent.md#privileged-roles), so an Application of the
+  // id that another project declares never receives the role.
+  it.each([
+    [
+      "a tier's proxy",
+      "traefik: edge/traefik-public",
+      "traefik: delivery/traefik-public",
+      "E_UNKNOWN_TIER_PROXY",
+      "/tiers/0",
+    ],
+    [
+      "the delivery machinery",
+      "machinery: [edge/traefik-public",
+      "machinery: [delivery/traefik-public",
+      "E_UNKNOWN_MACHINERY",
+      "/delivery",
+    ],
+    [
+      "the Release Gate",
+      "gate: delivery/release-gate",
+      "gate: edge/release-gate",
+      "E_UNKNOWN_RELEASE_GATE",
+      "/delivery",
+    ],
+    [
+      "the Reporter",
+      "reporter: delivery/reporter",
+      "reporter: edge/reporter",
+      "E_UNKNOWN_REPORTER",
+      "/delivery",
+    ],
+    [
+      "a holder of API access",
+      "holders: [delivery/flagger",
+      "holders: [edge/flagger",
+      "E_UNKNOWN_API_HOLDER",
+      "/apiAccess",
+    ],
+    [
+      "the telemetry collector",
+      "collector: observability/otel-collector",
+      "collector: delivery/otel-collector",
+      "E_UNKNOWN_TELEMETRY_COLLECTOR",
+      "/telemetry",
+    ],
+    [
+      "the metrics stack",
+      "metrics: observability/prometheus",
+      "metrics: delivery/prometheus",
+      "E_UNKNOWN_METRICS_STACK",
+      "/telemetry",
+    ],
+    [
+      "the Secret Store",
+      "secretStore: secrets/vault",
+      "secretStore: delivery/vault",
+      "E_UNKNOWN_SECRET_STORE",
+      "/secretStore",
+    ],
+  ])(
+    "refuses %s named under a Project that does not declare it",
+    (_role, held, moved, code, path) => {
+      const platform = read("platform/platform.intent.yml");
+
+      expect(
+        refusalsOf([
+          { name: platform.name, text: platform.text.replace(held, moved) },
+          ...WORKED.slice(1),
+        ]).filter((refusal) => refusal.code === code),
+      ).toStrictEqual([
+        { code, document: "platform/platform.intent.yml", path },
+      ]);
+    },
+  );
+
   it("says what a Release Gate that answers nowhere was refused for, and how to fix it", () => {
     const platform = read("platform/platform.intent.yml");
     const result = checkIntentSet([
       {
         name: platform.name,
         text: platform.text.replace(
-          "gate: release-gate",
-          "gate: otel-collector",
+          "gate: delivery/release-gate",
+          "gate: observability/otel-collector",
         ),
       },
       ...WORKED.slice(1),
@@ -345,8 +429,8 @@ describe("checkIntentSet", () => {
     );
 
     expect([refusal?.message, refusal?.hint]).toStrictEqual([
-      "no project file declares an Application otel-collector whose Process provides an `http` surface",
-      "Declare the Release Gate in a project file the platform owns, with an `http` surface on one of its Processes.",
+      "no project file declares an Application observability/otel-collector whose Process provides an `http` surface",
+      "Name the Release Gate as `<project>/<application>`, an Application its Project declares with an `http` surface on one of its Processes.",
     ]);
   });
 
@@ -357,7 +441,7 @@ describe("checkIntentSet", () => {
         {
           name: platform.name,
           text: platform.text.replace(
-            "secretStore: vault",
+            "secretStore: secrets/vault",
             `secretStore: ${store}`,
           ),
         },
@@ -374,15 +458,18 @@ describe("checkIntentSet", () => {
     };
 
     // `otel-collector` is declared and serves only `otlp`; `gone` is declared nowhere.
-    expect([...refusals("otel-collector"), ...refusals("gone")]).toStrictEqual(
-      ["otel-collector", "gone"].map((store) => ({
+    expect([
+      ...refusals("observability/otel-collector"),
+      ...refusals("secrets/gone"),
+    ]).toStrictEqual(
+      ["observability/otel-collector", "secrets/gone"].map((store) => ({
         document: "platform/platform.intent.yml",
         path: "/secretStore",
         message: `no project file declares an Application ${store} whose Process provides an \`http\` surface`,
-        hint: "Declare the Secret Store in a project file the platform owns, with an `http` surface on one of its Processes.",
+        hint: "Name the Secret Store as `<project>/<application>`, an Application its Project declares with an `http` surface on one of its Processes.",
       })),
     );
-    expect(refusals("vault")).toStrictEqual([]);
+    expect(refusals("secrets/vault")).toStrictEqual([]);
   });
 
   it("refuses a Release Gate that answers on no http surface, and a metrics stack nothing declares", () => {
@@ -390,8 +477,14 @@ describe("checkIntentSet", () => {
     const misnamed = {
       name: platform.name,
       text: platform.text
-        .replace("gate: release-gate", "gate: otel-collector")
-        .replace("metrics: prometheus", "metrics: grafana"),
+        .replace(
+          "gate: delivery/release-gate",
+          "gate: observability/otel-collector",
+        )
+        .replace(
+          "metrics: observability/prometheus",
+          "metrics: observability/grafana",
+        ),
     };
 
     expect(
@@ -451,8 +544,8 @@ describe("checkIntentSet", () => {
       {
         name: (platform as AuthoredFile).name,
         text: (platform as AuthoredFile).text.replace(
-          "holders: [flagger, release-gate, collector, reporter]",
-          "holders: [flagger, release-gate, reporter]",
+          "holders: [delivery/flagger, delivery/release-gate, delivery/collector, delivery/reporter]",
+          "holders: [delivery/flagger, delivery/release-gate, delivery/reporter]",
         ),
       },
       ...projects,
@@ -472,7 +565,7 @@ describe("checkIntentSet", () => {
         "E_PROCESS_RBAC_GRANT",
         "/applications/2/processes/0/api",
         "collector declares Kubernetes API access, and the platform does not admit the Application collector to hold any",
-        "Name the Application in the Platform document's `apiAccess.holders`, under an id no other Application carries, or drop `api`.",
+        "Name the Application in the Platform document's `apiAccess.holders` as `<project>/<application>`, under an id no other Application carries, or drop `api`.",
       ],
     ]);
   });
@@ -511,7 +604,7 @@ describe("the migration rules across documents", () => {
   const HEADER = `apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
 schemaVersion: 1.0.0
-project: p
+project: refusals
 owner: o
 `;
   const PROXY = `  - id: edge-proxy
@@ -597,7 +690,7 @@ describe("the delivery rule across documents", () => {
   const HEADER = `apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
 schemaVersion: 1.0.0
-project: p
+project: refusals
 owner: o
 applications:
   - id: edge-proxy
@@ -712,8 +805,8 @@ describe("the gated migration rule across documents", () => {
         {
           name: platform.name,
           text: platform.text.replace(
-            "machinery: [edge-proxy]",
-            "machinery: [edge-proxy, api]",
+            "machinery: [refusals/edge-proxy]",
+            "machinery: [refusals/edge-proxy, refusals/api]",
           ),
         },
         api(continuous),

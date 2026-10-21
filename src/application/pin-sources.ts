@@ -17,6 +17,7 @@ import { brokenInvariant } from "../model/internal-failure.ts";
 import { PIN_ANNOTATIONS } from "../model/pin-annotations.ts";
 import {
   fluxNamespaceOf,
+  holds,
   type PlatformIntentDocument,
 } from "../model/platform-intent.ts";
 import {
@@ -78,8 +79,8 @@ function unitsOf(
 ): SourceUnit[] {
   const declaring = (application: string | undefined): string[] =>
     projects
-      .filter(({ applications }) =>
-        applications.some(({ id }) => id === application),
+      .filter(({ project, applications }) =>
+        applications.some(({ id }) => holds(application, project, id)),
       )
       .map(({ project }) => unitOf(project));
   if (name !== ESTATE) {

@@ -21,8 +21,9 @@ import org.eclipse.xtext.scoping.Scopes;
  * Application is in scope; a dependency edge's names reach other documents and are not linked here.
  *
  * <p>A tier's proxy, a name of the delivery machinery and the telemetry collector reach another
- * document: every Application a project file read in the same set declares
- * (spec/v1/14-platform-intent.md#the-model). The collector's scope holds only the Applications whose
+ * document: every Application a project file read in the same set declares, each named
+ * {@code <project>/<application>}, so a name links only to the Application the named Project
+ * declares and an id alone binds no privileged role (spec/v1/14-platform-intent.md#privileged-roles). The collector's scope holds only the Applications whose
  * Process provides an {@code otlp} surface, so one that receives nothing is a name that links to
  * nothing, and is refused as one (spec/v1/14-platform-intent.md#telemetry). The Release Gate's scope
  * holds the Applications that provide {@code http}, which is where every Canary asks it, and the
@@ -45,9 +46,7 @@ public class ProjectIntentScopes implements IScopeProvider {
         }
         if (reference.getEReferenceType() == ProjectIntentPackage.Literals.APPLICATION) {
             return Scopes.scopeFor(
-                    applications(context.eResource().getResourceSet()),
-                    application -> QualifiedName.create(((Application) application).getId()),
-                    IScope.NULLSCOPE);
+                    applications(context.eResource().getResourceSet()), ProjectIntentScopes::held, IScope.NULLSCOPE);
         }
         if (reference.getEReferenceType() == ProjectIntentPackage.Literals.PROCESS) {
             Application application = EcoreUtil2.getContainerOfType(context, Application.class);
@@ -76,8 +75,14 @@ public class ProjectIntentScopes implements IScopeProvider {
                         .filter(application -> application.getProcesses().stream()
                                 .anyMatch(process -> process.getProvides().containsKey(surface)))
                         .toList(),
-                application -> QualifiedName.create(((Application) application).getId()),
+                ProjectIntentScopes::held,
                 IScope.NULLSCOPE);
+    }
+
+    /** The name a privileged role links an Application by: its Project, then its id. */
+    private static QualifiedName held(EObject application) {
+        Project project = EcoreUtil2.getContainerOfType(application, Project.class);
+        return QualifiedName.create(project.getProject() + "/" + ((Application) application).getId());
     }
 
     /**

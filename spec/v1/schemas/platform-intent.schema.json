@@ -51,7 +51,7 @@
         },
         "secretStore": {
           "type": "string",
-          "minLength": 1,
+          "pattern": "^[^/\\s]+\\/[^/\\s]+$",
           "reference": "Application"
         },
         "hardening": {
@@ -334,7 +334,7 @@
         },
         "traefik": {
           "type": "string",
-          "minLength": 1,
+          "pattern": "^[^/\\s]+\\/[^/\\s]+$",
           "reference": "Application"
         }
       },
@@ -516,12 +516,12 @@
       "properties": {
         "collector": {
           "type": "string",
-          "minLength": 1,
+          "pattern": "^[^/\\s]+\\/[^/\\s]+$",
           "reference": "Application"
         },
         "metrics": {
           "type": "string",
-          "minLength": 1,
+          "pattern": "^[^/\\s]+\\/[^/\\s]+$",
           "reference": "Application"
         }
       },
@@ -610,13 +610,13 @@
           "type": "array",
           "items": {
             "type": "string",
-            "minLength": 1,
+            "pattern": "^[^/\\s]+\\/[^/\\s]+$",
             "reference": "Application"
           }
         },
         "gate": {
           "type": "string",
-          "minLength": 1,
+          "pattern": "^[^/\\s]+\\/[^/\\s]+$",
           "reference": "Application"
         },
         "analysis": {
@@ -624,7 +624,7 @@
         },
         "reporter": {
           "type": "string",
-          "minLength": 1,
+          "pattern": "^[^/\\s]+\\/[^/\\s]+$",
           "reference": "Application"
         }
       },
@@ -678,7 +678,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "minLength": 1,
+            "pattern": "^[^/\\s]+\\/[^/\\s]+$",
             "reference": "Application"
           }
         },

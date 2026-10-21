@@ -39,10 +39,10 @@ tiers:
     audiences: [lan]
     listener: plain
     certificates: none
-    traefik: edge-proxy
+    traefik: refusals/edge-proxy
 delivery:
-  machinery: [edge-proxy]
-  gate: edge-proxy
+  machinery: [refusals/edge-proxy]
+  gate: refusals/edge-proxy
   analysis:
     interval: 30s
     iterations: 4
@@ -59,8 +59,8 @@ monitors:
   interval: 30s
   timeout: 10s
 telemetry:
-  collector: edge-proxy
-  metrics: edge-proxy
+  collector: refusals/edge-proxy
+  metrics: refusals/edge-proxy
 hardening: restricted
 probes: { period: 10s, timeout: 5s, failures: 3 }
 ephemeral: { size: 64Mi }

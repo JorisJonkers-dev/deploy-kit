@@ -45,12 +45,26 @@ with the same schema refusals
 
 The Platform document's classes and how they compose. A policy keyed by a
 closed vocabulary is a class with one optional field per literal, so a policy
-the platform does not offer is a field it does not write. Eight fields refer
+the platform does not offer is a field it does not write. Ten fields refer
 into another document: a tier's `traefik`, each name in `delivery.machinery`,
-`delivery.gate`, each name in `apiAccess.holders`, `telemetry.collector`,
-`telemetry.metrics` and `secretStore` name an Application declared in a project
-file the platform owns, and the `handover` ledger and each library's `grants`
-name projects.
+`delivery.gate`, `delivery.reporter`, each name in `apiAccess.holders`,
+`telemetry.collector`, `telemetry.metrics` and `secretStore` each name a
+[privileged role](#privileged-roles)'s holder, and the `handover` ledger and
+each library's `grants` name projects.
+
+### Privileged roles
+
+Each of the eight fields above hands the Application it names a role no
+project file can give itself: every Canary's verdict, every grant's Vault
+traffic, ingress to every routed or scraped Process, exemption from the
+Release Gate, or Kubernetes API access. So each names the holder as
+`<project>/<application>`: the Project that may hold the role, and the
+Application that Project declares. It links only to that Application in that
+Project. An Application of the same id that another project file declares does
+not receive the role, and the reference stays unlinked, refused with the
+field's own code below. The id alone binds nothing, so a role is never
+something a project file claims by publishing a name
+([0113](../../docs/adr/model/0113-a-privileged-role-names-the-project-that-holds-it.md)).
 
 A Platform document is checked on its own and together with the project files
 read beside it. On its own, a tier that carries `authenticated` needs its
@@ -61,7 +75,7 @@ other resolves and every policy one asks for the other offers:
 
 | condition | error |
 |---|---|
-| a tier's `traefik` names an Application no project file read beside it declares | `E_UNKNOWN_TIER_PROXY` |
+| a tier's `traefik` names no Application its Project declares | `E_UNKNOWN_TIER_PROXY` |
 | an exposure's or a route's audience is carried by no tier | `E_NO_TIER_FOR_AUDIENCE` |
 | a Process's `engine` has no entry in `engines` | `E_NO_ENGINE_POLICY` |
 | a Process's `engine` names a `surface` in `engines` that the Process does not provide | `E_BACKUP_SURFACE_NOT_PROVIDED` |
@@ -70,14 +84,14 @@ other resolves and every policy one asks for the other offers:
 | a Process mounts a library that grants its project nothing, or mounts it `write` where the grant is `read` | `E_LIBRARY_NOT_GRANTED` |
 | a Process attaches to a VPN and `vpn` is absent | `E_NO_VPN_POLICY` |
 | a grant delivered as `env` or `file` where `secretsEncryption` is false | `E_SECRETS_AT_REST_REQUIRED` |
-| a name in `delivery.machinery` names an Application no project file read beside it declares | `E_UNKNOWN_MACHINERY` |
-| a name in `apiAccess.holders` names an Application no project file read beside it declares | `E_UNKNOWN_API_HOLDER` |
+| a name in `delivery.machinery` names no Application its Project declares | `E_UNKNOWN_MACHINERY` |
+| a name in `apiAccess.holders` names no Application its Project declares | `E_UNKNOWN_API_HOLDER` |
 | a Process declares `api` in an Application `apiAccess.holders` does not name, or under an id a second Application also carries | `E_PROCESS_RBAC_GRANT` |
-| `telemetry.collector` names no Application a project file read beside it declares with an `otlp` surface on one of its Processes | `E_UNKNOWN_TELEMETRY_COLLECTOR` |
-| `telemetry.metrics` names an Application no project file read beside it declares | `E_UNKNOWN_METRICS_STACK` |
-| `delivery.gate` names no Application a project file read beside it declares with an `http` surface on one of its Processes | `E_UNKNOWN_RELEASE_GATE` |
-| `delivery.reporter` names no Application that the project file declaring the Release Gate declares with an `http` surface on one of its Processes | `E_UNKNOWN_REPORTER` |
-| `secretStore` names no Application a project file read beside it declares with an `http` surface on one of its Processes | `E_UNKNOWN_SECRET_STORE` |
+| `telemetry.collector` names no Application its Project declares with an `otlp` surface on one of its Processes | `E_UNKNOWN_TELEMETRY_COLLECTOR` |
+| `telemetry.metrics` names no Application its Project declares | `E_UNKNOWN_METRICS_STACK` |
+| `delivery.gate` names no Application its Project declares with an `http` surface on one of its Processes | `E_UNKNOWN_RELEASE_GATE` |
+| `delivery.reporter` names no Application its Project declares with an `http` surface on one of its Processes, or a Project other than the Release Gate's | `E_UNKNOWN_REPORTER` |
+| `secretStore` names no Application its Project declares with an `http` surface on one of its Processes | `E_UNKNOWN_SECRET_STORE` |
 | an Application holds a grant, a backup that copies off-cluster, a backup that dumps over the network, or a changelog, and the platform names no `secretStore` | `E_NO_SECRET_STORE` |
 | an Application moves its schema with a changelog and the platform declares no `migration` policy | `E_NO_MIGRATION_POLICY` |
 | an Application moves its schema with a changelog and no Process of it switches `blue-green`: none is `continuous`, or the Application is `delivery.machinery` | `E_MIGRATION_UNGATED` |
@@ -261,12 +275,12 @@ tiers:
     certificates: acme                 # acme | none
     forwardAuth: http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward
     proxiedBy: cloudflare              # optional: who forwards clients' requests to this edge
-    traefik: traefik-public            # the declared Application that is this tier's proxy
+    traefik: edge/traefik-public       # <project>/<application>: the declared Application that is this tier's proxy
   - name: lan
     audiences: [lan]
     listener: plain
     certificates: none
-    traefik: traefik-lan
+    traefik: edge/traefik-lan
 ```
 
 | fact | meaning |
@@ -276,7 +290,7 @@ tiers:
 | `certificates` | how certificates are issued for what it terminates |
 | `forwardAuth` | the endpoint that authenticates for it; required where `authenticated` is carried, `E_NO_FORWARD_AUTH_ENDPOINT` otherwise ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)) |
 | `proxiedBy` | `cloudflare`, or absent. Who forwards clients' requests to this edge, which decides the address a route's `rateLimit` counts a client by: absent, the connection's own address; `cloudflare`, the address Cloudflare forwards in `CF-Connecting-IP`, since every connection then comes from a Cloudflare edge. State it only when every request reaches the tier through Cloudflare, since a client that reaches the edge directly writes that header itself ([0110](../../docs/adr/model/0110-a-route-may-bound-its-request-rate.md)) |
-| `traefik` | the platform Application whose proxy this tier is; an Application no project file declares is `E_UNKNOWN_TIER_PROXY` |
+| `traefik` | the platform Application whose proxy this tier is, as `<project>/<application>` ([privileged roles](#privileged-roles)); an Application its Project does not declare is `E_UNKNOWN_TIER_PROXY` |
 
 `entryPoint`, `certResolver` and every other Traefik spelling appear only in the
 adapter. A route's audience is the **only** way it reaches a tier, so a `lan`
@@ -567,12 +581,12 @@ probe cadence below is: it is contended, and no Application knows better
 
 ```yaml
 telemetry:
-  collector: otel-collector
-  metrics: prometheus
+  collector: observability/otel-collector
+  metrics: observability/prometheus
 ```
 
-Where telemetry goes, in two names, each an Application declared in a project
-file the platform owns, named as a tier names its proxy.
+Where telemetry goes, in two names, each a [privileged role](#privileged-roles)'s
+holder, named as a tier names its proxy: `<project>/<application>`.
 
 - **`collector`** is where every exporting Runtime Profile sends its telemetry
   ([chapter 10](10-project-intent.md#runtime-profiles)). The endpoint each
@@ -581,8 +595,8 @@ file the platform owns, named as a tier names its proxy.
   writes the collector's address and none can write it wrong.
 - **`metrics`** is the metrics stack, the one peer every declared scrape surface
   admits ([chapter 16](16-dependencies.md#the-derived-allow-set)): each of its
-  Processes, in its own namespace. `E_UNKNOWN_METRICS_STACK` where no project
-  file declares it.
+  Processes, in its own namespace. `E_UNKNOWN_METRICS_STACK` where its Project
+  declares no such Application.
 
 A Platform document without the block names neither: no profile is handed an
 endpoint, and no scrape surface admits a metrics stack.
@@ -669,9 +683,9 @@ changelog read beside it is `E_NO_MIGRATION_POLICY`.
 
 ```yaml
 delivery:
-  machinery: [traefik-public, traefik-lan, flagger, release-gate]
-  gate: release-gate
-  reporter: reporter
+  machinery: [edge/traefik-public, edge/traefik-lan, delivery/flagger, delivery/release-gate]
+  gate: delivery/release-gate
+  reporter: delivery/reporter
   analysis:
     interval: 30s
     iterations: 4
@@ -688,7 +702,7 @@ facts, all the platform's:
   Gate, Flagger, and the edge proxies. They are never gated, because a gate
   cannot gate its own release and a proxy bound to a host port cannot run two
   copies, so their `continuous` Processes derive a `rolling` switchover rather
-  than `blue-green`. Each name links to an Application a project file declares,
+  than `blue-green`. Each name links to the Application its Project declares,
   as a tier's proxy does: `E_UNKNOWN_MACHINERY` otherwise. Flux is not among
   them: it is in the bootstrap set, not an Application.
 - **`gate`** names which of the machinery is the Release Gate: the Application
@@ -697,13 +711,11 @@ facts, all the platform's:
   `E_UNKNOWN_RELEASE_GATE` otherwise.
 - **`reporter`** names the Reporter: the Application Flux's events about every
   Project's unit are sent to, on its `http` surface, so each Rollout's stages
-  reach its repository ([chapter 55](55-delivery.md#rollouts)). It links to an
-  Application whose Process provides that surface, declared in the project file
-  that declares the Release Gate: `E_UNKNOWN_REPORTER` otherwise. The name
-  alone binds nothing. A project file that declares an Application called what
-  the platform calls its Reporter gains nothing by it, unless it is the one
-  that already holds the gate, so the role cannot be claimed by publishing a
-  name. It is no machinery, since it switches nothing. The field is optional,
+  reach its repository ([chapter 55](55-delivery.md#rollouts)). It names the
+  Release Gate's Project, and links to the Application that Project declares
+  whose Process provides that surface: `E_UNKNOWN_REPORTER` otherwise, and for
+  a Reporter named in any other Project. As with every
+  [privileged role](#privileged-roles), the name alone binds nothing. It is no machinery, since it switches nothing. The field is optional,
   and a platform that names no Reporter reports no Rollout past `pinned`.
 - **`analysis`** is the cadence every `blue-green` member is analysed at, and
   what a check must stay under. `interval`, `iterations` and `threshold` are how
@@ -745,7 +757,7 @@ every Application is `interrupted` needs neither the gate nor the block.
 
 ```yaml
 apiAccess:
-  holders: [flagger, release-gate, collector]
+  holders: [delivery/flagger, delivery/release-gate, delivery/collector]
   server:
     - { cidr: 10.43.0.1/32, port: 443 }
 ```
@@ -760,7 +772,7 @@ Two facts, both the platform's:
   what a ServiceAccount may do to the cluster is a decision about the cluster,
   and a shared resource is the platform's to assign
   ([0004](../../docs/adr/model/0004-contention-decides-authority.md)). Each
-  name links to an Application a project file declares, as the machinery's do:
+  name links to the Application its Project declares, as the machinery's do:
   `E_UNKNOWN_API_HOLDER` otherwise. A declaration in an Application the list
   does not name is `E_PROCESS_RBAC_GRANT`. A name admits one Application: where
   two Applications of the set carry the id, neither is admitted, and each one's
@@ -829,7 +841,7 @@ carries the documents alone and nothing applies them.
 ## The Secret Store
 
 ```yaml
-secretStore: vault
+secretStore: secrets/vault
 ```
 
 The Application every grant is read from
